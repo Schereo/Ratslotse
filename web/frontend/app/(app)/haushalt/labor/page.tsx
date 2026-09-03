@@ -27,22 +27,24 @@ import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import type { VergleichDaten } from "@/lib/haushalt-vergleich";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
-import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { Labor } from "@/components/haushalt/labor";
+import { VerfahrensWegKarte } from "@/components/haushalt/verfahrens-weg";
+import type { AenderungslistenDaten } from "@/lib/haushalt-aenderungslisten";
 
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-// `hebesaetze` und `ruecklage` kommen aus echten Reihen statt Konstanten;
-// `ergebnishaushalt`, `gebuehren` und `haushaltssatzung` seit dem
+// `tax_rates` und `reserves` kommen aus echten Reihen statt Konstanten;
+// `income_budget`, `fees` und `budget_bylaw` seit dem
 // Werkbank-Umbau (Labor 2.0): Rücklagen-Pfad,
 // gesperrte Gebühren-Schraube und der Kredit-Kasten der dritten Werkbank.
-const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft", "einwohner",
-                "ergebnisrechnung", "hebesaetze", "ergebnishaushalt",
-                "gebuehren", "haushaltssatzung", "ruecklage"] as const;
+const FELDER = ["years", "product_years", "taxes", "tax_capacity", "population",
+                "income_statement", "tax_rates", "income_budget",
+                "fees", "budget_bylaw", "reserves"] as const;
 
 /** Reihenfolge = Nummerierung der Beleg-Chips, deshalb nach Leserichtung:
  *  Plan (die Zahl, gegen die gerechnet wird), die Regler der ersten Werkbank
@@ -51,9 +53,12 @@ const FELDER = ["jahre", "produkt_jahre", "steuern", "steuerkraft", "einwohner",
  *  die Ergebnis-Spalte (Steuerkraft-Spanne, Rücklage, Planjahre) und der
  *  Anker unten (Jahresabschluss). */
 const QUELLEN: QuellenSchluessel[] = [
-  "plan", "steuern", "hebesaetze", "lsn_realsteuern", "gebuehren",
-  "teilhaushalt", "investitionsprogramm", "haushaltssatzung", "schulden",
-  "steuerkraft", "ruecklage", "ergebnishaushalt", "jahresabschluss",
+  "plan", "taxes", "tax_rates", "lsn_realsteuern", "fees",
+  "teilhaushalt", "investitionsprogramm", "budget_bylaw", "schulden",
+  "tax_capacity", "reserves", "income_budget", "jahresabschluss",
+  // Zuletzt, weil zuunterst: die Änderungslisten unter dem Labor — der
+  // Maßstab aus dem echten Verfahren (VerfahrensWegKarte).
+  "aenderungsliste",
 ];
 
 export default function LaborPage() {
@@ -62,21 +67,24 @@ export default function LaborPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER, "keine"));
   // Die Produktebene liegt nur für abgeschlossene Jahre vor — wir nehmen das
   // jüngste. Fehlt sie ganz, läuft das Labor ohne Vergleichsgrößen weiter.
-  const produktJahr = data?.produkt_jahre?.at(-1) ?? null;
+  const produktJahr = data?.product_years?.at(-1) ?? null;
   const { data: produkte } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?jahr=${produktJahr}` : null);
+    produktJahr ? `/council/budget/products?year=${produktJahr}` : null);
   // Die drei Zugaben — jede Komponente kommt mit `null` zurecht und lässt
   // ihren Baustein dann weg, statt mit halben Daten zu rechnen.
-  const { data: vergleich } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
-  const { data: programm } = useFetch<ProgrammDaten>("/council/haushalt/investitionsprogramm");
-  const { data: schulden } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  const { data: vergleich } = useFetch<VergleichDaten>("/council/budget/comparison");
+  const { data: programm } = useFetch<ProgrammDaten>("/council/budget/investment-programme");
+  const { data: schulden } = useFetch<SchuldenDaten>("/council/budget/debt");
+  // Der Maßstab unter dem Labor: was das echte Verfahren bewegt hat.
+  // Vierte Zugabe — fehlt sie, entfällt die Karte, das Labor rechnet weiter.
+  const { data: listen } = useFetch<AenderungslistenDaten>("/council/budget/amendment-lists");
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Labor wird geladen …</div>;
   }
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={jahreSortiert(data).at(-1) ?? null}>
+    <Quellenkontext keys={QUELLEN} year={jahreSortiert(data).at(-1) ?? null}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -105,20 +113,26 @@ export default function LaborPage() {
 
       <Labor
         daten={data}
-        produkte={produkte?.produkte ?? []} produktJahr={produktJahr}
+        produkte={produkte?.products ?? []} produktJahr={produktJahr}
         vergleich={vergleich ?? null}
         programm={programm ?? null}
         schulden={schulden ?? null}
       />
 
+      {/* Der Maßstab steht VOR dem Lotti-Kasten: erst die Größenordnung aus
+          dem echten Verfahren, dann der Hinweis, dass das Labor keine
+          Beschlüsse fasst. Zusammen beantworten sie „wie ernst ist das
+          hier?" von beiden Seiten. */}
+      <VerfahrensWegKarte daten={listen ?? null} budget_year={jahreSortiert(data).at(-1) ?? null} />
+
       <LottiErklaert
-        titel="Warum das kein Sparvorschlag ist"
+        title="Warum das kein Sparvorschlag ist"
         text="Dieses Labor rechnet mit ganzen Bereichen und vereinfachten Annahmen. Der echte Haushalt wird dagegen Position für Position geplant, in den Ausschüssen beraten und vom Rat beschlossen. Die Ergebnisse des Labors zeigen Größenordnungen; sie sind keine Prognose und kein Haushaltsentwurf."
       />
 
       <SchrittWeiter href="/haushalt/labor" />
 
-      <Quellenverzeichnis schluessel={QUELLEN} />
+      <Quellenverzeichnis keys={QUELLEN} />
     </div>
     </Quellenkontext>
   );

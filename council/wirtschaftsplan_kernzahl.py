@@ -51,8 +51,8 @@ Nur das Ergebnis, und das ist der Punkt
 ---------------------------------------
 Diese Route liefert **kein** Erträge/Aufwendungen-Paar. Das ist keine
 Nachlässigkeit, sondern die ehrliche Grenze: Die einzige Zahl dieser Dokumente,
-die zweifach belegt ist, ist das Jahresergebnis. ``council_wirtschaftsplaene``
-lässt ``ertraege`` und ``aufwendungen`` deshalb seit 20.08.2026 offen — ein
+die zweifach belegt ist, ist das Jahresergebnis. ``council_business_plans``
+lässt ``revenues`` und ``expenses`` deshalb seit 20.08.2026 offen — ein
 ``NULL`` sagt „diese Quelle nennt es nicht", eine 0 wäre eine Behauptung.
 
 Die Vorzeichen-Falle
@@ -75,8 +75,8 @@ from council.herkunft import Herkunft
 from council.wirtschaftsplan import (BETRIEBE, Wirtschaftsplan,
                                     WirtschaftsplanFehler, dokument_name)
 
-PROBE_KERNZAHL = "wirtschaftsplan_kernzahl"
-PROBE_INVESTITIONEN = "wirtschaftsplan_investitionen"
+PROBE_KERNZAHL = "business_plan_key_figure"
+PROBE_INVESTITIONEN = "business_plan_investments"
 
 PROBEN: dict[str, str] = {
     PROBE_KERNZAHL:
@@ -103,7 +103,7 @@ _KERNZAHL = re.compile(
     r"(?P<wort>Jahresfehlbetrag|Jahres[üu]berschuss|Fehlbetrag|[Üu]berschuss"
     r"|Verlust|Gewinn)"
     r"[^.]{0,80}?(?:in H[öo]he von|von)\s+"
-    r"(?P<betrag>-?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
+    r"(?P<amount>-?\s*\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
 
 #: Wörter, die einen Verlust bezeichnen — sie erzwingen ein negatives
 #: Vorzeichen, egal wie die Ziffernfolge geschrieben ist.
@@ -119,31 +119,31 @@ def _eur(roh: str) -> float:
 def kernzahl_aus_beschluss(text: str) -> tuple[str, float] | None:
     """Das beschlossene Jahresergebnis aus dem Beschlusstext.
 
-    Liefert ``(wort, betrag)`` mit dem Betrag **vorzeichenrichtig**: Ein
+    Liefert ``(wort, amount)`` mit dem Betrag **vorzeichenrichtig**: Ein
     „Fehlbetrag" ist negativ, auch wenn die Ziffern ohne Minus dastehen.
     """
     m = _KERNZAHL.search(re.sub(r"\s+", " ", text))
     if not m:
         return None
     wort = m.group("wort")
-    betrag = _eur(m.group("betrag"))
+    amount = _eur(m.group("amount"))
     if any(v in wort.lower() for v in _VERLUST):
         # `-abs(0.0)` wäre `-0.0` und stünde als „-0,00 €" auf der Seite.
-        betrag = -abs(betrag) if betrag else 0.0
-    elif betrag < 0:
+        amount = -abs(amount) if amount else 0.0
+    elif amount < 0:
         raise WirtschaftsplanFehler(
-            f"„{wort}“ mit negativem Betrag ({betrag:.2f} €) — das Wort und die "
+            f"„{wort}“ mit negativem Betrag ({amount:.2f} €) — das Wort und die "
             "Zahl sagen Verschiedenes")
-    return wort, betrag
+    return wort, amount
 
 
-def _ziffern(betrag: float) -> str:
+def _ziffern(amount: float) -> str:
     """Die Ziffernfolge, wie sie im Dokument steht: ``10.128.335``."""
-    ganz = f"{abs(betrag):,.0f}".replace(",", ".")
+    ganz = f"{abs(amount):,.0f}".replace(",", ".")
     return ganz
 
 
-def in_anlage_belegt(betrag: float, anlagen_texte: list[str]) -> bool:
+def in_anlage_belegt(amount: float, anlagen_texte: list[str]) -> bool:
     """Steht dieselbe Zahl in einer der Anlagen?
 
     Verglichen wird die **Ziffernfolge** und nicht der Betrag: Die Anlage setzt
@@ -155,12 +155,12 @@ def in_anlage_belegt(betrag: float, anlagen_texte: list[str]) -> bool:
     Leerzeichen werden vorher entfernt: Im Textextrakt kleben Zahlen teils
     aneinander (``9.996.40910.570.144``), teils stehen Trennzeichen dazwischen.
     """
-    ziffern = _ziffern(betrag)
+    ziffern = _ziffern(amount)
     return any(ziffern in (t or "").replace(" ", "") for t in anlagen_texte)
 
 
-def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
-                   jahr: int, anlagen_texte: list[str],
+def parse_kernzahl(template_number: str, title: str, vorlage_text: str,
+                   year: int, anlagen_texte: list[str],
                    ) -> tuple[Wirtschaftsplan, str, str] | None:
     """Das beschlossene Jahresergebnis — belegt durch die Anlage.
 
@@ -178,12 +178,12 @@ def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
     erkannt = kernzahl_aus_beschluss(vorlage_text)
     if erkannt is None:
         return None
-    wort, betrag = erkannt
+    wort, amount = erkannt
 
-    lesbar = [x for x in anlagen_texte if x and x.strip()]
-    if betrag != 0 and lesbar and not in_anlage_belegt(betrag, lesbar):
+    readable = [x for x in anlagen_texte if x and x.strip()]
+    if amount != 0 and readable and not in_anlage_belegt(amount, readable):
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Der Beschlusstext nennt {betrag:,.2f} € "
+            f"{template_number}: Der Beschlusstext nennt {amount:,.2f} € "
             f"(„{wort}“), aber die Zahl steht in keiner Anlage — zwei "
             "Dokumente desselben Vorgangs widersprechen sich")
     # KEIN lesbarer Anlagentext ist etwas anderes als ein Widerspruch: Dann
@@ -198,29 +198,29 @@ def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
     #     Anlage hundertfach. Daran ändert auch ein OCR-Lauf nichts.
     #   "ohne_anlage"  — es gibt schlicht keinen Anlagentext (Scan oder noch
     #     nicht nachgeladen). Das kann sich ändern.
-    if betrag == 0:
+    if amount == 0:
         beleglage = "ausgeglichen"
-    elif not lesbar:
+    elif not readable:
         beleglage = "ohne_anlage"
     else:
         beleglage = "belegt"
 
-    key = _betrieb_key(titel)
+    key = _betrieb_key(title)
     if key is None:
         raise WirtschaftsplanFehler(
-            f"{vorlage_nr}: Betrieb unbekannt — Titel: {titel!r}")
+            f"{template_number}: Betrieb unbekannt — Titel: {title!r}")
 
     plan = Wirtschaftsplan(
-        betrieb=key, betrieb_name=BETRIEBE[key][1], jahr=jahr,
-        vorlage_nr=vorlage_nr,
+        enterprise=key, enterprise_name=BETRIEBE[key][1], year=year,
+        template_number=template_number,
         # Diese Quelle nennt nur das Ergebnis. NULL heißt „sagt sie nicht" —
         # eine 0 wäre eine Behauptung über Erträge, die nirgends steht.
-        ertraege=None, aufwendungen=None, steuern=None,
-        ergebnis=betrag,
-        vermoegensplan=None, verpflichtungen=None, entwurf_vom=None,
+        revenues=None, expenses=None, taxes=None,
+        result=amount,
+        capital_plan=None, commitments=None, draft_date=None,
         # Der zweite Satz über Geld in derselben Vorlage — mit eigener
         # Probe, sonst `None` (s. `investitionen_aus_beschluss`).
-        investitionen=investitionen_aus_beschluss(vorlage_text),
+        investments=investitionen_aus_beschluss(vorlage_text),
     )
     return plan, wort, beleglage
 
@@ -244,7 +244,7 @@ def parse_kernzahl(vorlage_nr: str, titel: str, vorlage_text: str,
 _INVESTITIONEN = re.compile(
     r"(?<!ursprünglicher )(?<!ursprüngliche )(?<!urspruenglicher )"
     r"Verm[öo]gensplan(?:\s+\d{4})?\s+weist\s+Investitionen\s+in\s+H[öo]he\s+von\s+"
-    r"(?P<betrag>\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
+    r"(?P<amount>\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*(?:€|Euro|EUR)", re.I)
 
 #: Die Finanzierungsteile in Klammern, direkt hinter dem Satz: „durch eine
 #: Kreditaufnahme am Kreditmarkt (10.702.000 Euro) und aus der Verwendung von
@@ -276,7 +276,7 @@ def investitionen_aus_beschluss(text: str) -> float | None:
     m = _INVESTITIONEN.search(flach)
     if m is None:
         return None
-    gesamt = _eur(m.group("betrag"))
+    gesamt = _eur(m.group("amount"))
     teile = [_eur(x) for x in
              _FINANZTEIL.findall(flach[m.end():m.end() + _FINANZ_FENSTER])]
     if not teile or abs(sum(teile) - gesamt) > TOLERANZ_INVEST_EUR:
@@ -284,10 +284,10 @@ def investitionen_aus_beschluss(text: str) -> float | None:
     return gesamt
 
 
-def _betrieb_key(titel: str) -> str | None:
+def _betrieb_key(title: str) -> str | None:
     from council.wirtschaftsplan import betrieb_aus_titel
 
-    erkannt = betrieb_aus_titel(titel)
+    erkannt = betrieb_aus_titel(title)
     return erkannt[0] if erkannt else None
 
 
@@ -304,16 +304,16 @@ def herkunft_fuer(plan: Wirtschaftsplan, wort: str, beleglage: str,
                   url: str | None, kvonr: int | None) -> Herkunft:
     """Die Herkunft: die **Vorlage**, mit der Anlage als Gegenprobe."""
     return Herkunft(
-        art="ris",
+        kind="ris",
         # Die zweite Probe steht nur dran, wo sie auch gelaufen ist: Sie hängt
         # an einem Satz, den nicht jede Vorlage schreibt.
         probe=([PROBE_KERNZAHL, PROBE_INVESTITIONEN]
-               if plan.investitionen is not None else [PROBE_KERNZAHL]),
+               if plan.investments is not None else [PROBE_KERNZAHL]),
         # Der Name statt des Aktenzeichens — s. `wirtschaftsplan.dokument_name`.
         label=dokument_name(plan),
         url=url or (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
                     if kvonr else None),
-        fundstelle="Beschlussvorschlag der Vorlage",
-        probe_ergebnis=f"„{wort}“ — {BELEGLAGE[beleglage]}",
-        stand=f"Wirtschaftsplan {plan.jahr}, Fassung des Ratsbeschlusses",
+        citation="Beschlussvorschlag der Vorlage",
+        probe_result=f"„{wort}“ — {BELEGLAGE[beleglage]}",
+        as_of=f"Wirtschaftsplan {plan.year}, Fassung des Ratsbeschlusses",
     )

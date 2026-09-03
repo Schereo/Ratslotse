@@ -1,5 +1,6 @@
 import MapKit
 import RatslotseAPI
+import RatslotseDesign
 import SwiftUI
 
 struct NativeCouncilMap: UIViewRepresentable {
@@ -77,7 +78,7 @@ struct NativeCouncilMap: UIViewRepresentable {
             view.clusteringIdentifier = "council"
             view.canShowCallout = true
             view.markerTintColor = annotation.color
-            view.glyphImage = UIImage(systemName: annotation.point.target == "ort" ? "mappin" : "building.columns")
+            view.glyphImage = RatsGlyph.uiImage(annotation.point.target == "ort" ? .mapPin : .landmark)
             view.displayPriority = annotation.point.count >= 10 ? .required : .defaultHigh
             let button = UIButton(type: .detailDisclosure)
             button.accessibilityLabel = "\(annotation.point.name) öffnen"
@@ -132,7 +133,7 @@ private final class CouncilPointAnnotation: NSObject, MKAnnotation {
 
     var color: UIColor {
         switch point.kind {
-        case "ort": UIColor(red: 0.03, green: 0.39, blue: 0.65, alpha: 1)
+        case "place": UIColor(red: 0.03, green: 0.39, blue: 0.65, alpha: 1)
         case "organisation": UIColor(red: 0.49, green: 0.23, blue: 0.84, alpha: 1)
         case "beschlussort": UIColor(red: 0.86, green: 0.39, blue: 0.10, alpha: 1)
         default: UIColor(red: 0.03, green: 0.59, blue: 0.42, alpha: 1)

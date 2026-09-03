@@ -102,7 +102,7 @@ def _ist_abkuerzung(bis_punkt: str) -> bool:
 def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
     """(Text fürs Modell, Herkunftsmarke) — alles, was über den Punkt vorliegt.
 
-    Die Marke wandert in ``agenda_item_social.quelle`` und beantwortet
+    Die Marke wandert in ``agenda_item_social.source`` und beantwortet
     später die Frage, warum ein Text dünn ist: „titel" heißt, es gab nichts
     außer der Überschrift.
     """
@@ -110,16 +110,16 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
              f"Tagesordnungspunkt: {punkt['title']}"]
     if punkt.get("art"):
         teile.append(f"Art der Vorlage: {punkt['art']}")
-    if punkt.get("amt"):
-        teile.append(f"Federführung: {punkt['amt']}")
-    if punkt.get("beschlussvorschlag"):
+    if punkt.get("office"):
+        teile.append(f"Federführung: {punkt['office']}")
+    if punkt.get("proposed_decision"):
         teile.append("Beschlussvorschlag (ein VORSCHLAG, noch kein Beschluss): "
-                     + _eine_zeile(punkt["beschlussvorschlag"])[:4000])
-    if punkt.get("finanz_check"):
-        teile.append("Kosten laut Vorlage: " + _eine_zeile(punkt["finanz_check"])[:2000])
-    if punkt.get("klima_check"):
+                     + _eine_zeile(punkt["proposed_decision"])[:4000])
+    if punkt.get("financial_impact"):
+        teile.append("Kosten laut Vorlage: " + _eine_zeile(punkt["financial_impact"])[:2000])
+    if punkt.get("climate_impact"):
         teile.append("Klimawirkung laut Vorlage: "
-                     + _eine_zeile(punkt["klima_check"])[:1200])
+                     + _eine_zeile(punkt["climate_impact"])[:1200])
 
     kern = vorlagen_kern(punkt.get("raw_text"))
     if kern:
@@ -133,16 +133,16 @@ def kontext(punkt: dict, anlagen: list[dict]) -> tuple[str, str]:
         text = _eine_zeile(a.get("raw_text"))[:min(ANLAGE_EINZELN, budget)]
         if not text:
             continue
-        marke = "Antrag" if a.get("is_antrag") else "Anlage"
-        wer = f" von {a['antragsteller']}" if a.get("antragsteller") else ""
-        teile.append(f"{marke}{wer} – {a.get('label') or 'ohne Titel'}: {text}")
+        mark = "Antrag" if a.get("is_motion") else "Anlage"
+        wer = f" von {a['applicants']}" if a.get("applicants") else ""
+        teile.append(f"{mark}{wer} – {a.get('label') or 'ohne Titel'}: {text}")
         budget -= len(text)
         genutzt += 1
 
-    quelle = "titel"
-    if kern or punkt.get("beschlussvorschlag"):
-        quelle = "vorlage+anlagen" if genutzt else "vorlage"
-    return "\n\n".join(teile), quelle
+    source = "title"
+    if kern or punkt.get("proposed_decision"):
+        source = "template+attachments" if genutzt else "template"
+    return "\n\n".join(teile), source
 
 
 def _eine_zeile(roh: str | None) -> str:
@@ -156,9 +156,9 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
     None ist kein Fehler, sondern ein gültiges Ergebnis: Der Bot fällt dann
     auf die Kurzfassung zurück. Lieber keine Zeile als eine erfundene.
     """
-    ktx, quelle = kontext(punkt, anlagen)
-    system = prompts.get("social_kartentext_system")
-    user = prompts.render("social_kartentext_user", kontext=ktx)
+    ktx, source = kontext(punkt, anlagen)
+    system = prompts.get("social_card_text_system")
+    user = prompts.render("social_card_text_user", kontext=ktx)
 
     # Zwei Versuche, und beide müssen am Kritiker vorbei. Ein zweiter Anlauf
     # lohnt, weil dasselbe Modell denselben Punkt beim nächsten Mal oft
@@ -173,7 +173,7 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
             max_tokens=400,
-            _feature="social_kartentext",
+            _feature="social_card_text",
         )
         roh = (resp.choices[0].message.content or "").strip()
         if roh.startswith("```"):
@@ -191,11 +191,11 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
         if maengel:
             print(f"  verworfen ({punkt.get('item_number')}): {'; '.join(maengel)}")
             continue
-        gedeckt, grund = kritiker.pruefe_llm(text, ktx)
+        gedeckt, reason = kritiker.pruefe_llm(text, ktx)
         if not gedeckt:
-            print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {grund}")
+            print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {reason}")
             continue
-        return text, quelle
+        return text, source
     return None
 
 
@@ -273,10 +273,10 @@ def schreibe_fehlende(store, *, limit: int | None = None, tage_voraus: int = 21,
         _dringlichkeit_nachladen(punkt)
     geschrieben = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for punkt, ergebnis in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
-            if not ergebnis:
+        for punkt, result in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
+            if not result:
                 continue          # kein Text ist besser als ein erfundener
-            text, quelle = ergebnis
-            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, quelle)
+            text, source = result
+            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, source)
             geschrieben += 1
     return len(todo), geschrieben

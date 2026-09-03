@@ -154,9 +154,9 @@ struct CouncilBrowserView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 7) {
                         FilterChip(label: "Alle", selected: outcome.isEmpty) { outcome = "" }
-                        FilterChip(label: "Angenommen", selected: outcome == "angenommen") { outcome = "angenommen" }
-                        FilterChip(label: "Abgelehnt", selected: outcome == "abgelehnt") { outcome = "abgelehnt" }
-                        FilterChip(label: "Vertagt", selected: outcome == "vertagt") { outcome = "vertagt" }
+                        FilterChip(label: "Angenommen", selected: outcome == "accepted") { outcome = "accepted" }
+                        FilterChip(label: "Abgelehnt", selected: outcome == "rejected") { outcome = "rejected" }
+                        FilterChip(label: "Vertagt", selected: outcome == "postponed") { outcome = "postponed" }
                         if !location.isEmpty {
                             FilterChip(label: "Ort: \(locationName.isEmpty ? location : locationName)", selected: true) {
                                 location = ""
@@ -393,8 +393,7 @@ struct CouncilBrowserView: View {
                     query = ""
                     if model.councilSection != .map { Task { await load() } }
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                    RatsIcon(.circleX, size: 16)
                         .foregroundStyle(RatsColor.muted)
                 }
                 .buttonStyle(RatsPlainButtonStyle())
@@ -681,9 +680,9 @@ struct CouncilBrowserView: View {
               "committee": "Rat der Stadt",
               "session_date": "2026-02-09",
               "item_number": "6.5",
-              "outcome": "angenommen",
-              "vote": "mehrheitlich",
-              "gegenstimmen": 20,
+              "outcome": "accepted",
+              "vote": "majority",
+              "no_votes": 20,
               "amount_eur": 12400000,
               "importance": 82,
               "factions": []
@@ -695,8 +694,8 @@ struct CouncilBrowserView: View {
               "committee": "Verkehrsausschuss",
               "session_date": "2026-09-03",
               "item_number": "7",
-              "outcome": "angenommen",
-              "vote": "einstimmig",
+              "outcome": "accepted",
+              "vote": "unanimous",
               "importance": 58,
               "factions": ["Grüne", "SPD"]
             },
@@ -707,7 +706,7 @@ struct CouncilBrowserView: View {
               "committee": "Ausschuss für Stadtplanung und Bauen",
               "session_date": "2026-08-31",
               "item_number": "4",
-              "outcome": "vertagt",
+              "outcome": "postponed",
               "importance": 41,
               "factions": []
             }
@@ -754,7 +753,6 @@ struct CouncilBrowserView: View {
               "my_topic_items": []
             },
             {
-              "calendar_id": 99,
               "committee": "Verkehrsausschuss",
               "session_date": "2027-01-14",
               "session_time": "17:00",
@@ -808,11 +806,11 @@ private struct CouncilFilterSheet: View {
                         kicker: "Rat durchsuchen",
                         title: "Filter & Sortierung",
                         message: "Grenze die Ratsdaten ein, ohne dabei den Überblick zu verlieren.",
-                        symbol: "line.3.horizontal.decrease"
+                        symbol: .listFilter
                     )
 
-                    RatsSectionPanel("Gremium", detail: "Wähle einen Ausschuss oder sieh alle gemeinsam.", symbol: "building.columns") {
-                        RatsSettingsRow("Ausschuss", symbol: "person.3") {
+                    RatsSectionPanel("Gremium", detail: "Wähle einen Ausschuss oder sieh alle gemeinsam.", symbol: .landmark) {
+                        RatsSettingsRow("Ausschuss", symbol: .users) {
                             CouncilFilterMenu(
                                 title: "Ausschuss",
                                 selection: $committee,
@@ -823,10 +821,10 @@ private struct CouncilFilterSheet: View {
                     }
 
                     if section == .decisions {
-                        RatsSectionPanel("Inhalt", detail: "Themen, Orte und Antragsteller kombinieren.", symbol: "doc.text.magnifyingglass") {
+                        RatsSectionPanel("Inhalt", detail: "Themen, Orte und Antragsteller kombinieren.", symbol: .fileSearch) {
                         if !location.isEmpty {
                                 HStack(alignment: .center, spacing: 10) {
-                                    Image(systemName: "mappin.circle.fill")
+                                    RatsIcon(.mapPin, size: 11)
                                         .foregroundStyle(RatsColor.signal)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Exakter Beschlussort")
@@ -840,8 +838,7 @@ private struct CouncilFilterSheet: View {
                                         location = ""
                                         locationName = ""
                                     } label: {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 11, weight: .bold))
+                                        RatsIcon(.x, size: 11)
                                             .frame(width: 28, height: 28)
                                             .background(RatsColor.dangerTint)
                                             .clipShape(Circle())
@@ -854,7 +851,7 @@ private struct CouncilFilterSheet: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
 
-                            RatsSettingsRow("Themenfeld", symbol: "tag") {
+                            RatsSettingsRow("Themenfeld", symbol: .tag) {
                                 CouncilFilterMenu(
                                     title: "Themenfeld",
                                     selection: $policyField,
@@ -865,7 +862,7 @@ private struct CouncilFilterSheet: View {
                                 )
                             }
                             Divider().overlay(RatsColor.separator)
-                            RatsSettingsRow("Ortsbezug", symbol: "mappin.and.ellipse") {
+                            RatsSettingsRow("Ortsbezug", symbol: .mapPin) {
                                 CouncilFilterMenu(
                                     title: "Ortsbezug",
                                     selection: $district,
@@ -876,7 +873,7 @@ private struct CouncilFilterSheet: View {
                                 )
                             }
                             Divider().overlay(RatsColor.separator)
-                            RatsSettingsRow("Partei", symbol: "person.2.badge.gearshape") {
+                            RatsSettingsRow("Partei", symbol: .userCog) {
                                 CouncilFilterMenu(
                                     title: "Antragsteller-Partei",
                                     selection: $party,
@@ -887,15 +884,15 @@ private struct CouncilFilterSheet: View {
                                 )
                             }
                             Divider().overlay(RatsColor.separator)
-                            RatsSettingsRow("Änderungsanträge einzeln", detail: "Zusätzliche Einzelbeschlüsse anzeigen", symbol: "doc.on.doc") {
+                            RatsSettingsRow("Änderungsanträge einzeln", detail: "Zusätzliche Einzelbeschlüsse anzeigen", symbol: .copy) {
                                 Toggle("", isOn: $includeSubvotes)
                                     .labelsHidden()
                                     .tint(RatsColor.primary)
                             }
                         }
 
-                        RatsSectionPanel("Zeitraum", detail: "Aktiviere nur die Grenzen, die du wirklich brauchst.", symbol: "calendar") {
-                            RatsSettingsRow("Startdatum", symbol: "calendar.badge.plus") {
+                        RatsSectionPanel("Zeitraum", detail: "Aktiviere nur die Grenzen, die du wirklich brauchst.", symbol: .calendarDays) {
+                            RatsSettingsRow("Startdatum", symbol: .calendarPlus) {
                                 Toggle("", isOn: $hasDateFrom)
                                     .labelsHidden()
                                     .tint(RatsColor.primary)
@@ -909,7 +906,7 @@ private struct CouncilFilterSheet: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             }
                             Divider().overlay(RatsColor.separator)
-                            RatsSettingsRow("Enddatum", symbol: "calendar.badge.checkmark") {
+                            RatsSettingsRow("Enddatum", symbol: .calendarCheck) {
                                 Toggle("", isOn: $hasDateTo)
                                     .labelsHidden()
                                     .tint(RatsColor.primary)
@@ -924,8 +921,8 @@ private struct CouncilFilterSheet: View {
                             }
                         }
 
-                        RatsSectionPanel("Sortierung", symbol: "arrow.up.arrow.down") {
-                            RatsSettingsRow("Reihenfolge", symbol: "list.number") {
+                        RatsSectionPanel("Sortierung", symbol: .arrowUpDown) {
+                            RatsSettingsRow("Reihenfolge", symbol: .listOrdered) {
                                 CouncilFilterMenu(
                                     title: "Reihenfolge",
                                     selection: $sort,
@@ -941,7 +938,7 @@ private struct CouncilFilterSheet: View {
                     }
 
                     Button(action: apply) {
-                        Label("Ergebnisse anzeigen", systemImage: "checkmark")
+                        RatsLabel("Ergebnisse anzeigen", .check)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())
@@ -979,7 +976,7 @@ private struct CouncilFilterMenu: View {
                     selection = option.value
                 } label: {
                     if option.value == selection {
-                        Label(option.label, systemImage: "checkmark")
+                        RatsLabel(option.label, .check)
                     } else {
                         Text(option.label)
                     }
@@ -991,8 +988,7 @@ private struct CouncilFilterMenu: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .minimumScaleFactor(0.78)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .bold))
+                RatsIcon(.chevronsUpDown, size: 9)
             }
             .font(RatsFont.body(13, weight: .semibold))
             .foregroundStyle(RatsColor.primary)
@@ -1025,7 +1021,7 @@ private struct CouncilQuickFilterMenu: View {
                     onSelect(option.value)
                 } label: {
                     if option.value == selection {
-                        Label(option.label, systemImage: "checkmark")
+                        RatsLabel(option.label, .check)
                     } else {
                         Text(option.label)
                     }
@@ -1099,7 +1095,7 @@ private struct SessionRow: View {
                 Label {
                     Text(scheduleMetadata)
                 } icon: {
-                    Image(systemName: "clock")
+                    RatsIcon(.clock, size: 11.5)
                 }
                 .font(RatsFont.body(11.5, weight: .medium))
                 .foregroundStyle(RatsColor.secondary)
@@ -1109,7 +1105,7 @@ private struct SessionRow: View {
                     Label {
                         Text(location)
                     } icon: {
-                        Image(systemName: "mappin.and.ellipse")
+                        RatsIcon(.mapPin, size: 11.5)
                     }
                     .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.secondary)
@@ -1117,7 +1113,7 @@ private struct SessionRow: View {
                 }
 
                 if let matches = session.myTopicItems, !matches.isEmpty {
-                    Label("\(matches.count) für dich", systemImage: "bell.fill")
+                    RatsLabel("\(matches.count) für dich", .bellRing)
                         .font(RatsFont.body(10.5, weight: .semibold))
                         .foregroundStyle(RatsColor.signal)
                         .padding(.horizontal, 8)
@@ -1138,8 +1134,7 @@ private struct SessionRow: View {
                     .clipShape(Capsule())
                     .fixedSize()
 
-                Image(systemName: session.ksinr == nil ? "calendar.badge.clock" : "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                RatsIcon(session.ksinr == nil ? .calendarClock : .chevronRight, size: 13)
                     .foregroundStyle(RatsColor.muted)
                     .frame(width: 18, height: 18)
             }
@@ -1263,7 +1258,7 @@ struct DecisionDetailView: View {
                     )
 
                     if let participation = detail.participation,
-                       let url = URL(string: participation.url) {
+                       let roh = participation.url, let url = URL(string: roh) {
                         DecisionParticipationBanner(participation: participation, url: url)
                     }
 
@@ -1277,7 +1272,7 @@ struct DecisionDetailView: View {
                             MonoKicker("Weg durch die Gremien", trailing: "\(stops.count) Stationen")
                             ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
                                 HStack(alignment: .top, spacing: 10) {
-                                    Image(systemName: stop.future == true ? "clock" : "checkmark.circle.fill")
+                                    RatsIcon(stop.future == true ? .clock : .circleCheckBig, size: 16)
                                         .foregroundStyle(stop.future == true ? RatsColor.warning : RatsColor.primary)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(stop.committee).font(RatsFont.body(14, weight: .semibold))
@@ -1314,7 +1309,7 @@ struct DecisionDetailView: View {
 
                     if let raw = detail.ratsinfoURL, let url = URL(string: raw) {
                         Link(destination: url) {
-                            Label("Amtliche Quelle im Ratsinfosystem", systemImage: "arrow.up.right.square")
+                            RatsLabel("Amtliche Quelle im Ratsinfosystem", .externalLink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .font(RatsFont.body(13, weight: .medium))
@@ -1322,7 +1317,7 @@ struct DecisionDetailView: View {
 
                     if let pressURL = Self.pressURL(for: decision.title) {
                         Link(destination: pressURL) {
-                            Label("Bei NWZonline nach Berichten suchen", systemImage: "newspaper")
+                            RatsLabel("Bei NWZonline nach Berichten suchen", .newspaper)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .font(RatsFont.body(13, weight: .medium))
@@ -1390,52 +1385,52 @@ struct DecisionDetailView: View {
             "title": "Haushaltssatzung und Haushaltsplan 2026 mit der mittelfristigen Ergebnis- und Finanzplanung",
             "summary": "Der Rat hat den Haushalt für 2026 beschlossen und damit festgelegt, wofür Oldenburg im kommenden Jahr Geld ausgeben darf.",
             "simple_summary": "Der Rat hat den Haushalt für 2026 beschlossen. Darin steht, welche Projekte Oldenburg bezahlen kann und wo die Stadt im kommenden Jahr Schwerpunkte setzt.",
-            "beschluss": "Die Haushaltssatzung und der Haushaltsplan 2026 werden einschließlich der mittelfristigen Ergebnis- und Finanzplanung sowie des Investitionsprogramms beschlossen.",
+            "official_text": "Die Haushaltssatzung und der Haushaltsplan 2026 werden einschließlich der mittelfristigen Ergebnis- und Finanzplanung sowie des Investitionsprogramms beschlossen.",
             "committee": "Rat der Stadt",
             "session_date": "2026-02-09",
-            "outcome": "angenommen",
-            "vote": "mehrheitlich",
-            "gegenstimmen": 20,
-            "enthaltungen": 2,
+            "outcome": "accepted",
+            "vote": "majority",
+            "no_votes": 20,
+            "abstentions": 2,
             "factions": ["SPD", "Grüne"],
             "parties": ["SPD", "Grüne"],
-            "vorlage_nr": "26/0456",
+            "template_number": "26/0456",
             "raw_result": "mehrheitlich bei 20 Gegenstimmen und 2 Enthaltungen",
             "protocol_url": "https://ratslotse.de",
             "policy_field": "finanzen",
             "policy_tags": ["Haushalt", "Investitionen"],
             "amount_eur": 12400000,
             "importance": 82,
-            "abweichung": "stark"
+            "deviation": "strong"
           },
           "attendance": [
-            {"name":"A","party":"SPD","role":"mitglied"},
-            {"name":"B","party":"SPD","role":"mitglied"},
-            {"name":"C","party":"CDU","role":"mitglied"},
-            {"name":"D","party":"Grüne","role":"mitglied"}
+            {"name":"A","party":"SPD","role":"member"},
+            {"name":"B","party":"SPD","role":"member"},
+            {"name":"C","party":"CDU","role":"member"},
+            {"name":"D","party":"Grüne","role":"member"}
           ],
           "entities": [{"slug":"haushalt-2026","name":"Haushalt 2026"}],
           "present_parties": ["SPD", "CDU", "Grüne", "FDP"],
           "ratsinfo_url": "https://ratslotse.de",
-          "vorlage_url": "https://ratslotse.de",
-          "vorlage": {
-            "vorlage_nr":"26/0456",
+          "template_url": "https://ratslotse.de",
+          "template": {
+            "template_number":"26/0456",
             "title":"Haushaltssatzung und Haushaltsplan 2026",
-            "art":"Beschlussvorlage",
+            "kind":"Beschlussvorlage",
             "document_url":"https://ratslotse.de",
             "excerpt":"Die Verwaltung legt den Entwurf des Haushaltsplans vor. Er bündelt laufende Aufgaben und geplante Investitionen der Stadt.",
-            "amt":"Amt für Finanzen",
-            "klima_check":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
-            "finanz_check":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
+            "office":"Amt für Finanzen",
+            "climate_impact":"Mehrere Investitionen betreffen energetische Sanierungen und klimafreundliche Mobilität.",
+            "financial_impact":"Die vorgesehenen Investitionen sind in der mittelfristigen Finanzplanung berücksichtigt."
           },
-          "anlagen": [
+          "attachments": [
             {"document_id":77,"label":"Haushaltsplan 2026 – Gesamtfassung","url":"https://ratslotse.de","is_antrag":0,"antragsteller":[],"status":"ok"},
             {"document_id":78,"label":"Änderungsantrag zum Investitionsprogramm","url":"https://ratslotse.de","is_antrag":1,"antragsteller":["SPD","Grüne"],"status":"ok"}
           ],
           "importance_breakdown": {"score":82,"impact_reason":"Der Beschluss betrifft nahezu alle Aufgaben der Stadt und legt den finanziellen Rahmen für das ganze Jahr fest."},
-          "beratungsfolge": [
-            {"datum":"2026-01-21","gremium":"Finanzen und Beteiligungen","top":"4","ergebnis":"empfohlen","ksinr":87,"future":false},
-            {"datum":"2026-02-09","gremium":"Rat der Stadt","top":"6.5","ergebnis":"angenommen","ksinr":88,"future":false}
+          "deliberation_path": [
+            {"date":"2026-01-21","committee":"Finanzen und Beteiligungen","top":"4","result":"empfohlen","ksinr":87,"future":false},
+            {"date":"2026-02-09","committee":"Rat der Stadt","top":"6.5","result":"angenommen","ksinr":88,"future":false}
           ],
           "follow":{"kvonr":901,"following":false},
           "similar": [],
@@ -1473,7 +1468,7 @@ struct DecisionDetailView: View {
             defer { isWorking = false }
             do {
                 let updated: FollowStatus = try await model.api.sendWithoutBody(
-                    "/api/council/vorlage/\(follow.templateID)/follow",
+                    "/api/council/template/\(follow.templateID)/follow",
                     method: follow.following ? .delete : .post
                 )
                 guard let current = detail else { return }
@@ -1496,14 +1491,12 @@ private struct DecisionActionBar: View {
             if let follow {
                 Button { toggleFollow(follow) } label: {
                     HStack(spacing: 9) {
-                        Image(systemName: follow.following ? "bell.fill" : "bell.badge")
-                            .font(.system(size: 16, weight: .semibold))
+                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 16)
                         Text(follow.following ? "Wird verfolgt" : "Vorgang folgen")
                             .font(RatsFont.body(14, weight: .semibold))
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        Image(systemName: follow.following ? "checkmark" : "plus")
-                            .font(.system(size: 12, weight: .bold))
+                        RatsIcon(follow.following ? .check : .plus, size: 12)
                     }
                     .foregroundStyle(follow.following ? RatsColor.primary : RatsColor.primaryText)
                     .padding(.horizontal, 16)
@@ -1522,7 +1515,7 @@ private struct DecisionActionBar: View {
 
             Button(action: toggleBookmark) {
                 DecisionUtilityAction(
-                    symbol: isBookmarked ? "bookmark.fill" : "bookmark",
+                    symbol: .bookmark,
                     active: isBookmarked
                 )
             }
@@ -1533,7 +1526,7 @@ private struct DecisionActionBar: View {
 
             if let shareLink {
                 ShareLink(item: shareLink) {
-                    DecisionUtilityAction(symbol: "square.and.arrow.up", active: false)
+                    DecisionUtilityAction(symbol: .share, active: false)
                 }
                 .buttonStyle(DecisionActionPressStyle())
                 .accessibilityLabel("Beschluss teilen")
@@ -1544,12 +1537,11 @@ private struct DecisionActionBar: View {
 }
 
 private struct DecisionUtilityAction: View {
-    let symbol: String
+    let symbol: RatsGlyph
     let active: Bool
 
     var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 17, weight: .semibold))
+        RatsIcon(symbol, size: 17)
             .foregroundStyle(active ? RatsColor.primaryText : RatsColor.primary)
             .frame(width: 50, height: 50)
             .decisionUtilitySurface(active: active)
@@ -1707,7 +1699,7 @@ private struct DecisionTemplateStory: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Verlauf & Begründung", systemImage: "text.book.closed")
+            RatsLabel("Verlauf & Begründung", .book)
                 .font(RatsFont.body(15, weight: .bold))
                 .foregroundStyle(RatsColor.text)
             MonoKicker(template.kind ?? "Beschlussvorlage", trailing: template.number)
@@ -1718,15 +1710,15 @@ private struct DecisionTemplateStory: View {
                 Text(excerpt).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText).lineSpacing(4)
             }
             if let department = template.department {
-                Label(department, systemImage: "building.2")
+                RatsLabel(department, .building2)
                     .font(RatsFont.body(12))
                     .foregroundStyle(RatsColor.secondary)
             }
             if let climate = template.climateCheck, !climate.isEmpty {
-                DecisionDisclosureLine(symbol: "leaf", title: "Klima-Check", text: climate)
+                DecisionDisclosureLine(symbol: .leaf, title: "Klima-Check", text: climate)
             }
             if let finances = template.financialCheck, !finances.isEmpty {
-                DecisionDisclosureLine(symbol: "eurosign", title: "Was kostet das?", text: finances)
+                DecisionDisclosureLine(symbol: .euro, title: "Was kostet das?", text: finances)
             }
         }
         .ratsCard()
@@ -1749,7 +1741,7 @@ private struct DecisionDetailHeader: View {
                     .lineLimit(2)
                 Spacer(minLength: 0)
                 if let score = detail.importance?.score, score >= 55 {
-                    Label("\(score)", systemImage: "flame.fill")
+                    RatsLabel("\(score)", .flame)
                         .font(RatsFont.body(10, weight: .bold))
                         .foregroundStyle(RatsColor.warning)
                         .padding(.horizontal, 7)
@@ -1773,7 +1765,7 @@ private struct DecisionDetailHeader: View {
                     spacing: 7
                 ) {
                     ForEach(tags, id: \.self) { tag in
-                        Label(tag, systemImage: "tag")
+                        RatsLabel(tag, .tag)
                             .font(RatsFont.body(10.5, weight: .semibold))
                             .foregroundStyle(RatsColor.primary)
                             .lineLimit(1)
@@ -1833,19 +1825,19 @@ private struct DecisionDetailOutcome: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var color: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
         default: RatsColor.primary
         }
     }
@@ -1873,7 +1865,7 @@ private struct LottiDecisionSummary: View {
                 .font(RatsFont.body(15))
                 .foregroundStyle(RatsColor.bodyText)
                 .lineSpacing(5)
-            Label("Automatische Kurzfassung – verbindlich ist der amtliche Wortlaut.", systemImage: "sparkles")
+            RatsLabel("Automatische Kurzfassung – verbindlich ist der amtliche Wortlaut.", .sparkles)
                 .font(RatsFont.body(10.5))
                 .foregroundStyle(RatsColor.muted)
         }
@@ -1909,7 +1901,7 @@ private struct DecisionOfficialText: View {
                         .foregroundStyle(RatsColor.muted)
                 }
             } icon: {
-                Image(systemName: "doc.text")
+                RatsIcon(.fileText, size: 16)
                     .foregroundStyle(RatsColor.primary)
             }
         }
@@ -1924,7 +1916,7 @@ private struct DecisionGlanceCard: View {
     var body: some View {
         let decision = detail.decision
         VStack(alignment: .leading, spacing: 0) {
-            Label("Auf einen Blick", systemImage: "scope")
+            RatsLabel("Auf einen Blick", .crosshair)
                 .font(RatsFont.body(15, weight: .bold))
                 .foregroundStyle(RatsColor.text)
 
@@ -1942,14 +1934,14 @@ private struct DecisionGlanceCard: View {
                 DecisionGlanceDivider()
                 Text("ABSTIMMUNG").font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.muted)
                 if let vote = decision.vote {
-                    Text(vote.capitalized)
+                    Text(voteLabel(vote).capitalized)
                         .font(RatsFont.body(16, weight: .bold))
                         .foregroundStyle(RatsColor.text)
                         .padding(.top, 3)
                 }
                 HStack(spacing: 7) {
-                    if let noVotes = decision.noVotes { Pill("\(noVotes) dagegen", symbol: "hand.thumbsdown") }
-                    if let abstentions = decision.abstentions { Pill("\(abstentions) enthalten", symbol: "minus") }
+                    if let noVotes = decision.noVotes { Pill("\(noVotes) dagegen", symbol: .thumbsDown) }
+                    if let abstentions = decision.abstentions { Pill("\(abstentions) enthalten", symbol: .minus) }
                 }
                 if let result = decision.rawResult, !result.isEmpty {
                     Text("„\(result.trimmingCharacters(in: .whitespacesAndNewlines))“")
@@ -1967,9 +1959,9 @@ private struct DecisionGlanceCard: View {
                     .padding(.top, 5)
             }
 
-            if decision.deviation == "stark" {
+            if decision.deviation == "strong" {
                 DecisionGlanceDivider()
-                Label("Vom Vorschlag deutlich abgewichen", systemImage: "arrow.triangle.branch")
+                RatsLabel("Vom Vorschlag deutlich abgewichen", .gitBranch)
                     .font(RatsFont.body(12, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
             }
@@ -2012,20 +2004,19 @@ private struct DecisionParticipationBanner: View {
     var body: some View {
         Link(destination: url) {
             HStack(alignment: .top, spacing: 11) {
-                Image(systemName: "person.2.wave.2")
-                    .font(.title3)
+                RatsIcon(.usersRound, size: 20)
                     .foregroundStyle(RatsColor.primary)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hier kannst du dich beteiligen")
                         .font(RatsFont.body(14, weight: .bold))
-                    Text(participation.title)
+                    Text(participation.title ?? "Beteiligungsverfahren")
                         .font(RatsFont.body(13, weight: .medium))
                     Text([participation.step, participation.until.map { "bis \($0)" }].compactMap { $0 }.joined(separator: " · "))
                         .font(RatsFont.body(10.5))
                         .foregroundStyle(RatsColor.secondary)
                 }
                 Spacer(minLength: 4)
-                Image(systemName: "arrow.up.right")
+                RatsIcon(.arrowUpRight, size: 16)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
@@ -2037,7 +2028,7 @@ private struct DecisionParticipationBanner: View {
 }
 
 private struct DecisionDisclosureLine: View {
-    let symbol: String
+    let symbol: RatsGlyph
     let title: String
     let text: String
     @State private var isExpanded = false
@@ -2050,7 +2041,7 @@ private struct DecisionDisclosureLine: View {
                 .lineSpacing(3)
                 .padding(.top, 6)
         } label: {
-            Label(title, systemImage: symbol)
+            RatsLabel(title, symbol, size: 12.5)
                 .font(RatsFont.body(12.5, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
         }
@@ -2066,21 +2057,21 @@ private struct DecisionDocumentsCard: View {
     var body: some View {
         if hasDocuments {
             VStack(alignment: .leading, spacing: 11) {
-                Label("Dokumente & Anlagen", systemImage: "doc.on.doc")
+                RatsLabel("Dokumente & Anlagen", .copy)
                     .font(RatsFont.body(15, weight: .bold))
                     .foregroundStyle(RatsColor.text)
 
                 if let raw = detail.templateURL, let url = URL(string: raw) {
-                    DecisionDocumentLink(title: "Vorlage im Ratsinfosystem", symbol: "doc.text", url: url)
+                    DecisionDocumentLink(title: "Vorlage im Ratsinfosystem", symbol: .fileText, url: url)
                 }
                 if let raw = detail.template?.documentURL, let url = URL(string: raw) {
-                    DecisionDocumentLink(title: "Vorlage als PDF", symbol: "arrow.down.doc", url: url)
+                    DecisionDocumentLink(title: "Vorlage als PDF", symbol: .fileDown, url: url)
                 }
                 if let raw = detail.decision.protocolURL, let url = URL(string: raw) {
-                    DecisionDocumentLink(title: "Sitzungsprotokoll", symbol: "text.document", url: url)
+                    DecisionDocumentLink(title: "Sitzungsprotokoll", symbol: .fileText, url: url)
                 }
                 if let raw = detail.ratsinfoURL, let url = URL(string: raw) {
-                    DecisionDocumentLink(title: "Amtliche Quelle", symbol: "building.columns", url: url)
+                    DecisionDocumentLink(title: "Amtliche Quelle", symbol: .landmark, url: url)
                 }
 
                 if !detail.attachments.isEmpty {
@@ -2089,7 +2080,7 @@ private struct DecisionDocumentsCard: View {
                     ForEach(detail.attachments) { attachment in
                         Button { preview(attachment) } label: {
                             HStack(spacing: 9) {
-                                Image(systemName: attachment.isMotion == 1 ? "doc.badge.plus" : "doc.richtext")
+                                RatsIcon(attachment.isMotion == 1 ? .filePlus : .fileText, size: 12.5)
                                     .foregroundStyle(RatsColor.primary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(attachment.label)
@@ -2103,7 +2094,7 @@ private struct DecisionDocumentsCard: View {
                                     }
                                 }
                                 Spacer(minLength: 5)
-                                Image(systemName: "eye").foregroundStyle(RatsColor.muted)
+                                RatsIcon(.eye, size: 16).foregroundStyle(RatsColor.muted)
                             }
                             .padding(.vertical, 2)
                         }
@@ -2124,16 +2115,16 @@ private struct DecisionDocumentsCard: View {
 
 private struct DecisionDocumentLink: View {
     let title: String
-    let symbol: String
+    let symbol: RatsGlyph
     let url: URL
 
     var body: some View {
         Link(destination: url) {
             HStack(spacing: 9) {
-                Image(systemName: symbol).foregroundStyle(RatsColor.primary)
+                RatsIcon(symbol, size: 14).foregroundStyle(RatsColor.primary)
                 Text(title).font(RatsFont.body(12.5, weight: .medium))
                 Spacer()
-                Image(systemName: "arrow.up.right").font(.caption)
+                RatsIcon(.arrowUpRight, size: 12)
             }
             .foregroundStyle(RatsColor.bodyText)
         }
@@ -2148,7 +2139,7 @@ private struct DecisionAttendanceCard: View {
             MonoKicker("Anwesenheit", trailing: "\(attendance.count)")
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 7)], alignment: .leading, spacing: 7) {
                 ForEach(Array(partyCounts.enumerated()), id: \.offset) { _, entry in
-                    DecisionPartyChip(party: entry.party, suffix: "\(entry.count)")
+                    PartyChip(party: entry.party, suffix: "\(entry.count)")
                 }
             }
         }
@@ -2156,7 +2147,7 @@ private struct DecisionAttendanceCard: View {
     }
 
     private var partyCounts: [(party: String, count: Int)] {
-        let excluded = Set(["verwaltung", "protokoll", "gast"])
+        let excluded = Set(["administration", "minutes", "guest"])
         let counts = attendance.reduce(into: [String: Int]()) { result, attendee in
             guard !excluded.contains(attendee.role?.lowercased() ?? ""),
                   let party = attendee.party, !party.isEmpty else { return }
@@ -2186,38 +2177,8 @@ private struct DecisionPartyGrid: View {
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: 7)], alignment: .leading, spacing: 7) {
-            ForEach(parties, id: \.self) { DecisionPartyChip(party: $0) }
+            ForEach(parties, id: \.self) { PartyChip(party: $0) }
         }
-    }
-}
-
-private struct DecisionPartyChip: View {
-    let party: String
-    var suffix: String? = nil
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle().fill(color).frame(width: 8, height: 8)
-            Text(suffix.map { "\(party) · \($0)" } ?? party)
-                .font(RatsFont.body(10.5, weight: .semibold))
-                .foregroundStyle(RatsColor.bodyText)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.11))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
-    private var color: Color {
-        let normalized = party.lowercased()
-        if normalized.contains("spd") { return Color(red: 0.82, green: 0.10, blue: 0.15) }
-        if normalized.contains("cdu") { return RatsColor.bodyText }
-        if normalized.contains("grün") { return Color(red: 0.18, green: 0.55, blue: 0.25) }
-        if normalized.contains("fdp") { return Color(red: 0.93, green: 0.71, blue: 0.08) }
-        if normalized.contains("link") { return Color(red: 0.72, green: 0.10, blue: 0.43) }
-        if normalized.contains("volt") { return Color(red: 0.42, green: 0.17, blue: 0.62) }
-        return RatsColor.primary
     }
 }
 
@@ -2236,7 +2197,7 @@ private struct DecisionPlanImage: View {
                             RatsEmptyState(
                                 title: "Planzeichnung nicht verfügbar",
                                 message: "Das Bild kann gerade nicht geladen werden.",
-                                symbol: "map"
+                                symbol: .map
                             )
                             .padding(14)
                         default:
@@ -2333,11 +2294,11 @@ private struct CouncilAttachmentPreview: View {
                             RatsEmptyState(
                                 title: "Dokument nicht verfügbar",
                                 message: error,
-                                symbol: "doc.badge.ellipsis"
+                                symbol: .fileClock
                             )
                             if let url = URL(string: remoteURLString) {
                                 Link(destination: url) {
-                                    Label("Im Browser öffnen", systemImage: "arrow.up.right")
+                                    RatsLabel("Im Browser öffnen", .arrowUpRight)
                                         .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(SecondaryButtonStyle())
@@ -2455,7 +2416,7 @@ struct SavedCouncilView: View {
                     RatsEmptyState(
                         title: "Noch nichts gespeichert",
                         message: "Gemerkte Beschlüsse und verfolgte Vorlagen erscheinen hier.",
-                        symbol: "bookmark"
+                        symbol: .bookmark
                     )
                 }
 
@@ -2465,7 +2426,7 @@ struct SavedCouncilView: View {
                         RatsEmptyState(
                             title: "Nichts Passendes gespeichert",
                             message: "Ändere den Filter oder suche mit einem anderen Begriff.",
-                            symbol: "magnifyingglass"
+                            symbol: .search
                         )
                     } else {
                         MonoKicker("Merkliste", trailing: "\(filteredBookmarks.count) von \(bookmarks.count)")
@@ -2480,9 +2441,9 @@ struct SavedCouncilView: View {
                     ForEach(follows) { follow in
                         HStack(alignment: .top, spacing: 10) {
                             VStack(alignment: .leading, spacing: 7) {
-                                Text(follow.title.isEmpty ? follow.templateNumber : follow.title)
+                                Text(follow.title?.isEmpty == false ? follow.title! : (follow.templateNumber ?? "Ohne Titel"))
                                     .font(RatsFont.body(15, weight: .semibold))
-                                Text("\(follow.templateNumber) · \(follow.stationCount) Stationen")
+                                Text("\(follow.templateNumber ?? "—") · \(follow.stationCount) Stationen")
                                     .font(RatsFont.mono(10)).foregroundStyle(RatsColor.muted)
                                 if let next = follow.next {
                                     Text("Als Nächstes: \([next.committee, RatsDate.short(next.date)].compactMap { $0 }.joined(separator: " · "))")
@@ -2490,18 +2451,18 @@ struct SavedCouncilView: View {
                                 }
                                 if let url = URL(string: follow.url) {
                                     Link(destination: url) {
-                                        Label("Vorlage im Ratsinfosystem", systemImage: "arrow.up.right")
+                                        RatsLabel("Vorlage im Ratsinfosystem", .arrowUpRight)
                                             .font(RatsFont.body(12, weight: .semibold))
                                     }
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             Menu {
-                                Button("Nicht mehr folgen", systemImage: "bell.slash", role: .destructive) {
+                                Button(role: .destructive) {
                                     removeFollow(follow)
-                                }
+                                } label: { RatsLabel("Nicht mehr folgen", .bellOff) }
                             } label: {
-                                Image(systemName: "ellipsis")
+                                RatsIcon(.ellipsis, size: 16)
                                     .foregroundStyle(RatsColor.secondary)
                                     .frame(width: 32, height: 32)
                             }
@@ -2525,7 +2486,7 @@ struct SavedCouncilView: View {
     private var savedControls: some View {
         VStack(spacing: 11) {
             HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
+                RatsIcon(.search, size: 13)
                     .foregroundStyle(RatsColor.muted)
                 TextField("Merkliste durchsuchen …", text: $search)
                     .font(RatsFont.body(13))
@@ -2533,7 +2494,7 @@ struct SavedCouncilView: View {
                     .submitLabel(.search)
                 if !search.isEmpty {
                     Button { search = "" } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        RatsIcon(.circleX, size: 16)
                             .foregroundStyle(RatsColor.muted)
                     }
                     .buttonStyle(RatsPlainButtonStyle())
@@ -2575,11 +2536,11 @@ struct SavedCouncilView: View {
             HStack(alignment: .top, spacing: 10) {
                 savedDestination(bookmark)
                 Menu {
-                    Button("Aus Merkliste entfernen", systemImage: "trash", role: .destructive) {
+                    Button(role: .destructive) {
                         removeBookmark(bookmark)
-                    }
+                    } label: { RatsLabel("Aus Merkliste entfernen", .trash2) }
                 } label: {
-                    Image(systemName: "ellipsis")
+                    RatsIcon(.ellipsis, size: 16)
                         .foregroundStyle(RatsColor.secondary)
                         .frame(width: 32, height: 32)
                 }
@@ -2590,7 +2551,7 @@ struct SavedCouncilView: View {
             if canNotify(bookmark) {
                 Divider().overlay(RatsColor.separator)
                 HStack(spacing: 10) {
-                    Image(systemName: "bell")
+                    RatsIcon(.bell, size: 12.5)
                         .foregroundStyle(RatsColor.primary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Beim Ergebnis benachrichtigen")
@@ -2645,7 +2606,7 @@ struct SavedCouncilView: View {
                     .lineLimit(3)
                     .padding(.top, 2)
             }
-            Pill(savedStateLabel(bookmark), symbol: bookmark.decision == nil ? "clock" : "checkmark")
+            Pill(savedStateLabel(bookmark), symbol: bookmark.decision == nil ? .clock : .check)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -2768,7 +2729,7 @@ struct SavedCouncilView: View {
                 "simple_summary": "Der Rat schafft die Grundlage für schnellere und verlässlichere Busverbindungen.",
                 "committee": "Rat",
                 "session_date": "2026-08-26",
-                "outcome": "angenommen",
+                "outcome": "accepted",
                 "item_number": "Ö 10"
               }
             },
@@ -2814,7 +2775,7 @@ struct SavedCouncilView: View {
         Task {
             do {
                 let _: FollowStatus = try await model.api.sendWithoutBody(
-                    "/api/council/vorlage/\(follow.templateID)/follow", method: .delete
+                    "/api/council/template/\(follow.templateID)/follow", method: .delete
                 )
                 follows.removeAll { $0.id == follow.id }
             } catch { self.error = error.localizedDescription }
@@ -2881,7 +2842,7 @@ private struct SessionListView: View {
                     RatsEmptyState(
                         title: "Keine Sitzungen gefunden",
                         message: "Sobald neue Termine vorliegen, erscheinen sie an dieser Stelle.",
-                        symbol: "calendar.badge.clock"
+                        symbol: .calendarClock
                     )
                 } else {
                     ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
@@ -2953,9 +2914,9 @@ private struct SessionDetailView: View {
                         VStack(alignment: .leading, spacing: 9) {
                             MonoKicker([RatsDate.weekday(detail.sessionDate), detail.sessionTime].compactMap { $0 }.joined(separator: " · "))
                             Text(detail.committee).font(RatsFont.title(28))
-                            if let location = detail.location { Label(location, systemImage: "mappin.and.ellipse") }
+                            if let location = detail.location { RatsLabel(location, .mapPin) }
                             Button { prepareCalendar(detail) } label: {
-                                Label("In Kalender", systemImage: "calendar.badge.plus")
+                                RatsLabel("In Kalender", .calendarPlus)
                             }
                             .buttonStyle(SecondaryButtonStyle())
                         }
@@ -3020,24 +2981,24 @@ private struct SessionDetailView: View {
           "session_time": "17:00",
           "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
           "agenda_items": [
-            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","anlagen":[]},
-            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"anlagen":[]}
+            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","attachments":[]},
+            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"attachments":[]}
           ],
           "decisions": [],
           "has_protocol": false,
           "url": "https://ratslotse.de",
-          "aenderungen": [{
+          "agenda_changes": [{
             "changed_at": "2026-08-30T12:15:00+02:00",
             "satz": "Ein TOP wurde ergänzt und eine Anlage aktualisiert.",
             "zeilen": [
-              {"art":"neu","label":"Ö 7","titel":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
-              {"art":"anlagen","label":"Ö 4","titel":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
+              {"art":"new","label":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","nichtoeffentlich":false,"detail":"Neu auf die Tagesordnung gesetzt"},
+              {"art":"attachments","label":"Ö 4","title":"Radverkehrskonzept für Oldenburg","nichtoeffentlich":false,"detail":"Eine Anlage hinzugefügt"}
             ]
           }, {
             "changed_at": "2026-08-28T09:30:00+02:00",
             "satz": "Ein Punkt wurde entfernt.",
             "zeilen": [
-              {"art":"entfernt","label":"Ö 3","titel":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
+              {"art":"removed","label":"Ö 3","title":"Bericht der Verwaltung","nichtoeffentlich":false,"detail":null}
             ]
           }]
         }
@@ -3184,13 +3145,13 @@ private struct AgendaChangeLineRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var isRemoved: Bool { line.kind == "entfernt" }
+    private var isRemoved: Bool { line.kind == "removed" }
 
     private var accent: Color {
         switch line.kind {
-        case "neu": RatsColor.success
-        case "entfernt": RatsColor.danger
-        case "geaendert", "verschoben", "vorlage", "anlagen": RatsColor.warning
+        case "new": RatsColor.success
+        case "removed": RatsColor.danger
+        case "changed", "moved", "template", "attachments": RatsColor.warning
         default: RatsColor.border
         }
     }
@@ -3245,14 +3206,12 @@ private struct SessionAgendaRow: View {
                         ForEach(item.attachments) { attachment in
                             Button { openAttachment(attachment) } label: {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "paperclip")
-                                        .font(.system(size: 10, weight: .semibold))
+                                    RatsIcon(.paperclip, size: 10)
                                     Text(attachment.label)
                                         .font(RatsFont.body(11, weight: .semibold))
                                         .lineLimit(1)
                                         .truncationMode(.tail)
-                                    Image(systemName: "arrow.up.right")
-                                        .font(.system(size: 8, weight: .bold))
+                                    RatsIcon(.arrowUpRight, size: 8)
                                 }
                                 .foregroundStyle(RatsColor.primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)

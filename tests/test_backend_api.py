@@ -15,7 +15,7 @@ import pytest
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
 _TMP = tempfile.mkdtemp()
-os.environ["NWZ_DB"] = str(Path(_TMP) / "nwz.sqlite")
+os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
 os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
 os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
@@ -24,19 +24,18 @@ os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
-from kern import prompts  # noqa: E402
 from kern.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
 from scripts.grant_admin import grant_admin  # noqa: E402
 
-NWZ_DB = os.environ["NWZ_DB"]
+RATSLOTSE_DB = os.environ["RATSLOTSE_DB"]
 COUNCIL_DB = os.environ["COUNCIL_DB"]
 
 
 @pytest.fixture(autouse=True)
 def fresh_dbs():
-    for base in (NWZ_DB, COUNCIL_DB):
+    for base in (RATSLOTSE_DB, COUNCIL_DB):
         for suffix in ("", "-wal", "-shm"):
             Path(base + suffix).unlink(missing_ok=True)
     yield
@@ -58,7 +57,7 @@ def _register(client, email="admin@test.de", password="password123"):
     """
     r = client.post("/api/auth/register", json={"email": email, "password": password})
     if r.status_code == 201 and email == "admin@test.de":
-        grant_admin(email, NWZ_DB)
+        grant_admin(email, RATSLOTSE_DB)
     return r
 
 
@@ -70,7 +69,7 @@ def test_health(client):
 def test_native_app_config_contract(client):
     response = client.get("/api/app-config")
     assert response.status_code == 200
-    assert response.json() == {"min_build": 0, "hinweis": None}
+    assert response.json() == {"min_build": 0, "note": None}
 
 
 def test_native_api_top_level_contracts(client):
@@ -91,23 +90,23 @@ def test_native_api_top_level_contracts(client):
     object_contracts = [
         ("/api/auth/me", {"id", "email", "role", "status", "delivery_channel",
                           "email_verified", "access_token"}),
-        ("/api/app-config", {"min_build", "hinweis"}),
+        ("/api/app-config", {"min_build", "note"}),
         ("/api/account/notifications", {"kinds", "limits"}),
         ("/api/bookmarks", {"bookmarks"}),
-        ("/api/council/gespraeche", {"einstellung", "gespraeche"}),
-        ("/api/council/deep-research/aktuell", {"job", "frei"}),
+        ("/api/council/conversations", {"saves_conversations", "conversations"}),
+        ("/api/council/deep-research/current", {"job", "remaining"}),
         ("/api/council/decisions?limit=5", {"total", "decisions"}),
         ("/api/council/parties", {"parties"}),
         ("/api/council/sessions?limit=5", {"count", "total", "sessions"}),
         ("/api/council/heute", {"state"}),
         ("/api/council/diese-woche", {"found"}),
-        ("/api/council/wochenvorschau", {"found", "von", "bis", "sitzungen", "punkte"}),
-        ("/api/council/fundstueck", {"found"}),
-        ("/api/quiz/areas", {"wahlbereiche", "stadtteile", "themen", "categories"}),
+        ("/api/council/week-preview", {"found", "from_date", "to_date", "sessions", "items"}),
+        ("/api/council/daily-find", {"found"}),
+        ("/api/quiz/areas", {"electoral_districts", "districts", "topics", "categories"}),
         ("/api/quiz/stats", {"total", "by_area", "wrong", "streak", "badges", "daily_done"}),
         ("/api/quiz/daily", {"day", "done", "questions"}),
         ("/api/quiz/own", {"questions"}),
-        ("/api/onboarding/setup", {"step", "started_at", "done_at"}),
+        ("/api/onboarding/setup", {"step", "started_at", "done_at", "pending"}),
     ]
     for path, required in object_contracts:
         response = client.get(path, headers={"X-Client": "app"})
@@ -173,24 +172,24 @@ def test_merkliste_top_wird_zum_beschluss_und_meldet_ergebnis(client):
         8123, {"document_id": 444, "url": "https://example.test/protokoll.pdf"},
         {"protocol_nr": "V 1/26", "session_start": "17:00", "session_end": "18:00"},
         "zu 6 Neue Fahrradstraße\nBeschluss: angenommen\n- einstimmig -", 1, "test-model",
-        [{"item_number": "6", "title": "Neue Fahrradstraße", "beschluss": "Die Fahrradstraße wird eingerichtet.",
-          "outcome": "angenommen", "vote": "einstimmig", "gegenstimmen": 0,
-          "enthaltungen": 0, "factions": [], "vorlage_nr": "26/0999", "kvonr": 90999,
-          "raw_result": "einstimmig", "sub_votes": []}],
+        [{"item_number": "6", "title": "Neue Fahrradstraße", "official_text": "Die Fahrradstraße wird eingerichtet.",
+          "outcome": "accepted", "vote": "unanimous", "no_votes": 0,
+          "abstentions": 0, "factions": [], "template_number": "26/0999", "kvonr": 90999,
+          "raw_result": "unanimous", "sub_votes": []}],
         [],
     )
-    nwz = Store(NWZ_DB)
+    ratslotse = Store(RATSLOTSE_DB)
     from council.ergebnisse import melde_ergebnisse
-    assert melde_ergebnisse(cs, nwz, [8123]) == 1
-    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 1
-    assert nwz.get_bookmark_for_owner(1, bookmark_id)["result_notified_at"] is not None
-    nwz.close()
+    assert melde_ergebnisse(cs, ratslotse, [8123]) == 1
+    assert ratslotse._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 1
+    assert ratslotse.get_bookmark_for_owner(1, bookmark_id)["result_notified_at"] is not None
+    ratslotse.close()
     cs.close()
 
     listed = client.get("/api/bookmarks").json()["bookmarks"]
     assert len(listed) == 1
     assert listed[0]["state"] == "decided"
-    assert listed[0]["decision"]["outcome"] == "angenommen"
+    assert listed[0]["decision"]["outcome"] == "accepted"
     decision_id = listed[0]["decision"]["id"]
 
     # Auf der Beschluss-Seite noch einmal „Merken" bleibt derselbe Eintrag.
@@ -242,19 +241,19 @@ def test_merkliste_akzeptiert_nur_konkrete_unterpunkte(client):
     # Altbestand aus der Zeit vor der Blatt-TOP-Regel: sichtbar lassen, aber
     # den nutzlosen Ergebnis-Schalter selbst ohne vorherigen Seitenaufruf
     # spätestens im Protokoll-Lauf abschalten.
-    nwz = Store(NWZ_DB)
-    owner_id = nwz.get_web_user_by_email("admin@test.de")["id"]
-    legacy = nwz.add_bookmark(
+    ratslotse = Store(RATSLOTSE_DB)
+    owner_id = ratslotse.get_web_user_by_email("admin@test.de")["id"]
+    legacy = ratslotse.add_bookmark(
         owner_id, kind="agenda_item", target_key="agenda_item:8124:Ö 4",
         ksinr=8124, item_number="Ö 4",
         title="Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder",
     )
-    nwz.set_bookmark_result_notification(owner_id, legacy["id"], True)
+    ratslotse.set_bookmark_result_notification(owner_id, legacy["id"], True)
     from council.ergebnisse import melde_ergebnisse
-    assert melde_ergebnisse(cs, nwz, [8124]) == 0
-    assert nwz.get_bookmark_for_owner(owner_id, legacy["id"])["notify_result"] == 0
-    assert nwz._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 0
-    nwz.close()
+    assert melde_ergebnisse(cs, ratslotse, [8124]) == 0
+    assert ratslotse.get_bookmark_for_owner(owner_id, legacy["id"])["notify_result"] == 0
+    assert ratslotse._conn.execute("SELECT COUNT(*) FROM notification_queue").fetchone()[0] == 0
+    ratslotse.close()
     cs.close()
 
     listed = client.get("/api/bookmarks").json()["bookmarks"]
@@ -281,7 +280,7 @@ def test_register_never_grants_admin(client):
     assert r.json()["role"] == "user"
     # Der Admin-Bereich bleibt zu (die Registrierung hat direkt eingeloggt).
     assert client.get("/api/admin/users").status_code == 403
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("admin@test.de")["role"] == "user"
     store.close()
 
@@ -307,7 +306,7 @@ def test_configured_admin_gets_role_only_after_email_confirmation(client):
         resend_api_key="x", app_base_url="https://ratslotse.de",
         email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de",
         cookie_secure=False, access_token_expire_minutes=60,
-        app_access_token_expire_minutes=60, nwz_db=str(NWZ_DB),
+        app_access_token_expire_minutes=60, ratslotse_db=str(RATSLOTSE_DB),
     )
 
     def fake_send(to, subject, html, **kw):
@@ -338,7 +337,7 @@ def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
     sie nicht zurück — befördert wird nur ein Deployment ganz ohne Admin."""
     _register(client)  # admin@test.de ist Admin (per CLI, wie im Betrieb)
     _register(client, email="zweite@test.de")
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     zweite = store.get_web_user_by_email("zweite@test.de")
     store.set_web_user_role(int(zweite["id"]), "admin")  # zweiter Admin übernimmt
     admin_id = int(store.get_web_user_by_email("admin@test.de")["id"])
@@ -360,16 +359,16 @@ def test_grant_admin_cli_promotes_only_existing_accounts(client):
     client.post("/api/auth/register", json={"email": "ops@test.de", "password": "password123"})
     assert client.get("/api/admin/users").status_code == 403
 
-    ok, _ = grant_admin("OPS@test.de", NWZ_DB)  # Adresse wird normalisiert
+    ok, _ = grant_admin("OPS@test.de", RATSLOTSE_DB)  # Adresse wird normalisiert
     assert ok is True
     assert client.get("/api/admin/users").status_code == 200
 
-    ok_again, msg = grant_admin("ops@test.de", NWZ_DB)
+    ok_again, msg = grant_admin("ops@test.de", RATSLOTSE_DB)
     assert ok_again is True and "bereits Admin" in msg
 
-    fehlt, _ = grant_admin("gibtsnicht@test.de", NWZ_DB)
+    fehlt, _ = grant_admin("gibtsnicht@test.de", RATSLOTSE_DB)
     assert fehlt is False
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("gibtsnicht@test.de") is None  # kein Konto angelegt
     store.close()
 
@@ -449,29 +448,14 @@ def test_me_requires_auth(client):
 
 
 # ---- admin: prompts ----
-def test_admin_prompts_crud(client):
-    _register(client)
-    r = client.get("/api/admin/prompts")
-    # Gegen DEFAULTS statt gegen eine feste Zahl — sonst bricht der Test bei jedem
-    # neuen Prompt, obwohl er "liefert alle Prompts" prüfen will, nicht "es sind 16".
-    assert r.status_code == 200 and len(r.json()) == len(prompts.DEFAULTS)
-    key = "council_watcher_system"
-    upd = client.put(f"/api/admin/prompts/{key}", json={"content": "Angepasster Watcher-Systemprompt."})
-    assert upd.status_code == 200 and upd.json()["is_overridden"] is True
-    # Design 21a: „geändert von … · wann“ wird mitgeführt.
-    assert upd.json()["updated_by"] == "admin@test.de" and upd.json()["updated_at"]
-    rst = client.post(f"/api/admin/prompts/{key}/reset")
-    assert rst.json()["is_overridden"] is False
-
-
 def test_admin_quiz_stats(client):
     """Design 21a: Quiz-Kennzahlen + Gebiets-Warnung (leere DB → Nullen)."""
     _register(client)
     r = client.get("/api/admin/quiz/stats")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) >= {"fragen_aktiv", "avg_accuracy", "gemeldet", "gebiete_niedrig"}
-    assert body["fragen_aktiv"] == 0 and body["gebiete_niedrig"] == []
+    assert set(body) >= {"questions_active", "avg_accuracy", "reported", "weak_categories"}
+    assert body["questions_active"] == 0 and body["weak_categories"] == []
 
 
 def test_admin_stats_growth(client):
@@ -506,6 +490,8 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
     b = client.get("/api/admin/jobs").json()
     assert {j["key"] for j in b} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
+        "check_council_videos",  # vorläufige Ergebnisse aus der O1-Aufzeichnung, täglich
+        "record_council_livestream",  # Live-Mitschnitt des O1-Streams an Sitzungstagen
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
@@ -524,7 +510,7 @@ def test_admin_jobs_zeigt_letzten_lauf(client):
     from datetime import datetime, timedelta
 
     _register(client)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     frisch = datetime.utcnow() - timedelta(hours=2)
     store.record_job_run(
         "backup_db", frisch.isoformat(timespec="seconds"),
@@ -554,7 +540,6 @@ def test_admin_endpoints_forbidden_for_regular_user(client):
     _register(client)  # admin
     bob = TestClient(app)
     bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
-    assert bob.get("/api/admin/prompts").status_code == 403
     assert bob.get("/api/admin/users").status_code == 403
 
 
@@ -578,13 +563,65 @@ def test_admin_user_rows_and_detail(client):
     assert me["last_seen"] is not None  # via record_activity beim Login
     detail = client.get(f"/api/admin/users/{admin['id']}").json()
     assert detail["email"] == admin["email"]
-    assert set(detail["features"]) == {"ki_frage", "suche", "quiz", "analyse", "karte"}
-    assert isinstance(detail["verlauf"], list) and len(detail["verlauf"]) == 30
+    assert set(detail["features"]) == {"ki_frage", "research", "suche", "quiz",
+                                       "analyse", "karte"}
+    assert isinstance(detail["history"], list) and len(detail["history"]) == 30
     # 30-Tage-Achse passt zu den Balken und endet heute.
     from datetime import date
-    assert len(detail["verlauf_days"]) == 30
-    assert detail["verlauf_days"][-1] == date.today().isoformat()
+    assert len(detail["history_days"]) == 30
+    assert detail["history_days"][-1] == date.today().isoformat()
     assert client.get("/api/admin/users/999999").status_code == 404
+
+
+def test_feature_zaehler_zaehlen_wirklich(client):
+    """Die Chips des Nutzer-Details zeigen echte Nutzung.
+
+    Bis zum 01.09.2026 versprach das Panel fünf Zähler, aber ``suche``,
+    ``analyse`` und ``karte`` schrieb niemand: Die Zähler gab es seit
+    Design 20a, die ``record_activity``-Aufrufe dazu nie. Für jedes Konto
+    stand dort „nie", auch für das aktivste — und nichts schlug an, weil eine
+    0 aussieht wie eine Messung.
+    """
+    _register(client)
+    admin = client.get("/api/auth/me").json()
+
+    def chips() -> dict:
+        return client.get(f"/api/admin/users/{admin['id']}").json()["features"]
+
+    assert all(chips()[k] == 0 for k in ("suche", "analyse", "karte"))
+
+    # Blättern ist keine Suche: dieselbe Liste lädt auch, wer den Tab nur
+    # öffnet. Ohne Suchbegriff darf der Zähler deshalb nicht ticken.
+    assert client.get("/api/council/decisions?limit=5").status_code == 200
+    assert chips()["suche"] == 0
+
+    assert client.get("/api/council/decisions?q=Stadion&limit=5").status_code == 200
+    assert client.get("/api/council/analysis").status_code == 200
+    assert client.get("/api/council/entities-map").status_code == 200
+    nachher = chips()
+    assert (nachher["suche"], nachher["analyse"], nachher["karte"]) == (1, 1, 1)
+
+
+def test_feature_block_uebersetzt_gespeicherte_werte(client):
+    """Der Block bildet gespeicherte WERTE auf API-FELDnamen ab — und die
+    beiden heißen verschieden: Die Werte sind englisch, die Feldnamen dieses
+    Blocks als einzige noch deutsch. Wer einen Wert umbenennt und die Zuordnung
+    nicht nachzieht, bekommt keinen Fehler, sondern eine stille 0."""
+    _register(client)
+    admin = client.get("/api/auth/me").json()
+    store = Store(RATSLOTSE_DB)
+    for wert, mal in (("search", 3), ("analysis", 2), ("map", 1), ("research", 4)):
+        for _ in range(mal):
+            store.record_activity(admin["id"], wert)
+    store.record_activity(admin["id"], "ai_question")
+    f = client.get(f"/api/admin/users/{admin['id']}").json()["features"]
+    assert (f["suche"], f["analyse"], f["karte"], f["research"]) == (3, 2, 1, 4)
+    assert f["ki_frage"] == 1
+    # Dieselbe Zuordnung noch einmal in der LISTE: Die zählt die KI-Fragen in
+    # eigenem SQL, das den Wert hart nennt — ein umbenannter Wert lässt hier
+    # eine 0 stehen, ohne dass irgendwo ein Fehler auftaucht.
+    zeile = next(z for z in client.get("/api/admin/users").json() if z["id"] == admin["id"])
+    assert zeile["n_ki"] == 1
 
 
 def test_activation_emails_user_on_approve(client):
@@ -623,7 +660,7 @@ def test_activation_emails_user_on_approve(client):
     assert sent == {}
 
 
-# ---- nwz search ----
+# ---- ratslotse search ----
 
 
 
@@ -721,17 +758,18 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     2025?" — dafür braucht er jede Datenschicht mit ihrem eigenen Takt, auch
     die, die der Cron nicht selbst nachzieht."""
     _register(client)
-    b = client.get("/api/council/haushalt/datenstand").json()
-    schichten = {s["key"]: s for s in b["schichten"]}
-    assert set(schichten) == {"haushaltsplan", "ergebnishaushalt", "investitionen",
-                              "investitionsprogramm",
+    b = client.get("/api/council/budget/data-status").json()
+    schichten = {s["key"]: s for s in b["layers"]}
+    assert set(schichten) == {"haushaltsplan", "income_budget", "investitionen",
+                              "investitionsprogramm", "budget_execution",
                               "jahresabschluss", "teilhaushalt", "stellenplan",
-                              "kennzahlen", "rpa_fundstelle",
+                              "indicators", "rpa_fundstelle",
                               "pruefungsfeststellungen", "konzernabschluss",
-                              "beteiligungsbericht", "gebuehren",
-                              "haushaltssatzung",
+                              "beteiligungsbericht", "fees",
+                              "budget_bylaw",
                               "wirtschaftsplan",
-                              "schulden",
+                              "enterprise_accounts",
+                              "schulden", "loans", "liquidity",
                               "lsn_steuerkraft", "lsn_realsteuern",
                               "lsn_gewerbesteuer"}
     # Die Wirtschaftspläne der Eigenbetriebe: die einzige Schicht, deren
@@ -739,39 +777,39 @@ def test_haushalt_datenstand_nennt_alle_schichten(client):
     # nicht selbst lesen und beobachtet sie nur. Ihr Takt ist der einzige mit
     # negativem Versatz: Der Plan FÜR 2027 wird im Herbst 2026 eingebracht.
     assert schichten["wirtschaftsplan"]["automatisch"] is False
-    assert schichten["wirtschaftsplan"]["monat"] == "November"
+    assert schichten["wirtschaftsplan"]["month_name"] == "November"
 
     # Vier verschiedene Takte — das ist der Grund, warum der Block existiert.
-    assert schichten["jahresabschluss"]["monat"] == "September"
-    assert schichten["haushaltsplan"]["monat"] == "Oktober"
+    assert schichten["jahresabschluss"]["month_name"] == "September"
+    assert schichten["haushaltsplan"]["month_name"] == "Oktober"
     # Die Investitionen hängen nicht am Rat, sondern am Open-Data-Portal: Der
     # Jahrgang erscheint dort erst im Folgejahr (gemessen Juni/Juli).
-    assert schichten["investitionen"]["monat"] == "Juli"
+    assert schichten["investitionen"]["month_name"] == "Juli"
     assert schichten["investitionen"]["automatisch"] is False
     # Der Gesamtergebnishaushalt ist eine Anlage des Haushaltsplans und kommt
     # deshalb mit ihm — anders als der Plan zieht der Cron ihn aber selbst
     # nach, weil er im Anlagenbestand liegt statt auf oldenburg.de.
-    assert schichten["ergebnishaushalt"]["monat"] == "Oktober"
-    assert schichten["ergebnishaushalt"]["automatisch"] is True
+    assert schichten["income_budget"]["month_name"] == "Oktober"
+    assert schichten["income_budget"]["automatisch"] is True
     # Das Investitionsprogramm ist Anlage 004 desselben Plans: gleicher Takt,
     # und der Cron zieht es selbst nach — anders als die Investitionen, die vom
     # Open-Data-Portal kommen und deren Ebene darüber es ist.
-    assert schichten["investitionsprogramm"]["monat"] == "Oktober"
+    assert schichten["investitionsprogramm"]["month_name"] == "Oktober"
     assert schichten["investitionsprogramm"]["automatisch"] is True
     # Der Stellenplan hängt am selben Plan und wird ebenso selbst nachgezogen.
     # Seine Einheit ist der TEIL, nicht der Jahrgang: Teil A und Teil B kommen
     # einzeln durch ihre Proben (2026 ist Teil B im PDF unlesbar).
-    assert schichten["stellenplan"]["monat"] == "Oktober"
-    assert schichten["stellenplan"]["einheit"] == "Teile"
+    assert schichten["stellenplan"]["month_name"] == "Oktober"
+    assert schichten["stellenplan"]["unit"] == "Teile"
     # Der Gesamtabschluss hinkt am weitesten hinterher: Er kann erst entstehen,
     # wenn alle einbezogenen Betriebe geprüft sind.
-    assert schichten["konzernabschluss"]["monat"] == "Februar"
+    assert schichten["konzernabschluss"]["month_name"] == "Februar"
     # Der Städtevergleich kommt gar nicht von der Stadt — das muss die
     # Fußzeile des Blocks aus den Daten lesen können.
-    assert schichten["lsn_realsteuern"]["monat"] == "November"
-    assert (schichten["lsn_steuerkraft"]["quelle"]
+    assert schichten["lsn_realsteuern"]["month_name"] == "November"
+    assert (schichten["lsn_steuerkraft"]["source"]
             == "Landesamt für Statistik Niedersachsen")
-    assert schichten["haushaltsplan"]["quelle"] == "Portal der Stadt"
+    assert schichten["haushaltsplan"]["source"] == "Portal der Stadt"
     # Leerer Bestand: Lücken behaupten, wo nie etwas war, wäre falsch.
     assert schichten["jahresabschluss"]["jahrgaenge"] == []
     assert schichten["jahresabschluss"]["luecken"] == []
@@ -794,27 +832,27 @@ def test_haushalt_dokumente_nennt_je_jahrgang_das_richtige_pdf(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
-        for jahr, doc in ((2023, 280861), (2024, 295294)):
-            cs.save_ergebnisrechnung(jahr, [
-                {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-                 "ergebnis": 1.0, "ist_summe": 1}],
+        for year, doc in ((2023, 280861), (2024, 295294)):
+            cs.save_ergebnisrechnung(year, [
+                {"nr": 12, "label": "Summe ordentliche Erträge",
+                 "result": 1.0, "is_total": 1}],
                 herkunft.Herkunft(
-                    art="ris", probe="strukturprobe", dokument_id=doc,
-                    label=f"Jahresabschluss {jahr}",
+                    kind="ris", probe="structure_check", document_id=doc,
+                    label=f"Jahresabschluss {year}",
                     url=f"https://buergerinfo.oldenburg.de/getfile.php?id={doc}&type=do",
-                    fundstelle="Ergebnisrechnung der Kernverwaltung", seite=161))
+                    citation="Ergebnisrechnung der Kernverwaltung", page=161))
     finally:
         cs.close()
 
-    doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
-    nach_jahr = {d["jahr"]: d for d in doks["jahresabschluss"]}
+    doks = client.get("/api/council/budget/documents").json()["documents"]
+    nach_jahr = {d["year"]: d for d in doks["jahresabschluss"]}
     # Der Jahrgangswechsel führt auf ein ANDERES Dokument — genau das war die
     # Zusage, und genau die konnte die statische Adresse nicht halten.
     assert nach_jahr[2023]["url"].endswith("id=280861&type=do")
     assert nach_jahr[2024]["url"].endswith("id=295294&type=do")
     # Und die Fundstelle fährt mit: Bei 300 Seiten ist die URL allein zu wenig.
-    assert nach_jahr[2024]["fundstelle"] == "Ergebnisrechnung der Kernverwaltung"
-    assert nach_jahr[2024]["seite"] == 161
+    assert nach_jahr[2024]["citation"] == "Ergebnisrechnung der Kernverwaltung"
+    assert nach_jahr[2024]["page"] == 161
     # Quellen ohne Dokument fehlen, statt mit einer erfundenen Adresse
     # dazustehen: Die Oberfläche erkennt daran den Rückfall.
     assert "gesamtabschluss" not in doks
@@ -835,40 +873,79 @@ def test_haushalt_aenderungslisten_liefert_nur_den_jahrgang(client):
     erg = Ergebnis(
         zeilen=[
             Zeile(2026, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000,
-                  erlaeuterung="Mehrbedarf laut Schulentwicklungsplan.",
-                  urheber="Verw. I"),
+                  explanation="Mehrbedarf laut Schulentwicklungsplan.",
+                  author="Verw. I"),
             Zeile(2027, 1, 4, 123, "1.100", "Schulbudget aufstocken", None, 500_000),
         ],
         summen=[
-            SummenZeile(2026, "entwurf", "Verwaltungsentwurf", 0, 0, 0),
+            SummenZeile(2026, "draft", "Verwaltungsentwurf", 0, 0, 0),
             SummenZeile(2026, "liste", "Änderungsliste Verw. I", 0, 500_000, -500_000),
             SummenZeile(2026, "liste", "SPD/ CDU/ FDP", 0, -218_299, 218_299),
-            SummenZeile(2026, "endsumme", "Endsumme", 0, 281_701, -281_701),
-            SummenZeile(2027, "endsumme", "Endsumme", 0, 500_000, -500_000),
+            SummenZeile(2026, "final_total", "Endsumme", 0, 281_701, -281_701),
+            SummenZeile(2027, "final_total", "Endsumme", 0, 500_000, -500_000),
         ],
         eigene_zeile={2026: "Änderungsliste Verw. I"},
     )
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_haushalt_aenderungen(
-            4711, "verwaltung_1", erg,
+            4711, "administration_1", erg,
             herkunft_fuer("Änderungsliste Verw. I",
                           "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do", 4711))
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/aenderungslisten").json()
-    assert [z["jahr"] for z in b["zeilen"]] == [2026]
-    assert b["zeilen"][0]["erlaeuterung"] == "Mehrbedarf laut Schulentwicklungsplan."
+    b = client.get("/api/council/budget/amendment-lists").json()
+    assert [z["year"] for z in b["rows"]] == [2026]
+    assert b["rows"][0]["explanation"] == "Mehrbedarf laut Schulentwicklungsplan."
     # Wer die Position vorschlug, reist mit — die Streit-Seite setzt daran
     # ihre Urheber-Marke und ihren „nur die Summe"-Satz.
-    assert b["zeilen"][0]["urheber"] == "Verw. I"
-    assert {s["jahr"] for s in b["summen"]} == {2026, 2027}
-    eigene = {s["label"]: s["eigene"] for s in b["summen"] if s["jahr"] == 2026}
+    assert b["rows"][0]["author"] == "Verw. I"
+    assert {s["year"] for s in b["totals"]} == {2026, 2027}
+    eigene = {s["label"]: s["own"] for s in b["totals"] if s["year"] == 2026}
     assert eigene["Änderungsliste Verw. I"] == 1
     assert eigene["SPD/ CDU/ FDP"] == 0
     # Jede Zeile findet ihr Papier: Die Herkunft-Karte deckt alle Verweise.
-    assert str(b["zeilen"][0]["herkunft_id"]) in b["herkunft"]
+    assert str(b["rows"][0]["herkunft_id"]) in b["provenance"]
+
+    # Der FINANZhaushalt reist in eigenen Schlüsseln mit. Sie stehen hier auch
+    # dann in der Antwort, wenn sein Ingest noch nicht lief — leer, aber
+    # vorhanden: Die Antwortform ist zugleich das Response-Model, und was
+    # dort fehlt, schneidet FastAPI lautlos weg (genau so verschwanden die
+    # beiden beim ersten Anlauf aus einer sonst korrekten Antwort).
+    assert b["cash_budget_rows"] == [] and b["cash_budget_totals"] == []
+
+    from council.aenderungslisten_fhh import (
+        FhhErgebnis, FhhSumme, FhhZeile, herkunft_fuer as fhh_herkunft)
+    fhh = FhhErgebnis(
+        zeilen=[FhhZeile(2026, 1, 7, "neu", "I10.180224.525",
+                         "Förderprogramm Dachbegrünung", 0, None, 100_000,
+                         None, 100_000,
+                         explanation="Wird ab Januar im Amt 40 bearbeitet.")],
+        summen=[FhhSumme(2026, "draft", "Verwaltungsentwurf", 0, 0, 0, 0),
+                FhhSumme(2026, "liste", "Änderungsliste Verw. I",
+                         0, 100_000, -100_000, 0),
+                FhhSumme(2026, "final_total", "Endsumme", 0, 100_000, -100_000, 0)],
+        eigene_zeile={2026: "Änderungsliste Verw. I"},
+    )
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_haushalt_aenderungen_fhh(
+            4712, "administration_1", fhh,
+            fhh_herkunft("2026 FHH Änderungsliste Verwaltung I", None, 4712))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/budget/amendment-lists").json()
+    assert len(b["cash_budget_rows"]) == 1
+    z = b["cash_budget_rows"][0]
+    # Der Investitionscode ist der Anschluss an council_investment_measures —
+    # ohne ihn bliebe die Zeile ein Name ohne Vorhaben.
+    assert z["product"] == "I10.180224.525"
+    assert (z["planned_draft"], z["outflow"], z["planned_new"]) == (0, 100_000, 100_000)
+    # „neu" heißt: Die Position stand im Entwurf noch gar nicht.
+    assert z["page_draft"] == "neu"
+    assert str(z["herkunft_id"]) in b["provenance"]
 
 
 def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
@@ -895,42 +972,42 @@ def test_haushalt_investitionen_trennt_geprueft_von_bezugsgroesse(client):
             "Finanzhaushalt Gesamtinvestitionen;;35089163;63352260\n"
             "Gesamtbetrag des Finanzhaushaltes;;743796496;850520503\n", 2025)
         assert gelesen["bestanden"] is True
-        anker = dict(art="opendata", label="Finanzhaushalt der Stadt Oldenburg 2025",
+        anker = dict(kind="opendata", label="Finanzhaushalt der Stadt Oldenburg 2025",
                      url="https://example.org/1101_2025_Finanzhaushalt.csv")
         cs.save_investitionen(
             2025, gelesen["zeilen"], gelesen["gesamt"],
-            herkunft.Herkunft(probe="investitionen_summenzeile",
-                              fundstelle="Datensatz 1101, Tabellenblatt Finanzhaushalt",
-                              probe_ergebnis=gelesen["nachweis"], **anker),
+            herkunft.Herkunft(probe="investments_total_row",
+                              citation="Datensatz 1101, Tabellenblatt Finanzhaushalt",
+                              probe_result=gelesen["nachweis"], **anker),
             finanzhaushalt=gelesen["finanzhaushalt"],
             herkunft_finanzhaushalt=herkunft.Herkunft(
                 probe=herkunft.UNGEPRUEFT,
-                fundstelle="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
+                citation="Zeile „Gesamtbetrag des Finanzhaushaltes“", **anker))
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/investitionen").json()
-    assert b["jahre"] == [2025]
-    assert len(b["teilhaushalte"]) == 5
-    assert {z["thh_nr"] for z in b["teilhaushalte"]} == {1, 3, 4, 8, 12}
-    assert b["gesamt"][0]["auszahlungen"] == 63352260
-    assert b["finanzhaushalt"][0]["auszahlungen"] == 850520503
+    b = client.get("/api/council/budget/investments").json()
+    assert b["years"] == [2025]
+    assert len(b["sub_budgets"]) == 5
+    assert {z["sub_budget_no"] for z in b["sub_budgets"]} == {1, 3, 4, 8, 12}
+    assert b["investments"][0]["outflows"] == 63352260
+    assert b["financial_budget"][0]["outflows"] == 850520503
 
     # Zwei Ebenen, zwei Herkünfte — und nur eine davon trägt eine Probe.
-    h_gepr = b["herkunft"][str(b["gesamt"][0]["herkunft_id"])]
-    h_bezug = b["herkunft"][str(b["finanzhaushalt"][0]["herkunft_id"])]
+    h_gepr = b["provenance"][str(b["investments"][0]["herkunft_id"])]
+    h_bezug = b["provenance"][str(b["financial_budget"][0]["herkunft_id"])]
     assert h_gepr["id"] != h_bezug["id"]
-    assert h_gepr["probe"] == "investitionen_summenzeile"
-    assert h_bezug["probe"] == "ungeprueft"
+    assert h_gepr["probe"] == "investments_total_row"
+    assert h_bezug["probe"] == "unverified"
     # Der Erklärsatz für Leser*innen fährt mit, samt Messwert.
-    assert h_gepr["proben"] and "Summenzeile" in h_gepr["proben"][0]
-    assert "Restbetrag 0,00 €" in h_gepr["probe_ergebnis"]
+    assert h_gepr["probes"] and "Summenzeile" in h_gepr["probes"][0]
+    assert "Restbetrag 0,00 €" in h_gepr["probe_result"]
     # Die Teilhaushalte hängen an der geprüften Herkunft, nicht an der anderen.
-    assert {z["herkunft_id"] for z in b["teilhaushalte"]} == {h_gepr["id"]}
+    assert {z["herkunft_id"] for z in b["sub_budgets"]} == {h_gepr["id"]}
 
     # Und der Beleg findet das Dokument des Jahrgangs — einmal, nicht zweimal.
-    doks = client.get("/api/council/haushalt/dokumente").json()["dokumente"]
-    assert [d["jahr"] for d in doks["investitionen"]] == [2025]
+    doks = client.get("/api/council/budget/documents").json()["documents"]
+    assert [d["year"] for d in doks["investitionen"]] == [2025]
 
 
 def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
@@ -955,59 +1032,59 @@ def test_haushalt_beteiligungen_liefert_texte_kennzahlen_und_herkunft(client):
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/beteiligungen").json()
-    assert b["berichtsjahre"] == [2024]
-    keys = {g["gesellschaft"] for g in b["gesellschaften"]}
+    b = client.get("/api/council/budget/shareholdings").json()
+    assert b["report_years"] == [2024]
+    keys = {g["company"] for g in b["companies"]}
     assert keys == {"egh", "gsg"}
-    egh = next(g for g in b["gesellschaften"] if g["gesellschaft"] == "egh")
+    egh = next(g for g in b["companies"] if g["company"] == "egh")
     # Der Verweis auf den Gesamtabschluss steht am Stammdatensatz — er macht
     # aus zwei Seiten über dieselbe Gesellschaft einen Zusammenhang.
-    assert egh["konzern_key"] == "egh"
-    assert egh["seite"] == 2
+    assert egh["consolidated_key"] == "egh"
+    assert egh["page"] == 2
 
-    bilanz = next(k for k in b["kennzahlen"]
-                  if k["gesellschaft"] == "egh" and k["kennzahl"] == "bilanzsumme"
-                  and k["jahr"] == 2024)
-    assert bilanz["wert"] == 580193968.91
-    assert bilanz["einheit"] == "eur"
+    bilanz = next(k for k in b["indicators"]
+                  if k["company"] == "egh" and k["indicator"] == "bilanzsumme"
+                  and k["year"] == 2024)
+    assert bilanz["value"] == 580193968.91
+    assert bilanz["unit"] == "eur"
     # Ein einzelner Bericht kann die Überlappung nicht bieten — die Zahl ist
     # trotzdem gedeckt, nämlich durch die Bilanz im Dokument selbst.
-    assert bilanz["berichte"] == 1
-    h_zahl = b["herkunft"][str(bilanz["herkunft_id"])]
-    assert h_zahl["probe"] == "beteiligung_bilanzprobe"
-    assert "Abschnitt 2.2.1" in h_zahl["fundstelle"]
-    assert h_zahl["seite"] == 2
-    assert h_zahl["proben"]
+    assert bilanz["n_reports"] == 1
+    h_zahl = b["provenance"][str(bilanz["herkunft_id"])]
+    assert h_zahl["probe"] == "shareholding_balance_sheet_check"
+    assert "Abschnitt 2.2.1" in h_zahl["citation"]
+    assert h_zahl["page"] == 2
+    assert h_zahl["probes"]
 
-    gegenstand = next(t for t in b["texte"]
-                      if t["gesellschaft"] == "egh" and t["abschnitt"] == "gegenstand")
+    gegenstand = next(t for t in b["texts"]
+                      if t["company"] == "egh" and t["section"] == "business_purpose")
     assert "gebäudewirtschaftlichen" in gegenstand["text"]
-    h_text = b["herkunft"][str(gegenstand["herkunft_id"])]
+    h_text = b["provenance"][str(gegenstand["herkunft_id"])]
     assert h_text["probe"] == herkunft.UNGEPRUEFT
     # Ungeprüft heißt nicht quellenlos: Dokument und Fundstelle stehen da.
-    assert h_text["url"] and h_text["fundstelle"]
+    assert h_text["url"] and h_text["citation"]
 
     # Zwei der fünf Abschnitte sind Tabellen und kommen zerlegt heraus —
     # sonst müsste die Seite den zweispaltigen PDF-Extrakt am Stück zeigen.
-    personen = [p for p in b["personen"] if p["gesellschaft"] == "egh"]
+    personen = [p for p in b["people"] if p["company"] == "egh"]
     assert [p["name"] for p in personen] == ["Ruth Regina Drügemöller",
                                              "Ingrid Kruse"]
-    assert personen[0]["gremium"] == "Betriebsausschuss"
-    assert personen[0]["vorsitz"] == "vorsitz"
-    assert personen[1]["vorsitz"] == "stellvertretung"
-    assert all(p["funktion"] == "Ratsmitglied" for p in personen)
+    assert personen[0]["committee"] == "Betriebsausschuss"
+    assert personen[0]["chair_role"] == "chair"
+    assert personen[1]["chair_role"] == "deputy"
+    assert all(p["position"] == "Ratsmitglied" for p in personen)
     # Ohne Personenverzeichnis im Testbestand gibt es keinen Treffer — und
     # dann steht dort ausdrücklich nichts statt irgendwer.
-    assert all(p["slug"] is None and p["partei"] is None for p in personen)
-    assert egh["funktionen_zuordenbar"] is True
+    assert all(p["slug"] is None and p["party"] is None for p in personen)
+    assert egh["roles_assignable"] is True
 
-    eigner = [e for e in b["eigentuemer"] if e["gesellschaft"] == "egh"]
+    eigner = [e for e in b["owners"] if e["company"] == "egh"]
     assert [e["name"] for e in eigner] == ["Stadt Oldenburg"]
-    assert eigner[0]["anteil_prozent"] == 100.0
+    assert eigner[0]["share_pct"] == 100.0
     # Die Summenzeile ist die Probe und kein Gesellschafter.
-    assert not any(e["name"].startswith("Stammkapital") for e in b["eigentuemer"])
-    h_eigner = b["herkunft"][str(eigner[0]["herkunft_id"])]
-    assert h_eigner["probe"] == "beteiligung_anteilsprobe"
+    assert not any(e["name"].startswith("Stammkapital") for e in b["owners"])
+    h_eigner = b["provenance"][str(eigner[0]["herkunft_id"])]
+    assert h_eigner["probe"] == "shareholding_share_check"
 
 
 def test_beteiligungen_namensvetter_bekommt_keinen_slug():
@@ -1027,28 +1104,28 @@ def test_beteiligungen_namensvetter_bekommt_keinen_slug():
         def personen_lexikon(self):
             return [
                 {"slug": "sebastian-rohe", "name": "Dr. Sebastian Rohe",
-                 "vorname": "sebastian", "nachname": "rohe", "art": "rat",
-                 "partei": "Grüne"},
+                 "vorname": "sebastian", "nachname": "rohe", "art": "council",
+                 "party": "Grüne"},
                 {"slug": "georg-rohe", "name": "Georg Rohe", "vorname": "georg",
-                 "nachname": "rohe", "art": "rat", "partei": "CDU"},
+                 "nachname": "rohe", "art": "council", "party": "CDU"},
                 {"slug": "christine-wolff", "name": "Christine Wolff",
-                 "vorname": "christine", "nachname": "wolff", "art": "rat",
-                 "partei": "Grüne"},
+                 "vorname": "christine", "nachname": "wolff", "art": "council",
+                 "party": "Grüne"},
                 {"slug": "christine-berta-wolff", "name": "Christine Berta Wolff",
-                 "vorname": "christine", "nachname": "wolff", "art": "rat",
-                 "partei": "Grüne"},
+                 "vorname": "christine", "nachname": "wolff", "art": "council",
+                 "party": "Grüne"},
                 # Ein Blocker trägt keinen Namen und darf nie gewinnen.
                 {"slug": "gast-schmidt", "name": None, "vorname": "",
-                 "nachname": "schmidt", "art": "blocker", "partei": None},
+                 "nachname": "schmidt", "art": "blocker", "party": None},
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
-        {"name": n, "funktion": "Ratsmitglied"} for n in (
+        {"name": n, "position": "Ratsmitglied"} for n in (
             "Dr. Sebastian Rohe", "Dr. Georg Rohe", "Rohe", "Christine Wolff",
             "Peter Schmidt", "Vertreter/in der Landessparkasse zu Oldenburg")])
     # Vor- und Nachname zusammen sind eindeutig — Titel zählen nicht mit.
-    assert z["Dr. Sebastian Rohe"] == {"slug": "sebastian-rohe", "partei": "Grüne"}
-    assert z["Dr. Georg Rohe"] == {"slug": "georg-rohe", "partei": "CDU"}
+    assert z["Dr. Sebastian Rohe"] == {"slug": "sebastian-rohe", "party": "Grüne"}
+    assert z["Dr. Georg Rohe"] == {"slug": "georg-rohe", "party": "CDU"}
     # Ein kahler Nachname ist es nicht.
     assert z["Rohe"]["slug"] is None
     # Derselbe Mensch zweimal im Verzeichnis: Der gedruckte Name entscheidet.
@@ -1078,26 +1155,26 @@ def test_beteiligungen_verlinkt_nur_wer_eine_seite_hat():
         def personen_lexikon(self):
             return [
                 {"slug": "juergen-krogmann", "name": "Jürgen Krogmann",
-                 "vorname": "juergen", "nachname": "krogmann", "art": "stadt",
-                 "partei": None},
+                 "vorname": "juergen", "nachname": "krogmann", "art": "city",
+                 "party": None},
                 {"slug": "karin-harms", "name": "Karin Harms", "vorname": "karin",
-                 "nachname": "harms", "art": "beteiligung", "partei": None},
+                 "nachname": "harms", "art": "participation", "party": None},
                 {"slug": "claudia-oeljeschlaeger", "name": "Claudia Oeljeschläger",
-                 "vorname": "claudia", "nachname": "oeljeschlaeger", "art": "rat",
-                 "partei": "SPD"},
+                 "vorname": "claudia", "nachname": "oeljeschlaeger", "art": "council",
+                 "party": "SPD"},
             ]
 
     z = _lexikon_zuordnung(Lexikon(), [
-        {"name": "Jürgen Krogmann", "funktion": "Oberbürgermeister"},
-        {"name": "Karin Harms", "funktion": "Landrätin"},
-        {"name": "Claudia Oeljeschleger", "funktion": "Ratsmitglied"},
+        {"name": "Jürgen Krogmann", "position": "Oberbürgermeister"},
+        {"name": "Karin Harms", "position": "Landrätin"},
+        {"name": "Claudia Oeljeschleger", "position": "Ratsmitglied"},
     ])
     # Bekannt, aber ohne Seite → kein Link.
     assert z["Jürgen Krogmann"]["slug"] is None
     assert z["Karin Harms"]["slug"] is None
     # Druckfehler eines Ratsmitglieds → Link samt Partei.
     assert z["Claudia Oeljeschleger"] == {"slug": "claudia-oeljeschlaeger",
-                                          "partei": "SPD"}
+                                          "party": "SPD"}
 
 
 def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
@@ -1112,52 +1189,52 @@ def test_haushalt_konzern_liefert_luecke_und_gegenprobe(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-             "ergebnis": 799057202.86, "ist_summe": 1},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+            {"nr": 12, "label": "Summe ordentliche Erträge",
+             "result": 799057202.86, "is_total": 1},
+        ], herkunft.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
-        anker = dict(art="ris", dokument_id=302709, label="Prüfbericht GA 2024",
+        anker = dict(kind="ris", document_id=302709, label="Prüfbericht GA 2024",
                      url="https://example.org/ga.pdf")
         cs.save_konzern_jahrgang(
             2024,
-            [{"nr": 13, "bezeichnung": "Summe ordentliche Erträge",
-              "rolle": "ertraege_summe", "betrag": 1241548906.55,
-              "vorjahr": 1139375959.21, "ist_summe": 1}],
-            [{"art": "ertraege", "traeger_key": "stadt",
-              "traeger": "Kernverwaltung (Stadt Oldenburg)",
-              "betrag_teur": 799057.0, "vorjahr_teur": 732987.0},
-             {"art": "ertraege", "traeger_key": "klinikum",
-              "traeger": "Klinikum Oldenburg AöR",
-              "betrag_teur": 368100.0, "vorjahr_teur": 336858.0}],
-            herkunft.Herkunft(probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
-                                     "konzern_gesamtergebnis"],
-                              fundstelle="Abschnitt 3.2", **anker),
-            herkunft.Herkunft(probe=["konzern_zeilenprobe", "konzern_traegersumme",
-                                     "konzern_querprobe"],
-                              fundstelle="Abschnitt 4.1.1", **anker))
+            [{"nr": 13, "label": "Summe ordentliche Erträge",
+              "role": "revenues_total", "amount": 1241548906.55,
+              "prior_year": 1139375959.21, "is_total": 1}],
+            [{"kind": "revenues", "entity_key": "stadt",
+              "entity": "Kernverwaltung (Stadt Oldenburg)",
+              "amount_keur": 799057.0, "prior_year_keur": 732987.0},
+             {"kind": "revenues", "entity_key": "klinikum",
+              "entity": "Klinikum Oldenburg AöR",
+              "amount_keur": 368100.0, "prior_year_keur": 336858.0}],
+            herkunft.Herkunft(probe=["group_ordinary_result", "group_extraordinary_result",
+                                     "group_total_result"],
+                              citation="Abschnitt 3.2", **anker),
+            herkunft.Herkunft(probe=["group_row_change", "group_entity_total",
+                                     "group_cross_check"],
+                              citation="Abschnitt 4.1.1", **anker))
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/konzern").json()
-    assert b["jahre"] == [2024]
-    assert b["konzern"][0]["ertraege_summe"] == 1241548906.55
+    b = client.get("/api/council/budget/group").json()
+    assert b["years"] == [2024]
+    assert b["consolidated"][0]["revenues_total"] == 1241548906.55
     # Träger kommen in Euro heraus, gespeichert sind sie in TEUR.
-    stadt = next(t for t in b["traeger"] if t["traeger_key"] == "stadt")
-    assert stadt["betrag"] == 799057000.0
+    stadt = next(t for t in b["entity"] if t["entity_key"] == "stadt")
+    assert stadt["amount"] == 799057000.0
     # Die beiden Ebenen tragen verschiedene Herkünfte — verschiedene
     # Abschnitte desselben Berichts, verschiedene Proben.
-    h_posten = b["herkunft"][str(b["konzern"][0]["herkunft_id"])]
-    h_traeger = b["herkunft"][str(stadt["herkunft_id"])]
-    assert h_posten["fundstelle"] == "Abschnitt 3.2"
-    assert h_traeger["fundstelle"] == "Abschnitt 4.1.1"
-    assert h_posten["dokument_id"] == 302709
+    h_posten = b["provenance"][str(b["consolidated"][0]["herkunft_id"])]
+    h_traeger = b["provenance"][str(stadt["herkunft_id"])]
+    assert h_posten["citation"] == "Abschnitt 3.2"
+    assert h_traeger["citation"] == "Abschnitt 4.1.1"
+    assert h_posten["document_id"] == 302709
     # Die Erklärsätze für die Leserin kommen mit.
-    assert len(h_posten["proben"]) == 3
+    assert len(h_posten["probes"]) == 3
     # Gegenprobe: 799.057 TEUR gegen 799.057.202,86 € — auf Tausend genau.
-    assert b["gegenprobe"] == [{"jahr": 2024, "art": "ertraege",
-                                "konzern": 799057000.0,
-                                "jahresabschluss": 799057202.86, "ok": True}]
+    assert b["cross_check"] == [{"year": 2024, "kind": "revenues",
+                                 "consolidated": 799057000.0,
+                                 "annual_accounts": 799057202.86, "ok": True}]
 
 
 def test_haushalt_gebaut_beziffert_seine_luecken(client):
@@ -1179,19 +1256,19 @@ def test_haushalt_gebaut_beziffert_seine_luecken(client):
             "2019 6.004 3.306 19.304 6.701 626 30.654 67.899\n"
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         gut = [z for z in zeilen if ii.zeilensumme(z)[0]]
-        assert [z["jahr"] for z in gut] == [2018, 2020], "2019 muss reißen"
-        verworfen = [{"jahr": 2019, "regelwerk": "doppik", "differenz": -1_304_000.0,
-                      "grund": "Zeilensumme um -1.304.000 € gerissen"}]
+        assert [z["year"] for z in gut] == [2018, 2020], "2019 muss reißen"
+        verworfen = [{"year": 2019, "accounting_system": "doppik", "difference": -1_304_000.0,
+                      "reason": "Zeilensumme um -1.304.000 € gerissen"}]
         cs.save_investitionen_ist(gut, herkunft.Herkunft(
-            art="stadt", url="https://example.org/1107.pdf",
-            probe="investitionen_ist_zeilensumme",
-            fundstelle="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
+            kind="city", url="https://example.org/1107.pdf",
+            probe="investments_actual_row_total",
+            citation="Kapitel 11, Tabelle 1107-1"), verworfen=verworfen)
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/gebaut").json()
-    assert [z["jahr"] for z in b["reihe"]] == [2018, 2020]
-    assert b["fehlend"] == {"doppik": [{"jahr": 2019, "differenz": -1_304_000.0}]}
+    b = client.get("/api/council/budget/assets").json()
+    assert [z["year"] for z in b["series"]] == [2018, 2020]
+    assert b["missing"] == {"doppik": [{"year": 2019, "difference": -1_304_000.0}]}
 
 
 def test_haushalt_gebaut_erfindet_keine_differenz(client):
@@ -1199,7 +1276,7 @@ def test_haushalt_gebaut_erfindet_keine_differenz(client):
 
     Der Fall gibt es wirklich: Ein Jahrgang, der vor dem Ausbau dieser Schicht
     verworfen wurde, steht in keiner Verworfen-Tabelle. Die Lücke bleibt
-    trotzdem sichtbar — mit ``differenz: null``, damit die Seite den Betrag
+    trotzdem sichtbar — mit ``difference: null``, damit die Seite den Betrag
     weglässt, statt einen zu schätzen."""
     from council import herkunft, investitionen_ist as ii
 
@@ -1210,13 +1287,13 @@ def test_haushalt_gebaut_erfindet_keine_differenz(client):
             "2018 6.377 1.977 15.885 4.536 478 19.000 48.253\n"
             "2020 9.165 1.753 16.462 8.340 495 34.266 70.481\n", "doppik")
         cs.save_investitionen_ist(zeilen, herkunft.Herkunft(
-            art="stadt", url="https://example.org/1107.pdf",
-            probe="investitionen_ist_zeilensumme"))
+            kind="city", url="https://example.org/1107.pdf",
+            probe="investments_actual_row_total"))
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/gebaut").json()
-    assert b["fehlend"] == {"doppik": [{"jahr": 2019, "differenz": None}]}
+    b = client.get("/api/council/budget/assets").json()
+    assert b["missing"] == {"doppik": [{"year": 2019, "difference": None}]}
 
 
 def test_sessions_carry_my_topic_items(client):
@@ -1233,7 +1310,7 @@ def test_sessions_carry_my_topic_items(client):
                                    agenda_items=[AgendaItem("Ö 1", "Museumskonzept")]))
     cs.close()
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     topic = store.add_topic(1, "Radwege", "Ausbau von Radwegen")
     store.replace_agenda_matches(1, 800, "h", {topic.id: ["Ö 2"]})
     # Treffer eines anderen Owners auf derselben Sitzung: darf nicht auftauchen.
@@ -1253,45 +1330,45 @@ def test_decision_detail_includes_vorlage(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(88, "Rat der Stadt", "2026-02-01", "18:00", "Rathaus",
-                                   agenda_items=[AgendaItem("Ö 2", "Radweg", vorlage_nr="26/0400", kvonr=901)]))
+                                   agenda_items=[AgendaItem("Ö 2", "Radweg", template_number="26/0400", kvonr=901)]))
     cs._insert_decision(88, 0, "decision", None, "Ö 2", "Radweg bauen", "Wird gebaut.",
-                        "angenommen", None, None, None, [], "26/0400", None, None)
+                        "accepted", None, None, None, [], "26/0400", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 88").fetchone()[0]
-    cs.save_vorlage({"kvonr": 901, "vorlage_nr": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+    cs.save_vorlage({"kvonr": 901, "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
                      "document_id": 12, "document_url": "https://buergerinfo.oldenburg.de/getfile.php?id=12",
                      "raw_text": "Sachverhalt:\nDie Stadt plant einen Radweg entlang der Haaren.",
                      "n_pages": 3, "status": "ok"})
     cs.close()
     data = client.get(f"/api/council/decision/{did}").json()
-    assert data["vorlage"]["art"] == "Beschlussvorlage"
-    assert "Radweg entlang der Haaren" in data["vorlage"]["excerpt"]
-    assert "kvonr=901" in data["vorlage_url"]
-    assert data["anlagen"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
+    assert data["template"]["kind"] == "Beschlussvorlage"
+    assert "Radweg entlang der Haaren" in data["template"]["excerpt"]
+    assert "kvonr=901" in data["template_url"]
+    assert data["attachments"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
 
 
 def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(89, "Rat der Stadt", "2026-03-01", "18:00", "Rathaus",
-                                   agenda_items=[AgendaItem("Ö 3", "Lastenräder", vorlage_nr="26/0500", kvonr=902)]))
+                                   agenda_items=[AgendaItem("Ö 3", "Lastenräder", template_number="26/0500", kvonr=902)]))
     cs._insert_decision(89, 0, "decision", None, "Ö 3", "Lastenräder fördern", "Wird gefördert.",
-                        "angenommen", None, None, None, [], "26/0500", None, None)
+                        "accepted", None, None, None, [], "26/0500", None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 89").fetchone()[0]
-    cs.save_vorlage({"kvonr": 902, "vorlage_nr": "26/0500", "title": "Lastenräder", "art": "Beschlussvorlage",
+    cs.save_vorlage({"kvonr": 902, "template_number": "26/0500", "title": "Lastenräder", "kind": "Beschlussvorlage",
                      "raw_text": "Sachverhalt: Förderung.", "n_pages": 2, "status": "ok"})
     cs.save_anlagen(902, [
         {"document_id": 77, "url": "https://x/77", "label": "Antrag der SPD-Fraktion vom 01.02.2026",
-         "is_antrag": 1, "antragsteller": ["SPD"], "raw_text": "Wir beantragen…", "status": "ok"},
+         "is_motion": 1, "applicants": ["SPD"], "raw_text": "Wir beantragen…", "status": "ok"},
         {"document_id": 78, "url": "https://x/78", "label": "Anlage - Standortkarte", "status": "listed"},
     ])
     cs.close()
     data = client.get(f"/api/council/decision/{did}").json()
-    assert [a["document_id"] for a in data["anlagen"]] == [77, 78]  # Antrag zuerst
-    assert data["anlagen"][0]["antragsteller"] == ["SPD"]
+    assert [a["document_id"] for a in data["attachments"]] == [77, 78]  # Antrag zuerst
+    assert data["attachments"][0]["applicants"] == ["SPD"]
     stats = client.get("/api/council/analysis").json()["antrag_stats"]
-    assert {"party": "SPD", "n": 1, "angenommen": 1, "abgelehnt": 0} in stats["parties"]
+    assert {"party": "SPD", "n": 1, "accepted": 1, "rejected": 0} in stats["parties"]
 
 
 def test_field_recaps_endpoint(client):
@@ -1309,15 +1386,15 @@ def test_field_recaps_endpoint(client):
 
 
 def test_recaps_render_items_falls_back_to_beschluss():
-    """_render_items uses summary when present, else the raw beschluss, and keeps the outcome."""
+    """_render_items uses summary when present, else the raw official_text, and keeps the outcome."""
     from council.recaps import _render_items
     out = _render_items([
-        {"session_date": "2026-06-01", "title": "Radweg Haarenufer", "summary": "Ausbau beschlossen", "outcome": "angenommen"},
-        {"session_date": "2026-05-01", "title": "Brücke Y", "beschluss": "Sanierung wird beauftragt", "outcome": "abgelehnt"},
+        {"session_date": "2026-06-01", "title": "Radweg Haarenufer", "summary": "Ausbau beschlossen", "outcome": "accepted"},
+        {"session_date": "2026-05-01", "title": "Brücke Y", "official_text": "Sanierung wird beauftragt", "outcome": "rejected"},
     ])
     assert "Radweg Haarenufer — Ausbau beschlossen" in out
-    assert "Brücke Y — Sanierung wird beauftragt" in out  # falls back to beschluss
-    assert "[abgelehnt]" in out
+    assert "Brücke Y — Sanierung wird beauftragt" in out  # falls back to official_text
+    assert "[rejected]" in out
 
 
 # ---- topics (owned by the web account) ----
@@ -1338,20 +1415,20 @@ def test_themen_bubble_verstummt_nach_uebersichtsbesuch(client):
     tid = client.post("/api/topics",
                       json={"name": "Radwege", "description": "Ausbau in Oldenburg"}).json()["id"]
     from kern.store import Store
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         store.save_topic_decision_matches(tid, 1, [(101, 0.9), (102, 0.8)])
     finally:
         store.close()
 
     assert client.get("/api/topics/unread-count").json()["total"] == 2
-    assert client.post("/api/topics/uebersicht-gesehen", json={}).status_code == 200
+    assert client.post("/api/topics/overview-seen", json={}).status_code == 200
     assert client.get("/api/topics/unread-count").json()["total"] == 0
     # Das Thema selbst meldet weiterhin seine zwei neuen Treffer.
     assert client.get("/api/topics").json()[0]["unread_count"] == 2
     # Ohne Login geht gar nichts.
     client.cookies.clear()
-    assert client.post("/api/topics/uebersicht-gesehen", json={}).status_code in (401, 403)
+    assert client.post("/api/topics/overview-seen", json={}).status_code in (401, 403)
 
 
 def test_topics_and_subscriptions_flow(client):
@@ -1380,12 +1457,12 @@ def test_topic_decision_matching(client):
     cs.save_session(CouncilSession(77, "Verkehrsausschuss", "2026-03-01", "18:00", "Rathaus",
                                    agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer")]))
     cs._insert_decision(77, 0, "decision", None, "1", "Radweg Haarenufer ausbauen",
-                        "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                        "Beschluss", "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 77").fetchone()[0]
     cs.close()
 
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     assert st.save_topic_decision_matches(tid, owner_id, [(did, 0.81)]) == 1
     assert st.topic_decision_counts(owner_id) == {tid: 1}
     st.close()
@@ -1412,7 +1489,7 @@ def _seed_schulbegleitung(n: int = 3) -> list[int]:
     for i in range(n):
         cs._insert_decision(78, i, "decision", None, str(i + 1),
                             f"Pauschalierte Schulbegleitung {i + 1}",
-                            "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                            "Beschluss", "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
     cs.close()
@@ -1469,7 +1546,7 @@ def test_erstabgleich_ist_keine_neuigkeit(client, monkeypatch):
 
     assert client.get("/api/topics").json()[0]["unread_count"] == 0
     assert client.get("/api/topics/unread-count").json()["total"] == 0
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     try:
         seit = (date.today() - timedelta(days=7)).isoformat()
         assert st.topic_match_decision_ids_since(owner_id, seit) == []
@@ -1555,7 +1632,7 @@ def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
         cs.save_session(CouncilSession(ksinr, "Sozialausschuss", tag, "18:00", "Rathaus",
                                        agenda_items=[AgendaItem("Ö 1", f"Punkt {i}")]))
         cs._insert_decision(ksinr, 0, "decision", None, "1", f"Beschluss vom {tag}",
-                            "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                            "Beschluss", "accepted", None, None, None, [], None, None, None)
         cs._conn.commit()
         ids.append(cs._conn.execute(
             "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0])
@@ -1601,14 +1678,14 @@ def test_karte_traegt_ihre_juengsten_treffer(client):
     tage = [(heute - timedelta(days=n)).isoformat() for n in (1, 5, 40, 200, 300, 400)]
     ids = _seed_datierte_beschluesse(tage)
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids], als_neu=False)
     st.close()
 
     t = client.get("/api/topics").json()[0]
     assert [h["id"] for h in t["recent_hits"]] == ids[:5]          # neueste zuerst, gedeckelt bei 5
     assert t["recent_hits"][0]["committee"] == "Sozialausschuss"
-    assert t["recent_hits"][0]["outcome"] == "angenommen"
+    assert t["recent_hits"][0]["outcome"] == "accepted"
     assert t["decision_count"] == len(ids)
     # „3 in 6 Monaten" ist die zweite Hälfte der Kicker-Zeile: Sie sagt, ob ein
     # Thema gerade läuft oder ruht — die Gesamtzahl kann beides bedeuten.
@@ -1624,7 +1701,7 @@ def test_punkte_und_abzeichen_zaehlen_dieselbe_menge(client):
     heute = date.today()
     ids = _seed_datierte_beschluesse([(heute - timedelta(days=n)).isoformat() for n in (1, 2, 3)])
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids])
     # Einen als gesehen markieren, indem alle markiert und dann einer neu
     # dazugelegt wird — so entsteht derselbe Zustand wie im Betrieb.
@@ -1647,7 +1724,7 @@ def test_einzelner_treffer_laesst_sich_als_gelesen_melden(client):
     heute = date.today()
     ids = _seed_datierte_beschluesse([(heute - timedelta(days=n)).isoformat() for n in (1, 2, 3)])
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(d, 0.8) for d in ids])
     st.close()
     assert client.get("/api/topics").json()[0]["unread_count"] == 3
@@ -1672,7 +1749,7 @@ def test_fremder_beschluss_kommt_nicht_in_die_gelesen_liste(client):
     owner_id = _register(client).json()["id"]
     ids = _seed_datierte_beschluesse([date.today().isoformat()])
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Ausbau"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(ids[0], 0.8)])
     st.close()
 
@@ -1685,7 +1762,7 @@ def test_topic_decisions_replace_on_rerun(client):
     """Re-running the matcher replaces a topic's matches (no stale duplicates)."""
     owner_id = _register(client).json()["id"]
     tid = client.post("/api/topics", json={"name": "X", "description": "y"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(1, 0.7), (2, 0.6)])
     st.save_topic_decision_matches(tid, owner_id, [(2, 0.9)])  # rerun → replaces
     assert [m["decision_id"] for m in st.get_topic_decision_matches(tid)] == [2]
@@ -1699,7 +1776,7 @@ def test_gedeckelte_trefferzahl_wird_als_solche_ausgeliefert(client):
     schreibt jetzt „2+", wenn der Lauf mehr gefunden als gespeichert hat."""
     owner_id = _register(client).json()["id"]
     tid = client.post("/api/topics", json={"name": "Fliegerhorst", "description": "Konversion"}).json()["id"]
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(1, 0.9), (2, 0.8)],
                                    gedeckelt=True, kandidaten=120)
     st.close()
@@ -1723,14 +1800,14 @@ def test_themenliste_enthaelt_auch_berichte(client):
     cs.save_session(CouncilSession(78, "Bauausschuss", "2026-03-02", "18:00", "Rathaus",
                                    agenda_items=[AgendaItem("Ö 1", "Fliegerhorst")]))
     cs._insert_decision(78, 0, "decision", None, "1", "Erschließung Fliegerhorststraße",
-                        "Beschluss", "angenommen", None, None, None, [], None, None, None)
+                        "Beschluss", "accepted", None, None, None, [], None, None, None)
     cs._insert_decision(78, 1, "decision", None, "2", "Sachstandsbericht Fliegerhorst",
-                        None, "zur_kenntnis", None, None, None, [], None, None, None)
+                        None, "noted", None, None, None, [], None, None, None)
     cs._conn.commit()
     ids = [r[0] for r in cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 78")]
     cs.close()
 
-    st = Store(NWZ_DB)
+    st = Store(RATSLOTSE_DB)
     st.save_topic_decision_matches(tid, owner_id, [(i, 0.9) for i in ids])
     st.close()
 
@@ -1759,7 +1836,7 @@ def test_unverified_user_blocked_until_email_confirmed(client):
     fake_settings = SimpleNamespace(
         resend_api_key="x", app_base_url="https://ratslotse.de",
         email_from="F <f@x.de>", feedback_email="", web_admin_email="admin@test.de",
-        cookie_secure=False, access_token_expire_minutes=60, nwz_db=str(NWZ_DB),
+        cookie_secure=False, access_token_expire_minutes=60, ratslotse_db=str(RATSLOTSE_DB),
     )
 
     def fake_send(to, subject, html, **kw):
@@ -1909,7 +1986,7 @@ def test_support_kontakt_ohne_anmeldung(client):
 
     with patch("app.routers.feedback.send_email", side_effect=fake_send), \
          patch("app.routers.feedback.get_settings", return_value=_support_settings()):
-        r = TestClient(app).post("/api/feedback/kontakt", json={
+        r = TestClient(app).post("/api/feedback/contact", json={
             "kind": "konto", "email": "gast@example.org",
             "message": "Ich komme nicht mehr in mein Konto.",
         })
@@ -1926,11 +2003,11 @@ def test_support_kontakt_wird_gespeichert(client):
     aussperren. Anonyme Anfragen tragen owner_id 0."""
     with patch("app.routers.feedback.send_email", side_effect=RuntimeError("Resend down")), \
          patch("app.routers.feedback.get_settings", return_value=_support_settings()):
-        r = TestClient(app).post("/api/feedback/kontakt", json={
+        r = TestClient(app).post("/api/feedback/contact", json={
             "kind": "bug", "email": "gast@example.org", "message": "Die Karte lädt nicht.",
         })
     assert r.status_code == 202          # der Absender merkt vom Mail-Fehler nichts
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         row = store.list_feedback()[0]
         assert row["owner_id"] == 0 and row["email"] == "gast@example.org"
@@ -1943,12 +2020,12 @@ def test_support_kontakt_honigtopf(client):
     """Gefülltes Honigtopf-Feld: nach außen wie ein Erfolg, real verworfen."""
     with patch("app.routers.feedback.send_email", side_effect=AssertionError("darf nicht mailen")), \
          patch("app.routers.feedback.get_settings", return_value=_support_settings()):
-        r = TestClient(app).post("/api/feedback/kontakt", json={
+        r = TestClient(app).post("/api/feedback/contact", json={
             "kind": "other", "email": "bot@example.org",
             "message": "Günstige Uhren kaufen", "website": "http://spam.example",
         })
     assert r.status_code == 202 and r.json()["ok"] is True
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         assert store.list_feedback() == []
     finally:
@@ -1958,13 +2035,13 @@ def test_support_kontakt_honigtopf(client):
 def test_support_kontakt_validierung():
     c = TestClient(app)
     # Ohne Adresse gäbe es keine Antwort — deshalb Pflichtfeld.
-    assert c.post("/api/feedback/kontakt",
+    assert c.post("/api/feedback/contact",
                   json={"kind": "konto", "message": "hallo welt"}).status_code == 422
-    assert c.post("/api/feedback/kontakt",
+    assert c.post("/api/feedback/contact",
                   json={"kind": "konto", "email": "keine-adresse", "message": "hallo welt"}).status_code == 422
-    assert c.post("/api/feedback/kontakt",
+    assert c.post("/api/feedback/contact",
                   json={"kind": "nope", "email": "a@b.de", "message": "hallo welt"}).status_code == 422
-    assert c.post("/api/feedback/kontakt",
+    assert c.post("/api/feedback/contact",
                   json={"kind": "bug", "email": "a@b.de", "message": "x"}).status_code == 422
 
 
@@ -1973,11 +2050,11 @@ def test_support_kontakt_ohne_mail_konfiguration():
     from types import SimpleNamespace
     fake = SimpleNamespace(resend_api_key="", feedback_email="", web_admin_email="", email_from="")
     with patch("app.routers.feedback.get_settings", return_value=fake):
-        r = TestClient(app).post("/api/feedback/kontakt", json={
+        r = TestClient(app).post("/api/feedback/contact", json={
             "kind": "feature", "email": "gast@example.org", "message": "Bitte eine Karte für Radwege",
         })
     assert r.status_code == 202 and r.json()["ok"] is True
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         assert store.list_feedback()[0]["email"] == "gast@example.org"
     finally:
@@ -2028,7 +2105,8 @@ def test_onboarding_is_per_account(client):
 def test_native_setup_progress_can_resume_after_reinstall(client):
     _register(client)
     assert client.get("/api/onboarding/setup").json() == {
-        "step": 0, "started_at": None, "done_at": None,
+        # `pending`: frisches Konto ohne Themen und Abos → der Assistent ist dran.
+        "step": 0, "started_at": None, "done_at": None, "pending": True,
     }
     started = client.post("/api/onboarding/setup", json={"step": 2, "done": False})
     assert started.status_code == 200
@@ -2042,9 +2120,35 @@ def test_native_setup_progress_can_resume_after_reinstall(client):
     assert completed["done_at"] is not None
 
 
+def test_der_vierte_schritt_des_browsers_kommt_an(client):
+    """Der Browser hat vier Schritte: Gremien, Stadtteil, Themen, Mitteilungen.
+
+    Bis 03.09.2026 nahm das Schema nur `step ≤ 3`, während der Router bereits
+    auf 4 klemmte und sein Kommentar die Vier erklärte. Der letzte Schritt kam
+    deshalb als 422 zurück — und niemand merkte es, weil der Browser die
+    Meldung als „fire and forget" abschickt (`.catch(() => {})`).
+
+    Die Folge war still: `setup_step` blieb bei 3. Wer auf dem letzten Schritt
+    aufhörte, bekam die Erinnerungs-Mail, als stünde er noch bei den Themen —
+    und stieg auf einem anderen Gerät auch dort wieder ein.
+    """
+    _register(client)
+    vierter = client.post("/api/onboarding/setup", json={"step": 4, "done": False})
+    assert vierter.status_code == 200, vierter.text
+    assert vierter.json()["step"] == 4
+    assert client.get("/api/onboarding/setup").json()["step"] == 4
+
+
+def test_mehr_als_vier_schritte_gibt_es_nicht(client):
+    """Die Grenze bleibt eine Grenze — sonst schreibt sich jede Zahl ins Konto."""
+    _register(client)
+    assert client.post("/api/onboarding/setup", json={"step": 5}).status_code == 422
+    assert client.post("/api/onboarding/setup", json={"step": -1}).status_code == 422
+
+
 # ---- quiz ----
-def _seed_quiz(area_key="Osternburg", area_type="stadtteil", n=3, category="geschichte",
-               difficulty="mittel"):
+def _seed_quiz(area_key="Osternburg", area_type="district", n=3, category="history",
+               difficulty="medium"):
     """Seed n Quizfragen für ein Gebiet in die (throwaway) council.sqlite."""
     from council import quiz as quizmod
     store = CouncilStore(COUNCIL_DB)
@@ -2063,18 +2167,18 @@ def _seed_quiz(area_key="Osternburg", area_type="stadtteil", n=3, category="gesc
 
 
 def _seed_estimate(area_key="Osternburg", value=12000.0, unit="Einwohner",
-                   lo=2000.0, hi=30000.0, difficulty="mittel"):
+                   lo=2000.0, hi=30000.0, difficulty="medium"):
     """Seed eine Schätzfrage (qtype=estimate) in die throwaway council.sqlite."""
     from council import quiz as quizmod
     store = CouncilStore(COUNCIL_DB)
     text = f"Schätzfrage {area_key} {value}?"
     store.save_quiz_questions([{
-        "area_type": "stadtteil", "area_key": area_key, "category": "schaetzen",
+        "area_type": "district", "area_key": area_key, "category": "estimation",
         "difficulty": difficulty, "question": text, "qtype": "estimate",
         "options": [], "correct_index": 0,
         "answer_value": value, "answer_unit": unit, "range_min": lo, "range_max": hi,
         "explanation": "…", "source_type": "wikipedia", "source_ref": "http://w",
-        "content_hash": quizmod._content_hash("stadtteil", area_key, text),
+        "content_hash": quizmod._content_hash("district", area_key, text),
     }])
     store.close()
 
@@ -2087,12 +2191,12 @@ def test_quiz_areas_lists_seeded(client):
     _register(client)
     _seed_quiz("Osternburg", n=3)  # Osternburg → Wahlbereich 5
     data = client.get("/api/quiz/areas").json()
-    st = {a["key"]: a for a in data["stadtteile"]}
-    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["wahlbereiche"] == [5, 2]
-    wb = {a["key"]: a for a in data["wahlbereiche"]}
+    st = {a["key"]: a for a in data["districts"]}
+    assert st["Osternburg"]["questions"] == 3 and st["Osternburg"]["electoral_districts"] == [5, 2]
+    wb = {a["key"]: a for a in data["electoral_districts"]}
     # Grenzstadtteil Osternburg wird in BEIDEN Wahlbereichen (5 und 2) gelistet
     for b in ("5", "2"):
-        assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["stadtteile"]
+        assert wb[b]["questions"] == 3 and "Osternburg" in wb[b]["districts"]
 
 
 def test_own_quiz_crud_round_and_practice(client):
@@ -2101,7 +2205,7 @@ def test_own_quiz_crud_round_and_practice(client):
     _register(client)
     body = {"question": "Wie viele Wahlbereiche hat Oldenburg?",
             "options": ["Vier", "Sechs", "Acht"], "correct_index": 1,
-            "stadtteil": None, "category": "ratspolitik", "explanation": "Es sind sechs."}
+            "district": None, "category": "council_politics", "explanation": "Es sind sechs."}
     qid = client.post("/api/quiz/own", json=body).json()["id"]
     # Runde: geformt wie normale Fragen, ohne Lösung
     r = client.get("/api/quiz/own/round?n=5").json()["questions"]
@@ -2128,24 +2232,24 @@ def test_own_quiz_is_per_account_and_validated(client):
     _register(client)
     qid = client.post("/api/quiz/own", json={
         "question": "Nur meine Frage?", "options": ["Ja", "Nein"], "correct_index": 0,
-        "category": "geschichte"}).json()["id"]
+        "category": "history"}).json()["id"]
     other = TestClient(app)
     _register(other, email="other@test.de")
     assert other.get("/api/quiz/own").json()["questions"] == []
     assert other.put(f"/api/quiz/own/{qid}", json={
         "question": "Gekapert?", "options": ["A", "B"], "correct_index": 0,
-        "category": "geschichte"}).status_code == 404
+        "category": "history"}).status_code == 404
     assert other.delete(f"/api/quiz/own/{qid}").status_code == 404
     assert other.post("/api/quiz/own/answer",
                       json={"question_id": qid, "selected_index": 0}).status_code == 404
     # Validierung: richtige Antwort muss existieren, Kategorie/Stadtteil bekannt sein
     bad = {"question": "Kaputt genug?", "options": ["A", "B"], "correct_index": 3,
-           "category": "geschichte"}
+           "category": "history"}
     assert client.post("/api/quiz/own", json=bad).status_code == 400
     assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
                                               "category": "quatsch"}).status_code == 400
     assert client.post("/api/quiz/own", json={**bad, "correct_index": 0,
-                                              "stadtteil": "Atlantis"}).status_code == 400
+                                              "district": "Atlantis"}).status_code == 400
 
 
 def test_own_quiz_estimate(client):
@@ -2153,7 +2257,7 @@ def test_own_quiz_estimate(client):
     Optionen, Auto-Slider-Bereich, Nähe-Wertung ohne Punkte."""
     _register(client)
     r = client.post("/api/quiz/own", json={
-        "question": "Wie viele Einwohner hat Oldenburg?", "category": "schaetzen",
+        "question": "Wie viele Einwohner hat Oldenburg?", "category": "estimation",
         "answer_value": 172000, "unit": "Einwohner"})
     assert r.status_code == 200
     qid = r.json()["id"]
@@ -2171,19 +2275,19 @@ def test_own_quiz_estimate(client):
                        json={"question_id": qid, "value": 50000}).json()["correct"] is False
     # Zahl fehlt → 400; manueller Bereich, der die Zahl nicht umschließt → 400
     assert client.post("/api/quiz/own", json={
-        "question": "Ohne Zahl?", "category": "schaetzen"}).status_code == 400
+        "question": "Ohne Zahl?", "category": "estimation"}).status_code == 400
     assert client.post("/api/quiz/own", json={
-        "question": "Bereich zu klein?", "category": "schaetzen", "answer_value": 100,
+        "question": "Bereich zu klein?", "category": "estimation", "answer_value": 100,
         "range_min": 0, "range_max": 50}).status_code == 400
     # Jahreszahl (Einheit Jahr) → enges, zentriertes ±50-Fenster statt 0..2×
     yid = client.post("/api/quiz/own", json={
-        "question": "Wann wurde die Cäcilienbrücke gebaut?", "category": "schaetzen",
+        "question": "Wann wurde die Cäcilienbrücke gebaut?", "category": "estimation",
         "answer_value": 1927, "unit": "Jahr"}).json()["id"]
     yq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == yid)
     assert yq["range_min"] == 1877 and yq["range_max"] == 1977
     # Kleine „Jahre"-Dauer bleibt beim Standard-Bereich (0..2×)
     did = client.post("/api/quiz/own", json={
-        "question": "Seit wie vielen Jahren gesperrt?", "category": "schaetzen",
+        "question": "Seit wie vielen Jahren confidential?", "category": "estimation",
         "answer_value": 6, "unit": "Jahre"}).json()["id"]
     dq = next(q for q in client.get("/api/quiz/own").json()["questions"] if q["id"] == did)
     assert dq["range_min"] == 0 and dq["range_max"] == 12
@@ -2194,20 +2298,20 @@ def test_quiz_theme_stadtteil_binding(client):
     (Punkt-in-Polygon); Themen ohne Geo gelten als stadtweit (null)."""
     _register(client)
     _seed_quiz("fliegerhorst", area_type="thema", n=1)
-    _seed_quiz("haushalt", area_type="thema", n=1, category="ratspolitik")
+    _seed_quiz("haushalt", area_type="thema", n=1, category="council_politics")
     store = CouncilStore(COUNCIL_DB)
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "projekt", 5)], [])
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "project", 5)], [])
     store.set_entity_geo("fliegerhorst", 53.1720, 8.1850, None)  # liegt im Stadtteil Fliegerhorst
     store.close()
-    themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["themen"]}
-    assert themen["fliegerhorst"]["stadtteil"] == "Fliegerhorst"
-    assert themen["haushalt"]["stadtteil"] is None
+    themen = {t["key"]: t for t in client.get("/api/quiz/areas").json()["topics"]}
+    assert themen["fliegerhorst"]["district"] == "Fliegerhorst"
+    assert themen["haushalt"]["district"] is None
 
 
 def test_quiz_round_hides_answer(client):
     _register(client)
     _seed_quiz("Osternburg", n=3)
-    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=2").json()["questions"]
+    q = client.get("/api/quiz/round?areas=district:Osternburg&n=2").json()["questions"]
     assert len(q) == 2
     for item in q:
         assert "correct_index" not in item and "explanation" not in item
@@ -2217,20 +2321,20 @@ def test_quiz_round_hides_answer(client):
 def test_quiz_wahlbereich_expands(client):
     _register(client)
     _seed_quiz("Osternburg", n=2)
-    q = client.get("/api/quiz/round?areas=wahlbereich:5&n=10").json()["questions"]
+    q = client.get("/api/quiz/round?areas=electoral_district:5&n=10").json()["questions"]
     assert len(q) == 2  # Osternburg ist in Wahlbereich 5
 
 
 def test_quiz_answer_scores_and_reveals(client):
     _register(client)
-    _seed_quiz("Osternburg", n=1, difficulty="schwer")
-    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    _seed_quiz("Osternburg", n=1, difficulty="hard")
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     r = client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1}).json()
     assert r["correct"] is True and r["points"] == 3 and r["correct_index"] == 1
     assert r["explanation"] == "weil B" and r["source_ref"] == "http://w"
     # zweite Frage falsch → 0 Punkte
-    _seed_quiz("Osternburg", n=1, category="orte")
-    qid2 = [x["id"] for x in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+    _seed_quiz("Osternburg", n=1, category="places")
+    qid2 = [x["id"] for x in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]
             if x["id"] != qid][0]
     r2 = client.post("/api/quiz/answer", json={"question_id": qid2, "selected_index": 0}).json()
     assert r2["correct"] is False and r2["points"] == 0
@@ -2239,7 +2343,7 @@ def test_quiz_answer_scores_and_reveals(client):
 def test_quiz_stats_aggregate_per_area(client):
     _register(client)
     _seed_quiz("Osternburg", n=2)
-    for item in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+    for item in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]:
         client.post("/api/quiz/answer", json={"question_id": item["id"], "selected_index": 1})
     stats = client.get("/api/quiz/stats").json()
     assert stats["total"]["answered"] == 2 and stats["total"]["correct"] == 2
@@ -2250,7 +2354,7 @@ def test_quiz_stats_aggregate_per_area(client):
 def test_quiz_rating_and_admin_flag(client):
     _register(client)  # Helper hebt admin@test.de per grant_admin auf Admin
     _seed_quiz("Osternburg", n=1)
-    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     assert client.post("/api/quiz/rate", json={"question_id": qid, "verdict": "schlecht",
                                                "comment": "unklar"}).json()["ok"] is True
     flagged = client.get("/api/admin/quiz/flagged").json()["flagged"]
@@ -2258,7 +2362,7 @@ def test_quiz_rating_and_admin_flag(client):
     assert entry["bad"] == 1 and entry["comments"] == "unklar"  # optionaler Grund kommt durch
     # ausmustern → fliegt aus den Runden UND aus der Bewertungs-Liste
     client.post(f"/api/admin/quiz/{qid}/retire")
-    assert client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"] == []
+    assert client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"] == []
     flagged_after = client.get("/api/admin/quiz/flagged").json()["flagged"]
     assert all(f["question_id"] != qid for f in flagged_after)
 
@@ -2266,7 +2370,7 @@ def test_quiz_rating_and_admin_flag(client):
 def test_quiz_scores_per_account(client):
     _register(client)
     _seed_quiz("Osternburg", n=1)
-    qid = client.get("/api/quiz/round?areas=stadtteil:Osternburg").json()["questions"][0]["id"]
+    qid = client.get("/api/quiz/round?areas=district:Osternburg").json()["questions"][0]["id"]
     client.post("/api/quiz/answer", json={"question_id": qid, "selected_index": 1})
     bob = TestClient(app)
     _register(bob, email="bob@test.de")
@@ -2276,7 +2380,7 @@ def test_quiz_scores_per_account(client):
 def test_quiz_review_collects_wrong_and_clears_on_correct(client):
     _register(client)
     _seed_quiz("Osternburg", n=2)
-    qs = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]
+    qs = client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]
     client.post("/api/quiz/answer", json={"question_id": qs[0]["id"], "selected_index": 0})  # falsch
     client.post("/api/quiz/answer", json={"question_id": qs[1]["id"], "selected_index": 1})  # richtig
     review = client.get("/api/quiz/review").json()["questions"]
@@ -2307,7 +2411,7 @@ def test_quiz_daily_deterministic_and_completable(client):
 def test_quiz_stats_streak_wrong_and_badges(client):
     _register(client)
     _seed_quiz("Osternburg", n=6)
-    for q in client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=10").json()["questions"]:
+    for q in client.get("/api/quiz/round?areas=district:Osternburg&n=10").json()["questions"]:
         client.post("/api/quiz/answer", json={"question_id": q["id"], "selected_index": 1})
     s = client.get("/api/quiz/stats").json()
     assert s["streak"] == 1 and s["wrong"] == 0 and s["daily_done"] is False
@@ -2316,8 +2420,8 @@ def test_quiz_stats_streak_wrong_and_badges(client):
 
 def test_quiz_estimate_slider_scores_by_proximity(client):
     _register(client)
-    _seed_estimate("Osternburg", value=12000.0, difficulty="schwer")  # schwer = 3 Punkte
-    q = client.get("/api/quiz/round?areas=stadtteil:Osternburg&n=5").json()["questions"][0]
+    _seed_estimate("Osternburg", value=12000.0, difficulty="hard")  # schwer = 3 Punkte
+    q = client.get("/api/quiz/round?areas=district:Osternburg&n=5").json()["questions"][0]
     assert q["qtype"] == "estimate" and q["unit"] == "Einwohner"
     assert "answer_value" not in q and q["range_min"] == 2000 and q["range_max"] == 30000
     # exakt → volle Punkte
@@ -2367,7 +2471,7 @@ def test_register_marks_verified_without_email_config(client):
 def test_verify_email_endpoint(client):
     _register(client)  # admin
     _register(client, email="bob@test.de")
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.get_web_user_by_email("bob@test.de")["id"]
     store.set_email_verified(uid, False)  # pretend the link was sent, not yet clicked
     raw = "verify-token-123"
@@ -2381,7 +2485,7 @@ def test_verify_email_endpoint(client):
     # valid token verifies the address
     r = client.post("/api/auth/verify-email", json={"token": raw})
     assert r.status_code == 200 and r.json()["email_verified"] is True
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("bob@test.de")["email_verified"] == 1
     store.close()
     # single-use: replaying the same token fails
@@ -2389,7 +2493,7 @@ def test_verify_email_endpoint(client):
 
 
 def test_email_verification_token_expiry():
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.create_web_user("exp@test.de", "h", "user", "pending", email_verified=False)
     token_hash = hashlib.sha256(b"expired").hexdigest()
     past = (datetime.utcnow() - timedelta(hours=1)).isoformat(timespec="seconds")
@@ -2448,14 +2552,14 @@ def test_app_flow_bearer_registers_push_device(client):
     assert only_bearer.post("/api/push/register",
                             json={"token": "dev-tok-1", "platform": "ios"},
                             headers=bearer).status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.get_web_user_by_email("admin@test.de")["id"]
     assert [t["token"] for t in store.get_push_tokens_for_owner(uid)] == ["dev-tok-1"]
     store.close()
 
     assert only_bearer.post("/api/push/unregister",
                             json={"token": "dev-tok-1"}, headers=bearer).status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_push_tokens_for_owner(uid) == []
     store.close()
 
@@ -2470,7 +2574,7 @@ def _kurzlebiges_cookie(client, minuten: int = 10) -> str:
     """
     from app.security import create_access_token
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     user = store.get_web_user_by_email("admin@test.de")
     store.close()
     token = create_access_token(
@@ -2555,7 +2659,7 @@ def test_verlaengerung_laesst_den_sse_strom_in_ruhe(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -2571,8 +2675,8 @@ def test_verlaengerung_laesst_den_sse_strom_in_ruhe(client, monkeypatch):
 
     assert frisch and frisch != alt  # verlängert wurde trotzdem
     events = [json.loads(z[6:]) for z in body.splitlines() if z.startswith("data: ")]
-    antwort = "".join(e["text"] for e in events if e["type"] == "token")
-    assert antwort.strip() == "Die Veloroute 4 wird ausgebaut [5]."
+    answer = "".join(e["text"] for e in events if e["type"] == "token")
+    assert answer.strip() == "Die Veloroute 4 wird ausgebaut [5]."
     assert [e for e in events if e["type"] == "done"]
 
 
@@ -2609,7 +2713,7 @@ def test_app_verify_email_returns_bearer_token(client):
     """Verification opened via the app deep link should land logged-in: an
     `X-Client: app` verify-email gets a bearer token in the body."""
     _register(client)  # admin (active)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     uid = store.get_web_user_by_email("admin@test.de")["id"]
     raw = "app-verify-token"
     exp = (datetime.utcnow() + timedelta(hours=1)).isoformat(timespec="seconds")
@@ -2761,7 +2865,7 @@ def test_apple_only_account_deletes_via_apple_reauth(client, apple_jwks):
     r = anna.request("DELETE", "/api/account",
                      json={"apple_identity_token": _apple_token(sub="sub-del", email=None)})
     assert r.status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     assert store.get_web_user_by_email("del@example.com") is None
     store.close()
 
@@ -2781,7 +2885,7 @@ def test_push_unregister_is_scoped_to_owner(client):
     bob_client.post("/api/auth/login", json={"email": "bob@test.de", "password": "password123"})
     # Bob's unregister of the admin's token is a no-op (still 204), token survives.
     assert bob_client.post("/api/push/unregister", json={"token": "adm-dev"}).status_code == 204
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     admin_uid = store.get_web_user_by_email("admin@test.de")["id"]
     assert [t["token"] for t in store.get_push_tokens_for_owner(admin_uid)] == ["adm-dev"]
     store.close()
@@ -2818,7 +2922,7 @@ def test_badges_kartograf_distinct_and_derived(client):
 
     # Server-abgeleitet (Frühwarner): Push-Gerät registriert → verdient beim
     # nächsten GET — und bleibt verdient, auch wenn das Gerät wieder geht.
-    store = Store(Path(NWZ_DB))
+    store = Store(Path(RATSLOTSE_DB))
     store.add_push_token(1, "tok-1", "ios")
     assert {b["id"]: b["earned"] for b in client.get("/api/badges").json()["badges"]}["fruehwarner"] is True
     store.remove_push_token("tok-1")
@@ -2864,10 +2968,10 @@ def test_topic_suggestions_dedupe_similar(client):
     with council._conn:
         for i in range(3):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                     "angenommen", None, None, None, [], None, None, None)
+                                     "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
-        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "ort"),
+        ents = [(1, "stadion-maastrichter", "Stadion Maastrichter Straße", "place"),
                 (2, "stadionneubau", "Stadionneubau Maastrichter Straße", "projekt"),
                 (3, "maastrichter-strasse", "Maastrichter Straße", "ort"),
                 (4, "stadtmuseum", "Stadtmuseum", "ort")]
@@ -2910,10 +3014,10 @@ def test_qa_share_roundtrip(client):
     GET liefert ihn ÖFFENTLICH (ohne Login) und ohne Konto-Daten."""
     _register(client)
     r = client.post("/api/council/qa-share", json={
-        "frage": "Was wurde zum Stadion entschieden?",
-        "antwort": "Der Rat stimmte zu [5].",
-        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "angenommen"}],
+        "question": "Was wurde zum Stadion entschieden?",
+        "answer": "Der Rat stimmte zu [5].",
+        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+                     "committee": "Rat", "outcome": "accepted"}],
     })
     assert r.status_code == 201
     token = r.json()["token"]
@@ -2923,18 +3027,18 @@ def test_qa_share_roundtrip(client):
     r = client.get(f"/api/council/qa-share/{token}")
     assert r.status_code == 200
     body = r.json()
-    assert body["antwort"] == "Der Rat stimmte zu [5]."
-    assert body["quellen"][0]["title"] == "Stadionneubau"
+    assert body["answer"] == "Der Rat stimmte zu [5]."
+    assert body["sources"][0]["title"] == "Stadionneubau"
     assert "user_id" not in body
 
     # Alte Snapshots (ohne Bausteine) liefern leere Listen statt zu fehlen.
-    assert body["debatten"] == [] and body["presse"] == []
-    assert body["anlagen"] == [] and body["parteien"] == []
+    assert body["debates"] == [] and body["press_releases"] == []
+    assert body["attachments"] == [] and body["parties"] == []
 
     assert client.get("/api/council/qa-share/gibtsnicht").status_code == 404
     # Ohne Login kein Anlegen.
     assert client.post("/api/council/qa-share", json={
-        "frage": "x", "antwort": "y", "quellen": []}).status_code in (401, 403)
+        "question": "x", "answer": "y", "sources": []}).status_code in (401, 403)
 
 
 def test_qa_share_traegt_bausteine(client):
@@ -2943,55 +3047,55 @@ def test_qa_share_traegt_bausteine(client):
     Snapshot (vorher sah der Empfänger nur Text + Beschlüsse)."""
     _register(client)
     r = client.post("/api/council/qa-share", json={
-        "frage": "Was sagt der Rat zum Stadion?",
-        "antwort": "Der Rat stimmte zu [5].",
-        "quellen": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
-                     "committee": "Rat", "outcome": "angenommen"}],
-        "debatten": [{"sprecher": "Ratsherr Wenzel", "partei": "SPD", "art": "rede",
-                      "top": "6.1 Stadionneubau", "auszug": "Warnte vor einem Millionengrab.",
-                      "committee": "Rat", "datum": "2026-06-01",
-                      "protokoll_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
-                      "protokoll_seite": 6},
+        "question": "Was sagt der Rat zum Stadion?",
+        "answer": "Der Rat stimmte zu [5].",
+        "sources": [{"id": 5, "title": "Stadionneubau", "session_date": "2026-06-01",
+                     "committee": "Rat", "outcome": "accepted"}],
+        "debates": [{"speaker": "Ratsherr Wenzel", "party": "SPD", "art": "rede",
+                      "top": "6.1 Stadionneubau", "excerpt": "Warnte vor einem Millionengrab.",
+                      "committee": "Rat", "date": "2026-06-01",
+                      "minutes_url": "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do",
+                      "minutes_page": 6},
                      # Der Snapshot ist öffentlich und die URL kommt vom
                      # Client: alles außerhalb des Ratsinfo-Systems wird
                      # verworfen statt als „Protokoll" verlinkt.
-                     {"sprecher": "Ratsfrau Muster", "partei": "CDU", "art": "rede",
-                      "top": "6.1 Stadionneubau", "auszug": "Begrüßte den Plan.",
-                      "committee": "Rat", "datum": "2026-06-01",
-                      "protokoll_url": "https://boese.example.org/phishing.pdf"}],
-        "presse": [{"titel": "Stadion: Stadt informiert",
-                    "url": "https://www.oldenburg.de/x", "datum": "2026-06-02"}],
-        "anlagen": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
-                     "vorlage_nr": "26/0123", "vorlage_titel": "Stadionneubau",
-                     "auszug": "Kapazität 15.000."}],
-        "parteien": [{"partei": "SPD", "haltung": "dagegen", "position": "Skeptisch.",
-                      "einig": True, "hinweis": None, "beitraege": 3,
+                     {"speaker": "Ratsfrau Muster", "party": "CDU", "art": "rede",
+                      "top": "6.1 Stadionneubau", "excerpt": "Begrüßte den Plan.",
+                      "committee": "Rat", "date": "2026-06-01",
+                      "minutes_url": "https://boese.example.org/phishing.pdf"}],
+        "press_releases": [{"title": "Stadion: Stadt informiert",
+                    "url": "https://www.oldenburg.de/x", "date": "2026-06-02"}],
+        "attachments": [{"label": "Machbarkeitsstudie", "url": "https://ris/anlage.pdf",
+                     "template_number": "26/0123", "template_title": "Stadionneubau",
+                     "excerpt": "Kapazität 15.000."}],
+        "parties": [{"party": "SPD", "stance": "dagegen", "position": "Skeptisch.",
+                      "unanimous": True, "note": None, "contributions": 3,
                       "kernaussage": {"text": "Kein zweites Millionengrab.",
-                                      "sprecher": "Wenzel", "datum": "01.06.2026"}}],
+                                      "speaker": "Wenzel", "date": "01.06.2026"}}],
     })
     assert r.status_code == 201
     token = r.json()["token"]
 
     client.cookies.clear()  # öffentlich lesbar
     body = client.get(f"/api/council/qa-share/{token}").json()
-    assert body["debatten"][0]["sprecher"] == "Ratsherr Wenzel"
-    assert body["debatten"][0]["protokoll_url"] == (
+    assert body["debates"][0]["speaker"] == "Ratsherr Wenzel"
+    assert body["debates"][0]["minutes_url"] == (
         "https://buergerinfo.oldenburg.de/getfile.php?id=4711&type=do")
-    assert body["debatten"][0]["protokoll_seite"] == 6
-    assert body["debatten"][1]["protokoll_url"] is None
-    assert body["debatten"][1]["protokoll_seite"] is None
-    assert body["presse"][0]["url"] == "https://www.oldenburg.de/x"
-    assert body["anlagen"][0]["vorlage_nr"] == "26/0123"
-    assert body["parteien"][0]["haltung"] == "dagegen"
+    assert body["debates"][0]["minutes_page"] == 6
+    assert body["debates"][1]["minutes_url"] is None
+    assert body["debates"][1]["minutes_page"] is None
+    assert body["press_releases"][0]["url"] == "https://www.oldenburg.de/x"
+    assert body["attachments"][0]["template_number"] == "26/0123"
+    assert body["parties"][0]["stance"] == "dagegen"
     assert "user_id" not in body
 
 
 def test_qa_share_public_report_and_admin_removal(client):
     _register(client)
     made = client.post("/api/council/qa-share", json={
-        "frage": "Was wurde beschlossen?",
-        "antwort": "Eine automatisch erzeugte Antwort [1].",
-        "quellen": [],
+        "question": "Was wurde beschlossen?",
+        "answer": "Eine automatisch erzeugte Antwort [1].",
+        "sources": [],
     })
     assert made.status_code == 201
     token = made.json()["token"]
@@ -3025,15 +3129,15 @@ def test_qa_share_public_report_and_admin_removal(client):
 
 def test_qa_share_filters_objectionable_or_embedded_web_content(client):
     _register(client)
-    for frage, antwort in (
+    for question, answer in (
         ("Sieg Heil", "Antwort."),
         ("Normale Frage", "Hier klicken: https://phishing.invalid"),
         ("Normale Frage", "<script>alert(1)</script>"),
     ):
         response = client.post("/api/council/qa-share", json={
-            "frage": frage,
-            "antwort": antwort,
-            "quellen": [],
+            "question": question,
+            "answer": answer,
+            "sources": [],
         })
         assert response.status_code == 422
         assert "öffentlicher Link" in response.json()["detail"]
@@ -3055,27 +3159,27 @@ def test_partei_meinungen_endpoint(client, monkeypatch):
         return [(zaehler["n"], 0.5)]
 
     monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", hits)
-    meinung = [{"partei": "SPD", "haltung": "dafür", "position": "Dafür.", "einig": True,
-                "hinweis": None, "kernaussage": None, "beitraege": 3}]
+    meinung = [{"party": "SPD", "stance": "dafür", "position": "Dafür.", "unanimous": True,
+                "note": None, "kernaussage": None, "contributions": 3}]
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: meinung)
-    r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
-    assert r.status_code == 200 and r.json()["parteien"] == meinung
+    r = client.post("/api/council/party-meinungen", json={"question": "Stadionneubau?"})
+    assert r.status_code == 200 and r.json()["parties"] == meinung
 
     monkeypatch.setattr(qa_mod, "partei_meinungen", lambda *a, **k: None)
-    assert client.post("/api/council/partei-meinungen",
-                       json={"frage": "Stadionneubau?"}).json()["parteien"] == []
+    assert client.post("/api/council/party-meinungen",
+                       json={"question": "Stadionneubau?"}).json()["parties"] == []
 
     def kaputt(*a, **k):
         raise RuntimeError("llm down")
     monkeypatch.setattr(qa_mod, "partei_meinungen", kaputt)
-    r = client.post("/api/council/partei-meinungen", json={"frage": "Stadionneubau?"})
-    assert r.status_code == 200 and r.json()["parteien"] == []
+    r = client.post("/api/council/party-meinungen", json={"question": "Stadionneubau?"})
+    assert r.status_code == 200 and r.json()["parties"] == []
 
     # Cache-Hit: gleiche Treffer-IDs wie Fall 1 → Ergebnis kommt ohne LLM
     # (partei_meinungen ist noch der kaputt-Mock — er darf nicht laufen).
     zaehler["n"] = 0
-    r = client.post("/api/council/partei-meinungen", json={"frage": "Anders formuliert?"})
-    assert r.status_code == 200 and r.json()["parteien"] == meinung
+    r = client.post("/api/council/party-meinungen", json={"question": "Anders formuliert?"})
+    assert r.status_code == 200 and r.json()["parties"] == meinung
 
 
 def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
@@ -3088,20 +3192,20 @@ def test_partei_meinungen_nimmt_beschluss_anker_dazu(client, monkeypatch):
 
     _register(client)
     monkeypatch.setattr(emb, "search_wortbeitraege_je_fraktion", lambda *a, **k: [])
-    anker = [{"id": 4711, "partei": "CDU", "sprecher": "Woltmann",
+    anker = [{"id": 4711, "party": "CDU", "speaker": "Woltmann",
               "text": "Die CDU-Fraktion lehnt die Satzung ab.", "session_date": "2026-06-12"}]
     gesehen = {}
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen",
                         lambda self, decisions, **k: (gesehen.update(dec=decisions) or anker))
     monkeypatch.setattr(CouncilStore, "get_decisions_by_ids",
                         lambda self, ids: [{"id": i} for i in ids])
-    meinung = [{"partei": "CDU", "haltung": "dagegen", "position": "Dagegen.", "einig": True,
-                "hinweis": None, "kernaussage": None, "beitraege": 1}]
+    meinung = [{"party": "CDU", "stance": "dagegen", "position": "Dagegen.", "unanimous": True,
+                "note": None, "kernaussage": None, "contributions": 1}]
     monkeypatch.setattr(qa_mod, "partei_meinungen",
-                        lambda frage, rows, **k: (gesehen.update(rows=rows) or meinung))
-    r = client.post("/api/council/partei-meinungen",
-                    json={"frage": "Baumschutzsatzung?", "beschluss_ids": [20032, 20431]})
-    assert r.status_code == 200 and r.json()["parteien"] == meinung
+                        lambda question, rows, **k: (gesehen.update(rows=rows) or meinung))
+    r = client.post("/api/council/party-meinungen",
+                    json={"question": "Baumschutzsatzung?", "decision_ids": [20032, 20431]})
+    assert r.status_code == 200 and r.json()["parties"] == meinung
     assert [d["id"] for d in gesehen["dec"]] == [20032, 20431]
     assert [row["id"] for row in gesehen["rows"]] == [4711]
 
@@ -3115,7 +3219,7 @@ def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Entlastungsstraße Fliegerhorst", "summary": "Planung",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-04-13",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-04-13",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3154,16 +3258,16 @@ def test_ask_ersetzt_abgerissenen_stream(client, monkeypatch):
 
 def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
     """Die Einwilligungs-Schranke der Gesprächs-Speicherung (Review-Befund B6):
-    ohne qa_speichern=1 schreibt /ask NICHTS, mit Einwilligung trägt das
+    ohne saves_conversations=1 schreibt /ask NICHTS, mit Einwilligung trägt das
     done-Event die Gesprächs-id und der Turn liegt in der Datenbank. Clients
-    ohne gespraech_id-Feld (alte App) lösen nie eine Speicherung aus."""
+    ohne conversation_id-Feld (alte App) lösen nie eine Speicherung aus."""
     from app.routers import council as council_router
     from council import qa as qa_mod
     from kern.store import Store
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3175,29 +3279,29 @@ def test_ask_speichert_nur_mit_einwilligung(client, monkeypatch):
                       if line.startswith("data: ")]
         return next(e for e in events if e["type"] == "done")
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         # Nie gefragt (NULL) → kein Save, obwohl der Client das Feld kennt.
-        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
-        assert done["gespraech_id"] is None
-        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+        done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
+        assert done["conversation_id"] is None
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_conversations").fetchone()[0] == 0
 
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
         # Alte App: Feld fehlt im Body → weiterhin kein Save (Befund B5).
         done = frag({"question": "Was ist mit Radwegen?"})
-        assert done.get("gespraech_id") is None
-        assert store._conn.execute("SELECT COUNT(*) FROM qa_gespraeche").fetchone()[0] == 0
+        assert done.get("conversation_id") is None
+        assert store._conn.execute("SELECT COUNT(*) FROM qa_conversations").fetchone()[0] == 0
 
         # Einwilligung + Feld → Gespräch samt Turn, id im done-Event.
-        done = frag({"question": "Was ist mit Radwegen?", "gespraech_id": None})
-        gid = done["gespraech_id"]
+        done = frag({"question": "Was ist mit Radwegen?", "conversation_id": None})
+        gid = done["conversation_id"]
         assert gid is not None
         turns = store.qa_gespraech(gid, uid)["turns"]
-        assert len(turns) == 1 and turns[0]["antwort"].startswith("Wird ausgebaut")
+        assert len(turns) == 1 and turns[0]["answer"].startswith("Wird ausgebaut")
         # Fremde/erfundene id → still kein Save, tote id wird nicht bestätigt.
-        done = frag({"question": "Und weiter?", "gespraech_id": 999999})
-        assert done["gespraech_id"] is None
+        done = frag({"question": "Und weiter?", "conversation_id": 999999})
+        assert done["conversation_id"] is None
     finally:
         store.close()
 
@@ -3211,8 +3315,8 @@ def test_ask_stream_haelt_marker_zurueck_und_liefert_suggestions(client, monkeyp
 
     _register(client)
     cand = [{"id": 5, "title": "Radverkehrsplan 2026", "summary": "Ausbau",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-07-02",
-             "committee": "Verkehrsausschuss", "score": 1.0, "gegenstimmen": 2}]
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-07-02",
+             "committee": "Verkehrsausschuss", "score": 1.0, "no_votes": 2}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
     # Marker bewusst über Delta-Grenzen zerschnitten ("FOLGE" | "FRAGEN:").
@@ -3249,17 +3353,17 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
             "(id,ksinr,position,title,summary,outcome,kind,amount_eur) "
             "VALUES (?,77,?,?,?,?, 'decision',?)",
             [
-                (1, 1, "Sporthalle Kreyenbrück", "Sanierung", "angenommen", 2_500_000),
-                (2, 2, "Sanierung Rathaus", "Fassade", "angenommen", 9_000_000),
+                (1, 1, "Sporthalle Kreyenbrück", "Sanierung", "accepted", 2_500_000),
+                (2, 2, "Sanierung Rathaus", "Fassade", "accepted", 9_000_000),
             ],
         )
     cs.save_decision_locations(1, [{
-        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
-        "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
+        "evidence": "Sporthalle Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
     }], "local")
     cs.save_decision_locations(2, [{
-        "name": "Rathaus", "kind": "gebaeude", "source": "title",
-        "evidence": "Sanierung Rathaus", "method": "ortskatalog", "confidence": 0.99,
+        "name": "Rathaus", "kind": "building", "source": "title",
+        "evidence": "Sanierung Rathaus", "method": "place_catalog", "confidence": 0.99,
     }], "foreign")
     with cs._conn:
         cs._conn.execute(
@@ -3282,9 +3386,9 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
 
     monkeypatch.setattr(council_router, "_qa_retrieve", fake_retrieve)
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was kostet die Sporthalle in Kreyenbrück?",
-        "begriffe": "Sporthalle Sanierung Kosten Kreyenbrück",
-        "typ": "geld", "partei": None, "varianten": [], "eng": False,
+        "question": "Was kostet die Sporthalle in Kreyenbrück?",
+        "terms": "Sporthalle Sanierung Kosten Kreyenbrück",
+        "kind": "money", "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
 
@@ -3296,10 +3400,10 @@ def test_ask_kombiniert_geldfrage_mit_ort_und_liefert_fundstelle(client, monkeyp
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert gesehen["place_ids"] == [1]
-    assert gesehen["typ"] == "geld"
+    assert gesehen["typ"] == "money"
     assert gesehen["ctx"] == [1]
     assert gesehen["ort"]["id"] == "kreyenbrueck"
-    assert sources["qtype"] == "geld"
+    assert sources["qtype"] == "money"
     assert [source["id"] for source in sources["sources"]] == [1]
     match = sources["sources"][0]["location_matches"][0]
     assert match["name"] == "Kreyenbrück"
@@ -3323,17 +3427,17 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
             "INSERT INTO council_decisions "
             "(id,ksinr,position,item_number,title,summary,outcome,kind) "
             "VALUES (5,88,1,'7','Sporthalle Kreyenbrück - Beschluss','Sanierung',"
-            "'angenommen','decision')")
+            "'accepted','decision')")
     cs.save_decision_locations(5, [{
-        "name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
-        "evidence": "Sporthalle Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+        "name": "Kreyenbrück", "kind": "district", "source": "title",
+        "evidence": "Sporthalle Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
     }], "local")
     cs.save_person(42, "Bernhard Ellberg", "SPD")
     cs.save_wortbeitraege(88, [
-        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Bernhard Ellberg",
-         "partei": "SPD", "text": "Die Sanierung sei dringend.", "antwort": None},
-        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "sprecher": "Anna Beispiel",
-         "partei": "CDU", "text": "Die Kosten müssten geprüft werden.", "antwort": None},
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Bernhard Ellberg",
+         "party": "SPD", "text": "Die Sanierung sei dringend.", "answer": None},
+        {"art": "rede", "top": "Ö 7 Sporthalle Kreyenbrück", "speaker": "Anna Beispiel",
+         "party": "CDU", "text": "Die Kosten müssten geprüft werden.", "answer": None},
     ])
     cs.close()
 
@@ -3343,16 +3447,16 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     monkeypatch.setattr(council_router, "_qa_retrieve",
                         lambda *a, **k: ([], "semantisch"))
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?",
-        "begriffe": "Bernhard Ellberg Kreyenbrück", "typ": "thema",
-        "partei": None, "varianten": [], "eng": False,
+        "question": "Was hat Bernhard Ellberg zu Kreyenbrück gesagt?",
+        "terms": "Bernhard Ellberg Kreyenbrück", "kind": "topic",
+        "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(emb, "search_wortbeitraege_von_person",
                         lambda *a, **k: (_ for _ in ()).throw(
                             AssertionError("freie Personensuche darf nicht laufen")))
 
     def fake_stream(question, ctx, **kwargs):
-        gesehen["debatten"] = kwargs.get("debatten")
+        gesehen["debates"] = kwargs.get("debatten")
         gesehen["typ"] = kwargs.get("typ")
         yield "Ellberg nannte die Sanierung dringend [5]."
 
@@ -3365,11 +3469,11 @@ def test_ask_kombiniert_person_mit_ort_ueber_beschlussanker(client, monkeypatch)
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert gesehen["typ"] == "person"
-    assert [row["sprecher"] for row in gesehen["debatten"]] == ["Bernhard Ellberg"]
-    assert gesehen["debatten"][0]["zu_beschluss"] == 5
-    assert [row["sprecher"] for row in sources["debatten"]] == ["Bernhard Ellberg"]
+    assert [row["speaker"] for row in gesehen["debates"]] == ["Bernhard Ellberg"]
+    assert gesehen["debates"][0]["zu_beschluss"] == 5
+    assert [row["speaker"] for row in sources["debates"]] == ["Bernhard Ellberg"]
     assert [row["id"] for row in sources["sources"]] == [5]
-    assert sources["beleglage"] == "solide"
+    assert sources["evidence_level"] == "solide"
 
 
 def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch):
@@ -3383,12 +3487,12 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     rows = [
-        (101, 901, "2025-12-11", "Alter Beschluss", "angenommen"),
-        (102, 902, "2026-04-21", "Neuer echter Beschluss", "angenommen"),
-        (103, 903, "2026-04-28", "Neuester Sachstandsbericht", "zur_kenntnis"),
+        (101, 901, "2025-12-11", "Alter Beschluss", "accepted"),
+        (102, 902, "2026-04-21", "Neuer echter Beschluss", "accepted"),
+        (103, 903, "2026-04-28", "Neuester Sachstandsbericht", "noted"),
     ]
-    for decision_id, ksinr, datum, title, outcome in rows:
-        cs.save_session(CouncilSession(ksinr, "Rat", datum, "17:00", "Rathaus"))
+    for decision_id, ksinr, tag, title, outcome in rows:
+        cs.save_session(CouncilSession(ksinr, "Rat", tag, "17:00", "Rathaus"))
         with cs._conn:
             cs._conn.execute(
                 "INSERT INTO council_decisions "
@@ -3396,15 +3500,15 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
                 "VALUES (?,?,1,'7',?,? ,?,'decision')",
                 (decision_id, ksinr, title, "Kreyenbrück", outcome))
         cs.save_decision_locations(decision_id, [{
-            "name": "Kreyenbrück", "kind": "stadtteil", "source": "summary",
-            "evidence": "Kreyenbrück", "method": "ortskatalog", "confidence": 0.99,
+            "name": "Kreyenbrück", "kind": "district", "source": "summary",
+            "evidence": "Kreyenbrück", "method": "place_catalog", "confidence": 0.99,
         }], f"local-{decision_id}")
     cs.close()
 
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was wurde in Kreyenbrück zuletzt beschlossen?",
-        "begriffe": "Kreyenbrück Beschlüsse", "typ": "thema",
-        "partei": None, "varianten": [], "eng": False,
+        "question": "Was wurde in Kreyenbrück zuletzt beschlossen?",
+        "terms": "Kreyenbrück Beschlüsse", "kind": "topic",
+        "party": None, "variants": [], "eng": False,
     })
     monkeypatch.setattr(council_router, "_qa_retrieve",
                         lambda *a, **k: (_ for _ in ()).throw(
@@ -3427,9 +3531,9 @@ def test_ask_neueste_ortsfrage_sortiert_strikt_chronologisch(client, monkeypatch
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
     assert sources["mode"] == "chronologisch"
-    assert sources["qtype"] == "ort"
-    assert sources["beleglage"] == "solide"
-    assert sources["debatten"] == []
+    assert sources["qtype"] == "place"
+    assert sources["evidence_level"] == "solide"
+    assert sources["debates"] == []
     assert [row["id"] for row in sources["sources"]] == [103, 102, 101]
     tokens = "".join(event["text"] for event in events if event["type"] == "token")
     # Quellenband streng nach Datum, Faktenantwort deterministisch aus der
@@ -3452,13 +3556,13 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
     _register(client)
     candidate = {
         "id": 104, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Stand",
-        "outcome": "angenommen", "session_date": "2026-06-01", "committee": "Rat",
+        "outcome": "accepted", "session_date": "2026-06-01", "committee": "Rat",
         "score": 1.0,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Wie ist der aktuelle Stand beim Stadionneubau?",
-        "begriffe": "Stadionneubau Stand", "typ": "verlauf", "partei": None,
-        "varianten": [], "eng": False,
+        "question": "Wie ist der aktuelle Stand beim Stadionneubau?",
+        "terms": "Stadionneubau Stand", "kind": "history", "party": None,
+        "variants": [], "eng": False,
         "rechercheplan": {
             "intent": "status", "channels": ["decisions", "press", "documents"],
             "sort": "newest", "needs": ["current_info", "documents", "dates"],
@@ -3482,7 +3586,7 @@ def test_ask_gueltiger_plan_ohne_debatten_ueberspringt_den_kanal(client, monkeyp
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["debatten"] == []
+    assert sources["debates"] == []
 
 
 def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkeypatch):
@@ -3494,13 +3598,13 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
     _register(client)
     candidate = {
         "id": 105, "title": "Antrag Baumschutzsatzung", "summary": "Abstimmung",
-        "outcome": "angenommen", "session_date": "2026-03-01", "committee": "Rat",
+        "outcome": "accepted", "session_date": "2026-03-01", "committee": "Rat",
         "score": 1.0, "kvonr": 105,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Wurde die Baumschutzsatzung angenommen?",
-        "begriffe": "Baumschutzsatzung Abstimmung", "typ": "thema", "partei": None,
-        "varianten": [], "eng": True,
+        "question": "Wurde die Baumschutzsatzung angenommen?",
+        "terms": "Baumschutzsatzung Abstimmung", "kind": "topic", "party": None,
+        "variants": [], "eng": True,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
             "sort": "relevance", "needs": ["votes", "documents"], "valid": True,
@@ -3527,7 +3631,7 @@ def test_ask_gueltiger_faktenplan_ueberspringt_presse_und_zukunft(client, monkey
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["presse"] == [] and sources["planungen"] == []
+    assert sources["press_releases"] == [] and sources["planning_procedures"] == []
 
 
 def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkeypatch):
@@ -3539,14 +3643,14 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
     _register(client)
     candidate = {
         "id": 106, "title": "Grundsatzbeschluss Stadionneubau",
-        "summary": "Planung", "outcome": "angenommen",
+        "summary": "Planung", "outcome": "accepted",
         "session_date": "2026-06-01", "committee": "Rat", "score": 1.0,
-        "vorlage_nr": "26/0100", "kvonr": 106,
+        "template_number": "26/0100", "kvonr": 106,
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Was steht im Schallgutachten zum Stadionneubau?",
-        "begriffe": "Schallgutachten Stadionneubau Lärm", "typ": "thema",
-        "partei": None, "varianten": [], "eng": False,
+        "question": "Was steht im Schallgutachten zum Stadionneubau?",
+        "terms": "Schallgutachten Stadionneubau Lärm", "kind": "topic",
+        "party": None, "variants": [], "eng": False,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
             "sort": "relevance", "needs": ["documents"], "valid": True,
@@ -3558,8 +3662,8 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
                         lambda *a, **k: [(901, 0.8, "Lärmpegel unter dem Grenzwert")])
     monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [{
         "document_id": 901, "label": "Schalltechnisches Gutachten",
-        "url": "https://ris.test/gutachten.pdf", "vorlage_nr": "26/0100",
-        "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
+        "url": "https://ris.test/gutachten.pdf", "template_number": "26/0100",
+        "template_title": "Grundsatzbeschluss Stadionneubau",
     }])
     monkeypatch.setattr(CouncilStore, "decision_ids_for_vorlagen",
                         lambda self, nrs: {"26/0100": [106]})
@@ -3567,24 +3671,24 @@ def test_ask_dokumentenplan_sucht_anlagen_und_gibt_sie_ins_prompt(client, monkey
                         lambda self, nrs: {"26/0100": "Sachverhalt zum Lärmschutz"})
     gesehen = {}
 
-    def antwort(*args, **kwargs):
-        gesehen["anlagen"] = kwargs.get("anlagen")
+    def answer(*args, **kwargs):
+        gesehen["attachments"] = kwargs.get("anlagen")
         return iter(["Das Gutachten sieht die Grenzwerte eingehalten [A1]."])
 
-    monkeypatch.setattr(qa_mod, "answer_stream", antwort)
+    monkeypatch.setattr(qa_mod, "answer_stream", answer)
     with client.stream("POST", "/api/council/ask", json={
             "question": "Was steht im Schallgutachten zum Stadionneubau?"}) as response:
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
 
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["anlagen"] == [{
-        "nr": 1, "label": "Schalltechnisches Gutachten",
-        "url": "https://ris.test/gutachten.pdf", "vorlage_nr": "26/0100",
-        "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
-        "auszug": "Lärmpegel unter dem Grenzwert",
+    assert sources["attachments"] == [{
+        "number": 1, "label": "Schalltechnisches Gutachten",
+        "url": "https://ris.test/gutachten.pdf", "template_number": "26/0100",
+        "template_title": "Grundsatzbeschluss Stadionneubau",
+        "excerpt": "Lärmpegel unter dem Grenzwert",
     }]
-    assert gesehen["anlagen"][0]["fundstelle"] == "Lärmpegel unter dem Grenzwert"
+    assert gesehen["attachments"][0]["citation"] == "Lärmpegel unter dem Grenzwert"
     assert "[A1]" in "".join(e.get("text", "") for e in events)
 
 
@@ -3597,13 +3701,13 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
     _register(client)
     candidate = {
         "id": 107, "title": "Baumschutzsatzung", "summary": "Abstimmung",
-        "outcome": "angenommen", "session_date": "2026-03-01",
-        "committee": "Rat", "score": 1.0, "vorlage_nr": "26/0200",
+        "outcome": "accepted", "session_date": "2026-03-01",
+        "committee": "Rat", "score": 1.0, "template_number": "26/0200",
     }
     monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: {
-        "frage": "Wurde die Baumschutzsatzung beschlossen?",
-        "begriffe": "Baumschutzsatzung Abstimmung", "typ": "thema",
-        "partei": None, "varianten": [], "eng": True,
+        "question": "Wurde die Baumschutzsatzung beschlossen?",
+        "terms": "Baumschutzsatzung Abstimmung", "kind": "topic",
+        "party": None, "variants": [], "eng": True,
         "rechercheplan": {
             "intent": "fact", "channels": ["decisions", "documents"],
             "sort": "relevance", "needs": ["votes"], "valid": True,
@@ -3623,7 +3727,7 @@ def test_ask_ohne_dokumentenbedarf_ueberspringt_anlagen_und_vorlagen(client, mon
         events = [json.loads(line[6:]) for line in "".join(response.iter_text()).splitlines()
                   if line.startswith("data: ")]
     sources = next(event for event in events if event["type"] == "sources")
-    assert sources["anlagen"] == []
+    assert sources["attachments"] == []
 
 
 def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
@@ -3631,7 +3735,7 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
     17.06.2026 beschlossen?" lief rein semantisch — 3 der 6 TOPs fehlten in der
     Antwort, darunter ein echter Beschluss (echte Nutzerfrage). Jetzt wird die
     Sitzung deterministisch aufgelöst: ALLE ihre Beschlüsse in Tagesordnungs-
-    Reihenfolge vorn im Kontext, qtype "sitzung", Beleglage solide."""
+    Reihenfolge vorn im Kontext, qtype "session", Beleglage solide."""
     from app.routers import council as council_router
     from council import qa as qa_mod
 
@@ -3641,10 +3745,10 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
         cs._conn.execute(
             "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
             "VALUES (4673, 'Jugendhilfeausschuss', '2026-06-17', '16:00', 'Rathaus', '')")
-        for i, titel in ((1, "Krippengruppe"), (2, "Kita-Bericht"), (3, "Richtlinien Jugendarbeit")):
+        for i, title in ((1, "Krippengruppe"), (2, "Kita-Bericht"), (3, "Richtlinien Jugendarbeit")):
             cs._conn.execute(
                 "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
-                "VALUES (?, 4673, ?, ?, 'decision', ?, 'angenommen')", (i, i, str(i + 4), titel))
+                "VALUES (?, 4673, ?, ?, 'decision', ?, 'accepted')", (i, i, str(i + 4), title))
         cs._conn.execute(  # Subvotes sind kein eigener Tagesordnungspunkt
             "INSERT INTO council_decisions (id, ksinr, position, kind, title) "
             "VALUES (9, 4673, 9, 'subvote', 'Änderungsantrag')")
@@ -3653,20 +3757,20 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
             "VALUES (100, 'Rat', '2025-01-01', '17:00', '', '')")
         cs._conn.execute(
             "INSERT INTO council_decisions (id, ksinr, position, kind, title, outcome) "
-            "VALUES (50, 100, 0, 'decision', 'Anderes Thema', 'angenommen')")
+            "VALUES (50, 100, 0, 'decision', 'Anderes Thema', 'accepted')")
     cs.close()
     # Die Semantik findet nur EINEN der drei TOPs — plus einen fremden Treffer.
     cand = [{"id": 2, "title": "Kita-Bericht", "score": 0.95, "session_date": "2026-06-17",
-             "committee": "Jugendhilfeausschuss", "outcome": "angenommen"},
+             "committee": "Jugendhilfeausschuss", "outcome": "accepted"},
             {"id": 50, "title": "Anderes Thema", "score": 0.9, "session_date": "2025-01-01",
-             "committee": "Rat", "outcome": "angenommen"}]
+             "committee": "Rat", "outcome": "accepted"}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (list(cand), "semantisch"))
     gesehen: dict = {}
 
     def fake_stream(question, ctx, **kw):
         gesehen["ids"] = [c["id"] for c in ctx]
         gesehen["typ"] = kw.get("typ")
-        gesehen["sitzungen"] = kw.get("sitzungen")
+        gesehen["sessions"] = kw.get("sitzungen")
         yield "Alle Punkte der Sitzung [1][2][3]."
 
     monkeypatch.setattr(qa_mod, "answer_stream", fake_stream)
@@ -3676,19 +3780,19 @@ def test_ask_sitzungsfrage_holt_die_ganze_sitzung(client, monkeypatch):
         body = "".join(r.iter_text())
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     src = next(e for e in events if e["type"] == "sources")
-    assert src["qtype"] == "sitzung"
-    assert src["beleglage"] == "solide"  # deterministisch aufgelöst, nie „dünn"
+    assert src["qtype"] == "session"
+    assert src["evidence_level"] == "solide"  # deterministisch aufgelöst, nie „dünn"
     # Die Sitzung steht vollständig und in Tagesordnungs-Reihenfolge vorn.
     assert [s["id"] for s in src["sources"]] == [1, 2, 3, 50]
     # Der Antwort-Kontext trägt die GANZE Sitzung — ohne Subvote und ohne den
     # Fremd-Treffer, der sonst als Sitzungsergebnis durchginge.
-    assert gesehen["typ"] == "sitzung"
+    assert gesehen["typ"] == "session"
     assert gesehen["ids"] == [1, 2, 3]
-    assert gesehen["sitzungen"][0]["committee"] == "Jugendhilfeausschuss"
+    assert gesehen["sessions"][0]["committee"] == "Jugendhilfeausschuss"
     # Sitzung MIT Beschlüssen: das sources-Event nennt sie, aber ohne
     # Tagesordnungs-Anriss — die Inhalte stehen ja schon in den Quellen,
     # die Chat-Karte (agenda-basiert) bleibt hier bewusst aus.
-    (s,) = src["sitzungen"]
+    (s,) = src["sessions"]
     assert s["n_beschluesse"] == 3 and s["n_agenda"] == 0 and s["agenda"] == []
 
 
@@ -3715,15 +3819,15 @@ def test_ask_sitzungsfrage_ueberlebt_die_kondensierung(client, monkeypatch):
     cs.close()
     # Analyse liefert eine kondensierte Fassung OHNE erkennbares Signalwort.
     monkeypatch.setattr(qa_mod, "analyse_query", lambda q, **k: {
-        "frage": "Themen der Sitzung des Bauausschusses", "begriffe": "Bauausschuss Themen",
-        "typ": "thema", "partei": None, "varianten": [], "eng": False})
+        "question": "Themen der Sitzung des Bauausschusses", "terms": "Bauausschuss Themen",
+        "kind": "topic", "party": None, "variants": [], "eng": False})
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([], "semantisch"))
     with client.stream("POST", "/api/council/ask", json={
             "question": "Um was geht es im Bauausschuss morgen?"}) as r:
         body = "".join(r.iter_text())
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     src = next(e for e in events if e["type"] == "sources")
-    assert src["qtype"] == "sitzung"
+    assert src["qtype"] == "session"
     answer = "".join(e["text"] for e in events if e["type"] == "token")
     assert "tagt erst am" in answer and "Bebauungsplan N-777" in answer
 
@@ -3751,18 +3855,18 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
             "VALUES (12, 'Jugendhilfeausschuss', '2026-06-17', '16:00', '', '')")
         cs._conn.execute(
             "INSERT INTO council_decisions (id, ksinr, position, item_number, kind, title, outcome) "
-            "VALUES (1, 12, 0, '5', 'decision', 'Krippengruppe', 'angenommen')")
+            "VALUES (1, 12, 0, '5', 'decision', 'Krippengruppe', 'accepted')")
     cs.close()
     # Die Semantik „findet" immer denselben alten Wortbeitrag …
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(77, 0.9)])
     monkeypatch.setattr(emb_mod, "search_zusagen", lambda *a, **k: [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
-        {"id": 77, "sprecher": "Alt Redner", "partei": None, "art": "rede",
+        {"id": 77, "speaker": "Alt Redner", "party": None, "art": "rede",
          "top": "Altes Thema", "text": "Ein alter Beitrag.", "session_date": "2021-01-01",
-         "committee": "Rat", "seite": None, "ksinr": 100}] if ids else [])
+         "committee": "Rat", "page": None, "ksinr": 100}] if ids else [])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_zu_beschluessen", lambda self, c: [])
     alt = {"id": 50, "title": "Altes Bau-Thema", "score": 0.9,
-           "session_date": "2021-01-01", "committee": "Rat", "outcome": "angenommen"}
+           "session_date": "2021-01-01", "committee": "Rat", "outcome": "accepted"}
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: ([dict(alt)], "semantisch"))
 
     def frag(question):
@@ -3773,12 +3877,12 @@ def test_ask_keine_debatten_vor_der_sitzung(client, monkeypatch):
 
     # Zukunfts-Sitzung: KEINE Debatten, trotz „Treffer" der Semantik.
     src = frag("Um was geht es im Bauausschuss morgen?")
-    assert src["qtype"] == "sitzung" and src["debatten"] == []
+    assert src["qtype"] == "session" and src["debates"] == []
     # Vergangene Sitzung mit Beschlüssen: Debatten bleiben (Positivprobe —
     # dieselben Mocks liefern hier sichtbar den Beitrag).
     src = frag("Was hat der Jugendhilfeausschuss am 17.06.2026 beschlossen?")
-    assert src["qtype"] == "sitzung"
-    assert [d["sprecher"] for d in src["debatten"]] == ["Alt Redner"]
+    assert src["qtype"] == "session"
+    assert [d["speaker"] for d in src["debates"]] == ["Alt Redner"]
 
 
 def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch):
@@ -3816,8 +3920,8 @@ def test_ask_sitzungsfrage_ohne_protokoll_antwortet_ehrlich(client, monkeypatch)
     src = next(e for e in events if e["type"] == "sources")
     # Kein „mit Vorsicht"-Hinweis neben der Kalender-Antwort: Die Sitzung ist
     # deterministisch aufgelöst, auch wenn es (noch) keine Beschlüsse gibt.
-    assert src["beleglage"] == "solide"
-    (s,) = src["sitzungen"]
+    assert src["evidence_level"] == "solide"
+    (s,) = src["sessions"]
     assert s["committee"] == "Sportausschuss" and s["kuenftig"] is True
     # Formalien (Beschlussfähigkeit) zählen mit, füllen aber nicht den Anriss —
     # der zeigt Inhalte (Wochenvorschau-Filter, dev-Probe 26.08.).
@@ -3837,20 +3941,20 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Ausfallbürgschaft Stadion", "summary": "Bürgschaft",
-             "policy_field": "sport", "outcome": "angenommen", "session_date": "2026-06-01",
+             "policy_field": "sport", "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Rat", "score": 1.0},
             {"id": 6, "title": "Nahverkehrsplan Teilfortschreibung", "summary": "ÖPNV",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Rat", "score": 0.9},
             {"id": 7, "title": "Ganz anderer Beschluss", "summary": "Formalie",
-             "policy_field": "sonstiges", "outcome": "angenommen", "session_date": "2026-05-01",
+             "policy_field": "sonstiges", "outcome": "accepted", "session_date": "2026-05-01",
              "committee": "Rat", "score": 0.8}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
     gesehen: dict = {}
 
-    def fake_vereinfachen(frage, bisher, ctx, *a, **k):
-        gesehen.update(frage=frage, bisher=bisher, ids=[c["id"] for c in ctx])
+    def fake_vereinfachen(question, bisher, ctx, *a, **k):
+        gesehen.update(question=question, bisher=bisher, ids=[c["id"] for c in ctx])
         yield "Die Stadt zahlt, wenn der Verein den Kredit nicht bedient [5]."
 
     def darf_nicht_laufen(*a, **k):
@@ -3863,8 +3967,8 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
               "beauftragte den ZVBN mit der Teilfortschreibung [6].")
     with client.stream("POST", "/api/council/ask", json={
             "question": "Erkläre das bitte einfacher, ohne Fachbegriffe.",
-            "verlauf": [{"frage": "Was wurde am 1. Juni beschlossen?", "antwort": "…"}],
-            "vorherige_antwort": vorher}) as r:
+            "history": [{"question": "Was wurde am 1. Juni beschlossen?", "answer": "…"}],
+            "previous_answer": vorher}) as r:
         body = "".join(r.iter_text())
     events = [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
     assert "".join(e["text"] for e in events if e["type"] == "token").startswith("Die Stadt zahlt")
@@ -3873,7 +3977,7 @@ def test_ask_einfacher_erklaeren_nimmt_den_eigenen_prompt(client, monkeypatch):
     # auch keine Fußnote der einfachen Fassung werden können.
     assert gesehen["ids"] == [5, 6]
     # Ohne Analyse-Call (kein API-Key im Test) trägt der Verlauf das Thema.
-    assert gesehen["frage"] == "Was wurde am 1. Juni beschlossen?"
+    assert gesehen["question"] == "Was wurde am 1. Juni beschlossen?"
 
     # Gegenprobe: eine inhaltliche Frage geht weiter den normalen Weg.
     monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Normal [5]."]))
@@ -3893,8 +3997,8 @@ def test_ask_stream_faellt_auf_abgeleitete_fragen_zurueck(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 9, "title": "Sanierung Cäcilienbrücke — Kosten", "summary": "",
-             "policy_field": "verkehr", "outcome": "angenommen", "session_date": "2026-06-01",
-             "committee": "Verkehrsausschuss", "score": 1.0, "gegenstimmen": 4,
+             "policy_field": "verkehr", "outcome": "accepted", "session_date": "2026-06-01",
+             "committee": "Verkehrsausschuss", "score": 1.0, "no_votes": 4,
              "amount_eur": 1_000_000}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -3993,9 +4097,9 @@ def test_entity_detail_liefert_verwandte_themen(client):
     store = CouncilStore(COUNCIL_DB)
     store._conn.executemany(
         "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-        [(1, "fliegerhorst", "Fliegerhorst", "ort", 158),
-         (2, "entlastungsstrasse", "Entlastungsstraße", "ort", 40),
-         (3, "brookweg", "Brookweg", "ort", 5)])
+        [(1, "fliegerhorst", "Fliegerhorst", "place", 158),
+         (2, "entlastungsstrasse", "Entlastungsstraße", "place", 40),
+         (3, "brookweg", "Brookweg", "place", 5)])
     store._conn.commit()
     store.save_entity_relations([
         ("fliegerhorst", "entlastungsstrasse", "belegt", 0, 0.13, 22),
@@ -4007,8 +4111,8 @@ def test_entity_detail_liefert_verwandte_themen(client):
     related = r.json()["related"]
     assert [x["name"] for x in related] == ["Entlastungsstraße", "Brookweg"]
     # Belegte zuerst, mit Belegzahl — die UI trennt danach die beiden Zeilen.
-    assert related[0]["rel_type"] == "belegt" and related[0]["evidence"] == 22
-    assert related[1]["rel_type"] == "aehnlich" and related[1]["evidence"] == 0
+    assert related[0]["rel_type"] == "documented" and related[0]["evidence"] == 22
+    assert related[1]["rel_type"] == "similar" and related[1]["evidence"] == 0
 
 
 def test_entity_ohne_verwandte_liefert_leere_liste(client):
@@ -4016,7 +4120,7 @@ def test_entity_ohne_verwandte_liefert_leere_liste(client):
     _register(client)
     store = CouncilStore(COUNCIL_DB)
     store._conn.execute(
-        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','ort',3)")
+        "INSERT INTO council_entities(id, slug, name, kind, n) VALUES (1,'solo','Solo','place',3)")
     store._conn.commit()
     store.close()
     r = client.get("/api/council/entity/solo")
@@ -4036,7 +4140,7 @@ def _seed_bruecke(council: CouncilStore) -> None:
                 "Cäcilienbrücke — Ersatzverkehr Fähre",
                 "Cäcilienbrücke: Zeitplan der Wiedereröffnung"]):
             council._conn.execute(
-                "INSERT INTO council_decisions(ksinr, position, title, policy_field, beschluss) "
+                "INSERT INTO council_decisions(ksinr, position, title, policy_field, official_text) "
                 "VALUES (1,?,?,'verkehr','Beschluss zur Brücke.')", (i, title))
     council.rebuild_fts()
 
@@ -4113,11 +4217,11 @@ def test_suggestions_lassen_vages_nie_durch(client, monkeypatch):
     with council._conn:
         for i in range(3):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                     "angenommen", None, None, None, [], None, None, None)
+                                     "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "cae-bruecke", "Cäcilienbrücke"), (2, "buergerbeteiligung", "Bürgerbeteiligung")]:
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             for did in ids[:2]:
                 council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
@@ -4157,11 +4261,11 @@ def test_suggestions_filtern_gattungswoerter_ohne_llm(client, monkeypatch):
     with council._conn:
         for i in range(3):
             council._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                     "angenommen", None, None, None, [], None, None, None)
+                                     "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
         for eid, slug, name in [(1, "klima", "Klima"), (2, "fliegerhorst", "Fliegerhorst")]:
             council._conn.execute(
-                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'ort',3)",
+                "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,'place',3)",
                 (eid, slug, name))
             for did in ids[:2]:
                 council._conn.execute("INSERT INTO council_entity_links VALUES (?, ?)", (eid, did))
@@ -4203,17 +4307,17 @@ def test_decisions_topic_filter_grenzt_ein_und_kombiniert(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (1,1,0,'Radweg beschlossen','angenommen','decision')")
+            "VALUES (1,1,0,'Radweg beschlossen','accepted','decision')")
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (2,1,1,'Radweg abgelehnt','abgelehnt','decision')")
+            "VALUES (2,1,1,'Radweg abgelehnt','rejected','decision')")
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (3,1,2,'Ganz anderes Thema','angenommen','decision')")
+            "VALUES (3,1,2,'Ganz anderes Thema','accepted','decision')")
     council.close()
 
     tid = client.post("/api/topics", json={"name": "Radwege", "description": "Alles zu Radwegen"}).json()["id"]
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     store.save_topic_decision_matches(tid, 1, [(1, 0.9), (2, 0.8)])
     store.close()
 
@@ -4225,7 +4329,7 @@ def test_decisions_topic_filter_grenzt_ein_und_kombiniert(client):
     assert r.json()["total"] == 2
     assert {d["id"] for d in r.json()["decisions"]} == {1, 2}
     # Thema UND Ergebnis-Filter greifen zusammen.
-    assert client.get(f"/api/council/decisions?limit=50&topic={tid}&outcome=abgelehnt").json()["total"] == 1
+    assert client.get(f"/api/council/decisions?limit=50&topic={tid}&outcome=rejected").json()["total"] == 1
 
 
 def test_decisions_topic_filter_nur_eigene_themen(client):
@@ -4247,7 +4351,7 @@ def test_decisions_topic_ohne_treffer_liefert_leer(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind) "
-            "VALUES (1,1,0,'Irgendwas','angenommen','decision')")
+            "VALUES (1,1,0,'Irgendwas','accepted','decision')")
     council.close()
     tid = client.post("/api/topics", json={"name": "Leer", "description": "ohne Treffer"}).json()["id"]
     assert client.get(f"/api/council/decisions?limit=50&topic={tid}").json()["total"] == 0
@@ -4265,38 +4369,38 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
             "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
             "VALUES (?,1,?,?,?,'decision')",
             [
-                (1, 0, "Widmung Klingenbergplatz", "angenommen"),
-                (2, 1, "Sportpark Kreyenbrück", "abgelehnt"),
-                (3, 2, "Sanierung Rathaus", "angenommen"),
-                (4, 3, "Bericht aus Kreyenbrück", "zur_kenntnis"),
+                (1, 0, "Widmung Klingenbergplatz", "accepted"),
+                (2, 1, "Sportpark Kreyenbrück", "rejected"),
+                (3, 2, "Sanierung Rathaus", "accepted"),
+                (4, 3, "Bericht aus Kreyenbrück", "noted"),
             ],
         )
     council.save_decision_locations(1, [
-        {"name": "Klingenbergplatz", "kind": "platz", "source": "title",
+        {"name": "Klingenbergplatz", "kind": "square", "source": "title",
          "evidence": "Widmung Klingenbergplatz", "method": "regex", "confidence": 0.98},
-        {"name": "Cloppenburger Straße", "kind": "strasse", "source": "beschluss",
+        {"name": "Cloppenburger Straße", "kind": "street", "source": "official_text",
          "evidence": "an der Cloppenburger Straße", "method": "regex", "confidence": 0.94},
     ], "hash-1")
     council.save_decision_locations(2, [
-        {"name": "Sportpark Kreyenbrück", "kind": "gebaeude", "source": "title",
+        {"name": "Sportpark Kreyenbrück", "kind": "building", "source": "title",
          "evidence": "Sportpark Kreyenbrück", "method": "llm", "confidence": 0.9},
     ], "hash-2")
     council.save_decision_locations(3, [
-        {"name": "Rathaus", "kind": "gebaeude", "source": "title",
+        {"name": "Rathaus", "kind": "building", "source": "title",
          "evidence": "Sanierung Rathaus", "method": "llm", "confidence": 0.9},
     ], "hash-3")
     council.save_decision_locations(4, [
-        {"name": "Kreyenbrück", "kind": "stadtteil", "source": "title",
-         "evidence": "Bericht aus Kreyenbrück", "method": "stadtteilliste", "confidence": 0.99},
+        {"name": "Kreyenbrück", "kind": "district", "source": "title",
+         "evidence": "Bericht aus Kreyenbrück", "method": "district_list", "confidence": 0.99},
     ], "hash-4")
     with council._conn:
         council._conn.execute(
-            "UPDATE council_locations SET stadtteil='Kreyenbrück' "
+            "UPDATE council_locations SET district='Kreyenbrück' "
             "WHERE slug IN "
             "('klingenbergplatz','cloppenburger-strasse','sportpark-kreyenbrueck','kreyenbrueck')"
         )
         council._conn.execute(
-            "UPDATE council_locations SET stadtteil='Innenstadt' WHERE slug='rathaus'"
+            "UPDATE council_locations SET district='Innenstadt' WHERE slug='rathaus'"
         )
     council.close()
 
@@ -4331,7 +4435,7 @@ def test_decisions_district_filter_is_combined_and_explains_matches(client):
     assert "lon" in first["location_matches"][0]
     # Ortsbezug und vorhandene Suchfilter greifen gemeinsam.
     accepted = client.get(
-        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=angenommen"
+        "/api/council/decisions?limit=50&district=Kreyenbr%C3%BCck&category=vote&outcome=accepted"
     ).json()
     assert accepted["total"] == 1 and accepted["decisions"][0]["id"] == 1
     reports = client.get(
@@ -4348,24 +4452,24 @@ def test_curated_place_alias_filters_by_stable_id_and_has_profile(client):
     with council._conn:
         council._conn.execute(
             "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
-            "VALUES (1,1,0,'Neues aus der Donnerschwee-Kaserne','angenommen','decision')"
+            "VALUES (1,1,0,'Neues aus der Donnerschwee-Kaserne','accepted','decision')"
         )
     council.save_decision_locations(1, [{
         "name": "Donnerschwee-Kaserne",
-        "kind": "gebiet",
+        "kind": "area",
         "source": "title",
         "evidence": "Neues aus der Donnerschwee-Kaserne",
-        "method": "ortskatalog",
+        "method": "place_catalog",
         "confidence": 0.99,
     }], "hash-1")
     row = council._conn.execute(
-        "SELECT name, place_id, ortsbereich_id, stadtteil FROM council_locations"
+        "SELECT name, place_id, local_area_id, district FROM council_locations"
     ).fetchone()
     assert dict(row) == {
         "name": "Neu-Donnerschwee",
         "place_id": "neu-donnerschwee",
-        "ortsbereich_id": "donnerschwee",
-        "stadtteil": "Donnerschwee",
+        "local_area_id": "donnerschwee",
+        "district": "Donnerschwee",
     }
     council.close()
 
@@ -4395,18 +4499,18 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
     with council._conn:
         council._conn.executemany(
             "INSERT INTO council_decisions(id,ksinr,position,title,outcome,kind) "
-            "VALUES (?,1,?,'Planung Testanger','angenommen','decision')",
+            "VALUES (?,1,?,'Planung Testanger','accepted','decision')",
             [(1, 0), (2, 1), (3, 2)],
         )
     for decision_id in (1, 2, 3):
         council.save_decision_locations(decision_id, [{
-            "name": "Testanger", "kind": "gebiet", "source": "title",
+            "name": "Testanger", "kind": "area", "source": "title",
             "evidence": "Planung Testanger", "method": "llm", "confidence": 0.92,
         }], f"hash-{decision_id}")
     with council._conn:
         council._conn.execute(
-            "UPDATE council_locations SET lat=53.16,lon=8.22,stadtteil='Nadorst',"
-            "ortsbereich_id='nadorst',geo_tried=1 WHERE slug='testanger'"
+            "UPDATE council_locations SET lat=53.16,lon=8.22,district='Nadorst',"
+            "local_area_id='nadorst',geo_tried=1 WHERE slug='testanger'"
         )
     council.close()
 
@@ -4414,7 +4518,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
     assert pending.status_code == 200
     assert pending.json()["candidates"][0]["slug"] == "testanger"
     concrete = client.put("/api/admin/place-candidates/testanger", json={
-        "status": "concrete", "name": "Testanger", "kind": "gebaeude",
+        "status": "concrete", "name": "Testanger", "kind": "building",
     })
     assert concrete.status_code == 200 and concrete.json()["status"] == "concrete"
     concrete_list = client.get("/api/admin/place-candidates?status=concrete")
@@ -4427,7 +4531,7 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
 
     reviewed = client.put("/api/admin/place-candidates/testanger", json={
         "status": "approved", "place_id": "testanger", "name": "Testanger",
-        "kind": "quartier", "parent_id": "nadorst", "aliases": ["Test-Anger"],
+        "kind": "neighborhood", "parent_id": "nadorst", "aliases": ["Test-Anger"],
         "description": "Ein überprüftes Testgebiet.", "source_url": "https://example.test/ort",
     })
     assert reviewed.status_code == 200
@@ -4452,18 +4556,18 @@ def test_admin_reviews_place_candidate_and_map_links_exact_decisions(client):
 
 # --- Vorgänge verfolgen (Design 28a/W1) ------------------------------------
 
-def _seed_vorlage(kvonr: int = 4711, vorlage_nr: str = "26/0396",
+def _seed_vorlage(kvonr: int = 4711, template_number: str = "26/0396",
                   stations: list[tuple[str, str, str | None]] | None = None) -> None:
     """Eine Vorlage samt Beratungsfolge in die Council-DB legen."""
     council = CouncilStore(COUNCIL_DB)
     with council._conn:
         council._conn.execute(
-            "INSERT OR REPLACE INTO council_vorlagen(kvonr, vorlage_nr, title, fetched_at) "
-            "VALUES (?,?,?,'2026-01-01')", (kvonr, vorlage_nr, "Stadionneubau Maastrichter Straße"))
-        for datum, gremium, ergebnis in (stations or []):
+            "INSERT OR REPLACE INTO council_templates(kvonr, template_number, title, fetched_at) "
+            "VALUES (?,?,?,'2026-01-01')", (kvonr, template_number, "Stadionneubau Maastrichter Straße"))
+        for date, committee, result in (stations or []):
             council._conn.execute(
-                "INSERT INTO council_beratungen(kvonr, datum, gremium, ergebnis, fetched_at) "
-                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, datum, gremium, ergebnis))
+                "INSERT INTO council_deliberations(kvonr, date, committee, result, fetched_at) "
+                "VALUES (?,?,?,?,'2026-01-01')", (kvonr, date, committee, result))
     council.close()
 
 
@@ -4472,32 +4576,32 @@ def test_vorlage_follow_anlegen_und_wieder_loesen(client):
     _seed_vorlage(stations=[("2026-01-15", "Verkehrsausschuss", "angenommen")])
 
     assert client.get("/api/council/follows").json()["follows"] == []
-    assert client.post("/api/council/vorlage/4711/follow").status_code == 201
+    assert client.post("/api/council/template/4711/follow").status_code == 201
 
     follows = client.get("/api/council/follows").json()["follows"]
     assert len(follows) == 1
-    assert follows[0]["vorlage_nr"] == "26/0396"
+    assert follows[0]["template_number"] == "26/0396"
     assert follows[0]["n_stationen"] == 1
-    assert follows[0]["letzte"]["gremium"] == "Verkehrsausschuss"
+    assert follows[0]["letzte"]["committee"] == "Verkehrsausschuss"
 
     # Zweimal folgen bleibt ein Follow (UNIQUE owner+kvonr).
-    client.post("/api/council/vorlage/4711/follow")
+    client.post("/api/council/template/4711/follow")
     assert len(client.get("/api/council/follows").json()["follows"]) == 1
 
-    assert client.delete("/api/council/vorlage/4711/follow").status_code == 200
+    assert client.delete("/api/council/template/4711/follow").status_code == 200
     assert client.get("/api/council/follows").json()["follows"] == []
 
 
 def test_vorlage_follow_unbekannte_vorlage_404(client):
     _register(client)
-    assert client.post("/api/council/vorlage/999999/follow").status_code == 404
+    assert client.post("/api/council/template/999999/follow").status_code == 404
 
 
 def test_vorlage_follow_ist_pro_konto(client):
     """Follows dürfen nicht zwischen Konten durchschlagen."""
     _register(client)
     _seed_vorlage()
-    client.post("/api/council/vorlage/4711/follow")
+    client.post("/api/council/template/4711/follow")
 
     _register(client, email="andere@test.de")
     client.post("/api/auth/login", json={"email": "andere@test.de", "password": "password123"})
@@ -4512,9 +4616,9 @@ def test_vorlage_follow_merkt_sich_den_stand_beim_abonnieren(client):
         ("2026-01-15", "Verkehrsausschuss", "angenommen"),
         ("2026-02-01", "Rat", None),
     ])
-    client.post("/api/council/vorlage/4711/follow")
+    client.post("/api/council/template/4711/follow")
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     row = store.get_vorlage_follow_targets()[0]
     store.close()
     stations = json.loads(row["stations"])
@@ -4530,10 +4634,10 @@ def test_vorlage_follow_naechste_station_ist_die_zukuenftige(client):
         ((heute - timedelta(days=30)).isoformat(), "Verkehrsausschuss", "angenommen"),
         ((heute + timedelta(days=14)).isoformat(), "Rat", None),
     ])
-    client.post("/api/council/vorlage/4711/follow")
+    client.post("/api/council/template/4711/follow")
     f = client.get("/api/council/follows").json()["follows"][0]
-    assert f["naechste"]["gremium"] == "Rat"
-    assert f["letzte"]["gremium"] == "Verkehrsausschuss"
+    assert f["naechste"]["committee"] == "Rat"
+    assert f["letzte"]["committee"] == "Verkehrsausschuss"
 
 
 def test_decision_detail_meldet_follow_zustand(client):
@@ -4544,18 +4648,18 @@ def test_decision_detail_meldet_follow_zustand(client):
     council.save_session(CouncilSession(1, "Rat", "2026-01-15", "17:00", "Ratssaal"))
     with council._conn:
         council._conn.execute(
-            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind, vorlage_nr, kvonr) "
-            "VALUES (1,1,0,'Stadion','angenommen','decision','26/0396',4711)")
+            "INSERT INTO council_decisions(id, ksinr, position, title, outcome, kind, template_number, kvonr) "
+            "VALUES (1,1,0,'Stadion','accepted','decision','26/0396',4711)")
     council.close()
 
     assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": False}
-    client.post("/api/council/vorlage/4711/follow")
+    client.post("/api/council/template/4711/follow")
     assert client.get("/api/council/decision/1").json()["follow"] == {"kvonr": 4711, "following": True}
 
 
 # --- Sitzungsliste: Blättern und Gesamtzahl ---------------------------------
 
-def _seed_sessions(n: int, *, jahr: int = 2025) -> None:
+def _seed_sessions(n: int, *, year: int = 2025) -> None:
     """n vergangene Sitzungen, absteigend datiert (Tag 1..n im Januar/Februar)."""
     council = CouncilStore(COUNCIL_DB)
     for i in range(n):
@@ -4563,7 +4667,7 @@ def _seed_sessions(n: int, *, jahr: int = 2025) -> None:
         monat, tag = (1, tag) if tag <= 28 else (2, tag - 28)
         council.save_session(CouncilSession(
             1000 + i, "Rat" if i % 2 else "Sozialausschuss",
-            f"{jahr}-{monat:02d}-{tag:02d}", "17:00", "Ratssaal"))
+            f"{year}-{monat:02d}-{tag:02d}", "17:00", "Ratssaal"))
     council.close()
 
 
@@ -4619,7 +4723,7 @@ def test_link_vorschau_ist_oeffentlich_und_beschreibt_den_beschluss(client):
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(4242, "Verkehrsausschuss", "2026-03-05", "17:00", "Fleiwa"))
     cs._insert_decision(4242, 0, "decision", None, "Ö 5", "Radwegeausbau Nadorster Straße",
-                        "Der Ausbau wird beschlossen.", "angenommen", "mehrheitlich", 3, 1,
+                        "Der Ausbau wird beschlossen.", "accepted", "majority", 3, 1,
                         ["SPD"], None, None, None)
     cs._conn.commit()
     did = cs._conn.execute(
@@ -4657,13 +4761,13 @@ def _seed_geteilter_beschluss(ksinr=5150, mit_vorgang=True) -> int:
     cs.save_session(CouncilSession(ksinr, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa",
                                    agenda_items=[AgendaItem("Ö 4", "Radweg Nadorster Straße")]))
     cs._insert_decision(ksinr, 0, "decision", None, "Ö 4", "Radweg Nadorster Straße",
-                        "Der Ausbau wird beschlossen.", "angenommen", "einstimmig", 0, 0,
+                        "Der Ausbau wird beschlossen.", "accepted", "unanimous", 0, 0,
                         ["SPD", "Grüne"],
                         "25/0123" if mit_vorgang else None,
                         4711 if mit_vorgang else None, None)
     cs._conn.execute(
         "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
-        (ksinr, "Anke Lüdtke", "SPD", "mitglied", None))
+        (ksinr, "Anke Lüdtke", "SPD", "member", None))
     cs._conn.commit()
     did = cs._conn.execute(
         "SELECT id FROM council_decisions WHERE ksinr = ?", (ksinr,)).fetchone()[0]
@@ -4684,7 +4788,7 @@ def test_geteilter_beschluss_ist_ohne_anmeldung_lesbar(client):
     assert r.status_code == 200, "Beschluss muss ohne Anmeldung erreichbar sein"
     data = r.json()
     assert data["decision"]["title"] == "Radweg Nadorster Straße"
-    assert data["decision"]["outcome"] == "angenommen"
+    assert data["decision"]["outcome"] == "accepted"
     # Der Kontext, der die Seite lesbar macht, ist mit dabei:
     assert data["present_parties"] and data["importance_breakdown"]
     assert "ratsinfo_url" in data
@@ -4715,14 +4819,14 @@ def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):
 
     # Die Wortbeiträge-Seiten derselben Person: gleicher Bestand, nur
     # vollständig — und ebenfalls ohne Anmeldung lesbar.
-    wb = client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=5")
+    wb = client.get("/api/council/person/anke-luedtke/speeches?limit=5")
     assert wb.status_code == 200
     b = wb.json()
-    assert set(b) >= {"items", "total", "gesamt", "gremien"}
-    assert client.get("/api/council/person/gibtsnicht/wortbeitraege").status_code == 404
+    assert set(b) >= {"items", "total", "overall", "committees"}
+    assert client.get("/api/council/person/gibtsnicht/speeches").status_code == 404
     # Grenzen greifen: limit über 100 und negatives offset werden abgewiesen.
-    assert client.get("/api/council/person/anke-luedtke/wortbeitraege?limit=500").status_code == 422
-    assert client.get("/api/council/person/anke-luedtke/wortbeitraege?offset=-1").status_code == 422
+    assert client.get("/api/council/person/anke-luedtke/speeches?limit=500").status_code == 422
+    assert client.get("/api/council/person/anke-luedtke/speeches?offset=-1").status_code == 422
 
 
 def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
@@ -4733,25 +4837,25 @@ def test_verwaltung_mit_erkanntem_amt_hat_eigenen_steckbrief(client):
     cs = CouncilStore(COUNCIL_DB)
     cs._conn.executemany(
         "INSERT INTO council_attendance (ksinr, name, party, role, note) VALUES (?, ?, ?, ?, ?)",
-        [(5153, "Jürgen Krogmann", "Verwaltung", "verwaltung", "Oberbürgermeister"),
-         (5153, "Dagmar Sachse", "Verwaltung", "verwaltung", "Für Oberbürgermeister Krogmann")])
+        [(5153, "Jürgen Krogmann", "Verwaltung", "administration", "Oberbürgermeister"),
+         (5153, "Dagmar Sachse", "Verwaltung", "administration", "Für Oberbürgermeister Krogmann")])
     cs._conn.commit()
     cs.close()
 
     r = client.get("/api/council/person/juergen-krogmann")
     assert r.status_code == 200
     body = r.json()
-    assert body["typ"] == "verwaltung" and body["rolle"] == "Oberbürgermeister"
+    assert body["type"] == "administration" and body["role"] == "Oberbürgermeister"
 
     # Nur eine Vertretungs-Notiz, kein erkanntes Amt → weiterhin 404.
     assert client.get("/api/council/person/dagmar-sachse").status_code == 404
 
-    wb = client.get("/api/council/person/juergen-krogmann/wortbeitraege")
+    wb = client.get("/api/council/person/juergen-krogmann/speeches")
     assert wb.status_code == 200
-    assert set(wb.json()) >= {"items", "total", "gesamt", "gremien"}
+    assert set(wb.json()) >= {"items", "total", "overall", "committees"}
 
     # Ratsmitglieder-Antwort trägt jetzt ebenfalls den typ-Diskriminator.
-    assert client.get("/api/council/person/anke-luedtke").json()["typ"] == "rat"
+    assert client.get("/api/council/person/anke-luedtke").json()["type"] == "council"
 
 
 def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
@@ -4772,7 +4876,7 @@ def test_stoebern_und_persoenliches_bleiben_hinter_der_anmeldung(client):
         "/api/council/trends",
         "/api/council/follows",
         "/api/council/diese-woche",
-        "/api/council/fundstueck",
+        "/api/council/daily-find",
         "/api/topics",
         "/api/auth/me",
     ]
@@ -4815,7 +4919,7 @@ def test_vorschau_karte_bleibt_lesbar_auch_bei_amtstiteln(client):
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(6001, "Rat der Stadt", "2026-05-04", "17:00", "Rathaus"))
     # Ohne Beschlusstext — dann drohte die Beschreibung bei „Gremium · Datum." zu enden.
-    cs._insert_decision(6001, 0, "decision", None, "Ö 2", lang, None, "vertagt",
+    cs._insert_decision(6001, 0, "decision", None, "Ö 2", lang, None, "postponed",
                         None, None, None, [], None, None, None)
     cs._conn.commit()
     did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 6001").fetchone()[0]
@@ -4832,7 +4936,7 @@ def test_vorschau_karte_bleibt_lesbar_auch_bei_amtstiteln(client):
     # Kurze Titel bleiben unangetastet.
     cs = CouncilStore(COUNCIL_DB)
     cs._insert_decision(6001, 1, "decision", None, "Ö 3", "Radweg beschlossen",
-                        "Wird gebaut.", "angenommen", None, None, None, [], None, None, None)
+                        "Wird gebaut.", "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     kurz_id = cs._conn.execute(
         "SELECT id FROM council_decisions WHERE item_number = 'Ö 3'").fetchone()[0]
@@ -4853,7 +4957,7 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     owner = _register(client).json()["id"]
 
     # Etwas liegt schon in der Warteschlange, als abgeschaltet wird.
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     notify.einreihen(store, owner, notify.N2_THEMA, "Radweg", "<p>x</p>", "/council")
     assert len(store.due_notifications(owner, "2999-01-01")) == 1
     store.close()
@@ -4862,7 +4966,7 @@ def test_zustellweg_off_ist_erlaubt_und_raeumt_die_warteschlange(client):
     assert r.status_code == 200, r.text
     assert r.json()["delivery_channel"] == "off"
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     # Nicht bloß stummgeschaltet: Was wartete, ist weg. Sonst käme es beim
     # Wiedereinschalten als Nachlieferung aus der Zeit, in der ausdrücklich
     # nichts gewollt war.
@@ -4890,26 +4994,26 @@ def test_ask_reicht_verlauf_an_die_analyse(client, monkeypatch):
     gesehen = {}
 
     def fake_analyse(q, model=None, verlauf=None):
-        gesehen["frage"] = q
+        gesehen["question"] = q
         gesehen["verlauf"] = verlauf
-        return {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
-                "begriffe": "Kosten Cäcilienbrücke", "typ": "geld", "partei": None}
+        return {"question": "Was kostet der Neubau der Cäcilienbrücke?",
+                "terms": "Kosten Cäcilienbrücke", "kind": "money", "party": None}
 
     cand = [{"id": 5, "title": "Ersatzbau Cäcilienbrücke", "summary": "Kosten",
-             "outcome": "angenommen", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
+             "outcome": "accepted", "session_date": "2025-08-25", "committee": "Rat", "score": 1.0}]
     monkeypatch.setattr(qa_mod, "analyse_query", fake_analyse)
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "answer_stream", lambda *a, **k: iter(["Antwort [5]."]))
 
     with client.stream("POST", "/api/council/ask", json={
         "question": "Und was kostet das?",
-        "verlauf": [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
-                     "antwort": "Resolution ans WSA."}],
+        "history": [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
+                     "answer": "Resolution ans WSA."}],
     }) as r:
         assert r.status_code == 200
         "".join(r.iter_text())
-    assert gesehen["verlauf"] == [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
-                                   "antwort": "Resolution ans WSA."}]
+    assert gesehen["verlauf"] == [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
+                                   "answer": "Resolution ans WSA."}]
 
 
 # ---- „Gründliche Recherche" (RG-10, Task 34) ----
@@ -4921,9 +5025,9 @@ def _deep_mocks(monkeypatch):
     from council import embeddings as emb_mod
     from council import qa as qa_mod
 
-    monkeypatch.setattr(qa_mod, "deep_zerlege", lambda frage, **k: [
-        {"name": "Beschlusslage", "frage": "Stand Stadion", "begriffe": "stadion neubau"},
-        {"name": "Kosten", "frage": "Kosten Stadion", "begriffe": "kosten finanzierung"},
+    monkeypatch.setattr(qa_mod, "deep_zerlege", lambda question, **k: [
+        {"name": "Beschlusslage", "question": "Stand Stadion", "terms": "stadion neubau"},
+        {"name": "Kosten", "question": "Kosten Stadion", "terms": "kosten finanzierung"},
     ])
     monkeypatch.setattr(emb_mod, "hybrid_search",
                         lambda store, q, e, **k: [(5, 1.2)] if "stadion" in e else [(5, 0.8), (7, 0.4)])
@@ -4936,13 +5040,13 @@ def _deep_mocks(monkeypatch):
     monkeypatch.setattr(CouncilStore, "anlagen_by_ids", lambda self, ids: [
         {"document_id": 901, "label": "Schalltechnisches Gutachten", "kvonr": 111,
          "url": "https://buergerinfo.oldenburg.de/getfile.asp?id=901",
-         "vorlage_nr": "26/0100", "vorlage_titel": "Grundsatzbeschluss Stadionneubau"}])
+         "template_number": "26/0100", "template_title": "Grundsatzbeschluss Stadionneubau"}])
     cand = [
         {"id": 5, "title": "Grundsatzbeschluss Stadionneubau", "summary": "Neubau am Marschweg",
-         "vorlage_nr": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "angenommen",
+         "template_number": "26/0100", "kvonr": 111, "policy_field": "sport", "outcome": "accepted",
          "session_date": "2026-06-01", "committee": "Rat", "factions": None, "amount_eur": None},
         {"id": 7, "title": "Projektgesellschaft Stadion", "summary": "Gründung",
-         "vorlage_nr": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "angenommen",
+         "template_number": "26/0200", "kvonr": 222, "policy_field": "sport", "outcome": "accepted",
          "session_date": "2024-03-11", "committee": "Finanzausschuss", "factions": None,
          "amount_eur": None},
     ]
@@ -4950,12 +5054,12 @@ def _deep_mocks(monkeypatch):
                         lambda self, ids: [dict(c) for c in cand if c["id"] in ids])
     monkeypatch.setattr(CouncilStore, "orte_fuer_decisions", lambda self, ids: {})
     monkeypatch.setattr(CouncilStore, "geplante_beratungen_fuer", lambda self, kv: [
-        {"kvonr": 111, "datum": "2099-09-14", "gremium": "Ausschuss für Finanzen",
-         "vorlage_nr": "26/0815", "vorlage_titel": "Finanzierungsbeschluss Projektgesellschaft"}])
+        {"kvonr": 111, "date": "2099-09-14", "committee": "Ausschuss für Finanzen",
+         "template_number": "26/0815", "template_title": "Finanzierungsbeschluss Projektgesellschaft"}])
     monkeypatch.setattr(CouncilStore, "haushalt_fuer_begriffe", lambda self, w: [])
     monkeypatch.setattr(CouncilStore, "vorlage_texts_for", lambda self, nrs: {})
     monkeypatch.setattr(qa_mod, "deep_bericht_stream",
-                        lambda frage, cands, **k: iter(["## Beschlusslage\nDer Rat hat den Neubau",
+                        lambda question, cands, **k: iter(["## Beschlusslage\nDer Rat hat den Neubau",
                                                         " beschlossen [5]."]))
 
 
@@ -4974,25 +5078,25 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
     _register(client)
     _deep_mocks(monkeypatch)
 
-    r = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    r = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     assert r.status_code == 201
     job_id = r.json()["job_id"]
-    assert r.json()["frei"] == 4  # 1 von 5 läuft
+    assert r.json()["remaining"] == 4  # 1 von 5 läuft
 
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
     typen = [e["type"] for e in events]
     assert typen[0] == "phase" and events[0]["phase"] == "zerlegen"
-    assert next(e for e in events if e["type"] == "facetten")["facetten"] == ["Beschlusslage", "Kosten"]
+    assert next(e for e in events if e["type"] == "facets")["facets"] == ["Beschlusslage", "Kosten"]
     assert sum(1 for t in typen if t == "facette") == 2
     src = next(e for e in events if e["type"] == "sources")
     assert [s["id"] for s in src["sources"]] == [5, 7]  # Union beider Facetten, bester Score zuerst
-    assert src["planungen"][0]["gremium"] == "Ausschuss für Finanzen"
+    assert src["planning_procedures"][0]["committee"] == "Ausschuss für Finanzen"
     # Task 33: Anlagen-Treffer mit Fundstelle im sources-Event, gelesen zählt sie mit.
-    assert src["anlagen"][0]["label"] == "Schalltechnisches Gutachten"
-    assert src["anlagen"][0]["auszug"].startswith("Lärmpegel")
+    assert src["attachments"][0]["label"] == "Schalltechnisches Gutachten"
+    assert src["attachments"][0]["excerpt"].startswith("Lärmpegel")
     # Beleg-Nummer: das Frontend macht daraus die Buchstaben-Fußnote zu „[A1]".
-    assert src["anlagen"][0]["nr"] == 1
-    assert src["gelesen"] == 3 and src["zeitraum"] == "2024–2026"
+    assert src["attachments"][0]["nr"] == 1
+    assert src["documents_read"] == 3 and src["period"] == "2024–2026"
     assert "lesen" in [e.get("phase") for e in events if e["type"] == "phase"]
     done = next(e for e in events if e["type"] == "done")
     assert done["cited"] == [5] and done["teilbericht"] is False
@@ -5003,21 +5107,21 @@ def test_deep_research_roundtrip_und_replay(client, monkeypatch):
 
     # Persistierter Endzustand + Wiederfinden über /aktuell.
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
-    assert snap["status"] == "fertig" and "[5]" in snap["bericht"]
-    assert snap["quellen"]["cited"] == [5]
-    assert snap["quellen"]["planungen"][0]["vorlage_titel"].startswith("Finanzierungsbeschluss")
-    assert snap["quellen"]["anlagen"][0]["vorlage_nr"] == "26/0100"
-    akt = client.get("/api/council/deep-research/aktuell").json()
-    assert akt["job"]["id"] == job_id and akt["job"]["gesehen"] == 0
-    assert akt["frei"] == 4  # fertig zählt weiter gegen das Tageskontingent
-    client.post(f"/api/council/deep-research/{job_id}/gesehen")
-    assert client.get("/api/council/deep-research/aktuell").json()["job"]["gesehen"] == 1
+    assert snap["status"] == "fertig" and "[5]" in snap["report"]
+    assert snap["sources"]["cited"] == [5]
+    assert snap["sources"]["planning_procedures"][0]["template_title"].startswith("Finanzierungsbeschluss")
+    assert snap["sources"]["attachments"][0]["template_number"] == "26/0100"
+    akt = client.get("/api/council/deep-research/current").json()
+    assert akt["job"]["id"] == job_id and akt["job"]["seen"] == 0
+    assert akt["remaining"] == 4  # fertig zählt weiter gegen das Tageskontingent
+    client.post(f"/api/council/deep-research/{job_id}/seen")
+    assert client.get("/api/council/deep-research/current").json()["job"]["seen"] == 1
 
     # Fremder Nutzer sieht NICHTS von diesem Job.
     client.cookies.clear()
     _register(client, email="zweite@test.de")
     assert client.get(f"/api/council/deep-research/{job_id}").status_code == 404
-    assert client.get("/api/council/deep-research/aktuell").json()["job"] is None
+    assert client.get("/api/council/deep-research/current").json()["job"] is None
 
 
 def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
@@ -5038,50 +5142,50 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     zerlegt: list[str] = []
     berichtet: list[str] = []
 
-    def _analyse(frage, **k):
-        gesehen["frage"] = frage
+    def _analyse(question, **k):
+        gesehen["question"] = question
         gesehen["verlauf"] = k.get("verlauf")
-        return {"frage": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
-                "begriffe": "krusenbusch wohnquartier", "typ": "thema", "partei": None}
+        return {"question": "Wichtigste Themen in Krusenbusch in den letzten Jahren",
+                "terms": "krusenbusch wohnquartier", "kind": "topic", "party": None}
 
-    def _zerlege(frage, **k):
-        zerlegt.append(frage)
-        return [{"name": "Beschlusslage", "frage": frage, "begriffe": "krusenbusch"}]
+    def _zerlege(question, **k):
+        zerlegt.append(question)
+        return [{"name": "Beschlusslage", "question": question, "terms": "krusenbusch"}]
 
-    def _bericht(frage, cands, **k):
-        berichtet.append(frage)
+    def _bericht(question, cands, **k):
+        berichtet.append(question)
         return iter(["## Beschlusslage\nWohnquartier am Krusenbusch [5]."])
 
     monkeypatch.setattr(qa_mod, "analyse_query", _analyse)
     monkeypatch.setattr(qa_mod, "deep_zerlege", _zerlege)
     monkeypatch.setattr(qa_mod, "deep_bericht_stream", _bericht)
 
-    verlauf = [{"frage": "Was sind in den letzten Jahren die wichtigsten Themen in Krusenbusch gewesen?",
-                "antwort": "Wohnquartier, Bahnquerung, Naturschutzgebiet."}]
+    verlauf = [{"question": "Was sind in den letzten Jahren die wichtigsten Themen in Krusenbusch gewesen?",
+                "answer": "Wohnquartier, Bahnquerung, Naturschutzgebiet."}]
     r = client.post("/api/council/deep-research",
-                    json={"frage": "Nochmal bitte ausführlich", "verlauf": verlauf})
+                    json={"question": "Nochmal bitte ausführlich", "history": verlauf})
     assert r.status_code == 201
     job_id = r.json()["job_id"]
     events = _deep_events(client, job_id)  # blockiert bis der Job fertig ist
 
     # Die Analyse bekam die getippte Frage MIT Verlauf …
-    assert gesehen["frage"] == "Nochmal bitte ausführlich"
+    assert gesehen["question"] == "Nochmal bitte ausführlich"
     assert gesehen["verlauf"] == verlauf
     # … und ihre eigenständige Fassung ist es, die recherchiert und berichtet wird.
     assert zerlegt == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
     assert berichtet == ["Wichtigste Themen in Krusenbusch in den letzten Jahren"]
     src = next(e for e in events if e["type"] == "sources")
-    assert src["frage"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+    assert src["question"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
 
     # Anzeige und DB behalten die getippte Frage, der Kontext die aufgelöste.
     snap = client.get(f"/api/council/deep-research/{job_id}").json()
-    assert snap["frage"] == "Nochmal bitte ausführlich"
-    assert snap["quellen"]["kontext"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
+    assert snap["question"] == "Nochmal bitte ausführlich"
+    assert snap["sources"]["context"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
 
     # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
     gesehen.clear()
     zerlegt.clear()
-    r2 = client.post("/api/council/deep-research", json={"frage": "Wie ist der Stand beim Stadionneubau?"})
+    r2 = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     _deep_events(client, r2.json()["job_id"])
     assert gesehen == {}
     assert zerlegt == ["Wie ist der Stand beim Stadionneubau?"]
@@ -5096,16 +5200,16 @@ def test_deep_research_meldet_sich_am_ende(client, monkeypatch):
     _deep_mocks(monkeypatch)
     gemeldet: list[str] = []
     monkeypatch.setattr(deepresearch, "melden",
-                        lambda job, nwz_db, status: gemeldet.append(status))
+                        lambda job, ratslotse_db, status: gemeldet.append(status))
 
     job_id = client.post("/api/council/deep-research",
-                         json={"frage": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
+                         json={"question": "Wie ist der Stand beim Stadionneubau?"}).json()["job_id"]
     _deep_events(client, job_id)  # blockiert bis der Job fertig ist
     assert gemeldet == ["fertig"]
 
     gemeldet.clear()
-    job = deepresearch.DeepJob(id="x", user_id=1, frage="egal")
-    deepresearch._gestoppt(job, NWZ_DB)
+    job = deepresearch.DeepJob(id="x", user_id=1, question="egal")
+    deepresearch._gestoppt(job, RATSLOTSE_DB)
     assert gemeldet == []
 
 
@@ -5121,13 +5225,13 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
                         lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
     deepresearch._registry.clear()
 
-    r = client.post("/api/council/deep-research", json={"frage": "Stand beim Stadionneubau?"})
+    r = client.post("/api/council/deep-research", json={"question": "Stand beim Stadionneubau?"})
     assert r.status_code == 201
     # Zweiter Start, während einer läuft → 409.
     assert client.post("/api/council/deep-research",
-                       json={"frage": "Noch eine Frage dazu"}).status_code == 409
+                       json={"question": "Noch eine Frage dazu"}).status_code == 409
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         job_id = r.json()["job_id"]
@@ -5138,12 +5242,12 @@ def test_deep_research_kontingent_und_ein_job_regel(client, monkeypatch):
             store.deep_job_update(store.deep_job_anlegen(uid, f"Frage {i}"), "fertig")
         assert store.deep_jobs_heute(uid) == 4
         assert client.post("/api/council/deep-research",
-                           json={"frage": "Die fünfte heute"}).status_code == 201
+                           json={"question": "Die fünfte heute"}).status_code == 201
         # Jetzt 5/5 → 429; ein Fehler-Job ändert daran nichts (zählt nicht).
         store.deep_job_update(store.deep_job_anlegen(uid, "kaputt"), "fehler")
         deepresearch._registry.clear()
         assert client.post("/api/council/deep-research",
-                           json={"frage": "Die sechste heute"}).status_code == 429
+                           json={"question": "Die sechste heute"}).status_code == 429
     finally:
         store.close()
         deepresearch._registry.clear()
@@ -5158,21 +5262,21 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
     from council import qa as qa_mod
 
     _register(client)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
 
         # Gestoppter Job mit gesichertem Material (wie nach „Abbrechen").
         job_id = store.deep_job_anlegen(uid, "Stand beim Stadionneubau?")
-        job = deepresearch.DeepJob(id=job_id, user_id=uid, frage="Stand beim Stadionneubau?")
+        job = deepresearch.DeepJob(id=job_id, user_id=uid, question="Stand beim Stadionneubau?")
         job.facetten_fertig, job.facetten_gesamt = 2, 5
         job.material = {
             "candidates": [{"id": 5, "title": "Grundsatzbeschluss", "summary": "Neubau",
                             "session_date": "2026-06-01", "committee": "Rat",
-                            "vorlage_nr": None, "outcome": "angenommen"}],
-            "presse": [], "debatten": [], "haushalt": [], "planungen": [],
-            "facetten_namen": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
-            "facetten_fertig": 2, "gelesen": 1, "zeitraum": "2026",
+                            "template_number": None, "outcome": "accepted"}],
+            "press_releases": [], "debates": [], "haushalt": [], "planning_procedures": [],
+            "facet_names": ["Beschlusslage", "Kosten", "B-Plan", "Debatte", "Weiter"],
+            "facets_done": 2, "documents_read": 1, "period": "2026",
             "sources": [{"id": 5, "title": "Grundsatzbeschluss"}],
             "presse_kompakt": [], "debatten_kompakt": [],
         }
@@ -5185,15 +5289,15 @@ def test_deep_research_stop_teilbericht_und_verwaiste(client, monkeypatch):
         assert r.status_code == 409  # schon beendet — kein Doppel-Stopp
 
         monkeypatch.setattr(qa_mod, "deep_bericht_stream",
-                            lambda frage, cands, **k: iter(["Bisheriger Stand [5]."]))
-        assert client.post(f"/api/council/deep-research/{job_id}/teilbericht").status_code == 200
+                            lambda question, cands, **k: iter(["Bisheriger Stand [5]."]))
+        assert client.post(f"/api/council/deep-research/{job_id}/partial-report").status_code == 200
         events = _deep_events(client, job_id)  # wartet auf den Teilbericht-Thread
         done = next(e for e in events if e["type"] == "done")
         assert done["teilbericht"] is True
         snap = client.get(f"/api/council/deep-research/{job_id}").json()
         assert snap["status"] == "teilbericht"
-        assert snap["bericht"].startswith("**Teilbericht — 2 von 5 Facetten.**")
-        assert "B-Plan" in snap["bericht"]  # fehlende Facetten werden benannt
+        assert snap["report"].startswith("**Teilbericht — 2 von 5 Facetten.**")
+        assert "B-Plan" in snap["report"]  # fehlende Facetten werden benannt
         assert store.deep_jobs_heute(uid) == 0  # weder gestoppt noch teilbericht zählen
 
         # Verwaister „laeuft"-Job (Neustart): Snapshot meldet ehrlich Fehler …
@@ -5224,35 +5328,35 @@ def test_admin_limits_steuern_recherche_kontingent(client, monkeypatch):
     monkeypatch.setattr(deepresearch, "start_job",
                         lambda job, a, b: deepresearch._registry.__setitem__(job.id, job))
     deepresearch._registry.clear()
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         # Eigenes Limit 2: nach zwei zählenden Jobs ist Schluss.
         r = client.put(f"/api/admin/users/{uid}/limits",
-                       json={"deep_limit": 2, "limits_frei": False})
+                       json={"deep_limit": 2, "limits_unlocked": False})
         assert r.status_code == 200 and r.json()["deep_limit"] == 2
         for i in range(2):
             store.deep_job_update(store.deep_job_anlegen(uid, f"F{i}"), "fertig")
         assert client.post("/api/council/deep-research",
-                           json={"frage": "Noch eine Recherche?"}).status_code == 429
+                           json={"question": "Noch eine Recherche?"}).status_code == 429
         # Unbegrenzt (0): derselbe Stand startet wieder, frei wird null.
         client.put(f"/api/admin/users/{uid}/limits",
-                   json={"deep_limit": 0, "limits_frei": False})
-        r = client.post("/api/council/deep-research", json={"frage": "Und jetzt unbegrenzt?"})
-        assert r.status_code == 201 and r.json()["frei"] is None
+                   json={"deep_limit": 0, "limits_unlocked": False})
+        r = client.post("/api/council/deep-research", json={"question": "Und jetzt unbegrenzt?"})
+        assert r.status_code == 201 and r.json()["remaining"] is None
         deepresearch._registry.clear()
-        akt = client.get("/api/council/deep-research/aktuell").json()
-        assert akt["frei"] is None
+        akt = client.get("/api/council/deep-research/current").json()
+        assert akt["remaining"] is None
         # Detail fürs Admin-Formular trägt beide Felder.
         detail = client.get(f"/api/admin/users/{uid}").json()
-        assert detail["deep_limit"] == 0 and detail["limits_frei"] is False
+        assert detail["deep_limit"] == 0 and detail["limits_unlocked"] is False
     finally:
         deepresearch._registry.clear()
         store.close()
 
 
 def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
-    """limits_frei=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
+    """limits_unlocked=1 lässt die Frage-Endpoints am Rate-Limiter VORBEI —
     gemessen am check()-Aufruf selbst (DISABLE_RATE_LIMIT macht check nur
     wirkungslos, aufgerufen würde er trotzdem)."""
     from app.routers import council as council_router
@@ -5260,11 +5364,11 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
 
     _register(client)
     aufrufe = []
-    schluessel = []
+    key = []
     monkeypatch.setattr(council_router.qa_limiter, "check",
-                        lambda request, *, subject=None: (aufrufe.append(1), schluessel.append(subject)))
+                        lambda request, *, subject=None: (aufrufe.append(1), key.append(subject)))
     cand = [{"id": 5, "title": "Radweg", "summary": "Ausbau", "policy_field": "verkehr",
-             "outcome": "angenommen", "session_date": "2026-07-02",
+             "outcome": "accepted", "session_date": "2026-07-02",
              "committee": "Verkehrsausschuss", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -5276,11 +5380,11 @@ def test_limits_frei_ueberspringt_rate_limiter(client, monkeypatch):
 
     frag()
     assert len(aufrufe) == 1  # normal: Limiter wird gefragt
-    assert schluessel == [1]  # Mobilfunk-CGNAT teilt nicht mehr den IP-Bucket
-    store = Store(NWZ_DB)
+    assert key == [1]  # Mobilfunk-CGNAT teilt nicht mehr den IP-Bucket
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
-        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_frei": True})
+        client.put(f"/api/admin/users/{uid}/limits", json={"deep_limit": None, "limits_unlocked": True})
     finally:
         store.close()
     frag()
@@ -5297,7 +5401,7 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
 
     _register(client)
     cand = [{"id": 5, "title": "Stadionneubau", "summary": "Grundsatz", "policy_field": "sport",
-             "outcome": "angenommen", "session_date": "2026-06-01",
+             "outcome": "accepted", "session_date": "2026-06-01",
              "committee": "Rat", "score": 1.0}]
     monkeypatch.setattr(council_router, "_qa_retrieve", lambda *a, **k: (cand, "semantisch"))
     monkeypatch.setattr(qa_mod, "expand_query", lambda q, **k: q)
@@ -5305,39 +5409,39 @@ def test_gespraech_snapshot_traegt_presse_und_debatten(client, monkeypatch):
     monkeypatch.setattr(emb_mod, "search_presse", lambda *a, **k: [(9, 0.5)])
     monkeypatch.setattr(emb_mod, "search_wortbeitraege", lambda *a, **k: [(7, 0.4)])
     monkeypatch.setattr(CouncilStore, "presse_by_ids", lambda self, ids: [
-        {"id": 9, "titel": "Stadt informiert zum Stadion", "url": "https://x/pm", "datum": "2026-07-27"}])
+        {"id": 9, "title": "Stadt informiert zum Stadion", "url": "https://x/pm", "date": "2026-07-27"}])
     monkeypatch.setattr(CouncilStore, "wortbeitraege_by_ids", lambda self, ids: [
-        {"id": 7, "sprecher": "Höpken", "partei": "BSW", "art": "rede", "top": "Ö 10",
+        {"id": 7, "speaker": "Höpken", "party": "BSW", "art": "rede", "top": "Ö 10",
          "text": "Endlich kommt das Stadion.", "committee": "Rat", "session_date": "2026-06-01"}])
 
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
         with client.stream("POST", "/api/council/ask",
-                           json={"question": "Was ist mit dem Stadion?", "gespraech_id": None}) as r:
+                           json={"question": "Was ist mit dem Stadion?", "conversation_id": None}) as r:
             events = [json.loads(line[6:]) for line in "".join(r.iter_text()).splitlines()
                       if line.startswith("data: ")]
-        gid = next(e for e in events if e["type"] == "done")["gespraech_id"]
+        gid = next(e for e in events if e["type"] == "done")["conversation_id"]
         turns = store.qa_gespraech(gid, uid)["turns"]
-        quellen = json.loads(turns[0]["quellen"]) if isinstance(turns[0]["quellen"], str) else turns[0]["quellen"]
-        assert quellen["presse"][0]["titel"] == "Stadt informiert zum Stadion"
-        assert quellen["debatten"][0]["sprecher"] == "Höpken"
-        assert quellen["debatten"][0]["auszug"].startswith("Endlich")
+        quellen = json.loads(turns[0]["sources"]) if isinstance(turns[0]["sources"], str) else turns[0]["sources"]
+        assert quellen["press_releases"][0]["title"] == "Stadt informiert zum Stadion"
+        assert quellen["debates"][0]["speaker"] == "Höpken"
+        assert quellen["debates"][0]["excerpt"].startswith("Endlich")
         # Der Lese-Endpoint reicht den Snapshot durch (Frontend stellt daraus her).
-        g = client.get(f"/api/council/gespraeche/{gid}").json()
-        q0 = g["turns"][0]["quellen"]
-        assert q0["presse"] and q0["debatten"]
+        g = client.get(f"/api/council/conversations/{gid}").json()
+        q0 = g["turns"][0]["sources"]
+        assert q0["press_releases"] and q0["debates"]
         # … samt der Suchfassung der Frage: Nachladende Bausteine schlüsseln
         # darauf, und ohne sie baute die Wiederherstellung einen anderen
         # Schlüssel als der Live-Lauf (Tims Fragen-Tab-Befund 21.08.2026).
-        assert q0["kontext"] == "Was ist mit dem Stadion?"
+        assert q0["context"] == "Was ist mit dem Stadion?"
         # Design 9a②: Umbenennen über die API — fremde ids bleiben 404.
-        r = client.patch(f"/api/council/gespraeche/{gid}", json={"titel": "Stadion"})
+        r = client.patch(f"/api/council/conversations/{gid}", json={"title": "Stadion"})
         assert r.status_code == 200
-        assert store.qa_gespraech(gid, uid)["titel"] == "Stadion"
-        assert client.patch("/api/council/gespraeche/999999",
-                            json={"titel": "x"}).status_code == 404
+        assert store.qa_gespraech(gid, uid)["title"] == "Stadion"
+        assert client.patch("/api/council/conversations/999999",
+                            json={"title": "x"}).status_code == 404
     finally:
         store.close()
 
@@ -5350,29 +5454,29 @@ def test_gespraeche_liste_blaettert_und_sucht(client):
     Suche, `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert.
     """
     _register(client)
-    store = Store(NWZ_DB)
+    store = Store(RATSLOTSE_DB)
     try:
         uid = store._conn.execute("SELECT id FROM web_users").fetchone()[0]
         store.set_qa_speichern(uid, True)
         for i in range(70):
             store.qa_gespraech_start(uid, f"Cäcilienbrücke {i}" if i == 3 else f"Thema {i}")
 
-        b = client.get("/api/council/gespraeche").json()
-        assert len(b["gespraeche"]) == 30 and b["gesamt"] == 70 and b["weitere"] is True
+        b = client.get("/api/council/conversations").json()
+        assert len(b["conversations"]) == 30 and b["total"] == 70 and b["has_more"] is True
 
         # Blättern erreicht auch die Zeilen jenseits der alten 50er-Grenze.
-        letzte = client.get("/api/council/gespraeche?offset=60").json()
-        assert len(letzte["gespraeche"]) == 10 and letzte["weitere"] is False
-        assert letzte["gespraeche"][-1]["titel"] == "Thema 0"
+        letzte = client.get("/api/council/conversations?offset=60").json()
+        assert len(letzte["conversations"]) == 10 and letzte["has_more"] is False
+        assert letzte["conversations"][-1]["title"] == "Thema 0"
 
         # Gesucht wird in der DB: Der Treffer liegt außerhalb der ersten Seite.
-        t = client.get("/api/council/gespraeche?q=cäcilien").json()
-        assert [g["titel"] for g in t["gespraeche"]] == ["Cäcilienbrücke 3"]
-        assert t["treffer"] == 1 and t["gesamt"] == 70   # Bestand bleibt Bestand
+        t = client.get("/api/council/conversations?q=cäcilien").json()
+        assert [g["title"] for g in t["conversations"]] == ["Cäcilienbrücke 3"]
+        assert t["matches"] == 1 and t["total"] == 70   # Bestand bleibt Bestand
 
         # Die Konto-Karte holt nur die Zahl.
-        nur_zahl = client.get("/api/council/gespraeche?limit=0").json()
-        assert nur_zahl["gespraeche"] == [] and nur_zahl["gesamt"] == 70
+        nur_zahl = client.get("/api/council/conversations?limit=0").json()
+        assert nur_zahl["conversations"] == [] and nur_zahl["total"] == 70
     finally:
         store.close()
 
@@ -5395,11 +5499,11 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
     try:
         cs.save_ergebnisrechnung(2024, [
             {"nr": schulden.POSTEN_ZINSAUFWAND,
-             "bezeichnung": "Zinsen und ähnliche Aufwendungen",
-             "ergebnis": 7_250_000.0, "ist_summe": 0},
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-             "ergebnis": 799_057_202.86, "ist_summe": 1},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+             "label": "Zinsen und ähnliche Aufwendungen",
+             "result": 7_250_000.0, "is_total": 0},
+            {"nr": 12, "label": "Summe ordentliche Erträge",
+             "result": 799_057_202.86, "is_total": 1},
+        ], herkunft.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                              label="Jahresabschluss 2024",
                              url="https://example.org/ja.pdf"))
 
@@ -5409,23 +5513,23 @@ def test_haushalt_schulden_traegt_die_zinslast_aus_dem_jahresabschluss(client):
         # mal einen einzelnen Teilhaushalt unter derselben Überschrift.
         cs.save_ergebnisrechnung(2024, [
             {"nr": schulden.POSTEN_ZINSAUFWAND,
-             "bezeichnung": "Zinsen und ähnliche Aufwendungen",
-             "ergebnis": 4_084_574.90, "ist_summe": 0},
-        ], herkunft.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+             "label": "Zinsen und ähnliche Aufwendungen",
+             "result": 4_084_574.90, "is_total": 0},
+        ], herkunft.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                              label="Jahresabschluss 2024",
-                             fundstelle="Teil-Ergebnisrechnung THH04",
+                             citation="Teil-Ergebnisrechnung THH04",
                              url="https://example.org/ja.pdf"),
-            thh_nr=4, thh_name="Finanzmanagement und Recht")
+            sub_budget_no=4, sub_budget_name="Finanzmanagement und Recht")
 
-        antwort = client.get("/api/council/haushalt/schulden")
-        assert antwort.status_code == 200
-        daten = antwort.json()
+        answer = client.get("/api/council/budget/debt")
+        assert answer.status_code == 200
+        daten = answer.json()
 
-        zins = daten["zinslast"]
-        assert [z["jahr"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
-        assert zins[0]["aufwand"] == 7_250_000.0
+        zins = daten["interest_expense"]
+        assert [z["year"] for z in zins] == [2024], "je Jahr genau eine Zinslast"
+        assert zins[0]["expense"] == 7_250_000.0
         # Die Herkunft muss mitkommen — sonst steht die Zahl ohne Beleg da.
-        assert str(zins[0]["herkunft_id"]) in daten["herkunft"]
+        assert str(zins[0]["herkunft_id"]) in daten["provenance"]
     finally:
         cs.close()
 
@@ -5438,9 +5542,9 @@ def test_haushalt_schulden_ohne_jahresabschluss_bleibt_die_zinslast_leer(client)
     eine Null, die wie „keine Zinsen" aussieht.
     """
     _register(client)
-    antwort = client.get("/api/council/haushalt/schulden")
-    assert antwort.status_code == 200
-    assert antwort.json()["zinslast"] == []
+    answer = client.get("/api/council/budget/debt")
+    assert answer.status_code == 200
+    assert answer.json()["interest_expense"] == []
 
 
 def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
@@ -5449,7 +5553,7 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     Drei Dinge muss der Endpunkt zusammen ausliefern, sonst steht die
     Oberfläche vor einer Zahl, die sie nicht verantworten kann:
 
-    * die Posten mit ``rolle``, ``seite`` und ``ebene`` — an der
+    * die Posten mit ``role``, ``page`` und ``level`` — an der
       Gliederungsnummer darf nichts hängen, „1." ist ab 2021 auf der
       Aktivseite etwas anderes als auf der Passivseite,
     * die **Erläuterungen** des Anhangs. Für ``schulden`` sind sie keine
@@ -5464,51 +5568,51 @@ def test_haushalt_bilanz_liefert_posten_erlaeuterungen_und_herkunft(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         q = herkunft.Herkunft(
-            art="ris", probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
-            fundstelle="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
-            probe_ergebnis="Aktiva und Passiva stimmen auf den Cent überein",
-            stand="31.12.2024", dokument_id=295294, label="Jahresabschluss 2024",
+            kind="ris", probe=["balance_sheet_equality", "balance_sheet_cash_check"],
+            citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
+            probe_result="Aktiva und Passiva stimmen auf den Cent überein",
+            as_of="31.12.2024", document_id=295294, label="Jahresabschluss 2024",
             url="https://example.org/ja.pdf")
         cs.save_bilanz(2024, [
-            {"rolle": "geldschulden", "seite": bilanz.PASSIVA, "ebene": 2,
-             "nr": "2.1", "bezeichnung": "Geldschulden", "wert": 43_690_971.71},
-            {"rolle": "schulden", "seite": bilanz.PASSIVA, "ebene": 1,
-             "nr": "2", "bezeichnung": "Schulden", "wert": 207_116_175.19},
-            {"rolle": "pensionen_gesamt", "seite": bilanz.PASSIVA, "ebene": 2,
+            {"role": "financial_liabilities", "page": bilanz.PASSIVA, "level": 2,
+             "nr": "2.1", "label": "Geldschulden", "value": 43_690_971.71},
+            {"role": "liabilities", "page": bilanz.PASSIVA, "level": 1,
+             "nr": "2", "label": "Schulden", "value": 207_116_175.19},
+            {"role": "pension_and_similar_provisions", "page": bilanz.PASSIVA, "level": 2,
              "nr": "3.1",
-             "bezeichnung": "Pensionsrückstellungen und ähnliche Verpflichtungen",
-             "wert": 311_789_660.00},
-            {"rolle": "liquide_mittel", "seite": bilanz.AKTIVA, "ebene": 1,
-             "nr": "4", "bezeichnung": "Liquide Mittel", "wert": 118_001_891.26},
+             "label": "Pensionsrückstellungen und ähnliche Verpflichtungen",
+             "value": 311_789_660.00},
+            {"role": "cash_and_equivalents", "page": bilanz.AKTIVA, "level": 1,
+             "nr": "4", "label": "Liquide Mittel", "value": 118_001_891.26},
         ], q)
         cs.save_bilanz_erlaeuterungen(2024, [
-            {"rolle": "schulden", "nr": 7, "ueberschrift": "Schulden",
+            {"role": "liabilities", "nr": 7, "heading": "Schulden",
              "text": "… ergibt sich eine Bilanzverlängerung … 138,2 Millionen Euro."},
         ], herkunft.Herkunft(
-            art="ris", probe="bilanz_erlaeuterung",
-            fundstelle="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
-            stand="Jahresabschluss 2024", dokument_id=295294,
+            kind="ris", probe="balance_sheet_notes",
+            citation="Abschnitt 6.2 — Erläuterung der wesentlichen Bilanzpositionen",
+            as_of="Jahresabschluss 2024", document_id=295294,
             label="Jahresabschluss 2024", url="https://example.org/ja.pdf"))
 
-        daten = client.get("/api/council/haushalt/bilanz").json()
-        assert daten["jahre"] == [2024]
+        daten = client.get("/api/council/budget/balance-sheet").json()
+        assert daten["years"] == [2024]
 
-        nach_rolle = {p["rolle"]: p for p in daten["posten"]}
+        nach_rolle = {p["role"]: p for p in daten["items"]}
         # Die beiden Zahlen, die beide „Schulden" heißen — getrennt geführt.
-        assert nach_rolle["geldschulden"]["wert"] == 43_690_971.71
-        assert nach_rolle["schulden"]["wert"] == 207_116_175.19
-        assert nach_rolle["liquide_mittel"]["seite"] == "aktiva"
-        assert nach_rolle["schulden"]["ebene"] == 1
+        assert nach_rolle["financial_liabilities"]["value"] == 43_690_971.71
+        assert nach_rolle["liabilities"]["value"] == 207_116_175.19
+        assert nach_rolle["cash_and_equivalents"]["page"] == "aktiva"
+        assert nach_rolle["liabilities"]["level"] == 1
 
         # Ohne diesen Text darf die Seite die 207,1 Mio. € nicht zeigen.
-        erl = {e["rolle"]: e for e in daten["erlaeuterungen"]}
-        assert "Bilanzverlängerung" in erl["schulden"]["text"]
+        erl = {e["role"]: e for e in daten["explanations"]}
+        assert "Bilanzverlängerung" in erl["liabilities"]["text"]
 
         # Jede Zahl und jeder Text tragen ihren Beleg.
-        for eintrag in daten["posten"] + daten["erlaeuterungen"]:
-            assert str(eintrag["herkunft_id"]) in daten["herkunft"]
-        h = daten["herkunft"][str(nach_rolle["schulden"]["herkunft_id"])]
-        assert "bilanz_kassenprobe" in h["probe"]
+        for eintrag in daten["items"] + daten["explanations"]:
+            assert str(eintrag["herkunft_id"]) in daten["provenance"]
+        h = daten["provenance"][str(nach_rolle["liabilities"]["herkunft_id"])]
+        assert "balance_sheet_cash_check" in h["probe"]
     finally:
         cs.close()
 
@@ -5518,10 +5622,42 @@ def test_haushalt_bilanz_ohne_bestand_bleibt_leer(client):
     Endpunkt darf daran nicht scheitern — die Seite lässt den Block dann
     einfach weg, statt eine halbe Bilanz zu behaupten."""
     _register(client)
-    antwort = client.get("/api/council/haushalt/bilanz")
-    assert antwort.status_code == 200
-    assert antwort.json() == {"jahre": [], "posten": [], "erlaeuterungen": [],
-                              "herkunft": {}}
+    answer = client.get("/api/council/budget/balance-sheet")
+    assert answer.status_code == 200
+    assert answer.json() == {"years": [], "items": [], "explanations": [],
+                              "provenance": {}}
+
+
+def test_haushalt_indicators_kommen_mit_ihrer_genauigkeit(client):
+    """Der Kennzahlen-Block — mit `decimals`, der gedruckten Genauigkeit.
+
+    Die Lücke, die diesen Test nötig machte: `?felder=indicators` lief bis
+    zum 31.08.2026 durch **keinen** Test mit echten Zeilen. Ein Umbenennen
+    von `stellen` nach `decimals` ließ deshalb die ganze Kennzahlen-Seite mit
+    500 auflaufen, und die Suite blieb grün. Wer den Block anfasst, merkt es
+    ab jetzt hier.
+    """
+    from council import herkunft
+
+    _register(client)
+    cs = CouncilStore(COUNCIL_DB)
+    try:
+        cs.save_kennzahlen(
+            2024,
+            [{"report_year": 2024, "indicator": "eigenkapitalquote_1", "year": 2023,
+              "label": "Eigenkapitalquote I", "value": 48.0, "unit": "percent",
+              "decimals": 1, "version": None}],
+            [{"indicator": "eigenkapitalquote_1", "heading": "Eigenkapitalquote I",
+              "formula": "100 * Nettoposition / Bilanzsumme", "version": None}],
+            herkunft.Herkunft(kind="city", url="https://example.org/rechenschaft.pdf",
+                              label="Rechenschaftsbericht 2024", probe=[herkunft.UNGEPRUEFT]))
+    finally:
+        cs.close()
+
+    b = client.get("/api/council/budget?felder=indicators").json()["indicators"]
+    zeile = next(z for z in b["series"] if z["indicator"] == "eigenkapitalquote_1")
+    assert zeile["value"] == 48.0 and zeile["decimals"] == 1
+    assert b["label"]["eigenkapitalquote_1"].startswith("Eigenkapitalquote I")
 
 
 def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
@@ -5535,48 +5671,48 @@ def test_haushalt_liefert_die_spenden_mit_luecke_und_beleg(client):
        stillschweigend aus der Summe,
     3. die ``herkunft_id`` jeder Vorlage, aufgelöst in ``herkunft``.
     """
-    from council import herkunft, spenden
+    from council import herkunft, donations
 
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
         zeilen = [
-            {"vorlage_nr": "26/0207", "jahr": 2026, "sitzung": "2026-04-13",
-             "betrag": 435_941.0, "gremium": "Rat", "layout": "neu",
-             "zweitstelle": "zerlegung",
-             "proben": [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH],
+            {"template_number": "26/0207", "year": 2026, "session_date": "2026-04-13",
+             "amount": 435_941.0, "committee": "Rat", "layout": "new",
+             "second_mention": "zerlegung",
+             "probes": [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH],
              "herkunft": herkunft.Herkunft(
-                 art="ris", dokument_id=304791, probe=[spenden.ZWEITSTELLE],
-                 fundstelle=spenden.FUNDSTELLE,
-                 probe_ergebnis="421.316 + 14.625 = 435.941")},
-            {"vorlage_nr": "26/0044", "jahr": 2026, "sitzung": "2026-02-09",
-             "betrag": 1_800.0, "gremium": "Verwaltungsausschuss", "layout": "alt",
-             "zweitstelle": "identisch", "proben": [spenden.ZWEITSTELLE],
+                 kind="ris", document_id=304791, probe=[donations.ZWEITSTELLE],
+                 citation=donations.FUNDSTELLE,
+                 probe_result="421.316 + 14.625 = 435.941")},
+            {"template_number": "26/0044", "year": 2026, "session_date": "2026-02-09",
+             "amount": 1_800.0, "committee": "Verwaltungsausschuss", "layout": "old",
+             "second_mention": "identisch", "probes": [donations.ZWEITSTELLE],
              "herkunft": herkunft.Herkunft(
-                 art="ris", dokument_id=300001, probe=[spenden.ZWEITSTELLE],
-                 probe_ergebnis="identisch")},
+                 kind="ris", document_id=300001, probe=[donations.ZWEITSTELLE],
+                 probe_result="identisch")},
         ]
-        verworfen = [{"vorlage_nr": "23/0265", "sitzung": "2023-05-03",
-                      "grund": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
+        verworfen = [{"template_number": "23/0265", "session_date": "2023-05-03",
+                      "reason": "Die Vorlage schlug 52.000,00 Euro vor, das Protokoll "
                                "hält 51.500,00 Euro fest."}]
         cs.save_spenden(zeilen, verworfen, herkunft.Herkunft(
-            art="ris", url="https://buergerinfo.example.org/vo040.asp",
-            probe=[spenden.ZWEITSTELLE], probe_ergebnis="2 Vorlagen belegt"))
+            kind="ris", url="https://buergerinfo.example.org/vo040.asp",
+            probe=[donations.ZWEITSTELLE], probe_result="2 Vorlagen belegt"))
 
-        daten = client.get("/api/council/haushalt").json()
-        s = daten["spenden"]
+        daten = client.get("/api/council/budget").json()
+        s = daten["donations"]
 
-        assert s["jahre"] == [{"jahr": 2026, "betrag": 437_741.0, "vorlagen": 2,
+        assert s["years"] == [{"year": 2026, "amount": 437_741.0, "vorlagen": 2,
                                "rat": 1, "verwaltungsausschuss": 1}]
-        assert [v["vorlage_nr"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
-        assert s["ohne_beleg"][0]["vorlage_nr"] == "23/0265"
-        assert "51.500,00" in s["ohne_beleg"][0]["grund"]
+        assert [v["template_number"] for v in s["vorlagen"]] == ["26/0044", "26/0207"]
+        assert s["ohne_beleg"][0]["template_number"] == "23/0265"
+        assert "51.500,00" in s["ohne_beleg"][0]["reason"]
         # Wer über welche einzelne Zuwendung entscheidet — reist mit den Zahlen.
-        assert {g["gremium"] for g in s["schwellen"]} == {
+        assert {g["committee"] for g in s["schwellen"]} == {
             "Oberbürgermeister", "Verwaltungsausschuss", "Rat"}
         # Ohne aufgelöste Herkunft stünde die Zahl ohne Beleg da.
         for v in s["vorlagen"]:
-            assert str(v["herkunft_id"]) in daten["herkunft"]
+            assert str(v["herkunft_id"]) in daten["provenance"]
     finally:
         cs.close()
 
@@ -5589,7 +5725,7 @@ def test_haushalt_spenden_nennen_keine_gebenden(client):
     keinem Feldnamen liefern — auch nicht, wenn später jemand eine Spalte
     ergänzt."""
     _register(client)
-    s = client.get("/api/council/haushalt").json()["spenden"]
+    s = client.get("/api/council/budget").json()["donations"]
     felder = {k.lower() for v in s["vorlagen"] for k in v} | {k.lower() for k in s}
     for verboten in ("spender", "geber", "name", "zuwendungsgeber", "person"):
         assert not any(verboten in f for f in felder)
@@ -5598,15 +5734,15 @@ def test_haushalt_spenden_nennen_keine_gebenden(client):
 def test_haushalt_bleibt_ohne_spenden_ruhig(client):
     """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate)."""
     _register(client)
-    s = client.get("/api/council/haushalt").json()["spenden"]
-    assert s["jahre"] == [] and s["vorlagen"] == [] and s["ohne_beleg"] == []
+    s = client.get("/api/council/budget").json()["donations"]
+    assert s["years"] == [] and s["vorlagen"] == [] and s["ohne_beleg"] == []
     assert len(s["schwellen"]) == 3
 
 
 def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     """Die zweite Ebene der Ergebnisrechnung — der groesste Block im Bereich.
 
-    Die Tabelle fuehrt Kernverwaltung (``thh_nr`` NULL) und Teilhaushalte in
+    Die Tabelle fuehrt Kernverwaltung (``sub_budget_no`` NULL) und Teilhaushalte in
     einer Liste; auf dev sind das 1.566 Zeilen, davon 1.381 aus der zweiten
     Ebene. Fast keine Seite braucht sie ganz — aber das Flussbild der
     Uebersicht braucht EINEN Posten daraus, und genau das muss der Zuschnitt
@@ -5617,53 +5753,53 @@ def test_haushalt_thh_posten_schneidet_die_ergebnisrechnung_zu(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
-        h = h_mod.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+        h = h_mod.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                            label="Jahresabschluss 2024",
                            url="https://example.org/ja.pdf")
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Ertraege",
-             "ergebnis": 799_057_202.86, "ist_summe": 1},
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-             "ergebnis": 764_400_000.0, "ist_summe": 1},
+            {"nr": 12, "label": "Summe ordentliche Ertraege",
+             "result": 799_057_202.86, "is_total": 1},
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
+             "result": 764_400_000.0, "is_total": 1},
         ], h)
         # Zwei Teilhaushalts-Zeilen: eine, die das Flussbild braucht (Nr. 20),
         # und eine, die nur Ballast ist.
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 20, "bezeichnung": "Summe ordentliche Aufwendungen",
-             "ergebnis": 75_300_000.0, "ist_summe": 1},
-            {"nr": 3, "bezeichnung": "Oeffentlich-rechtliche Entgelte",
-             "ergebnis": 1_200_000.0, "ist_summe": 0},
-        ], h, thh_nr=4, thh_name="Schule und Bildung")
+            {"nr": 20, "label": "Summe ordentliche Aufwendungen",
+             "result": 75_300_000.0, "is_total": 1},
+            {"nr": 3, "label": "Oeffentlich-rechtliche Entgelte",
+             "result": 1_200_000.0, "is_total": 0},
+        ], h, sub_budget_no=4, sub_budget_name="Schule und Bildung")
     finally:
         cs.close()
 
     def hole(**q):
-        teil = "&".join(f"{k}={v}" for k, v in q.items())
-        return client.get(f"/api/council/haushalt?felder=ergebnisrechnung&{teil}"
-                          ).json()["ergebnisrechnung"]
+        part = "&".join(f"{k}={v}" for k, v in q.items())
+        return client.get(f"/api/council/budget?felder=income_statement&{part}"
+                          ).json()["income_statement"]
 
     voll = hole()
     assert len(voll) == 4, "ohne Parameter kommt alles — der alte Vertrag"
 
     # `keine`: nur die Kernverwaltung.
-    kern = hole(thh_posten="keine")
-    assert {z["thh_nr"] for z in kern} == {None}
+    kern = hole(sub_budget_item="keine")
+    assert {z["sub_budget_no"] for z in kern} == {None}
     assert len(kern) == 2
 
     # `20`: Kernverwaltung vollstaendig PLUS der eine Posten je Teilhaushalt —
     # das ist der Datensatz, aus dem das Flussbild entsteht.
-    fluss = hole(thh_posten="20")
+    fluss = hole(sub_budget_item="20")
     assert len(fluss) == 3
-    thh = [z for z in fluss if z["thh_nr"] is not None]
-    assert len(thh) == 1 and thh[0]["nr"] == 20
-    assert thh[0]["thh_name"] == "Schule und Bildung"
+    sub_budget = [z for z in fluss if z["sub_budget_no"] is not None]
+    assert len(sub_budget) == 1 and sub_budget[0]["nr"] == 20
+    assert sub_budget[0]["sub_budget_name"] == "Schule und Bildung"
     # Die Kernverwaltung wird NIE beschnitten — auch nicht auf die genannten
     # Posten. Sonst fehlten der Uebersicht die Ertragsarten 1–11.
-    assert {z["nr"] for z in fluss if z["thh_nr"] is None} == {12, 20}
+    assert {z["nr"] for z in fluss if z["sub_budget_no"] is None} == {12, 20}
 
     # Ein Tippfehler ist ein Fehler, keine stille Luecke — wie bei `felder`.
-    antwort = client.get("/api/council/haushalt?felder=ergebnisrechnung&thh_posten=zwanzig")
-    assert antwort.status_code == 400 and "zwanzig" in antwort.json()["detail"]
+    answer = client.get("/api/council/budget?felder=income_statement&sub_budget_item=zwanzig")
+    assert answer.status_code == 400 and "zwanzig" in answer.json()["detail"]
 
 
 def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
@@ -5680,22 +5816,22 @@ def test_haushalt_felder_schneidet_zu_und_meldet_tippfehler(client):
     """
     _register(client)
 
-    alles = client.get("/api/council/haushalt").json()
-    for pflicht in ("jahre", "steuern", "ergebnisrechnung", "spenden",
-                    "nachbewilligungen", "herkunft", "produkt_jahre"):
+    alles = client.get("/api/council/budget").json()
+    for pflicht in ("years", "taxes", "income_statement", "donations",
+                    "supplementary_approvals", "provenance", "product_years"):
         assert pflicht in alles, pflicht
 
-    schmal = client.get("/api/council/haushalt?felder=jahre,produkt_jahre").json()
-    assert set(schmal) == {"jahre", "produkt_jahre"}
-    assert schmal["jahre"] == alles["jahre"]      # zugeschnitten, nicht verändert
+    schmal = client.get("/api/council/budget?felder=years,product_years").json()
+    assert set(schmal) == {"years", "product_years"}
+    assert schmal["years"] == alles["years"]      # zugeschnitten, nicht verändert
 
     # Leerzeichen und leere Glieder sind Tippfehler-Nachbarn, kein Fehlerfall.
     assert set(client.get(
-        "/api/council/haushalt?felder= jahre , ,steuern ").json()) == {"jahre", "steuern"}
+        "/api/council/budget?felder= years , ,taxes ").json()) == {"years", "taxes"}
 
-    antwort = client.get("/api/council/haushalt?felder=jahre,produktjahre")
-    assert antwort.status_code == 400
-    assert "produktjahre" in antwort.json()["detail"]
+    answer = client.get("/api/council/budget?felder=years,produktjahre")
+    assert answer.status_code == 400
+    assert "produktjahre" in answer.json()["detail"]
 
 
 def test_haushalt_schickt_nur_belegte_herkunft(client):
@@ -5717,23 +5853,23 @@ def test_haushalt_schickt_nur_belegte_herkunft(client):
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_ergebnisrechnung(2024, [
-            {"nr": 12, "bezeichnung": "Summe ordentliche Erträge",
-             "ergebnis": 799_057_202.86, "ist_summe": 1},
-        ], h_mod.Herkunft(art="ris", probe="strukturprobe", dokument_id=295294,
+            {"nr": 12, "label": "Summe ordentliche Erträge",
+             "result": 799_057_202.86, "is_total": 1},
+        ], h_mod.Herkunft(kind="ris", probe="structure_check", document_id=295294,
                           label="Jahresabschluss 2024",
                           url="https://example.org/ja.pdf"))
     finally:
         cs.close()
 
-    voll = client.get("/api/council/haushalt").json()
-    gebraucht = _herkunft_ids({k: v for k, v in voll.items() if k != "herkunft"})
+    voll = client.get("/api/council/budget").json()
+    gebraucht = _herkunft_ids({k: v for k, v in voll.items() if k != "provenance"})
     assert gebraucht, "Fixture zeigt auf keine Herkunft — die Probe wäre wertlos"
-    assert set(voll["herkunft"]) == {str(i) for i in gebraucht}
+    assert set(voll["provenance"]) == {str(i) for i in gebraucht}
 
     # Und andersherum: Wird die Ergebnisrechnung nicht angefordert, zeigt keine
     # gesendete Zeile mehr auf ihren Beleg — dann reist er auch nicht mit.
-    schmal = client.get("/api/council/haushalt?felder=steuern,herkunft").json()
-    assert schmal["herkunft"] == {}
+    schmal = client.get("/api/council/budget?felder=taxes,provenance").json()
+    assert schmal["provenance"] == {}
 
 
 def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(client):
@@ -5752,34 +5888,34 @@ def test_haushalt_schulden_stellt_buergschaften_neben_die_eigenen_schulden(clien
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_buergschaften([{
-            "jahr": 2024, "bestand": 220_300_000.0, "genau": False,
-            "aus_folgejahr": False, "quelle": "anhang",
-            "grund": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
+            "year": 2024, "balance": 220_300_000.0, "exact": False,
+            "out_next_year": False, "source": "anhang",
+            "reason": "Hintergrund ist, dass die verbürgten Bestandsdarlehen "
                      "seitens der Beteiligungen getilgt wurden.",
-            "einzelbetrag": None, "proben": [bg.PROBE_KETTE],
-        }], h_mod.Herkunft(art="ris", probe=[bg.PROBE_KETTE], dokument_id=295294,
+            "single_amount": None, "probes": [bg.PROBE_KETTE],
+        }], h_mod.Herkunft(kind="ris", probe=[bg.PROBE_KETTE], document_id=295294,
                            label="Jahresabschluss 2024 der Kernverwaltung",
-                           fundstelle=bg.ABSCHNITT,
+                           citation=bg.ABSCHNITT,
                            url="https://example.org/ja2024.pdf"))
     finally:
         cs.close()
 
-    b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
-    assert [z["jahr"] for z in b["reihe"]] == [2024]
-    z = b["reihe"][0]
-    assert z["bestand"] == 220_300_000.0
+    b = client.get("/api/council/budget/debt").json()["guarantees"]
+    assert [z["year"] for z in b["series"]] == [2024]
+    z = b["series"][0]
+    assert z["balance"] == 220_300_000.0
     # Die Quelle rundet selbst — das muss an der Zahl stehen bleiben.
-    assert z["genau"] is False and z["aus_folgejahr"] is False
+    assert z["exact"] is False and z["out_next_year"] is False
     # Was eine Bürgschaft ist, reist mit den Zahlen statt im Frontend zu stehen.
-    assert "keine Schuld" in b["abgrenzung"]
+    assert "keine Schuld" in b["scope_note"]
 
 
 def test_haushalt_schulden_ohne_buergschaften_bleibt_leer(client):
     """Auf Produktion sind die Haushalts-Tabellen leer (Umgebungs-Gate) — dann
     zeigt die Seite den Block gar nicht, statt eine Null zu behaupten."""
     _register(client)
-    b = client.get("/api/council/haushalt/schulden").json()["buergschaften"]
-    assert b["reihe"] == [] and b["rueckstellung"] == [] and b["geldschulden"] == []
+    b = client.get("/api/council/budget/debt").json()["guarantees"]
+    assert b["series"] == [] and b["provision"] == [] and b["financial_debt"] == []
 
 
 def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client):
@@ -5798,27 +5934,27 @@ def test_haushalt_schulden_liefert_die_dritte_zahl_mit_ihren_warnsaetzen(client)
     cs = CouncilStore(COUNCIL_DB)
     try:
         cs.save_integrierte_schulden({
-            "jahr": 2024, "ars": isch.ARS_OLDENBURG, "bevoelkerung": 176_336.0,
-            "insgesamt": 740_330_163.0, "je_einwohner": 4_198.41,
-            "kernhaushalt": 43_690_972.0, "extrahaushalte": 140_916_720.89,
-            "sonstige": 555_722_470.11, "extra_unter_50": 2_397_841.89,
-            "sonstige_unter_50": 431_522_725.5, "insgesamt_veraenderung": -13.6,
-            "proben": [isch.PROBE_KERNHAUSHALT],
-        }, h_mod.Herkunft(art="lsn", probe=[isch.PROBE_KERNHAUSHALT],
+            "year": 2024, "ars": isch.ARS_OLDENBURG, "population": 176_336.0,
+            "total": 740_330_163.0, "per_capita": 4_198.41,
+            "core_budget": 43_690_972.0, "extra_budgets": 140_916_720.89,
+            "other": 555_722_470.11, "extra_under_50": 2_397_841.89,
+            "other_below_50": 431_522_725.5, "insgesamt_change": -13.6,
+            "probes": [isch.PROBE_KERNHAUSHALT],
+        }, h_mod.Herkunft(kind="lsn", probe=[isch.PROBE_KERNHAUSHALT],
                           label="Integrierte Schulden der Gemeinden",
                           url="https://example.org/tabellenband.xlsx",
-                          fundstelle=f"Tabelle 2, Blatt {isch.BLATT}"))
+                          citation=f"Tabelle 2, Blatt {isch.BLATT}"))
     finally:
         cs.close()
 
-    i = client.get("/api/council/haushalt/schulden").json()["integrierte_schulden"]
-    assert i["stichtag"]["jahr"] == 2024
-    assert i["stichtag"]["insgesamt"] == 740_330_163.0
+    i = client.get("/api/council/budget/debt").json()["integrated_debt"]
+    assert i["as_of_date"]["year"] == 2024
+    assert i["as_of_date"]["total"] == 740_330_163.0
     # Der Anteil wird gerechnet, nicht abgeschrieben — er entscheidet, wie die
     # Zahl gelesen werden darf, und ändert sich mit jeder Ausgabe.
-    assert 0.58 < i["anteil_unter_50"] < 0.59
-    assert "haftet sie nicht" in i["abgrenzung"]
-    assert "keine Zeitreihe" in i["keine_reihe"]
+    assert 0.58 < i["share_below_50"] < 0.59
+    assert "haftet sie nicht" in i["scope_note"]
+    assert "keine Zeitreihe" in i["no_series_note"]
 
 
 def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():
@@ -5831,7 +5967,7 @@ def test_integrierte_schulden_kommen_nur_mit_bestandener_kernprobe():
     """
     from council import integrierte_schulden as isch
 
-    gefunden = {"jahr": 2024, "kernhaushalt": 43_690_972.0}
+    gefunden = {"year": 2024, "core_budget": 43_690_972.0}
     ok, warum = isch.kernprobe(gefunden, 43_690_971.71)
     assert ok and "0.29" in warum
 
@@ -5859,7 +5995,7 @@ def test_committees_bleibt_eine_reine_namensliste(client):
     cs.save_session(CouncilSession(7101, "Verkehrsausschuss", kommend, "16:30", "PFL"))
     cs.save_session(CouncilSession(7102, "Kulturausschuss", "2019-03-04", "17:00", "PFL"))
     cs._insert_decision(7101, 0, "decision", None, "Ö 2", "Radweg", "Wird gebaut.",
-                        "angenommen", None, None, None, [], None, None, None)
+                        "accepted", None, None, None, [], None, None, None)
     cs._conn.commit()
     cs.close()
 
@@ -5885,7 +6021,7 @@ def test_council_parties_liefert_kanonische_filterwerte(client):
     cs = CouncilStore(COUNCIL_DB)
     cs.save_session(CouncilSession(7201, "Rat der Stadt", "2026-08-28", "17:00", "Rathaus"))
     cs._insert_decision(7201, 0, "decision", None, "Ö 2", "Gemeinsamer Antrag", "Beschlossen.",
-                        "angenommen", None, None, None, ["Gruppe FDP/Volt", "SPD-Fraktion"],
+                        "accepted", None, None, None, ["Gruppe FDP/Volt", "SPD-Fraktion"],
                         None, None, None)
     cs._conn.commit()
     cs.close()

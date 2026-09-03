@@ -1,6 +1,6 @@
 """Die harten Grenzen für Benachrichtigungen (Design 30a/C).
 
-Zwei davon leben in nwz/notify.py und sind hier festgehalten:
+Zwei davon leben in kern/notify.py und sind hier festgehalten:
 
 * **Nachtruhe 21–7 Uhr** — was ein Abendbeschluss auslöst, wartet bis 7 Uhr.
   Ratssitzungen enden regelmäßig nach 22 Uhr; nichts im Rat ist so dringend,
@@ -33,7 +33,7 @@ def _konto(store: Store, email: str = "a@b.de") -> int:
 
 @pytest.fixture()
 def store(tmp_path):
-    s = Store(tmp_path / "nwz.sqlite")
+    s = Store(tmp_path / "ratslotse.sqlite")
     yield s
     s.close()
 
@@ -227,8 +227,8 @@ def test_ein_buendel_zaehlt_als_eine_zustellung(store, monkeypatch):
 
 # ---- Termingebundene Meldungen haben ihr eigenes Kontingent -----------------
 
-def _vorabend_einreihen(store, owner, jetzt, titel="18. August, 16:45 Uhr: Rat tagt"):
-    return notify.einreihen(store, owner, notify.N5_VORABEND, titel, "<p>x</p>",
+def _vorabend_einreihen(store, owner, jetzt, title="18. August, 16:45 Uhr: Rat tagt"):
+    return notify.einreihen(store, owner, notify.N5_VORABEND, title, "<p>x</p>",
                             "/council?tab=sessions&ksinr=1", jetzt=jetzt)
 
 
@@ -382,7 +382,7 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
     # Ein anderer Anlass bleibt unberührt.
     assert notify.einreihen(store, owner, notify.N3_ERGEBNIS, "y", "<p>y</p>",
                             "/council/decision?id=1", jetzt=_zeit("2026-08-18", 9)) > 0
-    assert [p["kind"] for p in store.due_notifications(owner, "2999-01-01")] == ["n3_ergebnis"]
+    assert [p["kind"] for p in store.due_notifications(owner, "2999-01-01")] == ["n3_result"]
 
 
 def test_vorgaben_aus_dem_artboard():
@@ -422,14 +422,14 @@ def test_ergebnis_meldung_nennt_das_sitzungsdatum(store, monkeypatch, tmp_path):
                                         agenda_items=[AgendaItem("Ö 6", "Radweg Nadorster Straße")]))
     with council._conn:
         council._insert_decision(4652, 0, "decision", None, "Ö 6", "Radweg Nadorster Straße",
-                                 "Wird ausgebaut.", "angenommen", "mehrheitlich", 11, 0,
+                                 "Wird ausgebaut.", "accepted", "majority", 11, 0,
                                  ["SPD"], None, None, None)
 
     assert melde_ergebnisse(council, store, [4652]) == 1
     posten = store.due_notifications(owner, "2999-01-01")
     assert len(posten) == 1
     p = posten[0]
-    assert p["kind"] == "n3_ergebnis"
+    assert p["kind"] == "n3_result"
     assert p["title"] == "Radweg Nadorster Straße: angenommen"
     assert "Verkehrsausschuss am 8. Juni" in p["body_html"]      # Datum steht drin
     assert "mehrheitlich" in p["body_html"] and "11 dagegen" in p["body_html"]
@@ -451,7 +451,7 @@ def test_ohne_vorherige_meldung_kein_ergebnis(store, tmp_path):
     council.save_session(CouncilSession(4652, "Verkehrsausschuss", "2026-06-08", "17:00", "Fleiwa"))
     with council._conn:
         council._insert_decision(4652, 0, "decision", None, "Ö 6", "Radweg", "x",
-                                 "angenommen", None, None, None, [], None, None, None)
+                                 "accepted", None, None, None, [], None, None, None)
     assert melde_ergebnisse(council, store, [4652]) == 0
     council.close()
 
@@ -521,9 +521,9 @@ def test_wochenueberblick_fasst_die_woche_zusammen(store, tmp_path):
     council.save_session(CouncilSession(88, "Rat", "2026-08-14", "18:00", "Rathaus"))
     with council._conn:
         council._insert_decision(88, 0, "decision", None, "Ö 1", "Radweg A", "x",
-                                 "angenommen", None, None, None, [], None, None, None)
+                                 "accepted", None, None, None, [], None, None, None)
         council._insert_decision(88, 1, "decision", None, "Ö 2", "Radweg B", "x",
-                                 "abgelehnt", None, None, None, [], None, None, None)
+                                 "rejected", None, None, None, [], None, None, None)
     ids = [r[0] for r in council._conn.execute("SELECT id FROM council_decisions ORDER BY id")]
     store.save_topic_decision_matches(thema.id, owner, [(i, 0.9) for i in ids])
 
@@ -545,9 +545,9 @@ def _zwei_beschluesse(council, ksinr: int = 88):
     council.save_session(CouncilSession(ksinr, "Rat", "2026-08-14", "18:00", "Rathaus"))
     with council._conn:
         council._insert_decision(ksinr, 0, "decision", None, "Ö 1", "Radweg A", "x",
-                                 "angenommen", None, None, None, [], None, None, None)
+                                 "accepted", None, None, None, [], None, None, None)
         council._insert_decision(ksinr, 1, "decision", None, "Ö 2", "Radweg B", "x",
-                                 "abgelehnt", None, None, None, [], None, None, None)
+                                 "rejected", None, None, None, [], None, None, None)
     return [r[0] for r in council._conn.execute(
         "SELECT id FROM council_decisions ORDER BY id")]
 
@@ -594,10 +594,10 @@ def test_wirklich_neue_treffer_zaehlen_weiter(store, tmp_path):
         store._conn.execute("UPDATE council_topic_matches SET matched_at = '2026-01-01T00:00:00'")
     store.save_topic_decision_matches(thema.id, owner, [(a, 0.9), (b, 0.8)])
 
-    stand = dict(store._conn.execute(
+    as_of = dict(store._conn.execute(
         "SELECT decision_id, matched_at FROM council_topic_matches").fetchall())
-    assert stand[a] == "2026-01-01T00:00:00"
-    assert stand[b] > "2026-01-01T00:00:00"      # frisch gestempelt
+    assert as_of[a] == "2026-01-01T00:00:00"
+    assert as_of[b] > "2026-01-01T00:00:00"      # frisch gestempelt
 
     store.save_topic_decision_matches(thema.id, owner, [(b, 0.8)])
     assert [r[0] for r in store._conn.execute(
@@ -897,12 +897,12 @@ def test_wieder_einschalten_faengt_bei_null_an(store, monkeypatch):
     store.set_delivery_channel(owner, "email")
     notify.einreihen(store, owner, notify.N2_THEMA, "danach", "<p>neu</p>", "/council",
                      jetzt=_zeit("2026-08-19", 9))
-    titel: list[str] = []
+    title: list[str] = []
     monkeypatch.setattr(
         "kern.delivery.deliver_message",
-        lambda o, html, email_subject, push_url="/", push_text=None: (titel.append(email_subject), ["email"])[1])
+        lambda o, html, email_subject, push_url="/", push_text=None: (title.append(email_subject), ["email"])[1])
     assert notify.zustellen(store, jetzt=_zeit("2026-08-19", 10)) == 1
-    assert titel == ["danach"]
+    assert title == ["danach"]
 
 
 def test_abgeschaltet_bekommt_keine_einrichtungs_erinnerung(store):

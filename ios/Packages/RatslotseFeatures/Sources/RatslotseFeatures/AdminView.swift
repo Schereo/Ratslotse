@@ -7,7 +7,6 @@ private enum AdminSection: String, CaseIterable, Identifiable {
     case stats = "Statistik"
     case feedback = "Feedback"
     case llm = "LLM-Kosten"
-    case prompts = "Prompts"
     case users = "Nutzer*innen"
     case quiz = "Quiz"
     case places = "Orte"
@@ -81,7 +80,6 @@ struct AdminView: View {
         case .stats: AdminStatsView(model: model)
         case .feedback: AdminFeedbackView(model: model)
         case .llm: AdminLLMView(model: model)
-        case .prompts: AdminPromptsView(model: model)
         case .users: AdminUsersView(model: model)
         case .quiz: AdminQuizView(model: model)
         case .places: AdminPlacesView(model: model)
@@ -118,7 +116,7 @@ private struct AdminStatsView: View {
                     statCard("Beschlüsse mit KI-Feldern", value: data.council.decisionsWithKi)
                     VStack(alignment: .leading, spacing: 8) {
                         MonoKicker("Ratsinfo-Import")
-                        Label(importLabel(data.council.hoursSinceFetch), systemImage: "circle.fill")
+                        RatsLabel(importLabel(data.council.hoursSinceFetch), .circle)
                             .font(RatsFont.body(13, weight: .semibold))
                             .foregroundStyle(importColor(data.council.hoursSinceFetch))
                         if let next = data.council.nextSession { Text("Nächste Sitzung: \(next)").font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
@@ -132,7 +130,7 @@ private struct AdminStatsView: View {
     private var rangeMenu: some View {
         Menu {
             ForEach([("30d", "30 Tage"), ("90d", "90 Tage"), ("12m", "12 Monate"), ("all", "Alles")], id: \.0) { value, label in Button(label) { range = value } }
-        } label: { Label(range == "all" ? "Alles" : range.uppercased(), systemImage: "calendar").font(RatsFont.body(12, weight: .semibold)).padding(.horizontal, 11).frame(minHeight: 38).background(RatsColor.card).clipShape(Capsule()) }
+        } label: { RatsLabel(range == "all" ? "Alles" : range.uppercased(), .calendarDays).font(RatsFont.body(12, weight: .semibold)).padding(.horizontal, 11).frame(minHeight: 38).background(RatsColor.card).clipShape(Capsule()) }
     }
 
     private func growthCard(_ title: String, _ series: AdminGrowth.Series) -> some View {
@@ -209,28 +207,7 @@ private struct AdminLLMView: View {
     private func load() async { do { data = try await model.api.get("/api/admin/llm-usage"); error = nil } catch { self.error = error.localizedDescription } }
 }
 
-private struct AdminPrompt: Decodable, Sendable, Identifiable { var id: String { key }; let key: String; let title: String; let description: String; var content: String; let `default`: String; let isOverridden: Bool; enum CodingKeys: String, CodingKey { case key, title, description, content, `default`; case isOverridden = "is_overridden" } }
-private struct AdminPromptsView: View {
-    let model: AppModel; @State private var prompts: [AdminPrompt] = []; @State private var error: String?
-    var body: some View { adminList(title: "Prompts", subtitle: "Änderungen gelten sofort im gemeinsamen Backend") {
-        ForEach($prompts) { $prompt in PromptEditor(model: model, prompt: $prompt, reload: load) }
-        if let error { ErrorCard(message: error) { Task { await load() } } }
-    }.task { await load() } }
-    private func load() async { do { prompts = try await model.api.get("/api/admin/prompts"); error = nil } catch { self.error = error.localizedDescription } }
-}
-
-private struct PromptEditor: View {
-    let model: AppModel; @Binding var prompt: AdminPrompt; let reload: () async -> Void
-    @State private var expanded = false; @State private var busy = false; @State private var message: String?
-    var body: some View { DisclosureGroup(isExpanded: $expanded) {
-        TextEditor(text: $prompt.content).font(.system(.caption, design: .monospaced)).frame(minHeight: 220).padding(8).background(RatsColor.page).clipShape(RoundedRectangle(cornerRadius: 12))
-        HStack { Button("Speichern") { Task { await save() } }.buttonStyle(.borderedProminent).disabled(busy); if prompt.isOverridden { Button("Standard") { Task { await reset() } }.buttonStyle(.bordered).disabled(busy) }; if let message { Text(message).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary) } }.padding(.top, 8)
-    } label: { VStack(alignment: .leading, spacing: 3) { HStack { Text(prompt.title).font(RatsFont.body(15, weight: .bold)); if prompt.isOverridden { Text("angepasst").font(RatsFont.body(9, weight: .bold)).foregroundStyle(RatsColor.warning) } }; Text(prompt.description).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary); Text(prompt.key).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) } }.ratsCard() }
-    private func save() async { busy = true; defer { busy = false }; struct Body: Encodable, Sendable { let content: String }; do { try await model.api.sendVoid("/api/admin/prompts/\(prompt.key)", method: .put, body: Body(content: prompt.content)); message = "Gespeichert"; await reload() } catch { message = error.localizedDescription } }
-    private func reset() async { busy = true; defer { busy = false }; do { try await model.api.sendVoid("/api/admin/prompts/\(prompt.key)/reset"); await reload() } catch { message = error.localizedDescription } }
-}
-
-private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_abos"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
+private struct AdminUserRow: Decodable, Sendable, Identifiable { let id: Int; let email: String; let role: String; let status: String; let lastSeen: String?; let nTopics: Int; let nAbos: Int; let nQuiz: Int; let nKi: Int; enum CodingKeys: String, CodingKey { case id,email,role,status; case lastSeen = "last_seen"; case nTopics = "n_topics"; case nAbos = "n_subscriptions"; case nQuiz = "n_quiz"; case nKi = "n_ki" } }
 private struct AdminUsersView: View {
     let model: AppModel; @State private var users: [AdminUserRow] = []; @State private var query = ""; @State private var error: String?
     var filtered: [AdminUserRow] { query.isEmpty ? users : users.filter { $0.email.localizedCaseInsensitiveContains(query) } }

@@ -2,10 +2,10 @@
 """Jahresabschlüsse und Teilhaushalts-Pläne aus dem eigenen Bestand einlesen.
 
 Beide Dokumenttypen hängen als Anlagen an Ratsvorlagen und liegen mit
-Volltext in ``council_anlagen`` — der Protokoll-Scraper zieht sie ohnehin.
+Volltext in ``council_attachments`` — der Protokoll-Scraper zieht sie ohnehin.
 Dieses Skript liest sie aus, ohne etwas herunterzuladen:
 
-- **Jahresabschluss** → ``council_ergebnisrechnung``: Ansatz und Ergebnis je
+- **Jahresabschluss** → ``council_income_statement``: Ansatz und Ergebnis je
   Posten, also „geplant gegen tatsächlich", plus die Erträge nach Arten —
   zweimal: für die Kernverwaltung gesamt und je Teilhaushalt. Die
   Teilhaushalts-Ebene wird nur gespeichert, wenn ihre Summe zur
@@ -13,26 +13,26 @@ Dieses Skript liest sie aus, ohne etwas herunterzuladen:
   Dasselbe Dokument trägt zwei weitere Ebenen, jede mit eigener Probe und
   eigenem Schicksal — reißt eine, fehlt sie allein, und der Rest des
   Jahrgangs steht trotzdem: Abschnitt 4.1 die **Finanzrechnung**
-  (``council_finanzrechnung``, was tatsächlich geflossen ist,
+  (``council_cash_flow_statement``, was tatsächlich geflossen ist,
   ``finanzberichte.finanzprobe``) und Abschnitt 2.1 die **Bilanz**
-  (``council_bilanz``, was am Stichtag da ist und wem es zusteht,
+  (``council_balance_sheet``, was am Stichtag da ist und wem es zusteht,
   ``bilanz.bilanzprobe``) samt den Erläuterungen des Anhangs dazu
-  (``council_bilanz_erlaeuterungen``, Abschnitt 6.2.1–6.2.9). Über
+  (``council_balance_sheet_notes``, Abschnitt 6.2.1–6.2.9). Über
   Dokumentgrenzen hinweg laufen dabei drei Ketten: Kassen- und
   Bilanz-Vorjahreskette und die Kreuzprobe zwischen beiden Tabellen —
   „Liquide Mittel" der Bilanz ist der „Endbestand an Zahlungsmitteln" der
   Finanzrechnung, gelesen von zwei getrennten Parsern.
-- **Teilhaushalts-Pläne (THH)** → ``council_produkte``: was einzelne Aufgaben
+- **Teilhaushalts-Pläne (THH)** → ``council_products``: was einzelne Aufgaben
   kosten, mit Produktnummer und Amt — dazu der Steckbrief je Produkt
   (Kurzbeschreibung, Auftragsgrundlage, Grad der Beeinflussbarkeit,
   Wirkungskreis, Zielgruppe). Wie viele Produkte welches Feld tragen, weist
   der Lauf am Ende aus; die Zahl steht später so auf der Produktseite.
 - **Gesamtergebnishaushalt** (Anlage 005 des Haushaltsplans) →
-  ``council_ergebnishaushalt``: dieselben Einnahme- und Ausgabearten, aber für
+  ``council_income_budget``: dieselben Einnahme- und Ausgabearten, aber für
   Jahre, die noch **keinen** Jahresabschluss haben. Ansatz und mittelfristige
   Finanzplanung stehen dabei getrennt in der Tabelle — das Dokument nennt
   beides „Ansatz", beschlossen ist aber nur ein Jahr.
-- **Stellenplan** (Anlage 21/22 desselben Plans) → ``council_stellenplan``:
+- **Stellenplan** (Anlage 21/22 desselben Plans) → ``council_staff_plan``:
   die einzige Schicht, die nicht in Euro rechnet. Wie viele Stellen die Stadt
   vorhält, getrennt nach Beamt*innen (Teil A) und Tarifbeschäftigten
   (Teil B) — und wie viele davon am Stichtag **nicht besetzt** waren.
@@ -75,7 +75,7 @@ _EIGEN = ("neue_jahrgaenge", "bestand_geschuetzt")
 def main() -> int:
     ap = argparse.ArgumentParser(description="Jahresabschlüsse und Teilhaushalte einlesen")
     ap.add_argument("--nur", choices=["jahresabschluss", "teilhaushalte",
-                                      "ergebnishaushalt", "stellenplan",
+                                      "income_budget", "stellenplan",
                                       "investitionsprogramm"],
                     default=None)
     ap.add_argument("--db", default=str(COUNCIL_DB))
@@ -89,11 +89,11 @@ def main() -> int:
     store = CouncilStore(Path(args.db))
     p = finanzquellen.Protokoll()
     schuetzen = not args.auch_schrumpfen
-    ergebnis: dict = {}
+    result: dict = {}
 
-    def uebernehmen(name: str, teil: dict) -> None:
-        for schluessel, wert in teil.items():
-            ergebnis[f"{name}_{schluessel}" if schluessel in _EIGEN else schluessel] = wert
+    def uebernehmen(name: str, part: dict) -> None:
+        for key, value in part.items():
+            result[f"{name}_{key}" if key in _EIGEN else key] = value
 
     try:
         if args.nur in (None, "jahresabschluss"):
@@ -120,14 +120,14 @@ def main() -> int:
             # Leser kommt zuletzt, weil zwei seiner drei Proben gegen die
             # Bilanz rechnen — die muss vorher stehen.
             print("Kennzahlen des Rechenschaftsberichts:")
-            uebernehmen("kennzahlen", finanzquellen.lies_kennzahlen(store, p))
+            uebernehmen("indicators", finanzquellen.lies_kennzahlen(store, p))
         if args.nur in (None, "teilhaushalte"):
             print("Teilhaushalte (Produktebene):")
             uebernehmen("teilhaushalt",
                         finanzquellen.lies_teilhaushalte(store, p, schuetzen=schuetzen))
-        if args.nur in (None, "ergebnishaushalt"):
+        if args.nur in (None, "income_budget"):
             print("Gesamtergebnishaushalt (Planjahre):")
-            uebernehmen("ergebnishaushalt",
+            uebernehmen("income_budget",
                         finanzquellen.lies_ergebnishaushalte(store, p, schuetzen=schuetzen))
         if args.nur in (None, "stellenplan"):
             print("Stellenplan (Stellen und Besetzung):")
@@ -141,11 +141,11 @@ def main() -> int:
         # Zeilen, die nicht sagen, woher sie kommen. Leer ist der Sollzustand;
         # steht hier etwas, hat eine Zieltabelle ihre `herkunft_id` nicht
         # gefüllt (siehe council/herkunft.py).
-        ergebnis["herkunft_verwaist"] = store.herkunft_aufraeumen()
-        ergebnis["ohne_herkunft"] = store.herkunft_luecken()
+        result["herkunft_verwaist"] = store.herkunft_aufraeumen()
+        result["ohne_herkunft"] = store.herkunft_luecken()
     finally:
         store.close()
-    print(f"Fertig: {ergebnis}")
+    print(f"Fertig: {result}")
     return 0
 
 

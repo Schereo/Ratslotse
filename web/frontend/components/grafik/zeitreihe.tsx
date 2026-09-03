@@ -10,7 +10,7 @@
 // Segment zeichnet. Interpolation ist damit im Code unmöglich, nicht nur
 // verboten: Es gibt keine Stelle, an der ein Zwischenwert entstünde.
 //
-// LÜCKEN SIND DATEN (GB-00): `{jahr, fehlt}` steht IN der Reihe. Im Bild
+// LÜCKEN SIND DATEN (GB-00): `{year, fehlt}` steht IN der Reihe. Im Bild
 // rendert die Lücke als schraffierter Kasten mit gestrichelter Signal-Kante
 // (die Konvention des Bereichs), darunter beschriftet sie ein <LueckenFeld> —
 // von der Komponente, nie von der Seite. Ein Jahr, das in der Reihe einfach
@@ -41,7 +41,7 @@
 // Rampenstufe — nie Signal-Orange, denn eine zweite Größe ist keine
 // Abweichung. Orange bleibt den Lücken-Markierungen vorbehalten.
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { scaleLinear } from "d3-scale";
 import { area, curveStepAfter, line } from "d3-shape";
 import { useBreite } from "@/lib/use-breite";
@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils";
 import { istLuecke, type JahrLuecke, type JahrPunkt, type JahrWert } from "./daten";
 import { achsenStellen, ySpanne } from "./skala";
 import { deZahl } from "./format";
-import { LueckenFeld } from "./luecken-feld";
+import { LueckenFeld } from "./luecken-field";
 import {
   AbleseBeschreibung, AbleseFlaeche, Ableseleiste, useAblesen,
   type AbleseStelle, type AbleseWert,
@@ -66,7 +66,7 @@ const TON_ZWEIT = "var(--hh-ein-1)";
 const halo = { paintOrder: "stroke", strokeWidth: 3, strokeLinejoin: "round" } as const;
 
 export type ZeitreiheAnnotation = {
-  jahr: number;
+  year: number;
   /** Der ganze Satz — steht IMMER unter der Grafik und in der Vorlesehilfe. */
   text: string;
   /** Kurzform für den Chip über der Grafik („108,9 Mio. umgebucht").
@@ -89,15 +89,15 @@ export type ZeitreiheUmschalter = {
 /** Ein Jahr der normalisierten Reihe: Wert, erklärte Lücke — oder ein Jahr,
  *  das in der Reihe schlicht fehlt (`unerklaert`). */
 type Stelle =
-  | { jahr: number; art: "wert"; punkt: JahrWert }
-  | { jahr: number; art: "luecke"; punkt: JahrLuecke }
-  | { jahr: number; art: "unerklaert" };
+  | { year: number; art: "value"; punkt: JahrWert }
+  | { year: number; art: "luecke"; punkt: JahrLuecke }
+  | { year: number; art: "unerklaert" };
 
-type WertStelle = Extract<Stelle, { art: "wert" }>;
+type WertStelle = Extract<Stelle, { art: "value" }>;
 
 /** Das `defined`-Prädikat für d3-shape — UND der Type Guard fürs Lesen:
  *  Wer an den Wert will, kommt am Lücken-Zweig nicht vorbei. */
-const definiert = (s: Stelle): s is WertStelle => s.art === "wert";
+const definiert = (s: Stelle): s is WertStelle => s.art === "value";
 
 /** Die Reihe auf den vollen Jahresbereich normalisieren — so kann kein
  *  fehlendes Jahr aus der x-Achse herausfallen und still interpoliert wirken.
@@ -112,51 +112,52 @@ const definiert = (s: Stelle): s is WertStelle => s.art === "wert";
  *  Die Unterscheidung, die dahinter steht: „wir wissen es nicht" (Lücke,
  *  Schraffur, Linienbruch) gegen „es hat sich nichts geändert" (Stufe). Beide
  *  verbieten dieselbe Interpolation, aber aus verschiedenen Gründen. */
-function normalisiere(reihe: JahrPunkt[], treppe = false): Stelle[] {
-  const sortiert = [...reihe].sort((a, b) => a.jahr - b.jahr);
+function normalisiere(series: JahrPunkt[], treppe = false): Stelle[] {
+  const sortiert = [...series].sort((a, b) => a.year - b.year);
   if (!sortiert.length) return [];
   if (treppe) {
     return sortiert.map((p) => istLuecke(p)
-      ? { jahr: p.jahr, art: "luecke" as const, punkt: p }
-      : { jahr: p.jahr, art: "wert" as const, punkt: p });
+      ? { year: p.year, art: "luecke" as const, punkt: p }
+      : { year: p.year, art: "value" as const, punkt: p });
   }
-  const nach = new Map(sortiert.map((p) => [p.jahr, p]));
+  const nach = new Map(sortiert.map((p) => [p.year, p]));
   const aus: Stelle[] = [];
-  for (let jahr = sortiert[0].jahr; jahr <= sortiert[sortiert.length - 1].jahr; jahr++) {
-    const p = nach.get(jahr);
-    if (!p) aus.push({ jahr, art: "unerklaert" });
-    else if (istLuecke(p)) aus.push({ jahr, art: "luecke", punkt: p });
-    else aus.push({ jahr, art: "wert", punkt: p });
+  for (let year = sortiert[0].year; year <= sortiert[sortiert.length - 1].year; year++) {
+    const p = nach.get(year);
+    if (!p) aus.push({ year, art: "unerklaert" });
+    else if (istLuecke(p)) aus.push({ year, art: "luecke", punkt: p });
+    else aus.push({ year, art: "value", punkt: p });
   }
   return aus;
 }
 
 export function Zeitreihe({
-  reihe, einheit, ariaTitel, titel, nachkomma = 1, format, zweitreihe,
+  series, unit, ariaTitel, title, nachkomma = 1, format, zweitreihe,
   annotationen, spruenge = false, vorjahresdifferenz = false, differenzFormat,
   tabelle = false, leisteHaftet = true,
-  umschalter, beleg, nullbasis = true, hinweis, treppe = false, className,
+  umschalter, beleg, nullbasis = true, note, treppe = false, className,
+  aktivesJahr, onAktivesJahr,
 }: {
   /** Punkte UND Lücken in einer Liste (Daten-Vertrag GB-00). */
-  reihe: JahrPunkt[];
+  series: JahrPunkt[];
   /** Steht in der Ableseleiste und der Kopf-Zeile, z. B. „Mio. €". */
-  einheit: string;
+  unit: string;
   /** Der Satz für die Vorlesehilfe — Pflicht, eine Grafik ohne Namen ist
    *  für den Screenreader ein leeres Rechteck. */
   ariaTitel: string;
   /** Sichtbare Kopfzeile über dem Bild („Schulden insgesamt"). Rechts daneben
    *  setzt die Komponente die gemessene Menge: Spanne, Zahl der Werte,
-   *  Einheit — nie „viele Jahre", immer die Zahl. Ohne `titel` keine
+   *  Einheit — nie „viele Jahre", immer die Zahl. Ohne `title` keine
    *  Kopfzeile: Eine leere Überschriftenzeile wäre ein Versprechen. */
-  titel?: string;
+  title?: string;
   nachkomma?: number;
   /** Eigenes Zahlenformat (Vorgabe: `deZahl` mit `nachkomma`). Für Reihen,
    *  deren Werte nicht als Mio. kommen — gebaut aus `format.ts`, nie aus
    *  `toLocaleString`. */
-  format?: (wert: number) => string;
+  format?: (value: number) => string;
   /** Dünn und gestrichelt IN derselben Zeichenfläche (GB-01),
    *  z. B. die Zinslast zur Schuldenreihe. */
-  zweitreihe?: { label: string; reihe: JahrPunkt[]; format?: (wert: number) => string };
+  zweitreihe?: { label: string; series: JahrPunkt[]; format?: (value: number) => string };
   /** Beschriftete Stellen („2010: 108,9 Mio. an Eigenbetriebe umgebucht").
    *  Im Bild ein ⓘ-Marker (breit mit `kurz` daneben); der ganze Satz steht in
    *  der **Ableseleiste**, sobald das Jahr gewählt ist — ein Tipp aufs ⓘ
@@ -190,7 +191,7 @@ export function Zeitreihe({
    *  Mit demselben Format stünde dort „−4,51 %", und das liest sich als
    *  relativer Rückgang — der wäre 8,3 %. Zwei verschiedene Zahlen unter
    *  einer Schreibweise; deshalb darf die Differenz ihre eigene haben. */
-  differenzFormat?: (wert: number) => string;
+  differenzFormat?: (value: number) => string;
   /** Alle Werte zusätzlich als aufklappbare Tabelle unter der Grafik —
    *  für Leser*innen, die eine Zahl abschreiben wollen, statt sie an der
    *  Leiste abzufahren. Lücken stehen darin als „—"; ihr Grund steht wie
@@ -208,7 +209,7 @@ export function Zeitreihe({
    *  Eingabezeile schon am unteren Rand klebt (s. Ableseleiste). */
   leisteHaftet?: boolean;
   /** Eigener Bedien-Hinweis unter der Ableseleiste. */
-  hinweis?: string;
+  note?: string;
   /** Treppe statt Linie: Der Wert gilt bis zum nächsten Punkt und springt
    *  dort — für Größen, die zwischen zwei Beschlüssen **stillstehen**.
    *
@@ -223,36 +224,67 @@ export function Zeitreihe({
    *  `format`, seit wann sie gilt. */
   treppe?: boolean;
   className?: string;
+  /** Bild und Seite verbinden (seit 02.09.): Die Seite kann eine Stelle
+   *  WÄHLEN (`aktivesJahr`, `null` = Vorgabe) und erfährt, welche gerade
+   *  gilt (`onAktivesJahr`). Gebaut für die Hebesatz-Treppe, deren Liste
+   *  unter dem Bild dieselben Jahre führt: Zeigen auf die Zeile hebt die
+   *  Stufe hervor, Zeigen auf die Stufe die Zeile. Beide Richtungen laufen
+   *  über getrennte Werte, damit nichts kreist — die Seite reicht NIE das
+   *  Jahr zurück, das sie gerade von hier bekommen hat. */
+  aktivesJahr?: number | null;
+  onAktivesJahr?: (year: number) => void;
 }) {
   const { box, breite } = useBreite();
   const [tabelleOffen, setTabelleOffen] = useState(false);
-  const stellenListe = normalisiere(reihe, treppe);
+  const stellenListe = normalisiere(series, treppe);
   const beschreibungId = useId();
   const ablesen = useAblesen(
     stellenListe.length,
     Math.max(stellenListe.length - 1, 0),
   );
 
+  // Von der Seite gewählt → hier gewählt; `null` gibt die Vorgabe zurück.
+  // Abhängig von den JAHREN als Zeichenkette, nicht von `series`: Die Seite
+  // baut ihre Reihe je Render neu, und ein Effekt an ihr liefe bei jedem
+  // Render der Seite — auch dem, den `onAktivesJahr` selbst auslöst — und
+  // setzte mit `null` die Wahl unter dem Zeiger sofort wieder zurück.
+  const { waehle, zuruecksetzen } = ablesen;
+  const jahre = stellenListe.map((st) => st.year).join(",");
+  useEffect(() => {
+    if (aktivesJahr === undefined) return;
+    if (aktivesJahr === null) { zuruecksetzen(); return; }
+    const idx = jahre.split(",").findIndex((j) => Number(j) === aktivesJahr);
+    if (idx >= 0) waehle(idx);
+  }, [aktivesJahr, jahre, waehle, zuruecksetzen]);
+  // Hier gewählt → der Seite gemeldet.
+  const aktivesJahrHier = stellenListe[ablesen.aktiv]?.year;
+  const gemeldet = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!onAktivesJahr || aktivesJahrHier == null || gemeldet.current === aktivesJahrHier) return;
+    gemeldet.current = aktivesJahrHier;
+    onAktivesJahr(aktivesJahrHier);
+  }, [aktivesJahrHier, onAktivesJahr]);
+
   const fmt = format ?? ((v: number) => deZahl(v, nachkomma));
   const fmtZweit = zweitreihe?.format ?? fmt;
   const schmal = breite < 520;
   const fs = schmal
-    ? { achse: 13, jahr: 13, wert: 14, legende: 12.5, marke: 12.5 }
-    : { achse: 11, jahr: 11, wert: 13, legende: 12, marke: 11 };
+    ? { achse: 13, year: 13, value: 14, legende: 12.5, mark: 12.5 }
+    : { achse: 11, year: 11, value: 13, legende: 12, mark: 11 };
 
   const werte = stellenListe.filter(definiert);
   if (werte.length < 2) return null;
 
-  const spanneVon = stellenListe[0].jahr;
-  const spanneBis = stellenListe[stellenListe.length - 1].jahr;
+  const spanneVon = stellenListe[0].year;
+  const spanneBis = stellenListe[stellenListe.length - 1].year;
   // Die Zweitreihe wird auf die x-Achse der Hauptreihe geklemmt: Ein Jahr
   // außerhalb hätte keine Stelle im Bild und würde von der Skala nach
   // draußen gerechnet — die Linie liefe aus der Zeichenfläche.
   const zweitStellen = zweitreihe
-    ? normalisiere(zweitreihe.reihe.filter(
-        (p) => p.jahr >= spanneVon && p.jahr <= spanneBis), treppe)
+    ? normalisiere(zweitreihe.series.filter(
+        (p) => p.year >= spanneVon && p.year <= spanneBis), treppe)
     : [];
-  const zweitNach = new Map(zweitStellen.map((s) => [s.jahr, s]));
+  const zweitNach = new Map(zweitStellen.map((s) => [s.year, s]));
 
   // --- Skalen (d3-scale) ---------------------------------------------------
   const plotH = schmal ? 180 : 210;
@@ -262,8 +294,8 @@ export function Zeitreihe({
   const H = yJahr + 8;
 
   const alleWerte = [
-    ...werte.map((s) => (s.punkt as JahrWert).wert),
-    ...zweitStellen.filter(definiert).map((s) => s.punkt.wert),
+    ...werte.map((s) => (s.punkt as JahrWert).value),
+    ...zweitStellen.filter(definiert).map((s) => s.punkt.value),
   ];
   const [yVon, yBis] = ySpanne(alleWerte, nullbasis);
   const ySkala = scaleLinear()
@@ -281,7 +313,7 @@ export function Zeitreihe({
 
   const von = spanneVon;
   const bis = spanneBis;
-  const x = (jahr: number) => X0 + ((jahr - von) / Math.max(bis - von, 1)) * (X1 - X0);
+  const x = (year: number) => X0 + ((year - von) / Math.max(bis - von, 1)) * (X1 - X0);
   const y = (v: number) => ySkala(v);
 
   // --- Pfade (d3-shape, defined = vorhanden) -------------------------------
@@ -296,17 +328,17 @@ export function Zeitreihe({
   const kurve = treppe ? curveStepAfter : undefined;
   const linie = line<Stelle>()
     .defined(definiert)
-    .x((s) => x(s.jahr))
-    .y((s) => y((s as { punkt: JahrWert }).punkt.wert));
+    .x((s) => x(s.year))
+    .y((s) => y((s as { punkt: JahrWert }).punkt.value));
   const flaeche = area<Stelle>()
     .defined(definiert)
-    .x((s) => x(s.jahr))
+    .x((s) => x(s.year))
     .y0(Y0)
-    .y1((s) => y((s as { punkt: JahrWert }).punkt.wert));
+    .y1((s) => y((s as { punkt: JahrWert }).punkt.value));
   const zweitLinie = line<Stelle>()
     .defined(definiert)
-    .x((s) => x(s.jahr))
-    .y((s) => y((s as { punkt: JahrWert }).punkt.wert));
+    .x((s) => x(s.year))
+    .y((s) => y((s as { punkt: JahrWert }).punkt.value));
   if (kurve) {
     linie.curve(kurve);
     flaeche.curve(kurve);
@@ -319,14 +351,14 @@ export function Zeitreihe({
   // zerlegt und je Abschnitt ein Pfad gezeichnet.
   const abschnitte: Stelle[][] = [];
   for (const s of stellenListe) {
-    const bricht = s.art === "wert"
+    const bricht = s.art === "value"
       && (s.punkt as JahrWert).bruchDavor != null && abschnitte.length > 0;
     if (bricht || !abschnitte.length) abschnitte.push([]);
     abschnitte[abschnitte.length - 1].push(s);
   }
 
-  const luecken = stellenListe.filter((s) => s.art !== "wert");
-  const abstand = stellenListe.length > 1 ? x(stellenListe[1].jahr) - x(von) : 60;
+  const luecken = stellenListe.filter((s) => s.art !== "value");
+  const abstand = stellenListe.length > 1 ? x(stellenListe[1].year) - x(von) : 60;
   const halbeLuecke = Math.max(9, Math.min(30, abstand * 0.45));
 
   const erster = werte[0].punkt;
@@ -361,22 +393,24 @@ export function Zeitreihe({
   /** Die erste freie Zeile über dem Punkt, sonst darunter. */
   const ausweichen = (py: number, kasten: (ty: number) => Kasten,
                       belegt: Kasten[]): number => {
-    const zeile = fs.marke + 4;
+    const row = fs.mark + 4;
     const kandidaten: number[] = [];
-    for (let n = 0; n < 6 && py - 10 - n * zeile - fs.marke > YTOP; n++) {
-      kandidaten.push(py - 10 - n * zeile);
+    for (let n = 0; n < 6 && py - 10 - n * row - fs.mark > YTOP; n++) {
+      kandidaten.push(py - 10 - n * row);
     }
-    kandidaten.push(Math.min(py + 9 + fs.marke, Y0 - 4));
+    kandidaten.push(Math.min(py + 9 + fs.mark, Y0 - 4));
     return kandidaten.find((k) => !belegt.some((b) => stoert(kasten(k), b)))
       ?? kandidaten[kandidaten.length - 1];
   };
 
-  const endText = fmt(letzter.wert);
-  const endY = y(letzter.wert) - 10;
+  // Der Endwert trägt seine Einheit („337,0 Mio. €", nicht „337,0"): Die
+  // Regel der Kacheln, dieselbe Zahl ohne Einheit war die eine im Bild.
+  const endText = `${fmt(letzter.value)}\u00a0${unit}`;
+  const endY = y(letzter.value) - 10;
   const belegt: Kasten[] = [{
-    x1: x(letzter.jahr) - 7 - textBreite(endText, fs.wert + 1),
-    x2: x(letzter.jahr) - 7,
-    y1: endY - fs.wert - 1, y2: endY + 3,
+    x1: x(letzter.year) - 7 - textBreite(endText, fs.value + 1),
+    x2: x(letzter.year) - 7,
+    y1: endY - fs.value - 1, y2: endY + 3,
   }];
 
   // Die Zweitreihe beschriftet sich am eigenen Endpunkt — breit mit Name und
@@ -388,11 +422,11 @@ export function Zeitreihe({
   const zweitBeschriftung = !schmal && zweitreihe && zweitLetzter
     ? (() => {
         const text = `${zweitreihe.label} `
-          + `(${zweitWerte[0].punkt.jahr}–${zweitLetzter.jahr})`;
-        const w = textBreite(text, fs.marke);
-        const tx = Math.min(Math.max(x(zweitLetzter.jahr), X0 + w), X1);
-        const ty = y(zweitLetzter.wert) - 8;
-        belegt.push({ x1: tx - w, x2: tx, y1: ty - fs.marke, y2: ty + 3 });
+          + `(${zweitWerte[0].punkt.year}–${zweitLetzter.year})`;
+        const w = textBreite(text, fs.mark);
+        const tx = Math.min(Math.max(x(zweitLetzter.year), X0 + w), X1);
+        const ty = y(zweitLetzter.value) - 8;
+        belegt.push({ x1: tx - w, x2: tx, y1: ty - fs.mark, y2: ty + 3 });
         return { text, tx, ty };
       })()
     : null;
@@ -405,10 +439,10 @@ export function Zeitreihe({
   // flex-wrap schlicht nicht hat. Der Chip wählt beim Antippen sein Jahr,
   // dieselbe Mechanik wie das ⓘ selbst.
   const annoMarken = (annotationen ?? []).flatMap((a) => {
-    const idx = stellenListe.findIndex((s) => s.jahr === a.jahr);
+    const idx = stellenListe.findIndex((s) => s.year === a.year);
     if (idx < 0) return [];
     const stelle = stellenListe[idx];
-    const py = stelle.art === "wert" ? y(stelle.punkt.wert) : (Y0 + YTOP) / 2;
+    const py = stelle.art === "value" ? y(stelle.punkt.value) : (Y0 + YTOP) / 2;
     return [{ ...a, py, idx }];
   });
 
@@ -417,12 +451,12 @@ export function Zeitreihe({
   // wäre der „Sprung" die Summe zweier unbekannter Bewegungen.
   const spruengeMarken = (() => {
     if (!spruenge) return [];
-    const deltas: { jahr: number; delta: number; wert: number }[] = [];
+    const deltas: { year: number; delta: number; value: number }[] = [];
     for (let i = 1; i < stellenListe.length; i++) {
       const a = stellenListe[i - 1], b = stellenListe[i];
       if (!definiert(a) || !definiert(b)) continue;
-      deltas.push({ jahr: b.jahr, delta: b.punkt.wert - a.punkt.wert,
-                    wert: b.punkt.wert });
+      deltas.push({ year: b.year, delta: b.punkt.value - a.punkt.value,
+                    value: b.punkt.value });
     }
     if (!deltas.length) return [];
     const runter = [...deltas].sort((p, q) => p.delta - q.delta)[0];
@@ -430,21 +464,21 @@ export function Zeitreihe({
     return [runter, rauf]
       // Steigt eine Reihe nur, sind größter Anstieg und größter „Rückgang"
       // dieselbe Stelle — dann steht die Marke einmal.
-      .filter((m, i, alle) => alle.findIndex((n) => n.jahr === m.jahr) === i)
+      .filter((m, i, alle) => alle.findIndex((n) => n.year === m.year) === i)
       .map((m) => {
-        const text = `${m.jahr}: ${m.delta > 0 ? "+" : "−"}${fmt(Math.abs(m.delta))}`;
-        const w = textBreite(text, fs.marke);
+        const text = `${m.year}: ${m.delta > 0 ? "+" : "−"}${fmt(Math.abs(m.delta))}`;
+        const w = textBreite(text, fs.mark);
         return {
           ...m, text, w,
-          mitte: Math.min(Math.max(x(m.jahr), X0 + w / 2), X1 - w / 2),
-          py: y(m.wert),
+          mitte: Math.min(Math.max(x(m.year), X0 + w / 2), X1 - w / 2),
+          py: y(m.value),
         };
       })
       .sort((a, b) => a.mitte - b.mitte)
       .map((m) => {
         const kasten = (ty: number): Kasten => ({
           x1: m.mitte - m.w / 2, x2: m.mitte + m.w / 2,
-          y1: ty - fs.marke, y2: ty + 3,
+          y1: ty - fs.mark, y2: ty + 3,
         });
         const ty = ausweichen(m.py, kasten, belegt);
         belegt.push(kasten(ty));
@@ -453,22 +487,22 @@ export function Zeitreihe({
   })();
 
   // --- Ableseleiste: eine Stelle je Jahr, auch für Lücken ------------------
-  const annotationNach = new Map((annotationen ?? []).map((a) => [a.jahr, a]));
+  const annotationNach = new Map((annotationen ?? []).map((a) => [a.year, a]));
   const ableseStellen: AbleseStelle[] = stellenListe.map((s, i) => {
-    const zweit = zweitNach.get(s.jahr);
+    const zweit = zweitNach.get(s.year);
     const werteZeile: AbleseWert[] =
-      s.art === "wert"
-        ? [{ label: einheit, wert: fmt(s.punkt.wert), farbe: TON }]
-        : [{ label: einheit, wert: "—", signal: true }];
+      s.art === "value"
+        ? [{ label: unit, value: fmt(s.punkt.value), farbe: TON }]
+        : [{ label: unit, value: "—", signal: true }];
     // Die Veränderung zum Vorjahr — nur wenn beide Jahre einen Wert haben
     // und wirklich benachbart sind.
     const vorher = i > 0 ? stellenListe[i - 1] : null;
-    const delta = vorjahresdifferenz && s.art === "wert" && vorher && definiert(vorher)
-      ? s.punkt.wert - vorher.punkt.wert : null;
+    const delta = vorjahresdifferenz && s.art === "value" && vorher && definiert(vorher)
+      ? s.punkt.value - vorher.punkt.value : null;
     if (delta != null) {
       werteZeile.push({
         label: "ggü. Vorjahr",
-        wert: `${delta > 0 ? "+" : delta < 0 ? "−" : ""}`
+        value: `${delta > 0 ? "+" : delta < 0 ? "−" : ""}`
           + `${(differenzFormat ?? fmt)(Math.abs(delta))}`,
         // Keine Signal-Marke: Sie markierte die Bewegung als Abweichung, und
         // „Anstieg" ist hier keine. Jede Richtung sieht gleich aus.
@@ -478,21 +512,21 @@ export function Zeitreihe({
     if (zweitreihe) {
       werteZeile.push({
         label: zweitreihe.label,
-        wert: zweit?.art === "wert" ? fmtZweit((zweit.punkt as JahrWert).wert) : "—",
+        value: zweit?.art === "value" ? fmtZweit((zweit.punkt as JahrWert).value) : "—",
         farbe: TON_ZWEIT,
       });
     }
-    const grund = s.art === "luecke" ? s.punkt.fehlt : s.art === "unerklaert" ? "keine Angabe" : null;
-    const anno = annotationNach.get(s.jahr);
+    const reason = s.art === "luecke" ? s.punkt.fehlt : s.art === "unerklaert" ? "keine Angabe" : null;
+    const anno = annotationNach.get(s.year);
     return {
-      titel: String(s.jahr) + (anno ? " ⓘ" : ""),
+      title: String(s.year) + (anno ? " ⓘ" : ""),
       werte: werteZeile,
       anmerkung: anno?.text,
       vorlesen: [
-        `${s.jahr}:`,
-        s.art === "wert" ? `${fmt(s.punkt.wert)} ${einheit}.` : `keine Zahl — ${grund}.`,
-        zweitreihe && zweit?.art === "wert"
-          ? `${zweitreihe.label} ${fmtZweit((zweit.punkt as JahrWert).wert)}.`
+        `${s.year}:`,
+        s.art === "value" ? `${fmt(s.punkt.value)} ${unit}.` : `keine Zahl — ${reason}.`,
+        zweitreihe && zweit?.art === "value"
+          ? `${zweitreihe.label} ${fmtZweit((zweit.punkt as JahrWert).value)}.`
           : "",
         anno ? `Anmerkung: ${anno.text}` : "",
       ].filter(Boolean).join(" "),
@@ -501,17 +535,17 @@ export function Zeitreihe({
 
   const beschreibung = [
     `${ariaTitel}, ${von} bis ${bis}.`,
-    werte.map((s) => `${s.jahr}: ${fmt((s.punkt as JahrWert).wert)}`).join(", "),
-    `${einheit}.`,
+    werte.map((s) => `${s.year}: ${fmt((s.punkt as JahrWert).value)}`).join(", "),
+    `${unit}.`,
     luecken.length
       ? `Ohne Zahl: ${luecken.map((s) =>
-          `${s.jahr} (${s.art === "luecke" ? s.punkt.fehlt : "keine Angabe"})`).join(", ")}.`
+          `${s.year} (${s.art === "luecke" ? s.punkt.fehlt : "keine Angabe"})`).join(", ")}.`
       : "",
     // Was im Bild als zweite Linie und als Marke steht, gehört auch in die
     // Vorlesehilfe — sonst ist die Grafik für sie eine andere.
     zweitreihe && zweitWerte.length
       ? `Dünne zweite Reihe: ${zweitreihe.label}, `
-        + `${zweitWerte[0].jahr} bis ${zweitWerte[zweitWerte.length - 1].jahr}.`
+        + `${zweitWerte[0].year} bis ${zweitWerte[zweitWerte.length - 1].year}.`
       : "",
     ...(annotationen ?? []).map((a) => a.text),
   ].filter(Boolean).join(" ");
@@ -543,13 +577,13 @@ export function Zeitreihe({
 
       {/* Kopfzeile: links, was gezeigt wird — rechts, wie viel davon
           gemessen ist. Ehrliche Mengen sind Vertrag des Baukastens. */}
-      {titel && (
+      {title && (
         <div className="mb-2 flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {titel}
+            {title}
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
-            {von}–{bis} · {werte.length} Werte · {einheit}
+            {von}–{bis} · {werte.length} Werte · {unit}
           </span>
         </div>
       )}
@@ -562,10 +596,10 @@ export function Zeitreihe({
       {annoMarken.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {annoMarken.map((a) => {
-            const aktivesJahr = stellenListe[ablesen.aktiv]?.jahr === a.jahr;
+            const aktivesJahr = stellenListe[ablesen.aktiv]?.year === a.year;
             return (
               <button
-                key={a.jahr} type="button"
+                key={a.year} type="button"
                 aria-pressed={aktivesJahr}
                 onClick={() => { ablesen.waehle(a.idx); ablesen.setTastatur(false); }}
                 className={cn(
@@ -577,7 +611,7 @@ export function Zeitreihe({
                 )}
               >
                 <span aria-hidden="true" className="font-mono text-[10px] italic">ⓘ</span>
-                <span className="font-mono text-[10px] font-semibold tabular-nums">{a.jahr}</span>
+                <span className="font-mono text-[10px] font-semibold tabular-nums">{a.year}</span>
                 {a.kurz && <span className="font-medium">{a.kurz}</span>}
               </button>
             );
@@ -602,16 +636,16 @@ export function Zeitreihe({
         {/* Lücken-Kästen: Schraffur + gestrichelte Signal-Kante — Markierung,
             keine Fläche in Orange (GB-00). */}
         {luecken.map((s) => {
-          const xl = x(s.jahr) - halbeLuecke, xr = x(s.jahr) + halbeLuecke;
+          const xl = x(s.year) - halbeLuecke, xr = x(s.year) + halbeLuecke;
           return (
-            <g key={s.jahr}>
+            <g key={s.year}>
               <foreignObject x={xl} y={YTOP} width={xr - xl} height={Y0 - YTOP}>
                 <div className="hh-schraffur h-full w-full opacity-60" />
               </foreignObject>
               <rect x={xl} y={YTOP} width={xr - xl} height={Y0 - YTOP} fill="none"
                 strokeDasharray="4 3" className="stroke-signal" />
               {s.art === "unerklaert" && (
-                <text x={x(s.jahr)} y={(Y0 + YTOP) / 2} textAnchor="middle" fontSize={11}
+                <text x={x(s.year)} y={(Y0 + YTOP) / 2} textAnchor="middle" fontSize={11}
                   className="fill-signal font-mono">?</text>
               )}
             </g>
@@ -620,27 +654,42 @@ export function Zeitreihe({
 
         {/* Fläche + Linie: `defined()` hat die Segmente an den Lücken schon
             getrennt — hier wird nur noch gezeichnet. */}
-        {nullbasis && abschnitte.map((teil, i) => (
-          <path key={`f${i}`} d={flaeche(teil) ?? undefined} style={{ fill: TON }} opacity={0.08} />
+        {/* AUFBAU (gb-*, einmalig): Die Linie zeichnet sich von links nach
+            rechts (`pathLength={1}` + `gb-zeichnen`), die Fläche und die
+            Zweitreihe blenden nach — die Zweitreihe ist gestrichelt, ein
+            Dash-Trick zeichnete sie falsch, also nur einblenden. */}
+        {nullbasis && abschnitte.map((part, i) => (
+          <path key={`f${i}`} d={flaeche(part) ?? undefined} style={{ fill: TON, animationDelay: "420ms" }}
+            opacity={0.08} className="gb-einblenden" />
         ))}
         {zweitreihe && (
           <path d={zweitLinie(zweitStellen) ?? undefined} fill="none" strokeWidth={1.5}
-            strokeDasharray="5 4" strokeLinecap="round" style={{ stroke: TON_ZWEIT }} />
+            strokeDasharray="5 4" strokeLinecap="round" className="gb-einblenden"
+            style={{ stroke: TON_ZWEIT, animationDelay: "600ms" }} />
         )}
-        {abschnitte.map((teil, i) => (
-          <path key={`l${i}`} d={linie(teil) ?? undefined} fill="none" strokeWidth={2.2}
-            strokeLinejoin="round" strokeLinecap="round" style={{ stroke: TON }} />
+        {abschnitte.map((part, i) => (
+          <path key={`l${i}`} d={linie(part) ?? undefined} fill="none" strokeWidth={2.2}
+            strokeLinejoin="round" strokeLinecap="round" pathLength={1} className="gb-zeichnen"
+            style={{ stroke: TON, animationDelay: `${i * 120}ms` }} />
+        ))}
+        {/* Auf einer Treppe ist jeder Punkt eine Entscheidung — die Stufen
+            tragen deshalb einen Punkt, damit man sieht, WO der Rat etwas
+            beschlossen hat. Eine Kurve mit 31 Punkten wäre ein Perlenband. */}
+        {treppe && werte.length <= 40 && werte.slice(1, -1).map((s) => (
+          <circle key={`stufe-${s.year}`} cx={x(s.year)} cy={y(s.punkt.value)} r={3.5}
+            strokeWidth={1.8} className="fill-card gb-einblenden"
+            style={{ stroke: TON, animationDelay: "700ms" }} />
         ))}
 
         {/* Der Endpunkt der Zweitreihe mit ihrem Namen — breit im Bild,
             schmal nur in der Legende darunter. */}
         {zweitLetzter && (
-          <circle cx={x(zweitLetzter.jahr)} cy={y(zweitLetzter.wert)} r={3}
+          <circle cx={x(zweitLetzter.year)} cy={y(zweitLetzter.value)} r={3}
             style={{ fill: TON_ZWEIT }} />
         )}
         {zweitBeschriftung && (
           <text x={zweitBeschriftung.tx} y={zweitBeschriftung.ty} textAnchor="end"
-            fontSize={fs.marke} className="stroke-card" {...halo}
+            fontSize={fs.mark} className="stroke-card" {...halo}
             style={{ fill: TON_ZWEIT }}>{zweitBeschriftung.text}</text>
         )}
 
@@ -649,16 +698,16 @@ export function Zeitreihe({
             gewählte ⓘ füllt sich, damit sichtbar ist, WOHER die Zeile in der
             Leiste gerade kommt. */}
         {annoMarken.map((a) => {
-          const aktivesJahr = stellenListe[ablesen.aktiv]?.jahr === a.jahr;
+          const aktivesJahr = stellenListe[ablesen.aktiv]?.year === a.year;
           return (
-            <g key={a.jahr}>
-              <line x1={x(a.jahr)} y1={YTOP + 8} x2={x(a.jahr)} y2={a.py - 8}
+            <g key={a.year}>
+              <line x1={x(a.year)} y1={YTOP + 8} x2={x(a.year)} y2={a.py - 8}
                 strokeWidth={1} strokeDasharray="2 3" className="stroke-foreground/40" />
-              <circle cx={x(a.jahr)} cy={YTOP + 8} r={7.5} strokeWidth={1.2}
+              <circle cx={x(a.year)} cy={YTOP + 8} r={7.5} strokeWidth={1.2}
                 className={aktivesJahr
                   ? "fill-foreground/75 stroke-foreground/75"
                   : "fill-card stroke-foreground/45"} />
-              <text x={x(a.jahr)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
+              <text x={x(a.year)} y={YTOP + 11.5} textAnchor="middle" fontSize={10} fontStyle="italic"
                 className={aktivesJahr ? "fill-card font-mono" : "fill-foreground/75 font-mono"}>i</text>
             </g>
           );
@@ -667,32 +716,35 @@ export function Zeitreihe({
         {/* Die größte Bewegung: Punkt und Führungsstrich zuerst, damit kein
             Strich durch die Beschriftung der anderen Marke zieht. */}
         {spruengeMarken.map((m) => (
-          <g key={`sprung-${m.jahr}`}>
-            {(Math.abs(m.mitte - x(m.jahr)) > 2 || m.ty < m.py - 13 || m.ty > m.py) && (
-              <line x1={x(m.jahr)} y1={m.py + (m.ty > m.py ? 6 : -6)}
-                x2={Math.min(Math.max(x(m.jahr), m.mitte - m.w / 2), m.mitte + m.w / 2)}
-                y2={m.ty > m.py ? m.ty - fs.marke - 2 : m.ty + 4}
+          <g key={`sprung-${m.year}`}>
+            {(Math.abs(m.mitte - x(m.year)) > 2 || m.ty < m.py - 13 || m.ty > m.py) && (
+              <line x1={x(m.year)} y1={m.py + (m.ty > m.py ? 6 : -6)}
+                x2={Math.min(Math.max(x(m.year), m.mitte - m.w / 2), m.mitte + m.w / 2)}
+                y2={m.ty > m.py ? m.ty - fs.mark - 2 : m.ty + 4}
                 strokeWidth={1} className="stroke-signal" opacity={0.45} />
             )}
-            <circle cx={x(m.jahr)} cy={m.py} r={4}
+            <circle cx={x(m.year)} cy={m.py} r={4}
               className="fill-card stroke-signal" strokeWidth={2} />
           </g>
         ))}
         {spruengeMarken.map((m) => (
-          <text key={`sprung-text-${m.jahr}`} x={m.mitte} y={m.ty} textAnchor="middle"
-            fontSize={fs.marke} className="fill-signal stroke-card" {...halo}>{m.text}</text>
+          <text key={`sprung-text-${m.year}`} x={m.mitte} y={m.ty} textAnchor="middle"
+            fontSize={fs.mark} className="fill-signal stroke-card" {...halo}>{m.text}</text>
         ))}
 
-        {/* Direktbeschriftung: Endwerte immer (GB-01). */}
-        <circle cx={x(erster.jahr)} cy={y(erster.wert)} r={4} className="fill-card"
-          strokeWidth={2} style={{ stroke: TON }} />
-        <circle cx={x(letzter.jahr)} cy={y(letzter.wert)} r={5} style={{ fill: TON }} />
-        <text x={x(letzter.jahr) - 7} y={endY} textAnchor="end"
-          fontSize={fs.wert + 1} fontWeight={700} className="stroke-card" {...halo}
-          style={{ fill: TON }}>{endText}</text>
+        {/* Direktbeschriftung: Endwerte immer (GB-01) — sie erscheinen,
+            sobald die Linie bei ihnen angekommen ist. */}
+        <g className="gb-einblenden" style={{ animationDelay: "700ms" }}>
+          <circle cx={x(erster.year)} cy={y(erster.value)} r={4} className="fill-card"
+            strokeWidth={2} style={{ stroke: TON }} />
+          <circle cx={x(letzter.year)} cy={y(letzter.value)} r={5} style={{ fill: TON }} />
+          <text x={x(letzter.year) - 7} y={endY} textAnchor="end"
+            fontSize={fs.value + 1} fontWeight={700} className="stroke-card" {...halo}
+            style={{ fill: TON }}>{endText}</text>
+        </g>
 
         {jahresmarken.map((j) => (
-          <text key={j} x={x(j)} y={yJahr} textAnchor="middle" fontSize={fs.jahr}
+          <text key={j} x={x(j)} y={yJahr} textAnchor="middle" fontSize={fs.year}
             className={j === bis ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
             {j}
           </text>
@@ -702,16 +754,16 @@ export function Zeitreihe({
             Zeiger ab. */}
         <AbleseFlaeche
           stellen={ableseStellen} steuerung={ablesen} gruppe="Jahre der Reihe"
-          x={(i) => x(stellenListe[i].jahr)} xVon={X0} xBis={X1}
+          x={(i) => x(stellenListe[i].year)} xVon={X0} xBis={X1}
           yVon={YTOP} hoehe={Y0 - YTOP} fangHoehe={yJahr + 4 - YTOP}
           marken={(i) => {
             const s = stellenListe[i];
-            const z = zweitNach.get(s.jahr);
+            const z = zweitNach.get(s.year);
             return [
-              ...(s.art === "wert" ? [{ y: y(s.punkt.wert), farbe: TON }] : []),
+              ...(s.art === "value" ? [{ y: y(s.punkt.value), farbe: TON }] : []),
               // Die Leiste zeigt beide Reihen als Wert — dann gehören auch
               // beide Marken an den Führungsstrich.
-              ...(z?.art === "wert" ? [{ y: y(z.punkt.wert), farbe: TON_ZWEIT }] : []),
+              ...(z?.art === "value" ? [{ y: y(z.punkt.value), farbe: TON_ZWEIT }] : []),
             ];
           }}
         />
@@ -721,16 +773,16 @@ export function Zeitreihe({
           Er wirbt für die einzige Stelle, an der der Anmerkungssatz steht —
           eine Seite, die ihn wegformuliert, versteckte ihre Annotationen. */}
       <Ableseleiste haftet={leisteHaftet} className="mt-2" stelle={ableseStellen[ablesen.aktiv]} steuerung={ablesen}
-        hinweis={(hinweis ?? `${einheit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
+        note={(note ?? `${unit} · Jahr überfahren, antippen oder mit den Pfeiltasten wechseln.`)
           + ((annotationen ?? []).length ? " ⓘ-Jahre tragen eine Anmerkung." : "")} />
 
       {/* Lücken beschriftet die GRAFIK (GB-00) — nie einklappbar. */}
       {luecken.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
           {luecken.map((s) => (
-            <LueckenFeld key={s.jahr} label={String(s.jahr)}
-              grund={s.art === "luecke" ? s.punkt.fehlt : "in der Reihe ohne Wert und ohne Grund"}
-              datum={s.art === "luecke" ? s.punkt.datum : undefined} />
+            <LueckenFeld key={s.year} label={String(s.year)}
+              reason={s.art === "luecke" ? s.punkt.fehlt : "für dieses Jahr liegt kein Wert vor"}
+              date={s.art === "luecke" ? s.punkt.date : undefined} />
           ))}
         </div>
       )}
@@ -743,16 +795,16 @@ export function Zeitreihe({
           <button type="button" onClick={() => setTabelleOffen((t) => !t)}
             aria-expanded={tabelleOffen} className="mt-2 text-[12px] font-semibold text-primary">
             {tabelleOffen ? "Tabelle ausblenden"
-              : `Alle ${stellenListe.length} Werte als Tabelle`}
+              : `Alle ${werte.length} Werte als Tabelle`}
           </button>
           {tabelleOffen && (
             <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-x-3 gap-y-1 text-[11.5px] tabular-nums">
               {stellenListe.map((s) => (
-                <span key={s.jahr} className="flex justify-between gap-2 border-t border-border/60 py-1">
-                  <span className="font-mono text-muted-foreground">{s.jahr}</span>
+                <span key={s.year} className="flex justify-between gap-2 border-t border-border/60 py-1">
+                  <span className="font-mono text-muted-foreground">{s.year}</span>
                   {/* Eine Lücke bleibt auch in der Tabelle eine Lücke. */}
-                  <span className={s.art === "wert" ? "" : "text-signal"}>
-                    {s.art === "wert" ? fmt(s.punkt.wert) : "—"}
+                  <span className={s.art === "value" ? "" : "text-signal"}>
+                    {s.art === "value" ? fmt(s.punkt.value) : "—"}
                   </span>
                 </span>
               ))}
@@ -789,22 +841,22 @@ export function Zeitreihe({
  *  Seite liefert den Satz) — es gibt keine Einzelziele, die verloren gingen.
  *  Lücken brechen die Linie über dasselbe `defined()`; ein Sparkline-Knick
  *  über eine Lücke hinweg wäre dieselbe Interpolation wie im großen Bild. */
-export function ZeitreiheMini({ reihe, ariaLabel, format, className }: {
-  reihe: JahrPunkt[];
+export function ZeitreiheMini({ series, ariaLabel, format, className }: {
+  series: JahrPunkt[];
   /** Ganzer Satz für die Vorlesehilfe — die Mini-Form ist EIN Bild. */
   ariaLabel: string;
   /** Formatiert die Endpunkt-Beschriftung (Vorgabe: `deZahl(v, 1)`). */
-  format?: (wert: number) => string;
+  format?: (value: number) => string;
   className?: string;
 }) {
   const { box, breite } = useBreite(220, 120);
-  const stellen = normalisiere(reihe);
+  const stellen = normalisiere(series);
   const werte = stellen.filter(definiert);
   if (werte.length < 2) return null;
 
   const fmt = format ?? ((v: number) => deZahl(v, 1));
   const letzterWert = werte[werte.length - 1].punkt;
-  const endText = fmt(letzterWert.wert);
+  const endText = fmt(letzterWert.value);
 
   const H = 46, YTOP = 5, Y0 = 33, yJahr = 44;
   const W = breite;
@@ -813,18 +865,18 @@ export function ZeitreiheMini({ reihe, ariaLabel, format, className }: {
   const X0 = 2;
   const X1 = Math.max(W - reserve, X0 + 40);
 
-  const von = stellen[0].jahr, bis = stellen[stellen.length - 1].jahr;
-  const zahlen = werte.map((s) => s.punkt.wert);
+  const von = stellen[0].year, bis = stellen[stellen.length - 1].year;
+  const zahlen = werte.map((s) => s.punkt.value);
   const lo = Math.min(...zahlen), hi = Math.max(...zahlen);
-  const x = (jahr: number) => X0 + ((jahr - von) / Math.max(bis - von, 1)) * (X1 - X0);
+  const x = (year: number) => X0 + ((year - von) / Math.max(bis - von, 1)) * (X1 - X0);
   const y = (v: number) => (hi === lo ? (Y0 + YTOP) / 2 : Y0 - ((v - lo) / (hi - lo)) * (Y0 - YTOP));
 
   const linie = line<Stelle>()
     .defined(definiert)
-    .x((s) => x(s.jahr))
-    .y((s) => y((s as { punkt: JahrWert }).punkt.wert));
+    .x((s) => x(s.year))
+    .y((s) => y((s as { punkt: JahrWert }).punkt.value));
 
-  const luecken = stellen.filter((s) => s.art !== "wert");
+  const luecken = stellen.filter((s) => s.art !== "value");
 
   return (
     <div ref={box} className={cn("min-w-0", className)}>
@@ -838,20 +890,22 @@ export function ZeitreiheMini({ reihe, ariaLabel, format, className }: {
         {/* Lücken als schmale Schraffur-Streifen — auch die Sparkline hat
             keine Erlaubnis, eine Lücke zu glätten. */}
         {luecken.map((s) => (
-          <g key={s.jahr}>
-            <foreignObject x={x(s.jahr) - 3} y={YTOP} width={6} height={Y0 - YTOP}>
+          <g key={s.year}>
+            <foreignObject x={x(s.year) - 3} y={YTOP} width={6} height={Y0 - YTOP}>
               <div className="hh-schraffur h-full w-full opacity-70" />
             </foreignObject>
-            <rect x={x(s.jahr) - 3} y={YTOP} width={6} height={Y0 - YTOP} fill="none"
+            <rect x={x(s.year) - 3} y={YTOP} width={6} height={Y0 - YTOP} fill="none"
               strokeDasharray="2 2" strokeWidth={0.8} className="stroke-signal" />
           </g>
         ))}
         <path d={linie(stellen) ?? undefined} fill="none" strokeWidth={1.8}
           strokeLinejoin="round" strokeLinecap="round" style={{ stroke: TON }} />
-        <circle cx={x(letzterWert.jahr)} cy={y(letzterWert.wert)} r={3.5} style={{ fill: TON }} />
+        <circle cx={x(letzterWert.year)} cy={y(letzterWert.value)} r={3.5} style={{ fill: TON }} />
         {/* Endpunkt-Beschriftung — bleibt auf jedem Gerät (H4-11). */}
-        <text x={X1 + 6} y={y(letzterWert.wert) + 3.5} fontSize={10.5} fontWeight={700}
-          className="tabular-nums" style={{ fill: TON }}>{endText}</text>
+        {/* Mit Halo: Ohne ihn schnitt die Kurve durch die Ziffern, sobald
+            der Endwert nah an der Linie lag („-10,13" auf dem Bäder-Plan). */}
+        <text x={X1 + 6} y={y(letzterWert.value) + 3.5} fontSize={10.5} fontWeight={700}
+          className="tabular-nums stroke-card" {...halo} style={{ fill: TON }}>{endText}</text>
         <text x={X0} y={yJahr} fontSize={9} className="fill-muted-foreground font-mono">{von}</text>
         <text x={X1} y={yJahr} textAnchor="end" fontSize={9}
           className="fill-muted-foreground font-mono">{bis}</text>

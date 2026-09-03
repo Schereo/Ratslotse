@@ -11,8 +11,8 @@ from kern import usage
 
 @pytest.fixture
 def usage_db(tmp_path, monkeypatch):
-    db = tmp_path / "nwz.sqlite"
-    monkeypatch.setenv("NWZ_SQLITE", str(db))
+    db = tmp_path / "ratslotse.sqlite"
+    monkeypatch.setenv("RATSLOTSE_SQLITE", str(db))
     return db
 
 
@@ -137,7 +137,7 @@ def test_zeitstempel_werden_als_lokale_tage_gezaehlt(usage_db):
     # Derselbe Zeitpunkt, in lokaler Zeit gelesen — das ist der Tag, unter dem
     # er erscheinen muss.
     erwartet = utc_ts.astimezone().date().isoformat()
-    reihe = {d["date"]: d["cost"] for d in usage.cost_timeseries(days=5)}
-    assert reihe.get(erwartet) == pytest.approx(0.5), (
+    series = {d["date"]: d["cost"] for d in usage.cost_timeseries(days=5)}
+    assert series.get(erwartet) == pytest.approx(0.5), (
         f"Eintrag von {utc_ts:%Y-%m-%d %H:%M} UTC gehört zum lokalen Tag "
-        f"{erwartet}, steht aber nicht dort: {reihe}")
+        f"{erwartet}, steht aber nicht dort: {series}")

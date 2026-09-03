@@ -26,11 +26,11 @@ type ShareQuelle = {
   session_date: string | null; committee: string | null; outcome: string | null;
 };
 type Share = {
-  frage: string; antwort: string; quellen: ShareQuelle[]; created: string;
+  question: string; answer: string; sources: ShareQuelle[]; created: string;
   /** Bausteine neben den Beschlüssen — vor dem Nachtrag geteilte Antworten
    *  haben sie nicht, dann bleiben die Listen leer. */
-  debatten?: DebattenHinweis[]; presse?: PresseHinweis[];
-  anlagen?: AnlagenHinweis[]; parteien?: ParteiMeinung[];
+  debates?: DebattenHinweis[]; press_releases?: PresseHinweis[];
+  attachments?: AnlagenHinweis[]; parties?: ParteiMeinung[];
 };
 
 // Server-seitig direkt ans Backend (gleiche env wie der /api-Rewrite).
@@ -66,22 +66,22 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   // den App-Namen) und als Text den ersten ganzen Satz der Antwort statt
   // eines Schnipsels, der mitten im Wort endet.
   // Zitatmarker putzen — „[8677]" sagt Empfängern nichts.
-  const sauber = share.antwort.replace(/\[[^\]\n]{1,160}\]/g, "").replace(/\s+/g, " ").trim();
+  const sauber = share.answer.replace(/\[[^\]\n]{1,160}\]/g, "").replace(/\s+/g, " ").trim();
   const ersterSatz = (sauber.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? "").trim();
   const beschreibung = (ersterSatz.length >= 40 && ersterSatz.length <= 200
     ? ersterSatz
     : sauber.slice(0, 160).replace(/\s+\S*$/, "") + (sauber.length > 160 ? " …" : ""));
-  const titel = share.frage.trim() || "Frag den Rat";
+  const title = share.question.trim() || "Frag den Rat";
   const bild = { url: "/og-teilen.png", width: 1200, height: 630, alt: "Ratslotse — Frag den Rat" };
   return {
-    title: `${titel} – Ratslotse`,
+    title: `${title} – Ratslotse`,
     description: beschreibung,
     robots: { index: false }, // geteilte Inhalte nicht in Suchmaschinen sammeln
     openGraph: {
-      title: titel, description: beschreibung, siteName: "Ratslotse", type: "article",
+      title: title, description: beschreibung, siteName: "Ratslotse", type: "article",
       images: [bild],
     },
-    twitter: { card: "summary_large_image", title: titel, description: beschreibung,
+    twitter: { card: "summary_large_image", title: title, description: beschreibung,
       images: [bild.url] },
   };
 }
@@ -111,27 +111,27 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
       ) : (
         <>
           <div className="mt-8 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md border border-primary/20 bg-primary/5 px-4 py-2.5 text-[15px]">
-            {share.frage}
+            {share.question}
           </div>
           <div className="mt-4 whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
-            <GeteilterAntwortText text={share.antwort} quellenIds={share.quellen.map((q) => q.id)}
-              anlagen={share.anlagen} />
+            <GeteilterAntwortText text={share.answer} quellenIds={share.sources.map((q) => q.id)}
+              attachments={share.attachments} />
           </div>
           {/* RG-09: Die verdichteten Fraktions-Positionen gehören zur Antwort —
               im Gespräch stehen sie direkt unter dem Text, hier genauso. */}
-          {(share.parteien?.length ?? 0) >= 2 && (
+          {(share.parties?.length ?? 0) >= 2 && (
             <div className="mt-4">
-              <ParteienListe parteien={share.parteien ?? []} />
+              <ParteienListe parties={share.parties ?? []} />
             </div>
           )}
-          {share.quellen.length > 0 && (
+          {share.sources.length > 0 && (
             <div className="mt-6 rounded-xl border border-border bg-card p-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                 Zitierte Beschlüsse
               </p>
               <ol className="mt-2 space-y-1.5">
-                {share.quellen.map((q, i) => (
-                  <li key={q.id} id={`quelle-${i + 1}`} className="flex items-baseline gap-2 text-[13px]">
+                {share.sources.map((q, i) => (
+                  <li key={q.id} id={`source-${i + 1}`} className="flex items-baseline gap-2 text-[13px]">
                     <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded bg-primary/10 px-0.5 text-[10px] font-bold text-primary">{i + 1}</span>
                     <span className="min-w-0 flex-1">
                       <Link href={`/council/decision?id=${q.id}`} className="hover:underline">{q.title}</Link>
@@ -146,15 +146,15 @@ export default async function GeteiltPage({ searchParams }: PageProps) {
           )}
           {/* Dieselben Belege-Bausteine wie im Gespräch (Reihenfolge dort:
               Debatten, Anlagen, Presse) — Externes gestrichelt gerahmt. */}
-          {((share.debatten?.length ?? 0) > 0 || (share.anlagen?.length ?? 0) > 0
-            || (share.presse?.length ?? 0) > 0) && (
+          {((share.debates?.length ?? 0) > 0 || (share.attachments?.length ?? 0) > 0
+            || (share.press_releases?.length ?? 0) > 0) && (
             <div className="mt-3.5 flex flex-col gap-3.5">
-              {(share.debatten?.length ?? 0) > 0 && <DebattenBlock debatten={share.debatten ?? []} />}
-              {(share.anlagen?.length ?? 0) > 0 && (
-                <AnlagenBlock anlagen={share.anlagen ?? []} ankerPrefix="anlage"
-                  buchstaben={anlagenBuchstaben(share.antwort, share.anlagen)} />
+              {(share.debates?.length ?? 0) > 0 && <DebattenBlock debates={share.debates ?? []} />}
+              {(share.attachments?.length ?? 0) > 0 && (
+                <AnlagenBlock attachments={share.attachments ?? []} ankerPrefix="anlage"
+                  buchstaben={anlagenBuchstaben(share.answer, share.attachments)} />
               )}
-              {(share.presse?.length ?? 0) > 0 && <PresseBlock presse={share.presse ?? []} />}
+              {(share.press_releases?.length ?? 0) > 0 && <PresseBlock press_releases={share.press_releases ?? []} />}
             </div>
           )}
           <ShareAktionen token={t ?? ""} />

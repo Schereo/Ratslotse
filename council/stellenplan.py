@@ -101,9 +101,16 @@ bleibt trotzdem draußen: Er ist eine *Änderung* des Plans statt der
 eingebrachte Plan, und er trägt nur Teil B. Ein Jahr, das nur die Tarifhälfte
 zeigt, läse sich wie ein Jahr ohne Beamtenstellen.
 
+Und ein Teil A gibt es dazu **nicht**: Die zweite Anlage derselben Vorlage
+(19/0945, Dokument 210793) heißt zwar „Geänderte Übersicht zum Stellenplan
+Teil A", ist aber die *Aufteilung nach der Verwaltungsgliederung* — und auch
+sie zeigt nur „II. Arbeitnehmerinnen und Arbeitnehmer", also wieder die
+Tarifhälfte, quer nach Ämtern statt nach Funktionen (nachgesehen 02.09.2026
+in beiden PDFs). Der Jahrgang 2020 ist damit nicht halb da, sondern gar nicht.
+
 Wie beim Gesamtergebnishaushalt gilt: Es ist der **Verwaltungsentwurf**. Was
 der Rat in den Beratungen daran ändert, steht nicht darin; die Herkunft sagt
-das über ``stand``.
+das über ``as_of``.
 """
 from __future__ import annotations
 
@@ -119,9 +126,9 @@ import re
 #: Arbeitnehmer*innen · nicht besetzt · Vermerke.
 #: Teil B (8 Spalten): dasselbe ohne die Aufteilung der Besetzung.
 LAYOUT: dict[int, tuple[str, ...]] = {
-    9: ("stellen_plan", "stellen_vorjahr", "besetzt_beamte",
-        "besetzt_arbeitnehmer", "nicht_besetzt"),
-    8: ("stellen_plan", "stellen_vorjahr", "besetzt", "nicht_besetzt"),
+    9: ("positions_planned", "positions_prior_year", "filled_by_officials",
+        "filled_by_employees", "vacant"),
+    8: ("positions_planned", "positions_prior_year", "filled", "vacant"),
 }
 
 #: Welcher Teil welche Spaltenzahl haben muss. Ein Teil A mit acht Spalten ist
@@ -130,14 +137,14 @@ TEIL_SPALTEN: dict[str, int] = {"A": 9, "B": 8}
 
 #: Alle Zahlenfelder, die eine gespeicherte Zeile tragen kann — in fester
 #: Reihenfolge, damit Summen und Spaltenvergleiche reproduzierbar sind.
-#: ``besetzt`` ist die einzige Angabe, die nicht in der Tabelle steht: In
+#: ``filled`` ist die einzige Angabe, die nicht in der Tabelle steht: In
 #: Teil B ist sie die Besetzungsspalte selbst, in Teil A die Summe der beiden
 #: Besetzungsarten. Sie ist damit die einzige Zahl, die **wir** rechnen — und
 #: sie ist es wert, weil sonst jede Auswertung beide Teile verschieden
 #: behandeln müsste.
 ALLE_WERTFELDER: tuple[str, ...] = (
-    "stellen_plan", "stellen_vorjahr", "besetzt_beamte",
-    "besetzt_arbeitnehmer", "besetzt", "nicht_besetzt")
+    "positions_planned", "positions_prior_year", "filled_by_officials",
+    "filled_by_employees", "filled", "vacant")
 
 #: Wie die Teile für Leser*innen heißen. „Tarifbeschäftigte" ist das Wort, das
 #: die Oberfläche benutzt; das Dokument selbst schreibt „Arbeitnehmerinnen und
@@ -189,6 +196,29 @@ _ENDE = ("Dienstkräfte in der Ausbildungszeit", "Übersicht zum Stellenplan",
 #: die Glyphen-Nummern aus („/0 /1 /2 /3"). Im Stellenplan 2026 betrifft das
 #: genau die Seiten von Teil B — er ist dort nicht lesbar, und das ist etwas
 #: anderes als „gibt es nicht".
+#:
+#: NACHGEMESSEN am 02.09.2026 an Dokument 297432 („2026 022 Vw Stellenplan"),
+#: Seite für Seite mit ``pypdf``, also derselben Extraktion wie der Backfill:
+#: Teil A steht auf den Seiten 3–4 (Schrift TrueType/Type1, Buchstabenanteil
+#: 0,45 bis 0,50), **Teil B auf den Seiten 5–9** — und die tragen eine
+#: **Type3**-Schrift ohne ``ToUnicode``. Dort sind 0,8 bis 1,6 % des
+#: Extrakts Buchstaben, der Rest Glyphen-Nummern. Dieselbe Schrift steht auf
+#: den Seiten 15–20 (2,2 bis 2,9 %), der Aufteilung nach der
+#: Verwaltungsgliederung, die diese Schicht ohnehin nicht liest. Im Jahrgang
+#: 2025 (Dokument 282872) sind dieselben Tabellen TrueType/Type1 und lesbar.
+#:
+#: Das ist die ganze Erklärung für die 78.483 Zeichen des Jahrgangs 2026
+#: gegen 33.554 des Jahrgangs 2025: Eine Glyphenseite liefert 4.000 bis 7.700
+#: Zeichen „/12 /8 /3", eine echte Tabellenseite rund 2.000 Zeichen Text.
+#: Über das ganze Dokument gemittelt bleiben 11,2 % Buchstaben — mehr als die
+#: 5 %, ab denen ``backfill_anlagen_texte.py`` einen Volltext verwirft. Der
+#: Schaden ist seitenweise, nicht dokumentweise, und deshalb fängt ihn keine
+#: Schwelle über den ganzen Text — auch ``--glyphen`` nicht, das ganze Anlagen
+#: unterhalb der Schwelle für die OCR freigibt.
+#:
+#: Reparieren ließe sich das nur mit Rendern und OCR (``council/ocr.py``) —
+#: eine Zeichenzuordnung, die nicht im PDF steht, lässt sich nicht aus ihm
+#: herauslesen. Bis dahin gilt: Teil B 2026 fehlt, mit Grund.
 _GLYPHEN = re.compile(r"(?:/(?:\d{1,3}|i\d{1,3})\s*){12,}")
 
 
@@ -196,14 +226,14 @@ def _wert(s: str) -> float:
     return float(s.replace(".", "").replace(",", "."))
 
 
-def _spaltenzeile(zeile: str) -> int | None:
+def _spaltenzeile(row: str) -> int | None:
     """Die Nummernzeile unter dem Tabellenkopf → wie viele Spalten die Tabelle
     hat, sonst ``None``.
 
     Verglichen wird die Ziffernfolge ohne Zwischenräume: Im Stellenplan 2026
     klebt pypdf die ersten beiden Nummern zusammen („12 3 4 5 6"), und eine
     Regex über die Zwischenräume hielte diese Zeile für Daten."""
-    ziffern = re.sub(r"\s+", "", zeile)
+    ziffern = re.sub(r"\s+", "", row)
     if not ziffern.isdigit() or len(ziffern) < 4:
         return None
     return len(ziffern) if ziffern == "123456789"[:len(ziffern)] else None
@@ -222,22 +252,22 @@ def _summenregex(spalten: int) -> re.Pattern:
 
 
 def _werte(spalten: int, roh: tuple) -> dict:
-    """Die gelesenen Zahlen unter ihre Namen — plus ``besetzt`` als Summe der
+    """Die gelesenen Zahlen unter ihre Namen — plus ``filled`` als Summe der
     Besetzungsarten, damit beide Teile dieselbe Frage gleich beantworten."""
-    feld = dict(zip(LAYOUT[spalten], (_wert(g) for g in roh)))
-    if "besetzt" not in feld:
-        feld["besetzt"] = feld["besetzt_beamte"] + feld["besetzt_arbeitnehmer"]
-    return feld
+    field = dict(zip(LAYOUT[spalten], (_wert(g) for g in roh)))
+    if "filled" not in field:
+        field["filled"] = field["filled_by_officials"] + field["filled_by_employees"]
+    return field
 
 
-def _bezeichnung(text: str, teil: str) -> tuple[str, str | None]:
+def _bezeichnung(text: str, part: str) -> tuple[str, str | None]:
     """Amts-/Funktionsbezeichnung und Besoldungs- bzw. Entgeltgruppe trennen.
 
     Trifft das Muster nicht, bleibt die Gruppe leer und der ganze Text steht
     als Bezeichnung — eine halb geratene Besoldungsgruppe wäre schlechter als
     keine."""
     text = re.sub(r"\s+", " ", text).strip()
-    m = (_GRUPPE_A if teil == "A" else _GRUPPE_B).search(text)
+    m = (_GRUPPE_A if part == "A" else _GRUPPE_B).search(text)
     if not m:
         return text, None
     return text[:m.start()].strip(), re.sub(r"\s+", " ", m.group(1)).strip()
@@ -251,7 +281,7 @@ def _kopfangaben(kopf: str) -> tuple[int | None, str | None]:
             f"{s.group(3)}-{int(s.group(2)):02d}-{int(s.group(1)):02d}" if s else None)
 
 
-def jahrgang(text: str | None) -> int | None:
+def budget_year(text: str | None) -> int | None:
     """Für welches Haushaltsjahr dieser Stellenplan gilt.
 
     Aus dem **Tabellenkopf**, nicht aus dem Label: Die vier Dokumente heißen
@@ -259,8 +289,8 @@ def jahrgang(text: str | None) -> int | None:
     Stellenplan Haushalt 2025 Verwaltungsentwurf" — drei Schreibweisen, und
     die von 2024 trägt zwei Jahreszahlen an verschiedenen Stellen. Der Kopf
     sagt es einmal und eindeutig."""
-    jahr, _ = _kopfangaben((text or "")[:4000])
-    return jahr
+    year, _ = _kopfangaben((text or "")[:4000])
+    return year
 
 
 def _teile_lesen(text: str) -> dict[str, dict]:
@@ -272,7 +302,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
     laufen hinter den Zahlen noch eine Zeile weiter. Wer das flach zieht,
     verliert die Grenze zwischen zwei Datensätzen."""
     teile: dict[str, dict] = {}
-    teil: str | None = None
+    part: str | None = None
     im_kopf = False
     kopf: list[str] = []
     puffer = ""
@@ -284,15 +314,15 @@ def _teile_lesen(text: str) -> dict[str, dict]:
 
         m = _TEIL.search(z)
         if m and "Aufteilung" not in z:
-            teil = m.group(1)
-            teile.setdefault(teil, {"zeilen": [], "summen": [], "spalten": None,
-                                    "jahre": set(), "stichtage": set(),
+            part = m.group(1)
+            teile.setdefault(part, {"zeilen": [], "summen": [], "spalten": None,
+                                    "years": set(), "stichtage": set(),
                                     "spaltenstreit": set(), "unlesbar": []})
             im_kopf, kopf, puffer = True, [z], ""
             continue
-        if teil is None:
+        if part is None:
             continue
-        t = teile[teil]
+        t = teile[part]
 
         if im_kopf:
             kopf.append(z)
@@ -302,11 +332,11 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             # Der Kopf ist zu Ende: Was er über Jahr, Stichtag und Spaltenzahl
             # sagt, wird eingesammelt. Er steht auf jeder Seite noch einmal —
             # widerspricht er sich, fällt das hier auf und nicht später.
-            jahr, stichtag = _kopfangaben(" ".join(kopf))
-            if jahr:
-                t["jahre"].add(jahr)
-            if stichtag:
-                t["stichtage"].add(stichtag)
+            year, as_of_date = _kopfangaben(" ".join(kopf))
+            if year:
+                t["years"].add(year)
+            if as_of_date:
+                t["stichtage"].add(as_of_date)
             if t["spalten"] is None:
                 t["spalten"] = spalten
             elif t["spalten"] != spalten:
@@ -315,7 +345,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
             continue
 
         if any(e in z for e in _ENDE):
-            teil, puffer = None, ""
+            part, puffer = None, ""
             continue
         if t["spalten"] not in LAYOUT:
             continue
@@ -323,7 +353,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
         # Tabelle (die Ausbildungs-Übersicht hat sechs Spalten).
         andere = _spaltenzeile(z)
         if andere is not None and andere != t["spalten"]:
-            teil, puffer = None, ""
+            part, puffer = None, ""
             continue
 
         if _SUMME.match(z):
@@ -346,9 +376,9 @@ def _teile_lesen(text: str) -> dict[str, dict]:
         m = _zeilenregex(t["spalten"]).match(puffer)
         if not m:
             continue
-        bez, gruppe = _bezeichnung(m.group(2), teil)
-        t["zeilen"].append({"lfd_nr": int(m.group(1)), "bezeichnung": bez,
-                            "besoldung": gruppe,
+        bez, gruppe = _bezeichnung(m.group(2), part)
+        t["zeilen"].append({"seq_no": int(m.group(1)), "label": bez,
+                            "pay_grade": gruppe,
                             **_werte(t["spalten"], m.groups()[2:])})
         puffer = ""
 
@@ -357,7 +387,7 @@ def _teile_lesen(text: str) -> dict[str, dict]:
 
 def _besetzungsrest(satz: dict) -> float:
     """besetzt + nicht besetzt − Stellen im Vorjahr."""
-    return satz["besetzt"] + satz["nicht_besetzt"] - satz["stellen_vorjahr"]
+    return satz["filled"] + satz["vacant"] - satz["positions_prior_year"]
 
 
 def besetzungstoleranz(zeilen: int) -> float:
@@ -401,7 +431,7 @@ def besetzungsprobe(summen: list[dict]) -> tuple[bool, str]:
     Als Gate über jede Einzelzeile fiele dafür ein ganzer Teil mit 140 Zeilen
     und 1.643 Stellen — wegen eines Übertrags, den das Dokument an anderer
     Stelle selbst wieder geraderückt. Die abweichenden Zeilen werden deshalb
-    **markiert und gezählt** (:func:`unstimmige_zeilen`, Spalte ``stimmig``),
+    **markiert und gezählt** (:func:`unstimmige_zeilen`, Spalte ``consistent``),
     nicht verworfen: Gespeichert steht dort, was im Plan steht.
 
     Was ein Gate auf Einzelzeilen abfangen sollte — eine verrutschte Spalte —
@@ -417,9 +447,9 @@ def besetzungsprobe(summen: list[dict]) -> tuple[bool, str]:
         toleranz = besetzungstoleranz(s["zeilen"])
         if abs(rest) > toleranz:
             return False, (f"„{s.get('name') or 'Summe'}“: besetzt "
-                           f"{s['besetzt']:.2f} + nicht besetzt "
-                           f"{s['nicht_besetzt']:.2f} ergeben nicht die "
-                           f"{s['stellen_vorjahr']:.2f} Stellen des Vorjahres "
+                           f"{s['filled']:.2f} + nicht besetzt "
+                           f"{s['vacant']:.2f} ergeben nicht die "
+                           f"{s['positions_prior_year']:.2f} Stellen des Vorjahres "
                            f"({rest:+.2f}, erlaubt sind {toleranz:.2f} bei "
                            f"{s['zeilen']} Zeilen)")
     return True, ""
@@ -438,11 +468,11 @@ def unstimmige_zeilen(zeilen: list[dict],
 def _summenvergleich(gerechnet: dict, genannt: dict, wo: str,
                      toleranz: float) -> str:
     """Zwei Wertesätze spaltenweise vergleichen → Fehlertext oder ``""``."""
-    for feld, wert in genannt.items():
-        rest = gerechnet.get(feld, 0.0) - wert
+    for field, value in genannt.items():
+        rest = gerechnet.get(field, 0.0) - value
         if abs(rest) > toleranz:
-            return (f"{wo}: {feld} ergibt {gerechnet.get(feld, 0.0):.2f}, "
-                    f"die Summenzeile nennt {wert:.2f} ({rest:+.2f})")
+            return (f"{wo}: {field} ergibt {gerechnet.get(field, 0.0):.2f}, "
+                    f"die Summenzeile nennt {value:.2f} ({rest:+.2f})")
     return ""
 
 
@@ -455,7 +485,7 @@ def _wertfelder(satz: dict) -> tuple[str, ...]:
 
     Aus dem Satz selbst und nicht aus einer festen Liste: Ein Teil A trägt
     fünf Wertespalten, ein Teil B vier, und beide führen zusätzlich das
-    gerechnete ``besetzt``. Wer hier eine feste Liste nähme, addierte bei
+    gerechnete ``filled``. Wer hier eine feste Liste nähme, addierte bei
     Teil B irgendwann eine Spalte, die es dort nicht gibt."""
     return tuple(f for f in ALLE_WERTFELDER if f in satz)
 
@@ -533,27 +563,27 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
     ausweist, und nicht eine, die wir nachgerechnet haben — auch wenn beide
     (nachgemessen) identisch sind.
 
-    ``stimmig`` sagt je Zeile, ob dort besetzt + nicht besetzt die Stellen des
+    ``consistent`` sagt je Zeile, ob dort besetzt + nicht besetzt die Stellen des
     Vorjahres ergeben. ``0`` heißt nicht „falsch gelesen", sondern „so steht
     es im Plan, und dort geht es nicht auf" (s. :func:`besetzungsprobe`)."""
     schief = {id(z) for z in unstimmig}
     aus: list[dict] = []
     for g in gruppen:
         for z in g["zeilen"]:
-            aus.append({"art": "posten", "gruppe": g["name"],
-                        "stimmig": 0 if id(z) in schief else 1, **z})
-        aus.append({"art": "gruppe", "gruppe": g["name"], "lfd_nr": None,
-                    "bezeichnung": f"Summe {g['name']}", "besoldung": None,
-                    "stimmig": 1, **g["summe"]})
+            aus.append({"kind": "item", "pay_group": g["name"],
+                        "consistent": 0 if id(z) in schief else 1, **z})
+        aus.append({"kind": "group", "pay_group": g["name"], "seq_no": None,
+                    "label": f"Summe {g['name']}", "pay_grade": None,
+                    "consistent": 1, **g["summe"]})
     # Führt ein Teil die Gesamtzeile zweimal, wird sie einmal gespeichert:
     # Die zweite ist die Probe, nicht ein zweiter Wert.
     if gesamt:
-        aus.append({"art": "gesamt", "gruppe": None, "lfd_nr": None,
-                    "bezeichnung": "Summe", "besoldung": None, "stimmig": 1,
+        aus.append({"kind": "total", "pay_group": None, "seq_no": None,
+                    "label": "Summe", "pay_grade": None, "consistent": 1,
                     **gesamt[0]["werte"]})
     elif len(gruppen) == 1:
-        aus.append({"art": "gesamt", "gruppe": None, "lfd_nr": None,
-                    "bezeichnung": "Summe", "besoldung": None, "stimmig": 1,
+        aus.append({"kind": "total", "pay_group": None, "seq_no": None,
+                    "label": "Summe", "pay_grade": None, "consistent": 1,
                     **gruppen[0]["summe"]})
     return aus
 
@@ -561,8 +591,8 @@ def _zeilen_bauen(gruppen: list[dict], gesamt: list[dict],
 def lies(text: str) -> dict:
     """Einen Stellenplan auswerten.
 
-    Liefert ``{jahrgang, teile, glyphen}``. ``teile`` ist eine Liste — je Teil
-    ein dict mit ``teil`` (``A``/``B``), ``stichtag``, ``zeilen``, ``proben``,
+    Liefert ``{budget_year, teile, glyphen}``. ``teile`` ist eine Liste — je Teil
+    ein dict mit ``part`` (``A``/``B``), ``as_of_date``, ``zeilen``, ``probes``,
     ``bestanden``, ``nachweis`` und ``verworfen``. Ein Teil, dessen Proben
     nicht aufgehen, hat **keine** ``zeilen``: Eine Tabelle, die sich nicht
     selbst bestätigt, gibt keine halben Zahlen her.
@@ -572,29 +602,29 @@ def lies(text: str) -> dict:
     in diesem Jahrgang nicht" und „Teil B ist in diesem PDF nicht lesbar" —
     ohne diese Angabe stünde beides gleich da."""
     roh = _teile_lesen(text)
-    ergebnis: list[dict] = []
-    jahre: set[int] = set()
+    result: list[dict] = []
+    years: set[int] = set()
 
     for name in sorted(roh):
         t = roh[name]
         soll = TEIL_SPALTEN[name]
-        proben: list[dict] = []
+        probes: list[dict] = []
         verworfen = 0
 
         if t["spalten"] != soll or t["spaltenstreit"]:
             gesehen = sorted({t["spalten"], *t["spaltenstreit"]} - {None})
-            ergebnis.append({
-                "teil": name, "stichtag": None, "jahr": None, "zeilen": [],
-                "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
+            result.append({
+                "part": name, "as_of_date": None, "year": None, "zeilen": [],
+                "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name} nennt {gesehen or 'keine'} Spalten "
                             f"statt {soll} — nicht gelesen"})
             continue
-        if len(t["jahre"]) != 1 or len(t["stichtage"]) > 1:
-            ergebnis.append({
-                "teil": name, "stichtag": None, "jahr": None, "zeilen": [],
-                "proben": [], "bestanden": False, "verworfen": len(t["zeilen"]),
+        if len(t["years"]) != 1 or len(t["stichtage"]) > 1:
+            result.append({
+                "part": name, "as_of_date": None, "year": None, "zeilen": [],
+                "probes": [], "bestanden": False, "verworfen": len(t["zeilen"]),
                 "nachweis": f"Teil {name}: der Tabellenkopf nennt "
-                            f"{sorted(t['jahre']) or 'kein'} Haushaltsjahr und "
+                            f"{sorted(t['years']) or 'kein'} Haushaltsjahr und "
                             f"{sorted(t['stichtage']) or 'keinen'} Stichtag"})
             continue
 
@@ -614,48 +644,48 @@ def lies(text: str) -> dict:
         # die Aussage trägt, dass die Spalten bedeuten, was wir ihnen
         # zuschreiben. Eine bestandene Probe zu verschweigen, weil sie ein
         # Vorfilter ist, hieße den Beleg um sein Fundament zu kürzen.
-        proben.append({"probe": "stellenplan_spaltenprobe", "ok": True,
+        probes.append({"probe": "staffing_plan_columns", "ok": True,
                        "warum": ""})
-        for name_probe, ergebnis_probe in (
-            ("stellenplan_gruppensummen", gruppenprobe(gruppen)),
-            ("stellenplan_besetzung", besetzungsprobe(alle_summen)),
+        for name_probe, result_probe in (
+            ("staffing_plan_group_totals", gruppenprobe(gruppen)),
+            ("staffing_plan_occupancy", besetzungsprobe(alle_summen)),
             # Die dritte Stufe nur, wo das Dokument eine eigene Gesamtzeile
             # führt (Teil A). Teil B hat eine Gruppe, deren Summe zugleich die
             # Gesamtsumme ist — dort wiederholte sie bloß die zweite Stufe.
-            *((("stellenplan_gesamtsumme", gesamtprobe(gruppen, gesamt)),)
+            *((("staffing_plan_grand_total", gesamtprobe(gruppen, gesamt)),)
               if gesamt else ()),
         ):
-            proben.append({"probe": name_probe, "ok": ergebnis_probe[0],
-                           "warum": ergebnis_probe[1]})
+            probes.append({"probe": name_probe, "ok": result_probe[0],
+                           "warum": result_probe[1]})
 
-        bestanden = all(p["ok"] for p in proben)
+        bestanden = all(p["ok"] for p in probes)
         unstimmig = unstimmige_zeilen(einzeln)
-        jahr = next(iter(t["jahre"]))
+        year = next(iter(t["years"]))
         if bestanden:
-            jahre.add(jahr)
-        ergebnis.append({
-            "teil": name, "jahr": jahr,
-            "stichtag": next(iter(t["stichtage"]), None),
+            years.add(year)
+        result.append({
+            "part": name, "year": year,
+            "as_of_date": next(iter(t["stichtage"]), None),
             "zeilen": (_zeilen_bauen(gruppen, gesamt, unstimmig)
                        if bestanden else []),
-            "proben": proben, "bestanden": bestanden, "verworfen": verworfen,
-            "unstimmig": [{"lfd_nr": z["lfd_nr"], "bezeichnung": z["bezeichnung"],
-                           "abweichung": round(_besetzungsrest(z), 2)}
+            "probes": probes, "bestanden": bestanden, "verworfen": verworfen,
+            "unstimmig": [{"seq_no": z["seq_no"], "label": z["label"],
+                           "deviation": round(_besetzungsrest(z), 2)}
                           for z in unstimmig],
-            "nachweis": nachweis(gruppen, gesamt, einzeln, unstimmig, proben)})
+            "nachweis": nachweis(gruppen, gesamt, einzeln, unstimmig, probes)})
 
-    return {"jahrgang": jahrgang(text), "teile": ergebnis,
+    return {"budget_year": budget_year(text), "teile": result,
             "glyphen": bool(_GLYPHEN.search(text or "")),
-            "jahre": sorted(jahre)}
+            "years": sorted(years)}
 
 
 def nachweis(gruppen: list[dict], gesamt: list[dict], zeilen: list[dict],
-             unstimmig: list[dict], proben: list[dict]) -> str:
+             unstimmig: list[dict], probes: list[dict]) -> str:
     """Ein Satz für den Beleg-Chip: was gerechnet wurde und wie es ausging.
 
     In Zahlen statt in Probennamen — „140 Zeilen unter 1 Gruppensumme" ist
     nachvollziehbar, „gruppenprobe ok" nicht."""
-    gerissen = [p["warum"] for p in proben if not p["ok"]]
+    gerissen = [p["warum"] for p in probes if not p["ok"]]
     if gerissen:
         return "; ".join(gerissen)
     stufen = (f"{len(zeilen)} Zeilen unter {len(gruppen)} Gruppensumme"

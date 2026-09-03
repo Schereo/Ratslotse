@@ -2,7 +2,7 @@
 
 Das Rechnungsprüfungsamt (RPA) prüft jeden Jahresabschluss der Stadt und legt
 dem Rat einen Schlussbericht vor. Der Bericht hängt als PDF-Anlage an einer
-Ratsvorlage (``council_anlagen``) und wird dort nie wieder gelesen — dabei
+Ratsvorlage (``council_attachments``) und wird dort nie wieder gelesen — dabei
 steht in ihm die einzige regelmäßige, förmliche Kontrolle der Verwaltung
 durch eine eigene Stelle.
 
@@ -78,7 +78,15 @@ _LEGENDE_ZEILE = re.compile(r"^[ \t]*(B|WB|H|K)[ \t]+([A-ZÄÖÜ][^\n]{3,60})$",
 #: Randspalte und trennen die Marke von der Unterschrift „K R U P K E"
 #: (Leiterin des Rechnungsprüfungsamtes), die am Berichtsende in gesperrter
 #: Schrift steht und mit einem Leerzeichen sonst als „K"-Marke durchginge.
-_MARKE_IM_TEXT = re.compile(r"\n[ \t]{0,4}(WB|B|H|K)[ \t]{2}(?=\S)")
+#:
+#: SEIT DER OCR (Schlussbericht 2024) kommt eine zweite Form dazu: Das
+#: Sehmodell gibt die Randspalte als **einen Tabulator** wieder („B\tDas
+#: Rechnungsprüfungsamt …"), nie als zwei Leerzeichen. Ein einzelner
+#: Tabulator ist als Trenner genauso eindeutig wie zwei Leerzeichen — die
+#: gesperrte Unterschrift steht mit Leerzeichen da, nicht mit Tabulatoren.
+#: Ein einzelnes Leerzeichen bleibt ausgeschlossen, aus demselben Grund wie
+#: zuvor.
+_MARKE_IM_TEXT = re.compile(r"\n[ \t]{0,4}(WB|B|H|K)(?:[ \t]{2}|\t)(?=\S)")
 
 #: Zeile des Inhaltsverzeichnisses: „3.1.3  Gesetzeskonformität … 20".
 _IVZ_ZEILE = re.compile(
@@ -159,7 +167,7 @@ def erkenne_jahrgang(text: str) -> int | None:
 def parse_legende(text: str) -> dict[str, dict]:
     """Die Randmarken-Legende aus den Vorbemerkungen.
 
-    Liefert ``{"WB": {"name": "Wiederholte Beanstandung", "erlaeuterung":
+    Liefert ``{"WB": {"name": "Wiederholte Beanstandung", "explanation":
     "ein bereits in Vorjahren festgestellter … Mangel, der noch nicht
     ausgeräumt … worden ist"}, …}``.
 
@@ -187,7 +195,7 @@ def parse_legende(text: str) -> dict[str, dict]:
         ende = stellen[i + 1].start() if i + 1 < len(stellen) else len(block)
         legende[m.group(1)] = {
             "name": m.group(2).strip().rstrip("."),
-            "erlaeuterung": saeubern(block[m.end():ende]).rstrip(".") or None,
+            "explanation": saeubern(block[m.end():ende]).rstrip(".") or None,
         }
     return legende
 
@@ -314,9 +322,9 @@ def _absaetze(block: str) -> list[str]:
 def parse_feststellungen(text: str) -> dict:
     """Alle Prüfungsfeststellungen eines Schlussberichts.
 
-    Liefert ``{jahr, legende, feststellungen, verworfen}``. Jede Feststellung
-    trägt ``{lfd, marke, marke_name, marke_erlaeuterung, kette, textziffer,
-    abschnitt, seite, text, folgeabsatz}`` — also alles, was zum Nachschlagen
+    Liefert ``{year, legende, feststellungen, verworfen}``. Jede Feststellung
+    trägt ``{seq, mark, mark_name, mark_explanation, chain, text_number,
+    section, page, text, follow_paragraph}`` — also alles, was zum Nachschlagen
     im Originaldokument nötig ist.
 
     ``text`` ist der **erste vollständige Absatz** hinter der Marke, nicht der
@@ -327,7 +335,7 @@ def parse_feststellungen(text: str) -> dict:
     schreiben hieße, dem Rechnungsprüfungsamt Sätze als Beanstandung
     zuzurechnen, die es nicht so gemeint hat.
 
-    ``folgeabsatz`` hält genau den einen Absatz fest, der im Bericht direkt
+    ``follow_paragraph`` hält genau den einen Absatz fest, der im Bericht direkt
     darauf folgt (sofern es ihn im selben Block gibt). Dort steht oft die
     Gegenseite — „Die Verwaltung hat hierzu erklärt, dass eine entsprechende
     Umsetzung bis 31.12.2024 erfolgen soll." —, und die gehört zu einer
@@ -340,12 +348,12 @@ def parse_feststellungen(text: str) -> dict:
     Dokumentformat geändert und es ist Zeit für einen Blick, nicht für eine
     gelockerte Regel.
     """
-    jahr = erkenne_jahrgang(text)
+    year = erkenne_jahrgang(text)
     legende = parse_legende(text)
     ivz = parse_inhaltsverzeichnis(text)
-    leer = {"jahr": jahr, "legende": legende, "feststellungen": [],
+    leer = {"year": year, "legende": legende, "feststellungen": [],
             "verworfen": []}
-    if jahr is None or not legende or not ivz:
+    if year is None or not legende or not ivz:
         return leer
 
     ab = _koerper_beginn(text, text.find("Randbemerkungen"))
@@ -360,47 +368,47 @@ def parse_feststellungen(text: str) -> dict:
 
     feststellungen: list[dict] = []
     verworfen: list[dict] = []
-    for pos, marke in marken:
-        if marke not in legende:
-            verworfen.append({"marke": marke, "grund": "nicht in der Legende erklärt"})
+    for pos, mark in marken:
+        if mark not in legende:
+            verworfen.append({"mark": mark, "reason": "nicht in der Legende erklärt"})
             continue
         kapitel_hier = [k for k in kapitel if k[0] < pos]
         if not kapitel_hier:
-            verworfen.append({"marke": marke, "grund": "keine Textziffer davor"})
+            verworfen.append({"mark": mark, "reason": "keine Textziffer davor"})
             continue
-        _, textziffer, abschnitt = kapitel_hier[-1]
+        _, text_number, section = kapitel_hier[-1]
         ende = next((g for g in grenzen if g > pos), len(text))
         absaetze = _absaetze(text[pos:ende])
         if not absaetze:
-            verworfen.append({"marke": marke, "textziffer": textziffer,
-                              "grund": "kein Textblock hinter der Marke"})
+            verworfen.append({"mark": mark, "text_number": text_number,
+                              "reason": "kein Textblock hinter der Marke"})
             continue
         inhalt = re.sub(r"^(?:WB|B|H|K)\s+", "", absaetze[0])
         if len(inhalt) < MIN_LAENGE:
-            verworfen.append({"marke": marke, "textziffer": textziffer,
-                              "grund": f"Textblock zu kurz ({len(inhalt)} Zeichen)"})
+            verworfen.append({"mark": mark, "text_number": text_number,
+                              "reason": f"Textblock zu kurz ({len(inhalt)} Zeichen)"})
             continue
         folge = absaetze[1] if len(absaetze) > 1 else None
         if folge and len(folge) > FOLGEABSATZ_MAX:
             folge = None  # so lang ist keine Antwort mehr, das ist der Bericht
         seiten = _SEITENZAHL.findall(text[:pos])
         feststellungen.append({
-            "lfd": len(feststellungen) + 1,
-            "marke": marke,
-            "marke_name": legende[marke]["name"],
-            "marke_erlaeuterung": legende[marke]["erlaeuterung"],
-            "kette": kettenschluessel(abschnitt),
-            "textziffer": textziffer,
-            "abschnitt": abschnitt,
-            "seite": int(seiten[-1]) if seiten else None,
+            "seq": len(feststellungen) + 1,
+            "mark": mark,
+            "mark_name": legende[mark]["name"],
+            "mark_explanation": legende[mark]["explanation"],
+            "chain": kettenschluessel(section),
+            "text_number": text_number,
+            "section": section,
+            "page": int(seiten[-1]) if seiten else None,
             "text": inhalt,
-            "folgeabsatz": folge,
+            "follow_paragraph": folge,
         })
-    return {"jahr": jahr, "legende": legende,
+    return {"year": year, "legende": legende,
             "feststellungen": feststellungen, "verworfen": verworfen}
 
 
-def kettenschluessel(abschnitt: str) -> str:
+def kettenschluessel(section: str) -> str:
     """Schlüssel, unter dem dieselbe Sache über Jahrgänge hinweg zusammenfindet.
 
     Eine wiederholte Beanstandung (WB) sagt von selbst, dass sie schon einmal
@@ -412,5 +420,5 @@ def kettenschluessel(abschnitt: str) -> str:
     Klammerzusätze fallen weg, weil sie kommen und gehen („Internes
     Kontrollsystem (IKS)" 2017–2019 heißt ab 2020 „Internes Kontrollsystem").
     """
-    ohne_klammer = re.sub(r"\([^)]*\)", " ", abschnitt or "")
+    ohne_klammer = re.sub(r"\([^)]*\)", " ", section or "")
     return re.sub(r"[^a-zäöüß]", "", ohne_klammer.lower())

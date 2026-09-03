@@ -27,7 +27,7 @@ from pathlib import Path
 import requests
 from fastapi import APIRouter, HTTPException
 
-from ..antworten import QuellenPruefung
+from ..antworten import SourceCheck
 router = APIRouter(prefix="/api/kommunalwahl", tags=["kommunalwahl"])
 
 # Repo-Wurzel: web/backend/app/routers/ -> vier Ebenen hoch.
@@ -63,7 +63,7 @@ class _Ergebnis:
     def als_json(self) -> dict:
         return {
             "status": self.status,
-            "geprueft_vor_sekunden": max(0, int(time.time() - self.geprueft_um)),
+            "checked_seconds_ago": max(0, int(time.time() - self.geprueft_um)),
         }
 
 
@@ -78,10 +78,10 @@ def _lock_fuer(slug: str) -> threading.Lock:
 
 
 def _pruefe(slug: str) -> _Ergebnis:
-    quelle = _manifest()[slug]
+    source = _manifest()[slug]
     try:
         with requests.get(
-            quelle["url"], stream=True, timeout=_TIMEOUT, headers={"User-Agent": _UA}
+            source["url"], stream=True, timeout=_TIMEOUT, headers={"User-Agent": _UA}
         ) as r:
             r.raise_for_status()
             h = hashlib.sha256()
@@ -91,14 +91,14 @@ def _pruefe(slug: str) -> _Ergebnis:
                 if gelesen > _MAX_BYTES:
                     raise ValueError("Datei größer als erwartet")
                 h.update(chunk)
-        status = "unveraendert" if h.hexdigest() == quelle["sha256"] else "veraendert"
+        status = "unveraendert" if h.hexdigest() == source["sha256"] else "veraendert"
     except Exception:
         status = "nicht_erreichbar"
     return _Ergebnis(status=status, geprueft_um=time.time())
 
 
-@router.get("/quelle/{slug}")
-def quelle_pruefen(slug: str) -> QuellenPruefung:
+@router.get("/source/{slug}")
+def quelle_pruefen(slug: str) -> SourceCheck:
     """Ist das PDF hinter dem Partei-Link noch die ausgewertete Datei?"""
     if slug not in _manifest():   # Whitelist — nie Dateisystem oder freie URLs
         raise HTTPException(status_code=404, detail="Keine prüfbare PDF-Quelle zu diesem Slug.")

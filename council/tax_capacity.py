@@ -1,0 +1,284 @@
+"""Die dritte Komponente des Finanzausgleichs — und warum sie gefehlt hat.
+
+Was in `council_tax_capacity` steht, ist **nicht** alles
+--------------------------------------------------------
+Der Open-Data-Datensatz 1106 der Stadt führt eine Spalte
+„Schluesselzuweisungen, Anordnungssoll". Nachgemessen (17.08.2026) enthält sie
+**exakt** die Summe aus zwei der drei Komponenten des kommunalen
+Finanzausgleichs:
+
+===============  ==========  ==========  ============  =========
+Ausgleichsjahr   Gemeinde-   Kreis-      = Datensatz    Netto
+                 aufgaben    aufgaben    1106           (LSN)
+===============  ==========  ==========  ============  =========
+2025             51.653      17.557      69.210 ✓       79.785
+2026             62.654      19.624      82.278 ✓       93.438
+===============  ==========  ==========  ============  =========
+
+Die Differenz ist die dritte Komponente: **Zuweisungen für Aufgaben des
+übertragenen Wirkungskreises** (10.575 T€ für 2025, 11.160 T€ für 2026) — das
+Geld, das die Stadt dafür bekommt, dass sie staatliche Aufgaben erledigt
+(Standesamt, Einwohnermeldewesen, Ausländerbehörde, Bauaufsicht). Sie steht in
+keiner städtischen Veröffentlichung, die wir einlesen; sie steht beim Land.
+
+Deshalb ist die Zahl auf unseren Seiten bisher **zu niedrig**: um 10.575 T€
+für 2025 und 11.160 T€ für 2026 — auf den gezeigten Betrag bezogen 15,3 %
+bzw. 13,6 %, gemessen am vollständigen Ausgleich 13,3 % bzw. 11,9 %. Welche
+Bezugsgröße man nimmt, ändert nichts am Befund: Das ist kein Rundungsfehler,
+das ist eine fehlende Zeile.
+
+Die Quelle
+----------
+Landesamt für Statistik Niedersachsen, „Kommunaler Finanzausgleich …,
+Ergebnis- und Vergleichstabellen KSV" (XLSX), Blatt ``9a`` — die acht
+kreisfreien Städte, Schlüssel-Nr. ``403`` ist Oldenburg. Dieselbe Datei, aus
+der ``council/staedtevergleich.py`` schon die Steuerkraftmesszahlen liest
+(Blatt ``ST_KR_MESS_VGL``); dieses Modul ergänzt nur das zweite Blatt.
+
+Die Download-Nummern des LSN wechseln jährlich (``/download/227086``) und sind
+nicht vorhersagbar — sie stehen auf der Übersichtsseite und werden dort
+gelesen, nie hier verdrahtet.
+
+Zwei Proben, und die zweite ist die interessante
+------------------------------------------------
+1. **Im Dokument** (:func:`probe_komponenten`): Gemeindeaufgaben +
+   Kreisaufgaben + übertragener Wirkungskreis − Finanzausgleichsumlage ergibt
+   den Nettobetrag, den dieselbe Zeile ausweist. Für alle acht Städte und
+   beide Jahre, die eine Datei führt.
+2. **Gegen die Bücher der Stadt** (:func:`probe_gegen_jahrbuch`): Die Summe
+   der drei Komponenten muss die Zeile „Finanzzuweisungen" in Tabelle 1103 des
+   Statistischen Jahrbuchs treffen. Gemessen für das Haushaltsjahr 2025:
+   **79.785 T€** (LSN) gegen **79.787 T€** (Jahrbuch, vorläufiges
+   Rechnungsergebnis) — 2 T€ Abstand auf 79,8 Mio. €, also 0,0025 %.
+
+   Warum überhaupt eine Toleranz und nicht null: Die beiden Zahlen sind nicht
+   dieselbe Messung. Das LSN nennt den **Festsetzungsbetrag** des
+   Ausgleichsjahres, die Stadt ihr **Rechnungsergebnis** — was in ihrer Kasse
+   angekommen ist. Zwischen beiden liegen unterjährige Korrekturen und
+   Rundungen auf volle Tausend. :data:`JAHRBUCH_TOLERANZ` ist deshalb 0,5 %
+   und nicht 0: enger wäre eine Behauptung über Buchungspraxis, weiter würde
+   ein echter Zuordnungsfehler durchrutschen (die kleinste Komponente ist mit
+   11 Mio. € rund 13 % der Summe — sie zu vergessen fiele bei 0,5 % sofort auf).
+
+Die Falle, die dieser Parser umgeht
+------------------------------------
+**Spaltenpositionen sind keine Zusage.** Zwischen den Ausgaben ändert sich der
+Aufbau: Die Ausgabe 2023 schreibt die Schlüsselnummer sechsstellig
+(``403000``), die Ausgabe 2026 dreistellig (``403``); die Kopfzeile 2023 nennt
+„Euro je Einwohner/Einwohnerin", die 2026 „Euro je Einwohnerin/Einwohner" —
+dieselbe Spalte, andere Reihenfolge. Gelesen wird deshalb ausschließlich über
+den **ausgeschriebenen Tabellenkopf**, den das LSN als Vorlesehilfe für
+Screenreader mitliefert und dessen Zeilennummer die Datei in ihren ersten
+Zeilen selbst nennt. Die Mechanik dafür steht in ``council/staedtevergleich.py``
+und wird hier benutzt, nicht kopiert.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+
+from . import staedtevergleich as sv
+
+#: Die drei Komponenten und die Umlage, wie der Tabellenkopf sie nennt →
+#: unser Kennzahl-Name. Gematcht wird gegen den ausgeschriebenen Kopftext,
+#: nicht gegen die Spaltennummer (s. Modulkopf).
+KOMPONENTEN: dict[str, str] = {
+    r"Schlüsselzuweisungen\s+für\s+Gemeindeaufgaben": "zuweisungen_gemeindeaufgaben",
+    r"Schlüsselzuweisungen\s+für\s+Kreisaufgaben": "zuweisungen_kreisaufgaben",
+    r"Zuweisungen\s+für\s+Aufgaben\s+des\s+übertragenen\s+Wirkungskreises":
+        "zuweisungen_uebertragener_wirkungskreis",
+    r"Finanzausgleichsumlage": "finanzausgleichsumlage",
+}
+
+#: Wie viel die Summe der drei Komponenten vom Jahrbuch-Wert abweichen darf.
+#: Die Begründung steht im Modulkopf — kurz: Festsetzung gegen
+#: Rechnungsergebnis, gemessener Abstand 0,0025 %.
+JAHRBUCH_TOLERANZ = 0.005
+
+#: Die Komponente, um die es geht. Als Konstante, weil sie an drei Stellen
+#: auftaucht (Parser, Probe, Frontend-Text) und ein Tippfehler dort still
+#: bliebe.
+UEBERTRAGEN = "zuweisungen_uebertragener_wirkungskreis"
+
+#: Was die Komponente ist, in einem Satz, der neben der Zahl stehen kann.
+#: Nicht optional: „Zuweisungen für Aufgaben des übertragenen Wirkungskreises"
+#: sagt niemandem etwas, der nicht Kommunalrecht studiert hat.
+UEBERTRAGEN_ERKLAERT = (
+    "Geld des Landes dafür, dass die Stadt staatliche Aufgaben miterledigt — "
+    "Standesamt, Melde- und Ausländerwesen, Bauaufsicht. Es ist an diese "
+    "Aufgaben gebunden und steht der Stadt nicht frei zur Verfügung.")
+
+
+@dataclass
+class KfaZuweisungen:
+    """Ein Ausgleichsjahr aus Blatt ``9a`` — die acht kreisfreien Städte."""
+
+    year: int
+    as_of: str | None
+    #: Schlüssel (sechsstellig) → {city, zuweisungen_*, nettobetrag,
+    #: nettobetrag_je_ew}. Alle Beträge in **Tausend Euro**, wie im Blatt.
+    staedte: dict[str, dict] = field(default_factory=dict)
+
+
+def _jahresspalten(spalten: dict[int, str]) -> dict[int, dict[str, int]]:
+    """Kopfzeile → ``{year: {indicator: spaltenindex}}``.
+
+    Eine Datei führt **zwei** Ausgleichsjahre nebeneinander; welche Spalte zu
+    welchem Jahr gehört, sagt der Kopftext („… im Jahr 2026 …"). Genau das ist
+    der Grund, aus dem hier nicht gezählt, sondern gelesen wird.
+    """
+    aus: dict[int, dict[str, int]] = {}
+    for i, text in sorted(spalten.items()):
+        jahr_treffer = re.search(r"im\s+Jahr\s+(\d{4})", text)
+        if not jahr_treffer:
+            continue
+        year = int(jahr_treffer.group(1))
+        # Der Nettobetrag ZUERST, und das ist kein Stilfrage: Sein Kopftext
+        # lautet „… abzüglich der Finanzausgleichsumlage im Jahr 2025)" und
+        # enthält damit den Namen einer Komponente. Andersherum geprüft würden
+        # die beiden Netto-Spalten als Umlage durchgehen, und der Parser
+        # meldete stumm eine Datei ohne Nettobetrag.
+        if re.search(r"Nettobetrag.*Summe", text, re.IGNORECASE | re.DOTALL):
+            # Zweimal je Jahr: in Tausend Euro und je Einwohner*in.
+            # Unterschieden über die Betragsangabe und NICHT über die
+            # Reihenfolge — die Ausgabe 2023 schreibt „Einwohner/Einwohnerin",
+            # die 2026 „Einwohnerin/Einwohner".
+            if re.search(r"Beträge\s+in\s+1[\s.]?000\s+Euro", text, re.IGNORECASE):
+                aus.setdefault(year, {}).setdefault("nettobetrag", i)
+            elif re.search(r"je\s+Einwohner", text, re.IGNORECASE):
+                aus.setdefault(year, {}).setdefault("nettobetrag_je_ew", i)
+            continue
+        for muster, name in KOMPONENTEN.items():
+            if re.search(muster, text, re.IGNORECASE):
+                aus.setdefault(year, {}).setdefault(name, i)
+                break
+    return aus
+
+
+def lies_zuweisungen(pfad: str) -> list[KfaZuweisungen]:
+    """Blatt ``9a`` einer KFA-Datei einlesen → beide Ausgleichsjahre.
+
+    Die Reihenfolge ist aufsteigend nach Jahr; das jüngere ist das, um das es
+    der Ausgabe geht, das ältere die mitgelieferte Vergleichsspalte.
+    """
+    zeilen = sv.blatt_lesen(pfad, "9a")
+    if not zeilen:
+        raise ValueError(f"{pfad}: Blatt 9a ist leer")
+    kopf_idx = sv._kopfzeile(zeilen)
+    spalten = sv._spalten(zeilen[kopf_idx])
+
+    c_key = sv._finde(spalten, r"Schlüsselnummer")
+    c_name = sv._finde(spalten, r"Bezeichnung")
+    years = _jahresspalten(spalten)
+    vollstaendig = {j: s for j, s in years.items()
+                    if set(KOMPONENTEN.values()) <= set(s) and "nettobetrag" in s}
+    if c_key is None or c_name is None or len(vollstaendig) < 1:
+        raise ValueError(
+            f"{pfad}: Blatt 9a trägt nicht die erwarteten Spalten "
+            f"(gefunden: {sorted(spalten.values())[:4]}…). Lieber abbrechen als "
+            f"über Spaltenpositionen raten.")
+
+    as_of = None
+    for row in zeilen[:6]:
+        for zelle in row:
+            if (m := re.search(r"Stand:\s*([\d.]+)", str(zelle or ""))):
+                as_of = m.group(1)
+
+    aus: list[KfaZuweisungen] = []
+    for year in sorted(vollstaendig):
+        budget_year = KfaZuweisungen(year=year, as_of=as_of)
+        for row in zeilen[kopf_idx + 1:]:
+            if not row or c_key >= len(row):
+                continue
+            key = sv.schluessel_normalisieren(row[c_key])
+            if not key or key not in sv.KREISFREIE_STAEDTE:
+                # Blatt 9a führt nur die acht kreisfreien Städte; alles andere
+                # sind Zwischenüberschriften und Summenzeilen.
+                continue
+            werte = {name: sv._zahl(row[i]) if i < len(row) else None
+                     for name, i in vollstaendig[year].items()}
+            if werte.get("nettobetrag") is None:
+                continue
+            werte["city"] = " ".join(str(row[c_name] or "").split())
+            budget_year.staedte[key] = werte
+        if budget_year.staedte:
+            aus.append(budget_year)
+    return aus
+
+
+def probe_komponenten(budget_year: KfaZuweisungen) -> dict:
+    """Die Probe im Dokument: Die drei Komponenten minus Umlage ergeben Netto.
+
+    Rundung: Das Blatt führt volle Tausend Euro, deshalb ist ein Abstand von
+    1 T€ je Zeile zulässig — mehr wäre keine Rundung mehr, sondern eine
+    vergessene oder doppelt gezählte Spalte.
+    """
+    abweichungen = []
+    for key, w in sorted(budget_year.staedte.items()):
+        teile = [w.get("zuweisungen_gemeindeaufgaben"),
+                 w.get("zuweisungen_kreisaufgaben"), w.get(UEBERTRAGEN)]
+        if any(t is None for t in teile) or w.get("nettobetrag") is None:
+            abweichungen.append({"key": key, "city": w.get("city"),
+                                 "reason": "Komponente fehlt"})
+            continue
+        summe = sum(teile) - (w.get("finanzausgleichsumlage") or 0)
+        if abs(summe - w["nettobetrag"]) > 1:
+            abweichungen.append({"key": key, "city": w.get("city"),
+                                 "reason": f"{summe:.0f} statt {w['nettobetrag']:.0f} T€"})
+    n = len(budget_year.staedte)
+    return {"geprueft": n, "abweichungen": abweichungen, "ok": not abweichungen,
+            "result": (f"{n - len(abweichungen)} von {n} Städten: "
+                         f"Gemeinde- plus Kreis- plus übertragene Aufgaben minus "
+                         f"Umlage ergibt den ausgewiesenen Nettobetrag "
+                         f"(Ausgleichsjahr {budget_year.year})")}
+
+
+def probe_gegen_jahrbuch(budget_year: KfaZuweisungen, jahrbuch_teur: float,
+                         key: str = sv.OLDENBURG) -> dict:
+    """Die zweite Probe: Trifft der Nettobetrag die Bücher der Stadt?
+
+    ``jahrbuch_teur`` ist die Zeile „Finanzzuweisungen" aus Tabelle 1103 des
+    Statistischen Jahrbuchs, in Tausend Euro. Zwei Veröffentlichungen, zwei
+    Behörden, dieselbe Zahl — das ist die stärkere der beiden Proben, weil sie
+    nicht innerhalb eines Dokuments rechnet.
+    """
+    value = (budget_year.staedte.get(key) or {}).get("nettobetrag")
+    if value is None:
+        return {"ok": False, "result": f"kein Nettobetrag für {key}"}
+    abstand = abs(value - jahrbuch_teur)
+    anteil = abstand / max(jahrbuch_teur, 1)
+    return {
+        "ok": anteil <= JAHRBUCH_TOLERANZ,
+        "lsn_teur": value, "jahrbuch_teur": jahrbuch_teur,
+        "abweichung_prozent": round(anteil * 100, 4),
+        "result": (f"Ausgleichsjahr {budget_year.year}: {value:,.0f} T€ (Land) "
+                     f"gegen {jahrbuch_teur:,.0f} T€ (Jahrbuch 1103) — "
+                     f"{anteil * 100:.4f} % Abstand".replace(",", ".")),
+    }
+
+
+def zeilen_finanzausgleich(budget_year: KfaZuweisungen) -> list[dict]:
+    """Ein Jahrgang → Zeilen für ``council_city_comparison``.
+
+    Bewusst dieselbe Tabelle wie die Steuerkraftmesszahlen und **nicht** eine
+    neue Spalte in ``council_tax_capacity``: Dort stünde in einer Zeile eine
+    Zahl aus dem Open-Data-Portal neben einer vom Land, und eine Zeile trägt
+    genau **eine** Herkunft (s. ``council/herkunft.py``). Getrennt lässt sich
+    von jeder Zahl sagen, wer sie veröffentlicht hat.
+
+    Die Pro-Kopf-Spalte kommt **nicht** mit — derselbe Grund wie bei den
+    Steuerkraftmesszahlen, hier sogar gemessen: Für das Ausgleichsjahr 2025
+    nennt die Ausgabe 2025 „452,46 € je Ew.", die Ausgabe 2026 „452,27 €".
+    Derselbe Nettobetrag, revidierte Einwohnerzahl. Der Absolutwert ist
+    stabil, der Quotient nicht — wer pro Kopf braucht, teilt selbst durch die
+    Einwohnerzahl, die dieselbe Datei in ``series='tax_capacity'`` mitliefert.
+    """
+    aus: list[dict] = []
+    for key, w in sorted(budget_year.staedte.items()):
+        for name, value in sorted(w.items()):
+            if name in ("city", "nettobetrag_je_ew") or value is None:
+                continue
+            aus.append({"year": budget_year.year, "key": key,
+                        "city": sv.KREISFREIE_STAEDTE.get(key, w.get("city", "")),
+                        "indicator": name, "value": float(value), "unit": "teur"})
+    return aus

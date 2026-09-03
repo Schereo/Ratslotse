@@ -9,35 +9,35 @@ import Testing
         "id": 42, "ksinr": 88, "kind": "decision", "item_number": "Ö 2",
         "title": "Radweg bauen", "summary": "Der Radweg wird gebaut.",
         "committee": "Verkehrsausschuss", "session_date": "2026-02-01",
-        "outcome": "angenommen", "vote": "mehrheitlich", "gegenstimmen": 2,
-        "enthaltungen": 1, "factions": ["SPD"], "vorlage_nr": "26/0400"
+        "outcome": "accepted", "vote": "majority", "no_votes": 2,
+        "abstentions": 1, "factions": ["SPD"], "template_number": "26/0400"
       },
       "present_parties": ["CDU", "SPD"],
       "ratsinfo_url": "https://buergerinfo.oldenburg.de/si0057.php?__ksinr=88",
       "sub_votes": [{
         "id": 43, "title": "Änderungsantrag", "committee": "Verkehrsausschuss",
-        "session_date": "2026-02-01", "outcome": "abgelehnt", "factions": ["CDU"]
+        "session_date": "2026-02-01", "outcome": "rejected", "factions": ["CDU"]
       }],
-      "vorlage_journey": [{
+      "template_journey": [{
         "ksinr": 87, "committee": "Ausschuss", "session_date": "2026-01-20", "item_number": "Ö 3"
       }],
-      "beratungsfolge": [{
-        "datum": "2026-02-01", "gremium": "Rat", "top": "Ö 2", "ergebnis": "angenommen",
+      "deliberation_path": [{
+        "date": "2026-02-01", "committee": "Rat", "top": "Ö 2", "result": "angenommen",
         "ksinr": 88, "future": false
       }],
-      "vorlage_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
-      "vorlage": {
-        "vorlage_nr": "26/0400", "title": "Radweg", "art": "Beschlussvorlage",
+      "template_url": "https://buergerinfo.oldenburg.de/vo0050.php?__kvonr=901",
+      "template": {
+        "template_number": "26/0400", "title": "Radweg", "kind": "Beschlussvorlage",
         "document_url": "https://example.test/vorlage.pdf", "n_pages": 3,
-        "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "amt": "Amt für Verkehr"
+        "excerpt": "Sachverhalt: Die Stadt plant einen Radweg.", "office": "Amt für Verkehr"
       },
-      "anlagen": [{
+      "attachments": [{
         "document_id": 77, "label": "Antrag der SPD", "url": "https://example.test/77.pdf",
-        "is_antrag": 1, "antragsteller": ["SPD"], "status": "ok"
+        "is_motion": 1, "applicants": ["SPD"], "status": "ok"
       }],
-      "beteiligung": {
-        "titel": "Beteiligung zum Plan", "schritt": "Entwurf", "von": "2026-01-01",
-        "bis": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
+      "participation": {
+        "title": "Beteiligung zum Plan", "schritt": "Entwurf", "valid_from": "2026-01-01",
+        "valid_until": "2026-02-15", "url": "https://example.test/beteiligung", "status": "laufend"
       },
       "importance_breakdown": {"score": 81, "impact_reason": "Betrifft viele Menschen."},
       "follow": {"kvonr": 901, "following": true},
@@ -51,6 +51,11 @@ import Testing
     #expect(detail.subVotes.first?.factions == ["CDU"])
     #expect(detail.consultations.first?.result == "angenommen")
     #expect(detail.template?.department == "Amt für Verkehr")
+    // Beide Felder haben beim Umbau ihren Namen auf der Leitung geändert
+    // (`art`→`kind`, `von`/`bis`→`valid_from`/`valid_until`). Ohne diese
+    // zwei Zeilen dekodierte die App still `nil` und zeigte nichts an.
+    #expect(detail.template?.kind == "Beschlussvorlage")
+    #expect(detail.participation?.from == "2026-01-01")
     #expect(detail.attachments.first?.applicants == ["SPD"])
     #expect(detail.participation?.until == "2026-02-15")
     #expect(detail.importance?.score == 81)
@@ -98,15 +103,15 @@ import Testing
     {"bookmarks":[{
       "id":5,"kind":"decision","title":"Radweg","subtitle":"Rat · 2026-02-01",
       "state":"decided","url":"/council/decision?id=42","ksinr":88,"item_number":"Ö 2",
-      "notify_result":false,"decision":{"id":42,"title":"Radweg","outcome":"angenommen"},
+      "notify_result":false,"decision":{"id":42,"title":"Radweg","outcome":"accepted"},
       "session":null
     }]}
     """#
     let followsJSON = #"""
     {"follows":[{
-      "id":7,"kvonr":901,"vorlage_nr":"26/0400","title":"Radweg","url":"https://example.test/vorlage",
-      "n_stationen":2,"naechste":{"datum":"2026-10-01","gremium":"Rat","ergebnis":null},
-      "letzte":{"datum":"2026-02-01","gremium":"Ausschuss","ergebnis":"angenommen"}
+      "id":7,"kvonr":901,"template_number":"26/0400","title":"Radweg","url":"https://example.test/vorlage",
+      "n_stationen":2,"naechste":{"date":"2026-10-01","committee":"Rat","result":null},
+      "letzte":{"date":"2026-02-01","committee":"Ausschuss","result":"angenommen"}
     }]}
     """#
     let bookmarks = try JSONDecoder().decode(BookmarkPage.self, from: Data(bookmarksJSON.utf8))
@@ -141,10 +146,10 @@ import Testing
         "title": "Neue Busspuren",
         "committee": "Rat der Stadt",
         "session_date": "2026-08-26",
-        "outcome": "angenommen",
+        "outcome": "accepted",
         "is_new": true
       }],
-      "hits_30d": 3
+      "hits_6m": 3
     }
     """#
 
@@ -158,7 +163,7 @@ import Testing
     #expect(decision.factions.isEmpty)
     #expect(topic.recentHits.first?.id == 42)
     #expect(topic.recentHits.first?.isNew == true)
-    #expect(topic.hits30Days == 3)
+    #expect(topic.hits6Months == 3)
     #expect(topic.unreadCount == 0)
 }
 
@@ -179,9 +184,9 @@ import Testing
     let json = #"""
     {
       "found": true,
-      "von": "2026-08-28",
-      "bis": "2026-09-04",
-      "sitzungen": [{
+      "from_date": "2026-08-28",
+      "to_date": "2026-09-04",
+      "sessions": [{
         "ksinr": 88,
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
@@ -189,7 +194,7 @@ import Testing
         "location": "Altes Rathaus",
         "n_items": 14
       }],
-      "punkte": [{
+      "items": [{
         "ksinr": 88,
         "item_number": "Ö 6",
         "title": "Bebauungsplan 851 – Satzungsbeschluss",
@@ -197,13 +202,13 @@ import Testing
         "summary": "Neue Wohnungen am Krusenbusch.",
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
-        "antragsteller": "SPD-Fraktion",
+        "applicants": "SPD-Fraktion",
         "topic_name": "Wohnen",
         "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
         "top": true
       }],
-      "relevant_je_sitzung": {"88": 3},
-      "weitere_je_sitzung": {"88": [{
+      "relevant_per_session": {"88": 3},
+      "further_per_session": {"88": [{
         "ksinr": 88,
         "item_number": "Ö 7",
         "title": "Quartier am Krusenbusch",
@@ -211,14 +216,14 @@ import Testing
         "summary": null,
         "committee": "Ausschuss für Stadtplanung und Bauen",
         "session_date": "2026-08-31",
-        "antragsteller": null,
+        "applicants": null,
         "topic_name": null,
         "wichtig_grund": null
       }]},
-      "treffer_je_sitzung": {"88": 1},
-      "treffer_gesamt": 1,
-      "inhaltlich_gesamt": 11,
-      "inhaltlich_je_sitzung": {"88": 8}
+      "matches_per_session": {"88": 1},
+      "matches_total": 1,
+      "substantive_total": 11,
+      "substantive_per_session": {"88": 8}
     }
     """#
 
@@ -236,15 +241,15 @@ import Testing
     let data = try JSONEncoder().encode(AskRequest(question: "Was wurde beschlossen?"))
     let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-    #expect(object.keys.contains("gespraech_id"))
-    #expect(object["gespraech_id"] is NSNull)
+    #expect(object.keys.contains("conversation_id"))
+    #expect(object["conversation_id"] is NSNull)
 }
 
 @Test func newDeepResearchRequestEncodesAnExplicitNullConversationID() throws {
     let data = try JSONEncoder().encode(
-        DeepResearchRequest(frage: "Wie entwickelt sich der Radverkehr?", gespraechID: nil)
+        DeepResearchRequest(question: "Wie entwickelt sich der Radverkehr?", conversationID: nil)
     )
     let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-    #expect(object["gespraech_id"] is NSNull)
+    #expect(object["conversation_id"] is NSNull)
 }

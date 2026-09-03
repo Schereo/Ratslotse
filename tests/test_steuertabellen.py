@@ -62,7 +62,7 @@ steuer 3.500 0,90 3.537 0,81 4.000 1,00 2.233 0,47 3.500 0,87 3.368 0,72
 Hundesteuer 805 0,21 813 0,19 820 0,21 819 0,17 820 0,20 819 0,18
 Finanz-
 zuweisungen 115.365 29,58 110.049 25,22 107.227 26,91 109.498 23,29 82.465 20,53 79.787 17,09
-insgesamt 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00 401.696 100,00 466.995 100,00
+total 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00 401.696 100,00 466.995 100,00
 Quelle: Stadt Oldenburg - Fachdienst Finanzen
 Einnahmeart
 2023
@@ -71,16 +71,16 @@ Kapitel 11 - Verwaltung und Finanzen
 nach dem
 Haushaltsplan
  Rechnungs-
-ergebnis
+result
 nach dem
 Haushaltsplan
  Rechnungs-
-ergebnis
+result
 nach dem
 Haushaltsplan
 vorläufiges
 Rechnungs-
-ergebnis
+result
 Fachdienst Geo und Daten"""
 
 #: **Die Ausgabe davor** — 2022 bis 2024. Sie ist nicht mehr abrufbar (die
@@ -109,7 +109,7 @@ steuer 3.300 0,94 3.548 0,91 3.500 0,90 3.537 0,81 4.000 1,00 2.233 0,47
 Hundesteuer 800 0,23 805 0,21 805 0,21 813 0,19 820 0,21 819 0,17
 Finanz-
 zuweisungen 99.000 28,20 101.500 25,90 115.365 29,58 110.049 25,22 107.227 26,91 109.498 23,29
-insgesamt 351.100 100,00 391.961 100,00 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00
+total 351.100 100,00 391.961 100,00 389.974 100,00 436.386 100,00 398.407 100,00 470.147 100,00
 Quelle: Stadt Oldenburg - Fachdienst Finanzen
 Einnahmeart
 Kapitel 11 - Verwaltung und Finanzen"""
@@ -120,9 +120,9 @@ Kapitel 11 - Verwaltung und Finanzen"""
 PDF_1105 = """Stadt Oldenburg (Oldb) - Statistik
 1104   Steuereinnahmen in Tausend Euro 2004 bis 2025
                (Jahres-Rechnungsergebnis)
-Haus- Grund- Gewerbe- Ein- Gemeinde- Getränke- Vergnügungs- sonstige insgesamt
+Haus- Grund- Gewerbe- Ein- Gemeinde- Getränke- Vergnügungs- sonstige total
 halts- steuer steuer kommens- anteil steuer 1 steuer Steuern 2
-jahr A + B =-umlage steuer- an der
+year A + B =-umlage steuer- an der
 S 1 S 2 S 3 S 4 S 5 S 6 S 7 S 8 S 9
 2004 23.690 48.861 34.774 5.866 0    1.290 459 114.940
 2015 31.321 86.249 69.083 10.873 0    4.027 656 202.209
@@ -150,7 +150,7 @@ Kapitel 11 - Verwaltung und Finanzen
 Fachdienst Geo und Daten"""
 
 #: Die Aufkommensreihe der Grundsteuer A+B aus Tabelle 1104
-#: (``council_steuern``), in Euro — **vollständig und echt**, 1998 bis 2025.
+#: (``council_taxes``), in Euro — **vollständig und echt**, 1998 bis 2025.
 #:
 #: Vollständig, weil die Gegenprobe sie so braucht: Sie verschiebt die Reihe um
 #: ein Jahr und verlangt, dass die Prüfung anschlägt. Mit Löchern verschöbe sie
@@ -208,7 +208,7 @@ def test_die_umgebrochenen_zeilennamen_finden_ihre_steuerart():
 
 def test_die_jahresspanne_steht_im_umgebrochenen_titel():
     assert stt.erkenne_1103(PDF_1103) == (2023, 2025)
-    assert stt.parse_1103(PDF_1103)["jahre"] == [2023, 2024, 2025]
+    assert stt.parse_1103(PDF_1103)["years"] == [2023, 2024, 2025]
 
 
 def test_eine_angeklebte_fussnotenziffer_verschiebt_das_jahr_nicht():
@@ -222,20 +222,20 @@ def test_die_quelle_sagt_selbst_welches_ergebnis_vorlaeufig_ist():
 
     Das ist keine Kosmetik: Eine Zahl, die sich mit dem Jahresabschluss noch
     ändern kann, darf nicht wie eine abgerechnete dastehen."""
-    assert stt.parse_1103(PDF_1103)["vorlaeufig"] == [2025]
+    assert stt.parse_1103(PDF_1103)["provisional"] == [2025]
     zeilen = stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
-    vorlaeufig = {z["jahr"] for z in zeilen if z["vorlaeufig"]}
-    assert vorlaeufig == {2025}
+    provisional = {z["year"] for z in zeilen if z["provisional"]}
+    assert provisional == {2025}
 
 
 def test_der_befund_steht_wie_gedruckt():
     """Die drei Gewerbesteuer-Jahre, gegen die Tabelle nachgeschlagen."""
-    zeilen = {z["jahr"]: z for z in stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
-              if z["art"] == GEWERBE}
+    zeilen = {z["year"]: z for z in stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
+              if z["kind"] == GEWERBE}
     assert zeilen[2023]["plan"] == 124_234_000
-    assert zeilen[2023]["ist"] == 176_840_000
+    assert zeilen[2023]["actual"] == 176_840_000
     assert zeilen[2024]["plan"] == 133_440_000
-    assert zeilen[2025]["ist"] == 222_117_000
+    assert zeilen[2025]["actual"] == 222_117_000
 
 
 # --- Tabelle 1103: die Proben -----------------------------------------------
@@ -244,8 +244,8 @@ def test_summenprobe_geht_in_allen_sechs_spalten_auf():
     """Sechs Rechnungen: drei Jahre, je einmal Plan und einmal Ergebnis."""
     abweichungen = stt.summenprobe(stt.parse_1103(PDF_1103))
     assert set(abweichungen) == {2023, 2024, 2025}
-    for jahr, spalten in abweichungen.items():
-        assert spalten == {"plan": 0, "ist": 0}, jahr
+    for year, spalten in abweichungen.items():
+        assert spalten == {"plan": 0, "actual": 0}, year
 
 
 def test_eine_fehlende_zeile_reisst_die_summenprobe():
@@ -255,9 +255,9 @@ def test_eine_fehlende_zeile_reisst_die_summenprobe():
     übrigen Zahlen blieben richtig — der Fehler wäre unsichtbar."""
     ohne = PDF_1103.replace(
         "Hundesteuer 805 0,21 813 0,19 820 0,21 819 0,17 820 0,20 819 0,18\n", "")
-    ergebnis = stt.lies_1103(ohne, IST_REIHE)
-    assert ergebnis["zeilen"] == []
-    assert "Summenprobe" in ergebnis["abbruch"]
+    result = stt.lies_1103(ohne, IST_REIHE)
+    assert result["zeilen"] == []
+    assert "Summenprobe" in result["abbruch"]
 
 
 def test_anteilsprobe_haelt_betrag_und_prozentsatz_zusammen():
@@ -270,19 +270,19 @@ def test_ein_verrutschtes_feld_reisst_die_anteilsprobe():
     verrutscht = PDF_1103.replace(
         "-umlage 124.234 31,86 176.840 40,52",
         "-umlage 124.234 40,52 176.840 31,86")
-    ergebnis = stt.lies_1103(verrutscht, IST_REIHE)
-    assert ergebnis["zeilen"] == []
-    assert "Anteilsprobe" in ergebnis["abbruch"]
+    result = stt.lies_1103(verrutscht, IST_REIHE)
+    assert result["zeilen"] == []
+    assert "Anteilsprobe" in result["abbruch"]
 
 
 # --- Die Jahresbeschriftung — die Lehre aus Datensatz 1106 -------------------
 
 def test_die_beschriftung_wird_gegen_tabelle_1104_geprueft():
     """Alle drei Jahrgänge kommen herein, weil die zweite Tabelle sie bestätigt."""
-    ergebnis = stt.lies_1103(PDF_1103, IST_REIHE)
-    assert ergebnis["jahre"] == [2023, 2024, 2025]
-    assert ergebnis["verworfen"] == []
-    assert "steuerplan_istabgleich" in ergebnis["proben"]
+    result = stt.lies_1103(PDF_1103, IST_REIHE)
+    assert result["years"] == [2023, 2024, 2025]
+    assert result["verworfen"] == []
+    assert "tax_budget_actuals_match" in result["probes"]
 
 
 def test_ein_jahresversatz_wuerde_auffallen():
@@ -291,11 +291,11 @@ def test_ein_jahresversatz_wuerde_auffallen():
     Genau so war Datensatz 1106 beschriftet — jede Zeile um ein Jahr zu früh.
     Hier ist die Ist-Reihe um ein Jahr verschoben; kein einziger Jahrgang darf
     dann noch durchkommen."""
-    verschoben = {jahr + 1: werte for jahr, werte in IST_REIHE.items()}
-    ergebnis = stt.lies_1103(PDF_1103, verschoben)
-    assert ergebnis["zeilen"] == []
-    assert ergebnis["jahre"] == []
-    assert len(ergebnis["verworfen"]) == 3
+    verschoben = {year + 1: werte for year, werte in IST_REIHE.items()}
+    result = stt.lies_1103(PDF_1103, verschoben)
+    assert result["zeilen"] == []
+    assert result["years"] == []
+    assert len(result["verworfen"]) == 3
 
 
 def test_ein_jahrgang_ohne_zweitquelle_kommt_nicht_rein():
@@ -304,20 +304,20 @@ def test_ein_jahrgang_ohne_zweitquelle_kommt_nicht_rein():
     Nicht der ganze Lauf scheitert: Ein künftiger Jahrgang, den die Ist-Reihe
     noch nicht führt, ist kein Fehler, sondern eine Wartezeit."""
     ohne_2025 = {j: w for j, w in IST_REIHE.items() if j != 2025}
-    ergebnis = stt.lies_1103(PDF_1103, ohne_2025)
-    assert ergebnis["jahre"] == [2023, 2024]
-    assert [v["jahr"] for v in ergebnis["verworfen"]] == [2025]
-    assert "ohne Zweitquelle" in ergebnis["verworfen"][0]["grund"]
-    assert all(z["jahr"] != 2025 for z in ergebnis["zeilen"])
+    result = stt.lies_1103(PDF_1103, ohne_2025)
+    assert result["years"] == [2023, 2024]
+    assert [v["year"] for v in result["verworfen"]] == [2025]
+    assert "ohne Zweitquelle" in result["verworfen"][0]["reason"]
+    assert all(z["year"] != 2025 for z in result["zeilen"])
 
 
 def test_ein_widersprechender_betrag_verwirft_den_jahrgang():
     """Nicht nur fehlende Jahre — auch abweichende Beträge."""
     falsch = {j: dict(w) for j, w in IST_REIHE.items()}
     falsch[2024][GEWERBE] = 199_000_000
-    ergebnis = stt.lies_1103(PDF_1103, falsch)
-    assert ergebnis["jahre"] == [2023, 2025]
-    assert "1103 202918 vs. 1104 199000" in ergebnis["verworfen"][0]["grund"]
+    result = stt.lies_1103(PDF_1103, falsch)
+    assert result["years"] == [2023, 2025]
+    assert "1103 202918 vs. 1104 199000" in result["verworfen"][0]["reason"]
 
 
 # --- Das Archiv: die Reihe wächst -------------------------------------------
@@ -329,13 +329,13 @@ def test_das_archiv_verlaengert_die_reihe_ueber_drei_jahrgaenge_hinaus():
     abrufbar — mit ihr wäre 2022 verloren. Aus beiden zusammen werden vier."""
     alt = stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)
     neu = stt.lies_1103(PDF_1103, IST_REIHE)
-    assert alt["jahre"] == [2022, 2023, 2024]
-    assert neu["jahre"] == [2023, 2024, 2025]
+    assert alt["years"] == [2022, 2023, 2024]
+    assert neu["years"] == [2023, 2024, 2025]
 
     zusammen = stt.zusammenlegen(
         [("1103-2024-AZ.pdf", alt["zeilen"]), ("1103-2025-AZ.pdf", neu["zeilen"])],
-        lambda z: (z["jahr"], z["art"]))
-    assert sorted({z["jahr"] for z in zusammen}) == [2022, 2023, 2024, 2025]
+        lambda z: (z["year"], z["kind"]))
+    assert sorted({z["year"] for z in zusammen}) == [2022, 2023, 2024, 2025]
 
 
 def test_bei_gleichem_jahrgang_gewinnt_die_juengere_ausgabe():
@@ -345,23 +345,23 @@ def test_bei_gleichem_jahrgang_gewinnt_die_juengere_ausgabe():
     Ausgabe als Quelle nennen, der nur in der älteren enthaltene die ältere."""
     alt = stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"]
     neu = stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"]
-    zusammen = {(z["jahr"], z["art"]): z for z in stt.zusammenlegen(
+    zusammen = {(z["year"], z["kind"]): z for z in stt.zusammenlegen(
         [("1103-2024-AZ.pdf", alt), ("1103-2025-AZ.pdf", neu)],
-        lambda z: (z["jahr"], z["art"]))}
+        lambda z: (z["year"], z["kind"]))}
     assert zusammen[(2022, GEWERBE)]["ausgabe"] == "1103-2024-AZ.pdf"
     assert zusammen[(2024, GEWERBE)]["ausgabe"] == "1103-2025-AZ.pdf"
     # 2024 stand in beiden Ausgaben mit demselben Ergebnis — die jüngere
     # gewinnt trotzdem, weil nur so ein revidierter Wert ankäme.
-    assert zusammen[(2024, GEWERBE)]["ist"] == 202_918_000
+    assert zusammen[(2024, GEWERBE)]["actual"] == 202_918_000
 
 
 # --- Tabelle 1105: die Hebesatz-Treppe --------------------------------------
 
 def test_1105_liest_die_neun_aenderungsjahre():
     zeilen = stt.parse_1105(PDF_1105)
-    assert [z["jahr"] for z in zeilen] == [
+    assert [z["year"] for z in zeilen] == [
         1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
-    assert zeilen[-1] == {"jahr": 2025, "Grundsteuer A": 500,
+    assert zeilen[-1] == {"year": 2025, "Grundsteuer A": 500,
                           "Grundsteuer B": 539, "Gewerbesteuer": 439}
 
 
@@ -369,9 +369,9 @@ def test_die_nachbartabelle_auf_demselben_blatt_wird_nicht_mitgelesen():
     """1104 steht darüber und hat achtspaltige Zeilen mit denselben Jahren.
 
     Ohne Bereichsgrenze käme „2015 31.321 …" als Hebesatzzeile herein."""
-    jahre = [z["jahr"] for z in stt.parse_1105(PDF_1105)]
-    assert jahre.count(2015) == 1
-    assert 2004 not in jahre
+    years = [z["year"] for z in stt.parse_1105(PDF_1105)]
+    assert years.count(2015) == 1
+    assert 2004 not in years
 
 
 def test_das_startjahr_steht_im_titel_trotz_klebender_fussnote():
@@ -388,9 +388,9 @@ def test_vertauschte_spalten_lassen_nichts_herein():
     dem Namen der Grundsteuer heraus — plausibel und falsch."""
     gedreht = PDF_1105.replace("                      Grundsteuer Gewerbe-\nA B steuer",
                                "                      Gewerbe- Grundsteuer\nsteuer A B")
-    ergebnis = stt.lies_1105(gedreht, GRUNDSTEUER_IST)
-    assert ergebnis["zeilen"] == []
-    assert "Reihenfolge" in ergebnis["abbruch"]
+    result = stt.lies_1105(gedreht, GRUNDSTEUER_IST)
+    assert result["zeilen"] == []
+    assert "Reihenfolge" in result["abbruch"]
 
 
 def test_die_treppe_wird_nicht_interpoliert():
@@ -401,14 +401,14 @@ def test_die_treppe_wird_nicht_interpoliert():
     hätte jemand jedes Jahr entschieden. Und würde jemand interpolieren, stünde
     für 2020 ein Satz, den es nie gab."""
     zeilen = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)["zeilen"]
-    jahre = sorted({z["jahr"] for z in zeilen})
-    assert jahre == [1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
+    years = sorted({z["year"] for z in zeilen})
+    assert years == [1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
     # Kein Jahr zwischen zwei Stufen, insbesondere keines der zehn ab 2016.
-    assert not [j for j in range(2016, 2025) if j in jahre]
-    b = {z["jahr"]: z for z in zeilen if z["art"] == "Grundsteuer B"}
-    assert b[2015]["hebesatz"] == 445
-    assert b[2025] == {"jahr": 2025, "art": "Grundsteuer B",
-                       "hebesatz": 539, "vorheriger": 445}
+    assert not [j for j in range(2016, 2025) if j in years]
+    b = {z["year"]: z for z in zeilen if z["kind"] == "Grundsteuer B"}
+    assert b[2015]["rate"] == 445
+    assert b[2025] == {"year": 2025, "kind": "Grundsteuer B",
+                       "rate": 539, "prior_rate": 445}
 
 
 def test_eine_zeile_die_nichts_aendert_faellt_auf():
@@ -419,9 +419,9 @@ def test_eine_zeile_die_nichts_aendert_faellt_auf():
     doppelt = PDF_1105.replace("2025 500 539 439",
                                "2024 390 445 439\n2025 500 539 439")
     assert stt.treppenprobe(stt.parse_1105(doppelt)) == [2024]
-    ergebnis = stt.lies_1105(doppelt, GRUNDSTEUER_IST)
-    assert ergebnis["zeilen"] == []
-    assert "Änderungsjahre" in ergebnis["abbruch"]
+    result = stt.lies_1105(doppelt, GRUNDSTEUER_IST)
+    assert result["zeilen"] == []
+    assert "Änderungsjahre" in result["abbruch"]
 
 
 # --- Die Jahresbeschriftung von 1105 ----------------------------------------
@@ -432,7 +432,7 @@ def test_die_sprungjahr_probe_bestaetigt_die_beschriftung():
     2002 am deutlichsten: Hebesatz +13,9 %, Aufkommen +14,55 % — und im Jahr
     darauf nur noch +1,71 %."""
     sprung = stt.sprungjahrprobe(stt.parse_1105(PDF_1105), GRUNDSTEUER_IST)
-    assert [e["jahr"] for e in sprung["bestanden"]] == [2002, 2011, 2015]
+    assert [e["year"] for e in sprung["bestanden"]] == [2002, 2011, 2015]
     assert sprung["gerissen"] == []
     zweitausendzwei = sprung["bestanden"][0]
     assert zweitausendzwei["im_jahr"] > 0.14
@@ -448,15 +448,15 @@ def test_ein_jahresversatz_wuerde_die_sprungjahr_probe_reissen():
     dem genannten Jahr. Beide Richtungen werden unterstellt; die Probe muss
     jede finden, und dann darf nichts gespeichert werden."""
     for richtung, versatz in (("zu früh", +1), ("zu spät", -1)):
-        verschoben = {jahr + versatz: wert
-                      for jahr, wert in GRUNDSTEUER_IST.items()}
+        verschoben = {year + versatz: value
+                      for year, value in GRUNDSTEUER_IST.items()}
         sprung = stt.sprungjahrprobe(stt.parse_1105(PDF_1105), verschoben)
         assert sprung["bestanden"] == [], richtung
-        assert [e["jahr"] for e in sprung["gerissen"]] == [2002, 2011, 2015], richtung
+        assert [e["year"] for e in sprung["gerissen"]] == [2002, 2011, 2015], richtung
 
-        ergebnis = stt.lies_1105(PDF_1105, verschoben)
-        assert ergebnis["zeilen"] == [], richtung
-        assert "Jahresversatz" in ergebnis["abbruch"], richtung
+        result = stt.lies_1105(PDF_1105, verschoben)
+        assert result["zeilen"] == [], richtung
+        assert "Jahresversatz" in result["abbruch"], richtung
 
 
 def test_das_reformjahr_wird_nicht_faelschlich_als_versatz_gelesen():
@@ -469,8 +469,8 @@ def test_das_reformjahr_wird_nicht_faelschlich_als_versatz_gelesen():
     Ist-Reihe steht."""
     mit_2026 = {**GRUNDSTEUER_IST, 2026: 33_000_000}
     sprung = stt.sprungjahrprobe(stt.parse_1105(PDF_1105), mit_2026)
-    assert 2025 not in [e["jahr"] for e in sprung["gerissen"]]
-    offen = {e["jahr"]: e["grund"] for e in sprung["nicht_pruefbar"]}
+    assert 2025 not in [e["year"] for e in sprung["gerissen"]]
+    offen = {e["year"]: e["reason"] for e in sprung["nicht_pruefbar"]}
     assert "Grundsteuerreform" in offen[2025]
     # Und die Reihe kommt trotzdem herein.
     assert stt.lies_1105(PDF_1105, mit_2026)["abbruch"] is None
@@ -479,7 +479,7 @@ def test_das_reformjahr_wird_nicht_faelschlich_als_versatz_gelesen():
 def test_jahre_ohne_aufkommensreihe_werden_benannt_nicht_behauptet():
     """Vor 1998 gibt es keine Aufkommensreihe — das wird gesagt."""
     sprung = stt.sprungjahrprobe(stt.parse_1105(PDF_1105), GRUNDSTEUER_IST)
-    offen = {e["jahr"] for e in sprung["nicht_pruefbar"]}
+    offen = {e["year"] for e in sprung["nicht_pruefbar"]}
     assert {1984, 1988, 1994}.issubset(offen)
 
 
@@ -488,10 +488,10 @@ def test_jahre_ohne_aufkommensreihe_werden_benannt_nicht_behauptet():
 def test_jede_probe_ist_dem_herkunfts_system_bekannt():
     """Ein Probenname, den `council/herkunft.py` nicht kennt, lässt sich gar
     nicht erst speichern (`ValueError`). Hier fällt er schon im Test auf."""
-    proben = (stt.lies_1103(PDF_1103, IST_REIHE)["proben"]
-              + stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)["proben"])
-    assert proben
-    for name in proben:
+    probes = (stt.lies_1103(PDF_1103, IST_REIHE)["probes"]
+              + stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)["probes"])
+    assert probes
+    for name in probes:
         assert name in herkunft.PROBEN
         assert name in stt.PROBEN_KURZ
 
@@ -499,27 +499,27 @@ def test_jede_probe_ist_dem_herkunfts_system_bekannt():
 def test_gespeichert_wird_mit_herkunft_und_kommt_gleich_wieder_heraus(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        ergebnis = stt.lies_1103(PDF_1103, IST_REIHE)
-        store.save_steuerplan(ergebnis["zeilen"], herkunft.Herkunft(
-            art="stadt", url=stt.TABELLE_1103_URL,
+        result = stt.lies_1103(PDF_1103, IST_REIHE)
+        store.save_steuerplan(result["zeilen"], herkunft.Herkunft(
+            kind="city", url=stt.TABELLE_1103_URL,
             label="Statistisches Jahrbuch, Tabelle 1103",
-            probe=ergebnis["proben"]))
+            probe=result["probes"]))
         hebe = stt.lies_1105(PDF_1105, GRUNDSTEUER_IST)
         store.save_hebesaetze(hebe["zeilen"], herkunft.Herkunft(
-            art="stadt", url=stt.TABELLE_1105_URL,
+            kind="city", url=stt.TABELLE_1105_URL,
             label="Statistisches Jahrbuch, Tabelle 1105",
-            probe=hebe["proben"]))
+            probe=hebe["probes"]))
 
-        plan = {(z["jahr"], z["art"]): z for z in store.get_steuerplan()}
+        plan = {(z["year"], z["kind"]): z for z in store.get_steuerplan()}
         assert plan[(2024, GEWERBE)]["plan"] == 133_440_000
-        assert plan[(2025, GEWERBE)]["vorlaeufig"] == 1
+        assert plan[(2025, GEWERBE)]["provisional"] == 1
         assert store.steuerplan_jahre() == [2023, 2024, 2025]
         assert store.hebesatz_jahre() == [
             1980, 1984, 1988, 1994, 1997, 2002, 2011, 2015, 2025]
         # Keine Zeile ohne Herkunftsnachweis — die eine Zahl, die null sein muss.
         luecken = store.herkunft_luecken()
         assert not {t: n for t, n in luecken.items()
-                    if t in ("council_steuerplan", "council_hebesaetze")}
+                    if t in ("council_tax_plan", "council_tax_rates")}
     finally:
         store.close()
 
@@ -529,8 +529,8 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     Jahrgänge der ersten nicht mit wegräumen — sonst wäre das Archiv umsonst."""
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        h = herkunft.Herkunft(art="stadt", url=stt.TABELLE_1103_URL,
-                              probe=["steuerplan_summenzeile"])
+        h = herkunft.Herkunft(kind="city", url=stt.TABELLE_1103_URL,
+                              probe=["tax_budget_total_row"])
         store.save_steuerplan(
             stt.lies_1103(PDF_1103_AUSGABE_2024, IST_REIHE)["zeilen"], h)
         store.save_steuerplan(stt.lies_1103(PDF_1103, IST_REIHE)["zeilen"], h)
@@ -547,11 +547,11 @@ def test_ein_zweiter_lauf_wirft_aeltere_jahrgaenge_nicht_weg(tmp_path):
     ("Vergnügungs- steuer", "Vergnügungssteuer"),
     ("Hundesteuer", "sonstige Steuern"),
     ("Finanz- zuweisungen", stt.ZUWEISUNGEN),
-    ("insgesamt", stt.SUMME),
+    ("total", stt.SUMME),
     ("Grunderwerbsteuer", None),
 ])
 def test_zeilennamen_werden_auf_die_arten_der_ist_reihe_abgebildet(label, erwartet):
-    """Die Schreibweisen müssen exakt denen aus `council_steuern` entsprechen —
+    """Die Schreibweisen müssen exakt denen aus `council_taxes` entsprechen —
     daran hängt der Abgleich, und ein Tippfehler ließe ihn still ins Leere
     laufen. „Grunderwerbsteuer" steht als Gegenprobe dabei: Sie ist keine
     Zeile dieser Tabelle und darf auch nicht versehentlich als Grundsteuer

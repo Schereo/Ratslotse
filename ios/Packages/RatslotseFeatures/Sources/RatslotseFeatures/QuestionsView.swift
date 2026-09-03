@@ -8,25 +8,25 @@ import UIKit
 
 private struct ResearchCurrentResponse: Codable, Sendable {
     let job: ResearchSnapshot?
-    let frei: Int?
+    let remaining: Int?
 }
 
 private struct ResearchStartResponse: Codable, Sendable {
     let jobID: String
-    let frei: Int?
+    let remaining: Int?
 
     enum CodingKeys: String, CodingKey {
         case jobID = "job_id"
-        case frei
+        case remaining
     }
 }
 
 private struct ResearchSnapshot: Codable, Sendable {
     let id: String
-    let frage: String
+    let question: String
     let status: String
-    let bericht: String?
-    let quellen: JSONValue?
+    let report: String?
+    let sources: JSONValue?
 }
 
 private struct ResearchFacet: Identifiable {
@@ -62,12 +62,12 @@ struct QuestionPerson: Decodable, Sendable, Hashable {
     let vorname: String
     let nachname: String
     let art: String
-    let partei: String?
+    let party: String?
     let aktiv: Bool
 }
 
 private struct QuestionPeopleEnvelope: Decodable, Sendable {
-    let personen: [QuestionPerson]
+    let people: [QuestionPerson]
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
@@ -224,7 +224,7 @@ struct QuestionsView: View {
                 }
                 if !turns.isEmpty || model.activeConversationID != nil {
                     Button(action: startNewConversation) {
-                        Label("Neu", systemImage: "square.and.pencil")
+                        RatsLabel("Neu", .squarePen)
                             .font(RatsFont.body(12, weight: .semibold))
                             .foregroundStyle(RatsColor.bodyText)
                             .padding(.horizontal, 11)
@@ -289,7 +289,7 @@ struct QuestionsView: View {
                 if let rateLimitUntil, rateLimitUntil > .now {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let seconds = max(1, Int(rateLimitUntil.timeIntervalSince(context.date).rounded(.up)))
-                        Label("Neue Frage in \(seconds) s", systemImage: "hourglass")
+                        RatsLabel("Neue Frage in \(seconds) s", .hourglass)
                             .font(RatsFont.body(11, weight: .semibold))
                             .foregroundStyle(RatsColor.warning)
                     }
@@ -313,10 +313,10 @@ struct QuestionsView: View {
 
     private func loadPersonLexicon() async {
         guard personLexicon.isEmpty else { return }
-        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/personen-lexikon") else {
+        guard let response: QuestionPeopleEnvelope = try? await model.api.get("/api/council/people-directory") else {
             return
         }
-        personLexicon = response.personen
+        personLexicon = response.people
     }
 
     private func loadQuestionExamples() async {
@@ -413,14 +413,14 @@ struct QuestionsView: View {
         researchStreamTask = nil
         let restored = (payload.object?["turns"]?.array ?? []).compactMap { value -> QuestionTurn? in
             guard let fields = value.object else { return nil }
-            let question = fields["frage"]?.string ?? fields["question"]?.string ?? ""
+            let question = fields["question"]?.string ?? ""
             guard !question.isEmpty else { return nil }
-            let answer = fields["antwort"]?.string ?? fields["answer"]?.string ?? ""
-            let evidence = fields["quellen"]?.object ?? [:]
+            let answer = fields["answer"]?.string ?? ""
+            let evidence = fields["sources"]?.object ?? [:]
             let sources = evidence["sources"]?.array?.compactMap {
                 try? $0.decoded(DecisionSummary.self)
             } ?? []
-            let research = evidence["recherche"]?.bool == true
+            let research = evidence["research"]?.bool == true
                 ? ResearchState(status: "fertig")
                 : nil
             return QuestionTurn(
@@ -442,7 +442,7 @@ struct QuestionsView: View {
               let id = model.activeConversationID
         else { return }
         do {
-            let payload: JSONValue = try await model.api.get("/api/council/gespraeche/\(id)")
+            let payload: JSONValue = try await model.api.get("/api/council/conversations/\(id)")
             guard turns.isEmpty else { return }
             loadConversation(id, payload: payload)
         } catch let error as APIError where error.statusCode == 404 || error.isUnauthorized {
@@ -479,7 +479,7 @@ struct QuestionsView: View {
         input = ""
         Task { await model.reportBadgeEvent("frage") }
         let history = turns.suffix(4).map {
-            AskRound(frage: $0.question, antwort: String($0.answer.prefix(600)))
+            AskRound(question: $0.question, answer: String($0.answer.prefix(600)))
         }
         turns.append(QuestionTurn(question: question, status: "Beschlüsse durchsuchen …"))
         let index = turns.count - 1
@@ -490,8 +490,8 @@ struct QuestionsView: View {
                     "/api/council/ask",
                     body: AskRequest(
                         question: question,
-                        verlauf: history,
-                        gespraechID: model.activeConversationID
+                        history: history,
+                        conversationID: model.activeConversationID
                     )
                 )
                 for try await event in model.sse.events(for: request) {
@@ -562,13 +562,13 @@ struct QuestionsView: View {
                 let response: ResearchStartResponse = try await model.api.send(
                     "/api/council/deep-research",
                     body: DeepResearchRequest(
-                        frage: question,
-                        gespraechID: model.activeConversationID
+                        question: question,
+                        conversationID: model.activeConversationID
                     )
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.jobID = response.jobID
-                researchRemaining = response.frei
+                researchRemaining = response.remaining
                 model.hasRecoverableResearch = true
                 await streamResearch(turnID: turnID, jobID: response.jobID)
             } catch is CancellationError {
@@ -631,8 +631,8 @@ struct QuestionsView: View {
         switch event.type {
         case "phase":
             turns[index].research?.phase = event.fields["phase"]?.string ?? turns[index].research?.phase ?? "zerlegen"
-        case "facetten":
-            turns[index].research?.facets = event.fields["facetten"]?.array?.compactMap(\.string).map {
+        case "facets":
+            turns[index].research?.facets = event.fields["facets"]?.array?.compactMap(\.string).map {
                 ResearchFacet(name: $0)
             } ?? []
             turns[index].research?.phase = "suchen"
@@ -655,7 +655,7 @@ struct QuestionsView: View {
             turns[index].error = nil
         case "gestoppt":
             turns[index].research?.status = "gestoppt"
-            turns[index].research?.partialPossible = event.fields["teilbericht_moeglich"]?.bool ?? false
+            turns[index].research?.partialPossible = event.fields["partial_report_possible"]?.bool ?? false
         case "fehler":
             turns[index].research?.status = "fehler"
             turns[index].error = "Die Recherche ist abgebrochen. Der Versuch zählt nicht gegen dein Kontingent."
@@ -668,7 +668,7 @@ struct QuestionsView: View {
                 model.setActiveConversationID(conversationID)
             }
             if let jobID {
-                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/gesehen") }
+                Task { try? await model.api.sendVoid("/api/council/deep-research/\(jobID)/seen") }
             }
         default:
             break
@@ -687,7 +687,7 @@ struct QuestionsView: View {
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.status = "gestoppt"
-                turns[current].research?.partialPossible = response.object?["teilbericht_moeglich"]?.bool ?? false
+                turns[current].research?.partialPossible = response.object?["partial_report_possible"]?.bool ?? false
                 researchStreamTask?.cancel()
                 researchStreamTask = nil
             } catch {
@@ -706,7 +706,7 @@ struct QuestionsView: View {
             else { return }
             do {
                 let _: JSONValue = try await model.api.sendWithoutBody(
-                    "/api/council/deep-research/\(jobID)/teilbericht"
+                    "/api/council/deep-research/\(jobID)/partial-report"
                 )
                 guard let current = turns.firstIndex(where: { $0.id == turnID }) else { return }
                 turns[current].research?.status = "laeuft"
@@ -739,8 +739,8 @@ struct QuestionsView: View {
 
     private func restoreCurrentResearch() async {
         do {
-            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/aktuell")
-            researchRemaining = current.frei
+            let current: ResearchCurrentResponse = try await model.api.get("/api/council/deep-research/current")
+            researchRemaining = current.remaining
             guard let snapshot = current.job else { return }
 
             let turnID: UUID
@@ -748,7 +748,7 @@ struct QuestionsView: View {
                 turnID = existing.id
             } else {
                 let turn = QuestionTurn(
-                    question: snapshot.frage,
+                    question: snapshot.question,
                     status: nil,
                     research: ResearchState(jobID: snapshot.id, status: snapshot.status)
                 )
@@ -757,7 +757,7 @@ struct QuestionsView: View {
             }
             applyResearch(snapshot: snapshot, to: turnID)
             if snapshot.status == "laeuft" { reconnectResearch(turnID) }
-            else if snapshot.bericht == nil { await loadResearchSnapshot(turnID: turnID, jobID: snapshot.id) }
+            else if snapshot.report == nil { await loadResearchSnapshot(turnID: turnID, jobID: snapshot.id) }
         } catch {
             // The questions screen remains fully usable if restoring a server job fails.
         }
@@ -779,14 +779,14 @@ struct QuestionsView: View {
         guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
         turns[index].research?.jobID = snapshot.id
         turns[index].research?.status = snapshot.status == "teilbericht" ? "fertig" : snapshot.status
-        turns[index].answer = snapshot.bericht ?? turns[index].answer
-        if let root = snapshot.quellen?.object {
+        turns[index].answer = snapshot.report ?? turns[index].answer
+        if let root = snapshot.sources?.object {
             turns[index].evidence = root
             turns[index].sources = root["sources"]?.array?.compactMap {
                 try? $0.decoded(DecisionSummary.self)
             } ?? []
         }
-        model.hasRecoverableResearch = snapshot.status == "laeuft" || snapshot.bericht != nil
+        model.hasRecoverableResearch = snapshot.status == "laeuft" || snapshot.report != nil
     }
 
     private func reconnectRunningResearchIfNeeded() {
@@ -815,10 +815,10 @@ struct QuestionsView: View {
             "committee": "Rat der Stadt",
             "session_date": "2026-08-26",
             "item_number": "Ö 10",
-            "outcome": "angenommen",
+            "outcome": "accepted",
             "summary": "Zwei Busspuren sollen den Nahverkehr schneller und verlässlicher machen.",
             "amount_eur": 8900000,
-            "vote": "mehrheitlich",
+            "vote": "majority",
             "no_votes": 4,
             "abstentions": 2,
             "factions": ["SPD", "GRÜNE"],
@@ -830,7 +830,7 @@ struct QuestionsView: View {
             "title": "Stadionneubau an der Maastrichter Straße",
             "committee": "Rat der Stadt",
             "session_date": "2026-07-01",
-            "outcome": "angenommen",
+            "outcome": "accepted",
             "lat": 53.151,
             "lon": 8.229
           },
@@ -841,45 +841,72 @@ struct QuestionsView: View {
               "slug": "verkehrswende",
               "beschreibung": "Beschlüsse zu Bus, Radverkehr und klimafreundlicher Mobilität."
             }],
-            "sitzungen": [{
+            "sessions": [{
               "ksinr": 8001,
               "committee": "Rat der Stadt",
               "session_date": "2026-08-26",
               "session_time": "18:00",
               "agenda": [{"item_number": "Ö 10", "title": "Neue Busspuren für Oldenburg"}]
             }],
-            "anlagen": [{
+            "attachments": [{
               "nr": 1,
               "label": "Übersichtskarte der Busspuren",
-              "vorlage_nr": "26/0801",
-              "auszug": "Geplante Abschnitte am Innenstadtring.",
+              "template_number": "26/0801",
+              "excerpt": "Geplante Abschnitte am Innenstadtring.",
               "url": "https://example.org/karte.pdf"
             }],
-            "presse": [{
-              "titel": "Stadt stellt Maßnahmen für einen schnelleren Busverkehr vor",
-              "datum": "2026-08-27",
-              "url": "https://example.org/presse"
+            "press_releases": [{
+              "title": "Stadt stellt Maßnahmen für einen schnelleren Busverkehr vor",
+              "date": "2026-08-27",
+              "url": "https://example.org/presse",
+              "auszug": "Die Stadt Oldenburg beginnt im Frühjahr mit dem Bau zweier Busspuren am Innenstadtring. Während der Bauzeit bleibt je eine Fahrspur je Richtung befahrbar; die Buslinien 302 und 306 werden zeitweise umgeleitet."
             }],
-            "debatten": [{
-              "sprecher": "Mara Beispiel",
-              "partei": "GRÜNE",
+            "parteien": [{
+              "party": "Bündnis 90/Die Grünen",
+              "haltung": "dafür",
+              "position": "Die Fraktion trägt beide Busspuren mit und verweist auf stabilere Anschlüsse im Umweltverbund.",
+              "einig": true,
+              "beitraege": 4,
+              "kernaussage": {"text": "Wer den Bus schneller macht, entlastet die Straße für alle anderen.", "speaker": "Mara Beispiel", "date": "2026-08-26"}
+            }, {
+              "party": "BSW",
+              "haltung": "dagegen",
+              "position": "Die Fraktion hält die Kosten je Kilometer für zu hoch und fordert einen Vergleich mit anderen Städten.",
+              "einig": false,
+              "beitraege": 2,
+              "kernaussage": {"text": "Acht Millionen für zwei Kilometer Busspur muss man den Leuten erst einmal erklären.", "speaker": "Jonas Muster", "date": "2026-08-26"}
+            }],
+            "debates": [{
+              "speaker": "Mara Beispiel",
+              "party": "Bündnis 90/Die Grünen",
               "art": "Wortbeitrag",
-              "datum": "2026-08-26",
-              "auszug": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
+              "date": "2026-08-26",
+              "excerpt": "Die Busspuren sollen Anschlüsse stabilisieren und den Umweltverbund stärken."
+            }, {
+              "speaker": "Jonas Muster",
+              "party": "BSW",
+              "art": "Rede",
+              "date": "2026-08-26",
+              "excerpt": "Die Kosten je Kilometer Busspur seien im Vergleich zu anderen Städten zu hoch angesetzt."
+            }, {
+              "speaker": "Herr Beispielhaft",
+              "art": "Rede",
+              "date": "2026-08-26",
+              "excerpt": "Die Verwaltung verweist auf die Förderkulisse des Landes; ohne sie trüge die Stadt den vollen Betrag."
             }],
-            "planungen": [{
-              "vorlage_titel": "Umsetzung der Busspuren",
-              "gremium": "Verkehrsausschuss",
-              "datum": "2026-11-12"
+            "planning_procedures": [{
+              "template_title": "Umsetzung der Busspuren",
+              "committee": "Verkehrsausschuss",
+              "date": "2026-11-12"
             }],
-            "grafik": {
-              "titel": "Vorgesehene Investitionen",
-              "einheit": "Mio. €",
-              "hinweis": "Planwerte aus der Beschlussvorlage.",
-              "reihe": [
-                {"jahr": 2026, "wert": 2.1},
-                {"jahr": 2027, "wert": 4.3},
-                {"jahr": 2028, "wert": 2.5}
+            "chart": {
+              "title": "Vorgesehene Investitionen",
+              "unit": "Mio. €",
+              "note": "Planwerte aus der Beschlussvorlage.",
+              "series": [
+                {"year": 2026, "value": 2.1},
+                {"year": 2027, "value": 4.3},
+                {"year": 2028, "value": 2.5}
               ]
             }
           }
@@ -897,7 +924,20 @@ struct QuestionsView: View {
         else { return nil }
         return QuestionTurn(
             question: "Was bringen die neuen Busspuren?",
-            answer: "Ulf Prange (SPD) erläuterte den Beschluss: Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen [20947].Für diesen Abschnitt sind kürzere und verlässlichere Fahrzeiten das Ziel.",
+            answer: """
+                Ulf Prange (SPD) erläuterte den Beschluss: Der Rat hat **zwei neue Busspuren** und bessere Ampelvorrangschaltungen beschlossen. Dafür sind 8,9 Millionen Euro vorgesehen [20947].Für diesen Abschnitt sind kürzere und verlässlichere Fahrzeiten das Ziel.
+
+                ## Kosten und Finanzierung
+
+                **Planungskosten**: Der Stadt Oldenburg entstehen Planungskosten für die Bauleitplanung in üblicher Höhe [20947].
+
+                **Einnahmen**: Demgegenüber stehen zu erwartende Einnahmen aus Grundstücksverkäufen [30001].
+
+                ### Offene Punkte
+
+                - Die Höhe der Erschließungskosten steht noch nicht fest.
+                - Die Sozialquote wird im Ausschuss erneut beraten [20947].
+                """,
             sources: [source, otherSource],
             evidence: evidence,
             suggestions: ["Wann beginnt der Bau?", "Welche Linien profitieren?"],
@@ -940,7 +980,7 @@ private struct EmptyQuestionsView: View {
                     HStack {
                         Text(example).multilineTextAlignment(.leading)
                         Spacer()
-                        Image(systemName: "arrow.right")
+                        RatsIcon(.arrowRight, size: 16)
                     }
                     .font(RatsFont.body(14, weight: .medium))
                     .padding(.horizontal, 13)
@@ -993,7 +1033,7 @@ private struct ConversationMemoryConsentCard: View {
                 Label {
                     Text("KI-Hinweis: Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet; eine Drittlandverarbeitung ist möglich. Antworten können Fehler enthalten – prüfe wichtige Angaben an den Quellen und gib keine personenbezogenen oder sensiblen Daten ein.")
                 } icon: {
-                    Image(systemName: "sparkles")
+                    RatsIcon(.sparkles, size: 10)
                         .foregroundStyle(RatsColor.signal)
                 }
                 .font(RatsFont.body(10))
@@ -1010,7 +1050,7 @@ private struct ConversationMemoryConsentCard: View {
                     .lineSpacing(2)
 
                 if let error {
-                    Label(error, systemImage: "exclamationmark.triangle")
+                    RatsLabel(error, .triangleAlert)
                         .font(RatsFont.body(11, weight: .medium))
                         .foregroundStyle(RatsColor.danger)
                 }
@@ -1031,14 +1071,14 @@ private struct ConversationMemoryConsentCard: View {
     @ViewBuilder
     private var choiceButtons: some View {
         Button { choose(true) } label: {
-            Label(isSaving ? "Wird gespeichert …" : "KI nutzen & merken", systemImage: "checkmark")
+            RatsLabel(isSaving ? "Wird gespeichert …" : "KI nutzen & merken", .check)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(PrimaryButtonStyle())
         .disabled(isSaving)
 
         Button { choose(false) } label: {
-            Label("KI nutzen, nicht merken", systemImage: "xmark")
+            RatsLabel("KI nutzen, nicht merken", .x)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(SecondaryButtonStyle())
@@ -1077,8 +1117,7 @@ private struct RatsQuestionComposer: View {
                 .disabled(!isEnabled)
 
                 Button(action: action) {
-                    Image(systemName: isSending ? "stop.fill" : "arrow.up")
-                        .font(.system(size: 15, weight: .bold))
+                    RatsIcon(isSending ? .square : .arrowUp, size: 15)
                         .foregroundStyle(RatsColor.primaryText)
                         .frame(width: 40, height: 40)
                         .background(
@@ -1211,8 +1250,7 @@ private struct ResearchPillToggleStyle: ToggleStyle {
         } label: {
             HStack(spacing: 7) {
                 configuration.label
-                Image(systemName: configuration.isOn ? "xmark" : "plus")
-                    .font(.system(size: 9, weight: .bold))
+                RatsIcon(configuration.isOn ? .x : .plus, size: 9)
             }
             .foregroundStyle(configuration.isOn ? RatsColor.primary : RatsColor.secondary)
             .padding(.horizontal, 11)
@@ -1259,7 +1297,7 @@ private struct ResearchProgressCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(state.facets) { facet in
                         HStack(spacing: 8) {
-                            Image(systemName: facet.hits == nil ? "circle.dotted" : "checkmark.circle.fill")
+                            RatsIcon(facet.hits == nil ? .circleDashed : .circleCheckBig, size: 12)
                                 .foregroundStyle(facet.hits == nil ? RatsColor.muted : RatsColor.success)
                             Text(facet.name)
                                 .font(RatsFont.body(12, weight: .medium))
@@ -1413,7 +1451,7 @@ private struct QuestionTurnView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(turn.suggestions, id: \.self) { suggestion in
-                            Button { ask(suggestion) } label: { Pill(suggestion, symbol: "arrow.turn.down.right") }
+                            Button { ask(suggestion) } label: { Pill(suggestion, symbol: .cornerDownRight) }
                                 .buttonStyle(RatsPlainButtonStyle())
                         }
                     }
@@ -1472,8 +1510,8 @@ struct QuestionEvidenceAvailability {
 
     init(fields: [String: JSONValue] = [:]) {
         let type = fields["qtype"]?.string?.lowercased() ?? ""
-        let debates = fields["debatten"]?.array ?? []
-        let parties = fields["parteien"]?.array ?? []
+        let debates = fields["debates"]?.array ?? []
+        let parties = fields["parties"]?.array ?? []
 
         // Dieselbe Zuständigkeit wie im Web: Der validierte Rechercheplan im
         // Backend schaltet diese Kanäle einzeln frei. Die Oberfläche zeigt nur
@@ -1481,12 +1519,12 @@ struct QuestionEvidenceAvailability {
         // abweichende Stichwort-Heuristik.
         showsDebates = !debates.isEmpty
         showsPartyOpinions = type != "person" && (parties.count >= 2 || showsDebates)
-        showsPress = !(fields["presse"]?.array ?? []).isEmpty
-        showsAttachments = !(fields["anlagen"]?.array ?? []).isEmpty
-        showsPlanning = !(fields["planungen"]?.array ?? []).isEmpty
+        showsPress = !(fields["press_releases"]?.array ?? []).isEmpty
+        showsAttachments = !(fields["attachments"]?.array ?? []).isEmpty
+        showsPlanning = !(fields["planning_procedures"]?.array ?? []).isEmpty
         showsBriefs = !(fields["steckbriefe"]?.array ?? []).isEmpty
-        showsChart = fields["grafik"] != nil
-        showsSessions = !(fields["sitzungen"]?.array ?? []).isEmpty
+        showsChart = fields["chart"] != nil
+        showsSessions = !(fields["sessions"]?.array ?? []).isEmpty
     }
 }
 
@@ -1573,9 +1611,9 @@ private struct QuestionTypeInsight: View {
 
     @ViewBuilder var body: some View {
         switch type {
-        case "verlauf": timeline
-        case "geld": money
-        case "partei": party
+        case "history": timeline
+        case "money": money
+        case "party": party
         default: EmptyView()
         }
     }
@@ -1600,7 +1638,7 @@ private struct QuestionTypeInsight: View {
                                 Text(source.title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text).lineLimit(3)
                             }
                             Spacer(minLength: 4)
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(RatsColor.muted)
+                            RatsIcon(.chevronRight, size: 12).foregroundStyle(RatsColor.muted)
                         }.contentShape(Rectangle())
                     }.buttonStyle(RatsPlainButtonStyle())
                 }
@@ -1741,8 +1779,7 @@ private struct UncitedQuestionSourceRow: View {
                     .foregroundStyle(RatsColor.muted)
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption)
+            RatsIcon(.chevronRight, size: 12)
                 .foregroundStyle(RatsColor.muted)
         }
         .contentShape(Rectangle())
@@ -1752,7 +1789,7 @@ private struct UncitedQuestionSourceRow: View {
 private func questionSourceMeta(_ source: DecisionSummary) -> String {
     let type: String = {
         let kind = source.kind?.lowercased() ?? ""
-        if kind.contains("beschluss") || source.outcome != nil { return "Beschluss" }
+        if kind.contains("official_text") || source.outcome != nil { return "Beschluss" }
         if kind.contains("vorlage") || source.templateNumber != nil { return "Vorlage" }
         return "Ratsunterlage"
     }()
@@ -1911,7 +1948,7 @@ private struct QuestionEvidenceSidebar: View {
     }
 
     private func hasSourceEvidence(_ fields: [String: JSONValue]) -> Bool {
-        ["anlagen", "presse", "debatten"].contains {
+        ["attachments", "press_releases", "debates"].contains {
             !(fields[$0]?.array ?? []).isEmpty
         }
     }
@@ -1924,14 +1961,14 @@ struct PartyCoreStatement: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case text
-        case speaker = "sprecher"
-        case date = "datum"
+        case speaker = "speaker"
+        case date = "date"
     }
 
     var jsonValue: JSONValue {
         var fields: [String: JSONValue] = ["text": .string(text)]
-        if let speaker { fields["sprecher"] = .string(speaker) }
-        if let date { fields["datum"] = .string(date) }
+        if let speaker { fields["speaker"] = .string(speaker) }
+        if let date { fields["date"] = .string(date) }
         return .object(fields)
     }
 }
@@ -1948,24 +1985,24 @@ struct PartyOpinion: Codable, Sendable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case position
-        case party = "partei"
-        case stance = "haltung"
-        case united = "einig"
-        case hint = "hinweis"
+        case party = "party"
+        case stance = "stance"
+        case united = "unanimous"
+        case hint = "note"
         case coreStatement = "kernaussage"
-        case contributions = "beitraege"
+        case contributions = "contributions"
     }
 
     var jsonValue: JSONValue {
         var fields: [String: JSONValue] = [
-            "partei": .string(party),
+            "party": .string(party),
             "position": .string(position),
         ]
-        if let stance { fields["haltung"] = .string(stance) }
-        if let united { fields["einig"] = .bool(united) }
-        if let hint { fields["hinweis"] = .string(hint) }
+        if let stance { fields["stance"] = .string(stance) }
+        if let united { fields["unanimous"] = .bool(united) }
+        if let hint { fields["note"] = .string(hint) }
         if let coreStatement { fields["kernaussage"] = coreStatement.jsonValue }
-        if let contributions { fields["beitraege"] = .number(Double(contributions)) }
+        if let contributions { fields["contributions"] = .number(Double(contributions)) }
         return .object(fields)
     }
 }
@@ -1975,8 +2012,8 @@ private struct PartyOpinionsResponse: Codable, Sendable {
     let withoutContributions: [String]
 
     enum CodingKeys: String, CodingKey {
-        case parties = "parteien"
-        case withoutContributions = "ohne_beitraege"
+        case parties = "parties"
+        case withoutContributions = "without_speeches"
     }
 }
 
@@ -1992,15 +2029,13 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
     let chart: JSONValue?
 
     enum CodingKeys: String, CodingKey {
-        case question = "frage"
-        case answer = "antwort"
-        case sources = "quellen"
+        case question, answer, sources
         case created
-        case debates = "debatten"
-        case press = "presse"
-        case attachments = "anlagen"
-        case parties = "parteien"
-        case chart = "grafik"
+        case debates = "debates"
+        case press = "press_releases"
+        case attachments = "attachments"
+        case parties = "parties"
+        case chart = "chart"
     }
 
     init(from decoder: Decoder) throws {
@@ -2018,11 +2053,11 @@ struct SharedAnswerSnapshot: Decodable, Sendable {
 
     var evidenceFields: [String: JSONValue] {
         var fields: [String: JSONValue] = [:]
-        if !debates.isEmpty { fields["debatten"] = .array(debates) }
-        if !press.isEmpty { fields["presse"] = .array(press) }
-        if !attachments.isEmpty { fields["anlagen"] = .array(attachments) }
-        if !parties.isEmpty { fields["parteien"] = .array(parties.map(\.jsonValue)) }
-        if let chart { fields["grafik"] = chart }
+        if !debates.isEmpty { fields["debates"] = .array(debates) }
+        if !press.isEmpty { fields["press_releases"] = .array(press) }
+        if !attachments.isEmpty { fields["attachments"] = .array(attachments) }
+        if !parties.isEmpty { fields["parties"] = .array(parties.map(\.jsonValue)) }
+        if let chart { fields["chart"] = chart }
         return fields
     }
 }
@@ -2037,6 +2072,11 @@ private struct PartyOpinionsView: View {
     @State private var response: PartyOpinionsResponse?
     @State private var isLoading = false
     @State private var error: String?
+    /// Offen, sobald es etwas zu lesen gibt. Im Web stehen die verdichteten
+    /// Fraktions-Positionen offen da; in der App lagen sie hinter einem
+    /// Deckel, der nicht verriet, dass dahinter die Parteimeinungen stehen —
+    /// Tim hielt den Baustein deshalb für gar nicht gebaut (01.09.2026).
+    @State private var isExpanded = true
 
     @ViewBuilder
     var body: some View {
@@ -2046,7 +2086,7 @@ private struct PartyOpinionsView: View {
             } else if let renderedResponse, renderedResponse.parties.count < 2 {
                 EmptyView()
             } else {
-                DisclosureGroup {
+                DisclosureGroup(isExpanded: $isExpanded) {
                     VStack(alignment: .leading, spacing: 12) {
                         if let response = renderedResponse {
                             ForEach(response.parties) { opinion in
@@ -2068,7 +2108,7 @@ private struct PartyOpinionsView: View {
                     }
                     .padding(.top, 10)
                 } label: {
-                    MonoKicker("Fraktionen")
+                    MonoKicker("Fraktionen", trailing: renderedResponse.map { "\($0.parties.count)" })
                 }
                 .padding(14)
                 .background(RatsColor.card)
@@ -2082,7 +2122,7 @@ private struct PartyOpinionsView: View {
     }
 
     private func load() async {
-        struct Body: Codable, Sendable { let frage: String; let beschluss_ids: [Int] }
+        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
         let citedIDs = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
             .citedSources
             .map(\.id)
@@ -2095,14 +2135,14 @@ private struct PartyOpinionsView: View {
         defer { isLoading = false }
         do {
             response = try await model.api.send(
-                "/api/council/partei-meinungen",
-                body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: decisionIDs)
+                "/api/council/party-meinungen",
+                body: Body(question: String(turn.question.prefix(300)), decision_ids: decisionIDs)
             )
         } catch { self.error = error.localizedDescription }
     }
 
     private var snapshotParties: [PartyOpinion] {
-        (turn.evidence["parteien"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
+        (turn.evidence["parties"]?.array ?? []).compactMap { try? $0.decoded(PartyOpinion.self) }
     }
 
     private var renderedResponse: PartyOpinionsResponse? {
@@ -2213,7 +2253,7 @@ struct SharedAnswerView: View {
             ownQuestionButton
             if let url = shareURL {
                 ShareLink(item: url) {
-                    Label("Weitergeben", systemImage: "square.and.arrow.up")
+                    RatsLabel("Weitergeben", .share)
                         .font(RatsFont.body(12.5, weight: .semibold))
                         .frame(minHeight: 44)
                         .padding(.horizontal, 14)
@@ -2233,7 +2273,7 @@ struct SharedAnswerView: View {
         Button {
             showsReportOptions = true
         } label: {
-            Label(isReporting ? "Meldung wird gesendet …" : "Inhalt melden", systemImage: "exclamationmark.bubble")
+            RatsLabel(isReporting ? "Meldung wird gesendet …" : "Inhalt melden", .messageCircleWarning)
                 .font(RatsFont.body(11.5, weight: .semibold))
                 .foregroundStyle(RatsColor.secondary)
         }
@@ -2255,7 +2295,7 @@ struct SharedAnswerView: View {
                 model.authPresentation = .login
             }
         } label: {
-            Label(questionButtonLabel, systemImage: "sparkles")
+            RatsLabel(questionButtonLabel, .sparkles)
                 .font(RatsFont.body(12.5, weight: .semibold))
                 .foregroundStyle(RatsColor.primaryText)
                 .frame(minHeight: 44)
@@ -2326,10 +2366,10 @@ struct SharedAnswerView: View {
         defer { isLoading = false }
         do {
             async let snapshotRequest: SharedAnswerSnapshot = model.api.get("/api/council/qa-share/\(token)")
-            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/personen-lexikon")
+            async let peopleRequest: QuestionPeopleEnvelope? = try? model.api.get("/api/council/people-directory")
             let loaded = try await snapshotRequest
             snapshot = loaded
-            people = await peopleRequest?.personen ?? []
+            people = await peopleRequest?.people ?? []
         } catch let apiError as APIError where apiError.statusCode == 404 {
             snapshot = nil
             error = "Diese geteilte Antwort gibt es nicht mehr. Der Link ist abgelaufen oder wurde gelöscht."
@@ -2364,14 +2404,19 @@ private struct PartyOpinionDetails: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(opinion.party).font(RatsFont.body(14, weight: .semibold))
+            // Die Fraktion trägt ihre Farbe, wie im Web und wie in den
+            // Sprecher-Zeilen der Debatten — vorher war die ganze Liste grau
+            // und blau und die Fraktionen nur am Namen zu unterscheiden
+            // (Tims Wunsch 01.09.2026).
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                PartyChip(party: opinion.party)
                 if let stance = opinion.stance { Pill(stance.capitalized) }
                 Spacer(minLength: 4)
                 if let count = opinion.contributions, count > 0 {
-                    Text("\(count) Beiträge")
+                    Text(count == 1 ? "1 Beitrag" : "\(count) Beiträge")
                         .font(RatsFont.mono(9))
                         .foregroundStyle(RatsColor.muted)
+                        .fixedSize()
                 }
             }
             Text(opinion.position)
@@ -2417,23 +2462,23 @@ private struct QuestionAnswerActions: View {
             Button {
                 speaker.toggle(text: turn.answer)
             } label: {
-                Image(systemName: speaker.isSpeaking ? "stop.fill" : "speaker.wave.2")
+                RatsIcon(speaker.isSpeaking ? .square : .volume2, size: 16)
             }
             .accessibilityLabel(speaker.isSpeaking ? "Vorlesen stoppen" : "Antwort vorlesen")
 
             Button { rate("up") } label: {
-                Image(systemName: rating == "up" ? "hand.thumbsup.fill" : "hand.thumbsup")
+                RatsIcon(rating == "up" ? .thumbsUp : .thumbsUp, size: 16)
             }
             .accessibilityLabel("Antwort war hilfreich")
 
             Button { rate("down") } label: {
-                Image(systemName: rating == "down" ? "hand.thumbsdown.fill" : "hand.thumbsdown")
+                RatsIcon(rating == "down" ? .thumbsDown : .thumbsDown, size: 16)
             }
             .accessibilityLabel("Antwort war nicht hilfreich")
 
             Button { Task { await createShare() } } label: {
                 if isSharing { ProgressView().controlSize(.mini) }
-                else { Image(systemName: "square.and.arrow.up") }
+                else { RatsIcon(.share, size: 11) }
             }
             .disabled(isSharing)
             .accessibilityLabel("Antwort als Link teilen")
@@ -2450,19 +2495,19 @@ private struct QuestionAnswerActions: View {
         guard rating != value else { return }
         rating = value
         struct Body: Codable, Sendable {
-            let frage: String
-            let antwort_auszug: String?
-            let bewertung: String
-            let grund: String?
+            let question: String
+            let answer_excerpt: String?
+            let rating: String
+            let reason: String?
         }
         Task {
             try? await model.api.sendVoid(
                 "/api/council/qa-feedback",
                 body: Body(
-                    frage: String(turn.question.prefix(300)),
-                    antwort_auszug: String(turn.answer.prefix(500)),
-                    bewertung: value,
-                    grund: nil
+                    question: String(turn.question.prefix(300)),
+                    answer_excerpt: String(turn.answer.prefix(500)),
+                    rating: value,
+                    reason: nil
                 )
             )
         }
@@ -2477,9 +2522,9 @@ private struct QuestionAnswerActions: View {
             let outcome: String?
         }
         struct Body: Codable, Sendable {
-            let frage: String
-            let antwort: String
-            let quellen: [Source]
+            let question: String
+            let answer: String
+            let sources: [Source]
             let debatten: [JSONValue]
             let presse: [JSONValue]
             let anlagen: [JSONValue]
@@ -2495,9 +2540,9 @@ private struct QuestionAnswerActions: View {
             let response: Response = try await model.api.send(
                 "/api/council/qa-share",
                 body: Body(
-                    frage: String(turn.question.prefix(300)),
-                    antwort: String(turn.answer.prefix(8000)),
-                    quellen: turn.sources.map {
+                    question: String(turn.question.prefix(300)),
+                    answer: String(turn.answer.prefix(8000)),
+                    sources: turn.sources.map {
                         Source(
                             id: $0.id,
                             title: String($0.title.prefix(300)),
@@ -2506,11 +2551,11 @@ private struct QuestionAnswerActions: View {
                             outcome: $0.outcome
                         )
                     },
-                    debatten: turn.evidence["debatten"]?.array ?? [],
-                    presse: turn.evidence["presse"]?.array ?? [],
-                    anlagen: turn.evidence["anlagen"]?.array ?? [],
+                    debatten: turn.evidence["debates"]?.array ?? [],
+                    presse: turn.evidence["press_releases"]?.array ?? [],
+                    anlagen: turn.evidence["attachments"]?.array ?? [],
                     parteien: parties,
-                    grafik: turn.evidence["grafik"]
+                    grafik: turn.evidence["chart"]
                 )
             )
             guard let url = URL(string: "https://ratslotse.de/g?t=\(response.token)") else { return }
@@ -2521,20 +2566,20 @@ private struct QuestionAnswerActions: View {
     }
 
     private func partyOpinionsForShare() async -> [PartyOpinion] {
-        let embedded = (turn.evidence["parteien"]?.array ?? []).compactMap {
+        let embedded = (turn.evidence["parties"]?.array ?? []).compactMap {
             try? $0.decoded(PartyOpinion.self)
         }
         if embedded.count >= 2 { return embedded }
-        guard !(turn.evidence["debatten"]?.array ?? []).isEmpty else { return [] }
+        guard !(turn.evidence["debates"]?.array ?? []).isEmpty else { return [] }
 
-        struct Body: Codable, Sendable { let frage: String; let beschluss_ids: [Int] }
+        struct Body: Codable, Sendable { let question: String; let decision_ids: [Int] }
         let citationIndex = QuestionCitationIndex(text: turn.answer, sources: turn.sources)
         let IDs = citationIndex.citedSources.isEmpty
             ? Array(turn.sources.prefix(20).map(\.id))
             : citationIndex.citedSources.map(\.id)
         guard let response: PartyOpinionsResponse = try? await model.api.send(
-            "/api/council/partei-meinungen",
-            body: Body(frage: String(turn.question.prefix(300)), beschluss_ids: IDs)
+            "/api/council/party-meinungen",
+            body: Body(question: String(turn.question.prefix(300)), decision_ids: IDs)
         ) else { return [] }
         return response.parties.count >= 2 ? response.parties : []
     }
@@ -2608,20 +2653,20 @@ struct CouncilEvidenceBlocks: View {
         QuestionEvidenceAvailability(fields: fields)
     }
     private var attachments: [[String: JSONValue]] {
-        visibility.showsAttachments ? objects("anlagen") : []
+        visibility.showsAttachments ? objects("attachments") : []
     }
     private var press: [[String: JSONValue]] {
-        visibility.showsPress ? objects("presse") : []
+        visibility.showsPress ? objects("press_releases") : []
     }
     private var debates: [[String: JSONValue]] {
-        visibility.showsDebates ? objects("debatten") : []
+        visibility.showsDebates ? objects("debates") : []
     }
     private var sessions: [[String: JSONValue]] {
-        let rows = objects("sitzungen")
+        let rows = objects("sessions")
         return visibility.showsSessions ? rows : []
     }
     private var planning: [[String: JSONValue]] {
-        visibility.showsPlanning ? objects("planungen") : []
+        visibility.showsPlanning ? objects("planning_procedures") : []
     }
     private var briefs: [[String: JSONValue]] {
         visibility.showsBriefs ? objects("steckbriefe") : []
@@ -2631,10 +2676,10 @@ struct CouncilEvidenceBlocks: View {
 
     @ViewBuilder
     var body: some View {
-        if includesAnswerInsights, fields["beleglage"]?.string == "duenn" {
-            Label(
+        if includesAnswerInsights, fields["evidence_level"]?.string == "duenn" {
+            RatsLabel(
                 "Dünne Beschlusslage – die Antwort stützt sich nur auf wenige passende Ratsunterlagen.",
-                systemImage: "exclamationmark.magnifyingglass"
+                .searchX, size: 12
             )
             .font(RatsFont.body(12))
             .foregroundStyle(RatsColor.warning)
@@ -2655,7 +2700,7 @@ struct CouncilEvidenceBlocks: View {
                                 title: name,
                                 detail: item["beschreibung"]?.string,
                                 meta: "Steckbrief",
-                                symbol: "info.circle"
+                                symbol: .info
                             )
                         }
                         .buttonStyle(RatsPlainButtonStyle())
@@ -2664,7 +2709,7 @@ struct CouncilEvidenceBlocks: View {
                             title: name,
                             detail: item["beschreibung"]?.string,
                             meta: "Steckbrief",
-                            symbol: "info.circle"
+                            symbol: .info
                         )
                     }
                 }
@@ -2720,9 +2765,9 @@ struct CouncilEvidenceBlocks: View {
                         let title = item["label"]?.string ?? "Anlage"
                         let row = EvidenceTextRow(
                             title: "[A\(number)] \(title)",
-                            detail: item["auszug"]?.string,
-                            meta: item["vorlage_nr"]?.string,
-                            symbol: "doc.text"
+                            detail: item["excerpt"]?.string,
+                            meta: item["template_number"]?.string,
+                            symbol: .fileText
                         )
                         if let raw = item["url"]?.string, let url = URL(string: raw) {
                             Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
@@ -2741,10 +2786,13 @@ struct CouncilEvidenceBlocks: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(press.enumerated()), id: \.offset) { _, item in
                         let row = EvidenceTextRow(
-                            title: item["titel"]?.string ?? "Mitteilung der Stadt",
-                            detail: nil,
-                            meta: item["datum"]?.string,
-                            symbol: "newspaper"
+                            title: item["title"]?.string ?? "Mitteilung der Stadt",
+                            // Der Anriss aus dem Volltext — ohne ihn war die
+                            // Karte eine reine Weiterleitung auf die
+                            // Stadt-Seite (Tims Befund 01.09.2026).
+                            detail: item["auszug"]?.string,
+                            meta: RatsDate.short(item["date"]?.string),
+                            symbol: .newspaper
                         )
                         if let raw = item["url"]?.string, let url = URL(string: raw) {
                             Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle())
@@ -2762,14 +2810,15 @@ struct CouncilEvidenceBlocks: View {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(Array(debates.enumerated()), id: \.offset) { _, item in
-                        let speaker = item["sprecher"]?.string ?? "Ohne Namen"
-                        let party = item["partei"]?.string
+                        let speaker = item["speaker"]?.string ?? "Ohne Namen"
+                        let party = item["party"]?.string
                         let kind = item["art"]?.string?.capitalized
                         let row = EvidenceTextRow(
-                            title: [speaker, party].compactMap { $0 }.joined(separator: " · "),
-                            detail: item["auszug"]?.string,
-                            meta: [kind, item["datum"]?.string].compactMap { $0 }.joined(separator: " · "),
-                            symbol: "quote.bubble"
+                            title: speaker,
+                            party: party,
+                            detail: item["excerpt"]?.string,
+                            meta: [kind, RatsDate.short(item["date"]?.string)].compactMap { $0 }.joined(separator: " · "),
+                            symbol: .messageSquareQuote
                         )
                         if let url = debateURL(item) { Link(destination: url) { row }.buttonStyle(RatsPlainButtonStyle()) }
                         else { row }
@@ -2789,10 +2838,10 @@ struct CouncilEvidenceBlocks: View {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(planning.enumerated()), id: \.offset) { _, item in
                         EvidenceTextRow(
-                            title: item["vorlage_titel"]?.string ?? item["vorlage_nr"]?.string ?? "Vorlage",
-                            detail: item["gremium"]?.string,
-                            meta: item["datum"]?.string,
-                            symbol: "arrow.triangle.branch"
+                            title: item["template_title"]?.string ?? item["template_number"]?.string ?? "Vorlage",
+                            detail: item["committee"]?.string,
+                            meta: RatsDate.short(item["date"]?.string),
+                            symbol: .gitBranch
                         )
                     }
                 }
@@ -2805,7 +2854,7 @@ struct CouncilEvidenceBlocks: View {
 
         if includesAnswerInsights,
            visibility.showsChart,
-           let chart = EvidenceChartData(fields["grafik"]) {
+           let chart = EvidenceChartData(fields["chart"]) {
             EvidenceInteractiveChart(chart: chart)
         }
     }
@@ -2815,8 +2864,8 @@ struct CouncilEvidenceBlocks: View {
     }
 
     private func debateURL(_ item: [String: JSONValue]) -> URL? {
-        guard let raw = item["protokoll_url"]?.string else { return nil }
-        if let page = item["protokoll_seite"]?.int {
+        guard let raw = item["minutes_url"]?.string else { return nil }
+        if let page = item["minutes_page"]?.int {
             return URL(string: "\(raw)#page=\(page)")
         }
         return URL(string: raw)
@@ -2825,18 +2874,31 @@ struct CouncilEvidenceBlocks: View {
 
 private struct EvidenceTextRow: View {
     let title: String
+    /// Die Fraktion der Zeile — sie steht als Chip neben dem Namen. Bewusst
+    /// die Angabe DIESER Zeile und kein Nachschlagen im Personen-Lexikon:
+    /// Die Zugehörigkeit gilt je Sitzungsdatum, das Lexikon kennt nur die
+    /// heutige. Verwaltungsleute („Herr Böke") tragen keine und bekommen
+    /// deshalb auch keinen Chip.
+    var party: String?
     let detail: String?
     let meta: String?
-    let symbol: String
+    let symbol: RatsGlyph
 
     var body: some View {
         HStack(alignment: .top, spacing: 9) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .medium))
+            RatsIcon(symbol, size: 13)
                 .foregroundStyle(RatsColor.primary)
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                if let party, !party.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                        PartyChip(party: party, label: questionPartyAbbreviation(party))
+                            .fixedSize()
+                    }
+                } else {
+                    Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                }
                 if let detail, !detail.isEmpty {
                     Text(detail).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineLimit(5)
                 }
@@ -2864,13 +2926,13 @@ private struct EvidenceChartData {
 
     init?(_ value: JSONValue?) {
         guard let root = value?.object else { return nil }
-        let rows = root["reihe"]?.array ?? []
+        let rows = root["series"]?.array ?? []
         var parsed: [Point] = []
         parsed.reserveCapacity(rows.count)
         for (index, row) in rows.enumerated() {
             guard let fields = row.object else { continue }
             var number: Double?
-            for key in ["wert", "value", "betrag"] {
+            for key in ["value", "value", "amount"] {
                 if case .number(let found)? = fields[key] {
                     number = found
                     break
@@ -2880,9 +2942,9 @@ private struct EvidenceChartData {
             let label: String
             if let explicit = fields["label"]?.string {
                 label = explicit
-            } else if let year = fields["jahr"]?.int {
+            } else if let year = fields["year"]?.int {
                 label = String(year)
-            } else if let date = fields["datum"]?.string {
+            } else if let date = fields["date"]?.string {
                 label = date
             } else {
                 label = "\(index + 1)"
@@ -2891,10 +2953,10 @@ private struct EvidenceChartData {
         }
         points = parsed
         guard points.count >= 2 else { return nil }
-        title = root["titel"]?.string ?? "Entwicklung"
-        unit = root["einheit"]?.string ?? "Wert"
-        note = root["hinweis"]?.string
-        source = root["quelle"]?.string
+        title = root["title"]?.string ?? "Entwicklung"
+        unit = root["unit"]?.string ?? "Wert"
+        note = root["note"]?.string
+        source = root["source"]?.string
         decimals = max(0, min(3, root["nachkomma"]?.int ?? 0))
     }
 
@@ -3010,10 +3072,10 @@ private struct EvidenceInteractiveChart: View {
 func questionPersonBadgeLabel(_ person: QuestionPerson) -> String {
     if !person.aktiv { return "ehem." }
     switch person.art {
-    case "stadt": return "Stadt"
-    case "beteiligung": return "Aufsicht"
-    case "beratend": return "beratend"
-    default: return questionPartyAbbreviation(person.partei)
+    case "city": return "Stadt"
+    case "participation": return "Aufsicht"
+    case "advisory": return "beratend"
+    default: return questionPartyAbbreviation(person.party)
     }
 }
 
@@ -3076,7 +3138,7 @@ func questionPersonBadgeMarkdown(text: String, people: [QuestionPerson]) -> Stri
            ),
            bracket.numberOfRanges == 2 {
             let content = (remainder as NSString).substring(with: bracket.range(at: 1))
-            if questionIsMatchingPartyParenthesis(content, person.partei) {
+            if questionIsMatchingPartyParenthesis(content, person.party) {
                 end += NSMaxRange(bracket.range)
             }
         }
@@ -3130,11 +3192,11 @@ private func questionIsMatchingPartyParenthesis(_ content: String, _ party: Stri
 private func questionPersonBadgeColor(_ person: QuestionPerson) -> Color {
     if !person.aktiv { return RatsColor.muted }
     switch person.art {
-    case "stadt": return RatsColor.primary
-    case "beteiligung", "beratend": return RatsColor.secondary
+    case "city": return RatsColor.primary
+    case "participation", "advisory": return RatsColor.secondary
     default: break
     }
-    let party = person.partei?.lowercased() ?? ""
+    let party = person.party?.lowercased() ?? ""
     if party.contains("grün") { return Color(red: 0.24, green: 0.56, blue: 0.16) }
     if party.contains("linke") { return Color(red: 0.90, green: 0.00, blue: 0.49) }
     if party.contains("spd") { return Color(red: 0.89, green: 0.00, blue: 0.06) }
@@ -3146,6 +3208,88 @@ private func questionPersonBadgeColor(_ person: QuestionPerson) -> Color {
     return RatsColor.secondary
 }
 
+/// Eine Zeilengruppe der Antwort: „## "-Kopf, tiefere Raute als Unterkopf,
+/// „- "-Liste oder Fließtext.
+enum AnswerBlock {
+    case heading(String)
+    case subheading(String)
+    case list([String])
+    case paragraph(String)
+}
+
+/// „## " → 2, „### " → 3 … — nur MIT Leerzeichen dahinter, damit ein
+/// „#Oldenburg" im Fließtext keine Überschrift wird.
+private func questionHeadingLevel(_ line: String) -> Int? {
+    var level = 0
+    var index = line.startIndex
+    while index < line.endIndex, line[index] == "#", level < 6 {
+        level += 1
+        index = line.index(after: index)
+    }
+    guard level > 0, index < line.endIndex, line[index] == " " else { return nil }
+    return level
+}
+
+/// Listenzeile: „- " laut Prompt, „* " liefern die Modelle im langen Bericht
+/// trotzdem gelegentlich. Das Leerzeichen ist die Bedingung — sonst risse
+/// „**Planungskosten**: …" als Listenpunkt auf.
+private func questionListItem(_ line: String) -> String? {
+    guard let first = line.first, first == "-" || first == "*" else { return nil }
+    let rest = line.dropFirst()
+    guard rest.first == " " else { return nil }
+    return rest.trimmingCharacters(in: .whitespaces)
+}
+
+/// Zerlegt den Antworttext in Blöcke — dieselbe Zeilenerkennung wie
+/// `AntwortText` im Web (`web/frontend/components/qa-bausteine.tsx`); wer die
+/// eine ändert, zieht die andere nach.
+///
+/// Nötig, weil die App den Text sonst als EINEN `AttributedString` setzt und
+/// dabei jede Blockgrenze verliert (siehe `CitedAnswerText.styled`).
+func questionAnswerBlocks(_ text: String) -> [AnswerBlock] {
+    var blocks: [AnswerBlock] = []
+    var paragraph: [String] = []
+    var list: [String] = []
+
+    func flushParagraph() {
+        let joined = paragraph.joined(separator: "\n")
+        if !joined.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            blocks.append(.paragraph(joined))
+        }
+        paragraph = []
+    }
+    func flushList() {
+        if !list.isEmpty { blocks.append(.list(list)) }
+        list = []
+    }
+
+    for rawLine in text.components(separatedBy: "\n") {
+        let line = rawLine.trimmingCharacters(in: .whitespaces)
+        if line.isEmpty {
+            flushParagraph()
+            flushList()
+            continue
+        }
+        if let level = questionHeadingLevel(line) {
+            flushParagraph()
+            flushList()
+            let body = String(line.dropFirst(level)).trimmingCharacters(in: .whitespaces)
+            blocks.append(level <= 2 ? .heading(body) : .subheading(body))
+            continue
+        }
+        if let item = questionListItem(line) {
+            flushParagraph()
+            list.append(item)
+            continue
+        }
+        flushList()
+        paragraph.append(line)
+    }
+    flushParagraph()
+    flushList()
+    return blocks
+}
+
 struct CitedAnswerText: View {
     let text: String
     let model: AppModel
@@ -3154,7 +3298,12 @@ struct CitedAnswerText: View {
     var people: [QuestionPerson] = []
 
     var body: some View {
-        Text(attributed)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
+                blockView(block).padding(.top, index == 0 ? 0 : topPadding(block))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.openURL, OpenURLAction { url in
                 guard url.scheme == "ratslotse" else { return .systemAction }
                 if url.host == "decision", let id = Int(url.lastPathComponent) {
@@ -3174,9 +3323,62 @@ struct CitedAnswerText: View {
             })
     }
 
-    private var attributed: AttributedString {
-        let markdown = questionPersonBadgeMarkdown(text: citationMarkdown, people: people)
-        var output = (try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)
+    /// Die Blöcke der Antwort. Belege und Personen-Badges werden VOR dem
+    /// Schnitt gesetzt: Beide zählen die erste Nennung über den ganzen Text,
+    /// blockweise bekäme jeder Absatz sein eigenes Badge.
+    private var blocks: [AnswerBlock] {
+        questionAnswerBlocks(questionPersonBadgeMarkdown(text: citationMarkdown, people: people))
+    }
+
+    @ViewBuilder
+    private func blockView(_ block: AnswerBlock) -> some View {
+        switch block {
+        case .heading(let line):
+            Text(styled(line)).font(RatsFont.body(15, weight: .bold))
+        case .subheading(let line):
+            Text(styled(line)).font(RatsFont.body(13.5, weight: .bold))
+        case .paragraph(let line):
+            Text(styled(line))
+        case .list(let items):
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .top, spacing: 8) {
+                        Circle()
+                            .fill(RatsColor.primary.opacity(0.55))
+                            .frame(width: 4, height: 4)
+                            .padding(.top, 8)
+                        Text(styled(item)).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Luft ÜBER einem Block — Überschriften bekommen mehr, damit der
+    /// Abschnitt sichtbar neu ansetzt.
+    private func topPadding(_ block: AnswerBlock) -> CGFloat {
+        switch block {
+        case .heading: return 16
+        case .subheading: return 12
+        case .list, .paragraph: return 7
+        }
+    }
+
+    /// Inline-Markdown eines Blocks: Fett, Belege- und Personen-Links.
+    ///
+    /// `.inlineOnlyPreservingWhitespace` ist Absicht. Der Vorgabewert `.full`
+    /// erkennt Blöcke zwar, wirft ihre Grenzen im Ergebnis aber ERSATZLOS
+    /// weg — „… vertagt [7].\n\n## Kosten und Finanzierung\n\n**Planungs-
+    /// kosten**: …" wurde zu einer einzigen Zeile ohne Leerzeichen zwischen
+    /// den Absätzen (Tims Befund 31.08.2026), und die Überschrift stand
+    /// unformatiert mittendrin. Geschnitten wird deshalb in
+    /// `questionAnswerBlocks`, hier läuft nur noch die Inline-Syntax.
+    private func styled(_ markdown: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace
+        )
+        var output = (try? AttributedString(markdown: markdown, options: options))
+            ?? AttributedString(markdown)
         for run in output.runs {
             guard let link = run.link, link.scheme == "ratslotse" else { continue }
             output[run.range].foregroundColor = RatsColor.primary
@@ -3198,7 +3400,7 @@ struct CitedAnswerText: View {
 
     private var citationMarkdown: String {
         let attachmentNumbers = Set(
-            (evidence["anlagen"]?.array ?? []).enumerated().map { offset, value in
+            (evidence["attachments"]?.array ?? []).enumerated().map { offset, value in
                 value.object?["nr"]?.int ?? offset + 1
             }
         )
@@ -3210,7 +3412,7 @@ struct CitedAnswerText: View {
     }
 
     private func attachmentURL(number: Int) -> URL? {
-        let rows = evidence["anlagen"]?.array?.compactMap(\.object) ?? []
+        let rows = evidence["attachments"]?.array?.compactMap(\.object) ?? []
         guard let raw = rows.first(where: { $0["nr"]?.int == number })?["url"]?.string else { return nil }
         return URL(string: raw)
     }

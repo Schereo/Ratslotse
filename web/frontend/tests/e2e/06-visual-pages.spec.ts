@@ -36,7 +36,7 @@ const BOOKMARKS = [
     result_notified_at: null, state: "decided", is_group: false,
     url: "/council/decision?id=91", ksinr: 42, item_number: "Ö 4",
     agenda_item: null, session: BAU,
-    decision: { id: 91, outcome: "angenommen", title: "Bebauungsplan am Hafen", simple_summary: "Der Bebauungsplan wurde beschlossen." },
+    decision: { id: 91, outcome: "accepted", title: "Bebauungsplan am Hafen", simple_summary: "Der Bebauungsplan wurde beschlossen." },
   },
   ...[5, 6, 7].map((number, index) => ({
     id: number, kind: "agenda_item", target_key: `agenda_item:43:${number}`,

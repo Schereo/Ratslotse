@@ -1,0 +1,112 @@
+# Feature-Deploy: Jeder Push auf den Branch `feature` deployt auf
+# feature.ratslotse.de — eine ZWEITE Instanz auf derselben Dev-VM
+# (10.10.10.14), unter `~/app-feature`, mit eigenen Ports (3001/8001),
+# eigenen systemd-Units (`nwz-feature-*`), eigener `.env` und eigenen
+# Datenbanken. dev.ratslotse.de bleibt davon unberührt.
+#
+# Wozu: `dev` ist der Integrations-Branch und trägt den Stand, der als
+# nächstes nach `main` fährt. Wer etwas Größeres oder Wackeliges zeigen
+# will, ohne diesen Stand anzufassen, mergt es nach `feature`.
+#
+# Warum eine eigene DB-Kopie: Ein Feature-Branch bringt typischerweise
+# Migrationen mit. Teilte er die Dateien mit dev, zöge die erste Migration
+# dev.ratslotse.de mit um — und zurück käme man nur über ein Backup.
+name: Deploy to Feature
+
+on:
+  push:
+    branches: [feature]
+  workflow_dispatch:
+
+# Der Lauf braucht vom Token nur eins: das eigene Repo lesen dürfen. Ohne
+# diesen Block gälte die Repo-Vorgabe, und die kann Schreibrechte enthalten.
+permissions:
+  contents: read
+
+# GETEILTE Gruppe mit dem Dev-Deploy — Absicht, kein Versehen. Beide Instanzen
+# liegen auf derselben VM mit 2 Kernen und 8 GB. Zwei gleichzeitige
+# `next build` passen dort nicht nebeneinander: der OOM-Killer trifft dann den
+# LAUFENDEN Dienst der jeweils anderen Instanz, und der Ausfall sieht aus wie
+# ein Fehler im gebauten Code. Mit einer gemeinsamen Gruppe bauen sie
+# nacheinander.
+#
+# cancel-in-progress FALSE (auch drüben in deploy-dev.yml umgestellt): Ein
+# abgebrochener Deploy hinterlässt eine Instanz auf altem Stand, ohne dass es
+# jemandem auffällt — genau die stille Fehlerklasse, die uns am 02.09.2026 mit
+# der Abruf-Drosselung schon eine Woche gekostet hat. Lieber warten.
+concurrency:
+  group: deploy-dev-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy auf die Feature-Instanz
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Reicht für einen Abruf des eigenen Repos und hebt die Drosselung
+          # von „je Adresse" auf „je Token" (s. u.).
+          GH_ABRUF_TOKEN: ${{ github.token }}
+        with:
+          host: ${{ secrets.VPS_DEV_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          proxy_host: ${{ secrets.VPS_PROXY_HOST }}
+          proxy_username: ${{ secrets.VPS_USER }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          proxy_port: ${{ secrets.VPS_SSH_PORT }}
+          # npm ci + next build auf 2 Kernen kann dauern.
+          command_timeout: 30m
+          # Der Abruf-Token wandert als UMGEBUNGSVARIABLE hinüber, nicht als
+          # Argument: Argumente stehen in der Prozessliste der VM, die
+          # Umgebung eines Prozesses nicht.
+          envs: GH_ABRUF_TOKEN
+          script: |
+            set -e
+            cd ~/app-feature
+            # ANGEMELDET abrufen. Am 02.09.2026 scheiterten sieben Dev-Deploys
+            # mit „could not read Username for 'https://github.com'". Das Repo
+            # ist öffentlich, der Abruf braucht keine Anmeldung — aber GitHub
+            # drosselt UNANGEMELDETE Abrufe je Adresse, und diese VM teilt ihre
+            # Adresse jetzt mit einer zweiten Instanz, ruft also doppelt so oft
+            # ab. Der Token steht in der Umgebung und wird über einen
+            # credential-Helfer gereicht, nicht in die Adresse geschrieben:
+            # sonst stünde er in `git remote -v` und in jedem Fehlertext.
+            export GIT_TERMINAL_PROMPT=0
+            if [ -n "$GH_ABRUF_TOKEN" ]; then
+              export GIT_ASKPASS=/tmp/ratslotse-askpass-feature
+              printf '#!/bin/sh\ncase "$1" in *Username*) echo x-access-token;; *) echo "$GH_ABRUF_TOKEN";; esac\n' \
+                > "$GIT_ASKPASS"
+              chmod 700 "$GIT_ASKPASS"
+              trap 'rm -f /tmp/ratslotse-askpass-feature' EXIT
+            fi
+            # Die Versuche bleiben als Netz für kurze Netzstörungen.
+            for versuch in 1 2 3; do
+              if git fetch origin feature; then break; fi
+              if [ "$versuch" = 3 ]; then
+                echo "Abruf nach drei Versuchen gescheitert." >&2
+                exit 1
+              fi
+              echo "Abruf fehlgeschlagen, neuer Versuch in $((versuch * 15))s"
+              sleep $((versuch * 15))
+            done
+            git reset --hard ${{ github.sha }}
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
+              -c constraints.txt
+            cd web/frontend
+            npm ci --no-audit --no-fund
+            # Umgebungs-Gate: dieselbe Marke wie auf dev, damit die dort
+            # freigeschalteten Seiten auch hier sichtbar sind (sonst wäre die
+            # Instanz für genau die Features blind, für die man sie baut).
+            NEXT_PUBLIC_RATSLOTSE_ENV=dev \
+            NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
+            npm run build
+            sudo systemctl restart nwz-feature-api nwz-feature-frontend
+            sleep 3
+            curl -sf -o /dev/null http://127.0.0.1:3001 && echo "Frontend OK"
+            curl -sf http://127.0.0.1:8001/api/health && echo " API OK"
+            # Dieselbe Rauchprobe wie auf dev und Prod: „der Prozess läuft" ist
+            # nicht „er tut das Richtige".
+            python3 ~/app-feature/scripts/rauchprobe.py --basis http://127.0.0.1:8001

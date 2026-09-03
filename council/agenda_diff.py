@@ -18,8 +18,8 @@ from __future__ import annotations
 import re
 
 
-def _norm_titel(titel: str) -> str:
-    return " ".join(str(titel or "").split()).lower()
+def _norm_titel(title: str) -> str:
+    return " ".join(str(title or "").split()).lower()
 
 
 def _norm_vorlage(nr: str) -> str:
@@ -42,9 +42,9 @@ def anlagen_schluessel(anlagen: list | None) -> list[str]:
 
 
 def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
-    """{"neu": [item], "entfernt": [item], "verschoben": [(alt, neu)],
-    "umformuliert": [(alt, neu)], "vorlage": [(alt, neu)]} — Items sind dicts
-    mit item_number/title/vorlage_nr (optional is_public). Welche Punkte
+    """{"new": [item], "removed": [item], "moved": [(alt, neu)],
+    "reworded": [(alt, neu)], "template": [(alt, neu)]} — Items sind dicts
+    mit item_number/title/template_number (optional is_public). Welche Punkte
     verglichen werden, entscheidet der Aufrufer."""
     # Titel sind NICHT eindeutig: Nichtöffentliche Teile führen reihenweise
     # TOPs namens „gesperrte Information". Ein Titel→Punkt-dict ließ alle
@@ -60,8 +60,8 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
         neu_nach_titel.setdefault(_norm_titel(i.get("title")), []).append(i)
     alt_nach_nummer = {str(i.get("item_number")): i for i in alt}
 
-    ergebnis = {"neu": [], "entfernt": [], "verschoben": [], "umformuliert": [],
-                "vorlage": [], "anlagen": []}
+    result = {"new": [], "removed": [], "moved": [], "reworded": [],
+                "template": [], "attachments": []}
     benutzt: set[int] = set()   # id() der verbrauchten Alt-Zeilen
     paare: list[tuple[dict, dict]] = []
     offen: list[dict] = []
@@ -86,14 +86,14 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
 
     for vorher, i in paare:
         if str(vorher.get("item_number")) != str(i.get("item_number")):
-            ergebnis["verschoben"].append((vorher, i))
-        elif _norm_vorlage(vorher.get("vorlage_nr")) != _norm_vorlage(i.get("vorlage_nr")):
+            result["moved"].append((vorher, i))
+        elif _norm_vorlage(vorher.get("template_number")) != _norm_vorlage(i.get("template_number")):
             # Der häufigste stille Fall: Ein TOP steht ohne Vorlage auf der
             # Liste, die Verwaltung reicht sie nach. Nummer und Titel
             # bleiben, der Tagesordnungs-Hash ändert sich trotzdem — und
             # die Änderungsmeldung hatte dazu bis hierher kein Wort
             # (Tims Befund 17.08.).
-            ergebnis["vorlage"].append((vorher, i))
+            result["template"].append((vorher, i))
         elif ("anlagen" in vorher and "anlagen" in i
               and anlagen_schluessel(vorher.get("anlagen"))
               != anlagen_schluessel(i.get("anlagen"))):
@@ -102,7 +102,7 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
             # ohne das Feld sollen keine erfundenen Neuzugänge melden.
             # Nach der Vorlage geprüft: Eine nachgereichte Vorlage hängt
             # ihr PDF oft auch als Anlage an — das wäre sonst doppelt.
-            ergebnis["anlagen"].append((vorher, i))
+            result["attachments"].append((vorher, i))
 
     for i in rest:
         # Titel neu — trägt die Nummer vorher einen ANDEREN Titel, ist der
@@ -111,18 +111,18 @@ def diff_tagesordnung(alt: list[dict], neu: list[dict]) -> dict:
         if (an_nummer is not None and id(an_nummer) not in benutzt
                 and _norm_titel(an_nummer.get("title")) not in neu_nach_titel):
             benutzt.add(id(an_nummer))
-            ergebnis["umformuliert"].append((an_nummer, i))
+            result["reworded"].append((an_nummer, i))
         else:  # … sonst ist er schlicht neu.
-            ergebnis["neu"].append(i)
+            result["new"].append(i)
     # Entfernt ist, was keinen Partner gefunden hat — auch der überzählige
     # Namensvetter, den die Titel-Sicht früher übersah.
-    ergebnis["entfernt"] = [i for i in alt if id(i) not in benutzt]
-    return ergebnis
+    result["removed"] = [i for i in alt if id(i) not in benutzt]
+    return result
 
 
 def hat_aenderungen(diff: dict) -> bool:
     return any(diff.get(k) for k in
-               ("neu", "entfernt", "verschoben", "umformuliert", "vorlage", "anlagen"))
+               ("new", "removed", "moved", "reworded", "template", "attachments"))
 
 
 _TOP_NUMMER = re.compile(r"^\s*(\D*?)\s*(\d+(?:\.\d+)*)\s*$")
@@ -182,11 +182,11 @@ def verschiebungs_kaskaden(paare: list, mindestens: int = 3) -> tuple[list, list
     gruppen: dict[tuple[str, int], list] = {}
     for paar in paare:
         a, n = paar[0], paar[1]
-        schluessel = _kaskaden_schluessel(a, n)
-        if schluessel is not None:
-            gruppen.setdefault(schluessel, []).append(paar)
-    kaskaden = [(schluessel[1], sorted(mitglieder, key=_alt_sortierung))
-                for schluessel, mitglieder in gruppen.items()
+        key = _kaskaden_schluessel(a, n)
+        if key is not None:
+            gruppen.setdefault(key, []).append(paar)
+    kaskaden = [(key[1], sorted(mitglieder, key=_alt_sortierung))
+                for key, mitglieder in gruppen.items()
                 if len(mitglieder) >= mindestens and _dicht(mitglieder)]
     kaskaden.sort(key=lambda k: _alt_sortierung(k[1][0]))
     gebunden = {id(paar) for _, mitglieder in kaskaden for paar in mitglieder}
@@ -203,22 +203,22 @@ def diff_satz(diff: dict) -> str:
     Wunsch 18.08.): „Was ist passiert?" soll beantwortet sein, bevor die
     Einzelliste kommt — gerade in der Push-Vorschau sieht man oft nur sie."""
     teile: list[str] = []
-    if n := len(diff.get("neu", [])):
+    if n := len(diff.get("new", [])):
         teile.append(_zaehl(n, "ein Punkt ist neu", "{n} Punkte sind neu"))
-    if n := len(diff.get("umformuliert", [])):
+    if n := len(diff.get("reworded", [])):
         teile.append(_zaehl(n, "ein Punkt wurde umformuliert", "{n} Punkte wurden umformuliert"))
     # Nachrücken und Verschieben getrennt zählen: „14 Punkte wurden verschoben"
     # klang in der Push-Vorschau nach Umbau der halben Sitzung, obwohl nur oben
     # ein Punkt wegfiel (Tims Befund 26.08.).
-    kaskaden, einzeln = verschiebungs_kaskaden(diff.get("verschoben", []))
+    kaskaden, einzeln = verschiebungs_kaskaden(diff.get("moved", []))
     if n := sum(len(m) for _, m in kaskaden):
         teile.append(_zaehl(n, "ein Punkt hat eine neue Nummer",
                             "{n} Punkte haben eine neue Nummer"))
     if n := len(einzeln):
         teile.append(_zaehl(n, "ein Punkt wurde verschoben", "{n} Punkte wurden verschoben"))
     nach = zurueck = anders = 0
-    for a, m in diff.get("vorlage", []):
-        alt_nr, neu_nr = _norm_vorlage(a.get("vorlage_nr")), _norm_vorlage(m.get("vorlage_nr"))
+    for a, m in diff.get("template", []):
+        alt_nr, neu_nr = _norm_vorlage(a.get("template_number")), _norm_vorlage(m.get("template_number"))
         if neu_nr and not alt_nr:
             nach += 1
         elif alt_nr and not neu_nr:
@@ -234,10 +234,10 @@ def diff_satz(diff: dict) -> str:
     if anders:
         teile.append(_zaehl(anders, "eine Vorlage wurde ersetzt",
                             "{n} Vorlagen wurden ersetzt"))
-    if n := len(diff.get("anlagen", [])):
+    if n := len(diff.get("attachments", [])):
         teile.append(_zaehl(n, "die Anlagen zu einem Punkt haben sich geändert",
                             "die Anlagen zu {n} Punkten haben sich geändert"))
-    if n := len(diff.get("entfernt", [])):
+    if n := len(diff.get("removed", [])):
         teile.append(_zaehl(n, "ein Punkt wurde von der Tagesordnung genommen",
                             "{n} Punkte wurden von der Tagesordnung genommen"))
     if not teile:
@@ -261,7 +261,7 @@ def _leise(text: str) -> str:
 
 
 def _vorlage_daten(a: dict, n: dict) -> tuple[str, str]:
-    alt_nr, neu_nr = _norm_vorlage(a.get("vorlage_nr")), _norm_vorlage(n.get("vorlage_nr"))
+    alt_nr, neu_nr = _norm_vorlage(a.get("template_number")), _norm_vorlage(n.get("template_number"))
     if neu_nr and not alt_nr:
         return "Vorlage nachgereicht", f"Vorlage {neu_nr} liegt jetzt vor"
     if alt_nr and not neu_nr:
@@ -307,9 +307,9 @@ def nur_nummern_versatz(diff: dict) -> bool:
     an eine andere Stelle, ändert sich die Reihenfolge — und wer wegen genau
     dieses Punktes kommt, muss wissen, dass er früher dran ist. Genau daran
     verläuft die Grenze zwischen Kaskade und Einzelfall."""
-    if any(diff.get(k) for k in ("neu", "entfernt", "umformuliert", "vorlage", "anlagen")):
+    if any(diff.get(k) for k in ("new", "removed", "reworded", "template", "attachments")):
         return False
-    kaskaden, einzeln = verschiebungs_kaskaden(diff.get("verschoben", []))
+    kaskaden, einzeln = verschiebungs_kaskaden(diff.get("moved", []))
     if not kaskaden or einzeln:
         return False
     # Und jetzt die Falle, an der diese Regel sonst Schaden anrichtet:
@@ -321,7 +321,7 @@ def nur_nummern_versatz(diff: dict) -> bool:
     # einmal von Hand nachsehen.
     for paar in (paar for _, mitglieder in kaskaden for paar in mitglieder):
         a, n = paar[0], paar[1]
-        if _norm_vorlage(a.get("vorlage_nr")) != _norm_vorlage(n.get("vorlage_nr")):
+        if _norm_vorlage(a.get("template_number")) != _norm_vorlage(n.get("template_number")):
             return False
         if ("anlagen" in a and "anlagen" in n
                 and anlagen_schluessel(a.get("anlagen")) != anlagen_schluessel(n.get("anlagen"))):
@@ -339,9 +339,9 @@ def _kaskaden_zeile(versatz: int, mitglieder: list) -> dict:
     stufen = "eine Nummer" if abs(versatz) == 1 else f"{abs(versatz)} Nummern"
     richtung = "nach vorn" if versatz < 0 else "nach hinten"
     return {
-        "art": "verschoben",
+        "art": "moved",
         "label": f"Verschoben · TOP {von_a} bis {bis_a}",
-        "titel": (f"{len(mitglieder)} Punkte rücken {stufen} {richtung} — "
+        "title": (f"{len(mitglieder)} Punkte rücken {stufen} {richtung} — "
                   f"jetzt TOP {von_n} bis {bis_n}"),
         "nichtoeffentlich": all(not m[1].get("is_public", True) for m in mitglieder),
         "detail": "Untereinander bleibt die Reihenfolge gleich",
@@ -352,39 +352,39 @@ def diff_zeilen(diff: dict) -> list[dict]:
     """Der Diff als neutrale Zeilen — EINE Quelle für Mail-HTML und die
     App-Ansicht „Zuletzt geändert" (Tims Wunsch 18.08.). Je Zeile:
     ``art`` (neu|geaendert|verschoben|vorlage|anlagen|entfernt), ``label``
-    (der fette Kopf inkl. TOP-Nummer), ``titel``, ``nichtoeffentlich`` und
+    (der fette Kopf inkl. TOP-Nummer), ``title``, ``nichtoeffentlich`` und
     ``detail`` (leise Zusatzzeile oder None). Alles unescaped — wer HTML
     baut, escapet selbst."""
     zeilen: list[dict] = []
 
     def _z(art: str, label: str, item: dict, detail: str | None = None) -> None:
         zeilen.append({"art": art, "label": label,
-                       "titel": str(item.get("title") or ""),
+                       "title": str(item.get("title") or ""),
                        "nichtoeffentlich": not item.get("is_public", True),
                        "detail": detail})
 
-    for i in diff["neu"]:
-        _z("neu", f"Neu · TOP {i.get('item_number')}", i)
-    for a, n in diff["umformuliert"]:
-        _z("geaendert", f"Geändert · TOP {n.get('item_number')}", n,
+    for i in diff["new"]:
+        _z("new", f"Neu · TOP {i.get('item_number')}", i)
+    for a, n in diff["reworded"]:
+        _z("changed", f"Geändert · TOP {n.get('item_number')}", n,
            f"vorher: {a.get('title')}")
-    kaskaden, einzeln = verschiebungs_kaskaden(diff["verschoben"])
+    kaskaden, einzeln = verschiebungs_kaskaden(diff["moved"])
     for paar in einzeln:
         a, n = paar[0], paar[1]
-        _z("verschoben", f"Verschoben · TOP {a.get('item_number')} → {n.get('item_number')}", n)
+        _z("moved", f"Verschoben · TOP {a.get('item_number')} → {n.get('item_number')}", n)
     for versatz, mitglieder in kaskaden:
         # Die Kaskade als EINE Zeile: Was sie zu sagen hat, steht in ihr ganz
         # — welche Spanne, um wie viel, wohin. Die Einzelzeilen wiederholten
         # vierzehnmal dasselbe und drängten die echten Änderungen aus dem Blick.
         zeilen.append(_kaskaden_zeile(versatz, mitglieder))
-    for a, n in diff.get("vorlage", []):
+    for a, n in diff.get("template", []):
         label, detail = _vorlage_daten(a, n)
-        _z("vorlage", f"{label} · TOP {n.get('item_number')}", n, detail)
-    for a, n in diff.get("anlagen", []):
+        _z("template", f"{label} · TOP {n.get('item_number')}", n, detail)
+    for a, n in diff.get("attachments", []):
         label, detail = _anlagen_daten(a, n)
-        _z("anlagen", f"{label} · TOP {n.get('item_number')}", n, detail)
-    for i in diff["entfernt"]:
-        _z("entfernt", f"Entfernt · TOP {i.get('item_number')}", i)
+        _z("attachments", f"{label} · TOP {n.get('item_number')}", n, detail)
+    for i in diff["removed"]:
+        _z("removed", f"Entfernt · TOP {i.get('item_number')}", i)
     return zeilen
 
 
@@ -393,17 +393,17 @@ def diff_html(diff: dict) -> str:
     Inline-Styles, Farbbalken statt Hintergrund — übersteht Dark-Mode-Mails),
     darüber die Änderungsart in einem Satz."""
     GRUEN, GELB, ROT = "#2f9e44", "#e8a303", "#d64545"
-    farben = {"neu": GRUEN, "geaendert": GELB, "verschoben": GELB,
-              "vorlage": GELB, "anlagen": GELB, "entfernt": ROT}
+    farben = {"new": GRUEN, "changed": GELB, "moved": GELB,
+              "template": GELB, "attachments": GELB, "removed": ROT}
     zeilen: list[str] = []
     for z in diff_zeilen(diff):
-        marke = (" <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
+        mark = (" <span style='color:#8a8f98;font-size:13px'>(nichtöffentlich)</span>"
                  if z["nichtoeffentlich"] else "")
-        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['titel'])}{marke}"
+        inhalt = f"<b>{_esc(z['label'])}</b> — {_esc(z['title'])}{mark}"
         if z["detail"]:
             inhalt += _leise(_esc(z["detail"]))
         zeilen.append(_zeile(farben[z["art"]], inhalt,
-                             durchgestrichen=z["art"] == "entfernt"))
+                             durchgestrichen=z["art"] == "removed"))
     if not zeilen:
         return ""
     satz = diff_satz(diff)

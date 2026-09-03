@@ -33,9 +33,9 @@ struct QuizMapView: View {
                     MonoKicker("Karten-Quiz", trailing: "\(index + 1) von \(targets.count)")
                     Text("Wo liegt \(targets[index])?").font(RatsFont.title(22))
                     if let result {
-                        Label(
+                        RatsLabel(
                             result.correct ? "Richtig – \(result.points) Punkte" : "Das war \(selected ?? "ein anderer Stadtteil").",
-                            systemImage: result.correct ? "checkmark.circle.fill" : "xmark.circle.fill"
+                            result.correct ? .circleCheckBig : .circleX, size: 13
                         )
                         .font(RatsFont.body(13, weight: .semibold))
                         .foregroundStyle(result.correct ? RatsColor.success : RatsColor.danger)

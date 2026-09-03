@@ -39,19 +39,19 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   beleg?: React.ReactNode;
 }) {
   if (zeilen.length < 1) return null;
-  const sortiert = [...zeilen].sort((a, b) => a.jahr - b.jahr);
+  const sortiert = [...zeilen].sort((a, b) => a.year - b.year);
 
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
-    label: String(z.jahr),
+    label: String(z.year),
     plan: z.plan / 1e6,
-    ist: z.ist / 1e6,
+    ist: z.actual / 1e6,
     // `einordnung` ist Pflicht-FELD (GB-05). `null` heißt hier genau, was es
     // heißt: Tabelle 1103 erläutert ihre Zeilen nicht — sie stellt zwei Zahlen
     // nebeneinander, mehr nicht. Wo die Quelle doch etwas über sich selbst
     // sagt, steht es da: Die jüngste Spalte heißt dort „vorläufiges
     // Rechnungsergebnis", und eine Zahl, die sich noch ändern kann, soll das
     // an sich tragen.
-    einordnung: z.vorlaeufig
+    einordnung: z.provisional
       ? "Das Rechnungsergebnis ist vorläufig — so weist die Tabelle es selbst aus. Es kann sich mit dem Jahresabschluss noch ändern."
       : null,
   }));
@@ -60,7 +60,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
   // Kennzahl, sondern die Zusammenfassung dessen, was die Hantel zeigt.
   const abweichungen = sortiert
     .filter((z) => z.plan > 0)
-    .map((z) => (z.ist / z.plan - 1) * 100);
+    .map((z) => (z.actual / z.plan - 1) * 100);
   const alleUeber = abweichungen.length > 1 && abweichungen.every((a) => a > 0);
   const kleinste = Math.min(...abweichungen);
   const groesste = Math.max(...abweichungen);
@@ -74,8 +74,8 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
         {/* Ehrliche Menge statt „mehrere Jahre" (Designsprache §6). */}
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
           {sortiert.length === 1
-            ? sortiert[0].jahr
-            : `${sortiert[0].jahr}–${sortiert[sortiert.length - 1].jahr}`}
+            ? sortiert[0].year
+            : `${sortiert[0].year}–${sortiert[sortiert.length - 1].year}`}
           {" · "}{sortiert.length} {sortiert.length === 1 ? "Jahr" : "Jahre"}
         </span>
       </div>
@@ -92,7 +92,7 @@ export function SteuerPlanIst({ zeilen, abgrenzung, beleg }: {
       <div className="mt-3">
         <Hantel
           zeilen={hantelZeilen}
-          einheit="Mio. €"
+          unit="Mio. €"
           /* Jahres-Zeilen wollen ihre Chronologie, nicht die Rangfolge der
              Abweichung: Ob 2024 weiter danebenlag als 2023, liest man an der
              Länge — dass 2024 auf 2023 folgt, muss die Reihenfolge tragen. */

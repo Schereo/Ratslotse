@@ -58,15 +58,15 @@ def main() -> dict:
     conn = store._conn
     try:
         betroffen = conn.execute(
-            "SELECT id, ksinr, partei FROM council_wortbeitraege "
-            "WHERE length(partei) = ?", (GRENZE,)).fetchall()
+            "SELECT id, ksinr, party FROM council_speeches "
+            "WHERE length(party) = ?", (GRENZE,)).fetchall()
         print(f"{len(betroffen)} Beiträge mit exakt {GRENZE} Zeichen"
               f"{'' if args.schreiben else '  (Bericht — nichts wird geschrieben)'}")
 
         geheilt = offen = 0
         zaehler: Counter = Counter()
         for r in betroffen:
-            stumpf = r["partei"]
+            stumpf = r["party"]
             kandidaten = _vollformen(conn, stumpf, r["ksinr"]) or _vollformen(conn, stumpf, None)
             if not kandidaten:
                 offen += 1
@@ -80,7 +80,7 @@ def main() -> dict:
             zaehler[f"{stumpf} → {voll}"] += 1
             if args.schreiben:
                 with conn:
-                    conn.execute("UPDATE council_wortbeitraege SET partei = ? WHERE id = ?",
+                    conn.execute("UPDATE council_speeches SET party = ? WHERE id = ?",
                                  (voll, r["id"]))
             geheilt += 1
 

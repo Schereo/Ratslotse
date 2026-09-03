@@ -267,7 +267,7 @@ def hybrid_search(store, query: str, expanded: str, top_k: int = 25, pool: int =
     if klassisch:
         pairs = [(d["id"], f"{d.get('title') or ''}. {d.get('summary') or ''}") for d in docs]
     else:
-        excerpts = _vorlage_excerpts(store, [d.get("vorlage_nr") or ""
+        excerpts = _vorlage_excerpts(store, [d.get("template_number") or ""
                                              for d in docs if d["id"] not in vor_chunk])
         pairs = [(d["id"], _pair_text(d, excerpts, vor_chunk, bm_snippet)) for d in docs]
     try:
@@ -322,7 +322,7 @@ def recency_boost(hits: list[tuple], dates: dict[int, str],
     return out
 
 
-_pair_excerpts: dict[str, str] = {}  # vorlage_nr → excerpt; Vorlagentexte sind stabil
+_pair_excerpts: dict[str, str] = {}  # template_number → excerpt; Vorlagentexte sind stabil
 
 
 def _vorlage_excerpts(store, vorlage_nrs: list[str]) -> dict[str, str]:
@@ -356,10 +356,10 @@ def _pair_text(d: dict, excerpts: dict[str, str],
     verlieren kann und bei Verwaltungs-Boilerplate gern gleichauf rankt
     (Märchen-Straßen-Regress der Eval). Bewusst ~500 Zeichen — mehr Text macht
     das Reranking langsamer, ohne die Relevanzentscheidung zu verbessern."""
-    base = f"{d.get('title') or ''}. {(d.get('summary') or d.get('beschluss') or '')[:280]}".strip()
+    base = f"{d.get('title') or ''}. {(d.get('summary') or d.get('official_text') or '')[:280]}".strip()
     extra = (bm_snippet.get(d["id"], "")[:300]
              or vor_chunk.get(d["id"], "")[:300]
-             or excerpts.get((d.get("vorlage_nr") or "").strip(), ""))
+             or excerpts.get((d.get("template_number") or "").strip(), ""))
     return f"{base} — {extra}" if extra else base
 
 
@@ -428,7 +428,7 @@ def _vorlage_matrix(store):
         import numpy as np
 
         rows = store.get_vorlage_embeddings()
-        nrs = [r["vorlage_nr"] for r in rows]
+        nrs = [r["template_number"] for r in rows]
         texts = [r["chunk_text"] for r in rows]
         if rows:
             buf = b"".join(bytes(r["vector"]) for r in rows)
@@ -470,7 +470,7 @@ def _presse_matrix(store):
         import numpy as np
 
         rows = store.get_presse_embeddings()
-        ids = [r["presse_id"] for r in rows]
+        ids = [r["press_id"] for r in rows]
         texts = [r["chunk_text"] for r in rows]
         if rows:
             buf = b"".join(bytes(r["vector"]) for r in rows)
@@ -507,7 +507,7 @@ def _rerank_kontext(query: str, kandidaten: list[tuple], top_k: int,
 
 def search_presse(store, query: str, expanded: str, top_k: int = 3,
                   min_score: float = 0.45) -> list[tuple]:
-    """Beste Pressemitteilungen zur Frage → ``[(presse_id, score)]``.
+    """Beste Pressemitteilungen zur Frage → ``[(press_id, score)]``.
     Vektor-Kanal (bester Chunk je PM) als Kandidaten-Lieferant, Cross-Encoder
     als Torwächter — der Block „Aktuelles von der Stadt" soll nur auftauchen,
     wenn es wirklich Einschlägiges gibt. BM25 nur als Fallback, solange kein
@@ -599,8 +599,8 @@ def embed_anlagen_missing(store, limit: int | None = None) -> int:
     for a in todo:
         prefix = " | ".join(t for t in (
             a.get("label"),
-            f"Vorlage {a.get('vorlage_nr')}: {a.get('vorlage_titel')}"
-            if a.get("vorlage_nr") or a.get("vorlage_titel") else None,
+            f"Vorlage {a.get('template_number')}: {a.get('template_title')}"
+            if a.get("template_number") or a.get("template_title") else None,
         ) if t)
         chunks = anlage_chunks(a.get("raw_text") or "", prefix=prefix)
         if not chunks:
@@ -654,15 +654,15 @@ def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[in
     wortgleicher Metadaten außerhalb der zwölf semantischen Kandidaten. Dieser
     kleine Pfad rankt nur Metadaten und ersetzt weder Embedding noch Reranker.
     """
-    frage = f"{query} {expanded}"
-    q_tokens = _anlage_meta_tokens(frage)
+    question = f"{query} {expanded}"
+    q_tokens = _anlage_meta_tokens(question)
     if not q_tokens:
         return []
     scored: list[tuple[float, int]] = []
     for row in store.anlagen_metadata_rows():
         label_tokens = _anlage_meta_tokens(row.get("label") or "")
         title_tokens = _anlage_meta_tokens(
-            f"{row.get('vorlage_nr') or ''} {row.get('vorlage_titel') or ''}")
+            f"{row.get('template_number') or ''} {row.get('template_title') or ''}")
         label_hits = q_tokens & label_tokens
         title_hits = q_tokens & title_tokens
         # Ein Dokumenttyp im Label ist besonders aussagekräftig; Titelwörter
@@ -678,7 +678,7 @@ def _anlage_lexikalisch(store, query: str, expanded: str, limit: int) -> list[in
 def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
                    min_score: float = 0.45) -> list[tuple]:
     """Beste Anlagen (Gutachten, Konzepte) zur Frage →
-    ``[(document_id, score, fundstelle)]``. Vektor liefert Kandidaten (bester
+    ``[(document_id, score, citation)]``. Vektor liefert Kandidaten (bester
     Chunk je Anlage), der Cross-Encoder bestätigt — kein BM25-Fallback. Der
     Kanal läuft nur, wenn der Rechercheplan Dokumentinhalte verlangt, und darf
     in schneller wie gründlicher Recherche leer sein."""
@@ -713,8 +713,8 @@ def search_anlagen(store, query: str, expanded: str, top_k: int = 6,
         a = meta.get(did, {})
         metadata = " | ".join(t for t in (
             a.get("label"),
-            f"Vorlage {a.get('vorlage_nr')}: {a.get('vorlage_titel')}"
-            if a.get("vorlage_nr") or a.get("vorlage_titel") else None,
+            f"Vorlage {a.get('template_number')}: {a.get('template_title')}"
+            if a.get("template_number") or a.get("template_title") else None,
         ) if t)
         # v2-Chunks tragen diese Metadaten bereits. Nicht doppeln: Der
         # Zusatzkanal-Reranker deckelt bewusst bei 150 Zeichen, und ein
@@ -750,7 +750,7 @@ def _wb_matrix(store):
 def search_wortbeitraege(store, query: str, expanded: str, top_k: int = 4,
                          min_score: float = 0.45) -> list[tuple]:
     """Beste Wortbeiträge (Debatten, Anfragen, Einwohnerfragen) zur Frage →
-    ``[(wb_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
+    ``[(contribution_id, score)]``. Wie search_presse: Vektor liefert Kandidaten, der
     Cross-Encoder bestätigt — der Debatten-Block soll nur bei echter
     Einschlägigkeit kommen. BM25 nur als Fallback ohne Index."""
     best: dict[int, float] = {}
@@ -797,7 +797,7 @@ ZUSAGE_RERANK_MIN = float(os.environ.get("COUNCIL_ZUSAGE_RERANK_MIN", "-0.5"))
 
 def search_zusagen(store, query: str, expanded: str, top_k: int = 2,
                    min_score: float = 0.42) -> list[tuple]:
-    """Zusagen der Verwaltung zum Thema → ``[(wb_id, score)]``.
+    """Zusagen der Verwaltung zum Thema → ``[(contribution_id, score)]``.
 
     Eigener Kanal, weil sie im allgemeinen Debatten-Ranking untergehen: Über
     sechs Testfragen war genau EINER von 19 Belegen eine Zusage — und selbst
@@ -811,7 +811,7 @@ def search_zusagen(store, query: str, expanded: str, top_k: int = 2,
 
     Gleiche Torwächter-Logik wie die anderen Kanäle — lieber leer als Rauschen.
     """
-    ids_zusage = set(store.wortbeitrag_ids_nach_art("zusage"))
+    ids_zusage = set(store.wortbeitrag_ids_nach_art("pledge"))
     if not ids_zusage:
         return []
     best: dict[int, float] = {}
@@ -898,7 +898,7 @@ def search_wortbeitraege_je_fraktion(store, query: str, expanded: str,
         key=lambda x: -x[1])[:WB_FRAKTION_POOL]
     rows = store.wortbeitraege_by_ids([wid for wid, _ in kandidaten])
     text_von = {r["id"]: " — ".join(t for t in (r.get("top"), r.get("text")) if t) for r in rows}
-    partei_von = {r["id"]: _fraktions_label(r.get("partei")) for r in rows}
+    partei_von = {r["id"]: _fraktions_label(r.get("party")) for r in rows}
     # Welche Fraktionen überhaupt antreten: die mit dem besten Einzeltreffer.
     bester: dict[str, float] = {}
     for wid, s in kandidaten:
@@ -946,7 +946,7 @@ def embed_wortbeitraege_missing(store) -> int:
 
 
 def search_vorlagen(store, qv, top_k: int = 12, min_score: float = 0.35) -> list[tuple]:
-    """Beste Vorlagen zu einem Query-Vektor → ``[(vorlage_nr, score, chunk_text)]``,
+    """Beste Vorlagen zu einem Query-Vektor → ``[(template_number, score, chunk_text)]``,
     je Vorlage zählt ihr bester Chunk (dessen Text wandert in das Rerank-Paar).
     Leer, solange der Chunk-Index nicht gebaut ist (embed_decisions.py)."""
     nrs, texts, mat = _vorlage_matrix(store)

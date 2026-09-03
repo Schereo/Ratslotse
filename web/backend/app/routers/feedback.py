@@ -16,7 +16,7 @@ from ..deps import get_store, require_active
 from ..ratelimit import support_limiter
 from ..schemas import FeedbackIn, SupportIn
 
-logger = logging.getLogger("nwz.web.feedback")
+logger = logging.getLogger("ratslotse.web.feedback")
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
@@ -35,24 +35,24 @@ _KIND_LABELS = {
 _KEIN_KONTO = 0
 
 
-def _mail_bauen(titel: str, kind_label: str, absender: str, message: str) -> tuple[str, str]:
+def _mail_bauen(title: str, kind_label: str, absender: str, message: str) -> tuple[str, str]:
     """Baut (html, text) für eine Benachrichtigungs-Mail an den Betreiber."""
     msg_html = _html.escape(message).replace("\n", "<br>")
     html_body = render_html_email(
-        titel,
+        title,
         f"<p style='margin:0 0 2px'><b>Art:</b> {_html.escape(kind_label)}</p>"
         f"<p style='margin:0 0 14px'><b>Von:</b> {_html.escape(absender)}</p>"
         "<div style='white-space:pre-wrap;border-left:3px solid #e2e8f0;padding-left:12px;"
         f"color:#334155;line-height:1.6'>{msg_html}</div>",
         held="feedback",
         kicker="Posteingang",
-        titel=titel,
+        title=title,
         # Nur versprechen, was die Mail hält: reply_to setzen die Aufrufer nur,
         # wenn eine echte Absenderadresse bekannt ist.
         fusszeile=("Antworten geht direkt: Die Antwortadresse dieser E-Mail "
                    "ist die der absendenden Person.") if "@" in absender else "",
     )
-    text_body = f"{titel} ({kind_label}) von {absender}:\n\n{message}\n"
+    text_body = f"{title} ({kind_label}) von {absender}:\n\n{message}\n"
     return html_body, text_body
 
 
@@ -93,7 +93,7 @@ def submit_feedback(
     return {"ok": True}
 
 
-@router.post("/kontakt", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/contact", status_code=status.HTTP_202_ACCEPTED)
 def submit_support(
     request: Request,
     body: SupportIn,

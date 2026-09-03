@@ -47,15 +47,15 @@ export type FlussPosten = {
   label: string;
   /** Volle Bezeichnung — Panel, title, aria. */
   lang: string;
-  wert: number;
-  /** `posten` = Kategorie (Rampe) · `differenz` = Ehrlichkeits-Band
+  value: number;
+  /** `posten` = Kategorie (Rampe) · `difference` = Ehrlichkeits-Band
    *  („aus dem Ersparten", „nicht aufgeschlüsselt"): Schraffur + Signal. */
-  art: "posten" | "differenz";
+  art: "posten" | "difference";
 };
 
 export type FlussSeiteDaten = {
   /** Überschrift der Listen-Fassung: „Woher das Geld kommt". */
-  titel: string;
+  title: string;
   /** Ecken-Label der Band-Fassung: „Woher". */
   kurz: string;
   /** Zählangabe neben der Überschrift: „Einnahmearten". */
@@ -71,11 +71,11 @@ export type FlussTopf = {
   kurz: string;
   /** Überschrift des Topf-Blocks in der Listen-Fassung. */
   lang: string;
-  wert: number;
+  value: number;
   /** Der Satz IM Knoten (Band-Fassung, senkrecht): „Alles Geld der Stadt". */
   satz: string;
   /** Der Satz im Topf-Block der Listen-Fassung. */
-  hinweis: string;
+  note: string;
 };
 
 type SeitenLage = "links" | "rechts";
@@ -106,15 +106,15 @@ export function fasseKleineZusammen(
   baender: FlussPosten[], skala: number, mindestAnteil: number,
 ): { gezeigt: FlussPosten[]; gebuendelt: FlussPosten[] } {
   const gross = baender.filter(
-    (b) => b.art !== "posten" || b.wert >= mindestAnteil * skala);
+    (b) => b.art !== "posten" || b.value >= mindestAnteil * skala);
   const gebuendelt = baender.filter(
-    (b) => b.art === "posten" && b.wert < mindestAnteil * skala);
+    (b) => b.art === "posten" && b.value < mindestAnteil * skala);
   if (gebuendelt.length < 2) return { gezeigt: baender, gebuendelt: [] };
   const sammel: FlussPosten = {
     id: "weitere",
     label: `${gebuendelt.length} weitere`,
     lang: `${gebuendelt.length} weitere Posten`,
-    wert: gebuendelt.reduce((s, b) => s + b.wert, 0),
+    value: gebuendelt.reduce((s, b) => s + b.value, 0),
     art: "posten",
   };
   // Sammelposten und Differenz-Bänder ans Ende: Der Stapel liest sich von
@@ -153,7 +153,7 @@ function entzerre(zentren: number[], mindest: number, unten: number): number[] {
 function stapeln(baender: FlussPosten[], faktor: number, gap: number, start: number) {
   let y = start;
   return baender.map((b) => {
-    const dicke = b.wert * faktor;
+    const dicke = b.value * faktor;
     const oben = y;
     y += dicke + gap;
     return { band: b, oben, dicke, mitte: oben + dicke / 2 };
@@ -162,16 +162,16 @@ function stapeln(baender: FlussPosten[], faktor: number, gap: number, start: num
 
 /** Die aufgeklappte Auflistung eines Sammelpostens — dieselbe Grammatik wie
  *  die Detail-Box des Gegenbalkens (Karte mit Schließen-Knopf). */
-function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
-  lage: SeitenLage; titel: string; teile: FlussPosten[]; skala: number;
-  format: (w: number) => string; einheit: string; onClose: () => void;
+function SammelPanel({ lage, title, teile, skala, format, unit, onClose }: {
+  lage: SeitenLage; title: string; teile: FlussPosten[]; skala: number;
+  format: (w: number) => string; unit: string; onClose: () => void;
 }) {
-  const groesste = Math.max(...teile.map((t) => t.wert), 1);
+  const groesste = Math.max(...teile.map((t) => t.value), 1);
   return (
     <div className="mt-3 rounded-xl border border-border bg-card p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          {titel}
+          {title}
         </p>
         <button type="button" onClick={onClose} aria-label="Schließen"
           className="-mr-0.5 -mt-0.5 rounded p-0.5 text-muted-foreground hover:text-foreground">
@@ -179,22 +179,22 @@ function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
         </button>
       </div>
       <div className="mt-2 flex flex-col gap-1.5">
-        {[...teile].sort((a, b) => b.wert - a.wert).map((t) => (
+        {[...teile].sort((a, b) => b.value - a.value).map((t) => (
           <div key={t.id} className="grid grid-cols-[minmax(0,1fr)_70px_auto] items-center gap-x-2.5">
             <span className="truncate text-[12px]" title={t.lang}>{t.lang}</span>
             <span className="h-1.5 rounded-full bg-muted">
               <span className="block h-full rounded-full"
-                style={{ width: `${(t.wert / groesste) * 100}%`, background: farbe(lage, 2, 4, "posten") }} />
+                style={{ width: `${(t.value / groesste) * 100}%`, background: farbe(lage, 2, 4, "posten") }} />
             </span>
             <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
-              {format(t.wert)}&#8239;{einheit}
+              {format(t.value)}&#8239;{unit}
             </span>
           </div>
         ))}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Zusammen {format(teile.reduce((s, t) => s + t.wert, 0))}&#8239;{einheit} —
-        {" "}{((teile.reduce((s, t) => s + t.wert, 0) / skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}
+        Zusammen {format(teile.reduce((s, t) => s + t.value, 0))}&#8239;{unit} —
+        {" "}{((teile.reduce((s, t) => s + t.value, 0) / skala) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })}
         &nbsp;% von allem.
       </p>
     </div>
@@ -204,12 +204,12 @@ function SammelPanel({ lage, titel, teile, skala, format, einheit, onClose }: {
 /** Eine Zeile der Listenfassung: Name, Balken auf der gemeinsamen Skala,
  *  Betrag. Der Balken misst gegen dieselbe Skala wie die Bänder — sonst
  *  erzählten Listen- und Bandfassung zwei verschiedene Geschichten. */
-function ListenZeile({ band, lage, rang, anzahl, skala, format, einheit, sammel, offen, onToggle }: {
-  band: FlussPosten; lage: SeitenLage; rang: number; anzahl: number; skala: number;
-  format: (w: number) => string; einheit: string;
+function ListenZeile({ band, lage, rang, count, skala, format, unit, sammel, offen, onToggle }: {
+  band: FlussPosten; lage: SeitenLage; rang: number; count: number; skala: number;
+  format: (w: number) => string; unit: string;
   sammel: boolean; offen: boolean; onToggle: () => void;
 }) {
-  const anteil = (band.wert / skala) * 100;
+  const anteil = (band.value / skala) * 100;
   const inhalt = (
     <>
       <span className="flex items-baseline justify-between gap-2.5">
@@ -218,13 +218,13 @@ function ListenZeile({ band, lage, rang, anzahl, skala, format, einheit, sammel,
           {band.art === "posten" ? band.label : band.lang}
         </span>
         <span className="flex-none text-[12px] tabular-nums">
-          {format(band.wert)}<span className="text-muted-foreground">&#8239;{einheit}</span>
+          {format(band.value)}<span className="text-muted-foreground">&#8239;{unit}</span>
         </span>
       </span>
       <span className="mt-1 block h-2.5 w-full">
         {band.art === "posten" ? (
           <span className="block h-full rounded-[3px]"
-            style={{ width: `${anteil}%`, background: farbe(lage, rang, anzahl, band.art) }} />
+            style={{ width: `${anteil}%`, background: farbe(lage, rang, count, band.art) }} />
         ) : (
           <span className="hh-schraffur block h-full rounded-[3px] border border-dashed border-signal"
             style={{ width: `${anteil}%` }} />
@@ -243,8 +243,8 @@ function ListenZeile({ band, lage, rang, anzahl, skala, format, einheit, sammel,
 
 /** Der Kollektorknoten als eigener Block (Listen-Fassung) — er trägt die
  *  Aussage, deshalb steht sie in ihm und nicht darunter. */
-function TopfBlock({ topf, format, einheit }: {
-  topf: FlussTopf; format: (w: number) => string; einheit: string;
+function TopfBlock({ topf, format, unit }: {
+  topf: FlussTopf; format: (w: number) => string; unit: string;
 }) {
   return (
     <div className="my-3 rounded-xl border border-border bg-muted/70 px-3 py-2.5">
@@ -252,10 +252,10 @@ function TopfBlock({ topf, format, einheit }: {
         {topf.lang}
       </p>
       <p className="mt-1 font-display text-[19px] font-bold tabular-nums tracking-tight">
-        {format(topf.wert)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{einheit}&nbsp;€</span>
+        {format(topf.value)}<span className="text-xs font-semibold text-muted-foreground">&#8239;{unit}&nbsp;€</span>
       </p>
       <p className="mt-1 text-[11.5px] leading-relaxed text-foreground/80">
-        {topf.hinweis}
+        {topf.note}
       </p>
     </div>
   );
@@ -263,14 +263,14 @@ function TopfBlock({ topf, format, einheit }: {
 
 /** Listen-Fassung für schmale Bildschirme: Stapel, der Topf dazwischen —
  *  dieselben Zahlen und dieselbe Bündelung wie die Bänder. */
-function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einheit, offen, setOffen }: {
+function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, unit, offen, setOffen }: {
   seiten: { lage: SeitenLage; daten: FlussSeiteDaten }[];
   topf: FlussTopf;
   empfaenger?: string;
   skala: number;
   mindestAnteil: number;
   format: (w: number) => string;
-  einheit: string;
+  unit: string;
   offen: SeitenLage | null;
   setOffen: (s: SeitenLage | null) => void;
 }) {
@@ -280,24 +280,24 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
         const { gezeigt, gebuendelt } = fasseKleineZusammen(daten.baender, skala, mindestAnteil);
         return (
           <div key={lage}>
-            {si === 1 && <TopfBlock topf={topf} format={format} einheit={einheit} />}
+            {si === 1 && <TopfBlock topf={topf} format={format} unit={unit} />}
             <div className="mb-2 flex items-baseline justify-between gap-3">
-              <p className="text-[12.5px] font-semibold">{daten.titel}</p>
+              <p className="text-[12.5px] font-semibold">{daten.title}</p>
               <span className="font-mono text-[10px] uppercase text-muted-foreground">
-                {daten.hint} · {format(daten.gesamt)}&#8239;{einheit}
+                {daten.hint} · {format(daten.gesamt)}&#8239;{unit}
               </span>
             </div>
             <div className="flex flex-col gap-2">
               {gezeigt.map((b, i) => (
-                <ListenZeile key={b.id} band={b} lage={lage} rang={i} anzahl={gezeigt.length}
-                  skala={skala} format={format} einheit={einheit}
+                <ListenZeile key={b.id} band={b} lage={lage} rang={i} count={gezeigt.length}
+                  skala={skala} format={format} unit={unit}
                   sammel={b.id === "weitere"} offen={offen === lage}
                   onToggle={() => setOffen(offen === lage ? null : lage)} />
               ))}
             </div>
             {offen === lage && gebuendelt.length > 0 && (
-              <SammelPanel lage={lage} titel={daten.sammelTitel} teile={gebuendelt}
-                skala={skala} format={format} einheit={einheit}
+              <SammelPanel lage={lage} title={daten.sammelTitel} teile={gebuendelt}
+                skala={skala} format={format} unit={unit}
                 onClose={() => setOffen(null)} />
             )}
           </div>
@@ -305,7 +305,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
       })}
       {seiten.length === 1 && (
         <>
-          <TopfBlock topf={topf} format={format} einheit={einheit} />
+          <TopfBlock topf={topf} format={format} unit={unit} />
           {empfaenger && (
             <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <ArrowDown aria-hidden className="h-3.5 w-3.5" /> {empfaenger}
@@ -318,7 +318,7 @@ function Listen({ seiten, topf, empfaenger, skala, mindestAnteil, format, einhei
 }
 
 export function Flussbild({
-  links, rechts, empfaenger, topf, skala, format, einheit = "Mio. €",
+  links, rechts, empfaenger, topf, skala, format, unit = "Mio. €",
   mindestAnteil = 0.05, beschreibung, className,
 }: {
   /** Die Quellen — laufen in den Topf (Einnahmen-Rampe). */
@@ -332,9 +332,9 @@ export function Flussbild({
   /** Gemeinsame Achse beider Seiten — von der Seite gerechnet, nie hier. */
   skala: number;
   /** Fertige de-DE-Formatierung eines Wertes (GB-00: Intl, `format.ts`). */
-  format: (wert: number) => string;
+  format: (value: number) => string;
   /** Suffix hinter formatierten Werten („Mio."). */
-  einheit?: string;
+  unit?: string;
   /** Unter diesem Anteil der Skala wandert ein Posten in den Sammelposten. */
   mindestAnteil?: number;
   /** Der ganze Satz für die Vorlesehilfe der Band-Fassung. */
@@ -371,11 +371,11 @@ export function Flussbild({
           // Ohne rechte Seite gibt es keine Band-Geometrie zu zeigen — die
           // Listen-Fassung trägt den Ein-Seiten-Fall auf jeder Breite.
           <Listen seiten={seiten} topf={topf} empfaenger={empfaenger} skala={skala}
-            mindestAnteil={mindestAnteil} format={format} einheit={einheit}
+            mindestAnteil={mindestAnteil} format={format} unit={unit}
             offen={offen} setOffen={setOffen} />
         ) : (
           <Baender links={links} rechts={rechts} topf={topf} skala={skala}
-            mindestAnteil={mindestAnteil} format={format} einheit={einheit}
+            mindestAnteil={mindestAnteil} format={format} unit={unit}
             breite={breite} musterId={musterId} beschreibung={beschreibung}
             offen={offen} setOffen={setOffen} />
         )}
@@ -385,8 +385,8 @@ export function Flussbild({
         const s = offen === "links" ? links : rechts;
         const { gebuendelt } = fasseKleineZusammen(s.baender, skala, mindestAnteil);
         return gebuendelt.length ? (
-          <SammelPanel lage={offen} titel={s.sammelTitel} teile={gebuendelt}
-            skala={skala} format={format} einheit={einheit}
+          <SammelPanel lage={offen} title={s.sammelTitel} teile={gebuendelt}
+            skala={skala} format={format} unit={unit}
             onClose={() => setOffen(null)} />
         ) : null;
       })()}
@@ -396,14 +396,14 @@ export function Flussbild({
 
 /** Die Bandfassung. Eigene Komponente, weil sie das ganze Koordinatensystem
  *  aufspannt und sonst die Lesbarkeit der Hülle frisst. */
-function Baender({ links, rechts, topf, skala, mindestAnteil, format, einheit, breite, musterId, beschreibung, offen, setOffen }: {
+function Baender({ links, rechts, topf, skala, mindestAnteil, format, unit, breite, musterId, beschreibung, offen, setOffen }: {
   links: FlussSeiteDaten;
   rechts: FlussSeiteDaten;
   topf: FlussTopf;
   skala: number;
   mindestAnteil: number;
   format: (w: number) => string;
-  einheit: string;
+  unit: string;
   breite: number;
   musterId: string;
   beschreibung: string;
@@ -433,8 +433,8 @@ function Baender({ links, rechts, topf, skala, mindestAnteil, format, einheit, b
   // und gilt für beide. Die kürzere Seite bleibt kürzer.
   const nutz = stapelHoehe - GAP * Math.max(nL - 1, nR - 1, 0);
   const faktor = nutz / skala;
-  const hoeheL = gl.gezeigt.reduce((s, b) => s + b.wert * faktor, 0) + GAP * (nL - 1);
-  const hoeheR = gr.gezeigt.reduce((s, b) => s + b.wert * faktor, 0) + GAP * (nR - 1);
+  const hoeheL = gl.gezeigt.reduce((s, b) => s + b.value * faktor, 0) + GAP * (nL - 1);
+  const hoeheR = gr.gezeigt.reduce((s, b) => s + b.value * faktor, 0) + GAP * (nR - 1);
   const hoeheTopf = skala * faktor;
   const mitteY = OBEN + stapelHoehe / 2;
   const H = OBEN + stapelHoehe + UNTEN;
@@ -502,11 +502,11 @@ function Baender({ links, rechts, topf, skala, mindestAnteil, format, einheit, b
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf + 17} textAnchor="middle"
         fontSize={13} fontWeight={700} className="fill-foreground">
-        {format(topf.wert)}
+        {format(topf.value)}
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf + 29} textAnchor="middle"
         fontSize={10} className="fill-muted-foreground font-mono">
-        {einheit.toUpperCase()} EURO
+        {unit.toUpperCase()} EURO
       </text>
       <text x={xTopf + TOPF / 2} y={topfOben + hoeheTopf / 2} textAnchor="middle"
         fontSize={11.5} fontWeight={600} className="fill-muted-foreground"
@@ -544,7 +544,7 @@ function Beschriftung({ x, y, breite, band, format, rechtsbuendig = false, istSa
         title={band.lang}>
         {band.art === "posten" ? band.label : band.lang}
       </span>
-      <span className="flex-none tabular-nums text-muted-foreground">{format(band.wert)}</span>
+      <span className="flex-none tabular-nums text-muted-foreground">{format(band.value)}</span>
     </>
   );
   return (

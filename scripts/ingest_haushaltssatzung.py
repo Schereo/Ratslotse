@@ -2,7 +2,7 @@
 """Die Haushaltssatzungen einlesen — Kreditermächtigung, Dispo, Finanzhaushalt.
 
 Liest die Anlagen, deren Label „Haushaltssatzung" enthält
-(`council/haushaltssatzung.py`), und speichert je Jahrgang eine Zeile. Jede
+(`council/budget_bylaw.py`), und speichert je Jahrgang eine Zeile. Jede
 Satzung prüft sich dabei selbst: Ihre drei Einzahlungs- und drei
 Auszahlungszeilen müssen die Summe ergeben, die sie darunter als
 „Nachrichtlich" selbst ausweist. Was nicht aufgeht, wird nicht gespeichert.
@@ -12,13 +12,14 @@ Auszahlungszeilen müssen die Summe ergeben, die sie darunter als
 
 WAS HIER EINGELESEN WIRD, IST NICHT BESCHLOSSEN. Alle Satzungen im
 Ratsinformationssystem sind Verwaltungsentwürfe — die beschlossene Fassung
-steht im Amtsblatt. Jede Zeile trägt deshalb `fassung='entwurf'`, und der Lauf
+steht im Amtsblatt. Jede Zeile trägt deshalb `version='draft'`, und der Lauf
 sagt es bei jedem Jahrgang noch einmal dazu.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -28,11 +29,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council.haushaltssatzung import (  # noqa: E402
+from council.budget_bylaw import (  # noqa: E402
     SatzungFehler,
     herkunft_fuer,
     parse_satzung,
 )
+from council.steuertabellen import HEBESATZ_ARTEN  # noqa: E402
+from council import finanzquellen  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
@@ -48,29 +51,39 @@ def hebesatz_probe(store: CouncilStore, satzung) -> str | None:
     """
     try:
         rows = store._conn.execute(  # noqa: SLF001
-            "SELECT art, hebesatz FROM council_hebesaetze WHERE jahr = ?",
-            (satzung.jahr,)).fetchall()
-    except Exception:  # noqa: BLE001 — Tabelle kann fehlen
+            "SELECT kind, rate FROM council_tax_rates WHERE year = ?",
+            (satzung.year,)).fetchall()
+    except sqlite3.Error:  # die Tabelle gibt es erst nach dem Steuer-Ingest
         return None
     if not rows:
         return None
 
+    # Die Schlüssel kommen aus `HEBESATZ_ARTEN` und werden nicht danebengetippt.
+    # Genau daran hing diese Probe: Sie stand seit ihrer Einführung (#674) mit
+    # den Schlüsseln `grundsteuer_a`/`grundsteuer_b`/`gewerbesteuer` da,
+    # während in der Spalte „Grundsteuer A" & Co. steht — `felder.get()` traf
+    # nie, `geprueft` blieb leer, und der Rückgabewert war jedes Mal `None`.
+    # Der Umbau auf englische Spaltennamen legte später noch einen zweiten
+    # Bruch obendrauf (`art` heißt `kind`), den das umschließende `except`
+    # verschluckte. Die Satzungen liefen also drei Monate lang ungeprüft
+    # durch eine Prüfung, die es zu geben schien.
+    a, b, gewerbe = HEBESATZ_ARTEN
     felder = {
-        "grundsteuer_a": satzung.hebesatz_grundsteuer_a,
-        "grundsteuer_b": satzung.hebesatz_grundsteuer_b,
-        "gewerbesteuer": satzung.hebesatz_gewerbesteuer,
+        a: satzung.property_tax_a_rate,
+        b: satzung.property_tax_b_rate,
+        gewerbe: satzung.trade_tax_rate,
     }
     geprueft = []
-    for art, wert in rows:
-        eigen = felder.get(art)
+    for kind, value in rows:
+        eigen = felder.get(kind)
         if eigen is None:
             continue
-        if int(wert) != int(eigen):
+        if int(value) != int(eigen):
             raise SatzungFehler(
-                f"Hebesatz {art} {satzung.jahr}: Die Satzung sagt {eigen} v.H., "
-                f"das Statistische Jahrbuch {int(wert)} v.H. — zwei Häuser "
+                f"Hebesatz {kind} {satzung.year}: Die Satzung sagt {eigen} v.H., "
+                f"das Statistische Jahrbuch {int(value)} v.H. — zwei Häuser "
                 "widersprechen sich.")
-        geprueft.append(f"{art} {eigen} v.H.")
+        geprueft.append(f"{kind} {eigen} v.H.")
     return ("Hebesatz gegen Tabelle 1105 gehalten: " + ", ".join(geprueft)
             if geprueft else None)
 
@@ -83,11 +96,12 @@ def main() -> dict:
 
     store = CouncilStore(Path(args.db))
     try:
-        rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT document_id, label, url, raw_text, status "
-            "FROM council_anlagen WHERE label LIKE '%Haushaltssatzung%' "
-            "ORDER BY document_id")]
-        print(f"{len(rows)} Anlage(n) mit „Haushaltssatzung“ im Label.", flush=True)
+        # Die Auswahl kommt aus der Registry — dieselbe wie im Datenstand-Cron.
+        # Bis 09/2026 stand hier ein eigenes LIKE, und „HH Satzung 2022" fiel
+        # durch beide Netze zugleich.
+        quelle = finanzquellen.QUELLEN["budget_bylaw"]
+        rows = quelle.dokumente(store, "document_id, label, url, raw_text, status")
+        print(f"{len(rows)} Anlage(n) mit Haushaltssatzung-Label.", flush=True)
 
         gelesen, risse, ohne_text = [], [], []
         for r in rows:
@@ -103,13 +117,13 @@ def main() -> dict:
 
         if gelesen:
             print("\nGelesen:", flush=True)
-            for satzung, r in sorted(gelesen, key=lambda x: x[0].jahr):
-                lk = (f"{satzung.liquiditaetskredite / 1e6:,.0f} Mio. €"
-                      if satzung.liquiditaetskredite else "—")
-                kr = ("nicht veranschlagt" if satzung.kredite_investitionen == 0
-                      else (f"{(satzung.kredite_investitionen or 0) / 1e6:,.1f} Mio. €"
-                            if satzung.kredite_investitionen else "—"))
-                print(f"  {satzung.jahr}  [{satzung.fassung}]  "
+            for satzung, r in sorted(gelesen, key=lambda x: x[0].year):
+                lk = (f"{satzung.liquidity_loans / 1e6:,.0f} Mio. €"
+                      if satzung.liquidity_loans else "—")
+                kr = ("nicht veranschlagt" if satzung.investment_loans == 0
+                      else (f"{(satzung.investment_loans or 0) / 1e6:,.1f} Mio. €"
+                            if satzung.investment_loans else "—"))
+                print(f"  {satzung.year}  [{satzung.version}]  "
                       f"Dispo {lk:>14}  Investitionskredite: {kr}", flush=True)
 
         if ohne_text:
@@ -137,7 +151,7 @@ def main() -> dict:
                 widersprueche.append(str(fehler))
                 continue
             store.save_haushaltssatzung(satzung, herkunft_fuer(
-                satzung, url=r["url"], dokument_id=r["document_id"],
+                satzung, url=r["url"], document_id=r["document_id"],
                 label=r["label"], hebesatz_geprueft=geprueft))
             gespeichert += 1
 

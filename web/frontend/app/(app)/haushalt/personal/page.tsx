@@ -44,14 +44,25 @@ import {
 import { StellenPaare, StellenPaareLegende } from "@/components/haushalt/stellen-verlauf";
 import { Waffel } from "@/components/grafik/waffel";
 import { Einordnung } from "@/components/grafik/einordnung";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { Personalaufwand } from "@/components/haushalt/personalaufwand";
+import { haushaltUrl, type HaushaltAuswahl } from "@/lib/haushalt";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
-const QUELLEN = ["stellenplan"] as const;
+// Der Stellenplan ist die Quelle der Seite; der Jahresabschluss und der
+// Gesamtergebnishaushalt tragen seit 02.09.2026 die Zahl dazu, was das Personal
+// kostet (Baustein `Personalaufwand`).
+const QUELLEN = ["stellenplan", "jahresabschluss", "income_budget"] as const;
+
+/** Nur die Kernverwaltung (`sub_budget_item=keine`): Die Kachel braucht die
+ *  Posten 13–20 gesamt, keine Teilhaushalts-Zeilen — das spart den mit
+ *  Abstand größten Block der Schnittstelle. */
+const AUFWAND_FELDER = ["income_statement", "income_budget"] as const;
 
 /** Warum ein Teil in einem Jahrgang fehlt. „Gibt es nicht" und „steht im PDF,
  *  ist aber nicht lesbar" sind zwei verschiedene Auskünfte, und nur die
@@ -65,56 +76,38 @@ function pct(anteil: number): string {
   return (anteil * 100).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
-/** Die Herkunft einer Angabe im Klartext — dasselbe Muster wie auf
- *  /haushalt/konzern: Das Quellenverzeichnis am Seitenende beschreibt die
- *  Quelle der ganzen Seite, das hier gehört an die einzelne Zahl. */
-function Fundstelle({ daten, id }: { daten: StellenplanDaten; id: number | null }) {
-  const h = herkunftVon(daten, id);
-  if (!h) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      {h.fundstelle && (
-        <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-          {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-        </p>
-      )}
-    </div>
-  );
-}
-
 export default function PersonalPage() {
-  const [jahr, setJahr] = useState<number | null>(null);
-  const [teil, setTeil] = useState<StellenTeil>("A");
+  const [year, setJahr] = useState<number | null>(null);
+  const [part, setTeil] = useState<StellenTeil>("A");
   // Detailtabelle mobil hinter „alle Gruppen zeigen" (H4-05); ab Tablet
   // immer offen — die Klassen dazu stehen in globals.css (gb-nur-mobil).
   const [gruppenOffen, setGruppenOffen] = useState(false);
-  const jahrgaenge = useFetch<StellenplanDaten>("/council/haushalt/stellenplan");
-  const alle = jahrgaenge.data?.jahrgaenge ?? [];
-  const aktJahr = jahr && alle.includes(jahr) ? jahr : alle.at(-1) ?? null;
+  const jahrgaenge = useFetch<StellenplanDaten>("/council/budget/staff-plan");
+  const alle = jahrgaenge.data?.editions ?? [];
+  const aktJahr = year && alle.includes(year) ? year : alle.at(-1) ?? null;
 
   // Die Einzelposten kommen nur für das gewählte Jahr — rund 190 Zeilen je
   // Jahrgang, und die Seite zeigt davon acht.
   const detail = useFetch<StellenplanDaten>(
-    aktJahr ? `/council/haushalt/stellenplan?jahrgang=${aktJahr}` : null);
+    aktJahr ? `/council/budget/staff-plan?budget_year=${aktJahr}` : null);
   const daten = detail.data ?? jahrgaenge.data;
+  const aufwand = useFetch<HaushaltAuswahl<typeof AUFWAND_FELDER[number]>>(
+    haushaltUrl(AUFWAND_FELDER, "keine"));
 
   // Eine Skala je Teil (H3-01): A und B stehen nie gleichzeitig im Bild,
   // und innerhalb eines Teils soll die Schere über die Jahrgänge lesbar
   // sein. Obergrenze ist der größte Wert, den ein Balken zeigen kann.
   const skala = useMemo(() => Math.max(
-    1, ...(daten?.summen ?? [])
-      .filter((z) => z.teil === teil)
-      .flatMap((z) => [z.stellen_plan, z.besetzt])), [daten, teil]);
+    1, ...(daten?.totals ?? [])
+      .filter((z) => z.part === part)
+      .flatMap((z) => [z.positions_planned, z.filled])), [daten, part]);
 
   if (jahrgaenge.loading) {
     return <div className="py-16 text-center text-sm text-muted-foreground">
       Der Stellenplan wird geladen …
     </div>;
   }
-  if (!daten || !daten.summen.length || !aktJahr) {
+  if (!daten || !daten.totals.length || !aktJahr) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite ist noch kein Stellenplan eingelesen.{" "}
@@ -126,15 +119,15 @@ export default function PersonalPage() {
   // Der jüngste Jahrgang, für den der GEWÄHLTE Teil vorliegt — für Teil B
   // ist das 2025, weil 2026 im PDF nicht lesbar ist. Die Lücke selbst steht
   // in den Jahrgangs-Zeilen, nicht versteckt in einer Fußnote.
-  const teilJahre = jahrgaengeMitTeil(daten, teil);
+  const teilJahre = jahrgaengeMitTeil(daten, part);
   const teilNeu = teilJahre.at(-1) ?? null;
-  const kern = teilNeu ? gesamt(daten, teilNeu, teil) : null;
+  const kern = teilNeu ? gesamt(daten, teilNeu, part) : null;
   const kernLuecke = luecke(kern);
 
-  const detailZeilen = detail.data?.zeilen ?? [];
-  const luecken = groessteLuecken(detailZeilen, teil);
-  const teilGesamt = gesamt(daten, aktJahr, teil);
-  const teilFehlt = fehlt(daten, aktJahr, teil);
+  const detailZeilen = detail.data?.rows ?? [];
+  const luecken = groessteLuecken(detailZeilen, part);
+  const teilGesamt = gesamt(daten, aktJahr, part);
+  const teilFehlt = fehlt(daten, aktJahr, part);
   const quelleUrl = herkunftVon(daten, kern?.herkunft_id)?.url ?? null;
 
   // Der Vergleichs-Satz unterm Umschalter — gerechnet, nicht behauptet:
@@ -145,15 +138,15 @@ export default function PersonalPage() {
     const bis = js.length > 1 ? gesamt(daten, js[js.length - 1], t) : null;
     const l = luecke(bis ?? von);
     return von && bis && l ? {
-      teil: t,
-      spanne: `${deStellen(von.stellen_plan)} → ${deStellen(bis.stellen_plan)}`,
+      part: t,
+      spanne: `${deStellen(von.positions_planned)} → ${deStellen(bis.positions_planned)}`,
       anteil: pct(l.anteil),
     } : null;
   });
   const [vglA, vglB] = vergleich;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={aktJahr}>
+    <Quellenkontext keys={[...QUELLEN]} year={aktJahr}>
       <div className="flex flex-col gap-4">
         {/* items-start statt items-end (24.08.): Rechts steht jetzt das
             Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
@@ -189,13 +182,13 @@ export default function PersonalPage() {
             ? Math.round(quadrate * besetztAnteil) : quadrate;
           return (
             <Seitenbuehne
-              kicker={`Stellenplan Teil ${teil} · ${TEIL_LABEL[teil]} · Plan ${teilNeu}`}
-              zahl={<><ZaehlZahl wert={kern.stellen_plan}
-                nachkomma={Number.isInteger(kern.stellen_plan) ? 0 : 1} /> Stellen
+              kicker={`Stellenplan Teil ${part} · ${TEIL_LABEL[part]} · Plan ${teilNeu}`}
+              zahl={<><ZaehlZahl value={kern.positions_planned}
+                nachkomma={Number.isInteger(kern.positions_planned) ? 0 : 1} /> Stellen
                 hält die Stadt vor</>}
               sub={kernLuecke
                 ? <>rund {pct(kernLuecke.anteil)}&nbsp;% davon waren zuletzt unbesetzt
-                  (Stichtag {deDatum(kernLuecke.stichtag)}) — Stellen, nicht Köpfe</>
+                  (Stichtag {deDatum(kernLuecke.as_of_date)}) — Stellen, nicht Köpfe</>
                 : "Stellen, nicht Köpfe — die Besetzung wird ein Jahr versetzt erhoben"}
               minibild={{
                 href: "#waffel",
@@ -222,9 +215,9 @@ export default function PersonalPage() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Personal ist der größte Aufwandsbereich der Stadt. Mit dem Stellenplan legt der
-          Rat fest, wie viele Stellen die Verwaltung in den einzelnen Besoldungs- und
-          Entgeltgruppen vorhalten darf.
+          Personal ist einer der größten Aufwandsposten der Stadt — was es kostet, steht
+          unten in Zahlen. Mit dem Stellenplan legt der Rat fest, wie viele Stellen die
+          Verwaltung in den einzelnen Besoldungs- und Entgeltgruppen vorhalten darf.
         </p>
 
         {/* Das tragende Bild (H3-01): Waffel links, Jahrgangs-Paare rechts —
@@ -235,9 +228,9 @@ export default function PersonalPage() {
                 Die Karte behält so eine Überschrift für die Gliederung, ohne
                 die Zahl der Bühne zu wiederholen. */}
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Stellenplan · {TEIL_LABEL[teil]}<Beleg q="stellenplan" />
+              Stellenplan · {TEIL_LABEL[part]}<Beleg q="stellenplan" />
             </h2>
-            <Segmented<StellenTeil> value={teil} onChange={setTeil}
+            <Segmented<StellenTeil> value={part} onChange={setTeil}
               className="w-full min-[480px]:w-auto [&_button]:min-h-[44px] sm:[&_button]:min-h-0"
               options={[
                 { value: "A", label: "Teil A · Beamt*innen" },
@@ -256,25 +249,25 @@ export default function PersonalPage() {
                   <p className="max-w-[58ch] text-[13px] leading-relaxed text-foreground/90">
                     Jedes Quadrat sind zehn Stellen — gezeigt sind die{" "}
                     {deStellen(kernLuecke.stellen)} Stellen, die es am Stichtag{" "}
-                    <strong>{deDatum(kernLuecke.stichtag)}</strong> gab; die umrandeten
+                    <strong>{deDatum(kernLuecke.as_of_date)}</strong> gab; die umrandeten
                     davon waren nicht besetzt. Die Besetzung wird immer ein Jahr
                     versetzt erhoben.
                   </p>
                   <Waffel
                     gesamt={kernLuecke.stellen}
                     proQuadrat={10}
-                    einheit="Stellen"
+                    unit="Stellen"
                     grundLabel="besetzt"
                     markiert={{
-                      anzahl: kernLuecke.nicht_besetzt,
-                      grund: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
-                      stichtag: deDatum(kernLuecke.stichtag),
+                      count: kernLuecke.vacant,
+                      reason: `unbesetzt · rund ${pct(kernLuecke.anteil)} %`,
+                      as_of_date: deDatum(kernLuecke.as_of_date),
                     }}
                   />
                 </>
               ) : (
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  Für {TEIL_LABEL[teil]} liegt kein Jahrgang lesbar vor.
+                  Für {TEIL_LABEL[part]} liegt kein Jahrgang readable vor.
                 </p>
               )}
 
@@ -303,8 +296,8 @@ export default function PersonalPage() {
                 skala={skala}
                 aktJahr={teilNeu}
                 zeilen={alle.map((j) => ({
-                  jahrgang: j,
-                  zeile: gesamt(daten, j, teil),
+                  budget_year: j,
+                  row: gesamt(daten, j, part),
                   fehlt: FEHLT_GRUND,
                 }))}
               />
@@ -337,8 +330,20 @@ export default function PersonalPage() {
           ))}
         </div>
 
+        {/* Die Zahl zur Behauptung im Einstiegstext — aus dem Jahresabschluss
+            und dem Haushaltsplan, nicht aus dem Stellenplan. Steht hinter der
+            Waffel, weil sie deren Frage beantwortet: Was kosten die Stellen? */}
+        {aufwand.data?.income_statement && (
+          <Personalaufwand
+            statement={aufwand.data.income_statement}
+            budget={aufwand.data.income_budget ?? []}
+            beleg={<Beleg q="jahresabschluss" />}
+            belegPlan={<Beleg q="income_budget" />}
+          />
+        )}
+
         <LottiErklaert
-          titel="Was ist ein Stellenplan?"
+          title="Was ist ein Stellenplan?"
           text={"Der Rat beschließt mit dem Haushalt nicht nur, wie viel Geld die Stadt "
             + "ausgeben darf, sondern auch, wie viele Stellen sie haben darf — für jede "
             + "Amtsbezeichnung einzeln. Gezählt werden Stellen, nicht Menschen: Zwei "
@@ -363,7 +368,7 @@ export default function PersonalPage() {
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Wo die Lücken am größten sind · {TEIL_LABEL[teil]}
+              Wo die Lücken am größten sind · {TEIL_LABEL[part]}
             </h2>
             {alle.length > 1 && (
               <div className="flex flex-wrap gap-1">
@@ -384,7 +389,7 @@ export default function PersonalPage() {
 
           {teilFehlt ? (
             <p className="mt-2.5 max-w-[76ch] text-[13px] leading-relaxed text-muted-foreground">
-              Für {aktJahr} liegt {TEIL_LABEL[teil]} nicht vor: Das PDF des Stellenplans gibt
+              Für {aktJahr} liegt {TEIL_LABEL[part]} nicht vor: Das PDF des Stellenplans gibt
               auf diesen Seiten keine Buchstaben aus, sondern Zeichen-Nummern. Wir könnten die
               Zahlen nur raten, und das tun wir nicht.
             </p>
@@ -392,13 +397,13 @@ export default function PersonalPage() {
             <p className="mt-2.5 text-[13px] text-muted-foreground">Wird geladen …</p>
           ) : luecken.length === 0 ? (
             <p className="mt-2.5 text-[13px] text-muted-foreground">
-              Für {aktJahr} weist der Plan in {TEIL_LABEL[teil]} keine unbesetzten Stellen aus.
+              Für {aktJahr} weist der Plan in {TEIL_LABEL[part]} keine unbesetzten Stellen aus.
             </p>
           ) : (
             <>
               <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Die acht Amtsbezeichnungen mit den meisten unbesetzten Stellen, Stand{" "}
-                {deDatum(teilGesamt?.stichtag ?? null)}.
+                {deDatum(teilGesamt?.as_of_date ?? null)}.
               </p>
               {!gruppenOffen && (
                 <button type="button" onClick={() => setGruppenOffen(true)}
@@ -409,21 +414,23 @@ export default function PersonalPage() {
               <div className={gruppenOffen ? undefined : "gb-ab-tablet"}>
                 <ul className="mt-3 flex flex-col divide-y divide-border">
                   {luecken.map((z) => (
-                    <li key={`${z.lfd_nr}-${z.besoldung}`}
+                    <li key={`${z.seq_no}-${z.pay_grade}`}
                       className="flex items-baseline gap-3 py-2 first:pt-0">
                       <span className="min-w-0 flex-1">
-                        <span className="text-[13px] font-medium">{z.bezeichnung}</span>
-                        {z.besoldung && (
+                        <span className="text-[13px] font-medium">{z.label}</span>
+                        {z.pay_grade && (
                           <span className="ml-2 font-mono text-[10.5px] text-muted-foreground">
-                            {z.besoldung}
+                            {z.pay_grade}
                           </span>
                         )}
                       </span>
                       <span className="flex-none font-mono text-[12px] tabular-nums text-muted-foreground">
-                        {deStellen(z.stellen_vorjahr)} Stellen
+                        {deStellen(z.positions_prior_year)} Stellen
                       </span>
                       <span className="w-[5.5rem] flex-none text-right font-display text-[14px] font-bold tabular-nums">
-                        {deStellen(z.nicht_besetzt)}
+                        {/* Immer zwei Nachkommastellen: „13" neben „29,83" las
+                            sich wie eine andere Größe (Durchsicht 02.09.2026). */}
+                        {z.vacant.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </li>
                   ))}
@@ -436,7 +443,7 @@ export default function PersonalPage() {
                 </p>
               </div>
               <div className="mt-3">
-                <Fundstelle daten={daten} id={teilGesamt?.herkunft_id ?? null} />
+                <Fundstelle h={herkunftVon(daten, teilGesamt?.herkunft_id ?? null)} />
               </div>
             </>
           )}
@@ -445,7 +452,7 @@ export default function PersonalPage() {
         {/* Die Grenzen — eigener Block, nicht Kleingedrucktes. */}
         <section className="@container rounded-2xl border border-border border-l-[3px] border-l-signal bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
-            Was diese Zahlen nicht hergeben
+            Was diese Zahlen nicht sagen
           </p>
           <ul className="mt-2 grid list-disc grid-cols-1 gap-x-8 gap-y-1.5 pl-4 text-[13px] leading-relaxed text-foreground/90 @3xl:grid-cols-2">
             <li>
@@ -491,7 +498,7 @@ export default function PersonalPage() {
 
         <SchrittWeiter href="/haushalt/personal" />
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
+        <Quellenverzeichnis keys={[...QUELLEN]} />
       </div>
     </Quellenkontext>
   );

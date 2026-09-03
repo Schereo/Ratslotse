@@ -24,9 +24,9 @@
 
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import { deMio, betrag, type GebuehrenZeile, type HebesatzZeile } from "@/lib/haushalt";
+import { deMio, amount, type GebuehrenZeile, type HebesatzZeile } from "@/lib/haushalt";
 import type { StadtHebesatz } from "@/lib/haushalt-labor";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { Regler } from "@/components/haushalt/regler";
 import { StaedteLeiter } from "@/components/haushalt/staedte-leiter";
 
@@ -42,20 +42,20 @@ function eur(v: number): string {
 /** Die eigene Hebesatz-Geschichte als Mini-Treppe — eine Treppe, keine Kurve:
  *  Tabelle 1105 führt nur Änderungsjahre, dazwischen gilt der Satz weiter
  *  (dieselbe Begründung wie bei der großen Treppe des Steuer-Steckbriefs). */
-function HistorieTreppe({ reihe, bisJahr }: { reihe: HebesatzZeile[]; bisJahr: number }) {
-  const stufen = reihe
-    .filter((z) => z.hebesatz != null)
-    .sort((a, b) => a.jahr - b.jahr);
+function HistorieTreppe({ series, bisJahr }: { series: HebesatzZeile[]; bisJahr: number }) {
+  const stufen = series
+    .filter((z) => z.rate != null)
+    .sort((a, b) => a.year - b.year);
   if (stufen.length < 2) return null;
-  const saetze = stufen.map((z) => z.hebesatz as number);
+  const saetze = stufen.map((z) => z.rate as number);
   const [min, max] = [Math.min(...saetze), Math.max(...saetze)];
-  const vonJahr = stufen[0].jahr;
+  const vonJahr = stufen[0].year;
   const breite = 280, hoehe = 44;
-  const x = (jahr: number) => ((jahr - vonJahr) / Math.max(1, bisJahr - vonJahr)) * breite;
+  const x = (year: number) => ((year - vonJahr) / Math.max(1, bisJahr - vonJahr)) * breite;
   const y = (satz: number) => 6 + (1 - (satz - min) / Math.max(1, max - min)) * (hoehe - 14);
   let pfad = "";
   stufen.forEach((z, i) => {
-    const px = x(z.jahr), py = y(z.hebesatz as number);
+    const px = x(z.year), py = y(z.rate as number);
     pfad += i === 0 ? `M${px},${py}` : `H${px} V${py}`;
   });
   pfad += ` H${breite}`;
@@ -64,12 +64,12 @@ function HistorieTreppe({ reihe, bisJahr }: { reihe: HebesatzZeile[]; bisJahr: n
     <div className="mt-2.5 border-t border-dashed border-border pt-2.5">
       <svg viewBox={`0 0 ${breite} ${hoehe}`} className="block h-11 w-full" aria-hidden>
         <path d={pfad} fill="none" strokeWidth="2" style={{ stroke: "var(--hh-ein-1)" }} />
-        <circle cx={x(letzte.jahr)} cy={y(letzte.hebesatz as number)} r="3"
+        <circle cx={x(letzte.year)} cy={y(letzte.rate as number)} r="3"
           style={{ fill: "hsl(var(--primary))" }} />
       </svg>
       <p className="mt-1 text-[10.5px] text-muted-foreground">
-        Die eigene Reihe seit {vonJahr}: {letzte.hebesatz}&nbsp;% gelten seit {letzte.jahr}
-        <Beleg q="hebesaetze" /> — wenige Entscheidungen, lange Gültigkeit.
+        Die eigene Reihe seit {vonJahr}: {letzte.rate}&nbsp;% gelten seit {letzte.year}
+        <Beleg q="tax_rates" /> — wenige Entscheidungen, lange Gültigkeit.
       </p>
     </div>
   );
@@ -79,7 +79,7 @@ export function EinnahmenWerkbank({
   basisJahr, punkte, setPunkte, gewst, proPunktGewst, gewstBasisJahr,
   grundstPunkte, setGrundstPunkte, grundst, proPunktGrundst, anteilA,
   hundePct, setHundePct, hunde,
-  staedte, historie, gebuehren,
+  staedte, historie, fees,
   maxPunkte, jeEinwohner, anteilText,
 }: {
   basisJahr: number;
@@ -94,10 +94,10 @@ export function EinnahmenWerkbank({
   /** Anteil der Grundsteuer A am gemeinsamen Aufkommen — aus dem LSN-Vergleich. */
   anteilA: number | null;
   hundePct: number; setHundePct: (v: number) => void;
-  hunde: { jahr: number; betrag: number } | null;
+  hunde: { year: number; amount: number } | null;
   staedte: StadtHebesatz[];
   historie: HebesatzZeile[];
-  gebuehren: GebuehrenZeile[] | undefined;
+  fees: GebuehrenZeile[] | undefined;
   maxPunkte: number;
   jeEinwohner: (m: number) => string;
   anteilText: (m: number) => string;
@@ -105,14 +105,14 @@ export function EinnahmenWerkbank({
   const gewstWirkung = Math.round(proPunktGewst * punkte * 10) / 10;
   const grundstWirkung = proPunktGrundst != null
     ? Math.round(proPunktGrundst * grundstPunkte * 10) / 10 : 0;
-  const hundeWirkung = hunde ? Math.round(((hunde.betrag / 1e6) * hundePct) / 100 * 10) / 10 : 0;
+  const hundeWirkung = hunde ? Math.round(((hunde.amount / 1e6) * hundePct) / 100 * 10) / 10 : 0;
 
   // Die gesperrte Schraube braucht eine echte Zahl, sonst wäre sie nur ein
   // Icon: die umzulegenden Kosten des jüngsten Jahrgangs, alle drei Bereiche.
-  const gebJahr = gebuehren?.length ? Math.max(...gebuehren.map((g) => g.jahr)) : null;
+  const gebJahr = fees?.length ? Math.max(...fees.map((g) => g.year)) : null;
   const gebSumme = gebJahr != null
-    ? (gebuehren ?? []).filter((g) => g.jahr === gebJahr)
-        .reduce((s, g) => s + g.zu_deckende_kosten, 0) : null;
+    ? (fees ?? []).filter((g) => g.year === gebJahr)
+        .reduce((s, g) => s + g.costs_to_cover, 0) : null;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -133,14 +133,14 @@ export function EinnahmenWerkbank({
           <Regler
             id="gewst"
             label="Gewerbesteuer-Hebesatz"
-            wert={punkte} min={-maxPunkte} max={maxPunkte} step={5}
+            value={punkte} min={-maxPunkte} max={maxPunkte} step={5}
             onChange={setPunkte}
             geaendert={punkte !== 0}
-            ist={{ wert: 0, label: `heute ${gewst.satz} %` }}
+            ist={{ value: 0, label: `heute ${gewst.satz} %` }}
             marken={{ min: `${gewst.satz - maxPunkte} %`, max: `${gewst.satz + maxPunkte} %` }}
             anzeige={
               punkte === 0
-                ? <span className="text-muted-foreground">{gewst.satz}&nbsp;%<Beleg q="hebesaetze" /></span>
+                ? <span className="text-muted-foreground">{gewst.satz}&nbsp;%<Beleg q="tax_rates" /></span>
                 : <strong className="text-signal">
                     {gewst.satz + punkte}&nbsp;% ({punkte > 0 ? "+" : ""}{punkte})
                   </strong>
@@ -148,7 +148,7 @@ export function EinnahmenWerkbank({
             wirkung={
               punkte === 0 ? (
                 <>Ein Punkt brachte {gewstBasisJahr} überschlagen {deMio(proPunktGewst)}&#8239;Mio.&nbsp;€{" "}
-                <Beleg q="steuern" /> — bei unveränderten Gewinnen.</>
+                <Beleg q="taxes" /> — bei unveränderten Gewinnen.</>
               ) : (
                 <>
                   <strong className="text-foreground">
@@ -172,7 +172,7 @@ export function EinnahmenWerkbank({
             deinWert={gewst.satz + punkte}
             geaendert={punkte !== 0}
           />
-          <HistorieTreppe reihe={historie} bisJahr={basisJahr} />
+          <HistorieTreppe series={historie} bisJahr={basisJahr} />
           <Link href="/haushalt/steuer?art=gewerbesteuer"
             className="mt-2.5 inline-flex text-[12px] font-semibold text-primary">
             Wer den Hebesatz beschließt →
@@ -198,22 +198,22 @@ export function EinnahmenWerkbank({
             <Regler
               id="grundst"
               label="Grundsteuer B — Hebesatz"
-              wert={grundstPunkte} min={-maxPunkte} max={maxPunkte} step={5}
+              value={grundstPunkte} min={-maxPunkte} max={maxPunkte} step={5}
               onChange={setGrundstPunkte}
               geaendert={grundstPunkte !== 0}
-              ist={{ wert: 0, label: `heute ${grundst.satz} %` }}
+              ist={{ value: 0, label: `heute ${grundst.satz} %` }}
               marken={{ min: `${grundst.satz - maxPunkte} %`, max: `${grundst.satz + maxPunkte} %` }}
               anzeige={
                 grundstPunkte === 0
-                  ? <span className="text-muted-foreground">{grundst.satz}&nbsp;%<Beleg q="hebesaetze" /></span>
+                  ? <span className="text-muted-foreground">{grundst.satz}&nbsp;%<Beleg q="tax_rates" /></span>
                   : <strong className="text-signal">
                       {grundst.satz + grundstPunkte}&nbsp;% ({grundstPunkte > 0 ? "+" : ""}{grundstPunkte})
                     </strong>
               }
               wirkung={
                 grundstPunkte === 0 ? (
-                  <>Ein Punkt bringt überschlagen {betrag(proPunktGrundst * 1e6).wert}&#8239;
-                  {betrag(proPunktGrundst * 1e6).einheit} <Beleg q="steuern" /> — bei
+                  <>Ein Punkt bringt überschlagen {amount(proPunktGrundst * 1e6).value}&#8239;
+                  {amount(proPunktGrundst * 1e6).unit} <Beleg q="taxes" /> — bei
                   unveränderten Messbeträgen.</>
                 ) : (
                   <>
@@ -250,30 +250,30 @@ export function EinnahmenWerkbank({
           <Regler
             id="hunde"
             label="Hundesteuer"
-            wert={hundePct} min={-100} max={100} step={25}
+            value={hundePct} min={-100} max={100} step={25}
             onChange={setHundePct}
             geaendert={hundePct !== 0}
-            ist={{ wert: 0, label: "heute" }}
+            ist={{ value: 0, label: "heute" }}
             marken={{ min: "abschaffen", max: "verdoppeln" }}
             anzeige={
               hundePct === 0
                 ? <span className="text-muted-foreground">
-                    {betrag(hunde.betrag).wert}&nbsp;{betrag(hunde.betrag).einheit}<Beleg q="steuern" />
+                    {amount(hunde.amount).value}&nbsp;{amount(hunde.amount).unit}<Beleg q="taxes" />
                   </span>
                 : <strong className="text-signal">
                     {hundePct === -100
                       ? <>0&nbsp;€ (abgeschafft)</>
-                      : <>{betrag(hunde.betrag * (1 + hundePct / 100)).wert}&nbsp;
-                        {betrag(hunde.betrag * (1 + hundePct / 100)).einheit}{" "}
+                      : <>{amount(hunde.amount * (1 + hundePct / 100)).value}&nbsp;
+                        {amount(hunde.amount * (1 + hundePct / 100)).unit}{" "}
                         ({hundePct > 0 ? "+" : "−"}{Math.abs(hundePct)}&nbsp;%)</>}
                   </strong>
             }
             wirkung={
               hundePct === 0 ? (
-                <>Aufkommen {hunde.jahr}. Der Regler zeigt die Größenordnung in beide
+                <>Aufkommen {hunde.year}. Der Regler zeigt die Größenordnung in beide
                 Richtungen: Sowohl eine Verdopplung als auch die Abschaffung verändern
                 das Ergebnis um rund{" "}
-                {anteilText(hunde.betrag / 1e6)}.</>
+                {anteilText(hunde.amount / 1e6)}.</>
               ) : hundePct > 0 ? (
                 <>
                   <strong className="text-foreground">+{deMio(hundeWirkung)}&#8239;Mio.&nbsp;€</strong>{" "}
@@ -303,13 +303,13 @@ export function EinnahmenWerkbank({
           <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
             {gebSumme != null && gebJahr != null ? (
               <>{deMio(gebSumme / 1e6)}&#8239;Mio.&nbsp;€ legt die Stadt {gebJahr} auf die
-              Gebührenzahler um<Beleg q="gebuehren" /> — mehr darf es nicht sein: </>
+              Gebührenzahler um<Beleg q="fees" /> — mehr darf es nicht sein: </>
             ) : (
               <>Der Rat kann diese Gebühren nicht zur allgemeinen Haushaltsfinanzierung erhöhen: </>
             )}
             Kostenrechnende Einrichtungen dürfen auf Dauer keinen Überschuss erwirtschaften.
             Deshalb gibt es dafür im Labor keinen frei einstellbaren Regler.{" "}
-            <Link href="/haushalt/konzern#gebuehren" className="font-semibold text-primary">
+            <Link href="/haushalt/konzern#fees" className="font-semibold text-primary">
               Wie die Gebühren entstehen →
             </Link>
           </p>

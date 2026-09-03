@@ -1,5 +1,12 @@
 /**
- * Ratsinformationssystem: search, scope tabs, session detail dialog.
+ * Der Rats-Bereich: Sitzungen, Tagesordnungen, Ortsbezug der Beschlüsse.
+ *
+ * ÜBERARBEITET am 03.09.2026. Die Datei prüfte eine Oberfläche von vorher:
+ * eine Überschrift „Ratsinformationssystem" (die Reiter heißen heute
+ * „Suche", „Sitzungen", „Stadtkarte", „Analyse"), einen Zeitraum „Kommend"
+ * (heute „Anstehend") — und vor allem einen DIALOG für die Tagesordnung. Die
+ * klappt seit dem Umbau in der Karte selbst auf, und `/council` beginnt nicht
+ * mehr bei den Sitzungen, sondern bei der Suche.
  */
 import { test, expect } from "@playwright/test";
 import { loginAdmin } from "./helpers";
@@ -38,47 +45,61 @@ test.describe("Ratsinformationssystem", () => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ sessions: [MOCK_SESSION], count: 1 }),
+        // `total` gehört dazu: Ohne es steht „undefined Sitzungen gefunden"
+        // über der Liste und „NaN" in der Blätterleiste.
+        body: JSON.stringify({ sessions: [MOCK_SESSION], count: 1, total: 1 }),
       }),
     );
   });
 
-  test("shows page header and scope tabs", async ({ page }) => {
-    await page.goto("/council");
-    await expect(page.getByRole("heading", { name: "Ratsinformationssystem" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Kommend" })).toBeVisible();
+  test("der Sitzungs-Reiter zeigt Überschrift und Zeitraum", async ({ page }) => {
+    await page.goto("/council?tab=sessions");
+    await expect(page.getByRole("heading", { name: "Sitzungen" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Anstehend" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Vergangen" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Alle" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Alle", exact: true })).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/04-council-page.png", fullPage: true });
   });
 
-  test("shows session cards loaded from backend", async ({ page }) => {
+  test("ohne Reiter beginnt die Seite bei der Suche", async ({ page }) => {
     await page.goto("/council");
-    // h3 is inside a <button> — Chrome suppresses its heading role, use CSS tag selector
-    await expect(page.locator("main h3", { hasText: "Bauausschuss" })).toBeVisible();
-    await expect(page.getByText(/15\.07\.2026/)).toBeVisible(); // formatDate returns dd.mm.yyyy
-    await expect(page.getByText("3 TOP")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Suche" }).first()).toBeVisible();
+  });
+
+  test("die Sitzungskarten kommen aus dem Backend", async ({ page }) => {
+    await page.goto("/council?tab=sessions");
+    const karte = page.locator("main button").filter({ hasText: "Bauausschuss" }).first();
+    await expect(karte).toBeVisible();
+    // Das Datum steht als Kalenderblatt (Monat + Tag), nicht mehr als
+    // „15.07.2026"; die Uhrzeit daneben im Klartext.
+    // „Jul" im DOM — die Großschreibung macht CSS, und `toContainText` liest
+    // den Text, nicht das Aussehen.
+    await expect(karte).toContainText("Jul");
+    await expect(karte).toContainText("15");
+    await expect(karte).toContainText("18:00 Uhr");
+    await expect(karte).toContainText("3 TOPs");
     await page.screenshot({ path: "test-results/screenshots/04-council-sessions.png", fullPage: true });
   });
 
-  test("clicking a session opens the detail dialog", async ({ page }) => {
+  test("ein Klick klappt die Tagesordnung in der Karte auf", async ({ page }) => {
     await page.route("**/api/council/session/42", (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_DETAIL) }),
     );
 
-    await page.goto("/council");
-    // Click the card (button) that contains the h3 — target the outer button
+    await page.goto("/council?tab=sessions");
     await page.locator("main button", { hasText: "Bauausschuss" }).first().click();
-    // Dialog should open with agenda items
-    await expect(page.getByRole("dialog")).toBeVisible();
+    // Kein Dialog mehr: Die Tagesordnung erscheint IN der Karte, und der
+    // Knopf wird zum Zuklappen.
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByText("Bebauungsplan Hafen")).toBeVisible();
     await expect(page.getByText("nichtöffentlich")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Weniger anzeigen" })).toBeVisible();
     // animations: "disabled" fast-forwards the dialog fade/zoom so the capture
     // isn't taken mid-animation (which renders the content semi-transparent).
     await page.screenshot({ path: "test-results/screenshots/04-council-detail.png", fullPage: true, animations: "disabled" });
   });
 
-  test("only concrete subitems offer a bookmark button", async ({ page }) => {
+  test("nur konkrete Unterpunkte bieten „Merken“ an", async ({ page }) => {
     await page.route("**/api/council/session/42", (route) =>
       route.fulfill({
         status: 200,
@@ -101,21 +122,21 @@ test.describe("Ratsinformationssystem", () => {
     await expect(child.getByRole("button", { name: "Zur Merkliste hinzufügen" })).toBeVisible();
   });
 
-  test("scope tab change triggers reload", async ({ page }) => {
+  test("ein Wechsel des Zeitraums lädt neu", async ({ page }) => {
     let callCount = 0;
     await page.route("**/api/council/sessions**", (route) => {
       callCount++;
-      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ sessions: [], count: 0 }) });
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ sessions: [], count: 0, total: 0 }) });
     });
 
-    await page.goto("/council");
+    await page.goto("/council?tab=sessions");
     await page.getByRole("button", { name: "Vergangen" }).click();
     await page.waitForTimeout(500);
     expect(callCount).toBeGreaterThanOrEqual(2);
     await page.screenshot({ path: "test-results/screenshots/04-council-scope-switch.png", fullPage: true });
   });
 
-  test("filters decisions by location and shows the evidence", async ({ page }) => {
+  test("Beschlüsse lassen sich nach Ortsbezug filtern", async ({ page }) => {
     await page.route("**/api/council/fields", (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ fields: [] }) }),
     );
@@ -123,8 +144,15 @@ test.describe("Ratsinformationssystem", () => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
+        // `place_id` ist der Wert, mit dem gefiltert wird — der Name ist nur
+        // die Beschriftung. Ohne ihn wählt der Klick nichts aus, und die
+        // Abfrage geht unverändert wieder heraus.
         body: JSON.stringify({
-          districts: [{ name: "Kreyenbrück", count: 2, vote_count: 1, report_count: 1 }],
+          districts: [{
+            place_id: "kreyenbrueck", name: "Kreyenbrück", kind: "district",
+            kind_label: "Stadtteil", parent_ids: [],
+            count: 2, vote_count: 1, report_count: 1,
+          }],
         }),
       }),
     );
@@ -134,7 +162,7 @@ test.describe("Ratsinformationssystem", () => {
       const decision = {
         id: 11, ksinr: 42, kind: "decision", parent_item: null, item_number: "5",
         title: "Widmung Klingenbergplatz", beschluss: "Die Erweiterungsfläche wird gewidmet.",
-        outcome: "angenommen", vote: null, gegenstimmen: null, enthaltungen: null,
+        outcome: "accepted", vote: null, gegenstimmen: null, enthaltungen: null,
         factions: [], parties: [], vorlage_nr: null, raw_result: null,
         committee: "Bauausschuss", session_date: "2026-07-15", protocol_url: null,
         policy_field: null, policy_tags: [], summary: null, amount_eur: null,
@@ -154,8 +182,8 @@ test.describe("Ratsinformationssystem", () => {
     await page.getByRole("button", { name: "Ortsbezug" }).click();
     await page.getByRole("button", { name: "Kreyenbrück (1)" }).click();
 
-    await expect.poll(() => requestedDistrict).toBe("Kreyenbrück");
-    await expect(page).toHaveURL(/district=Kreyenbr%C3%BCck/);
+    await expect.poll(() => requestedDistrict).toBe("kreyenbrueck");
+    await expect(page).toHaveURL(/district=kreyenbrueck/);
     await expect(page.getByText("Ortsbezug:", { exact: true })).toBeVisible();
     await expect(page.getByText("Fundstelle: „Widmung Klingenbergplatz“")).toBeVisible();
   });

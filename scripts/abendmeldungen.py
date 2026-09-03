@@ -12,7 +12,7 @@ aus sind: eine crontab-Zeile statt zwei.
   eigenen Themen, eine Nachricht für alles.
 
 Beides wird nur **eingereiht**; zugestellt wird am Ende desselben Laufs unter
-den Grenzen aus ``nwz/notify.py`` (höchstens zwei am Tag, Nachtruhe ab 21 Uhr).
+den Grenzen aus ``kern/notify.py`` (höchstens zwei am Tag, Nachtruhe ab 21 Uhr).
 Um 18 Uhr ist die Nachtruhe noch nicht angebrochen, die Zustellung geht also
 direkt raus.
 """
@@ -36,29 +36,29 @@ from kern.store import Store  # noqa: E402
 
 import os  # noqa: E402
 
-NWZ_DB = os.environ.get("NWZ_DB") or str(ROOT / "data" / "nwz.sqlite")
+RATSLOTSE_DB = os.environ.get("RATSLOTSE_DB") or str(ROOT / "data" / "ratslotse.sqlite")
 COUNCIL_DB = os.environ.get("COUNCIL_DB") or str(ROOT / "data" / "council.sqlite")
 
 
 def main() -> dict:
     heute = date.today()
-    nwz = Store(NWZ_DB)
+    ratslotse = Store(RATSLOTSE_DB)
     council = CouncilStore(COUNCIL_DB)
 
-    n5 = vorabend(council, nwz, heute)
+    n5 = vorabend(council, ratslotse, heute)
     print(f"N5 Vorabend: {n5} Erinnerung(en) eingereiht.")
 
     # weekday(): Montag=0 … Sonntag=6
     n6 = 0
     if heute.weekday() == 6:
-        n6 = wochenueberblick(council, nwz, heute)
+        n6 = wochenueberblick(council, ratslotse, heute)
         print(f"N6 Wochenüberblick: {n6} Meldung(en) eingereiht.")
     else:
         print("N6 Wochenüberblick: heute nicht (nur sonntags).")
 
     council.close()
-    zugestellt = notify.zustellen(nwz)
-    nwz.close()
+    zugestellt = notify.zustellen(ratslotse)
+    ratslotse.close()
     print(f"Zugestellt: {zugestellt}.")
     return {"Vorabend-Erinnerungen": n5, "Wochenüberblicke": n6,
             "Zugestellt": zugestellt}

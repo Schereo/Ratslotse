@@ -118,7 +118,7 @@ abgelehnt — 128 angenommen im Rat, 128 im Ausschuss, 0 abgelehnt.
 in [Haushalt](/docs/haushalt/#die-lange-ausgabenreihe-datensatz-1102-seit-1972).
 Was die Recherche gefunden hatte und was die Umsetzung daraus gemacht hat:
 
-- Der **Versatz von 0,03–0,05 %** gegen `council_ergebnisrechnung` war keine
+- Der **Versatz von 0,03–0,05 %** gegen `council_income_statement` war keine
   Unschärfe, sondern eine Abgrenzung: Die Statistik zählt die
   *Gesamtergebnisrechnung* (Kernhaushalt **und** nicht rechtsfähige
   Stiftungen), unser Parser die *Ergebnisrechnung der Kernverwaltung*. Der
@@ -142,7 +142,7 @@ Jahrbuch 1103 stellt je Steuerart Plan neben Ist:
 | 2025 | 155,5 Mio € | 222,1 Mio € | **+42,8 %** |
 
 Drei Jahre über 40 % Unterschätzung ist ein Muster, keine Schwankung. Weder
-`council_ergebnishaushalt` noch `council_ergebnisrechnung` schlüsseln Steuern
+`council_income_budget` noch `council_income_statement` schlüsseln Steuern
 auf — die Plan-Seite je Steuerart haben wir nirgends.
 
 ## Weitere Funde

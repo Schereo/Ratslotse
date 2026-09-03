@@ -36,20 +36,21 @@ from __future__ import annotations
 import re
 import logging
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from kern.store import Store
 from council.store import CouncilStore
 
-from ..antworten import (AboGeloescht, AboGesetzt, Abonnements, MarkierteTreffer, Ok,
-                        ThemenBeschluesse, ThemenBeschreibung, ThemenTrefferListe,
-                        ThemenVorschlaege, UngeleseneThemenTreffer)
+from ..antworten import (MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet, Subscriptions,
+                         TopicDecisions, TopicDescription, TopicHitList, TopicSuggestions,
+                         UnreadTopicHits)
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
 
-logger = logging.getLogger("nwz.web.topics")
+logger = logging.getLogger("ratslotse.web.topics")
 
 router = APIRouter(prefix="/api/topics", tags=["topics"])
 
@@ -80,7 +81,7 @@ def _own_topic(store: Store, owner_id: int, topic_id: int):
 
 def _erstabgleich(store: Store, council: CouncilStore, topic, owner_id: int) -> tuple[int, bool, bool]:
     """Ein frisch angelegtes oder neu beschriebenes Thema sofort abgleichen —
-    ``(anzahl, gedeckelt, abgeglichen)``.
+    ``(count, gedeckelt, abgeglichen)``.
 
     Gerechnet wird mit ``topic_intel.treffer``, derselben Funktion wie im
     Wochenlauf: eine Definition, eine Zahl (s. Modul-Kopf). Gespeichert wird
@@ -142,7 +143,7 @@ def list_topics(
     unseen = store.unseen_hit_counts(owner_id)
     topics = store.get_topics(owner_id)
     # Gezählt wird, was die Suche auch findet. Die gespeicherten Treffer liegen
-    # in nwz.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
+    # in ratslotse.sqlite, die Beschlüsse in council.sqlite — verschwindet ein
     # Beschluss (Neu-Extraktion vergibt neue IDs), bleibt die Zeile hier stehen
     # und der Zähler versprach Treffer, die „alle ansehen" nicht liefern konnte
     # (Tims Befund 15.08.: „8 Einträge" → Suche sagt „nichts gefunden").
@@ -164,7 +165,7 @@ def list_topics(
     # dem Umbau vom 28.08.2026 einen Punkt vor jede neue Zeile. Beides stammt
     # aus derselben Abfrage, damit Abzeichen und Punkte nie auseinandergehen.
     unseen_ids = store.unseen_hit_ids(owner_id)
-    stichtag = _vor_sechs_monaten().isoformat()
+    as_of_date = _vor_sechs_monaten().isoformat()
     out = []
     for t in topics:
         hits = sorted((by_id[d] for d in cand.get(t.id, []) if d in by_id),
@@ -198,7 +199,7 @@ def list_topics(
                     )
                     for d in hits[:5]
                 ],
-                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= stichtag),
+                hits_6m=sum(1 for d in hits if (d.get("session_date") or "") >= as_of_date),
             )
         )
     return out
@@ -208,6 +209,12 @@ def _name_tokens(name: str) -> frozenset[str]:
     """Wort-Stämme eines Themen-/Entitätsnamens: Kleinbuchstaben, Wörter auf
     6 Zeichen gekürzt (fängt „Stadion"/„Stadionneubau"), Ziffern bleiben ganz
     (unterscheidet „Veloroute 4" von „Veloroute 2")."""
+    # Zusammengeschriebenes vorher trennen: Im Ratsbestand steht „AlteFleiwa"
+    # neben „Alte Fleiwa" — zwei Entitäten für dieselbe Sache, die im selben
+    # Vorschlagsblock landeten, weil {altefl} und {alte, fleiwa} keine
+    # Teilmenge voneinander sind. Getrennt wird nur an klein→GROSS, damit
+    # „OLantis", „IQON" und „EWE ARENA" unangetastet bleiben.
+    name = re.sub(r"(?<=[a-zäöüß])(?=[A-ZÄÖÜ])", " ", name)
     words = re.findall(r"\d+|[a-zäöüß]+", name.lower())
     return frozenset(w if w.isdigit() else w[:6] for w in words if w.isdigit() or len(w) >= 3)
 
@@ -215,6 +222,25 @@ def _name_tokens(name: str) -> frozenset[str]:
 def _similar_names(a: frozenset[str], b: frozenset[str]) -> bool:
     """Gleiches Interesse, wenn die Wortmenge des einen im anderen aufgeht."""
     return bool(a) and bool(b) and (a <= b or b <= a)
+
+
+_PLANNUMMER = re.compile(r"\b(?:vorhabenbezogener\s+)?(?:bebauungs|flächennutzungs)plan\s+[\dSNOWM]", re.I)
+
+
+#: Der Rest eines Titels nach der Plannummer, wenn er KEIN Ort ist: die
+#: Verfahrensschritte eines Bebauungsplans und ihre üblichen Zusätze.
+_VERFAHRENSSCHRITT = re.compile(
+    r"^(?:(?:erneuter\s+|zweiter\s+|\d\.\s*)?"
+    r"(?:aufstellungs|auslegungs|satzungs|feststellungs|veröffentlichungs|offenlegungs)?beschluss"
+    r"|bericht|sachstand(?:sbericht)?|grundzüge der planung|prüfung der stellungnahmen"
+    r"|verlängerung(?: der veränderungssperre)?|änderung(?: nr\.?\s*\d+)?|teil [a-z])"
+    r"\b.*$", re.I)
+
+
+def _ist_plannummer(name: str) -> bool:
+    """„Bebauungsplan 865", „Bebauungsplan S-745 B" — ein Name, der ohne
+    Einordnung niemandem etwas sagt."""
+    return bool(_PLANNUMMER.search(name))
 
 
 def _suggestion_context(name: str, candidate: dict) -> str | None:
@@ -227,7 +253,7 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     """
     description = (candidate.get("description") or "").strip()
     latest_title = (candidate.get("latest_title") or "").strip()
-    if re.search(r"\b(?:vorhabenbezogener\s+)?bebauungsplan\s+\d", name, re.I):
+    if _ist_plannummer(name):
         parenthetical = re.search(r"\(([^()]{4,160})\)", latest_title)
         if parenthetical:
             return re.sub(r"\s*/\s*", " / ", parenthetical.group(1)).strip()
@@ -236,7 +262,13 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
             r"^[\s:–—-]+|\s+[–—-]\s+(?:Aufstellungs|Auslegungs|Satzungs|Feststellungs).*$",
             "", remainder, flags=re.I,
         ).strip()
-        if remainder:
+        # Was übrig bleibt, muss ein ORT sein, kein Verfahrensschritt. Bei
+        # „Bebauungsplan 865 - Satzungsbeschluss" verschluckt der erste Zweig
+        # oben den Bindestrich, der zweite sieht danach kein „ - Satzungs…"
+        # mehr — und „Satzungsbeschluss" stand als Einordnung auf dem Chip.
+        # Ohne Ort lieber nichts: Dann greift der Rückgriff auf einen älteren
+        # Titel mit Klammer, und ohne den fällt der Vorschlag weg.
+        if remainder and not _VERFAHRENSSCHRITT.match(remainder):
             return remainder[:160].rstrip(" ,;:–—-")
     if description:
         sentence = re.split(r"(?<=[.!?])\s+", description, maxsplit=1)[0].strip()
@@ -244,24 +276,19 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     return None
 
 
-@router.get("/suggestions")
-def topic_suggestions(
-    user: dict = Depends(require_active),
-    store: Store = Depends(get_store),
-    council: CouncilStore = Depends(get_council_store),
-) -> ThemenVorschlaege:
-    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
-    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
-    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
-    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
-    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
-    die der Account schon angelegt hat; ein Klick legt direkt an."""
+def _build_suggestions(council: CouncilStore, candidates: list[dict],
+                       existing_tokens: list, chosen_tokens: list, limit: int = 6) -> list[dict]:
+    """Aus Roh-Entitäten anzeigbare Vorschläge machen.
+
+    Eigene Funktion, seit es ZWEI Listen gibt (Stadtteil und stadtweit):
+    ``chosen_tokens`` wird von beiden Aufrufen geteilt und dabei fortgeschrieben
+    — deshalb taucht ein Vorschlag, der schon im Stadtteil steht, in der
+    stadtweiten Liste nicht noch einmal auf. Ohne das gemeinsame Gedächtnis
+    stünde dieselbe Baustelle zweimal untereinander.
+    """
     from council import topic_intel
 
-    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])]
-    chosen_tokens: list[frozenset[str]] = []
-    out = []
-    candidates = council.suggested_entity_topics(days_back=365, limit=16)
+    out: list[dict] = []
     # 26a-Zusage: Was hier vorgeschlagen wird, hat die Vagheits-Prüfung bestanden.
     # Zwei Stufen, damit das bezahlbar bleibt: erst der kostenlose Gattungswort-
     # Filter, dann das gecachte LLM-Urteil (je Slug genau einmal).
@@ -291,6 +318,17 @@ def topic_suggestions(
                 f"Stadtrats rund um {name}."
             )
         slug = e.get("slug") or ""
+        context = _suggestion_context(name, e)
+        if context is None and _ist_plannummer(name):
+            # Der jüngste Titel trug keine Klammer („… - Satzungsbeschluss");
+            # ein älterer fast immer. Und bleibt es bei der nackten Nummer,
+            # fällt der Vorschlag weg: „Bebauungsplan 865" ohne Erklärung war
+            # genau das, was Tim „kryptisch" nannte (02.09.2026).
+            titel = council.entity_title_with_parenthetical(slug)
+            if titel:
+                context = _suggestion_context(name, {**e, "latest_title": titel})
+            if context is None:
+                continue
         verdict = verdicts.get(slug)
         if verdict is None or verdict.get("name") != name:
             # Noch nie (oder unter anderem Namen) geprüft — jetzt einmal, dann
@@ -307,12 +345,155 @@ def topic_suggestions(
         out.append({
             "name": name,
             "description": description,
-            "context": _suggestion_context(name, e),
+            "context": context,
             "n": e["n_recent"],
         })
-        if len(out) >= 6:
+        if len(out) >= limit:
             break
-    return {"suggestions": out}
+    return out
+
+
+#: Zeitfenster für die Stadtteil-Vorschläge, von eng nach weit. Ein FESTES Jahr
+#: reichte nicht: Am Prod-Bestand (01.09.2026 nachgemessen) lieferten 6 der 31
+#: Ortsbereiche darin gar nichts und 4 weitere ein bis zwei Vorschläge — wer
+#: dort wohnt, sah einen leeren Block. Mit dem gleitenden Fenster steht überall
+#: etwas. Erst die Zeit lockern und nicht die Qualitätsregeln: Ein zwei Jahre
+#: alter echter Vorgang ist ein besserer Vorschlag als eine Adresse von gestern.
+LOCAL_WINDOW_DAYS = (365, 730, 1095)
+
+#: Wie viele Vorschläge eines Fensters keine bloße Adresse sein müssen, damit
+#: die Suche dort aufhört. Drei von sechs: Die Hälfte darf Straße sein — manche
+#: Straße IST ein Vorhaben —, aber eine Liste aus lauter Adressen ist keine
+#: Antwort auf „was ist bei mir los?".
+TRAGENDE_MINDESTENS = 3
+
+
+def _tragende(eintraege: list[dict]) -> int:
+    """Wie viele der Vorschläge mehr sind als ein Straßenname."""
+    return sum(1 for e in eintraege
+               if not CouncilStore._looks_like_street(e.get("name") or ""))
+
+
+#: Wie viele Nachbar-Ortsbereiche einen dünnen Stadtteil auffüllen dürfen. Drei
+#: reichen: Damit kommen auf dem Prod-Bestand alle 31 auf sechs Vorschläge.
+NEIGHBOURS = 3
+
+
+def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
+                        chosen_tokens: list) -> tuple[list[dict], list[dict], int]:
+    """Vorschläge für einen Ortsbereich: eigene, nebenan, und wie weit zurück.
+
+    Gibt zurück, WIE WEIT gesucht wurde (in Monaten): Die Oberfläche schreibt das
+    dazu. „Aus Bornhorst" über einen drei Jahre alten Vorgang wäre sonst eine
+    stille Behauptung von Aktualität — und die Designsprache verlangt bei Mengen
+    ohnehin Zahl **und** Zeitraum.
+
+    **Warum es „nebenan" gibt.** Am Prod-Bestand nachgemessen (01.09.2026):
+    Selbst über drei Jahre kommen 15 der 31 Ortsbereiche nicht auf sechs
+    Vorschläge, zwei auf gar keinen — im Dobbenviertel oder in Nordmoslesfehn
+    hat der Rat schlicht kaum etwas verhandelt. Ein leerer Block wäre dort das
+    Ergebnis, und zwar dauerhaft. Mit den drei nächstgelegenen Ortsbereichen
+    füllen sich **alle 31** auf sechs.
+
+    Getrennt zurückgegeben und in der Oberfläche getrennt beschriftet: Ein
+    Vorgang aus Haarenesch unter der Überschrift „Aus Dobbenviertel" wäre
+    schlicht falsch. Nebenan ist eine ehrliche Auskunft, verkleidet wäre es
+    eine Behauptung.
+    """
+    runden: list[tuple[int, list[dict]]] = []
+    for tage in LOCAL_WINDOW_DAYS:
+        # `chosen_tokens` NICHT je Runde mitschreiben lassen: Ein Vorschlag, den
+        # das enge Fenster schon verworfen hat, würde sich sonst im weiten selbst
+        # blockieren. Erst das Ergebnis der gewählten Runde zählt.
+        probe = list(chosen_tokens)
+        gefunden = _build_suggestions(
+            council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
+            existing_tokens, probe, limit=6)
+        runden.append((tage, gefunden))
+        if len(gefunden) >= 6 and _tragende(gefunden) >= TRAGENDE_MINDESTENS:
+            break
+    # Das engste Fenster, das genug TRAGENDE Vorschläge hat — nicht einfach das
+    # erste mit sechs Einträgen. Seit auch Straßen ihren Stadtteil sicher kennen,
+    # füllen sie die sechs mühelos, und das enge Fenster gewann mit einer Liste
+    # aus lauter Adressen: In Osternburg verdrängte die „Cloppenburger Straße"
+    # die Amalienbrücke, im Ziegelhof die „Industriestraße" das IQON. Ein Jahr
+    # jünger ist kein Vorteil, wenn dafür das Interessante wegfällt.
+    tage, letzte = max(runden, key=lambda r: (_tragende(r[1]), len(r[1]), -r[0]))
+    for eintrag in letzte:
+        chosen_tokens.append(_name_tokens(eintrag["name"]))
+
+    nebenan: list[dict] = []
+    if len(letzte) < 6:
+        from council import geo
+
+        for nachbar in geo.nachbar_ortsbereiche(place.name, NEIGHBOURS):
+            if len(letzte) + len(nebenan) >= 6:
+                break
+            nb = council.resolve_place(nachbar)
+            if not nb:
+                continue
+            # Immer das weiteste Fenster: Nebenan ist ohnehin der Notnagel, da
+            # zählt „gibt es überhaupt etwas" mehr als „ist es taufrisch".
+            for eintrag in _build_suggestions(
+                council,
+                council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
+                                                place_id=nb.id),
+                existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
+            ):
+                nebenan.append({**eintrag, "place": nb.name})
+    return letzte, nebenan, round(tage / 30.4)
+
+
+@router.get("/suggestions")
+def topic_suggestions(
+    district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+    council: CouncilStore = Depends(get_council_store),
+) -> TopicSuggestions:
+    """Anklickbare Themen-Vorschläge aus den echten Daten: konkrete Orte und
+    Projekte mit jüngster Ratsaktivität (Entitäten) statt der häufigsten
+    Schlagworte — die belohnten Verwaltungsvokabeln („Bericht", „Annahme").
+    Die KI-Beschreibung der Entität wird zur Themen-Beschreibung und macht
+    den Themen-Wächter treffsicherer als ein generischer Satz. Ohne Themen,
+    die der Account schon angelegt hat; ein Klick legt direkt an.
+
+    ``?district=<place_id>`` (mehrfach erlaubt) hängt je Ortsbereich eine
+    **eigene** Liste davor: dieselbe Auswahl, auf diesen Ortsbereich
+    eingeschränkt. Die Trennung ist der Punkt — „was ist in Osternburg los?"
+    ist eine andere Frage als „was läuft gerade in der Stadt?", und wer beides
+    getrennt sieht, kann wählen. Die Ortsbereiche stehen zuerst und in der
+    Reihenfolge, in der sie gefragt wurden; was dort schon vorkommt,
+    wiederholen weder die anderen Ortsbereiche noch die stadtweite Liste.
+    """
+    # Stadtteil-Themen zählen beim Dedupe NICHT mit. Sie sind Ortsangaben,
+    # keine Interessen: Wer „Krusenbusch" gewählt hat, bekäme sonst „Quartier
+    # am Krusenbusch", „Grundschule Krusenbusch" und „Eisenbahnüberführung
+    # Krusenbusch" als Dubletten weggefiltert — genau die besten Vorschläge
+    # für diesen Stadtteil —, und übrig blieben Straßennamen (Tims Befund,
+    # 02.09.2026: „überwiegend Straßennamen oder kryptische B-Plan-Nummern").
+    ortsnamen = {p.name.casefold() for p in council.all_places() if p.is_primary}
+    existing_tokens = [_name_tokens(t.name) for t in store.get_topics(user["id"])
+                       if (t.name or "").strip().casefold() not in ortsnamen]
+    chosen_tokens: list[frozenset[str]] = []
+
+    gruppen = []
+    for wunsch in dict.fromkeys(district):        # doppelt Gefragtes einmal
+        place = council.resolve_place(wunsch)
+        if not place:
+            continue                              # geraten oder veraltet — still übergehen
+        lokal, nebenan, fenster = _local_suggestions(
+            council, place, existing_tokens, chosen_tokens)
+        # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
+        # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
+        # Fehler.
+        gruppen.append({"place_id": place.id, "name": place.name,
+                        "suggestions": lokal, "nearby": nebenan, "months": fenster})
+
+    stadtweit = _build_suggestions(
+        council, council.suggested_entity_topics(days_back=365, limit=16),
+        existing_tokens, chosen_tokens, limit=6)
+    return {"suggestions": stadtweit, "districts": gruppen}
 
 
 @router.post("/describe")
@@ -321,7 +502,7 @@ def describe_topic(
     request: Request,
     user: dict = Depends(require_active),
     council: CouncilStore = Depends(get_council_store),
-) -> ThemenBeschreibung:
+) -> TopicDescription:
     """Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.
 
     Der Nutzer tippt nur „Cäcilienbrücke". Wir suchen die Beschlüsse dazu und
@@ -393,9 +574,9 @@ def add_topic(
     # hat keine Rechnung ausgelöst und soll auch kein Kontingent kosten.
     topic_match_limiter.check(request)
     t = store.add_topic(user["id"], body.name, body.description)
-    anzahl, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
+    count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
     return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at,
-                    decision_count=anzahl, decision_count_capped=gedeckelt, matched=abgeglichen)
+                    decision_count=count, decision_count_capped=gedeckelt, matched=abgeglichen)
 
 
 @router.delete("/{topic_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -421,28 +602,28 @@ def update_topic(
     # Wer die Beschreibung ändert, ändert die Trefferliste — deshalb wird auch
     # hier sofort neu abgeglichen. Sonst zeigte das Blatt beim Tippen eine
     # Vorschau, und die Karte behielt bis Sonntag die Zahl zum alten Text.
-    anzahl, gedeckelt, abgeglichen = _erstabgleich(store, council, t, owner_id)
+    count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, owner_id)
     caps = store.topic_match_caps(owner_id)
     if not abgeglichen:
         # Rechnung ausgefallen: Der gespeicherte Stand steht unberührt weiter
         # und wird gezählt wie in list_topics — inklusive Existenzprüfung, damit
         # die Karte keine Treffer verspricht, die „alle ansehen" nicht liefert.
         ids = [m["decision_id"] for m in store.get_topic_decision_matches(topic_id)]
-        anzahl = len(council.get_decisions_by_ids(ids)) if ids else 0
+        count = len(council.get_decisions_by_ids(ids)) if ids else 0
         gedeckelt = caps.get(topic_id, False)
     return TopicOut(
         id=t.id,
         name=t.name,
         description=t.description,
         created_at=t.created_at,
-        decision_count=anzahl,
+        decision_count=count,
         decision_count_capped=gedeckelt,
         matched=abgeglichen or topic_id in caps,
     )
 
 
 @router.get("/unread-count")
-def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> UngeleseneThemenTreffer:
+def unread_count(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> UnreadTopicHits:
     """RL-903: der Zähler an „Meine Themen" (Seitenleiste und Punkt in der
     Tab-Leiste) — Treffer, die seit dem letzten Blick auf die Übersicht
     dazugekommen sind. Die Bubble kündigt Neues an; wer nachgesehen hat, soll
@@ -451,7 +632,7 @@ def unread_count(user: dict = Depends(require_active), store: Store = Depends(ge
     return {"total": store.neue_treffer_seit_uebersicht(user["id"])}
 
 
-@router.post("/uebersicht-gesehen")
+@router.post("/overview-seen")
 def uebersicht_gesehen(user: dict = Depends(require_active),
                        store: Store = Depends(get_store)) -> Ok:
     """Die Themen-Übersicht wurde geöffnet — ab jetzt zählt für die Bubble
@@ -467,7 +648,7 @@ def mark_seen(
     body: TopicSeenIn | None = None,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
-) -> MarkierteTreffer:
+) -> MarkedHits:
     """RL-903: Treffer eines Themas als gesehen markieren.
 
     Ohne ``decision_id`` alle — das ist der Weg über „alle ansehen" und über
@@ -491,7 +672,7 @@ def latest_hits(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> ThemenTrefferListe:
+) -> TopicHitList:
     """Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
     {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst."""
@@ -516,7 +697,7 @@ def topic_decisions(
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
-) -> ThemenBeschluesse:
+) -> TopicDecisions:
     """Council decisions matched to this topic (semantic), best first.
 
     Dieselbe Menge, die die Karte zählt und ``/council/decisions?topic=…``
@@ -549,17 +730,17 @@ sub_router = APIRouter(prefix="/api/subscriptions", tags=["subscriptions"])
 
 
 @sub_router.get("")
-def list_subscriptions(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> Abonnements:
+def list_subscriptions(user: dict = Depends(require_active), store: Store = Depends(get_store)) -> Subscriptions:
     return {"subscriptions": store.get_subscriptions(user["id"])}
 
 
 @sub_router.post("", status_code=status.HTTP_201_CREATED)
-def subscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> AboGesetzt:
+def subscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> SubscriptionSet:
     ok = store.subscribe(user["id"], body.committee_name)
     return {"subscribed": ok, "committee_name": body.committee_name}
 
 
 @sub_router.delete("")
-def unsubscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> AboGeloescht:
+def unsubscribe(body: SubscriptionIn, user: dict = Depends(require_active), store: Store = Depends(get_store)) -> SubscriptionRemoved:
     ok = store.unsubscribe(user["id"], body.committee_name)
     return {"unsubscribed": ok, "committee_name": body.committee_name}

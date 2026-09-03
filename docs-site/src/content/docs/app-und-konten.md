@@ -142,7 +142,13 @@ Passwörter werden mit **scrypt** gehasht, Sitzungs-Token sind
 Laufzeit `ACCESS_TOKEN_EXPIRE_MINUTES` (Default 90 Tage). Page-JS sieht das
 Token nie.
 
-**App:** Der Client schickt den Header `X-Client: app`. Erkennt das Backend ihn,
+**App:** Der Client schickt den Header `X-Client` und nennt darin seine
+Plattform — `ios` aus der nativen App, `android` aus der Capacitor-Hülle;
+Browser schicken den Header gar nicht. `app` bleibt als Altwert gültig, weil im
+Feld Stände laufen, die ihn noch senden. Die Zuordnung macht
+`web/backend/app/clients.py`; Fremdwerte werden dort **nicht** durchgereicht,
+sondern zu `web`, damit über den Header nichts Beliebiges in die
+Statistiktabelle wandert. Erkennt das Backend einen der nativen Werte,
 liefert es zusätzlich ein **langlebiges Token im Antwort-Body**
 (`app_access_token_expire_minutes`, Default 90 Tage), das die SwiftUI-App im
 Keychain ablegt und als `Authorization: Bearer …` mitschickt.
@@ -166,7 +172,7 @@ Login.
   Passwortwechsel — sonst überschriebe die Verlängerung das Abmelden), sowie
   `401`-Antworten.
 - *App:* Cookies helfen dort nicht. Stattdessen liefert `GET /api/auth/me` an
-  `X-Client: app` ein frisch datiertes Token, das der native `APIClient` im
+  native Clients ein frisch datiertes Token, das der native `APIClient` im
   Keychain ersetzt — die App fragt den Endpunkt bei jedem Start.
 
 Der Widerruf bleibt davon unberührt: Das erneuerte Token trägt dieselbe
@@ -311,7 +317,7 @@ auch hier.
 
 ## Was am Konto hängt
 
-Alle Konto-Daten liegen in `nwz.sqlite` (siehe
+Alle Konto-Daten liegen in `ratslotse.sqlite` (siehe
 [Architektur](/docs/architektur/)); Eigentum ist durchgängig über
 `owner_id = web_users.id` modelliert.
 
@@ -404,7 +410,7 @@ nach 48 Tagen noch keines, während 20.04. längst vorlag. Der Rat ist schneller
 (rund 3,5 Wochen) als die Ausschüsse.
 
 Schnellere Quellen gibt es nicht: Die Sitzungsseite enthält „angenommen",
-„abgelehnt", „einstimmig" **kein einziges Mal**, und `council_beratungen.ergebnis`
+„abgelehnt", „einstimmig" **kein einziges Mal**, und `council_deliberations.ergebnis`
 trägt nur die Beratungs*art* (`Kenntnisnahme` · `Entscheidung` · `Vorberatung`).
 Die Meldung nennt deshalb immer das **Sitzungsdatum**, statt Frische zu
 behaupten.
@@ -493,9 +499,75 @@ denselben Stand hat und nach Abschluss überall verschwindet.
   `karten` — alles andere wird verworfen, damit die Spalte nicht
   zuwuchert. Schritte gelten schon beim **Besuch** der jeweiligen Seite als
   erledigt (`components/onboarding.tsx`).
-- Davon getrennt speichert `GET/POST /api/onboarding/setup` den Schritt 0–3 des
-  nativen Ersteinrichtungsflows sowie Start und Abschluss. Dieser Stand dient
-  der Wiederaufnahme nach Neuinstallation und dem Einrichtungs-Reminder.
+- Davon getrennt speichert `GET/POST /api/onboarding/setup` den erreichten
+  Schritt des Ersteinrichtungs-Assistenten sowie Start und Abschluss. Dieser Stand dient der
+  Wiederaufnahme (nach Neuinstallation, auf einem anderen Gerät) und dem
+  Einrichtungs-Reminder (`scripts/remind_setup.py`).
+
+#### Wer den Assistenten zu sehen bekommt
+
+Der Assistent lief bis 09/2026 nur in der App; im Browser existierte er im Code,
+war aber hinter `isNativeApp()` unsichtbar. Seither läuft er auf beiden
+Plattformen — und **die Entscheidung, ob er dran ist, fällt im Backend**
+(`Store.get_setup`, Feld `pending` in der Antwort). Nicht im Frontend, aus zwei
+Gründen: Beide Clients sollen dieselbe Regel benutzen, und sie hängt an Daten
+(Themen, Abos), die ein Frontend erst in zwei zusätzlichen Requests holen
+müsste, bevor es überhaupt weiß, ob es etwas anzeigen soll.
+
+| Zustand | `pending` |
+|---|---|
+| `setup_done_at` gesetzt | **nein** — auch wenn nur „Überspringen" geklickt wurde. Ein weggeklickter Assistent, der wiederkommt, wäre keiner. |
+| `setup_step ≥ 1`, nicht abgeschlossen | **ja**, und zwar bei genau diesem Schritt weiter |
+| nie angefangen, Konto hat weder Thema noch Abo | **ja** |
+| nie angefangen, Konto hat Themen oder Abos | **nein** — hier hat sich jemand erkennbar selbst eingerichtet |
+
+Im Browser kommt eine Ortsprüfung dazu: Der Assistent hängt global in
+`app/providers.tsx` (in der App muss er das, dort liegt er über dem Login),
+darf im Web aber nur innerhalb von `app/(app)/` erscheinen — sonst deckte er
+Landingpage, Changelog oder Impressum zu.
+
+#### Die Schritte
+
+| # | Browser | App |
+|---|---|---|
+| 1 | Gremien | Gremien |
+| 2 | **Stadtteile** (Karte + Liste, mehrfach) | — |
+| 3 | Themen (je Stadtteil + stadtweit) | Themen |
+| 4 | E-Mail-Zustellung | Push-Erlaubnis |
+
+Zwei Unterschiede, beide plattformbedingt:
+
+**Der letzte Schritt.** Die App holt die Push-Erlaubnis, der Browser fragt nach
+der E-Mail. Web-Push (VAPID) gibt es nicht — `kern/push.py` spricht nur APNs und
+FCM. Weil die Zustellung der Punkt ist, an dem die ganze Idee steht oder fällt
+(ohne Mitteilung erfährt niemand, dass sein Thema auf einer Tagesordnung steht),
+wirbt der Schritt dafür statt bloß zu fragen — mit dem, was konkret käme, und
+mit den echten Mengen aus `kern/notify.py`.
+
+**Die Stadtteile.** Sie sind im Browser ein eigener Schritt VOR den Themen, weil
+Schritt 3 danach lokale Vorschläge zeigen kann:
+`GET /api/topics/suggestions?district=<place_id>` (mehrfach erlaubt) liefert
+dann `districts` — je gefragtem Ortsbereich eine Gruppe, in der gefragten
+Reihenfolge — plus `suggestions` (stadtweit). Keine Liste wiederholt, was in
+einer anderen schon steht.
+
+Gefragt wird nach **Interesse, nicht nach der Wohnadresse** („Welche Stadtteile
+interessieren dich?"). Das ist keine Kosmetik: Ratslotse braucht keine
+Meldedaten, und wer im Dobbenviertel wohnt und die Baustelle in Osternburg
+verfolgt, soll beides angeben können — deshalb ist die Auswahl mehrfach. Der Ortsbezug hängt am **Beschluss**, nicht an
+der Entität: Ein Thema erbt seinen Ort von den Beschlüssen, in denen es
+vorkommt (`suggested_entity_topics(place_id=…)`, dieselbe Bedingung wie im
+Beschlussfilter). Gewählt wird auf einer Inline-SVG-Karte aus
+`public/geo/stadtteile-oldenburg.json`; sie braucht keinen Kachel-Dienst und
+keinen CARTO-Key. Die Namensliste daneben ist nicht bloß der Ersatz fürs kleine
+Fenster, sondern der Weg für Tastatur und Screenreader.
+
+Der gewählte Stadtteil wird als **Thema** angelegt — nur so löst er Hinweise
+aus. In „Deine Themen" trägt er dafür eine eigene Beschriftung, sonst wirkte die
+Trennung der beiden Schritte hinterher hinfällig.
+
+Die App kennt den Stadtteil-Schritt (noch) nicht und läuft mit drei Schritten;
+`set_setup_step` deckelt bei 4, was ihr nichts abschneidet.
 
 ### Anzeigename und Konto löschen
 
@@ -536,7 +608,8 @@ selbst entstehen:
 | gesehene Treffer, Onboarding-Fortschritt, Abzeichen-Stand | `topic_hits_seen`, `web_users.onboarding`, `web_users.badges` |
 | Quiz-Antworten (Punkte je Gebiet) | `quiz_answers` |
 | Push-Geräte-Token | `push_tokens` |
-| Aktivität für die Admin-Statistik: eine Zeile je Konto/Tag/Feature mit Zähler | `user_activity` |
+| Aktivität für die Admin-Statistik: eine Zeile je Konto/Tag/Feature/Client mit Zähler | `user_activity` |
+| Womit das Konto angelegt wurde (Browser oder App) | `web_users.signup_client` |
 
 Verarbeiter sind **Resend** (E-Mail-Versand), **Apple/APNs** bzw.
 **Google/FCM** (Push-Zustellung) und **Apple** beim „Sign in with Apple" — jeweils

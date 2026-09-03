@@ -35,13 +35,14 @@ import { ArrowRight, ExternalLink, FileText } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import { decisionHref } from "@/lib/routes";
 import {
-  AUSGLIEDERUNGEN_2018, Herkunft, ROLLEN, VergleichDaten, WOLFSBURG,
+  AUSGLIEDERUNGEN_2018, ROLLEN, VergleichDaten, WOLFSBURG,
   ZITAT_VERWALTUNG, antragAnlage, antwortAnlage, balken, herkunftVon,
-  juengstesJahr, platzVonOldenburg, reihe, steuerkraftJeEinwohner, veraenderung,
+  juengstesJahr, platzVonOldenburg, series, steuerkraftJeEinwohner, change,
 } from "@/lib/haushalt-vergleich";
 import { Staedtevergleich, Zeitreihe } from "@/components/haushalt/staedtevergleich";
 import { SlopePaar, type SlopePaarZeile } from "@/components/grafik/slope-paar";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { GlossaryText } from "@/components/glossary-text";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
@@ -50,27 +51,6 @@ import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 
 const QUELLEN = ["lsn_finanzausgleich", "lsn_realsteuern", "vergleich_2018"] as const;
 
-/** Wo eine Angabe im Dokument steht — dieselbe Bauart wie auf der
- *  Konzern-Seite: Abschnitt und Stand, sonst nichts.
- *
- *  Unsere Proben und ihr Messwert standen bis 16.08. daneben, auf dieser
- *  Seite gleich dreimal. Sie sind raus (DESIGNSPRACHE.md § 7) — sie laufen
- *  weiter, sie stehen in der Technik-Doku, aber sie sagen einer Leserin
- *  nichts über die Steuerkraft Oldenburgs. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  if (!h?.fundstelle) return null;
-  return (
-    <div className="mt-3 border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-      </p>
-    </div>
-  );
-}
-
 function Abschnitt({ kicker, zusatz, id, children }: {
   kicker: string; zusatz?: string; id?: string; children: React.ReactNode;
 }) {
@@ -78,7 +58,7 @@ function Abschnitt({ kicker, zusatz, id, children }: {
   // eigenen Platz aus, nicht an der Fensterbreite — am Desktop liegt die Karte
   // neben der 240-px-Seitenleiste, auf dem iPad nicht (Designsprache §4).
   return (
-    <section id={id} className="@container/abschnitt scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section id={id} className="@container/section scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           {kicker}
@@ -93,7 +73,7 @@ function Abschnitt({ kicker, zusatz, id, children }: {
 }
 
 export default function VergleichSeite() {
-  const { data, loading } = useFetch<VergleichDaten>("/council/haushalt/vergleich");
+  const { data, loading } = useFetch<VergleichDaten>("/council/budget/comparison");
 
   if (loading) {
     return (
@@ -113,11 +93,11 @@ export default function VergleichSeite() {
     );
   }
 
-  const skJahr = juengstesJahr(data, "steuerkraft");
-  const rsJahr = juengstesJahr(data, "realsteuern");
-  const steuerkraft = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
-  const grundsteuer = rsJahr ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsJahr) : [];
-  const einnahmekraft = rsJahr ? balken(data, "realsteuern", "steuereinnahmekraft_je_ew", rsJahr) : [];
+  const skJahr = juengstesJahr(data, "tax_capacity");
+  const rsJahr = juengstesJahr(data, "real_taxes");
+  const tax_capacity = skJahr ? steuerkraftJeEinwohner(data, skJahr) : [];
+  const grundsteuer = rsJahr ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsJahr) : [];
+  const einnahmekraft = rsJahr ? balken(data, "real_taxes", "steuereinnahmekraft_je_ew", rsJahr) : [];
 
   // Der Grundsteuer-Sprung (H3-07): Hebesatz vor und nach der Reform 2025 —
   // als Slope-Paar MIT Bruch-Marker, denn über die Reform hinweg sind die
@@ -126,7 +106,7 @@ export default function VergleichSeite() {
   // wird kein Vorjahr.
   //
   // GEMESSEN WIRD AN DER KENNZAHL, NICHT AM JAHRGANG (Fund 17.08.). Vorher
-  // stand hier `data.jahre.realsteuern.includes(rsJahr - 1)` — und die Liste
+  // stand hier `data.years.realsteuern.includes(rsJahr - 1)` — und die Liste
   // führt 2023, 2024, 2025, weil die Steuereinnahmekraft so weit zurückreicht.
   // Die HEBESÄTZE liegen aber nur für 2025 vor. Folge: `rsVorjahr` war 2024,
   // `grundsteuerVorher` leer, der Slope fiel auf die Rangliste zurück — und
@@ -135,39 +115,39 @@ export default function VergleichSeite() {
   // einen Vergleich, den die Seite gar nicht zeigte. Jetzt entscheidet, ob
   // die Werte wirklich dastehen.
   const rsVorjahrKandidat = rsJahr != null
-    && (data.jahre.realsteuern ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
+    && (data.years.real_taxes ?? []).includes(rsJahr - 1) ? rsJahr - 1 : null;
   const grundsteuerVorher = rsVorjahrKandidat != null
-    ? balken(data, "realsteuern", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
+    ? balken(data, "real_taxes", "hebesatz_grundsteuer_b", rsVorjahrKandidat) : [];
   const rsVorjahr = grundsteuerVorher.length > 0 ? rsVorjahrKandidat : null;
   const sprungPaare: SlopePaarZeile[] = grundsteuer
     .flatMap((z): SlopePaarZeile[] => {
-      const vorher = grundsteuerVorher.find((v) => v.schluessel === z.schluessel);
+      const vorher = grundsteuerVorher.find((v) => v.key === z.key);
       return vorher ? [{
-        label: z.name, vorher: vorher.wert, nachher: z.wert,
+        label: z.name, vorher: vorher.value, nachher: z.value,
         hervorgehoben: z.ist_oldenburg,
       }] : [];
     })
     .sort((a, b) => b.vorher - a.vorher);
   const springer = sprungPaare.filter((p) => p.vorher !== p.nachher).length;
-  const platz = platzVonOldenburg(steuerkraft);
-  const oldenburg = steuerkraft.find((z) => z.ist_oldenburg);
+  const platz = platzVonOldenburg(tax_capacity);
+  const oldenburg = tax_capacity.find((z) => z.ist_oldenburg);
 
   // Die Herkunft hängt an der Zeile, nicht an der Seite — beide Reihen haben
   // eine eigene (verschiedene Dateien, verschiedene Proben).
   const hSteuerkraft = herkunftVon(data,
-    data.werte.find((w) => w.reihe === "steuerkraft")?.herkunft_id);
+    data.values.find((w) => w.series === "tax_capacity")?.herkunft_id);
   const hRealsteuern = herkunftVon(data,
-    data.werte.find((w) => w.reihe === "realsteuern")?.herkunft_id);
+    data.values.find((w) => w.series === "real_taxes")?.herkunft_id);
 
-  const olReihe = reihe(data, "steuereinnahmekraft_je_ew", "403000");
-  const wobReihe = reihe(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
+  const olReihe = series(data, "steuereinnahmekraft_je_ew", "403000");
+  const wobReihe = series(data, "steuereinnahmekraft_je_ew", WOLFSBURG);
 
-  const antwort = antwortAnlage(data.beleg);
-  const antrag = antragAnlage(data.beleg);
-  const hatZahlen = steuerkraft.length > 0 || grundsteuer.length > 0;
+  const answer = antwortAnlage(data.citation);
+  const antrag = antragAnlage(data.citation);
+  const hatZahlen = tax_capacity.length > 0 || grundsteuer.length > 0;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]}>
+    <Quellenkontext keys={[...QUELLEN]}>
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-5">
           <div className="min-w-0">
@@ -183,28 +163,28 @@ export default function VergleichSeite() {
             Seite — dieselbe Rechnung wie der Satz an der Rangliste, zu der
             das Minibild (die Städte-Leiter) springt. Ohne Steuerkraft-Reihe
             keine Bühne: kein erfundener Platz. */}
-        {platz != null && steuerkraft.length > 1 && skJahr && (
+        {platz != null && tax_capacity.length > 1 && skJahr && (
           <Seitenbuehne
             kicker="Kreisfreie Städte Niedersachsens"
-            zahl={<>Platz <ZaehlZahl wert={platz} /> von {steuerkraft.length} bei
+            zahl={<>Platz <ZaehlZahl value={platz} /> von {tax_capacity.length} bei
               der Steuerkraft</>}
             sub={`Steuerkraftmesszahl je Einwohner*in · Ausgleichsjahr ${skJahr} — unsere Pro-Kopf-Rechnung, keine amtliche Kennzahl`}
             minibild={{
-              href: "#steuerkraft",
+              href: "#tax_capacity",
               label: "Städte-Leiter — Oldenburg markiert, klickt zur Rangliste",
               skizze: (() => {
-                const werte = steuerkraft.map((z) => z.wert);
+                const werte = tax_capacity.map((z) => z.value);
                 const min = Math.min(...werte), max = Math.max(...werte);
                 const pos = (w: number) => max > min ? 2 + ((w - min) / (max - min)) * 90 : 50;
                 return (
                   <span className="relative block h-[18px]">
                     <span className="absolute inset-x-0 top-2 h-[2px]" style={{ background: "var(--sb-blass)" }} />
-                    {steuerkraft.map((z) => z.ist_oldenburg ? (
-                      <span key={z.schluessel} className="absolute top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]"
-                        style={{ left: `${pos(z.wert)}%`, background: "var(--sb-voll)" }} />
+                    {tax_capacity.map((z) => z.ist_oldenburg ? (
+                      <span key={z.key} className="absolute top-[3px] h-3 w-3 rounded-full shadow-[0_0_0_3px_hsl(var(--primary)/0.18)]"
+                        style={{ left: `${pos(z.value)}%`, background: "var(--sb-voll)" }} />
                     ) : (
-                      <span key={z.schluessel} className="absolute top-[5px] h-2 w-2 rounded-full"
-                        style={{ left: `${pos(z.wert)}%`, background: "var(--sb-mittel)" }} />
+                      <span key={z.key} className="absolute top-[5px] h-2 w-2 rounded-full"
+                        style={{ left: `${pos(z.value)}%`, background: "var(--sb-mittel)" }} />
                     ))}
                   </span>
                 );
@@ -222,7 +202,7 @@ export default function VergleichSeite() {
 
         {/* --- Teil 1: Was sich vergleichen lässt --- */}
         <LottiErklaert
-          titel="Warum ausgerechnet Steuern?"
+          title="Warum ausgerechnet Steuern?"
           text={"Steuern erhebt die Stadt selbst. Die Steuerkraft berechnet das Land für "
             + "alle Gemeinden nach derselben Formel. Dadurch sind diese Werte grundsätzlich "
             + "vergleichbar. Bei Ausgaben hängt der Wert dagegen davon ab, welche Aufgaben "
@@ -230,31 +210,31 @@ export default function VergleichSeite() {
         />
 
         {hatZahlen && skJahr && (
-          <Abschnitt id="steuerkraft" kicker="Steuerkraft je Einwohner*in"
+          <Abschnitt id="tax_capacity" kicker="Steuerkraft je Einwohner*in"
             zusatz={`Ausgleichsjahr ${skJahr} · alle acht kreisfreien Städte`}>
             <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
               Die <GlossaryText text="Steuerkraftmesszahl" /> ist die Größe, mit der das
               Land bemisst, wie finanzstark eine Gemeinde ist.
               {oldenburg && platz === 1 && (
-                <> Oldenburg liegt mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
+                <> Oldenburg liegt mit <strong>{Math.round(oldenburg.value).toLocaleString("de-DE")}&nbsp;Euro
                 je Einwohner*in</strong> an der <strong>Spitze aller acht kreisfreien Städte
                 Niedersachsens</strong>.</>
               )}
               {oldenburg && platz !== null && platz > 1 && (
-                <> Oldenburg steht mit <strong>{Math.round(oldenburg.wert).toLocaleString("de-DE")}&nbsp;Euro
-                je Einwohner*in</strong> auf Platz {platz} von {steuerkraft.length}.</>
+                <> Oldenburg steht mit <strong>{Math.round(oldenburg.value).toLocaleString("de-DE")}&nbsp;Euro
+                je Einwohner*in</strong> auf Platz {platz} von {tax_capacity.length}.</>
               )}
               <Beleg q="lsn_finanzausgleich" />
             </p>
             <div className="mt-3">
-              <Staedtevergleich zeilen={steuerkraft} hinweisUnter100k />
+              <Staedtevergleich zeilen={tax_capacity} hinweisUnter100k />
             </div>
             <p className="mt-2.5 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Unsere Rechnung: Steuerkraftmesszahl geteilt durch die Einwohnerzahl, beide
               aus derselben Tabelle. Das Landesamt weist den Pro-Kopf-Wert nicht selbst aus —
               keine amtliche Kennzahl.
             </p>
-            <Fundstelle h={hSteuerkraft} />
+            <Fundstelle h={hSteuerkraft} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -296,11 +276,11 @@ export default function VergleichSeite() {
                   vonLabel={`${rsVorjahr}`}
                   bisLabel={`${rsJahr} · Reform`}
                   bruchLabel={`ab ${rsJahr} neue Messbeträge`}
-                  einheit="%"
+                  unit="%"
                   beleg={<Beleg q="lsn_realsteuern" />}
                 />
               ) : (
-                <Staedtevergleich zeilen={grundsteuer} einheit="prozent" />
+                <Staedtevergleich zeilen={grundsteuer} unit="percent" />
               )}
             </div>
             {/* Zwei Sätze für zwei Datenlagen. Der Bruch-Hinweis gehört an
@@ -327,7 +307,7 @@ export default function VergleichSeite() {
                 </>
               )}
             </p>
-            <Fundstelle h={hRealsteuern} />
+            <Fundstelle h={hRealsteuern} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -348,13 +328,13 @@ export default function VergleichSeite() {
                   beantwortet das eindrucksvoller als jede Erklärung — dort hängt sie an
                   einem einzigen Unternehmen.
                 </p>
-                <Zeitreihe titel="Oldenburg" punkte={olReihe}
-                  veraenderung={veraenderung(olReihe)} />
-                <Zeitreihe titel="Wolfsburg" punkte={wobReihe}
-                  veraenderung={veraenderung(wobReihe)} />
+                <Zeitreihe title="Oldenburg" punkte={olReihe}
+                  change={change(olReihe)} />
+                <Zeitreihe title="Wolfsburg" punkte={wobReihe}
+                  change={change(wobReihe)} />
               </div>
             )}
-            <Fundstelle h={hRealsteuern} />
+            <Fundstelle h={hRealsteuern} className="mt-3" />
           </Abschnitt>
         )}
 
@@ -378,7 +358,7 @@ export default function VergleichSeite() {
               Lesebereich. Schwelle am CONTAINER
               (Designsprache §4), nicht am Fenster: Bei 1024 px Fenster ist
               neben der Seitenleiste nur Platz für Spalten von 344 px. */}
-          <div className="mt-2 grid items-start gap-x-8 gap-y-3.5 @5xl/kern:grid-cols-2">
+          <div className="mt-2">
             <div className="flex max-w-[76ch] flex-col gap-2.5 text-[13px] leading-relaxed text-foreground/90">
               <p>
                 Die Ausgaben je Einwohner*in stehen in beiden Haushalten. Ein direkter
@@ -405,10 +385,20 @@ export default function VergleichSeite() {
               </p>
             </div>
 
+          </div>
+          {/* Die Belege — der Vorgang von 2018 mit Tabelle und Zitat, dazu
+              Innenministerium und Statistisches Bundesamt — stehen seit
+              02.09.2026 hinter einem Auslöser: Das Argument oben trägt die
+              Seite, die Herleitung ist einen Klick entfernt und vollständig. */}
+          <details className="group mt-3">
+            <summary className="cursor-pointer list-none text-[12.5px] font-semibold text-primary marker:content-none">
+              <span className="group-open:hidden">Die Belege: die Stadt 2018, das Innenministerium, das Statistische Bundesamt</span>
+              <span className="hidden group-open:inline">Weniger</span>
+            </summary>
             {/* Der Beleg aus dem eigenen Bestand. */}
-            <div className="rounded-xl border border-border bg-muted/30 p-3.5">
+            <div className="mt-2 rounded-xl border border-border bg-muted/30 p-3.5">
               <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Aus dem Ratsinformationssystem · {data.beleg.vorlage_nr} · 2018
+                Aus dem Ratsinformationssystem · {data.citation.template_number} · 2018
               </p>
               <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
                 Die FDP-Fraktion fragte im November 2018, wie sich die Personalquote
@@ -442,17 +432,17 @@ export default function VergleichSeite() {
 
               {/* Die Verweise: erst der Vorgang bei uns, dann die Originale. */}
               <div className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-border pt-2.5">
-                {data.beleg.beschluss_id != null && (
-                  <Link href={decisionHref(data.beleg.beschluss_id)}
+                {data.citation.decision_id != null && (
+                  <Link href={decisionHref(data.citation.decision_id)}
                     className="group inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <FileText className="h-3.5 w-3.5 flex-none" />
-                    Der Vorgang bei uns: {data.beleg.titel ?? data.beleg.vorlage_nr}
+                    Der Vorgang bei uns: {data.citation.title ?? data.citation.template_number}
                     <ArrowRight size={13} strokeWidth={2}
                       className="transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 )}
-                {antwort?.url && (
-                  <a href={antwort.url} target="_blank" rel="noopener noreferrer"
+                {answer?.url && (
+                  <a href={answer.url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <ExternalLink className="h-3.5 w-3.5 flex-none" />
                     Antwort der Verwaltung im Original (PDF)
@@ -465,16 +455,15 @@ export default function VergleichSeite() {
                     Antrag der FDP-Fraktion im Original (PDF)
                   </a>
                 )}
-                {!data.beleg.anlagen.length && (
-                  <a href={data.beleg.vorlage_url} target="_blank" rel="noopener noreferrer"
+                {!data.citation.attachments.length && (
+                  <a href={data.citation.template_url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
                     <ExternalLink className="h-3.5 w-3.5 flex-none" />
-                    Vorlage {data.beleg.vorlage_nr} im Bürgerinformationssystem
+                    Vorlage {data.citation.template_number} im Bürgerinformationssystem
                   </a>
                 )}
               </div>
             </div>
-          </div>
 
           {/* Steht UNTER beiden Spalten, nicht in einer: „Dieselbe Warnung"
               meint den Beleg daneben mit — der Satz muss also nach ihm
@@ -489,6 +478,7 @@ export default function VergleichSeite() {
             die Vergleichbarkeit werde dadurch eingeschränkt, dass der Ausgliederungsprozess
             unterschiedlich weit fortgeschritten sei. Drei Instanzen, derselbe Befund.
           </p>
+          </details>
         </section>
 
         {/* --- Wen man überhaupt vergleichen würde --- */}
@@ -508,16 +498,16 @@ export default function VergleichSeite() {
               Steckbrief-Karten unter „Woher das Geld kommt"; die Texte sind
               zwei bis drei Sätze und tragen das. Schwelle am CONTAINER
               (Designsprache §4). */}
-          <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/abschnitt:grid-cols-3">
+          <ul className="mt-3 grid gap-x-6 gap-y-2.5 @5xl/section:grid-cols-3">
             {Object.entries(ROLLEN).map(([key, r]) => {
-              const stadt = data.staedte.find((s) => s.schluessel === key);
+              const stadt = data.cities.find((s) => s.key === key);
               if (!stadt) return null;
               return (
                 <li key={key} className="border-l-2 border-border pl-3">
                   <p className="text-[13px] font-bold">
                     {stadt.name}
                     <span className="ml-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                      {r.rolle}
+                      {r.role}
                     </span>
                   </p>
                   <p className="mt-0.5 max-w-[72ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -568,13 +558,10 @@ export default function VergleichSeite() {
               <strong>Eine gemeinsame Zeitreihe mit den Steuerkraft-Zahlen auf{" "}
               <Link href="/haushalt/steuer" className="font-semibold text-primary">
                 Woher das Geld kommt
-              </Link>.</strong> Beide Reihen nennen dieselben Beträge und tragen
-              inzwischen auch dieselbe Jahresangabe: Der offene Datensatz der Stadt
-              beschriftete sie ein Jahr zu früh — nachgewiesen an den eigenen Büchern
-              der Stadt, in denen das Geld ein Jahr später als Ist verbucht ist —, und
-              wir haben das korrigiert. Wir rechnen sie trotzdem nicht zusammen: Sie
-              stammen aus zwei Veröffentlichungen, die sich in Nachträgen und
-              Revisionen um kleine Beträge unterscheiden können.
+              </Link>.</strong> Beide Reihen nennen dieselben Beträge. Wir rechnen
+              sie trotzdem nicht zusammen: Sie stammen aus zwei Veröffentlichungen,
+              die sich in Nachträgen und Revisionen um kleine Beträge unterscheiden
+              können.
             </li>
           </ul>
         </section>
@@ -588,7 +575,7 @@ export default function VergleichSeite() {
 
         <SchrittWeiter href="/haushalt/vergleich" />
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
+        <Quellenverzeichnis keys={[...QUELLEN]} />
       </div>
     </Quellenkontext>
   );

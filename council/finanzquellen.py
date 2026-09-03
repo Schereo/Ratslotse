@@ -2,10 +2,10 @@
 Datenart, und das Einlesen dazu.
 
 Dreizehn Schichten tragen den Bereich. Sieben davon hängen als **Anlagen** an
-Ratsvorlagen und liegen mit Volltext in ``council_anlagen``; woran man sie
+Ratsvorlagen und liegen mit Volltext in ``council_attachments``; woran man sie
 dort erkennt (Label-Muster, Mindestseitenzahl, Ausschlüsse), stand bis 08/2026
 verstreut in zwei Ingest-Skripten. Hier steht es einmal. ``ingest_finanz-
-berichte.py``, ``ingest_pruefberichte.py`` und der Cron ``check_finanzdaten.py``
+n_reports.py``, ``ingest_pruefberichte.py`` und der Cron ``check_finanzdaten.py``
 lesen dieselbe Definition — auf die Frage „ist das ein Jahresabschluss?" gibt
 es sonst zwei Antworten, und eine davon veraltet still.
 
@@ -56,7 +56,7 @@ ist und warum das der Unterschied zwischen „läuft" und „veraltet still" ist
 steht bei :class:`Finanzquelle`.
 
 .. warning::
-   ``council_anlagen.fetched_at`` taugt nicht als Veröffentlichungsdatum: Bei
+   ``council_attachments.fetched_at`` taugt nicht als Veröffentlichungsdatum: Bei
    allen Finanzdokumenten steht dort der 10.08.2026, der Tag des Volltext-
    Backfills. Der Jahrgang kommt deshalb aus dem Dokument selbst.
 """
@@ -69,10 +69,11 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
 
-from council import (anlagenspiegel, bilanz, buergschaften, kennzahlen, ergebnishaushalt, finanzberichte,
+from council import (anlagenspiegel, bilanz, buergschaften, indicators, income_budget, finanzberichte,
                      herkunft, investitionsprogramm, konzernabschluss,
                      pruefberichte, stellenplan)
 from council.store import CouncilStore
+from kern.dbfehler import tabelle_fehlt
 
 #: Wie lange nach dem erwarteten Monat ein fehlender Jahrgang als „die Stadt
 #: ist eben spät dran" durchgeht. Danach ist er eine Meldung wert — nicht als
@@ -111,11 +112,11 @@ class Protokoll:
 
 @dataclass(frozen=True)
 class Erkennung:
-    """Wie eine Datenart ihre Dokumente in ``council_anlagen`` findet.
+    """Wie eine Datenart ihre Dokumente in ``council_attachments`` findet.
 
     Bewusst grob: Der SQL-Filter soll nur verhindern, dass der Parser den
     ganzen Anlagenbestand durchkaut. Entschieden wird am Dokument selbst
-    (``jahrgang``) — bei den Prüfberichten sogar ausschließlich dort, weil die
+    (``budget_year``) — bei den Prüfberichten sogar ausschließlich dort, weil die
     Labels zwischen Kernverwaltung, Eigenbetrieb und vier Stiftungen nicht
     unterscheiden.
     """
@@ -130,6 +131,12 @@ class Erkennung:
     mindest_seiten: int = 0
     #: Label-Muster, die ein Dokument ausschließen.
     ausschluesse: tuple[str, ...] = ()
+    #: SQL-LIKE-Muster auf den TITEL DER VORLAGE, an der die Anlage hängt
+    #: (``council_templates.title`` über ``kvonr``). Für Anlagen, deren Label
+    #: nichts sagt: Die Gebührenbedarfsberechnung 2021 heißt im RIS nur
+    #: „Anlagen 1-4" — ihre Vorlage aber „Gebührenbedarfsberechnungen 2021 -
+    #: Bericht". Mit ``oder=True`` genügt Label ODER Vorlagentitel.
+    vorlagen_muster: tuple[str, ...] = ()
     #: ORDER BY der Kandidatenabfrage.
     ordnung: str = "label"
 
@@ -143,6 +150,9 @@ class Erkennung:
         for m in self.text_muster:
             teile.append("raw_text LIKE ?")
             werte.append(m)
+        for m in self.vorlagen_muster:
+            teile.append("kvonr IN (SELECT kvonr FROM council_templates WHERE title LIKE ?)")
+            werte.append(m)
         wo = [f"({(' OR ' if self.oder else ' AND ').join(teile)})"] if teile else []
         if self.mindest_seiten:
             wo.append("n_pages > ?")
@@ -154,8 +164,34 @@ class Erkennung:
 
     def abfrage(self, spalten: str) -> tuple[str, list]:
         wo, werte = self.where()
-        return (f"SELECT {spalten} FROM council_anlagen WHERE {wo} "
+        return (f"SELECT {spalten} FROM council_attachments WHERE {wo} "
                 f"ORDER BY {self.ordnung}"), werte
+
+
+def finanz_anlagen_where() -> tuple[str, list]:
+    """WHERE-Fragment „diese Anlage könnte eine Finanzschicht füllen" — für die
+    Backfill-Skripte (Text, OCR), die nur die Finanz-Anlagen laden sollen.
+
+    ODER über alle Label-Muster UND über alle Vorlagentitel-Muster der
+    Registry. Bis 09/2026 bauten beide Skripte ihr ODER nur aus den
+    Label-Mustern: Die Gebührenbedarfsberechnung 2021 („Anlagen 1-4", ein
+    Scan) fiel damit durch jedes Netz — kein Text, keine OCR, kein Jahrgang,
+    und der Datenstand meldete eine Lücke, für die das Dokument längst da war."""
+    labels: list[str] = []
+    titel: list[str] = []
+    for key in REIHENFOLGE:
+        e = QUELLEN[key].erkennung
+        if e is None:
+            continue
+        labels.extend(m for m in e.label_muster if m not in labels)
+        titel.extend(m for m in e.vorlagen_muster if m not in titel)
+    teile = ["label LIKE ?"] * len(labels)
+    werte: list = list(labels)
+    if titel:
+        teile.append("kvonr IN (SELECT kvonr FROM council_templates WHERE "
+                     + " OR ".join("title LIKE ?" for _ in titel) + ")")
+        werte.extend(titel)
+    return "(" + " OR ".join(teile) + ")", werte
 
 
 @dataclass(frozen=True)
@@ -167,7 +203,7 @@ class Finanzquelle:
     Jahrgang. Wo die Einheit kleiner ist, sagt es ``einheiten_von``; zwei
     Beispiele, an denen die Regel hängt:
 
-    - Ein Produkt-Jahrgang verteilt sich auf rund neun Teilhaushalts-Anlagen
+    - Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn Teilhaushalts-Anlagen
       (``council/store.py`` sagt es bei ``save_produkte`` selbst: „Die Produkte
       eines Jahres verteilen sich auf mehrere Teilhaushalts-Dokumente, die
       nacheinander eingelesen werden").
@@ -207,10 +243,10 @@ class Finanzquelle:
     #: check_finanzdaten).
     herkunft: str
     #: Welche **Einheiten** schon im Bestand stehen (Menge von Tupeln).
-    bestand: Callable[[CouncilStore], set[tuple]]
+    balance: Callable[[CouncilStore], set[tuple]]
     #: Wie eine Einheit für Leserinnen heißt — ``None``, wo ein Dokument den
     #: ganzen Jahrgang trägt und „vollständig" keine Frage ist.
-    einheit: str | None = None
+    unit: str | None = None
     erkennung: Erkennung | None = None
     #: Welche Einheiten ein Kandidat füllen könnte — aus Label bzw. Textkopf,
     #: nie aus ``fetched_at``.
@@ -219,6 +255,16 @@ class Finanzquelle:
     einlesen: Callable[..., dict] | None = None
     #: Weitere Tabellen, die derselbe Lauf mitfüllt.
     nebentabellen: tuple[str, ...] = ()
+    #: Das Ingest-Skript dieser Datenart, wenn sie keinen eigenen Leser
+    #: (``einlesen``) hat: Pfad relativ zur Repo-Wurzel plus Argumente. Der
+    #: Cron ruft es auf, sobald ein NEUES Dokument im Bestand liegt — gemessen
+    #: an :meth:`dokumentmarke`. Tims Punkt 5 (02.09.2026): „Frische
+    #: automatisieren — Wecker plus Lauf beim Auftauchen einer neuen Anlage."
+    lauf: tuple[str, ...] | None = None
+    #: Die Marke des jüngsten Dokuments, das diese Datenart lesen könnte —
+    #: für Quellen ohne ``erkennung`` (Vorlagen statt Anlagen). Ohne Angabe
+    #: gilt die höchste ``document_id`` der Kandidaten.
+    marke: Callable[[CouncilStore], int | None] | None = None
     #: Was ein Mensch tut, wenn diese Schicht ausbleibt — Quelle und Skript im
     #: Klartext. Nur bei ``automatisch is False`` gesetzt; der Cron schreibt es
     #: in seine Meldung. Dort stand es bis 08/2026 fest verdrahtet als
@@ -231,16 +277,31 @@ class Finanzquelle:
         """Kann der Cron diese Schicht allein nachziehen?"""
         return self.einlesen is not None
 
-    def faellig_ab(self, jahrgang: int) -> date:
+    def faellig_ab(self, budget_year: int) -> date:
         """Wann dieser Jahrgang üblicherweise im Rat liegt."""
-        return date(jahrgang + self.versatz, self.erwarteter_monat, 1)
+        return date(budget_year + self.versatz, self.erwarteter_monat, 1)
 
     def neuester_erwarteter(self, heute: date) -> int:
         """Der jüngste Jahrgang, der heute schon vorliegen müsste."""
-        jahrgang = heute.year - self.versatz
-        if heute < self.faellig_ab(jahrgang):
-            jahrgang -= 1
-        return jahrgang
+        budget_year = heute.year - self.versatz
+        if heute < self.faellig_ab(budget_year):
+            budget_year -= 1
+        return budget_year
+
+    def dokumentmarke(self, store: CouncilStore) -> int | None:
+        """Die Marke des jüngsten Dokuments dieser Datenart im Bestand.
+
+        Eine Zahl, die nur wächst, wenn etwas Neues da ist — die
+        ``document_id`` der jüngsten Anlage (bzw. was ``marke`` liefert).
+        Der Cron vergleicht sie mit der Marke seines letzten Skriptlaufs;
+        steigt sie, gibt es ein Dokument, das noch niemand gelesen hat."""
+        if self.marke is not None:
+            return self.marke(store)
+        if self.erkennung is None:
+            return None
+        ids = [r["document_id"] for r in self.kandidaten(store, kopf_zeichen=1)
+               if r.get("document_id") is not None]
+        return max(ids) if ids else None
 
     def kandidaten(self, store: CouncilStore, kopf_zeichen: int = 4000) -> list[dict]:
         """Anlagen, die ein Dokument dieser Datenart sein könnten — mit den
@@ -257,7 +318,7 @@ class Finanzquelle:
         rows = [dict(r) for r in store._conn.execute(sql, werte)]  # noqa: SLF001
         for r in rows:
             r["einheiten"] = self.einheiten_von(r) if self.einheiten_von else set()
-            r["jahrgang"] = next(iter(sorted(e[0] for e in r["einheiten"])), None)
+            r["budget_year"] = next(iter(sorted(e[0] for e in r["einheiten"])), None)
         return rows
 
     def dokumente(self, store: CouncilStore, spalten: str) -> list[dict]:
@@ -280,15 +341,15 @@ class Finanzquelle:
         ``lies_*``-Funktionen riefen ihre ``_bestand_*``-Funktion bis 08/2026
         **direkt** auf, an ihrem eigenen Registry-Eintrag vorbei. Damit gab es
         auf die Frage „was habe ich schon?" zwei Antworten — die des Crons
-        (über ``bestand``) und die des Einlesens —, und ein Wechsel an einer
+        (über ``balance``) und die des Einlesens —, und ein Wechsel an einer
         Stelle wäre an der anderen still unbemerkt geblieben. Genau die
         Doppelung, gegen die es diese Registry gibt (s. Modulkopf).
         """
-        return self.bestand(store) if nur_fehlende else set()
+        return self.balance(store) if nur_fehlende else set()
 
     def offene_einheiten(self, store: CouncilStore) -> set[tuple]:
         """Einheiten, für die ein Dokument vorliegt, die aber fehlen."""
-        vorhanden = self.bestand(store)
+        vorhanden = self.balance(store)
         moeglich: set[tuple] = set()
         for r in self.kandidaten(store):
             moeglich |= r["einheiten"]
@@ -323,27 +384,26 @@ EBENEN = ("gesamt", "teilhaushalte", "kasse", "bilanz")
 
 
 def _einheiten_jahresabschluss(row: dict) -> set[tuple]:
-    jahr = _jahr_aus_label(row)
-    return {(jahr, e) for e in EBENEN} if jahr else set()
+    year = _jahr_aus_label(row)
+    return {(year, e) for e in EBENEN} if year else set()
 
 
 def _einheiten_schlussbericht(row: dict) -> set[tuple]:
     treffer = finanzberichte.pruefbericht_aus_anlage(row.get("label"), row.get("kopf"))
-    return {(treffer["jahr"],)} if treffer else set()
+    return {(treffer["year"],)} if treffer else set()
 
 
 def _einheiten_feststellungen(row: dict) -> set[tuple]:
-    jahr = pruefberichte.erkenne_jahrgang(row.get("kopf") or "")
-    return {(jahr,)} if jahr else set()
+    year = pruefberichte.erkenne_jahrgang(row.get("kopf") or "")
+    return {(year,)} if year else set()
 
-
-#: Erste Ansatzspalte im Tabellenkopf eines Teilhaushalts-Plans.
-_ANSATZ = re.compile(r"Ansatz\s+(20\d\d)")
 
 #: Nummer des Teilhaushalts aus dem Label — „007 THH01", „2024 007 IVw THH01",
 #: „TOP 5 - Anlage III - THH 08". Führende Nullen und der Zwischenraum
 #: schwanken zwischen den Jahrgängen.
 _LABEL_THH = re.compile(r"THH\s*0*(\d+)")
+#: Der Teilhaushalt 13 in seiner alten Beschriftung (s. ``teilhaushalt_nummer``).
+_LABEL_STIFTUNGEN = re.compile(r"nicht\s+rechtsf", re.IGNORECASE)
 
 
 def teilhaushalt_nummer(label: str | None) -> int | None:
@@ -355,31 +415,57 @@ def teilhaushalt_nummer(label: str | None) -> int | None:
     ``parse_teilergebnishaushalt`` am Ende vergibt (Test in
     ``tests/test_finanzquellen.py``)."""
     m = _LABEL_THH.search(label or "")
-    return int(m.group(1)) if m else None
+    if m:
+        return int(m.group(1))
+    # „019 nicht rechtsfähige Stiftungen" (2019–2023): Teilhaushalt 13 ohne
+    # das Wort THH im Label — der Textkopf sagt „THH13", das Label nicht.
+    if _LABEL_STIFTUNGEN.search(label or ""):
+        return 13
+    return None
 
 
 def teilhaushalt_jahrgang(text: str | None) -> int | None:
     """Für welchen Jahrgang ein Teilhaushalts-Plan Ansätze liefert.
 
-    Nicht das Jahr aus dem Dateinamen: Der Plan „2024 007 IVw THH01" ist der
-    Haushaltsplan **2024**, seine erste Ansatzspalte trägt aber 2023 — genau
-    den Wert, den ``parse_teilergebnishaushalt`` übernimmt (die späteren
-    Spalten sind mittelfristige Finanzplanung, keine beschlossenen Ansätze).
-    Wer hier das Label läse, suchte einen Jahrgang, den die Tabelle nie
-    zurückgibt, und der Cron liefe in eine Endlosschleife aus Nachladen und
-    Nichtfinden.
+    Aus dem Tabellenkopf, nicht aus dem Dateinamen: Drei der acht Jahrgänge
+    heißen schlicht „007 THH01" und tragen gar keine Jahreszahl. Der Kopf sagt
+    es immer — und zwar in seiner **dritten** Spalte, dem zweiten ``Ansatz``
+    (die erste Ansatzspalte ist der fortgeschriebene Vorjahresansatz, die
+    weiteren sind Finanzplanung). Dieselbe Spalte übernimmt
+    ``parse_teilergebnishaushalt``; wer hier eine andere läse, suchte einen
+    Jahrgang, den die Tabelle nie zurückgibt, und der Cron liefe in eine
+    Endlosschleife aus Nachladen und Nichtfinden.
 
-    Geprüft gegen alle 79 Teilhaushalts-Anlagen des Bestands: Der erste
-    ``Ansatz JJJJ`` im Dokumentkopf ist immer der Jahrgang, den der Parser am
-    Ende vergibt (siehe ``tests/test_finanzquellen.py``)."""
-    m = _ANSATZ.search(text or "")
+    Bis 09/2026 stand hier die **erste** Ansatzspalte. Damit hing die ganze
+    Schicht ein Jahr hinter ihren Dokumenten (s. ``finanzberichte``,
+    Abschnitt „Welche Spalte der beschlossene Ansatz ist")."""
+    return finanzberichte.thh_budget_year(text)
+
+
+#: Die Jahreszahl im Label — „2026 007 Vw THH01", „007 2023 THH01". Vier der
+#: acht Jahrgangs-Generationen tragen sie, die älteren nicht.
+_LABEL_JAHR = re.compile(r"(20\d\d)")
+
+
+def teilhaushalt_label_jahr(label: str | None) -> int | None:
+    """Der Jahrgang, den das Label behauptet — ``None``, wenn es keinen nennt.
+
+    Nur zur **Gegenprobe**: Maßgeblich bleibt der Tabellenkopf, weil ihn jedes
+    Dokument hat. Aber wo beide etwas sagen, müssen sie dasselbe sagen — über
+    die 53 Anlagen mit Jahreszahl im Label tun sie das ausnahmslos. Genau
+    diese Probe hätte die Jahresverschiebung von 09/2026 sofort gezeigt:
+    „2026 007 Vw THH01" wurde als Jahrgang 2025 abgelegt."""
+    m = _LABEL_JAHR.search(label or "")
     return int(m.group(1)) if m else None
 
 
 def _einheiten_teilhaushalt(row: dict) -> set[tuple]:
-    jahr = teilhaushalt_jahrgang(row.get("kopf"))
-    nr = teilhaushalt_nummer(row.get("label"))
-    return {(jahr, nr)} if jahr and nr else set()
+    year = teilhaushalt_jahrgang(row.get("kopf"))
+    # Die Nummer aus dem Label — und wo das Label keine nennt, aus dem
+    # Textkopf („THH13" auf dem Deckblatt der Stiftungs-Anlagen).
+    nr = teilhaushalt_nummer(row.get("label")) or teilhaushalt_nummer(
+        (row.get("kopf") or "")[:600])
+    return {(year, nr)} if year and nr else set()
 
 
 # --- Was schon im Bestand steht ---------------------------------------------
@@ -387,7 +473,9 @@ def _einheiten_teilhaushalt(row: dict) -> set[tuple]:
 def _jahre(store: CouncilStore, sql: str) -> list:
     try:
         return store._conn.execute(sql).fetchall()  # noqa: SLF001
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
         return []
 
 
@@ -399,18 +487,18 @@ def _bestand_jahresabschluss(store: CouncilStore) -> set[tuple]:
     Zeile" und hielte einen Jahrgang, dessen Teilhaushalts-Ebene an der
     Summenprobe gescheitert ist, für fertig."""
     aus = {(r[0], "gesamt") for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_ergebnisrechnung WHERE thh_nr IS NULL")}
+        store, "SELECT DISTINCT year FROM council_income_statement WHERE sub_budget_no IS NULL")}
     aus |= {(r[0], "teilhaushalte") for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_ergebnisrechnung WHERE thh_nr IS NOT NULL")}
+        store, "SELECT DISTINCT year FROM council_income_statement WHERE sub_budget_no IS NOT NULL")}
     aus |= {(r[0], "kasse") for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_finanzrechnung")}
+        store, "SELECT DISTINCT year FROM council_cash_flow_statement")}
     # Die Bilanz zählt für das Jahr **des Dokuments**, nicht für den
     # Stichtag: Der älteste Stichtag (2016) stammt aus der Vorjahresspalte des
     # Abschlusses 2017 und hat kein eigenes Dokument. Stünde er hier als
     # eigene Einheit, suchte der Cron ewig nach einem Jahresabschluss 2016.
     aus |= {(r[0], "bilanz") for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_bilanz WHERE jahr > "
-               "(SELECT MIN(jahr) FROM council_bilanz)")}
+        store, "SELECT DISTINCT year FROM council_balance_sheet WHERE year > "
+               "(SELECT MIN(year) FROM council_balance_sheet)")}
     return aus
 
 
@@ -418,7 +506,7 @@ def _bestand_produkte(store: CouncilStore) -> set[tuple]:
     """Je Jahrgang eine Einheit **pro Teilhaushalt** — die Granularität, in der
     die Dokumente hereinkommen."""
     return {(r[0], r[1]) for r in _jahre(
-        store, "SELECT DISTINCT jahr, thh_nr FROM council_produkte WHERE thh_nr IS NOT NULL")}
+        store, "SELECT DISTINCT year, sub_budget_no FROM council_products WHERE sub_budget_no IS NOT NULL")}
 
 
 def _einheiten_kennzahlen(row: dict) -> set[tuple]:
@@ -433,11 +521,11 @@ def _einheiten_kennzahlen(row: dict) -> set[tuple]:
 
 
 def _bestand_kennzahlen(store: CouncilStore) -> set[tuple]:
-    return {(z["bericht_jahr"],) for z in store.get_kennzahlen()}
+    return {(z["report_year"],) for z in store.get_kennzahlen()}
 
 
 def _bestand_schlussberichte(store: CouncilStore) -> set[tuple]:
-    return {(q["jahr"],) for q in store.get_pruefbericht_quellen()}
+    return {(q["year"],) for q in store.get_pruefbericht_quellen()}
 
 
 def _bestand_feststellungen(store: CouncilStore) -> set[tuple]:
@@ -454,15 +542,15 @@ def _einheiten_ergebnishaushalt(row: dict) -> set[tuple]:
     Vier der acht Dokumente heißen schlicht „005 Gesamtergebnishaushalt" und
     tragen gar keine Jahreszahl; die anderen vier tragen sie, aber an
     verschiedenen Stellen. Der Kopf dagegen sagt es immer und sagt es genau:
-    Die dritte Spalte ist das Planjahr (s. ``ergebnishaushalt.jahrgang``)."""
-    jahr = ergebnishaushalt.jahrgang(row.get("kopf"))
-    return {(jahr,)} if jahr else set()
+    Die dritte Spalte ist das Planjahr (s. ``income_budget.budget_year``)."""
+    year = income_budget.budget_year(row.get("kopf"))
+    return {(year,)} if year else set()
 
 
 def _bestand_ergebnishaushalt(store: CouncilStore) -> set[tuple]:
     """Ein Dokument trägt einen ganzen Plan-Jahrgang — Einheit = Jahrgang.
 
-    Gezählt wird nach ``plan_jahrgang``, nicht nach ``jahr``: Sonst hielte ein
+    Gezählt wird nach ``plan_budget_year``, nicht nach ``year``: Sonst hielte ein
     Finanzplanungsjahr, das ein älterer Plan nebenbei mitliefert, den
     zugehörigen Haushalt für schon eingelesen."""
     return {(j,) for j in store.ergebnishaushalt_jahrgaenge()}
@@ -475,11 +563,12 @@ def _einheiten_stellenplan(row: dict) -> set[tuple]:
     beginnt auf Seite 5, der Kandidaten-Ausschnitt endet bei 4.000 Zeichen).
     Das ist Absicht: Der Stellenplan **hat** zwei Teile, und ein Jahrgang, bei
     dem nur einer hereinkommt, ist unvollständig — genau das soll die
-    Buchführung sagen. Im Jahrgang 2026 ist das der Fall, weil Teil B im PDF
-    keine Zeichenzuordnung mitbringt; der Cron meldet ihn einmal als offen und
+    Buchführung sagen. Im Jahrgang 2026 war das der Fall, weil Teil B im PDF
+    keine Zeichenzuordnung mitbrachte (seit 09/2026 liest der Text-Backfill
+    solche Seiten per OCR, ``--glyphseiten``); der Cron meldet ihn einmal als offen und
     schweigt danach (``_schon_gemeldet``)."""
-    jahr = stellenplan.jahrgang(row.get("kopf"))
-    return {(jahr, t) for t in sorted(stellenplan.TEIL_SPALTEN)} if jahr else set()
+    year = stellenplan.budget_year(row.get("kopf"))
+    return {(year, t) for t in sorted(stellenplan.TEIL_SPALTEN)} if year else set()
 
 
 def _bestand_stellenplan(store: CouncilStore) -> set[tuple]:
@@ -501,9 +590,9 @@ def _einheiten_investitionsprogramm(row: dict) -> set[tuple]:
 
     Der Jahrgang kommt aus dem Textkopf, nicht aus dem Label: Vier der acht
     Anlagen heißen nur „004 Investitionsprogramm" (s.
-    ``investitionsprogramm.jahrgang``)."""
-    jahr = investitionsprogramm.jahrgang(row.get("kopf"))
-    return {(jahr,)} if jahr else set()
+    ``investitionsprogramm.budget_year``)."""
+    year = investitionsprogramm.budget_year(row.get("kopf"))
+    return {(year,)} if year else set()
 
 
 def _bestand_investitionsprogramm(store: CouncilStore) -> set[tuple]:
@@ -523,8 +612,8 @@ def _bestand_konzernabschluss(store: CouncilStore) -> set[tuple]:
 
 
 def _einheiten_konzernabschluss(row: dict) -> set[tuple]:
-    jahr = konzernabschluss.jahrgang(row.get("kopf"))
-    return {(jahr,)} if jahr else set()
+    year = konzernabschluss.budget_year(row.get("kopf"))
+    return {(year,)} if year else set()
 
 
 def _bestand_gebuehren(store: CouncilStore) -> set[tuple]:
@@ -538,9 +627,31 @@ def _bestand_gebuehren(store: CouncilStore) -> set[tuple]:
     """
     try:
         return {(int(j),) for (j,) in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT jahr FROM council_gebuehren")}
+            "SELECT DISTINCT year FROM council_fees")}
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return set()
+
+
+def _bestand_liquiditaet(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Monat)`` je Zeile — die Einheit ist der Monat, nicht der
+    Jahrgang: Die Grafik kommt monatlich, und ein Jahrgang mit fünf Monaten
+    ist so lange „teilweise", bis der Dezember da ist."""
+    return store.liquidity_einheiten()
+
+
+def _bestand_haushaltsvollzug(store: CouncilStore) -> set[tuple]:
+    """Welche ``(Jahrgang, Stichtag, Haushalt)`` im Bestand stehen.
+
+    Die Einheit ist die einzelne Übersichtstabelle, nicht der Jahrgang: Ein
+    Haushaltsjahr besteht aus bis zu vier Stichtagen mit je zwei Haushalten.
+    Wer je Jahrgang buchführte, hielte 2025 nach dem Bericht zum 31. März für
+    erledigt — und zöge die drei folgenden Quartale nie nach.
+
+    Der Stichtag steht im Tupel und nicht nur das Quartal, weil die Stadt ihn
+    selbst so schreibt: „zum 30. Juni“ ist der Berichtsstand, und in einem
+    Jahrgang sind die vier Stichtage vier verschiedene Erwartungen an
+    dasselbe Jahresende."""
+    return store.haushaltsvollzug_einheiten()
 
 
 def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
@@ -552,7 +663,7 @@ def _bestand_haushaltssatzung(store: CouncilStore) -> set[tuple]:
     """
     try:
         return {(int(j),) for (j,) in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT jahr FROM council_haushaltssatzung WHERE nachtrag = 0")}
+            "SELECT DISTINCT year FROM council_budget_bylaw WHERE supplement = 0")}
     except Exception:  # noqa: BLE001 — Tabelle kann fehlen
         return set()
 
@@ -571,9 +682,51 @@ def _bestand_wirtschaftsplan(store: CouncilStore) -> set[tuple]:
     """
     try:
         return {(r[0],) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT DISTINCT jahr FROM council_wirtschaftsplaene")}
+            "SELECT DISTINCT year FROM council_business_plans")}
     except sqlite3.OperationalError:
         return set()
+
+
+def _bestand_loans(store: CouncilStore) -> set[tuple]:
+    """Die Jahrgänge, für die eine Unterrichtung über Kreditaufnahmen im
+    Bestand steht. Einheit ist der Jahrgang des Berichtszeitraums — eine
+    Unterrichtung deckt ein Halbjahr oder ein Quartal, die Frage der Seite
+    ist aber „bis wann reichen die Zahlen?"."""
+    return {(r[0],) for r in _jahre(
+        store, "SELECT DISTINCT year FROM council_loan_notices")}
+
+
+def _marke_loans(store: CouncilStore) -> int | None:
+    """Die jüngste Vorlage, die eine Unterrichtung sein könnte — dieselbe
+    Auswahl wie ``store.kreditunterrichtungen()``, als ``kvonr``.
+
+    Die Schicht hängt an VORLAGEN mit Volltext, nicht an Anlagen: Eine
+    ``erkennung`` über Anlagen-Labels griffe ins Leere, die ``document_id``
+    der Anlage gibt es hier nicht. Die ``kvonr`` wächst mit jeder neuen
+    Vorlage und taugt deshalb als Marke."""
+    from council.loans import TITEL_SQL
+    reihen = _jahre(store, f"SELECT MAX(kvonr) FROM council_templates WHERE {TITEL_SQL}")
+    return reihen[0][0] if reihen and reihen[0][0] is not None else None
+
+
+def _bestand_eigenbetriebe_abschluss(store: CouncilStore) -> set[tuple]:
+    """``(Jahr, Betrieb)`` — die Einheit ist der Betrieb im Jahr: Vier Betriebe
+    legen getrennt vor, und ein Jahrgang mit zwei von vier ist „teilweise"."""
+    return store.enterprise_account_einheiten()
+
+
+def _marke_eigenbetriebe_abschluss(store: CouncilStore) -> int | None:
+    """Die jüngste Jahresabschluss-Vorlage eines Eigenbetriebs (``kvonr``)."""
+    from council.eigenbetriebe_abschluss import TITEL_MUSTER, TITEL_SQL
+    try:
+        r = store._conn.execute(  # noqa: SLF001
+            f"SELECT MAX(kvonr) FROM council_templates WHERE {TITEL_SQL}",
+            list(TITEL_MUSTER)).fetchone()
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
+        return None
+    return r[0] if r and r[0] is not None else None
 
 
 def _bestand_schulden(store: CouncilStore) -> set[tuple]:
@@ -585,7 +738,7 @@ def _bestand_schulden(store: CouncilStore) -> set[tuple]:
     ein Jahrgang fehlen kann, ohne dass die Lieferung fehlt, ist hier kein
     Sonderfall, sondern eingeplant (s. ``council/schulden.py``)."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_schulden")}
+        store, "SELECT DISTINCT year FROM council_debt")}
 def _bestand_beteiligungsbericht(store: CouncilStore) -> set[tuple]:
     """Die **Berichts**jahrgänge, die eingelesen sind.
 
@@ -604,8 +757,8 @@ def _bestand_lsn_steuerkraft(store: CouncilStore) -> set[tuple]:
     nicht gespeichert. Die Einheit ist deshalb der Jahrgang, und „da" heißt
     hier tatsächlich „fertig"."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_staedtevergleich "
-               "WHERE reihe = 'steuerkraft'")}
+        store, "SELECT DISTINCT year FROM council_city_comparison "
+               "WHERE series = 'tax_capacity'")}
 
 
 def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
@@ -618,8 +771,8 @@ def _bestand_lsn_realsteuern(store: CouncilStore) -> set[tuple]:
     Seite ist „bis wann reichen die Zahlen?", und darauf antwortet das Jahr an
     der Zahl, nicht das Deckblatt, auf dem sie stand."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_staedtevergleich "
-               "WHERE reihe = 'realsteuern'")}
+        store, "SELECT DISTINCT year FROM council_city_comparison "
+               "WHERE series = 'real_taxes'")}
 
 
 def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
@@ -630,7 +783,7 @@ def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
     Seite ist „bis wann reichen die Zahlen?", und darauf antwortet nur das
     erste."""
     return {(r[0],) for r in _jahre(
-        store, "SELECT DISTINCT jahr FROM council_gewerbesteuerstatistik")}
+        store, "SELECT DISTINCT year FROM council_trade_tax_statistics")}
 
 
 # --- Einlesen ---------------------------------------------------------------
@@ -649,15 +802,15 @@ def _bestand_lsn_gewerbesteuer(store: CouncilStore) -> set[tuple]:
 #: Steckbrief-Felder, deren Abdeckung ein Lauf ausweist. Die Zahl gehört ins
 #: Protokoll, weil sie später auf der Seite steht: „Von 377 Produkten tragen
 #: 371 eine Kurzbeschreibung" ist eine Angabe, die stimmen muss.
-STECKBRIEF = ("kurzbeschreibung", "auftragsgrundlage", "beeinflussbarkeit",
-              "wirkungskreis", "zielgruppe")
+STECKBRIEF = ("short_description", "legal_basis", "controllability",
+              "scope", "target_group")
 
 #: Die Produkt-Felder, die aus dem Dokument kommen — alles, was
 #: ``save_produkte`` aus der gelesenen Zeile schreibt, ohne Herkunft und
 #: Zeitstempel. Grundlage von :func:`_produkt_signatur`.
-PRODUKT_FELDER = ("produkt_nr", "produkt_name", "thh_nr", "thh_name", "amt",
-                  "ertraege", "aufwendungen", "ergebnis",
-                  "beeinflussbarkeit_roh") + STECKBRIEF
+PRODUKT_FELDER = ("product_no", "product_name", "sub_budget_no", "sub_budget_name", "office",
+                  "revenues", "expenses", "result",
+                  "controllability_raw") + STECKBRIEF
 
 #: Wie stark ein neu gelesener Jahrgang gegenüber dem gespeicherten Stand
 #: schrumpfen darf, bevor der Lauf ihn zurückweist. 20 % Spielraum: Ein
@@ -670,7 +823,9 @@ def _anzahl(store: CouncilStore, sql: str, args: tuple) -> int:
     """Zeilenzahl einer Zieltabelle — 0, wenn es die Tabelle noch nicht gibt."""
     try:
         return store._conn.execute(sql, args).fetchone()[0]  # noqa: SLF001
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as fehler:
+        if not tabelle_fehlt(fehler):
+            raise
         return 0
 
 
@@ -682,8 +837,8 @@ def _produkt_signatur(zeilen: list[dict]) -> tuple:
     über die ganze Zeile: Sonst vergliche die Sortierung irgendwann ``None``
     mit einem Text, und ein leeres Steckbrief-Feld risse einen unbeaufsichtigten
     Lauf mit einem ``TypeError`` ab."""
-    return tuple(tuple(z.get(feld) for feld in PRODUKT_FELDER)
-                 for z in sorted(zeilen, key=lambda z: z["produkt_nr"]))
+    return tuple(tuple(z.get(field) for field in PRODUKT_FELDER)
+                 for z in sorted(zeilen, key=lambda z: z["product_no"]))
 
 
 def bestandsschutz(p: Protokoll, was: str, alt: int, neu: int,
@@ -752,9 +907,9 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     Was ein Jahrgang bekommt, bekommt er in **einer** Transaktion
     (``store.transaktion()``): Ein Abbruch mittendrin ließe ihn sonst halb
     zurück, und halb sieht für den nächsten Lauf aus wie fertig."""
-    quelle = QUELLEN["jahresabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["jahresabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     gelesen: dict[int, dict] = {}
     uebersprungen = vorzeichen_repariert = 0
@@ -762,24 +917,24 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         m = re.search(r"(20\d\d)", r["label"] or "")
         if not m:
             continue
-        jahr = int(m.group(1))
+        year = int(m.group(1))
         text = r["raw_text"] or ""
-        posten = finanzberichte.parse_ergebnisrechnung(text, jahr)
+        posten = finanzberichte.parse_ergebnisrechnung(text, year)
         # Ohne beide Summenzeilen ist der Jahrgang für „Plan gegen Ist" wertlos.
         if {p_["nr"] for p_ in posten} < {12, 20}:
-            p.warnen(f"  {jahr}: nur {len(posten)} Posten, keine Summenzeilen — übersprungen")
+            p.warnen(f"  {year}: nur {len(posten)} Posten, keine Summenzeilen — übersprungen")
             uebersprungen += 1
             continue
         # Innerhalb der Tabelle: 12 − 20 = 21, in Plan und Ist.
         ok, warum = finanzberichte.strukturprobe(posten)
         if not ok:
-            p.warnen(f"  {jahr}: Strukturprobe gerissen ({warum}) — übersprungen")
+            p.warnen(f"  {year}: Strukturprobe gerissen ({warum}) — übersprungen")
             uebersprungen += 1
             continue
         repariert = sum(1 for x in posten if x.get("vorzeichen_repariert"))
         if repariert:
             # Zählen und melden: Wird das häufiger, stimmt etwas anderes nicht.
-            p.warnen(f"  {jahr}: {repariert} Zeile(n) mit fehlendem Minuszeichen im Dokument — "
+            p.warnen(f"  {year}: {repariert} Zeile(n) mit fehlendem Minuszeichen im Dokument — "
                      f"Betrag passte auf den Cent, Vorzeichen ergänzt")
             vorzeichen_repariert += repariert
         # Die Kassensicht aus demselben Dokument, dreißig Seiten weiter. Sie
@@ -787,34 +942,34 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         # Ergebnisrechnung ausdrücklich NICHT: Reißt sie, fehlt die
         # Finanzrechnung des Jahrgangs, und „geplant gegen tatsächlich" steht
         # trotzdem auf der Seite.
-        kasse_roh = finanzberichte.parse_finanzrechnung(text, jahr)
+        kasse_roh = finanzberichte.parse_finanzrechnung(text, year)
         kasse, kasse_fehler, kasse_hinweise = finanzberichte.finanzprobe(kasse_roh)
         for x in kasse_fehler:
-            p.warnen(f"  {jahr}: Finanzrechnung verworfen — {x}")
+            p.warnen(f"  {year}: Finanzrechnung verworfen — {x}")
         for x in kasse_hinweise:
-            p.sagen(f"  {jahr}: Finanzrechnung — {x}")
+            p.sagen(f"  {year}: Finanzrechnung — {x}")
 
         # Die Vermögensseite, dreißig Seiten davor (Abschnitt 2.1). Sie hängt
         # wie die Kasse an ihrer eigenen Probe und teilt das Schicksal der
         # Ergebnisrechnung nicht: Reißt der Bilanzausgleich, fehlt die Bilanz
         # dieses Jahrgangs, und alles andere steht trotzdem auf der Seite.
         bil, bil_fehler, bil_hinweise = bilanz.bilanzprobe(
-            bilanz.parse_bilanz(text, jahr))
+            bilanz.parse_bilanz(text, year))
         for x in bil_fehler:
-            p.warnen(f"  {jahr}: Bilanz verworfen — {x}")
+            p.warnen(f"  {year}: Bilanz verworfen — {x}")
         for x in bil_hinweise:
-            p.sagen(f"  {jahr}: Bilanz — {x}")
+            p.sagen(f"  {year}: Bilanz — {x}")
 
         # Der Anhang dazu: 6.2.1–6.2.9, ein Abschnitt je Hauptposten. Ohne
         # bestandene Zuordnungsprobe gar nichts — ein Erläuterungstext unter
         # der falschen Bilanzposition wäre eine Falschaussage.
-        erl = bilanz.parse_erlaeuterungen(text, jahr)
+        erl = bilanz.parse_erlaeuterungen(text, year)
         erl_ok, erl_warum = bilanz.erlaeuterungsprobe(erl)
         if not erl_ok:
-            p.warnen(f"  {jahr}: Bilanz-Erläuterungen verworfen — {erl_warum}")
+            p.warnen(f"  {year}: Bilanz-Erläuterungen verworfen — {erl_warum}")
             erl = []
 
-        gelesen[jahr] = {"posten": posten, "text": text, "kasse": kasse,
+        gelesen[year] = {"posten": posten, "text": text, "kasse": kasse,
                          "bilanz": bil, "erlaeuterungen": erl,
                          "erlaeuterungsprobe": erl_warum,
                          "label": r["label"], "url": r["url"],
@@ -823,12 +978,12 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     # Vorjahres-Kette: Das Ist eines Jahres steht im Folgejahrgang noch einmal.
     # Ein gerissenes Glied verrät nicht, welche Seite falsch ist — also fallen
     # beide raus. In der Praxis schließen alle Glieder.
-    kette = finanzberichte.vorjahreskette({j: v["posten"] for j, v in gelesen.items()})
+    chain = finanzberichte.vorjahreskette({j: v["posten"] for j, v in gelesen.items()})
     verdaechtig: set[int] = set()
-    for jahr, folge, warum in kette:
-        p.warnen(f"  Vorjahres-Kette {jahr}→{folge} gerissen: {warum} — beide Jahrgänge "
+    for year, folge, warum in chain:
+        p.warnen(f"  Vorjahres-Kette {year}→{folge} gerissen: {warum} — beide Jahrgänge "
                  f"werden nicht gespeichert")
-        verdaechtig |= {jahr, folge}
+        verdaechtig |= {year, folge}
     glieder = sum(1 for j in gelesen if j + 1 in gelesen) * 2
 
     # Dasselbe für die Kasse: Der Endbestand eines Jahres steht im Folgejahr
@@ -837,10 +992,10 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     # sind verschiedene Abschnitte hinter verschiedenen Proben.
     kassenkette = finanzberichte.kassenkette({j: v["kasse"] for j, v in gelesen.items()})
     kasse_verdaechtig: set[int] = set()
-    for jahr, folge, warum in kassenkette:
-        p.warnen(f"  Kassen-Kette {jahr}→{folge} gerissen: {warum} — die "
+    for year, folge, warum in kassenkette:
+        p.warnen(f"  Kassen-Kette {year}→{folge} gerissen: {warum} — die "
                  f"Finanzrechnung beider Jahrgänge wird nicht gespeichert")
-        kasse_verdaechtig |= {jahr, folge}
+        kasse_verdaechtig |= {year, folge}
     kassenglieder = sum(1 for j in gelesen if j + 1 in gelesen
                         and gelesen[j]["kasse"] and gelesen[j + 1]["kasse"])
 
@@ -859,40 +1014,40 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
     bilanzen = {j: v["bilanz"] for j, v in gelesen.items() if v["bilanz"]}
     bil_kette = bilanz.vorjahreskette(bilanzen)
     bil_verdaechtig: set[int] = set()
-    for jahr, folge, warum in bil_kette:
-        p.warnen(f"  Bilanz-Vorjahreskette {jahr}→{folge} gerissen: {warum} — die "
+    for year, folge, warum in bil_kette:
+        p.warnen(f"  Bilanz-Vorjahreskette {year}→{folge} gerissen: {warum} — die "
                  f"Bilanz beider Jahrgänge wird nicht gespeichert")
-        bil_verdaechtig |= {jahr, folge}
+        bil_verdaechtig |= {year, folge}
     bilanzglieder = sum(1 for j in bilanzen if j + 1 in bilanzen)
 
     endbestaende: dict[int, float] = {}
-    for jahr, v in gelesen.items():
+    for year, v in gelesen.items():
         for z in v["kasse"] or ():
-            if z.get("rolle") == "endbestand" and z.get("ergebnis") is not None:
-                endbestaende[jahr] = z["ergebnis"]
-            elif z.get("rolle") == "anfangsbestand" and z.get("ergebnis") is not None:
-                endbestaende.setdefault(jahr - 1, z["ergebnis"])
-    for jahr, warum in bilanz.kassenprobe(bilanzen, endbestaende):
-        p.warnen(f"  Bilanz {jahr}: Kreuzprobe gegen die Finanzrechnung gerissen "
+            if z.get("role") == "closing_balance" and z.get("result") is not None:
+                endbestaende[year] = z["result"]
+            elif z.get("role") == "opening_balance" and z.get("result") is not None:
+                endbestaende.setdefault(year - 1, z["result"])
+    for year, warum in bilanz.kassenprobe(bilanzen, endbestaende):
+        p.warnen(f"  Bilanz {year}: Kreuzprobe gegen die Finanzrechnung gerissen "
                  f"({warum}) — Bilanz wird nicht gespeichert")
-        bil_verdaechtig.add(jahr)
+        bil_verdaechtig.add(year)
     bil_kreuzproben = sum(1 for j in bilanzen if j in endbestaende)
 
     neu: list[int] = []
     neue_einheiten: set[tuple] = set()
     mit_thh = verworfen = gruende_gesamt = geschuetzt = mit_kasse = 0
     mit_bilanz = mit_erlaeuterungen = 0
-    for jahr in sorted(gelesen):
-        if jahr in verdaechtig:
+    for year in sorted(gelesen):
+        if year in verdaechtig:
             uebersprungen += 1
             continue
-        braucht_gesamt = (jahr, "gesamt") not in vorhanden
-        braucht_thh = (jahr, "teilhaushalte") not in vorhanden
-        braucht_kasse = (jahr, "kasse") not in vorhanden
-        braucht_bilanz = (jahr, "bilanz") not in vorhanden
+        braucht_gesamt = (year, "gesamt") not in vorhanden
+        braucht_thh = (year, "teilhaushalte") not in vorhanden
+        braucht_kasse = (year, "kasse") not in vorhanden
+        braucht_bilanz = (year, "bilanz") not in vorhanden
         if not (braucht_gesamt or braucht_thh or braucht_kasse or braucht_bilanz):
             continue  # alle Ebenen stehen — der Job fasst Bestand nicht an
-        v = gelesen[jahr]
+        v = gelesen[year]
         posten, label, url = v["posten"], v["label"], v["url"]
 
         # Woher diese Zeilen kommen — je Ebene eine eigene Angabe. Beide
@@ -900,11 +1055,11 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
         # verschiedenen Proben; eine gemeinsame Herkunft wäre für beide
         # ungenau. Die Vorjahres-Kette wird nur genannt, wo sie greift: Ohne
         # gelesenen Nachbarjahrgang gibt es kein Glied, das schließen könnte.
-        anker = dict(art="ris", dokument_id=v["document_id"], label=label,
-                     url=url, stand=f"Jahresabschluss {jahr}")
-        proben_gesamt = ["strukturprobe"]
-        if jahr - 1 in gelesen or jahr + 1 in gelesen:
-            proben_gesamt.append("vorjahreskette")
+        anker = dict(kind="ris", document_id=v["document_id"], label=label,
+                     url=url, as_of=f"Jahresabschluss {year}")
+        proben_gesamt = ["structure_check"]
+        if year - 1 in gelesen or year + 1 in gelesen:
+            proben_gesamt.append("prior_year_chain")
 
         # Ein Jahrgang, eine Transaktion: Gesamtrechnung, Teilhaushalte und
         # Erläuterungen stehen zusammen in der Datenbank oder gar nicht.
@@ -912,29 +1067,29 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             if braucht_gesamt:
                 # Ersetzen heißt löschen und neu schreiben — nur gegen ein
                 # Ergebnis, das den vorhandenen Stand trägt (s. bestandsschutz).
-                alt = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnisrechnung "
-                                     "WHERE jahr = ? AND thh_nr IS NULL", (jahr,))
-                if not bestandsschutz(p, f"{jahr} Ergebnisrechnung", alt,
+                alt = _anzahl(store, "SELECT COUNT(*) FROM council_income_statement "
+                                     "WHERE year = ? AND sub_budget_no IS NULL", (year,))
+                if not bestandsschutz(p, f"{year} Ergebnisrechnung", alt,
                                       len(posten), schuetzen):
                     geschuetzt += 1
                     uebersprungen += 1
                     continue
-                store.save_ergebnisrechnung(jahr, posten, herkunft.Herkunft(
+                store.save_ergebnisrechnung(year, posten, herkunft.Herkunft(
                     probe=proben_gesamt,
-                    fundstelle="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
+                    citation="Ergebnisrechnung der Kernverwaltung, Posten 1–24",
                     **anker))
-                neue_einheiten.add((jahr, "gesamt"))
+                neue_einheiten.add((year, "gesamt"))
                 e = next(x for x in posten if x["nr"] == 12)
                 a = next(x for x in posten if x["nr"] == 20)
-                arten = sorted({x["plan_art"] for x in posten})
-                p.sagen(f"  {jahr}: {len(posten)} Posten · Erträge {e['plan']/1e6:.1f} → "
-                        f"{e['ergebnis']/1e6:.1f} · Aufwendungen {a['plan']/1e6:.1f} → "
-                        f"{a['ergebnis']/1e6:.1f} · Bezug {'/'.join(arten)}")
-                if a["plan"] != a["ansatz"] or e["plan"] != e["ansatz"]:
-                    p.sagen(f"      ursprünglicher Ansatz: Erträge {e['ansatz']/1e6:.1f} · "
-                            f"Aufwendungen {a['ansatz']/1e6:.1f}")
+                arten = sorted({x["plan_kind"] for x in posten})
+                p.sagen(f"  {year}: {len(posten)} Posten · Erträge {e['plan']/1e6:.1f} → "
+                        f"{e['result']/1e6:.1f} · Aufwendungen {a['plan']/1e6:.1f} → "
+                        f"{a['result']/1e6:.1f} · Bezug {'/'.join(arten)}")
+                if a["plan"] != a["budgeted"] or e["plan"] != e["budgeted"]:
+                    p.sagen(f"      ursprünglicher Ansatz: Erträge {e['budgeted']/1e6:.1f} · "
+                            f"Aufwendungen {a['budgeted']/1e6:.1f}")
             else:
-                p.sagen(f"  {jahr}: Gesamtrechnung steht bereits — nur die fehlende "
+                p.sagen(f"  {year}: Gesamtrechnung steht bereits — nur die fehlende "
                         f"Teilhaushalts-Ebene wird nachgezogen")
 
             # Zweite Ebene: dieselbe Rechnung je Teilhaushalt. Sie wird nur
@@ -942,32 +1097,32 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # UND Ist. Sonst wurde für einen Teilhaushalt die falsche (in sich
             # stimmige) Tabelle gelesen, was zeilenweise nicht auffällt.
             if braucht_thh:
-                thh = finanzberichte.parse_teilergebnisrechnungen(v["text"], jahr)
-                alt_thh = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnisrechnung "
-                                         "WHERE jahr = ? AND thh_nr IS NOT NULL", (jahr,))
-                if not bestandsschutz(p, f"{jahr} Teilhaushalte", alt_thh,
-                                      sum(len(x["posten"]) for x in thh), schuetzen):
+                sub_budget = finanzberichte.parse_teilergebnisrechnungen(v["text"], year)
+                alt_thh = _anzahl(store, "SELECT COUNT(*) FROM council_income_statement "
+                                         "WHERE year = ? AND sub_budget_no IS NOT NULL", (year,))
+                if not bestandsschutz(p, f"{year} Teilhaushalte", alt_thh,
+                                      sum(len(x["posten"]) for x in sub_budget), schuetzen):
                     geschuetzt += 1 if alt_thh else 0
                 else:
-                    passt, abweichung = finanzberichte.summenprobe(thh, posten)
+                    passt, deviation = finanzberichte.summenprobe(sub_budget, posten)
                     if not passt:
                         p.warnen(f"    Teilhaushalte verworfen: Summe weicht um "
-                                 f"{abweichung*100:.1f} % von der Gesamtrechnung ab")
+                                 f"{deviation*100:.1f} % von der Gesamtrechnung ab")
                         verworfen += 1
                     else:
-                        for x in thh:
+                        for x in sub_budget:
                             store.save_ergebnisrechnung(
-                                jahr, x["posten"], herkunft.Herkunft(
-                                    probe="summenprobe",
-                                    fundstelle=f"Teil-Ergebnisrechnung THH"
-                                               f"{x['thh_nr']:02d} — {x['thh_name']}",
-                                    probe_ergebnis=f"{abweichung * 100:.2f} % "
+                                year, x["posten"], herkunft.Herkunft(
+                                    probe="sub_budget_sum_check",
+                                    citation=f"Teil-Ergebnisrechnung THH"
+                                               f"{x['sub_budget_no']:02d} — {x['sub_budget_name']}",
+                                    probe_result=f"{deviation * 100:.2f} % "
                                                    f"Abweichung zur Gesamtrechnung",
                                     **anker),
-                                thh_nr=x["thh_nr"], thh_name=x["thh_name"])
-                        p.sagen(f"    + {len(thh)} Teilhaushalte "
-                                f"(Summenprobe {abweichung*100:.2f} % Abweichung)")
-                        neue_einheiten.add((jahr, "teilhaushalte"))
+                                sub_budget_no=x["sub_budget_no"], sub_budget_name=x["sub_budget_name"])
+                        p.sagen(f"    + {len(sub_budget)} Teilhaushalte "
+                                f"(Summenprobe {deviation*100:.2f} % Abweichung)")
+                        neue_einheiten.add((year, "teilhaushalte"))
                         mit_thh += 1
 
             # Dritte Ebene: die Finanzrechnung. Was `finanzprobe` hier liefert,
@@ -976,106 +1131,106 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # Seite. Ein Beleg nennt jede Probe, die den Jahrgang wirklich
             # trägt: die Ermächtigungsspalte nur, wo sie überlebt hat, die
             # Kassen-Kette nur, wo es einen Nachbarjahrgang zum Schließen gibt.
-            if braucht_kasse and v["kasse"] and jahr not in kasse_verdaechtig:
-                alt_kasse = _anzahl(store, "SELECT COUNT(*) FROM council_finanzrechnung "
-                                           "WHERE jahr = ?", (jahr,))
-                if not bestandsschutz(p, f"{jahr} Finanzrechnung", alt_kasse,
+            if braucht_kasse and v["kasse"] and year not in kasse_verdaechtig:
+                alt_kasse = _anzahl(store, "SELECT COUNT(*) FROM council_cash_flow_statement "
+                                           "WHERE year = ?", (year,))
+                if not bestandsschutz(p, f"{year} Finanzrechnung", alt_kasse,
                                       len(v["kasse"]), schuetzen):
                     geschuetzt += 1
                 else:
-                    rollen = {x["rolle"] for x in v["kasse"] if x.get("rolle")}
-                    proben = ["finanzkaskade"]
-                    if any(x.get("ermaechtigung") is not None for x in v["kasse"]):
-                        proben.append("finanz_ermaechtigungen")
-                    if "endbestand" in rollen:
-                        proben.append("finanz_bestandskette")
-                    if any((jahr + s) in gelesen and gelesen[jahr + s]["kasse"]
+                    roles = {x["role"] for x in v["kasse"] if x.get("role")}
+                    probes = ["cash_flow_cascade"]
+                    if any(x.get("authorization") is not None for x in v["kasse"]):
+                        probes.append("cash_flow_authorizations")
+                    if "closing_balance" in roles:
+                        probes.append("cash_balance_chain")
+                    if any((year + s) in gelesen and gelesen[year + s]["kasse"]
                            for s in (-1, 1)):
-                        proben.append("kassenkette")
-                    store.save_finanzrechnung(jahr, v["kasse"], herkunft.Herkunft(
-                        probe=proben,
-                        fundstelle="Abschnitt 4.1 — Finanzrechnung der "
+                        probes.append("cash_carryover_chain")
+                    store.save_finanzrechnung(year, v["kasse"], herkunft.Herkunft(
+                        probe=probes,
+                        citation="Abschnitt 4.1 — Finanzrechnung der "
                                    "Kernverwaltung (Ein- und Auszahlungen)",
                         **anker))
-                    neue_einheiten.add((jahr, "kasse"))
+                    neue_einheiten.add((year, "kasse"))
                     mit_kasse += 1
-                    saldo = next((x["ergebnis"] for x in v["kasse"]
-                                  if x["rolle"] == "finanzmittel"), None)
+                    balance = next((x["result"] for x in v["kasse"]
+                                  if x["role"] == "cash_surplus"), None)
                     p.sagen(f"    + Finanzrechnung: {len(v['kasse'])} Zeilen · "
-                            f"Finanzmittelsaldo {saldo/1e6:+.1f} Mio. €")
+                            f"Finanzmittelsaldo {balance/1e6:+.1f} Mio. €")
 
             # Vierte Ebene: die Bilanz (Abschnitt 2.1) und die Erläuterungen
             # des Anhangs dazu (6.2.1–6.2.9). Was `bilanzprobe` liefert, ist
             # bereits ausgeglichen; leer heißt „Aktiva ≠ Passiva", und dann
             # steht für diesen Stichtag eben keine Vermögensseite auf der
             # Seite. Genannt wird jede Probe, die den Jahrgang wirklich trägt.
-            if braucht_bilanz and v["bilanz"] and jahr not in bil_verdaechtig:
+            if braucht_bilanz and v["bilanz"] and year not in bil_verdaechtig:
                 bil = v["bilanz"]
-                alt_bil = _anzahl(store, "SELECT COUNT(*) FROM council_bilanz "
-                                         "WHERE jahr = ?", (jahr,))
-                if not bestandsschutz(p, f"{jahr} Bilanz", alt_bil,
+                alt_bil = _anzahl(store, "SELECT COUNT(*) FROM council_balance_sheet "
+                                         "WHERE year = ?", (year,))
+                if not bestandsschutz(p, f"{year} Bilanz", alt_bil,
                                       len(bil["posten"]), schuetzen):
                     geschuetzt += 1
                 else:
-                    proben = list(bil["proben"])
-                    if any((jahr + s) in bilanzen for s in (-1, 1)):
-                        proben.append("bilanz_vorjahreskette")
-                    if jahr in endbestaende:
-                        proben.append("bilanz_kassenprobe")
+                    probes = list(bil["probes"])
+                    if any((year + s) in bilanzen for s in (-1, 1)):
+                        probes.append("balance_sheet_prior_year_chain")
+                    if year in endbestaende:
+                        probes.append("balance_sheet_cash_check")
                     summe_de = f"{bil['bilanzsumme'] / 1e6:.2f}".replace(".", ",")
-                    store.save_bilanz(jahr, bil["posten"], herkunft.Herkunft(
-                        probe=proben,
-                        fundstelle=f"Abschnitt 2.1 — Bilanz der Stadt Oldenburg "
-                                   f"zum 31.12.{jahr}",
-                        probe_ergebnis=f"Aktiva und Passiva stimmen auf den Cent "
+                    store.save_bilanz(year, bil["posten"], herkunft.Herkunft(
+                        probe=probes,
+                        citation=f"Abschnitt 2.1 — Bilanz der Stadt Oldenburg "
+                                   f"zum 31.12.{year}",
+                        probe_result=f"Aktiva und Passiva stimmen auf den Cent "
                                        f"überein (Bilanzsumme {summe_de} Mio. €)",
-                        stand=f"31.12.{jahr}",
-                        art="ris", dokument_id=v["document_id"],
+                        as_of=f"31.12.{year}",
+                        kind="ris", document_id=v["document_id"],
                         label=label, url=url))
-                    neue_einheiten.add((jahr, "bilanz"))
+                    neue_einheiten.add((year, "bilanz"))
                     mit_bilanz += 1
-                    werte = {x["rolle"]: x["wert"] for x in bil["posten"]}
+                    werte = {x["role"]: x["value"] for x in bil["posten"]}
                     p.sagen(f"    + Bilanz: {len(bil['posten'])} Posten · Bilanzsumme "
                             f"{bil['bilanzsumme']/1e6:.1f} Mio. € · Pensionsrückstellungen "
-                            f"{werte.get('pensionen_gesamt', 0)/1e6:.1f} Mio. € "
-                            f"(davon Beihilfe {werte.get('beihilferueckstellungen', 0)/1e6:.1f})")
+                            f"{werte.get('pension_and_similar_provisions', 0)/1e6:.1f} Mio. € "
+                            f"(davon Beihilfe {werte.get('healthcare_allowance_provisions', 0)/1e6:.1f})")
 
                     # Der älteste Stichtag hat kein eigenes Dokument: 2016
                     # steht nur in der Vorjahresspalte des Abschlusses 2017.
                     # Er wird mitgenommen, wenn seine Spalte für sich
                     # ausgeglichen ist — sonst nicht. Eine eigene Einheit ist
                     # er ausdrücklich nicht (s. `_bestand_jahresabschluss`).
-                    if jahr == min(bilanzen):
-                        vorjahr = jahr - 1
-                        a = bilanz.summe(bil["posten"], bilanz.AKTIVA, "wert_vorjahr")
-                        pa = bilanz.summe(bil["posten"], bilanz.PASSIVA, "wert_vorjahr")
+                    if year == min(bilanzen):
+                        prior_year = year - 1
+                        a = bilanz.summe(bil["posten"], bilanz.AKTIVA, "value_prior_year")
+                        pa = bilanz.summe(bil["posten"], bilanz.PASSIVA, "value_prior_year")
                         if a and pa and abs(a - pa) <= bilanz.TOLERANZ:
-                            vorposten = [{**x, "wert": x["wert_vorjahr"]}
+                            vorposten = [{**x, "value": x["value_prior_year"]}
                                          for x in bil["posten"]]
-                            vorproben = ["bilanz_ausgleich"]
-                            if vorjahr in endbestaende:
-                                vorproben.append("bilanz_kassenprobe")
-                            store.save_bilanz(vorjahr, vorposten, herkunft.Herkunft(
+                            vorproben = ["balance_sheet_equality"]
+                            if prior_year in endbestaende:
+                                vorproben.append("balance_sheet_cash_check")
+                            store.save_bilanz(prior_year, vorposten, herkunft.Herkunft(
                                 probe=vorproben,
-                                fundstelle=f"Abschnitt 2.1 — Bilanz zum 31.12.{jahr}, "
-                                           f"Vorjahresspalte (Stand 31.12.{vorjahr})",
-                                probe_ergebnis="Aktiva und Passiva der Vorjahresspalte "
+                                citation=f"Abschnitt 2.1 — Bilanz zum 31.12.{year}, "
+                                           f"Vorjahresspalte (Stand 31.12.{prior_year})",
+                                probe_result="Aktiva und Passiva der Vorjahresspalte "
                                                "stimmen auf den Cent überein",
-                                stand=f"31.12.{vorjahr}",
-                                art="ris", dokument_id=v["document_id"],
+                                as_of=f"31.12.{prior_year}",
+                                kind="ris", document_id=v["document_id"],
                                 label=label, url=url))
-                            p.sagen(f"      + Stichtag {vorjahr} aus der "
+                            p.sagen(f"      + Stichtag {prior_year} aus der "
                                     f"Vorjahresspalte ({a/1e6:.1f} Mio. €)")
 
                     if v["erlaeuterungen"]:
                         store.save_bilanz_erlaeuterungen(
-                            jahr, v["erlaeuterungen"], herkunft.Herkunft(
-                                probe="bilanz_erlaeuterung",
-                                fundstelle="Abschnitt 6.2 — Erläuterung der "
+                            year, v["erlaeuterungen"], herkunft.Herkunft(
+                                probe="balance_sheet_notes",
+                                citation="Abschnitt 6.2 — Erläuterung der "
                                            "wesentlichen Bilanzpositionen",
-                                probe_ergebnis=v["erlaeuterungsprobe"],
-                                stand=f"Jahresabschluss {jahr}",
-                                art="ris", dokument_id=v["document_id"],
+                                probe_result=v["erlaeuterungsprobe"],
+                                as_of=f"Jahresabschluss {year}",
+                                kind="ris", document_id=v["document_id"],
                                 label=label, url=url))
                         mit_erlaeuterungen += 1
                         p.sagen(f"      + {len(v['erlaeuterungen'])} Erläuterungen "
@@ -1088,34 +1243,34 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             # Keine eigene Einheit (s. EBENEN), aber sie reiten mit: Wird ein
             # Jahrgang aus einem anderen Grund noch einmal gelesen, kommen die
             # Erläuterungen nach, falls sie fehlen.
-            alt_gruende = _anzahl(store, "SELECT COUNT(*) FROM council_abweichungsgruende "
-                                         "WHERE jahr = ?", (jahr,))
+            alt_gruende = _anzahl(store, "SELECT COUNT(*) FROM council_variance_reasons "
+                                         "WHERE year = ?", (year,))
             if braucht_gesamt or not alt_gruende:
-                roh = finanzberichte.parse_abweichungsgruende(v["text"], jahr)
+                roh = finanzberichte.parse_abweichungsgruende(v["text"], year)
                 angenommen, abgelehnt = finanzberichte.pruefe_abweichungsgruende(roh, posten)
-                for grund in abgelehnt:
-                    p.warnen(f"    Erläuterung verworfen — {grund}")
-                if bestandsschutz(p, f"{jahr} Erläuterungen", alt_gruende,
+                for reason in abgelehnt:
+                    p.warnen(f"    Erläuterung verworfen — {reason}")
+                if bestandsschutz(p, f"{year} Erläuterungen", alt_gruende,
                                   len(angenommen), schuetzen):
-                    store.save_abweichungsgruende(jahr, angenommen, herkunft.Herkunft(
-                        probe="abweichungstext",
-                        fundstelle="Abschnitt 6.3.1 — Erläuterungen zu den "
+                    store.save_abweichungsgruende(year, angenommen, herkunft.Herkunft(
+                        probe="variance_text",
+                        citation="Abschnitt 6.3.1 — Erläuterungen zu den "
                                    "Abweichungen gegenüber dem Plan",
-                        probe_ergebnis=f"{len(angenommen)} von {len(roh)} "
+                        probe_result=f"{len(angenommen)} von {len(roh)} "
                                        f"Erläuterungen bestanden",
                         **anker))
                     gruende_gesamt += len(angenommen)
                     p.sagen(f"    + {len(angenommen)} Erläuterungen zu Abweichungen")
                 elif alt_gruende:
                     geschuetzt += 1
-        if any((jahr, e) in neue_einheiten for e in EBENEN):
-            neu.append(jahr)
+        if any((year, e) in neue_einheiten for e in EBENEN):
+            neu.append(year)
 
     return {"neue_jahrgaenge": sorted(set(neu)),
             "neue_einheiten": sorted(neue_einheiten, key=repr),
-            "jahre": len(gelesen) - len(verdaechtig), "uebersprungen": uebersprungen,
+            "years": len(gelesen) - len(verdaechtig), "uebersprungen": uebersprungen,
             "jahre_mit_teilhaushalten": mit_thh, "thh_verworfen": verworfen,
-            "kettenglieder_geprueft": glieder, "kette_gerissen": len(kette),
+            "kettenglieder_geprueft": glieder, "kette_gerissen": len(chain),
             "vorzeichen_repariert": vorzeichen_repariert,
             "bestand_geschuetzt": geschuetzt,
             "jahre_mit_finanzrechnung": mit_kasse,
@@ -1126,7 +1281,7 @@ def lies_jahresabschluesse(store: CouncilStore, p: Protokoll,
             "bilanzkette_gerissen": len(bil_kette),
             "bilanz_kreuzproben": bil_kreuzproben,
             "bilanz_erlaeuterungen": mit_erlaeuterungen,
-            "abweichungsgruende": gruende_gesamt}
+            "variance_reasons": gruende_gesamt}
 
 
 def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
@@ -1139,14 +1294,14 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
     derselben Gliederung wie später im Abschluss, nur eben als Ansatz.
 
     Zwei Pflicht-Proben entscheiden, beide in
-    ``council/ergebnishaushalt.py``: Die Summenzeilen müssen in allen sechs
+    ``council/income_budget.py``: Die Summenzeilen müssen in allen sechs
     Spalten aufgehen, und die hervorgehobene Planjahr-Spalte muss sich in
     jeder Zeile wiederholen. Die zweite ist die wichtigere — sie ist der
     Beleg dafür, welche Spalte der **Haushaltsansatz** ist und welche bloß
     Finanzplanung. Ohne sie wäre die Trennung eine Reihenfolgeannahme.
 
     Die Ist-Spalte des Vorvorjahres wird **nicht gespeichert**, sondern gegen
-    ``council_ergebnisrechnung`` gehalten und im Protokoll ausgewiesen. Sie
+    ``council_income_statement`` gehalten und im Protokoll ausgewiesen. Sie
     trifft dort bewusst nicht auf den Cent: Der Gesamtergebnishaushalt ist die
     Gesamtebene (mit den nicht rechtsfähigen Stiftungen), der gespeicherte
     Jahresabschluss die Kernverwaltung. Der Abstand liegt über acht Jahrgänge
@@ -1154,82 +1309,82 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
     es — dann stammt eine Spalte aus dem falschen Jahr.
 
     **Gespeichert wird der Entwurf, nicht der Beschluss** — die Anlage hängt
-    an der Einbringungs-Vorlage. Das steht in der Herkunft (``stand``), damit
+    an der Einbringungs-Vorlage. Das steht in der Herkunft (``as_of``), damit
     eine Seite es anschreiben kann; die Begründung samt Messwerten im
-    Modulkopf von ``council/ergebnishaushalt.py``."""
-    quelle = QUELLEN["ergebnishaushalt"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    Modulkopf von ``council/income_budget.py``."""
+    source = QUELLEN["income_budget"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     # Die Ist-Werte der Kernverwaltung einmal holen — Grundlage der Gegenprobe.
     ist_bestand: dict[int, dict[int, float]] = {}
-    for zeile in store.get_ergebnisrechnung():
-        if zeile.get("thh_nr") is None and zeile.get("ergebnis") is not None:
-            ist_bestand.setdefault(zeile["jahr"], {})[zeile["nr"]] = zeile["ergebnis"]
+    for row in store.get_ergebnisrechnung():
+        if row.get("sub_budget_no") is None and row.get("result") is not None:
+            ist_bestand.setdefault(row["year"], {})[row["nr"]] = row["result"]
 
     je_jahrgang: dict[int, dict] = {}
     geschuetzt = verworfen = 0
     gegenproben: list[dict] = []
     for r in rows:
-        gelesen = ergebnishaushalt.lies(r["raw_text"] or "")
-        jahrgang = gelesen["jahrgang"]
-        if jahrgang is None:
+        gelesen = income_budget.lies(r["raw_text"] or "")
+        budget_year = gelesen["budget_year"]
+        if budget_year is None:
             p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): Tabellenkopf "
                      f"nicht lesbar — übersprungen")
             verworfen += 1
             continue
-        if (jahrgang,) in vorhanden:
+        if (budget_year,) in vorhanden:
             continue
-        if jahrgang in je_jahrgang:
-            p.warnen(f"  {jahrgang}: zweites Dokument ({r['document_id']}) — übersprungen")
+        if budget_year in je_jahrgang:
+            p.warnen(f"  {budget_year}: zweites Dokument ({r['document_id']}) — übersprungen")
             continue
         if not gelesen["bestanden"]:
-            p.warnen(f"  {jahrgang}: {gelesen['nachweis']} — Dokument "
+            p.warnen(f"  {budget_year}: {gelesen['nachweis']} — Dokument "
                      f"{r['document_id']}, nicht gespeichert")
             verworfen += 1
             continue
 
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_ergebnishaushalt "
-                             "WHERE plan_jahrgang = ?", (jahrgang,))
-        if not bestandsschutz(p, f"{jahrgang} Ergebnishaushalt", alt,
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_income_budget "
+                             "WHERE plan_budget_year = ?", (budget_year,))
+        if not bestandsschutz(p, f"{budget_year} Ergebnishaushalt", alt,
                               len(gelesen["zeilen"]), schuetzen):
             geschuetzt += 1 if alt else 0
             continue
 
         # Gegenprobe VOR dem Speichern, damit ihr Messwert in die Herkunft
         # kommt: Der Beleg auf der Seite soll sagen, woran die Zahl hängt.
-        gp = ergebnishaushalt.gegenprobe(
+        gp = income_budget.gegenprobe(
             gelesen["ist"], ist_bestand.get(gelesen["ist_jahr"], {}))
         if gp["plausibel"] is False:
-            p.warnen(f"  {jahrgang}: die Ist-Spalte {gelesen['ist_jahr']} weicht um "
+            p.warnen(f"  {budget_year}: die Ist-Spalte {gelesen['ist_jahr']} weicht um "
                      f"{gp['groesste_abweichung']:,.2f} € ({gp['anteil']*100:.3f} % der "
                      f"Ertragssumme) vom gespeicherten Jahresabschluss ab — mehr, als "
                      f"die Stiftungen erklären. Bitte das Dokument ansehen.")
-        gp["jahrgang"] = jahrgang
+        gp["budget_year"] = budget_year
         gegenproben.append(gp)
 
-        store.save_ergebnishaushalt(jahrgang, gelesen["zeilen"], herkunft.Herkunft(
-            art="ris", probe=["ergebnishaushalt_summenzeilen",
-                              "ergebnishaushalt_planspalte"],
-            dokument_id=r["document_id"], label=r["label"], url=r["url"],
-            fundstelle="Gesamtergebnishaushalt, Posten 1–24 — Spalte "
-                       f"„Ansatz {jahrgang}“ und die drei Finanzplanungsjahre",
-            probe_ergebnis=gelesen["nachweis"],
+        store.save_ergebnishaushalt(budget_year, gelesen["zeilen"], herkunft.Herkunft(
+            kind="ris", probe=["income_budget_total_rows",
+                              "income_budget_plan_column"],
+            document_id=r["document_id"], label=r["label"], url=r["url"],
+            citation="Gesamtergebnishaushalt, Posten 1–24 — Spalte "
+                       f"„Ansatz {budget_year}“ und die drei Finanzplanungsjahre",
+            probe_result=gelesen["nachweis"],
             # NICHT „Haushaltsplan {jahrgang}" schlechthin: Die Anlage hängt
             # an der Vorlage, mit der die Verwaltung den Haushalt einbringt.
             # Was der Rat in den Beratungen ändert, steht nicht drin — bei den
             # ordentlichen Erträgen sind das 0,7 bis 13,1 Mio. € gegenüber dem
             # Ansatz, den der spätere Jahresabschluss führt. Der Beleg auf der
             # Seite muss das sagen können.
-            stand=f"Haushaltsplan {jahrgang}, Anlage 005 — Stand der Einbringung"))
+            as_of=f"Haushaltsplan {budget_year}, Anlage 005 — Stand der Einbringung"))
 
-        ansatz = [z for z in gelesen["zeilen"] if z["art"] == "ansatz"]
-        e = next((z["betrag"] for z in ansatz if z["nr"] == 12), None)
-        a = next((z["betrag"] for z in ansatz if z["nr"] == 20), None)
-        fp = sorted({z["jahr"] for z in gelesen["zeilen"] if z["art"] == "finanzplanung"})
-        je_jahrgang[jahrgang] = {"zeilen": len(gelesen["zeilen"]),
+        ansatz = [z for z in gelesen["zeilen"] if z["kind"] == "budget"]
+        e = next((z["amount"] for z in ansatz if z["nr"] == 12), None)
+        a = next((z["amount"] for z in ansatz if z["nr"] == 20), None)
+        fp = sorted({z["year"] for z in gelesen["zeilen"] if z["kind"] == "financial_plan"})
+        je_jahrgang[budget_year] = {"zeilen": len(gelesen["zeilen"]),
                                  "ansatz": len(ansatz), "finanzplanung": fp}
-        p.sagen(f"  {jahrgang}: Ansatz {e/1e6:.1f} Mio. Erträge / {a/1e6:.1f} Mio. "
+        p.sagen(f"  {budget_year}: Ansatz {e/1e6:.1f} Mio. Erträge / {a/1e6:.1f} Mio. "
                 f"Aufwendungen · {len(ansatz)} Posten · Finanzplanung "
                 f"{'/'.join(map(str, fp))} getrennt gespeichert · Dokument "
                 f"{r['document_id']}")
@@ -1248,9 +1403,9 @@ def lies_ergebnishaushalte(store: CouncilStore, p: Protokoll,
             "je_plan_jahrgang": je_jahrgang,
             "planzeilen": sum(d["zeilen"] for d in je_jahrgang.values()),
             "plan_verworfen": verworfen,
-            "plan_gegenprobe": [{"jahrgang": g["jahrgang"], "gleich": g["gleich"],
+            "plan_gegenprobe": [{"budget_year": g["budget_year"], "gleich": g["gleich"],
                                  "geprueft": g["geprueft"],
-                                 "anteil_prozent": round(g["anteil"] * 100, 4)}
+                                 "share_pct": round(g["anteil"] * 100, 4)}
                                 for g in gegenproben]}
 
 
@@ -1259,7 +1414,7 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
                                schuetzen: bool = True) -> dict:
     """Die einzelnen Vorhaben aus Anlage 004 der Haushaltspläne.
 
-    Die Ebene unter ``council_investitionen``: nicht „Schule und Bildung:
+    Die Ebene unter ``council_investments``: nicht „Schule und Bildung:
     8,3 Mio. €", sondern die Maßnahme mit Namen. Drei Pflicht-Proben
     entscheiden, alle drei im Dokument selbst (``investitionsprogramm.pruefe``);
     reißt eine, kommt der ganze Jahrgang nicht herein.
@@ -1270,60 +1425,60 @@ def lies_investitionsprogramme(store: CouncilStore, p: Protokoll,
 
     Wie beim Gesamtergebnishaushalt hängt die Anlage an der
     Einbringungs-Vorlage: Es ist der **Entwurf der Verwaltung**, nicht der
-    Stand nach den Beratungen. Das steht in der Herkunft (``stand``)."""
-    quelle = QUELLEN["investitionsprogramm"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    Stand nach den Beratungen. Das steht in der Herkunft (``as_of``)."""
+    source = QUELLEN["investitionsprogramm"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahrgang: dict[int, dict] = {}
     geschuetzt = verworfen = 0
     for r in rows:
-        jahr = investitionsprogramm.jahrgang((r["raw_text"] or "")[:4000])
-        if jahr is None:
+        year = investitionsprogramm.budget_year((r["raw_text"] or "")[:4000])
+        if year is None:
             p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): kein "
                      f"„Ansatz JJJJ“ im Tabellenkopf — übersprungen")
             verworfen += 1
             continue
-        if (jahr,) in vorhanden:
+        if (year,) in vorhanden:
             continue
-        if jahr in je_jahrgang:
+        if year in je_jahrgang:
             # Zwei Dokumente je Jahrgang sind der Normalfall, nicht die
             # Ausnahme: Neben dem Verwaltungsentwurf steht regelmäßig eine
             # zweite Fassung an einer späteren Vorlage. `ordnung="document_id"`
             # sortiert nach Veröffentlichung, das erste Dokument gewinnt.
-            p.sagen(f"  {jahr}: zweites Dokument ({r['document_id']}) — "
+            p.sagen(f"  {year}: zweites Dokument ({r['document_id']}) — "
                     f"übersprungen, der Jahrgang steht schon")
             continue
 
-        gelesen = investitionsprogramm.lies(r["raw_text"] or "", jahr)
+        gelesen = investitionsprogramm.lies(r["raw_text"] or "", year)
         if not gelesen["bestanden"]:
-            p.warnen(f"  {jahr}: {gelesen['nachweis']} — Dokument "
+            p.warnen(f"  {year}: {gelesen['nachweis']} — Dokument "
                      f"{r['document_id']}, nicht gespeichert")
             verworfen += 1
             continue
 
         n = sum(len(a["massnahmen"]) for a in gelesen["abschnitte"].values())
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_investitionsmassnahmen "
-                             "WHERE jahr = ? AND ebene = 'massnahme'", (jahr,))
-        if not bestandsschutz(p, f"{jahr} Investitionsprogramm", alt, n, schuetzen):
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_investment_measures "
+                             "WHERE year = ? AND level = 'massnahme'", (year,))
+        if not bestandsschutz(p, f"{year} Investitionsprogramm", alt, n, schuetzen):
             geschuetzt += 1 if alt else 0
             continue
 
-        store.save_investitionsprogramm(jahr, gelesen, herkunft.Herkunft(
-            art="ris", probe=["investitionsprogramm_abschnitt",
-                              "investitionsprogramm_wiederholung",
-                              "investitionsprogramm_kopftabelle"],
-            dokument_id=r["document_id"], label=r["label"], url=r["url"],
-            fundstelle="Investitionsprogramm — Gesamtinvestitionsprogramm und "
+        store.save_investitionsprogramm(year, gelesen, herkunft.Herkunft(
+            kind="ris", probe=["capital_programme_section_total",
+                              "capital_programme_repeated_total",
+                              "capital_programme_summary_table"],
+            document_id=r["document_id"], label=r["label"], url=r["url"],
+            citation="Investitionsprogramm — Gesamtinvestitionsprogramm und "
                        "die Abschnitte je Teilhaushalt, Spalte "
                        "„Gesamtinvestitionssumme“",
-            probe_ergebnis=gelesen["nachweis"],
-            stand=f"Haushaltsplan {jahr}, Anlage 004 — Stand der Einbringung"))
+            probe_result=gelesen["nachweis"],
+            as_of=f"Haushaltsplan {year}, Anlage 004 — Stand der Einbringung"))
 
-        je_jahrgang[jahr] = {"massnahmen": n,
+        je_jahrgang[year] = {"massnahmen": n,
                              "teilhaushalte": len(gelesen["abschnitte"]),
-                             "gesamtsumme": gelesen["kopfsumme"]}
-        p.sagen(f"  {jahr}: {n} Maßnahmen in {len(gelesen['abschnitte'])} "
+                             "grand_total": gelesen["kopfsumme"]}
+        p.sagen(f"  {year}: {n} Maßnahmen in {len(gelesen['abschnitte'])} "
                 f"Teilhaushalten · {(gelesen['kopfsumme'] or 0)/1e6:.1f} Mio. € "
                 f"Gesamtinvestitionsprogramm · Dokument {r['document_id']}")
 
@@ -1359,86 +1514,86 @@ def lies_stellenplaene(store: CouncilStore, p: Protokoll,
     Summenzeilen darüber gehen auf, und ein Teil mit 140 Zeilen wegen eines
     städtischen Übertragsfehlers wegzuwerfen hieße, eine belegte Zahl gegen
     gar keine zu tauschen. Die Zahl steht im Protokoll."""
-    quelle = QUELLEN["stellenplan"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["stellenplan"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahrgang: dict[int, dict] = {}
     neue_einheiten: set[tuple] = set()
     geschuetzt = verworfen = unstimmig_gesamt = 0
     for r in rows:
         gelesen = stellenplan.lies(r["raw_text"] or "")
-        jahrgang = gelesen["jahrgang"]
-        if jahrgang is None:
+        budget_year = gelesen["budget_year"]
+        if budget_year is None:
             p.warnen(f"  Dokument {r['document_id']} ({r['label']!r}): kein "
                      f"Haushaltsjahr im Tabellenkopf — übersprungen")
             verworfen += 1
             continue
-        if jahrgang in je_jahrgang:
-            p.warnen(f"  {jahrgang}: zweites Dokument ({r['document_id']}) — übersprungen")
+        if budget_year in je_jahrgang:
+            p.warnen(f"  {budget_year}: zweites Dokument ({r['document_id']}) — übersprungen")
             continue
-        je_jahrgang[jahrgang] = {"teile": {}, "unstimmig": 0}
+        je_jahrgang[budget_year] = {"teile": {}, "unstimmig": 0}
 
-        gefunden = {t["teil"] for t in gelesen["teile"]}
+        gefunden = {t["part"] for t in gelesen["teile"]}
         fehlend = sorted(set(stellenplan.TEIL_SPALTEN) - gefunden)
         if fehlend:
             # Der Unterschied, den ein Leser sonst nicht sähe: „gibt es nicht"
             # gegen „steht drin, ist aber nicht lesbar".
-            grund = ("das PDF gibt dort Glyphen statt Buchstaben aus"
+            reason = ("das PDF gibt dort Glyphen statt Buchstaben aus"
                      if gelesen["glyphen"] else "im Dokument nicht gefunden")
-            p.warnen(f"  {jahrgang}: Teil {', '.join(fehlend)} fehlt — {grund} "
+            p.warnen(f"  {budget_year}: Teil {', '.join(fehlend)} fehlt — {reason} "
                      f"(Dokument {r['document_id']})")
 
-        for teil in gelesen["teile"]:
-            name = teil["teil"]
-            if (jahrgang, name) in vorhanden:
+        for part in gelesen["teile"]:
+            name = part["part"]
+            if (budget_year, name) in vorhanden:
                 continue
-            if not teil["bestanden"]:
-                p.warnen(f"  {jahrgang} Teil {name}: {teil['nachweis']} — "
+            if not part["bestanden"]:
+                p.warnen(f"  {budget_year} Teil {name}: {part['nachweis']} — "
                          f"Dokument {r['document_id']}, nicht gespeichert")
                 verworfen += 1
                 continue
 
-            alt = _anzahl(store, "SELECT COUNT(*) FROM council_stellenplan "
-                                 "WHERE jahrgang = ? AND teil = ?", (jahrgang, name))
-            if not bestandsschutz(p, f"{jahrgang} Stellenplan Teil {name}", alt,
-                                  len(teil["zeilen"]), schuetzen):
+            alt = _anzahl(store, "SELECT COUNT(*) FROM council_staff_plan "
+                                 "WHERE budget_year = ? AND part = ?", (budget_year, name))
+            if not bestandsschutz(p, f"{budget_year} Stellenplan Teil {name}", alt,
+                                  len(part["zeilen"]), schuetzen):
                 geschuetzt += 1 if alt else 0
                 continue
 
             store.save_stellenplan(
-                jahrgang, name, teil["zeilen"],
+                budget_year, name, part["zeilen"],
                 herkunft.Herkunft(
-                    art="ris", probe=[pr["probe"] for pr in teil["proben"]],
-                    dokument_id=r["document_id"], label=r["label"], url=r["url"],
-                    fundstelle=f"Teil {name}: {stellenplan.TEIL_NAMEN[name]}",
-                    probe_ergebnis=teil["nachweis"],
+                    kind="ris", probe=[pr["probe"] for pr in part["probes"]],
+                    document_id=r["document_id"], label=r["label"], url=r["url"],
+                    citation=f"Teil {name}: {stellenplan.TEIL_NAMEN[name]}",
+                    probe_result=part["nachweis"],
                     # Wie beim Gesamtergebnishaushalt: Die Anlage hängt an der
                     # Vorlage, mit der die Verwaltung den Haushalt einbringt.
-                    stand=f"Stellenplan {jahrgang} — Stand der Einbringung, "
-                          f"Besetzung am {teil['stichtag']}"),
-                stichtag=teil["stichtag"])
-            neue_einheiten.add((jahrgang, name))
+                    as_of=f"Stellenplan {budget_year} — Stand der Einbringung, "
+                          f"Besetzung am {part['as_of_date']}"),
+                as_of_date=part["as_of_date"])
+            neue_einheiten.add((budget_year, name))
 
-            gesamt = next((z for z in teil["zeilen"] if z["art"] == "gesamt"), None)
-            je_jahrgang[jahrgang]["teile"][name] = {
-                "zeilen": len(teil["zeilen"]),
-                "stellen": gesamt["stellen_plan"] if gesamt else None,
-                "nicht_besetzt": gesamt["nicht_besetzt"] if gesamt else None,
+            gesamt = next((z for z in part["zeilen"] if z["kind"] == "total"), None)
+            je_jahrgang[budget_year]["teile"][name] = {
+                "zeilen": len(part["zeilen"]),
+                "stellen": gesamt["positions_planned"] if gesamt else None,
+                "vacant": gesamt["vacant"] if gesamt else None,
             }
-            je_jahrgang[jahrgang]["unstimmig"] += len(teil["unstimmig"])
-            unstimmig_gesamt += len(teil["unstimmig"])
+            je_jahrgang[budget_year]["unstimmig"] += len(part["unstimmig"])
+            unstimmig_gesamt += len(part["unstimmig"])
             if gesamt:
-                anteil = (gesamt["nicht_besetzt"] / gesamt["stellen_vorjahr"] * 100
-                          if gesamt["stellen_vorjahr"] else 0.0)
-                p.sagen(f"  {jahrgang} Teil {name}: {gesamt['stellen_plan']:,.2f} Stellen "
-                        f"geplant · am {teil['stichtag']} waren {gesamt['nicht_besetzt']:,.2f} "
-                        f"von {gesamt['stellen_vorjahr']:,.2f} nicht besetzt "
-                        f"({anteil:.1f} %) · {len(teil['zeilen'])} Zeilen · "
+                anteil = (gesamt["vacant"] / gesamt["positions_prior_year"] * 100
+                          if gesamt["positions_prior_year"] else 0.0)
+                p.sagen(f"  {budget_year} Teil {name}: {gesamt['positions_planned']:,.2f} Stellen "
+                        f"geplant · am {part['as_of_date']} waren {gesamt['vacant']:,.2f} "
+                        f"von {gesamt['positions_prior_year']:,.2f} nicht besetzt "
+                        f"({anteil:.1f} %) · {len(part['zeilen'])} Zeilen · "
                         f"Dokument {r['document_id']}")
-            for u in teil["unstimmig"]:
-                p.warnen(f"      Zeile {u['lfd_nr']} ({u['bezeichnung']}): der Plan "
-                         f"weicht hier um {u['abweichung']:+.2f} Stellen von sich "
+            for u in part["unstimmig"]:
+                p.warnen(f"      Zeile {u['seq_no']} ({u['label']}): der Plan "
+                         f"weicht hier um {u['deviation']:+.2f} Stellen von sich "
                          f"selbst ab — gespeichert und gekennzeichnet")
 
     voll = sorted(j for j, d in je_jahrgang.items() if len(d["teile"]) == 2)
@@ -1466,8 +1621,8 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
     (``council/buergschaften.kettenprobe``), und ein Riss darf gar nicht erst
     in den Bestand.
     """
-    quelle = QUELLEN["jahresabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    source = QUELLEN["jahresabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
 
     gefunden: list[dict] = []
     beleg: dict[int, dict] = {}
@@ -1475,12 +1630,12 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
         m = re.search(r"(20\d\d)", r["label"] or "")
         if not m:
             continue
-        jahr = int(m.group(1))
-        g = buergschaften.parse_bestand(r["raw_text"] or "", jahr)
+        year = int(m.group(1))
+        g = buergschaften.parse_bestand(r["raw_text"] or "", year)
         if not g:
             continue
         gefunden.append(g)
-        beleg[jahr] = r
+        beleg[year] = r
 
     risse = buergschaften.kettenprobe(gefunden)
     for x in risse:
@@ -1493,31 +1648,31 @@ def lies_buergschaften(store: CouncilStore, p: Protokoll) -> dict:
         # hat.
         return {"jahrgaenge": 0, "kette_gerissen": len(risse), "glieder": 0}
 
-    zeilen = buergschaften.reihe(gefunden)
-    glieder = sum(1 for g in gefunden if "vorjahr_bestand" in g)
+    zeilen = buergschaften.series(gefunden)
+    glieder = sum(1 for g in gefunden if "prior_year_stock" in g)
     for z in zeilen:
         # Der Beleg ist das Dokument, in dem die Zahl STEHT — für 2021 also
         # der Abschluss 2022. Auf den Abschluss 2021 zu zeigen wäre bequem
         # und falsch: Dort steht sie nicht.
-        quell_jahr = z["jahr"] + 1 if z["aus_folgejahr"] else z["jahr"]
+        quell_jahr = z["year"] + 1 if z["out_next_year"] else z["year"]
         r = beleg.get(quell_jahr)
         if not r:
             continue
-        proben = [buergschaften.PROBE_TABELLE] if z["genau"] else []
-        if quell_jahr in {g["jahr"] for g in gefunden if "vorjahr_bestand" in g}:
-            proben.append(buergschaften.PROBE_KETTE)
-        einzeln = buergschaften.klinikum_betrag(z)
+        probes = [buergschaften.PROBE_TABELLE] if z["exact"] else []
+        if quell_jahr in {g["year"] for g in gefunden if "prior_year_stock" in g}:
+            probes.append(buergschaften.PROBE_KETTE)
+        einzeln = buergschaften.klinikum_amount(z)
         store.save_buergschaften(
-            [{**z, "einzelbetrag": einzeln, "proben": proben}],
+            [{**z, "single_amount": einzeln, "probes": probes}],
             herkunft.Herkunft(
-                art="ris", probe=proben or [buergschaften.PROBE_KETTE],
-                dokument_id=r["document_id"], label=r["label"], url=r["url"],
-                fundstelle=z["fundstelle"],
-                probe_ergebnis=(f"{z['bestand']/1e6:.1f} Mio. € Bestand"
-                                + ("" if z["genau"] else ", von der Quelle gerundet")),
-                stand=f"Jahresabschluss {quell_jahr}"))
-        woher = " (aus dem Folgejahr)" if z["aus_folgejahr"] else ""
-        p.sagen(f"  {z['jahr']}: {z['bestand']/1e6:7.1f} Mio. €{woher}")
+                kind="ris", probe=probes or [buergschaften.PROBE_KETTE],
+                document_id=r["document_id"], label=r["label"], url=r["url"],
+                citation=z["citation"],
+                probe_result=(f"{z['balance']/1e6:.1f} Mio. € Bestand"
+                                + ("" if z["exact"] else ", von der Quelle gerundet")),
+                as_of=f"Jahresabschluss {quell_jahr}"))
+        woher = " (aus dem Folgejahr)" if z["out_next_year"] else ""
+        p.sagen(f"  {z['year']}: {z['balance']/1e6:7.1f} Mio. €{woher}")
     return {"jahrgaenge": len(zeilen), "kette_gerissen": 0, "glieder": glieder}
 
 
@@ -1533,8 +1688,8 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
     Tabelle: Reißt eine Kette in 2019, sagt das nichts über 2024. Ein
     gerissener Jahrgang wird verworfen und benannt, die übrigen bleiben.
     """
-    quelle = QUELLEN["jahresabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    source = QUELLEN["jahresabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
 
     jahrgaenge = verworfen = zeilen_gesamt = 0
     geprueft = gerissen = 0
@@ -1543,65 +1698,65 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
         m = re.search(r"(20\d\d)", r["label"] or "")
         if not m:
             continue
-        jahr = int(m.group(1))
+        year = int(m.group(1))
         text = r["raw_text"] or ""
-        zeilen = anlagenspiegel.parse_anlagenspiegel(text, jahr)
+        zeilen = anlagenspiegel.parse_anlagenspiegel(text, year)
         if not zeilen:
             continue
 
         risse: list[str] = []
         for z in zeilen:
             ok, kaputt = anlagenspiegel.probe(z)
-            z["proben"] = ok
+            z["probes"] = ok
             geprueft += len(ok) + len(kaputt)
             risse += kaputt
-        saldo, umb_risse = anlagenspiegel.umbuchungsprobe(zeilen)
+        balance, umb_risse = anlagenspiegel.umbuchungsprobe(zeilen)
         risse += umb_risse
         # Die Gegenprobe an der Bilanz — eine andere Quelle im selben Heft.
         bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-            "SELECT rolle, wert FROM council_bilanz WHERE jahr = ?", (jahr,))]
+            "SELECT role, value FROM council_balance_sheet WHERE year = ?", (year,))]
         bilanz_risse = anlagenspiegel.gegen_bilanz(zeilen, bilanz_posten)
         if not bilanz_risse and bilanz_posten:
             for z in zeilen:
                 if z["nr"] in anlagenspiegel.BILANZ_ROLLE:
-                    z["proben"] = [*z["proben"], anlagenspiegel.PROBE_BILANZ]
+                    z["probes"] = [*z["probes"], anlagenspiegel.PROBE_BILANZ]
         risse += bilanz_risse
 
         if risse:
             gerissen += len(risse)
             verworfen += 1
             for x in risse[:3]:
-                p.warnen(f"  Anlagenspiegel {jahr}: {x}")
-            p.warnen(f"  Anlagenspiegel {jahr} verworfen — {len(risse)} Beanstandung(en)")
+                p.warnen(f"  Anlagenspiegel {year}: {x}")
+            p.warnen(f"  Anlagenspiegel {year} verworfen — {len(risse)} Beanstandung(en)")
             continue
 
-        if abs(saldo) <= anlagenspiegel.TOLERANZ and zeilen[0]["spalten"] == 12:
+        if abs(balance) <= anlagenspiegel.TOLERANZ and zeilen[0]["n_columns"] == 12:
             for z in zeilen:
-                z["proben"] = [*z["proben"], anlagenspiegel.PROBE_UMBUCHUNG]
+                z["probes"] = [*z["probes"], anlagenspiegel.PROBE_UMBUCHUNG]
 
         store.save_anlagenspiegel(
-            jahr, zeilen,
+            year, zeilen,
             herkunft.Herkunft(
-                art="ris", probe=sorted({x for z in zeilen for x in z["proben"]}),
-                dokument_id=r["document_id"], label=r["label"], url=r["url"],
-                fundstelle=anlagenspiegel.ABSCHNITT,
-                probe_ergebnis=f"{geprueft} Rechenwege geprüft, keiner gerissen",
-                stand=f"Jahresabschluss {jahr}"))
+                kind="ris", probe=sorted({x for z in zeilen for x in z["probes"]}),
+                document_id=r["document_id"], label=r["label"], url=r["url"],
+                citation=anlagenspiegel.ABSCHNITT,
+                probe_result=f"{geprueft} Rechenwege geprüft, keiner gerissen",
+                as_of=f"Jahresabschluss {year}"))
         jahrgaenge += 1
         zeilen_gesamt += len(zeilen)
 
-        gruppen = anlagenspiegel.parse_sachvermoegen_gruppen(text, jahr)
+        gruppen = anlagenspiegel.parse_sachvermoegen_gruppen(text, year)
         if gruppen:
             store.save_vermoegensgruppen(
-                jahr, gruppen,
+                year, gruppen,
                 herkunft.Herkunft(
-                    art="ris", probe=[anlagenspiegel.PROBE_BUCHWERT],
-                    dokument_id=r["document_id"], label=r["label"], url=r["url"],
-                    fundstelle="Erläuterungen zum Sachvermögen",
-                    probe_ergebnis=f"{len(gruppen)} Untergruppen",
-                    stand=f"Jahresabschluss {jahr}"))
+                    kind="ris", probe=[anlagenspiegel.PROBE_BUCHWERT],
+                    document_id=r["document_id"], label=r["label"], url=r["url"],
+                    citation="Erläuterungen zum Sachvermögen",
+                    probe_result=f"{len(gruppen)} Untergruppen",
+                    as_of=f"Jahresabschluss {year}"))
             gruppen_gesamt += len(gruppen)
-        p.sagen(f"  {jahr}: {len(zeilen)} Positionen, {len(gruppen)} Untergruppen")
+        p.sagen(f"  {year}: {len(zeilen)} Positionen, {len(gruppen)} Untergruppen")
 
     return {"anlagenspiegel_jahrgaenge": jahrgaenge,
             "anlagenspiegel_zeilen": zeilen_gesamt,
@@ -1617,20 +1772,20 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     Ein Bericht liefert fünf Jahrgänge, und die Jahrgänge überlappen sich
     zwischen den Berichten. Genau daraus zieht diese Schicht ihren Wert:
 
-    * :func:`kennzahlen.ueberlappungsprobe` vergleicht jede doppelt gedruckte
+    * :func:`indicators.ueberlappungsprobe` vergleicht jede doppelt gedruckte
       Zelle. 221 Paare stimmen exakt, sieben nicht — und diese sieben sind
       Korrekturen, die die Stadt vorgenommen und nirgends angesagt hat.
-    * :func:`kennzahlen.gegen_bilanz` rechnet drei Quoten aus **unserer**
+    * :func:`indicators.gegen_bilanz` rechnet drei Quoten aus **unserer**
       Bilanz nach; sie stimmen auf die letzte gedruckte Nachkommastelle.
-    * :func:`kennzahlen.vermoegensprobe` nimmt zwei Zeilen derselben Tabelle
+    * :func:`indicators.vermoegensprobe` nimmt zwei Zeilen derselben Tabelle
       mal — und heraus kommt die Bilanzsumme ohne Rechnungsabgrenzung.
 
     VERWORFEN WIRD JE BERICHT, nicht insgesamt: Reißt eine Probe im Bericht
     2022, sagt das nichts über den Bericht 2024. Die Überlappungsprobe läuft
     dagegen erst **nach** allen Berichten — sie braucht mindestens zwei.
     """
-    quelle = QUELLEN["kennzahlen"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
+    source = QUELLEN["indicators"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
 
     # ERSTER DURCHGANG: alles lesen. Die Fassungsnummer eines Rechenwegs lässt
     # sich erst vergeben, wenn ALLE Berichte vorliegen — sie sagt ja gerade,
@@ -1644,84 +1799,84 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
         m = re.search(r"(20\d\d)", r["label"] or "")
         if not m:
             continue
-        bericht_jahr = int(m.group(1))
+        report_year = int(m.group(1))
         text = r["raw_text"] or ""
-        zeilen, unbekannt = kennzahlen.parse_kennzahlen(text, bericht_jahr)
+        zeilen, unbekannt = indicators.parse_kennzahlen(text, report_year)
         if not zeilen:
             # 2017 und 2018 zeigen dieselben Kennzahlen nur als Diagramm. Ihre
             # Jahrgänge stehen als Tabelle im Bericht 2019 — hier fehlt also
             # nichts, und es ist keine Warnung wert.
             ohne_tabelle += 1
             continue
-        gelesen.append((r, bericht_jahr, zeilen,
-                        kennzahlen.parse_formeln(text, bericht_jahr), unbekannt))
+        gelesen.append((r, report_year, zeilen,
+                        indicators.parse_formeln(text, report_year), unbekannt))
 
     alle_formeln = [f for _, _, _, formeln, _ in gelesen for f in formeln]
-    nummern = kennzahlen.fassungen(alle_formeln)
+    nummern = indicators.fassungen(alle_formeln)
 
-    berichte = verworfen = 0
+    n_reports = verworfen = 0
     werte_gesamt = formeln_gesamt = 0
     bilanz_geprueft = vermoegen_geprueft = 0
     gesammelt: list[dict] = []
 
     bilanz_posten = [dict(x) for x in store._conn.execute(  # noqa: SLF001
-        "SELECT jahr, rolle, wert FROM council_bilanz WHERE rolle IS NOT NULL")]
+        "SELECT year, role, value FROM council_balance_sheet WHERE role IS NOT NULL")]
 
     # ZWEITER DURCHGANG: prüfen und schreiben, Bericht für Bericht.
-    for r, bericht_jahr, zeilen, formeln, unbekannt in sorted(
+    for r, report_year, zeilen, formeln, unbekannt in sorted(
             gelesen, key=lambda g: g[1]):
         for z in zeilen:
-            z["fassung"] = nummern.get((z["kennzahl"], bericht_jahr))
+            z["version"] = nummern.get((z["indicator"], report_year))
         for f in formeln:
-            f["fassung"] = nummern[(f["kennzahl"], bericht_jahr)]
+            f["version"] = nummern[(f["indicator"], report_year)]
 
         if unbekannt:
             for u in unbekannt[:3]:
-                p.warnen(f"  Kennzahlen {bericht_jahr}: Zeile nicht zugeordnet — {u}")
-            p.warnen(f"  Rechenschaftsbericht {bericht_jahr} verworfen — "
+                p.warnen(f"  Kennzahlen {report_year}: Zeile nicht zugeordnet — {u}")
+            p.warnen(f"  Rechenschaftsbericht {report_year} verworfen — "
                      f"{len(unbekannt)} unzuordenbare Zeile(n)")
             verworfen += 1
             continue
 
-        bilanz_ok, bilanz_risse = kennzahlen.gegen_bilanz(zeilen, bilanz_posten)
-        verm_ok, verm_risse = kennzahlen.vermoegensprobe(zeilen, bilanz_posten)
+        bilanz_ok, bilanz_risse = indicators.gegen_bilanz(zeilen, bilanz_posten)
+        verm_ok, verm_risse = indicators.vermoegensprobe(zeilen, bilanz_posten)
         if bilanz_risse or verm_risse:
             for x in (bilanz_risse + verm_risse)[:3]:
-                p.warnen(f"  Kennzahlen {bericht_jahr}: {x}")
-            p.warnen(f"  Rechenschaftsbericht {bericht_jahr} verworfen — "
+                p.warnen(f"  Kennzahlen {report_year}: {x}")
+            p.warnen(f"  Rechenschaftsbericht {report_year} verworfen — "
                      f"{len(bilanz_risse) + len(verm_risse)} Gegenprobe(n) gerissen")
             verworfen += 1
             continue
 
-        proben = [kennzahlen.PROBE_BILANZ] if bilanz_ok else []
+        probes = [indicators.PROBE_BILANZ] if bilanz_ok else []
         if verm_ok:
-            proben.append(kennzahlen.PROBE_VERMOEGEN)
+            probes.append(indicators.PROBE_VERMOEGEN)
         bilanz_geprueft += bilanz_ok
         vermoegen_geprueft += verm_ok
 
         store.save_kennzahlen(
-            bericht_jahr, zeilen, formeln,
+            report_year, zeilen, formeln,
             herkunft.Herkunft(
-                art="ris", probe=proben or herkunft.UNGEPRUEFT,
-                dokument_id=r["document_id"], label=r["label"], url=r["url"],
-                fundstelle="Anlage: Kennzahlenübersicht und Berechnungsmethoden",
-                probe_ergebnis=f"{bilanz_ok} Quoten und {verm_ok} Jahrgänge "
+                kind="ris", probe=probes or herkunft.UNGEPRUEFT,
+                document_id=r["document_id"], label=r["label"], url=r["url"],
+                citation="Anlage: Kennzahlenübersicht und Berechnungsmethoden",
+                probe_result=f"{bilanz_ok} Quoten und {verm_ok} Jahrgänge "
                                f"gegen die Bilanz nachgerechnet",
-                stand=f"Rechenschaftsbericht {bericht_jahr}"))
-        berichte += 1
+                as_of=f"Rechenschaftsbericht {report_year}"))
+        n_reports += 1
         werte_gesamt += len(zeilen)
         formeln_gesamt += len(formeln)
         gesammelt += zeilen
-        jahre = sorted({z["jahr"] for z in zeilen})
-        p.sagen(f"  Bericht {bericht_jahr}: {len(zeilen)} Werte "
-                f"({jahre[0]}–{jahre[-1]}), {len(formeln)} Rechenwege")
+        years = sorted({z["year"] for z in zeilen})
+        p.sagen(f"  Bericht {report_year}: {len(zeilen)} Werte "
+                f"({years[0]}–{years[-1]}), {len(formeln)} Rechenwege")
 
-    bestaetigt, funde = kennzahlen.ueberlappungsprobe(gesammelt)
+    bestaetigt, funde = indicators.ueberlappungsprobe(gesammelt)
     arten = {a: sum(1 for f in funde if f["art"] == a)
              for a in ("revision", "definition", "umbenennung")}
     for f in funde:
         if f["art"] == "revision":
-            p.sagen(f"  Korrektur: {f['kennzahl']} {f['jahr']} — {f['alt']} "
+            p.sagen(f"  Korrektur: {f['indicator']} {f['year']} — {f['alt']} "
                     f"(Bericht {f['alt_bericht']}) → {f['neu']} "
                     f"(Bericht {f['neu_bericht']})")
     p.sagen(f"  Überlappung: {bestaetigt} Paare identisch, "
@@ -1729,14 +1884,14 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
             f"{arten['definition']} Definitionswechsel, "
             f"{arten['umbenennung']} bloße Umbenennungen")
 
-    return {"kennzahlen_berichte": berichte,
+    return {"kennzahlen_berichte": n_reports,
             "kennzahlen_werte": werte_gesamt,
             "kennzahlen_formeln": formeln_gesamt,
             "kennzahlen_ohne_tabelle": ohne_tabelle,
             "kennzahlen_verworfen": verworfen,
             "kennzahlen_bilanz_geprueft": bilanz_geprueft,
             "kennzahlen_vermoegen_geprueft": vermoegen_geprueft,
-            "kennzahlen_ueberlappung": bestaetigt,
+            "indicators_overlap": bestaetigt,
             "kennzahlen_korrekturen": arten["revision"],
             "kennzahlen_definitionswechsel": arten["definition"]}
 
@@ -1750,37 +1905,37 @@ def lies_schlussbericht_fundstellen(store: CouncilStore, p: Protokoll,
 
     Eine Zeile je Jahrgang, ein Dokument je Zeile — hier ist die Einheit
     tatsächlich der Jahrgang, und „da" heißt „fertig"."""
-    quelle = QUELLEN["rpa_fundstelle"]
-    rows = quelle.dokumente(store, "document_id, label, url, n_pages, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["rpa_fundstelle"]
+    rows = source.dokumente(store, "document_id, label, url, n_pages, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
     neu: list[int] = []
     gefunden = unlesbar = 0
     for r in rows:
         treffer = finanzberichte.pruefbericht_aus_anlage(r["label"], r["raw_text"])
         if not treffer:
             continue
-        if (treffer["jahr"],) in vorhanden:
+        if (treffer["year"],) in vorhanden:
             continue
         # Der Buchstabenanteil steht auch dann dabei, wenn er die Probe
         # REISST (2024: 0,00) — dann fehlt `textextrakt` in der Liste, und
         # die Zahl daneben sagt, warum. Eine gerissene Probe zu verschweigen
         # wäre schlimmer, als sie zu nennen.
-        proben = ["eingangsformel"] + (["textextrakt"] if treffer["lesbar"] else [])
+        probes = ["preamble_scope"] + (["text_layer"] if treffer["readable"] else [])
         store.save_pruefbericht_quelle(
-            treffer["jahr"],
+            treffer["year"],
             herkunft.Herkunft(
-                art="ris", probe=proben, dokument_id=r["document_id"],
+                kind="ris", probe=probes, document_id=r["document_id"],
                 label=r["label"], url=r["url"],
-                fundstelle="Deckblatt und Eingangsformel des Schlussberichts",
-                probe_ergebnis=f"Buchstabenanteil im Volltext "
+                citation="Deckblatt und Eingangsformel des Schlussberichts",
+                probe_result=f"Buchstabenanteil im Volltext "
                                f"{treffer['buchstabenanteil']:.2f}",
-                stand=f"Jahresabschluss {treffer['jahr']}"),
-            r["n_pages"], treffer["lesbar"])
-        neu.append(treffer["jahr"])
+                as_of=f"Jahresabschluss {treffer['year']}"),
+            r["n_pages"], treffer["readable"])
+        neu.append(treffer["year"])
         gefunden += 1
-        hinweis = "" if treffer["lesbar"] else "  (Volltext unbrauchbar, nur Verweis)"
-        p.sagen(f'  {treffer["jahr"]}: {r["n_pages"]} Seiten{hinweis}')
-        unlesbar += 0 if treffer["lesbar"] else 1
+        note = "" if treffer["readable"] else "  (Volltext unbrauchbar, nur Verweis)"
+        p.sagen(f'  {treffer["year"]}: {r["n_pages"]} Seiten{note}')
+        unlesbar += 0 if treffer["readable"] else 1
     return {"neue_jahrgaenge": neu, "neue_einheiten": [(j,) for j in neu],
             "pruefberichte": gefunden, "pruefberichte_ohne_text": unlesbar}
 
@@ -1802,22 +1957,25 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     **Ein Teilhaushalt wird genau einmal versorgt, vom ersten Dokument.**
     Sechs (Jahrgang, Teilhaushalt)-Paare hängen an zwei Vorlagen — dieselbe
     PDF-Datei, ein zweites Mal unter einem anderen Tagesordnungspunkt
-    hochgeladen (2018/THH08, 2018/THH11, 2019/THH11, 2020/THH08, 2021/THH08,
-    2022/THH08; nachgemessen 08/2026, der Volltext ist Byte für Byte
+    hochgeladen (2019/THH08, 2019/THH11, 2020/THH11, 2021/THH08, 2022/THH08,
+    2023/THH08; nachgemessen 08/2026, der Volltext ist Byte für Byte
     derselbe). Ohne Regel entschied die Sortierung der Kandidaten, welches
     Dokument als Quelle in der Zeile steht — und das fiel zugunsten der
     schlechteren Angabe aus: „TOP 5 - Anlage III - THH 08" sagt außerhalb
-    seiner Sitzung nichts, und „2019 THH 08" trägt am Plan für **2018** die
-    falsche Jahreszahl. Das erste Dokument ist die Anlage der Haushalts-
-    vorlage selbst und führt die Zählung des Plans („014 THH08").
+    seiner Sitzung nichts. Das erste Dokument ist die Anlage der Haushalts-
+    vorlage selbst und führt die Zählung des Plans („014 THH08"). Mit der
+    niedrigeren Seitenschwelle (25 statt 40) kommen die Zweitfassungen der
+    kleineren Teilhaushalte dazu — „THH12", „zu TOP 9 THH12", „Anlage 4 THH
+    12" —, dieselbe Regel fängt sie; aus sechs Paaren werden damit elf
+    (nachgemessen 02.09.2026).
 
     Weichen die Zahlen des zweiten Dokuments ab, ist das eine **neue Lage** —
     ein Nachtragshaushalt etwa, der einen Ansatz wirklich ändert. Dann wird
     gemeldet statt still überschrieben; welcher Stand gilt, entscheidet
     niemand nebenbei in einem unbeaufsichtigten Lauf."""
-    quelle = QUELLEN["teilhaushalt"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["teilhaushalt"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
     if nur_fehlende:
         rows = [r for r in rows if (teilhaushalt_jahrgang((r["raw_text"] or "")[:4000]),
                                     teilhaushalt_nummer(r["label"])) not in vorhanden]
@@ -1826,64 +1984,81 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     neue_einheiten: set[tuple] = set()
     mit_feld: dict[str, int] = {f: 0 for f in STECKBRIEF}
     ohne = geschuetzt = dubletten = 0
-    # (jahr, thh_nr) → (Signatur, Dokument), das den Teilhaushalt versorgt hat.
+    # (year, thh_nr) → (Signatur, Dokument), das den Teilhaushalt versorgt hat.
     versorgt: dict[tuple, tuple] = {}
     for r in rows:
         produkte = finanzberichte.parse_teilergebnishaushalt(r["raw_text"] or "")
         if not produkte:
             ohne += 1
             continue
-        for jahr in {x["jahr"] for x in produkte}:
-            teil = [x for x in produkte if x["jahr"] == jahr]
+        # Jahrgangsprobe: Wo das Label einen Jahrgang nennt, muss es derselbe
+        # sein, den der Tabellenkopf nennt. Sie ist keine Sperre (die Hälfte
+        # der Labels nennt gar keinen), aber der Wächter über die
+        # Spaltenwahl — genau diese Verschiebung stand ein Jahr lang
+        # unbemerkt in der Tabelle.
+        label_jahr = teilhaushalt_label_jahr(r["label"])
+        jahre_im_dokument = {x["year"] for x in produkte}
+        if label_jahr and label_jahr not in jahre_im_dokument:
+            p.warnen(
+                f"  Dokument {r['document_id']} ({r['label']!r}): Das Label "
+                f"nennt {label_jahr}, der Tabellenkopf "
+                f"{sorted(jahre_im_dokument)} — die Spaltenzuordnung prüfen "
+                f"(council/finanzberichte.py, thh_kopfspalten).")
+        for year in jahre_im_dokument:
+            part = [x for x in produkte if x["year"] == year]
             # ``save_produkte`` löscht nichts, überschreibt aber Zeile für
             # Zeile. Verglichen wird deshalb je Teilhaushalt, nicht je Jahr:
             # Ein Dokument trägt immer nur seinen eigenen THH bei, gegen den
             # Jahresbestand gehalten sähe jedes Dokument wie ein Einbruch aus.
             with store.transaktion():
-                for thh_nr in sorted({x.get("thh_nr") for x in teil}, key=lambda v: v or 0):
-                    if (jahr, thh_nr) in vorhanden:
+                for sub_budget_no in sorted({x.get("sub_budget_no") for x in part}, key=lambda v: v or 0):
+                    if (year, sub_budget_no) in vorhanden:
                         continue
-                    stueck = [x for x in teil if x.get("thh_nr") == thh_nr]
+                    stueck = [x for x in part if x.get("sub_budget_no") == sub_budget_no]
                     # Zweites Dokument für denselben Teilhaushalt: Das erste
                     # hat ihn versorgt (siehe Docstring). Nur die Herkunft
                     # würde hier noch getauscht — und mit ihr entstünde ein
                     # Herkunfts-Datensatz, auf den am Ende des Laufs keine
                     # Zeile mehr zeigt (`herkunft_aufraeumen` fegte sechs
                     # Stück je Lauf wieder weg).
-                    if (jahr, thh_nr) in versorgt:
-                        signatur, quelle = versorgt[(jahr, thh_nr)]
+                    if (year, sub_budget_no) in versorgt:
+                        signatur, source = versorgt[(year, sub_budget_no)]
                         if _produkt_signatur(stueck) != signatur:
                             p.warnen(
-                                f"  {jahr} THH{thh_nr}: Dokument {r['document_id']} "
+                                f"  {year} THH{sub_budget_no}: Dokument {r['document_id']} "
                                 f"({r['label']!r}) trägt ANDERE Zahlen als "
-                                f"Dokument {quelle['document_id']} "
-                                f"({quelle['label']!r}), das den Teilhaushalt "
+                                f"Dokument {source['document_id']} "
+                                f"({source['label']!r}), das den Teilhaushalt "
                                 f"versorgt hat — es gilt weiter das erste. "
                                 f"Bitte prüfen, welcher Stand der richtige ist.")
                         dubletten += 1
                         continue
-                    alt = _anzahl(store, "SELECT COUNT(*) FROM council_produkte "
-                                         "WHERE jahr = ? AND thh_nr IS ?", (jahr, thh_nr))
-                    if not bestandsschutz(p, f"{jahr} THH{thh_nr}", alt,
+                    alt = _anzahl(store, "SELECT COUNT(*) FROM council_products "
+                                         "WHERE year = ? AND sub_budget_no IS ?", (year, sub_budget_no))
+                    if not bestandsschutz(p, f"{year} THH{sub_budget_no}", alt,
                                           len(stueck), schuetzen):
                         geschuetzt += 1 if alt else 0
                         continue
-                    store.save_produkte(jahr, stueck, herkunft.Herkunft(
-                        art="ris", probe="produktzeile",
-                        dokument_id=r["document_id"], label=r["label"], url=r["url"],
-                        fundstelle=(f"Teilergebnishaushalt THH{thh_nr:02d}, "
-                                    f"Produktebene mit Steckbrief" if thh_nr
+                    store.save_produkte(year, stueck, herkunft.Herkunft(
+                        kind="ris", probe="product_row",
+                        document_id=r["document_id"], label=r["label"], url=r["url"],
+                        citation=(f"Teilergebnishaushalt THH{sub_budget_no:02d}, "
+                                    f"Produktebene mit Steckbrief" if sub_budget_no
                                     else "Teilergebnishaushalt, Produktebene"),
-                        probe_ergebnis=f"{len(stueck)} Produktzeilen mit "
+                        probe_result=f"{len(stueck)} Produktzeilen mit "
                                        f"aufgehender Ergebnis-Rechnung",
-                        stand=f"Haushaltsplan {jahr}"))
-                    versorgt[(jahr, thh_nr)] = (_produkt_signatur(stueck), r)
-                    neue_einheiten.add((jahr, thh_nr))
-                    je_jahr[jahr] = je_jahr.get(jahr, 0) + len(stueck)
-                    for feld in STECKBRIEF:
-                        mit_feld[feld] += sum(1 for x in stueck if x.get(feld))
-    for jahr in sorted(je_jahr):
-        p.sagen(f"  {jahr}: {je_jahr[jahr]} Produkt-Zeilen")
+                        # Wie beim Gesamtergebnishaushalt und beim Stellenplan:
+                        # Die Anlage hängt an der Vorlage, mit der die
+                        # Verwaltung den Haushalt einbringt. Was der Rat daran
+                        # noch ändert, steht nicht darin.
+                        as_of=f"Haushaltsplan {year} — Stand der Einbringung"))
+                    versorgt[(year, sub_budget_no)] = (_produkt_signatur(stueck), r)
+                    neue_einheiten.add((year, sub_budget_no))
+                    je_jahr[year] = je_jahr.get(year, 0) + len(stueck)
+                    for field in STECKBRIEF:
+                        mit_feld[field] += sum(1 for x in stueck if x.get(field))
+    for year in sorted(je_jahr):
+        p.sagen(f"  {year}: {je_jahr[year]} Produkt-Zeilen")
     if dubletten:
         # Keine Warnung: Das ist der bekannte, gemessene Normalfall (sechs
         # Paare). Auffällig wäre erst, wenn die Zahl wächst — dann steht eine
@@ -1900,16 +2075,16 @@ def lies_teilhaushalte(store: CouncilStore, p: Protokoll,
     # aber auch die Jahrgänge früherer Läufe. Auf der Seite steht später der
     # Tabellenstand.
     gesamt = store._conn.execute(  # noqa: SLF001
-        "SELECT COUNT(*) FROM council_produkte").fetchone()[0]
+        "SELECT COUNT(*) FROM council_products").fetchone()[0]
     p.sagen(f"  Steckbrief-Abdeckung ({gesamt} Produkte in der Tabelle):")
     abdeckung: dict[str, int] = {}
-    for feld in STECKBRIEF:
+    for field in STECKBRIEF:
         n = store._conn.execute(  # noqa: SLF001
-            f"SELECT COUNT(*) FROM council_produkte WHERE {feld} IS NOT NULL "
-            f"AND {feld} != ''").fetchone()[0]
-        abdeckung[feld] = n
+            f"SELECT COUNT(*) FROM council_products WHERE {field} IS NOT NULL "
+            f"AND {field} != ''").fetchone()[0]
+        abdeckung[field] = n
         anteil = f"{n / gesamt * 100:.1f} %" if gesamt else "–"
-        p.sagen(f"    {feld:20s} {n:>5}  ({anteil})")
+        p.sagen(f"    {field:20s} {n:>5}  ({anteil})")
     return {"neue_jahrgaenge": sorted(je_jahr),
             "neue_einheiten": sorted(neue_einheiten), "dokumente": len(rows),
             "ohne_treffer": ohne, "bestand_geschuetzt": geschuetzt,
@@ -1936,54 +2111,54 @@ def lies_pruefungsfeststellungen(store: CouncilStore, p: Protokoll,
     für einen Blick in den Bericht — nicht für eine gelockerte Regel."""
     from collections import Counter
 
-    quelle = QUELLEN["pruefungsfeststellungen"]
-    rows = quelle.dokumente(store, "document_id, label, url, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["pruefungsfeststellungen"]
+    rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahr: dict[int, dict] = {}
     geschuetzt = 0
     for r in rows:
-        ergebnis = pruefberichte.parse_feststellungen(r["raw_text"] or "")
-        jahr = ergebnis["jahr"]
-        if jahr is None:
+        result = pruefberichte.parse_feststellungen(r["raw_text"] or "")
+        year = result["year"]
+        if year is None:
             continue  # Stiftung, Eigenbetrieb oder kaputter Textextrakt
-        if (jahr,) in vorhanden:
+        if (year,) in vorhanden:
             continue
-        gefunden = ergebnis["feststellungen"]
+        gefunden = result["feststellungen"]
         if not gefunden:
-            p.warnen(f"  {jahr}: keine Feststellung lesbar "
-                     f"(Legende {sorted(ergebnis['legende']) or '—'}) — übersprungen")
-        if jahr in je_jahr:
-            p.warnen(f"  {jahr}: zweites Dokument ({r['document_id']}) — übersprungen")
+            p.warnen(f"  {year}: keine Feststellung readable "
+                     f"(Legende {sorted(result['legende']) or '—'}) — übersprungen")
+        if year in je_jahr:
+            p.warnen(f"  {year}: zweites Dokument ({r['document_id']}) — übersprungen")
             continue
         # save_pruefbericht leert den Jahrgang, bevor es schreibt — gegen ein
         # leeres oder deutlich kleineres Ergebnis passiert das nicht.
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_pruefberichte WHERE jahr = ?",
-                      (jahr,))
-        if not bestandsschutz(p, f"{jahr} Feststellungen", alt, len(gefunden), schuetzen):
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_audit_reports WHERE year = ?",
+                      (year,))
+        if not bestandsschutz(p, f"{year} Feststellungen", alt, len(gefunden), schuetzen):
             geschuetzt += 1 if alt else 0
             continue
-        marken = Counter(f["marke"] for f in gefunden)
+        marken = Counter(f["mark"] for f in gefunden)
         if not trocken:
-            store.save_pruefbericht(jahr, gefunden, herkunft.Herkunft(
-                art="ris", probe="legende_und_verzeichnis",
-                dokument_id=r["document_id"], label=r["label"], url=r["url"],
+            store.save_pruefbericht(year, gefunden, herkunft.Herkunft(
+                kind="ris", probe="legend_and_index",
+                document_id=r["document_id"], label=r["label"], url=r["url"],
                 # Grob mit Absicht: Die genaue Fundstelle einer Feststellung
                 # ist ihre Textziffer und ihre Seite, und die stehen je Zeile
                 # in der Tabelle.
-                fundstelle="Randmarken B, WB, H und K im Fließtext",
-                probe_ergebnis=f"{len(gefunden)} Feststellungen übernommen, "
-                               f"{len(ergebnis['verworfen'])} verworfen",
-                stand=f"Schlussbericht zum Jahresabschluss {jahr}"))
-        je_jahr[jahr] = {"feststellungen": len(gefunden),
-                         "verworfen": len(ergebnis["verworfen"]),
+                citation="Randmarken B, WB, H und K im Fließtext",
+                probe_result=f"{len(gefunden)} Feststellungen übernommen, "
+                               f"{len(result['verworfen'])} verworfen",
+                as_of=f"Schlussbericht zum Jahresabschluss {year}"))
+        je_jahr[year] = {"feststellungen": len(gefunden),
+                         "verworfen": len(result["verworfen"]),
                          "marken": dict(marken)}
         marken_text = " · ".join(
             f"{m} {marken[m]}" for m in pruefberichte.MARKEN if marken.get(m))
-        p.sagen(f"  {jahr}: {len(gefunden)} Feststellungen ({marken_text})"
-                f" · verworfen {len(ergebnis['verworfen'])}"
+        p.sagen(f"  {year}: {len(gefunden)} Feststellungen ({marken_text})"
+                f" · verworfen {len(result['verworfen'])}"
                 f" · Dokument {r['document_id']}")
-        for v in ergebnis["verworfen"]:
+        for v in result["verworfen"]:
             p.warnen(f"      verworfen: {v}")
     return {"neue_jahrgaenge": sorted(je_jahr), "je_jahr": je_jahr,
             "bestand_geschuetzt": geschuetzt,
@@ -2014,87 +2189,87 @@ def lies_konzernabschluesse(store: CouncilStore, p: Protokoll,
     Protokoll und in der Rückgabe — schlägt sie an, hat sich etwas an der
     Quelle geändert, und das gehört angesehen, nicht automatisch entschieden.
     """
-    quelle = QUELLEN["konzernabschluss"]
-    rows = quelle.dokumente(store, "document_id, label, url, n_pages, raw_text")
-    vorhanden = quelle.vorhandene(store, nur_fehlende)
+    source = QUELLEN["konzernabschluss"]
+    rows = source.dokumente(store, "document_id, label, url, n_pages, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     je_jahr: dict[int, dict] = {}
     gelesen: dict[int, list[dict]] = {}
     geschuetzt = verworfen_gesamt = 0
     for r in rows:
-        jahr = konzernabschluss.jahrgang(r["raw_text"])
-        if jahr is None:
+        year = konzernabschluss.budget_year(r["raw_text"])
+        if year is None:
             continue  # Schlussbericht oder Teilhaushalts-Plan im selben Vorfilter
-        if (jahr,) in vorhanden:
+        if (year,) in vorhanden:
             continue
-        if jahr in je_jahr:
-            p.warnen(f"  {jahr}: zweites Dokument ({r['document_id']}) — übersprungen")
+        if year in je_jahr:
+            p.warnen(f"  {year}: zweites Dokument ({r['document_id']}) — übersprungen")
             continue
-        ergebnis = konzernabschluss.lies(r["raw_text"] or "")
-        if not ergebnis["bestanden"]:
-            gerissen = [x["probe"] for x in ergebnis["proben"] if not x["ok"]]
-            grund = (f"Probe gerissen: {'; '.join(gerissen)}" if gerissen
-                     else f"nur {len(ergebnis['proben'])} von 3 Proben rechenbar")
-            p.warnen(f"  {jahr}: {grund} — Dokument {r['document_id']}, nicht gespeichert")
-            verworfen_gesamt += ergebnis["verworfen"]
+        result = konzernabschluss.lies(r["raw_text"] or "")
+        if not result["bestanden"]:
+            gerissen = [x["probe"] for x in result["probes"] if not x["ok"]]
+            reason = (f"Probe gerissen: {'; '.join(gerissen)}" if gerissen
+                     else f"nur {len(result['probes'])} von 3 Proben rechenbar")
+            p.warnen(f"  {year}: {reason} — Dokument {r['document_id']}, nicht gespeichert")
+            verworfen_gesamt += result["verworfen"]
             continue
-        alt = _anzahl(store, "SELECT COUNT(*) FROM council_konzern_posten WHERE jahr = ?",
-                      (jahr,))
-        if not bestandsschutz(p, f"{jahr} Konzern-Posten", alt,
-                              len(ergebnis["posten"]), schuetzen):
+        alt = _anzahl(store, "SELECT COUNT(*) FROM council_group_items WHERE year = ?",
+                      (year,))
+        if not bestandsschutz(p, f"{year} Konzern-Posten", alt,
+                              len(result["posten"]), schuetzen):
             geschuetzt += 1 if alt else 0
             continue
-        traeger = [z | {"art": block["art"]}
-                   for block in ergebnis["traeger"] for z in block["zeilen"]]
+        entity = [z | {"kind": block["kind"]}
+                   for block in result["entity"] for z in block["zeilen"]]
 
         # Zwei Herkünfte, weil es zwei Abschnitte sind: Die Posten stehen in
         # 3.2, die Trägeraufstellung in 4.1.1, und sie sind durch verschiedene
-        # Proben gedeckt. `stand` nennt den Stichtag des Inhalts — bei den
+        # Proben gedeckt. `as_of` nennt den Stichtag des Inhalts — bei den
         # Beteiligungen ist genau das der Punkt, an dem sich Konzern- und
         # Einzelabschluss unterscheiden werden.
-        anker = dict(art="ris", dokument_id=r["document_id"], label=r["label"],
-                     url=r["url"], stand=f"Gesamtabschluss zum 31.12.{jahr}")
+        anker = dict(kind="ris", document_id=r["document_id"], label=r["label"],
+                     url=r["url"], as_of=f"Gesamtabschluss zum 31.12.{year}")
         h_posten = herkunft.Herkunft(
-            probe=["konzern_ergebnisprobe", "konzern_ausserordentlich",
-                   "konzern_gesamtergebnis"],
-            fundstelle="Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
-            probe_ergebnis=konzernabschluss.probennachweis(ergebnis["proben"]),
+            probe=["group_ordinary_result", "group_extraordinary_result",
+                   "group_total_result"],
+            citation="Abschnitt 3.2, Gesamtergebnisrechnung des Konzerns",
+            probe_result=konzernabschluss.probennachweis(result["probes"]),
             **anker)
         h_traeger = herkunft.Herkunft(
-            probe=["konzern_zeilenprobe", "konzern_traegersumme", "konzern_querprobe"],
-            fundstelle="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
-            probe_ergebnis=konzernabschluss.traegernachweis(ergebnis["traeger"]),
-            **anker) if traeger else None
-        store.save_konzern_jahrgang(jahr, ergebnis["posten"], traeger,
+            probe=["group_row_change", "group_entity_total", "group_cross_check"],
+            citation="Abschnitt 4.1.1, Aufstellung nach Aufgabenträgern",
+            probe_result=konzernabschluss.traegernachweis(result["entity"]),
+            **anker) if entity else None
+        store.save_konzern_jahrgang(year, result["posten"], entity,
                                     h_posten, h_traeger)
-        gelesen[jahr] = ergebnis["posten"]
-        verworfen_gesamt += ergebnis["verworfen"]
-        je_jahr[jahr] = {"posten": len(ergebnis["posten"]), "traeger": len(traeger),
-                         "aufstellungen": len(ergebnis["traeger"]),
-                         "verworfen": ergebnis["verworfen"]}
-        p.sagen(f"  {jahr}: {len(ergebnis['posten'])} Posten · {len(traeger)} Trägerzeilen "
-                f"aus {len(ergebnis['traeger'])} Aufstellungen"
-                f" · verworfen {ergebnis['verworfen']} · Dokument {r['document_id']}")
+        gelesen[year] = result["posten"]
+        verworfen_gesamt += result["verworfen"]
+        je_jahr[year] = {"posten": len(result["posten"]), "entity": len(entity),
+                         "aufstellungen": len(result["entity"]),
+                         "verworfen": result["verworfen"]}
+        p.sagen(f"  {year}: {len(result['posten'])} Posten · {len(entity)} Trägerzeilen "
+                f"aus {len(result['entity'])} Aufstellungen"
+                f" · verworfen {result['verworfen']} · Dokument {r['document_id']}")
         # Nur melden, wenn eine *vorhandene* Aufstellung durchgefallen ist.
         # Bis 2016 führt der Bericht den Abschnitt 4.1.1 noch nicht — das ist
         # eine Lücke der Quelle und keine Meldung wert.
-        if len(ergebnis["traeger"]) < ergebnis["traeger_gefunden"]:
-            p.warnen(f"  {jahr}: {ergebnis['traeger_gefunden'] - len(ergebnis['traeger'])} "
-                     f"von {ergebnis['traeger_gefunden']} Trägeraufstellungen an ihrer "
+        if len(result["entity"]) < result["traeger_gefunden"]:
+            p.warnen(f"  {year}: {result['traeger_gefunden'] - len(result['entity'])} "
+                     f"von {result['traeger_gefunden']} Trägeraufstellungen an ihrer "
                      "Spalten- oder Querprobe gescheitert")
 
-    kette = _kette_pruefen(gelesen, p)
+    chain = _kette_pruefen(gelesen, p)
     return {"neue_jahrgaenge": sorted(je_jahr),
             "neue_einheiten": [(j,) for j in sorted(je_jahr)],
             "je_jahr": je_jahr, "bestand_geschuetzt": geschuetzt,
             "konzern_posten": sum(d["posten"] for d in je_jahr.values()),
-            "konzern_traeger": sum(d["traeger"] for d in je_jahr.values()),
-            "verworfen": verworfen_gesamt, **kette}
+            "konzern_traeger": sum(d["entity"] for d in je_jahr.values()),
+            "verworfen": verworfen_gesamt, **chain}
 
 
 #: Rollen, deren Vorjahresspalte gegen den Vorjahrgang geprüft wird.
-_KETTEN_ROLLEN = ("ertraege_summe", "aufwendungen_summe", "ord_ergebnis",
-                  "gesamtergebnis")
+_KETTEN_ROLLEN = ("revenues_total", "expenses_total", "ordinary_result",
+                  "total_result")
 
 
 def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
@@ -2104,22 +2279,22 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
     Toleranz muss dort eine halbe Rundungseinheit hergeben, sonst schlägt
     jede Zeile an, die auf Tausend gerundet wurde."""
     geprueft = bestanden = 0
-    for jahr in sorted(gelesen):
-        if jahr - 1 not in gelesen:
+    for year in sorted(gelesen):
+        if year - 1 not in gelesen:
             continue
-        jetzt = {x["rolle"]: x for x in gelesen[jahr] if x["rolle"]}
-        vorher = {x["rolle"]: x for x in gelesen[jahr - 1] if x["rolle"]}
-        toleranz = 1000.0 if jahr <= 2016 else konzernabschluss.TOLERANZ_EUR
-        for rolle in _KETTEN_ROLLEN:
-            a = (jetzt.get(rolle) or {}).get("vorjahr")
-            b = (vorher.get(rolle) or {}).get("betrag")
+        jetzt = {x["role"]: x for x in gelesen[year] if x["role"]}
+        vorher = {x["role"]: x for x in gelesen[year - 1] if x["role"]}
+        toleranz = 1000.0 if year <= 2016 else konzernabschluss.TOLERANZ_EUR
+        for role in _KETTEN_ROLLEN:
+            a = (jetzt.get(role) or {}).get("prior_year")
+            b = (vorher.get(role) or {}).get("amount")
             if a is None or b is None:
                 continue
             geprueft += 1
             if abs(a - b) <= toleranz:
                 bestanden += 1
             else:
-                p.warnen(f"  Vorjahres-Kette {jahr - 1}→{jahr} {rolle}: "
+                p.warnen(f"  Vorjahres-Kette {year - 1}→{year} {role}: "
                          f"{b:,.2f} gegen {a:,.2f} — Abweichung {a - b:+,.2f}")
     if geprueft:
         p.sagen(f"  Vorjahres-Kette: {bestanden}/{geprueft} über Dokumentgrenzen geschlossen")
@@ -2127,6 +2302,8 @@ def _kette_pruefen(gelesen: dict[int, list[dict]], p: Protokoll) -> dict:
 
 
 # --- Die Registry -----------------------------------------------------------
+
+from council.eigenbetriebe_abschluss import TITEL_MUSTER as _EIGENBETRIEBE_TITEL  # noqa: E402
 
 QUELLEN: dict[str, Finanzquelle] = {}
 
@@ -2136,9 +2313,9 @@ for _q in (
         label="Jahresabschluss",
         was="Was die Stadt in einem Jahr wirklich eingenommen und ausgegeben hat — "
             "neben dem, was sie geplant hatte.",
-        tabelle="council_ergebnisrechnung",
-        nebentabellen=("council_abweichungsgruende", "council_finanzrechnung",
-                       "council_bilanz", "council_bilanz_erlaeuterungen"),
+        tabelle="council_income_statement",
+        nebentabellen=("council_variance_reasons", "council_cash_flow_statement",
+                       "council_balance_sheet", "council_balance_sheet_notes"),
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2149,18 +2326,18 @@ for _q in (
             # dieselbe Jahreszahl im Titel und sind ein anderes Dokument.
             ausschluesse=("%Rechenschaft%", "%Schlussbericht%"),
         ),
-        einheit="Ebenen",
+        unit="Ebenen",
         einheiten_von=_einheiten_jahresabschluss,
-        bestand=_bestand_jahresabschluss,
+        balance=_bestand_jahresabschluss,
         einlesen=lies_jahresabschluesse,
     ),
     Finanzquelle(
-        key="kennzahlen",
+        key="indicators",
         label="Kennzahlen des Rechenschaftsberichts",
         was="Die dreizehn Zahlen, auf die die Stadt ihren Jahresabschluss "
             "selbst eindampft — mit den Rechenwegen, die sie danebendruckt.",
-        tabelle="council_kennzahlen",
-        nebentabellen=("council_kennzahl_formeln",),
+        tabelle="council_indicators",
+        nebentabellen=("council_indicator_formulas",),
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2176,16 +2353,16 @@ for _q in (
             ausschluesse=("%Schlussbericht%", "%Klävemann%", "%Sozialstiftung%"),
             mindest_seiten=60,
         ),
-        einheit="Berichte",
+        unit="Berichte",
         einheiten_von=_einheiten_kennzahlen,
-        bestand=_bestand_kennzahlen,
+        balance=_bestand_kennzahlen,
         einlesen=lies_kennzahlen,
     ),
     Finanzquelle(
         key="rpa_fundstelle",
         label="Schlussbericht des Rechnungsprüfungsamts",
         was="Der Nachweis, dass eine unabhängige Stelle diesen Abschluss geprüft hat.",
-        tabelle="council_pruefbericht_quellen",
+        tabelle="council_audit_report_sources",
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2195,14 +2372,14 @@ for _q in (
             oder=True,
         ),
         einheiten_von=_einheiten_schlussbericht,
-        bestand=_bestand_schlussberichte,
+        balance=_bestand_schlussberichte,
         einlesen=lies_schlussbericht_fundstellen,
     ),
     Finanzquelle(
         key="pruefungsfeststellungen",
         label="Prüfungsfeststellungen",
         was="Was das Rechnungsprüfungsamt an der Verwaltung beanstandet, im Wortlaut.",
-        tabelle="council_pruefberichte",
+        tabelle="council_audit_reports",
         erwarteter_monat=9,
         versatz=1,
         herkunft="ris",
@@ -2214,16 +2391,22 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_feststellungen,
-        bestand=_bestand_feststellungen,
+        balance=_bestand_feststellungen,
         einlesen=lies_pruefungsfeststellungen,
     ),
     Finanzquelle(
         key="teilhaushalt",
         label="Teilhaushalts-Pläne (Produktebene)",
         was="Was einzelne Aufgaben kosten — von der Musikschule bis zur Straßenreinigung.",
-        tabelle="council_produkte",
+        tabelle="council_products",
+        # Anlagen 007–019 desselben Haushaltsplans wie Anlage 005 und der
+        # Stellenplan — also derselbe Takt: Einbringung Anfang Oktober des
+        # VORJAHRES. Bis 09/2026 stand hier ``versatz=0``, passend zur
+        # damaligen Jahresverschiebung des Parsers; der Datenstand meldete
+        # den Jahrgang 2026 damit als „ab 01.10.2026 zu erwarten", obwohl
+        # seine dreizehn Dokumente seit dem 01.10.2025 im Bestand lagen.
         erwarteter_monat=10,
-        versatz=0,
+        versatz=-1,
         herkunft="ris",
         # ``document_id`` ist die getfile-Nummer des Ratsinformationssystems
         # und steigt mit jedem Upload — die Kandidaten kommen damit in
@@ -2232,13 +2415,30 @@ for _q in (
         # Dokument versorgt den Teilhaushalt" (siehe `lies_teilhaushalte`)
         # braucht ein Kriterium, das etwas bedeutet. Nach `label` sortiert
         # gewänne sonst der Zufall der Schreibweise.
-        erkennung=Erkennung(label_muster=("%THH%",), mindest_seiten=40,
-                            ordnung="document_id"),
+        # 25 Seiten, nicht 40: Vier Teilhaushalte sind schlicht dünner als der
+        # Rest — THH13 (Stiftungen) hat 26 bis 28 Seiten, THH03
+        # (Wirtschaftsförderung) 28 bis 34, THH02 und THH12 genau 40. Die alte
+        # Schwelle („> 40") warf sie in JEDEM Jahrgang hinaus, und die Seiten
+        # sagten deshalb „kein auslesbarer Teilhaushaltsplan" für Schule und
+        # Bildung, Wirtschaftsförderung und Stiftungen — obwohl ihre Pläne
+        # danebenlagen und sich anstandslos lesen lassen.
+        #
+        # 25 ist gemessen, nicht gegriffen: Der kleinste echte Plan des
+        # Bestands hat 26 Seiten, der größte Fremdkörper mit „THH" im Label
+        # 22 (ein Auszug des Investitionsprogramms). Dazwischen liegt die
+        # Schwelle mit Abstand nach beiden Seiten.
+        # Bis 2023 heißt die Anlage des Teilhaushalts 13 im RIS nur „019
+        # nicht rechtsfähige Stiftungen" — ohne „THH". Fünf Jahrgänge lang
+        # fehlte er deshalb, obwohl der Parser das Dokument ohne Änderung
+        # liest (28 Seiten, Kopf „THH13"). Das Gegenstück „020 Rechtsfähige
+        # Stiftungen" ist KEIN Teilhaushalt und passt nicht auf „icht rechts…".
+        erkennung=Erkennung(label_muster=("%THH%", "%icht rechtsfähige Stiftungen%"),
+                            oder=True, mindest_seiten=25, ordnung="document_id"),
         # Die Einheit ist der Teilhaushalt, nicht der Jahrgang: Ein Jahr
-        # verteilt sich auf rund neun Anlagen, die einzeln lesbar werden.
-        einheit="Teilhaushalte",
+        # verteilt sich auf zwölf bis dreizehn Anlagen, die einzeln lesbar werden.
+        unit="Teilhaushalte",
         einheiten_von=_einheiten_teilhaushalt,
-        bestand=_bestand_produkte,
+        balance=_bestand_produkte,
         einlesen=lies_teilhaushalte,
     ),
     Finanzquelle(
@@ -2246,8 +2446,8 @@ for _q in (
         label="Konsolidierter Gesamtabschluss (Konzern Stadt)",
         was="Was die Stadt mit Klinikum, Bussen, Bädern und Gebäudewirtschaft "
             "zusammen bewegt — nicht nur die Kernverwaltung.",
-        tabelle="council_konzern_posten",
-        nebentabellen=("council_konzern_traeger",),
+        tabelle="council_group_items",
+        nebentabellen=("council_group_entities",),
         # Der Rat bekam den Bericht zuletzt zwischen Juni und Februar; er
         # entsteht erst, wenn alle einbezogenen Jahresabschlüsse geprüft sind,
         # und liegt damit rund zwei Jahre hinter dem Haushaltsjahr.
@@ -2259,22 +2459,22 @@ for _q in (
             # der Jahrgang 2016 heißt „Anlage", 2013 ebenso, und „Prüfbericht
             # GA 2021" trifft nur drei der zwölf. Was der Vorfilter zu viel
             # hereinlässt (Schlussberichte, Teilhaushalts-Pläne), wirft
-            # `konzernabschluss.jahrgang` am Textkopf wieder hinaus.
+            # `konzernabschluss.budget_year` am Textkopf wieder hinaus.
             text_muster=(konzernabschluss.TEXT_MUSTER,),
             mindest_seiten=40,
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_konzernabschluss,
-        bestand=_bestand_konzernabschluss,
+        balance=_bestand_konzernabschluss,
         einlesen=lies_konzernabschluesse,
     ),
     Finanzquelle(
-        key="ergebnishaushalt",
+        key="income_budget",
         label="Gesamtergebnishaushalt (Planjahre)",
         was="Woher das Geld im kommenden Jahr kommen soll und wofür es "
             "ausgegeben wird — nach Arten, für Jahre, die noch keinen "
             "Jahresabschluss haben.",
-        tabelle="council_ergebnishaushalt",
+        tabelle="council_income_budget",
         # Anlage 005 des Haushaltsplans, also derselbe Takt wie die
         # Teilhaushalte: Einbringung Anfang Oktober des Vorjahres. Über acht
         # Jahrgänge gemessen 7 von 8 im Oktober, einer im November.
@@ -2293,7 +2493,7 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_ergebnishaushalt,
-        bestand=_bestand_ergebnishaushalt,
+        balance=_bestand_ergebnishaushalt,
         einlesen=lies_ergebnishaushalte,
     ),
     Finanzquelle(
@@ -2301,7 +2501,7 @@ for _q in (
         label="Stellenplan",
         was="Wie viele Stellen die Stadt vorhält — und wie viele davon nicht "
             "besetzt sind.",
-        tabelle="council_stellenplan",
+        tabelle="council_staff_plan",
         # Anlage 21/22 des Haushaltsplans, also derselbe Takt wie der
         # Gesamtergebnishaushalt: Einbringung Anfang Oktober des Vorjahres.
         erwarteter_monat=10,
@@ -2323,9 +2523,9 @@ for _q in (
         ),
         # Die Einheit ist der Teil, nicht der Jahrgang: Teil A und Teil B
         # kommen einzeln durch ihre Proben.
-        einheit="Teile",
+        unit="Teile",
         einheiten_von=_einheiten_stellenplan,
-        bestand=_bestand_stellenplan,
+        balance=_bestand_stellenplan,
         einlesen=lies_stellenplaene,
     ),
     Finanzquelle(
@@ -2333,7 +2533,7 @@ for _q in (
         label="Investitionen (Finanzhaushalt)",
         was="Was die Stadt bauen und kaufen will — die andere Hälfte des "
             "Haushaltsplans, in der die Schulen, Straßen und Fahrzeuge stehen.",
-        tabelle="council_investitionen",
+        tabelle="council_investments",
         # Gemessen an den vier Lieferungen des Portals, nicht geschätzt: Der
         # Jahrgang erscheint im FOLGEJAHR (2022 → 24.04.2024 als Nachzügler,
         # 2023 → 19.06.2024, 2024 → 16.06.2025, 2025 → 14.07.2026). Juli ist
@@ -2342,13 +2542,13 @@ for _q in (
         # obwohl das Portal nur seinem üblichen Takt folgte.
         erwarteter_monat=7,
         versatz=1,
-        # Kommt NICHT aus council_anlagen, sondern als CSV vom Open-Data-Portal
+        # Kommt NICHT aus council_attachments, sondern als CSV vom Open-Data-Portal
         # (scripts/ingest_finanzen_opendata.py). Der Cron lädt nichts herunter
         # — er beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
         herkunft="opendata",
         nachschub="Download vom Open-Data-Portal, "
                   "scripts/ingest_finanzen_opendata.py",
-        bestand=_bestand_investitionen,
+        balance=_bestand_investitionen,
     ),
     Finanzquelle(
         key="investitionsprogramm",
@@ -2356,7 +2556,7 @@ for _q in (
         was="Welche einzelnen Vorhaben hinter den Investitionssummen stehen — "
             "vom Kunstrasenplatz über den Straßenabschnitt bis zum "
             "Feuerwehrfahrzeug, jedes mit seiner Gesamtsumme.",
-        tabelle="council_investitionsmassnahmen",
+        tabelle="council_investment_measures",
         # Anlage 004 des Haushaltsplans, also derselbe Takt wie der
         # Gesamtergebnishaushalt (Anlage 005) und der Stellenplan: Einbringung
         # Anfang Oktober des Vorjahres. Über die acht Jahrgänge 2019–2026
@@ -2379,7 +2579,7 @@ for _q in (
             ordnung="document_id",
         ),
         einheiten_von=_einheiten_investitionsprogramm,
-        bestand=_bestand_investitionsprogramm,
+        balance=_bestand_investitionsprogramm,
         einlesen=lies_investitionsprogramme,
     ),
     Finanzquelle(
@@ -2387,19 +2587,19 @@ for _q in (
         label="Haushaltsplan",
         was="Der Plan, den der Rat beschließt: was die Stadt im kommenden Jahr "
             "einnehmen und ausgeben will.",
-        tabelle="council_haushalt",
+        tabelle="council_budget",
         erwarteter_monat=10,
         # Der Plan für 2027 wird im Oktober 2026 beschlossen.
         versatz=-1,
-        # Kommt NICHT aus council_anlagen, sondern als PDF/CSV von oldenburg.de
+        # Kommt NICHT aus council_attachments, sondern als PDF/CSV von oldenburg.de
         # (scripts/ingest_haushalt.py). Der Cron lädt nichts herunter — er
         # beobachtet diese Schicht nur und meldet, wenn ein Jahrgang ausbleibt.
-        herkunft="stadt",
+        herkunft="city",
         nachschub="Download von oldenburg.de, scripts/ingest_haushalt.py",
-        bestand=_bestand_haushaltsplan,
+        balance=_bestand_haushaltsplan,
     ),
     Finanzquelle(
-        key="gebuehren",
+        key="fees",
         label="Gebührenbedarfsberechnung",
         was="Die Rechnung, aus der die Abfall- und Straßenreinigungsgebühren "
             "entstehen: Was der Bereich kostet, was davon Dritte tragen, was "
@@ -2407,21 +2607,110 @@ for _q in (
             "durch die Abfallmenge bzw. die gebührenpflichtige Fläche. Von "
             "allen Zahlen des Haushalts landet keine so direkt im "
             "Portemonnaie.",
-        tabelle="council_gebuehren",
+        tabelle="council_fees",
         # Gemessen an den vier Jahrgängen im Bestand: Die Berechnung für das
         # kommende Jahr trägt das Datum des Vorjahres-Herbstes (01.10.2024 für
         # 2025, 10.10.2023 für 2024). Sie reist mit dem Haushaltsentwurf.
         erwarteter_monat=11,
         versatz=-1,
         herkunft="ris",
+        # 2021 heißt die Anlage nur „Anlagen 1-4" (224365, ein Scan) — erkannt
+        # wird sie über ihre Vorlage „Gebührenbedarfsberechnungen 2021 -
+        # Bericht". Für 2022 gibt es im RIS KEINE Bedarfsberechnung, nur die
+        # Tarifsatzung (240042); die Lücke ist eine der Quelle.
         erkennung=Erkennung(
             label_muster=("%Gebührenbedarf%",),
+            vorlagen_muster=("%Gebührenbedarfsberechnung%",),
+            oder=True,
         ),
         nachschub="scripts/ingest_gebuehren.py",
-        bestand=_bestand_gebuehren,
+        balance=_bestand_gebuehren,
+        lauf=("scripts/ingest_gebuehren.py",),
     ),
     Finanzquelle(
-        key="haushaltssatzung",
+        key="budget_execution",
+        label="Haushaltsvollzug",
+        was="Wie das laufende Haushaltsjahr gegen seinen Plan läuft: Die "
+            "Verwaltung berichtet dem Finanzausschuss vierteljährlich, was "
+            "sie bis zum 31. Dezember erwartet — je Teilhaushalt und für die "
+            "ganze Stadt. Die Schicht schließt die Lücke zwischen dem Plan "
+            "für das kommende Jahr und dem Abschluss, der zwei Jahre "
+            "zurückliegt.",
+        tabelle="council_budget_execution",
+        unit="Stichtag",
+        # Der Bericht zu einem Stichtag liegt im Quartal danach im Ausschuss;
+        # der 31.12. gehört noch zum Jahrgang, erscheint aber erst im
+        # Folgejahr. Gemessen an den Beratungsterminen der 31 Vorlagen ist der
+        # Bericht zum 31. Dezember der SPÄTESTE eines Jahrgangs und trifft im
+        # März/April des Folgejahres ein (2023→24/0006 am 06.02.2024,
+        # 2024→24/0827 im Februar 2025, 2025→25/0922 im Februar 2026). Der
+        # April ist die Schwelle: zu früh gemeldet wäre der teurere Fehler.
+        erwarteter_monat=4,
+        versatz=1,
+        herkunft="ris",
+        # Bewusst nur ZWEI Muster, und beide breit: Der Bericht heißt in den
+        # Anlagen mal „Finanz- und Leistungsbericht zum 30.06.2018“, mal
+        # schlicht „FLB 31.12.2024“. Dieselben Label tragen aber auch die
+        # Fassungen der Eigenbetriebe und der Fachausschüsse — aussortiert
+        # werden die nicht hier, sondern am Dokument: Wer die stadtweite
+        # Übersichtstabelle mit dreizehn Teilhaushalten und Summenzeile nicht
+        # führt, fällt im Parser still durch (s. council/budget_execution.py).
+        erkennung=Erkennung(
+            label_muster=("%Leistungsbericht%", "%FLB%"),
+            oder=True,
+        ),
+        # Kein `einlesen`: Dieser Lauf LÄDT die PDFs herunter, weil die
+        # Spaltenzuordnung Wortkoordinaten braucht und der gespeicherte
+        # Textauszug sie nicht hergibt. „Lädt nichts herunter“ ist die Regel,
+        # an der `check_finanzdaten` hängt — also beobachtet der Cron diese
+        # Schicht nur und meldet, wenn ein Stichtag ausbleibt.
+        nachschub="scripts/ingest_haushaltsvollzug.py (lädt die PDFs selbst)",
+        balance=_bestand_haushaltsvollzug,
+        lauf=("scripts/ingest_haushaltsvollzug.py",),
+    ),
+    Finanzquelle(
+        key="liquidity",
+        label="Liquiditätsstand",
+        was="Wie viel Geld die Stadt am Monatsende auf dem Konto hat — die "
+            "Grafik, die die Verwaltung dem Finanzausschuss monatlich vorlegt, "
+            "als Zahlenreihe. Der Frühwarnwert: Sinkt er Richtung null, greift "
+            "der Höchstbetrag der Liquiditätskredite aus der Haushaltssatzung.",
+        tabelle="council_liquidity",
+        unit="Monat",
+        # Die Grafik zum Monatsende liegt binnen zwei Wochen im Ausschuss; der
+        # Januar-Stand eines Jahrgangs ist also ab Februar zu erwarten.
+        erwarteter_monat=2,
+        versatz=0,
+        herkunft="ris",
+        # Bis 2021 heißt die Anlage nur „Anlage" — das Muster greift also erst
+        # ab 2022; die älteren findet der Ingest über die Vorlage (kvonr).
+        erkennung=Erkennung(label_muster=("%Liquiditätsstand%",), oder=True),
+        nachschub="scripts/ingest_liquiditaet.py (lädt fehlende Grafiken selbst)",
+        lauf=("scripts/ingest_liquiditaet.py",),
+        balance=_bestand_liquiditaet,
+    ),
+    Finanzquelle(
+        key="loans",
+        label="Kreditaufnahmen und Umschuldungen",
+        was="Welche Kredite die Stadt aufgenommen, umgeschuldet oder verlängert "
+            "hat — zu welchem Zins und mit welcher Bindung. Die Unterrichtungen "
+            "des Rates nach der Kreditrichtlinie, halbjährlich bis quartalsweise.",
+        tabelle="council_loan_notices",
+        nebentabellen=("council_loan_items",),
+        # Die Unterrichtung über das zweite Halbjahr kommt im Frühjahr des
+        # Folgejahres in den Rat — der Jahrgang gilt ab März als fällig.
+        erwarteter_monat=3,
+        versatz=1,
+        herkunft="ris",
+        # Vorlagen mit Volltext, keine Anlagen — deshalb keine ``erkennung``,
+        # sondern eine eigene Marke (s. ``_marke_loans``).
+        marke=_marke_loans,
+        nachschub="scripts/ingest_kredite.py (liest die Vorlagen-Volltexte)",
+        lauf=("scripts/ingest_kredite.py",),
+        balance=_bestand_loans,
+    ),
+    Finanzquelle(
+        key="budget_bylaw",
         label="Haushaltssatzung",
         was="Der Rahmen, den der Haushaltsplan bekommt: wie viel die Stadt "
             "sich für Investitionen leihen darf (§ 2), wie hoch ihr Dispo sein "
@@ -2431,7 +2720,7 @@ for _q in (
             "las. ACHTUNG: Im Ratsinformationssystem stehen ausschließlich "
             "Verwaltungsentwürfe; die beschlossene Fassung erscheint im "
             "Amtsblatt.",
-        tabelle="council_haushaltssatzung",
+        tabelle="council_budget_bylaw",
         # Gemessen an den sieben Jahrgängen im Bestand: Die Satzung für das
         # kommende Jahr liegt mit dem Haushaltsentwurf vor, also im Herbst.
         # Dieselbe Schwelle wie bei den Wirtschaftsplänen, aus demselben
@@ -2439,15 +2728,20 @@ for _q in (
         erwarteter_monat=11,
         versatz=-1,
         herkunft="ris",
+        # 2022 hängt die Satzung als „HH Satzung 2022" an der Vorlage
+        # „Haushalt 2022 - Beschluss" (Anlage 243361) — mit nur dem ersten
+        # Muster fehlte der Jahrgang von 08/2026 bis 09/2026.
         erkennung=Erkennung(
-            label_muster=("%Haushaltssatzung%",),
+            label_muster=("%Haushaltssatzung%", "%HH Satzung%"),
+            oder=True,
             # Der Nachtrag trägt dasselbe Wort im Label und eine ganz andere
             # Tabelle. Er fliegt schon im Parser raus; hier steht er noch
             # einmal, damit der Backfill ihn gar nicht erst holt.
             ausschluesse=("%Nachtrag%",),
         ),
         nachschub="scripts/ingest_haushaltssatzung.py",
-        bestand=_bestand_haushaltssatzung,
+        balance=_bestand_haushaltssatzung,
+        lauf=("scripts/ingest_haushaltssatzung.py",),
     ),
     Finanzquelle(
         key="wirtschaftsplan",
@@ -2456,7 +2750,7 @@ for _q in (
             "eigene Erfolgs- und Vermögenspläne neben dem Kernhaushalt. Bisher "
             "nur der Eigenbetrieb Gebäudewirtschaft und Hochbau; die übrigen "
             "Betriebe nennen ihre Zahlen nur in einer Anlage.",
-        tabelle="council_wirtschaftsplaene",
+        tabelle="council_business_plans",
         # Gemessen an den acht Entwurfsdaten im Bestand, nicht geschätzt:
         # 04.09.2020, 17.09.2019, 01.10.2025, 02.10.2024, 04.10.2023,
         # 05.10.2018, 12.10.2022, 22.11.2021. Die Schwelle steht auf dem
@@ -2483,9 +2777,33 @@ for _q in (
                           "%Wirtschafts-und Finanzplan%"),
             oder=True,
         ),
-        nachschub="liegt schon im Bestand (council_vorlagen), "
+        nachschub="liegt schon im Bestand (council_templates), "
                   "scripts/ingest_wirtschaftsplaene.py",
-        bestand=_bestand_wirtschaftsplan,
+        balance=_bestand_wirtschaftsplan,
+        lauf=("scripts/ingest_wirtschaftsplaene.py",),
+    ),
+    Finanzquelle(
+        key="enterprise_accounts",
+        label="Jahresabschlüsse der Eigenbetriebe",
+        was="Was aus dem Wirtschaftsplan wurde: Umsatzerlöse, Jahresergebnis, "
+            "Bilanzsumme und Eigenkapital der Eigenbetriebe laut geprüftem "
+            "Jahresabschluss — Gebäudewirtschaft und Hochbau (dort stecken die "
+            "Schulen), Abfallwirtschaft, Bäderbetrieb, Hafen.",
+        tabelle="council_enterprise_accounts",
+        unit="Betriebe",
+        # Der Prüfbericht kommt im Sommer des Folgejahres in den Rat (EGH 2025:
+        # Juli 2026, AWB 2025: Juni 2026).
+        erwarteter_monat=8,
+        versatz=1,
+        herkunft="ris",
+        # Die Anlagen heißen „Prüfbericht", „Bilanz", „GuV", „Anlage" — nur
+        # der Vorlagentitel sagt, dass es ein Jahresabschluss eines Betriebs
+        # ist. Kein Seitenminimum: Die GuV des Bäderbetriebs ist eine Seite.
+        erkennung=Erkennung(vorlagen_muster=tuple(_EIGENBETRIEBE_TITEL), oder=True),
+        marke=_marke_eigenbetriebe_abschluss,
+        nachschub="scripts/ingest_eigenbetriebe_abschluss.py",
+        lauf=("scripts/ingest_eigenbetriebe_abschluss.py",),
+        balance=_bestand_eigenbetriebe_abschluss,
     ),
     Finanzquelle(
         key="schulden",
@@ -2493,7 +2811,7 @@ for _q in (
         was="Wie viel die Stadt schuldet und wie sich das seit 1995 entwickelt "
             "hat — für die Stadt als Rechtsträger, also mit ihren "
             "Eigenbetrieben und ohne die eigenständigen Beteiligungen.",
-        tabelle="council_schulden",
+        tabelle="council_debt",
         # Gemessen am Dokument, nicht geschätzt: Die Tabelle für den Jahrgang
         # 2025 steht seit dem 08.07.2026 online (Last-Modified des PDF, das
         # Dokument selbst ist vom 07.07.2026). Das ist EIN Messpunkt für diese
@@ -2504,18 +2822,18 @@ for _q in (
         erwarteter_monat=9,
         # Der Schuldenstand zum 31.12. eines Jahres erscheint im Folgejahr.
         versatz=1,
-        # Kommt NICHT aus council_anlagen, sondern als PDF von oldenburg.de.
+        # Kommt NICHT aus council_attachments, sondern als PDF von oldenburg.de.
         # Der Cron beobachtet diese Schicht nur und meldet, wenn sie ausbleibt.
-        herkunft="stadt",
+        herkunft="city",
         nachschub="Download von oldenburg.de, scripts/ingest_schulden.py",
-        bestand=_bestand_schulden,
+        balance=_bestand_schulden,
     ),
     Finanzquelle(
         key="beteiligungsbericht",
         label="Beteiligungsbericht",
         was="Was die städtischen Gesellschaften tun, wer sie beaufsichtigt "
             "und was sie erwirtschaften — vom Klinikum bis zur Volkshochschule.",
-        tabelle="council_gesellschaft_kennzahlen",
+        tabelle="council_company_indicators",
         # Gemessen an den sieben Jahrgängen auf oldenburg.de (Last-Modified des
         # Servers): Der Bericht erscheint immer im **zweiten** Folgejahr,
         # zwischen Januar und Juni — 2018→Feb 2020, 2019→Jan 2021, 2020→Apr
@@ -2529,17 +2847,17 @@ for _q in (
         # hier trotzdem als `automatisch=False`: `check_finanzdaten` lädt nichts
         # herunter (seine Regel 1), beobachtet diese Schicht aber mit und meldet,
         # wenn ein Jahrgang ausbleibt.
-        herkunft="stadt",
+        herkunft="city",
         nachschub="eigener Cron scripts/check_beteiligungsbericht.py "
                   "(lädt von oldenburg.de)",
-        bestand=_bestand_beteiligungsbericht,
+        balance=_bestand_beteiligungsbericht,
     ),
     Finanzquelle(
         key="lsn_steuerkraft",
         label="Steuerkraft im Städtevergleich",
         was="Wie viel Steuerkraft Oldenburg gegenüber den anderen sieben "
             "kreisfreien Städten Niedersachsens auf die Waage bringt.",
-        tabelle="council_staedtevergleich",
+        tabelle="council_city_comparison",
         # Die endgültigen Tabellen tragen den Stand März/April des
         # Ausgleichsjahres (vier Jahrgänge nachgesehen, s. Modul-Kopf). April
         # ist der späteste gemessene Monat — wer März nähme, meldete 2023 und
@@ -2549,7 +2867,7 @@ for _q in (
         herkunft="lsn",
         nachschub="Download vom Landesamt für Statistik, "
                   "scripts/ingest_staedtevergleich.py --kfa",
-        bestand=_bestand_lsn_steuerkraft,
+        balance=_bestand_lsn_steuerkraft,
     ),
     Finanzquelle(
         key="lsn_realsteuern",
@@ -2561,7 +2879,7 @@ for _q in (
         label="Realsteuervergleich",
         was="Was die acht Städte bei Grund- und Gewerbesteuer verlangen — und "
             "was am Ende je Einwohnerin hereinkommt.",
-        tabelle="council_staedtevergleich",
+        tabelle="council_city_comparison",
         # Immer im Folgejahr, aber mit fünf Monaten Streuung (Juni bis
         # November, fünf Jahrgänge gemessen). Der November ist der späteste
         # gemessene Fall und deshalb die Schwelle: Früher ist nie ein Problem,
@@ -2571,14 +2889,14 @@ for _q in (
         herkunft="lsn",
         nachschub="Download vom Landesamt für Statistik, "
                   "scripts/ingest_staedtevergleich.py --realsteuer",
-        bestand=_bestand_lsn_realsteuern,
+        balance=_bestand_lsn_realsteuern,
     ),
     Finanzquelle(
         key="lsn_gewerbesteuer",
         label="Gewerbesteuerstatistik",
         was="Wie viele Betriebe die Gewerbesteuer aufbringen — und wie viele "
             "von ihnen überhaupt eine zahlen.",
-        tabelle="council_gewerbesteuerstatistik",
+        tabelle="council_trade_tax_statistics",
         # DIE SCHICHT MIT DEM GRÖSSTEN VERZUG DES GANZEN BEREICHS, und das ist
         # keine Nachlässigkeit des Landesamts: Eine Veranlagung ist erst nach
         # den Betriebsprüfungen endgültig. Gemessen an drei Jahrgängen —
@@ -2591,7 +2909,7 @@ for _q in (
         herkunft="lsn",
         nachschub="Download vom Landesamt für Statistik, "
                   "scripts/ingest_gewerbesteuerstatistik.py",
-        bestand=_bestand_lsn_gewerbesteuer,
+        balance=_bestand_lsn_gewerbesteuer,
     ),
 ):
     QUELLEN[_q.key] = _q
@@ -2635,14 +2953,19 @@ for _q in (
 #: dieselbe Frage eine Stufe feiner — erst wie viel ein Bereich investiert,
 #: dann welches Vorhaben das ist. Dieselbe Ordnung wie bei Teilhaushalten und
 #: Stellenplan, und aus demselben Grund.
-REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
-               "investitionsprogramm", "jahresabschluss", "teilhaushalt",
-               "stellenplan", "kennzahlen", "rpa_fundstelle",
+#: Der Haushaltsvollzug steht zwischen Plan und Abschluss, und zwar genau da,
+#: weil er zeitlich dazwischenliegt: Erst was die Stadt vorhat, dann wie es im
+#: laufenden Jahr läuft, dann wie es ausgegangen ist. Die drei nebeneinander
+#: sind die Geschichte eines Haushaltsjahres.
+REIHENFOLGE = ("haushaltsplan", "income_budget", "investitionen",
+               "investitionsprogramm", "budget_execution",
+               "jahresabschluss", "teilhaushalt",
+               "stellenplan", "indicators", "rpa_fundstelle",
                "pruefungsfeststellungen",
-               "konzernabschluss", "beteiligungsbericht", "gebuehren",
-               "haushaltssatzung",
-               "wirtschaftsplan",
-               "schulden",
+               "konzernabschluss", "beteiligungsbericht", "fees",
+               "budget_bylaw",
+               "wirtschaftsplan", "enterprise_accounts",
+               "schulden", "loans", "liquidity",
                "lsn_steuerkraft", "lsn_realsteuern", "lsn_gewerbesteuer")
 
 #: Die Stelle hinter einer Herkunft, im Klartext. Sie steht in der Fußzeile des
@@ -2651,7 +2974,7 @@ REIHENFOLGE = ("haushaltsplan", "ergebnishaushalt", "investitionen",
 #: Stadt" und wurde mit der ersten Schicht einer Landesbehörde falsch.
 STELLEN = {
     "ris": "Ratsinformationssystem",
-    "stadt": "Portal der Stadt",
+    "city": "Portal der Stadt",
     "opendata": "Open-Data-Portal der Stadt",
     "lsn": "Landesamt für Statistik Niedersachsen",
 }
@@ -2675,34 +2998,34 @@ def datenstand(store: CouncilStore, heute: date | None = None) -> list[dict]:
     zeilen = []
     for key in REIHENFOLGE:
         q = QUELLEN[key]
-        einheiten = q.bestand(store)
+        einheiten = q.balance(store)
         je_jahr: dict[int, int] = {}
         for e in einheiten:
             je_jahr[e[0]] = je_jahr.get(e[0], 0) + 1
-        jahre = sorted(je_jahr)
+        years = sorted(je_jahr)
         voll = max(je_jahr.values()) if je_jahr else 0
-        teilweise = [j for j in jahre if je_jahr[j] < voll]
+        teilweise = [j for j in years if je_jahr[j] < voll]
         neuester = q.neuester_erwarteter(heute)
-        luecken = ([j for j in range(jahre[0], jahre[-1]) if j not in jahre]
-                   if jahre else [])
+        luecken = ([j for j in range(years[0], years[-1]) if j not in years]
+                   if years else [])
         # Was seit dem jüngsten vorhandenen Jahrgang fehlt — historische
         # Lücken stehen getrennt daneben, sie sind eine andere Geschichte.
-        offen = [j for j in range(((jahre[-1] + 1) if jahre else neuester), neuester + 1)]
+        offen = [j for j in range(((years[-1] + 1) if years else neuester), neuester + 1)]
         ueberfaellig = [j for j in offen if heute > q.faellig_ab(j) + KARENZ]
-        naechster = (jahre[-1] + 1) if jahre else neuester
+        naechster = (years[-1] + 1) if years else neuester
         zeilen.append({
             "key": q.key, "label": q.label, "was": q.was,
             "tabelle": q.tabelle, "herkunft": q.herkunft,
-            "quelle": STELLEN.get(q.herkunft, q.herkunft),
+            "source": STELLEN.get(q.herkunft, q.herkunft),
             "automatisch": q.automatisch,
-            "jahrgaenge": jahre, "luecken": luecken,
+            "jahrgaenge": years, "luecken": luecken,
             # Je Jahrgang die Zahl der Einheiten (Teilhaushalte bzw. Ebenen) —
             # und wie viele der bestbelegte Jahrgang hat.
-            "einheit": q.einheit,
+            "unit": q.unit,
             "einheiten": {str(j): n for j, n in sorted(je_jahr.items())},
-            "einheiten_voll": voll if q.einheit else None,
-            "teilweise": teilweise if q.einheit else [],
-            "neuester": jahre[-1] if jahre else None,
+            "einheiten_voll": voll if q.unit else None,
+            "teilweise": teilweise if q.unit else [],
+            "neuester": years[-1] if years else None,
             "offen": offen, "ueberfaellig": ueberfaellig,
             "naechster_jahrgang": naechster,
             "naechster_ab": q.faellig_ab(naechster).isoformat(),

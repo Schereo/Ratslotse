@@ -143,7 +143,7 @@ private struct CouncilMember: Decodable, Sendable, Identifiable {
         slug = try values.decode(String.self, forKey: .slug)
         name = try values.decode(String.self, forKey: .name)
         party = try values.decodeIfPresent(String.self, forKey: .party)
-        art = try values.decodeIfPresent(String.self, forKey: .art) ?? "rat"
+        art = try values.decodeIfPresent(String.self, forKey: .art) ?? "council"
         organisation = try values.decodeIfPresent(String.self, forKey: .organisation)
         filterParties = try values.decodeIfPresent([String].self, forKey: .filterParties) ?? party.map { [$0] } ?? []
         forms = try values.decodeIfPresent([String].self, forKey: .forms) ?? []
@@ -158,7 +158,7 @@ private struct CouncilMember: Decodable, Sendable, Identifiable {
     }
 }
 
-private struct PeopleLexiconResponse: Decodable, Sendable { let personen: [AdministrationPerson] }
+private struct PeopleLexiconResponse: Decodable, Sendable { let people: [AdministrationPerson] }
 
 private struct AdministrationPerson: Decodable, Sendable, Identifiable {
     var id: String { slug }
@@ -242,8 +242,8 @@ private struct CouncilGoal: Decodable, Sendable, Identifiable {
     let key: String
     let label: String
     let description: String
-    let voran: Int
-    let bremst: Int
+    let advances: Int
+    let hinders: Int
     let neutral: Int
     let total: Int
 }
@@ -381,7 +381,7 @@ struct CouncilInsightsView: View {
                                     query: [.init(name: "q", value: topic.tag)]
                                 )
                             } label: {
-                                Label("\(topic.tag) · \(topic.n)", systemImage: "arrow.up.right")
+                                RatsLabel("\(topic.tag) · \(topic.n)", .arrowUpRight)
                                 .font(RatsFont.body(11, weight: .semibold))
                                 .foregroundStyle(RatsColor.primary)
                                 .padding(.horizontal, 10)
@@ -428,7 +428,7 @@ struct CouncilInsightsView: View {
                                     .foregroundStyle(RatsColor.primary)
                                     .padding(.horizontal, 7).padding(.vertical, 3)
                                     .background(RatsColor.primary.opacity(0.08)).clipShape(Capsule())
-                                Image(systemName: "chevron.down")
+                                RatsIcon(.chevronDown, size: 11.5)
                                     .rotationEffect(.degrees(expandedRecaps.contains(recap.id) ? 180 : 0))
                                     .foregroundStyle(RatsColor.muted)
                             }
@@ -550,7 +550,7 @@ struct CouncilInsightsView: View {
                     RatsGlyphView(glyph: .profile, color: RatsColor.primary).frame(width: 17, height: 17)
                     Text(partyFilter.isEmpty ? "Alle Fraktionen" : partyFilter)
                     Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
+                    RatsIcon(.chevronsUpDown, size: 12)
                 }
                 .font(RatsFont.body(12, weight: .semibold))
                 .foregroundStyle(RatsColor.bodyText)
@@ -561,8 +561,8 @@ struct CouncilInsightsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            let councilMembers = filteredMembers.filter { $0.art != "beratend" }
-            let advisors = filteredMembers.filter { $0.art == "beratend" }
+            let councilMembers = filteredMembers.filter { $0.art != "advisory" }
+            let advisors = filteredMembers.filter { $0.art == "advisory" }
             MonoKicker("Ratsmitglieder", trailing: "\(councilMembers.count)")
             peopleGrid(councilMembers)
             if !advisors.isEmpty {
@@ -656,18 +656,18 @@ struct CouncilInsightsView: View {
                             Text(goal.description).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(3)
                         }
                         Spacer()
-                        Image(systemName: "chevron.down")
+                        RatsIcon(.chevronDown, size: 16)
                             .rotationEffect(.degrees(expandedGoals.contains(goal.key) ? 180 : 0))
                             .foregroundStyle(RatsColor.muted)
                     }
                     }.buttonStyle(RatsPlainButtonStyle())
                     GoalBalanceBar(goal: goal)
                     HStack {
-                        Text("\(goal.bremst) bremsen").foregroundStyle(RatsColor.danger)
+                        Text("\(goal.hinders) bremsen").foregroundStyle(RatsColor.danger)
                         Spacer()
                         Text("\(goal.neutral) neutral").foregroundStyle(RatsColor.muted)
                         Spacer()
-                        Text("\(goal.voran) voran").foregroundStyle(RatsColor.success)
+                        Text("\(goal.advances) voran").foregroundStyle(RatsColor.success)
                     }
                     .font(RatsFont.body(9.5, weight: .semibold))
                     if expandedGoals.contains(goal.key) {
@@ -785,7 +785,7 @@ struct CouncilInsightsView: View {
                             .overlay(Text(initials(member.name)).font(RatsFont.body(11, weight: .bold)).foregroundStyle(partyColor(member.party ?? "Stadt")))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(member.name).font(RatsFont.body(13.5, weight: .semibold)).lineLimit(1)
-                            Text(member.art == "beratend"
+                            Text(member.art == "advisory"
                                  ? [member.organisation, "\(member.n) Sitzungen"].compactMap { $0 }.joined(separator: " · ")
                                  : "\(member.n) Sitzungen · \(member.committees) Gremien")
                                 .font(RatsFont.body(10.5)).foregroundStyle(RatsColor.secondary).lineLimit(2)
@@ -819,11 +819,11 @@ struct CouncilInsightsView: View {
     }
 
     private func stanceLabel(_ stance: String) -> String {
-        switch stance { case "voran": "BRINGT VORAN"; case "bremst": "BREMST"; default: "BERÜHRT DAS ZIEL" }
+        switch stance { case "advances": "BRINGT VORAN"; case "hinders": "BREMST"; default: "BERÜHRT DAS ZIEL" }
     }
 
     private func stanceColor(_ stance: String) -> Color {
-        switch stance { case "voran": RatsColor.success; case "bremst": RatsColor.danger; default: RatsColor.muted }
+        switch stance { case "advances": RatsColor.success; case "hinders": RatsColor.danger; default: RatsColor.muted }
     }
 
     private func partyColor(_ party: String) -> Color {
@@ -884,11 +884,11 @@ struct CouncilInsightsView: View {
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
             )
             members = [
-                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "rat", organisation: nil, filterParties: ["SPD"], n: 18, committees: 3),
-                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "rat", organisation: nil, filterParties: ["CDU"], n: 16, committees: 2),
-                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "rat", organisation: nil, filterParties: ["GRÜNE"], n: 15, committees: 4),
+                CouncilMember(slug: "anne-beispiel", name: "Anne Beispiel", party: "SPD", art: "council", organisation: nil, filterParties: ["SPD"], n: 18, committees: 3),
+                CouncilMember(slug: "bernd-muster", name: "Bernd Muster", party: "CDU", art: "council", organisation: nil, filterParties: ["CDU"], n: 16, committees: 2),
+                CouncilMember(slug: "cem-kaya", name: "Cem Kaya", party: "GRÜNE", art: "council", organisation: nil, filterParties: ["GRÜNE"], n: 15, committees: 4),
             ]
-            administrationPeople = [AdministrationPerson(slug: "stadtbaurat-beispiel", name: "Dr. Lena Beispiel", art: "stadt", role: "Stadtbaurätin")]
+            administrationPeople = [AdministrationPerson(slug: "stadtbaurat-beispiel", name: "Dr. Lena Beispiel", art: "city", role: "Stadtbaurätin")]
             fieldRecaps = [
                 FieldRecap(policyField: "verkehr", fieldLabel: "Verkehr", summary: "Der Rat hat sichere Querungen und den Ausbau des Busverkehrs beraten. Mehrere Vorhaben gehen nun in die konkrete Planung.", decisionCount: 11, periodFrom: "2026-05-01", periodTo: "2026-08-28"),
                 FieldRecap(policyField: "soziales", fieldLabel: "Soziales", summary: "Im Mittelpunkt standen zusätzliche Betreuungsplätze und barrierefreie Angebote in den Stadtteilen.", decisionCount: 8, periodFrom: "2026-05-01", periodTo: "2026-08-28"),
@@ -903,10 +903,10 @@ struct CouncilInsightsView: View {
                 fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales", "kultur": "Kultur"]
             )
             goals = [
-                CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", voran: 18, bremst: 3, neutral: 7, total: 28),
-                CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", voran: 14, bremst: 2, neutral: 5, total: 21),
+                CouncilGoal(key: "klima", label: "Klimaneutrale Stadt", description: "Emissionen senken und Oldenburg an den Klimawandel anpassen.", advances: 18, hinders: 3, neutral: 7, total: 28),
+                CouncilGoal(key: "teilhabe", label: "Soziale Teilhabe", description: "Gute Zugänge zu Wohnen, Bildung und öffentlichem Leben schaffen.", advances: 14, hinders: 2, neutral: 5, total: 21),
             ]
-            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "angenommen", sessionDate: "2026-08-26", committee: "Rat", stance: "voran", rationale: "Stärkt den öffentlichen Verkehr.")]
+            goalDetails["klima"] = [GoalDecision(id: 1, title: "Neue Busspuren für Oldenburg", summary: "Busverkehr beschleunigen.", policyField: "verkehr", outcome: "accepted", sessionDate: "2026-08-26", committee: "Rat", stance: "advances", rationale: "Stärkt den öffentlichen Verkehr.")]
             return
         }
 #endif
@@ -917,7 +917,7 @@ struct CouncilInsightsView: View {
             async let financeRequest: FinanceResponse = model.api.get("/api/council/finance")
             async let goalRequest: GoalsResponse = model.api.get("/api/council/goals")
             async let recapRequest: FieldRecapsResponse = model.api.get("/api/council/field-recaps")
-            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/personen-lexikon")
+            async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/people-directory")
             let responses = try await (trendRequest, partyRequest, memberRequest, financeRequest, goalRequest, recapRequest, peopleRequest)
             trends = responses.0
             parties = responses.1
@@ -925,7 +925,7 @@ struct CouncilInsightsView: View {
             finance = responses.3
             goals = responses.4.goals
             fieldRecaps = responses.5.recaps
-            administrationPeople = responses.6.personen.filter { $0.art == "stadt" && $0.role != nil }
+            administrationPeople = responses.6.people.filter { $0.art == "city" && $0.role != nil }
             error = nil
         } catch { self.error = error.localizedDescription }
     }
@@ -1140,9 +1140,9 @@ private struct GoalBalanceBar: View {
         let total = max(1, goal.total)
         GeometryReader { proxy in
             HStack(spacing: 1) {
-                Rectangle().fill(RatsColor.danger.opacity(0.78)).frame(width: proxy.size.width * Double(goal.bremst) / Double(total))
+                Rectangle().fill(RatsColor.danger.opacity(0.78)).frame(width: proxy.size.width * Double(goal.hinders) / Double(total))
                 Rectangle().fill(RatsColor.muted.opacity(0.35)).frame(width: proxy.size.width * Double(goal.neutral) / Double(total))
-                Rectangle().fill(RatsColor.success.opacity(0.78)).frame(width: proxy.size.width * Double(goal.voran) / Double(total))
+                Rectangle().fill(RatsColor.success.opacity(0.78)).frame(width: proxy.size.width * Double(goal.advances) / Double(total))
             }
             .clipShape(Capsule())
         }

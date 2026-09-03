@@ -18,45 +18,45 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type Gesellschaft = {
-  bericht_jahr: number;
-  gesellschaft: string;
+  report_year: number;
+  company: string;
   name: string;
-  gliederung: string;
-  seite: number | null;
-  konzern_key: string | null;
+  classification: string;
+  page: number | null;
+  consolidated_key: string | null;
   herkunft_id: number | null;
   /** Hielt die Rechenprobe „gleich viele Namen wie Funktionen"? Nur dann
    *  trägt eine Person ihr Amt (s. `aufsichtspersonen`). Optional, weil eine
    *  ältere API das Feld nicht kennt — dann gilt „unbekannt", nicht „ja". */
-  funktionen_zuordenbar?: boolean;
+  roles_assignable?: boolean;
 };
 
 /** Ein Mitglied des Aufsichtsorgans — Betriebsausschuss, Aufsichtsrat oder
  *  Verwaltungsrat, je nach Rechtsform.
  *
- *  `funktion` ist `null`, wo der Bericht die Zuordnung nicht hergibt: Er
+ *  `position` ist `null`, wo der Bericht die Zuordnung nicht hergibt: Er
  *  listet Namen und Funktionen in zwei getrennten Spalten, die sich nur nach
  *  Position paaren lassen — und das ist nur erlaubt, wenn beide Listen exakt
  *  gleich lang sind. `null` heißt deshalb **unbekannt**, nie „keine". Der
  *  Vorsitz steht dagegen in der Namenszeile selbst („…, Vorsitzende") und
  *  bleibt auch dann bekannt, wenn die Paarung scheitert. */
 export type Aufsichtsperson = {
-  gesellschaft: string;
+  company: string;
   /** Wie das Organ im Bericht heißt — aus der Kopfzeile der Liste. */
-  gremium: string | null;
+  committee: string | null;
   name: string;
-  funktion: string | null;
-  vorsitz: "vorsitz" | "stellvertretung" | null;
+  position: string | null;
+  chair_role: "chair" | "deputy" | null;
   /** Klammerzusatz aus dem Bericht, etwa „bis 30. Juni 2022". */
-  hinweis: string | null;
+  note: string | null;
   /** Als **Ratsmitglied** im Personenverzeichnis gefunden — dann führt der
    *  Name auf die Personen-Seite. `null` heißt: kein Link. Das ist mehr als
    *  „nicht gefunden": Verwaltungsleute und die Aufsichtsorgane selbst stehen
    *  zwar im Verzeichnis, haben aber keine Seite (nur Mandatsträger*innen
    *  haben eine) — sie bleiben deshalb bewusst unverlinkt. */
   slug: string | null;
-  partei: string | null;
-  reihenfolge: number;
+  party: string | null;
+  sort_order: number;
   herkunft_id: number | null;
 };
 
@@ -67,71 +67,71 @@ export type Aufsichtsperson = {
  *  kein Eigentümer. Fällt die Probe, liefert die API für diese Gesellschaft
  *  gar keine Eigentümer — dann steht der Rohtext des Abschnitts da. */
 export type Eigentuemer = {
-  gesellschaft: string;
+  company: string;
   name: string;
-  betrag_eur: number | null;
-  anteil_prozent: number | null;
-  reihenfolge: number;
+  amount_eur: number | null;
+  share_pct: number | null;
+  sort_order: number;
   herkunft_id: number | null;
 };
 
 export type Textabschnitt = {
-  bericht_jahr: number;
-  gesellschaft: string;
-  abschnitt: string;
+  report_year: number;
+  company: string;
+  section: string;
   text: string;
   herkunft_id: number | null;
 };
 
 export type Kennzahl = {
-  gesellschaft: string;
-  kennzahl: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
-  jahr: number;
-  wert: number;
-  einheit: "eur" | "prozent";
-  bericht_jahr: number;
+  company: string;
+  indicator: "jahresergebnis" | "bilanzsumme" | "eigenkapitalquote";
+  year: number;
+  value: number;
+  unit: "eur" | "percent";
+  report_year: number;
   /** In wie vielen Berichten dieser Wert übereinstimmend steht. */
-  berichte: number;
+  n_reports: number;
   herkunft_id: number | null;
 };
 
 export type Konzernzeile = {
-  gesellschaft: string;
+  company: string;
   name: string;
-  jahr: number;
+  year: number;
   konzern_beitrag: number;
   jahresergebnis: number;
-  differenz: number;
+  difference: number;
 };
 
 export type BeteiligungsDaten = {
-  berichtsjahre: number[];
-  jahre: number[];
-  gesellschaften: Gesellschaft[];
-  texte: Textabschnitt[];
-  kennzahlen: Kennzahl[];
-  konzernvergleich: Konzernzeile[];
+  report_years: number[];
+  years: number[];
+  companies: Gesellschaft[];
+  texts: Textabschnitt[];
+  indicators: Kennzahl[];
+  group_comparison: Konzernzeile[];
   /** Optional, und das ist die ganze Fallback-Logik der Seite: Wo die Liste
    *  fehlt (ältere API) oder für eine Gesellschaft leer bleibt (Probe nicht
    *  bestanden), steht der Rohtext des Abschnitts — nie ein leerer Block. */
-  personen?: Aufsichtsperson[];
-  eigentuemer?: Eigentuemer[];
-  herkunft: Record<string, Herkunft>;
+  people?: Aufsichtsperson[];
+  owners?: Eigentuemer[];
+  provenance: Record<string, Herkunft>;
 };
 
 /** Überschriften der beschreibenden Abschnitte, in der Reihenfolge des
  *  Berichts. Der Schlüssel kommt aus `beteiligungsbericht.TEXTABSCHNITTE`;
  *  die Wortwahl hier ist die für Leserinnen, nicht die amtliche
  *  („Besetzung der Aufsichtsorgane" → „Wer sie beaufsichtigt"). */
-export const ABSCHNITTE: { key: string; titel: string }[] = [
-  { key: "gegenstand", titel: "Was die Gesellschaft tut" },
-  { key: "beteiligungsverhaeltnisse", titel: "Wem sie gehört" },
-  { key: "aufsichtsorgane", titel: "Wer sie beaufsichtigt" },
-  { key: "beteiligungen", titel: "Woran sie selbst beteiligt ist" },
-  { key: "haushalt", titel: "Was sie für den städtischen Haushalt bedeutet" },
+export const ABSCHNITTE: { key: string; title: string }[] = [
+  { key: "business_purpose", title: "Was die Gesellschaft tut" },
+  { key: "ownership_structure", title: "Wem sie gehört" },
+  { key: "supervisory_bodies", title: "Wer sie beaufsichtigt" },
+  { key: "own_shareholdings", title: "Woran sie selbst beteiligt ist" },
+  { key: "budget_impact", title: "Was sie für den städtischen Haushalt bedeutet" },
 ];
 
-export const KENNZAHL_TITEL: Record<Kennzahl["kennzahl"], string> = {
+export const KENNZAHL_TITEL: Record<Kennzahl["indicator"], string> = {
   jahresergebnis: "Jahresergebnis",
   bilanzsumme: "Bilanzsumme",
   eigenkapitalquote: "Eigenkapitalquote",
@@ -139,20 +139,20 @@ export const KENNZAHL_TITEL: Record<Kennzahl["kennzahl"], string> = {
 
 export function herkunftVon(daten: BeteiligungsDaten | null, id: number | null | undefined) {
   if (!daten || id == null) return null;
-  return daten.herkunft[String(id)] ?? null;
+  return daten.provenance[String(id)] ?? null;
 }
 
 /** Die Kennzahlen einer Gesellschaft, nach Kennzahl gebündelt und je Reihe
  *  nach Jahr sortiert. */
-export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
-  const aus = new Map<Kennzahl["kennzahl"], Kennzahl[]>();
-  for (const k of daten?.kennzahlen ?? []) {
-    if (k.gesellschaft !== gesellschaft) continue;
-    const liste = aus.get(k.kennzahl) ?? [];
+export function reihen(daten: BeteiligungsDaten | null, company: string) {
+  const aus = new Map<Kennzahl["indicator"], Kennzahl[]>();
+  for (const k of daten?.indicators ?? []) {
+    if (k.company !== company) continue;
+    const liste = aus.get(k.indicator) ?? [];
     liste.push(k);
-    aus.set(k.kennzahl, liste);
+    aus.set(k.indicator, liste);
   }
-  for (const liste of aus.values()) liste.sort((a, b) => a.jahr - b.jahr);
+  for (const liste of aus.values()) liste.sort((a, b) => a.year - b.year);
   return aus;
 }
 
@@ -162,26 +162,26 @@ export function reihen(daten: BeteiligungsDaten | null, gesellschaft: string) {
  *  führt noch im Bericht für 2024 die Jahre bis 2021, weil ihr Abschluss
  *  später vorlag. Wer stur das Berichtsjahr abfragt, zeigt für sie nichts —
  *  obwohl fünf Jahre danebenstehen. */
-export function juengster(daten: BeteiligungsDaten | null, gesellschaft: string,
-                          kennzahl: Kennzahl["kennzahl"]): Kennzahl | null {
+export function juengster(daten: BeteiligungsDaten | null, company: string,
+                          indicator: Kennzahl["indicator"]): Kennzahl | null {
   let treffer: Kennzahl | null = null;
-  for (const k of daten?.kennzahlen ?? []) {
-    if (k.gesellschaft !== gesellschaft || k.kennzahl !== kennzahl) continue;
-    if (!treffer || k.jahr > treffer.jahr) treffer = k;
+  for (const k of daten?.indicators ?? []) {
+    if (k.company !== company || k.indicator !== indicator) continue;
+    if (!treffer || k.year > treffer.year) treffer = k;
   }
   return treffer;
 }
 
-export function textVon(daten: BeteiligungsDaten | null, gesellschaft: string,
-                        abschnitt: string): Textabschnitt | null {
-  return (daten?.texte ?? []).find(
-    (t) => t.gesellschaft === gesellschaft && t.abschnitt === abschnitt) ?? null;
+export function textVon(daten: BeteiligungsDaten | null, company: string,
+                        section: string): Textabschnitt | null {
+  return (daten?.texts ?? []).find(
+    (t) => t.company === company && t.section === section) ?? null;
 }
 
 /** Der erste Satz des Unternehmensgegenstands — für die Karte in der Liste.
  *  Abgeschnitten wird am Satzende, nicht nach n Zeichen. */
 export function auftragSatz(daten: BeteiligungsDaten, g: Gesellschaft): string | null {
-  const gegenstand = textVon(daten, g.gesellschaft, "gegenstand");
+  const gegenstand = textVon(daten, g.company, "business_purpose");
   if (!gegenstand) return null;
   const glatt = gegenstand.text.replace(/\s+/g, " ");
   return glatt.match(/^.{20,200}?\.(?=\s|$)/)?.[0] ?? glatt.slice(0, 160);
@@ -221,52 +221,59 @@ export function einordnungFuer(daten: BeteiligungsDaten, g: Gesellschaft,
       + "bezahlbar sein, nicht profitabel.",
     gsg: "Überschüsse bleiben im Unternehmen und finanzieren Neubau und Sanierung.",
   };
-  if (redaktionell[g.gesellschaft]) return redaktionell[g.gesellschaft];
+  if (redaktionell[g.company]) return redaktionell[g.company];
 
-  if (ergebnisse.length >= 2 && ergebnisse.every((k) => k.wert === 0)) {
+  if (ergebnisse.length >= 2 && ergebnisse.every((k) => k.value === 0)) {
     return "Die Null ist Vertragslage, kein Stillstand: Der Betrieb führt sein "
       + "Ergebnis an die Stadt ab oder bekommt es ausgeglichen.";
   }
   const juengstes = ergebnisse[ergebnisse.length - 1];
-  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
-  if (juengstes && vergleich && vergleich.jahr === juengstes.jahr
-      && Math.abs(vergleich.differenz) <= 1000) {
+  const vergleich = daten.group_comparison.find((z) => z.company === g.company);
+  if (juengstes && vergleich && vergleich.year === juengstes.year
+      && Math.abs(vergleich.difference) <= 1000) {
     return "Der Betrag ist deckungsgleich mit dem Gesamtabschluss — zwei Quellen, "
       + "eine Zahl.";
   }
-  return "Gewinn oder Verlust ist hier keine Note — welchen Auftrag die "
-    + "Gesellschaft damit erfüllt, steht in ihrem Steckbrief.";
+  // Der Rückfall berichtet die Entwicklung aus den Daten — ein Satz, der zu
+  // dieser Karte gehört. Dass Gewinn oder Verlust keine Note ist, steht
+  // EINMAL über dem Raster; auf zehn Karten hintereinander trug der Satz
+  // nichts mehr (Durchsicht 02.09.2026).
+  const erstes = ergebnisse[0];
+  if (erstes && juengstes && erstes.year !== juengstes.year) {
+    return `Von ${eur(erstes.value)} (${erstes.year}) auf ${eur(juengstes.value)} (${juengstes.year}).`;
+  }
+  return juengstes ? `Ein Jahresergebnis liegt vor: ${juengstes.year}.` : "Kein Jahresergebnis im Bericht.";
 }
 
 // --- Aufsichtsorgane und Eigentümer -----------------------------------------
 
 /** Die Mitglieder des Aufsichtsorgans, in der Reihenfolge des Berichts. */
 export function aufsichtspersonen(daten: BeteiligungsDaten | null,
-                                  gesellschaft: string): Aufsichtsperson[] {
-  return (daten?.personen ?? [])
-    .filter((p) => p.gesellschaft === gesellschaft)
-    .sort((a, b) => a.reihenfolge - b.reihenfolge);
+                                  company: string): Aufsichtsperson[] {
+  return (daten?.people ?? [])
+    .filter((p) => p.company === company)
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
 
 /** Wie das Organ im Bericht heißt („Betriebsausschuss", „Aufsichtsrat").
  *  Nennen mehrere Zeilen verschiedene Organe, gewinnt keines — dann steht
  *  die neutrale Überschrift des Abschnitts. */
 export function gremiumName(personen: Aufsichtsperson[]): string | null {
-  const namen = new Set(personen.map((p) => p.gremium).filter(Boolean));
+  const namen = new Set(personen.map((p) => p.committee).filter(Boolean));
   return namen.size === 1 ? ([...namen][0] as string) : null;
 }
 
 export type Aufsichtsgruppe = {
   key: string;
   /** Überschrift der Gruppe — das Wort des Berichts, nicht unseres. */
-  titel: string;
+  title: string;
   personen: Aufsichtsperson[];
 };
 
 /** Rang der Gruppen: Vorsitz zuerst, dann der Rat, dann die Belegschaft,
  *  dann alles Übrige, zuletzt die ohne bekanntes Amt. */
 function gruppenRang(key: string): number {
-  if (key === "vorsitz") return 0;
+  if (key === "chair") return 0;
   if (key === "") return 4;
   if (/ratsmitglied|rat der stadt|ratsherr|ratsfrau/i.test(key)) return 1;
   if (/beschäftigt|arbeitnehmer|personalrat|betriebsrat|belegschaft/i.test(key)) return 2;
@@ -287,28 +294,28 @@ export function aufsichtsgruppen(personen: Aufsichtsperson[],
                                  zuordenbar: boolean): Aufsichtsgruppe[] {
   const nach = new Map<string, Aufsichtsperson[]>();
   for (const p of personen) {
-    const key = p.vorsitz ? "vorsitz" : ((zuordenbar && p.funktion) || "");
+    const key = p.chair_role ? "chair" : ((zuordenbar && p.position) || "");
     nach.set(key, [...(nach.get(key) ?? []), p]);
   }
   return [...nach.entries()]
     .map(([key, liste]) => ({
       key,
-      titel: key === "vorsitz" ? "Vorsitz" : key || "Weitere Mitglieder",
+      title: key === "chair" ? "Vorsitz" : key || "Weitere Mitglieder",
       // Im Vorsitz steht die Vorsitzende vor ihrer Stellvertretung, sonst
       // bleibt die Reihenfolge des Berichts.
-      personen: key === "vorsitz"
-        ? [...liste].sort((a, b) => (a.vorsitz === "vorsitz" ? 0 : 1) - (b.vorsitz === "vorsitz" ? 0 : 1))
+      personen: key === "chair"
+        ? [...liste].sort((a, b) => (a.chair_role === "chair" ? 0 : 1) - (b.chair_role === "chair" ? 0 : 1))
         : liste,
     }))
-    .sort((a, b) => gruppenRang(a.key) - gruppenRang(b.key) || a.titel.localeCompare(b.titel, "de"));
+    .sort((a, b) => gruppenRang(a.key) - gruppenRang(b.key) || a.title.localeCompare(b.title, "de"));
 }
 
 /** Die Eigentümer, in der Reihenfolge des Berichts. */
 export function eigentuemerVon(daten: BeteiligungsDaten | null,
-                               gesellschaft: string): Eigentuemer[] {
-  return (daten?.eigentuemer ?? [])
-    .filter((e) => e.gesellschaft === gesellschaft)
-    .sort((a, b) => a.reihenfolge - b.reihenfolge);
+                               company: string): Eigentuemer[] {
+  return (daten?.owners ?? [])
+    .filter((e) => e.company === company)
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
 
 /** Der Anteil der Stadt Oldenburg an einer Gesellschaft, in Prozent.
@@ -322,10 +329,10 @@ export function eigentuemerVon(daten: BeteiligungsDaten | null,
  *  der TGO Besitz führt er statt Anteilseignern nur Entsendungsrechte. Eine
  *  fehlende Quote als „0 %" zu zeigen wäre eine Falschaussage. */
 export function stadtAnteil(daten: BeteiligungsDaten | null,
-                            gesellschaft: string): number | null {
-  const zeile = eigentuemerVon(daten, gesellschaft)
+                            company: string): number | null {
+  const row = eigentuemerVon(daten, company)
     .find((e) => /^Stadt Oldenburg\b/.test(e.name.trim()));
-  return zeile?.anteil_prozent ?? null;
+  return row?.share_pct ?? null;
 }
 
 /** Hält die Stadt weniger als die Hälfte?
@@ -345,7 +352,7 @@ export function istMinderheit(anteil: number | null): boolean {
  *  Quelle steht; eine aus dem Betrag gerechnete Quote bekäme sonst dieselbe
  *  Autorität wie eine gedruckte. */
 export function anteilsGewicht(e: Eigentuemer): number {
-  return e.anteil_prozent ?? e.betrag_eur ?? 0;
+  return e.share_pct ?? e.amount_eur ?? 0;
 }
 
 /** Euro-Betrag, kompakt und ohne Bewertung.
@@ -354,33 +361,33 @@ export function anteilsGewicht(e: Eigentuemer): number {
  *  macht, erfüllt seinen Auftrag — dieselbe Begründung wie in
  *  `components/grafik/hantel.tsx`. Das Minus steht da, weil es zur Zahl
  *  gehört, nicht als Urteil. */
-export function eur(wert: number): string {
-  const abs = Math.abs(wert);
+export function eur(value: number): string {
+  const abs = Math.abs(value);
   if (abs >= 1_000_000) {
-    return `${(wert / 1_000_000).toLocaleString("de-DE", {
+    return `${(value / 1_000_000).toLocaleString("de-DE", {
       minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mio. €`;
   }
   if (abs >= 1_000) {
-    return `${(wert / 1_000).toLocaleString("de-DE", {
+    return `${(value / 1_000).toLocaleString("de-DE", {
       maximumFractionDigits: 0 })} Tsd. €`;
   }
-  return `${wert.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
+  return `${value.toLocaleString("de-DE", { maximumFractionDigits: 2 })} €`;
 }
 
-export function prozent(wert: number): string {
-  return `${wert.toLocaleString("de-DE", {
+export function percent(value: number): string {
+  return `${value.toLocaleString("de-DE", {
     minimumFractionDigits: 1, maximumFractionDigits: 2 })} %`;
 }
 
 export function wertText(k: Kennzahl): string {
-  return k.einheit === "prozent" ? prozent(k.wert) : eur(k.wert);
+  return k.unit === "percent" ? percent(k.value) : eur(k.value);
 }
 
 /** Die Gesellschaften, sortiert wie im Bericht (Eigenbetriebe, Anstalten,
  *  privatrechtliche) — die Gliederungsnummer trägt diese Ordnung schon. */
 export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
-  return [...(daten?.gesellschaften ?? [])].sort((a, b) =>
-    a.gliederung.localeCompare(b.gliederung, "de", { numeric: true }));
+  return [...(daten?.companies ?? [])].sort((a, b) =>
+    a.classification.localeCompare(b.classification, "de", { numeric: true }));
 }
 
 // --- Rechtsform (H3-02: die Formen-Sprache der Konzernkarte) ----------------
@@ -393,12 +400,12 @@ export function sortiert(daten: BeteiligungsDaten | null): Gesellschaft[] {
  *  könne keine GmbH mehr sein. Die Quote steht deshalb als eigenes Zeichen
  *  neben der Form (`stadtAnteil`, `istMinderheit`) — seit die
  *  Gesellschaftertabelle mit Probe gelesen wird. */
-export type Rechtsform = "eigenbetrieb" | "aoer" | "gesellschaft";
+export type Rechtsform = "eigenbetrieb" | "aoer" | "company";
 
 export const RECHTSFORM_TITEL: Record<Rechtsform, string> = {
   eigenbetrieb: "Eigenbetrieb",
   aoer: "Anstalt öffentlichen Rechts",
-  gesellschaft: "GmbH / Co. KG",
+  company: "GmbH / Co. KG",
 };
 
 /** Rechtsform aus der Gliederungsnummer des Berichts — deterministisch, aus
@@ -411,10 +418,10 @@ export const RECHTSFORM_TITEL: Record<Rechtsform, string> = {
  *  Der Name allein taugt nicht („Abfallwirtschaftsbetrieb Stadt Oldenburg"
  *  trägt sein „Eigenbetrieb" nicht im Namen). Eine unbekannte Gruppe liefert
  *  `null` — dann rendert die Karte KEINE Form statt einer falschen. */
-export function rechtsform(g: Pick<Gesellschaft, "gliederung">): Rechtsform | null {
-  const gruppe = g.gliederung.split(".")[1];
+export function rechtsform(g: Pick<Gesellschaft, "classification">): Rechtsform | null {
+  const gruppe = g.classification.split(".")[1];
   if (gruppe === "2") return "eigenbetrieb";
   if (gruppe === "3") return "aoer";
-  if (gruppe === "4") return "gesellschaft";
+  if (gruppe === "4") return "company";
   return null;
 }

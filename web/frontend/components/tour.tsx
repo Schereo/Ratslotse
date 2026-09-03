@@ -53,7 +53,7 @@ const STEPS: TourStep[] = [
     text: "Das Herzstück: Stell deine Frage in normaler Sprache — ich lese die Beschlüsse und antworte mit Quellen.",
   },
   {
-    id: "frage-beispiel", route: "/fragen", pose: "celebrate",
+    id: "question-beispiel", route: "/fragen", pose: "celebrate",
     marks: ["frag"],
     demo: true,
     title: "So sieht eine Antwort aus",

@@ -24,7 +24,7 @@ import { deMio, type HaushaltssatzungZeile } from "@/lib/haushalt";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
 import { gezahlteZinsspanne } from "@/lib/haushalt-labor";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { cn } from "@/lib/utils";
 
 /** Wie viele Vorhaben die Liste zeigt — die größten; alles andere steht
@@ -57,51 +57,51 @@ export function InvestWerkbank({
   schulden: SchuldenDaten | null;
   satzung: HaushaltssatzungZeile[] | undefined;
   vorhabenAus: Record<string, boolean>;
-  toggleVorhaben: (schluessel: string) => void;
+  toggleVorhaben: (key: string) => void;
   kredit: boolean;
   setKredit: (v: boolean) => void;
   /** Das Minus des Planjahres nach dem aktuellen Szenario, in Mio. € —
    *  der Betrag, um den es beim Kredit-Schalter geht. */
   neuesDefizit: number;
 }) {
-  const jahr = programm?.jahre.at(-1) ?? null;
-  const vorhaben = jahr != null
-    ? (programm?.massnahmen ?? [])
-        .filter((z) => z.jahr === jahr && z.gesamtsumme > 0)
-        .sort((a, b) => b.gesamtsumme - a.gesamtsumme)
+  const year = programm?.years.at(-1) ?? null;
+  const vorhaben = year != null
+    ? (programm?.measures ?? [])
+        .filter((z) => z.year === year && z.grand_total > 0)
+        .sort((a, b) => b.grand_total - a.grand_total)
         .slice(0, ANZAHL)
     : [];
-  const schluessel = (z: { code: string; bezeichnung: string }) =>
-    z.code || z.bezeichnung;
+  const key = (z: { code: string; label: string }) =>
+    z.code || z.label;
   /** Detailzeilen, die etwas SAGEN: Wiederholt ein Sachkonto nur den
    *  Maßnahmen-Namen (ggf. abgeschnitten), trägt es nichts — was bleibt,
    *  sind die informativen („Eig.kap. Zusch.Stadion Oldb GmbH & Co KG“,
    *  die Bauabschnitte der Fliegerhorst-Straßen). */
-  const detailInfo = (z: { bezeichnung: string; details: string | null }) => {
+  const detailInfo = (z: { label: string; details: string | null }) => {
     if (!z.details) return null;
     const eigene = z.details.split(" · ").filter((d) => {
       const stamm = d.split(",")[0].trim();
-      return !(z.bezeichnung.startsWith(stamm) || stamm.startsWith(z.bezeichnung));
+      return !(z.label.startsWith(stamm) || stamm.startsWith(z.label));
     });
     return eigene.length ? eigene.join(" · ") : null;
   };
   const gestrichen = vorhaben
-    .filter((z) => vorhabenAus[schluessel(z)])
-    .reduce((s, z) => s + z.gesamtsumme, 0);
+    .filter((z) => vorhabenAus[key(z)])
+    .reduce((s, z) => s + z.grand_total, 0);
 
-  const schuldenLetzte = schulden?.reihe.length
-    ? schulden.reihe[schulden.reihe.length - 1] : null;
-  const zinsLetzte = schulden?.zinslast.length
-    ? schulden.zinslast[schulden.zinslast.length - 1] : null;
-  const spanne = gezahlteZinsspanne(schulden?.zinslast, schulden?.reihe ?? undefined);
+  const schuldenLetzte = schulden?.series.length
+    ? schulden.series[schulden.series.length - 1] : null;
+  const zinsLetzte = schulden?.interest_expense.length
+    ? schulden.interest_expense[schulden.interest_expense.length - 1] : null;
+  const spanne = gezahlteZinsspanne(schulden?.interest_expense, schulden?.series ?? undefined);
 
   // § 2 der Satzung, aus den Daten statt behauptet: In wie vielen Jahrgängen
   // stand „nicht veranschlagt“ (= 0)?
-  const satzSelbst = (satzung ?? []).filter((z) => z.nachtrag === 0);
-  const ohneKredit = satzSelbst.filter((z) => z.kredite_investitionen === 0).length;
+  const satzSelbst = (satzung ?? []).filter((z) => z.supplement === 0);
+  const ohneKredit = satzSelbst.filter((z) => z.investment_loans === 0).length;
   const dispo = satzSelbst
-    .filter((z) => z.liquiditaetskredite != null)
-    .sort((a, b) => a.jahr - b.jahr)
+    .filter((z) => z.liquidity_loans != null)
+    .sort((a, b) => a.year - b.year)
     .at(-1);
 
   const zinsProzent = (v: number) =>
@@ -122,7 +122,7 @@ export function InvestWerkbank({
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Vorhaben aus dem Investitionsprogramm {jahr}
+              Vorhaben aus dem Investitionsprogramm {year}
             </p>
             <span className="font-mono text-[10.5px] text-muted-foreground">
               die {vorhaben.length} größten<Beleg q="investitionsprogramm" />
@@ -130,17 +130,17 @@ export function InvestWerkbank({
           </div>
           <div className="mt-2 flex flex-col">
             {vorhaben.map((z) => {
-              const aus = !!vorhabenAus[schluessel(z)];
+              const aus = !!vorhabenAus[key(z)];
               // Kein Vorhaben ohne Namen: Trägt die Summenzeile im Dokument
               // keinen (und die Detailzeilen keinen gemeinsamen), steht hier
               // der Code — eine benannte Lücke statt eines leeren Schalters.
-              const name = z.bezeichnung || `Maßnahme ${z.code}`;
+              const name = z.label || `Maßnahme ${z.code}`;
               return (
-                <div key={schluessel(z)}
+                <div key={key(z)}
                   className="flex items-start gap-3 border-t border-border/60 py-2.5 first:border-t-0">
                   <div className="pt-0.5">
                     <Schalter an={!aus} label={name}
-                      onClick={() => toggleVorhaben(schluessel(z))} />
+                      onClick={() => toggleVorhaben(key(z))} />
                   </div>
                   <span className="min-w-0 flex-1">
                     <span className={cn("text-[12.5px] leading-snug",
@@ -151,7 +151,7 @@ export function InvestWerkbank({
                         Namen als Anfrage — ein Suchlink, kein behaupteter
                         Treffer (eine feste Vorlagen-Zuordnung liegt nicht vor). */}
                     <Link
-                      href={`/council?tab=decisions&q=${encodeURIComponent(z.bezeichnung || z.code)}`}
+                      href={`/council?tab=decisions&q=${encodeURIComponent(z.label || z.code)}`}
                       title="In Beschlüssen und Anträgen danach suchen"
                       className="ml-1.5 inline-flex translate-y-[1px] text-muted-foreground hover:text-primary">
                       <Search className="h-3 w-3" strokeWidth={2.2} />
@@ -168,7 +168,7 @@ export function InvestWerkbank({
                   </span>
                   <span className={cn("shrink-0 font-mono text-[12px] tabular-nums",
                     aus ? "font-medium text-signal" : "text-foreground")}>
-                    {aus ? "−" : ""}{deMio(z.gesamtsumme / 1e6)}&#8239;Mio.&nbsp;€
+                    {aus ? "−" : ""}{deMio(z.grand_total / 1e6)}&#8239;Mio.&nbsp;€
                   </span>
                 </div>
               );
@@ -216,7 +216,7 @@ export function InvestWerkbank({
                 <>Die Haushaltssatzung sagt {ohneKredit === satzSelbst.length
                   ? <>in allen {ohneKredit} Jahrgängen</>
                   : <>in {ohneKredit} von {satzSelbst.length} Jahrgängen</>} dasselbe:
-                Kredite für Investitionen „nicht veranschlagt“<Beleg q="haushaltssatzung" /> —
+                Kredite für Investitionen „nicht veranschlagt“<Beleg q="budget_bylaw" /> —
                 die Stadt zehrt lieber die Rücklage auf. </>
               ) : null}
               Der Schalter zeigt den Preis der Alternative — oben im Ergebnis, hier die
@@ -234,9 +234,9 @@ export function InvestWerkbank({
                   {zinsProzent(spanne.von)}–{zinsProzent(spanne.bis)}&nbsp;%
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
-                  Zinsaufwand ÷ Schuldenstand, Abschlüsse {spanne.jahre[0]}–{spanne.jahre[1]}
-                  <Beleg q="jahresabschluss" /> — zuletzt {deMio(zinsLetzte.aufwand / 1e6)}&#8239;Mio.&nbsp;€
-                  Zinsen im Jahr {zinsLetzte.jahr}. Neue Kredite bekämen heutige Sätze;
+                  Zinsaufwand ÷ Schuldenstand, Abschlüsse {spanne.years[0]}–{spanne.years[1]}
+                  <Beleg q="jahresabschluss" /> — zuletzt {deMio(zinsLetzte.expense / 1e6)}&#8239;Mio.&nbsp;€
+                  Zinsen im Jahr {zinsLetzte.year}. Neue Kredite bekämen heutige Sätze;
                   mehr als die gezahlte Spanne behaupten wir nicht.
                 </p>
               </>
@@ -251,10 +251,10 @@ export function InvestWerkbank({
             {schuldenLetzte ? (
               <>
                 <p className="font-display text-[17px] font-bold tabular-nums">
-                  {deMio(schuldenLetzte.insgesamt / 1e6)}&#8239;Mio.&nbsp;€
+                  {deMio(schuldenLetzte.total / 1e6)}&#8239;Mio.&nbsp;€
                 </p>
                 <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
-                  Stand {schuldenLetzte.jahr}<Beleg q="schulden" />
+                  Stand {schuldenLetzte.year}<Beleg q="schulden" />
                   {spanne && neuesDefizit > 0 && (
                     <>
                       {" "}— liefe das Minus dieses Planjahres ({deMio(neuesDefizit)}&#8239;Mio.&nbsp;€)
@@ -263,10 +263,10 @@ export function InvestWerkbank({
                       Zins im Jahr dazu.
                     </>
                   )}
-                  {dispo?.liquiditaetskredite != null && (
+                  {dispo?.liquidity_loans != null && (
                     <>
                       {" "}Für den Alltag erlaubt sich die Stadt daneben bis zu{" "}
-                      {deMio(dispo.liquiditaetskredite / 1e6)}&#8239;Mio.&nbsp;€ Kassenkredit ({dispo.jahr}).
+                      {deMio(dispo.liquidity_loans / 1e6)}&#8239;Mio.&nbsp;€ Kassenkredit ({dispo.year}).
                     </>
                   )}
                 </p>

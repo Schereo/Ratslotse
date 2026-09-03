@@ -1,4 +1,4 @@
-"""Cron-Protokoll: run_guarded schreibt jeden Lauf in job_runs (nwz/alerts.py)."""
+"""Cron-Protokoll: run_guarded schreibt jeden Lauf in job_runs (kern/alerts.py)."""
 from __future__ import annotations
 
 import sys
@@ -15,10 +15,10 @@ from kern.store import Store  # noqa: E402
 
 @pytest.fixture()
 def db(tmp_path, monkeypatch):
-    """Temporäre nwz.sqlite — run_guarded findet sie über NWZ_DB."""
-    path = tmp_path / "nwz.sqlite"
+    """Temporäre ratslotse.sqlite — run_guarded findet sie über RATSLOTSE_DB."""
+    path = tmp_path / "ratslotse.sqlite"
     Store(path).close()
-    monkeypatch.setenv("NWZ_DB", str(path))
+    monkeypatch.setenv("RATSLOTSE_DB", str(path))
     return path
 
 
@@ -85,6 +85,10 @@ def test_registry_deckt_die_cron_eintraege_ab():
     der crontab braucht dort einen Eintrag mit Takt und Toleranz."""
     assert {j["key"] for j in JOBS} == {
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
+        # Vorläufige Ergebnisse aus der O1-Aufzeichnung der Ratssitzung, täglich.
+        "check_council_videos",
+        # Live-Mitschnitt des O1-Streams an Sitzungstagen, 13 Uhr UTC.
+        "record_council_livestream",
         "check_vorlage_follows", "remind_setup", "backup_db",
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
         "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15

@@ -260,7 +260,7 @@ def build(entities: list[dict], links: list[tuple], decisions: list[dict],
         for jaccard, w, other in sorted(proven.get(entity_id, []), key=lambda x: (-x[0], -x[1])):
             if len(chosen) >= top_k:
                 break
-            chosen.append(("belegt", round(jaccard, 4), w, other))
+            chosen.append(("documented", round(jaccard, 4), w, other))
             seen.add(other)
         if chosen:
             covered_proven += 1
@@ -269,7 +269,7 @@ def build(entities: list[dict], links: list[tuple], decisions: list[dict],
                 break
             if other in seen:
                 continue
-            chosen.append(("aehnlich", round(score, 4), 0, other))
+            chosen.append(("similar", round(score, 4), 0, other))
             seen.add(other)
         for rank, (rel_type, score, evidence, other) in enumerate(chosen):
             rows.append((slug[entity_id], slug[other], rel_type, rank, score, evidence))

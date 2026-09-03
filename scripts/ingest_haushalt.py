@@ -60,13 +60,13 @@ def _ingest_year(store: CouncilStore, year: int, url: str | None, pdf: str | Non
     # `extract_from_pdf` gibt nur zurück, was gegen die Summenzeile aufgeht —
     # die Probe ist also bestanden, sobald wir hier stehen.
     store.save_haushalt(year, rows, herkunft.Herkunft(
-        art="stadt", probe="summenzeile", url=url or f"file:{pdf}",
+        kind="city", probe="total_row", url=url or f"file:{pdf}",
         label=f"Beschlossener Haushaltsplan {year}",
-        fundstelle="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
+        citation="Übersicht „Ergebnishaushalt“ — Teilhaushalte mit "
                    "ordentlichen Erträgen und Aufwendungen",
-        stand=f"Haushaltsjahr {year}"))
-    summe = next((r for r in rows if r["is_summe"]), {})
-    print(f"  {year}: {len(rows)} Zeilen (Aufwendungen {round((summe.get('aufwendungen') or 0) / 1e6)} Mio. €)")
+        as_of=f"Haushaltsjahr {year}"))
+    summe = next((r for r in rows if r["is_total"]), {})
+    print(f"  {year}: {len(rows)} Zeilen (Aufwendungen {round((summe.get('expenses') or 0) / 1e6)} Mio. €)")
     return True
 
 
@@ -79,14 +79,14 @@ def _ingest_year_csv(store: CouncilStore, year: int, url: str) -> bool:
         print(f"  {year}: Open-Data-CSV nicht validiert — übersprungen.", file=sys.stderr)
         return False
     store.save_haushalt(year, rows, herkunft.Herkunft(
-        art="opendata", probe="summenzeile", url=url,
+        kind="opendata", probe="total_row", url=url,
         label=f"Ergebnishaushalt {year} (Open-Data-Portal)",
-        fundstelle="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
+        citation="Ergebnishaushalt-CSV, eine Zeile je Teilhaushalt plus "
                    "Zeile „Gesamtergebnishaushalt“",
-        stand=f"Haushaltsjahr {year}"))
-    summe = next((r_ for r_ in rows if r_["is_summe"]), {})
+        as_of=f"Haushaltsjahr {year}"))
+    summe = next((r_ for r_ in rows if r_["is_total"]), {})
     print(f"  {year}: {len(rows)} Zeilen aus Open-Data-CSV "
-          f"(Aufwendungen {round((summe.get('aufwendungen') or 0) / 1e6)} Mio. €)")
+          f"(Aufwendungen {round((summe.get('expenses') or 0) / 1e6)} Mio. €)")
     return True
 
 

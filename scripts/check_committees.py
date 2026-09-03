@@ -28,7 +28,7 @@ from council.committee_summary import sitzungskopf, summarize_agenda_items
 from council.dringlichkeit import ist_dringlichkeitsantrag
 from council.ergebnisse import sitzung_href
 
-NWZ_DB = ROOT / "data" / "nwz.sqlite"
+RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
@@ -41,7 +41,7 @@ def _agenda_hash(agenda_items) -> str:
     gegen den alten Snapshot findet nichts Nennbares, und genau dieser Fall
     zieht den Stand nur nach, ohne zu melden."""
     payload = "\n".join(
-        f"{i.item_number}\t{i.title}\t{i.vorlage_nr or ''}\t{int(i.is_public)}\t"
+        f"{i.item_number}\t{i.title}\t{i.template_number or ''}\t{int(i.is_public)}\t"
         f"{','.join(anlagen_schluessel(i.anlagen))}"
         for i in agenda_items
     )
@@ -111,8 +111,92 @@ def _kartentexte(council_store: CouncilStore, ksinr: int) -> dict[str, str]:
         return {}
 
 
+#: Höchstens so viele Punkte bewertet der Mail-Lauf nach. Drei Tranchen zu 20
+#: — das deckt auch eine Ratssitzung mit 49 öffentlichen Punkten; was darüber
+#: läge, holt der Tranchen-Lauf am Ende des Skripts.
+_TRAGWEITE_MAIL_MAX = 60
+
+
+def _tragweite_der_sitzung(council_store: CouncilStore, ksinr: int) -> dict[str, int]:
+    """Die Tragweite dieser Sitzung — fehlende sofort bewerten.
+
+    Dasselbe Muster und derselbe Grund wie bei ``_kartentexte``: Der
+    Tranchen-Lauf am Ende dieses Skripts steht HINTER der Meldeschleife, eine
+    frisch erschienene Tagesordnung wäre also noch unbewertet, wenn ihre Mail
+    gebaut wird — und weil der Block gecacht wird (``save_summary``), bekäme
+    sie ihre Hervorhebung auch später nie.
+
+    Teurer wird es dadurch nicht: Diese Punkte stünden ohnehin auf der Liste
+    des Laufs unten, sie sind hier nur früher dran; ``agenda_item_impact`` ist
+    der Zwischenspeicher für beide Wege.
+
+    Best effort. Reißt das Modell, kommt ein leeres Verzeichnis zurück und die
+    Mail bleibt die lange Liste, die sie vorher war — das ist der ehrliche
+    Rückfall, keine geratene Rangfolge.
+    """
+    try:
+        from council.impact import BATCH_SIZE, rate_agenda_batch  # noqa: PLC0415
+
+        offen = council_store.agenda_items_needing_impact(
+            limit=_TRAGWEITE_MAIL_MAX, ksinr=ksinr)
+        for i, it in enumerate(offen):
+            it["id"] = i
+        nach_id = {it["id"]: it for it in offen}
+        bewertet = 0
+        for start in range(0, len(offen), BATCH_SIZE):
+            for iid, score, grund in rate_agenda_batch(offen[start:start + BATCH_SIZE]):
+                it = nach_id.get(iid)
+                if it:
+                    council_store.save_agenda_impact(
+                        it["ksinr"], it["item_number"], score, grund)
+                    bewertet += 1
+        if offen:
+            print(f"  Tragweite (für die Mail): {bewertet}/{len(offen)} bewertet")
+        if len(offen) >= _TRAGWEITE_MAIL_MAX:
+            print(f"  ⚠️ Deckel bei {_TRAGWEITE_MAIL_MAX} Punkten erreicht — "
+                  f"den Rest bewertet der Tranchen-Lauf")
+    except Exception as exc:  # noqa: BLE001 — Hervorhebung ist Kür, nie Blocker
+        print(f"  ⚠️ Tragweite für {ksinr} fehlgeschlagen: {exc!r} — "
+              f"die Mail bleibt bei der reinen Liste")
+    try:
+        return council_store.agenda_wichtigkeit(ksinr)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+#: Höchstens so viele Punkte stehen oben. Dieselbe Zahl wie auf der
+#: Wochen-Karte (``store_sitzungen``): Vier sind keine Auswahl mehr.
+_HERVOR_MAX = 3
+
+#: Erst ab so vielen Punkten wird überhaupt gegliedert. Bei vier Punkten gibt
+#: es nichts zu überblicken — da wäre der Kicker Bürokratie über einer Liste,
+#: die ohnehin auf den Schirm passt.
+_HERVOR_AB = 5
+
+
+def _hervorgehoben(wichtig: dict[str, int], punkte: list[dict]) -> set[str]:
+    """Die Nummern, die oben stehen: höchstens drei, und nur über der Schwelle.
+
+    Die Schwelle ist dieselbe wie auf der Wochen-Karte
+    (``CouncilStore.WICHTIG_MINDEST``) — derselbe Punkt soll nicht in der Mail
+    „das Wichtigste" heißen und auf der Karte durchfallen. Eine Tagesordnung
+    aus Widmungen und Kenntnisnahmen bekommt so gar keine Hervorhebung, statt
+    drei künstlich gekürte Belanglosigkeiten.
+
+    Unbewertete Punkte zählen nicht mit: Ohne Bewertung gibt es keine
+    Rangfolge, und geraten wird hier nichts.
+    """
+    if len(punkte) < _HERVOR_AB:
+        return set()
+    kandidaten = [p["number"] for p in punkte
+                  if wichtig.get(p["number"], 0) >= CouncilStore.WICHTIG_MINDEST]
+    kandidaten.sort(key=lambda n: -wichtig[n])
+    return set(kandidaten[:_HERVOR_MAX])
+
+
 def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) -> str:
-    """Die Aufzählung der Mail — je Punkt der bessere der beiden Sätze.
+    """Die Aufzählung der Mail — je Punkt der bessere der beiden Sätze,
+    das Wichtigste vorweg.
 
     Der Kartentext schlägt die Kurzfassung, weil er Vorlage UND Anlagen
     gesehen hat; die Kurzfassung entsteht allein aus dem Titel und bleibt der
@@ -121,15 +205,37 @@ def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) ->
     Und die Kennung eines Dringlichkeitsantrags heißt in der Mail, was sie
     ist: „DZT 1" ist eine Nummer, die wir selbst vergeben haben — im
     Ratsinformationssystem sucht man sie vergeblich.
+
+    Über der vollständigen Liste stehen seit dem 03.09.2026 die höchstens drei
+    wichtigsten Punkte (Tims Befund: „momentan ist das einfach eine lange
+    Liste, die schwer zu überblicken ist"). Vollständig bleibt sie trotzdem —
+    die hervorgehobenen Punkte stehen unten ein zweites Mal, an ihrem Platz in
+    der Tagesordnung. Wer die Mail von oben nach unten liest, soll die
+    Tagesordnung lesen und nicht eine Auswahl daraus.
+
+    Die Reihenfolge oben ist die der Tagesordnung, nicht die der Punktzahl:
+    Ein Rang wäre eine Aussage über den Abstand zwischen zwei Punkten, und den
+    misst die Bewertung nicht genau genug.
     """
     kartentexte = _kartentexte(council_store, ksinr)
-    zeilen = []
-    for p in punkte:
+
+    def zeile(p: dict) -> str:
         nummer = p["number"]
         text = kartentexte.get(nummer) or p["summary"]
-        marke = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
-        zeilen.append(f"• <b>{marke}</b>: {text}")
-    return "\n".join(zeilen)
+        mark = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
+        return f"• <b>{mark}</b>: {text}"
+
+    alle = "\n".join(zeile(p) for p in punkte)
+    oben = _hervorgehoben(_tragweite_der_sitzung(council_store, ksinr), punkte)
+    if not oben:
+        return alle
+    # Ohne Zeilenumbruch an die Kicker gesetzt: Die Mail-Hülle rendert mit
+    # ``white-space:pre-wrap`` — jedes ``\n`` neben einem Block wäre dort eine
+    # sichtbare Leerzeile.
+    return (digest_email.abschnitt("Das Wichtigste")
+            + "\n".join(zeile(p) for p in punkte if p["number"] in oben)
+            + digest_email.abschnitt("Alle Punkte", str(len(punkte)))
+            + alle)
 
 
 def _ohne_altlink(summary: str | None) -> str | None:
@@ -153,8 +259,13 @@ def _ohne_altkopf(summary: str | None) -> str | None:
 
 def _push_kurz(html: str, limit: int = 180) -> str:
     """HTML zu einem Push-tauglichen Kurztext einstampfen — wie
-    ``kern.delivery._plain``, nur ohne den Mail-Kopf davor."""
-    t = re.sub(r"<[^>]+>", "", html or "")
+    ``kern.delivery._plain``, nur ohne den Mail-Kopf davor.
+
+    Die Abschnitts-Kicker fallen vorher weg: Auf dem Sperrbildschirm sind 180
+    Zeichen alles, was es gibt — „Das Wichtigste Alle Punkte 10" wäre davon
+    ein Fünftel Gliederung und kein Wort Inhalt. Übrig bleibt genau die
+    Reihenfolge, die dort zählt: die hervorgehobenen Punkte zuerst."""
+    t = re.sub(r"<[^>]+>", "", digest_email.ohne_abschnitte(html or ""))
     t = re.sub(r"\s+", " ", t).strip()
     return (t[: limit - 1] + "…") if len(t) > limit else t
 
@@ -196,9 +307,9 @@ def _aenderungs_teil(alt: list[dict] | None, jetzt: list[dict]) -> str | None:
 
 def main() -> dict:
     """Gibt die Kennzahlen des Laufs für die Cron-Übersicht zurück."""
-    nwz_store = Store(NWZ_DB)
-    all_subs = nwz_store.get_all_subscriptions()       # {owner_id: [committee_name]}
-    targets = nwz_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
+    ratslotse_store = Store(RATSLOTSE_DB)
+    all_subs = ratslotse_store.get_all_subscriptions()       # {owner_id: [committee_name]}
+    targets = ratslotse_store.get_subscription_targets()     # {owner_id: {channel, chat, email}}
 
     # Daten werden auch OHNE Abonnements aktualisiert — die Web-App zeigt
     # Sitzungen und Terminplan für alle Nutzer*innen, nicht nur Abonnenten.
@@ -244,7 +355,7 @@ def main() -> dict:
         # Titel der nichtöffentlichen TOPs stehen ohnehin im Ratsinfo und auf
         # der Sitzungsseite der App (dort mit „nichtöffentlich"-Marke).
         snapshot_items = [{"item_number": i.item_number, "title": i.title,
-                           "vorlage_nr": i.vorlage_nr or "",
+                           "template_number": i.template_number or "",
                            "is_public": bool(i.is_public),
                            # Anhänge mit Label: Der Diff nennt neue Anlagen
                            # beim Namen, nicht nur „irgendwas ist anders".
@@ -283,7 +394,7 @@ def main() -> dict:
             # „Themen-Treffer gewinnt": Wer für diese Sitzung schon weiß, welcher
             # TOP ihn betrifft (aus check_council), braucht die Gremien-Meldung
             # nicht zusätzlich.
-            if nwz_store.has_agenda_match(owner_id, ksinr):
+            if ratslotse_store.has_agenda_match(owner_id, ksinr):
                 continue
             last_hash = council_store.get_last_notified_hash(ksinr, owner_id)
             if last_hash is None:
@@ -333,7 +444,7 @@ def main() -> dict:
         # „Warum bekommst du das?" — mit Direktlink auf den Schalter, um den es
         # geht. Die Änderungs-Meldung nennt zusätzlich ihren eigenen
         # Abschalt-Weg: Abo behalten, nur die Änderungs-Meldungen loswerden.
-        grund = digest_email.gremium_abo_begruendung(session.committee)
+        reason = digest_email.gremium_abo_begruendung(session.committee)
         grund_update = digest_email.gremium_abo_begruendung(
             session.committee, mit_aenderungs_schalter=True)
         # Ein Kopf für alle drei Fälle, aus frischen Sitzungsdaten — vorher gab
@@ -359,8 +470,8 @@ def main() -> dict:
             if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
-            notify.einreihen(nwz_store, owner_id, notify.N1_TAGESORDNUNG,
-                             subject, base_message + grund, sitzung_href(ksinr),
+            notify.einreihen(ratslotse_store, owner_id, notify.N1_TAGESORDNUNG,
+                             subject, base_message + reason, sitzung_href(ksinr),
                              push_text=push_neu)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
@@ -424,7 +535,7 @@ def main() -> dict:
             # Eigener Anlass seit Tims Wunsch 26.08.2026: „Ich möchte zwar die
             # Tagesordnung bekommen, aber nicht über jede Änderung informiert
             # werden." Hängt in `gewuenscht` am N1-Elternteil.
-            notify.einreihen(nwz_store, owner_id, notify.N1_AENDERUNG,
+            notify.einreihen(ratslotse_store, owner_id, notify.N1_AENDERUNG,
                              update_subject, nachricht, sitzung_href(ksinr),
                              push_text=push_kurz)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
@@ -450,10 +561,10 @@ def main() -> dict:
             it["id"] = i
         nach_id = {it["id"]: it for it in offen}
         for start in range(0, len(offen), BATCH_SIZE):
-            for iid, score, grund in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
+            for iid, score, reason in rate_agenda_batch(offen[start : start + BATCH_SIZE]):
                 it = nach_id.get(iid)
                 if it:
-                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, grund)
+                    council_store.save_agenda_impact(it["ksinr"], it["item_number"], score, reason)
                     bewertet += 1
         if offen:
             print(f"  Tragweite: {bewertet}/{len(offen)} Tagesordnungspunkte bewertet")
@@ -466,11 +577,11 @@ def main() -> dict:
     # Der 7-Uhr-Lauf ist zugleich der Wecker der Warteschlange: Was über Nacht
     # anfiel (Nachtruhe 21–7), geht jetzt raus.
     stats: dict = {}
-    zugestellt = notify.zustellen(nwz_store, stats=stats)
-    nwz_store.close()
+    zugestellt = notify.zustellen(ratslotse_store, stats=stats)
+    ratslotse_store.close()
 
     print(f"Done — {notifications_sent} Meldung(en) eingereiht, {zugestellt} zugestellt.")
-    kennzahlen = {
+    indicators = {
         "Gremien": len(committees),
         "Sitzungen mit Tagesordnung": len(session_ids),
         "Termine im Kalender": len(scheduled),
@@ -485,13 +596,13 @@ def main() -> dict:
     # eine Kennzahl „0", die niemandem auffiel. Erst hier werfen, damit die
     # Meldungen oben trotzdem alle rausgegangen sind.
     if offen and not bewertet:
-        for k, v in kennzahlen.items():
+        for k, v in indicators.items():
             print(f"  {k}: {v}")
         raise RuntimeError(
             f"Tragweite-Bewertung hat 0 von {len(offen)} Punkten bewertet"
             + (f" — {tragweite_fehler}" if tragweite_fehler else
                " — das Modell lieferte für keinen Batch ein verwertbares Ergebnis"))
-    return kennzahlen
+    return indicators
 
 
 if __name__ == "__main__":

@@ -62,11 +62,11 @@ ABSCHNITT = "8.1 Anlagenübersicht"
 #: Wo die Erläuterung zum Sachvermögen ihre Untergruppen auflistet.
 ABSCHNITT_GRUPPEN = "Erläuterungen zum Sachvermögen"
 
-PROBE_AHK = "anlagen_ahk_kette"
-PROBE_ABSCHREIBUNG = "anlagen_abschreibungskette"
-PROBE_BUCHWERT = "anlagen_buchwert"
-PROBE_BILANZ = "anlagen_gegen_bilanz"
-PROBE_UMBUCHUNG = "anlagen_umbuchungssaldo"
+PROBE_AHK = "assets_cost_chain"
+PROBE_ABSCHREIBUNG = "assets_depreciation_chain"
+PROBE_BUCHWERT = "assets_book_value"
+PROBE_BILANZ = "assets_vs_balance_sheet"
+PROBE_UMBUCHUNG = "assets_transfer_balance"
 
 PROBEN: dict[str, str] = {
     PROBE_AHK: ("Anfangsstand, Zugänge, Abgänge und Umbuchungen ergeben "
@@ -103,7 +103,7 @@ TOLERANZ = 0.05
 #: korrekt. Nur das Immaterielle Vermögen kennt keine Ausnahme; dort stimmt
 #: es auf den Cent (2024: 91.394.171,68 € hier wie dort).
 BILANZ_ROLLE: dict[str, str] = {
-    "1": "immaterielles_vermoegen",
+    "1": "intangible_assets",
 }
 
 _BETRAG = re.compile(r"-?\d{1,3}(?:\.\d{3})*,\d{2}")
@@ -181,7 +181,7 @@ def _label(roh: str) -> str:
     return kopf.strip(" .,")
 
 
-def parse_anlagenspiegel(text: str, jahr: int) -> list[dict]:
+def parse_anlagenspiegel(text: str, year: int) -> list[dict]:
     """Die Zeilen der Anlagenübersicht — je Vermögensposition eine.
 
     Zeilen ohne Beträge (etwa „1.3 Ähnliche Rechte", die es in Oldenburg
@@ -220,17 +220,17 @@ def parse_anlagenspiegel(text: str, jahr: int) -> list[dict]:
             w = w[:9] + [0.0] + w[9:]
         label = _label(roh)
         zeilen.append({
-            "jahr": jahr, "nr": nr, "bezeichnung": label, "spalten": spalten,
-            "ahk_anfang": w[0], "zugaenge": w[1], "abgaenge": w[2],
-            "umbuchungen": w[3], "ahk_ende": w[4],
-            "abschr_anfang": w[5], "abschreibung": w[6], "aufloesungen": w[7],
-            "zuschreibungen": w[8], "abschr_umbuchungen": w[9], "abschr_ende": w[10],
-            "buchwert": w[11], "buchwert_vorjahr": w[12],
+            "year": year, "nr": nr, "label": label, "n_columns": spalten,
+            "cost_opening": w[0], "additions": w[1], "disposals": w[2],
+            "transfers": w[3], "cost_closing": w[4],
+            "depreciation_opening": w[5], "depreciation": w[6], "depreciation_releases": w[7],
+            "write_ups": w[8], "depreciation_transfers": w[9], "depreciation_closing": w[10],
+            "book_value": w[11], "book_value_prior_year": w[12],
         })
     return zeilen
 
 
-def probe(zeile: dict) -> tuple[list[str], list[str]]:
+def probe(row: dict) -> tuple[list[str], list[str]]:
     """Welche Ketten dieser Zeile aufgehen — und welche reißen.
 
     Liefert (bestanden, risse). Gerechnet wird mit **Addition**: Abgänge und
@@ -243,12 +243,12 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
         if abs(ist - soll) <= TOLERANZ:
             bestanden.append(name)
         else:
-            risse.append(f"{zeile['nr']} {zeile['bezeichnung'][:28]}: {was} "
+            risse.append(f"{row['nr']} {row['label'][:28]}: {was} "
                          f"{ist:,.2f} gegen {soll:,.2f} ({abs(ist - soll):,.2f} €)")
 
     pruefe(PROBE_AHK,
-           zeile["ahk_anfang"] + zeile["zugaenge"] + zeile["abgaenge"] + zeile["umbuchungen"],
-           zeile["ahk_ende"], "Anschaffungswerte")
+           row["cost_opening"] + row["additions"] + row["disposals"] + row["transfers"],
+           row["cost_closing"], "Anschaffungswerte")
     # Bis 2020 fehlt dem Abschreibungs-Block die Umbuchungs-Spalte. Die Kette
     # KANN dort nicht schließen, wo in dem Jahr etwas zwischen den
     # Vermögensarten verschoben wurde — das ist eine Eigenschaft der Vorlage,
@@ -256,13 +256,13 @@ def probe(zeile: dict) -> tuple[list[str], list[str]]:
     # anzuhängen, den es nicht hat; sie stillschweigend glattzurechnen wäre
     # schlimmer. Stattdessen wird der Rest als `umbuchung_abgeleitet`
     # ausgewiesen und über den Jahrgang geprüft (`umbuchungsprobe`).
-    if zeile.get("spalten") == 13:
+    if row.get("n_columns") == 13:
         pruefe(PROBE_ABSCHREIBUNG,
-               (zeile["abschr_anfang"] + zeile["abschreibung"] + zeile["aufloesungen"]
-                + zeile["zuschreibungen"] + zeile["abschr_umbuchungen"]),
-               zeile["abschr_ende"], "Abschreibungen")
-    pruefe(PROBE_BUCHWERT, zeile["ahk_ende"] + zeile["abschr_ende"],
-           zeile["buchwert"], "Buchwert")
+               (row["depreciation_opening"] + row["depreciation"] + row["depreciation_releases"]
+                + row["write_ups"] + row["depreciation_transfers"]),
+               row["depreciation_closing"], "Abschreibungen")
+    pruefe(PROBE_BUCHWERT, row["cost_closing"] + row["depreciation_closing"],
+           row["book_value"], "Buchwert")
     return bestanden, risse
 
 
@@ -274,18 +274,18 @@ def gegen_bilanz(zeilen: list[dict], bilanz_posten: list[dict]) -> list[str]:
     ist das kein Riss — dann gibt es die Gegenprobe für dieses Jahr eben
     nicht, und das darf die Anzeige sagen.
     """
-    nach_rolle = {p["rolle"]: p.get("wert") for p in bilanz_posten}
+    nach_rolle = {p["role"]: p.get("value") for p in bilanz_posten}
     risse: list[str] = []
     for z in zeilen:
-        rolle = BILANZ_ROLLE.get(z["nr"])
-        if not rolle:
+        role = BILANZ_ROLLE.get(z["nr"])
+        if not role:
             continue
-        bilanz = nach_rolle.get(rolle)
+        bilanz = nach_rolle.get(role)
         if bilanz is None:
             continue
-        if abs(z["buchwert"] - bilanz) > TOLERANZ:
-            risse.append(f"{z['nr']} {z['bezeichnung'][:28]}: Anlagenspiegel "
-                         f"{z['buchwert']:,.2f} gegen Bilanz {bilanz:,.2f}")
+        if abs(z["book_value"] - bilanz) > TOLERANZ:
+            risse.append(f"{z['nr']} {z['label'][:28]}: Anlagenspiegel "
+                         f"{z['book_value']:,.2f} gegen Bilanz {bilanz:,.2f}")
     return risse
 
 
@@ -299,7 +299,7 @@ _GRUPPE = re.compile(
     r"(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€")
 
 
-def parse_sachvermoegen_gruppen(text: str, jahr: int) -> list[dict]:
+def parse_sachvermoegen_gruppen(text: str, year: int) -> list[dict]:
     """Die Untergliederung des Infrastrukturvermögens — Straßen, Brücken, …
 
     Der Anlagenspiegel führt Infrastrukturvermögen als **eine** Zeile. Die
@@ -331,14 +331,14 @@ def parse_sachvermoegen_gruppen(text: str, jahr: int) -> list[dict]:
         if len(label) < 4:
             continue
         gruppen.append({
-            "jahr": jahr, "gruppe": label,
-            "buchwert_vorjahr": _eur(g.group(2)),
-            "buchwert": _eur(g.group(3)),
+            "year": year, "group_name": label,
+            "book_value_prior_year": _eur(g.group(2)),
+            "book_value": _eur(g.group(3)),
         })
     return gruppen
 
 
-def umbuchung_abgeleitet(zeile: dict) -> float:
+def umbuchung_abgeleitet(row: dict) -> float:
     """Was die Abschreibungskette nicht erklärt — bei zwölf Spalten.
 
     Bis 2020 zeigt die Vorlage im Abschreibungs-Block keine Umbuchungen. Was
@@ -346,9 +346,9 @@ def umbuchung_abgeleitet(zeile: dict) -> float:
     Differenz zwischen der Spaltensumme und dem ausgewiesenen Endstand.
     Ab 2021 gibt es die Spalte, und der Rest ist null.
     """
-    kette = (zeile["abschr_anfang"] + zeile["abschreibung"] + zeile["aufloesungen"]
-             + zeile["zuschreibungen"] + zeile["abschr_umbuchungen"])
-    return zeile["abschr_ende"] - kette
+    chain = (row["depreciation_opening"] + row["depreciation"] + row["depreciation_releases"]
+             + row["write_ups"] + row["depreciation_transfers"])
+    return row["depreciation_closing"] - chain
 
 
 def umbuchungsprobe(zeilen: list[dict]) -> tuple[float, list[str]]:
@@ -365,7 +365,7 @@ def umbuchungsprobe(zeilen: list[dict]) -> tuple[float, list[str]]:
     54.639,18 € vom Sachvermögen zum Immateriellen. Beide Male: Saldo 0,00 €.
     """
     haupt = [z for z in zeilen if "." not in z["nr"]]
-    saldo = sum(umbuchung_abgeleitet(z) for z in haupt)
-    if abs(saldo) <= TOLERANZ:
-        return saldo, []
-    return saldo, [f"Umbuchungen heben sich nicht auf: {saldo:,.2f} € bleiben übrig"]
+    balance = sum(umbuchung_abgeleitet(z) for z in haupt)
+    if abs(balance) <= TOLERANZ:
+        return balance, []
+    return balance, [f"Umbuchungen heben sich nicht auf: {balance:,.2f} € bleiben übrig"]

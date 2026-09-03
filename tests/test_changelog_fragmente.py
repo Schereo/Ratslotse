@@ -42,8 +42,8 @@ def test_bestand_ist_wohlgeformt():
     """Regressionsschutz für die echten Fragmente unter changelog.d/."""
     fragmente = sammle_fragmente(WURZEL / "changelog.d")
     for fragment in fragmente:
-        assert fragment.kategorie in KATEGORIEN
-        assert fragment.ueberschrift
+        assert fragment.category in KATEGORIEN
+        assert fragment.heading
         assert len(fragment.text) > 30, f"{fragment.pfad.name}: Eintrag zu dünn"
         assert "(#" not in fragment.text, (
             f"{fragment.pfad.name}: Die PR-Nummer gehört nicht ins Fragment — "
@@ -60,28 +60,28 @@ def _fragment(tmp_path: Path, inhalt: str, name: str = "beispiel.md") -> Path:
 def test_liest_frontmatter_und_text(tmp_path):
     pfad = _fragment(tmp_path, "---\nkategorie: behoben\n---\n\n**Kurz.** Und\nüber zwei Zeilen.\n")
     fragment = lies_fragment(pfad)
-    assert fragment.kategorie == "behoben"
-    assert fragment.ueberschrift == "Behoben"
+    assert fragment.category == "behoben"
+    assert fragment.heading == "Behoben"
     # Umbruch-Zeilen werden zu einem Fließtext zusammengezogen.
     assert fragment.text == "**Kurz.** Und über zwei Zeilen."
 
 
 def test_umlaut_schreibweise_wird_gelesen(tmp_path):
     pfad = _fragment(tmp_path, "---\nkategorie: Geändert\n---\n\nEin Eintrag.\n")
-    assert lies_fragment(pfad).ueberschrift == "Geändert"
+    assert lies_fragment(pfad).heading == "Geändert"
 
 
-@pytest.mark.parametrize("inhalt,teil", [
+@pytest.mark.parametrize("inhalt,part", [
     ("Kein Frontmatter, nur Text.\n", "Frontmatter"),
     ("---\nkategorie: repariert\n---\n\nText.\n", "unbekannt"),
     ("---\nkategorie: behoben\n---\n\n   \n", "kein Text"),
-    ("---\nkategorie\n---\n\nText.\n", "schluessel"),
+    ("---\nkategorie\n---\n\nText.\n", "key"),
 ])
-def test_kaputte_fragmente_werfen(tmp_path, inhalt, teil):
+def test_kaputte_fragmente_werfen(tmp_path, inhalt, part):
     pfad = _fragment(tmp_path, inhalt)
     with pytest.raises(FragmentFehler) as fehler:
         lies_fragment(pfad)
-    assert teil in str(fehler.value)
+    assert part in str(fehler.value)
 
 
 def test_readme_und_unterstrich_sind_keine_fragmente(tmp_path):
@@ -136,10 +136,10 @@ def repo(tmp_path):
 
 
 def test_schnitt_sortiert_ein_und_raeumt_auf(repo):
-    ergebnis = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert ergebnis.geschrieben and len(ergebnis.fragmente) == 2 and not ergebnis.ohne_nummer
+    assert result.geschrieben and len(result.fragmente) == 2 and not result.ohne_nummer
 
     # Leeres [Unreleased] bleibt oben stehen, darunter die neue Version.
     assert "## [Unreleased]\n\n## [1.13.0] – 2026-08-17\n" in text
@@ -170,7 +170,7 @@ def test_schnitt_sortiert_ein_und_raeumt_auf(repo):
 
 
 def test_schnitt_zieht_die_vergleichslinks_nach(repo):
-    schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
+    schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: 777)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.13.0...main" in text
     assert "[1.13.0]: https://github.com/Schereo/Ratslotse/compare/v1.12.0...v1.13.0" in text
@@ -178,21 +178,21 @@ def test_schnitt_zieht_die_vergleichslinks_nach(repo):
 
 def test_trocken_schreibt_nichts(repo):
     vorher = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
-    ergebnis = schnitt("1.13.0", datum="2026-08-17", wurzel=repo,
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo,
                        trocken=True, nummern=lambda pfad: 777)
-    assert not ergebnis.geschrieben
-    assert "## [1.13.0] – 2026-08-17" in ergebnis.text     # gerechnet …
+    assert not result.geschrieben
+    assert "## [1.13.0] – 2026-08-17" in result.text     # gerechnet …
     assert (repo / "CHANGELOG.md").read_text(encoding="utf-8") == vorher  # … aber nicht geschrieben
     assert len(list((repo / "changelog.d").glob("*.md"))) == 2
 
 
 def test_fragment_ohne_auffindbare_nummer(repo, capsys):
     """Kein Commit gefunden → Eintrag ohne Nummer plus Warnung, kein Abbruch."""
-    ergebnis = schnitt("1.13.0", datum="2026-08-17", wurzel=repo, nummern=lambda pfad: None)
+    result = schnitt("1.13.0", tag_iso="2026-08-17", wurzel=repo, nummern=lambda pfad: None)
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
     neu = text.split("## [1.13.0]")[1].split("## [1.12.0]")[0]
     assert "**Eine neue Karte.**" in neu and "(#777)" not in neu
-    assert len(ergebnis.ohne_nummer) == 2
+    assert len(result.ohne_nummer) == 2
     assert "keine PR-Nummer" in capsys.readouterr().err
 
 

@@ -35,12 +35,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useScrollRand } from "@/lib/use-scroll-rand";
 
 export type Abschnitt = {
   /** Die `id` des `<section>`-Elements, auf das gesprungen wird. */
   id: string;
   /** Was im Streifen steht — kurz, es müssen mehrere nebeneinander passen. */
-  titel: string;
+  title: string;
 };
 
 /** Scroll-Versatz für die Ziel-`<section>`s des Streifens: der Klebe-Stapel
@@ -68,6 +69,8 @@ export function Abschnitte({ marken, className }: {
 }) {
   const [aktiv, setAktiv] = useState<string | null>(marken[0]?.id ?? null);
   const streifen = useRef<HTMLElement>(null);
+  const zeile = useRef<HTMLUListElement>(null);
+  const maske = useScrollRand(zeile);
 
   useEffect(() => {
     const ziele = marken
@@ -104,10 +107,26 @@ export function Abschnitte({ marken, className }: {
       window.clearTimeout(ruhe);
       ruhe = window.setTimeout(beobachten, 150);
     };
+    // Zurück nach oben: Der Beobachter meldet nur Abschnitte, die unter den
+    // Streifen wandern — wer über den ERSTEN zurückscrollt, ließ den letzten
+    // Chip aktiv stehen (Durchsicht 02.09.2026, /konzern). Liegt die Kante des
+    // ersten Abschnitts unter dem Streifen, ist er der laufende.
+    let angefragt = 0;
+    const obenPruefen = () => {
+      angefragt = 0;
+      const kante = ziele[0].getBoundingClientRect().top;
+      if (kante > klebeUnterkante(streifen.current) + 23) setAktiv(ziele[0].id);
+    };
+    const beimScrollen = () => {
+      if (!angefragt) angefragt = window.requestAnimationFrame(obenPruefen);
+    };
+    window.addEventListener("scroll", beimScrollen, { passive: true });
     window.addEventListener("resize", beiGroessenwechsel);
     return () => {
+      window.removeEventListener("scroll", beimScrollen);
       window.removeEventListener("resize", beiGroessenwechsel);
       window.clearTimeout(ruhe);
+      if (angefragt) window.cancelAnimationFrame(angefragt);
       beobachter?.disconnect();
     };
   }, [marken]);
@@ -126,7 +145,7 @@ export function Abschnitte({ marken, className }: {
       {/* Waagerecht scrollbar statt umbrechend: Vier Abschnittsnamen brechen
           auf 375 px sonst in zwei Zeilen, und ein zweizeiliger Klebestreifen
           nimmt ein Sechstel des Bildschirms. */}
-      <ul className="scrollbar-none flex gap-1.5 overflow-x-auto">
+      <ul ref={zeile} className={cn("scrollbar-none flex gap-1.5 overflow-x-auto", maske)}>
         {marken.map((m) => (
           <li key={m.id} className="flex-none">
             <a
@@ -152,7 +171,7 @@ export function Abschnitte({ marken, className }: {
                   : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
-              {m.titel}
+              {m.title}
             </a>
           </li>
         ))}

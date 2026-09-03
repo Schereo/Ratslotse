@@ -159,42 +159,42 @@ SUMME = {2018: 1_156_033_798.05, 2019: 1_193_569_494.14,
          2023: 1_346_894_677.20, 2024: 1_479_988_960.00}
 
 
-def _lies(text: str, jahr: int) -> dict:
+def _lies(text: str, year: int) -> dict:
     """Parsen und die Pflichtprobe bestehen — sonst ist der Test schon kaputt."""
-    jahrgang, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(text, jahr))
-    assert jahrgang is not None, fehler
-    return jahrgang
+    budget_year, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(text, year))
+    assert budget_year is not None, fehler
+    return budget_year
 
 
-def _werte(jahrgang: dict) -> dict[str, float]:
-    return {p["rolle"]: p["wert"] for p in jahrgang["posten"]}
+def _werte(budget_year: dict) -> dict[str, float]:
+    return {p["role"]: p["value"] for p in budget_year["posten"]}
 
 
 # --- Beide Layouts ----------------------------------------------------------
 
-@pytest.mark.parametrize("text, jahr", [(B_2019, 2019), (B_2024, 2024)])
-def test_beide_layouts_gehen_auf(text, jahr):
+@pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
+def test_beide_layouts_gehen_auf(text, year):
     """Aktiva = Passiva, auf den Cent — in beiden Layouts und beiden Spalten."""
-    jahrgang = _lies(text, jahr)
-    posten = jahrgang["posten"]
-    assert jahrgang["bilanzsumme"] == pytest.approx(SUMME[jahr], abs=0.01)
-    assert jahrgang["ausgleich_differenz"] == pytest.approx(0.0, abs=0.01)
+    budget_year = _lies(text, year)
+    posten = budget_year["posten"]
+    assert budget_year["bilanzsumme"] == pytest.approx(SUMME[year], abs=0.01)
+    assert budget_year["balancing_difference"] == pytest.approx(0.0, abs=0.01)
     # Auch die Vorjahresspalte trägt für sich — daraus entsteht beim Einlesen
     # der älteste Stichtag, der kein eigenes Dokument hat.
-    for seite in (bilanz.AKTIVA, bilanz.PASSIVA):
-        assert bilanz.summe(posten, seite, "wert_vorjahr") == pytest.approx(
-            SUMME[jahr - 1], abs=0.01)
+    for page in (bilanz.AKTIVA, bilanz.PASSIVA):
+        assert bilanz.summe(posten, page, "value_prior_year") == pytest.approx(
+            SUMME[year - 1], abs=0.01)
 
 
-@pytest.mark.parametrize("text, jahr", [(B_2019, 2019), (B_2024, 2024)])
-def test_alle_pflichtposten_stehen_auf_ihrer_seite(text, jahr):
-    posten = {p["rolle"]: p for p in _lies(text, jahr)["posten"]}
+@pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
+def test_alle_pflichtposten_stehen_auf_ihrer_seite(text, year):
+    posten = {p["role"]: p for p in _lies(text, year)["posten"]}
     assert set(bilanz.PFLICHT_ROLLEN) <= set(posten)
-    for rolle in bilanz.HAUPTPOSTEN[bilanz.AKTIVA]:
-        assert posten[rolle]["seite"] == bilanz.AKTIVA
-        assert posten[rolle]["ebene"] == 1
-    for rolle in bilanz.HAUPTPOSTEN[bilanz.PASSIVA]:
-        assert posten[rolle]["seite"] == bilanz.PASSIVA
+    for role in bilanz.HAUPTPOSTEN[bilanz.AKTIVA]:
+        assert posten[role]["page"] == bilanz.AKTIVA
+        assert posten[role]["level"] == 1
+    for role in bilanz.HAUPTPOSTEN[bilanz.PASSIVA]:
+        assert posten[role]["page"] == bilanz.PASSIVA
 
 
 def test_verschraenktes_layout_verliert_keinen_hauptposten():
@@ -202,11 +202,11 @@ def test_verschraenktes_layout_verliert_keinen_hauptposten():
     Zeile** wieder an, hinter den Beträgen der Passivseite. Ein Parser, der
     Zeilen an ``^`` trennt, verlöre genau die vier Posten hier."""
     werte = _werte(_lies(B_2024, 2024))
-    assert werte["sachvermoegen"] == 605_573_107.06
-    assert werte["infrastrukturvermoegen"] == 361_653_777.68
-    assert werte["finanzvermoegen"] == 645_348_451.45
-    assert werte["liquide_mittel"] == 118_001_891.26
-    assert werte["aktive_rap"] == 19_671_338.55
+    assert werte["tangible_assets"] == 605_573_107.06
+    assert werte["infrastructure_assets"] == 361_653_777.68
+    assert werte["financial_assets"] == 645_348_451.45
+    assert werte["cash_and_equivalents"] == 118_001_891.26
+    assert werte["prepaid_expenses"] == 19_671_338.55
 
 
 def test_verfuegbare_ruecklage_bleibt_von_zweckbindungen_getrennt():
@@ -214,33 +214,33 @@ def test_verfuegbare_ruecklage_bleibt_von_zweckbindungen_getrennt():
     Jahresergebnis — nicht der größere Sammelposten 1.2 mit zweckgebundenen
     Rücklagen."""
     werte = _werte(_lies(B_2024, 2024))
-    assert werte["ruecklagen_gesamt"] == 210_654_550.36
-    assert werte["ueberschussruecklage_ordentlich"] == 188_946_996.63
-    assert werte["jahresergebnis_bilanz"] == 6_136_250.91
+    assert werte["reserves_total"] == 210_654_550.36
+    assert werte["ordinary_surplus_reserve"] == 188_946_996.63
+    assert werte["annual_result_balance_sheet"] == 6_136_250.91
 
 
 def test_roemische_und_arabische_nummern_stehen_daneben():
     """Die Gliederungsnummer wird mitgeschrieben, aber nichts hängt an ihr —
     sonst brauchte jedes Layout seinen eigenen Zweig."""
-    n2019 = {p["rolle"]: p["nr"] for p in _lies(B_2019, 2019)["posten"]}
-    n2024 = {p["rolle"]: p["nr"] for p in _lies(B_2024, 2024)["posten"]}
-    assert n2019["sachvermoegen"] == "II" and n2024["sachvermoegen"] == "2"
+    n2019 = {p["role"]: p["nr"] for p in _lies(B_2019, 2019)["posten"]}
+    n2024 = {p["role"]: p["nr"] for p in _lies(B_2024, 2024)["posten"]}
+    assert n2019["tangible_assets"] == "II" and n2024["tangible_assets"] == "2"
     # Dieselbe Nummer, zwei verschiedene Posten: „1." ist ab 2021 auf der
     # Aktivseite das immaterielle Vermögen und auf der Passivseite die
     # Nettoposition. Deshalb ist die Rolle der Schlüssel.
-    assert n2024["immaterielles_vermoegen"] == n2024["nettoposition"] == "1"
+    assert n2024["intangible_assets"] == n2024["net_position"] == "1"
 
 
 def test_der_wortlaut_des_dokuments_bleibt_stehen():
     """Die Bezeichnung ist der Wortlaut, nicht unser Kurzname — 2019 kürzt die
     Stadt ab, 2024 schreibt sie aus. Beide Schreibweisen müssen ankommen, und
     die Fußnotenmarke darf nicht mit hineinrutschen."""
-    b19 = {p["rolle"]: p["bezeichnung"] for p in _lies(B_2019, 2019)["posten"]}
-    b24 = {p["rolle"]: p["bezeichnung"] for p in _lies(B_2024, 2024)["posten"]}
-    assert b19["pensionen_gesamt"] == "Pensionsrückst. und ähnliche Verpflichtungen"
-    assert b24["pensionen_gesamt"] == "Pensionsrückstellungen und ähnliche Verpflichtungen"
-    assert b24["immaterielles_vermoegen"] == "Immaterielles Vermögen"   # ohne „1)"
-    assert b24["sonderposten"] == "Sonderposten"
+    b19 = {p["role"]: p["label"] for p in _lies(B_2019, 2019)["posten"]}
+    b24 = {p["role"]: p["label"] for p in _lies(B_2024, 2024)["posten"]}
+    assert b19["pension_and_similar_provisions"] == "Pensionsrückst. und ähnliche Verpflichtungen"
+    assert b24["pension_and_similar_provisions"] == "Pensionsrückstellungen und ähnliche Verpflichtungen"
+    assert b24["intangible_assets"] == "Immaterielles Vermögen"   # ohne „1)"
+    assert b24["special_items"] == "Sonderposten"
     assert not any(re.search(r"\d\)", w) for w in b24.values())
 
 
@@ -251,8 +251,8 @@ def test_seitenfuss_und_klammerbetrag_verdraengen_keinen_posten():
     Betrag an der Zeile davor — und die flöge über die Zwei-Spalten-Regel
     heraus."""
     werte = _werte(_lies(B_2024, 2024))
-    assert werte["infrastrukturvermoegen"] == 361_653_777.68
-    assert werte["rueckstellungen"] == 337_210_902.05
+    assert werte["infrastructure_assets"] == 361_653_777.68
+    assert werte["provisions"] == 337_210_902.05
     assert 6_003_088.68 not in werte.values()
 
 
@@ -264,8 +264,8 @@ def test_aktiva_ungleich_passiva_verwirft_den_jahrgang():
     Deshalb fällt der ganze Jahrgang, nicht nur die eine Zeile."""
     kaputt = B_2024.replace("4.       Passive Rechnungsabgrenzung 9.421.138,65 8.792.830,27",
                             "4.       Passive Rechnungsabgrenzung 9.421.138,65 8.782.830,27")
-    jahrgang, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(kaputt, 2024))
-    assert jahrgang is None
+    budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(kaputt, 2024))
+    assert budget_year is None
     assert fehler and "gleicht nicht aus" in fehler[0]
     assert hinweise == []
 
@@ -276,8 +276,8 @@ def test_die_toleranz_deckt_die_cent_rundung_und_sonst_nichts():
     assert bilanz.TOLERANZ == 1.0
     knapp = B_2024.replace("4.       Passive Rechnungsabgrenzung 9.421.138,65 8.792.830,27",
                            "4.       Passive Rechnungsabgrenzung 9.421.138,65 8.792.830,77")
-    jahrgang, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(knapp, 2024))
-    assert jahrgang is not None and not fehler
+    budget_year, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(knapp, 2024))
+    assert budget_year is not None and not fehler
 
 
 def test_ein_fehlender_hauptposten_ist_kein_stiller_ausfall():
@@ -285,15 +285,15 @@ def test_ein_fehlender_hauptposten_ist_kein_stiller_ausfall():
     rechnen — und dann ist nicht nachweisbar, dass überhaupt die richtige
     Tabelle gelesen wurde. Das ist ein Fehler, kein Hinweis."""
     ohne = B_2019.replace("V. Aktive Rechnungsabgrenzung 17.565.955,89 17.671.780,50\n", "")
-    jahrgang, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2019))
-    assert jahrgang is None
-    assert fehler and "aktive_rap" in fehler[0]
+    budget_year, fehler, _ = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2019))
+    assert budget_year is None
+    assert fehler and "prepaid_expenses" in fehler[0]
 
 
 def test_ohne_abschnitt_kein_jahrgang():
-    jahrgang, fehler, _ = bilanz.bilanzprobe(
+    budget_year, fehler, _ = bilanz.bilanzprobe(
         bilanz.parse_bilanz("Rechenschaftsbericht 2024\nkeine Tabelle hier.", 2024))
-    assert jahrgang is None and fehler
+    assert budget_year is None and fehler
 
 
 # --- Die Kür: sie kostet, wenn sie reißt, nur sich selbst --------------------
@@ -301,51 +301,51 @@ def test_ohne_abschnitt_kein_jahrgang():
 def test_ein_jahrgang_ohne_gedruckte_bilanzsumme_geht_trotzdem_durch():
     """Ab 2021 druckt die Stadt keine Bilanzsumme mehr unter die Tabelle. Das
     ist kein Mangel: Der Ausgleich beider Seiten belegt sie ohnehin."""
-    jahrgang = _lies(B_2024, 2024)
-    assert "gedruckte_summe" not in jahrgang
-    assert jahrgang["proben"] == ["bilanz_ausgleich", "rueckstellungs_gliederung"]
+    budget_year = _lies(B_2024, 2024)
+    assert "gedruckte_summe" not in budget_year
+    assert budget_year["probes"] == ["balance_sheet_equality", "provisions_breakdown"]
     # 2019 hat sie — dort ist sie die dritte Bestätigung.
     alt = _lies(B_2019, 2019)
-    assert "bilanzsumme_gedruckt" in alt["proben"]
+    assert "balance_sheet_total_printed" in alt["probes"]
     assert alt["gedruckte_summe"] == pytest.approx(SUMME[2019], abs=0.01)
 
 
 def test_eine_falsche_gedruckte_summe_kostet_nur_ihre_probe():
     falsch = B_2019.replace("1.156.033.798,05 1.193.569.494,14",
                             "1.156.033.798,05 1.193.569.000,00")
-    jahrgang, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(falsch, 2019))
-    assert jahrgang is not None and not fehler
-    assert "bilanzsumme_gedruckt" not in jahrgang["proben"]
+    budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(falsch, 2019))
+    assert budget_year is not None and not fehler
+    assert "balance_sheet_total_printed" not in budget_year["probes"]
     assert hinweise and "gedruckte Bilanzsumme" in hinweise[0]
 
 
 # --- Die Gliederung der Rückstellungen --------------------------------------
 
-@pytest.mark.parametrize("text, jahr", [(B_2019, 2019), (B_2024, 2024)])
-def test_pension_plus_beihilfe_ergibt_die_oberposition(text, jahr):
+@pytest.mark.parametrize("text, year", [(B_2019, 2019), (B_2024, 2024)])
+def test_pension_plus_beihilfe_ergibt_die_oberposition(text, year):
     """Der Widerspruch, der diesen Parser ausgelöst hat: Es sind **zwei**
     Zahlen, und beide stimmen. 3.1 schließt die Beihilfe ein, 3.1.1 nicht."""
-    jahrgang = _lies(text, jahr)
-    w = _werte(jahrgang)
-    assert w["pensionsrueckstellungen"] + w["beihilferueckstellungen"] == pytest.approx(
-        w["pensionen_gesamt"], abs=0.01)
-    assert "rueckstellungs_gliederung" in jahrgang["proben"]
+    budget_year = _lies(text, year)
+    w = _werte(budget_year)
+    assert w["pension_provisions"] + w["healthcare_allowance_provisions"] == pytest.approx(
+        w["pension_and_similar_provisions"], abs=0.01)
+    assert "provisions_breakdown" in budget_year["probes"]
     # Und die Ebenen sagen, welche Zahl über welcher steht.
-    ebenen = {p["rolle"]: p["ebene"] for p in jahrgang["posten"]}
-    assert ebenen["rueckstellungen"] == 1
-    assert ebenen["pensionen_gesamt"] == 2
-    assert ebenen["pensionsrueckstellungen"] == ebenen["beihilferueckstellungen"] == 3
+    ebenen = {p["role"]: p["level"] for p in budget_year["posten"]}
+    assert ebenen["provisions"] == 1
+    assert ebenen["pension_and_similar_provisions"] == 2
+    assert ebenen["pension_provisions"] == ebenen["healthcare_allowance_provisions"] == 3
 
 
 def test_2024_traegt_die_zahlen_aus_dem_kopfkommentar():
     """Die drei Beträge, um die es geht — als Regressionsanker, damit ein
     Umbau am Parser sie nicht lautlos verschiebt."""
     w = _werte(_lies(B_2024, 2024))
-    assert w["pensionen_gesamt"] == 311_789_660.00
-    assert w["pensionsrueckstellungen"] == 266_259_316.00
-    assert w["beihilferueckstellungen"] == 45_530_344.00
+    assert w["pension_and_similar_provisions"] == 311_789_660.00
+    assert w["pension_provisions"] == 266_259_316.00
+    assert w["healthcare_allowance_provisions"] == 45_530_344.00
     # Die Kreditschulden daneben: ein Siebtel der Pensionszusagen.
-    assert w["geldschulden"] == 43_690_971.71
+    assert w["financial_liabilities"] == 43_690_971.71
 
 
 def test_eine_gerissene_gliederung_ist_ein_hinweis_kein_ausfall():
@@ -354,10 +354,10 @@ def test_eine_gerissene_gliederung_ist_ein_hinweis_kein_ausfall():
     in keine Summe ein."""
     kaputt = B_2024.replace("3.1.2  Beihilferückstellungen 41.204.011,00 45.530.344,00",
                             "3.1.2  Beihilferückstellungen 41.204.011,00 45.000.000,00")
-    jahrgang, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(kaputt, 2024))
-    assert jahrgang is not None and not fehler
-    assert jahrgang["bilanzsumme"] == pytest.approx(SUMME[2024], abs=0.01)
-    assert "rueckstellungs_gliederung" not in jahrgang["proben"]
+    budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(kaputt, 2024))
+    assert budget_year is not None and not fehler
+    assert budget_year["bilanzsumme"] == pytest.approx(SUMME[2024], abs=0.01)
+    assert "provisions_breakdown" not in budget_year["probes"]
     assert hinweise and "Rückstellungs-Gliederung" in hinweise[0]
 
 
@@ -365,9 +365,9 @@ def test_ein_jahrgang_ohne_aufschluesselung_verliert_nur_die_probe():
     """2017 weist den Sammelposten aus, ohne ihn aufzuteilen. Das ist kein
     Fehler — die Zeilen fehlen dort schlicht."""
     ohne = re.sub(r"3\.1\.[12].*\n", "", B_2024)
-    jahrgang, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2024))
-    assert jahrgang is not None and not fehler and not hinweise
-    assert jahrgang["proben"] == ["bilanz_ausgleich"]
+    budget_year, fehler, hinweise = bilanz.bilanzprobe(bilanz.parse_bilanz(ohne, 2024))
+    assert budget_year is not None and not fehler and not hinweise
+    assert budget_year["probes"] == ["balance_sheet_equality"]
 
 
 # --- Über Dokumentgrenzen: die Vorjahreskette -------------------------------
@@ -376,7 +376,7 @@ def _kette() -> dict[int, dict]:
     """Zwei benachbarte Jahrgänge, wie sie beim Einlesen nebeneinanderliegen:
     2023 aus der Vorjahresspalte von 2024, 2024 aus seiner eigenen."""
     j2024 = _lies(B_2024, 2024)
-    j2023 = {"jahr": 2023, "posten": [{**p, "wert": p["wert_vorjahr"]}
+    j2023 = {"year": 2023, "posten": [{**p, "value": p["value_prior_year"]}
                                       for p in j2024["posten"]]}
     return {2023: j2023, 2024: j2024}
 
@@ -389,15 +389,15 @@ def test_vorjahreskette_findet_einen_riss():
     """Der Stichtagswert des einen Abschlusses steht im nächsten noch einmal
     als Vorjahr. Zwei getrennt gelesene Dokumente, dieselbe Zahl — weicht
     eine ab, hat sich einer der beiden verlesen."""
-    kette = _kette()
-    for p in kette[2023]["posten"]:
-        if p["rolle"] == "sachvermoegen":
-            p["wert"] += 1000.0
-    risse = bilanz.vorjahreskette(kette)
+    chain = _kette()
+    for p in chain[2023]["posten"]:
+        if p["role"] == "tangible_assets":
+            p["value"] += 1000.0
+    risse = bilanz.vorjahreskette(chain)
     assert len(risse) == 1
-    jahr, folge, warum = risse[0]
-    assert (jahr, folge) == (2023, 2024)
-    assert "sachvermoegen" in warum
+    year, folge, warum = risse[0]
+    assert (year, folge) == (2023, 2024)
+    assert "tangible_assets" in warum
 
 
 def test_vorjahreskette_schweigt_ohne_nachbarn():
@@ -420,8 +420,8 @@ def test_kassenprobe_findet_die_abweichung():
     jahrgaenge = {2024: _lies(B_2024, 2024)}
     risse = bilanz.kassenprobe(jahrgaenge, {2024: 118_000_000.00})
     assert len(risse) == 1
-    jahr, warum = risse[0]
-    assert jahr == 2024
+    year, warum = risse[0]
+    assert year == 2024
     assert "Liquide Mittel" in warum and "Endbestand" in warum
 
 
@@ -457,8 +457,8 @@ IV. Passive Rechnungsabgrenzung
     # steht es im Dokument, und der erste Treffer ist der falsche.
     text = ("2.1 Bilanz der Stadt Oldenburg zum 31.12.2019 JA 17\n\n"
             + B_2019 + "\n7. Nicht rechtsfähige Stiftungen\n\n" + stiftung)
-    jahrgang = _lies(text, 2019)
-    assert jahrgang["bilanzsumme"] == pytest.approx(SUMME[2019], abs=0.01)
+    budget_year = _lies(text, 2019)
+    assert budget_year["bilanzsumme"] == pytest.approx(SUMME[2019], abs=0.01)
 
 
 # --- Der Anhang: die Erläuterungen ------------------------------------------
@@ -551,7 +551,7 @@ Die Stadt haftet aus Bürgschaften in Höhe von 12,3 Millionen Euro.
 
 def test_der_anhang_erlaeutert_die_neun_hauptposten_in_bilanzreihenfolge():
     abschnitte = bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-    assert [a["rolle"] for a in abschnitte] == list(bilanz.PFLICHT_ROLLEN)
+    assert [a["role"] for a in abschnitte] == list(bilanz.PFLICHT_ROLLEN)
     ok, warum = bilanz.erlaeuterungsprobe(abschnitte)
     assert ok, warum
 
@@ -568,10 +568,10 @@ def test_der_cash_pooling_text_kommt_vollstaendig_mit():
     """Die Auflage aus ``council/bilanz.py``: **Ohne diesen Text darf die Zahl
     207,1 Mio. € nicht angezeigt werden.** Er muss also ankommen — mit
     aufgelöster Silbentrennung, ohne Seitenfüße, in Absätzen."""
-    nach_rolle = {a["rolle"]: a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)}
-    schulden = nach_rolle["schulden"]
+    nach_rolle = {a["role"]: a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)}
+    schulden = nach_rolle["liabilities"]
     assert schulden["nr"] == 7
-    assert schulden["ueberschrift"] == "Schulden"
+    assert schulden["heading"] == "Schulden"
     assert "Bilanzverlängerung" in schulden["text"]
     assert "138,2" in schulden["text"]
     assert "3.8 Privatrechtliche Forderungen" in schulden["text"]
@@ -585,7 +585,7 @@ def test_der_cash_pooling_text_kommt_vollstaendig_mit():
 
 def test_seitenfuss_zerreisst_keinen_erlaeuterungssatz():
     liquide = next(a for a in bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-                   if a["rolle"] == "liquide_mittel")
+                   if a["role"] == "cash_and_equivalents")
     assert "JA 38" not in liquide["text"]
 
 
@@ -605,12 +605,12 @@ def test_ein_verschobener_abschnitt_faellt_auf():
     ok, warum = bilanz.erlaeuterungsprobe(
         bilanz.parse_erlaeuterungen(verschoben, 2024))
     assert not ok
-    assert "6.2.7" in warum and "schulden" in warum
+    assert "6.2.7" in warum and "liabilities" in warum
 
 
 def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
     ok, warum = bilanz.erlaeuterungsprobe(
-        [{"rolle": r, "nr": i + 1, "ueberschrift": b, "text": "" if r == "schulden" else "x"}
+        [{"role": r, "nr": i + 1, "heading": b, "text": "" if r == "liabilities" else "x"}
          for i, (r, b) in enumerate(zip(
              bilanz.PFLICHT_ROLLEN,
              ("Immaterielles Vermögen", "Sachvermögen", "Finanzvermögen",
@@ -622,54 +622,54 @@ def test_ein_leerer_abschnitt_zaehlt_nicht_als_erlaeuterung():
 # --- Speichern und wieder herausholen ---------------------------------------
 
 @pytest.fixture()
-def quelle():
+def source():
     from council import herkunft
     return herkunft.Herkunft(
-        probe=["bilanz_ausgleich", "bilanz_kassenprobe"],
-        fundstelle="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
-        probe_ergebnis="Aktiva und Passiva stimmen auf den Cent überein",
-        stand="31.12.2024", art="ris", dokument_id=4711,
+        probe=["balance_sheet_equality", "balance_sheet_cash_check"],
+        citation="Abschnitt 2.1 — Bilanz der Stadt Oldenburg zum 31.12.2024",
+        probe_result="Aktiva und Passiva stimmen auf den Cent überein",
+        as_of="31.12.2024", kind="ris", document_id=4711,
         label="Jahresabschluss 2024", url="https://example.org/ja2024.pdf")
 
 
-def test_store_bilanz_roundtrip(tmp_path, quelle):
+def test_store_bilanz_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
-        jahrgang = _lies(B_2024, 2024)
-        assert store.save_bilanz(2024, jahrgang["posten"], quelle) == len(jahrgang["posten"])
+        budget_year = _lies(B_2024, 2024)
+        assert store.save_bilanz(2024, budget_year["posten"], source) == len(budget_year["posten"])
         assert store.bilanz_jahre() == [2024]
         rows = store.get_bilanz(2024)
-        werte = {r["rolle"]: r["wert"] for r in rows}
-        assert werte["pensionen_gesamt"] == 311_789_660.00
+        werte = {r["role"]: r["value"] for r in rows}
+        assert werte["pension_and_similar_provisions"] == 311_789_660.00
         assert store.get_ruecklagen() == [{
-            "jahr": 2024,
-            "ruecklage": 188_946_996.63,
+            "year": 2024,
+            "reserves": 188_946_996.63,
             "jahresergebnis": 6_136_250.91,
-            "stand_nach_ergebnis": pytest.approx(195_083_247.54, abs=0.01),
+            "state_after_result": pytest.approx(195_083_247.54, abs=0.01),
             "herkunft_id": rows[0]["herkunft_id"],
         }]
-        assert sum(r["wert"] for r in rows if r["ebene"] == 1
-                   and r["seite"] == "aktiva") == pytest.approx(SUMME[2024], abs=0.01)
+        assert sum(r["value"] for r in rows if r["level"] == 1
+                   and r["page"] == "aktiva") == pytest.approx(SUMME[2024], abs=0.01)
         # Aktiva vor Passiva — die Bilanz druckt es so.
-        assert rows[0]["seite"] == "aktiva" and rows[-1]["seite"] == "passiva"
+        assert rows[0]["page"] == "aktiva" and rows[-1]["page"] == "passiva"
         # Die Herkunft hängt an jeder Zeile und trägt beide Proben.
         h = store.get_herkunft([rows[0]["herkunft_id"]])[0]
-        assert "bilanz_kassenprobe" in h["probe"]
+        assert "balance_sheet_cash_check" in h["probe"]
         # Ein zweiter Lauf ersetzt den Stichtag, statt ihn zu verdoppeln.
-        store.save_bilanz(2024, jahrgang["posten"], quelle)
-        assert len(store.get_bilanz(2024)) == len(jahrgang["posten"])
+        store.save_bilanz(2024, budget_year["posten"], source)
+        assert len(store.get_bilanz(2024)) == len(budget_year["posten"])
     finally:
         store.close()
 
 
-def test_store_erlaeuterungen_roundtrip(tmp_path, quelle):
+def test_store_erlaeuterungen_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         abschnitte = bilanz.parse_erlaeuterungen(ANHANG_2024, 2024)
-        assert store.save_bilanz_erlaeuterungen(2024, abschnitte, quelle) == 9
+        assert store.save_bilanz_erlaeuterungen(2024, abschnitte, source) == 9
         raus = store.get_bilanz_erlaeuterungen(2024)
         assert [r["nr"] for r in raus] == list(range(1, 10))
-        schulden = next(r for r in raus if r["rolle"] == "schulden")
+        schulden = next(r for r in raus if r["role"] == "liabilities")
         assert "Cash-Pooling" in schulden["text"]
     finally:
         store.close()
@@ -690,8 +690,8 @@ def test_jede_probe_der_bilanz_ist_erklaert():
     """Was in ``herkunft.PROBEN`` fehlt, steht auf der Seite ohne Erklärung —
     und eine Probe, die niemand versteht, ist keine."""
     from council import herkunft
-    vergeben = {"bilanz_ausgleich", "bilanzsumme_gedruckt", "rueckstellungs_gliederung",
-                "bilanz_vorjahreskette", "bilanz_kassenprobe", "bilanz_erlaeuterung"}
+    vergeben = {"balance_sheet_equality", "balance_sheet_total_printed", "provisions_breakdown",
+                "balance_sheet_prior_year_chain", "balance_sheet_cash_check", "balance_sheet_notes"}
     assert vergeben <= set(herkunft.PROBEN)
-    for tabelle in ("council_bilanz", "council_bilanz_erlaeuterungen"):
+    for tabelle in ("council_balance_sheet", "council_balance_sheet_notes"):
         assert tabelle in herkunft.HERKUNFT_TABELLEN

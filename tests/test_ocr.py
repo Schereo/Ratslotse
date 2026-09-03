@@ -28,8 +28,8 @@ def _store_mit_anlage(tmp_path: Path, status: str) -> CouncilStore:
     store = CouncilStore(tmp_path / f"c_{status}.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
-            "n_pages, fetched_at, status, ocr_modell) "
+            "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
+            "n_pages, fetched_at, status, ocr_model) "
             "VALUES (4711, 99, ?, 'https://x/4711', ?, 36, datetime('now'), ?, ?)",
             (LABEL_FINANZ, TEXT, status, "modell/x" if status == "ocr" else None))
     return store
@@ -47,14 +47,14 @@ def test_gelesener_scan_ist_durchsuchbar(tmp_path):
     Investitionsprogramm gleich mit aus.
 
     Ein gescannter Wirtschaftsplan ist so durchsuchbar wie ein getippter.
-    Wie er gelesen wurde, steht in `ocr_modell`."""
+    Wie er gelesen wurde, steht in `ocr_model`."""
     store = _store_mit_anlage(tmp_path, "ok")
     try:
         offen = store.anlagen_missing_embeddings()
         assert [z["document_id"] for z in offen] == [4711]
-        zeile = store._conn.execute(
-            "SELECT ocr_modell FROM council_anlagen WHERE document_id=4711").fetchone()
-        assert zeile["ocr_modell"] is None or isinstance(zeile["ocr_modell"], str)
+        row = store._conn.execute(
+            "SELECT ocr_model FROM council_attachments WHERE document_id=4711").fetchone()
+        assert row["ocr_model"] is None or isinstance(row["ocr_model"], str)
     finally:
         store.close()
 
@@ -66,8 +66,8 @@ def test_die_finanz_parser_sehen_den_text_ohnehin(tmp_path):
 
     store = _store_mit_anlage(tmp_path, "ok")
     try:
-        quelle = fq.QUELLEN["wirtschaftsplan"]
-        sql, werte = quelle.erkennung.abfrage("document_id, label")
+        source = fq.QUELLEN["wirtschaftsplan"]
+        sql, werte = source.erkennung.abfrage("document_id, label")
         gefunden = [r["document_id"] for r in store._conn.execute(sql, werte).fetchall()]
         assert 4711 in gefunden
         assert "status" not in sql.lower()
@@ -84,7 +84,7 @@ def test_ein_zweiter_lauf_bezahlt_nichts_doppelt(tmp_path):
         assert kandidaten(store, False, None, None) == []
         with store._conn:
             store._conn.execute(
-                "UPDATE council_anlagen SET status='empty' WHERE document_id=4711")
+                "UPDATE council_attachments SET status='empty' WHERE document_id=4711")
         assert [k["document_id"] for k in kandidaten(store, False, None, None)] == [4711]
     finally:
         store.close()
@@ -107,7 +107,7 @@ def test_altstaende_mit_ocr_status_werden_gehoben(tmp_path):
     store = CouncilStore(tmp_path / "c_ocr.sqlite")
     try:
         status = store._conn.execute(
-            "SELECT status FROM council_anlagen WHERE document_id=4711").fetchone()[0]
+            "SELECT status FROM council_attachments WHERE document_id=4711").fetchone()[0]
         assert status == "ok", "der Altstand wird gehoben, nicht neu gelesen"
         assert kandidaten(store, False, None, None) == []
         # Und er ist damit durchsuchbar — genau darum ging es.
@@ -351,10 +351,10 @@ def test_ein_briefkopf_logo_wird_nicht_fuer_die_seite_gehalten(monkeypatch):
                         or ocr.Seitenbild(b"x", "image/png", "gerendert"))
 
     logo = _Bild("logo.jpg", size=(528, 195))
-    seite = _Seite(logo, text="Ein Deckblatt mit Fließtext darauf." * 5)
-    seite.mediabox = type("_MB", (), {"width": 595.0, "height": 842.0})()
+    page = _Seite(logo, text="Ein Deckblatt mit Fließtext darauf." * 5)
+    page.mediabox = type("_MB", (), {"width": 595.0, "height": 842.0})()
 
-    assert ocr.seite_als_bild(seite).weg == "gerendert"
+    assert ocr.seite_als_bild(page).weg == "gerendert"
     assert gerendert, "eine 64-dpi-Grafik ist kein Seitenscan"
 
 
@@ -413,10 +413,10 @@ def test_null_gelesene_seiten_werden_nicht_gespeichert(monkeypatch, tmp_path):
     from council.store import CouncilStore
     nach = CouncilStore(tmp_path / "c_empty.sqlite")
     try:
-        zeile = nach._conn.execute(
-            "SELECT status, raw_text FROM council_anlagen WHERE document_id=4711"
+        row = nach._conn.execute(
+            "SELECT status, raw_text FROM council_attachments WHERE document_id=4711"
         ).fetchone()
-        assert zeile["status"] == "empty", (
+        assert row["status"] == "empty", (
             "ein Dokument ohne gelesene Seite bleibt auf der Arbeitsliste")
     finally:
         nach.close()
@@ -435,7 +435,7 @@ def test_platzhalter_anlagen_kommen_zurueck_auf_die_arbeitsliste(tmp_path):
 
         with store._conn:
             store._conn.execute(
-                "UPDATE council_anlagen SET raw_text = ? WHERE document_id = 4711",
+                "UPDATE council_attachments SET raw_text = ? WHERE document_id = 4711",
                 ("\n".join(ocr.PLATZHALTER.format(nr=n) for n in range(1, 23)),))
         zurueck = kandidaten(store, False, None, None)
         assert [k["document_id"] for k in zurueck] == [4711], (
@@ -468,7 +468,7 @@ class _Schreiber:
     """Ein PdfWriter-Ersatz — `_gerendert` baut ein Ein-Seiten-PDF, und ein
     Stub-Seitenobjekt kommt an `add_page` nicht vorbei."""
 
-    def add_page(self, seite):
+    def add_page(self, page):
         pass
 
     def write(self, puffer):

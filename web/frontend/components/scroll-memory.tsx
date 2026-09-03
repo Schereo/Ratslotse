@@ -24,14 +24,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 export function ScrollMemory() {
   const pathname = usePathname();
   const sp = useSearchParams();
-  const schluessel = `ratslotse:scroll:${pathname}?${sp.toString()}`;
+  const scrollKey = `ratslotse:scroll:${pathname}?${sp.toString()}`;
 
   useEffect(() => {
     // Der Schlüssel gehört ZU DIESEM Effekt (kein Ref!): React rendert die
     // neue Seite, BEVOR es den alten Effekt abbaut — ein geteilter Ref zeigte
     // beim Aufräumen längst auf die neue Route und schrieb die gemerkte
     // Position unter den falschen Schlüssel (erst gemessen, dann behoben).
-    const key = schluessel;
+    const key = scrollKey;
     let abgebrochen = false;
     // NICHT window.scrollY beim Aufräumen lesen: Der Router setzt die Seite
     // beim Navigieren auf 0, bevor der Effekt abgebaut wird — gespeichert
@@ -102,7 +102,7 @@ export function ScrollMemory() {
       document.removeEventListener("visibilitychange", merken);
       for (const f of aufraeumen) f();
     };
-  }, [schluessel]);
+  }, [scrollKey]);
 
   return null;
 }

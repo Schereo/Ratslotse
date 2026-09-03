@@ -66,7 +66,7 @@ def _run(store: CouncilStore, kvonrs: list[int], workers: int, delay: float) -> 
             store.save_beratungen(r["kvonr"], r["rows"])
             done += 1
             stationen += len(r["rows"])
-            geplant += sum(1 for b in r["rows"] if stammdaten.is_future(b.get("datum")))
+            geplant += sum(1 for b in r["rows"] if stammdaten.is_future(b.get("date")))
             if i % 200 == 0 or i == len(kvonrs):
                 print(f"  [{i}/{len(kvonrs)}] … {stationen} Stationen ({geplant} geplant)", flush=True)
     return {"vorlagen": done, "stationen": stationen, "geplant": geplant, "failed": failed}

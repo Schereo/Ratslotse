@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
 import { Card, DetailSkeleton, formatDate } from "@/components/ui";
-import { OutcomeDot, OUTCOME_META, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
+import { OutcomeDot, OUTCOME_META, voteLabel, VoteBar, FieldBadge, PartyBadge, DecisionLinkCard, ImportanceMeter, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { decisionHref, themaHref, sessionHref } from "@/lib/routes";
 import { apiUrl } from "@/lib/api";
 import { shortCommittee } from "@/lib/committees";
@@ -148,7 +148,7 @@ function GlanceCard({
   unanimous: boolean;
   className?: string;
 }) {
-  const hasVote = d.outcome === "angenommen" || d.outcome === "abgelehnt" || !!d.vote;
+  const hasVote = d.outcome === "accepted" || d.outcome === "rejected" || !!d.vote;
   return (
     <Card className={cn("p-4", className)}>
       <h2 className="font-display text-sm font-bold text-foreground">Auf einen Blick</h2>
@@ -202,7 +202,7 @@ function GlanceCard({
       {/* Regex-Ernte, minimiert (Feedback-Runde 3): beide nur als Zeile mit
           Symbol — die Erklärung öffnet sich erst auf Klick, die Erzählspalte
           links bleibt clean. */}
-      {d.abweichung === "stark" && d.beschluss && (
+      {d.deviation === "strong" && d.official_text && (
         <GlanceDisclosure
           icon={<GitCompareArrows className="h-3.5 w-3.5 text-signal" />}
           label="Vom Vorschlag abgewichen"
@@ -212,20 +212,20 @@ function GlanceCard({
           angenommenen Beschlüsse vor.
         </GlanceDisclosure>
       )}
-      {data.vorlage?.klima_check && (
+      {data.template?.climate_impact && (
         <GlanceDisclosure
-          icon={<Leaf className={cn("h-3.5 w-3.5", data.vorlage.klima_relevant ? "text-primary" : "text-muted-foreground")} />}
+          icon={<Leaf className={cn("h-3.5 w-3.5", data.template.klima_relevant ? "text-primary" : "text-muted-foreground")} />}
           label="Klima-Check"
-          badge={data.vorlage.klima_relevant == null ? undefined : data.vorlage.klima_relevant ? "relevant" : "nicht relevant"}
+          badge={data.template.klima_relevant == null ? undefined : data.template.klima_relevant ? "relevant" : "nicht relevant"}
         >
-          {data.vorlage.klima_check}
+          {data.template.climate_impact}
         </GlanceDisclosure>
       )}
       {/* „Was kostet das?" (Design H-21): Die Verwaltung schreibt in jede
           Vorlage, welche finanziellen Folgen sie sieht. Amtlicher Wortlaut,
           deshalb unverändert und ausdrücklich als Verwaltungsangabe
           gekennzeichnet — nicht unsere Einschätzung. */}
-      {data.vorlage?.finanz_check && (
+      {data.template?.financial_impact && (
         <GlanceDisclosure
           icon={<Euro className="h-3.5 w-3.5 text-primary" />}
           label="Was kostet das?"
@@ -234,7 +234,7 @@ function GlanceCard({
           {/* Wörtliches Zitat: Zitatkante links, Anführungszeichen, kein
               Fettdruck — es ist der amtliche Wortlaut, nicht unsere Zahl. */}
           <span className="block border-l-2 border-border pl-2.5 text-foreground/85">
-            „{data.vorlage.finanz_check.trim()}“
+            „{data.template.financial_impact.trim()}“
           </span>
           {/* Die Quellenangabe steht immer, der Weiterverweis nur dort, wo es
               den Haushalts-Bereich gibt — auf Prod ist /haushalt ein 404
@@ -255,21 +255,21 @@ function GlanceCard({
       {/* Die Anschlussstelle, die etwas SAGT. Der Satz oben steht an jedem
           Beschluss mit Finanz-Feld und ist deshalb für keinen eine Auskunft;
           diese Karte gibt es nur, wo eine echte Verknüpfung sie deckt —
-          entweder zeigt `council_nachbewilligungen.beschluss_id` auf genau
+          entweder zeigt `council_nachbewilligungen.decision_id` auf genau
           diesen Beschluss, oder seine Vorlage steht im Bürgschafts-Zeitstrahl.
-          Sonst kommt sie gar nicht (`haushalts_anschluss === null`). */}
-      {HAUSHALT_FREI && data.haushalts_anschluss && (
+          Sonst kommt sie gar nicht (`budget_link === null`). */}
+      {HAUSHALT_FREI && data.budget_link && (
         <GlanceRow>
-          <Link href={data.haushalts_anschluss.href}
+          <Link href={data.budget_link.href}
             className="group flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/40">
             <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-primary">
               Im Haushalt
             </span>
             <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
-              {data.haushalts_anschluss.art === "nachbewilligung" ? (
+              {data.budget_link.art === "nachbewilligung" ? (
                 <>
                   Diese Entscheidung zählt zu den Nachbewilligungen
-                  {data.haushalts_anschluss.jahr ? ` ${data.haushalts_anschluss.jahr}` : ""} —
+                  {data.budget_link.year ? ` ${data.budget_link.year}` : ""} —
                   Geld, das außerhalb des beschlossenen Haushalts bewilligt wurde.
                 </>
               ) : (
@@ -305,13 +305,13 @@ function GlanceCard({
   );
 }
 
-/** Kurze Ergebnis-Zeile aus vote/gegenstimmen/enthaltungen (z. B.
+/** Kurze Ergebnis-Zeile aus vote/no_votes/abstentions (z. B.
  *  „mehrheitlich · 18 dagegen · 2 Enth."). */
 function voteSummary(d: CouncilDecision): string {
   const parts: string[] = [];
-  if (d.vote) parts.push(d.vote);
-  if (d.gegenstimmen) parts.push(`${d.gegenstimmen} dagegen`);
-  if (d.enthaltungen) parts.push(`${d.enthaltungen} Enth.`);
+  if (d.vote) parts.push(voteLabel(d.vote));
+  if (d.no_votes) parts.push(`${d.no_votes} dagegen`);
+  if (d.abstentions) parts.push(`${d.abstentions} Enth.`);
   return parts.join(" · ");
 }
 
@@ -404,7 +404,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
       {subVotes.map((s, i) => {
         const factions = Array.isArray(s.factions) ? s.factions : [];
         const kind = subvoteKind(s.title);
-        const body = s.beschluss || (hasOwnContent(s.title, kind, factions) ? s.title : null);
+        const body = s.official_text || (hasOwnContent(s.title, kind, factions) ? s.title : null);
         return (
           <li
             key={s.id}
@@ -458,7 +458,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
         />
         <p className="text-[11px] font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Endgültiger Beschluss</p>
         <p className="mt-1 text-sm leading-relaxed text-foreground">
-          {(OUTCOME_META[d.outcome ?? "kein_beschluss"]?.label ?? "Beschlossen")}
+          {(OUTCOME_META[d.outcome ?? "no_decision"]?.label ?? "Beschlossen")}
           {voteSummary(d) ? ` — ${voteSummary(d)}` : ""}
         </p>
         {d.summary && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d.summary}</p>}
@@ -468,7 +468,7 @@ function SubvoteTimeline({ d, subVotes }: { d: CouncilDecision; subVotes: Counci
 }
 
 function presentMembers(att: DecisionDetail["attendance"]): number {
-  return att.filter((a) => a.role === "vorsitz" || a.role === "mitglied" || !a.role).length;
+  return att.filter((a) => a.role === "chair" || a.role === "member" || !a.role).length;
 }
 
 /** Design 25a: Nachbarbeschlüsse sind Kontext, keine Hauptsache — standardmäßig
@@ -567,12 +567,12 @@ function DecisionDetailInner() {
   if (!data) notFound();
 
   const d = data.decision;
-  const unanimous = d.outcome === "angenommen"
-    && (d.vote === "einstimmig" || ((d.gegenstimmen ?? 0) === 0 && (d.enthaltungen ?? 0) === 0));
+  const unanimous = d.outcome === "accepted"
+    && (d.vote === "unanimous" || ((d.no_votes ?? 0) === 0 && (d.abstentions ?? 0) === 0));
   const present = presentMembers(data.attendance);
   const byParty: Record<string, number> = {};
   for (const a of data.attendance) {
-    if (a.role === "verwaltung" || a.role === "protokoll" || a.role === "gast") continue;
+    if (a.role === "administration" || a.role === "minutes" || a.role === "guest") continue;
     const p = normalizeParty(a.party || "—");
     byParty[p] = (byParty[p] ?? 0) + 1;
   }
@@ -621,14 +621,14 @@ function DecisionDetailInner() {
       {/* Stufe 3b: Läuft zu diesem Bauleitplan GERADE eine Beteiligung, ist die
           Stellungnahme-Frist die eine Sache, die Bürger*innen JETZT tun können —
           deshalb prominent über allem anderen. */}
-      {data.beteiligung && (
-        <a href={data.beteiligung.url} target="_blank" rel="noreferrer"
+      {data.participation && (
+        <a href={data.participation.url} target="_blank" rel="noreferrer"
           className="mt-2 flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm transition-colors hover:bg-primary/10">
           <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span className="min-w-0">
             <span className="font-medium text-foreground">Bürgerbeteiligung läuft: </span>
-            {data.beteiligung.schritt}
-            {data.beteiligung.bis ? ` — Stellungnahme bis ${formatDate(data.beteiligung.bis)}` : ""}
+            {data.participation.schritt}
+            {data.participation.valid_until ? ` — Stellungnahme bis ${formatDate(data.participation.valid_until)}` : ""}
             <span className="text-muted-foreground"> (oldenburg.planungsbeteiligung.de)</span>
           </span>
         </a>
@@ -670,7 +670,7 @@ function DecisionDetailInner() {
             {shortCommittee(d.committee)} · {formatDate(d.session_date)}
             {d.item_number ? ` · TOP ${d.item_number}` : ""}
           </span>
-          {d.vorlage_nr && <span className="font-mono text-[11px]">{d.vorlage_nr}</span>}
+          {d.template_number && <span className="font-mono text-[11px]">{d.template_number}</span>}
           {d.kind !== "subvote" && (data.importance_breakdown?.score ?? 0) >= 55 && (
             <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               Wichtig · {data.importance_breakdown!.score}/100
@@ -709,18 +709,18 @@ function DecisionDetailInner() {
         <div className="min-w-0 space-y-3">
           {d.simple_summary && <SimpleSummaryHero text={d.simple_summary} />}
 
-          {d.beschluss && <OfficialTextCard text={d.beschluss} />}
+          {d.official_text && <OfficialTextCard text={d.official_text} />}
 
           {/* P1: Die Planzeichnung aus der Vorlage — ein B-Plan-Beschluss lebt
               vom Bild. Thumb inline, Klick öffnet das volle Blatt. */}
-          {data.plan_bild && (
-            <a href={apiUrl(`/council/plan-bild/${data.plan_bild}`)} target="_blank" rel="noreferrer"
+          {data.plan_image && (
+            <a href={apiUrl(`/council/plan-bild/${data.plan_image}`)} target="_blank" rel="noreferrer"
               className="block overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-md">
               {/* Volle Auflösung, nicht das Thumb: Das 480er-Bild wurde auf
                   Spaltenbreite hochskaliert und war matschig (Tims Feedback).
                   loading=lazy hält den Seitenaufbau schlank. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={apiUrl(`/council/plan-bild/${data.plan_bild}`)}
+              <img src={apiUrl(`/council/plan-bild/${data.plan_image}`)}
                 alt="Planzeichnung aus der Vorlage" loading="lazy"
                 className="w-full object-cover" />
               <p className="px-3 py-2 text-[11px] text-muted-foreground">
@@ -739,21 +739,21 @@ function DecisionDetailInner() {
           {/* 25a ③: Teilabstimmungen, Endergebnis und das Warum standen als drei
               getrennte Blöcke untereinander — zusammen erzählen sie den Hergang
               des Vorgangs und stehen deshalb unter einer Überschrift. */}
-          {(data.sub_votes.length > 0 || data.vorlage?.excerpt) && (
+          {(data.sub_votes.length > 0 || data.template?.excerpt) && (
             <Section title="Verlauf & Begründung">
               <div className="space-y-4">
                 {data.sub_votes.length > 0 && <SubvoteTimeline d={d} subVotes={data.sub_votes} />}
                 {/* Nicht der Beschlussvorschlag, sondern Sachverhalt/Begründung
                     aus der Verwaltungsvorlage (council/vorlagen.py excerpt) —
                     die Vorgeschichte, die im Beschlusstext nicht vorkommt. */}
-                {data.vorlage?.excerpt && (
+                {data.template?.excerpt && (
                   <div>
                     <p className="text-sm font-semibold text-foreground">Warum es dazu kam</p>
                     <p className="mb-2 text-xs text-muted-foreground/70">
-                      Sachverhalt und Begründung aus der {vorlageArt(data.vorlage.art)} der Verwaltung
-                      {data.vorlage.amt ? ` — federführend: ${data.vorlage.amt}` : ""}
+                      Sachverhalt und Begründung aus der {vorlageArt(data.template.kind)} der Verwaltung
+                      {data.template.office ? ` — federführend: ${data.template.office}` : ""}
                     </p>
-                    <VorlageExcerpt text={data.vorlage.excerpt} />
+                    <VorlageExcerpt text={data.template.excerpt} />
                   </div>
                 )}
               </div>
@@ -776,13 +776,13 @@ function DecisionDetailInner() {
 
           <MetaCard title="Dokumente & Anlagen">
             <div className="flex flex-col gap-1">
-              {data.vorlage_url && (
-                <a href={data.vorlage_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-                  <FileText className="h-3.5 w-3.5" /> Vorlage {d.vorlage_nr}
+              {data.template_url && (
+                <a href={data.template_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                  <FileText className="h-3.5 w-3.5" /> Vorlage {d.template_number}
                 </a>
               )}
-              {data.vorlage?.document_url && (
-                <a href={data.vorlage.document_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+              {data.template?.document_url && (
+                <a href={data.template.document_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
                   <FileDown className="h-3.5 w-3.5" /> Vorlage (PDF)
                 </a>
               )}
@@ -810,9 +810,9 @@ function DecisionDetailInner() {
                         <FileDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <span className="truncate text-foreground">{an.label || "Dokument"}</span>
                       </span>
-                      {an.is_antrag === 1 && an.antragsteller.length > 0 && (
+                      {an.is_motion === 1 && an.applicants.length > 0 && (
                         <span className="flex shrink-0 items-center gap-1">
-                          {an.antragsteller.map((p) => <PartyBadge key={p} party={p} />)}
+                          {an.applicants.map((p) => <PartyBadge key={p} party={p} />)}
                         </span>
                       )}
                     </a>
@@ -832,41 +832,41 @@ function DecisionDetailInner() {
             </MetaCard>
           )}
 
-          {(data.beratungsfolge && data.beratungsfolge.length > 0) || data.vorlage_journey.length > 1 ? (
-            <MetaCard title={`Weg der Vorlage ${d.vorlage_nr ?? ""}`.trim()}>
+          {(data.deliberation_path && data.deliberation_path.length > 0) || data.template_journey.length > 1 ? (
+            <MetaCard title={`Weg der Vorlage ${d.template_number ?? ""}`.trim()}>
               {/* Offizielle Beratungsfolge aus dem Ratsinfo: Ergebnis je Station,
                   geplante künftige Beratungen inklusive; sonst der aus unseren
                   eigenen Sitzungen rekonstruierte Weg. */}
               <div className="ml-1 flex flex-col gap-2.5 border-l-2 border-border pl-3.5">
-                {data.beratungsfolge && data.beratungsfolge.length > 0
-                  ? data.beratungsfolge.map((b, i) => {
+                {data.deliberation_path && data.deliberation_path.length > 0
+                  ? data.deliberation_path.map((b, i) => {
                       const current = b.ksinr != null && b.ksinr === d.ksinr;
                       return (
-                        <div key={`${b.ksinr ?? "x"}-${b.datum ?? i}-${b.gremium}`} className="relative">
+                        <div key={`${b.ksinr ?? "x"}-${b.date ?? i}-${b.committee}`} className="relative">
                           <span className={cn(
                             "absolute -left-[19px] top-1.5 h-2 w-2 rounded-full",
                             current ? "bg-primary" : b.future ? "border border-primary/60 bg-background" : "bg-border",
                           )} />
                           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                             <span className={cn("text-[13px]", current ? "font-medium text-foreground" : "text-foreground")}
-                              title={b.gremium}>
-                              {shortCommittee(b.gremium)}
+                              title={b.committee}>
+                              {shortCommittee(b.committee)}
                             </span>
                             <span className="text-[11px] text-muted-foreground">
-                              {b.datum ? formatDate(b.datum) : "Termin offen"}
+                              {b.date ? formatDate(b.date) : "Termin offen"}
                               {b.is_public === 0 && " · nichtöffentlich"}
                               {current && " · hier"}
                             </span>
                             {b.future ? (
                               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">geplant</span>
-                            ) : b.ergebnis ? (
-                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{b.ergebnis}</span>
+                            ) : b.result ? (
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{b.result}</span>
                             ) : null}
                           </div>
                         </div>
                       );
                     })
-                  : data.vorlage_journey.map((stop) => {
+                  : data.template_journey.map((stop) => {
                       const current = stop.ksinr === d.ksinr;
                       return (
                         <div key={`${stop.ksinr}-${stop.item_number}`} className="relative">

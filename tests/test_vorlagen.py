@@ -24,9 +24,9 @@ VO_HTML = """<html><body>
 
 def test_parse_vorlage_page():
     meta = vorlagen.parse_vorlage_page(VO_HTML)
-    assert meta["vorlage_nr"] == "26/0330"
+    assert meta["template_number"] == "26/0330"
     assert meta["title"].startswith("Radweg Haarenufer")
-    assert meta["art"] == "Beschlussvorlage"
+    assert meta["kind"] == "Beschlussvorlage"
     # Haupt-PDF ist der Link mit Label "Vorlage" — nicht die Anlage.
     assert meta["document_id"] == 307787
     assert "getfile.php?id=307787" in meta["document_url"]
@@ -88,10 +88,10 @@ def store(tmp_path):
     s.close()
 
 
-def _seed_session(store, ksinr=1, kvonr=555, vorlage_nr="26/0330"):
+def _seed_session(store, ksinr=1, kvonr=555, template_number="26/0330"):
     store.save_session(CouncilSession(
         ksinr, "Rat der Stadt", "2026-01-01", "18:00", "Rathaus",
-        agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer", vorlage_nr=vorlage_nr, kvonr=kvonr)],
+        agenda_items=[AgendaItem("Ö 1", "Radweg Haarenufer", template_number=template_number, kvonr=kvonr)],
     ))
 
 
@@ -99,8 +99,8 @@ def test_vorlagen_store_roundtrip(store):
     _seed_session(store)
     assert store.missing_vorlage_kvonrs() == [555]
     store.save_vorlage({
-        "kvonr": 555, "vorlage_nr": "26/0330", "title": "Radweg Haarenufer",
-        "art": "Beschlussvorlage", "document_id": 1, "document_url": "https://x/pdf",
+        "kvonr": 555, "template_number": "26/0330", "title": "Radweg Haarenufer",
+        "kind": "Beschlussvorlage", "document_id": 1, "document_url": "https://x/pdf",
         "raw_text": "Sachverhalt: Es soll ein Radweg gebaut werden.", "n_pages": 2, "status": "ok",
     })
     assert store.missing_vorlage_kvonrs() == []
@@ -115,19 +115,19 @@ def test_vorlagen_store_roundtrip(store):
 
 
 def test_vorlagen_failed_is_retried_no_pdf_is_not(store):
-    _seed_session(store, kvonr=7, vorlage_nr="26/0001")
+    _seed_session(store, kvonr=7, template_number="26/0001")
     store.mark_vorlage_failed(7)
     assert store.missing_vorlage_kvonrs() == [7]  # failed → beim nächsten Lauf erneut
-    store.save_vorlage({"kvonr": 7, "vorlage_nr": "26/0001", "status": "no_pdf"})
+    store.save_vorlage({"kvonr": 7, "template_number": "26/0001", "status": "no_pdf"})
     assert store.missing_vorlage_kvonrs() == []   # no_pdf → nicht erneut
 
 
 def test_fts_includes_vorlage_text(store):
     _seed_session(store)
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg Haarenufer", "Wird gebaut.",
-                           "angenommen", None, None, None, [], "26/0330", None, None)
+                           "accepted", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
-    store.save_vorlage({"kvonr": 555, "vorlage_nr": "26/0330", "status": "ok",
+    store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok",
                         "raw_text": "Im Sachverhalt geht es um Quartiersgaragen am Hafen."})
     assert store.rebuild_fts() == 1
     # "Quartiersgaragen" steht NUR im Vorlagen-Text — der Treffer beweist den Join.
@@ -158,29 +158,29 @@ def test_build_anlage_rows_classifies_antraege():
         {"document_id": 2, "url": "https://x/2", "label": "Antrag der SPD-Fraktion vom 10.03.2026"},
     ])
     plan, antrag = rows[0], rows[1]
-    assert plan["is_antrag"] == 0 and plan["status"] == "listed" and plan["antragsteller"] == []
+    assert plan["is_motion"] == 0 and plan["status"] == "listed" and plan["applicants"] == []
     # Antrag: als solcher erkannt + Antragsteller aus dem Label; der PDF-Download
     # schlägt gegen https://x/2 fehl → status failed, aber die Zeile bleibt nutzbar.
-    assert antrag["is_antrag"] == 1
-    assert antrag["antragsteller"] == ["SPD"]
+    assert antrag["is_motion"] == 1
+    assert antrag["applicants"] == ["SPD"]
     assert antrag["status"] == "failed"
     # skip_document_ids: bekannter Antrag wird nicht erneut geladen (kein Download-Versuch).
     skipped = vorlagen._build_anlage_rows(
         [{"document_id": 2, "url": "https://x/2", "label": "Antrag der SPD-Fraktion"}],
         skip_document_ids=frozenset({2}),
     )[0]
-    assert skipped["is_antrag"] == 0 and skipped["status"] == "listed"
+    assert skipped["is_motion"] == 0 and skipped["status"] == "listed"
 
 
 def test_anlagen_store_and_stats(store):
     _seed_session(store)  # ksinr=1, kvonr=555, "26/0330", Rat der Stadt, 2026-01-01
-    store.save_vorlage({"kvonr": 555, "vorlage_nr": "26/0330", "status": "ok", "raw_text": "Sachverhalt: X."})
+    store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt: X."})
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "Wird gebaut.",
-                           "angenommen", None, None, None, [], "26/0330", None, None)
+                           "accepted", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
     n = store.save_anlagen(555, [
         {"document_id": 90, "url": "https://x/90", "label": "Antrag der SPD-Fraktion",
-         "is_antrag": 1, "antragsteller": ["SPD"], "raw_text": "Die SPD beantragt…", "n_pages": 2, "status": "ok"},
+         "is_motion": 1, "applicants": ["SPD"], "raw_text": "Die SPD beantragt…", "n_pages": 2, "status": "ok"},
         {"document_id": 91, "url": "https://x/91", "label": "Anlage - Lageplan", "status": "listed"},
     ])
     assert n == 2
@@ -190,36 +190,36 @@ def test_anlagen_store_and_stats(store):
     # Decision-Page-Liste: Antrag zuerst, Antragsteller geparst
     anlagen = store.anlagen_for_vorlage_nr("26/0330")
     assert [a["document_id"] for a in anlagen] == [90, 91]
-    assert anlagen[0]["antragsteller"] == ["SPD"]
+    assert anlagen[0]["applicants"] == ["SPD"]
     # Erfolgsquote: 1 SPD-Antrag, Vorlage im Rat angenommen
     stats = store.antrag_stats()
     assert stats["n_antraege"] == 1 and stats["n_mit_beschluss"] == 1
-    assert stats["parties"] == [{"party": "SPD", "n": 1, "angenommen": 1, "abgelehnt": 0}]
+    assert stats["parties"] == [{"party": "SPD", "n": 1, "accepted": 1, "rejected": 0}]
 
 
 def test_antrag_stats_prefers_rat_decision(store):
     """Ausschuss lehnt ab, der Rat nimmt an → es zählt der Rat."""
     store.save_session(CouncilSession(10, "Bauausschuss", "2026-01-10", "17:00", "Rathaus",
-                                      agenda_items=[AgendaItem("Ö 2", "X", vorlage_nr="26/0500", kvonr=700)]))
+                                      agenda_items=[AgendaItem("Ö 2", "X", template_number="26/0500", kvonr=700)]))
     store.save_session(CouncilSession(11, "Rat der Stadt", "2026-02-01", "17:00", "Rathaus"))
-    store._insert_decision(10, 0, "decision", None, "Ö 2", "X", "B", "abgelehnt", None, None, None, [], "26/0500", None, None)
-    store._insert_decision(11, 0, "decision", None, "Ö 9", "X", "B", "angenommen", None, None, None, [], "26/0500", None, None)
+    store._insert_decision(10, 0, "decision", None, "Ö 2", "X", "B", "rejected", None, None, None, [], "26/0500", None, None)
+    store._insert_decision(11, 0, "decision", None, "Ö 9", "X", "B", "accepted", None, None, None, [], "26/0500", None, None)
     store._conn.commit()
-    store.save_vorlage({"kvonr": 700, "vorlage_nr": "26/0500", "status": "ok"})
+    store.save_vorlage({"kvonr": 700, "template_number": "26/0500", "status": "ok"})
     store.save_anlagen(700, [{"document_id": 95, "url": "u", "label": "Antrag der CDU-Fraktion",
-                              "is_antrag": 1, "antragsteller": ["CDU"], "status": "ok"}])
+                              "is_motion": 1, "applicants": ["CDU"], "status": "ok"}])
     stats = store.antrag_stats()
-    assert stats["parties"] == [{"party": "CDU", "n": 1, "angenommen": 1, "abgelehnt": 0}]
+    assert stats["parties"] == [{"party": "CDU", "n": 1, "accepted": 1, "rejected": 0}]
 
 
 def test_fts_includes_antrag_text(store):
     _seed_session(store)
     store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "Wird gebaut.",
-                           "angenommen", None, None, None, [], "26/0330", None, None)
+                           "accepted", None, None, None, [], "26/0330", None, None)
     store._conn.commit()
-    store.save_vorlage({"kvonr": 555, "vorlage_nr": "26/0330", "status": "ok", "raw_text": "Sachverhalt."})
+    store.save_vorlage({"kvonr": 555, "template_number": "26/0330", "status": "ok", "raw_text": "Sachverhalt."})
     store.save_anlagen(555, [{"document_id": 90, "url": "u", "label": "Antrag der SPD-Fraktion",
-                              "is_antrag": 1, "antragsteller": ["SPD"], "status": "ok",
+                              "is_motion": 1, "applicants": ["SPD"], "status": "ok",
                               "raw_text": "Wir beantragen Lastenradstellplätze am Bahnhof."}])
     store.rebuild_fts()
     # "Lastenradstellplätze" steht NUR im Antrags-PDF — der Treffer beweist den Join.
@@ -230,7 +230,7 @@ def test_qa_context_includes_vorlage_excerpt():
     from council.qa import _build_context
     ctx = _build_context([{
         "id": 5, "title": "Radweg", "committee": "Rat", "session_date": "2026-01-01",
-        "outcome": "angenommen", "summary": "Kurz.",
+        "outcome": "accepted", "summary": "Kurz.",
         "vorlage_excerpt": "Sachverhalt: Darum geht es wirklich.",
     }])
     assert "— Aus der Vorlage: Sachverhalt: Darum geht es wirklich." in ctx
@@ -270,15 +270,15 @@ def test_list_entities_recency_and_trending_tags(store):
     store.save_session(CouncilSession(1, "Rat der Stadt", recent, "17:00", "Rathaus"))
     store.save_session(CouncilSession(2, "Rat der Stadt", old, "17:00", "Rathaus"))
     for ks, tags in [(1, '["Radverkehr", "Wärmeplanung"]'), (2, '["Radverkehr"]')]:
-        store._insert_decision(ks, 0, "decision", None, "Ö 1", f"D{ks}", "B", "angenommen",
+        store._insert_decision(ks, 0, "decision", None, "Ö 1", f"D{ks}", "B", "accepted",
                                None, None, None, [], None, None, None)
     with store._conn:
         store._conn.execute("UPDATE council_decisions SET policy_tags='[\"Radverkehr\", \"Wärmeplanung\"]' WHERE ksinr=1")
         store._conn.execute("UPDATE council_decisions SET policy_tags='[\"Radverkehr\"]' WHERE ksinr=2")
         ids = [r[0] for r in store._conn.execute("SELECT id FROM council_decisions ORDER BY id").fetchall()]
         # Entity „aktiv": Beschluss von vor 30 Tagen; „ruhend": nur 2019.
-        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (1,'aktiv','Aktiv','ort',1)")
-        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (2,'ruhend','Ruhend','ort',5)")
+        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (1,'aktiv','Aktiv','place',1)")
+        store._conn.execute("INSERT INTO council_entities (id, slug, name, kind, n) VALUES (2,'ruhend','Ruhend','place',5)")
         store._conn.execute("INSERT INTO council_entity_links VALUES (1, ?)", (ids[0],))
         store._conn.execute("INSERT INTO council_entity_links VALUES (2, ?)", (ids[1],))
     ents = {e["slug"]: e for e in store.list_entities()}
@@ -302,7 +302,7 @@ def test_parties_for_faction_gruppen_multi_mapping():
 
 def test_decision_row_zaehlt_gruppe_fuer_beide_parteien(store):
     _seed_session(store)
-    store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "B", "angenommen",
+    store._insert_decision(1, 0, "decision", None, "Ö 1", "Radweg", "B", "accepted",
                            None, None, None, ["Gruppe FDP/Volt"], None, None, None)
     store._conn.commit()
     d = store.get_decisions(1)[0]
@@ -322,16 +322,16 @@ def test_suggested_entity_topics_prefers_concrete_active(store):
     with store._conn:
         for i in range(4):
             store._insert_decision(1, i, "decision", None, f"Ö {i}", f"D{i}", "B",
-                                   "angenommen", None, None, None, [], None, None, None)
+                                   "accepted", None, None, None, [], None, None, None)
         store._insert_decision(2, 0, "decision", None, "Ö 9", "Alt", "B",
-                               "angenommen", None, None, None, [], None, None, None)
+                               "accepted", None, None, None, [], None, None, None)
         ids = [r[0] for r in store._conn.execute(
             "SELECT id FROM council_decisions ORDER BY id").fetchall()]
-        ents = [(1, "veloroute-4", "Veloroute 4", "projekt", 3),
-                (2, "haarenufer", "Haarenufer", "ort", 2),
+        ents = [(1, "veloroute-4", "Veloroute 4", "project", 3),
+                (2, "haarenufer", "Haarenufer", "place", 2),
                 (3, "spd-fraktion", "SPD-Fraktion", "organisation", 4),
-                (4, "einmal-ort", "Einmal-Ort", "ort", 1),
-                (5, "alt-projekt", "Alt-Projekt", "projekt", 5)]
+                (4, "einmal-ort", "Einmal-Ort", "place", 1),
+                (5, "alt-projekt", "Alt-Projekt", "project", 5)]
         for eid, slug, name, kind, n in ents:
             store._conn.execute(
                 "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
@@ -360,12 +360,12 @@ def test_anlagen_block_traegt_belegmarker():
     from council import qa
 
     block = qa._anlagen_block([
-        {"nr": 1, "label": "Schalltechnisches Gutachten", "vorlage_nr": "26/0100",
-         "vorlage_titel": "Grundsatzbeschluss Stadionneubau",
-         "fundstelle": "Lärmpegel unter Grenzwert."},
+        {"nr": 1, "label": "Schalltechnisches Gutachten", "template_number": "26/0100",
+         "template_title": "Grundsatzbeschluss Stadionneubau",
+         "citation": "Lärmpegel unter Grenzwert."},
         # Ohne nr zählt die Position — der Prompt bleibt auch dann belegbar.
-        {"label": "Wirtschaftsplan 2024", "vorlage_nr": None, "vorlage_titel": None,
-         "fundstelle": "Gesamtinvestitionen 1.050.000 Euro."},
+        {"label": "Wirtschaftsplan 2024", "template_number": None, "template_title": None,
+         "citation": "Gesamtinvestitionen 1.050.000 Euro."},
     ])
     assert "[A1] Schalltechnisches Gutachten (zur Vorlage 26/0100" in block
     assert "[A2] Wirtschaftsplan 2024 (zur Vorlage ?)" in block

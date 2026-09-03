@@ -76,18 +76,17 @@ def test_zitierte_ids_liest_auch_unbekannte_nummern():
 
 def test_budget_ist_kleiner_als_das_der_normalen_antwort():
     """Zweite Bremse neben der Prompt-Regel: kurz ist das Ziel."""
-    assert qa.VEREINFACHEN_TOKENS < qa._answer_tokens("thema")
+    assert qa.VEREINFACHEN_TOKENS < qa._answer_tokens("topic")
 
 
 def test_prompt_verbietet_nachkomma_millionen():
     """Die „44,699 Millionen Euro"-Falle aus Build 11: rechnerisch richtig
     (44.699.000 €), als Satz aber unlesbar. Beide Antwort-Prompts sagen jetzt,
     wie ein Betrag im Fließtext auszusehen hat."""
-    for key in ("qa_antwort", "qa_einfach"):
+    for key in ("qa_answer", "qa_simple"):
         assert "44,699" in prompts.DEFAULTS[key]["template"]
         assert "Millionen Euro" in prompts.DEFAULTS[key]["template"]
 
 
-def test_qa_einfach_rendert_mit_seinen_platzhaltern(tmp_path, monkeypatch):
-    monkeypatch.setattr(prompts, "_DB_PATH", tmp_path / "nwz.sqlite")
-    prompts.render("qa_einfach", frage="F", bisher="B", context="C")
+def test_qa_einfach_rendert_mit_seinen_platzhaltern():
+    prompts.render("qa_simple", question="F", bisher="B", context="C")

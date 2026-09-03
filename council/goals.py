@@ -73,7 +73,7 @@ GOALS: dict[str, dict] = {
     },
 }
 
-STANCES = ("voran", "bremst", "neutral")
+STANCES = ("advances", "hinders", "neutral")
 
 _PROMPT = """Du bewertest, ob Beschlüsse des Oldenburger Stadtrats ein übergeordnetes Ziel betreffen und ob sie es voranbringen.
 
@@ -82,18 +82,18 @@ ZIEL: {label}
 
 Für JEDEN Beschluss liefere:
 - "relevant": true NUR wenn der Beschluss das Ziel konkret betrifft, sonst false
-- "stance": wenn relevant — "voran" (bringt das Ziel voran), "bremst" (wirkt entgegen) oder "neutral" (betrifft es, aber neutral/gemischt); sonst "neutral"
-- "grund": max. ein kurzer Satz (deutsch)
+- "stance": wenn relevant — "advances" (bringt das Ziel voran), "hinders" (wirkt entgegen) oder "neutral" (betrifft es, aber neutral/gemischt); sonst "neutral"
+- "reason": max. ein kurzer Satz (deutsch)
 
-Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<voran|bremst|neutral>", "grund": "..."}}]}}
+Antworte mit NUR JSON: {{"results": [{{"id": <id>, "relevant": <true|false>, "stance": "<advances|hinders|neutral>", "reason": "..."}}]}}
 Regeln:
 - jede vorgelegte id genau einmal mit exakt dieser id; im Zweifel relevant=false.
 - Der Ausgang steht in [eckigen Klammern]. Beschlüsse, die nur ZUR KENNTNIS genommen
-  wurden (Berichte, [zur_kenntnis]) oder VERTAGT sind ([vertagt]), bringen das Ziel
+  wurden (Berichte, [noted]) oder VERTAGT sind ([postponed]), bringen das Ziel
   NICHT voran → "neutral" — AUSSER der Text dokumentiert konkret bereits umgesetzten
   oder beschlossenen Fortschritt. Reine Sachstands-/Prüfberichte, Absichts­erklärungen
-  und Resolutionen sind "neutral". "voran" nur bei einem tatsächlich gefassten,
-  zielfördernden Beschluss ([angenommen]).
+  und Resolutionen sind "neutral". "advances" nur bei einem tatsächlich gefassten,
+  zielfördernden Beschluss ([accepted]).
 
 BESCHLÜSSE:
 {items}"""
@@ -102,7 +102,7 @@ BESCHLÜSSE:
 def _render(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
-        text = d.get("summary") or d.get("beschluss") or ""
+        text = d.get("summary") or d.get("official_text") or ""
         text = " ".join(text.split())[:300]
         outcome = d.get("outcome") or "?"
         lines.append(f'- id {d["id"]} [{outcome}]: {(d.get("title") or "").strip()} — {text}')
@@ -119,7 +119,7 @@ def assess_batch(goal_key: str, decisions: list[dict], model: str = MODEL):
     valid = {d["id"] for d in decisions}
     last_err: Exception = ValueError("no response")
     for _ in range(2):
-        resp = llm.chat_complete(model=model, _feature="ziel_bewertung", temperature=0, response_format={"type": "json_object"},
+        resp = llm.chat_complete(model=model, _feature="goal_rating", temperature=0, response_format={"type": "json_object"},
                                  max_tokens=4000, messages=messages, **extra)
         content = _strip_fences(resp.choices[0].message.content or "")
         if not content:
@@ -140,7 +140,7 @@ def assess_batch(goal_key: str, decisions: list[dict], model: str = MODEL):
                 continue
             relevant = bool(r.get("relevant"))
             stance = r.get("stance") if r.get("stance") in STANCES else "neutral"
-            out[rid] = {"relevant": relevant, "stance": stance, "grund": (r.get("grund") or "").strip()[:200]}
+            out[rid] = {"relevant": relevant, "stance": stance, "reason": (r.get("reason") or "").strip()[:200]}
         if out:
             return out, resp.usage
         last_err = ValueError("no valid results")

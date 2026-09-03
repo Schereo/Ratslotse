@@ -181,8 +181,8 @@ JAHRBUCH_URL = schulden.JAHRBUCH_URL
 #: Statistik Niedersachsen. Sie führt alle Jahrgänge seit 2013 — die
 #: Download-Nummern darunter wechseln jährlich und stehen deshalb nirgends
 #: fest verdrahtet.
-KFA_URL = ("https://www.statistik.niedersachsen.de/kommunaler-finanzausgleich/"
-           "kommunaler-finanzausgleich-in-niedersachsen-tabellen-214575.html")
+KFA_URL = ("https://www.statistik.niedersachsen.de/kommunaler-fiscal_equalization/"
+           "kommunaler-fiscal_equalization-in-niedersachsen-tabellen-214575.html")
 
 #: Nur Dateien aus dem Statistik-Verzeichnis der Stadt. Die Übersichtsseite
 #: verlinkt auch Broschüren aus anderen Ordnern; das Archiv soll die
@@ -285,7 +285,7 @@ def hole(url: str, etag: str | None = None, last_modified: str | None = None,
                    last_modified=kopfzeilen.get("Last-Modified"))
 
 
-def seite(url: str, session=None) -> str:
+def page(url: str, session=None) -> str:
     """Eine Übersichtsseite als Text holen."""
     import requests
 
@@ -365,7 +365,7 @@ def katalog_dateien(katalog: dict) -> list[tuple[str, str, str]]:
 
 # --- Der Lauf ---------------------------------------------------------------
 
-def _sichern(url: str, bereich: str, name: str, archiv: Path, manifest: dict,
+def _sichern(url: str, area: str, name: str, archiv: Path, manifest: dict,
              zaehler: dict, heute: date, session, trocken: bool,
              sagen) -> None:
     """Eine Adresse: bedingt holen, bei Änderung versioniert ablegen.
@@ -374,24 +374,24 @@ def _sichern(url: str, bereich: str, name: str, archiv: Path, manifest: dict,
     Fehler ist hier ein Befund und kein Abbruch.
     """
     zaehler["geprueft"] += 1
-    stand = manifest.get(url, {})
+    as_of = manifest.get(url, {})
     if trocken:
         sagen(f"  würde prüfen: {url}")
         return
     try:
-        antwort = hole(url, etag=stand.get("etag"),
-                       last_modified=stand.get("last_modified"), session=session)
+        answer = hole(url, etag=as_of.get("etag"),
+                       last_modified=as_of.get("last_modified"), session=session)
     except AbrufFehler as exc:
         zaehler["fehler"].append(str(exc))
-        eintrag = dict(stand)
+        eintrag = dict(as_of)
         eintrag["fehler"] = str(exc)
         eintrag["fehler_am"] = heute.isoformat()
         manifest[url] = eintrag
         return
 
-    if antwort.inhalt is None:
+    if answer.inhalt is None:
         zaehler["unveraendert"] += 1
-        eintrag = dict(stand)
+        eintrag = dict(as_of)
         eintrag["zuletzt_gesehen"] = heute.isoformat()
         eintrag.pop("fehler", None)
         eintrag.pop("fehler_am", None)
@@ -399,7 +399,7 @@ def _sichern(url: str, bereich: str, name: str, archiv: Path, manifest: dict,
         return
 
     time.sleep(PAUSE)
-    zaehler["bytes"] += len(antwort.inhalt)
+    zaehler["bytes"] += len(answer.inhalt)
     if zaehler["bytes"] > MAX_LAUF_BYTES:
         raise RuntimeError(
             f"Der Lauf hat {zaehler['bytes'] / 1e6:.0f} MB geladen und damit die "
@@ -407,21 +407,21 @@ def _sichern(url: str, bereich: str, name: str, archiv: Path, manifest: dict,
             f"sich etwas grundsätzlich geändert — bitte nachsehen, statt die "
             f"Platte zu füllen.")
 
-    pfad, neu = version_ablegen(archiv, bereich, name, antwort.inhalt, heute)
+    pfad, neu = version_ablegen(archiv, area, name, answer.inhalt, heute)
     if neu:
         zaehler["neu"] += 1
-        sagen(f"  NEU  {bereich}/{name}  ({len(antwort.inhalt) / 1024:.0f} KB) "
+        sagen(f"  NEU  {area}/{name}  ({len(answer.inhalt) / 1024:.0f} KB) "
               f"→ {pfad.name}")
     else:
         # Der Server hat geliefert, aber die Bytes kennen wir schon: geänderter
         # ETag ohne geänderten Inhalt. Genau dafür entscheidet der Hash.
         zaehler["unveraendert"] += 1
     manifest[url] = {
-        "bereich": bereich, "datei": name,
-        "etag": antwort.etag, "last_modified": antwort.last_modified,
-        "hash": inhalts_hash(antwort.inhalt), "bytes": len(antwort.inhalt),
+        "area": area, "datei": name,
+        "etag": answer.etag, "last_modified": answer.last_modified,
+        "hash": inhalts_hash(answer.inhalt), "bytes": len(answer.inhalt),
         "pfad": str(pfad.relative_to(archiv)),
-        "zuerst_gesehen": stand.get("zuerst_gesehen") or heute.isoformat(),
+        "zuerst_gesehen": as_of.get("zuerst_gesehen") or heute.isoformat(),
         "zuletzt_gesehen": heute.isoformat(),
     }
 
@@ -486,19 +486,19 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             sagen("Open-Data-Portal:")
             katalog: dict = {}
             if katalog_text is None and not trocken:
-                stand = manifest.get(KATALOG_URL, {})
+                as_of = manifest.get(KATALOG_URL, {})
                 try:
-                    antwort = hole(KATALOG_URL, etag=stand.get("etag"),
-                                   last_modified=stand.get("last_modified"),
+                    answer = hole(KATALOG_URL, etag=as_of.get("etag"),
+                                   last_modified=as_of.get("last_modified"),
                                    session=session)
-                    if antwort.inhalt is not None:
-                        katalog_text = antwort.inhalt.decode("utf-8", "replace")
+                    if answer.inhalt is not None:
+                        katalog_text = answer.inhalt.decode("utf-8", "replace")
                         manifest[KATALOG_URL] = {
-                            "bereich": "opendata", "datei": "data.json",
-                            "etag": antwort.etag,
-                            "last_modified": antwort.last_modified,
-                            "hash": inhalts_hash(antwort.inhalt),
-                            "zuerst_gesehen": stand.get("zuerst_gesehen") or heute.isoformat(),
+                            "area": "opendata", "datei": "data.json",
+                            "etag": answer.etag,
+                            "last_modified": answer.last_modified,
+                            "hash": inhalts_hash(answer.inhalt),
+                            "zuerst_gesehen": as_of.get("zuerst_gesehen") or heute.isoformat(),
                             "zuletzt_gesehen": heute.isoformat()}
                     else:
                         # 304: Der Katalog ist unverändert — aber ohne ihn gäbe
@@ -529,13 +529,13 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             sagen(f"  Katalog: {len(eintraege)} Datei(en) in "
                   f"{len({k for k, _, _ in eintraege})} Datensätzen")
             for _kennung, geaendert, url in eintraege:
-                stand = manifest.get(url, {})
+                as_of = manifest.get(url, {})
                 # Die billige Vorprüfung: Datensatz unverändert und Datei liegt
                 # schon im Archiv → gar nicht erst anklopfen.
                 if (not ohne_vorpruefung and geaendert
-                        and stand.get("modified") == geaendert
-                        and stand.get("hash")
-                        and (ziel / stand.get("pfad", "")).is_file()):
+                        and as_of.get("modified") == geaendert
+                        and as_of.get("hash")
+                        and (ziel / as_of.get("pfad", "")).is_file()):
                     zaehler["uebersprungen"] += 1
                     continue
                 _sichern(url, "opendata", dateiname(url), ziel, manifest,
@@ -548,7 +548,7 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             sagen("Statistisches Jahrbuch:")
             if jahrbuch_html is None and not trocken:
                 try:
-                    jahrbuch_html = seite(JAHRBUCH_URL, session=session)
+                    jahrbuch_html = page(JAHRBUCH_URL, session=session)
                 except AbrufFehler as exc:
                     zaehler["fehler"].append(str(exc))
             links = jahrbuch_links(jahrbuch_html or "")
@@ -569,7 +569,7 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
             sagen("Kommunaler Finanzausgleich (LSN):")
             if kfa_html is None and not trocken:
                 try:
-                    kfa_html = seite(KFA_URL, session=session)
+                    kfa_html = page(KFA_URL, session=session)
                 except AbrufFehler as exc:
                     zaehler["fehler"].append(str(exc))
             mappen = kfa_links(kfa_html or "")
@@ -587,9 +587,9 @@ def main(archiv: str | Path | None = None, heute: date | None = None,
                 # Ausgabe bekommt eine neue Nummer, und selbst eine Korrektur
                 # tut das (2023 steht als „endgültig Korrektur" unter 193990
                 # neben dem Original). Was einmal gesichert ist, bleibt gleich.
-                stand = manifest.get(url, {})
-                if (not ohne_vorpruefung and stand.get("hash")
-                        and (ziel / stand.get("pfad", "")).is_file()):
+                as_of = manifest.get(url, {})
+                if (not ohne_vorpruefung and as_of.get("hash")
+                        and (ziel / as_of.get("pfad", "")).is_file()):
                     zaehler["uebersprungen"] += 1
                     continue
                 _sichern(url, "kfa", kfa_dateiname(url, text), ziel, manifest,
@@ -651,7 +651,7 @@ def _schon_gemeldet(befund: list[str]) -> bool:
     try:
         from kern.store import Store
 
-        db = Path(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
+        db = Path(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
         if not db.exists():
             return False
         store = Store(db)

@@ -16,11 +16,28 @@ on:
     branches: [dev]
   workflow_dispatch:
 
-# Schnell aufeinanderfolgende Pushes: der neueste gewinnt, ältere Läufe
-# werden abgebrochen (auf Dev ist nur der letzte Stand interessant).
+# GETEILTE Gruppe mit dem Feature-Deploy (deploy-feature.yml). Seit
+# 09/2026 läuft auf derselben Dev-VM eine zweite Instanz unter
+# `~/app-feature` für feature.ratslotse.de. Die VM hat 2 Kerne und 8 GB;
+# zwei gleichzeitige `next build` passen dort nicht nebeneinander, und der
+# OOM-Killer trifft dann den LAUFENDEN Dienst der anderen Instanz — der
+# Ausfall sieht danach aus wie ein Fehler im gebauten Code. Gemeinsame
+# Gruppe heißt: sie bauen nacheinander.
+#
+# cancel-in-progress deshalb auf FALSE (vorher `true`, „der neueste
+# gewinnt"): Mit einer geteilten Gruppe würde ein Dev-Push einen laufenden
+# Feature-Build abwürgen, und feature.ratslotse.de bliebe stumm auf altem
+# Stand stehen. Der Preis ist, dass zwei kurz aufeinanderfolgende
+# Dev-Pushes beide bauen statt nur der letzte — auf einer Dev-VM ist
+# Wartezeit billiger als ein Stand, der falsch aussieht.
 concurrency:
-  group: deploy-dev
-  cancel-in-progress: true
+  group: deploy-dev-vm
+  cancel-in-progress: false
+
+# Der Lauf braucht vom Token nur eins: das eigene Repo lesen dürfen. Ohne
+# diesen Block gälte die Repo-Vorgabe, und die kann Schreibrechte enthalten.
+permissions:
+  contents: read
 
 jobs:
   deploy:
@@ -28,6 +45,10 @@ jobs:
     steps:
       - name: Deploy auf die Dev-VM
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Reicht für einen Abruf des eigenen Repos und hebt die Drosselung
+          # von „je Adresse" auf „je Token".
+          GH_ABRUF_TOKEN: ${{ github.token }}
         with:
           host: ${{ secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -39,12 +60,51 @@ jobs:
           proxy_port: ${{ secrets.VPS_SSH_PORT }}
           # npm ci + next build auf 2 Kernen kann dauern.
           command_timeout: 30m
+          # Der Abruf-Token wandert als UMGEBUNGSVARIABLE hinüber, nicht als
+          # Argument: Argumente stehen in der Prozessliste der VM, die
+          # Umgebung eines Prozesses nicht.
+          envs: GH_ABRUF_TOKEN
           script: |
             set -e
             cd ~/app
-            git fetch origin dev
+            # ANGEMELDET abrufen. Am 02.09.2026 scheiterten sieben
+            # Dev-Deploys mit „could not read Username for 'https://github.com'"
+            # bzw. „expected flush after ref listing". Das Repo ist öffentlich,
+            # der Abruf braucht also keine Anmeldung — aber GitHub drosselt
+            # UNANGEMELDETE Abrufe je Adresse, und die VM teilt ihre Adresse
+            # mit allem anderen, was von dort abruft. Die Absage kommt als
+            # HTTP-Fehler statt als Ref-Liste zurück, und git deutet sie als
+            # Frage nach Zugangsdaten.
+            #
+            # Warten hilft dagegen nicht: Drei Versuche über 45 s sind an
+            # derselben Traube gescheitert (Lauf be265de0). Das Fenster der
+            # Drosselung ist länger. Angemeldet gilt ein anderes, viel höheres
+            # Kontingent — und es zählt je Token statt je Adresse.
+            #
+            # Der Token steht in der Umgebung und wird über einen
+            # credential-Helfer gereicht, nicht in die Adresse geschrieben:
+            # Sonst stünde er in `git remote -v` und in jedem Fehlertext.
+            export GIT_TERMINAL_PROMPT=0
+            if [ -n "$GH_ABRUF_TOKEN" ]; then
+              export GIT_ASKPASS=/tmp/ratslotse-askpass
+              printf '#!/bin/sh\ncase "$1" in *Username*) echo x-access-token;; *) echo "$GH_ABRUF_TOKEN";; esac\n' \
+                > "$GIT_ASKPASS"
+              chmod 700 "$GIT_ASKPASS"
+              trap 'rm -f /tmp/ratslotse-askpass' EXIT
+            fi
+            # Die Versuche bleiben als Netz für kurze Netzstörungen.
+            for versuch in 1 2 3; do
+              if git fetch origin dev; then break; fi
+              if [ "$versuch" = 3 ]; then
+                echo "Abruf nach drei Versuchen gescheitert." >&2
+                exit 1
+              fi
+              echo "Abruf fehlgeschlagen, neuer Versuch in $((versuch * 15))s"
+              sleep $((versuch * 15))
+            done
             git reset --hard ${{ github.sha }}
-            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt
+            .venv/bin/pip install -q -r requirements.txt -r web/backend/requirements.txt \
+              -c constraints.txt
             cd web/frontend
             npm ci --no-audit --no-fund
             # Umgebungs-Gate: Features, die nur auf dev.ratslotse.de sichtbar
@@ -62,3 +122,6 @@ jobs:
             sleep 3
             curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
             curl -sf http://127.0.0.1:8000/api/health && echo " API OK"
+            # Dieselbe Rauchprobe wie auf Prod — hier zuerst, damit ein Bruch
+            # auffällt, bevor er dorthin fährt.
+            python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000

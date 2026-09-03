@@ -108,7 +108,7 @@ def endung(name: str) -> str:
     return f".{rest.lower()}" if punkt and 1 <= len(rest) <= 5 else ""
 
 
-def version_ablegen(archiv: Path, bereich: str, name: str, inhalt: bytes,
+def version_ablegen(archiv: Path, area: str, name: str, inhalt: bytes,
                     heute: date) -> tuple[Path, bool]:
     """Eine Fassung ablegen — oder feststellen, dass sie schon da liegt.
 
@@ -118,7 +118,7 @@ def version_ablegen(archiv: Path, bereich: str, name: str, inhalt: bytes,
     und nicht an den Kopfzeilen der Gegenseite.
     """
     h = inhalts_hash(inhalt)
-    ordner = archiv / bereich / name
+    ordner = archiv / area / name
     for vorhanden in ordner.glob(f"*_{h}*"):
         if vorhanden.is_file():
             return vorhanden, False
@@ -156,7 +156,7 @@ def manifest_schreiben(archiv: Path, dateien: dict) -> None:
     ziel = archiv / "manifest.json"
     tmp = archiv / "manifest.json.tmp"
     tmp.write_text(json.dumps(
-        {"hinweis": "Erzeugt von scripts/archive_statistik.py — je Adresse die "
+        {"note": "Erzeugt von scripts/archive_statistik.py — je Adresse die "
                     "zuletzt gesehene Fassung. Die Dateien liegen daneben.",
          "dateien": dateien}, ensure_ascii=False, indent=1, sort_keys=True),
         encoding="utf-8")
@@ -165,7 +165,7 @@ def manifest_schreiben(archiv: Path, dateien: dict) -> None:
 
 # --- Lesen ------------------------------------------------------------------
 
-def fassungen(archiv: str | Path, bereich: str, name: str) -> list[Path]:
+def fassungen(archiv: str | Path, area: str, name: str) -> list[Path]:
     """Alle gesicherten Fassungen **einer** Adresse, älteste zuerst.
 
     Sortiert wird über den Dateinamen, und das genügt: Er beginnt mit dem
@@ -173,7 +173,7 @@ def fassungen(archiv: str | Path, bereich: str, name: str) -> list[Path]:
     sortiert. Kein ``mtime`` — der überlebt kein ``rsync`` und keine
     Wiederherstellung aus dem Backup.
     """
-    ordner = archivpfad(archiv) / bereich / name
+    ordner = archivpfad(archiv) / area / name
     if not ordner.is_dir():
         return []
     return sorted((p for p in ordner.iterdir()
@@ -181,13 +181,13 @@ def fassungen(archiv: str | Path, bereich: str, name: str) -> list[Path]:
                   key=lambda p: p.name)
 
 
-def neueste(archiv: str | Path, bereich: str, name: str) -> Path | None:
+def neueste(archiv: str | Path, area: str, name: str) -> Path | None:
     """Die zuletzt gesicherte Fassung einer Adresse, oder ``None``."""
-    alle = fassungen(archiv, bereich, name)
+    alle = fassungen(archiv, area, name)
     return alle[-1] if alle else None
 
 
-def neueste_je_datei(archiv: str | Path, bereich: str,
+def neueste_je_datei(archiv: str | Path, area: str,
                      muster: str) -> list[Path]:
     """Je passender Adresse ihre neueste Fassung — nach Dateiname sortiert.
 
@@ -205,14 +205,14 @@ def neueste_je_datei(archiv: str | Path, bereich: str,
     in dieser Reihenfolge zusammenlegt, lässt die jüngere Ausgabe gewinnen —
     und das ist richtig, denn sie trägt die revidierten Werte.
     """
-    wurzel = archivpfad(archiv) / bereich
+    wurzel = archivpfad(archiv) / area
     if not wurzel.is_dir():
         return []
     aus: list[Path] = []
     for ordner in sorted(wurzel.iterdir(), key=lambda p: p.name):
         if not ordner.is_dir() or not fnmatch.fnmatch(ordner.name, muster):
             continue
-        letzte = neueste(archiv, bereich, ordner.name)
+        letzte = neueste(archiv, area, ordner.name)
         if letzte is not None:
             aus.append(letzte)
     return aus

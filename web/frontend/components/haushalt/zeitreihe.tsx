@@ -29,7 +29,7 @@
 //
 // WAS „PLAN" HEISST, WECHSELT ÜBER DIE JAHRGÄNGE. Der Jahresabschluss misst
 // nicht überall gegen dieselbe Bezugsgröße (2018 Gesamtermächtigung, 2020
-// Ansatz einschließlich Nachtrag, sonst der nackte Ansatz — `plan_art`, #510).
+// Ansatz einschließlich Nachtrag, sonst der nackte Ansatz — `plan_kind`, #510).
 // Solche Jahre bekommen ein Sternchen an der Jahreszahl und eine Fußnote,
 // dieselbe Grammatik wie in `labor.tsx`.
 //
@@ -69,7 +69,7 @@ import {
   ErgebnisPosten, HaushaltAuswahl, PLAN_ART_LABEL, PlanArt,
   deMio, fehlendeJahre, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import {
   AbleseBeschreibung, AbleseFlaeche, AbleseMarke, AbleseStelle, AbleseWert,
   Ableseleiste, useAblesen,
@@ -77,7 +77,7 @@ import {
 
 // saldo aus den ROHWERTEN gerundet, nicht aus den gerundeten Mio. — sonst
 // driftet er um 0,1 (693,9 − 728,2 = −34,3, tatsächlich sind es −34,2).
-type Punkt = { jahr: number; ein: number; aus: number; saldo: number };
+type Punkt = { year: number; ein: number; aus: number; balance: number };
 /** Dasselbe Jahr, aber aus dem Jahresabschluss: ordentliche Erträge (Posten
  *  12) und Aufwendungen (20), wie sie tatsächlich angefallen sind. */
 type IstPunkt = Punkt & { planArt: PlanArt | null };
@@ -101,7 +101,7 @@ function breiteVon(el: HTMLElement | null): number | null {
   return w > 0 ? Math.max(w, 280) : null;
 }
 
-export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung" | "jahre"> }) {
+export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"income_statement" | "years"> }) {
   const aussen = useRef<HTMLDivElement>(null);
   const bildBox = useRef<HTMLDivElement>(null);
   // Startwerte klein: Der erste Frame läuft dann einspaltig durch, statt eine
@@ -112,8 +112,8 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
   useEffect(() => {
     const setzeWennGeaendert = (
-      wert: number | null, setter: (n: number) => void, alt: () => number,
-    ) => { if (wert != null && Math.abs(wert - alt()) > 0.5) setter(wert); };
+      value: number | null, setter: (n: number) => void, alt: () => number,
+    ) => { if (value != null && Math.abs(value - alt()) > 0.5) setter(value); };
     let letztesAussen = 0, letztesBild = 560;
     const pruefe = () => {
       setzeWennGeaendert(breiteVon(aussen.current), (n) => {
@@ -133,23 +133,23 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const breit = aussenBreite >= SCHWELLE_ZWEISPALTIG;
   const schmal = breite < SCHWELLE_SCHMAL;
   const fs = schmal
-    ? { achse: 13, jahr: 14, saldo: 12.5, legende: 13, marke: 12.5 }
-    : { achse: 11, jahr: 12, saldo: 11.5, legende: 12, marke: 12 };
+    ? { achse: 13, year: 14, balance: 12.5, legende: 13, mark: 12.5 }
+    : { achse: 11, year: 12, balance: 11.5, legende: 12, mark: 12 };
 
-  const jahre = jahreSortiert(daten);
-  const punkte: Punkt[] = jahre
-    .map((jahr) => {
-      const s = summe(daten.jahre[String(jahr)] ?? []);
-      const ein = mio(s?.ertraege), aus = mio(s?.aufwendungen);
-      const saldo = mio((s?.ertraege ?? 0) - (s?.aufwendungen ?? 0));
-      return ein != null && aus != null && saldo != null ? { jahr, ein, aus, saldo } : null;
+  const years = jahreSortiert(daten);
+  const punkte: Punkt[] = years
+    .map((year) => {
+      const s = summe(daten.years[String(year)] ?? []);
+      const ein = mio(s?.revenues), aus = mio(s?.expenses);
+      const balance = mio((s?.revenues ?? 0) - (s?.expenses ?? 0));
+      return ein != null && aus != null && balance != null ? { year, ein, aus, balance } : null;
     })
     .filter((p): p is Punkt => p !== null);
 
-  const luecken = punkte.length >= 2 ? fehlendeJahre(punkte.map((p) => p.jahr)) : [];
+  const luecken = punkte.length >= 2 ? fehlendeJahre(punkte.map((p) => p.year)) : [];
   const alleJahre: number[] = [];
   if (punkte.length >= 2) {
-    for (let y = punkte[0].jahr; y <= punkte[punkte.length - 1].jahr; y++) alleJahre.push(y);
+    for (let y = punkte[0].year; y <= punkte[punkte.length - 1].year; y++) alleJahre.push(y);
   }
   // Die beiden Ablese-Haken stehen VOR dem Ausstieg: Ein Hook hinter einem
   // `return` ist kein Hook mehr, sondern ein Absturz beim nächsten Render.
@@ -163,25 +163,25 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // Ebene trägt auch `council_haushalt` — nur so sind Plan und Ist auf
   // derselben Achse überhaupt vergleichbar. Jahrgänge, in denen ein Posten
   // fehlt, fallen ganz heraus statt halb gerechnet zu werden.
-  const abschluss = daten.ergebnisrechnung ?? [];
+  const abschluss = daten.income_statement ?? [];
   const istNach = new Map<number, IstPunkt>();
-  for (const jahr of alleJahre) {
-    const g = abschluss.filter((p) => p.jahr === jahr && p.thh_nr == null);
+  for (const year of alleJahre) {
+    const g = abschluss.filter((p) => p.year === year && p.sub_budget_no == null);
     const finde = (nr: number): ErgebnisPosten | undefined => g.find((p) => p.nr === nr);
     const e = finde(12), a = finde(20);
-    const ein = mio(e?.ergebnis), aus = mio(a?.ergebnis);
+    const ein = mio(e?.result), aus = mio(a?.result);
     if (ein == null || aus == null) continue;
-    const saldo = mio((e!.ergebnis as number) - (a!.ergebnis as number));
-    if (saldo == null) continue;
-    istNach.set(jahr, {
-      jahr, ein, aus, saldo,
-      planArt: (a?.plan_art ?? e?.plan_art ?? null) as PlanArt | null,
+    const balance = mio((e!.result as number) - (a!.result as number));
+    if (balance == null) continue;
+    istNach.set(year, {
+      year, ein, aus, balance,
+      planArt: (a?.plan_kind ?? e?.plan_kind ?? null) as PlanArt | null,
     });
   }
   const istPunkte = [...istNach.values()];
   // Jahrgänge, deren „geplant" im Abschluss nicht der nackte Ansatz ist.
-  const andererBezug = istPunkte.filter((p) => p.planArt != null && p.planArt !== "ansatz");
-  const bezugsJahre = new Set(andererBezug.map((p) => p.jahr));
+  const andererBezug = istPunkte.filter((p) => p.planArt != null && p.planArt !== "budget");
+  const bezugsJahre = new Set(andererBezug.map((p) => p.year));
 
   // --- Skala --------------------------------------------------------------
   // Ist-Werte zählen mit, sonst fielen ihre Rauten aus dem Bild.
@@ -207,8 +207,8 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const X0 = schmal ? 40 : 44;                       // links: Platz für „900"
   const reserve = Math.ceil(fs.legende * 5.5) + 12;  // rechts: „Ertrag" / „Aufwand"
   const XP = W - reserve;                            // letzter Datenpunkt
-  const x = (jahr: number) =>
-    X0 + 10 + ((jahr - alleJahre[0]) / Math.max(alleJahre.length - 1, 1)) * (XP - X0 - 10);
+  const x = (year: number) =>
+    X0 + 10 + ((year - alleJahre[0]) / Math.max(alleJahre.length - 1, 1)) * (XP - X0 - 10);
   const y = (v: number) => Y0 - ((v - lo) / Math.max(hi - lo, 1)) * (plotH - 14);
 
   const gitter: number[] = [];
@@ -223,24 +223,24 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // Segmente: an jeder Lücke neu ansetzen (Konvention: kein Durchziehen).
   const segmente: Punkt[][] = [];
   let akt: Punkt[] = [];
-  for (const jahr of alleJahre) {
-    const p = punkte.find((q) => q.jahr === jahr);
+  for (const year of alleJahre) {
+    const p = punkte.find((q) => q.year === year);
     if (p) akt.push(p);
     else if (akt.length) { segmente.push(akt); akt = []; }
   }
   if (akt.length) segmente.push(akt);
 
   const pfad = (seg: Punkt[], key: "ein" | "aus") =>
-    seg.map((p, i) => `${i ? "L" : "M"}${x(p.jahr)} ${y(p[key])}`).join(" ");
+    seg.map((p, i) => `${i ? "L" : "M"}${x(p.year)} ${y(p[key])}`).join(" ");
   // Die Fläche wird PRO SEGMENT geschlossen. Eine durchgehende Fläche über
   // einer fehlenden Jahresscheibe interpolierte optisch — genau das, was die
   // Lücken-Konvention verhindert.
   const flaeche = (seg: Punkt[]) =>
-    `${pfad(seg, "ein")} ${[...seg].reverse().map((p) => `L${x(p.jahr)} ${y(p.aus)}`).join(" ")} Z`;
+    `${pfad(seg, "ein")} ${[...seg].reverse().map((p) => `L${x(p.year)} ${y(p.aus)}`).join(" ")} Z`;
 
   const erster = punkte[0];
   const letzter = punkte[punkte.length - 1];
-  const groessteLuecke = punkte.reduce((best, p) => (p.saldo < best.saldo ? p : best), punkte[0]);
+  const groessteLuecke = punkte.reduce((best, p) => (p.balance < best.balance ? p : best), punkte[0]);
   const letzterIst = istPunkte.length ? istPunkte[istPunkte.length - 1] : null;
 
   // Ab welchem Jahr durchgängig ein Minus geplant ist — die Überschrift wird
@@ -248,11 +248,11 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // still falsch (Hausregel: keine jahresabhängige Rechenaussage als Text).
   let seit: number | null = null;
   for (let i = punkte.length - 1; i >= 0; i--) {
-    if (punkte[i].saldo < 0) seit = punkte[i].jahr; else break;
+    if (punkte[i].balance < 0) seit = punkte[i].year; else break;
   }
-  const titel = seit == null
+  const title = seit == null
     ? `Geplante Einnahmen und Ausgaben ${alleJahre[0]} bis ${alleJahre[alleJahre.length - 1]}`
-    : seit === erster.jahr
+    : seit === erster.year
       ? `In allen ${punkte.length} Jahren plant Oldenburg mit mehr Ausgaben als Einnahmen`
       // „plant", nicht „gibt aus": Für die Jahre mit Abschluss sagen die Daten
       // das Gegenteil. Der Unterschied ist der ganze Punkt dieser Grafik.
@@ -264,7 +264,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // kennen — und im Bild steht an derselben Stelle „DATEN FEHLEN"
   // (aufgefallen im Lückentest, 16.08.).
   const letztesPlus = seit == null ? null
-    : punkte.filter((p) => p.jahr < seit && p.saldo >= 0).pop() ?? null;
+    : punkte.filter((p) => p.year < seit && p.balance >= 0).pop() ?? null;
 
   const wachstum = (a: number, b: number) => (a > 0 ? Math.round((b / a - 1) * 100) : null);
   const wachsAus = wachstum(erster.aus, letzter.aus);
@@ -280,30 +280,30 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   const tabelleOffen = tabelleGeschaltet ?? false;
 
   // --- Was die Ableseleiste je Jahr zeigt ---------------------------------
-  const stellen: AbleseStelle[] = alleJahre.map((jahr) => {
-    const p = punkte.find((q) => q.jahr === jahr);
-    const ist = istNach.get(jahr);
+  const stellen: AbleseStelle[] = alleJahre.map((year) => {
+    const p = punkte.find((q) => q.year === year);
+    const ist = istNach.get(year);
     const werte: AbleseWert[] = [
-      { label: "Erträge", wert: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
-      { label: "Aufwand", wert: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
-      { label: "Plan-Saldo", wert: p ? vorzeichen(p.saldo) : "—", signal: !!p && p.saldo < 0 },
+      { label: "Erträge", value: p ? deMio(p.ein) : "—", farbe: "var(--hh-ein-0)" },
+      { label: "Aufwand", value: p ? deMio(p.aus) : "—", farbe: "var(--hh-aus-0)" },
+      { label: "Plan-Saldo", value: p ? vorzeichen(p.balance) : "—", signal: !!p && p.balance < 0 },
     ];
     if (istPunkte.length) {
-      werte.push({ label: "Ist-Saldo", wert: ist ? vorzeichen(ist.saldo) : "—" });
+      werte.push({ label: "Ist-Saldo", value: ist ? vorzeichen(ist.balance) : "—" });
     }
     const vorlesen = p
       ? [
-          `${jahr}: geplant ${deMio(p.ein)} Millionen Euro Einnahmen,`,
+          `${year}: geplant ${deMio(p.ein)} Millionen Euro Einnahmen,`,
           `${deMio(p.aus)} Millionen Euro Ausgaben,`,
-          `Geplantes Ergebnis: ${alsSatz(p.saldo)}.`,
-          ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.saldo)}.` : "Noch kein Jahresabschluss.",
+          `Geplantes Ergebnis: ${alsSatz(p.balance)}.`,
+          ist ? `Tatsächlich laut Jahresabschluss ${alsSatz(ist.balance)}.` : "Noch kein Jahresabschluss.",
         ].join(" ")
-      : `${jahr}: keine Daten.`;
-    return { titel: String(jahr) + (bezugsJahre.has(jahr) ? "*" : ""), werte, vorlesen };
+      : `${year}: keine Daten.`;
+    return { title: String(year) + (bezugsJahre.has(year) ? "*" : ""), werte, vorlesen };
   });
   // Ringe an den Punkten des abgelesenen Jahres — sehen und lesen am selben Ort.
   const ableseMarken = (i: number): AbleseMarke[] => {
-    const p = punkte.find((q) => q.jahr === alleJahre[i]);
+    const p = punkte.find((q) => q.year === alleJahre[i]);
     return p
       ? [{ y: y(p.ein), farbe: "var(--hh-ein-0)" }, { y: y(p.aus), farbe: "var(--hh-aus-0)" }]
       : [];
@@ -311,10 +311,10 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
   const beschreibung = [
     `Geplante Einnahmen und Ausgaben ${alleJahre[0]} bis ${alleJahre[alleJahre.length - 1]} in Mio. Euro.`,
-    punkte.map((p) => `${p.jahr}: ${deMio(p.ein)} zu ${deMio(p.aus)}`).join(", "),
+    punkte.map((p) => `${p.year}: ${deMio(p.ein)} zu ${deMio(p.aus)}`).join(", "),
     luecken.length ? `${luecken.join(", ")}: keine Daten.` : "",
     istPunkte.length
-      ? `Tatsächlich laut Jahresabschluss: ${istPunkte.map((p) => `${p.jahr}: ${deMio(p.ein)} zu ${deMio(p.aus)}`).join(", ")}.`
+      ? `Tatsächlich laut Jahresabschluss: ${istPunkte.map((p) => `${p.year}: ${deMio(p.ein)} zu ${deMio(p.aus)}`).join(", ")}.`
       : "",
   ].filter(Boolean).join(" ");
 
@@ -325,10 +325,10 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
   // Karte war unten zu zwei Dritteln leer (gemessen 16.08.: 1030 px Karte für
   // 430 px Bild). Unter dem Bild hat die Tabelle außerdem die Breite, die eine
   // fünfspaltige Zahlentafel braucht.
-  const kennzahl = wachsAus != null && wachsEin != null && (
+  const indicator = wachsAus != null && wachsEin != null && (
         <div className="rounded-xl bg-muted/45 p-3.5">
           <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Von {erster.jahr} bis {letzter.jahr}
+            Von {erster.year} bis {letzter.year}
           </p>
           <p className="mt-1.5 font-display text-[34px] font-bold leading-none tracking-tight tabular-nums">
             {wachsAus > 0 ? "+" : ""}{wachsAus}&#8239;%
@@ -341,7 +341,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           {/* Ohne diesen Absatz liest sich „+52 %" als Zuwachs an Spielraum. */}
           <p className="mt-2 text-[11.5px] leading-relaxed text-muted-foreground">
             Die Beträge sind nicht inflationsbereinigt. Preissteigerungen und
-            Tarifabschlüsse sind also im Anstieg enthalten. Die Reihe beginnt {erster.jahr},
+            Tarifabschlüsse sind also im Anstieg enthalten. Die Reihe beginnt {erster.year},
             weil unsere auswertbaren Daten dort beginnen — nicht, weil der Haushalt der
             Stadt erst seitdem existiert.
           </p>
@@ -367,26 +367,26 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 {k}
               </span>
             ))}
-            {alleJahre.map((jahr) => {
-              const p = punkte.find((q) => q.jahr === jahr);
-              const ist = istNach.get(jahr);
+            {alleJahre.map((year) => {
+              const p = punkte.find((q) => q.year === year);
+              const ist = istNach.get(year);
               const rand = "border-t border-border/60 py-1";
               return (
-                <div key={jahr} className="contents">
+                <div key={year} className="contents">
                   <span className={`${rand} ${p ? "" : "text-signal"}`}>
-                    {jahr}{bezugsJahre.has(jahr) ? "*" : ""}
+                    {year}{bezugsJahre.has(year) ? "*" : ""}
                   </span>
                   <span className={`${rand} text-right`} title={p ? undefined : "nicht auslesbar"}>{p ? deMio(p.ein) : "—"}</span>
                   <span className={`${rand} text-right`}>{p ? deMio(p.aus) : "—"}</span>
                   {/* Minus in Signal-Orange (= „hier ist die Differenz"), Plus
                       neutral. Grün stünde für „gut" — eine Bewertung, die im
                       Haushalts-Bereich nirgends vorkommt. */}
-                  <span className={`${rand} text-right ${(p?.saldo ?? 0) < 0 ? "text-signal" : ""}`}>
-                    {p ? vorzeichen(p.saldo) : "—"}
+                  <span className={`${rand} text-right ${(p?.balance ?? 0) < 0 ? "text-signal" : ""}`}>
+                    {p ? vorzeichen(p.balance) : "—"}
                   </span>
                   {istPunkte.length > 0 && (
                     <span className={`${rand} text-right ${ist ? "font-semibold" : "text-muted-foreground"}`}>
-                      {ist ? vorzeichen(ist.saldo) : "—"}
+                      {ist ? vorzeichen(ist.balance) : "—"}
                     </span>
                   )}
                 </div>
@@ -404,7 +404,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
       </div>
   );
 
-  const hinweis = (
+  const note = (
       <div className="rounded-xl border border-dashed border-border p-3.5">
         <p className="text-[12px] leading-relaxed text-muted-foreground">
           <strong className="text-foreground">Plan und Ergebnis sind nicht dasselbe:</strong>{" "}
@@ -412,9 +412,9 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           <Beleg q="plan" />. Rauten markieren die tatsächlichen Werte aus den
           Jahresabschlüssen.{" "}
           {letzterIst ? (
-            <>Für {letzterIst.jahr} sah der Plan{" "}
-            {alsSatz(punkte.find((p) => p.jahr === letzterIst.jahr)?.saldo ?? 0)} vor.
-            Der Jahresabschluss weist dagegen {alsSatz(letzterIst.saldo)} aus.</>
+            <>Für {letzterIst.year} sah der Plan{" "}
+            {alsSatz(punkte.find((p) => p.year === letzterIst.year)?.balance ?? 0)} vor.
+            Der Jahresabschluss weist dagegen {alsSatz(letzterIst.balance)} aus.</>
           ) : (
             <>Was am Jahresende tatsächlich herauskam, steht im Jahresabschluss.</>
           )}{" "}
@@ -426,7 +426,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
         </p>
         {andererBezug.length > 0 && (
           <p className="mt-2 border-t border-dashed border-border pt-2 text-[11px] leading-relaxed text-muted-foreground">
-            * Für {andererBezug.map((p) => p.jahr).join(" und ")} misst der Jahresabschluss
+            * Für {andererBezug.map((p) => p.year).join(" und ")} misst der Jahresabschluss
             nicht gegen den ursprünglichen Ansatz, sondern gegen den fortgeschriebenen Plan
             ({[...new Set(andererBezug.map((p) => PLAN_ART_LABEL[p.planArt as PlanArt]))].join(", ")}).
             Die Bezugsgröße ist dort also eine andere als in den übrigen Jahren.
@@ -450,22 +450,22 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           {/* h2 wie die übrigen Blöcke der Seite (Datenstand, Quellen): Die
               Seite hat genau ein h1, darunter je Block eine zweite Ebene. */}
           <h2 className="mt-1 font-display text-[19px] font-bold leading-snug tracking-tight sm:text-[21px]">
-            {titel}
+            {title}
           </h2>
           <p className="mt-1.5 max-w-[74ch] text-sm leading-relaxed text-foreground/90">
             {letztesPlus && (
-              <>Bis {letztesPlus.jahr} sahen die Haushaltspläne einen Überschuss vor.{" "}</>
+              <>Bis {letztesPlus.year} sahen die Haushaltspläne einen Überschuss vor.{" "}</>
             )}
-            {groessteLuecke.saldo < 0 ? (
-              <>Die größte geplante Lücke zeigt {groessteLuecke.jahr}: Die Ausgaben liegen
-              <strong> {deMio(-groessteLuecke.saldo)}&#8239;Mio.&nbsp;€</strong> über den
+            {groessteLuecke.balance < 0 ? (
+              <>Die größte geplante Lücke zeigt {groessteLuecke.year}: Die Ausgaben liegen
+              <strong> {deMio(-groessteLuecke.balance)}&#8239;Mio.&nbsp;€</strong> über den
               Einnahmen<Beleg q="plan" />.</>
             ) : (
               <>In keinem Jahr der Reihe liegen die geplanten Ausgaben über den Einnahmen<Beleg q="plan" />.</>
             )}
             {letzterIst && (
-              <> Der Jahresabschluss {letzterIst.jahr} weist tatsächlich
-              {" "}{alsSatz(letzterIst.saldo)} aus<Beleg q="jahresabschluss" />.</>
+              <> Der Jahresabschluss {letzterIst.year} weist tatsächlich
+              {" "}{alsSatz(letzterIst.balance)} aus<Beleg q="jahresabschluss" />.</>
             )}
           </p>
 
@@ -476,7 +476,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 daneben als sr-only-Absatz. */}
             <AbleseBeschreibung id={beschreibungId}>{beschreibung}</AbleseBeschreibung>
             <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="group"
-              aria-label={titel} aria-describedby={beschreibungId}>
+              aria-label={title} aria-describedby={beschreibungId}>
               {gitter.map((v) => (
                 <g key={v}>
                   <line x1={X0} y1={y(v)} x2={W - 2} y2={y(v)} className="stroke-border/60" />
@@ -490,17 +490,17 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
               <line x1={X0} y1={Y0} x2={W - 2} y2={Y0} className="stroke-border" />
 
               {/* Lücken-Kästen */}
-              {luecken.map((jahr) => {
-                const xl = x(jahr) - halbeLuecke, xr = x(jahr) + halbeLuecke;
+              {luecken.map((year) => {
+                const xl = x(year) - halbeLuecke, xr = x(year) + halbeLuecke;
                 return (
-                  <g key={jahr}>
+                  <g key={year}>
                     <foreignObject x={xl} y={YTOP - 2} width={xr - xl} height={Y0 - YTOP + 2}>
                       <div className="hh-schraffur h-full w-full opacity-60" />
                     </foreignObject>
                     <rect x={xl} y={YTOP - 2} width={xr - xl} height={Y0 - YTOP + 2} fill="none"
                       strokeDasharray="4 3" className="stroke-signal" />
-                    <text x={x(jahr)} y={(Y0 + YTOP) / 2} textAnchor="middle" fontSize={10} className="fill-signal font-mono">DATEN</text>
-                    <text x={x(jahr)} y={(Y0 + YTOP) / 2 + 13} textAnchor="middle" fontSize={10} className="fill-signal font-mono">FEHLEN</text>
+                    <text x={x(year)} y={(Y0 + YTOP) / 2} textAnchor="middle" fontSize={10} className="fill-signal font-mono">DATEN</text>
+                    <text x={x(year)} y={(Y0 + YTOP) / 2 + 13} textAnchor="middle" fontSize={10} className="fill-signal font-mono">FEHLEN</text>
                   </g>
                 );
               })}
@@ -513,10 +513,10 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 <path key={`fl-${i}`} d={flaeche(seg)} className="fill-signal" opacity={0.14} />
               ))}
               {punkte.map((p) => (
-                <line key={`st-${p.jahr}`} x1={x(p.jahr)} y1={y(p.ein)} x2={x(p.jahr)} y2={y(p.aus)}
+                <line key={`st-${p.year}`} x1={x(p.year)} y1={y(p.ein)} x2={x(p.year)} y2={y(p.aus)}
                   className="stroke-signal" strokeLinecap="round"
-                  strokeWidth={p.jahr === groessteLuecke.jahr ? 3 : 2}
-                  opacity={p.jahr === groessteLuecke.jahr ? 0.95 : 0.6} />
+                  strokeWidth={p.year === groessteLuecke.year ? 3 : 2}
+                  opacity={p.year === groessteLuecke.year ? 0.95 : 0.6} />
               ))}
 
               {/* Linien: Ausgaben (Schiefer) über Einnahmen (Hafenblau) */}
@@ -527,18 +527,18 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 </g>
               ))}
               {/* Gepunktete Stummel zu beiden Seiten jeder Lücke */}
-              {luecken.map((jahr) => {
-                const vor = punkte.filter((p) => p.jahr < jahr).pop();
-                const nach = punkte.find((p) => p.jahr > jahr);
+              {luecken.map((year) => {
+                const vor = punkte.filter((p) => p.year < year).pop();
+                const nach = punkte.find((p) => p.year > year);
                 return (
-                  <g key={`stu-${jahr}`} strokeWidth={2.5} strokeDasharray="1 5" strokeLinecap="round" opacity={0.45} fill="none">
+                  <g key={`stu-${year}`} strokeWidth={2.5} strokeDasharray="1 5" strokeLinecap="round" opacity={0.45} fill="none">
                     {vor && <>
-                      <path d={`M${x(vor.jahr)} ${y(vor.aus)} L${x(jahr) - halbeLuecke} ${y(vor.aus)}`} style={{ stroke: "var(--hh-aus-0)" }} />
-                      <path d={`M${x(vor.jahr)} ${y(vor.ein)} L${x(jahr) - halbeLuecke} ${y(vor.ein)}`} style={{ stroke: "var(--hh-ein-0)" }} />
+                      <path d={`M${x(vor.year)} ${y(vor.aus)} L${x(year) - halbeLuecke} ${y(vor.aus)}`} style={{ stroke: "var(--hh-aus-0)" }} />
+                      <path d={`M${x(vor.year)} ${y(vor.ein)} L${x(year) - halbeLuecke} ${y(vor.ein)}`} style={{ stroke: "var(--hh-ein-0)" }} />
                     </>}
                     {nach && <>
-                      <path d={`M${x(jahr) + halbeLuecke} ${y(nach.aus)} L${x(nach.jahr)} ${y(nach.aus)}`} style={{ stroke: "var(--hh-aus-0)" }} />
-                      <path d={`M${x(jahr) + halbeLuecke} ${y(nach.ein)} L${x(nach.jahr)} ${y(nach.ein)}`} style={{ stroke: "var(--hh-ein-0)" }} />
+                      <path d={`M${x(year) + halbeLuecke} ${y(nach.aus)} L${x(nach.year)} ${y(nach.aus)}`} style={{ stroke: "var(--hh-aus-0)" }} />
+                      <path d={`M${x(year) + halbeLuecke} ${y(nach.ein)} L${x(nach.year)} ${y(nach.ein)}`} style={{ stroke: "var(--hh-ein-0)" }} />
                     </>}
                   </g>
                 );
@@ -549,7 +549,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                   so bleibt Plan und Ist auch im Graustufendruck und im
                   Dunkelmodus unterscheidbar. */}
               {istPunkte.map((ist) => {
-                const p = punkte.find((q) => q.jahr === ist.jahr);
+                const p = punkte.find((q) => q.year === ist.year);
                 // Fehlt der Plan des Jahres, steht an dieser Stelle der Kasten
                 // „DATEN FEHLEN" — eine Raute mittendrin läse sich als
                 // Widerspruch. Die Tabelle zeigt den Abschluss trotzdem: Er
@@ -559,16 +559,16 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 if (!p) return null;
                 const raute = (cy: number, farbe: string) => {
                   const r = 4.6;
-                  return <path d={`M${x(ist.jahr)} ${cy - r} L${x(ist.jahr) + r} ${cy} L${x(ist.jahr)} ${cy + r} L${x(ist.jahr) - r} ${cy} Z`}
+                  return <path d={`M${x(ist.year)} ${cy - r} L${x(ist.year) + r} ${cy} L${x(ist.year)} ${cy + r} L${x(ist.year) - r} ${cy} Z`}
                     className="fill-card" strokeWidth={1.9} style={{ stroke: farbe }} />;
                 };
                 const strecke = (von: number, bis: number, farbe: string) =>
                   Math.abs(von - bis) > 5 ? (
-                    <line x1={x(ist.jahr)} y1={von} x2={x(ist.jahr)} y2={bis} strokeWidth={1.4}
+                    <line x1={x(ist.year)} y1={von} x2={x(ist.year)} y2={bis} strokeWidth={1.4}
                       strokeDasharray="2 2.5" opacity={0.8} style={{ stroke: farbe }} />
                   ) : null;
                 return (
-                  <g key={`ist-${ist.jahr}`}>
+                  <g key={`ist-${ist.year}`}>
                     {strecke(y(p.aus), y(ist.aus), "var(--hh-aus-0)")}
                     {strecke(y(p.ein), y(ist.ein), "var(--hh-ein-0)")}
                     {raute(y(ist.aus), "var(--hh-aus-0)")}
@@ -579,18 +579,18 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
               {/* Plan-Punkte; letztes Jahr gefüllt */}
               {punkte.map((p) => (
-                <g key={p.jahr}>
-                  <circle cx={x(p.jahr)} cy={y(p.ein)} r={p.jahr === letzter.jahr ? 5 : 3.5}
-                    className={p.jahr === letzter.jahr ? "" : "fill-card"} strokeWidth={2}
-                    style={{ stroke: "var(--hh-ein-0)", fill: p.jahr === letzter.jahr ? "var(--hh-ein-0)" : undefined }} />
-                  <circle cx={x(p.jahr)} cy={y(p.aus)} r={p.jahr === letzter.jahr ? 5 : 3.5}
-                    className={p.jahr === letzter.jahr ? "" : "fill-card"} strokeWidth={2}
-                    style={{ stroke: "var(--hh-aus-0)", fill: p.jahr === letzter.jahr ? "var(--hh-aus-0)" : undefined }} />
+                <g key={p.year}>
+                  <circle cx={x(p.year)} cy={y(p.ein)} r={p.year === letzter.year ? 5 : 3.5}
+                    className={p.year === letzter.year ? "" : "fill-card"} strokeWidth={2}
+                    style={{ stroke: "var(--hh-ein-0)", fill: p.year === letzter.year ? "var(--hh-ein-0)" : undefined }} />
+                  <circle cx={x(p.year)} cy={y(p.aus)} r={p.year === letzter.year ? 5 : 3.5}
+                    className={p.year === letzter.year ? "" : "fill-card"} strokeWidth={2}
+                    style={{ stroke: "var(--hh-aus-0)", fill: p.year === letzter.year ? "var(--hh-aus-0)" : undefined }} />
                 </g>
               ))}
-              <text x={x(letzter.jahr) + 9} y={y(letzter.ein) + 4} fontSize={fs.legende} fontWeight={600}
+              <text x={x(letzter.year) + 9} y={y(letzter.ein) + 4} fontSize={fs.legende} fontWeight={600}
                 className="stroke-card" {...halo} style={{ fill: "var(--hh-ein-0)" }}>Ertrag</text>
-              <text x={x(letzter.jahr) + 9} y={y(letzter.aus) + 4} fontSize={fs.legende} fontWeight={600}
+              <text x={x(letzter.year) + 9} y={y(letzter.aus) + 4} fontSize={fs.legende} fontWeight={600}
                 className="stroke-card" {...halo} style={{ fill: "var(--hh-aus-0)" }}>Aufwand</text>
 
               {/* Der größte Abstand trägt seinen Betrag im Bild — der Sinn der
@@ -601,34 +601,34 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
                 const g = groessteLuecke;
                 const hoehe = Math.abs(y(g.ein) - y(g.aus));
                 if (hoehe < 22) return null;
-                const rechts = x(g.jahr) < (X0 + XP) / 2;
+                const rechts = x(g.year) < (X0 + XP) / 2;
                 return (
-                  <text x={x(g.jahr) + (rechts ? 8 : -8)} y={(y(g.ein) + y(g.aus)) / 2 + fs.marke / 3}
-                    textAnchor={rechts ? "start" : "end"} fontSize={fs.marke} fontWeight={700}
+                  <text x={x(g.year) + (rechts ? 8 : -8)} y={(y(g.ein) + y(g.aus)) / 2 + fs.mark / 3}
+                    textAnchor={rechts ? "start" : "end"} fontSize={fs.mark} fontWeight={700}
                     className="fill-signal stroke-card" {...halo}>
-                    {vorzeichen(g.saldo)}
+                    {vorzeichen(g.balance)}
                   </text>
                 );
               })()}
 
               {/* Jahres-Achse + Ergebniszeile (der Betrag direkt unter seiner Strebe) */}
-              {alleJahre.map((jahr, idx) => {
-                const p = punkte.find((q) => q.jahr === jahr);
+              {alleJahre.map((year, idx) => {
+                const p = punkte.find((q) => q.year === year);
                 const fehlt = !p;
                 // Schmal: nur jedes zweite Jahr plus das letzte — sonst kleben
                 // die Beschriftungen aneinander, sobald die Schrift lesbar ist.
                 const zeigen = !schmal || idx % 2 === 0 || idx === alleJahre.length - 1;
                 if (!zeigen) return null;
                 return (
-                  <g key={`ax-${jahr}`} textAnchor="middle">
-                    <text x={x(jahr)} y={yJahr} fontSize={fs.jahr}
-                      className={fehlt ? "fill-signal font-mono" : jahr === letzter.jahr ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
-                      {jahr}{bezugsJahre.has(jahr) ? "*" : ""}
+                  <g key={`ax-${year}`} textAnchor="middle">
+                    <text x={x(year)} y={yJahr} fontSize={fs.year}
+                      className={fehlt ? "fill-signal font-mono" : year === letzter.year ? "fill-foreground font-mono" : "fill-muted-foreground font-mono"}>
+                      {year}{bezugsJahre.has(year) ? "*" : ""}
                     </text>
-                    <text x={x(jahr)} y={ySaldo} fontSize={fs.saldo}
-                      className={fehlt || (p?.saldo ?? 0) < 0 ? "fill-signal" : "fill-muted-foreground"}
-                      fontWeight={jahr === letzter.jahr ? 600 : 400}>
-                      {fehlt ? "?" : vorzeichen(p!.saldo)}
+                    <text x={x(year)} y={ySaldo} fontSize={fs.balance}
+                      className={fehlt || (p?.balance ?? 0) < 0 ? "fill-signal" : "fill-muted-foreground"}
+                      fontWeight={year === letzter.year ? 600 : 400}>
+                      {fehlt ? "?" : vorzeichen(p!.balance)}
                     </text>
                   </g>
                 );
@@ -648,7 +648,7 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
           </div>
 
           <Ableseleiste className="mt-2" stelle={stellen[ablesen.aktiv]} steuerung={ablesen}
-            hinweis="Mio. € · Jahr mit Maus, Fingertipp oder Pfeiltasten auswählen." />
+            note="Mio. € · Jahr mit Maus, Fingertipp oder Pfeiltasten auswählen." />
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2">
             <span className="inline-flex items-center gap-1.5 text-[11.5px] text-foreground/80">
@@ -680,9 +680,9 @@ export function Zeitreihe({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"
 
         <div className={breit ? "flex flex-none flex-col gap-3" : "flex flex-col gap-3"}
           style={breit ? { width: SEITE_BREITE } : undefined}>
-          {kennzahl}
+          {indicator}
           {!breit && tabelle}
-          {hinweis}
+          {note}
         </div>
       </div>
     </div>

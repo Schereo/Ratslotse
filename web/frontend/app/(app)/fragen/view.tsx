@@ -19,14 +19,14 @@ import { QaTab } from "@/components/council-qa";
  *  ein Handy quer (844 px) fiel schon vorher stillschweigend hinein. */
 function GespraecheHeaderButton() {
   const [sichtbar, setSichtbar] = useState(false);
-  const [titel, setTitel] = useState<string | null>(null);
-  const [anzahl, setAnzahl] = useState(0);
+  const [title, setTitel] = useState<string | null>(null);
+  const [count, setAnzahl] = useState(0);
   useEffect(() => {
     const auf = (e: Event) => {
       const d = (e as CustomEvent).detail ?? {};
       setSichtbar(!!d.sichtbar);
-      setTitel(typeof d.titel === "string" && d.titel.trim() ? d.titel.trim() : null);
-      setAnzahl(typeof d.anzahl === "number" ? d.anzahl : 0);
+      setTitel(typeof d.title === "string" && d.title.trim() ? d.title.trim() : null);
+      setAnzahl(typeof d.count === "number" ? d.count : 0);
     };
     window.addEventListener("rl:gespraeche-status", auf);
     return () => window.removeEventListener("rl:gespraeche-status", auf);
@@ -37,7 +37,7 @@ function GespraecheHeaderButton() {
       type="button"
       onClick={() => window.dispatchEvent(new CustomEvent("rl:gespraeche-oeffnen"))}
       aria-label="Meine Gespräche öffnen"
-      title={titel ? `Gespräch: ${titel}` : "Meine Gespräche"}
+      title={title ? `Gespräch: ${title}` : "Meine Gespräche"}
       className="inline-flex h-10 max-w-[56vw] items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-foreground shadow-sm transition-colors active:bg-muted desk:hidden"
     >
       <History className="h-[15px] w-[15px] shrink-0 text-primary" aria-hidden />
@@ -45,11 +45,11 @@ function GespraecheHeaderButton() {
           war der Grund, warum niemand den Verlauf fand. V-03 bleibt: Im
           aktiven Gespräch steht dessen Titel drin, sonst „Gespräche". */}
       <span className="truncate text-[13.5px] font-semibold">
-        {titel ?? "Gespräche"}
+        {title ?? "Gespräche"}
       </span>
-      {anzahl > 0 && (
+      {count > 0 && (
         <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[11.5px] font-bold text-primary">
-          {anzahl}
+          {count}
         </span>
       )}
     </button>

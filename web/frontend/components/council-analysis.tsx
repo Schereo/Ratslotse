@@ -118,14 +118,14 @@ function SuccessRates({ a }: { a: PartyAnalysis }) {
   return (
     <div className="space-y-2.5">
       {a.success_rates.map((r) => {
-        const dec = r.angenommen + r.abgelehnt + r.vertagt || 1;
+        const dec = r.accepted + r.rejected + r.postponed || 1;
         return (
           <div key={r.party} className="flex items-center gap-3">
             <div className="w-24 shrink-0 sm:w-32"><PartyBadge party={r.party} /></div>
             <div className="flex h-5 flex-1 overflow-hidden rounded bg-muted">
-              <div className="bg-green-500/80" style={{ width: `${(r.angenommen / dec) * 100}%` }} />
-              <div className="bg-red-500/80" style={{ width: `${(r.abgelehnt / dec) * 100}%` }} />
-              <div className="bg-amber-500/80" style={{ width: `${(r.vertagt / dec) * 100}%` }} />
+              <div className="bg-green-500/80" style={{ width: `${(r.accepted / dec) * 100}%` }} />
+              <div className="bg-red-500/80" style={{ width: `${(r.rejected / dec) * 100}%` }} />
+              <div className="bg-amber-500/80" style={{ width: `${(r.postponed / dec) * 100}%` }} />
             </div>
             <div className="w-24 shrink-0 text-right text-xs text-muted-foreground">
               {r.rate != null ? `${Math.round(r.rate * 100)}% ang.` : "—"} · {r.motions}
@@ -154,11 +154,11 @@ function AntragSuccessRates({ a }: { a: PartyAnalysis }) {
         <div key={r.party} className="flex items-center gap-3">
           <div className="w-24 shrink-0 sm:w-32"><PartyBadge party={r.party} /></div>
           <div className="flex h-5 flex-1 overflow-hidden rounded bg-muted">
-            <div className="bg-green-500/80" style={{ width: `${(r.angenommen / r.n) * 100}%` }} />
-            <div className="bg-red-500/80" style={{ width: `${(r.abgelehnt / r.n) * 100}%` }} />
+            <div className="bg-green-500/80" style={{ width: `${(r.accepted / r.n) * 100}%` }} />
+            <div className="bg-red-500/80" style={{ width: `${(r.rejected / r.n) * 100}%` }} />
           </div>
           <div className="w-24 shrink-0 text-right text-xs text-muted-foreground">
-            {Math.round((r.angenommen / r.n) * 100)}% ang. · {r.n}
+            {Math.round((r.accepted / r.n) * 100)}% ang. · {r.n}
           </div>
         </div>
       ))}
@@ -369,12 +369,12 @@ function FinanceView() {
   );
 }
 
-type AnalysisSub = "parteien" | "finanzen" | "trends" | "ziele" | "personen";
+type AnalysisSub = "parties" | "finanzen" | "trends" | "ziele" | "personen";
 // Trends zuerst und als Default: Rückblicke + Quartals-Trends sind der
 // zugänglichste Einstieg in die Analyse — Parteien/Personen sind die Vertiefung.
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["trends", "Trends", TrendingUp],
-  ["parteien", "Parteien", Users],
+  ["parties", "Parteien", Users],
   ["personen", "Personen", User],
   ["finanzen", "Finanzen", Euro],
   ["ziele", "Ziele", Target],
@@ -384,7 +384,7 @@ export function AnalysisTab() {
   const sp = useSearchParams();
   const router = useRouter();
   const raw = sp.get("sub");
-  const sub: AnalysisSub = raw === "finanzen" || raw === "parteien" || raw === "ziele" || raw === "personen" ? raw : "trends";
+  const sub: AnalysisSub = raw === "finanzen" || raw === "parties" || raw === "ziele" || raw === "personen" ? raw : "trends";
   const setSub = (s: AnalysisSub) => {
     const params = new URLSearchParams(sp.toString());
     params.set("tab", "analysis");
@@ -400,7 +400,7 @@ export function AnalysisTab() {
         onChange={setSub}
         options={SUB_TABS.map(([s, lbl, Icon]) => ({ value: s, label: lbl, icon: Icon }))}
       />
-      {sub === "parteien" ? <PartiesView /> : sub === "personen" ? <PersonenView />
+      {sub === "parties" ? <PartiesView /> : sub === "personen" ? <PersonenView />
         : sub === "finanzen" ? <FinanceView /> : sub === "trends" ? <TrendsView /> : <GoalsView />}
     </div>
   );

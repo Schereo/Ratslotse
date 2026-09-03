@@ -15,7 +15,7 @@ die und schickt jede Seite als Bild an ein Sehmodell (``council/ocr.py``).
     python scripts/backfill_anlagen_ocr.py --document-id 193959 --max-seiten 2
 
 DER GELESENE TEXT IST GANZ NORMALER ANLAGENTEXT. Der Lauf setzt
-``status='ok'`` und vermerkt in ``ocr_modell``, welches Sehmodell ihn gelesen
+``status='ok'`` und vermerkt in ``ocr_model``, welches Sehmodell ihn gelesen
 hat. Ein gescannter Wirtschaftsplan ist damit so durchsuchbar wie ein
 getippter — alles andere wäre eine Sperre gegen die Herkunft des Textes und
 nicht gegen das, was darin steht.
@@ -59,7 +59,6 @@ from council.store import CouncilStore  # noqa: E402
 # genau das vorgeführt: sechs Anlagen geladen, zwei mit 403 abgewiesen — und
 # eine davon war der AWB-Wirtschaftsplan 2020, also ein ganzer Jahrgang.
 from council.vorlagen import _session  # noqa: E402
-from scripts.backfill_anlagen_texte import finanz_muster  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
@@ -102,10 +101,11 @@ def kandidaten(store: CouncilStore, nur_finanz: bool, document_id: int | None,
               "AND url IS NOT NULL")
         werte = ["[Seite %nicht lesbar gemacht]%"]
         if nur_finanz:
-            muster = finanz_muster()
-            wo += " AND (" + " OR ".join("label LIKE ?" for _ in muster) + ")"
-            werte += muster
-    sql = (f"SELECT document_id, label, url, n_pages FROM council_anlagen "
+            from council import finanzquellen as fq
+            filter_sql, filter_werte = fq.finanz_anlagen_where()
+            wo += " AND " + filter_sql
+            werte += filter_werte
+    sql = (f"SELECT document_id, label, url, n_pages FROM council_attachments "
            f"WHERE {wo} ORDER BY document_id DESC")
     if limit:
         sql += f" LIMIT {int(limit)}"
@@ -131,9 +131,9 @@ def _hole(url: str) -> bytes:
     letzter: Exception | None = None
     for versuch in range(VERSUCHE):
         try:
-            antwort = _session.get(url, timeout=90)
-            antwort.raise_for_status()
-            return antwort.content
+            answer = _session.get(url, timeout=90)
+            answer.raise_for_status()
+            return answer.content
         except Exception as exc:  # noqa: BLE001 — jede Netzstörung ist wiederholbar
             letzter = exc
             if versuch < VERSUCHE - 1:
@@ -198,11 +198,11 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 # Renderer da ist, richtig gelesen.
                 if lesung.gelesen == 0 or len(lesung.text) < ocr.MIN_SEITE:
                     leer += 1
-                    grund = ("keine Seite ließ sich in ein Bild verwandeln — "
+                    reason = ("keine Seite ließ sich in ein Bild verwandeln — "
                              "fehlt der Renderer? (pip install pypdfium2)"
                              if lesung.weg == "keiner" else "kein Text erkannt")
                     print(f"  [{did}] nichts gelesen ({lesung.seiten} Seiten): "
-                          f"{grund}", flush=True)
+                          f"{reason}", flush=True)
                     continue
                 # Kontonummern und Anschriften kommen GAR NICHT ERST in den
                 # Bestand (`council/kontaktdaten.entfernen`). Telefon und
@@ -212,17 +212,17 @@ def process(db_path: Path, *, nur_finanz: bool, document_id: int | None,
                 text = entfernen(lesung.text)
                 with store._conn:
                     store._conn.execute(
-                        "UPDATE council_anlagen SET raw_text = ?, n_pages = ?, "
-                        "status = 'ok', ocr_modell = ?, fetched_at = datetime('now') "
+                        "UPDATE council_attachments SET raw_text = ?, n_pages = ?, "
+                        "status = 'ok', ocr_model = ?, fetched_at = datetime('now') "
                         "WHERE document_id = ?",
                         (text, lesung.seiten, lesung.modell, did))
                 gelesen += 1
                 if not lesung.vollstaendig:
                     unvollstaendig.append(did)
-                hinweis = (f", Einheit: {', '.join(lesung.skalen)}"
+                note = (f", Einheit: {', '.join(lesung.skalen)}"
                            if lesung.skalen else "")
                 print(f"  [{did}] {lesung.gelesen}/{lesung.seiten} Seiten, "
-                      f"{len(lesung.text)} Zeichen, {lesung.weg}{hinweis}"
+                      f"{len(lesung.text)} Zeichen, {lesung.weg}{note}"
                       f"{'  UNVOLLSTÄNDIG' if not lesung.vollstaendig else ''}",
                       flush=True)
 

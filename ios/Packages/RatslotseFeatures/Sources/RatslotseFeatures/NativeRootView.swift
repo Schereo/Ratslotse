@@ -69,7 +69,7 @@ public struct NativeRootView: View {
         .preferredColorScheme(preferredColorScheme)
         .overlay(alignment: .top) {
             if model.isOffline {
-                Label("Offline", systemImage: "wifi.slash")
+                RatsLabel("Offline", .wifiOff)
                     .font(RatsFont.body(11, weight: .semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -147,7 +147,7 @@ public struct NativeRootView: View {
     private func debugActiveUser() -> User? {
         let savesConversations = ratsDebugValue("RATSLOTSE_DEBUG_CONVERSATIONS") == "1" ? 1 : 0
         let role = ratsDebugValue("RATSLOTSE_DEBUG_MAIN") == "admin" ? "admin" : "user"
-        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":""# + role + #"","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","qa_speichern":"#
+        let json = #"{"id":1,"email":"visual-qa@ratslotse.de","role":""# + role + #"","status":"active","delivery_channel":"push","email_verified":true,"apple_linked":false,"has_password":false,"access_token":null,"display_name":"Visual QA","saves_conversations":"#
             + String(savesConversations)
             + "}"
         return try? JSONDecoder().decode(User.self, from: Data(json.utf8))
@@ -289,7 +289,7 @@ private struct UpdateRequiredView: View {
                         .foregroundStyle(RatsColor.bodyText)
                         .lineSpacing(4)
                     Link(destination: URL(string: "https://apps.apple.com/app/id6786553049")!) {
-                        Label("Im App Store aktualisieren", systemImage: "arrow.down.app")
+                        RatsLabel("Im App Store aktualisieren", .download)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())

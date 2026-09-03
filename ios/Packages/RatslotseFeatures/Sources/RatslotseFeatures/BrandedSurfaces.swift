@@ -4,13 +4,13 @@ import SwiftUI
 struct RatsSectionPanel<Content: View>: View {
     let title: String
     let detail: String?
-    let symbol: String?
+    let symbol: RatsGlyph?
     @ViewBuilder let content: Content
 
     init(
         _ title: String,
         detail: String? = nil,
-        symbol: String? = nil,
+        symbol: RatsGlyph? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
@@ -23,8 +23,7 @@ struct RatsSectionPanel<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
                 if let symbol {
-                    Image(systemName: symbol)
-                        .font(.system(size: 14, weight: .semibold))
+                    RatsIcon(symbol, size: 14)
                         .foregroundStyle(RatsColor.primary)
                         .frame(width: 30, height: 30)
                         .background(RatsColor.primary.opacity(0.08))
@@ -93,13 +92,13 @@ struct RatsLabeledField<Content: View>: View {
 struct RatsSettingsRow<Content: View>: View {
     let title: String
     let detail: String?
-    let symbol: String
+    let symbol: RatsGlyph
     @ViewBuilder let content: Content
 
     init(
         _ title: String,
         detail: String? = nil,
-        symbol: String,
+        symbol: RatsGlyph,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
@@ -110,8 +109,7 @@ struct RatsSettingsRow<Content: View>: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 11) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
+            RatsIcon(symbol, size: 13)
                 .foregroundStyle(RatsColor.primary)
                 .frame(width: 28, height: 28)
                 .background(RatsColor.primary.opacity(0.08))
@@ -139,7 +137,7 @@ struct RatsSettingsRow<Content: View>: View {
 struct RatsEmptyState: View {
     let title: String
     let message: String
-    let symbol: String
+    let symbol: RatsGlyph
     var animation: LottiAnimation = .searching
 
     var body: some View {
@@ -204,12 +202,11 @@ struct RatsModalIntro: View {
     let kicker: String
     let title: String
     let message: String
-    let symbol: String
+    let symbol: RatsGlyph
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 22, weight: .semibold))
+            RatsIcon(symbol, size: 22)
                 .foregroundStyle(RatsColor.primaryText)
                 .frame(width: 52, height: 52)
                 .background(RatsColor.primary)

@@ -9,13 +9,13 @@ Eigenbetrieb Gebäudewirtschaft und Hochbau liest, steht im Kopf von
 
 Warum kein Download und kein Cron
 ---------------------------------
-Die Quelle liegt schon im Haus: ``council_vorlagen`` führt den Volltext jeder
+Die Quelle liegt schon im Haus: ``council_templates`` führt den Volltext jeder
 Ratsvorlage, und der Beschlussvorschlag steht darin. Dieser Lauf lädt nichts
 nach, er liest den Bestand — deshalb ist er auch der richtige Weg, wenn ein
 verbesserter Parser über die vorhandenen Jahrgänge laufen soll.
 
 Ein Cron kommt später in Frage: ``check_finanzdaten`` ist auf
-``council_anlagen`` gebaut (``finanzquellen.Finanzquelle.erkennung`` sucht ein
+``council_attachments`` gebaut (``finanzquellen.Finanzquelle.erkennung`` sucht ein
 Anlagen-Label). Diese Schicht wäre die erste, deren Einheit eine **Vorlage**
 ist; das ist ein eigener Umbau und keine Nebensache dieses Skripts.
 
@@ -74,7 +74,7 @@ COUNCIL_DB = ROOT / "data" / "council.sqlite"
 TITEL_MUSTER = "%Wirtschaftsplan%"
 
 
-def jahr_aus_titel(titel: str) -> int | None:
+def jahr_aus_titel(title: str) -> int | None:
     """Das Haushaltsjahr aus dem Vorlagentitel.
 
     Bei den Anlagen-Betrieben gibt es keinen Beschlusstext, der „für das
@@ -82,13 +82,13 @@ def jahr_aus_titel(titel: str) -> int | None:
     mehr als eine Jahreszahl, wird geraten, und das ist hier nicht erlaubt:
     Dann kommt ``None``, und der Jahrgang bleibt liegen.
     """
-    jahre = {int(j) for j in re.findall(r"\b(20\d{2})\b", titel)}
-    return jahre.pop() if len(jahre) == 1 else None
+    years = {int(j) for j in re.findall(r"\b(20\d{2})\b", title)}
+    return years.pop() if len(years) == 1 else None
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Wirtschaftspläne der Eigenbetriebe aus council_vorlagen lesen")
+        description="Wirtschaftspläne der Eigenbetriebe aus council_templates lesen")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     ap.add_argument("--trockenlauf", action="store_true",
                     help="alles rechnen und zeigen, nichts speichern")
@@ -97,16 +97,16 @@ def main() -> int:
     store = CouncilStore(Path(args.db))
     try:
         rows = [dict(r) for r in store._conn.execute(  # noqa: SLF001
-            "SELECT vorlage_nr, kvonr, title, raw_text FROM council_vorlagen "
+            "SELECT template_number, kvonr, title, raw_text FROM council_templates "
             "WHERE title LIKE ? AND status = 'ok' AND raw_text IS NOT NULL "
-            "ORDER BY vorlage_nr", (TITEL_MUSTER,))]
+            "ORDER BY template_number", (TITEL_MUSTER,))]
         print(f"{len(rows)} Vorlage(n) mit „Wirtschaftsplan“ im Titel.\n")
 
         gefunden, luecken, risse = [], [], []
         for r in rows:
             try:
                 plan = parse_wirtschaftsplan(
-                    r["vorlage_nr"], r["title"], r["raw_text"])
+                    r["template_number"], r["title"], r["raw_text"])
             except WirtschaftsplanFehler as fehler:
                 # Ein Riss ist kein Grund, den Lauf abzubrechen: Die übrigen
                 # Jahrgänge sind davon unberührt. Aber er wird gezählt und
@@ -114,19 +114,19 @@ def main() -> int:
                 risse.append(str(fehler))
                 continue
             if plan is None:
-                luecken.append(ohne_eckwerte(r["vorlage_nr"], r["title"]))
+                luecken.append(ohne_eckwerte(r["template_number"], r["title"]))
                 continue
             gefunden.append((plan, r["kvonr"]))
 
         print(f"Mit Eckwerten: {len(gefunden)} · ohne: {len(luecken)} · "
               f"Probe gerissen: {len(risse)}\n")
 
-        for plan, _ in sorted(gefunden, key=lambda x: (x[0].betrieb, x[0].jahr)):
-            print(f"  {plan.jahr}  {plan.betrieb:8s} "
-                  f"Erträge {plan.ertraege / 1e6:7.1f} Mio. €  "
-                  f"Ergebnis {plan.ergebnis / 1e6:8.3f} Mio. €  "
-                  f"Vermögensplan {(plan.vermoegensplan or 0) / 1e6:7.1f} Mio. €  "
-                  f"({plan.vorlage_nr}, Entwurf {plan.entwurf_vom})")
+        for plan, _ in sorted(gefunden, key=lambda x: (x[0].enterprise, x[0].year)):
+            print(f"  {plan.year}  {plan.enterprise:8s} "
+                  f"Erträge {plan.revenues / 1e6:7.1f} Mio. €  "
+                  f"Ergebnis {plan.result / 1e6:8.3f} Mio. €  "
+                  f"Vermögensplan {(plan.capital_plan or 0) / 1e6:7.1f} Mio. €  "
+                  f"({plan.template_number}, Entwurf {plan.draft_date})")
 
         if risse:
             print("\nProbe gerissen — NICHT gespeichert:")
@@ -138,7 +138,7 @@ def main() -> int:
         # der eigentliche Befund dieser Schicht.
         ohne_nach_betrieb: dict[str, int] = {}
         for lücke in luecken:
-            name = lücke["betrieb_name"] or "unbekannter Betrieb"
+            name = lücke["enterprise_name"] or "unbekannter Betrieb"
             ohne_nach_betrieb[name] = ohne_nach_betrieb.get(name, 0) + 1
         if ohne_nach_betrieb:
             print("\nOhne Eckwerte im Beschlusstext (Zahlen stehen in der Anlage):")
@@ -156,13 +156,13 @@ def main() -> int:
             erkannt = betrieb_aus_titel(r["title"])
             if not erkannt or erkannt[0] not in VOKABULAR:
                 continue
-            betrieb = erkannt[0]
-            jahr = jahr_aus_titel(r["title"])
-            if jahr is None:
+            enterprise = erkannt[0]
+            year = jahr_aus_titel(r["title"])
+            if year is None:
                 continue
             anlagen = [dict(a) for a in store._conn.execute(  # noqa: SLF001
-                "SELECT document_id, label, url, status, raw_text, ocr_modell "
-                "FROM council_anlagen WHERE kvonr = ? ORDER BY document_id",
+                "SELECT document_id, label, url, status, raw_text, ocr_model "
+                "FROM council_attachments WHERE kvonr = ? ORDER BY document_id",
                 (r["kvonr"],))]
             # `'ocr'` ZÄHLT MIT. Diese Anlagen tragen keine Textebene, sondern
             # den Text, den ein Sehmodell aus dem Scan gelesen hat
@@ -172,34 +172,34 @@ def main() -> int:
             # Blockade, und die drei AWB-Jahrgänge 2019–2021 blieben gelesen
             # und trotzdem unsichtbar. Geprüft wird ohnehin die Rechnung, und
             # die ist bei OCR-Text dieselbe wie bei einer Textebene.
-            lesbar = [a for a in anlagen
+            readable = [a for a in anlagen
                       if a["status"] in ANLAGE_LESBAR and (a["raw_text"] or "")]
-            if not lesbar:
-                ohne_text.append((r["vorlage_nr"], jahr,
+            if not readable:
+                ohne_text.append((r["template_number"], year,
                                   [a["status"] for a in anlagen] or ["keine Anlage"]))
                 continue
-            for a in lesbar:
+            for a in readable:
                 try:
-                    plan, proben = parse_erfolgsplan(
-                        r["vorlage_nr"], betrieb, jahr, a["raw_text"])
+                    plan, probes = parse_erfolgsplan(
+                        r["template_number"], enterprise, year, a["raw_text"])
                 except WirtschaftsplanFehler as fehler:
-                    anlagen_risse.append(f"{r['vorlage_nr']} (Anlage "
+                    anlagen_risse.append(f"{r['template_number']} (Anlage "
                                          f"{a['document_id']}): {fehler}")
                     continue
-                aus_anlage.append((plan, proben, a))
+                aus_anlage.append((plan, probes, a))
                 break
 
         if aus_anlage:
             print("\nAus dem Erfolgsplan der Anlage:")
-            for plan, proben, a in sorted(aus_anlage, key=lambda x: (x[0].betrieb, x[0].jahr)):
-                print(f"  {plan.jahr}  {plan.betrieb:8s} "
-                      f"Erträge {plan.ertraege / 1e6:7.3f} Mio. €  "
-                      f"Ergebnis {plan.ergebnis / 1e6:+7.3f} Mio. €  "
-                      f"({len(proben)} Spalten geprüft, Anlage {a['document_id']})")
+            for plan, probes, a in sorted(aus_anlage, key=lambda x: (x[0].enterprise, x[0].year)):
+                print(f"  {plan.year}  {plan.enterprise:8s} "
+                      f"Erträge {plan.revenues / 1e6:7.3f} Mio. €  "
+                      f"Ergebnis {plan.result / 1e6:+7.3f} Mio. €  "
+                      f"({len(probes)} Spalten geprüft, Anlage {a['document_id']})")
         if ohne_text:
             print("\nAnlage ohne Volltext — nichts zu lesen:")
-            for vnr, jahr, stati in ohne_text:
-                print(f"  {jahr}  {vnr}: {', '.join(sorted(set(stati)))}"
+            for vnr, year, stati in ohne_text:
+                print(f"  {year}  {vnr}: {', '.join(sorted(set(stati)))}"
                       + ("  (Scan — für eine spätere OCR vorgemerkt)"
                          if "empty" in stati else ""))
         if anlagen_risse:
@@ -213,20 +213,20 @@ def main() -> int:
         # Für die Betriebe, deren Tabelle sich nicht selbst vorrechnet. Greift
         # nur, wo die beiden anderen Wege nichts geliefert haben — sonst stünde
         # eine Zeile mit bloßem Ergebnis gegen eine mit vollem Tripel.
-        schon = {(plan.betrieb, plan.jahr) for plan, _ in gefunden} | {
-            (plan.betrieb, plan.jahr) for plan, _, _ in aus_anlage}
+        schon = {(plan.enterprise, plan.year) for plan, _ in gefunden} | {
+            (plan.enterprise, plan.year) for plan, _, _ in aus_anlage}
         kernzahlen = []
         for r in rows:
             erkannt = betrieb_aus_titel(r["title"])
-            jahr = jahr_aus_titel(r["title"])
-            if not erkannt or jahr is None or (erkannt[0], jahr) in schon:
+            year = jahr_aus_titel(r["title"])
+            if not erkannt or year is None or (erkannt[0], year) in schon:
                 continue
             texte = [a[0] for a in store._conn.execute(  # noqa: SLF001
-                "SELECT raw_text FROM council_anlagen WHERE kvonr = ? "
+                "SELECT raw_text FROM council_attachments WHERE kvonr = ? "
                 "AND status = 'ok'", (r["kvonr"],))]
             try:
-                res = parse_kernzahl(r["vorlage_nr"], r["title"], r["raw_text"],
-                                     jahr, texte)
+                res = parse_kernzahl(r["template_number"], r["title"], r["raw_text"],
+                                     year, texte)
             except WirtschaftsplanFehler as fehler:
                 risse.append(str(fehler)); continue
             if res is None:
@@ -236,9 +236,9 @@ def main() -> int:
         if kernzahlen:
             print("\nKernzahl aus dem Beschlusstext:")
             for plan, wort, lage, _ in sorted(kernzahlen,
-                                              key=lambda x: (x[0].betrieb, x[0].jahr)):
-                print(f"  {plan.jahr}  {plan.betrieb:16s} "
-                      f"Ergebnis {plan.ergebnis / 1e6:+8.3f} Mio. €   "
+                                              key=lambda x: (x[0].enterprise, x[0].year)):
+                print(f"  {plan.year}  {plan.enterprise:16s} "
+                      f"Ergebnis {plan.result / 1e6:+8.3f} Mio. €   "
                       f"[{lage}] {BELEGLAGE[lage]}")
 
         if args.trockenlauf:
@@ -249,17 +249,17 @@ def main() -> int:
             url = (f"https://buergerinfo.oldenburg.de/vo0050.php?__kvonr={kvonr}"
                    if kvonr else None)
             store.save_wirtschaftsplan(plan, herkunft_fuer(plan, url=url))
-        for plan, proben, a in aus_anlage:
+        for plan, probes, a in aus_anlage:
             store.save_wirtschaftsplan(plan, herkunft_tabelle(
-                plan, proben, url=a["url"], dokument_id=a["document_id"],
-                ocr_modell=a.get("ocr_modell")))
+                plan, probes, url=a["url"], document_id=a["document_id"],
+                ocr_model=a.get("ocr_model")))
         for plan, wort, lage, r in kernzahlen:
             store.save_wirtschaftsplan(plan, herkunft_kernzahl(
                 plan, wort, lage, url=None, kvonr=r["kvonr"]))
         print(f"\n{len(gefunden)} Eckwerte, {len(aus_anlage)} Erfolgspläne, "
               f"{len(kernzahlen)} Kernzahlen gespeichert.")
 
-        luecken_ohne_beleg = store.herkunft_luecken().get("council_wirtschaftsplaene")
+        luecken_ohne_beleg = store.herkunft_luecken().get("council_business_plans")
         if luecken_ohne_beleg:
             print(f"  ! {luecken_ohne_beleg} Zeile(n) ohne Herkunft — "
                   "das sollte nicht vorkommen (siehe council/herkunft.py)")

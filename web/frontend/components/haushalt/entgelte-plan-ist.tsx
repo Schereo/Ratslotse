@@ -12,9 +12,9 @@
 // DIE BEZUGSGRÖSSE WECHSELT ÜBER DIE JAHRGÄNGE. Wogegen ein Abschluss seine
 // Abweichung rechnet, ist nicht in allen Jahren dasselbe: 2018 gegen die
 // Gesamtermächtigung, 2020 gegen den Ansatz samt Nachtrag, sonst gegen den
-// nackten Ansatz. Das steht als `plan_art` an jeder Zeile, und es gehört an
+// nackten Ansatz. Das steht als `plan_kind` an jeder Zeile, und es gehört an
 // jede Hantel: Ohne diese Angabe vergliche die Reihe stillschweigend
-// Verschiedenes. Deshalb ist `plan_art` hier die Einordnung — nicht `null`,
+// Verschiedenes. Deshalb ist `plan_kind` hier die Einordnung — nicht `null`,
 // wie bei Tabelle 1103, die über sich selbst nichts sagt.
 //
 // KEINE BEWERTUNG (Regel des ganzen Bereichs). Weniger Gebühren als geplant
@@ -25,28 +25,34 @@
 import { Hantel, type HantelZeile } from "@/components/grafik/hantel";
 import { PLAN_ART_LABEL, type ErgebnisPosten } from "@/lib/haushalt";
 
-export function EntgeltePlanIst({ zeilen, beleg }: {
+export function EntgeltePlanIst({ zeilen, beleg, keineWertung }: {
   /** Die Gesamt-Zeilen (thh_nr = null) EINES Postens, ein Eintrag je Jahr. */
   zeilen: ErgebnisPosten[];
   /** Beleg-Chip-Slot (GB-00) — die Seite wählt die Quelle. */
   beleg?: React.ReactNode;
+  /** Der Nicht-Wertungs-Satz der Einnahmeart (`SteuerArt.planIstWertung`);
+   *  ohne ihn gilt die Gebühren-Fassung unten. */
+  keineWertung?: React.ReactNode;
 }) {
   // Beide Werte müssen da sein: Eine Hantel mit einem Ende ist keine Hantel,
   // sondern ein Punkt, der so tut, als wäre er ein Vergleich.
   const sortiert = zeilen
-    .filter((z) => z.plan != null && z.plan > 0 && z.ergebnis != null)
-    .sort((a, b) => a.jahr - b.jahr);
+    .filter((z) => z.plan != null && z.plan > 0 && z.result != null)
+    .sort((a, b) => a.year - b.year);
   if (sortiert.length < 2) return null;
 
   const hantelZeilen: HantelZeile[] = sortiert.map((z) => ({
-    label: String(z.jahr),
+    label: String(z.year),
     plan: (z.plan as number) / 1e6,
-    ist: (z.ergebnis as number) / 1e6,
+    ist: (z.result as number) / 1e6,
     // Die Bezugsgröße dieses Jahrgangs, im Klartext des Dokuments. Wo sie
     // fehlt, wird sie nicht durch „Ansatz" ersetzt — dann steht sie eben nicht
     // da, statt geraten zu werden.
-    einordnung: z.plan_art
-      ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_art]}.`
+    // Nur die Ausnahme steht an der Zeile: Der nackte Ansatz ist die Regel
+    // und steht einmal unter der Grafik — acht gleiche Zeilen „Verglichen
+    // wird gegen: Haushaltsansatz" trugen nichts (Durchsicht 02.09.2026).
+    einordnung: z.plan_kind && z.plan_kind !== "budget"
+      ? `Verglichen wird gegen: ${PLAN_ART_LABEL[z.plan_kind]}.`
       : null,
   }));
 
@@ -57,24 +63,26 @@ export function EntgeltePlanIst({ zeilen, beleg }: {
           Geplant und geworden
         </p>
         <span className="font-mono text-[10px] uppercase text-muted-foreground">
-          {sortiert[0].jahr}–{sortiert[sortiert.length - 1].jahr}
+          {sortiert[0].year}–{sortiert[sortiert.length - 1].year}
           {" · "}{sortiert.length} Jahre
         </span>
       </div>
       <p className="mt-1.5 max-w-[70ch] text-[12.5px] leading-relaxed text-foreground/80">
         Was im beschlossenen Haushalt stand — und was am Ende des Jahres
-        tatsächlich in der Kasse war.
+        tatsächlich in der Kasse war. Verglichen wird gegen den Haushaltsansatz;
+        rechnet ein Jahr gegen Nachtrag oder Gesamtermächtigung, steht es an
+        der Zeile.
       </p>
 
       <div className="mt-3">
         <Hantel
           zeilen={hantelZeilen}
-          einheit="Mio. €"
+          unit="Mio. €"
           /* Chronologie schlägt Rangfolge: Dass 2024 auf 2023 folgt, muss die
              Reihenfolge tragen — wie weit es danebenlag, zeigt die Länge. */
           sortierung="alpha"
           wovon="diese Einnahme"
-          keineWertung={
+          keineWertung={keineWertung ??
             <>Die Farbe bewertet nicht: Weniger als geplant heißt hier, dass
               Leistungen weniger genutzt wurden — mehr heißt umgekehrt, dass
               der Ansatz zu vorsichtig war. Keines von beidem ist für sich

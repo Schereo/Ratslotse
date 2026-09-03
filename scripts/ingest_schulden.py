@@ -52,10 +52,10 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 _UA = {"User-Agent": "Ratslotse/1.0 (ratslotse.de; Haushalts-Bereich)"}
 
 #: Probenschlüssel → wie die Probe im Messwert heißt. Der Schlüssel steht
-#: schon in ``Herkunft.probe``; ``probe_ergebnis`` ist der Satz daneben und
+#: schon in ``Herkunft.probe``; ``probe_result`` ist der Satz daneben und
 #: soll ihn nicht bloß wiederholen.
-PROBENNAMEN = {"schulden_summenzeile": "Summenprobe",
-               "schulden_prokopf": "Pro-Kopf-Gegenprobe"}
+PROBENNAMEN = {"debt_total_row": "Summenprobe",
+               "debt_per_capita": "Pro-Kopf-Gegenprobe"}
 
 
 def _de(zahl: float, nachkomma: int = 0, vorzeichen: bool = False) -> str:
@@ -73,9 +73,9 @@ def link_suchen() -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(schulden.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = schulden.LINK_MUSTER.search(antwort.text)
+    answer = requests.get(schulden.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = schulden.LINK_MUSTER.search(answer.text)
     return urljoin(schulden.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
@@ -109,11 +109,11 @@ def main() -> int:
                     url = schulden.TABELLE_URL
                     print(f"HINWEIS: Die Übersichtsseite führt keinen Link auf "
                           f"1108 mehr — es gilt die hinterlegte Adresse: {url}")
-                antwort = requests.get(url, headers=_UA, timeout=120)
-                antwort.raise_for_status()
+                answer = requests.get(url, headers=_UA, timeout=120)
+                answer.raise_for_status()
                 pfad = Path(tmp) / "1108.pdf"
-                pfad.write_bytes(antwort.content)
-                print(f"  geladen: {_de(len(antwort.content))} Bytes")
+                pfad.write_bytes(answer.content)
+                print(f"  geladen: {_de(len(answer.content))} Bytes")
 
             text = pdf_text(pfad)
             spanne = schulden.erkenne(text)
@@ -126,25 +126,25 @@ def main() -> int:
             # Der Divisor der unabhängigen Gegenprobe. Fehlt er, bleibt es bei
             # der Summenprobe — das ist eine Einschränkung, keine Ausrede, und
             # sie steht unten im Nachweis.
-            einwohner = store.einwohner_je_jahr()
-            if not einwohner:
+            population = store.einwohner_je_jahr()
+            if not population:
                 print("HINWEIS: keine Einwohnerzahlen im Bestand — die "
                       "Pro-Kopf-Gegenprobe entfällt. Vorher "
                       "scripts/ingest_finanzen_opendata.py laufen lassen.")
 
-            ergebnis = schulden.lies(text, einwohner)
-            zeilen = ergebnis["zeilen"]
+            result = schulden.lies(text, population)
+            zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
-                  f"{schulden.probennachweis(ergebnis)}")
-            for v in ergebnis["verworfen"]:
-                print(f"    VERWORFEN {v['jahr']}: {v['grund']}", file=sys.stderr)
-            for f in ergebnis["fehlende_jahrgaenge"]:
+                  f"{schulden.probennachweis(result)}")
+            for v in result["verworfen"]:
+                print(f"    VERWORFEN {v['year']}: {v['reason']}", file=sys.stderr)
+            for f in result["fehlende_jahrgaenge"]:
                 print(f"    FEHLT {f}: im Titel angekündigt, nicht gelesen",
                       file=sys.stderr)
-            ohne_arten = [z for z in zeilen if z["aufteilung_verworfen"] is not None]
+            ohne_arten = [z for z in zeilen if z["breakdown_rejected"] is not None]
             for z in ohne_arten:
-                print(f"    {z['jahr']}: Aufteilung verworfen — die Schuldenarten "
-                      f"ergeben {_de(z['aufteilung_verworfen'], vorzeichen=True)} € "
+                print(f"    {z['year']}: Aufteilung verworfen — die Schuldenarten "
+                      f"ergeben {_de(z['breakdown_rejected'], vorzeichen=True)} € "
                       f"gegenüber der ausgewiesenen Summe. Die Summe trägt die "
                       f"Pro-Kopf-Gegenprobe und bleibt.")
             if not zeilen:
@@ -153,9 +153,9 @@ def main() -> int:
                 return 1
 
             juengster = zeilen[-1]
-            print(f"  jüngster Jahrgang {juengster['jahr']}: "
-                  f"{_de(juengster['insgesamt'] / 1e6, 1)} Mio. € insgesamt, "
-                  f"{_de(juengster['je_einwohner'])} € je Einwohner*in")
+            print(f"  jüngster Jahrgang {juengster['year']}: "
+                  f"{_de(juengster['total'] / 1e6, 1)} Mio. € total, "
+                  f"{_de(juengster['per_capita'])} € je Einwohner*in")
 
             if args.trockenlauf:
                 print("Trockenlauf — nichts gespeichert.")
@@ -178,62 +178,62 @@ def main() -> int:
             if not finanzquellen.bestandsschutz(
                     p, "Schuldenzeitreihe", alt, len(zeilen),
                     schuetzen=not args.schrumpf_erlauben):
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn "
                       "das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
                 return 1
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
 
             # Zwei Herkünfte, weil zwei verschiedene Probenlagen vorliegen und
             # eine gemeinsame Angabe für beide ungenau wäre: Die meisten
             # Jahrgänge stehen auf der Summenprobe (2010+ zusätzlich auf der
             # Gegenprobe), 2022 allein auf der Gegenprobe. Was ein Leser im
             # Beleg sieht, soll für SEINE Zahl gelten.
-            # `stand` nennt NUR den Stichtag. Die Abgrenzung stünde hier zwar
+            # `as_of` nennt NUR den Stichtag. Die Abgrenzung stünde hier zwar
             # gut, steht aber schon als eigenes Feld an der Antwort des
             # Endpunkts (`abgrenzung`) und damit auf der Seite direkt an der
             # großen Zahl — zweimal im Abstand von zwei Absätzen gelesen wirkt
             # sie wie zwei verschiedene Angaben.
             anker = dict(
-                art="stadt", url=url or schulden.TABELLE_URL,
+                kind="city", url=url or schulden.TABELLE_URL,
                 label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle 1108 — "
                       f"Stand der Verschuldung {spanne[0]} bis {spanne[1]}",
-                stand=f"Schuldenstand zum 31.12.{spanne[1]}")
-            fundstelle = ("Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1108 — "
+                as_of=f"Schuldenstand zum 31.12.{spanne[1]}")
+            citation = ("Kapitel 11 „Verwaltung und Finanzen“, Tabelle 1108 — "
                           "je Jahr die vier Schuldenarten (Spalten S 2 bis S 5), "
                           "ihre Summe (S 6) und der Betrag je Einwohner*in (S 7)")
 
             geschrieben = 0
-            for probenlage in sorted({tuple(z["proben"]) for z in zeilen}):
-                teil = [z for z in zeilen if tuple(z["proben"]) == probenlage]
-                jahre = [z["jahr"] for z in teil]
-                spanne_teil = (f"Jahrgänge {jahre[0]}–{jahre[-1]}" if len(jahre) > 1
-                               else f"Jahrgang {jahre[0]}")
+            for probenlage in sorted({tuple(z["probes"]) for z in zeilen}):
+                part = [z for z in zeilen if tuple(z["probes"]) == probenlage]
+                years = [z["year"] for z in part]
+                spanne_teil = (f"Jahrgänge {years[0]}–{years[-1]}" if len(years) > 1
+                               else f"Jahrgang {years[0]}")
                 namen = " und ".join(PROBENNAMEN[p] for p in probenlage)
-                nachweis = (f"{spanne_teil} ({len(teil)} von "
+                nachweis = (f"{spanne_teil} ({len(part)} von "
                             f"{len(zeilen)}): {namen} bestanden")
                 # Wo die Summenprobe fehlt, gehört ihr Messwert dazu — sonst
                 # liest sich „Pro-Kopf-Gegenprobe bestanden" wie eine
                 # Vollständigkeit, die dieser Jahrgang nicht hat.
-                fehlend = [z for z in teil if z["aufteilung_verworfen"] is not None]
+                fehlend = [z for z in part if z["breakdown_rejected"] is not None]
                 if fehlend:
                     nachweis += ("; die Summenprobe reißt um "
                                  + ", ".join(
-                                     _de(z["aufteilung_verworfen"], vorzeichen=True)
+                                     _de(z["breakdown_rejected"], vorzeichen=True)
                                      + " €" for z in fehlend)
                                  + " — die Aufteilung nach Schuldenarten ist "
                                    "deshalb nicht gespeichert")
-                geschrieben += store.save_schulden(teil, h.Herkunft(
-                    probe=list(probenlage), fundstelle=fundstelle,
-                    probe_ergebnis=nachweis, **anker))
+                geschrieben += store.save_schulden(part, h.Herkunft(
+                    probe=list(probenlage), citation=citation,
+                    probe_result=nachweis, **anker))
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_schulden"}
+                   if t == "council_debt"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

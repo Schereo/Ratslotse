@@ -7,6 +7,10 @@ __pycache__/
 *.log
 .pytest_cache/
 .ruff_cache/
+# Was `scripts/dev.py` sich über den eigenen Server merkt (Port und PID).
+# Je Worktree eigener Arbeitsstand; das Protokoll deckt schon `*.log` ab.
+.dev-server.json
+
 web/frontend/.next/
 # Eigenes Build-Verzeichnis des Dev-Servers (next.config.mjs) — trennt
 # `next dev` von `next build`, die sich sonst .next zerlegen.
@@ -17,6 +21,11 @@ web/frontend/node_modules/
 # eigenen Ports/Backends ein, das ist Arbeitsstand und kein Repo-Inhalt. Vorlage
 # mit den gemeinsamen Einträgen: .claude/launch.example.json (einmal kopieren).
 .claude/launch.json
+
+# Persönliche Freigaben und Einstellungen der eigenen Claude-Sitzung.
+# Die GETEILTEN Einstellungen stehen in `.claude/settings.json` und sind
+# eingecheckt; diese hier ist Arbeitsstand und gehört niemandem sonst.
+.claude/settings.local.json
 
 # Lokal installierte Agent-Skills (npx skills add …) — Fremdinhalte, nicht committen
 .agents/

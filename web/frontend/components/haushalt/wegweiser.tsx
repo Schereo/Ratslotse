@@ -16,7 +16,7 @@
 //
 // AUS SIEBEN SCHRITTEN WERDEN VIER STUFEN (16.08., dritte Runde). Der
 // Bereich hatte damals zwölf Unterseiten, und drei davon fand niemand:
-// `/haushalt/jahr` und `/haushalt/vergleich` waren im ganzen Frontend von
+// `/haushalt/year` und `/haushalt/vergleich` waren im ganzen Frontend von
 // keinem einzigen `href` erreichbar, `/haushalt/bereiche` nur rückwärts —
 // über die Detailseite eines einzelnen Bereichs, also von innen nach außen.
 //
@@ -93,7 +93,7 @@ import { cn } from "@/lib/utils";
 
 type Ziel = {
   href: string;
-  titel: string;
+  title: string;
   text: string;
   /** Das Zeichen des Schritts (Tim, 24.08.: „ein paar helfende Icons").
    *  Es steht HIER, an der einzigen Quelle der Schritte, und taucht an drei
@@ -106,14 +106,14 @@ type Ziel = {
   zeichen: LucideIcon;
 };
 
-const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
+const STUFEN: { kicker: string; question: string; ziele: Ziel[] }[] = [
   {
     kicker: "Die Zahlen",
-    frage: "Woher das Geld kommt, wofür es eingeplant ist und welcher Teil politisch gestaltbar bleibt.",
+    question: "Woher das Geld kommt, wofür es eingeplant ist und welcher Teil politisch gestaltbar bleibt.",
     ziele: [
       {
         href: "/haushalt/einnahmen",
-        titel: "Woher kommt das Geld?",
+        title: "Woher kommt das Geld?",
         text: "Die Einnahmequellen der Stadt und der Einfluss des Rates auf ihre Höhe.",
         zeichen: Coins,
       },
@@ -123,7 +123,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // ergibt, wenn man weiß, dass der größte Teil des Geldes gar nicht
         // zur Disposition steht.
         href: "/haushalt/pflicht",
-        titel: "Muss oder kann?",
+        title: "Muss oder kann?",
         text: "Welche Ausgaben gesetzlich gebunden sind und wo politische Entscheidungen möglich bleiben.",
         zeichen: Scale,
       },
@@ -134,7 +134,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // ersten liest, sucht Aufgaben in Bereichen, deren Namen ihm nichts
         // sagen.
         href: "/haushalt/produkte",
-        titel: "Was kostet eigentlich …?",
+        title: "Was kostet eigentlich …?",
         text: "Was einzelne Aufgaben wie Archiv, Feuerwehr oder Schwimmbad kosten und welcher Auftrag dahintersteht.",
         zeichen: ListTree,
       },
@@ -146,7 +146,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // sie lesbar macht: Unbesetzte Stellen erklären, warum
         // Personalausgaben unter dem Plan bleiben können.
         href: "/haushalt/personal",
-        titel: "Wer macht die Arbeit?",
+        title: "Wer macht die Arbeit?",
         text: "Wie viele Stellen die Stadt plant, wie viele besetzt sind und wo Personal fehlt.",
         zeichen: Users,
       },
@@ -159,7 +159,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Ist derselben Sache — wer wissen will, was aus einem Vorhaben wurde,
         // sollte dafür nicht die Etappe wechseln müssen.
         href: "/haushalt/investitionen",
-        titel: "Was gebaut wird und was daraus wurde",
+        title: "Was gebaut wird und was daraus wurde",
         text: "Welche Neubauten, Fahrzeuge und Grundstücke geplant sind und wie viel davon tatsächlich umgesetzt wurde.",
         zeichen: Hammer,
       },
@@ -167,12 +167,12 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Die Gegenprobe",
-    frage: "Der Haushalt ist ein Plan. Der Jahresabschluss zeigt, was tatsächlich daraus geworden ist.",
+    question: "Der Haushalt ist ein Plan. Der Jahresabschluss zeigt, was tatsächlich daraus geworden ist.",
     ziele: [
       {
         href: "/haushalt/plan-ist",
-        titel: "Geplant und geworden",
-        text: "Wie sich Plan und tatsächliches Ergebnis in den Jahresabschlüssen unterscheiden.",
+        title: "Geplant und geworden",
+        text: "Was die Verwaltung im laufenden Jahr erwartet — und wie sich Plan und Ergebnis in den Jahresabschlüssen unterscheiden.",
         zeichen: ClipboardCheck,
       },
       {
@@ -183,7 +183,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Liste von Quoten ohne die Zahlen, die sie zusammenfassen, nichts
         // sagt. Sie ist jetzt nur die Reihenfolge der Abschnitte.
         href: "/haushalt/pruefung",
-        titel: "Geprüft und zusammengefasst",
+        title: "Geprüft und zusammengefasst",
         text: "Was das Rechnungsprüfungsamt beanstandet und mit welchen Kennzahlen die Stadt ihren Abschluss zusammenfasst.",
         zeichen: Stamp,
       },
@@ -191,7 +191,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Der Rahmen",
-    frage: "Zum Gesamtbild gehören auch städtische Unternehmen, der Vergleich mit anderen Städten und die Schulden über mehrere Jahre.",
+    question: "Zum Gesamtbild gehören auch städtische Unternehmen, der Vergleich mit anderen Städten und die Schulden über mehrere Jahre.",
     ziele: [
       {
         // EIN Ziel statt vierer (21.08.2026). Summe, Gesellschaften, ihre
@@ -199,7 +199,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // Kette: Wer bei den Gebühren anfängt, liest eine Zahl ohne Herkunft;
         // wer bei der Summe aufhört, weiß nicht, wer dahintersteckt.
         href: "/haushalt/konzern",
-        titel: "Und ist das die ganze Stadt?",
+        title: "Und ist das die ganze Stadt?",
         text: "Welche städtischen Unternehmen und Beteiligungen neben dem Kernhaushalt stehen.",
         zeichen: Network,
       },
@@ -208,7 +208,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // wenn man die eigenen Zahlen kennt — und die Seite besteht zur
         // Hälfte aus der Begründung, warum der Ausgaben-Vergleich nicht trägt.
         href: "/haushalt/vergleich",
-        titel: "Steht Oldenburg besser da?",
+        title: "Steht Oldenburg besser da?",
         text: "Wie Oldenburg bei Steuerkraft und Hebesätzen dasteht und warum Ausgabenvergleiche Grenzen haben.",
         zeichen: BarChart3,
       },
@@ -220,7 +220,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // gilt. (Und: Hier eingefügt statt weiter vorn verschiebt es keine
         // Kicker-Nummern der Seiten davor.)
         href: "/haushalt/schulden",
-        titel: "Wie viel Schulden hat Oldenburg?",
+        title: "Wie viel Schulden hat Oldenburg?",
         text: "Wie sich der Schuldenstand seit 1995 entwickelt hat und welche Verbindlichkeiten darin enthalten sind.",
         zeichen: LineChart,
       },
@@ -228,7 +228,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
   },
   {
     kicker: "Mitreden",
-    frage: "Wann der Rat entscheidet, worüber politisch gestritten wird und welche Stellschrauben es gibt.",
+    question: "Wann der Rat entscheidet, worüber politisch gestritten wird und welche Stellschrauben es gibt.",
     ziele: [
       {
         // EIN Ziel statt zweier (21.08.2026). „Wann wird das entschieden?"
@@ -237,7 +237,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // erreichbar. Sie stehen jetzt als Abschnitte auf einer Seite; die
         // Anker führen weiterhin gezielt hin.
         href: "/haushalt/mitreden",
-        titel: "Mitreden",
+        title: "Mitreden",
         text: "Wann der Haushalt beschlossen wird und welche Positionen die Fraktionen vertreten.",
         zeichen: MessagesSquare,
       },
@@ -251,7 +251,7 @@ const STUFEN: { kicker: string; frage: string; ziele: Ziel[] }[] = [
         // vorher fehlt der Bezug, an dem sich ablesen ließe, ob eine Bewegung
         // viel ist.
         href: "/haushalt/labor",
-        titel: "Haushalts-Labor",
+        title: "Haushalts-Labor",
         text: "Ausprobieren, wie sich veränderte Einnahmen und Ausgaben auf das Ergebnis auswirken.",
         zeichen: FlaskConical,
       },
@@ -279,9 +279,9 @@ const GESAMT = STUFEN_NUMMERIERT[STUFEN_NUMMERIERT.length - 1].bis;
  *  liest genau diese Datei, um die selbstgeschriebenen Kicker dagegen zu
  *  halten. Eine zweite Liste woanders wäre der Anfang genau der Drift, die
  *  der Wächter verhindern soll. */
-export const SCHRITTE: { href: string; titel: string; nr: number; zeichen: LucideIcon }[] =
+export const SCHRITTE: { href: string; title: string; nr: number; zeichen: LucideIcon }[] =
   STUFEN_NUMMERIERT.flatMap((stufe) =>
-    stufe.ziele.map((z) => ({ href: z.href, titel: z.titel, nr: z.nr, zeichen: z.zeichen })));
+    stufe.ziele.map((z) => ({ href: z.href, title: z.title, nr: z.nr, zeichen: z.zeichen })));
 
 /** Die Etappen als Gruppen über den Schritten — für den Schritt-Pfad im Kopf
  *  der Seiten (`schritt-pfad.tsx`): Er zeigt die zwölf Punkte in genau diesen
@@ -340,7 +340,7 @@ function Station({ z, zustand }: {
           zustand === "naechster" && "font-bold",
           zustand === "gelesen" && "text-foreground/75",
         )}>
-          {z.titel}
+          {z.title}
         </span>
       </span>
       <ChevronRight aria-hidden size={14} strokeWidth={2}
@@ -481,7 +481,7 @@ export function Wegweiser() {
                           </span>
                         </div>
                         <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                          {e.frage}
+                          {e.question}
                         </p>
                       </div>
                     </div>

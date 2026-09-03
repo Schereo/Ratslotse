@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
@@ -55,7 +56,7 @@ export const KOPFLEISTE_HOEHE = "calc(env(safe-area-inset-top) + 3.8125rem)";
 function useUnreadTopicHits(): number {
   const { data } = useQuery({
     queryKey: ["topics-unread"],
-    queryFn: () => api.get<{ total: number }>("/topics/unread-count"),
+    queryFn: () => vertrag.get("/topics/unread-count"),
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
@@ -68,7 +69,7 @@ function useUnreadTopicHits(): number {
 function useUnreadFeedback(enabled: boolean): number {
   const { data } = useQuery({
     queryKey: ["admin-feedback-unread"],
-    queryFn: () => api.get<{ total: number }>("/admin/feedback/unread-count"),
+    queryFn: () => vertrag.get("/admin/feedback/unread-count"),
     enabled,
     refetchInterval: 60_000,
     staleTime: 30_000,

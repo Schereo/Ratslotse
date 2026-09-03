@@ -48,15 +48,16 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowUp, Search } from "lucide-react";
-import { betrag } from "@/lib/haushalt";
+import { amount } from "@/lib/haushalt";
 import {
-  ProgrammDaten, ProgrammZeile, anzahl, gesamtJahr, herkunftVon, suche,
+  ProgrammDaten, ProgrammZeile, count, gesamtJahr, herkunftVon, suche,
   teilhaushaltSumme, teilhaushalte, vorhaben,
 } from "@/lib/haushalt-investitionsprogramm";
 import { rampenText } from "@/components/grafik/kachelflaeche";
 import { Treemap, type TreemapKnoten } from "@/components/grafik/treemap";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 
 /** Eine Zeile der Vorhaben-Liste.
  *
@@ -66,20 +67,20 @@ import { Beleg } from "@/components/haushalt/quelle";
  *  ersten unsichtbar. Negative Vorhaben bekommen keinen Balken, sondern eine
  *  Marke: Eine Länge nach links wäre ein Bild, das etwas anderes behauptet
  *  („weniger als nichts"). */
-function Zeile({ zeile, skala, bereichName }: {
-  zeile: ProgrammZeile; skala: number;
+function Zeile({ row, skala, bereichName }: {
+  row: ProgrammZeile; skala: number;
   /** Bei bereichsübergreifenden Trefferlisten: wo das Vorhaben liegt. */
   bereichName?: string;
 }) {
-  const b = betrag(zeile.gesamtsumme);
-  const breite = skala > 0 && zeile.gesamtsumme > 0
-    ? Math.max(0.6, (zeile.gesamtsumme / skala) * 100)
+  const b = amount(row.grand_total);
+  const breite = skala > 0 && row.grand_total > 0
+    ? Math.max(0.6, (row.grand_total / skala) * 100)
     : 0;
   return (
     <li className="flex flex-col gap-1 py-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-[13px] font-medium">
-          {zeile.bezeichnung}
+          {row.label}
           {bereichName && (
             <span className="ml-1.5 font-mono text-[9.5px] font-normal uppercase tracking-[0.09em] text-muted-foreground">
               {bereichName}
@@ -87,13 +88,13 @@ function Zeile({ zeile, skala, bereichName }: {
           )}
         </span>
         <span className="flex-none font-display text-[14px] font-bold tabular-nums">
-          {b.wert}
+          {b.value}
           <span className="ml-1 text-[10px] font-medium text-muted-foreground">
-            {b.einheit}
+            {b.unit}
           </span>
         </span>
       </div>
-      {zeile.gesamtsumme >= 0 ? (
+      {row.grand_total >= 0 ? (
         <span className="block h-2 w-full overflow-hidden rounded-sm bg-muted/60">
           <span
             className="block h-full rounded-sm"
@@ -110,14 +111,14 @@ function Zeile({ zeile, skala, bereichName }: {
   );
 }
 
-type Sortierung = "gesamtsumme" | "alpha";
+type Sortierung = "grand_total" | "alpha";
 
 export function Vorhaben({
-  daten, jahr, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh, stufeVonThh,
+  daten, year, gewaehlt, aufWaehlen, zurueckAnker, farbeVonThh, stufeVonThh,
 }: {
   daten: ProgrammDaten | null;
   /** Der Jahrgang, den die Seite oben zeigt — Startwert des Filters. */
-  jahr: number;
+  year: number;
   /** Teilhaushaltsnummer, oder `null` für „alle Teilhaushalte". */
   gewaehlt: number | null;
   aufWaehlen: (thhNr: number | null) => void;
@@ -130,26 +131,39 @@ export function Vorhaben({
    *  Kachel (`grafik/kachelflaeche.ts`, `rampenText`). */
   stufeVonThh: (thhNr: number) => number;
 }) {
-  const [wort, setWort] = useState("");
-  const [sortierung, setSortierung] = useState<Sortierung>("gesamtsumme");
+  // `?vorhaben=` und `?year=` — der Landeplatz für Links von außen.
+  //
+  // Von den Änderungslisten zum Finanzhaushalt (/haushalt/mitreden#streit)
+  // führt seit 08/2026 ein Link auf die Nummer eines Vorhabens. Damit er
+  // ankommt, muss der Explorer sein Suchwort aus der ADRESSE nehmen können
+  // und nicht nur aus dem Eingabefeld — und das Jahr gleich mit: Die Nummer
+  // gehört zu dem Jahrgang, in dem die Änderungsliste sie geändert hat.
+  //
+  // Als STARTWERT, nicht als gebundener Zustand: Wer nach dem Ankommen etwas
+  // anderes sucht, soll nicht gegen die Adresse antippen. Die Adresse setzt
+  // den Anfang, danach gehört das Feld der Leserin.
+  const params = useSearchParams();
+  const [wort, setWort] = useState(() => params.get("vorhaben") ?? "");
+  const [sortierung, setSortierung] = useState<Sortierung>("grand_total");
   // Der Explorer hat seinen eigenen Jahrgang-Filter (H4-06): Die beiden
   // Quellen der Seite reichen verschieden weit (Portal 2022–2025, Plan
   // 2019–2026) — wer 2019 sehen will, darf nicht am Jahr der Seite hängen.
-  const [jahrWahl, setJahrWahl] = useState<number | null>(null);
+  const [jahrWahl, setJahrWahl] = useState<number | null>(
+    () => Number(params.get("year")) || null);
   const suchfeld = useRef<HTMLInputElement>(null);
 
-  const jahre = useMemo(
-    () => [...(daten?.jahre ?? [])].sort((a, b) => a - b), [daten]);
-  const effJahr = jahrWahl != null && jahre.includes(jahrWahl) ? jahrWahl : jahr;
+  const years = useMemo(
+    () => [...(daten?.years ?? [])].sort((a, b) => a - b), [daten]);
+  const effJahr = jahrWahl != null && years.includes(jahrWahl) ? jahrWahl : year;
 
   const bereiche = useMemo(() => teilhaushalte(daten, effJahr), [daten, effJahr]);
   const treffer = useMemo(() => suche(daten, effJahr, wort), [daten, effJahr, wort]);
   const gesamt = gesamtJahr(daten, effJahr);
-  const alleAnzahl = daten?.massnahmen.length ?? 0;
+  const alleAnzahl = daten?.measures.length ?? 0;
 
   const nameVon = useMemo(() => {
     const zu = new Map<number, string>();
-    for (const b of bereiche) zu.set(b.thh_nr, b.bezeichnung);
+    for (const b of bereiche) zu.set(b.sub_budget_no, b.label);
     return (nr: number) => zu.get(nr) ?? `Teilhaushalt ${nr}`;
   }, [bereiche]);
 
@@ -168,36 +182,36 @@ export function Vorhaben({
   // Die Kachelfläche: alle Vorhaben des Jahrgangs (oder des gewählten
   // Bereichs), Schlüssel je Vorhaben, Gruppe = Teilhaushalt.
   const knoten: TreemapKnoten[] = useMemo(() => {
-    const quelle = aktiv != null
+    const source = aktiv != null
       ? vorhaben(daten, effJahr, aktiv)
-      : (daten?.massnahmen ?? []).filter((z) => z.jahr === effJahr);
+      : (daten?.measures ?? []).filter((z) => z.year === effJahr);
     const zuName = (nr: number) => {
-      const b = (daten?.teilhaushalte ?? []).find(
-        (t) => t.jahr === effJahr && t.thh_nr === nr);
-      return b?.bezeichnung ?? `Teilhaushalt ${nr}`;
+      const b = (daten?.sub_budgets ?? []).find(
+        (t) => t.year === effJahr && t.sub_budget_no === nr);
+      return b?.label ?? `Teilhaushalt ${nr}`;
     };
-    return quelle.map((z) => ({
-      key: `${z.thh_nr}-${z.code}`,
-      name: z.bezeichnung,
-      wert: z.gesamtsumme,
-      gruppe: zuName(z.thh_nr),
-      zusatz: aktiv == null ? zuName(z.thh_nr) : undefined,
+    return source.map((z) => ({
+      key: `${z.sub_budget_no}-${z.code}`,
+      name: z.label,
+      value: z.grand_total,
+      gruppe: zuName(z.sub_budget_no),
+      zusatz: aktiv == null ? zuName(z.sub_budget_no) : undefined,
     }));
   }, [daten, effJahr, aktiv]);
   const suchtreffer = useMemo(
-    () => (suchend ? new Set(treffer.map((z) => `${z.thh_nr}-${z.code}`)) : undefined),
+    () => (suchend ? new Set(treffer.map((z) => `${z.sub_budget_no}-${z.code}`)) : undefined),
     [suchend, treffer]);
 
   const zeigen = useMemo(() => {
     const basis = suchend ? treffer : liste;
     return sortierung === "alpha"
-      ? [...basis].sort((a, b) => a.bezeichnung.localeCompare(b.bezeichnung, "de"))
+      ? [...basis].sort((a, b) => a.label.localeCompare(b.label, "de"))
       : basis;
   }, [suchend, treffer, liste, sortierung]);
   // Einmal je Liste, nicht einmal je Zeile: Bei 565 Vorhaben wäre die
   // Berechnung im map() ein Quadrat.
   const massstab = zeigen.length
-    ? Math.max(...zeigen.map((z) => z.gesamtsumme), 0)
+    ? Math.max(...zeigen.map((z) => z.grand_total), 0)
     : 0;
 
   if (!bereiche.length) return null;
@@ -212,7 +226,7 @@ export function Vorhaben({
           {alleAnzahl.toLocaleString("de-DE")} Vorhaben, durchsuchbar
         </h2>
         <span className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-muted-foreground">
-          Investitionsprogramm {jahre[0]}–{jahre[jahre.length - 1]}
+          Investitionsprogramm {years[0]}–{years[years.length - 1]}
         </span>
       </div>
       <p className="mt-1 max-w-[86ch] text-[12.5px] leading-relaxed text-foreground/90">
@@ -258,7 +272,7 @@ export function Vorhaben({
           Selects statt eines Filter-Sheets — sie sind auf jedem Gerät und mit
           der Tastatur bedienbar, und drei Filter rechtfertigen kein Sheet. */}
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        {jahre.length > 1 && (
+        {years.length > 1 && (
           <label className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
             Jahrgang
             <select
@@ -266,7 +280,7 @@ export function Vorhaben({
               onChange={(e) => setJahrWahl(Number(e.target.value))}
               className="rounded-lg border border-border bg-background px-2 py-1.5 text-[12px] text-foreground"
             >
-              {jahre.map((j) => (
+              {years.map((j) => (
                 <option key={j} value={j}>{j}</option>
               ))}
             </select>
@@ -281,8 +295,8 @@ export function Vorhaben({
           >
             <option value="">alle Teilhaushalte</option>
             {bereiche.map((b) => (
-              <option key={b.thh_nr} value={b.thh_nr}>
-                {b.bezeichnung} ({anzahl(daten, effJahr, b.thh_nr)})
+              <option key={b.sub_budget_no} value={b.sub_budget_no}>
+                {b.label} ({count(daten, effJahr, b.sub_budget_no)})
               </option>
             ))}
           </select>
@@ -294,7 +308,7 @@ export function Vorhaben({
             onChange={(e) => setSortierung(e.target.value as Sortierung)}
             className="rounded-lg border border-border bg-background px-2 py-1.5 text-[12px] text-foreground"
           >
-            <option value="gesamtsumme">Gesamtsumme</option>
+            <option value="grand_total">Gesamtsumme</option>
             <option value="alpha">A–Z</option>
           </select>
         </label>
@@ -307,14 +321,14 @@ export function Vorhaben({
         <Treemap
           knoten={knoten}
           farbe={(gruppe) => {
-            const nr = bereiche.find((b) => b.bezeichnung === gruppe)?.thh_nr;
+            const nr = bereiche.find((b) => b.label === gruppe)?.sub_budget_no;
             return nr != null ? farbeVonThh(nr) : "var(--hh-aus-9)";
           }}
           // Bis 24.08. stand auf JEDER Kachel weißer Text. Am blassen Ende der
           // Ausgaben-Rampe (Stufe 3 aufwärts) war er damit unlesbar bis
           // unsichtbar — „Krippenausbau 2022" auf `--hh-aus-8` hielt 1,25 : 1.
           textFarbe={(gruppe) => {
-            const nr = bereiche.find((b) => b.bezeichnung === gruppe)?.thh_nr;
+            const nr = bereiche.find((b) => b.label === gruppe)?.sub_budget_no;
             return rampenText("aus", nr != null ? stufeVonThh(nr) : 9);
           }}
           buendelnAb={12}
@@ -337,7 +351,7 @@ export function Vorhaben({
         <p className="mt-3.5 text-[12px] text-muted-foreground">
           {liste.length} Vorhaben · das Programm weist für „{nameVon(aktiv)}“{" "}
           <span className="font-semibold tabular-nums text-foreground">
-            {betrag(summe.gesamtsumme).wert} {betrag(summe.gesamtsumme).einheit}
+            {amount(summe.grand_total).value} {amount(summe.grand_total).unit}
           </span>{" "}
           aus.<Beleg q="investitionsprogramm" />
         </p>
@@ -355,8 +369,8 @@ export function Vorhaben({
         <ul className="mt-1 divide-y divide-[color:var(--border)]">
           {zeigen.map((z) => (
             <Zeile
-              key={`${z.thh_nr}-${z.code}`} zeile={z} skala={massstab}
-              bereichName={suchend ? nameVon(z.thh_nr) : undefined}
+              key={`${z.sub_budget_no}-${z.code}`} row={z} skala={massstab}
+              bereichName={suchend ? nameVon(z.sub_budget_no) : undefined}
             />
           ))}
         </ul>
@@ -378,7 +392,7 @@ export function Vorhaben({
           . Die Summen stimmen nicht mit dem Finanzhaushalt weiter oben überein,
           weil das Investitionsprogramm auch aktivierbare Eigenleistungen enthält,
           für die kein Geld ausgezahlt wird. Angegeben ist je Vorhaben, was es{" "}
-          <strong className="font-semibold text-foreground/85">insgesamt</strong>{" "}
+          <strong className="font-semibold text-foreground/85">total</strong>{" "}
           kosten soll — über alle Jahre, nicht nur {effJahr}; die
           Jahresaufteilung lässt sich aus dem Dokument nicht verlässlich
           auslesen, deshalb zeigen wir sie nicht.
@@ -396,9 +410,9 @@ export function Vorhaben({
           <ArrowUp className="h-3 w-3" />
           Zurück zu den Summen je Bereich
         </a>
-        {h?.fundstelle && (
+        {h?.citation && (
           <span className="text-[11px] text-muted-foreground">
-            {h.stand}
+            {h.as_of}
           </span>
         )}
       </div>

@@ -45,7 +45,7 @@ import { ChevronRight, Scale } from "lucide-react";
 import { useFetch } from "@/lib/use-fetch";
 import {
   HaushaltAuswahl, haushaltUrl, HaushaltZeile, ProdukteAntwort, SPIELRAUM_TEXT, Spielraum,
-  bereiche, bereichSlug, betrag, deMio, jahreSortiert, mio, summe,
+  bereiche, bereichSlug, amount, deMio, jahreSortiert, mio, summe,
 } from "@/lib/haushalt";
 import { BereichSchluessel, bereichKanon } from "@/lib/haushalt-bereiche";
 import {
@@ -54,7 +54,7 @@ import {
 } from "@/lib/haushalt-pflicht";
 import { Anteilsbalken, type Anteil } from "@/components/haushalt/anteilsbalken";
 import { Gegenbalken } from "@/components/grafik/gegenbalken";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { cn } from "@/lib/utils";
@@ -82,9 +82,9 @@ const TON_STUFE: Record<PflichtStufe, string> = {
   freiwillig: "var(--hh-aus-5)",
 };
 const TON_SPIELRAUM: Record<Spielraum, string> = {
-  niedrig: "var(--hh-aus-0)",
-  mittel: "var(--hh-aus-3)",
-  hoch: "var(--hh-aus-5)",
+  low: "var(--hh-aus-0)",
+  medium: "var(--hh-aus-3)",
+  high: "var(--hh-aus-5)",
 };
 /** Fehlende Angabe: bewusst NICHT aus der Rampe, sonst liest sie sich als
  *  vierte Stufe. Schraffiert nach der Lücken-Konvention. */
@@ -115,7 +115,7 @@ type Zeile = {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "produkt_jahre"] as const;
+const FELDER = ["years", "product_years"] as const;
 
 export default function PflichtPage() {
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
@@ -123,17 +123,17 @@ export default function PflichtPage() {
   // Die Produktebene reicht nicht bis ins Planjahr — welches Jahr sie trägt,
   // sagt die Übersicht. Deshalb erst der zweite Aufruf, und nur wenn es
   // überhaupt eines gibt (`useFetch(null)` überspringt).
-  const produktJahr = data?.produkt_jahre?.length ? Math.max(...data.produkt_jahre) : null;
+  const produktJahr = data?.product_years?.length ? Math.max(...data.product_years) : null;
   // Der erste Jahrgang kommt ebenfalls aus den Daten. „2018" als feste Zahl in
   // den Satz zu schreiben hieße, beim nächsten Nachzug still zu lügen.
-  const produktVon = data?.produkt_jahre?.length ? Math.min(...data.produkt_jahre) : null;
+  const produktVon = data?.product_years?.length ? Math.min(...data.product_years) : null;
   const { data: produktdaten } = useFetch<ProdukteAntwort>(
-    produktJahr ? `/council/haushalt/produkte?jahr=${produktJahr}` : null,
+    produktJahr ? `/council/budget/products?year=${produktJahr}` : null,
   );
 
   const befunde = useMemo<Map<BereichSchluessel, SpielraumBefund>>(
     () => (produktdaten && produktJahr
-      ? spielraumBefunde(produktdaten.produkte, produktJahr)
+      ? spielraumBefunde(produktdaten.products, produktJahr)
       : new Map()),
     [produktdaten, produktJahr],
   );
@@ -142,29 +142,29 @@ export default function PflichtPage() {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
 
-  const jahre = jahreSortiert(data);
-  const jahr = jahre[jahre.length - 1];
-  const zeilen = data.jahre[String(jahr)] ?? [];
+  const years = jahreSortiert(data);
+  const year = years[years.length - 1];
+  const zeilen = data.years[String(year)] ?? [];
   const gesamtzeile = summe(zeilen);
-  const gesamtAus = mio(gesamtzeile?.aufwendungen) ?? 0;
+  const gesamtAus = mio(gesamtzeile?.expenses) ?? 0;
   // Das geplante Minus als positive Zahl. Nur wenn beide Seiten dastehen —
   // eine Differenz aus einer fehlenden Zahl wäre erfunden.
-  const defizit = gesamtzeile?.ertraege != null && gesamtzeile?.aufwendungen != null
-    ? Math.max(0, mio(gesamtzeile.aufwendungen - gesamtzeile.ertraege) ?? 0)
+  const defizit = gesamtzeile?.revenues != null && gesamtzeile?.expenses != null
+    ? Math.max(0, mio(gesamtzeile.expenses - gesamtzeile.revenues) ?? 0)
     : 0;
 
   const rows: Zeile[] = bereiche(zeilen).map((z) => {
-    const kanon = bereichKanon(z.bereich);
-    const eintrag = pflichtFuer(z.bereich);
-    const befund = kanon.schluessel ? befunde.get(kanon.schluessel) : undefined;
+    const kanon = bereichKanon(z.area);
+    const eintrag = pflichtFuer(z.area);
+    const befund = kanon.key ? befunde.get(kanon.key) : undefined;
     return {
       z,
-      aus: mio(z.aufwendungen) ?? 0,
+      aus: mio(z.expenses) ?? 0,
       // Nur wenn BEIDE Seiten dastehen. Eine fehlende Ertragszeile als Null zu
       // lesen machte aus dem Zuschussbedarf den Bruttoaufwand — und damit aus
       // der Korrektur wieder den Fehler, den sie korrigiert.
-      netto: z.aufwendungen != null && z.ertraege != null
-        ? mio(z.aufwendungen - z.ertraege) : null,
+      netto: z.expenses != null && z.revenues != null
+        ? mio(z.expenses - z.revenues) : null,
       stufe: eintrag?.stufe ?? null,
       was: eintrag?.was ?? null,
       befund,
@@ -196,9 +196,9 @@ export default function PflichtPage() {
   // nicht aneinanderlegen kann.
   const segmente: Anteil[] = [
     ...[...STUFEN].reverse().map((s) => ({
-      label: PFLICHT_LABEL[s], wert: summeAus(proStufe(s)), farbe: TON_STUFE[s],
+      label: PFLICHT_LABEL[s], value: summeAus(proStufe(s)), farbe: TON_STUFE[s],
     })),
-    { label: "noch nicht eingeordnet", wert: summeAus(ohneStufe), farbe: TON_OFFEN, offen: true },
+    { label: "noch nicht eingeordnet", value: summeAus(ohneStufe), farbe: TON_OFFEN, offen: true },
   ];
 
   // Der Abgleich — und ehrlich über den Nenner: Bereiche ohne Produktebene
@@ -209,7 +209,7 @@ export default function PflichtPage() {
   const weicht = geprueft.filter((r) => r.urteil === "weicht");
 
   return (
-    <Quellenkontext schluessel={QUELLEN} jahr={jahr}>
+    <Quellenkontext keys={QUELLEN} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -235,8 +235,8 @@ export default function PflichtPage() {
         const freiwilligProzent = (freiwilligAus / gesamtAus) * 100;
         return (
           <Seitenbuehne
-            kicker={`Anteil an allen Ausgaben · Plan ${jahr}`}
-            zahl={<><ZaehlZahl wert={pflichtProzent} nachkomma={0} />&#8239;% der Ausgaben
+            kicker={`Anteil an allen Ausgaben · Plan ${year}`}
+            zahl={<><ZaehlZahl value={pflichtProzent} nachkomma={0} />&#8239;% der Ausgaben
               sind Pflicht oder Pflicht mit Spielraum</>}
             sub={weicht.length > 0
               ? `bei ${weicht.length} von ${geprueft.length} Bereichen sieht die Verwaltung es selbst anders`
@@ -277,7 +277,7 @@ export default function PflichtPage() {
       <section id="ausgabenbild" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Geplante Ausgaben {jahr}
+            Geplante Ausgaben {year}
           </h2>
           <p className="font-display text-[19px] font-bold tabular-nums">
             {deMio(gesamtAus)}<span className="ml-1 text-[12px] font-semibold text-muted-foreground">Mio.&nbsp;€</span>
@@ -290,10 +290,10 @@ export default function PflichtPage() {
             Defizit-Marke als Signal-Strich mit Erklärsatz. */}
         <Gegenbalken
           className="mt-3"
-          zeilen={[{ titel: `Alle Ausgaben ${jahr}`, segmente }]}
+          zeilen={[{ title: `Alle Ausgaben ${year}`, segmente }]}
           basis={gesamtAus}
-          marke={defizit > 0 && gesamtAus > 0 ? {
-            wert: defizit,
+          mark={defizit > 0 && gesamtAus > 0 ? {
+            value: defizit,
             label: `Der Strich markiert das geplante Minus: ${deMio(defizit)} Mio. €, `
               + `also ${((defizit / gesamtAus) * 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })} % derselben Ausgaben.`,
           } : undefined}
@@ -355,16 +355,16 @@ export default function PflichtPage() {
             {weicht.length > 0 && (
               <> Bei <strong>{weicht.length} von {geprueft.length} Bereichen</strong> weicht
               diese Angabe von unserer Einordnung ab:{" "}
-              {weicht.map((r) => bereichKanon(r.z.bereich).name).join(", ")}.</>
+              {weicht.map((r) => bereichKanon(r.z.area).name).join(", ")}.</>
             )}
           </p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">
             Für {rows.length - geprueft.length} von {rows.length} Teilhaushalten gibt es keine Angabe:
             Die Produktebene reicht von {produktVon} bis {produktJahr} und deckt nicht jeden
             Teilhaushalt ab.
-            {produktdaten?.abdeckung_prozent != null && (
+            {produktdaten?.coverage_percent != null && (
               <> Die gefundenen Aufgaben erklären{" "}
-              {produktdaten.abdeckung_prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
+              {produktdaten.coverage_percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}
               &nbsp;% der für {produktJahr} geplanten Aufwendungen.</>
             )}{" "}
             Aufgabe für Aufgabe steht es auf der{" "}
@@ -380,7 +380,7 @@ export default function PflichtPage() {
           Menge. */}
       {weicht.length > 0 && (
         <LottiErklaert
-          titel="Zwei Antworten auf dieselbe Frage"
+          title="Zwei Antworten auf dieselbe Frage"
           text={`Unsere Einordnung und die Angabe der Stadt beantworten unterschiedliche Fragen. Wir fragen, ob eine Aufgabe verpflichtend ist. Die Stadt bewertet auf Produktebene, wie stark sich ihre Kosten beeinflussen lassen. Deshalb können beide Einschätzungen voneinander abweichen.`}
         />
       )}
@@ -411,7 +411,7 @@ export default function PflichtPage() {
               {PFLICHT_ERKLAERUNG[s]}
             </p>
             {gruppe.map((r) => (
-              <BereichsZeile key={r.z.bereich} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
+              <BereichsZeile key={r.z.area} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
             ))}
           </section>
         );
@@ -426,7 +426,7 @@ export default function PflichtPage() {
             Summen zu fallen.
           </p>
           {ohneStufe.map((r) => (
-            <BereichsZeile key={r.z.bereich} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
+            <BereichsZeile key={r.z.area} r={r} gesamt={gesamtAus} produktJahr={produktJahr} />
           ))}
         </section>
       )}
@@ -456,7 +456,7 @@ export default function PflichtPage() {
 
       <SchrittWeiter href="/haushalt/pflicht" />
 
-      <Quellenverzeichnis schluessel={QUELLEN} />
+      <Quellenverzeichnis keys={QUELLEN} />
     </div>
     </Quellenkontext>
   );
@@ -535,7 +535,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
   gesamt: number;
   produktJahr: number | null;
 }) {
-  const kanon = bereichKanon(r.z.bereich);
+  const kanon = bereichKanon(r.z.area);
   const befund = r.befund;
   const anteil = gesamt > 0 ? Math.min((r.aus / gesamt) * 100, 100) : 0;
   // Zwei Nachkommastellen erst unter 0,1 %: „0,05 %" (Stiftungen, 0,4 Mio.)
@@ -557,7 +557,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
                 `break-words` allein nicht: Ein Flex-Kind schrumpft ohne
                 `min-w-0` nicht unter seine längste unteilbare Stelle. */}
             <Link
-              href={`/haushalt/bereich?name=${bereichSlug(r.z.bereich)}`}
+              href={`/haushalt/bereich?name=${bereichSlug(r.z.area)}`}
               className="min-w-0 text-[13px] font-bold leading-snug break-words hover:text-primary"
             >
               {kanon.name}
@@ -614,7 +614,7 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
       {produktJahr && (
         <div className="mt-3 rounded-lg border border-border/70 bg-muted/40 p-2.5">
           {befund && befund.dominant ? (
-            <Selbstauskunft befund={befund} jahr={produktJahr} />
+            <Selbstauskunft befund={befund} year={produktJahr} />
           ) : (
             <p className="text-[12px] leading-relaxed text-muted-foreground">
               {befund
@@ -641,21 +641,21 @@ function BereichsZeile({ r, gesamt, produktJahr }: {
  *  Auskunft der Karte. Der Satz nennt dann keine eigene Quote mehr: Eine
  *  Mehrheit von 48 % als „die" Antwort auszugeben, während der Balken
  *  darüber drei zeigt, wäre die halbe Wahrheit in Fettdruck. */
-function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: number }) {
+function Selbstauskunft({ befund, year }: { befund: SpielraumBefund; year: number }) {
   const dominant = befund.dominant!;
   const anteil = Math.round(befund.anteil[dominant] * 100);
   const groesste = befund.groesste;
-  const gemischt = (["niedrig", "mittel", "hoch", "ohne"] as const)
+  const gemischt = (["low", "medium", "high", "ohne"] as const)
     .filter((s) => befund.anteil[s] >= MISCHUNG_AB).length >= 2;
   // Beträge statt nackter Prozente in der Legende: `anteil` ist normiert,
   // multipliziert mit dem Aufwand des Bereichs wird daraus wieder Geld —
   // der Anteilsbalken rechnet die Prozente selbst und schreibt beides an.
-  const aufwandMio = befund.aufwand / 1e6;
+  const aufwandMio = befund.expense / 1e6;
   const segmente: Anteil[] = [
-    ...(["niedrig", "mittel", "hoch"] as Spielraum[]).map((s) => ({
-      label: SPIELRAUM_TEXT[s].kurz, wert: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
+    ...(["low", "medium", "high"] as Spielraum[]).map((s) => ({
+      label: SPIELRAUM_TEXT[s].kurz, value: befund.anteil[s] * aufwandMio, farbe: TON_SPIELRAUM[s],
     })),
-    { label: "ohne Angabe", wert: befund.anteil.ohne * aufwandMio, farbe: TON_OFFEN, offen: true },
+    { label: "ohne Angabe", value: befund.anteil.ohne * aufwandMio, farbe: TON_OFFEN, offen: true },
   ];
   // Das ◇ klammert den ganzen Block: Es ist dasselbe Zeichen wie im
   // Doppelmarker und sagt in einem Glyph, wessen Antwort hier steht —
@@ -673,18 +673,18 @@ function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: numbe
           {gemischt ? (
             <>
               Hier verteilen sich die Angaben der Stadt über mehrere Stufen
-              ({befund.produkte} {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
+              ({befund.produkte} {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {year}).
             </>
           ) : (
             <>
               Bei <strong className="tabular-nums">{anteil}&nbsp;%</strong> der Ausgaben dieses Bereichs
               sieht die Stadt <strong>{SPIELRAUM_TEXT[dominant].kurz}</strong> ({befund.produkte}{" "}
-              {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {jahr}).
+              {befund.produkte === 1 ? "Aufgabe" : "Aufgaben"}, Stand {year}).
             </>
           )}
           <Beleg q="teilhaushalt" />
         </p>
-        {groesste?.auftragsgrundlage && (
+        {groesste?.legal_basis && (
           <details className="group mt-1.5">
             <summary className={cn(
               "cursor-pointer list-none text-[11.5px] font-semibold text-primary",
@@ -695,9 +695,9 @@ function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: numbe
             </summary>
             <div className="mt-1.5 rounded-lg border border-border bg-muted/40 p-2.5">
               <p className="text-[11.5px] font-semibold leading-snug">
-                {groesste.produkt_name}
+                {groesste.product_name}
                 <span className="ml-1.5 font-normal tabular-nums text-muted-foreground">
-                  {betrag(groesste.aufwendungen).wert}&nbsp;{betrag(groesste.aufwendungen).einheit}
+                  {amount(groesste.expenses).value}&nbsp;{amount(groesste.expenses).unit}
                 </span>
               </p>
               {/* Wortlaut des Teilhaushaltsplans, ungekürzt: Die Rechtsgrundlagen
@@ -705,10 +705,10 @@ function Selbstauskunft({ befund, jahr }: { befund: SpielraumBefund; jahr: numbe
                   oder auf einem Ratsbeschluss beruht — sie zu paraphrasieren
                   hieße, genau die Auskunft wegzuwerfen. */}
               <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">
-                {groesste.auftragsgrundlage}
+                {groesste.legal_basis}
               </p>
               <Link
-                href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.produkt_nr)}`}
+                href={`/haushalt/produkte?nr=${encodeURIComponent(groesste.product_no)}`}
                 className="mt-1.5 inline-block text-[11.5px] font-semibold text-primary"
               >
                 Steckbrief dieser Aufgabe

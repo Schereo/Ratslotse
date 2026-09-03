@@ -19,12 +19,12 @@ from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
 from council.parties import faction_label, order_key
-from council import ausgabenreihe as ausgabenreihe_mod
-from council import kennzahlen as kennzahlen_mod
-from council import nachbewilligungen as nachbewilligungen_mod
-from council import spenden as spenden_mod
+from council import expense_series as ausgabenreihe_mod
+from council import indicators as kennzahlen_mod
+from council import supplementary_approvals as nachbewilligungen_mod
+from council import donations as spenden_mod
 from council import steuertabellen
-from council import gewerbesteuerstatistik as gewst
+from council import trade_tax_statistics as gewst
 from council import beteiligungsbericht, qa
 from council import ernte
 from council import importance
@@ -37,25 +37,25 @@ from kern.store import Store
 
 from .. import deepresearch
 from ..config import get_settings
-from ..antworten import (AnalyseDaten, BeschlussDetail, BeschlussListe, DieseWoche,
-                        EntitaetenKarte, Entitaeten, EntitaetsDetail, Finanzen,
-                        FundstueckDesTages, GespraechDetail, GespraecheGeloescht,
-                        GespraechEinstellung, GespraecheListe, Gremien,
-                        HaushaltAenderungslisten, HaushaltBeteiligungen, HaushaltBilanz,
-                        HaushaltDatenstand, HaushaltDokumente, HaushaltGebaut,
-                        HaushaltInvestitionen, HaushaltInvestitionsprogramm,
-                        HaushaltKonzern, HaushaltProdukte, HaushaltPruefberichte,
-                        HaushaltSchulden, HaushaltStellenplan, HaushaltStreit,
-                        HaushaltUebersicht, HaushaltVergleich, HaushaltWeg, HeuteBriefing,
-                        Ok, OeffentlicheZahlen, OrtsDetail, OrtsKatalog, ParteienFilter,
-                        ParteiMeinungen,
-                        PersonenDetail, PersonenLexikon, QaBeispiele, QaShare,
-                        QaShareToken, Ratsmitglieder, RechercheAktuell, RechercheGestartet,
-                        RechercheGestoppt, RechercheSnapshot, SitzungsDetail,
-                        SitzungsListe, Sitzungspause, Stadtteile, Themenfelder,
-                        ThemenfeldRueckblicke, TrendDaten, VorlageEntfolgt, VorlageGefolgt,
-                        VorlagenFolgen, Vorschau, WochenvorschauIntern, Wortbeitraege,
-                        ZahlDerWoche, ZielDetail, Ziele)
+from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
+                         BudgetBalanceSheet, BudgetComparison, BudgetDataState, BudgetDebt, BudgetLiquidity, BudgetLoans,
+                         BudgetDispute, BudgetDocuments, BudgetExecution,
+                         BudgetFixedAssets, BudgetGroup,
+                         BudgetHoldings, BudgetInvestmentProgram, BudgetInvestments,
+                         BudgetOverview, BudgetPath, BudgetProducts, BudgetStaffPlan, Committees,
+                         ConversationDetail, ConversationList, ConversationSetting,
+                         ConversationsDeleted, CouncilMembers, CouncilRecess, CouncilWeekPreview,
+                         DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
+                         EntitiesMap, EntityDetail, EventStreamResponse, Finances, GoalDetail,
+                         Goals, JpegResponse, NumberOfTheWeek, Ok,
+                         PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
+                         PlaceDetail, PLANZEICHNUNG_JPEG, PolicyFieldRecaps, PolicyFields,
+                         PublicNumbers, QaExamples,
+                         QaShare, QaShareToken, ResearchCurrent, ResearchSnapshot, ResearchStarted,
+                         ResearchStopped, SessionDetail, SessionList, SharePreview, Speeches,
+                         SSE_FRAGE, SSE_RECHERCHE,
+                         TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
+                         TodayBriefing, TrendData)
 from ..deps import get_council_store, get_store, optional_user, require_active
 from ..ratelimit import (
     partei_meinungen_limiter,
@@ -81,7 +81,7 @@ def _vorlage_url(kvonr: int) -> str:
 
 
 @router.get("/committees")
-def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Gremien:
+def committees(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Committees:
     """Gremienliste — plus ``details`` für die Ausschuss-Abos.
 
     ``committees`` bleibt die reine Namensliste: Themen-Seite und
@@ -109,7 +109,7 @@ def committees(_user: dict = Depends(require_active), store: CouncilStore = Depe
 
 
 @router.get("/fields")
-def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Themenfelder:
+def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> PolicyFields:
     """Policy fields that have at least one classified decision, with label + count."""
     counts = {r["field"]: r["count"] for r in store.policy_field_stats()}
     out = [
@@ -124,7 +124,7 @@ def fields(_user: dict = Depends(require_active), store: CouncilStore = Depends(
 def parties(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> ParteienFilter:
+) -> PartyFilter:
     """Kanonische Antragsteller-Parteien für den Beschlussfilter.
 
     Die Werte kommen aus derselben normalisierten Auswertung wie der
@@ -144,7 +144,7 @@ def parties(
 def districts(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> Stadtteile:
+) -> Districts:
     """Belegte Ratslotse-Ortsbereiche für den Beschlussfilter."""
     rows = []
     for row in store.decision_location_place_stats():
@@ -173,7 +173,7 @@ def districts(
 
 @router.get("/places")
 def place_catalog(_user: dict = Depends(require_active),
-                  store: CouncilStore = Depends(get_council_store)) -> OrtsKatalog:
+                  store: CouncilStore = Depends(get_council_store)) -> PlaceCatalog:
     """Gemeinsamer Ortskatalog für Suche, Karten, Quiz und KI-Funktionen."""
     return store.public_place_catalog()
 
@@ -182,7 +182,7 @@ def place_catalog(_user: dict = Depends(require_active),
 def place_detail(
     place_id: str,
     store: CouncilStore = Depends(get_council_store),
-) -> OrtsDetail:
+) -> PlaceDetail:
     """Öffentliches Ortsprofil aus Katalogstammdaten und belegten Beschlüssen."""
     place = store.resolve_place(place_id)
     if not place:
@@ -233,8 +233,8 @@ def sessions(
     offset: int = Query(0, ge=0),
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
-) -> SitzungsListe:
+    ratslotse: Store = Depends(get_store),
+) -> SessionList:
     # `total` ist die GESAMTZAHL der passenden Sitzungen, `count` nur die dieser
     # Seite. Vorher gab es nur count — die Liste endete deshalb still bei der
     # Obergrenze, ohne dass irgendwo stand, dass es weitergeht (der Bestand
@@ -252,7 +252,7 @@ def sessions(
     # RL-902: „n TOPs zu deinen Themen" — Treffer der Tagesordnungs-
     # Klassifikation für die eingeloggte Nutzer*in (eine Batch-Abfrage).
     ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
-    mine = nwz.agenda_matches_for_owner(user["id"], ksinrs)
+    mine = ratslotse.agenda_matches_for_owner(user["id"], ksinrs)
     for r in rows:
         matches = mine.get(r.get("ksinr") or 0)
         if matches:
@@ -261,11 +261,11 @@ def sessions(
     return {"count": len(rows), "total": total, "sessions": _stamp_live_windows(rows, store)}
 
 
-@router.get("/sitzungspause")
+@router.get("/session-break")
 def sitzungspause(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> Sitzungspause:
+) -> CouncilRecess:
     """Läuft gerade eine Sitzungspause (Schulferien / Wahl-Übergang)?
 
     Der Rat pausiert laut Stadt in den Schulferien; die Übersicht zeigt dann
@@ -288,7 +288,7 @@ _HEUTE_CACHE: dict = {"at": 0.0, "data": None}
 
 
 @router.get("/heute")
-def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
+def heute(store: CouncilStore = Depends(get_council_store)) -> TodayBriefing:
     """RL-901: „Heute im Rat" für die Landing — public (wie public-stats).
     Drei Zustände: Sitzung heute (``sessions``: alle des Tages, je mit 2
     Top-TOPs, Restzähler und ``live_until``) · nächste Sitzung ·
@@ -313,7 +313,7 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
                 "session_time": zeit,
                 "live_until": live_mod.window_end(s["committee"], zeit, windows.get(zeit)),
                 "tops": [str(i.get("title") or "")[:90] for i in items[:2]],
-                "rest": max(len(items) - 2, 0),
+                "remaining": max(len(items) - 2, 0),
             }
 
         # An Ratstagen sind es drei nacheinander (Ausschuss für Allgemeine
@@ -348,7 +348,7 @@ def heute(store: CouncilStore = Depends(get_council_store)) -> HeuteBriefing:
 def diese_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> DieseWoche:
+) -> ThisWeek:
     """RL-U15 (13a-A): interessantester Beschluss der letzten 7 Tage — die
     „Diese Woche im Rat"-Karte, wenn es keine persönlichen Treffer gibt.
     Der interest_reason-Satz ist die „Warum spannend"-Zeile."""
@@ -366,12 +366,12 @@ def diese_woche(
     }
 
 
-@router.get("/wochenvorschau")
+@router.get("/week-preview")
 def wochenvorschau(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
-) -> WochenvorschauIntern:
+    ratslotse: Store = Depends(get_store),
+) -> CouncilWeekPreview:
     """„Die Woche im Rat" (Design 14, davor 11d/12) — als VORSCHAU auf die
     kommenden Sitzungen, nicht als Rückblick auf Beschlüsse.
 
@@ -386,15 +386,15 @@ def wochenvorschau(
     Themen), deshalb werden sie hier geholt und hineingereicht.
     """
     vorschau_ksinrs = [s["ksinr"] for s in store.sitzungen_im_fenster()]
-    meine = nwz.agenda_matches_for_owner(user["id"], vorschau_ksinrs)
+    meine = ratslotse.agenda_matches_for_owner(user["id"], vorschau_ksinrs)
     return store.wochenvorschau(meine=meine)
 
 
-@router.get("/fundstueck")
+@router.get("/daily-find")
 def fundstueck(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> FundstueckDesTages:
+) -> DiscoveryOfTheDay:
     """RL-U11: Fundstück des Tages — kuratierter Archiv-Fund für die Übersicht
     (Pipeline: scripts/rate_interest.py + scripts/generate_fundstuecke.py).
     {"found": false} statt 404: ohne Karte des Tages lässt das Frontend die
@@ -419,7 +419,7 @@ def fundstueck(
 def zahl_der_woche(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> ZahlDerWoche:
+) -> NumberOfTheWeek:
     """RL-905: größter Beschluss-Betrag der letzten 7 Tage (Fallback 30);
     ganz ohne Treffer zählt die Karte die Beschlüsse der Woche. Die Satz-
     Formulierung übernimmt das Frontend — hier nur Rohdaten."""
@@ -428,74 +428,74 @@ def zahl_der_woche(
     for days in (7, 30):
         top = store.top_amount_since((today - timedelta(days=days)).isoformat())
         if top:
-            return {"kind": "betrag", "amount_eur": top["amount_eur"],
+            return {"kind": "amount", "amount_eur": top["amount_eur"],
                     "decision_id": top["id"], "title": top["title"],
                     "session_date": top["session_date"], "window_days": days}
-    return {"kind": "anzahl",
+    return {"kind": "count",
             "count": store.count_decisions_since((today - timedelta(days=7)).isoformat()),
             "window_days": 7}
 
 
-@router.get("/haushalt/produkte")
+@router.get("/budget/products")
 def haushalt_produkte(
-    jahr: int,
-    thh: int | None = None,
+    year: int,
+    sub_budget: int | None = None,
     q: str | None = None,
-    amt: str | None = None,
-    spielraum: str | None = None,
-    nr: str | None = None,
+    office: str | None = None,
+    controllability: str | None = None,
+    number: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltProdukte:
+) -> BudgetProducts:
     """Produktebene eines Haushaltsjahres — was einzelne Aufgaben kosten,
     samt Steckbrief (Kurzbeschreibung, Rechtsgrundlage, Spielraum,
     Wirkungskreis, Zielgruppe) aus den Teilhaushalts-Plänen.
 
     Aus den Teilhaushalts-Plänen des Ratsinformationssystems. Die Abdeckung
     ist unvollständig (nicht jeder Teilhaushalt liegt für jedes Jahr als
-    auslesbares Dokument vor); ``abdeckung_prozent`` sagt, wie viel der
+    auslesbares Dokument vor); ``coverage_percent`` sagt, wie viel der
     geplanten Aufwendungen die gefundenen Produkte erklären — damit die
     Oberfläche das nicht als Vollbild ausgeben kann.
 
-    ``q``/``amt``/``spielraum`` filtern **serverseitig**: Mit dem Steckbrief
+    ``q``/``office``/``controllability`` filtern **serverseitig**: Mit dem Steckbrief
     trägt jede der knapp 400 Zeilen mehrere hundert Zeichen Fließtext, die
-    niemand im Browser sortieren muss. ``nr`` holt zusätzlich ein einzelnes
+    niemand im Browser sortieren muss. ``number`` holt zusätzlich ein einzelnes
     Produkt — die Steckbrief-Ansicht braucht es auch dann, wenn der gerade
     gesetzte Filter es aus der Liste nähme.
 
-    ``facetten`` liefert die Filterwerte mit Anzahl und dazu, wie viele
+    ``facets`` liefert die Filterwerte mit Anzahl und dazu, wie viele
     Produkte überhaupt welches Steckbrief-Feld tragen: Die Seite weist die
     Lücke aus, statt sie zu verschweigen.
 
-    Jedes Produkt trägt zusätzlich ``jahre`` — die Jahrgänge, in denen es im
-    Bestand steht. Gegen ``alle_jahre`` gehalten wird daraus das
+    Jedes Produkt trägt zusätzlich ``years`` — die Jahrgänge, in denen es im
+    Bestand steht. Gegen ``all_years`` gehalten wird daraus das
     Abdeckungs-Badge der Trefferliste (H4-04): Ein Produkt, das erst ab 2021
     vorliegt, soll das sagen, statt wie eine durchgehende Reihe auszusehen."""
-    produkte = store.get_produkte(jahr, thh, suche=q, amt=amt,
-                                  beeinflussbarkeit=spielraum)
+    produkte = store.get_produkte(year, sub_budget, suche=q, office=office,
+                                  controllability=controllability)
     abdeckung = store.produkt_abdeckung()
     for p in produkte:
-        p["jahre"] = abdeckung.get(p["produkt_nr"], [])
-    einzeln = store.produkt(jahr, nr) if nr else None
+        p["years"] = abdeckung.get(p["product_no"], [])
+    einzeln = store.product(year, number) if number else None
     if einzeln:
-        einzeln["jahre"] = abdeckung.get(einzeln["produkt_nr"], [])
-    summe = sum(p["aufwendungen"] or 0 for p in store.get_produkte(jahr))
-    plan = next((z for z in store.get_haushalt(jahr) if z["is_summe"]), None)
-    quote = round(summe / plan["aufwendungen"] * 100, 1) if plan and plan["aufwendungen"] else None
-    return {"jahr": jahr, "produkte": produkte, "abdeckung_prozent": quote,
-            "plan_aufwendungen": plan["aufwendungen"] if plan else None,
-            "treffer": len(produkte),
-            "alle_jahre": store.produkte_jahre(),
-            "facetten": store.produkt_facetten(jahr),
-            "produkt": einzeln}
+        einzeln["years"] = abdeckung.get(einzeln["product_no"], [])
+    summe = sum(p["expenses"] or 0 for p in store.get_produkte(year))
+    plan = next((z for z in store.get_haushalt(year) if z["is_total"]), None)
+    quote = round(summe / plan["expenses"] * 100, 1) if plan and plan["expenses"] else None
+    return {"year": year, "products": produkte, "coverage_percent": quote,
+            "plan_expenses": plan["expenses"] if plan else None,
+            "matches": len(produkte),
+            "all_years": store.produkte_jahre(),
+            "facets": store.produkt_facetten(year),
+            "product": einzeln}
 
 
-@router.get("/haushalt/stellenplan")
+@router.get("/budget/staff-plan")
 def haushalt_stellenplan(
-    jahrgang: int | None = None,
+    budget_year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltStellenplan:
+) -> BudgetStaffPlan:
     """Der Stellenplan: wie viele Stellen die Stadt vorhält und wie viele
     davon nicht besetzt sind.
 
@@ -503,14 +503,14 @@ def haushalt_stellenplan(
     Personal ist der größte Ausgabenblock; hier stehen die Menschen dahinter —
     und die Lücke zwischen geplanten und tatsächlich besetzten Stellen.
 
-    - ``jahrgaenge``: Haushaltsjahre mit eingelesenem Plan,
-    - ``summen``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
+    - ``editions``: Haushaltsjahre mit eingelesenem Plan,
+    - ``totals``: je Jahrgang und Teil die Gesamtzeile des Dokuments (Stellen
       im Haushaltsjahr, Stellen im Vorjahr, besetzt, nicht besetzt) samt
       Stichtag der Besetzung,
-    - ``gruppen``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
-    - ``zeilen``: die Einzelposten — nur mit ``jahrgang``, weil das rund 190
+    - ``groups``: dieselben Zahlen je Laufbahn- bzw. Beschäftigtengruppe,
+    - ``rows``: die Einzelposten — nur mit ``budget_year``, weil das rund 190
       Zeilen je Jahrgang sind,
-    - ``fehlend``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
+    - ``missing``: welche ``(Jahrgang, Teil)`` **nicht** vorliegen, obwohl der
       Jahrgang eingelesen ist. Ohne diese Liste sähe ein Jahrgang mit nur
       einem Teil aus wie ein vollständiger,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
@@ -524,12 +524,12 @@ def haushalt_stellenplan(
 
     Und die Besetzungszahlen gehören zur **Vorjahresspalte**, nicht zum
     Haushaltsjahr: Geplant wird vorwärts, gezählt werden kann nur rückwärts.
-    ``stichtag`` sagt, auf welchen Tag sie sich beziehen."""
-    summen = store.get_stellenplan(art="gesamt")
-    gruppen = store.get_stellenplan(art="gruppe")
-    zeilen = (store.get_stellenplan(art="posten", jahrgang=jahrgang)
-              if jahrgang is not None else [])
-    jahrgaenge = sorted({z["jahrgang"] for z in summen})
+    ``as_of_date`` sagt, auf welchen Tag sie sich beziehen."""
+    summen = store.get_stellenplan(kind="total")
+    gruppen = store.get_stellenplan(kind="group")
+    zeilen = (store.get_stellenplan(kind="item", budget_year=budget_year)
+              if budget_year is not None else [])
+    jahrgaenge = sorted({z["budget_year"] for z in summen})
 
     # Was fehlt, und in welchem Jahrgang: Ein Jahrgang steht mit einem Teil in
     # der Tabelle, wenn der andere seine Probe nicht bestanden hat oder im
@@ -538,29 +538,92 @@ def haushalt_stellenplan(
     from council import stellenplan as _sp
 
     da = store.stellenplan_einheiten()
-    fehlend = [{"jahrgang": j, "teil": t, "name": _sp.TEIL_NAMEN[t]}
+    fehlend = [{"budget_year": j, "part": t, "name": _sp.TEIL_NAMEN[t]}
                for j in jahrgaenge for t in sorted(_sp.TEIL_SPALTEN)
                if (j, t) not in da]
 
     ids = sorted({z["herkunft_id"] for z in (*summen, *gruppen, *zeilen)
                   if z["herkunft_id"] is not None})
     return {
-        "jahrgaenge": jahrgaenge,
-        "teile": _sp.TEIL_NAMEN,
-        "summen": summen,
-        "gruppen": gruppen,
-        "zeilen": zeilen,
-        "fehlend": fehlend,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "editions": jahrgaenge,
+        "part_names": _sp.TEIL_NAMEN,
+        "totals": summen,
+        "groups": gruppen,
+        "rows": zeilen,
+        "missing": fehlend,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/pruefberichte")
-def haushalt_pruefberichte(
-    marke: str | None = Query(None, pattern="^(B|WB|H|K)$"),
+@router.get("/budget/execution")
+def haushalt_vollzug(
+    budget_year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltPruefberichte:
+) -> BudgetExecution:
+    """Der Haushaltsvollzug: wie das laufende Jahr gegen seinen Plan läuft.
+
+    Die Schicht zwischen Plan und Abschluss. Die Verwaltung berichtet dem
+    Ausschuss für Finanzen und Beteiligungen vierteljährlich, was sie bis zum
+    31. Dezember erwartet — je Teilhaushalt und für die ganze Stadt.
+
+    - ``editions``: Haushaltsjahre mit mindestens einem gelesenen Bericht,
+    - ``reporting_dates``: je Jahrgang die Stichtage und welche Haushalte an
+      ihnen vorliegen. Wo ein Stichtag nur einen der beiden führt, steht das
+      hier — sonst sähe ein halbes Quartal aus wie ein ganzes,
+    - ``totals``: die Summenzeilen **aller** Jahrgänge. Das ist die
+      Zeitreihe, die die Übersicht braucht, und sie ist klein genug, um immer
+      mitzukommen,
+    - ``rows``: die dreizehn Teilhaushalte — nur mit ``budget_year``, weil das
+      über acht Jahrgänge rund 1.800 Zeilen wären,
+    - ``provenance``: je ``herkunft_id`` Dokument, Fundstelle und bestandene
+      Probe. Ergebnis- und Finanzhaushalt eines Stichtags tragen
+      **verschiedene** IDs: dieselbe Datei, aber zwei Tabellen mit je eigener
+      Rechenprobe.
+
+    Zwei Dinge, die jede Anzeige mitführen muss:
+
+    ``plan_basis`` sagt, was in der Ansatz-Spalte steht. Bis zum
+    Haushaltsjahr 2020 rechnet sie die Ermächtigungsübertragungen aus dem
+    Vorjahr mit ein, ab 2021 nicht mehr. Wer beide Jahrgänge nebeneinander
+    zeigt, ohne das zu sagen, vergleicht zwei verschiedene Größen —
+    ``plan_basis_note`` liefert den Satz dazu.
+
+    Und ``forecast`` ist eine **Erwartung**, kein Ist. „Zum 30. Juni" ist der
+    Tag, an dem die Ämter ihre Prognose für den 31. Dezember abgegeben haben,
+    nicht ein Halbjahres-Ergebnis. Was am Jahresende wirklich herauskam, steht
+    im Jahresabschluss (``…/budget?felder=income_statement``) — und der kommt
+    zwei Jahre später."""
+    from council import budget_execution as _be
+
+    summen = store.get_haushaltsvollzug(totals_only=True)
+    zeilen = (store.get_haushaltsvollzug(budget_year=budget_year)
+              if budget_year is not None else [])
+    stichtage = store.haushaltsvollzug_stichtage()
+    for s in stichtage:
+        s["budgets"] = sorted((s.get("budgets") or "").split(","))
+
+    ids = sorted({z["herkunft_id"] for z in (*summen, *zeilen)
+                  if z["herkunft_id"] is not None})
+    return {
+        "scope_note": _be.ABGRENZUNG,
+        "plan_basis_note": _be.BASIS_ERKLAERT,
+        "budget_names": _be.HAUSHALT_NAMEN,
+        "kind_names": _be.ART_NAMEN,
+        "editions": sorted({z["budget_year"] for z in summen}),
+        "reporting_dates": stichtage,
+        "totals": summen,
+        "rows": zeilen,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/budget/audit-reports")
+def haushalt_pruefberichte(
+    mark: str | None = Query(None, pattern="^(B|WB|H|K)$"),
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetAuditReports:
     """Prüfungsfeststellungen des Rechnungsprüfungsamts, alle Jahrgänge.
 
     Bewusst alles auf einmal statt je Jahr: Die Aussage dieses Bestands liegt
@@ -568,54 +631,54 @@ def haushalt_pruefberichte(
     „Wiederholte Beanstandung" ist erst dann etwas wert, wenn daneben steht,
     seit wann sie dort steht. Dafür braucht die Seite alle Jahre gleichzeitig.
 
-    - ``feststellungen``: eine Zeile je Randmarke, mit Textziffer, Seite und
+    - ``findings``: eine Zeile je Randmarke, mit Textziffer, Seite und
       Deeplink auf das Quelldokument,
-    - ``legende``: die Bedeutung der Marken, wie der Bericht sie selbst
+    - ``legend``: die Bedeutung der Marken, wie der Bericht sie selbst
       erklärt (jüngster Jahrgang, der die Marke noch führt),
-    - ``ohne_bericht``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
+    - ``without_report``: Jahre, für die ein Jahresabschluss ausgelesen ist, ein
       Schlussbericht aber nicht — die Lücke gehört sichtbar, nicht kaschiert.
 
-    ``marke`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
+    ``mark`` grenzt auf eine Randmarke ein. Gedacht für den Hinweis auf
     ``/haushalt/plan-ist``, der nur die Kette der wiederholten Beanstandungen
     braucht: Der volle Bestand ist eine Viertel-Megabyte Prosa und hat auf
-    einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``jahre`` und
-    ``legende`` bleiben dabei die des Gesamtbestands — sonst stünde in der
+    einer Seite nichts zu suchen, die ihn gar nicht anzeigt. ``years`` und
+    ``legend`` bleiben dabei die des Gesamtbestands — sonst stünde in der
     Fußzeile eine Jahresliste, die vom Filter abhängt.
     """
     zeilen = store.get_pruefberichte()
-    jahre = store.pruefbericht_jahre()
+    years = store.pruefbericht_jahre()
     legende: dict[str, dict] = {}
     for z in zeilen:  # aufsteigend sortiert — der letzte Eintrag gewinnt
-        legende[z["marke"]] = {"name": z["marke_name"],
-                               "erlaeuterung": z["marke_erlaeuterung"]}
+        legende[z["mark"]] = {"name": z["mark_name"],
+                               "explanation": z["mark_explanation"]}
     return {
-        "jahre": jahre,
-        "legende": legende,
-        "feststellungen": [z for z in zeilen if marke is None or z["marke"] == marke],
-        "ohne_bericht": [j for j in store.ergebnisrechnung_jahre() if j not in jahre],
+        "years": years,
+        "legend": legende,
+        "findings": [z for z in zeilen if mark is None or z["mark"] == mark],
+        "without_report": [j for j in store.ergebnisrechnung_jahre() if j not in years],
     }
 
 
-@router.get("/haushalt/konzern")
+@router.get("/budget/group")
 def haushalt_konzern(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltKonzern:
+) -> BudgetGroup:
     """Der Konzern Stadt Oldenburg — was der Kernhaushalt **nicht** zeigt.
 
     Alles auf einmal, weil die Aussage dieser Seite eine Differenz ist: Eine
     Konzernzahl allein sagt nichts, sie sagt erst etwas neben der
     Kernverwaltung im selben Jahr.
 
-    - ``jahre``: Jahrgänge mit eingelesenem Gesamtabschluss,
-    - ``konzern``: je Jahrgang die Summen des Konzerns (Erträge,
+    - ``years``: Jahrgänge mit eingelesenem Gesamtabschluss,
+    - ``consolidated``: je Jahrgang die Summen des Konzerns (Erträge,
       Aufwendungen, ordentliches Ergebnis, Gesamtjahresergebnis, Zins- und
       Personalaufwand) samt bestandener Rechenprobe und Fundstelle,
-    - ``traeger``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
+    - ``entity``: wer den Konzern ausmacht — je Jahrgang und Aufstellung eine
       Zeile pro Aufgabenträger, Beträge in **Euro** (der Bericht rundet sie
       auf Tausend, daher die glatten Endziffern),
-    - ``posten``: die vollständige Gesamtergebnisrechnung je Jahrgang,
-    - ``gegenprobe``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
+    - ``items``: die vollständige Gesamtergebnisrechnung je Jahrgang,
+    - ``cross_check``: dieselbe Kernverwaltungs-Zahl aus zwei unabhängigen
       Dokumenten — der Trägerzeile des Gesamtabschlusses und dem
       Jahresabschluss, den wir getrennt eingelesen haben,
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, bestandene Probe
@@ -628,44 +691,44 @@ def haushalt_konzern(
     auf ``/haushalt`` nicht verrechenbar. Die Seite sagt das; die API liefert
     deshalb auch keine gemischten Summen, sondern beide Reihen getrennt."""
     posten = store.get_konzern_posten()
-    traeger = store.get_konzern_traeger()
+    entity = store.get_konzern_traeger()
     kern = store.kernverwaltung_ist()
 
     je_jahr: dict[int, dict] = {}
     for p in posten:
         eintrag = je_jahr.setdefault(
-            p["jahr"], {"jahr": p["jahr"], "herkunft_id": p["herkunft_id"]})
-        if p["rolle"]:
-            eintrag[p["rolle"]] = p["betrag"]
+            p["year"], {"year": p["year"], "herkunft_id": p["herkunft_id"]})
+        if p["role"]:
+            eintrag[p["role"]] = p["amount"]
 
     # Gegenprobe: Trägerzeile „Stadt Oldenburg" (TEUR) gegen unseren
     # Jahresabschluss (Euro). Abgeglichen wird auf Tausend genau — feiner
     # kann es nicht sein, der Bericht rundet dort.
     gegenprobe = []
-    for t in traeger:
-        if t["traeger_key"] != "stadt":
+    for t in entity:
+        if t["entity_key"] != "stadt":
             continue
-        ist = (kern.get(t["jahr"]) or {}).get(t["art"])
+        ist = (kern.get(t["year"]) or {}).get(t["kind"])
         if ist is None:
             continue
         gegenprobe.append({
-            "jahr": t["jahr"], "art": t["art"],
-            "konzern": t["betrag_teur"] * 1000.0, "jahresabschluss": ist,
-            "ok": abs(t["betrag_teur"] - ist / 1000.0) <= 1.0,
+            "year": t["year"], "kind": t["kind"],
+            "consolidated": t["amount_keur"] * 1000.0, "annual_accounts": ist,
+            "ok": abs(t["amount_keur"] - ist / 1000.0) <= 1.0,
         })
 
-    ids = sorted({z["herkunft_id"] for z in (*posten, *traeger)
+    ids = sorted({z["herkunft_id"] for z in (*posten, *entity)
                   if z["herkunft_id"] is not None})
     return {
-        "jahre": store.konzern_jahre(),
-        "konzern": [je_jahr[j] for j in sorted(je_jahr)],
-        "traeger": [{**t, "betrag": t["betrag_teur"] * 1000.0,
-                     "vorjahr": (t["vorjahr_teur"] * 1000.0
-                                 if t["vorjahr_teur"] is not None else None)}
-                    for t in traeger],
-        "posten": posten,
-        "gegenprobe": gegenprobe,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "years": store.konzern_jahre(),
+        "consolidated": [je_jahr[j] for j in sorted(je_jahr)],
+        "entity": [{**t, "amount": t["amount_keur"] * 1000.0,
+                     "prior_year": (t["prior_year_keur"] * 1000.0
+                                 if t["prior_year_keur"] is not None else None)}
+                    for t in entity],
+        "items": posten,
+        "cross_check": gegenprobe,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
@@ -693,7 +756,7 @@ def _lexikon_zuordnung(store: CouncilStore,
     Entsendungsrechte („Vertreter/in der Landessparkasse").
 
     **Verlinkt wird nur, wer eine Seite hat** — und das sind allein die
-    Ratsmitglieder (``art == "rat"``). Das Lexikon führt daneben
+    Ratsmitglieder (``art == "council"``). Das Lexikon führt daneben
     Verwaltungsleute und, seit Tims Auftrag vom 17.08., die Aufsichtsorgane
     selbst; ``/council/person/{slug}`` kennt beide nicht und antwortet mit
     404. Bis hierher zeigte der Steckbrief sechs solcher Links ins Leere,
@@ -724,8 +787,8 @@ def _lexikon_zuordnung(store: CouncilStore,
     # Je Name die häufigste Funktion des Berichts — Eingang der Heilung unten.
     funktionen: dict[str, Counter] = defaultdict(Counter)
     for p in personen:
-        if p.get("funktion"):
-            funktionen[p["name"]][p["funktion"]] += 1
+        if p.get("position"):
+            funktionen[p["name"]][p["position"]] += 1
 
     aus: dict[str, dict] = {}
     for name in {p["name"] for p in personen}:
@@ -746,51 +809,51 @@ def _lexikon_zuordnung(store: CouncilStore,
             fn = funktionen[name].most_common(1)
             eintrag = CouncilStore.tippfehler_ratsmitglied(
                 vor, nach, fn[0][0] if fn else None, nach_paar)
-        verlinkbar = bool(eintrag) and eintrag.get("art") == "rat"
+        verlinkbar = bool(eintrag) and eintrag.get("art") == "council"
         aus[name] = {"slug": eintrag["slug"] if verlinkbar else None,
-                     "partei": eintrag["partei"] if eintrag else None}
+                     "party": eintrag["party"] if eintrag else None}
     return aus
 
 
-@router.get("/haushalt/beteiligungen")
+@router.get("/budget/shareholdings")
 def haushalt_beteiligungen(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltBeteiligungen:
+) -> BudgetHoldings:
     """Die städtischen Gesellschaften — was sie tun, wer sie beaufsichtigt.
 
     Die Ergänzung zum Gesamtabschluss (``/haushalt/konzern``): Der sagt, wie
     viel die Betriebe bewegen, diese Seite, was sie damit machen.
 
-    - ``gesellschaften``: je Gesellschaft Name, Gliederungsnummer und Seite im
-      jüngsten Bericht, dazu ``konzern_key``, wo der Gesamtabschluss sie als
+    - ``companies``: je Gesellschaft Name, Gliederungsnummer und Seite im
+      jüngsten Bericht, dazu ``consolidated_key``, wo der Gesamtabschluss sie als
       eigenen Träger führt,
-    - ``texte``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
+    - ``texts``: die beschreibenden Abschnitte (Gegenstand, Eigentümer,
       Aufsichtsorgane, eigene Beteiligungen, Auswirkungen auf den Haushalt) —
       alle ausdrücklich **ungeprüft**, denn Fließtext lässt sich gegen nichts
       rechnen,
-    - ``personen``: die Aufsichtsorgane, Person für Person, mit Gremium,
+    - ``people``: die Aufsichtsorgane, Person für Person, mit Gremium,
       Vorsitz, Amtszeit-Hinweis und — wo das Verzeichnis die Person
-      eindeutig kennt — ``slug`` und ``partei`` für die Personen-Seite.
-      ``funktion`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
-      ``funktionen_zuordenbar`` an der Gesellschaft. Zwei der fünf Abschnitte
+      eindeutig kennt — ``slug`` und ``party`` für die Personen-Seite.
+      ``position`` steht nur da, wo die Spaltenprobe gehalten hat; siehe
+      ``roles_assignable`` an der Gesellschaft. Zwei der fünf Abschnitte
       sind nämlich keine Prosa, sondern Tabellen, die der PDF-Extrakt
       spaltenweise ausgibt (``council/beteiligungsbericht.py``),
-    - ``eigentuemer``: wem die Gesellschaft gehört, mit Betrag und Anteil.
+    - ``owners``: wem die Gesellschaft gehört, mit Betrag und Anteil.
       **Ohne** die Stammkapital-Zeile — die ist die Summe und kein
       Gesellschafter. Gesellschaften, deren Anteile sich nicht auf das
       ausgewiesene Stammkapital summieren, erscheinen hier gar nicht; ihr
-      Rohtext steht weiter in ``texte``,
-    - ``kennzahlen``: die Zeitreihe je Gesellschaft (Jahresergebnis,
-      Bilanzsumme, Eigenkapitalquote). ``berichte`` sagt, wie viele Berichte
+      Rohtext steht weiter in ``texts``,
+    - ``indicators``: die Zeitreihe je Gesellschaft (Jahresergebnis,
+      Bilanzsumme, Eigenkapitalquote). ``n_reports`` sagt, wie viele Berichte
       denselben Wert nennen — 1 heißt „durch eine Probe im Dokument gedeckt",
       mehr heißt zusätzlich „von einer zweiten Veröffentlichung bestätigt",
-    - ``konzernvergleich``: für die Gesellschaften, die auch im
+    - ``group_comparison``: für die Gesellschaften, die auch im
       Gesamtabschluss stehen, beide Zahlen desselben Jahres nebeneinander.
       **Keine Probe** — die beiden Rechnungen unterscheiden sich systematisch,
       und zwei Betriebe weisen wegen Ergebnisabführung 0 € aus, obwohl sie
       etwas erwirtschaftet haben. Eine Einordnung, kein Urteil,
-    - ``berichtsjahre`` / ``jahre``: welche Berichte gelesen sind und welche
+    - ``report_years`` / ``years``: welche Berichte gelesen sind und welche
       Bezugsjahre die Kennzahlen abdecken (sie reichen weiter zurück als die
       Berichte — jeder führt vier bis fünf Jahre mit),
     - ``herkunft``: je ``herkunft_id`` Dokument, Fundstelle, Seite und Probe.
@@ -799,9 +862,9 @@ def haushalt_beteiligungen(
     aufgebaut und nicht maschinenlesbar (``council/beteiligungsbericht.py``)."""
     berichtsjahre = store.beteiligungsbericht_jahre()
     gesellschaften = store.get_gesellschaften()
-    kennzahlen = store.get_gesellschaft_kennzahlen()
+    indicators = store.get_gesellschaft_kennzahlen()
     texte = [t for g in gesellschaften
-             for t in store.get_gesellschaft_texte(g["gesellschaft"])]
+             for t in store.get_gesellschaft_texte(g["company"])]
     personen = store.get_gesellschaft_personen()
     eigentuemer = store.get_gesellschaft_eigentuemer()
     vergleich = (beteiligungsbericht.konzernvergleich(store, berichtsjahre[-1])
@@ -811,35 +874,35 @@ def haushalt_beteiligungen(
     # wird sie einmal an die Gesellschaft gehängt, damit die Seite sie zeigen
     # kann, ohne die Personen durchzugehen. Wer gar keine Personen hat, hat
     # auch nichts falsch zuzuordnen.
-    gerissen = {p["gesellschaft"] for p in personen if not p["funktionen_zuordenbar"]}
+    gerissen = {p["company"] for p in personen if not p["roles_assignable"]}
     verzeichnis = _lexikon_zuordnung(store, personen)
 
     ids = sorted({z["herkunft_id"]
-                  for z in (*gesellschaften, *texte, *kennzahlen, *personen,
+                  for z in (*gesellschaften, *texte, *indicators, *personen,
                             *eigentuemer)
                   if z["herkunft_id"] is not None})
     return {
-        "berichtsjahre": berichtsjahre,
-        "jahre": sorted({z["jahr"] for z in kennzahlen}),
-        "gesellschaften": [{**g, "funktionen_zuordenbar":
-                            g["gesellschaft"] not in gerissen}
-                           for g in gesellschaften],
-        "texte": texte,
-        "personen": [{**p, "funktionen_zuordenbar":
-                      bool(p["funktionen_zuordenbar"]),
-                      **verzeichnis[p["name"]]} for p in personen],
-        "eigentuemer": eigentuemer,
-        "kennzahlen": kennzahlen,
-        "konzernvergleich": vergleich,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "report_years": berichtsjahre,
+        "years": sorted({z["year"] for z in indicators}),
+        "companies": [{**g, "roles_assignable":
+                       g["company"] not in gerissen}
+                      for g in gesellschaften],
+        "texts": texte,
+        "people": [{**p, "roles_assignable":
+                    bool(p["roles_assignable"]),
+                    **verzeichnis[p["name"]]} for p in personen],
+        "owners": eigentuemer,
+        "indicators": indicators,
+        "group_comparison": vergleich,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/investitionen")
+@router.get("/budget/investments")
 def haushalt_investitionen(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltInvestitionen:
+) -> BudgetInvestments:
     """Was die Stadt bauen und kaufen will — die Investitionen des
     Finanzhaushalts, je Teilhaushalt.
 
@@ -847,12 +910,12 @@ def haushalt_investitionen(
     Bereichs zeigt, steht keine einzige Investition (ein Schulneubau taucht dort
     nur als Abschreibung auf, verteilt über Jahrzehnte).
 
-    - ``jahre``: Haushaltsjahre, für die Investitionen vorliegen,
-    - ``teilhaushalte``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
+    - ``years``: Haushaltsjahre, für die Investitionen vorliegen,
+    - ``sub_budgets``: je Jahr und Teilhaushalt Ein- und Auszahlungen aus
       Investitionstätigkeit,
-    - ``gesamt``: je Jahr die Summenzeile der Datei — das **Ziel der
+    - ``investments``: je Jahr die Summenzeile der Datei — das **Ziel der
       Rechenprobe**, nicht unsere Addition,
-    - ``finanzhaushalt``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
+    - ``financial_budget``: je Jahr der Gesamtbetrag aller Ein- und Auszahlungen,
       also samt laufender Verwaltungstätigkeit. Die Bezugsgröße, die aus
       „80,8 Mio. €" erst eine Aussage macht — und die einzige Zahl hier ohne
       Rechenprobe (eigene ``herkunft_id`` mit ``ungeprueft``, s. u.),
@@ -868,31 +931,31 @@ def haushalt_investitionen(
     zeilen = store.get_investitionen()
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
-        "jahre": store.investitionen_jahre(),
-        "teilhaushalte": [z for z in zeilen if z["ebene"] == "teilhaushalt"],
-        "gesamt": [z for z in zeilen if z["ebene"] == "investitionen"],
-        "finanzhaushalt": [z for z in zeilen if z["ebene"] == "finanzhaushalt"],
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "years": store.investitionen_jahre(),
+        "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
+        "investments": [z for z in zeilen if z["level"] == "investments"],
+        "financial_budget": [z for z in zeilen if z["level"] == "financial_budget"],
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/investitionsprogramm")
+@router.get("/budget/investment-programme")
 def haushalt_investitionsprogramm(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltInvestitionsprogramm:
+) -> BudgetInvestmentProgram:
     """Die einzelnen Vorhaben — die Ebene unter ``/haushalt/investitionen``.
 
     Aus Anlage 004 des Haushaltsplans: nicht „Schule und Bildung: 8,3 Mio. €",
     sondern „BBS Haarentor: Ausstattung". Acht Jahrgänge, rund 4.500 Vorhaben.
 
-    - ``jahre``: Jahrgänge, für die ein Programm vorliegt,
-    - ``massnahmen``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
+    - ``years``: Jahrgänge, für die ein Programm vorliegt,
+    - ``measures``: je Vorhaben Teilhaushalt, IPSP-Element, Bezeichnung und
       **Gesamtinvestitionssumme**,
-    - ``teilhaushalte``: je Teilhaushalt die Gesamtsumme, die das Dokument am
+    - ``sub_budgets``: je Teilhaushalt die Gesamtsumme, die das Dokument am
       Ende seines Abschnitts ausweist — das **Ziel der Rechenprobe**, nicht
       unsere Addition,
-    - ``gesamt``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
+    - ``totals``: je Jahrgang die Gesamtsumme des Investitionsprogramms,
     - ``herkunft``: Dokument, Fundstelle und die drei bestandenen Proben.
 
     Drei Grenzen, die die Seite nennt und die API deshalb nicht verwischt:
@@ -910,19 +973,19 @@ def haushalt_investitionsprogramm(
     zeilen = store.get_investitionsmassnahmen()
     ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None})
     return {
-        "jahre": store.investitionsprogramm_jahre(),
-        "massnahmen": [z for z in zeilen if z["ebene"] == "massnahme"],
-        "teilhaushalte": [z for z in zeilen if z["ebene"] == "teilhaushalt"],
-        "gesamt": [z for z in zeilen if z["ebene"] == "gesamt"],
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "years": store.investitionsprogramm_jahre(),
+        "measures": [z for z in zeilen if z["level"] == "measure"],
+        "sub_budgets": [z for z in zeilen if z["level"] == "sub_budget"],
+        "totals": [z for z in zeilen if z["level"] == "total"],
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/datenstand")
+@router.get("/budget/data-status")
 def haushalt_datenstand(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltDatenstand:
+) -> BudgetDataState:
     """Bis wann die Zahlen reichen — je Datenschicht ein Jahrgangs-Stand.
 
     Beantwortet die Frage, die sonst auf jeder Unterseite von ``/haushalt``
@@ -946,15 +1009,15 @@ def haushalt_datenstand(
 
     zeilen = finanzquellen.datenstand(store)
     for z in zeilen:
-        z["monat"] = finanzquellen.MONATE[z["erwarteter_monat"]]
-    return {"heute": date.today().isoformat(), "schichten": zeilen}
+        z["month_name"] = finanzquellen.MONATE[z["erwarteter_monat"]]
+    return {"today": date.today().isoformat(), "layers": zeilen}
 
 
-@router.get("/haushalt/dokumente")
+@router.get("/budget/documents")
 def haushalt_dokumente(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltDokumente:
+) -> BudgetDocuments:
     """Je Quelle des Haushalts-Bereichs das **Dokument** — Jahrgang für Jahrgang.
 
     Das Quellenverzeichnis am Fuß jeder Haushalts-Seite beschreibt eine Quelle
@@ -964,8 +1027,8 @@ def haushalt_dokumente(
     man wieder selbst suchen darf. Hier steht, welches PDF zu welchem Jahr
     gehört, damit der Link das Dokument des **gezeigten** Jahres öffnet.
 
-    ``{"dokumente": {"<quellenschluessel>": [{jahr, url, label, fundstelle,
-    seite}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
+    ``{"documents": {"<quellenschluessel>": [{year, url, label, citation,
+    page}, …]}}`` — aufsteigend nach Jahr. Ein Schlüssel fehlt, wo wir kein
     Dokument haben; die Oberfläche fällt dann auf die statische Adresse
     zurück und sagt dazu, wohin sie führt.
 
@@ -973,121 +1036,127 @@ def haushalt_dokumente(
     auf rund neun Teilhaushalts-Anlagen. Die Liste nennt sie alle statt eine
     auszuwählen — welche gemeint ist, entscheidet die Seite, nicht die API.
 
-    Die Fundstelle kommt aus ``council_herkunft`` und ist der eigentliche
+    Die Fundstelle kommt aus ``council_provenance`` und ist der eigentliche
     Gewinn: „Abschnitt 3.2" macht aus einem 300-Seiten-PDF eine nachschlagbare
     Stelle.
 
-    ``jahrgaenge`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
+    ``editions`` kommt aus derselben Antwort statt aus einem eigenen Aufruf:
     Es beantwortet die Nachbarfrage („welche Jahrgänge deckt diese Quelle
     ab?"), wird an derselben Stelle gebraucht — im Quellenverzeichnis — und
     ist eine Abfrage je Quelle, keine je Zeile. Zwei Endpunkte dafür hießen
     zwei Rundreisen für einen Seitenfuß."""
-    return {"dokumente": store.haushalt_dokumente(),
-            "jahrgaenge": store.haushalt_jahrgaenge()}
+    return {"documents": store.haushalt_dokumente(),
+            "editions": store.haushalt_jahrgaenge()}
 
 
-@router.get("/haushalt")
+@router.get("/budget")
 def haushalt_uebersicht(
     felder: str | None = None,
-    thh_posten: str | None = None,
+    sub_budget_item: str | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltUebersicht:
+) -> BudgetOverview:
     """Datenfundament des Haushalts-Bereichs, in einem Aufruf:
 
-    - ``jahre``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
+    - ``years``: Ergebnishaushalt je Planjahr (Teilhaushalte + Summenzeile,
       Quelle je Zeile — Haushaltsplan-PDF bzw. Open-Data-CSV der Stadt),
-    - ``steuern``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
-    - ``steuerkraft``: Steuerkraftmesszahl + Schlüsselzuweisungen je
+    - ``taxes``: Ist-Steuereinnahmen je Steuerart seit 1998 (Langformat),
+    - ``tax_capacity``: Steuerkraftmesszahl + Schlüsselzuweisungen je
       Ausgleichsjahr seit 1993 (die Jahreszahl der Quelle ist beim Einlesen
       um ein Jahr korrigiert, s. ``council/haushalt._STEUERKRAFT_VERSATZ``;
       die ``*_je_ew``-Felder sind deshalb leer),
-    - ``einwohner``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
-    - ``ergebnisrechnung``: Ansatz, Plan und Ergebnis je Posten aus den
+    - ``population``: jüngste Einwohnerzahl (Bezugsgröße für Pro-Kopf-Angaben),
+    - ``income_statement``: Ansatz, Plan und Ergebnis je Posten aus den
       Jahresabschlüssen — Grundlage für „geplant gegen tatsächlich",
-    - ``finanzrechnung``: die Kassensicht aus demselben Jahresabschluss
+    - ``cash_flow_statement``: die Kassensicht aus demselben Jahresabschluss
       (Abschnitt 4.1) — nicht was gebucht, sondern was **gezahlt** wurde.
-      Jede Zeile trägt neben der Nummer des Dokuments eine ``rolle``
-      (``saldo_verwaltung``, ``saldo_investition``, ``finanzmittel``, …);
+      Jede Zeile trägt neben der Nummer des Dokuments eine ``role``
+      (``balance_operating``, ``balance_capital``, ``finanzmittel``, …);
       **an der Rolle hängen, nicht an der Nummer**: Die Tabelle hat
       2017–2020 eine Zeile mehr als ab 2021, alle Nummern ab 08
-      verschieben sich dadurch. ``ermaechtigung`` ist das aus Vorjahren
+      verschieben sich dadurch. ``authorization`` ist das aus Vorjahren
       übertragene Geld und ``NULL``, wo der Jahrgang die Spalte nicht führt,
-    - ``ergebnishaushalt``: dieselben Posten für Jahre **ohne**
+    - ``income_budget``: dieselben Posten für Jahre **ohne**
       Jahresabschluss, aus dem Gesamtergebnishaushalt der Haushaltspläne.
       Jede Zeile trägt ``art`` (``ansatz`` = das Jahr, für das dieser Plan
       der Haushalt ist; ``finanzplanung`` = mittelfristige Vorausschau nach
-      § 8 NKomVG) und ``plan_jahrgang`` (aus welchem Haushalt sie stammt).
+      § 8 NKomVG) und ``plan_budget_year`` (aus welchem Haushalt sie stammt).
       **Beides gehört an jede Anzeige**: Der Plan nennt alle fünf Spalten
       „Ansatz", der Haushalt ist aber nur eines der Jahre, und die
       Finanzplanung schreibt jeder neue Haushalt neu. Die Zahlen stammen aus
       der Einbringungs-Vorlage, sind also der **Entwurf** der Verwaltung —
-      der Beleg (``herkunft.stand``) sagt das, die Anzeige sollte es
+      der Beleg (``herkunft.as_of``) sagt das, die Anzeige sollte es
       anschreiben,
-    - ``ansatz_jahre``: die Jahre mit einem Haushaltsansatz — die Liste, aus
+    - ``budgeted_years``: die Jahre mit einem Haushaltsansatz — die Liste, aus
       der ein Jahr-Umschalter bestehen darf (ohne die Finanzplanungsjahre),
-    - ``wirtschaftsplaene``: die Wirtschaftspläne der Eigenbetriebe und
-      städtischen Gesellschaften, je ``betrieb`` und ``jahr``. **Nicht mit dem
+    - ``business_plans``: die Wirtschaftspläne der Eigenbetriebe und
+      städtischen Gesellschaften, je ``enterprise`` und ``year``. **Nicht mit dem
       Kernhaushalt addierbar** — der Eigenbetrieb Gebäudewirtschaft vermietet
       der Stadt ihre eigenen Gebäude, seine Erträge sind zu großen Teilen
       Aufwand des Kernhaushalts; herausgerechnet wird das erst im
-      Gesamtabschluss. ``ertraege``/``aufwendungen`` sind ``null``, wo die
-      Quelle nur das Ergebnis nennt, und ``proben`` sagt, welche Rechenprobe
+      Gesamtabschluss. ``revenues``/``expenses`` sind ``null``, wo die
+      Quelle nur das Ergebnis nennt, und ``probes`` sagt, welche Rechenprobe
       für die Zeile gelaufen ist,
-    - ``abweichungsgruende``: warum ein Posten vom Plan abwich, in den Worten
+    - ``enterprise_accounts``: das Ist zu den Wirtschaftsplänen — je Betrieb,
+      Jahr und Kennzahl EINE Zahl aus dem geprüften Jahresabschluss (``value``
+      in Euro, ``unit`` sagt, ob der Bericht in TEUR schrieb), aus dem
+      jüngsten Bericht, der sie nennt; ``confirmations`` zählt die Berichte,
+      die dieselbe Zahl nennen, ``conflicts`` die abweichenden. Buchwerte,
+      keine Marktwerte; mit dem Kernhaushalt nicht addierbar,
+    - ``variance_reasons``: warum ein Posten vom Plan abwich, in den Worten
       der Verwaltung (Abschnitt 6.3.1 des Jahresabschlusses),
     - ``pruefberichte``: Fundstelle des RPA-Schlussberichts je Jahrgang,
     - ``herkunft``: je ``herkunft_id`` das Dokument, die Fundstelle darin, die
       bestandene Rechenprobe samt Messwert und der Stichtag — nachschlagbar
       über die ``herkunft_id`` der einzelnen Datenzeilen,
-    - ``produkt_jahre``: Jahre, für die die Produktebene vorliegt,
-    - ``plan_ist_jahre``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
-    - ``ausgabenreihe``: die lange Reihe aus Datensatz 1102 — ein Betrag je
-      Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``regelwerk`` (die Naht
-      2009/2010), die bestandenen ``proben`` und, wo die beiden Quellen sich
-      widersprechen, den Betrag der unterlegenen (``konflikt_betrag``).
-      ``regelwerke`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
+    - ``product_years``: Jahre, für die die Produktebene vorliegt,
+    - ``plan_actual_years``: Jahre mit „geplant gegen tatsächlich" je Teilhaushalt,
+    - ``expense_series``: die lange Reihe aus Datensatz 1102 — ein Betrag je
+      Jahr seit 1972. ``zeilen`` trägt je Jahrgang ``accounting_system`` (die Naht
+      2009/2010), die bestandenen ``probes`` und, wo die beiden Quellen sich
+      widersprechen, den Betrag der unterlegenen (``conflict_amount``).
+      ``accounting_systems`` nennt zu jedem Regelwerk den Titel der Quelle und ihre
       Abgrenzung — **beide gehören an jede Anzeige**: Links der Naht steht das
       Anordnungssoll des Verwaltungshaushalts, rechts die ordentlichen
       Aufwendungen der Gesamtergebnisrechnung, und über den Schnitt darf keine
       Linie laufen. Eine Einwohnerzahl liefert dieser Block bewusst nicht
       (Begründung an der Tabelle in ``council/store.py``).
-    - ``spenden``: was die Stadt an Zuwendungen annimmt, aus den
-      Ratsbeschlüssen. ``jahre`` ist die Reihe (Betrag, Zahl der Vorlagen,
+    - ``donations``: was die Stadt an Zuwendungen annimmt, aus den
+      Ratsbeschlüssen. ``years`` ist die Reihe (Betrag, Zahl der Vorlagen,
       Aufteilung Rat/Verwaltungsausschuss), ``vorlagen`` die einzelnen
       Beschlüsse mit ihrer Vorlagen-Nummer, ``ohne_beleg`` die Zeilen, die
       ihre Zweitstelle **nicht** tragen — samt dem Satz, warum. Die
       ``schwellen`` sagen, wer über welche Zuwendung entscheidet.
       **Die Namen der Gebenden liefert dieser Block nicht**, und das ist
       keine Lücke, die sich schließt: Sie stehen nur in der Anlage
-      „Zuwendungsliste", die nicht im Bestand ist (``council/spenden.py``).
-    - ``steuerplan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
-      dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``vorlaeufig`` ist die
+      „Zuwendungsliste", die nicht im Bestand ist (``council/donations.py``).
+    - ``tax_plan``: je Steuerart und Jahr der Ansatz des Haushaltsplans neben
+      dem Rechnungsergebnis (Jahrbuch-Tabelle 1103). ``provisional`` ist die
       Angabe der Quelle über sich selbst — die jüngste Spalte heißt dort
       „vorläufiges Rechnungsergebnis". Die ``art``-Werte sind **dieselben** wie
-      in ``steuern``; daran hängt die Prüfung der Jahresbeschriftung.
-    - ``hebesaetze``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
+      in ``taxes``; daran hängt die Prüfung der Jahresbeschriftung.
+    - ``tax_rates``: die Realsteuer-Hebesätze je **Änderungsjahr** seit 1980
       (Tabelle 1105). Die Jahre dazwischen fehlen nicht, sie ändern nichts —
       ein Satz gilt bis zur nächsten Änderung. Wer die Reihe zeichnet, zeichnet
       eine Treppe und interpoliert nicht. ``bemessung_neu`` nennt die Jahre, in
       denen sich die Bemessungsgrundlage mitänderte; **ohne diese Angabe darf
       kein Hebesatz-Sprung angezeigt werden**, denn 2025 stieg der Satz um
       21 %, während das Aufkommen um 4,6 % sank.
-    - ``gewerbesteuerstatistik``: wie viele Betriebe und Betriebsstätten in
+    - ``trade_tax_statistics``: wie viele Betriebe und Betriebsstätten in
       Oldenburg erfasst sind, wie viele davon überhaupt einen Steuermessbetrag
       haben, und wie sich dieser auf reine Festsetzungen und Zerlegungen
       verteilt (Landesamt für Statistik, Bericht L IV 13). **Das ist die
       Veranlagung, nicht das Aufkommen**: Messbetrag mal Hebesatz ergibt nicht
-      die Zahl aus ``steuern`` — in den drei prüfbaren Jahren lagen beide
+      die Zahl aus ``taxes`` — in den drei prüfbaren Jahren lagen beide
       zwischen 13 % darunter und 27 % darüber. ``abgrenzung`` sagt das im
       Klartext und reist deshalb mit den Zahlen mit.
 
-    Fehlende Jahre (Datenlücken) fehlen schlicht in ``jahre`` — das Frontend
+    Fehlende Jahre (Datenlücken) fehlen schlicht in ``years`` — das Frontend
     zeigt Lücken ehrlich, statt zu interpolieren.
 
     ``felder`` schneidet die Antwort auf das zu, was die aufrufende Seite
-    wirklich rendert (kommagetrennt, z. B. ``?felder=jahre,produkt_jahre``).
-    ``thh_posten`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
+    wirklich rendert (kommagetrennt, z. B. ``?felder=years,product_years``).
+    ``sub_budget_item`` schneidet zusätzlich INNERHALB der Ergebnisrechnung — sie
     ist der größte Block, und ihre Teilhaushalts-Ebene braucht fast niemand
     vollständig (s. :func:`_ergebnisrechnung`).
     Ohne den Parameter kommt alles — der Vertrag von vorher gilt unverändert
@@ -1096,9 +1165,9 @@ def haushalt_uebersicht(
     sondern gar nicht erst aus der Datenbank gelesen werden.
     """
     bausteine: dict[str, Callable[[], object]] = {
-        "jahre": lambda: {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
-        "steuern": store.get_steuereinnahmen,
-        "steuerkraft": store.get_steuerkraft,
+        "years": lambda: {str(y): store.get_haushalt(y) for y in store.haushalt_years()},
+        "taxes": store.get_steuereinnahmen,
+        "tax_capacity": store.get_steuerkraft,
         # Die Zeile darüber ist unvollständig, und zwar systematisch: Der
         # Open-Data-Datensatz 1106 führt nur zwei der drei Komponenten des
         # Finanzausgleichs (Gemeinde- und Kreisaufgaben). Die dritte —
@@ -1106,32 +1175,32 @@ def haushalt_uebersicht(
         # der Summe — steht nur beim Land. Sie kommt hier als eigenes Feld
         # dazu, in **Tausend Euro** und mit der Jahresangabe des Landes
         # (Ausgleichsjahr). Näheres in council/steuerkraft.py.
-        "finanzausgleich": store.get_finanzausgleich,
-        "einwohner": store.einwohner_aktuell,
+        "fiscal_equalization": store.get_finanzausgleich,
+        "population": store.einwohner_aktuell,
         # Aus den Jahresabschlüssen (RIS-Anlagen): Ansatz UND Ergebnis je
         # Posten — „geplant gegen tatsächlich" und die Erträge nach Arten.
         # `plan` ist die Bezugsgröße der Abweichung, `ansatz` der
-        # ursprüngliche Haushaltsansatz; `plan_art` sagt, welche gemeint ist.
-        "ergebnisrechnung": lambda: _ergebnisrechnung(store, thh_posten),
+        # ursprüngliche Haushaltsansatz; `plan_kind` sagt, welche gemeint ist.
+        "income_statement": lambda: _ergebnisrechnung(store, sub_budget_item),
         # Dieselben Dokumente, Abschnitt 4.1: was tatsächlich geflossen ist.
         # Die Ergebnisrechnung darüber weist für 2024 einen Überschuss aus,
         # diese Tabelle im selben Heft einen Finanzmittel-Fehlbetrag — beides
         # stimmt, und ohne die zweite Zahl entsteht ein falscher Eindruck.
-        "finanzrechnung": store.get_finanzrechnung,
+        "cash_flow_statement": store.get_finanzrechnung,
         # Die Planjahre: dieselbe Postengliederung für Jahre, die noch keinen
         # Abschluss haben. `art` trennt den Haushaltsansatz von der
         # mittelfristigen Finanzplanung — ohne diese Angabe darf keine Zahl
         # aus dieser Liste angezeigt werden.
-        "ergebnishaushalt": store.get_ergebnishaushalt,
+        "income_budget": store.get_ergebnishaushalt,
         # Überschussrücklage aus der Bilanz: Position 1.2.1 plus das am
         # Stichtag noch separat ausgewiesene Jahresergebnis. Keine Konstante.
-        "ruecklage": store.get_ruecklagen,
-        "ansatz_jahre": store.ansatz_jahre,
+        "reserves": store.get_ruecklagen,
+        "budgeted_years": store.budgeted_years,
         # Die Wirtschaftspläne der Eigenbetriebe und städtischen Gesellschaften
         # — der Haushalt NEBEN dem Haushalt. Klein genug für die Übersicht (29
         # Zeilen), deshalb kein eigener Endpunkt.
         #
-        # `ertraege` und `aufwendungen` sind oft NULL, und das ist die Auskunft
+        # `revenues` und `expenses` sind oft NULL, und das ist die Auskunft
         # und keine Lücke: Nur zwei der sechs Betriebe nennen in einer prüfbaren
         # Form ein Erträge/Aufwendungen-Paar, die übrigen nur das beschlossene
         # Jahresergebnis. Wer die Spalten anzeigt, muss die Leerstellen
@@ -1139,36 +1208,41 @@ def haushalt_uebersicht(
         # Die Gebührenbedarfsberechnung — woraus die Abfall- und
         # Straßenreinigungsgebühren entstehen.
         #
-        # `gebuehr` und `bezugsmenge` sind bei der Abfallsammlung NULL, und das
+        # `fee` und `reference_quantity` sind bei der Abfallsammlung NULL, und das
         # ist die Auskunft: Sie erhebt eine Grundgebühr UND eine Gebühr je
         # Liter, dort gibt es keine einzelne Division. Wer die Spalte anzeigt,
         # schreibt die Leerstelle an, statt eine 0 zu zeichnen.
-        "gebuehren": store.get_gebuehren,
-        "gebuehrensaetze": store.get_gebuehrensaetze,
+        "fees": store.get_gebuehren,
+        "fee_rates": store.get_gebuehrensaetze,
         # Die Haushaltssatzung — der Rahmen um den Plan (Kreditermächtigung,
         # Dispo-Höchstbetrag, Verpflichtungsermächtigungen, Finanzhaushalt).
         #
-        # `fassung` GEHÖRT AN JEDE ANZEIGE. Im Ratsinformationssystem liegen
+        # `version` GEHÖRT AN JEDE ANZEIGE. Im Ratsinformationssystem liegen
         # ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
         # erscheint im Amtsblatt. Wer das Feld wegblendet, macht aus einem
         # Vorschlag der Verwaltung einen Ratsbeschluss.
-        "haushaltssatzung": store.get_haushaltssatzungen,
-        "wirtschaftsplaene": store.get_wirtschaftsplaene,
-        "abweichungsgruende": store.get_abweichungsgruende,
-        "pruefbericht_quellen": store.get_pruefbericht_quellen,
-        "produkt_jahre": store.produkte_jahre,
+        "budget_bylaw": store.get_haushaltssatzungen,
+        "business_plans": store.get_wirtschaftsplaene,
+        # Das Ist dazu: die Kennzahlen der Jahresabschlüsse je Betrieb und
+        # Jahr (council/eigenbetriebe_abschluss.py) — Umsatzerlöse,
+        # Jahresergebnis, Bilanzsumme, Eigenkapital … Eine Zeile je Kennzahl,
+        # `confirmations` sagt, wie viele Berichte dieselbe Zahl nennen.
+        "enterprise_accounts": store.get_enterprise_accounts,
+        "variance_reasons": store.get_abweichungsgruende,
+        "audit_report_sources": store.get_pruefbericht_quellen,
+        "product_years": store.produkte_jahre,
         # Jahre mit Teilhaushalts-Ist — füttert den Jahr-Umschalter auf
         # /haushalt/plan-ist, ohne dass das Frontend die Liste durchsucht.
-        "plan_ist_jahre": store.plan_ist_jahre,
+        "plan_actual_years": store.plan_actual_years,
         # Die lange Reihe seit 1972. Die Begriffe reisen mit den Zahlen, statt
         # im Frontend zu stehen: Sie sind Angaben der Quelle wie der Betrag
         # selbst, und eine Legende, die es in zwei Sprachen gibt, driftet.
-        "ausgabenreihe": lambda: {
+        "expense_series": lambda: {
             "zeilen": store.get_ausgabenreihe(),
             "naht_ab": ausgabenreihe_mod.NAHT_AB,
-            "regelwerke": {
+            "accounting_systems": {
                 r: {"label": ausgabenreihe_mod.REGELWERK[r],
-                    "titel": ausgabenreihe_mod.TITEL[r],
+                    "title": ausgabenreihe_mod.TITEL[r],
                     "abgrenzung": ausgabenreihe_mod.ABGRENZUNG[r]}
                 for r in ausgabenreihe_mod.REGELWERK
             },
@@ -1176,20 +1250,20 @@ def haushalt_uebersicht(
         # Die dreizehn Kennzahlen des Rechenschaftsberichts. Drei Listen, und
         # jede hat ihren eigenen Grund:
         #
-        # `reihe` ist die Anzeigereihe — je Kennzahl und Jahr der Wert aus dem
+        # `series` ist die Anzeigereihe — je Kennzahl und Jahr der Wert aus dem
         # JÜNGSTEN Bericht, der ihn druckt. `staende` ist die Belegkette: alle
-        # Stände aller sechs Berichte, aus denen sich `reihe` ergibt. Ohne die
+        # Stände aller sechs Berichte, aus denen sich `series` ergibt. Ohne die
         # zweite Liste könnte niemand nachvollziehen, dass die Steuerquote
         # 2021 einmal 49,05 % hieß.
         #
-        # `formeln` sind die von der Stadt GEDRUCKTEN Rechenwege, im Wortlaut.
-        # Sie tragen `fassung`: Wechselt die Nummer zwischen zwei Berichten,
+        # `formulas` sind die von der Stadt GEDRUCKTEN Rechenwege, im Wortlaut.
+        # Sie tragen `version`: Wechselt die Nummer zwischen zwei Berichten,
         # darf über die Stelle keine Linie laufen.
         #
-        # `funde` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
+        # `finds` sind die Unterschiede zwischen zwei Berichten, eingeteilt in
         # Korrektur, Definitionswechsel und bloße Umbenennung — gemessen, nicht
         # angenommen (council/kennzahlen.py).
-        "kennzahlen": lambda: _kennzahlen(store),
+        "indicators": lambda: _kennzahlen(store),
         # Nachbewilligungen nach § 117 NKomVG — was beschlossen wurde,
         # nachdem der Haushalt beschlossen war. Zwei Listen, die **nicht**
         # ineinander gerechnet werden dürfen:
@@ -1197,30 +1271,30 @@ def haushalt_uebersicht(
         # `serie` ist unser Bestand aus dem Ratsinformationssystem, je Vorlage
         # eine Zeile (nicht je Beschlusszeile — Finanzausschuss und Rat
         # entscheiden dieselbe Sache, und 131 der 287 Zeilen sind Dubletten).
-        # `beschluss_id` zeigt auf die vorhandene Beschluss-Seite.
+        # `decision_id` zeigt auf die vorhandene Beschluss-Seite.
         #
-        # `jahre` ist Kapitel 3 des Rechenschaftsberichts mit seinen **vier
+        # `years` ist Kapitel 3 des Rechenschaftsberichts mit seinen **vier
         # Entscheidungswegen**. Nur dort steht die Gesamtsumme; der Rat ist
         # eine Teilmenge davon, und sie schrumpft (88 → 73 %). Eine Anzeige,
         # die nur `serie` zeigt, muss das dazusagen.
         #
-        # `verpflichtungen_betrag` steht bewusst getrennt und gehört in
+        # `commitments_amount` steht bewusst getrennt und gehört in
         # **keine** Summe: Eine Verpflichtungsermächtigung bindet künftige
         # Jahre, sie fließt nicht in diesem. Der Bericht zählt sie ebenso
         # getrennt.
-        "nachbewilligungen": lambda: {
+        "supplementary_approvals": lambda: {
             "serie": store.get_nachbewilligungen(),
-            "jahre": store.get_nachbewilligung_jahre(),
-            "kanaele": nachbewilligungen_mod.KANAELE,
+            "years": store.get_nachbewilligung_jahre(),
+            "channels": nachbewilligungen_mod.KANAELE,
         },
         # Zuwendungen an die Stadt. `ohne_beleg` reist mit den Zahlen mit,
         # damit die Seite die Lücke anschreiben kann, statt sie stillschweigend
         # aus der Summe zu lassen — sechs Zeilen, jede mit ihrem Grund.
-        "spenden": lambda: {
-            "jahre": _spenden_jahre(store.get_spenden()),
+        "donations": lambda: {
+            "years": _spenden_jahre(store.get_spenden()),
             "vorlagen": store.get_spenden(),
             "ohne_beleg": store.get_spenden_verworfen(),
-            "schwellen": [{"gremium": g, "ab": unten, "bis": oben}
+            "schwellen": [{"committee": g, "ab": unten, "bis": oben}
                           for g, unten, oben in spenden_mod.SCHWELLEN],
         },
         # Die beiden Steuertabellen des Jahrbuchs (council/steuertabellen.py).
@@ -1229,13 +1303,13 @@ def haushalt_uebersicht(
         # irreführend (2025: Satz +21 %, Aufkommen −4,6 %).
         #
         # `abgrenzung` reist mit den Zahlen, nicht im Frontend — dieselbe Regel
-        # wie bei `ausgabenreihe.regelwerke`: Eine Legende, die es in zwei
+        # wie bei `expense_series.accounting_systems`: Eine Legende, die es in zwei
         # Sprachen gibt, driftet.
-        "steuerplan": lambda: {
+        "tax_plan": lambda: {
             "zeilen": store.get_steuerplan(),
             "abgrenzung": steuertabellen.ABGRENZUNG_1103,
         },
-        "hebesaetze": lambda: {
+        "tax_rates": lambda: {
             # NUR die Änderungsjahre — die Jahre dazwischen fehlen nicht,
             # sondern haben nichts geändert. Wer diese Reihe zeichnet, zeichnet
             # eine TREPPE: Ein Satz gilt bis zur nächsten Änderung, und
@@ -1251,7 +1325,7 @@ def haushalt_uebersicht(
         # Nur Oldenburg, obwohl die Tabelle alle acht kreisfreien Städte führt
         # — diese Seite ist ein Steckbrief und kein Vergleich, und die sieben
         # anderen Städte wären hier Ballast, den niemand rendert.
-        "gewerbesteuerstatistik": lambda: {
+        "trade_tax_statistics": lambda: {
             "zeilen": store.get_gewerbesteuerstatistik(gewst.OLDENBURG),
             # Zwei Fassungen: `abgrenzung_kurz` ist der eine Satz, ohne den die
             # Zahlen irreführen, und steht auf der Seite immer; `abgrenzung`
@@ -1263,7 +1337,7 @@ def haushalt_uebersicht(
     }
 
     gewuenscht = {f.strip() for f in (felder or "").split(",") if f.strip()}
-    unbekannt = sorted(gewuenscht - set(bausteine) - {"herkunft"})
+    unbekannt = sorted(gewuenscht - set(bausteine) - {"provenance"})
     if unbekannt:
         # Lieber ein lauter Fehler als eine Seite, der still ein Block fehlt:
         # Ein Tippfehler im `felder`-Wert wäre sonst nicht von „dieses Feld ist
@@ -1299,14 +1373,14 @@ def haushalt_uebersicht(
     # Plänen von sieben Betrieben, jeder ein eigenes Papier. Der Chip zeigte
     # dort auf „irgendeines davon", und im Verzeichnis stand eine einzige
     # Quelle für 33 Dokumente (Tim, 21.08.2026). Deshalb fordert diese Seite
-    # seit dem 21.08. `herkunft` an und belegt jede Karte mit der Zeile, aus
-    # der sie stammt (`components/haushalt/quelle.tsx: Dokumentbeleg`).
+    # seit dem 21.08. `provenance` an und belegt jede Karte mit der Zeile, aus
+    # der sie stammt (`components/haushalt/source.tsx: Dokumentbeleg`).
     #
     # Die Karte reist dabei nicht als Ganzes: Es gehen nur die Einträge mit,
-    # auf die eine gesendete Zeile zeigt — bei `felder=wirtschaftsplaene`
+    # auf die eine gesendete Zeile zeigt — bei `felder=business_plans`
     # sind das keine 40.
-    if not gewuenscht or "herkunft" in gewuenscht:
-        daten["herkunft"] = {str(h["id"]): h
+    if not gewuenscht or "provenance" in gewuenscht:
+        daten["provenance"] = {str(h["id"]): h
                              for h in store.get_herkunft(sorted(_herkunft_ids(daten)))}
     return daten
 
@@ -1328,53 +1402,55 @@ def _kennzahlen(store: CouncilStore) -> dict:
       Berichte drucken denselben Satz sechsmal. Eine Fassung mit „gilt vom
       Bericht X bis Y" sagt mehr als sechs gleiche Zeilen.
     * Die älteren **Stände** entfallen. Was sie beweisen, steht vollständig
-      in ``funde``: jeder Unterschied zwischen zwei Berichten, mit beiden
+      in ``finds``: jeder Unterschied zwischen zwei Berichten, mit beiden
       Werten und beiden Berichtsjahren. Wer alle Stände braucht, liest
-      ``council_kennzahlen`` — die Tabelle behält sie.
+      ``council_indicators`` — die Tabelle behält sie.
     """
     staende = store.get_kennzahlen()
     _, funde = kennzahlen_mod.ueberlappungsprobe(staende)
 
     fassungen: dict[tuple[str, int], dict] = {}
     for f in store.get_kennzahl_formeln():
-        schluessel = (f["kennzahl"], f["fassung"])
-        eintrag = fassungen.get(schluessel)
+        key = (f["indicator"], f["version"])
+        eintrag = fassungen.get(key)
         if eintrag is None:
-            fassungen[schluessel] = {
-                "kennzahl": f["kennzahl"], "fassung": f["fassung"],
-                "ueberschrift": f["ueberschrift"], "formel": f["formel"],
-                "von_bericht": f["bericht_jahr"], "bis_bericht": f["bericht_jahr"],
+            fassungen[key] = {
+                "indicator": f["indicator"], "version": f["version"],
+                "heading": f["heading"], "formula": f["formula"],
+                "from_report_year": f["report_year"],
+                "to_report_year": f["report_year"],
                 "herkunft_id": f["herkunft_id"]}
-        elif f["bericht_jahr"] > eintrag["bis_bericht"]:
+        elif f["report_year"] > eintrag["to_report_year"]:
             # Der jüngste Bericht gibt Wortlaut und Beleg — er ist der, den
             # jemand aufschlägt, wenn er nachsehen will.
-            eintrag.update(bis_bericht=f["bericht_jahr"], formel=f["formel"],
-                           ueberschrift=f["ueberschrift"],
+            eintrag.update(to_report_year=f["report_year"], formula=f["formula"],
+                           heading=f["heading"],
                            herkunft_id=f["herkunft_id"])
         else:
-            eintrag["von_bericht"] = min(eintrag["von_bericht"], f["bericht_jahr"])
+            eintrag["from_report_year"] = min(eintrag["from_report_year"],
+                                              f["report_year"])
 
     return {
         "label": {k.key: k.label for k in kennzahlen_mod.KENNZAHLEN},
-        "einheit": {k.key: k.einheit for k in kennzahlen_mod.KENNZAHLEN},
-        "reihe": [{"kennzahl": z["kennzahl"], "jahr": z["jahr"], "wert": z["wert"],
-                   "stellen": z["stellen"], "fassung": z["fassung"],
-                   "bericht_jahr": z["bericht_jahr"], "herkunft_id": z["herkunft_id"]}
+        "unit": {k.key: k.unit for k in kennzahlen_mod.KENNZAHLEN},
+        "series": [{"indicator": z["indicator"], "year": z["year"], "value": z["value"],
+                   "decimals": z["decimals"], "version": z["version"],
+                   "report_year": z["report_year"], "herkunft_id": z["herkunft_id"]}
                   for z in kennzahlen_mod.neueste(staende)],
-        "formeln": sorted(fassungen.values(),
-                          key=lambda f: (f["kennzahl"], f["fassung"])),
-        "funde": funde,
+        "formulas": sorted(fassungen.values(),
+                           key=lambda f: (f["indicator"], f["version"])),
+        "finds": funde,
     }
 
 
-def _ergebnisrechnung(store: CouncilStore, thh_posten: str | None) -> list[dict]:
+def _ergebnisrechnung(store: CouncilStore, sub_budget_item: str | None) -> list[dict]:
     """Die Ergebnisrechnung, auf Wunsch ohne den Teilhaushalts-Ballast.
 
     Die Tabelle führt zwei Ebenen in einer Liste: die Kernverwaltung
-    (``thh_nr`` = ``NULL``) und darunter dieselben Posten je Teilhaushalt. Die
+    (``sub_budget_no`` = ``NULL``) und darunter dieselben Posten je Teilhaushalt. Die
     zweite Ebene ist der Brocken — 1.381 von 1.566 Zeilen, 664 der 751 KB.
 
-    ``thh_posten`` sagt, welche Posten von der **Teilhaushalts-Ebene** gebraucht
+    ``sub_budget_item`` sagt, welche Posten von der **Teilhaushalts-Ebene** gebraucht
     werden; die Kernverwaltung kommt immer vollständig:
 
     * ohne Angabe — alles, wie bisher (``/haushalt/plan-ist`` braucht es),
@@ -1384,43 +1460,43 @@ def _ergebnisrechnung(store: CouncilStore, thh_posten: str | None) -> list[dict]
     Der letzte Fall ist der wichtigste: Das Flussbild der Übersicht zeichnet
     rechts die Aufwendungen je Teilhaushalt, also **einen** Posten (Nr. 20).
     Es braucht die Ebene, aber nicht ihre 170 Zeilen je Jahr — mit
-    ``thh_posten=20`` sind es 134 statt 751 KB, und das Bild ist dasselbe.
+    ``sub_budget_item=20`` sind es 134 statt 751 KB, und das Bild ist dasselbe.
 
     Der Parameter benennt bewusst DATEN und keine Ansicht („fluss", „labor"):
     Eine Seite, die morgen einen zweiten Posten zeichnet, ändert eine Zahl in
     ihrer Feldliste — nicht den Endpunkt.
     """
     zeilen = store.get_ergebnisrechnung()
-    if thh_posten is None:
+    if sub_budget_item is None:
         return zeilen
-    if thh_posten.strip().lower() in {"keine", "kein", ""}:
+    if sub_budget_item.strip().lower() in {"keine", "kein", ""}:
         erlaubt: set[int] = set()
     else:
         try:
-            erlaubt = {int(p) for p in thh_posten.split(",") if p.strip()}
+            erlaubt = {int(p) for p in sub_budget_item.split(",") if p.strip()}
         except ValueError:
-            raise HTTPException(400, f"thh_posten erwartet Postennummern: {thh_posten}") from None
+            raise HTTPException(400, f"sub_budget_item erwartet Postennummern: {sub_budget_item}") from None
     return [z for z in zeilen
-            if z.get("thh_nr") is None or z.get("nr") in erlaubt]
+            if z.get("sub_budget_no") is None or z.get("nr") in erlaubt]
 
 
 def _herkunft_ids(obj: object) -> set[int]:
     """Jede ``herkunft_id``, die irgendwo in einer Antwort steckt.
 
     Rekursiv und nicht als Aufzählung der bekannten Blöcke: Die Übersicht führt
-    19 davon, teils zwei Ebenen tief (``nachbewilligungen.jahre[].kanaele[]``).
+    19 davon, teils zwei Ebenen tief (``supplementary_approvals.years[].channels[]``).
     Eine Liste zum Nachpflegen wäre die Sorte Code, die beim nächsten Block
     vergessen wird — und der Fehler fiele erst auf, wenn irgendwo ein
     Beleg-Chip fehlt. ``herkunft_id`` ist repo-weit der einzige Feldname, der
     auf diese Tabelle zeigt (geprüft), also findet der Lauf alles."""
     if isinstance(obj, dict):
         gefunden: set[int] = set()
-        for schluessel, wert in obj.items():
-            if schluessel == "herkunft_id":
-                if wert is not None:
-                    gefunden.add(int(wert))
+        for key, value in obj.items():
+            if key == "herkunft_id":
+                if value is not None:
+                    gefunden.add(int(value))
             else:
-                gefunden |= _herkunft_ids(wert)
+                gefunden |= _herkunft_ids(value)
         return gefunden
     if isinstance(obj, (list, tuple)):
         return set().union(*(_herkunft_ids(x) for x in obj)) if obj else set()
@@ -1433,65 +1509,65 @@ def _spenden_jahre(vorlagen: list[dict]) -> list[dict]:
     Gespeichert ist je Vorlage eine Zeile; die Jahressumme daraus zu bilden
     ist billig und hält die Tabelle frei von einer abgeleiteten Größe, die bei
     jedem Lauf neu stimmen müsste."""
-    jahre: dict[int, dict] = {}
+    years: dict[int, dict] = {}
     for v in vorlagen:
-        e = jahre.setdefault(v["jahr"], {"jahr": v["jahr"], "betrag": 0.0, "vorlagen": 0,
+        e = years.setdefault(v["year"], {"year": v["year"], "amount": 0.0, "vorlagen": 0,
                                          "rat": 0, "verwaltungsausschuss": 0})
-        e["betrag"] += v["betrag"]
+        e["amount"] += v["amount"]
         e["vorlagen"] += 1
-        if v.get("gremium") == "Rat":
+        if v.get("committee") == "Rat":
             e["rat"] += 1
-        elif v.get("gremium") == "Verwaltungsausschuss":
+        elif v.get("committee") == "Verwaltungsausschuss":
             e["verwaltungsausschuss"] += 1
-    for e in jahre.values():
-        e["betrag"] = round(e["betrag"], 2)
-    return [jahre[j] for j in sorted(jahre)]
+    for e in years.values():
+        e["amount"] = round(e["amount"], 2)
+    return [years[j] for j in sorted(years)]
 
 
-@router.get("/haushalt/weg")
+@router.get("/budget/journey")
 def haushalt_weg(
-    jahr: int | None = None,
+    year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltWeg:
+) -> BudgetPath:
     """Der Weg eines Haushalts durch den Rat — wann welche Station war.
 
     Anders als der Rest des Haushalts-Bereichs kommt hier nichts aus einem
     Finanzdokument, sondern alles aus den Ratsdaten: Beratungsfolge,
-    Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``runde`` mit
+    Tagesordnung und Protokoll-Beschluss. Je Haushaltsjahr eine ``round`` mit
     ``einbringung``, ``fachausschuesse`` (Zeitraum und Gremien) und
     ``stationen`` bis zur Entscheidung im Rat; jede Station trägt ``ksinr``
     und ``top``, ist also auf ihre Sitzung verlinkbar.
 
-    **Ohne ``jahr`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
+    **Ohne ``year`` kommen alle Jahrgänge.** Das ist Absicht: Die Aussage
     dieser Seite liegt nicht im einzelnen Jahr, sondern in der Streuung — dass
     der Entwurf verlässlich im Oktober kommt, die Entscheidung aber zwischen
     Dezember und Februar wandert, sieht man erst über acht Jahrgänge. Eine
     Seite, die das behaupten will, braucht sie alle gleichzeitig; ein
     Jahres-Umschalter, der je Klick nachlädt, wäre acht Anfragen für 30 Zeilen.
-    ``jahr`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
+    ``year`` grenzt trotzdem ein, wenn jemand nur eine Runde braucht.
 
     Was hier **nicht** steht: die Termine der laufenden Runde.
     ``council_scheduled_sessions`` kennt keine Tagesordnung — wir können nicht
     sagen, welche der kommenden Sitzungen die Haushaltssitzung wird, und raten
     es auch nicht."""
-    return {"runden": store.haushalt_weg(jahr)}
+    return {"rounds": store.haushalt_weg(year)}
 
 
-@router.get("/haushalt/streit")
+@router.get("/budget/debate")
 def haushalt_streit(
-    jahr: int | None = None,
+    year: int | None = None,
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltStreit:
+) -> BudgetDispute:
     """Der Streit ums Geld — die Auseinandersetzung um jeden Haushaltsjahrgang.
 
-    Je Haushaltsjahr eine ``runde`` mit ihren Stationen (Finanzausschuss und
+    Je Haushaltsjahr eine ``round`` mit ihren Stationen (Finanzausschuss und
     Rat), und je Station die Änderungslisten, die Debatte und die
     Schlussabstimmung. Alles kommt aus den Ratsdaten: Beschlusszeilen,
     Anwesenheitsliste und Protokoll-Volltext derselben Sitzung.
 
-    **Ohne ``jahr`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
+    **Ohne ``year`` kommen alle Jahrgänge** — wie bei ``/haushalt/weg``, und
     aus demselben Grund: Dass sich die Mehrheiten verschieben, sieht man erst
     über die Jahre. Die Antwort ist entsprechend groß (rund ein halbes MB);
     die Seite lädt sie einmal und schaltet danach ohne Netz zwischen den
@@ -1501,14 +1577,14 @@ def haushalt_streit(
     seit 08/2026 ``/haushalt/aenderungslisten`` (direkt darunter), Position
     für Position aus den gelesenen EHH-Dokumenten. Hier bleibt die
     Verfahrens-Ebene: **wer** was einbrachte und **ob** es durchkam."""
-    return {"runden": store.haushalt_streit(jahr)}
+    return {"rounds": store.haushalt_streit(year)}
 
 
-@router.get("/haushalt/aenderungslisten")
+@router.get("/budget/amendment-lists")
 def haushalt_aenderungslisten(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltAenderungslisten:
+) -> BudgetAmendmentLists:
     """Der Inhalt der Änderungslisten — die Ebene unter ``/haushalt/streit``.
 
     Dort steht, WER eine Liste einbrachte und ob sie durchkam; hier steht,
@@ -1517,25 +1593,37 @@ def haushalt_aenderungslisten(
     Veränderungen", gegen die jede Positionsliste beim Einlesen bewiesen
     wurde (``council/aenderungslisten.py``).
 
-    - ``zeilen``: NUR die Positionen des Haushaltsjahrgangs selbst
-      (``jahr == jahrgang``). Dieselbe Maßnahme steht im Dokument je
+    - ``rows``: NUR die Positionen des Haushaltsjahrgangs selbst
+      (``year == budget_year``). Dieselbe Maßnahme steht im Dokument je
       Finanzplanungsjahr noch einmal — für die Streit-Erzählung zählt das
       Jahr, um das gestritten wurde; die Folgejahre stecken kompakt in den
-      Summen. ``urheber`` trägt, WER die Position vorschlug — gefüllt nur
+      Summen. ``author`` trägt, WER die Position vorschlug — gefüllt nur
       beim Jahrgang 2021, dessen Beschluss-Datei als einzige eine Spalte
       „Vorschlag von“ führt; sonst ``null``.
-    - ``summen``: die Zusammenstellungen ALLER Planjahre, inklusive der
+    - ``totals``: die Zusammenstellungen ALLER Planjahre, inklusive der
       Zeilen, die es nur dort gibt: die politisch beschlossene Änderung mit
       Urheber-Label („SPD/CDU/FDP …“) aus den AFB-Dateien — der einzige
       digitale Beleg der Fraktionslisten, die selbst Tischvorlagen blieben.
-    - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt.
+    - ``cash_budget_rows``/``cash_budget_totals``: dasselbe für den FINANZhaushalt
+      (``council/aenderungslisten_fhh.py``) — also für das, was tatsächlich
+      fließt und vor allem investiert wird. Getrennte Schlüssel statt einer
+      gemeinsamen Liste mit Marke: Die Zeilen haben eine andere Form (fünf
+      Betragsspalten statt zwei, dazu ``product`` mit dem Investitionscode),
+      und eine gemeinsame Liste wäre auf jeder Seite zur Hälfte leer.
+    - ``herkunft``: je ``herkunft_id`` das Papier, aus dem eine Zeile stammt —
+      für beide Haushalte gemeinsam.
     """
     d = store.get_haushalt_aenderungen()
-    zeilen = [z for z in d["zeilen"] if z["jahr"] == z["jahrgang"]]
-    ids = sorted({z["herkunft_id"] for z in zeilen if z["herkunft_id"] is not None}
-                 | {s["herkunft_id"] for s in d["summen"] if s["herkunft_id"] is not None})
-    return {"zeilen": zeilen, "summen": d["summen"],
-            "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)}}
+    f = store.get_haushalt_aenderungen_fhh()
+    zeilen = [z for z in d["zeilen"] if z["year"] == z["budget_year"]]
+    fhh_zeilen = [z for z in f["zeilen"] if z["year"] == z["budget_year"]]
+    ids = sorted({z["herkunft_id"] for z in zeilen + fhh_zeilen
+                  if z["herkunft_id"] is not None}
+                 | {s["herkunft_id"] for s in d["summen"] + f["summen"]
+                    if s["herkunft_id"] is not None})
+    return {"rows": zeilen, "totals": d["summen"],
+            "cash_budget_rows": fhh_zeilen, "cash_budget_totals": f["summen"],
+            "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)}}
 
 
 # Ohne Anmeldung lesbar (s. `decision_detail`) — die Beschluss-Seite zieht die
@@ -1544,7 +1632,7 @@ def haushalt_aenderungslisten(
 def session_detail(
     ksinr: int,
     store: CouncilStore = Depends(get_council_store),
-) -> SitzungsDetail:
+) -> SessionDetail:
     session = store.get_session(ksinr)
     if not session:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
@@ -1553,10 +1641,15 @@ def session_detail(
     session["decisions"] = store.get_decisions(ksinr)
     session["attendance"] = store.get_attendance(ksinr)
     session["has_protocol"] = store.has_protocol(ksinr)
+    # Vorläufige Ergebnisse aus der O1-Videoaufzeichnung (council/videos.py) —
+    # die Brücke, bis das Protokoll kommt. Das Frontend zeigt sie nur an
+    # TOPs ohne Protokoll-Beschluss; hier kommen sie immer mit, damit der
+    # Wechsel Protokoll-vor-Video eine reine Anzeigefrage bleibt.
+    session["video_results"] = store.get_video_results(ksinr)
     session["url"] = _ratsinfo_url(ksinr)
     # „Zuletzt geändert" (Tims Wunsch 18.08.): Die Push zur Änderungsmeldung
     # sagt nur noch den Satz — die Einzelheiten stehen hier, aus der Chronik.
-    session["aenderungen"] = _agenda_aenderungen(store, ksinr)
+    session["agenda_changes"] = _agenda_aenderungen(store, ksinr)
     return session
 
 
@@ -1579,7 +1672,7 @@ def _agenda_aenderungen(store: CouncilStore, ksinr: int) -> list[dict]:
 def decisions(
     q: str = "",
     committee: str = "",
-    outcome: str = Query("", pattern="^(|angenommen|abgelehnt|vertagt|zur_kenntnis|kein_beschluss)$"),
+    outcome: str = Query("", pattern="^(|accepted|rejected|postponed|noted|no_decision)$"),
     faction: str = "",
     date_from: str = "",
     date_to: str = "",
@@ -1602,8 +1695,8 @@ def decisions(
     offset: int = Query(0, ge=0),
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
-) -> BeschlussListe:
+    ratslotse: Store = Depends(get_store),
+) -> DecisionList:
     if district:
         place = store.resolve_place(district)
         if not place:
@@ -1612,13 +1705,21 @@ def decisions(
     location_row = store.location_by_slug(location) if location else None
     if location and not location_row:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannter Beschlussort.")
+    # Design 20a: die Beschluss-Suche zählt fürs Admin-Panel (Block
+    # `features.suche`). Gezählt wird eine ABSICHT, kein Seitenaufruf —
+    # dieselbe Liste lädt auch, wer den Tab nur öffnet und blättert, und das
+    # ist Stöbern, keine Suche. Deshalb der Suchbegriff als Bedingung: Wer
+    # ausschließlich filtert, fällt bewusst nicht in den Zähler, sonst gäbe
+    # schon der Wechsel auf „Abstimmungen“ einen Treffer.
+    if q.strip():
+        ratslotse.record_activity(user["id"], "search")
     only_ids: list[int] | None = None
     if topic is not None:
         # Nur eigene Themen — sonst ließe sich über eine fremde id deren
         # Trefferliste abfragen.
-        if not nwz.get_topic_for_owner(user["id"], topic):
+        if not ratslotse.get_topic_for_owner(user["id"], topic):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Thema nicht gefunden.")
-        only_ids = [m["decision_id"] for m in nwz.get_topic_decision_matches(topic)]
+        only_ids = [m["decision_id"] for m in ratslotse.get_topic_decision_matches(topic)]
     total = store.count_decisions(
         q, committee, outcome, faction, date_from, date_to, kind, category, field, party,
         include_subvotes=include_subvotes, only_ids=only_ids, district=district,
@@ -1650,8 +1751,8 @@ def decision_detail(
     decision_id: int,
     user: dict | None = Depends(optional_user),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
-) -> BeschlussDetail:
+    ratslotse: Store = Depends(get_store),
+) -> DecisionDetail:
     """Ein Beschluss mit allem Drum und Dran — **ohne Anmeldung lesbar**.
 
     Teilen ist die Kernhandlung der App, aber wer einen weitergereichten Link
@@ -1675,7 +1776,7 @@ def decision_detail(
     # Falsches über reale Personen — „FDP/Volt" wurde zu „FDP" (Volt fiel weg),
     # „Gruppe DIE LINKE./Piratenpartei" zu „Die Linke" (Piraten fielen weg).
     present = {faction_label(a["party"]) for a in attendance
-               if (a.get("role") or "mitglied") in ("vorsitz", "mitglied")}
+               if (a.get("role") or "member") in ("chair", "member")}
     present.discard("parteilos")   # keine Fraktion, gehört nicht in die Reihe
     out: dict = {
         "decision": d,
@@ -1683,7 +1784,7 @@ def decision_detail(
         "present_parties": sorted((p for p in present if p), key=order_key),
         "ratsinfo_url": _ratsinfo_url(d["ksinr"]),
         "sub_votes": [],
-        "vorlage_journey": [],
+        "template_journey": [],
         "similar": store.get_similar(decision_id, limit=5),
         "entities": store.entities_for_decision(decision_id),
     }
@@ -1692,16 +1793,16 @@ def decision_detail(
     # Handlungen, die Bürger*innen JETZT offenstehen (Stufe 3b).
     try:
         from council import beteiligung as bet_mod
-        out["beteiligung"] = next(
-            ({"titel": b["titel"], "schritt": b["schritt"], "von": b["von"],
-              "bis": b["bis"], "url": b["url"], "status": b.get("status") or "laufend",
+        out["participation"] = next(
+            ({"title": b["title"], "schritt": b["schritt"], "valid_from": b["valid_from"],
+              "valid_until": b["valid_until"], "url": b["url"], "status": b.get("status") or "laufend",
               "beendet_am": b.get("beendet_am")}
              # Auch beendete: Sie sind der einzige Ort, an dem eine
              # abgelaufene Beteiligung überhaupt noch dokumentiert ist.
              for b in store.list_beteiligungen(nur_laufende=False)
              if bet_mod.passt_zu_titel(b["plan_nrs"], d.get("title") or "")), None)
     except Exception:  # noqa: BLE001 — Zusatzinfo, nie Blocker
-        out["beteiligung"] = None
+        out["participation"] = None
     # Wichtigkeits-Aufschlüsselung (welche Signale trieben den Score) — erklärt
     # transparent, warum ein Beschluss als wichtig gilt.
     n_ber = len(store.get_beratungen(d["kvonr"])) if d.get("kvonr") else None
@@ -1721,36 +1822,36 @@ def decision_detail(
             bd["impact_reason"] = d["impact_reason"]
     if d.get("kind") == "decision" and d.get("item_number"):
         out["sub_votes"] = store.get_subvotes(d["ksinr"], d["item_number"])
-    if d.get("vorlage_nr"):
-        out["vorlage_journey"] = store.vorlage_journey(d["vorlage_nr"])
-        out["vorlage_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
+    if d.get("template_number"):
+        out["template_journey"] = store.vorlage_journey(d["template_number"])
+        out["template_url"] = _vorlage_url(d["kvonr"]) if d.get("kvonr") else None
         # Ingested Vorlage text (Sachverhalt/Begründung) — the why behind the
         # decision. Also our only kvonr source: protocols never carry one.
-        v = store.get_vorlage_by_nr(d["vorlage_nr"])
+        v = store.get_vorlage_by_nr(d["template_number"])
         if v:
-            out["vorlage"] = {
-                "vorlage_nr": v.get("vorlage_nr"), "title": v.get("title"),
-                "art": v.get("art"), "document_url": v.get("document_url"),
+            out["template"] = {
+                "template_number": v.get("template_number"), "title": v.get("title"),
+                "kind": v.get("kind"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
                 "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
                 # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.
-                "amt": v.get("amt"),
-                "klima_check": v.get("klima_check"),
-                "klima_relevant": ernte.klima_relevant(v.get("klima_check")),
+                "office": v.get("office"),
+                "climate_impact": v.get("climate_impact"),
+                "klima_relevant": ernte.klima_relevant(v.get("climate_impact")),
                 # „Finanzielle Auswirkungen" der Verwaltung — dieselbe
                 # Regex-Ernte wie der Klima-Check, auf der Beschluss-Seite als
                 # „Was kostet das?" (Design H-21). Amtlicher Wortlaut, deshalb
                 # unverändert und als Zitat gekennzeichnet.
-                "finanz_check": v.get("finanz_check"),
+                "financial_impact": v.get("financial_impact"),
             }
-            if not out["vorlage_url"] and v.get("kvonr"):
-                out["vorlage_url"] = _vorlage_url(v["kvonr"])
-        out["anlagen"] = store.anlagen_for_vorlage_nr(d["vorlage_nr"])
+            if not out["template_url"] and v.get("kvonr"):
+                out["template_url"] = _vorlage_url(v["kvonr"])
+        out["attachments"] = store.anlagen_for_vorlage_nr(d["template_number"])
         # Wo dieser Beschluss im Haushalts-Bereich wieder auftaucht — belegt
         # über eine echte Verknüpfung, nicht über eine Textsuche. `None` heißt
         # „nirgends nachweisbar", und die Seite lässt die Karte dann weg.
-        out["haushalts_anschluss"] = store.haushalts_anschluss(
-            d["id"], d.get("vorlage_nr"))
+        out["budget_link"] = store.haushalts_anschluss(
+            d["id"], d.get("template_number"))
         # P1: gerenderte Planzeichnung (scripts/render_plaene.py) — B-Plan-
         # Beschlüsse leben vom Bild, nicht vom Anlagen-Download. Echte
         # Planzeichnungen vor Mischdokumenten: „Begründung mit Leitplan" hat
@@ -1760,16 +1861,16 @@ def decision_detail(
             label = (a.get("label") or "").lower()
             return 0 if ("planzeichnung" in label or "plandarstellung" in label) else 1
 
-        bilder = sorted((a for a in out["anlagen"] if a.get("bild") == 1), key=_plan_rang)
-        out["plan_bild"] = bilder[0]["document_id"] if bilder else None
+        bilder = sorted((a for a in out["attachments"] if a.get("is_image") == 1), key=_plan_rang)
+        out["plan_image"] = bilder[0]["document_id"] if bilder else None
         # Offizielle Beratungsfolge aus dem Ratsinfo — reicher als die aus
         # unseren Tagesordnungen abgeleitete Journey (Ergebnis je Station,
         # geplante künftige Beratungen). Die Journey bleibt der Fallback.
         kv = d.get("kvonr") or (v.get("kvonr") if v else None)
         if kv:
             today = date.today().isoformat()
-            out["beratungsfolge"] = [
-                {**b, "future": bool(b["datum"] and b["datum"] > today)}
+            out["deliberation_path"] = [
+                {**b, "future": bool(b["date"] and b["date"] > today)}
                 for b in store.get_beratungen(kv)
             ]
             # Design 28a/W1: Folgt dieses Konto dem Vorgang schon? Die kvonr
@@ -1778,23 +1879,23 @@ def decision_detail(
             # Ohne Anmeldung fehlt der Schlüssel ganz: Das Frontend blendet den
             # Verfolgen-Knopf über `data.follow &&` aus, ohne etwas zu wissen.
             if user:
-                out["follow"] = {"kvonr": kv, "following": nwz.is_following_vorlage(user["id"], kv)}
+                out["follow"] = {"kvonr": kv, "following": ratslotse.is_following_vorlage(user["id"], kv)}
     return out
 
 
 # ---- „Meine Gespräche" (5a/I-04 + Design 6a) --------------------------------
 
 
-class GespraechEinstellungBody(BaseModel):
+class ConversationSettingBody(BaseModel):
     an: bool
 
 
-@router.get("/gespraeche")
+@router.get("/conversations")
 def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
                      offset: int = Query(0, ge=0),
                      q: str | None = Query(None, max_length=120),
                      user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store)) -> GespraecheListe:
+                     ratslotse: Store = Depends(get_store)) -> ConversationList:
     """Einwilligungs-Stand + eine Seite der gespeicherten Gespräche.
     `einstellung` ist null, solange die Erstnutzungs-Frage (6a①) nie
     beantwortet wurde.
@@ -1805,73 +1906,73 @@ def gespraeche_liste(limit: int = Query(30, ge=0, le=100),
     `weitere` sagt, ob „Ältere anzeigen" noch etwas nachliefert. `limit=0`
     holt nur die Zahlen — so fragt die Konto-Einstellung.
     """
-    seite = nwz.qa_gespraeche(user["id"], limit=limit, offset=offset, suche=q)
-    treffer = nwz.qa_gespraeche_anzahl(user["id"], suche=q)
-    gesamt = nwz.qa_gespraeche_anzahl(user["id"]) if q else treffer
-    return {"einstellung": nwz.get_qa_speichern(user["id"]),
-            "gespraeche": seite,
-            "gesamt": gesamt,
-            "treffer": treffer,
-            "weitere": offset + len(seite) < treffer}
+    page = ratslotse.qa_conversations(user["id"], limit=limit, offset=offset, suche=q)
+    treffer = ratslotse.qa_gespraeche_anzahl(user["id"], suche=q)
+    gesamt = ratslotse.qa_gespraeche_anzahl(user["id"]) if q else treffer
+    return {"saves_conversations": ratslotse.get_qa_speichern(user["id"]),
+            "conversations": page,
+            "total": gesamt,
+            "matches": treffer,
+            "has_more": offset + len(page) < treffer}
 
 
-@router.post("/gespraeche/einstellung")
-def gespraeche_einstellung(body: GespraechEinstellungBody,
+@router.post("/conversations/setting")
+def gespraeche_einstellung(body: ConversationSettingBody,
                            user: dict = Depends(require_active),
-                           nwz: Store = Depends(get_store)) -> GespraechEinstellung:
+                           ratslotse: Store = Depends(get_store)) -> ConversationSetting:
     """6a②: Schalter setzen. Löscht nichts — das entscheidet der Dialog
     über DELETE /gespraeche getrennt."""
-    nwz.set_qa_speichern(user["id"], body.an)
-    return {"einstellung": 1 if body.an else 0}
+    ratslotse.set_qa_speichern(user["id"], body.an)
+    return {"saves_conversations": 1 if body.an else 0}
 
 
-@router.get("/gespraeche/{gespraech_id}")
-def gespraech_detail(gespraech_id: int, user: dict = Depends(require_active),
-                     nwz: Store = Depends(get_store)) -> GespraechDetail:
-    g = nwz.qa_gespraech(gespraech_id, user["id"])
+@router.get("/conversations/{conversation_id}")
+def gespraech_detail(conversation_id: int, user: dict = Depends(require_active),
+                     ratslotse: Store = Depends(get_store)) -> ConversationDetail:
+    g = ratslotse.qa_gespraech(conversation_id, user["id"])
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     for t in g["turns"]:
         try:
-            t["quellen"] = json.loads(t["quellen"]) if t["quellen"] else None
+            t["sources"] = json.loads(t["sources"]) if t["sources"] else None
         except ValueError:
-            t["quellen"] = None
+            t["sources"] = None
     return g
 
 
-class GespraechUmbenennenBody(BaseModel):
-    titel: str = Field(min_length=1, max_length=120)
+class ConversationRenameBody(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
 
 
-@router.patch("/gespraeche/{gespraech_id}")
-def gespraech_umbenennen(gespraech_id: int, body: GespraechUmbenennenBody,
+@router.patch("/conversations/{conversation_id}")
+def gespraech_umbenennen(conversation_id: int, body: ConversationRenameBody,
                          user: dict = Depends(require_active),
-                         nwz: Store = Depends(get_store)) -> Ok:
+                         ratslotse: Store = Depends(get_store)) -> Ok:
     """Design 9a②: Umbenennen aus dem Gespräche-Sheet (Wisch nach links)."""
-    if not nwz.qa_gespraech_umbenennen(gespraech_id, user["id"], body.titel):
+    if not ratslotse.qa_gespraech_umbenennen(conversation_id, user["id"], body.title):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     return {"ok": True}
 
 
-@router.delete("/gespraeche/{gespraech_id}")
-def gespraech_loeschen(gespraech_id: int, user: dict = Depends(require_active),
-                       nwz: Store = Depends(get_store)) -> Ok:
-    if not nwz.qa_gespraech_loeschen(gespraech_id, user["id"]):
+@router.delete("/conversations/{conversation_id}")
+def gespraech_loeschen(conversation_id: int, user: dict = Depends(require_active),
+                       ratslotse: Store = Depends(get_store)) -> Ok:
+    if not ratslotse.qa_gespraech_loeschen(conversation_id, user["id"]):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Gespräch nicht gefunden.")
     return {"ok": True}
 
 
-@router.delete("/gespraeche")
+@router.delete("/conversations")
 def gespraeche_alle_loeschen(user: dict = Depends(require_active),
-                             nwz: Store = Depends(get_store)) -> GespraecheGeloescht:
-    return {"geloescht": nwz.qa_gespraeche_loeschen(user["id"])}
+                             ratslotse: Store = Depends(get_store)) -> ConversationsDeleted:
+    return {"deleted": ratslotse.qa_gespraeche_loeschen(user["id"])}
 
 
 class QaFeedbackBody(BaseModel):
-    frage: str = Field(min_length=1, max_length=300)
-    antwort_auszug: str | None = Field(default=None, max_length=500)
-    bewertung: str = Field(pattern="^(up|down)$")
-    grund: str | None = Field(default=None, max_length=500)
+    question: str = Field(min_length=1, max_length=300)
+    answer_excerpt: str | None = Field(default=None, max_length=500)
+    rating: str = Field(pattern="^(up|down)$")
+    reason: str | None = Field(default=None, max_length=500)
 
 
 @router.post("/qa-feedback", status_code=status.HTTP_201_CREATED)
@@ -1886,33 +1987,33 @@ def qa_feedback(
     KI-Frage selbst ist es auch); die Feldlängen begrenzt das Schema, das
     Rate-Limit hält Skript-Flutung von Tabelle und Backups fern."""
     qa_feedback_limiter.check(request)
-    store.save_qa_feedback(body.frage, body.antwort_auszug, body.bewertung,
-                           body.grund, user_id=(user or {}).get("id"))
+    store.save_qa_feedback(body.question, body.answer_excerpt, body.rating,
+                           body.reason, user_id=(user or {}).get("id"))
     return {"ok": True}
 
 
-class ParteiMeinungenBody(BaseModel):
-    frage: str = Field(min_length=3, max_length=300)
+class PartyOpinionsBody(BaseModel):
+    question: str = Field(min_length=3, max_length=300)
     #: Die Beschlüsse, auf denen die Antwort steht (Reihenfolge = Relevanz).
     #: Über sie kommt die Aussprache dazu, die ZU diesen Stationen gehört —
     #: siehe Kommentar im Endpoint. Leer (ältere Clients) → nur Vektor-Kanal.
-    beschluss_ids: list[int] = Field(default_factory=list, max_length=20)
+    decision_ids: list[int] = Field(default_factory=list, max_length=20)
 
 
-@router.post("/partei-meinungen")
+@router.post("/party-meinungen")
 def partei_meinungen_endpoint(
-    body: ParteiMeinungenBody,
+    body: PartyOpinionsBody,
     request: Request,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> ParteiMeinungen:
+) -> PartyOpinions:
     """Baustein „Das sagen die Parteien" (Task 30): Wird vom Frontend NACH der
     gestreamten Antwort geladen (kostet die Hauptantwort keine Latenz). Sammelt
     aus ZWEI Kanälen — fraktions-bewusste Ähnlichkeitssuche (Cross-Encoder-
     geprüft) und die Aussprache zu den belegten Beschlüssen — und verdichtet
     das per LLM je Fraktion. Leer ({parteien: []}), wenn die Datenlage zu dünn
     ist — der Baustein erscheint dann nicht."""
-    if not user.get("limits_frei"):
+    if not user.get("limits_unlocked"):
         partei_meinungen_limiter.check(request)
     try:
         import hashlib
@@ -1921,7 +2022,7 @@ def partei_meinungen_endpoint(
         # Fraktions-bewusst sammeln (je Fraktion bis 5 Beiträge) — das globale
         # Top-24 bestand zur Hälfte aus Verwaltungs-Beiträgen ohne Fraktion,
         # die „Parteimeinung" war real eine Einzel-Paraphrase (Befund 10.08.).
-        hits = emb.search_wortbeitraege_je_fraktion(store, body.frage, body.frage)
+        hits = emb.search_wortbeitraege_je_fraktion(store, body.question, body.question)
         # ZWEITER KANAL: die Aussprache, die zu den belegten Beschlüssen GEHÖRT.
         # Der Vektor-Kanal sucht nach Ähnlichkeit zur Frage und findet damit
         # das Wortfeld — nicht zwingend die Debatte zur Sache. Auf „Was ist die
@@ -1931,10 +2032,10 @@ def partei_meinungen_endpoint(
         # Befund 21.08.2026). Zugehörigkeit ist hier das bessere Signal als
         # Ähnlichkeit — deshalb OHNE Torwächter: Die Station ist ja belegt.
         anker: list[dict] = []
-        if body.beschluss_ids:
+        if body.decision_ids:
             try:
                 anker = store.wortbeitraege_zu_beschluessen(
-                    store.get_decisions_by_ids(body.beschluss_ids[:10]),
+                    store.get_decisions_by_ids(body.decision_ids[:10]),
                     max_gesamt=60, max_je_top=12)
             except Exception:  # noqa: BLE001 — Anker ist Zusatz, nie Blocker
                 anker = []
@@ -1944,9 +2045,9 @@ def partei_meinungen_endpoint(
         # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
         # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
         alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
-        schluessel = "v3:" + hashlib.sha1(
+        key = "v3:" + hashlib.sha1(
             ",".join(str(wid) for wid in alle_ids).encode()).hexdigest()
-        meinungen = store.partei_meinungen_cache_get(schluessel) if alle_ids else None
+        meinungen = store.partei_meinungen_cache_get(key) if alle_ids else None
         if meinungen is None and alle_ids:
             vektor = store.wortbeitraege_by_ids([wid for wid, _ in hits])
             schon = {r["id"] for r in vektor}
@@ -1955,9 +2056,9 @@ def partei_meinungen_endpoint(
             # auflösen (Tims Standing-Punkt) — der Baustein führt die beiden
             # danach getrennt, statt sie in einen Gruppen-Eimer zu werfen.
             qa.parteien_aufloesen(store, rows)
-            meinungen = qa.partei_meinungen(body.frage, rows)
+            meinungen = qa.partei_meinungen(body.question, rows)
             if meinungen:
-                store.partei_meinungen_cache_set(schluessel, body.frage, meinungen)
+                store.partei_meinungen_cache_set(key, body.question, meinungen)
         # Vollständigkeits-Ehrlichkeit (Tims Direktive 10.08.): Fraktionen, die
         # im Rat aktiv sind, aber ohne passende Wortbeiträge zum Thema — der
         # Baustein sagt das, statt sie stillschweigend wegzulassen. Die
@@ -1970,7 +2071,7 @@ def partei_meinungen_endpoint(
             # in der Ehrlichkeits-Zeile stehen nur echte Ratsparteien (Tims
             # TestFlight-Feedback 11.08.), und „CDU-Fraktion" dedupliziert
             # gegen „CDU" statt daneben zu erscheinen.
-            vertreten = {qa.ratspartei_label(e["partei"]) or qa._fraktions_label(e["partei"])
+            vertreten = {qa.ratspartei_label(e["party"]) or qa._fraktions_label(e["party"])
                          for e in meinungen}
             aktive: list[str] = []
             for x in store.aktive_fraktionen():
@@ -1991,10 +2092,10 @@ def partei_meinungen_endpoint(
         _log.exception("partei_meinungen fehlgeschlagen")
         meinungen = None
         ohne = []
-    return {"parteien": meinungen or [], "ohne_beitraege": ohne}
+    return {"parties": meinungen or [], "without_speeches": ohne}
 
 
-class QaShareQuelle(BaseModel):
+class QaShareSource(BaseModel):
     id: int
     title: str = Field(max_length=300)
     session_date: str | None = Field(default=None, max_length=10)
@@ -2002,18 +2103,18 @@ class QaShareQuelle(BaseModel):
     outcome: str | None = Field(default=None, max_length=40)
 
 
-class QaShareDebatte(BaseModel):
-    sprecher: str | None = Field(default=None, max_length=120)
-    partei: str | None = Field(default=None, max_length=60)
-    art: str = Field(default="rede", max_length=30)
-    top: str | None = Field(default=None, max_length=300)
-    auszug: str = Field(default="", max_length=2000)
+class QaShareDebate(BaseModel):
+    speaker: str | None = Field(default=None, max_length=120)
+    party: str | None = Field(default=None, max_length=60)
+    kind: str = Field(default="speech", max_length=30)
+    agenda_item: str | None = Field(default=None, max_length=300)
+    excerpt: str = Field(default="", max_length=2000)
     committee: str | None = Field(default=None, max_length=120)
-    datum: str | None = Field(default=None, max_length=10)
-    protokoll_url: str | None = Field(default=None, max_length=500)
-    protokoll_seite: int | None = Field(default=None, ge=1, le=9999)
+    date: str | None = Field(default=None, max_length=10)
+    minutes_url: str | None = Field(default=None, max_length=500)
+    minutes_page: int | None = Field(default=None, ge=1, le=9999)
 
-    @field_validator("protokoll_url")
+    @field_validator("minutes_url")
     @classmethod
     def _nur_ratsinfo(cls, v: str | None) -> str | None:
         # Der Snapshot ist öffentlich und der Client liefert die URL mit —
@@ -2024,54 +2125,60 @@ class QaShareDebatte(BaseModel):
         return v
 
 
-class QaSharePresse(BaseModel):
-    titel: str = Field(max_length=300)
+class QaSharePress(BaseModel):
+    title: str = Field(max_length=300)
     url: str = Field(max_length=500)
-    datum: str | None = Field(default=None, max_length=10)
+    date: str | None = Field(default=None, max_length=10)
+    # Ohne den Anriss verlöre ein geteiltes Gespräch die Meldung selbst und
+    # zeigte nur noch einen Link nach draußen. Der Name folgt seinen
+    # Geschwistern ``attachments[].excerpt`` und ``debates[].excerpt``: Beim
+    # Anlegen dieses Feldes (01.09.2026) hießen die noch deutsch und der
+    # Wire-Umbau stand aus — er ist seit 02.09.2026 durch.
+    excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareAnlage(BaseModel):
+class QaShareAttachment(BaseModel):
     # Beleg-Nummer des Recherche-Berichts („[A1]") — ohne sie findet der
     # Marker im geteilten Text seine Anlage nicht.
-    nr: int | None = Field(default=None, ge=1, le=99)
+    number: int | None = Field(default=None, ge=1, le=99)
     label: str | None = Field(default=None, max_length=300)
     url: str | None = Field(default=None, max_length=500)
-    vorlage_nr: str | None = Field(default=None, max_length=60)
-    vorlage_titel: str | None = Field(default=None, max_length=300)
-    auszug: str = Field(default="", max_length=600)
+    template_number: str | None = Field(default=None, max_length=60)
+    template_title: str | None = Field(default=None, max_length=300)
+    excerpt: str = Field(default="", max_length=600)
 
 
-class QaShareKernaussage(BaseModel):
+class QaShareKeyQuote(BaseModel):
     text: str = Field(default="", max_length=600)
-    sprecher: str | None = Field(default=None, max_length=120)
-    datum: str | None = Field(default=None, max_length=10)
+    speaker: str | None = Field(default=None, max_length=120)
+    date: str | None = Field(default=None, max_length=10)
 
 
-class QaSharePartei(BaseModel):
-    partei: str = Field(max_length=60)
-    haltung: str | None = Field(default=None, max_length=20)
+class QaShareParty(BaseModel):
+    party: str = Field(max_length=60)
+    stance: str | None = Field(default=None, max_length=20)
     position: str = Field(default="", max_length=800)
-    einig: bool = True
-    hinweis: str | None = Field(default=None, max_length=300)
-    kernaussage: QaShareKernaussage | None = None
-    beitraege: int = Field(default=0, ge=0)
+    unanimous: bool = True
+    note: str | None = Field(default=None, max_length=300)
+    kernaussage: QaShareKeyQuote | None = None
+    contributions: int = Field(default=0, ge=0)
 
 
 class QaShareBody(BaseModel):
-    frage: str = Field(min_length=1, max_length=300)
-    antwort: str = Field(min_length=1, max_length=8000)
-    quellen: list[QaShareQuelle] = Field(default_factory=list, max_length=40)
+    question: str = Field(min_length=1, max_length=300)
+    answer: str = Field(min_length=1, max_length=8000)
+    sources: list[QaShareSource] = Field(default_factory=list, max_length=40)
     # Bausteine neben den Beschlüssen: ohne sie zeigte die geteilte Seite
     # weniger als das Gespräch, aus dem sie stammt (Tims Befund 10.08.).
-    debatten: list[QaShareDebatte] = Field(default_factory=list, max_length=20)
-    presse: list[QaSharePresse] = Field(default_factory=list, max_length=10)
-    anlagen: list[QaShareAnlage] = Field(default_factory=list, max_length=10)
-    parteien: list[QaSharePartei] = Field(default_factory=list, max_length=12)
+    debates: list[QaShareDebate] = Field(default_factory=list, max_length=20)
+    press_releases: list[QaSharePress] = Field(default_factory=list, max_length=10)
+    attachments: list[QaShareAttachment] = Field(default_factory=list, max_length=10)
+    parties: list[QaShareParty] = Field(default_factory=list, max_length=12)
     # Die Grafik zur Antwort (council/qa.py, geld_grafik) — als loses dict,
     # weil der Client sie unverändert zurückreicht: Sie stammt aus DIESEM
     # Backend, und ein zweites Schema hier wäre eine Kopie, die driftet.
     # Begrenzt wird trotzdem: höchstens 60 Punkte, nur bekannte Felder.
-    grafik: dict | None = None
+    chart: dict | None = None
 
 
 _SHARE_BLOCKED_PHRASES = (
@@ -2111,11 +2218,11 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
     if not isinstance(g, dict):
         return None
     try:
-        reihe = [{"jahr": int(p["jahr"]), "wert": float(p["wert"])}
-                 for p in (g.get("reihe") or [])[:60]]
+        series = [{"year": int(p["year"]), "value": float(p["value"])}
+                 for p in (g.get("series") or [])[:60]]
     except (KeyError, TypeError, ValueError):
         return None
-    if len(reihe) < 2:
+    if len(series) < 2:
         return None
     # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
     # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein
@@ -2126,13 +2233,13 @@ def _grafik_pruefen(g: dict | None) -> dict | None:
         mehr = {"href": mehr["href"][:120], "label": str(mehr.get("label") or "")[:120]}
     else:
         mehr = None
-    return {"art": str(g.get("art") or "")[:30],
-            "titel": str(g.get("titel") or "")[:120],
-            "einheit": str(g.get("einheit") or "")[:20],
+    return {"kind": str(g.get("kind") or "")[:30],
+            "title": str(g.get("title") or "")[:120],
+            "unit": str(g.get("unit") or "")[:20],
             "nachkomma": max(0, min(int(g.get("nachkomma") or 0), 3)),
-            "reihe": reihe,
-            "hinweis": (str(g["hinweis"])[:500] if g.get("hinweis") else None),
-            "quelle": (str(g["quelle"])[:200] if g.get("quelle") else None),
+            "series": series,
+            "note": (str(g["note"])[:500] if g.get("note") else None),
+            "source": (str(g["source"])[:200] if g.get("source") else None),
             "mehr": mehr}
 
 
@@ -2141,38 +2248,38 @@ def qa_share_anlegen(
     body: QaShareBody,
     request: Request,
     user: dict = Depends(require_active),
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> QaShareToken:
     """Teilen mit Substanz (Task 31): speichert die KONKRETE Antwort als
     Snapshot — der alte ?q=-Link ließ Empfänger die Frage neu würfeln und
     eine andere Antwort sehen. Bewusste Einzel-Veröffentlichung per Klick."""
-    if _share_text_is_objectionable(body.frage) or _share_text_is_objectionable(body.antwort):
+    if _share_text_is_objectionable(body.question) or _share_text_is_objectionable(body.answer):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Dieser Inhalt kann nicht als öffentlicher Link geteilt werden.",
         )
-    if not user.get("limits_frei"):
+    if not user.get("limits_unlocked"):
         qa_share_limiter.check(request)
     extras = {
-        "debatten": [d.model_dump() for d in body.debatten],
-        "presse": [p.model_dump() for p in body.presse],
-        "anlagen": [a.model_dump() for a in body.anlagen],
-        "parteien": [p.model_dump() for p in body.parteien],
-        "grafik": _grafik_pruefen(body.grafik),
+        "debates": [d.model_dump() for d in body.debates],
+        "press_releases": [p.model_dump() for p in body.press_releases],
+        "attachments": [a.model_dump() for a in body.attachments],
+        "parties": [p.model_dump() for p in body.parties],
+        "chart": _grafik_pruefen(body.chart),
     }
-    token = nwz.qa_share_anlegen(user["id"], body.frage, body.antwort,
-                                 [q.model_dump() for q in body.quellen],
+    token = ratslotse.qa_share_anlegen(user["id"], body.question, body.answer,
+                                 [q.model_dump() for q in body.sources],
                                  extras if any(extras.values()) else None)
     return {"token": token}
 
 
 @router.get("/qa-share/{token}")
-def qa_share_lesen(token: str, nwz: Store = Depends(get_store)) -> QaShare:
+def qa_share_lesen(token: str, ratslotse: Store = Depends(get_store)) -> QaShare:
     """Öffentliche Snapshot-Ansicht — bewusst OHNE Login (der Link soll auch
     Menschen ohne Konto erreichen); enthält nie Konto-Daten."""
     if len(token) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    share = nwz.qa_share_get(token)
+    share = ratslotse.qa_share_get(token)
     if not share:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     return share
@@ -2190,7 +2297,7 @@ def qa_share_melden(
     token: str,
     body: QaShareReportBody,
     request: Request,
-    nwz: Store = Depends(get_store),
+    ratslotse: Store = Depends(get_store),
 ) -> Ok:
     """Öffentlicher Meldeweg für geteilte Inhalte (App Review 1.2).
 
@@ -2201,7 +2308,7 @@ def qa_share_melden(
     """
     if len(token) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    owner_id = nwz.qa_share_owner_id(token)
+    owner_id = ratslotse.qa_share_owner_id(token)
     if owner_id is None:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     qa_share_report_limiter.check(request)
@@ -2211,7 +2318,7 @@ def qa_share_melden(
         "privacy": "Privatsphäre / personenbezogene Daten",
         "other": "Anderer Grund",
     }
-    nwz.add_feedback(
+    ratslotse.add_feedback(
         0,
         None,
         "qa_share",
@@ -2220,10 +2327,10 @@ def qa_share_melden(
     return {"ok": True}
 
 
-class AskRunde(BaseModel):
+class AskTurn(BaseModel):
     """Eine frühere Gesprächsrunde (Chat): Frage + gekürzte Antwort."""
-    frage: str = Field(max_length=300)
-    antwort: str = Field(default="", max_length=600)
+    question: str = Field(max_length=300)
+    answer: str = Field(default="", max_length=600)
 
 
 # ---- „Gründliche Recherche" (RG-10, Task 34) -------------------------------
@@ -2234,14 +2341,14 @@ class AskRunde(BaseModel):
 
 
 class DeepResearchBody(BaseModel):
-    frage: str = Field(min_length=4, max_length=300)
+    question: str = Field(min_length=4, max_length=300)
     # Wie bei /ask: die letzten Runden lösen Rückbezüge auf. Ohne sie
     # zerlegte der Job eine Anschlussfrage wörtlich („Nochmal bitte
     # ausführlich") — und recherchierte am Thema vorbei.
-    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
+    history: list[AskTurn] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche": läuft ein Gespräch, wird der fertige Bericht dort
     # angehängt — auch wenn die App längst zu ist.
-    gespraech_id: int | None = Field(default=None, ge=1)
+    conversation_id: int | None = Field(default=None, ge=1)
 
 
 def _deep_limit(user: dict) -> int | None:
@@ -2253,22 +2360,22 @@ def _deep_limit(user: dict) -> int | None:
     return override if override is not None else deepresearch.TAGES_KONTINGENT
 
 
-def _deep_frei(nwz: Store, user: dict) -> int | None:
+def _deep_frei(ratslotse: Store, user: dict) -> int | None:
     limit = _deep_limit(user)
     if limit is None:
         return None  # unbegrenzt — der Client zeigt dann keinen Zähler
-    return max(0, limit - nwz.deep_jobs_heute(user["id"]))
+    return max(0, limit - ratslotse.deep_jobs_heute(user["id"]))
 
 
 @router.post("/deep-research", status_code=status.HTTP_201_CREATED)
 def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_active),
-                        nwz: Store = Depends(get_store)) -> RechercheGestartet:
+                        ratslotse: Store = Depends(get_store)) -> ResearchStarted:
     """Recherche-Job starten. Kontingent: 5/Tag je KONTO aus der DB (nicht
     IP — übersteht Neustarts, und Abbruch/Fehler kosten laut Design nichts,
     was ein Fenster-Zähler nicht abbilden kann). Admins können das Limit je
     Konto erhöhen oder ausschalten (web_users.deep_limit)."""
     limit = _deep_limit(user)
-    if limit is not None and nwz.deep_jobs_heute(user["id"]) >= limit:
+    if limit is not None and ratslotse.deep_jobs_heute(user["id"]) >= limit:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
                             "Deine Recherchen für heute sind aufgebraucht — ab morgen geht es weiter.")
     if deepresearch.laufende_jobs(user["id"]) >= 1:
@@ -2277,56 +2384,57 @@ def deep_research_start(body: DeepResearchBody, user: dict = Depends(require_act
     if deepresearch.laufende_jobs() >= deepresearch.MAX_PARALLEL:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Gerade laufen viele Recherchen — bitte versuche es gleich nochmal.")
-    nwz.record_activity(user["id"], "recherche")
-    frage = body.frage.strip()
-    job_id = nwz.deep_job_anlegen(user["id"], frage)
+    ratslotse.record_activity(user["id"], "research")
+    question = body.question.strip()
+    job_id = ratslotse.deep_job_anlegen(user["id"], question)
     settings = get_settings()
-    job = deepresearch.DeepJob(id=job_id, user_id=user["id"], frage=frage,
-                               gespraech_id=body.gespraech_id,
-                               verlauf=[r.model_dump() for r in body.verlauf])
-    deepresearch.start_job(job, settings.nwz_db, settings.council_db)
-    return {"job_id": job_id, "frei": _deep_frei(nwz, user)}
+    job = deepresearch.DeepJob(id=job_id, user_id=user["id"], question=question,
+                               conversation_id=body.conversation_id,
+                               verlauf=[r.model_dump() for r in body.history])
+    deepresearch.start_job(job, settings.ratslotse_db, settings.council_db)
+    return {"job_id": job_id, "remaining": _deep_frei(ratslotse, user)}
 
 
-@router.get("/deep-research/aktuell")
+@router.get("/deep-research/current")
 def deep_research_aktuell(user: dict = Depends(require_active),
-                          nwz: Store = Depends(get_store)) -> RechercheAktuell:
+                          ratslotse: Store = Depends(get_store)) -> ResearchCurrent:
     """Der jüngste Job des Kontos + Rest-Kontingent — damit der Client nach
     Navigation/App-Neustart einen laufenden Job oder ungesehenen Bericht
     wiederfindet, ohne sich die ID gemerkt zu haben."""
-    return {"job": nwz.deep_job_aktuell(user["id"]),
-            "frei": _deep_frei(nwz, user)}
+    return {"job": ratslotse.deep_job_aktuell(user["id"]),
+            "remaining": _deep_frei(ratslotse, user)}
 
 
 @router.get("/deep-research/{job_id}")
 def deep_research_snapshot(job_id: str, user: dict = Depends(require_active),
-                           nwz: Store = Depends(get_store)) -> RechercheSnapshot:
+                           ratslotse: Store = Depends(get_store)) -> ResearchSnapshot:
     """Persistierter Stand des Jobs (Bericht + Quellen bei fertig/teilbericht)."""
     if len(job_id) > 64:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
-    row = nwz.deep_job_get(job_id, user["id"])
+    row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     # Läuft laut DB, aber kein Thread mehr da (Server-Neustart, Deploy):
     # ehrlich als Fehler ausweisen, sonst wartete der Client ewig.
     if row["status"] == "laeuft" and deepresearch.get_job(job_id) is None:
-        nwz.deep_job_update(job_id, "fehler")
+        ratslotse.deep_job_update(job_id, "fehler")
         row["status"] = "fehler"
     try:
-        row["quellen"] = json.loads(row["quellen"]) if row.get("quellen") else None
+        row["sources"] = json.loads(row["sources"]) if row.get("sources") else None
     except (ValueError, TypeError):
-        row["quellen"] = None
+        row["sources"] = None
     return row
 
 
-@router.get("/deep-research/{job_id}/events")
+@router.get("/deep-research/{job_id}/events", response_class=EventStreamResponse,
+            responses=SSE_RECHERCHE)
 def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
                          user: dict = Depends(require_active),
-                         nwz: Store = Depends(get_store)) -> StreamingResponse:
+                         ratslotse: Store = Depends(get_store)) -> StreamingResponse:
     """SSE-Anschluss an einen laufenden Job: Replay aller Events ab ``ab``,
     dann live weiter. Ein Verbindungsabriss ist folgenlos — der Job läuft
     im Backend weiter, der Client verbindet sich einfach neu."""
-    row = nwz.deep_job_get(job_id, user["id"])
+    row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     job = deepresearch.get_job(job_id)
@@ -2342,11 +2450,11 @@ def deep_research_events(job_id: str, ab: int = Query(default=0, ge=0),
 
 @router.post("/deep-research/{job_id}/stop")
 def deep_research_stop(job_id: str, user: dict = Depends(require_active),
-                       nwz: Store = Depends(get_store)) -> RechercheGestoppt:
+                       ratslotse: Store = Depends(get_store)) -> ResearchStopped:
     """Abbrechen (Design 8c⑥): stoppt vor dem nächsten Such-/LLM-Schritt.
     Fertige Facetten bleiben als Material — die Antwort sagt, ob sich ein
     Teilbericht lohnt. Kostet kein Kontingent."""
-    if not nwz.deep_job_get(job_id, user["id"]):
+    if not ratslotse.deep_job_get(job_id, user["id"]):
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     job = deepresearch.get_job(job_id)
     if job is None or job.done:
@@ -2354,17 +2462,17 @@ def deep_research_stop(job_id: str, user: dict = Depends(require_active),
     job.stop.set()
     with job.cond:
         job.cond.notify_all()
-    return {"facetten_fertig": job.facetten_fertig,
-            "facetten_gesamt": job.facetten_gesamt,
-            "teilbericht_moeglich": bool(job.material and job.material.get("candidates"))}
+    return {"facets_done": job.facetten_fertig,
+            "facets_total": job.facetten_gesamt,
+            "partial_report_possible": bool(job.material and job.material.get("candidates"))}
 
 
-@router.post("/deep-research/{job_id}/teilbericht")
+@router.post("/deep-research/{job_id}/partial-report")
 def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
-                              nwz: Store = Depends(get_store)) -> Ok:
+                              ratslotse: Store = Depends(get_store)) -> Ok:
     """Nach einem Stopp: aus den fertigen Facetten doch noch einen Bericht
     schreiben („Teilbericht zeigen"). Zählt nicht gegen das Kontingent."""
-    row = nwz.deep_job_get(job_id, user["id"])
+    row = ratslotse.deep_job_get(job_id, user["id"])
     if not row:
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     job = deepresearch.get_job(job_id)
@@ -2376,29 +2484,30 @@ def deep_research_teilbericht(job_id: str, user: dict = Depends(require_active),
                             "Kein Material gesichert — bitte neu recherchieren.")
     # Status VOR dem Thread-Start zurück auf laeuft — andersherum könnte der
     # (schnelle) Thread sein „teilbericht" schreiben und würde überschrieben.
-    nwz.deep_job_update(job_id, "laeuft")
+    ratslotse.deep_job_update(job_id, "laeuft")
     settings = get_settings()
-    deepresearch.teilbericht_starten(job, settings.nwz_db, settings.council_db)
+    deepresearch.teilbericht_starten(job, settings.ratslotse_db, settings.council_db)
     return {"ok": True}
 
 
-@router.post("/deep-research/{job_id}/gesehen")
+@router.post("/deep-research/{job_id}/seen")
 def deep_research_gesehen(job_id: str, user: dict = Depends(require_active),
-                          nwz: Store = Depends(get_store)) -> Ok:
+                          ratslotse: Store = Depends(get_store)) -> Ok:
     """Client hat den fertigen Bericht gerendert — nicht erneut einblenden."""
-    nwz.deep_job_gesehen(job_id, user["id"])
+    ratslotse.deep_job_gesehen(job_id, user["id"])
     return {"ok": True}
 
 
 @router.get("/qa-beispiele")
-def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaBeispiele:
+def qa_beispiele(store: CouncilStore = Depends(get_council_store)) -> QaExamples:
     """Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
     „Was hat der <Ausschuss> am <Datum> beschlossen?"."""
-    return {"sitzungen": store.juengste_sitzungen_mit_beschluessen(limit=2)}
+    return {"sessions": store.juengste_sitzungen_mit_beschluessen(limit=2)}
 
 
-@router.get("/plan-bild/{document_id}")
+@router.get("/plan-bild/{document_id}", response_class=JpegResponse,
+            responses=PLANZEICHNUNG_JPEG)
 def plan_bild(document_id: int, thumb: bool = False) -> FileResponse:
     """Gerenderte Planzeichnung einer Anlage (P1) — öffentlich wie die
     Beschluss-Seite selbst; das PDF dahinter ist ohnehin frei abrufbar.
@@ -2426,7 +2535,7 @@ def _stations_signature(rows: list[dict]) -> str:
     nachgetragen wurde. Genau das ist die Nachricht, auf die man wartet.
     """
     return json.dumps(
-        [f"{r.get('datum') or ''}|{r.get('gremium') or ''}|{r.get('ergebnis') or ''}" for r in rows],
+        [f"{r.get('date') or ''}|{r.get('committee') or ''}|{r.get('result') or ''}" for r in rows],
         ensure_ascii=False,
     )
 
@@ -2435,17 +2544,17 @@ def _stations_signature(rows: list[dict]) -> str:
 def list_follows(
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
-) -> VorlagenFolgen:
+    ratslotse: Store = Depends(get_store),
+) -> TemplateFollows:
     """Verfolgte Vorgänge mit ihrem aktuellen Stand — die Beratungsfolge liegt
     in der anderen Datenbank, deshalb hier je Follow eine Abfrage (die Zahl
     ist nutzergemacht und klein)."""
     today = date.today().isoformat()
     out = []
-    for f in nwz.get_vorlage_follows(user["id"]):
+    for f in ratslotse.get_vorlage_follows(user["id"]):
         stations = store.get_beratungen(f["kvonr"])
-        naechste = next((b for b in stations if b.get("datum") and b["datum"] > today), None)
-        letzte = next((b for b in reversed(stations) if b.get("datum") and b["datum"] <= today), None)
+        naechste = next((b for b in stations if b.get("date") and b["date"] > today), None)
+        letzte = next((b for b in reversed(stations) if b.get("date") and b["date"] <= today), None)
         out.append({
             **f,
             "url": _vorlage_url(f["kvonr"]),
@@ -2456,39 +2565,42 @@ def list_follows(
     return {"follows": out}
 
 
-@router.post("/vorlage/{kvonr}/follow", status_code=status.HTTP_201_CREATED)
+@router.post("/template/{kvonr}/follow", status_code=status.HTTP_201_CREATED)
 def follow_vorlage(
     kvonr: int,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-    nwz: Store = Depends(get_store),
-) -> VorlageGefolgt:
+    ratslotse: Store = Depends(get_store),
+) -> TemplateFollowed:
     v = store.get_vorlage(kvonr)
     if not v:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vorlage nicht gefunden.")
     # Den heutigen Stand mitschreiben: Was schon dasteht, ist keine Neuigkeit.
-    nwz.follow_vorlage(
+    ratslotse.follow_vorlage(
         user["id"], kvonr,
-        vorlage_nr=v.get("vorlage_nr") or "", title=v.get("title") or "",
+        template_number=v.get("template_number") or "", title=v.get("title") or "",
         stations=_stations_signature(store.get_beratungen(kvonr)),
     )
     return {"kvonr": kvonr, "following": True}
 
 
-@router.delete("/vorlage/{kvonr}/follow")
+@router.delete("/template/{kvonr}/follow")
 def unfollow_vorlage(
     kvonr: int,
     user: dict = Depends(require_active),
-    nwz: Store = Depends(get_store),
-) -> VorlageEntfolgt:
-    nwz.unfollow_vorlage(user["id"], kvonr)
+    ratslotse: Store = Depends(get_store),
+) -> TemplateUnfollowed:
+    ratslotse.unfollow_vorlage(user["id"], kvonr)
     return {"kvonr": kvonr, "following": False}
 
 
 @router.get("/analysis")
-def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> AnalyseDaten:
+def analysis(user: dict = Depends(require_active),
+             store: CouncilStore = Depends(get_council_store),
+             ratslotse: Store = Depends(get_store)) -> AnalysisData:
     """Party behaviour: topic heatmap, success rates, contention, alliances —
     plus Erfolgsquoten der eingereichten Fraktions-Anträge (aus den Anlagen)."""
+    ratslotse.record_activity(user["id"], "analysis")  # Admin-Statistik (20a)
     data = store.party_analysis()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["topic_matrix"]["fields"]}
     data["antrag_stats"] = store.antrag_stats()
@@ -2496,7 +2608,7 @@ def analysis(_user: dict = Depends(require_active), store: CouncilStore = Depend
 
 
 @router.get("/finance")
-def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finanzen:
+def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Finances:
     """Largest € decisions + recognised volume per policy field (excl. accounting reports)."""
     by_field = store.money_by_field()
     return {
@@ -2507,7 +2619,7 @@ def finance(_user: dict = Depends(require_active), store: CouncilStore = Depends
 
 
 @router.get("/trends")
-def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> TrendDaten:
+def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> TrendData:
     """Council activity over time: decisions + € volume per quarter by field, emerging tags."""
     data = store.activity_trends()
     data["field_labels"] = {k: POLICY_FIELDS[k][0] for k in data["fields"]}
@@ -2515,7 +2627,7 @@ def trends(_user: dict = Depends(require_active), store: CouncilStore = Depends(
 
 
 @router.get("/field-recaps")
-def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> ThemenfeldRueckblicke:
+def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> PolicyFieldRecaps:
     """Auto-generated plain-language recaps per policy field ("Was bewegte den Rat im Bereich X?")."""
     recaps = store.get_field_recaps()
     for r in recaps:
@@ -2525,20 +2637,22 @@ def field_recaps(_user: dict = Depends(require_active), store: CouncilStore = De
 
 @router.get("/entities")
 def entities_list(kind: str = "", _user: dict = Depends(require_active),
-                  store: CouncilStore = Depends(get_council_store)) -> Entitaeten:
+                  store: CouncilStore = Depends(get_council_store)) -> Entities:
     """Directory of named entities (projects/places/organizations), most-referenced first."""
     return {"entities": store.list_entities(limit=400, kind=kind)}
 
 
 @router.get("/entities-map")
-def entities_map(_user: dict = Depends(require_active),
-                 store: CouncilStore = Depends(get_council_store)) -> EntitaetenKarte:
+def entities_map(user: dict = Depends(require_active),
+                 store: CouncilStore = Depends(get_council_store),
+                 ratslotse: Store = Depends(get_store)) -> EntitiesMap:
     """Geocodierte Themen und belastbare Beschlussorte für die Stadtkarte."""
+    ratslotse.record_activity(user["id"], "map")  # Admin-Statistik (20a)
     return {"entities": store.city_map_points()}
 
 
 @router.get("/public-stats")
-def public_stats(store: CouncilStore = Depends(get_council_store)) -> OeffentlicheZahlen:
+def public_stats(store: CouncilStore = Depends(get_council_store)) -> PublicNumbers:
     """Aggregate headline counts for the public landing page — no auth, no content."""
     return store.public_stats()
 
@@ -2547,29 +2661,29 @@ def public_stats(store: CouncilStore = Depends(get_council_store)) -> Oeffentlic
 # Public wie public-stats: Die geteilten Antwort-Seiten (app/g) brauchen es
 # ohne Konto, und der Inhalt sind amtliche RIS-Daten. Prozess-Cache mit
 # Tages-TTL — die Quelle ändert sich höchstens mit dem täglichen Import.
-_PERSONEN_LEXIKON_CACHE: dict = {"stand": 0.0, "daten": None}
+_PERSONEN_LEXIKON_CACHE: dict = {"as_of": 0.0, "daten": None}
 
 
-@router.get("/personen-lexikon")
+@router.get("/people-directory")
 def personen_lexikon(response: Response,
-                     store: CouncilStore = Depends(get_council_store)) -> PersonenLexikon:
+                     store: CouncilStore = Depends(get_council_store)) -> PeopleDirectory:
     import time as _time
     if _PERSONEN_LEXIKON_CACHE["daten"] is None or \
-            _time.time() - _PERSONEN_LEXIKON_CACHE["stand"] > 6 * 3600:
+            _time.time() - _PERSONEN_LEXIKON_CACHE["as_of"] > 6 * 3600:
         _PERSONEN_LEXIKON_CACHE["daten"] = store.personen_lexikon()
-        _PERSONEN_LEXIKON_CACHE["stand"] = _time.time()
+        _PERSONEN_LEXIKON_CACHE["as_of"] = _time.time()
     response.headers["Cache-Control"] = "public, max-age=21600"
-    return {"personen": _PERSONEN_LEXIKON_CACHE["daten"]}
+    return {"people": _PERSONEN_LEXIKON_CACHE["daten"]}
 
 
 # ---- Link-Vorschau (Design 29a, P1) ----
 # Wortlaut der Ergebnisse für die eine Zeile, die WhatsApp & Co. anzeigen.
 _PREVIEW_OUTCOME = {
-    "angenommen": "angenommen",
-    "abgelehnt": "abgelehnt",
-    "vertagt": "vertagt",
-    "zur_kenntnis": "zur Kenntnis genommen",
-    "kein_beschluss": "ohne Beschluss",
+    "accepted": "angenommen",
+    "rejected": "abgelehnt",
+    "postponed": "vertagt",
+    "noted": "zur Kenntnis genommen",
+    "no_decision": "ohne Beschluss",
 }
 
 
@@ -2595,7 +2709,7 @@ def _kuerzen(text: str, grenze: int) -> str:
 
 
 @router.get("/preview/{kind}/{key:path}")
-def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> Vorschau:
+def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store)) -> SharePreview:
     """Titel + Kurzfassung für die Link-Vorschau — **ohne Anmeldung**.
 
     Teilen ist die Kernhandlung der App, aber bislang zeigte jeder geteilte Link
@@ -2613,19 +2727,19 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         d = store.get_decision(int(key)) if key.isdigit() else None
         if not d:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Beschluss nicht gefunden.")
-        titel = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
-        ergebnis = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
+        title = (d.get("title") or "Beschluss des Oldenburger Stadtrats").strip()
+        result = _PREVIEW_OUTCOME.get(d.get("outcome") or "")
         kopf = " · ".join(x for x in (d.get("committee"), _preview_datum(d.get("session_date"))) if x)
-        satz = (d.get("simple_summary") or d.get("summary") or d.get("beschluss") or "").strip()
+        satz = (d.get("simple_summary") or d.get("summary") or d.get("official_text") or "").strip()
         # Erst kürzen, dann das Ergebnis anhängen: Es ist die wertvollste
         # Information der Karte und darf nie dem Rotstift zum Opfer fallen.
-        titel = _kuerzen(titel, 90)
+        title = _kuerzen(title, 90)
         # Ohne Beschlusstext blieb hier „Gremium · Datum." stehen — ein Satz,
         # der mitten im Nichts endet. Dann lieber sagen, was die Seite bietet.
         if not satz:
             satz = "Tagesordnungspunkt, Ergebnis und Zusammenhang im Ratslotse."
         return {
-            "title": f"{titel} — {ergebnis}" if ergebnis else titel,
+            "title": f"{title} — {result}" if result else title,
             "description": " ".join(x for x in (f"{kopf}." if kopf else "", satz) if x)[:300],
         }
 
@@ -2633,13 +2747,13 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         p = store.member_detail(key)
         if not p:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Ratsmitglied nicht gefunden.")
-        partei = p.get("party")
-        gremien = len(p.get("committees") or [])
+        party = p.get("party")
+        committees = len(p.get("committees") or [])
         return {
-            "title": f"{p['name']} ({partei})" if partei else p["name"],
+            "title": f"{p['name']} ({party})" if party else p["name"],
             "description": (
                 f"Ratsmitglied in Oldenburg · {p.get('sessions', 0)} Sitzungen"
-                + (f" · {gremien} Gremien" if gremien else "")
+                + (f" · {committees} Gremien" if committees else "")
                 + ". Anwesenheit und Beschlüsse im Ratslotse."
             ),
         }
@@ -2675,12 +2789,12 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
         s = store.get_session(int(key)) if key.isdigit() else None
         if not s:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Sitzung nicht gefunden.")
-        datum = _preview_datum(s.get("session_date"))
+        date = _preview_datum(s.get("session_date"))
         return {
-            "title": f"{s['committee']} am {datum}" if datum else s["committee"],
+            "title": f"{s['committee']} am {date}" if date else s["committee"],
             "description": (
                 "Tagesordnung und Beschlüsse der Sitzung"
-                + (f" am {datum}" if datum else "")
+                + (f" am {date}" if date else "")
                 + f" ({s['committee']}) — im Ratslotse verständlich aufbereitet."
             ),
         }
@@ -2689,7 +2803,7 @@ def preview(kind: str, key: str, store: CouncilStore = Depends(get_council_store
 
 
 @router.get("/entity/{slug}")
-def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> EntitaetsDetail:
+def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> EntityDetail:
     """An entity ('Themen-') page: all its decisions plus money/parties/field aggregates.
 
     Ohne Anmeldung lesbar — es ist eine der geteilten Detailseiten, und alles
@@ -2708,17 +2822,17 @@ def entity(slug: str, store: CouncilStore = Depends(get_council_store)) -> Entit
 
 @router.get("/members")
 def members(_user: dict = Depends(require_active),
-            store: CouncilStore = Depends(get_council_store)) -> Ratsmitglieder:
+            store: CouncilStore = Depends(get_council_store)) -> CouncilMembers:
     """Directory of council members (from attendance): party, sessions, committees."""
     return {"members": store.list_members()}
 
 
 @router.get("/person/{slug}")
-def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> PersonenDetail:
+def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> PersonDetail:
     """Das Profil einer Person — Ratsmitglied oder Verwaltung mit erkanntem
     Amt (Tims Wunsch 19.08.): party/sessions/committees/Gantt bei einem
     Mandat, ein schmaler Steckbrief (Amt + Erwähnungszeitraum) bei einem Amt.
-    `typ` im Ergebnis unterscheidet ("rat" | "verwaltung") — das Frontend
+    `type` im Ergebnis unterscheidet ("council" | "administration") — das Frontend
     rendert danach zwei verschiedene Ansichten.
 
     Ohne Anmeldung lesbar (s. `decision_detail`). Es geht ausschließlich um
@@ -2729,7 +2843,7 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     """
     data = store.member_detail(slug)
     if data:
-        data["typ"] = "rat"
+        data["type"] = "council"
         return data
     data = store.verwaltung_detail(slug)
     if data:
@@ -2737,11 +2851,11 @@ def person(slug: str, store: CouncilStore = Depends(get_council_store)) -> Perso
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Person nicht gefunden.")
 
 
-@router.get("/person/{slug}/wortbeitraege")
-def person_wortbeitraege(slug: str, gremium: str | None = None,
+@router.get("/person/{slug}/speeches")
+def person_wortbeitraege(slug: str, committee: str | None = None,
                          offset: int = Query(default=0, ge=0),
                          limit: int = Query(default=20, ge=1, le=100),
-                         store: CouncilStore = Depends(get_council_store)) -> Wortbeitraege:
+                         store: CouncilStore = Depends(get_council_store)) -> Speeches:
     """Wortbeiträge einer Person, seitenweise und nach Gremium filterbar.
 
     Öffentlich wie die Personen-Seite selbst — es ist derselbe Bestand, nur
@@ -2751,14 +2865,14 @@ def person_wortbeitraege(slug: str, gremium: str | None = None,
     name = store.member_name(slug) or store.verwaltung_name(slug)
     if not name:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Person nicht gefunden.")
-    return store.wortbeitraege_person(name, gremium=gremium, offset=offset, limit=limit)
+    return store.wortbeitraege_person(name, committee=committee, offset=offset, limit=limit)
 
 
-_EMPTY_GOAL = {"voran": 0, "bremst": 0, "neutral": 0, "total": 0}
+_EMPTY_GOAL = {"advances": 0, "hinders": 0, "neutral": 0, "total": 0}
 
 
 @router.get("/goals")
-def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Ziele:
+def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(get_council_store)) -> Goals:
     """City goals with how many decisions advance / hinder / are neutral toward them."""
     summary = store.goal_summary()
     out = [{"key": key, "label": g["label"], "description": g["description"],
@@ -2768,7 +2882,7 @@ def goals(_user: dict = Depends(require_active), store: CouncilStore = Depends(g
 
 @router.get("/goal/{key}")
 def goal_detail(key: str, _user: dict = Depends(require_active),
-                store: CouncilStore = Depends(get_council_store)) -> ZielDetail:
+                store: CouncilStore = Depends(get_council_store)) -> GoalDetail:
     g = GOALS.get(key)
     if not g:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ziel nicht gefunden.")
@@ -2784,17 +2898,17 @@ class AskBody(BaseModel):
     # Chat-Modus (Paket A): die letzten Runden erlauben Anschlussfragen wie
     # „Und was kostet das?" — die Analyse kondensiert daraus eine eigenständige
     # Suchfrage. Ohne Verlauf verhält sich /ask exakt wie bisher.
-    verlauf: list[AskRunde] = Field(default_factory=list, max_length=4)
+    history: list[AskTurn] = Field(default_factory=list, max_length=4)
     # „Meine Gespräche" (6a): laufendes Gespräch, an das der Turn gehängt wird —
-    # nur wirksam, wenn das Konto qa_speichern = 1 gesetzt hat.
-    gespraech_id: int | None = Field(default=None, ge=1)
+    # nur wirksam, wenn das Konto saves_conversations = 1 gesetzt hat.
+    conversation_id: int | None = Field(default=None, ge=1)
     # „Einfacher erklären": die zuletzt angezeigte Antwort im VOLLTEXT — genau
     # die soll umgeschrieben werden. Der `verlauf` taugt dafür nicht, dort ist
     # jede Antwort auf 600 Zeichen gekappt (er dient dem Auflösen von
     # Rückbezügen, nicht dem Zitieren). Wird nur benutzt, wenn die Frage
     # tatsächlich um eine einfachere Fassung bittet; alte App-Versionen senden
     # das Feld nicht und bekommen die einfache Fassung aus den Beschlüssen.
-    vorherige_antwort: str = Field(default="", max_length=8000)
+    previous_answer: str = Field(default="", max_length=8000)
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -2870,7 +2984,7 @@ def _qa_source(c: dict) -> dict:
         # Kostenentwicklung (10.08.26): Familien-Erkennung (gleiche Vorlage)
         # für das ehrliche Delta im Geld-Baustein — nur dort ist „gestiegen
         # von X auf Y" belegbar, alles andere wäre ein Äpfel/Birnen-Vergleich.
-        "vorlage_nr": c.get("vorlage_nr"),
+        "template_number": c.get("template_number"),
         "factions": qa._factions_of(c),
         # Bei einem expliziten Ortsfilter: exakte Zuordnung samt Fundstelle.
         # So bleibt im UI prüfbar, weshalb dieser Beschluss zum Ort gehört.
@@ -2883,8 +2997,14 @@ def _qa_source(c: dict) -> dict:
 def _presse_kompakt(rows: list[dict]) -> list[dict]:
     """Anzeige-Form der Presse-Treffer — identisch im sources-Event und im
     Gesprächs-Snapshot, damit ein geladenes Gespräch nichts verliert."""
-    return [{"titel": p.get("titel"), "url": p.get("url"),
-             "datum": p.get("datum")} for p in rows]
+    return [{"title": p.get("title"), "url": p.get("url"),
+             "date": p.get("date"),
+             # Der Anriss stand längst in der Abfrage (``presse_by_ids`` kürzt
+             # den Volltext auf 600 Zeichen), fiel hier aber wieder raus: Die
+             # Karte trug nur einen Titel und einen Link auf die Stadt-Seite,
+             # die Meldung selbst musste man auswärts lesen (Tims Befund
+             # 01.09.2026).
+             "excerpt": (p.get("auszug") or "")[:600]} for p in rows]
 
 
 def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
@@ -2908,7 +3028,7 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
             "session_date": s.get("session_date"),
             "session_time": s.get("session_time"), "location": s.get("location"),
             "kuenftig": bool(s.get("kuenftig")),
-            "n_beschluesse": len(s.get("beschluss_ids") or []),
+            "n_beschluesse": len(s.get("decision_ids") or []),
             "agenda": [{"item_number": a.get("item_number"),
                         "title": a.get("title")} for a in (inhalt or agenda)[:6]],
             "n_agenda": len(agenda),
@@ -2917,14 +3037,14 @@ def _sitzungen_kompakt(sitzungen: list[dict]) -> list[dict]:
 
 
 def _debatten_kompakt(rows: list[dict]) -> list[dict]:
-    return [{"sprecher": d.get("sprecher"), "partei": d.get("partei"),
-             "art": d.get("art"), "top": d.get("top"),
-             "auszug": (d.get("text") or "")[:2000],
+    return [{"speaker": d.get("speaker"), "party": d.get("party"),
+             "kind": d.get("art"), "agenda_item": d.get("top"),
+             "excerpt": (d.get("text") or "")[:2000],
              "committee": d.get("committee"),
-             "datum": d.get("session_date"),
-             "protokoll_url": d.get("protokoll_url"),
+             "date": d.get("session_date"),
+             "minutes_url": d.get("minutes_url"),
              # PDF-Seite der Fundstelle (Sprecher-Anker); None = Link ohne #page.
-             "protokoll_seite": d.get("seite")} for d in rows]
+             "minutes_page": d.get("page")} for d in rows]
 
 
 def _anlagen_kompakt(rows: list[dict]) -> list[dict]:
@@ -2934,13 +3054,13 @@ def _anlagen_kompakt(rows: list[dict]) -> list[dict]:
     längere Fundstellen-Text bleibt nur im Modellkontext; die Oberfläche zeigt
     einen kurzen, prüfbaren Anriss und verlinkt auf das Originaldokument.
     """
-    return [{"nr": a.get("nr"), "label": a.get("label"), "url": a.get("url"),
-             "vorlage_nr": a.get("vorlage_nr"),
-             "vorlage_titel": a.get("vorlage_titel"),
-             "auszug": (a.get("fundstelle") or "")[:220]} for a in rows]
+    return [{"number": a.get("nr"), "label": a.get("label"), "url": a.get("url"),
+             "template_number": a.get("template_number"),
+             "template_title": a.get("template_title"),
+             "excerpt": (a.get("citation") or "")[:220]} for a in rows]
 
 
-def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
+def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     answer_text: str, candidates: list[dict],
                     cited: list[int],
                     presse_rows: list[dict] | None = None,
@@ -2952,22 +3072,22 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
-    Nur wenn der Client das Feld ``gespraech_id`` überhaupt kennt: Alte
+    Nur wenn der Client das Feld ``conversation_id`` überhaupt kennt: Alte
     App-Versionen senden es nie und können die zurückgegebene id nicht
     weiterreichen — jede Frage würde sonst ein 1-Turn-Fragment eröffnen und
     die Gespräche-Liste fluten (Review-Befund B5). Ein frisch eröffnetes
     Gespräch wird wieder gelöscht, wenn der Turn-Insert scheitert — sonst
     bliebe ein leerer Eintrag in der Liste zurück (Befund B2)."""
     try:
-        if "gespraech_id" not in body.model_fields_set:
+        if "conversation_id" not in body.model_fields_set:
             return None
-        if not answer_text.strip() or nwz.get_qa_speichern(user["id"]) != 1:
+        if not answer_text.strip() or ratslotse.get_qa_speichern(user["id"]) != 1:
             return None
-        gespraech_id = body.gespraech_id
-        neu = gespraech_id is None
+        conversation_id = body.conversation_id
+        neu = conversation_id is None
         if neu:
-            gespraech_id = nwz.qa_gespraech_start(user["id"], q_suche or body.question)
-            if gespraech_id is None:
+            conversation_id = ratslotse.qa_gespraech_start(user["id"], q_suche or body.question)
+            if conversation_id is None:
                 return None
         zitiert = set(cited)
         # Presse + Debatten gehören MIT in den Snapshot: Ohne sie öffnete ein
@@ -2985,43 +3105,43 @@ def _turn_speichern(nwz: Store, user: dict, body: AskBody, q_suche: str,
              # — anderer Schlüssel, also lud der Baustein beim Zurückwechseln
              # auf den Fragen-Tab komplett neu und fragte dabei mit der
              # kontextlosen Frage (Tims Befund 21.08.2026).
-             "kontext": q_suche,
-             "presse": _presse_kompakt(presse_rows or []),
-             "debatten": _debatten_kompakt(debatten_rows or []),
-             "anlagen": _anlagen_kompakt(anlagen_rows or []),
+             "context": q_suche,
+             "press_releases": _presse_kompakt(presse_rows or []),
+             "debates": _debatten_kompakt(debatten_rows or []),
+             "attachments": _anlagen_kompakt(anlagen_rows or []),
              # Der Ausblick gehört wie Presse und Debatten in den Snapshot,
              # sonst öffnet ein gespeichertes Gespräch ohne „Wie es weitergeht".
-             "planungen": planungen or [],
+             "planning_procedures": planungen or [],
              # Und die Grafik aus demselben Grund: Ein gespeichertes Gespräch
              # soll aussehen wie das Gespräch, aus dem es stammt.
-             "grafik": grafik,
+             "chart": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
-             "sitzungen": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
-        if not nwz.qa_turn_speichern(gespraech_id, user["id"],
+             "sessions": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
+        if not ratslotse.qa_turn_speichern(conversation_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
-                nwz.qa_gespraech_loeschen(gespraech_id, user["id"])
+                ratslotse.qa_gespraech_loeschen(conversation_id, user["id"])
             return None
-        return gespraech_id
+        return conversation_id
     except Exception:  # noqa: BLE001 — Speichern ist Zusatz, nie Blocker
         return None
 
 
-@router.post("/ask")
+@router.post("/ask", response_class=EventStreamResponse, responses=SSE_FRAGE)
 def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store),
-        nwz: Store = Depends(get_store)) -> StreamingResponse:
+        ratslotse: Store = Depends(get_store)) -> StreamingResponse:
     """Answer a free-text question from the decisions, streamed as Server-Sent Events:
     progress steps → the ranked source decisions (the moment retrieval+rerank finish)
     → the answer token-by-token → a final event with the cited ids. Streaming makes
     the wait feel far shorter (sources show in ~2 s) and degrades gracefully if a
     proxy buffers it (the client then renders the same final state at once)."""
-    if not user.get("limits_frei"):  # Admin kann Konten befreien (web_users.limits_frei)
+    if not user.get("limits_unlocked"):  # Admin kann Konten befreien (web_users.limits_unlocked)
         # Mobilfunkanbieter bündeln viele Geräte hinter derselben öffentlichen
         # Adresse. Das Konto ist hier bereits sicher authentifiziert und damit
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
-    nwz.record_activity(user["id"], "ki_frage")  # Admin-Statistik (20a)
+    ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
@@ -3033,11 +3153,11 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # (expand_ms misst seit dem Fragetyp-Routing den EINEN Analyse-Call
             # — Begriffe + Typ —, der Schlüssel bleibt für Vergleichbarkeit.)
             zeiten: dict = {}
-            verlauf = [r.model_dump() for r in body.verlauf]
+            verlauf = [r.model_dump() for r in body.history]
             yield _sse({"type": "step", "step": "expand"})
             t0 = time.perf_counter()
             analyse = qa.analyse_query(q, verlauf=verlauf)
-            expanded, typ = analyse["begriffe"], analyse["typ"]
+            expanded, typ = analyse["terms"], analyse["kind"]
             # Punktfrage (Datum/Zahl/Name)? Dann antwortet das Modell knapp —
             # der Befund kam aus einer echten Nutzer-Frage, der nach dem
             # gesuchten Datum noch fünf Redebeiträge folgten (12.08.).
@@ -3053,13 +3173,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 eng = False  # „kurz und knapp" und „einfach" sind zwei Register
             # Retrieval + Reranker arbeiten mit der EIGENSTÄNDIGEN Fassung der
             # Frage — „Und was kostet das?" sucht sonst nach nichts.
-            q_suche = analyse["frage"]
+            q_suche = analyse["question"]
             zeiten["expand_ms"] = round((time.perf_counter() - t0) * 1000)
             # Personen-Fragetyp (10.08.26): nennt die Frage eine Ratsperson,
             # antworten wir aus DEREN Wortbeiträgen — deterministisch erkannt,
             # schlägt thema/verlauf (nicht aber partei/geld).
             person = qa.finde_person(store, q_suche)
-            if person and typ not in ("partei", "geld"):
+            if person and typ not in ("party", "money"):
                 typ = "person"
             # Orts-Fragetyp: dieselbe deterministische Stammdaten-Erkennung wie
             # bei Personen. Ein Alias wie „Donnerschwee-Kaserne“ wird dabei auf
@@ -3069,8 +3189,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Geld-, Partei-, Verlaufs-, Personen- und Sitzungsfragen behalten
             # ihre Spezialregeln. Nur eine allgemeine Themenfrage wird zur
             # reinen Ortsfrage.
-            if ort and typ == "thema" and not person:
-                typ = "ort"
+            if ort and typ == "topic" and not person:
+                typ = "place"
             # Sitzungs-Fragetyp (25.08.26): Nennt die Frage ein konkretes
             # Sitzungsdatum oder die letzte/nächste Sitzung eines Gremiums,
             # wird die Sitzung deterministisch aufgelöst und ihre Beschlüsse
@@ -3084,10 +3204,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # Original-Frage noch (Tims Befund 26.08., zweiter Anlauf).
             sitzungen = [] if person else (qa.finde_sitzungen(store, q_suche)
                                            or qa.finde_sitzungen(store, q))
-            sitzung_ids = [i for s in sitzungen for i in s.get("beschluss_ids") or []]
-            if sitzungen and typ not in ("partei", "geld"):
-                typ = "sitzung"
-            latest_place = bool(ort and typ == "ort"
+            sitzung_ids = [i for s in sitzungen for i in s.get("decision_ids") or []]
+            if sitzungen and typ not in ("party", "money"):
+                typ = "session"
+            latest_place = bool(ort and typ == "place"
                                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(
                 analyse.get("rechercheplan") or {}, typ=typ, question=q_suche,
@@ -3108,14 +3228,14 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 mode = "chronologisch"
             else:
                 candidates, mode = _qa_retrieve(store, q_suche, expanded, timings=zeiten,
-                                                varianten=analyse.get("varianten"),
+                                                varianten=analyse.get("variants"),
                                                 place_ids=place_ids)
             partei_ids: set[int] = set()
-            if typ == "partei" and analyse.get("partei"):
+            if typ == "party" and analyse.get("party"):
                 # Anträge der gefragten Fraktion zum Thema in den Pool — die
                 # semantische Suche kennt den Antragsteller-Filter nicht.
                 try:
-                    extra_ids = store.antrag_decision_ids(analyse["partei"], expanded)
+                    extra_ids = store.antrag_decision_ids(analyse["party"], expanded)
                     if allowed_place_ids is not None:
                         extra_ids = [i for i in extra_ids if i in allowed_place_ids]
                     partei_ids = set(extra_ids)
@@ -3133,7 +3253,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                          if allowed_place_ids is not None else sitzung_ids)
                 nachgeladen = store.get_decisions_by_ids(
                     [i for i in effective_sitzung_ids if i not in have])
-                if typ == "sitzung":
+                if typ == "session":
                     pos = {i: n for n, i in enumerate(effective_sitzung_ids)}
                     eigene = sorted(
                         [c for c in candidates if c["id"] in pos] + nachgeladen,
@@ -3151,9 +3271,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # genau die Fußnoten weg, die die einfache Fassung übernehmen soll —
             # die Antwort verlöre beim Vereinfachen ihre Quellen.
             vorher_ids: list[int] = []
-            if einfach and body.vorherige_antwort.strip():
+            if einfach and body.previous_answer.strip():
                 try:
-                    zitiert = qa.zitierte_ids(body.vorherige_antwort)
+                    zitiert = qa.zitierte_ids(body.previous_answer)
                     have = {c["id"] for c in candidates}
                     fehlend = [i for i in zitiert if i not in have]
                     if fehlend:
@@ -3181,22 +3301,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     anlagen_rows = store.anlagen_by_ids([did for did, _, _ in hits_a])
                     fundstellen = {did: fs for did, _, fs in hits_a}
                     for i, a in enumerate(anlagen_rows):
-                        a["fundstelle"] = fundstellen.get(a["document_id"], "")
+                        a["citation"] = fundstellen.get(a["document_id"], "")
                         a["nr"] = i + 1
 
                     # Ein Anlagenfund bekommt seinen entscheidungsbezogenen
                     # Quellenanker dazu. Bei explizitem Ortsfilter darf auch
                     # dieser Nachladeweg den belegten Ort nicht umgehen.
                     by_vorlage = store.decision_ids_for_vorlagen(
-                        [a.get("vorlage_nr") for a in anlagen_rows])
+                        [a.get("template_number") for a in anlagen_rows])
                     if allowed_place_ids is not None:
                         erlaubte_nrn = {nr for nr, ids in by_vorlage.items()
                                        if any(i in allowed_place_ids for i in ids)}
                         anlagen_rows = [a for a in anlagen_rows
-                                        if a.get("vorlage_nr") in erlaubte_nrn]
+                                        if a.get("template_number") in erlaubte_nrn]
                     related_ids: list[int] = []
                     for a in anlagen_rows:
-                        ids = by_vorlage.get(a.get("vorlage_nr") or "", [])
+                        ids = by_vorlage.get(a.get("template_number") or "", [])
                         if allowed_place_ids is not None:
                             ids = [i for i in ids if i in allowed_place_ids]
                         related_ids.extend(ids[:2])
@@ -3234,7 +3354,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # davon deterministisch ohne Debatten.
             debates_enabled = qa.research_channel_enabled(shadow_plan, "debates")
             if (not latest_place and debates_enabled
-                    and (typ != "sitzung" or sitzung_ids)):
+                    and (typ != "session" or sitzung_ids)):
                 try:
                     # Task 16: Wortbeiträge aus den Protokollen (Reden, Anfragen,
                     # Einwohnerfragen, Zusagen) — die Substanz, die nicht in den
@@ -3256,7 +3376,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                         orts_candidates = store.get_decisions_by_ids(place_ids or [])
                         debatten_rows = store.wortbeitraege_zu_beschluessen(
                             orts_candidates, max_gesamt=10, max_je_top=4,
-                            sprecher=person["nachname"])
+                            speaker=person["nachname"])
                         linked_ids = list(dict.fromkeys(
                             row["zu_beschluss"] for row in debatten_rows))
                         have = {c["id"] for c in candidates}
@@ -3368,7 +3488,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # Sitzung + TOP + Sprecher + kuratierter Ortsbezug sind harte
                 # Beziehungen, keine Ähnlichkeitsschätzung.
                 lage = "solide"
-            if typ == "sitzung" and sitzungen:
+            if typ == "session" and sitzungen:
                 # Die Sitzung ist deterministisch aufgelöst, kein Ähnlichkeits-
                 # Raten — die Dünn-Regel hätte hier nichts zu bremsen. Gilt
                 # auch OHNE Beschlüsse (kommender Termin, Protokoll-Verzug):
@@ -3403,22 +3523,22 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # 5a/I-06: die kondensierte Frage mitschicken — der Kontext-Chip im
             # Frontend zeigt, worauf sich Anschlussfragen beziehen.
             yield _sse({"type": "sources", "mode": mode, "qtype": typ,
-                        "frage": q_suche,
+                        "question": q_suche,
                         "sources": [_qa_source(c) for c in candidates],
-                        "presse": _presse_kompakt(presse_rows),
-                        "debatten": _debatten_kompakt(debatten_rows),
-                        "anlagen": _anlagen_kompakt(anlagen_rows),
-                        "planungen": planungen,
+                        "press_releases": _presse_kompakt(presse_rows),
+                        "debates": _debatten_kompakt(debatten_rows),
+                        "attachments": _anlagen_kompakt(anlagen_rows),
+                        "planning_procedures": planungen,
                         # Tagesordnungs-Baustein: die aufgelösten Sitzungen des
                         # Sitzungs-Fragetyps — deterministisch, nie vom Modell.
-                        "sitzungen": _sitzungen_kompakt(sitzungen),
-                        "beleglage": lage,
+                        "sessions": _sitzungen_kompakt(sitzungen),
+                        "evidence_level": lage,
                         # Welche Haushalts-Quellen diese Frage gezogen hat.
                         # Steht im Ereignis, damit im Log ohne Rätselraten zu
                         # sehen ist, warum eine Antwort eine Zahl kannte —
                         # oder eben nicht.
-                        "geldquellen": geld.get("facetten") or [],
-                        "grafik": grafik,
+                        "geldquellen": geld.get("facets") or [],
+                        "chart": grafik,
                         # Der Hintergrund geht IMMER in die Antwort; als eigene
                         # Karte erscheint er nur, wenn die Antwort ihn nicht
                         # ohnehin wiederholt (Definitionsfragen, Tims Befund).
@@ -3427,7 +3547,13 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                         for s in steckbriefe]
                         if qa.steckbrief_karte_zeigen(q_suche) else []})
             yield _sse({"type": "step", "step": "answer"})
-            if not candidates and not anlagen_rows:
+            # Eine Haushaltsfrage ohne passenden Beschluss ist KEIN Leerlauf: Die
+            # Geld-Bausteine tragen die Antwort („Was kostet eine Restmülltonne?“
+            # trifft keinen Beschluss, aber die Gebührensätze). Bis 09/2026 kam
+            # hier „keine Beschlüsse gefunden“, obwohl der Kontext die Zahl hatte.
+            hat_geld = bool(geld.get("facets")) and any(
+                v for k, v in geld.items() if k != "facets")
+            if not candidates and not anlagen_rows and not hat_geld:
                 leer_text = "Dazu habe ich keine passenden Beschlüsse gefunden."
                 if sitzungen and ort:
                     leer_text = (f"In der gefragten Sitzung habe ich keine Beschlüsse mit "
@@ -3447,10 +3573,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 yield _sse({"type": "token", "text": leer_text})
                 # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
                 # sonst klafft im Transkript eine Lücke (Review-Befund B4).
-                gespraech_id = _turn_speichern(nwz, user, body, q_suche, leer_text, [], [],
+                conversation_id = _turn_speichern(ratslotse, user, body, q_suche, leer_text, [], [],
                                                debatten_rows=debatten_rows,
                                                sitzungen=sitzungen)
-                yield _sse({"type": "done", "cited": [], "gespraech_id": gespraech_id})
+                yield _sse({"type": "done", "cited": [], "conversation_id": conversation_id})
                 return
             # Task 32: Themengröße deterministisch — viele Treffer über eine
             # lange Zeitspanne (Stadion: 8 Jahre) heißt lange Historie, die
@@ -3462,7 +3588,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # verlangt ~500 Wörter mit Zwischenüberschriften — das ist das
             # Gegenteil von dem, was der Knopf verspricht.
             gross = (len(candidates) >= 25 or spanne >= 3) and not einfach
-            if typ == "sitzung":
+            if typ == "session":
                 # Länge nach Sitzungsgröße statt Kandidatenzahl — die zählt
                 # nach dem Voll-Merge der Sitzung immer hoch.
                 gross = len(sitzung_ids) >= 12 and not einfach
@@ -3491,9 +3617,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 fehlend = [c for c in candidates[QA_ANSWER_N:] if c["id"] in partei_ids][:6]
                 if fehlend:
                     ctx = ctx[:QA_ANSWER_N - len(fehlend)] + fehlend
-            if typ == "verlauf":
+            if typ == "history":
                 ctx = qa.sort_verlauf(ctx)
-            if typ == "sitzung" and sitzung_ids and not einfach:
+            if typ == "session" and sitzung_ids and not einfach:
                 # ALLE Beschlüsse der Sitzung in den Antwort-Kontext — der
                 # QA_ANSWER_N-Deckel würde große Sitzungen wieder anschneiden,
                 # und genau das Anschneiden ist der Anlass dieses Fragetyps.
@@ -3501,9 +3627,9 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 ctx = [c for c in candidates if c["id"] in im_set][:QA_SITZUNG_N]
             if documents_enabled and not einfach:
                 try:  # Vorlagen-Auszüge (Sachverhalt) beilegen — best-effort
-                    texts = store.vorlage_texts_for([c.get("vorlage_nr") or "" for c in ctx])
+                    texts = store.vorlage_texts_for([c.get("template_number") or "" for c in ctx])
                     for c in ctx:
-                        t = texts.get((c.get("vorlage_nr") or "").strip())
+                        t = texts.get((c.get("template_number") or "").strip())
                         if t:
                             c["vorlage_excerpt"] = vorlagen_mod.excerpt(t, 350)
                 except Exception:  # noqa: BLE001
@@ -3515,7 +3641,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     b = next((b for b in bets
                               if bet_mod.passt_zu_titel(b["plan_nrs"], c.get("title") or "")), None)
                     if b:
-                        frist = f" bis {b['bis']}" if b.get("bis") else ""
+                        frist = f" bis {b['valid_until']}" if b.get("valid_until") else ""
                         c["beteiligung"] = f"{b['schritt']}{frist}"
             except Exception:  # noqa: BLE001 — Zusatzsignal, nie Blocker
                 pass
@@ -3529,7 +3655,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "decisions": len(candidates),
                     "debates": len(debatten_rows),
                     "budget": sum(len(value) if isinstance(value, list) else int(bool(value))
-                                  for key, value in geld.items() if key != "facetten"),
+                                  for key, value in geld.items() if key != "facets"),
                     "press": len(presse_rows),
                     "sessions": len(sitzungen),
                     "future_agenda": len(planungen),
@@ -3554,7 +3680,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             # letzte echte Frage aus dem Verlauf das Thema.
             frage_thema = q_suche
             if einfach and frage_thema.strip() == q and verlauf:
-                frage_thema = verlauf[-1].get("frage") or q
+                frage_thema = verlauf[-1].get("question") or q
             if latest_place and not einfach:
                 # Bei „zuletzt beschlossen“ ist das Ergebnis vollständig aus
                 # Datum + Abstimmung ableitbar. Die Produktionsprobe zeigte,
@@ -3563,7 +3689,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 # diese enge Faktenantwort ohne generative Auswahl aus.
                 strom = iter([qa.latest_place_answer(candidates[:QA_ANSWER_N])])
             else:
-                strom = (qa.vereinfachen_stream(frage_thema, body.vorherige_antwort, ctx)
+                strom = (qa.vereinfachen_stream(frage_thema, body.previous_answer, ctx)
                          if einfach else
                          qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                           geld=geld, debatten=debatten_rows,
@@ -3597,7 +3723,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 _log.warning("answer_stream brach nach %d Zeichen ab — one-shot Ersatz",
                              len(buf), exc_info=True)
                 try:
-                    ans, _ = (qa.vereinfachen_question(frage_thema, body.vorherige_antwort, ctx)
+                    ans, _ = (qa.vereinfachen_question(frage_thema, body.previous_answer, ctx)
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
                                                  geld=geld, debatten=debatten_rows,
@@ -3624,7 +3750,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                   + zeiten.get("antwort_ms", 0))
             _log.info("qa_timings mode=%s typ=%s %s", mode, typ,
                       " ".join(f"{k}={v}" for k, v in sorted(zeiten.items())))
-            gespraech_id = _turn_speichern(nwz, user, body, q_suche, answer_text,
+            conversation_id = _turn_speichern(ratslotse, user, body, q_suche, answer_text,
                                            candidates, cited,
                                            presse_rows=presse_rows,
                                            debatten_rows=debatten_rows,
@@ -3633,7 +3759,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            grafik=grafik,
                                            sitzungen=sitzungen)
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
-                        "gespraech_id": gespraech_id})
+                        "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
             _log.exception("KI-Frage fehlgeschlagen")
             yield _sse({"type": "error", "message": "Frage fehlgeschlagen."})
@@ -3653,30 +3779,30 @@ VERGLEICH_BELEG_VORLAGE = "18/0911"
 VERGLEICH_BELEG_KVONR = 17170
 
 
-@router.get("/haushalt/vergleich")
+@router.get("/budget/comparison")
 def haushalt_vergleich(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltVergleich:
+) -> BudgetComparison:
     """Was sich zwischen Städten vergleichen lässt — und der Beleg, warum das
     meiste sich **nicht** vergleichen lässt.
 
     Zwei Teile, und der zweite ist der wichtigere:
 
-    - ``werte``/``staedte``/``jahre``: Steuerkraft und Hebesätze der acht
+    - ``values``/``cities``/``years``: Steuerkraft und Hebesätze der acht
       kreisfreien Städte Niedersachsens aus den beiden Tabellen des
       Landesamts für Statistik. Dieselbe Kennzahl, dieselbe Stelle, dieselbe
       Abgrenzung für alle — der Auslagerungsgrad einer Stadt greift hier
       nicht, weil Steuern nie ein Eigenbetrieb erhebt.
-    - ``beleg``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
+    - ``citation``: die Ratsvorlage 18/0911, in der die Stadt Oldenburg 2018 auf
       Antrag der FDP-Fraktion sieben Städte verglichen und im selben Dokument
       festgestellt hat, dass dieser Vergleich nichts aussagt. Aufgelöst wird
-      sie über die Vorlagennummer; ``beschluss_id`` zeigt auf den Eintrag in
+      sie über die Vorlagennummer; ``decision_id`` zeigt auf den Eintrag in
       unserem eigenen Bestand (der Ausschuss hat den Bericht zur Kenntnis
-      genommen), ``anlagen`` auf Antrag und Antwort im Original.
+      genommen), ``attachments`` auf Antrag und Antwort im Original.
 
     **Was diese Antwort bewusst nicht tut:** Sie mischt die LSN-Steuerkraft
-    nicht mit ``council_steuerkraft`` (Datensatz 1106). Beide führen dieselben
+    nicht mit ``council_tax_capacity`` (Datensatz 1106). Beide führen dieselben
     Beträge, aber unter einer um ein Jahr verschobenen Jahresangabe; welche
     stimmt, ist ungeklärt. Zusammengelegt ergäbe das eine Reihe, in der zwei
     verschiedene Jahre dasselbe zu meinen scheinen.
@@ -3689,37 +3815,37 @@ def haushalt_vergleich(
     from council import staedtevergleich as sv
 
     werte = store.get_staedtevergleich()
-    jahre: dict[str, list[int]] = {}
+    years: dict[str, list[int]] = {}
     for w in werte:
-        jahre.setdefault(w["reihe"], [])
-        if w["jahr"] not in jahre[w["reihe"]]:
-            jahre[w["reihe"]].append(w["jahr"])
-    for liste in jahre.values():
+        years.setdefault(w["series"], [])
+        if w["year"] not in years[w["series"]]:
+            years[w["series"]].append(w["year"])
+    for liste in years.values():
         liste.sort()
 
     staedte = [{
-        "schluessel": key,
+        "key": key,
         "name": name,
-        "ist_oldenburg": key == sv.OLDENBURG,
+        "is_oldenburg": key == sv.OLDENBURG,
         # Unter 100.000 Einwohnern rechnet das NFAG die Steuerkraftmesszahl
         # mit anderen Nivellierungshebesätzen. Das gehört an den Wert, sonst
         # vergleicht die Seite still zwei Rechenvorschriften.
-        "unter_100k": key in sv.UNTER_100K,
+        "below_100k": key in sv.UNTER_100K,
     } for key, name in sv.KREISFREIE_STAEDTE.items()]
 
-    beleg: dict = {"vorlage_nr": VERGLEICH_BELEG_VORLAGE,
+    beleg: dict = {"template_number": VERGLEICH_BELEG_VORLAGE,
                    "kvonr": VERGLEICH_BELEG_KVONR,
-                   "vorlage_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
-                   "beschluss_id": None, "titel": None, "anlagen": []}
+                   "template_url": _vorlage_url(VERGLEICH_BELEG_KVONR),
+                   "decision_id": None, "title": None, "attachments": []}
     try:
-        ids = store.find_decision_ids(vorlage_nr=VERGLEICH_BELEG_VORLAGE)
-        beleg["beschluss_id"] = ids[0] if ids else None
+        ids = store.find_decision_ids(template_number=VERGLEICH_BELEG_VORLAGE)
+        beleg["decision_id"] = ids[0] if ids else None
         vorlage = store.get_vorlage_by_nr(VERGLEICH_BELEG_VORLAGE)
         if vorlage:
-            beleg["titel"] = vorlage.get("title")
-        beleg["anlagen"] = [
+            beleg["title"] = vorlage.get("title")
+        beleg["attachments"] = [
             {"document_id": a["document_id"], "label": a["label"],
-             "url": a["url"], "is_antrag": a.get("is_antrag", 0)}
+             "url": a["url"], "is_motion": a.get("is_motion", 0)}
             for a in store.anlagen_for_vorlage_nr(VERGLEICH_BELEG_VORLAGE)]
     except sqlite3.OperationalError:
         # Eine Datenbank ohne Vorlagen-Bestand (etwa im Test) soll die Seite
@@ -3728,19 +3854,19 @@ def haushalt_vergleich(
 
     ids = sorted({w["herkunft_id"] for w in werte if w["herkunft_id"] is not None})
     return {
-        "staedte": staedte,
-        "werte": werte,
-        "jahre": jahre,
-        "beleg": beleg,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "cities": staedte,
+        "values": werte,
+        "years": years,
+        "citation": beleg,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/gebaut")
+@router.get("/budget/assets")
 def haushalt_gebaut(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltGebaut:
+) -> BudgetFixedAssets:
     """Was die Stadt wirklich investiert hat — Tabellen 1107/1107-1 des
     Statistischen Jahrbuchs.
 
@@ -3752,23 +3878,23 @@ def haushalt_gebaut(
     voneinander abzuziehen und das Ergebnis „Umsetzungsquote" zu nennen — eine
     Zahl, die in keiner Quelle steht (``council/investitionen_ist.py``).
 
-    ``regelwerk`` trennt die beiden Tabellen, und das ist die tragende Angabe
+    ``accounting_system`` trennt die beiden Tabellen, und das ist die tragende Angabe
     dieser Antwort: Zum 01.01.2010 stellte die Stadt von kameraler auf
     doppische Buchführung um. Das Dokument trennt seine Reihen genau dort und
     begründet es in einer Fußnote. Wer über diesen Schnitt hinweg eine Linie
     zieht, behauptet eine Vergleichbarkeit, die die Quelle bestreitet.
 
-    ``fehlend`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
+    ``missing`` nennt die Jahre, die **innerhalb** einer Reihe fehlen, weil
     ihre Zeilensumme im Dokument selbst nicht aufgeht. Anders als bei den
     Schulden gibt es hier keine zweite, unabhängige Probe, die wenigstens die
     Summe trüge — also fällt der ganze Jahrgang, und die Oberfläche kann die
     Lücke **benennen**, statt sie als Null zu zeichnen oder still zu
     überspringen.
 
-    Je Lücke steht dort neben dem Jahr die gemessene ``differenz`` in Euro
+    Je Lücke steht dort neben dem Jahr die gemessene ``difference`` in Euro
     (Auszahlungsarten minus ausgewiesene Summe, vorzeichenbehaftet) — die
     Zahl, die der Ingest-Lauf beim Verwerfen gemessen hat
-    (``council_investitionen_ist_verworfen``). Sie ist der Unterschied
+    (``council_investments_actual_rejected``). Sie ist der Unterschied
     zwischen „2019 fehlt" und „2019 fehlt, weil 1,3 Mio. € auseinanderlagen".
     ``null``, wo der Bestand keine Messung führt: ein Jahrgang, der vor dem
     Ausbau dieser Schicht verworfen wurde, oder eine Zeile, die sich gar
@@ -3778,12 +3904,12 @@ def haushalt_gebaut(
     from council import anlagenspiegel as anlagenspiegel_mod
     from council import investitionen_ist as _ii
 
-    reihe = store.get_investitionen_ist()
+    series = store.get_investitionen_ist()
     anlagen = store.get_anlagenspiegel()
     gruppen = store.get_vermoegensgruppen()
-    ids = sorted({z["herkunft_id"] for z in (*reihe, *anlagen, *gruppen)
+    ids = sorted({z["herkunft_id"] for z in (*series, *anlagen, *gruppen)
                   if z["herkunft_id"] is not None})
-    gemessen = {(v["regelwerk"], v["jahr"]): v.get("differenz")
+    gemessen = {(v["accounting_system"], v["year"]): v.get("difference")
                 for v in store.get_investitionen_ist_verworfen()}
 
     # Lücken je Regelwerk: Was zwischen dem ersten und dem letzten belegten
@@ -3792,61 +3918,61 @@ def haushalt_gebaut(
     # durch, sähe man ihn hier nicht; das steht dann im Beleg-Messwert der
     # Herkunft, den derselbe Lauf schreibt.)
     fehlend: dict[str, list[dict]] = {}
-    for regelwerk in _ii.REGELWERK:
-        jahre = sorted(z["jahr"] for z in reihe if z["regelwerk"] == regelwerk)
-        if len(jahre) < 2:
+    for accounting_system in _ii.REGELWERK:
+        years = sorted(z["year"] for z in series if z["accounting_system"] == accounting_system)
+        if len(years) < 2:
             continue
-        luecke = [{"jahr": j, "differenz": gemessen.get((regelwerk, j))}
-                  for j in range(jahre[0], jahre[-1] + 1) if j not in set(jahre)]
+        luecke = [{"year": j, "difference": gemessen.get((accounting_system, j))}
+                  for j in range(years[0], years[-1] + 1) if j not in set(years)]
         if luecke:
-            fehlend[regelwerk] = luecke
+            fehlend[accounting_system] = luecke
 
     return {
-        "reihe": reihe,
-        "jahre": [z["jahr"] for z in reihe],
-        "abgrenzung": _ii.ABGRENZUNG,
+        "series": series,
+        "years": [z["year"] for z in series],
+        "scope_note": _ii.ABGRENZUNG,
         # Wie die beiden Rechnungswesen heißen — damit die Beschriftung nicht
-        # in zwei Sprachen existiert (dieselbe Entscheidung wie bei `arten`
-        # in /haushalt/schulden).
-        "regelwerke": [{"schluessel": k, "titel": t}
+        # in zwei Sprachen existiert (dieselbe Entscheidung wie bei
+        # `column_kinds` in /haushalt/schulden).
+        "accounting_systems": [{"key": k, "title": t}
                        for k, t in _ii.REGELWERK.items()],
-        "fehlend": fehlend,
+        "missing": fehlend,
         # DIE ANDERE HÄLFTE DER GESCHICHTE. Bis hierher zeigt die Seite, was
         # die Stadt gebaut hat. Der Anlagenspiegel zeigt, was daraus wurde —
         # und dass es trotzdem schrumpft: Was im Jahr zugeht, steht neben dem,
         # was im selben Jahr abgeschrieben wird.
         #
-        # `gruppen` ist die Untergliederung des Infrastrukturvermögens
+        # `groups` ist die Untergliederung des Infrastrukturvermögens
         # (Straßen, Brücken, Gleisanlagen). Sie steht in einer ANDEREN Tabelle
         # desselben Dokuments und gibt es erst ab 2022 — deshalb ein eigener
         # Block und keine Spalte: Wer sie als Teil der Reihe ausgäbe, machte
         # aus einer Quellenlücke eine Datenlücke.
-        "anlagen": {
-            "reihe": anlagen,
-            "jahre": sorted({z["jahr"] for z in anlagen}),
-            "gruppen": gruppen,
-            "gruppen_jahre": sorted({g["jahr"] for g in gruppen}),
-            "proben": anlagenspiegel_mod.PROBEN,
+        "fixed_assets": {
+            "series": anlagen,
+            "years": sorted({z["year"] for z in anlagen}),
+            "groups": gruppen,
+            "group_years": sorted({g["year"] for g in gruppen}),
+            "probes": anlagenspiegel_mod.PROBEN,
         },
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/bilanz")
+@router.get("/budget/balance-sheet")
 def haushalt_bilanz(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltBilanz:
+) -> BudgetBalanceSheet:
     """Die Bilanz der Stadt — Abschnitt 2.1 der Jahresabschlüsse.
 
     Die Gegenseite zu ``/haushalt/schulden``: nicht was die Stadt schuldet,
     sondern was sie **hat** und was davon schon vergeben ist.
 
-    ``posten`` ist eine flache Liste über alle Stichtage. **An ``rolle``
+    ``items`` ist eine flache Liste über alle Stichtage. **An ``role``
     hängen, nicht an ``nr``**: Die Gliederungsnummer der Bilanz ist bis 2020
     römisch, ab 2021 arabisch, und ab 2021 gibt es jede Nummer auf beiden
     Seiten — „1.1" ist auf der Aktivseite etwas anderes als auf der
-    Passivseite. ``seite`` (``aktiva``/``passiva``) und ``ebene`` (1 = die
+    Passivseite. ``page`` (``aktiva``/``passiva``) und ``level`` (1 = die
     neun Hauptposten, aus denen die Bilanzsumme besteht) sind die stabilen
     Achsen.
 
@@ -3863,12 +3989,12 @@ def haushalt_bilanz(
     Bilanz wies damals nur den Sammelposten aus. Sie fehlen dort schlicht;
     eine Anzeige zeigt die Lücke, statt sie zu füllen.
 
-    ``erlaeuterungen`` ist **keine Zugabe, sondern eine Auflage.** Die
+    ``explanations`` ist **keine Zugabe, sondern eine Auflage.** Die
     Schulden springen 2024 von 84,4 auf 207,1 Mio. €, und das ist kein
     Schuldenmachen, sondern eine Bilanzverlängerung aus dem Cash-Pooling
     (138,2 Mio. €, mit Gegenposten auf der Aktivseite). Der Anhang erklärt es
-    unter ``rolle="schulden"`` selbst. **Die Zahl darf ohne diesen Text nicht
-    angezeigt werden** — dieselbe Bauart wie ``abweichungsgruende`` für die
+    unter ``role="liabilities"`` selbst. **Die Zahl darf ohne diesen Text nicht
+    angezeigt werden** — dieselbe Bauart wie ``variance_reasons`` für die
     Ergebnisrechnung.
     """
     posten = store.get_bilanz()
@@ -3876,22 +4002,159 @@ def haushalt_bilanz(
     ids = sorted({z["herkunft_id"] for z in posten + erlaeuterungen
                   if z["herkunft_id"] is not None})
     return {
-        "jahre": store.bilanz_jahre(),
-        "posten": posten,
-        "erlaeuterungen": erlaeuterungen,
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "years": store.bilanz_jahre(),
+        "items": posten,
+        "explanations": erlaeuterungen,
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }
 
 
-@router.get("/haushalt/schulden")
+@router.get("/budget/liquidity")
+def haushalt_liquiditaet(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetLiquidity:
+    """Der Liquiditätsstand — wie viel Geld die Stadt am Monatsende auf dem Konto hat.
+
+    Aus den Grafiken, die die Verwaltung dem Finanzausschuss monatlich vorlegt
+    (``council/liquidity.py``): je Monat der jüngste Beleg, ``confirmations``
+    sagt, in wie vielen Grafiken der Wert steht, ``revised_from`` trägt den
+    Wert, den eine spätere Grafik der Verwaltung ersetzt hat.
+
+    - ``latest``: der jüngste Monat; ``last_12``: Tief und Hoch der letzten
+      zwölf Monate; ``year_ends``: die Dezember-Stände — der Vergleich über
+      Jahre, ohne die Saisonkurve.
+    - ``coverage``: erster und letzter Monat und die fehlenden dazwischen.
+
+    Der Stand ist ein KONTOSTAND, kein Vermögen und kein Haushaltsergebnis;
+    er kann unter null liegen (Juli 2016: −7,6 Mio. €). Der Rahmen dafür
+    steht in § 4 der Haushaltssatzung (Höchstbetrag der Liquiditätskredite,
+    ``/budget``, ``budget_bylaw``).
+    """
+    reihe = store.get_liquidity()
+    monate = [r["month"] for r in reihe]
+    fehlend: list[str] = []
+    if monate:
+        j, m = int(monate[0][:4]), int(monate[0][5:7])
+        vorhanden = set(monate)
+        while f"{j:04d}-{m:02d}" <= monate[-1]:
+            k = f"{j:04d}-{m:02d}"
+            if k not in vorhanden:
+                fehlend.append(k)
+            m += 1
+            if m > 12:
+                m, j = 1, j + 1
+    letzte12 = reihe[-12:]
+    ids = sorted({r["herkunft_id"] for r in reihe if r.get("herkunft_id") is not None})
+    return {
+        "scope_note": ("Kontostand der Stadt am Monatsende laut der Grafik, die die Verwaltung dem "
+                       "Ausschuss für Finanzen und Beteiligungen monatlich vorlegt — kein Vermögen, "
+                       "kein Haushaltsergebnis. Kann unter null liegen; den Rahmen dafür setzt § 4 "
+                       "der Haushaltssatzung (Höchstbetrag der Liquiditätskredite)."),
+        "series": reihe,
+        "latest": reihe[-1] if reihe else None,
+        "last_12": {"months": len(letzte12),
+                    "min": min(letzte12, key=lambda r: r["amount"]) if letzte12 else None,
+                    "max": max(letzte12, key=lambda r: r["amount"]) if letzte12 else None},
+        "year_ends": [r for r in reihe if r["month"].endswith("-12")],
+        "coverage": {"from": monate[0] if monate else None, "to": monate[-1] if monate else None,
+                     "missing": fehlend, "months": len(monate)},
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/budget/loans")
+def haushalt_kredite(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> BudgetLoans:
+    """Kredite und Zinsen — die Unterrichtungen des Rates nach der Kreditrichtlinie.
+
+    Die Schuldenseite sagt, wie hoch die Schulden sind; das hier sagt, zu
+    welchen Bedingungen die Stadt und ihre Betriebe sich Geld leihen und
+    umschulden (``council/loans.py``).
+
+    - ``notices``: je Vorlage Berichtszeitraum, Zahl der Posten, Zinsersparnis
+      der Umschuldung — auch die Berichte OHNE Vorgang (``none_reported``),
+      damit die Reihe der Monate belegt ist und nicht nur leer.
+    - ``items``: die Posten mit Art, Schuldner, Betrag, Zinssatz, Zinsbindung
+      und Datum der Kreditentscheidung. ``borrower`` ist ``null`` bei den
+      Umschuldungen der Grundgeschäfte, die Kernverwaltung UND Betriebe
+      zugleich betreffen — die Vorlage nennt dort keinen.
+    - ``rates``: die Posten mit gedrucktem Zinssatz, jüngste zuerst — die
+      Antwort auf „zu welchem Zins leiht sich die Stadt Geld?".
+    - ``refinancing_by_year``: Umschuldungsvolumen und -zahl je Jahr samt der
+      Zinsersparnis, wo die Vorlage sie beziffert. Die Ersparnis ist die
+      Angabe der Verwaltung gegenüber „herkömmlicher Kommunalkredit-
+      finanzierung", keine Rechnung von uns. ACHTUNG beim Volumen: Die
+      Kommunalkredite der Grundgeschäfte laufen in Dreimonats-Tranchen und
+      werden JEDES QUARTAL neu ausgeschrieben (zum 16.02., 16.05., 16.08.,
+      16.11.) — die Jahressumme zählt dasselbe Kapital viermal. Wer eine
+      Zahl nennt, nimmt ``latest_refinancing``, nicht die Jahressumme.
+    - ``latest_refinancing``: der jüngste Umschuldungs-Posten (Betrag, Zeitraum).
+    - ``coverage``: erster und letzter Berichtsmonat und die Lücken dazwischen
+      (2019–2021 fehlen im Bestand; die Unterrichtung in dieser Form gibt es
+      seit 2022, davor Einzelberichte).
+
+    Die Konditionen je Darlehen (Bank, Marge, Laufzeit) stehen in den Anlagen
+    der Vorlagen und sind nicht im Bestand — ``scope_note`` sagt es.
+    """
+    from council import loans as _l
+
+    notices = store.get_loan_notices()
+    items = store.get_loan_items()
+    rates = sorted((i for i in items if i.get("rate_pct") is not None),
+                   key=lambda i: (i["period_from"], i["template_number"], i["seq"]), reverse=True)
+    je_jahr: dict[int, dict] = {}
+    for i in items:
+        if i["kind"] not in ("refinancing", "prolongation"):
+            continue
+        j = je_jahr.setdefault(i["year"], {"year": i["year"], "amount": 0.0, "count": 0, "saving": 0.0,
+                                           "saving_notices": 0})
+        j["amount"] += i.get("amount") or 0
+        j["count"] += 1
+    for n in notices:
+        if n.get("interest_saving") and n["year"] in je_jahr:
+            je_jahr[n["year"]]["saving"] += n["interest_saving"]
+            je_jahr[n["year"]]["saving_notices"] += 1
+    monate = sorted({n["period_from"] for n in notices} | {n["period_to"] for n in notices})
+    luecken: list[dict] = []
+    if monate:
+        # Lücken zwischen den belegten Monaten, in ganzen Jahren gezählt —
+        # feiner wäre eine Behauptung über Monate, die die Quelle so nicht trägt.
+        jahre = sorted({int(m[:4]) for m in monate})
+        for a, b in zip(jahre, jahre[1:]):
+            if b - a > 1:
+                luecken.append({"from": a + 1, "to": b - 1})
+    ids = sorted({z["herkunft_id"] for z in (*notices, *items) if z.get("herkunft_id") is not None})
+    return {
+        "scope_note": ("Stadt Oldenburg mit ihren Eigenbetrieben, wie die Verwaltung dem Rat "
+                       "berichtet: Kreditaufnahmen, Umschuldungen und Prolongationen mit den "
+                       "Angaben aus dem Vorlagentext. Die Konditionen je Darlehen (Bank, Marge, "
+                       "Laufzeit) stehen in den Anlagen und sind nicht im Bestand."),
+        "kind_names": _l.ART_NAMEN,
+        "notices": notices,
+        "items": items,
+        "coverage": {"from": monate[0] if monate else None, "to": monate[-1] if monate else None,
+                     "gaps": luecken, "notices": len(notices),
+                     "none_reported": sum(1 for n in notices if n.get("none_reported"))},
+        "rates": rates,
+        "refinancing_by_year": [je_jahr[j] for j in sorted(je_jahr)],
+        "latest_refinancing": next((i for i in sorted(items, key=lambda i: (i["period_from"], i["seq"]), reverse=True)
+                                    if i["kind"] == "refinancing" and i.get("amount")), None),
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
+    }
+
+
+@router.get("/budget/debt")
 def haushalt_schulden(
     _user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
-) -> HaushaltSchulden:
+) -> BudgetDebt:
     """Der Schuldenstand der Stadt seit 1995 — Tabelle 1108 des Statistischen
     Jahrbuchs.
 
-    ``abgrenzung`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
+    ``scope_note`` ist kein Beiwerk, sondern die Bedingung dafür, dass die
     Zahlen etwas bedeuten: Bei Kommunalschulden gibt es zwei Werte, die beide
     „die Schulden der Stadt" heißen und sich um ein Vielfaches unterscheiden.
     Diese Reihe zählt die Stadt als **Rechtsträger** — Kernhaushalt und
@@ -3899,12 +4162,12 @@ def haushalt_schulden(
     kommt aus ``council/schulden.py`` und nicht aus dem Frontend, damit beide
     Seiten dieselbe Auskunft geben.
 
-    ``je_einwohner`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
+    ``per_capita`` ist die Angabe **der Quelle**, nicht unsere Rechnung. Sie
     kommt so aus der Tabelle; dass sie zur Einwohnerzahl aus dem Open-Data-
     Datensatz passt, ist die Probe, die den Wert überhaupt hereingelassen hat
-    (``herkunft[…].proben``).
+    (``herkunft[…].probes``).
 
-    Wo ``aufteilung_verworfen`` gesetzt ist, fehlen die vier Artenspalten:
+    Wo ``breakdown_rejected`` gesetzt ist, fehlen die vier Artenspalten:
     Dort ergeben sie im Dokument selbst nicht die ausgewiesene Summe. Die
     Summe steht trotzdem — sie hängt an der unabhängigen Pro-Kopf-Probe. Die
     Oberfläche kann den fehlenden Balken damit **erklären**, statt ihn als
@@ -3927,22 +4190,22 @@ def haushalt_schulden(
     # Verwechslung im Thema, und sie stünde in keinem Dokument.
     zins: list[dict] = []
     try:
-        for jahr in store.ergebnisrechnung_jahre():
-            for posten in store.get_ergebnisrechnung(jahr):
+        for year in store.ergebnisrechnung_jahre():
+            for posten in store.get_ergebnisrechnung(year):
                 if posten["nr"] != _s.POSTEN_ZINSAUFWAND:
                     continue
-                # NUR die Gesamtrechnung (`thh_nr IS NULL`). Der Jahresabschluss
+                # NUR die Gesamtrechnung (`sub_budget_no IS NULL`). Der Jahresabschluss
                 # führt denselben Posten 17 noch einmal je Teilhaushalt; ohne
                 # diesen Filter kämen je Jahr mehrere „Zinslasten" heraus, und
                 # die Seite zeigte je nach Sortierung mal die Kernverwaltung,
                 # mal einen einzelnen Teilhaushalt unter derselben Überschrift.
-                if posten.get("thh_nr") is not None:
+                if posten.get("sub_budget_no") is not None:
                     continue
-                if posten.get("ergebnis") is None:
+                if posten.get("result") is None:
                     continue          # ein Jahrgang ohne Ist trägt hier nichts
                 zins.append({
-                    "jahr": jahr,
-                    "aufwand": posten["ergebnis"],
+                    "year": year,
+                    "expense": posten["result"],
                     "herkunft_id": posten.get("herkunft_id"),
                 })
     except Exception:  # noqa: BLE001 — Zusatzangabe, nie Blocker für die Seite
@@ -3969,41 +4232,41 @@ def haushalt_schulden(
                              if z.get("herkunft_id") is not None})
 
     return {
-        "reihe": zeilen,
-        "jahre": [z["jahr"] for z in zeilen],
-        "abgrenzung": _s.ABGRENZUNG,
-        # `genau` und `aus_folgejahr` sind Angaben über den BELEG, nicht über
+        "series": zeilen,
+        "years": [z["year"] for z in zeilen],
+        "scope_note": _s.ABGRENZUNG,
+        # `exact` und `out_next_year` sind Angaben über den BELEG, nicht über
         # die Zahl: 2019/2020 stehen auf den Cent im Dokument, ab 2022 rundet
         # die Quelle selbst auf Zehntel-Millionen, und 2021 steht überhaupt
         # nur im Abschluss des Folgejahres. Wer alle sechs gleich formatiert,
         # behauptet eine Genauigkeit, die es für vier davon nicht gibt.
-        "buergschaften": {
-            "reihe": buerg,
-            "rueckstellung": rueckstellung,
-            "geldschulden": geldschulden,
-            "abgrenzung": _b.ABGRENZUNG,
+        "guarantees": {
+            "series": buerg,
+            "provision": rueckstellung,
+            "financial_debt": geldschulden,
+            "scope_note": _b.ABGRENZUNG,
             # Die Ratsbeschlüsse dahinter — als GESCHICHTE, nicht als Summe.
             # Unter den Vorlagen sind Verlängerungen und Anpassungen derselben
             # Bürgschaft; addiert zählte man dieselbe Zusage mehrfach. Was der
-            # Bestand ist, sagt allein der Jahresabschluss (`reihe`).
-            "vorlagen": store.buergschafts_vorlagen(),
+            # Bestand ist, sagt allein der Jahresabschluss (`series`).
+            "templates": store.buergschafts_vorlagen(),
         },
         # Die dritte Zahl — nur der jüngste Stichtag, und ausdrücklich ohne
-        # Reihe. `anteil_unter_50` wird hier gerechnet und nicht im Frontend:
+        # Reihe. `share_below_50` wird hier gerechnet und nicht im Frontend:
         # Er entscheidet, wie die Zahl gelesen werden darf, und er ändert sich
         # mit jeder Ausgabe.
-        "integrierte_schulden": {
-            "stichtag": juengste,
-            "anteil_unter_50": _i.anteil_unter_50(juengste) if juengste else None,
-            "abgrenzung": _i.ABGRENZUNG,
-            "keine_reihe": _i.KEINE_REIHE,
+        "integrated_debt": {
+            "as_of_date": juengste,
+            "share_below_50": _i.anteil_unter_50(juengste) if juengste else None,
+            "scope_note": _i.ABGRENZUNG,
+            "no_series_note": _i.KEINE_REIHE,
         } if juengste else None,
         # Leer, solange kein Jahresabschluss eingelesen ist — die Seite lässt
         # den Block dann weg, statt eine Null zu zeigen.
-        "zinslast": zins,
+        "interest_expense": zins,
         # Die Spaltenüberschriften der Quelle, in ihrer Reihenfolge — damit die
         # Legende nicht in zwei Sprachen existiert.
-        "arten": [{"feld": feld, "titel": titel}
-                  for feld, titel in _s.SPALTEN[:4]],
-        "herkunft": {str(h["id"]): h for h in store.get_herkunft(ids)},
+        "column_kinds": [{"field": field, "title": title}
+                         for field, title in _s.SPALTEN[:4]],
+        "provenance": {str(h["id"]): h for h in store.get_herkunft(ids)},
     }

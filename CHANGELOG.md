@@ -7,6 +7,1428 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.0.0] – 2026-09-03
+
+### Hinzugefügt
+- **Der Admin-Bereich zeigt jetzt, ob jemand die App oder das Web benutzt.** Die
+  Clients sagen beim Zugriff, wer sie sind — bisher wertete das nur die
+  Anmeldung aus, und zwar allein zu der Frage „nativ ja/nein". Jetzt nennen sie
+  ihre Plattform, und die Statistik hält zwei getrennte Zahlen fest: **womit
+  jemand sich registriert hat** und **womit er seitdem arbeitet**. Das
+  auseinanderzu­ halten ist der Punkt — wer sich im Browser anmeldet und danach
+  nur noch die App öffnet, sähe sonst wie ein reines Web-Konto aus. In der
+  Nutzerliste steht die Aufteilung als Kurzform an jeder Zeile („Web + App"), im
+  Detail als Anteils­ balken, und im Statistik-Tab für den ganzen Bestand.
+  Konten und Zugriffe von vor dieser Umstellung bleiben ausdrücklich als „vor
+  der Messung" stehen, statt zu „Web" gerundet zu werden: Ungemessen ist keine
+  Plattform. (#901)
+- **Auch die Änderungslisten zum Finanzhaushalt werden jetzt gelesen.** Bisher
+  kannte Ratslotse nur die Listen zum Ergebnishaushalt — also zu dem, was die
+  Stadt erwirtschaftet und verbraucht. Der Finanzhaushalt sagt, was tatsächlich
+  fließt und vor allem, was **investiert** wird; seine Listen zeigen damit, wie
+  im Verfahren an einzelnen Bauvorhaben geschraubt wurde. Eingelesen sind 15 der
+  18 Listen mit 250 Positionen, 132 davon mit dem Investitionscode ihres
+  Vorhabens — über den lassen sie sich später mit den 4.459 geplanten Vorhaben
+  zusammenbringen. Sieben der acht Jahrgänge sind vollständig; für 2019 geht die
+  einzige Liste nicht auf und bleibt deshalb ungelesen, statt halb zu
+  erscheinen. Der Finanzhaushalt bringt eine Probe mit, die der Ergebnishaushalt
+  nicht hat: Jede Zeile rechnet sich selbst vor — Soll laut Entwurf plus
+  Einzahlung plus Auszahlung ergibt das neue Soll. Sie läuft an jeder einzelnen
+  Position. Zu sehen ist davon noch nichts: Dieser Schritt liest die Dokumente
+  ein, die Anzeige kommt danach. (#851)
+- **Für 2021 steht jetzt da, wer welche Haushaltsänderung wollte.** Von den
+  Änderungslisten der Fraktionen war bisher nur die Summe belegt — die Listen
+  selbst wurden im Ausschuss als Tischvorlagen verteilt und liegen in keinem
+  Dokument des Ratsinformationssystems. Für den Haushalt 2021 gibt es eine
+  Ausnahme: Die Beschluss-Datei des Finanzausschusses führt zu **jeder**
+  Position eine Spalte „Vorschlag von". Auf „Mitreden"
+  (`/haushalt/mitreden#streit`) trägt deshalb jede der 187 Positionen dieses
+  Jahrgangs ihre Urheber-Marke — 114 kamen von der Koalition aus SPD und Bündnis
+  90/Die Grünen, 71 von der ersten Änderungsliste der Verwaltung, 2 von der
+  zweiten. Dass die Zuordnung stimmt, wird gerechnet und nicht geglaubt: Die
+  Positionen jedes Urhebers müssen genau seine Summe in der Zusammenstellung des
+  Dokuments ergeben, sonst wird die Liste gar nicht erst gespeichert. Für alle
+  anderen Jahrgänge sagt die Seite unverändert, dass nur die Summe belegt ist.
+  Zwei Fehler in derselben Ecke sind dabei mit aufgefallen und behoben. Die
+  Erläuterungen des Jahrgangs 2021 hatten den Urheber **mitten im Satz** stehen
+  („… gegen Gewalt an SPD/ Frauen u. häusl. Gewalt …"), weil die Textspalte nach
+  rechts keine Grenze kannte. Und die Namen der Positionen wurden bislang an
+  einer geschätzten Spaltenkante abgeschnitten statt an der im Dokument
+  gezeichneten — quer durch alle Jahrgänge trugen **175 von 1.799 Positionen**
+  einen angeschnittenen Namen: „für SGB II" statt „Grundsicherung für
+  Arbeitssuchende SGB II". Beide Spalten folgen jetzt den gedruckten
+  Tabellenlinien. (#838)
+- **Die Betriebe-Karten zeigen, was aus dem Plan wurde.** Unter jedem
+  Wirtschaftsplan steht jetzt der jüngste geprüfte Jahresabschluss des Betriebs
+  — Umsatzerlöse, Jahresergebnis, Bilanzsumme, Eigenkapital — mit dem Satz
+  „geplant … geworden …“ für dasselbe Jahr und der zweiten Linie in der Kurve.
+  Jede Zahl führt zu ihrem Prüfbericht und sagt, wie viele Berichte sie
+  bestätigen. (#987)
+- **Der lokale Server startet jetzt mit einem Befehl.** Bisher musste man Ports
+  raten und die Datenbank-Pfade von Hand zusammensetzen — lag auf dem geratenen
+  Port schon etwas anderes, startete der eigene Server stillschweigend gar
+  nicht, und man prüfte minutenlang gegen einen fremden. Nur für die
+  Entwicklung; an der Website ändert sich nichts. (#1006)
+- **Was aus den Wirtschaftsplänen der Eigenbetriebe wurde.** Der
+  Haushalts-Bereich kannte von Gebäudewirtschaft, Abfallwirtschaft, Bäderbetrieb
+  und Hafen bisher nur den Plan. Jetzt liest er auch die geprüften
+  Jahresabschlüsse aus dem Ratsinformationssystem — Umsatzerlöse,
+  Jahresergebnis, Bilanzsumme, Eigenkapital, Investitionen — und zwar so, dass
+  jede Zahl von den Vorjahresspalten der folgenden Berichte bezeugt wird. (#981)
+- **Zwei Einnahme-Karten mehr, und die Personalkosten als Zahl.** Auf „Woher
+  kommt das Geld?" stehen jetzt auch die Erstattungen von Bund und Land und die
+  Zuweisungen von Land und Bund als eigene Karten mit Steckbrief — die zweit-
+  und drittgrößte Einnahme der Stadt hatten bisher nur eine Fläche, keine
+  Erklärung. Und „Wer macht die Arbeit?" belegt, was das Personal kostet: der
+  Posten aus dem Jahresabschluss, sein Anteil an allen Aufwendungen, der Ansatz
+  des aktuellen Haushalts und Plan gegen Ist seit 2017. (#923)
+- **Vier weitere Zahlengruppen des Haushalts sind über die KI-Frage
+  erreichbar.** Was eine Restmülltonne, eine Sperrmüllkarte oder ein Meter
+  Straßenreinigung kostet (die Gebührensätze), was die Stadt an Anlagevermögen
+  besitzt und was es jedes Jahr an Wert verliert, wofür sie außerhalb des
+  Haushalts Geld bewilligt hat — je Vorlage mit Betrag — und wie viele
+  Einwohnerinnen und Einwohner sie zählt. Damit beantwortet die Frage jede
+  Tabelle des Haushalts-Bereichs. Außerdem antwortet die Frage bei
+  Haushaltszahlen jetzt mit der Zahl statt mit „keine Beschlüsse gefunden“, und
+  die Änderungslisten kennen auch den Finanzhaushalt. (#983)
+- **Der Haushaltsvollzug ist auf der Seite.** „Geplant und geworden" beginnt
+  jetzt mit dem laufenden Jahr: Was die Verwaltung zum 30. Juni, 30. September
+  und 31. Dezember für das Jahresende erwartet, gegen den Plan, für Ergebnis-
+  und Finanzhaushalt und je Teilhaushalt — aus den vierteljährlichen Berichten
+  an den Finanzausschuss. Die Übersicht zeigt den jüngsten Zwischenstand als
+  Karte. (#936)
+- **Der Haushaltsvollzug: wie das laufende Jahr gegen seinen Plan läuft.** Der
+  Haushalts-Bereich zeigte bisher den Plan für das kommende Jahr und die
+  Abrechnung von vorvorletztem — dazwischen klaffte das Jahr, um das es gerade
+  geht. Die Stadt berichtet darüber vierteljährlich an den Ausschuss für
+  Finanzen und Beteiligungen; aus diesen Finanz- und Leistungsberichten liest
+  der Bereich jetzt je Stichtag beide Übersichtstabellen ein: Ansatz, Prognose
+  zum 31. Dezember und die Abweichung, für alle dreizehn Teilhaushalte und für
+  die ganze Stadt, im Ergebnis- wie im Finanzhaushalt. 47 Tabellen aus den
+  Jahrgängen 2018 bis 2026. Vier Rechenproben halten dabei Reihenfolge und
+  Bedeutung der Spalten fest — welche Spalte was ist, wird gerechnet und nicht
+  der Kopfzeile geglaubt, denn die Berichte haben 2021 ihr Tabellenlayout
+  gewechselt. (#930)
+- **Die KI-Frage kennt den Inhalt der Änderungslisten zum Haushalt.** Bisher
+  konnte sie nur zählen, wer wie viele Listen eingebracht hat. Jetzt liefert sie
+  den Weg vom Verwaltungsentwurf zum Beschluss des Finanzausschusses — Erträge,
+  Aufwendungen und Saldo vor und nach den Änderungen, die Summe jeder Liste und
+  die Positionen, die zur Frage passen, mit der Erläuterung der Verwaltung. Wer
+  eine Position beantragt hat, steht nur im Jahrgang 2021 in der Quelle; für
+  alle anderen sagt die Antwort das ausdrücklich, statt eine Fraktion zu raten.
+  (#960)
+- **Die KI-Frage kennt jetzt die städtischen Gesellschaften und die
+  Wirtschaftspläne der Eigenbetriebe.** „Wem gehört die GSG?", „Wie viel Verlust
+  macht die VWG?", „Was planen die Eigenbetriebe?" wurden bisher aus dem
+  Ergebnishaushalt beantwortet — in dem keine dieser Zahlen steht. Jetzt zieht
+  die Frage den Beteiligungsbericht (Zweck, Eigner mit Anteilen, Jahresergebnis,
+  Bilanzsumme, Eigenkapitalquote, Aufsichtsorgan) und die Wirtschaftspläne
+  (Erträge, Aufwendungen, Ergebnis, Vermögensplan) heran, jeweils mit
+  Fundstelle. Die Abgrenzungen stehen dabei: Diese Beträge gehören der
+  Gesellschaft und nicht dem Stadthaushalt, ein Wirtschaftsplan ist ein Plan und
+  kein Jahresabschluss, die Betriebe lassen sich nicht zusammenzählen — und ein
+  Jahresergebnis von null heißt Ergebnisabführung, nicht „macht keinen Verlust".
+  (#948)
+- **Die KI-Frage kennt jetzt den Haushaltsvollzug, die Haushaltssatzung und die
+  Spenden an die Stadt.** Fragen zum laufenden Jahr („Wie läuft der Haushalt?",
+  „Wie viel hat die Stadt 2026 ausgegeben?") bekamen bisher den Haushaltsplan
+  oder den zwei Jahre alten Jahresabschluss — jetzt kommt der vierteljährliche
+  Finanz- und Leistungsbericht dazu, mit dem Ansatz, der Prognose der Ämter für
+  den 31. Dezember und der Abweichung. Er sagt in der Antwort ausdrücklich, dass
+  er eine Erwartung ist und kein Ist. Die Haushaltssatzung beantwortet, was die
+  Stadt überhaupt DÜRFTE: Kreditermächtigung (in jedem Jahrgang „nicht
+  veranschlagt"), Höchstbetrag für Liquiditätskredite, Verpflichtungs-
+  ermächtigungen — und sie trägt den Hinweis mit, dass im Ratsinformationssystem
+  nur Verwaltungsentwürfe liegen. Bei den Spenden nennt die Antwort Summe, Zahl
+  der Beschlüsse und Jahresreihe und sagt dazu, dass die Namen der Gebenden
+  nicht im Bestand sind und deshalb auch nicht genannt werden. (#950)
+- **Die KI-Frage kennt jetzt einzelne Bauvorhaben, Hebesätze, Steuer-Ansätze und
+  die Ausgaben seit 1972.** „Was kostet der Ausbau der Nadorster Straße?"
+  beantwortete sie bisher mit der Summe eines ganzen Teilhaushalts — jetzt mit
+  dem Vorhaben selbst aus dem Investitionsprogramm. Dazu kommen drei weitere
+  Quellen: die Realsteuer-Hebesätze seit 1980 samt der Gewerbesteuerstatistik,
+  wenn jemand nach der Zahl der Betriebe fragt; der Ansatz je Steuerart neben
+  dem Rechnungsergebnis; und die lange Ausgabenreihe, die als einzige bis 1972
+  zurückreicht — für Jahre, zu denen es noch gar keinen Jahresabschluss gibt.
+  Jede Zahl trägt ihre Fundstelle und ihre Grenzen mit: dass eine
+  Investitionssumme über alle Jahre gilt und keine Jahresrate ist, dass die
+  Schulgebäude beim Eigenbetrieb liegen, dass ein Hebesatz kein Aufkommen ist
+  und dass die Ausgaben von vor und nach der Umstellung des Rechnungswesens 2010
+  nicht zu einer Entwicklung verrechnet werden dürfen. (#951)
+- **Kredite und Zinsen: eine neue Schicht aus den Unterrichtungen des Rates.**
+  Die Verwaltung berichtet dem Rat nach der Kreditrichtlinie über jede
+  Kreditaufnahme, Umschuldung und Prolongation — seit 2022 monatlich bis
+  vierteljährlich, 2018 als Einzelberichte. Der Bestand liest daraus je Posten
+  Art, Schuldner (Kernverwaltung, Bäderbetrieb, Gebäudewirtschaft), Betrag,
+  Zinssatz, Zinsbindung und das Datum der Kreditentscheidung, je Bericht den
+  Zeitraum und die Zinsersparnis der Umschuldung. Das ist die Grundlage für „Was
+  kosten die Schulden?" auf der Schulden-Seite und in der KI-Frage. (#962)
+- **Zu welchem Zins sich die Stadt Geld leiht.** Die Schulden-Seite zeigt unter
+  der Zinslast jetzt die jüngsten Kreditaufnahmen mit ihrem Zinssatz (etwa der
+  Bäderbetrieb 2026 zu 3,46 %), das Umschuldungsvolumen des Jahres und die
+  Zinsersparnis, wo die Verwaltung sie beziffert — aus den Unterrichtungen des
+  Rates nach der Kreditrichtlinie, mit Beleg je Vorlage. Die KI-Frage
+  beantwortet dieselben Fragen: „Zu welchem Zinssatz hat die Stadt zuletzt einen
+  Kredit aufgenommen?" bekommt die Vorgänge samt Bedingungen, mit dem Hinweis,
+  dass Bank und Marge je Darlehen in den Anlagen stehen und nicht im Bestand.
+  (#964)
+- **Das Haushalts-Labor sagt jetzt, wie viel im echten Verfahren bewegt wurde.**
+  Wer dort an den Reglern zieht, bekommt Millionenbeträge zu sehen — ohne
+  Maßstab liest sich dieselbe Zahl wahlweise als Kleinigkeit oder als Umsturz.
+  Unter den Werkbänken steht deshalb die Strecke, die der Haushalt wirklich
+  zurückgelegt hat: Für 2026 stand der Entwurf der Verwaltung bei −89,3 Mio. €,
+  beschlossen wurden −68,7 Mio. € — das Verfahren bewegte also 20,6 Mio. €.
+  Davon kamen 20,3 aus den drei Änderungslisten der Verwaltung und 218.299 € aus
+  der Liste der Koalition. Dass die Verwaltung dabei ein Vielfaches bewegt,
+  steht ausdrücklich als das da, was es ist: kein Maß für politische
+  Durchsetzung, sondern der Unterschied zwischen zwei Arten von Liste. Die
+  Verwaltung schreibt mit ihren Listen den eigenen Entwurf fort — neue
+  Steuerschätzung, Tarifabschluss, geänderte Umlagen. Die Fraktionen ändern
+  einzelne Posten, die sie politisch anders wollen. Für Jahrgänge ohne
+  Beschluss-Datei des Finanzausschusses endet die Strecke beim letzten Stand der
+  Verwaltung, und die Karte nennt ihn auch so. (#845)
+- **Der Liquiditätsstand als Schicht: wie viel Geld die Stadt am Monatsende auf
+  dem Konto hat.** Die Verwaltung legt dem Finanzausschuss monatlich eine Grafik
+  vor; ihre Zahlen stecken nur im PDF der Anlage. Der Bestand liest daraus die
+  Monatsreihe (bisher 2022 bis Mai 2026, ältere Grafiken folgen, sobald ihre
+  Anlagen geladen sind), prüft die Wertzahl jeder Grafik und den Abgleich
+  zwischen den überlappenden Jahrgängen, und führt je Monat den jüngsten Beleg.
+  Seite und KI-Frage folgen. (#969)
+- **Abstimmungsergebnisse noch am Sitzungsabend.** Ratslotse hört jetzt bei der
+  Live-Übertragung der Ratssitzung mit: Der O1-Stream wird während der Sitzung
+  mitgeschnitten und laufend transkribiert; sobald die Sitzungsleitung den
+  öffentlichen Teil schließt, stehen die vorläufigen Ergebnisse in der
+  Tagesordnung — Stunden bevor die Aufzeichnung online geht, ein bis zwei Monate
+  vor dem amtlichen Protokoll. Die Verweise ins Video folgen, sobald die
+  Aufzeichnung verfügbar ist; das Protokoll ersetzt am Ende alles Vorläufige.
+  (#899)
+- **Zusammenführen erst, wenn die Prüfungen wirklich durch sind.** Bisher war
+  das eine Regel im Handbuch, die jede Sitzung selbst umsetzen musste — einmal
+  wurde dabei zusammengeführt, während die Tests noch liefen. Ein Befehl
+  übernimmt das jetzt und weigert sich, solange auch nur eine Prüfung offen ist.
+  Nur für die Entwicklung; an der Website ändert sich nichts. (#1008)
+- **Ratslotse wird auf iPhone und iPad vollständig nativ.** Die neue SwiftUI-App
+  bringt Heute, Ratsgespräch und gründliche Recherche, Ratssuche, Themen, Quiz,
+  Push, Kalender und Kontoverwaltung ohne WebView auf iOS; der frühere
+  Capacitor-iOS-Build wurde entfernt. (#825)
+- **Der Einrichtungs-Assistent läuft jetzt auch im Browser.** Wer sich auf
+  ratslotse.de registrierte, landete bisher unvermittelt auf einem leeren
+  „Heute" und musste selbst herausfinden, dass die Seite von Ausschuss-Abos und
+  eigenen Themen lebt. Den geführten Einstieg gab es längst — er war auf die App
+  beschränkt. Er fragt jetzt in vier Schritten: **Gremien**, über die Lotti sich
+  meldet; **Stadtteile**; **Themen**; **Zustellung**. Am Rechner steht die Frage
+  links neben ihrer Antwortfläche, am Telefon untereinander. **Die Stadtteile
+  sind ein eigener Schritt geworden — mit Karte.** Vorher steckten sie als
+  Auswahlliste im Themen-Schritt und gingen dort unter. Jetzt zeigt eine Karte
+  von Oldenburg alle Ortsbereiche; die gewählten leuchten auf, und die
+  Namensliste daneben tut dasselbe für Tastatur und Screenreader. Die Karte
+  kommt ohne Kartendienst aus — sie zeichnet die Umrisse, die ohnehin im Projekt
+  liegen. Gefragt wird nach **Interesse, nicht nach der Wohnadresse**: „Welche
+  Stadtteile interessieren dich?" — das kann der eigene sein, muss aber nicht,
+  und **mehrere sind möglich**. **Der Themen-Schritt trennt danach „bei dir" von
+  „in der Stadt".** Je gewähltem Stadtteil steht zuerst, was der Rat dort
+  verhandelt hat, darunter die stadtweiten Vorschläge — dieselbe Sache steht nie
+  in zwei Listen. Was dort vorgeschlagen wird, ist am echten Ratsbestand geprüft
+  und nachgeschärft: Unter „Osternburg" standen vorher „Sandweg, Ostweg,
+  Danziger Straße" — Adressen aus Bebauungsplänen —, die Cäcilienbrücke dagegen
+  gar nicht. Jetzt entscheiden drei Regeln, was oben steht: Ein anderer
+  Stadtteil ist kein Vorschlag für diesen; stadtweite Programme gehören in die
+  stadtweite Liste; und wo eine Sache geocodiert ist, entscheidet ihr Standort
+  und nicht die bloße Erwähnung. Straßennamen bleiben drin, stehen aber hinter
+  allem anderen. Weil eine Straße jetzt in jeden Stadtteil gehört, durch den sie
+  führt, steht sie auch dort zur Auswahl: Das Ehnernviertel bekommt die
+  Alexanderstraße, Haarentor den Quellenweg und den Pophankenweg, Drielake den
+  Sandweg. Über alle 31 Stadtteile sind das 145 eigene Vorschläge statt 129 —
+  und nur noch 41 statt 57 von nebenan geliehene. **19 Stadtteile schaffen die
+  sechs jetzt aus eigener Kraft** (vorher 16), und **keiner steht mehr ganz ohne
+  Eigenes da** (vorher zwei: Dobbenviertel und Ehnernviertel). Dabei entscheidet
+  nicht die Menge, sondern was auf der Liste steht: Der Zeitraum weitet sich,
+  bis genug Vorschläge dabei sind, die mehr sind als eine Adresse. Sonst gewönne
+  das jüngste Jahr mit einer Liste aus lauter Straßen — in Osternburg hätte die
+  „Cloppenburger Straße" die Amalienbrücke verdrängt. Und es steht überall
+  etwas: In ruhigen Stadtteilen reicht ein Jahr nicht — der Zeitraum weitet sich
+  dann auf zwei oder drei Jahre und wird dazugeschrieben. Wo auch das nicht
+  trägt (im Dobbenviertel hat der Rat in drei Jahren praktisch nichts
+  verhandelt), füllen die nächstgelegenen Stadtteile auf, sichtbar getrennt
+  unter „Direkt nebenan" und jeder Vorschlag mit seiner Herkunft. **Am Rechner
+  liegt jeder Schritt als Blatt in der Fenstermitte** — Radius, Rahmen, eigene
+  Fußleiste —, nicht mehr als Inhalt, der im Fenster schwebt und dessen Knopf
+  ganz unten klebt: Bei einem kurzen Schritt blieb so ein leeres Drittel des
+  Bildschirms. Ein Blatt ist so hoch wie sein Inhalt; ist der länger als das
+  Fenster, scrollt er im Blatt, und die Fußleiste bleibt. Links neben der Frage
+  steht ein Schritt-Pfad (erledigt · gerade · offen), die Gremien stehen
+  zweispaltig und jedes trägt ein Zeichen für seinen Sachbereich — Kelle für den
+  Bau, Blatt fürs Grün, Bus für den Verkehr —, damit man die Liste nicht lesen
+  muss, um sie zu unterscheiden. Und der letzte Knopf sagt, wozu man ja sagt:
+  „Ja, ich möchte Benachrichtigungen erhalten" statt „Ja, so ist es richtig".
+  Zwei Dinge sind bewusst anders als in der App. Der letzte Schritt fragt im
+  Browser nach der **E-Mail** statt nach der Push-Erlaubnis — die gibt es dort
+  nicht — und er wirbt dafür, statt bloß zu fragen: Ohne Mitteilung erfährt man
+  nicht, dass das eigene Thema auf einer Tagesordnung steht, und dann müsste man
+  die Seite aufrufen, um zu erfahren, dass es etwas zu erfahren gäbe. Wie viel
+  dabei ankommt, steht als Zahl da statt als Beteuerung. Und **wer den
+  Assistenten sieht, entscheidet der Server**: Wer angefangen und abgebrochen
+  hat, macht dort weiter, wo er aufgehört hat — auch auf einem anderen Gerät;
+  wer längst Themen oder Abos angelegt hat, wird nicht nachträglich
+  durchgeschickt; und übersprungen bleibt übersprungen. (#902)
+- **Nach jedem Deploy prüft der Server sich selbst.** Bisher galt ein Deploy als
+  geglückt, sobald die Dienste überhaupt antworteten — eine Abfrage, die nach
+  einer Datenbank-Änderung ins Leere zeigt, wäre dabei nicht aufgefallen, weil
+  der Lebenszeichen-Aufruf die Datenbank gar nicht anfasst. Jetzt werden die
+  öffentlichen Seiten wirklich abgerufen und ihre Antworten gegen die
+  beschriebene Form gehalten. (#984)
+- **Vor dem Release lässt sich nachsehen, was die App im Store trifft.** Die
+  installierte App wurde gegen den alten Stand gebaut; wird der neue
+  veröffentlicht, liest sie Feldnamen, die es dort nicht mehr gibt. Ein Befehl
+  zeigt jetzt nach Ansicht gruppiert, welche davon nur ein Feld verlieren und
+  welche gar nicht mehr laden. (#986)
+- **Der Schlussbericht 2024 des Rechnungsprüfungsamts ist gelesen.** Sein PDF
+  kam ohne brauchbare Textebene; jetzt liest ihn das Sehmodell, und der Parser
+  versteht die Randmarken auch in der Form, die dabei entsteht. Auf „Geprüft und
+  zusammengefasst" stehen damit 15 Feststellungen für 2024 — vier
+  Beanstandungen, eine wiederholte, zehn Hinweise — und „Geplant und geworden"
+  2024 zitiert wieder den passenden Jahrgang. (#928)
+- **Auf „Mitreden" steht jetzt auch, an welchen Bauvorhaben geschraubt wurde.**
+  Der Haushalt hat zwei Teile, und beide werden im Verfahren geändert: Bisher
+  zeigte die Seite nur den Ergebnishaushalt — was die Stadt erwirtschaftet und
+  verbraucht. Neu darunter der Finanzhaushalt, also das, was tatsächlich fließt
+  und vor allem investiert wird. Dort steht Zeile für Zeile, welches Vorhaben
+  zwischen Entwurf und Beschluss mehr oder weniger Geld bekam, mit seiner Nummer
+  aus dem Investitionsprogramm und der Begründung der Verwaltung —
+  „Sanierungsgebiet Untere Nadorster Straße" etwa verlor 2024 eine Million, weil
+  sich der Straßenbau verzögerte. Ein- und Auszahlungen stehen dabei
+  nebeneinander und nicht gegeneinander: Eine Einzahlung ist ein Zuschuss oder
+  ein Verkauf, eine Auszahlung die Investition selbst. Positionen, die gar
+  keinen Betrag ändern, bleiben draußen — das sind Vermerke im Plan, keine
+  Änderungen. (#853)
+- **Abstimmungsergebnisse schon am Tag nach der Ratssitzung.** Das amtliche
+  Protokoll braucht ein bis zwei Monate — die Aufzeichnung von oldenburg eins
+  ist am nächsten Tag da. Eine Maschine liest jetzt die Ergebnisse aus dem
+  Sitzungsvideo: In der Tagesordnung steht an jedem abgestimmten Punkt ein
+  vorläufiges Ergebnis mit gestricheltem Rand, samt Zeitstempel, der direkt zur
+  Stelle im Video springt. Übernommen wird nur, was zwei unabhängige Durchläufe
+  übereinstimmend hören und wörtlich belegen können (im Prüfbestand: 111 von 120
+  Beschlüssen, null Fehler); der Rest wartet aufs Protokoll. Sobald das
+  Protokoll da ist, ersetzt es die vorläufigen Angaben. (#884)
+- **Der Haushaltsvollzug beginnt jetzt im März.** Zum ersten Quartal legt die
+  Verwaltung keine Anlage vor, sondern schreibt ihre Erwartung direkt in die
+  Vorlage: je Teilhaushalt das Jahresergebnis als Plan, Prognose und Abweichung.
+  Der Bereich liest diese Tabelle (2022, 2024, 2025, 2026) und prüft sie gegen
+  ihre eigene Summenzeile — die früheste Erwartung eines Haushaltsjahres steht
+  damit neben den drei späteren. (#980)
+- **Von der geänderten Haushaltszeile zum Bauvorhaben.** Die Positionen des
+  Finanzhaushalts auf „Mitreden" tragen die Nummer ihres Vorhabens — die führt
+  jetzt mit einem Klick auf „Was wird gebaut?" und sucht sie dort. Wer also
+  liest, dass beim Sanierungsgebiet Untere Nadorster Straße eine Million
+  verschoben wurde, sieht mit einem Klick, was für dieses Vorhaben insgesamt
+  geplant ist. Damit das ankommt, findet die Suche im Investitionsprogramm jetzt
+  auch Nummern und nicht nur Namen — das hilft auch, wer eine Nummer von Hand
+  eintippt. Der Link heißt bewusst „suchen" und nicht „zum Vorhaben": Die
+  Änderungslisten führen ihre Nummer je Buchungszeile, das Programm je Vorhaben,
+  und rund vier von zehn Zeilen haben dort schlicht kein Gegenstück. Dann sagt
+  die Seite das auch — „Kein Vorhaben 2020 enthält …" — statt eine Verbindung zu
+  behaupten, die es nicht gibt. (#855)
+
+### Geändert
+- **Der Datenabzug sagt jetzt, wenn die eigene Kopie veraltet ist.** Weil sich
+  alle Arbeitskopien einen Zwischenspeicher teilen, konnte eine Tabelle lokal
+  leer aussehen, obwohl längst Daten dafür vorlagen — was leicht wie ein
+  ausgefallener Import wirkt. Betrifft nur die Entwicklung. (#1009)
+- **Die Änderungslisten werden jetzt mit dem übrigen Haushalt eingelesen.** Ihr
+  Ingest war der einzige der Finanz-Läufe, der nach jedem Parser-Merge von Hand
+  angestoßen werden musste — vergaß man ihn, zeigte die Seite neuen Code auf
+  altem Bestand, und das ist der unangenehmere Fall als eine leere Tabelle: Sie
+  bleibt nicht leer, sie wird falsch. Der Ops-Lauf ruft ihn jetzt mit auf und
+  zieht sich die dafür nötige PDF-Bibliothek bei Bedarf selbst nach. Sein
+  Bestandsbericht zählt die beiden Änderungs-Tabellen mit und nennt, für welche
+  Jahrgänge ein Urheber je Position vorliegt — bliebe der weg, würde die
+  Zeilenzahl allein es nicht verraten. (#839)
+- **Die API beschreibt jetzt, was sie zurückgibt.** Bisher lieferten fast alle
+  Endpunkte „irgendein Objekt" — im maschinenlesbaren Schema stand kein einziges
+  Feld. Damit konnte niemand Typen daraus ableiten, und eine Änderung an der
+  Schnittstelle war in keinem Diff zu sehen. Die Antwortformen stehen jetzt an
+  einer Stelle beisammen, das Schema liegt versioniert im Repo, und ein Test
+  verhindert, dass ein neuer Endpunkt wieder ohne Form durchrutscht. Für
+  Leser*innen der Seite ändert sich nichts — der Nutzen liegt darin, dass
+  Web-Version und App künftig aus derselben Quelle arbeiten. (#837)
+- **Die Feldnamen der Schnittstelle heißen englisch.** Die Wochenvorschau
+  liefert ihre Woche jetzt als `from_date`/`to_date` mit `sessions` und `items`,
+  das Kontingent der Gründlichen Recherche als `remaining`, die Admin-Statistik
+  als `questions_active`/`reported`/`weak_categories`. An der Oberfläche ändert
+  sich nichts — die Karte „Die Woche im Rat", das Admin-Panel und die App zeigen
+  dasselbe wie vorher. (#911)
+- **Die Schnittstelle der „Frag den Rat"-Gespräche spricht jetzt Englisch.** Die
+  Felder hießen bisher gemischt deutsch und englisch; Weboberfläche und App
+  mussten die deutschen Namen jeweils selbst übersetzen. Sie heißen jetzt
+  einheitlich englisch, damit beide ihre Datentypen unverändert aus dem
+  Schnittstellen-Vertrag erzeugen können. Sichtbar ändert sich nichts. (#852)
+- **Die Haushalts-Schnittstelle spricht durchgehend Englisch.** Die 25 Blöcke,
+  aus denen der Haushalts-Bereich seine Daten holt, hießen noch deutsch — jetzt
+  tragen sie dieselben Namen wie der Rest der Schnittstelle. Sichtbar ändert
+  sich nichts; alle fünfzehn Seiten zeigen weiter dieselben Zahlen. (#876)
+- **Die Adressen der Schnittstelle sind englisch.** `/api/council/haushalt/
+  schulden` heißt jetzt `/api/council/budget/debt`, `/api/council/gespraeche`
+  heißt `/api/council/conversations` und so weiter — 36 Pfade. Damit ist die
+  erzeugte OpenAPI-Dokumentation durchgehend englisch. **Die Adressen der
+  Website bleiben deutsch:** `ratslotse.de/haushalt/schulden` ändert sich nicht,
+  geteilte Links funktionieren weiter. (#915)
+- **Jede Serverantwort beschreibt jetzt ihre Form.** Die letzten vierzehn
+  Endpunkte — Ortskatalog, Wochenvorschau, Haushalts-Fundament, Sitzung,
+  Beschluss, geteilte Antwort, Recherche-Stand, öffentliche Kennzahlen, Thema,
+  Person, Wortbeiträge und drei Ansichten im Admin-Bereich — standen im Schema
+  noch als „irgendein Objekt". Damit ist die Schnittstelle vollständig
+  beschrieben: Alle 162 Aufrufe tragen ihre Felder, Weboberfläche und App leiten
+  ihre Datentypen daraus ab, und eine Änderung daran ist ab sofort im Diff zu
+  sehen. Die drei Endpunkte, die gar kein JSON liefern — die beiden
+  Ereignis-Ströme der KI-Frage und der tiefen Recherche sowie die gerenderte
+  Planzeichnung — nennen jetzt ihren echten Medientyp samt der Ereignisse, die
+  über die Leitung gehen, statt ein JSON-Objekt vorzutäuschen. Für Leser*innen
+  der Seite ändert sich nichts. (#916)
+- **Auch der Frage- und Recherche-Pfad der Schnittstelle spricht jetzt
+  Englisch.** Zweiter Schritt der Umstellung: Die Felder, mit denen die
+  Oberfläche eine Frage stellt und den Antwortstrom liest, hießen noch deutsch.
+  Sichtbar ändert sich nichts — der Nutzen ist, dass Web-Version und App ihre
+  Datentypen unverändert aus dem Schnittstellen-Vertrag erzeugen. (#854)
+- **Die Typen der Weboberfläche kommen jetzt aus dem API-Vertrag, statt von Hand
+  gepflegt zu werden.** Bisher stand neben jeder Serverantwort eine zweite,
+  abgetippte Beschreibung im Frontend — die veraltete still, sobald sich hinten
+  etwas änderte, und in jeder Oberfläche einzeln. Jetzt werden sie aus dem
+  Schema erzeugt; ein umbenanntes Feld bricht sofort den Build statt später die
+  Anzeige. Sichtbar ändert sich nichts — der Nutzen ist, dass Web-Version und
+  App aus derselben Quelle arbeiten und seltener auseinanderlaufen. (#840)
+- **Das Beleg-Format steht jetzt vollständig in der
+  Schnittstellen-Beschreibung.** Unter jeder Haushaltszahl hängt ihr Beleg:
+  welches Dokument, welche Seite, welche Rechenprobe, welcher Ratsbeschluss
+  dahinter. Diese Angabe reisten bisher als unbeschriebenes Objekt durch die
+  Schnittstelle — Website und App mussten ihre Felder von Hand nachbauen, und
+  wer eines übersah, zeigte es schlicht nicht an. Jetzt beschreibt die
+  Schnittstelle es selbst, und beide Seiten lesen dieselbe Wahrheit. (#952)
+- **Beschluss-Ergebnisse heißen intern jetzt englisch.** Angenommen, abgelehnt,
+  vertagt, zur Kenntnis, einstimmig, mehrheitlich — gespeichert werden diese
+  Ergebnisse ab sofort als `accepted`, `rejected`, `postponed`, `noted`,
+  `no_decision`, `unanimous` und `majority`. Auf der Seite, in der App und in
+  jeder Meldung steht weiter das deutsche Wort; nur der Ergebnis-Filter in der
+  Adresszeile (`?outcome=…`) trägt den neuen Namen. (#888)
+- **Die neunzehn Bilanz-Positionen heißen intern jetzt englisch.** Sachvermögen,
+  Finanzvermögen, Nettoposition, Rückstellungen und die übrigen werden als
+  `tangible_assets`, `financial_assets`, `net_position`, `provisions` und so
+  weiter gespeichert. Auf der Schulden-Seite und in der KI-Antwort steht weiter
+  der deutsche Wortlaut — und der Wortlaut des Jahresabschlusses selbst sowieso.
+  (#905)
+- **Die Browsertests laufen wieder — und prüfen ab jetzt jede Änderung.** Sie
+  waren zur Hälfte rot, weil sie eine Oberfläche erwarteten, die es so nicht
+  mehr gibt; eine rote Prüfung sieht niemand mehr an. Alle 36 sind überarbeitet
+  und grün, und sie laufen jetzt automatisch mit. (#1025)
+- **Die letzte deutsche Spalte der Datenbank heißt jetzt englisch.** `art` — in
+  zehn Tabellen, von den Steuerarten über die Vorlagen bis zu den Wortbeiträgen
+  — heißt `kind`. Sichtbar ändert sich nichts: Die Seiten zeigen weiter
+  „Beschlussvorlage", „Rede" und „Gewerbesteuer". (#886)
+- **Die Beschluss-Daten heißen jetzt durchgehend englisch — in der Datenbank wie
+  in der Schnittstelle.** Der amtliche Wortlaut, die Gegenstimmen, die
+  Enthaltungen, die Abweichung und die Vorlagennummer trugen bisher deutsche
+  Namen; Weboberfläche und App übersetzten sie jede für sich zurück. Jetzt
+  tragen Spalte, Schnittstelle und beide Oberflächen denselben Namen. Sichtbar
+  ändert sich nichts. (#857)
+- **Einheit, Gremium, Grund und Fassung heißen in der Datenbank jetzt
+  englisch.** Vierzehn Spalten in ebenso vielen Tabellen ziehen damit nach. Für
+  Leser*innen ändert sich nichts. (#878)
+- **Die Konten-Datenbank heißt jetzt nach dem Projekt, nicht mehr nach der
+  Zeitung.** `nwz.sqlite` war ein Rest aus der Zeit, als hier ein
+  Zeitungs-Scraper lief; sie heißt jetzt `ratslotse.sqlite` und zieht beim
+  ersten Start selbst um. Die Spalten der gespeicherten Gespräche heißen
+  englisch wie die Schnittstelle, und drei tote Spalten aus der alten
+  Abo-Prüfung sind samt Inhalt entfernt. Sichtbar ändert sich nichts. (#856)
+- **33 weitere Datenbank-Spalten heißen jetzt englisch.** Gebühren, Hebesätze,
+  Wirtschaftspläne, Änderungslisten und die Beteiligungen tragen ihre Namen
+  damit in derselben Sprache wie der Rest. Sichtbar ändert sich nichts — die
+  Zahlen und Seiten bleiben, wie sie waren. (#873)
+- **Die Geldbegriffe des Haushalts heißen jetzt überall gleich — auf Englisch.**
+  Betrag, Erträge, Aufwendungen, Ein- und Auszahlungen, Vorjahr, Saldo und
+  Ergebnis trugen bisher deutsche Namen in der Datenbank, in der Schnittstelle
+  und in beiden Oberflächen. Das ist umgestellt: 82 Spalten in 33 Tabellen
+  wandern beim ersten Start mit, die App und die Website sprechen dieselben
+  Namen. Für Leser*innen ändert sich nichts — die Seiten zeigen weiter Deutsch.
+  (#861)
+- **Vier weitere Spalten der Datenbank heißen englisch.** Stellenplan,
+  Nachbewilligungen, Gesellschaften und Städtevergleich ziehen damit nach.
+  Sichtbar ändert sich nichts — auf den Seiten steht weiter „besetzt",
+  „beschlossen" und der Name der Stadt. (#875)
+- **Die Jahresangabe heißt in der ganzen Datenbank jetzt einheitlich englisch.**
+  Sie steckte in 41 Tabellen unter deutschem Namen und wanderte von dort bis in
+  die Haushaltsseiten. Damit ist der letzte große gemischtsprachige Begriff aus
+  den Finanzdaten verschwunden. Sichtbar ändert sich nichts. (#860)
+- **Zehn weitere Spalten heißen englisch.** Die aktuelle Fraktion einer Person,
+  die Träger des Gesamtabschlusses, die Funktion in einem Gremium, die Reihe des
+  Städtevergleichs, das Regelwerk der Investitionsreihe und die Zweitstelle
+  einer Spende. Zwei Fachbegriffe bleiben bewusst deutsch: „kameral" und
+  „doppik" — für sie gibt es keine treffende englische Entsprechung, und der
+  Parser schlägt über sie nach. (#869)
+- **Weitere 52 Datenbankspalten heißen jetzt englisch.** Abgänge, Zugänge,
+  Buchwerte des Anlagenspiegels, Bezugsgrößen der Gebühren, Messbeträge der
+  Gewerbesteuer, Zuweisungen des Finanzausgleichs und die Kennzeichen des
+  Stellenplans. Sie wandern beim ersten Start mit; für Leser*innen ändert sich
+  nichts. (#867)
+- **Fünfzehn weitere Spalten und drei Werte-Listen der Datenbank sind
+  englisch.** Bürgschaften, Stellenplan, Wortbeiträge, Kennzahlen und die
+  Änderungslisten ziehen nach. Sichtbar ändert sich nichts — die Seiten zeigen
+  weiter dieselben Zahlen und dieselben deutschen Beschriftungen. (#877)
+- **Rolle und Kanal heißen jetzt englisch — samt ihrer Werte.** Die Posten der
+  Bilanz, der Finanzrechnung und des Gesamtabschlusses tragen ihre Rolle in der
+  Zeile, ebenso die Wege einer Nachbewilligung. Spalte und Werte wandern beim
+  ersten Start gemeinsam mit; die Rollennamen aus dem Ratsinformationssystem
+  („Ratsmitglied") bleiben deutsch, weil sie Anzeigetext sind. (#868)
+- **Geteilte Antworten und Recherche-Aufträge heißen intern jetzt englisch.**
+  Dritter Schritt des Umbaus: Die Felder der Teilen-Seite und der Gründlichen
+  Recherche trugen noch deutsche Namen — in der Datenbank wie in der
+  Schnittstelle. Beide sprechen jetzt dieselbe Sprache wie der Rest. Sichtbar
+  ändert sich nichts. (#858)
+- **Auch die Struktur- und Belegbegriffe des Haushalts heißen jetzt englisch.**
+  Bezeichnung, Bereich, Jahrgang, Teilhaushalt, Produkt, Fundstelle, Marke und
+  rund vierzig weitere Spalten wandern beim ersten Start mit — 119 Spalten in 42
+  Tabellen. Die Adressen der Seiten bleiben unverändert, und für Leser*innen
+  ändert sich nichts. **Behoben:** Drei Stellen im Haushalt trugen einen
+  umbenannten Begriff auch als Wert in der Zeile — die Finanzrechnung, der
+  Gesamtabschluss und ein Herkunftsbeleg. Nach der letzten Umstellung fanden
+  Abfragen darauf nichts mehr; die Werte wandern jetzt mit. (#862)
+- **Titel, Datum, Frage und Partei heißen in der Datenbank jetzt englisch.**
+  Vierzehn Spalten in neun Tabellen ziehen nach — Presse, Beratungen,
+  Wortbeiträge, Stellenplan und die Herkunfts-Belege. Für Leser*innen ändert
+  sich nichts. (#880)
+- **Wert, Quelle und Schlüssel heißen in der Datenbank jetzt englisch.** Elf
+  Spalten in ebenso vielen Tabellen ziehen nach. Für Leser*innen ändert sich
+  nichts. (#879)
+- **Auch die Kennwörter der Änderungslisten und Haushaltsrechnungen sind jetzt
+  englisch.** Welche Liste eine Position vorschlug und worauf sich „geplant"
+  bezieht, stand intern auf Deutsch. Sichtbar ändert sich nichts — die Seiten
+  zeigen weiter „Änderungsliste Verw. I" und „Haushaltsansatz". (#882)
+- **Drei weitere Wertelisten heißen intern jetzt englisch.** Die Art eines
+  Themas (Ort, Projekt, Organisation), die Gebietsarten des Ortskatalogs
+  (Quartier, Wohngebiet, Schutzgebiet …) und die fünf Abschnitte des
+  Beteiligungsberichts. Auf der Seite und in der App steht weiter das deutsche
+  Wort. (#900)
+- **Der Ratslotse duzt jetzt überall.** An fünf Stellen stand noch „Sie" — im
+  Zeitstrahl („Sie sind hier") und in der Überschrift „Was Sie dafür zahlen".
+  Sie lauten jetzt wie der Rest der Seite: „Du bist hier", „Was du dafür
+  zahlst". (#864)
+- **Die KI-Frage kennt bei den Eigenbetrieben jetzt auch das Ist.** Wer nach dem
+  Wirtschaftsplan eines Betriebs fragt, bekommt neben dem Plan den geprüften
+  Jahresabschluss desselben Jahres — Umsatzerlöse, Jahresergebnis, Bilanzsumme,
+  Eigenkapital — oder den jüngsten davor mit dem Vermerk, dass der des Planjahrs
+  noch fehlt. (#988)
+- **Die Namen der LLM-Aufrufe heißen intern jetzt englisch.** Das
+  Kosten-Tracking zählt je Aufruf-Art, wie viel ein Feature verbraucht —
+  `wortbeitraege` heißt jetzt `speeches`, `anlagen_ocr` heißt `attachment_ocr`
+  und so weiter. Im Admin-Panel steht weiter der deutsche Name, und zwar zu
+  **jedem** Aufruf: Die Beschriftungsliste war bisher unvollständig, sodass zwei
+  Drittel der Kostentreiber mit ihrem rohen Schlüssel dastanden. (#907)
+- **Sechs Einzelstellen im Haushalt sind aufgeräumt.** Der
+  Gewerbesteuer-Steckbrief verspricht nichts mehr („bauen wir noch“) und zeigt
+  die abgelehnte Erhöhung nur als Balken, wenn die Vorschlagszahl vorliegt; das
+  geplante Minus auf der Startseite sagt dazu, dass die Rücklage es deckt; die
+  Produktebene erklärt, was in „Rechnungswesen“ verbucht wird; ein
+  Wirtschaftsplan, der jedes Jahr dieselbe Null nennt, bekommt keine Kurve; und
+  die Bereichsseite ohne Bereich zeigt die dreizehn Bereiche zur Wahl statt
+  einer Sackgasse. (#1007)
+- **Die langen Haushaltsseiten werden kürzer, ohne etwas zu verlieren.** Der
+  Wortlaut der Verwaltung zu Plan-Ist-Abweichungen steht auf der ganzen Seite
+  hinter „Warum?“, der fünf Absätze lange Bilanz-Text zum Cash-Pooling und die
+  Herleitungen auf dem Gewerbesteuer-Steckbrief und der Vergleichsseite hinter
+  einem Auslöser. Die Haushaltsdebatte ist eine Liste statt eines Zickzacks, mit
+  dem Fraktionspunkt am Namen; „Ganzen Beitrag lesen“ zählt keine Zeichen mehr.
+  Zwei Erklärkästen der Startseite sind auf zwei Sätze gekürzt. (#1005)
+- **Auf dem Handy zeigen Chip-Reihen und Umschalter jetzt, dass sie
+  weitergehen.** Abschnitts-Chips, Jahr-Umschalter und Reihenfolge-Schalter im
+  Haushalt blenden am verdeckten Ende aus, statt hart abgeschnitten zu stehen;
+  der aktive Abschnitts-Chip springt beim Zurückscrollen wieder auf den ersten
+  Abschnitt. Überschriften trennen keine kurzen Wörter mehr, die
+  Skalenbeschriftung der Plan-Ist-Hantel bleibt in der Karte, und die acht
+  Jahreschips der Prüfungs-Ketten passen in eine Zeile. (#1003)
+- **Der Haushalt wiederholt sich weniger und beweist sich nicht mehr selbst.**
+  Sätze, die auf jeder Karte oder Zeile standen, stehen einmal: über den
+  Gesellschaftskarten (die tragen jetzt ihre eigene Entwicklung), unter der
+  Personal-Grafik (die Zeile nennt nur noch die Ausnahme), in der
+  Hebesatz-Liste. Rundungs- und Abgleichsätze, die dem Leser versicherten, dass
+  unsere Zahlen stimmen, sind weg oder auf einen Satz gekürzt. Die
+  Steuer-Kacheln auf der Produktebene sind eine Zeile mit Links zu den
+  Steckbriefen, der Konzern-Schritt stellt seine Frage nicht zweimal, und der
+  Grenzen-Block der Investitionen sieht aus wie auf den anderen Schritten.
+  (#1004)
+- **Alle Umgebungen laufen jetzt mit denselben Programmbibliotheken.** Bisher
+  zog jede Installation die jeweils neueste Fassung — die Testumgebung prüfte
+  damit gegen etwas anderes, als die Seite tatsächlich benutzt, und eine
+  Aktualisierung konnte unbemerkt mit einer Veröffentlichung mitfahren. Die
+  Fassungen sind jetzt festgehalten und werden nur noch bewusst angehoben.
+  (#989)
+- **Auch die Fragetypen der KI-Frage heißen jetzt englisch.** Ob eine Frage nach
+  Geld, nach einem Verlauf oder nach einer Fraktion fragt, entscheidet das
+  Analyse-Modell — die Kennwörter dafür lauteten bisher deutsch. Sichtbar ändert
+  sich nichts; die Oberfläche zeigt weiter dieselben Bausteine. (#872)
+- **Neue Haushaltsdokumente werden von allein eingelesen.** Der Datenstand-Cron
+  hat vier Schichten aus dem Ratsinformationssystem bisher nur beobachtet und
+  gemeldet, wenn ein Jahrgang ausblieb — Haushaltsvollzug, Haushaltssatzung,
+  Gebührenbedarf und Wirtschaftspläne kamen erst, wenn jemand das Skript von
+  Hand startete. Jetzt merkt sich der Cron je Schicht, welches Dokument ihr
+  Skript zuletzt gesehen hat, und ruft es, sobald ein jüngeres im Bestand liegt.
+  Ein gescheiterter Lauf wird gemeldet und beim nächsten Mal wiederholt. (#968)
+- **Die Grafiken des Haushalts bekommen eine gemeinsame Ablesekarte und
+  Bewegung.** Unter jeder Grafik steht die Auskunft jetzt als Karte mit
+  Farbmarke, Name und großer Zahl statt als grauer Hinweiszeile. Die Zeitreihen
+  zeichnen sich beim Aufbau einmal von links nach rechts, die Führungslinie
+  gleitet unter dem Zeiger zur gewählten Stelle, der Endwert trägt seine
+  Einheit. Auf der Hebesatz-Treppe sind die Änderungen als Punkte markiert, und
+  die Liste darunter zeigt mit: Wer auf eine Zeile zeigt, sieht die Stufe im
+  Bild, wer auf die Stufe zeigt, die Zeile. (#1014)
+- **Hantel und Gegenbalken bewegen sich und antworten dem Zeiger.** In der
+  Hantel wachsen die Abweichungsstrecken beim Aufbau aus der Null heraus, beim
+  Umschalten zwischen Prozent und Betrag gleiten die Punkte, die Zeile unter dem
+  Zeiger hebt sich und die Abweichung steht größer als Plan und Ist.
+  Bereichsnamen werden nicht mehr abgeschnitten. Im Gegenbalken wachsen die
+  Segmente beim Aufbau von links nacheinander; Segment und Legendeneintrag heben
+  sich gemeinsam hervor, in beide Richtungen, und breite Segmente setzen ihren
+  Text größer. (#1015)
+- **Säulen und Ranglisten bewegen sich und antworten dem Zeiger.** Die
+  Jahres-Säulen der Übersicht wachsen beim Aufbau von unten, links nach rechts;
+  unter dem Zeiger hebt sich eine Säule mit ihrem Jahr, die übrigen treten
+  zurück, der Endwert trägt seine Einheit. In den Ranglisten wachsen die Balken
+  beim Aufbau von links, die Zeile unter dem Zeiger hebt sich, die Werte stehen
+  in Tabellenziffern statt Mono, und die Oldenburg-Zeile trägt eine Marke.
+  (#1016)
+- **Die Haushalts-Schnittstelle spricht Englisch.** Die siebzehn
+  Haushalts-Endpunkte liefern ihre Felder jetzt unter englischen Namen aus
+  (`zeilen` → `rows`, `summen` → `totals`, `staedte` → `cities` und rund sechzig
+  weitere); die Beschriftungen auf den Seiten ändern sich dabei nirgends. Dabei
+  ist außerdem aufgefallen, dass die Trägeraufstellung auf „Und ist das die
+  ganze Stadt?" seit der Datenbank-Umbenennung leer blieb — sie steht wieder.
+  (#910)
+- **Die Fraktions-Positionen stehen in der App jetzt offen da, nicht mehr hinter
+  einem Deckel.** Was die Fraktionen zu einer Frage gesagt haben, verdichtet
+  Ratslotse zu einer Position je Fraktion samt Kernaussage und Zahl der Beiträge
+  — in der App lag das hinter einer zugeklappten Zeile, die nicht verriet, was
+  dahinter steckt. Sie ist jetzt aufgeklappt und nennt die Zahl der Fraktionen.
+  Die Sprecher-Zeilen der Ratsdebatten tragen dieselben Parteichips wie der Rest
+  der App; Stimmen der Verwaltung bleiben ohne Chip. Auf dem Dashboard entfällt
+  die Karte „Heute im Rat", wenn die Wochenvorschau darunter denselben Termin
+  ohnehin schon führt — ohne Vorschau bleibt sie als einzige Auskunft stehen.
+  Und die Ratswoche schreibt „Heute" und „Morgen" statt „Dienstag" und
+  „Mittwoch", solange die Tage das hergeben. (#903)
+- **Die App zeichnet jetzt durchgehend mit derselben Bildsprache wie die
+  Website.** Bisher mischten sich Apples SF Symbols unter die Lucide-Icons der
+  Web-App — an 240 Stellen, in 123 verschiedenen Zeichen. Sie sahen daneben
+  fremd aus, weil sie eine andere Strichstärke und andere Rundungen haben. Alle
+  sind ersetzt; die Vektoren stammen aus demselben Lucide-Satz, den auch die
+  Website benutzt, und liegen als Assets in der App, damit sie ohne Netz und
+  ohne Laufzeit-Abhängigkeit rendern. Eine Ausnahme bleibt bewusst stehen: das
+  Apple-Zeichen bei „Mit Apple verknüpft" — Apples Richtlinien verlangen dort
+  ihre eigene Marke. Ein Test in der CI hält den Zustand, damit sich kein SF
+  Symbol zurückschleicht. (#903)
+- **Die Kachelfläche des Haushalts liest sich jetzt wie eine Grafik, nicht wie
+  ein Raster.** Große Posten tragen ihre Zahl groß, jede Kachel mit Platz nennt
+  ihre Einheit und ihren Anteil, unter dem Zeiger hebt sich die Kachel und die
+  übrigen treten zurück, beim Aufbau blenden die Kacheln der Größe nach ein. Der
+  Sammelposten der kleinen Ertragsarten klappt auf Antippen als Mappe auf und
+  zeigt die gebündelten Posten als eigene Kacheln; die Zeile unter dem Bild ist
+  eine Karte mit Farbmarke, Summe und Anteilsbalken und trägt ohne aktive Kachel
+  die Gesamtsumme. (#1011)
+- **Die Tagesordnungs-Mail sagt jetzt auch, worum es geht.** Sie trug bisher den
+  Satz, der allein aus der Überschrift eines Punktes gebaut war — der bessere,
+  aus Vorlage und Anlagen geschriebene, entstand erst am nächsten Morgen und kam
+  für die Mail immer zu spät. Jetzt wird er geschrieben, sobald die Tagesordnung
+  erscheint: „Geplant ist ein Wohngebiet auf 8,6 Hektar nördlich Eßkamp mit 110
+  Wohneinheiten" statt „Der Ausschuss berät über den Bebauungsplan 837". Und ein
+  Dringlichkeitsantrag heißt in der Mail, was er ist, statt eine Nummer zu
+  tragen, die es im Ratsinformationssystem nicht gibt. (#850)
+- **Die Tagesordnung sagt jetzt, worum es geht — und zeigt
+  Dringlichkeitsanträge.** Unter jedem Tagesordnungspunkt stand bisher ein Satz,
+  der allein aus der Überschrift gebaut war und sie deshalb meist nur
+  umformulierte. Jetzt steht dort der Satz, der aus der ganzen Vorlage samt
+  Anlagen entsteht: „Geplant ist ein Wohngebiet auf 8,6 Hektar nördlich Eßkamp
+  mit 110 Wohneinheiten" statt „Der Ausschuss berät über den Bebauungsplan 837".
+  Er wird für jeden inhaltlichen Punkt der nächsten drei Wochen geschrieben,
+  nicht mehr nur für die zwanzig wichtigsten, und steht auch in der Merkliste
+  und hinter der KI-Frage. Und Dringlichkeitsanträge stehen jetzt über der
+  Tagesordnung statt in ihr versteckt: Im Ratsinformationssystem haben sie
+  keinen eigenen Punkt, sondern hängen als Dokument an „Genehmigung der
+  Tagesordnung" — in 30 % der Ratssitzungen war so ein Antrag da, ohne dass man
+  ihn finden konnte. (#843)
+- **„Bäder" reicht jetzt als Wort.** Die KI-Frage fand den Bäderbetrieb und die
+  Bäderbetriebsgesellschaft bisher nur, wenn jemand sie beim vollen Namen
+  nannte; „Wie hoch ist der Zuschuss der Stadt für die Bäder?" bekam nur den
+  Teilhaushalt. Außerdem teilen sich die neun neuen Haushalts-Quellen ihre
+  Formatierer und die Beleg-Zeile, statt je eine eigene Kopie zu führen. (#959)
+- **Die KI-Frage liefert Haushaltszahlen für das Jahr, nach dem gefragt wurde.**
+  „Was stand 2022 im Haushalt für die Feuerwehr?" bekam bisher den Plan des
+  jüngsten Jahres, ohne es zu sagen. Jetzt nimmt jede der zwanzig
+  Haushalts-Quellen das Jahr aus der Frage, wenn sie es führt — Plan,
+  Jahresabschluss, Produktebene, Stellenplan, Prüfbericht, Schulden, Bilanz und
+  die anderen. Fehlt der Jahrgang, kommt weiter der jüngste, und die Antwort
+  sagt ausdrücklich dazu, dass es nicht das gefragte Jahr ist. „Seit 2020" oder
+  „von 2019 bis 2024" bleiben Zeiträume und legen kein Jahr fest. (#946)
+- **Die KI-Frage kennt jetzt die einzelnen Posten des Jahresabschlusses und des
+  Haushaltsansatzes.** „Was kostet das Personal der Stadt?" bekam bisher nur
+  Summen und den Teilhaushalt — nicht die Personalaufwendungen, obwohl sie in
+  beiden Quellen stehen. Jetzt liefert der Jahresabschluss die Posten, die die
+  Frage trifft (Personal, Zinsen, Transferaufwendungen, Abschreibungen …), dazu
+  immer das ordentliche und das außerordentliche Ergebnis; der Haushaltsansatz
+  kommt bei einem Treffer im Fragewortlaut auch dann, wenn ein Teilhaushalt
+  schon passt. „Wie war das Jahresergebnis 2024?" zieht den Abschluss — bisher
+  zog die Frage gar nichts. (#953)
+- **Die KI-Frage antwortet bei Haushaltsfragen genauer.** Nachgemessen an echten
+  Antworten: „Was kostet das Personal?" bekam vier Produkte und keine
+  Personalaufwendungen — jetzt stehen die Posten, die die Frage trifft, vorn im
+  Kontext, mit dem Ansatz und dem zuletzt abgerechneten Ist daneben. „Was stand
+  2022 im Haushalt für die Feuerwehr?" fand keinen Teilhaushalt, weil die
+  Feuerwehr dort „Sicherheit und Ordnung" heißt — die Zuordnung kennt jetzt
+  Feuerwehr, Rettungsdienst, Kita, Asyl und Pflege, und die Produktebene wird
+  bei der Plan-Frage nach einer Aufgabe mitgefragt. Der Platz für
+  Haushaltszahlen im Antwort-Kontext ist mit den neun neuen Quellen von 4.500
+  auf 6.500 Zeichen gewachsen, damit bei Bau- und Steuerfragen nicht das Ist zum
+  Plan herausfällt. (#957)
+- **Die Kredit-Unterrichtungen ziehen sich jetzt selbst nach.** Der Datenstand
+  auf der Haushaltsseite führt die Kreditaufnahmen und Umschuldungen als eigene
+  Schicht, und der zweiwöchentliche Datenstand-Lauf liest eine neue
+  Unterrichtung des Rates ein, sobald sie im Ratsinformationssystem liegt —
+  bisher musste jemand daran denken. (#971)
+- ### Kurzfassungen: genauer, aktuelleres Modell, keine stillen Ausfälle Die
+  Tragweite-Gründe und TOP-Kurzfassungen laufen jetzt auf `gpt-5.6-luna` (vorher
+  DeepSeek v4 Pro bzw. zwei Jahre altes gpt-4o-mini) — im Vergleich an 55 echten
+  Tagesordnungspunkten das einzige Modell, das Beträge, Flächen und Ortsnamen
+  durchgängig behält, bei einem Viertel der Kosten. Alle drei betroffenen
+  Modelle sind per `COUNCIL_*_MODEL` tauschbar. Der Tragweite-Prompt sagt dem
+  Modell außerdem, dass Vereinfachung nie verschärfen darf: Aus einer
+  Genehmigungspflicht wird kein „Verbot" mehr (Leserfeedback zur
+  Zweckentfremdungssatzung, 27.08.). Und Bewertungs-Batches verschwinden nicht
+  mehr still: Scheitert ein Aufruf oder lässt das Modell Einträge aus, wird in
+  Hälften bzw. je Punkt nachgefasst und erst nach zwei Ebenen laut aufgegeben.
+  (#816)
+- **Die letzten 18 deutschen Feldnamen der Schnittstelle heißen jetzt
+  englisch.** Mit dem vollständigen API-Vertrag wurden sie erst sichtbar:
+  `vorlage`, `beratungsfolge`, `plan_bild` und `haushalts_anschluss` der
+  Beschluss-Seite, `typ`, `art` und die `wortbeitraege`-Felder der
+  Personen-Seite, `aenderungen` der Sitzung, der Beleg-Apparat `herkunft` in elf
+  Haushalts-Antworten, dazu `wahlbereiche`, `gesamt`, `top` und `recherche`. Web
+  und App lesen die neuen Namen; der Ortskatalog liefert `electoral_districts`
+  jetzt so, wie das Web-Frontend es schon immer erwartet hatte — der
+  Wahlbereichs-Filter über den Ortskatalog lief bis dahin ins Leere. Ausgelassen
+  ist `ortsbereich_id`: Das ist zugleich eine Datenbankspalte und braucht einen
+  eigenen Umzug. (#919)
+- **Die Verständigung mit dem Sprachmodell läuft jetzt auf Englisch.** Die
+  Schlüssel, die das Modell in seiner Antwort setzen soll — Frage, Suchbegriffe,
+  Fragetyp, Belege, Treffer — heißen wie der übrige Code. Für Leser*innen ändert
+  sich nichts; die Prompts selbst bleiben auf Deutsch, denn das Modell liest
+  deutsche Dokumente. (#871)
+- **Lotti ist jetzt überall animiert.** Das gezeichnete Standbild-Maskottchen
+  ist durch die bewegte Lotti aus dem Lotti-Studio ersetzt: Sie blinzelt, nickt,
+  winkt, denkt beim Laden nach, sucht auf der 404-Seite, schläft in der
+  Sitzungspause und klatscht Beifall im Quiz — und respektiert dabei die
+  Systemeinstellung „Bewegung reduzieren". Wie gehabt kleidet sie sich nach
+  Jahreszeit: Blume im Frühling, Sonnenbrille im Sommer, Schal im Herbst,
+  Ohrenschützer im Winter, roter Schal zur Weihnachtszeit. Auch die 3D-Familie
+  auf der Startseite ist auf den neuesten Stand der Figur gebracht — mit echtem
+  Skelett, Hals, feinerem Gesicht und reparierten Brillenbügeln. (#836)
+- **Die Themen-Mail nennt Gremium und Sitzungsdatum.** Unter dem Beschlusstitel
+  steht jetzt, wer wann entschieden hat — „Schulausschuss · 11. Juni 2026".
+  Vorher trug die Meldung nur den Titel, und amtliche Titel führen dabei sogar
+  in die Irre: Sie enthalten oft das Datum der Anfrage, die zum Beschluss
+  führte, nicht das der Sitzung. Das Jahr steht bewusst dabei, weil die Mail
+  über ein halbes Jahr zurückreichen kann. (#834)
+- **Die Tagesordnungs-Mail sagt jetzt zuerst, worum es geht.** Über der Liste
+  stehen die höchstens drei wichtigsten Punkte der Sitzung — dieselbe Bewertung,
+  nach der auch die Wochen-Karte hervorhebt. Darunter folgt die Tagesordnung
+  weiterhin vollständig, mit einer ehrlichen Zahl daneben. Eine Tagesordnung aus
+  lauter Routine bekommt keine Hervorhebung, sondern die Liste wie bisher.
+  (#1028)
+- **Ortsarten und die Haushalts-Wertelisten heißen intern jetzt englisch.**
+  Straße, Platz, Gebäude, Gewässer, Gebiet und Sonstiges werden als `street`,
+  `square`, `building`, `water`, `area` und `other` gespeichert, dazu die Ebenen
+  des Investitionsprogramms, der Entwurfs-Vermerk der Haushaltssatzung, das
+  Spenden-Layout und die Kategorie der Nachbewilligungen. Auf der Seite ändert
+  sich nichts. Nebenbei behoben: Die Ortserkennung verlangte vom Modell noch den
+  alten Wert „stadtteil" — jeder erkannte Ortsteil landete deshalb still unter
+  „Sonstiges". (#889)
+- **Der letzte deutsche Bezeichner der Schnittstelle ist englisch.** Der
+  Ortsbereich eines Ortes heißt jetzt `local_area_id` — in der Datenbank, in
+  gespeicherten Gesprächen und in der Antwort der Schnittstelle. Damit trägt die
+  OpenAPI-Dokumentation keinen einzigen deutschen Pfad-, Parameter-, Schema-
+  oder Feldnamen mehr. Für Leser*innen ändert sich nichts. (#920)
+- **Die Personen-Arten und die Rollen der Haushaltsdebatte heißen intern jetzt
+  englisch.** Ratsmitglied, beratendes Mitglied, Verwaltung, Stadt und
+  Aufsichtsorgan werden als `council`, `advisory`, `administration`, `city` und
+  `participation` geliefert, die Sitzungsleitung als `leadership`. Angezeigt
+  wird weiter das deutsche Wort. (#893)
+- **Die 97 Rechenproben heißen intern jetzt englisch.** Jede Zahl im Haushalts-
+  Teil trägt die Proben, die sie bestanden hat — sie stehen jetzt als
+  `business_plan_key_figure`, `income_budget_total_rows`, `prior_year_chain` und
+  so weiter in der Datenbank. Für Leser*innen ändert sich nichts: Der
+  Beleg-Apparat zeigt weiter denselben deutschen Satz unter jeder Zahl. Nebenbei
+  behoben: Auf der Konzern-Seite stand unter allen sieben Wirtschaftsplänen nur
+  noch das allgemeine „geprüft" statt der genauen Beleglage, und der Hinweis
+  „Ein ausgeglichener Plan" bei einem geplanten Ergebnis von null war ganz
+  verschwunden. (#907)
+- **Auch die Namen der Prompt-Vorlagen heißen jetzt englisch.** Jede Vorlage in
+  `kern/prompts.py` trägt einen Namen, unter dem der Code sie abruft — bisher
+  gemischt deutsch (`qa_antwort`, `top_wichtigkeit_system`), jetzt durchgängig
+  englisch wie der übrige Code (`qa_answer`, `agenda_item_importance_system`).
+  Der Text der Prompts ist unangetastet geblieben, Zeichen für Zeichen: Er ist
+  das, was das Sprachmodell liest, und er bleibt deutsch. Für Leser*innen von
+  ratslotse.de ändert sich nichts. Neu ist ein Wächter, der beides in beide
+  Richtungen abgleicht — kein Abruf ohne Vorlage, keine Vorlage ohne Abruf. Ein
+  Vorlagen-Name ist nur eine Zeichenkette: Wer ihn an einer Stelle ändert und an
+  der anderen vergisst, merkt das sonst erst mitten in einem nächtlichen Lauf.
+  (#908)
+- **Die Prompts lassen sich nicht mehr im Admin-Bereich bearbeiten.** Sie stehen
+  jetzt ausschließlich im Code — dort sind Änderungen sichtbar, nachvollziehbar
+  und werden gegengelesen. Ein Prompt war im Panel zu schnell geändert und seine
+  Wirkung zu schwer abzuschätzen (Tims Entscheidung). Die Verwaltungsseite und
+  der entsprechende Bereich in der App entfallen; die Prompt-Tabelle wird beim
+  nächsten Start entfernt. Gespeichert war dort nichts. (#870)
+- **Die Blöcke einer KI-Antwort heißen intern jetzt englisch.** Presse,
+  Ratsdebatten, Anlagen, Bauleitplanungen, Tagesordnungen und die Grafik werden
+  als `press_releases`, `debates`, `attachments`, `planning_procedures`,
+  `sessions` und `chart` übertragen. Gespeicherte Gespräche ziehen beim Start
+  mit um — sie zeigen ihre Blöcke also weiter, statt sie stillschweigend leer zu
+  lassen. (#913)
+- **Die KI-Frage antwortet bei Haushaltszahlen mit der Zahl.** Bisher begann sie
+  oft mit „die Ratsunterlagen geben keine Auskunft“ und nannte die Zahl erst
+  danach — weil ihr Prompt nur die Beschlüsse als Quelle kannte. Jetzt gelten
+  die Haushaltsdaten als Teil der Unterlagen: Wer nach dem Kontostand, dem
+  Anlagevermögen oder der Einwohnerzahl fragt, bekommt sie im ersten Satz.
+  (#985)
+- **Die Gebietsnamen des Quiz heißen jetzt englisch.** Wahlbereiche,
+  Ortsbereiche und Themen trugen ihre Bezeichnung nicht nur als Spalte, sondern
+  als Wert in den Zeilen — beides ist umgestellt, samt Ortskatalog. Für
+  Spielerinnen und Spieler ändert sich nichts; die Umstellung räumt die letzten
+  deutschen Namen aus dem Quiz-Teil der Schnittstelle. (#859)
+- **Quiz-Kategorien, Schwierigkeitsgrade und der Spielraum heißen intern jetzt
+  englisch.** Geschichte, Orte, Menschen, Ratspolitik und Schätzfrage werden als
+  `history`, `places`, `people`, `council_politics` und `estimation`
+  gespeichert, leicht/mittel/schwer als `easy`/`medium`/`hard` und der Spielraum
+  eines Produkts als `low`/`medium`/`high`. Auf der Seite und in der App steht
+  weiter das deutsche Wort; der Wortlaut, den die Stadt selbst in den Plan
+  schreibt, bleibt unverändert daneben stehen. (#891)
+- **Die Rollen der Anwesenheitsliste heißen jetzt englisch.** Wer eine Sitzung
+  leitet, wer Mitglied ist, wer für die Verwaltung da war — intern stand das
+  bisher auf Deutsch. Für Leser*innen ändert sich nichts: Die Seiten zeigen
+  weiter dieselben Zahlen und Bezeichnungen. (#874)
+- **Die Überschriften der API-Dokumentation heißen englisch.** Die erzeugte
+  OpenAPI-Datei führt 191 Antwortformen auf; 139 davon trugen noch deutsche
+  Namen — aus `Wochenvorschau` wird `WeekPreview`, aus `Beschlusszeile`
+  `DecisionRow`, aus `GespraechDetail` `ConversationDetail`, aus `QuizFrage`
+  `QuizQuestion`. Umgezogen sind ausschließlich die Namen der Formen: Kein Feld,
+  kein Pfad und kein Parameter der Schnittstelle ändert sich, Web und App zeigen
+  unverändert dasselbe. (#914)
+- **Vier weitere Wertelisten heißen intern jetzt englisch.** Wie eine Fraktion
+  gestimmt hat (`against`/`abstention`), wie ein Beschluss auf ein Stadtziel
+  wirkt (`advances`/`hinders`), wie zwei Themen zusammenhängen
+  (`documented`/`similar`) und woher eine Quizfrage stammt (`city`). Angezeigt
+  wird weiter das deutsche Wort. (#895)
+- **Die Haushalts-Abfragen haben ein eigenes Modul bekommen.** Sie lagen bisher
+  mitten in einer Datei mit über fünfzehntausend Zeilen, in der auch Sitzungen,
+  Beschlüsse und Personen wohnen. An der Website ändert sich nichts; für alle,
+  die am Code arbeiten, ist der Haushalt jetzt an einer Stelle zu finden.
+  (#1012)
+- **Die große Datenbank-Datei ist fertig aufgeteilt.** Sitzungen, Wortbeiträge
+  und Fundstücke waren die letzten drei Bereiche, die ein eigenes Modul bekommen
+  haben; übrig bleibt der gemeinsame Kern. An der Website ändert sich nichts.
+  (#1021)
+- **Auch das Zuordnen von Orten liegt jetzt beim Ortsmodul.** Dieselbe
+  Nachbesserung wie beim Haushalt: Die Funktionen, die Beschlüssen ihre Orte
+  zuweisen, waren beim Aufteilen zurückgeblieben. An der Website ändert sich
+  nichts. (#1024)
+- **Auch die Orte haben jetzt ihr eigenes Modul.** Katalog, Geocodierung,
+  Stadtteile und Kartenpunkte lagen bisher verteilt in derselben Datei wie
+  Sitzungen und Beschlüsse. An der Website ändert sich nichts; wer am Code
+  arbeitet, findet die Ortszuordnung jetzt an einer Stelle. (#1013)
+- **Personen und Themen haben eigene Module bekommen.** Damit ist die große
+  Datenbank-Datei um ein Viertel kleiner als am Morgen. An der Website ändert
+  sich nichts. (#1020)
+- **Presse und Quiz haben eigene Module bekommen.** Zwei weitere Ecken sind aus
+  der großen Datenbank-Datei ausgezogen. An der Website ändert sich nichts.
+  (#1017)
+- **Der Umbau der Datenbank hat eine eigene Datei bekommen.** Die Anweisungen,
+  die eine Datenbank beim Öffnen auf den aktuellen Stand bringen, standen mitten
+  zwischen den Abfragen — allein 2.458 Zeilen in einer einzigen Funktion. An der
+  Website und an der Reihenfolge der Schritte ändert sich nichts. (#1022)
+- **Auch das Einlesen der Haushaltsdaten liegt jetzt beim Haushalt.** Beim
+  Aufteilen war nur die Abfrageseite umgezogen; die 55 Funktionen, die die
+  Zahlen in die Datenbank schreiben, blieben zurück. An der Website ändert sich
+  nichts. (#1023)
+- **Eine lange Straße gehört jetzt in jeden Stadtteil, durch den sie führt.**
+  Bisher trug jeder Ort genau einen Stadtteil — den überwiegenden. Für eine
+  Schule oder einen Platz stimmt das; für eine Straße nicht. Die Alexanderstraße
+  verläuft zu 38 % in Bürgerfelde, zu 20 % in Alexandersfeld, zu 18 % im
+  Ziegelhof, zu 13 % im Ehnernviertel und zu 10 % in Dietrichsfeld — vier dieser
+  fünf Viertel sahen ihre eigene Straße nicht, wenn sie nach Beschlüssen bei
+  sich suchten. Das betraf 99 Orte im Bestand. Wer jetzt nach seinem Stadtteil
+  filtert, findet dort auch, was auf den Straßen passiert, die ihn durchqueren:
+  im Ziegelhof 124 Beschlüsse mehr, in Haarentor 125, im Ehnernviertel 105 —
+  darunter die Ausbauplanung der Alexanderstraße, die Fahrradstraße Quellenweg
+  und der Bebauungsplan Ostweg/Sandweg. Insgesamt werden 1.287
+  Beschluss-Zuordnungen sichtbar, die vorher nur ein einziges Viertel kannte.
+  Verloren geht dabei nichts. Zwei Dinge bleiben bewusst beim einen Stadtteil.
+  Ein Ort, der **genauso heißt wie ein Stadtteil**, färbt seine Nachbarn nicht
+  ein: Die Fläche, die ein Kartendienst für „Ofenerdiek" liefert, ragt nach
+  Nadorst hinein — aber unser eigener Umriss *ist* die Definition von
+  Ofenerdiek. Und die **Themen-Vorschläge** bleiben eng: Sonst schlägt das
+  Ehnernviertel „Hallensichel-Ost" vor, bloß weil dieses Thema einmal im selben
+  Beschluss stand wie die Alexanderstraße. Autobahnen bleiben außen vor. „A 293"
+  quert die halbe Stadt und gehört in keinen Stadtteil — sie wird weiter als Ort
+  genannt, verortet aber niemanden. (#902)
+- **Die Tabellen der Datenbank heißen jetzt englisch.** `council_haushalt` ist
+  `council_budget`, `council_wortbeitraege` ist `council_speeches`,
+  `qa_gespraeche` ist `qa_conversations` — 66 Tabellen in beiden Datenbanken.
+  Die Umbenennung passiert beim Start von selbst und bewahrt jede Zeile; auch
+  die Volltextindizes ziehen mit. Für Leser*innen ändert sich nichts. (#918)
+- **Die Änderungsarten der Tagesordnung heißen intern jetzt englisch.** Neu,
+  geändert, verschoben, Vorlage, Anlagen und entfernt werden als `new`,
+  `changed`, `moved`, `template`, `attachments` und `removed` geführt — in der
+  Chronik einer Sitzung, in der Ausschuss-Mail und in der App. Gespeicherte
+  Chroniken ziehen beim ersten Start mit um; angezeigt wird weiter das deutsche
+  Wort. (#894)
+- **Beschlüsse und Sitzungen sind im API-Vertrag jetzt vollständig
+  beschrieben.** Bisher stand dort nur „ein Objekt" — Web-Version und App
+  mussten selbst wissen, welche Felder ein Beschluss hat, jede für sich. Jetzt
+  stehen alle Felder im Vertrag, ein Test schlägt an, wenn die Datenbank eine
+  Spalte dazubekommt und die Beschreibung hinterherhinkt. Damit erzeugt auch die
+  native App ihre Datentypen aus derselben Quelle statt sie abzutippen. (#848)
+- **Weitere Serverantworten sind im Vertrag beschrieben.** Das Heute-Briefing,
+  die Sitzungspause, die Analyse- und Trendseiten, die Themenfelder, Gremien und
+  Ziele standen bisher als „ein Objekt" im Schema — Weboberfläche und App
+  mussten die Felder selbst kennen. Jetzt stehen sie dort, und beide erzeugen
+  ihre Datentypen daraus. (#849)
+
+### Behoben
+- **Eine stumme Modell-Antwort nimmt nicht mehr allen die Meldungen.** Antwortet
+  der KI-Anbieter mit einer leeren Antwort statt mit einem Fehler, brach der
+  tägliche Tagesordnungs-Lauf mittendrin ab — wer danach an der Reihe gewesen
+  wäre, bekam keine Benachrichtigung zu seinen Themen. Jetzt wird der Aufruf
+  wiederholt, und hält der Ausfall an, überspringt der Lauf nur diese eine
+  Zuordnung und macht mit allen anderen weiter; beim nächsten Lauf wird sie
+  nachgeholt. (#1032)
+- **Wortbeiträge mit einer Rolle vor dem Namen zählen wieder zur Person.** Stand
+  im Protokoll „Ausschussvorsitzender Behrens" statt „Herr Behrens", tauchte der
+  Beitrag auf keiner Personenseite auf — 39 Beiträge in zehn Schreibweisen.
+  Ursache war eine Namensverwechslung im Code: zwei Listen hießen gleich, und
+  die längere wurde von der kürzeren still überschrieben. (#1018)
+- **Ein Endpunkt kann nicht mehr etwas ausrechnen, das nie ankommt.** Wenn eine
+  Seite ein Feld an ihre Antwort hängt, das die beschriebene Antwortform nicht
+  kennt, wird es beim Verschicken stillschweigend entfernt — genau daran war
+  zuletzt die Trend-Ansicht in Web und App gescheitert. Das fällt jetzt vor dem
+  Zusammenführen auf. (#990)
+- **Der API-Vertrag beschreibt optionale Felder jetzt so, dass auch die native
+  App sie sieht.** Optionale Angaben standen in einer Schreibweise im Schema,
+  die der Swift-Codegenerator stillschweigend übergeht — 139 Felder wären in
+  einer nativen App schlicht nicht angekommen, ohne dass irgendwo ein Fehler
+  aufgetaucht wäre. Die Schreibweise ist umgestellt, ein Test hält sie fest.
+  Nebenbei wurden fünf Stellen im Vertrag genauer, an denen er ungenauer war als
+  die Weboberfläche. (#844)
+- **Drei Ansichten der App lasen Feldnamen, die es nicht mehr gibt.** Die
+  Ziel-Übersicht, das Personen-Lexikon und der Zähler der freien Recherchen
+  fragten das Backend nach Feldern, die dort inzwischen anders heißen; die
+  Trend-Ansicht fragte nach einem, das die Antwort gar nicht mehr verließ. Web
+  und App zeigen die Trends wieder. Neu ist außerdem eine Prüfung, die jede
+  Swift-Struktur gegen das Schema hält, das sie decodieren muss — sie rechnet
+  sich aus der Aufrufstelle aus, statt Namen zu raten. (#982)
+- **Der Prüfbericht 2025 des Abfallwirtschaftsbetriebs liest sich jetzt.** Sein
+  Textextrakt verklebt die Zellen der Mehrjahresübersicht
+  („BilanzsummeT€24.50625.500…“). Zeigt ein Extrakt solche verklebten Zellen,
+  setzt der Einlese-Lauf die Zeilen aus den Wortrahmen des PDFs neu — dieselbe
+  Lesung, dieselben Proben. Damit trägt der AWB fünf weitere Jahre Kennzahlen
+  bis 2025. (#992)
+- **Drei strittige Kennzahlen des Abfallwirtschaftsbetriebs stehen jetzt im
+  Bestand.** Der Bilanz-Leser nahm beim AWB die Zeile „Sonderposten“ für das
+  Eigenkapital 2017 und 2018, weil sie zwischen Eigenkapital und Rückstellungen
+  steht; jetzt endet der Eigenkapital-Block davor. Und zwei Berichte, die
+  dieselbe Zahl um einen Tausender verschieden runden (Cashflow 2024: 1.858 und
+  1.859 TEUR), gelten als Bestätigung, nicht als Widerspruch. (#999)
+- **Beschluss-Karten zeigen keine Lücken mehr, wo Gremium oder Datum fehlen.**
+  Ein Beschluss, dessen Sitzung nicht im Bestand steht, hat weder das eine noch
+  das andere. Die Karte setzte beides trotzdem voraus und schrieb dann eine
+  Zeile mit fehlenden Angaben. Jetzt zeigt sie, was sie hat, und lässt den Rest
+  weg. (#976)
+- **Die Plan-Bilder der Bebauungspläne hingen an einer leeren Spalte.** Beim
+  Umbenennen der Datenbank war `council_anlagen` zu zwei Bildspalten gekommen —
+  einer gefüllten und einer leeren, an der alle Leser hingen. Behoben, samt
+  derselben Falle im Wirtschaftsplan. (#881)
+- **Die Wochenvorschau für den Instagram-Kanal lief in einen Fehler, sobald die
+  nächste Ratssitzung noch keine Tagesordnung hatte.** Behoben. Außerdem waren
+  bei der Umstellung auf englische Feldnamen 52 deutsche Sätze mitübersetzt
+  worden — sie standen unter anderem in den Belegtexten unter den Zahlen
+  („ergeben zusammen exact die Summe"). Sie lauten wieder wie vorher. Außerdem
+  lief das Auswertungs-Skript für die Ortszuordnung seit der
+  Stadtteil-Umbenennung in einen Datenbankfehler. **Die Zahl der
+  Tagesordnungspunkte fehlte in der Sitzungsliste.** Web und App zeigten „0
+  TOPs" bzw. eine leere Zahl — der Wert wurde beim Ausliefern still entfernt,
+  weil er in der Antwortform nicht stand. (#863)
+- **Das Ergebnis eines Dringlichkeitsantrags stand am falschen Punkt.** Weil
+  Dringlichkeitsanträge eine eigene Zählung haben, landete die Abstimmung über
+  „DZT 1" bei Tagesordnungspunkt 1 — also bei der Feststellung der
+  Beschlussfähigkeit, über die nie abgestimmt wird —, während beim Antrag selbst
+  kein Ergebnis stand. Beides sitzt jetzt richtig. (#925)
+- **Das Admin-Panel zählt jetzt wirklich, was es anzeigt.** Im Nutzer-Detail
+  standen „Beschluss-Suche", „Analyse" und „Stadtkarte" für jedes Konto auf
+  „nie" — die Zähler gab es seit dem ersten Admin-Panel, die Aufrufe, die sie
+  hochzählen, nie. Sie ticken jetzt an den drei Stellen, und die Gründliche
+  Recherche, die längst mitgezählt wurde, bekommt endlich ihren eigenen Chip.
+  Gezählt wird eine Absicht, kein Seitenaufruf: Wer die Beschlussliste nur
+  öffnet und blättert, taucht nicht als Suche auf. (#909)
+- **Zehn Zähler und Zahlen im Haushalt stehen jetzt sauber.** Die Rücklage-Karte
+  zählt Werte wie ihr Tabellen-Link, die Produktebene zählt Hero, Einleitung,
+  Filter und Trefferzeile gleich (77 Produkte, darunter 7 Stiftungen ohne Amt)
+  und benennt Überschüsse als solche, die Abdeckungs-Chips sagen „Daten ab 2021“
+  statt „ohne 2019–2020“, unbesetzte Stellen tragen einheitlich zwei
+  Nachkommastellen, die Gewerbesteuer-Kurve bekommt runde Achsenwerte, Lücken in
+  den Gebühren- und Wirtschaftsplan-Kurven nennen ihren Grund, ein Bereich ohne
+  Auszahlung sagt das statt „davon gedeckt“, der Beleg-Chip der
+  Nachbewilligungen hängt an der Überschrift, und die Produktebene behauptet
+  nicht mehr, ihr jüngstes Jahr gebe es noch nicht. (#1002)
+- **Die Änderungslisten zum Finanzhaushalt 2019 und die beschlossenen Änderungen
+  2020 fehlten auf „Mitreden“.** Zwei Bauformen hatte der Leser nicht gekannt:
+  eine Position, die nur einen einzelnen Betrag trägt (2019, Erschließung
+  Gewerbeflächen), und ein ganzer Block ohne laufende Nummern (Beschluss 2020,
+  Planjahr 2022). Beide Dokumente gehen jetzt auf, 17 von 18 Listen sind im
+  Bestand; die achtzehnte widerspricht ihrer eigenen Zusammenstellung um 25.000
+  € und bleibt draußen, ihre inhaltsgleiche Zweitablage steht. (#974)
+- **Die Gebührenbedarfsberechnung 2019 ist jetzt vollständig lesbar.** Der
+  gescannte Bericht verlor in der Texterkennung zwei von vier Minuszeichen; ein
+  gedrucktes Minus zählt als Abzug, ein positiver Betrag ist Zwischensumme oder
+  Abzug, je nachdem, ob er dem laufenden Stand gleicht — und nur die Lesart
+  gilt, die die Zeile „zu decken sind“ trifft. Die Straßenreinigung 2019 trägt
+  ihren Jahrgang nur in der Kalkulationszeile und rechnet die Unterdeckung aus
+  Vorjahren hinzu; die Tarifübersicht endet jetzt an ihrer Zeile statt am
+  Dokumentende. Damit stehen Abfallbehandlung (118,60 € je Tonne),
+  Straßenreinigung (3,74 €) und zwölf Tarife für 2019 im Bestand. (#995)
+- **Die Gebührenbedarfsberechnung 2021 ist jetzt lesbar.** Der gescannte Bericht
+  kam nur über die Texterkennung herein, und dort stehen alle Abzüge ohne
+  Minuszeichen. Der Parser rät kein Vorzeichen: Ein Betrag gilt als
+  Zwischensumme, wenn er dem laufenden Stand gleicht, sonst als Abzug — und nur
+  wenn die Zeile „zu decken sind“ damit exakt getroffen wird, zählt die Lesung.
+  Damit tragen Abfallbehandlung 2021 (121,95 € je Tonne) und die zwölf Tarife
+  des Jahrgangs erstmals einen Beleg. (#991)
+- **„Frag den Rat" zeigte nur die letzten 50 Gespräche.** Wer mehr gespeichert
+  hatte, kam an die älteren nicht mehr heran — sie lagen weiter im Konto, waren
+  über die Liste aber unerreichbar, und auch die Zähler blieben bei 50 stehen.
+  Die Gespräche-Liste blättert jetzt: „Ältere anzeigen" holt die nächste Seite
+  nach, Kopf-Knopf und Konto-Einstellung nennen den echten Bestand, und das
+  Suchfeld durchsucht alle Gespräche statt nur der sichtbaren. (#831)
+- **Der Stellenplan 2026 zeigte nur die Beamtinnen und Beamten.** Im PDF der
+  Verwaltung tragen die Seiten des Teils B (Arbeitnehmerinnen und Arbeitnehmer)
+  keine Zeichenzuordnung — als Text kommt Buchstabensalat heraus, während der
+  Rest des Dokuments lesbar ist. Der Nachlade-Lauf erkennt solche einzelnen
+  Seiten jetzt und liest sie per Texterkennung; damit stehen beide Teile des
+  Stellenplans 2026 im Bestand. (#978)
+- **Vier Haushaltsseiten lasen noch die alten Feldnamen.** Nach dem Umbau der
+  Schnittstelle auf Englisch zeigte der Steuer-Steckbrief unter „Geplant und
+  geworden" nur NaN, der Städtevergleich verlor seine Bühne samt „Steuerkraft je
+  Einwohner*in", und bei den dreizehn Kennzahlen stand der Rohschlüssel
+  „population" statt der Einwohnerzahl. Die Steckbrief-Adressen `?art=gebuehren`
+  und `?art=kleine-steuern` heißen wieder deutsch, wie alle Adressen der
+  Website. Dazu drei Textfehler („kein Ansatz balance", zwei fehlende
+  Leerzeichen). (#921)
+- **Der Hebesatz der Haushaltssatzung wird wieder gegen das Statistische
+  Jahrbuch gehalten.** Die Satzung nennt ihre Grundsteuer- und
+  Gewerbesteuer-Hebesätze selbst; Tabelle 1105 des Jahrbuchs nennt sie auch.
+  Gehen beide auseinander, widersprechen sich zwei Häuser, und der Jahrgang
+  fällt durch. Diese Probe lief seit ihrer Einführung ins Leere, weil sie die
+  Steuerart unter einem Namen suchte, den es in den Daten nicht gibt — sie
+  meldete deshalb immer „keine Vergleichszahl vorhanden", was für den kommenden
+  Haushalt der Normalfall ist und darum niemandem auffiel. Der Prüfvermerk steht
+  jetzt wieder an den Jahrgängen, für die es eine Jahrbuchzahl gibt. (#941)
+- **„Heute im Rat" nennt wieder die Zahl der Tagesordnungspunkte.** Unter dem
+  Hinweis auf die laufende Sitzung stand, wie viele Punkte auf der Tagesordnung
+  stehen. Seit der Umstellung der Schnittstelle auf englische Feldnamen kam die
+  Zahl der übrigen Punkte unter einem neuen Namen an, und weder die Website noch
+  die App lasen ihn — die Angabe verschwand deshalb ganz. Beide zählen jetzt
+  wieder vollständig. (#979)
+- **Zwei weitere Ingest-Skripte lasen ein umbenanntes Feld.** Die
+  Nachbewilligungen und die Steuertabellen des Jahrbuchs fragten noch `art`
+  statt `kind` ab und rissen damit den Finanzdaten-Lauf auf dev, sobald er bis
+  zu ihnen kam. (#929)
+- **In der App klebten Absätze und Zwischenüberschriften der KI-Antwort
+  aneinander.** „… vertagt ⑦.Kosten und FinanzierungPlanungskosten: …" — ohne
+  Leerzeichen, und die Überschrift stand unformatiert mitten im Fließtext.
+  Ursache war der Markdown-Parser von iOS: Er erkennt Absätze, Überschriften und
+  Listen zwar, wirft ihre Grenzen im Ergebnis aber ersatzlos weg. Die App
+  schneidet die Blöcke jetzt selbst — Überschriften stehen als Überschriften,
+  Aufzählungen als Aufzählungen, Absätze mit Luft dazwischen. Ebenfalls behoben:
+  Unter „Aktuelles von der Stadt" stand nur eine Überschrift samt Link nach
+  draußen; die Meldung selbst lag längst in der Datenbank und wurde auf dem Weg
+  zur Anzeige verworfen — jetzt steht sie da, im Web wie in der App. Und die
+  Datumszeilen der Belege zeigten stellenweise das rohe „2026-08-27" statt „27.
+  Aug. 2026". (#903)
+- **Die App zeigt bei „Meine Themen" wieder, wie oft ein Thema zuletzt vorkam.**
+  Unter jedem Thema steht, wie viele Beschlüsse dazu im Betrachtungszeitraum
+  gefunden wurden. Seit der Zeitraum von 30 Tagen auf sechs Monate erweitert
+  wurde, las die App den Wert noch unter seinem alten Namen — sie bekam ihn
+  deshalb nie und zeigte bei jedem Thema „0 in 30 Tagen", unabhängig davon, wie
+  viel wirklich gefunden wurde. Jetzt steht dort die richtige Zahl und der
+  richtige Zeitraum. Die Website war nie betroffen. (#947)
+- **Auf dem iPad im Hochformat brach der Willkommens-Bildschirm um.**
+  „Mitteilung bei neuen Beschlüssen" und „Rat Oldenburg" rutschten mitten im
+  Satz in die zweite Zeile, und auf dem Anmelde-Bildschirm war die Überschrift
+  „Was entscheidet die Stadt?" abgeschnitten. Beide Ansichten stellen sich jetzt
+  nach der tatsächlichen Breite auf, nicht nach der Gerätegröße. (#865)
+- **Die Stadtkarte lieferte gar nichts mehr.** Ein Teil ihrer Punkte — die aus
+  Themen abgeleiteten — trägt weniger Angaben als die aus Beschlussorten; seit
+  der letzten Beschreibung der Antwortform galten diese Angaben als Pflicht, und
+  die Karte brach beim Ausliefern komplett ab. Gefunden hat es die Prüfung nach
+  dem Deploy, die jetzt auch die angemeldeten Seiten abruft: 48 statt acht.
+  (#997)
+- **Der Konzern-Ingest brach an einem umbenannten Feld ab.** Die
+  Trägeraufstellung des Gesamtabschlusses liefert seit dem Umbau `kind` statt
+  `art`; der Ingest las noch den alten Namen und riss damit den ganzen
+  Finanzdaten-Lauf auf dev ab, bevor die späteren Schichten an die Reihe kamen.
+  (#927)
+- **Kreditaufnahmen 2019 bis 2021 fehlten auf der Schulden-Seite.** Die
+  Unterrichtungen dieser Jahre heißen im Ratsinformationssystem anders
+  („Unterrichtung nach § 8 der Kreditrichtlinie“) und schreiben jeden Vorgang
+  als Feldliste — Abruf, Wertstellung, Zinssatz, Zinsfestsetzung. Beides liest
+  der Bereich jetzt, und weil diese Vorlagen ohne Text im Bestand lagen, holt
+  der Einlese-Lauf die Texte selbst nach. (#975)
+- **Die Schulden-Seite lud nicht mehr, sobald die Kredite-Zahlen da waren.** Der
+  Antwortvertrag des Kredite-Endpunkts hatte die Herkunfts-Einträge nicht
+  deklariert, die Seite las sie aber — der Vertrag trägt sie jetzt. (#970)
+- **Eine leere Datei hätte den Datenbank-Umzug blockiert.** Beim Start benennt
+  sich die Konten-Datenbank selbst von ihrem alten Namen auf den neuen um. Lag
+  am neuen Ort schon eine leere Datei, galt der Umzug als erledigt — die App
+  hätte das Schema dort neu angelegt und wäre mit leeren Konten hochgekommen,
+  während die echten Daten unberührt unter dem alten Namen liegen. Eine 0 Byte
+  große Datei zählt jetzt als „nicht da"; liegen zwei gefüllte Datenbanken
+  nebeneinander, sagt es das Log statt zu raten. (#912)
+- **An Ratstagen steht im „Live"-Hinweis jetzt die Sitzung, die wirklich
+  läuft.** Drei Gremien tagen dort nacheinander im selben Haus — 16 Uhr der
+  Ausschuss für Allgemeine Angelegenheiten, 16:30 Uhr der Verwaltungsausschuss,
+  18 Uhr der Rat. Sie warten aufeinander, sie tagen nicht parallel. Der
+  Ratslotse rechnete bisher pauschal mit vier Stunden ab Beginn und zeigte um
+  halb sieben deshalb noch den Ausschuss, der längst vorbei war — auf der
+  Startseite, auf „Heute" und als LIVE-Zeichen in der Sitzungsliste. Jetzt endet
+  eine Sitzung auf die Minute, sobald die nächste beginnt. Folgt keine weitere,
+  endet sie nach drei Stunden; nur der Rat behält seine vier, weil er sich
+  länger zieht. (#883)
+- **Das Ende des „Live"-Fensters steht jetzt auch im API-Vertrag.** Die
+  Antwortform der Sitzungsliste und des „Heute im Rat"-Briefings zählt ihre
+  Felder seit dem Vertrags-Umbau einzeln auf — und was dort nicht steht,
+  schneidet die API still ab. Der neue Zeitpunkt, bis zu dem eine Sitzung als
+  laufend gilt, fiel deshalb auf dem Weg zu den Anzeigen heraus, zusammen mit
+  der Liste aller Sitzungen des Tages. Beide sind eingetragen. (#885)
+- **Zwei Jahrgänge lagen im Ratsinformationssystem und wurden nicht gefunden.**
+  Die Haushaltssatzung 2022 hängt dort als „HH Satzung 2022“ am Beschluss, die
+  Gebührenbedarfsberechnung 2021 nur als „Anlagen 1-4“ an ihrer Vorlage — beide
+  Namen passten zu keinem Suchmuster. Die Erkennung schaut jetzt auch auf den
+  Titel der Vorlage, und die Nachlade-Läufe für Text und Texterkennung nehmen
+  dieselben Dokumente wie der Datenstand. (#973)
+- **Lottis Schatten pulst nicht mehr, und den Schal gibt es erst zum
+  Herbstanfang.** Beim Blinzeln und nach jeder Geste flackerte kurz der
+  Bodenschatten auf — eine Überblendung im Abspieler, die dort gar nichts zu
+  überblenden hatte; sie läuft jetzt nur noch, wo wirklich ein Sprung ist, und
+  beim Blinzeln atmet Lotti einfach weiter. Ihre Kleidung folgt außerdem den
+  Kalender-Jahreszeiten statt den meteorologischen: Sonnenbrille bis zum 21.
+  September, Schal erst danach. Und in der Karte der gründlichen Recherche ist
+  sie ein Stück gewachsen. (#906)
+- **Lotti ist jetzt überall scharf — und ihre Gesten bedeuten etwas.** Die
+  Sprite-Blätter sind in doppelter Auflösung neu gebacken (auf Retina- und
+  Telefon-Bildschirmen war die Figur bisher weich, im Ruhezustand zusätzlich
+  durch die Atembewegung verwaschen). Außerdem spielt Lotti von selbst nur noch
+  Blinzeln und Nicken: Winken, Lachen oder Nachdenken erscheinen nur dort, wo
+  sie etwas heißen — und drei sind ganz neu gebaut: Bei der gründlichen
+  Recherche jongliert Lotti, bis die Dokumente dran sind, dann liest sie mit und
+  schreibt schließlich am Bericht; bei voller Quiz-Punktzahl stemmt sie einen
+  Pokal samt Konfetti. Dazu erklärt sie am „Lotti erklärt's einfach"-Kasten, hat
+  die Glühbirne überm Kopf beim Fundstück des Tages, fragt am Quiz und ist kurz
+  traurig, wenn eine Seite nicht laden konnte. (#898)
+- **Die Themen-Mail meldet nur noch aktuelle Beschlüsse.** „Neu" hieß im
+  Wochenabgleich bisher bloß „stand letzte Woche noch nicht in der Trefferliste"
+  — und das trifft auch jahrealte Beschlüsse, die erst jetzt über die
+  Relevanzschwelle rutschen. So ging eine Mail zu einem Thema raus, deren
+  Beschluss aus dem März 2023 stammte. Ab sofort löst nur noch eine Sitzung aus
+  den letzten sechs Monaten Post aus — dieselbe Grenze, die auf der Themen-Karte
+  als „n in 6 Monaten" steht. Ältere Treffer bleiben unverändert in der Liste
+  und im Zähler stehen, sie klingeln nur nicht mehr. (#832)
+- **„Mitreden" ließ sich auf dem Telefon seitwärts schieben.** Die Tabelle mit
+  den Positionen der Änderungslisten braucht für drei Spalten aus Text und
+  Zahlen mehr Platz, als ein Telefon hat — die Seite lief dadurch waagerecht
+  über, und zwar schon, bevor der Urheber dazukam. Auf schmalen Schirmen ist sie
+  jetzt keine Tabelle mehr, sondern eine Liste: Jede Position steht als eigener
+  Block, und die Beträge tragen ihre Beschriftung („Ertrag", „Aufwand") direkt
+  bei sich, statt sie aus einer Kopfzeile zu beziehen, die weit oben steht. Wo
+  eine Position in einer Spalte gar nichts trägt, entfällt die Zeile — der
+  Gedankenstrich, den die Tabelle dort zeigen muss, hätte unter jeder Position
+  eine tote Zeile hinterlassen. Ab Tablet-Breite bleibt alles wie gehabt, samt
+  mitscrollender Kopfzeile. Gleich mit behoben: Die Verhandlungsbilanz darüber
+  („wer wollte ändern und kam damit durch") schob sich bei genau zwei
+  Fensterbreiten ebenfalls aus ihrer Karte — bei 744 Pixeln und, weil dort die
+  Seitenleiste einsetzt und Platz wegnimmt, bei 1024. Ihre Spalten dürfen jetzt
+  schmaler werden, wenn es eng wird; wo Platz ist, sind sie unverändert breit.
+  (#841)
+- **Der Nachbewilligungs-Ingest suchte den Rats-Kanal unter seinem alten
+  Namen.** Die Entscheidungswege des Rechenschaftsberichts heißen seit dem Umbau
+  englisch; das Skript fragte weiter „rat" ab und brach beim Lesen der
+  Rechenschaftsberichte ab. (#932)
+- **Der Einrichtungs-Assistent reagiert sofort und schlägt Besseres vor.** Drei
+  Befunde vom ersten Tag auf dev, alle behoben. **Ein Klick auf einen Stadtteil
+  brauchte Sekunden.** Ein Stadtteil ist ein Thema, und ein neues Thema gleicht
+  der Server sofort mit dem Beschlussbestand ab; nach einem Neustart des
+  Dienstes lädt er dafür erst die Modelle. Die Pille sprang erst danach um, und
+  solange war jeder weitere Klick gesperrt. Jetzt springt die Anzeige sofort,
+  jeder Stadtteil wartet für sich, und Klicks laufen nebeneinander; nur wenn der
+  Server nein sagt, fällt die Anzeige zurück. **Die Vorschläge kamen spät und
+  ohne Hinweis.** Für jeden noch nie gesehenen Vorschlag entschied ein Modell im
+  laufenden Aufruf, ob der Name als Thema taugt; beim ersten Aufruf nach einer
+  Neuberechnung waren das Dutzende Entscheidungen hintereinander. Die Urteile
+  werden jetzt im Wochenlauf vorgerechnet, und solange der Assistent sucht, sagt
+  er das mit Platzhaltern. **Unter dem eigenen Stadtteil standen Straßen und
+  Plannummern.** Wer „Krusenbusch" gewählt hatte, dem wurden „Quartier am
+  Krusenbusch" und „Grundschule Krusenbusch" als Dubletten des eigenen Themas
+  weggefiltert, also genau das Beste. Ein Stadtteil-Thema zählt beim
+  Dubletten-Vergleich nicht mehr mit. Straßen mit zwei, drei Erwähnungen fallen
+  aus den Stadtteil-Listen; starke Straßen bleiben, hinten. Namen, die nach
+  stadtweitem Vorgang klingen, gehören in die stadtweite Liste. Und eine
+  Plannummer trägt ihre Erklärung sichtbar auf dem Chip („Bebauungsplan 862 ·
+  Quartier am Krusenbusch"), nicht im Tooltip, den es auf dem Telefon nicht
+  gibt. **Eigene Themen standen unter dem sichtbaren Bereich.** Sie stehen jetzt
+  direkt unter dem Eingabefeld, eine Zeile je Thema, und ein Thema, das gerade
+  angelegt wird, erscheint dort sofort mit dem Hinweis, dass Lotti noch die
+  Beschlüsse dazu liest. (#926)
+- **Der Bestandsbericht des Finanzdaten-Laufs war seit dem Umzug der Tabellen
+  blind.** Er fragte die alten deutschen Tabellennamen ab und meldete für jede
+  Schicht „no such table", ohne den Lauf rot zu färben. Jetzt zählt er die
+  Tabellen unter ihren heutigen Namen, findet die Jahresspalten wieder und zählt
+  gelesene Scans am Sehmodell statt an einem Status, den es nicht mehr gibt.
+  (#933)
+- **Beschlüsse landen zuverlässiger im richtigen Stadtteil.** Eine Prüfung des
+  echten Ratsbestands brachte sechs Fehler zutage, die sich alle darauf
+  auswirken, was auf der Stadtkarte, im Stadtteil-Filter und bei der Frage „was
+  passiert in meinem Viertel?" erscheint. **Straßen lagen im falschen Stadtteil
+  — oder in gar keinem.** Der Stadtteil eines Ortes wurde aus einem einzigen
+  Punkt abgeleitet: dem Mittelpunkt seines umschließenden Rechtecks. Bei Flächen
+  geht das; bei Straßen liegt dieser Punkt oft neben der Straße. „Am Bahndamm"
+  verläuft auf ganzer Länge in Drielaker Moor und stand auf Drielake, weil der
+  Mittelpunkt dort landete — 63 Beschlüsse, unter ihnen die Straßenbenennungen
+  und Grundstücksvermarktungen des neuen Wohngebiets. Die Bremer Straße stand
+  umgekehrt, der Sperberweg in Eversten statt Kreyenbrück, die Huntestraße in
+  einem Viertel, das sie nicht berührt. Jetzt entscheidet der ganze Verlauf.
+  **Ein einmal falsch eingetragener Stadtteil blieb für immer stehen.** Der
+  Nachtrag füllte nur leere Felder — richtig für Lücken, wirkungslos gegen
+  Falsches. Widerspricht die Geometrie dem eingetragenen Bereich, gilt jetzt die
+  Geometrie. Nur beim klaren Widerspruch: Eine Straße, die durch drei Bereiche
+  läuft und mit einem davon eingetragen ist, bleibt unangetastet. **Orte, die
+  ihren Stadtteil im Namen tragen, wurden ignoriert.** „Oberschule Ofenerdiek",
+  „GS Drielake", „Bürgerhaus Ofenerdiek" — kein Kartendienst findet solche
+  Namen, und so blieben 71 Orte mit zusammen 176 Beschluss-Verweisen unsichtbar.
+  Nennt der Name eindeutig einen Stadtteil, zählt er jetzt. Nennt er zwei,
+  bleibt der Ort lieber ohne Zuordnung als mit einer geratenen. Heißt ein Ort
+  *genau* wie ein Stadtteil, ist er dieser Stadtteil — auch wenn ein
+  Kartendienst eine Fläche nebenan gefunden hat. **Stadtweite Vorgänge bekamen
+  einen Stadtteil, der ihnen nicht zusteht.** Der „Oldenburg Pass" hing an der
+  Anschrift des Verkehrsbetriebs, das Rad- und Fußverkehrsprogramm an einer
+  einzelnen Straße, die Marktgebührensatzung an der Weser-Ems-Halle. Steht der
+  Ort nur im Vorlagentext und ist der Vorgang seinem Titel nach stadtweit —
+  Satzung, Programm, Jahresabschluss, Besetzung —, gilt er künftig als Beiwerk.
+  Nennt der Titel den Ort selbst, bleibt alles wie es war: „Masterplan
+  Fliegerhorst" ist und bleibt am Fliegerhorst, und jede Mehrauszahlung „für den
+  Ausbau Pophankenweg" behält ihre Straße. **Diese Regel übersah
+  zusammengesetzte Wörter — also fast alle.** Sie suchte „Programm" mit
+  Wortgrenze davor und traf damit kein einziges Kompositum: ausgerechnet „Rad-
+  und Fußverkehrs­programm" und „Wohnungsbauförderungs­programm", ihre eigenen
+  Musterfälle, fielen durch. Ebenso Marktgebühren­satzung, Klimaschutz­konzept,
+  Vergnügungsstätten­konzept. Das Hinterglied zählt jetzt; die Wortgrenze
+  dahinter bleibt und schützt den „Satzungs­beschluss", mit dem jedes
+  Bebauungsplan-Verfahren endet. **Die Regel las nur den Nominativ.** Sie stand
+  am Wortende und traf damit „Satzung", aber nicht „der Satzungen", „Konzept",
+  aber nicht „des Konzeptes". Im Titel eines Ratsvorgangs sind Genitiv und
+  Plural die Norm — „Änderung des Rahmenkonzeptes", „Fortschreibung des
+  Lärmaktionsplans" —, also ging fast alles daneben. Deutsche Endungen zählen
+  jetzt mit. **Und sie sah nur in die Vorlage, nicht in den Beschluss.** Der
+  Beschlusstext galt als das verlässlichere Papier. Er ist es nicht: Auch dort
+  stehen Anschriften, die dem Vorgang nicht gehören — „Verkehr und Wasser GmbH:
+  Jahresabschluss 2022" hing an der Bürgerfelder Straße, die „Besetzung des
+  Schulausschusses" an Eversten. Was schützt, ist der Titel, nicht die Herkunft
+  des Fundes: Nennt er den Ort, bleibt er. **Kennungen sahen aus wie Orte.** „A
+  293" stand auf Nadorst, „A 29" auf Neuenwege, „FH-24" — eine Plannummer vom
+  Fliegerhorst — auf Bloherfelde, „26122" ist eine Postleitzahl. Dass die
+  Autobahn in einem Beschluss vorkommt, stimmt ja; sie quert nur die halbe
+  Stadt. Solche Verweise bleiben deshalb stehen und verlieren nur ihren
+  Stadtteil. **Gattungsbegriffe waren als Orte erfasst.** „Gemeindestraße",
+  „Radweg", „Kunstrasenplatz" und sogar „Monitoring" standen mit über hundert
+  Verweisen in den Daten, ohne je zu einem Stadtteil zu führen. Sie fallen jetzt
+  weg — die konkrete „Entlastungsstraße Fliegerhorst" bleibt selbstverständlich,
+  und Privatanschriften aus Personalvorlagen (die Wohnadressen vorgeschlagener
+  ehrenamtlicher Richterinnen und Richter) verschwinden mit. **Straßen der
+  Nachbargemeinden verfälschten den Verlauf.** Die Straßensuche fragt in einem
+  Rechteck um Oldenburg — und das ist größer als die Stadt. Bei häufigen Namen
+  kam der gleichnamige Weg von nebenan mit ins Ergebnis, beide wurden zu einem
+  Verlauf verschmolzen, und der lag dann teils außerhalb. Fremde Abschnitte
+  werden jetzt abgeschnitten; bleibt nichts übrig, gilt die Straße als nicht
+  gefunden. Unterm Strich verlieren die Stadtteile 1.310 Zuordnungen, die dort
+  nie hingehörten. Am meisten geben die Viertel ab, in denen eine Nebenerwähnung
+  besonders oft eine stadtweite Satzung, einen Wirtschaftsplan oder einen
+  Leitantrag angezogen hat. Nachgemessen ist der Bestand am Ende
+  widerspruchsfrei: kein Ort mit Geometrie liegt in einem anderen Stadtteil, als
+  seine Geometrie sagt; keine Privatanschrift, kein Gattungsbegriff und keine
+  nackte Kennung führt mehr in ein Viertel; und in einer Stichprobe von 280
+  Beschluss-Zuordnungen findet sich keine, die ohne Beleg geraten wäre. Ein
+  zweiter und dritter Durchlauf ändern nichts mehr. (#902)
+- **Die Liste der verfolgten Vorgänge konnte in der App leer bleiben.** Eine
+  Vorlage ohne Titel hätte gereicht, damit die ganze Liste nicht mehr lädt — im
+  Bestand stehen zwei davon. Dasselbe galt für ein Beteiligungsverfahren ohne
+  Verweis auf der Beschluss-Seite. Umgekehrt beschrieb die Schnittstelle acht
+  Angaben zum Konto als „darf fehlen", obwohl sie immer mitkommen; auch das
+  steht jetzt richtig da. (#993)
+- **Die Produktebene des Haushalts stand ein Jahr hinter ihren eigenen Plänen —
+  und vier Bereiche fehlten in jedem Jahrgang.** Die Teilhaushaltspläne sagen in
+  ihrer Kopfzeile fünfmal „Ansatz": den fortgeschriebenen Vorjahresansatz, den
+  Ansatz des Haushaltsjahres und drei Jahre Finanzplanung. Gelesen wurde bisher
+  der erste — deshalb füllte der Verwaltungsentwurf für 2026 den Jahrgang 2025,
+  und was einzelne Aufgaben 2026 kosten sollen, stand nirgends. Dazu warf eine
+  Mindestseitenzahl die vier dünnsten Pläne aus jedem Jahrgang: Für Schule und
+  Bildung, Wirtschaftsförderung und Liegenschaften, Personal und IT sowie die
+  Stiftungen sagte die Seite „kein auslesbarer Teilhaushaltsplan", obwohl ihre
+  Pläne danebenlagen. Jetzt zeigt die Produktebene **alle dreizehn Bereiche bis
+  2026** — 584 Aufgaben statt 515, jede mit Kurzbeschreibung, Auftragsgrundlage
+  und dem Spielraum, den die Stadt selbst dabei sieht. (#931)
+- **Zwei Einlese-Läufe hätten die Herkunft eines Dokuments doppelt angelegt.**
+  Die Quellenart „Veröffentlichung auf oldenburg.de" heißt gespeichert seit dem
+  Umbau `city`; drei Stellen im Code schrieben aber weiter `stadt`, und weil der
+  Fingerabdruck einer Quelle ihre Art mitrechnet, hätte derselbe Haushaltsplan
+  beim nächsten Einlesen einen zweiten Eintrag bekommen statt seinen alten
+  wiederzufinden. Der Schuldenreihen-Lauf wäre zusätzlich mit einem Fehler
+  abgebrochen, weil er das Feld noch unter seinem alten Namen übergab. Ein neuer
+  Prüflauf hält jeden Herkunfts-Aufruf im Quelltext gegen das Register. (#892)
+- **Die Gründliche Recherche versteht jetzt Anschlussfragen.** Wer nach einer
+  Antwort „Nochmal bitte ausführlich" schrieb, bekam einen Bericht über ganz
+  andere Themen: Die Recherche kannte das bisherige Gespräch nicht und zerlegte
+  den Zuruf wörtlich. Jetzt löst sie ihn — wie die schnelle Frage — zur
+  eigentlichen Frage auf und recherchiert zum richtigen Thema. (#830)
+- **Der nächste Einlesevorgang der integrierten Schulden wäre abgebrochen.** Die
+  Spalte für die übrigen Schulden heißt in einer gewachsenen Datenbank längst
+  `other`, im Tabellen-Entwurf stand aber weiter der alte deutsche Name — der
+  Einlesevorgang nannte ihn und wäre auf dev und Prod im Datenbankfehler
+  gestorben. Auf einer frischen Datenbank funktionierte er, weshalb kein Test
+  etwas merkte. Ein neuer Prüflauf hält das frische Schema ab jetzt gegen jede
+  Umbenennung. (#897)
+- **Der Schlussbericht 2024 des Rechnungsprüfungsamts kommt jetzt an die OCR.**
+  Sein PDF liefert Zeichen-Nummern statt Buchstaben; er war vor der
+  Buchstaben-Schwelle geladen worden und stand deshalb als „gelesen" im Bestand,
+  ohne lesbar zu sein — kein Lauf fasste ihn mehr an. Der Text-Backfill zieht
+  die Schwelle jetzt nachträglich über den Bestand und stellt solche Anlagen
+  dorthin, wo der OCR-Lauf sie findet. (#922)
+- **Derselbe Ort stand mehrfach in den Daten, nur anders geschrieben.** „Alte
+  Fleiwa" und „AlteFleiwa", „Marschwegstadion" und „Marschweg-Stadion",
+  „Maastrichter Straße" und „Maastrichter Str", „GS Röwekamp" und „Grundschule
+  Röwekamp" — 66 solcher Paare, jedes mit einer eigenen, halbierten
+  Beschlussliste. Wer auf den Ort klickte, sah je nach Schreibweise einen Teil
+  der Vorgänge; in einer Vorschlagsliste konnte dieselbe Sache zweimal
+  untereinander stehen. Sie sind jetzt ein Eintrag. Welche Schreibweise bleibt,
+  entscheidet, wie die Ratsverwaltung überwiegend schreibt — und Bruchstücke aus
+  der PDF-Extraktion verlieren immer: „Kasin o- platz" weicht dem Kasinoplatz,
+  „Bloherfel.de" dem Stadtteil, „Sport- und Gesundheit sbad" dem Sport- und
+  Gesundheitsbad. Zwei Orte, die sich beim Stadtteil widersprachen, sind damit
+  nebenbei geklärt: „Kennedy straße" stand auf Eversten, „Kennedystraße" auf
+  Bloherfelde. Hausnummern bleiben eigenständig: Die Alexanderstraße läuft durch
+  vier Stadtteile, „Alexanderstraße 488" liegt in einem — das ist die genauere
+  Angabe, nicht dieselbe. (#902)
+- **Der Instagram-Bot findet seine Schnittstelle wieder.** Eine Umbenennung
+  hatte die Adresse eines Bot-Endpunkts mitgenommen; der Bot lebt in einem
+  eigenen Projekt und rief seitdem ins Leere. Die Adresse steht wieder wie
+  vorher, und ein Test hält sie jetzt fest. (#862)
+- **Die Lücken-Zeilen der Spenden tragen wieder ihr Sitzungsdatum.** Auf der
+  Einnahmen-Seite steht bei jedem Beschluss ohne Zweitstelle, an welchem Tag er
+  gefallen ist — seit der Umbenennung der Datenbankspalten fehlte das Datum,
+  weil die Seite es noch unter dem alten Namen las. (#945)
+- **Der Spenden-Ingest fand das Sitzungsdatum nicht mehr.** Die Abfrage lieferte
+  es unter dem alten Namen, der Parser erwartete den neuen — jede Zuwendung ohne
+  Datum brach den Lauf ab. (#935)
+- **Die KI-Frage hängte fremde Vorlagen an ihre Antworten.** Bei der Umstellung
+  auf englische Feldnamen war in fünf Sperrlisten das Wort „beschluss" durch
+  einen englischen Namen ersetzt worden. Die Listen halten Allerweltswörter aus
+  der Suche heraus — seitdem hielten sie nichts mehr zurück und ließen
+  „Beschluss" durch, das in fast jedem Ratsdokument steht. Zur Frage nach dem
+  Stadion an der Maastrichter Straße kamen so vier unbeteiligte Vorlagen mit.
+  Außerdem trugen 1.681 Ortsbezüge eine Herkunft, die der Code nicht mehr
+  kannte. (#866)
+- **Der Städtevergleich zeigte keine einzige Zahl mehr.** Die Seite „Steht
+  Oldenburg besser da als Osnabrück?" hat seit einer früheren Umbenennung nur
+  noch ihren Erklärtext gezeigt — Steuerkraft, Grundsteuer-Hebesätze und
+  Steuereinnahmekraft aller acht kreisfreien Städte fehlten, und auch die
+  KI-Frage bekam den Vergleich nicht mehr in ihren Kontext. Der Code las die
+  Reihen unter ihrem neuen Namen, die Datenbank führte sie unter dem alten.
+  Nebenbei heißen die Gebührenbereiche, die zwölf Gebührensätze und die
+  Auszahlungsarten der Ist-Investitionen intern jetzt englisch. (#904)
+- **Der Steuer-Steckbrief nennt das Jahr der letzten Hebesatz-Änderung.** Die
+  Gewerbesteuer stand mit „439 % seit 2025" auf der Bühne, obwohl der Rat den
+  Satz zuletzt 2015 geändert hat — die Reihe führt seit 2025 auch Stand-Zeilen
+  ohne Änderung, und die Bühne nahm die jüngste Zeile. Jetzt zählen nur die
+  Stufen, auch für „davor N Änderungen" und für den Befund zum abgelehnten
+  Erhöhungsvorschlag. (#958)
+- **Der Tagesordnungs-Baustein fehlte auf der Frage-Seite.** Wer nach einer
+  Sitzung fragte, bekam die Antwort, aber nicht mehr die Liste der
+  Tagesordnungspunkte darunter — an drei Stellen zugleich: in der laufenden
+  Antwort, in einem später geöffneten Gespräch und bei den frischen Beispielen
+  auf der leeren Seite. Ursache war eine Umbenennung, der die Website nicht
+  gefolgt war; eine neue Prüfung hält die Namen des Antwort-Stroms jetzt
+  zusammen. (#735)
+- **Der Teilhaushalt 13 fehlte in der Produktebene von 2019 bis 2023.** Seine
+  Anlage heißt in diesen Jahrgängen nur „Nicht rechtsfähige Stiftungen“, ohne
+  die Teilhaushalts-Nummer im Namen — die Erkennung suchte nach ihr. Sie nimmt
+  jetzt auch den Namen und liest die Nummer vom Deckblatt. (#977)
+- **Acht Stellen in Web und App lasen einen Wert, den es nicht mehr gab.** Beim
+  Umbau auf englische Bezeichner sind Wertelisten umbenannt worden, ohne dass
+  die Oberflächen nachzogen: Die Anwesenheits-Karte eines Beschlusses zählte
+  Verwaltung und Protokoll als Fraktion mit, die Änderungslisten-Karte des
+  Haushalts verlor ihre Entwurfs- und Summenzeile, Personen-Kennzahlen standen
+  mit „€" statt „Personen", der Hinweis auf einen stark abgewichenen Beschluss
+  erschien nicht mehr, der Ratsbeschluss unter den Nachbewilligungen fehlte, und
+  das Quiz zeigte für Themen-Gebiete das Ortssymbol. In der App trugen die
+  Wortbeiträge einer Person keine Art-Kennzeichnung mehr. Ein neuer Prüflauf
+  hält die Oberflächen ab jetzt gegen die umbenannten Werte. (#890)
+- **Fünf Zuordnungstabellen in Web und App zeigten nichts mehr.** Die
+  Wortbeitrags-Arten im Personen-Profil und in der KI-Antwort, die Farben der
+  Tagesordnungs-Chronik, die Gebietsart im Admin-Panel und die Quelle einer
+  Quizfrage lasen alle noch den deutschen Wert, den der Umbau umbenannt hat. Der
+  Prüflauf, der so etwas findet, sah bisher nur Werte in Anführungszeichen —
+  genau diese Tabellen schreiben ihre Schlüssel ohne. Er sieht sie jetzt.
+  Außerdem sprechen die vorläufigen Ergebnisse aus der Videoaufzeichnung
+  dieselbe Sprache wie die Beschlüsse. (#896)
+- **Der letzte Schritt der Einrichtung wurde nicht gespeichert.** Wer im Browser
+  bis zu den Mitteilungen kam und dort aufhörte, galt weiter als „bei den Themen
+  stehengeblieben": Die Erinnerungs-Mail nannte den falschen Stand, und auf
+  einem anderen Gerät begann man den Themen-Schritt noch einmal. (#1026)
+- **Der Finanz- und Leistungsbericht zum 30.06.2023 ist da.** Sein PDF trägt
+  keinen lesbaren Textlayer; die Texterkennung liest die beiden
+  Übersichtstabellen als Zeilen je Teilhaushalt. Daraus baut der Vollzugs-Leser
+  den Bericht mit denselben Proben wie bei jedem anderen — Spaltenbelegung über
+  die Rechnung, Zeilen- und Summenprobe, Stichtag und Haushaltsjahr aus dem
+  Text. Der Beleg nennt die Texterkennung als Quelle. Damit hat der
+  Haushaltsvollzug 2023 auch seinen Halbjahresstand. (#994)
+- **Der Ergebnishaushalt zum 30.06.2024 ist wieder da.** Im Bericht rechnet ein
+  Teilhaushalt seine Aufwands-Abweichung gegen Ansatz plus
+  Ermächtigungsübertragung, alle anderen gegen den Ansatz allein — die Zahl ging
+  auf, nur auf der anderen Basis, und die Summenzeile enthält sie so. Bisher
+  verwarf der Leser deshalb die ganze Tabelle. Jetzt bleibt die Zeile, wie
+  gedruckt, und der Beleg nennt sie. (#998)
+- **Der Beleg am Haushaltsvollzug führt zum richtigen Bericht.** Auf „Geplant
+  und geworden" zeigte das Quellenverzeichnis unter der Vollzugs-Zahl von 2026
+  die Berichte von 2024 — dem Abschlussjahr der Seite. Jetzt trägt der Block den
+  Bericht seines Stichtags, mit der Fundstelle des gezeigten Haushalts; die
+  Zwischenstand-Karte auf der Übersicht hat einen eigenen Beleg. Außerdem
+  verlinkt „Woher diese Zahlen kommen" auf allen Haushalts-Seiten das Dokument,
+  statt es nur zu nennen. (#939)
+- **Die Einwilligung „Gespräche speichern" war nach dem letzten Update
+  verschwunden.** Zwei Spalten der Konten-Tabelle hatten beim Umbau auf
+  englische Bezeichner nur im Code neue Namen bekommen, nicht in der Datenbank.
+  Der Start legte die neue Spalte daraufhin leer daneben — die Einwilligung
+  stand für alle wieder auf „nie gefragt", obwohl sie gespeichert war. Sie wird
+  jetzt übernommen; eine zweite Spalte, die durch denselben Fehler gar nicht
+  erst entstand, wird nachgelegt. (#917)
+- **Ein Ingest mit neuem Code konnte den Datenbank-Start blockieren.** Schrieb
+  ein Lauf bereits die englische Schreibweise eines Werts, während die deutsche
+  noch daneben lag, brach die Umschreibung beim nächsten Öffnen der Datenbank ab
+  — auf dev starben daran Crons und Ingests. Jetzt weicht die alte Zeile der
+  neuen, wenn beide denselben Schlüssel tragen. (#924)
+- **Zwei Felder kamen in der App nicht mehr an.** Die Vorlagenart auf der
+  Beschluss-Seite und der Zeitraum der Bürgerbeteiligung hießen auf der Leitung
+  inzwischen anders, als die App sie las — beide zeigten deshalb nichts.
+  Behoben, samt Prüfung, die es künftig auffängt. (#887)
+
 ## [1.15.0] – 2026-08-30
 
 ### Geändert
@@ -5151,7 +6573,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v1.15.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.0.0...main
+[2.0.0]: https://github.com/Schereo/Ratslotse/compare/v1.15.0...v2.0.0
 [1.15.0]: https://github.com/Schereo/Ratslotse/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/Schereo/Ratslotse/compare/v1.13.2...v1.14.0
 [1.13.2]: https://github.com/Schereo/Ratslotse/compare/v1.13.1...v1.13.2

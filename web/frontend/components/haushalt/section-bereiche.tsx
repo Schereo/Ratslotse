@@ -1,0 +1,276 @@
+"use client";
+
+// „Was steckt hinter den Namen?" — der ERSTE Abschnitt von
+// /haushalt/produkte.
+//
+// Bis zum 21.08.2026 die eigene Seite /haushalt/bereiche. Zusammengelegt mit
+// „Was kostet eigentlich …?": Beide gehen denselben Baum hinunter — erst die
+// zehn Teilhaushalte im Klartext, dann die einzelnen Aufgaben darin. Der
+// Steckbrief eines einzelnen Bereichs (/haushalt/bereich) bleibt eine eigene
+// Seite; er ist die dritte Ebene und hat bewusst keinen Schritt.
+
+// /haushalt/bereiche — „Soziales", „Finanzmanagement": was heißt das eigentlich?
+//
+// Die Bereichsnamen sind die größte Verständnishürde des ganzen Haushalts.
+// Sie stammen aus der Verwaltungsgliederung und beschreiben Zuständigkeiten,
+// keine Sachen: „Finanzmanagement und Recht" klingt nach Buchhaltung, ist aber
+// die Stelle, an der zwei Drittel aller Einnahmen der Stadt eingehen. Wer das
+// nicht weiß, liest jede Übersicht falsch — der größte Balken der Einnahmen
+// sieht dann aus, als erwirtschafte die Kämmerei ihn.
+//
+// Deshalb diese Seite: einmal alle Teilhaushalte, mit Betrag und einer Zeile
+// Klartext, und der schwierigste Fall vorangestellt.
+//
+// Alle Texte kommen aus `lib/haushalt-bereiche.ts`, alle Zahlen aus
+// `/api/council/budget`. Hier steht keine Zahl fest im Code.
+
+import Link from "next/link";
+import { Fragment } from "react";
+import { ArrowRight } from "lucide-react";
+import { useFetch } from "@/lib/use-fetch";
+import { Beleg } from "@/components/haushalt/source";
+import { NamenKlartext } from "@/components/haushalt/namen-klartext";
+import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
+import { GlossaryText } from "@/components/glossary-text";
+import { STEUERARTEN } from "@/lib/haushalt-taxes";
+import { bereichSchluessel } from "@/lib/haushalt-bereiche";
+import {
+  HaushaltAuswahl, haushaltUrl, HaushaltZeile, bereichSlug, bereiche, deMio, jahreSortiert, mio,
+} from "@/lib/haushalt";
+
+
+/** Ein Posten, der im Finanzmanagement zentral eingeht — Betrag und Jahr aus
+ *  den Daten, Titel und Stellschraube aus den Steuer-Steckbriefen.
+ *
+ *  Bewusst KEINE eigene Liste der Einnahmearten: Wer welche Stellschraube
+ *  bedient, steht redaktionell schon in `lib/haushalt-taxes.ts` und wird von
+ *  `/haushalt/einnahmen` und den Steckbriefen benutzt. Eine zweite Fassung
+ *  hier wäre ein zweiter Stand derselben Aussage. */
+type Posten = { slug: string; title: string; wer: string; mioWert: number; year: number };
+
+function zentralePosten(daten: Daten): Posten[] {
+  const out: Posten[] = [];
+  for (const s of STEUERARTEN) {
+    if (s.datenArt) {
+      const treffer = daten.taxes
+        .filter((r) => r.kind === s.datenArt && r.amount != null)
+        .sort((a, b) => a.year - b.year);
+      const letzte = treffer[treffer.length - 1];
+      if (letzte) {
+        out.push({
+          slug: s.slug, title: s.title, wer: s.stellschraube,
+          mioWert: mio(letzte.amount) ?? 0, year: letzte.year,
+        });
+      }
+      continue;
+    }
+    // Die Schlüsselzuweisungen führt das Land in einem eigenen Datensatz.
+    // „Gebühren und Beiträge" bleibt draußen, und zwar aus einem inhaltlichen
+    // Grund: Gebühren gehen NICHT zentral ein, sondern bei dem Bereich, der
+    // die Leistung erbringt. Sie hier aufzuführen wäre genau der Fehler, den
+    // die Seite erklären will.
+    if (s.slug === "schluesselzuweisungen") {
+      const treffer = daten.tax_capacity
+        .filter((r) => r.allocations != null)
+        .sort((a, b) => a.year - b.year);
+      const letzte = treffer[treffer.length - 1];
+      if (letzte) {
+        out.push({
+          slug: s.slug, title: s.title, wer: s.stellschraube,
+          mioWert: mio(letzte.allocations) ?? 0, year: letzte.year,
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => b.mioWert - a.mioWert);
+}
+
+/** Die Sonderkachel: warum bei „Finanzmanagement und Recht" so viel steht. */
+function Finanzkachel({ z, daten, year }: {
+  z: HaushaltZeile; daten: Daten; year: number;
+}) {
+  const ein = mio(z.revenues) ?? 0;
+  const aus = mio(z.expenses) ?? 0;
+  const posten = zentralePosten(daten);
+  const istJahre = [...new Set(posten.map((p) => p.year))].sort();
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-primary/[0.05] p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="font-display text-[17px] font-bold tracking-tight">
+          Der schwierigste Name: „Finanzmanagement und Recht“
+        </h2>
+        <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-muted-foreground">
+          {deMio(ein)}&#8239;Mio.&nbsp;€ Erträge · {deMio(aus)}&#8239;Mio.&nbsp;€ Aufwendungen<Beleg q="plan" />
+        </span>
+      </div>
+      {/* Die Formulierung ist genau geprüft: Steuern liegen zu 100 % hier, die
+          Zuwendungen aber nur zum Teil (2024: 115,4 von 179,1 Mio.; 46,4 Mio.
+          buchen Soziales, 11,5 Mio. Jugend). „Alle Steuern und Zuweisungen"
+          wäre also falsch — richtig ist „alle Steuern und die allgemeinen
+          Zuweisungen des Landes". Dieselbe Fassung steht in `lib/haushalt.ts`. */}
+      <p className="mt-2 max-w-[80ch] text-[13.5px] leading-relaxed text-foreground/90">
+        Hier steht der Löwenanteil aller Einnahmen — nicht, weil die Kämmerei etwas
+        erwirtschaftet, sondern weil <strong>alle Steuern und die allgemeinen Zuweisungen
+        des Landes</strong> für die ganze Stadt zentral auf diesem Teilhaushalt verbucht
+        werden. Aus diesem Topf werden dann die Bereiche bezahlt, die kein eigenes Geld
+        einnehmen. Zweckgebundene Zuschüsse laufen dagegen bei dem Fachbereich auf, der
+        sie bekommt — deshalb stehen sie hier nicht.
+      </p>
+
+      {posten.length > 0 && (
+        <>
+          <p className="mt-3.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Was hier zentral eingeht
+          </p>
+          {/* Eine Zeile statt sieben Kacheln: Die Steckbriefe mit denselben
+              Zahlen stehen auf „Woher kommt das Geld" — hier reicht der Weg
+              dorthin (Durchsicht 02.09.2026, Doppelung B3). */}
+          <p className="mt-1.5 max-w-[80ch] text-[12.5px] leading-relaxed text-foreground/90">
+            {posten.map((p, i) => (
+              <Fragment key={p.slug}>
+                {i > 0 && " · "}
+                <Link href={`/haushalt/steuer?art=${p.slug}`}
+                  className="font-semibold text-primary hover:underline">
+                  {p.title}
+                </Link>{" "}
+                <span className="tabular-nums">{deMio(p.mioWert)}&#8239;Mio.&nbsp;€</span>
+              </Fragment>
+            ))}
+            {" "}— dazu die Aufgaben des Bereichs selbst, Kämmerei, Stadtkasse,
+            Steuerabteilung, Rechtsamt und die Zinsen der Stadt, mit{" "}
+            <span className="tabular-nums">{deMio(aus)}&#8239;Mio.&nbsp;€</span> (Plan {year}).
+          </p>
+          {/* Zwei Stände auf einer Kachel — das muss dranstehen. Die
+              Einnahme-Posten sind abgerechnete Ist-Werte, der Bereichsbetrag
+              ist der Plan des Kopfjahres. Sie summieren sich deshalb nicht
+              auf die Ertragszeile, und wer nachrechnet, soll das vorher
+              wissen statt hinterher. */}
+          <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+            Die Einnahmen oben sind abgerechnete Ist-Werte
+            {istJahre.length ? ` (${istJahre.join(" und ")})` : ""}
+            <Beleg q="taxes" /><Beleg q="tax_capacity" />, die {deMio(ein)}&nbsp;Mio.&nbsp;€
+            daneben der Plan für {year}. Zwei verschiedene Stände: Sie addieren sich nicht
+            zur Ertragszeile, und die Liste ist auch nicht vollständig — Zinsen,
+            Konzessionsabgaben und weitere allgemeine Erträge sind nicht darunter.
+          </p>
+        </>
+      )}
+
+      <Link href={`/haushalt/bereich?name=${bereichSlug(z.area)}`}
+        className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
+        Diesen Bereich im Einzelnen
+        <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+      </Link>
+    </div>
+  );
+}
+
+/** Was diese Seite rendert — und damit alles, was sie holt.
+ *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
+ *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
+const FELDER = ["years", "product_years", "taxes", "tax_capacity"] as const;
+
+/** Der Ausschnitt, den diese Seite holt. */
+type Daten = HaushaltAuswahl<typeof FELDER[number]>;
+
+export function BereicheAbschnitt() {
+  const { data, loading } = useFetch<Daten>(haushaltUrl(FELDER));
+
+  if (loading || !data) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">Haushalt wird geladen …</div>;
+  }
+  const years = jahreSortiert(data);
+  const year = years[years.length - 1];
+  const zeilen = year ? data.years[String(year)] ?? [] : [];
+  if (!year || !bereiche(zeilen).length) {
+    return (
+      <div className="py-16 text-center text-sm text-muted-foreground">
+        Für den Haushalt liegen uns gerade keine Bereichszahlen vor.{" "}
+        <Link href="/haushalt" className="font-semibold text-primary">Zur Übersicht</Link>
+      </div>
+    );
+  }
+
+  const finanzen = bereiche(zeilen).find((z) => bereichSchluessel(z.area) === "finanzen");
+  const produktJahre = (data.product_years ?? []).slice().sort((a, b) => a - b);
+  const produktBis = produktJahre[produktJahre.length - 1] ?? null;
+
+  return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+            Die Teilhaushalte im Klartext
+          </p>
+          <h2 className="mt-1 font-display text-xl font-bold tracking-tight sm:text-[22px]">
+            „Soziales“, „Finanzmanagement“ — was heißt das eigentlich?
+          </h2>
+          <p className="mt-2 max-w-[74ch] text-sm leading-relaxed text-muted-foreground">
+            Der Haushalt ist in Teilhaushalte gegliedert. Ihre Namen folgen der
+            Verwaltungsorganisation und zeigen vor allem, wer zuständig ist. Wir erklären
+            deshalb bei jedem Bereich in Alltagssprache, welche Aufgaben dahinterstehen.
+          </p>
+        </div>
+
+        {finanzen && <Finanzkachel z={finanzen} daten={data} year={year} />}
+
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <NamenKlartext zeilen={zeilen} year={year} />
+          <p className="mt-3 border-t border-dashed border-border pt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
+            Sortiert nach Größe: entweder nach den gesamten Aufwendungen oder nach dem
+            Zuschussbedarf, also Aufwendungen minus eigene Erträge des Bereichs
+            <Beleg q="plan" />. Die Beschreibungen haben wir aus dem Vorbericht des
+            Haushaltsplans abgeleitet; sie sind keine amtliche Gliederung.
+          </p>
+        </div>
+
+        {/* Bis 16.08. stand an dieser Stelle im Entwurf „die Produktebene ist
+            noch nicht eingelesen". Sie ist es seit #500. Der Hinweis schickte
+            Leute weg von genau der Seite, die ihre Frage beantwortet —
+            deshalb steht hier der Link, und daneben der Jahresstempel, weil
+            die Produktebene das Kopfjahr eben NICHT erreicht. */}
+        {produktBis != null && (
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
+              Eine Ebene tiefer
+            </p>
+            <p className="mt-1.5 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
+              Ein Teilhaushalt bündelt viele einzelne Aufgaben — Stadtarchiv, Feuerwehr,
+              Schwimmbad. Was jede davon kostet, steht auf der Produktebene
+              {/* Der Jahresstempel nur, wenn die Produktebene dem Kopfjahr
+                  hinterherhinkt — sonst stand hier „Stand 2026, für 2026 gibt
+                  es sie noch nicht" (Durchsicht 02.09.2026). */}
+              {produktBis < year ? (
+                <>: Stand {produktBis}<Beleg q="teilhaushalt" />, für das Haushaltsjahr {year} gibt
+                es sie noch nicht.</>
+              ) : (
+                <> — für {year} schon eingelesen<Beleg q="teilhaushalt" />.</>
+              )}
+            </p>
+            <Link href="/haushalt/produkte"
+              className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
+              Was kostet eigentlich …?
+              <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+
+        <LottiErklaert
+          title="Warum die Namen sich ändern"
+          text={"Die Stadt schneidet ihre Teilhaushalte gelegentlich neu zu und benennt sie um, "
+            + "ohne dass sich die Aufgaben dahinter ändern müssen. Teilhaushalt 9 hieß in sieben "
+            + "Jahrgängen viermal verschieden. Wir zeigen deshalb immer die jüngste amtliche "
+            + "Schreibweise — und ziehen keine Kurve über die Jahre, wo sich der Zuschnitt "
+            + "wirklich geändert hat."}
+        />
+
+        <p className="max-w-[86ch] text-xs leading-relaxed text-muted-foreground">
+          <GlossaryText text={"Ein Teilhaushalt besitzt keine eigene zweckfreie Kasse. "
+            + "Allgemeine Einnahmen wie Steuern und Schlüsselzuweisungen finanzieren den "
+            + "Gesamthaushalt. Nur bei zweckgebundenen Einnahmen lässt sich eine direkte "
+            + "Verbindung zu bestimmten Ausgaben herstellen."} />
+        </p>
+
+      </div>
+  );
+}

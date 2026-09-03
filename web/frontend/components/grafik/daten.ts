@@ -1,10 +1,10 @@
 // Der Daten-Vertrag des Grafik-Baukastens (GB-00).
 //
-// Alle Komponenten essen dieselben Formen: `{jahr, wert}` für Reihen,
-// `{label, wert}` für Listen. Lücken sind DATEN, kein Sonderfall:
-// `{jahr: 2019, fehlt: "Arten ergeben die Summe nicht"}`. Jede Komponente
+// Alle Komponenten essen dieselben Formen: `{year, value}` für Reihen,
+// `{label, value}` für Listen. Lücken sind DATEN, kein Sonderfall:
+// `{year: 2019, fehlt: "Arten ergeben die Summe nicht"}`. Jede Komponente
 // MUSS sie beschriftet rendern (über `<LueckenFeld>`), keine darf
-// interpolieren — die Union macht das zum Typsystem: Wer `wert` einer Lücke
+// interpolieren — die Union macht das zum Typsystem: Wer `value` einer Lücke
 // lesen will, kommt am `fehlt`-Zweig nicht vorbei.
 
 /** Ein vorhandener Punkt einer Zeitreihe.
@@ -18,18 +18,18 @@
  *
  *  Der Text ist der Grund. Er gehört an die Daten und nicht in die Seite —
  *  dieselbe Regel wie bei `fehlt`. */
-export type JahrWert = { jahr: number; wert: number; bruchDavor?: string };
+export type JahrWert = { year: number; value: number; bruchDavor?: string };
 
 /** Eine Lücke: das Jahr gibt es, den Wert nicht — und der Grund reist mit.
- *  `datum` ist der Stichtag der Feststellung, wo er bekannt ist. */
-export type JahrLuecke = { jahr: number; fehlt: string; datum?: string };
+ *  `date` ist der Stichtag der Feststellung, wo er bekannt ist. */
+export type JahrLuecke = { year: number; fehlt: string; date?: string };
 
 /** Eine Reihe besteht aus Punkten UND Lücken — in einer Liste, damit die
  *  x-Achse vollständig bleibt und keine Komponente Lücken „vergessen" kann. */
 export type JahrPunkt = JahrWert | JahrLuecke;
 
 /** Ein Eintrag einer Liste/Rangliste. */
-export type LabelWert = { label: string; wert: number };
+export type LabelWert = { label: string; value: number };
 
 /** Type Guard für den Lücken-Zweig — das Gegenstück ist `vorhanden`. */
 export function istLuecke(p: JahrPunkt): p is JahrLuecke {

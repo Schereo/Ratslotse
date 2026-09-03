@@ -108,19 +108,19 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel in (("Ö 2", "Genehmigung der Tagesordnung (öffentlicher Teil)"),
+        for nr, title in (("Ö 2", "Genehmigung der Tagesordnung (öffentlicher Teil)"),
                           ("DZT 1", "Dringlichkeitsantrag: festegestellte PAK Belastung"),
                           ("Ö 9.1", "Sachlicher Teilflächennutzungsplan Windenergie")):
             store._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-                "VALUES (1, ?, ?, 1)", (nr, titel))
-        for nr, wert in (("DZT 1", 70), ("Ö 9.1", 85)):
+                "VALUES (1, ?, ?, 1)", (nr, title))
+        for nr, value in (("DZT 1", 70), ("Ö 9.1", 85)):
             store._conn.execute(
                 "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
-                "created_at) VALUES (1, ?, ?, 'Grund', 'x')", (nr, wert))
+                "created_at) VALUES (1, ?, ?, 'Grund', 'x')", (nr, value))
         store._conn.commit()
 
-        punkte = store.wochenvorschau(tage=10, max_punkte=40)["punkte"]
+        punkte = store.wochenvorschau(tage=10, max_punkte=40)["items"]
         nummern = [p["item_number"] for p in punkte]
         assert "DZT 1" in nummern
         assert "Ö 2" not in nummern            # die Formalie bleibt draußen
@@ -139,14 +139,14 @@ def test_der_punkt_ueberlebt_die_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel in (("DZT 1", "Dringlichkeitsantrag: Lachgas"),
+        for nr, title in (("DZT 1", "Dringlichkeitsantrag: Lachgas"),
                           ("Ö 7", "Bericht über den Stand der Digitalisierung")):
             store2._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-                "VALUES (1, ?, ?, 1)", (nr, titel))
+                "VALUES (1, ?, ?, 1)", (nr, title))
         store2._conn.commit()
         nummern = [p["item_number"]
-                   for p in store2.wochenvorschau(tage=10, max_punkte=40)["punkte"]]
+                   for p in store2.wochenvorschau(tage=10, max_punkte=40)["items"]]
         assert nummern == ["DZT 1"]
     finally:
         store2.close()
@@ -179,7 +179,7 @@ def test_das_pdf_wandert_in_die_bewertung(tmp_path, monkeypatch):
             location="PFL", agenda_items=[_formalie([anlage]), *zusatz]))
 
         gespeichert = store._conn.execute(
-            "SELECT raw_text FROM council_agenda_anlagen WHERE item_number = 'DZT 1'"
+            "SELECT raw_text FROM council_agenda_attachments WHERE item_number = 'DZT 1'"
         ).fetchone()[0]
         assert "Flugplatzbäke" in gespeichert
 
@@ -221,20 +221,20 @@ def test_der_boden_wirkt_in_der_wochenvorschau(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, "
             "session_time, location, fetched_at) VALUES (1, 'Rat', ?, '18:00', 'PFL', 'x')",
             (tag,))
-        for nr, titel, wert in (
+        for nr, title, value in (
                 ("DZT 1", "Dringlichkeitsantrag: festegestellte PAK Belastung", 55),
                 ("DZT 2", "Dringlichkeitsantrag: Resolution Iran", 80),
                 ("Ö 9.1", "Sachlicher Teilflächennutzungsplan Windenergie", 85)):
             store._conn.execute(
                 "INSERT INTO council_agenda_items (ksinr, item_number, title, is_public) "
-                "VALUES (1, ?, ?, 1)", (nr, titel))
+                "VALUES (1, ?, ?, 1)", (nr, title))
             store._conn.execute(
                 "INSERT INTO agenda_item_impact (ksinr, item_number, impact, reason, "
-                "created_at) VALUES (1, ?, ?, 'Ein Grund', 'x')", (nr, wert))
+                "created_at) VALUES (1, ?, ?, 'Ein Grund', 'x')", (nr, value))
         store._conn.commit()
 
         nach_nr = {p["item_number"]: p
-                   for p in store.wochenvorschau(tage=10, max_punkte=40)["punkte"]}
+                   for p in store.wochenvorschau(tage=10, max_punkte=40)["items"]}
         assert nach_nr["DZT 1"]["wichtig"] == DRINGLICHKEIT_MIN     # 55 → 65
         assert nach_nr["DZT 2"]["wichtig"] == 80                    # bleibt oben
         assert nach_nr["Ö 9.1"]["wichtig"] == 85                    # unberührt

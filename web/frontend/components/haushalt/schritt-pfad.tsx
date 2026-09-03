@@ -144,7 +144,7 @@ export function SchrittPfad({ href, className }: {
           Schritt {zeig.nr}
         </span>
         <span className="min-w-0 truncate text-[11.5px] font-semibold leading-none text-foreground">
-          {zeig.titel}
+          {zeig.title}
         </span>
         {zeig.nr === schritt.nr && (
           <span className="font-mono text-[9px] font-medium uppercase tracking-[0.09em] text-primary">
@@ -166,7 +166,7 @@ export function SchrittPfad({ href, className }: {
                   key={s.nr}
                   href={s.href}
                   aria-current={zustand === "aktuell" ? "page" : undefined}
-                  aria-label={`Schritt ${s.nr}: ${s.titel}${
+                  aria-label={`Schritt ${s.nr}: ${s.title}${
                     zustand === "aktuell" ? " (diese Seite)"
                       : zustand === "gelesen" ? " (schon aufgerufen)" : ""
                   }`}

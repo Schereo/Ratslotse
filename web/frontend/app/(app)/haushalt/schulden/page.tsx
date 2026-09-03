@@ -49,6 +49,10 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Segmented } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
+import { KrediteBlock } from "@/components/haushalt/kredite";
+import { LiquiditaetsBlock } from "@/components/haushalt/liquiditaet";
+import type { LiquiditaetsDaten } from "@/lib/haushalt-liquiditaet";
+import type { KrediteDaten } from "@/lib/haushalt-kredite";
 import { deMio, haushaltUrl, type HaushaltAuswahl,
   type HaushaltssatzungZeile } from "@/lib/haushalt";
 import {
@@ -61,18 +65,19 @@ import type { JahrPunkt } from "@/components/grafik/daten";
 import { deZahl } from "@/components/grafik/format";
 import {
   Beleg, Dokumentbeleg, Quellenkontext, Quellenverzeichnis,
-} from "@/components/haushalt/quelle";
+} from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 import { BilanzBlock } from "@/components/haushalt/bilanz-block";
+import { Fundstelle } from "@/components/haushalt/fundstelle";
 
 // `jahresabschluss` stand bis zum 21.08.2026 NICHT hier, obwohl die Seite
 // einen Beleg-Chip darauf setzt. `Beleg` rendert dann bewusst nichts
 // („lieber keinen Chip als eine falsche Nummer") — und der Satz endete
 // mit einer Fußnote, die es nicht gab.
-const QUELLEN = ["schulden", "bilanz", "haushaltssatzung",
+const QUELLEN = ["schulden", "bilanz", "budget_bylaw", "loans", "liquidity",
                  "jahresabschluss"] as const;
 
 /** Die Haushaltssatzung wird über den Bausteine-Endpunkt geholt und nicht über
@@ -80,45 +85,10 @@ const QUELLEN = ["schulden", "bilanz", "haushaltssatzung",
  *  leihen DARF, neben dem, was sie schuldet), ist aber eine eigene Schicht mit
  *  eigener Herkunft. Ein zweiter Abruf ist ehrlicher als ein Endpunkt, der
  *  zwei Quellen zu einer Antwort verrührt. */
-// `herkunft` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
+// `provenance` mit — der Rahmen-Block zeigte seine drei Zahlen bis zum
 // 21.08.2026 ganz ohne Beleg: Die Quelle stand im Verzeichnis am Seitenfuß,
 // an den Zahlen selbst stand nichts.
-const SATZUNG_FELDER = ["haushaltssatzung", "herkunft"] as const;
-
-/** Wo eine Angabe im Dokument steht: welcher Abschnitt, welcher Stand. Das
- *  Quellenverzeichnis am Seitenende beschreibt die Quelle der ganzen Seite;
- *  das hier gehört an die einzelne Zahl und ist der Grund, warum man sie in
- *  einem mehrseitigen PDF wiederfindet.
- *
- *  BEWUSST OHNE UNSERE PROBEN. Die erste Fassung dieser Seite zeigte hier die
- *  Sätze aus `herkunft.PROBEN` und darunter „Gemessen: Summenprobe 30 von
- *  31". Das sagt etwas über uns und nichts über die Schulden der Stadt —
- *  Selbstvergewisserung (DESIGNSPRACHE.md § 7), und `konzern/page.tsx` hat
- *  denselben Block am 16.08. aus demselben Grund verloren. Die Proben laufen
- *  unverändert weiter, die API liefert sie weiter, Tests halten sie fest und
- *  die Technik-Doku beschreibt sie. Nur die Zurschaustellung ist weg.
- *
- *  Was **inhaltlich** aus einer gerissenen Probe folgt, bleibt selbstver-
- *  ständlich stehen: dass für 2022 die Aufteilung fehlt, steht als Satz an
- *  der Aufteilung — das ist eine Grenze der Zahlen und keine Auskunft über
- *  unsere Sorgfalt.
- *
- *  Bewusst dieselbe Bauart wie in `konzern/page.tsx` und `vergleich/page.tsx`
- *  und bewusst nicht geteilt — die drei Seiten sollen einander nicht brechen. */
-function Fundstelle({ h }: { h: Herkunft | null }) {
-  // Ohne Fundstelle nichts — sonst bliebe eine Überschrift ohne Inhalt stehen.
-  if (!h?.fundstelle) return null;
-  return (
-    <div className="border-t border-dashed border-border pt-2.5">
-      <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        Woher diese Zahlen kommen
-      </p>
-      <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.fundstelle}{h.stand ? ` · ${h.stand}` : ""}
-      </p>
-    </div>
-  );
-}
+const SATZUNG_FELDER = ["budget_bylaw", "provenance"] as const;
 
 /** Wofür die Stadt geradesteht — Bürgschaften neben den eigenen Schulden.
  *
@@ -172,14 +142,14 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
         {gezeigt.map((v) => {
           const fort = FORTSCHREIBUNG.test(v.title);
           return (
-            <li key={v.vorlage_nr}
+            <li key={v.template_number}
               className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 border-l-2 border-border py-1.5 pl-3">
               <span className="flex-none font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                {v.datum ? v.datum.slice(0, 7).split("-").reverse().join("/") : "—"}
+                {v.date ? v.date.slice(0, 7).split("-").reverse().join("/") : "—"}
               </span>
               <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground/90">
-                {v.beschluss_id ? (
-                  <Link href={`/council/decision?id=${v.beschluss_id}`}
+                {v.decision_id ? (
+                  <Link href={`/council/decision?id=${v.decision_id}`}
                     className="hover:text-primary">{v.title}</Link>
                 ) : v.title}
               </span>
@@ -208,33 +178,33 @@ function BeschlussStrahl({ vorlagen }: { vorlagen: BuergschaftsVorlage[] }) {
 }
 
 function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
-  const b = daten?.buergschaften;
-  const reihe = b?.reihe ?? [];
-  if (!reihe.length) return null;
+  const b = daten?.guarantees;
+  const series = b?.series ?? [];
+  if (!series.length) return null;
 
-  const geld = new Map((b?.geldschulden ?? []).map((z) => [z.jahr, z.wert]));
-  const rueck = new Map((b?.rueckstellung ?? []).map((z) => [z.jahr, z.wert]));
-  const letzter = reihe[reihe.length - 1];
-  const erster = reihe[0];
-  const gsErst = geld.get(erster.jahr) ?? null;
-  const gsLetzt = geld.get(letzter.jahr) ?? null;
-  const rsLetzt = rueck.get(letzter.jahr) ?? null;
+  const geld = new Map((b?.financial_debt ?? []).map((z) => [z.year, z.value]));
+  const rueck = new Map((b?.provision ?? []).map((z) => [z.year, z.value]));
+  const letzter = series[series.length - 1];
+  const erster = series[0];
+  const gsErst = geld.get(erster.year) ?? null;
+  const gsLetzt = geld.get(letzter.year) ?? null;
+  const rsLetzt = rueck.get(letzter.year) ?? null;
   // Der Jahrgang, der den Sprung erklärt — der mit der genannten Einzelzahl.
-  const sprung = reihe.find((z) => z.einzelbetrag != null) ?? null;
+  const sprung = series.find((z) => z.single_amount != null) ?? null;
   // Der Jahrgang ohne eigene Fundstelle: Seine Zahl steht nur als
   // Anfangsbestand im Abschluss des Folgejahres.
-  const nachgetragen = reihe.find((z) => z.aus_folgejahr) ?? null;
+  const nachgetragen = series.find((z) => z.out_next_year) ?? null;
 
   // BEIDE REIHEN IN EINER ZEICHENFLÄCHE. Die Aussage dieses Blocks ist kein
   // Stichtag, sondern eine Bewegung: Was die Stadt selbst schuldet, sinkt —
   // wofür sie geradesteht, steigt. Nebeneinander gezeichnet sieht man das;
   // untereinander gelistet (so stand es bis 08/2026 hier) muss man es rechnen.
-  const verbuergt: JahrPunkt[] = reihe.map((z) => ({ jahr: z.jahr, wert: z.bestand / 1e6 }));
-  const eigene: JahrPunkt[] = reihe.map((z) => {
-    const w = geld.get(z.jahr);
+  const verbuergt: JahrPunkt[] = series.map((z) => ({ year: z.year, value: z.balance / 1e6 }));
+  const eigene: JahrPunkt[] = series.map((z) => {
+    const w = geld.get(z.year);
     return w == null
-      ? { jahr: z.jahr, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
-      : { jahr: z.jahr, wert: w / 1e6 };
+      ? { year: z.year, fehlt: "für dieses Jahr liegt keine geparste Bilanz vor" }
+      : { year: z.year, value: w / 1e6 };
   });
 
   // DIE SCHERE WIRD GEMESSEN, NICHT BEHAUPTET. Der Kernsatz stimmt nur,
@@ -243,9 +213,9 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // zu werden — eine Überschrift, die ihre Daten überlebt hat, wäre der
   // schlimmere Fehler als gar keine.
   const schere =
-    reihe.length > 1 && gsErst != null && gsLetzt != null
-    && gsLetzt < gsErst && letzter.bestand > erster.bestand
-      ? { rueckgang: (1 - gsLetzt / gsErst) * 100, faktor: letzter.bestand / erster.bestand }
+    series.length > 1 && gsErst != null && gsLetzt != null
+    && gsLetzt < gsErst && letzter.balance > erster.balance
+      ? { rueckgang: (1 - gsLetzt / gsErst) * 100, faktor: letzter.balance / erster.balance }
       : null;
 
   // Die beiden Stellen, an denen die Quelle selbst etwas erklärt. Der Text
@@ -254,28 +224,28 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
   // ein nacktes ⓘ sagt dort nur, DASS etwas war, nicht was (Tims Befund
   // 18.08.). `sprung` hat immer eine Einzelzahl — so ist er definiert (s. o.).
   const annotationen = [
-    sprung?.grund
+    sprung?.reason
       ? {
-          jahr: sprung.jahr,
-          kurz: `${deMio((sprung.einzelbetrag ?? 0) / 1e6)} Mio. €`,
-          text: `${sprung.jahr}: ${sprung.grund}`,
+          year: sprung.year,
+          kurz: `${deMio((sprung.single_amount ?? 0) / 1e6)} Mio. €`,
+          text: `${sprung.year}: ${sprung.reason}`,
         }
       : null,
     nachgetragen
       ? {
-          jahr: nachgetragen.jahr,
-          kurz: `aus dem Abschluss ${nachgetragen.jahr + 1}`,
-          text: `Für ${nachgetragen.jahr} nennt der Jahresabschluss selbst keinen `
+          year: nachgetragen.year,
+          kurz: `aus dem Abschluss ${nachgetragen.year + 1}`,
+          text: `Für ${nachgetragen.year} nennt der Jahresabschluss selbst keinen `
             + `Bestand; die Zahl steht als Anfangsbestand im Abschluss `
-            + `${nachgetragen.jahr + 1}.`,
+            + `${nachgetragen.year + 1}.`,
         }
       : null,
-  ].filter((a): a is { jahr: number; kurz: string; text: string } => a !== null);
+  ].filter((a): a is { year: number; kurz: string; text: string } => a !== null);
 
   // Wie genau die Quelle je Jahrgang ist. Das gehört an die Zahlen und nicht
   // in eine Fußnote am Seitenende — die Reihe mischt zwei Darreichungsformen.
-  const cent = reihe.filter((z) => z.genau).map((z) => z.jahr);
-  const gerundet = reihe.filter((z) => !z.genau && !z.aus_folgejahr).map((z) => z.jahr);
+  const cent = series.filter((z) => z.exact).map((z) => z.year);
+  const gerundet = series.filter((z) => !z.exact && !z.out_next_year).map((z) => z.year);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -286,20 +256,20 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {schere
             ? "Eigene Geldschulden sinken, Bürgschaften steigen"
-            : <>Bürgschaften: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€</>}
+            : <>Bürgschaften: {deMio(letzter.balance / 1e6)}&#8239;Mio.&nbsp;€</>}
         </h2>
         {schere && gsLetzt != null ? (
           <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-            Seit {erster.jahr} hat die Stadt ihre eigenen Geldschulden um{" "}
+            Seit {erster.year} hat die Stadt ihre eigenen Geldschulden um{" "}
             {deZahl(schere.rueckgang, 0)}&nbsp;% abgebaut — auf{" "}
             {deMio(gsLetzt / 1e6)}&#8239;Mio.&nbsp;€. Im selben Zeitraum ist das
             Volumen, für das sie bürgt, auf das {deZahl(schere.faktor, 1)}-Fache
-            gestiegen: {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€. Beide
+            gestiegen: {deMio(letzter.balance / 1e6)}&#8239;Mio.&nbsp;€. Beide
             Zahlen stehen in denselben Jahresabschlüssen.<Beleg q="bilanz" />
           </p>
         ) : null}
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-          {b?.abgrenzung}
+          {b?.scope_note}
         </p>
       </div>
 
@@ -308,12 +278,12 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
           Grafiken nebeneinander hätten zwei Maßstäbe — und damit genau den
           Vergleich zerstört, um den es hier geht. */}
       <Zeitreihe
-        reihe={verbuergt}
-        zweitreihe={{ label: "eigene Geldschulden", reihe: eigene }}
-        einheit="Mio. €"
-        titel="Verbürgt und selbst geschuldet"
+        series={verbuergt}
+        zweitreihe={{ label: "eigene Geldschulden", series: eigene }}
+        unit="Mio. €"
+        title="Verbürgt und selbst geschuldet"
         ariaTitel={`Bürgschaftsbestand und eigene Geldschulden der Stadt Oldenburg, `
-          + `${erster.jahr} bis ${letzter.jahr}, in Millionen Euro`}
+          + `${erster.year} bis ${letzter.year}, in Millionen Euro`}
         annotationen={annotationen}
         vorjahresdifferenz
         tabelle
@@ -338,8 +308,8 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-muted-foreground">
           <strong className="text-foreground">Womit die Stadt rechnet:</strong>{" "}
           Für erwartete Ausfälle stehen {deEuro(rsLetzt)}&nbsp;€ in der Bilanz
-          ({letzter.jahr})<Beleg q="bilanz" /> — {((rsLetzt / letzter.bestand) * 100).toFixed(2).replace(".", ",")}&nbsp;%
-          des verbürgten Volumens. Die {deMio(letzter.bestand / 1e6)}&#8239;Mio.&nbsp;€ sind
+          ({letzter.year})<Beleg q="bilanz" /> — {((rsLetzt / letzter.balance) * 100).toFixed(2).replace(".", ",")}&nbsp;%
+          des verbürgten Volumens. Die {deMio(letzter.balance / 1e6)}&#8239;Mio.&nbsp;€ sind
           also nicht das, was die Stadt zu zahlen erwartet, sondern das, wofür sie
           im äußersten Fall einsteht.
         </p>
@@ -349,10 +319,10 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
         <strong className="text-foreground">Ein Bestand, keine Summe der Beschlüsse.</strong>{" "}
         Die einzelnen Bürgschaftsbeschlüsse lassen sich nicht addieren, weil Verlängerungen
         frühere Beschlüsse ersetzen können. Gezeigt wird der von der Stadt ausgewiesene Bestand —
-        {erster.jahr === letzter.jahr ? " ein Stichtag." : ` ${reihe.length} Stichtage.`}
+        {erster.year === letzter.year ? " ein Stichtag." : ` ${series.length} Stichtage.`}
       </p>
 
-      <BeschlussStrahl vorlagen={b?.vorlagen ?? []} />
+      <BeschlussStrahl vorlagen={b?.templates ?? []} />
 
       <Fundstelle h={herkunftVon(daten, letzter.herkunft_id)} />
     </section>
@@ -372,21 +342,21 @@ function BuergschaftsBlock({ daten }: { daten: SchuldenDaten | null }) {
  *
  *  Rendert nichts ohne eingelesenen Tabellenband. */
 function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
-  const i = daten?.integrierte_schulden;
-  if (!i?.stichtag) return null;
-  const s = i.stichtag;
-  const reihe = daten?.reihe ?? [];
+  const i = daten?.integrated_debt;
+  if (!i?.as_of_date) return null;
+  const s = i.as_of_date;
+  const series = daten?.series ?? [];
   // Der Rechtsträger-Wert desselben Stichtags — die mittlere der drei Zahlen.
-  const traeger = reihe.find((z) => z.jahr === s.jahr)?.insgesamt ?? null;
+  const entity = series.find((z) => z.year === s.year)?.total ?? null;
 
   const stufen = [
-    { titel: "Kernhaushalt", wert: s.kernhaushalt,
+    { title: "Kernhaushalt", value: s.core_budget,
       was: "Investitionskredite der Stadtverwaltung selbst" },
-    { titel: "Stadt als Rechtsträger", wert: traeger,
+    { title: "Stadt als Rechtsträger", value: entity,
       was: "dazu die Eigenbetriebe — die Zahl oben auf dieser Seite" },
-    { titel: "Der ganze Konzern", wert: s.insgesamt,
+    { title: "Der ganze Konzern", value: s.total,
       was: "dazu Extrahaushalte und Beteiligungen, anteilig nach Beteiligungshöhe" },
-  ].filter((x) => x.wert != null);
+  ].filter((x) => x.value != null);
 
   return (
     <section className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -397,24 +367,24 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
         <h2 className="mt-1 text-[17px] font-semibold leading-snug text-foreground">
           {/* Gerechnet, nicht geschrieben — hier stand „43,7" als Text und
               wäre beim nächsten Tabellenband still falsch geworden. */}
-          {s.kernhaushalt != null ? `${deMio(s.kernhaushalt / 1e6)} · ` : ""}
-          {traeger ? `${deMio(traeger / 1e6)} · ` : ""}
-          {deMio(s.insgesamt / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
+          {s.core_budget != null ? `${deMio(s.core_budget / 1e6)} · ` : ""}
+          {entity ? `${deMio(entity / 1e6)} · ` : ""}
+          {deMio(s.total / 1e6)}&#8239;Mio.&nbsp;€ — drei unterschiedliche Abgrenzungen
         </h2>
         <p className="mt-2 max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
           Die Beträge unterscheiden sich danach, welche Einheiten einbezogen werden.
-          Stand 31.12.{s.jahr}:
+          Stand 31.12.{s.year}:
         </p>
       </div>
 
       <ol className="flex flex-col gap-2">
         {stufen.map((x) => (
-          <li key={x.titel}
+          <li key={x.title}
             className="flex flex-col gap-0.5 rounded-xl border border-border bg-background/40 p-3">
             <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span className="text-[13px] font-semibold text-foreground">{x.titel}</span>
+              <span className="text-[13px] font-semibold text-foreground">{x.title}</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {deMio((x.wert as number) / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio((x.value as number) / 1e6)}&#8239;Mio.&nbsp;€
               </span>
             </span>
             <span className="text-[12px] leading-relaxed text-muted-foreground">{x.was}</span>
@@ -425,12 +395,12 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
       {/* Der Satz, ohne den die 740 Millionen falsch gelesen werden. Er steht
           im Fließtext und nicht im Kleingedruckten — er ist die Aussage. */}
       <p className="max-w-[76ch] text-[12.5px] leading-relaxed text-foreground/90">
-        {i.abgrenzung}
-        {i.anteil_unter_50 != null ? (
+        {i.scope_note}
+        {i.share_below_50 != null ? (
           <>
             {" "}Konkret sind das{" "}
             <strong className="text-foreground">
-              {(i.anteil_unter_50 * 100).toFixed(0)}&nbsp;%
+              {(i.share_below_50 * 100).toFixed(0)}&nbsp;%
             </strong>{" "}
             der Summe.
           </>
@@ -440,7 +410,7 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
       <p className="max-w-[76ch] text-[12px] leading-relaxed text-muted-foreground">
         {/* Ohne eigenen Vorspann: Der Satz aus dem Backend beginnt selbst mit
             „Nur ein Stichtag" — ein Label davor sagte dasselbe zweimal. */}
-        {i.keine_reihe}
+        {i.no_series_note}
       </p>
 
       <Fundstelle h={herkunftVon(daten, s.herkunft_id)} />
@@ -460,26 +430,26 @@ function DritteZahlBlock({ daten }: { daten: SchuldenDaten | null }) {
  *  liegen ausschließlich Verwaltungsentwürfe; die beschlossene Satzung
  *  erscheint im Amtsblatt. Ohne den Satz behaupteten diese Zahlen einen
  *  Ratsbeschluss, den wir nicht belegt haben. */
-function RahmenBlock({ zeile, herkunft }: {
-  zeile: HaushaltssatzungZeile; herkunft: Herkunft | null;
+function RahmenBlock({ row, herkunft }: {
+  row: HaushaltssatzungZeile; herkunft: Herkunft | null;
 }) {
-  const posten: { label: string; wert: number | null; erklaerung: string }[] = [
+  const posten: { label: string; value: number | null; erklaerung: string }[] = [
     {
       label: "Kredite für Investitionen",
-      wert: zeile.kredite_investitionen,
+      value: row.investment_loans,
       erklaerung: "Wie viel die Stadt sich im Haushaltsjahr für Investitionen "
         + "leihen darf (§ 2).",
     },
     {
       label: "Höchstbetrag für Liquiditätskredite",
-      wert: zeile.liquiditaetskredite,
+      value: row.liquidity_loans,
       erklaerung: "Bis zu diesem Höchstbetrag darf die Stadt kurzfristige Kredite "
         + "aufnehmen, um ihre Zahlungsfähigkeit zu sichern (§ 4). Der Betrag ist eine "
         + "Ermächtigung und nicht der tatsächlich genutzte Kredit.",
     },
     {
       label: "Verpflichtungsermächtigungen",
-      wert: zeile.verpflichtungsermaechtigungen,
+      value: row.commitment_authorizations,
       erklaerung: "Was die Stadt in diesem Jahr bestellen darf, obwohl die "
         + "Rechnung erst in kommenden Jahren kommt (§ 3).",
     },
@@ -489,10 +459,10 @@ function RahmenBlock({ zeile, herkunft }: {
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="font-display text-[17px] font-bold tracking-tight">
-          Was der Rahmen erlaubt<Beleg q="haushaltssatzung" />
+          Was der Rahmen erlaubt<Beleg q="budget_bylaw" />
         </h2>
         <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-          Satzung {zeile.jahr}
+          Satzung {row.year}
         </span>
       </div>
       <p className="mt-1.5 max-w-[64ch] text-[13px] leading-relaxed text-foreground/85">
@@ -503,7 +473,7 @@ function RahmenBlock({ zeile, herkunft }: {
       {/* Steht VOR den Zahlen, nicht als Fußnote darunter: Wer sie erst liest
           und dann erfährt, dass sie nicht beschlossen sind, hat sie schon
           geglaubt (dieselbe Regel wie der Summen-Kasten auf /haushalt/betriebe). */}
-      {zeile.fassung !== "beschlossen" && (
+      {row.version !== "beschlossen" && (
         <p className="mt-3 rounded-xl border border-signal/40 bg-signal/5 px-3 py-2
                       text-[12.5px] leading-relaxed text-foreground/85">
           <strong>Entwurf der Verwaltung, kein Ratsbeschluss.</strong> Im
@@ -522,14 +492,14 @@ function RahmenBlock({ zeile, herkunft }: {
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
               <dt className="text-[13px] font-semibold">{p.label}</dt>
               <dd className="font-display text-[15px] font-bold tabular-nums">
-                {p.wert == null
+                {p.value == null
                   ? <span className="font-normal text-muted-foreground"
                           title="Die Satzung sagt dazu nichts.">—</span>
-                  : p.wert === 0
+                  : p.value === 0
                     // NICHT „0 €". Die Satzung schreibt einen Satz, keine
                     // Ziffer, und der Satz ist die genauere Auskunft.
                     ? <span className="text-[13px]">nicht veranschlagt</span>
-                    : <>{deMio(p.wert / 1e6)}&#8239;Mio.&nbsp;€</>}
+                    : <>{deMio(p.value / 1e6)}&#8239;Mio.&nbsp;€</>}
               </dd>
             </div>
             <p className="mt-0.5 max-w-[62ch] text-[12px] leading-relaxed text-muted-foreground">
@@ -538,7 +508,7 @@ function RahmenBlock({ zeile, herkunft }: {
           </div>
         ))}
       </dl>
-      <Dokumentbeleg h={herkunft} vorlageNr={zeile.vorlage_nr}
+      <Dokumentbeleg h={herkunft} vorlageNr={row.template_number}
         className="mt-3 border-t border-dashed border-border pt-2.5" />
     </section>
   );
@@ -546,30 +516,32 @@ function RahmenBlock({ zeile, herkunft }: {
 
 
 export default function SchuldenPage() {
-  const { data, loading } = useFetch<SchuldenDaten>("/council/haushalt/schulden");
+  const { data, loading } = useFetch<SchuldenDaten>("/council/budget/debt");
+  const { data: krediteDaten } = useFetch<KrediteDaten>("/council/budget/loans");
+  const { data: liquiDaten } = useFetch<LiquiditaetsDaten>("/council/budget/liquidity");
   const { data: satzungDaten } = useFetch<
     HaushaltAuswahl<typeof SATZUNG_FELDER[number]>>(haushaltUrl(SATZUNG_FELDER));
-  const [ansicht, setAnsicht] = useState<Ansicht>("insgesamt");
+  const [ansicht, setAnsicht] = useState<Ansicht>("total");
 
   // Der jüngste Jahrgang — die Satzung, die gerade gilt bzw. vorgeschlagen
   // ist. Sortiert wird hier und nicht im Vertrauen auf die API.
   const satzung = useMemo(() => {
-    const zeilen = (satzungDaten?.haushaltssatzung ?? [])
-      .filter((z) => z.nachtrag === 0);
+    const zeilen = (satzungDaten?.budget_bylaw ?? [])
+      .filter((z) => z.supplement === 0);
     return zeilen.length
-      ? zeilen.reduce((a, b) => (b.jahr > a.jahr ? b : a))
+      ? zeilen.reduce((a, b) => (b.year > a.year ? b : a))
       : null;
   }, [satzungDaten]);
 
-  const reihe = data?.reihe ?? [];
-  const kurve = useMemo(() => punkte(reihe, ansicht), [reihe, ansicht]);
-  const teilung = useMemo(() => aufteilungen(reihe), [reihe]);
-  const luecken = useMemo(() => ohneAufteilung(reihe), [reihe]);
+  const series = data?.series ?? [];
+  const kurve = useMemo(() => punkte(series, ansicht), [series, ansicht]);
+  const teilung = useMemo(() => aufteilungen(series), [series]);
+  const luecken = useMemo(() => ohneAufteilung(series), [series]);
   // Die Zinslinie in der Kurve (H4-13) — nur in der absoluten Ansicht: Die
   // Quelle weist keinen Pro-Kopf-Zins aus, und wir dividieren nicht selbst.
   const zinsreihe = useMemo(
-    () => (ansicht === "insgesamt"
-      ? (data?.zinslast ?? []).map((z) => ({ jahr: z.jahr, wert: z.aufwand / 1e6 }))
+    () => (ansicht === "total"
+      ? (data?.interest_expense ?? []).map((z) => ({ year: z.year, value: z.expense / 1e6 }))
       : undefined),
     [data, ansicht]);
 
@@ -580,7 +552,7 @@ export default function SchuldenPage() {
   }
   // Ohne eingelesene Zeitreihe gibt es diese Seite nicht — lieber ein
   // ehrlicher Hinweis als eine Seite voller Striche.
-  if (!data || reihe.length < 2) {
+  if (!data || series.length < 2) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
         Für diese Seite ist die Schuldenzeitreihe noch nicht eingelesen.{" "}
@@ -589,17 +561,17 @@ export default function SchuldenPage() {
     );
   }
 
-  const letzter = reihe[reihe.length - 1];
-  const erster = reihe[0];
+  const letzter = series[series.length - 1];
+  const erster = series[0];
   const hLetzter = herkunftVon(data, letzter.herkunft_id);
   const quelleUrl = hLetzter?.url ?? null;
 
   // Die Richtungen über die ganze Reihe — gerechnet, nicht geschrieben: Eine
   // Seite, die „gestiegen" als Text trägt, wird mit dem nächsten Jahrgang
   // still falsch.
-  const deltaAbs = letzter.insgesamt - erster.insgesamt;
-  const proKopfDa = letzter.je_einwohner != null && erster.je_einwohner != null;
-  const deltaKopf = proKopfDa ? letzter.je_einwohner! - erster.je_einwohner! : null;
+  const deltaAbs = letzter.total - erster.total;
+  const proKopfDa = letzter.per_capita != null && erster.per_capita != null;
+  const deltaKopf = proKopfDa ? letzter.per_capita! - erster.per_capita! : null;
   const gegenlaeufig = deltaKopf != null && Math.sign(deltaAbs) !== Math.sign(deltaKopf);
 
   // Der jüngste Jahrgang mit belegter Aufteilung — die Aufteilung ist nicht
@@ -607,7 +579,7 @@ export default function SchuldenPage() {
   const jTeilung = teilung.at(-1) ?? null;
 
   return (
-    <Quellenkontext schluessel={[...QUELLEN]} jahr={letzter.jahr}>
+    <Quellenkontext keys={[...QUELLEN]} year={letzter.year}>
       <div className="flex flex-col gap-4">
         {/* items-start statt items-end (24.08.): Rechts steht jetzt das
             Schritt-Zeichen über dem Quelle-Knopf — die Spalte ist so hoch wie
@@ -637,28 +609,28 @@ export default function SchuldenPage() {
             die Treppe, maßstäblich zu den Zahlen, und klickt zum Block
             „Warum man drei Zahlen hört". Ohne Tabellenband keine Bühne. */}
         {(() => {
-          const st = data?.integrierte_schulden?.stichtag;
+          const st = data?.integrated_debt?.as_of_date;
           if (!st) return null;
-          const traeger = (data?.reihe ?? []).find((z) => z.jahr === st.jahr)?.insgesamt ?? null;
+          const entity = (data?.series ?? []).find((z) => z.year === st.year)?.total ?? null;
           const stufen = [
-            { titel: "Kernhaushalt", wert: st.kernhaushalt },
-            { titel: "Stadt als Rechtsträger", wert: traeger },
-            { titel: "der ganze Konzern", wert: st.insgesamt },
-          ].filter((x): x is { titel: string; wert: number } => x.wert != null);
+            { title: "Kernhaushalt", value: st.core_budget },
+            { title: "Stadt als Rechtsträger", value: entity },
+            { title: "der ganze Konzern", value: st.total },
+          ].filter((x): x is { title: string; value: number } => x.value != null);
           if (stufen.length < 2) return null;
-          const max = Math.max(...stufen.map((x) => x.wert));
+          const max = Math.max(...stufen.map((x) => x.value));
           const toene = ["var(--sb-voll)", "var(--sb-mittel)", "var(--sb-blass)"];
           return (
             <Seitenbuehne
-              kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.jahr}`}
-              zahl={<><ZaehlZahl wert={st.insgesamt / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
+              kicker={`Drei Zählweisen, eine Stadt · Stand 31.12.${st.year}`}
+              zahl={<><ZaehlZahl value={st.total / 1e6} nachkomma={1} />&#8239;Mio.&nbsp;€
                 im weitesten Begriff</>}
               sub={<>
                 {stufen.map((x, i) => (
-                  <span key={x.titel}>
+                  <span key={x.title}>
                     {i > 0 && " · "}
-                    {x.titel}{" "}
-                    <ZaehlZahl wert={x.wert / 1e6} nachkomma={1} dauerMs={350}
+                    {x.title}{" "}
+                    <ZaehlZahl value={x.value / 1e6} nachkomma={1} dauerMs={350}
                       verzoegerungMs={i * 150} className="font-semibold" />
                   </span>
                 ))}
@@ -670,9 +642,9 @@ export default function SchuldenPage() {
                 skizze: (
                   <span className="flex items-end gap-1.5" style={{ height: 64 }}>
                     {stufen.map((x, i) => (
-                      <span key={x.titel} className="flex-1 rounded-t-[6px] rounded-b-[3px]"
+                      <span key={x.title} className="flex-1 rounded-t-[6px] rounded-b-[3px]"
                         style={{
-                          height: `${Math.max((x.wert / max) * 100, 6)}%`,
+                          height: `${Math.max((x.value / max) * 100, 6)}%`,
                           background: toene[stufen.length - 1 - i] ?? toene[2],
                         }} />
                     ))}
@@ -685,7 +657,7 @@ export default function SchuldenPage() {
 
         {/* Einstiegstext unter der Bühne, kleiner (Tim, 26.08.). */}
         <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">
-          Ende {letzter.jahr} waren es {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€.
+          Ende {letzter.year} waren es {deMio(letzter.total / 1e6)}&#8239;Mio.&nbsp;€.
           Was diese Zahl zählt und was nicht, steht direkt darunter — bei Schulden
           ist das der Unterschied zwischen zwei Antworten.
         </p>
@@ -695,21 +667,21 @@ export default function SchuldenPage() {
             in derselben Karte, nicht in einer Fußnote weiter unten. */}
         <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            Stand 31.12.{letzter.jahr}
+            Stand 31.12.{letzter.year}
           </p>
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
             <div>
               <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">
-                {deMio(letzter.insgesamt / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio(letzter.total / 1e6)}&#8239;Mio.&nbsp;€
               </p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                insgesamt<Beleg q="schulden" />
+                total<Beleg q="schulden" />
               </p>
             </div>
-            {letzter.je_einwohner != null && (
+            {letzter.per_capita != null && (
               <div>
                 <p className="font-display text-[28px] font-bold leading-none tracking-tight tabular-nums sm:text-[32px]">
-                  {deEuro(letzter.je_einwohner)}&nbsp;€
+                  {deEuro(letzter.per_capita)}&nbsp;€
                 </p>
                 <p className="mt-1 text-[12px] text-muted-foreground">
                   je Einwohner*in<Beleg q="schulden" />
@@ -719,11 +691,11 @@ export default function SchuldenPage() {
           </div>
           {/* Der Wortlaut kommt aus dem Backend — s. Kopfkommentar. */}
           <p className="max-w-[76ch] rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] leading-relaxed text-foreground/90">
-            <strong>Gezählt wird:</strong> {data.abgrenzung}
+            <strong>Gezählt wird:</strong> {data.scope_note}
           </p>
-          {letzter.revidiert === 1 && (
+          {letzter.revised === 1 && (
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              Die Stadt hat die Werte für {letzter.jahr} nachträglich korrigiert; hier steht
+              Die Stadt hat die Werte für {letzter.year} nachträglich korrigiert; hier steht
               der korrigierte Stand.
             </p>
           )}
@@ -750,10 +722,10 @@ export default function SchuldenPage() {
                 Was der Schuldenstand im Jahr kostet
               </p>
               <p className="mt-2 font-display text-[26px] font-extrabold leading-none tracking-tight text-foreground">
-                {deMio(zins.aufwand / 1e6)}&#8239;Mio.&nbsp;€
+                {deMio(zins.expense / 1e6)}&#8239;Mio.&nbsp;€
               </p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                Zinsen im Jahr {zins.jahr} — aus dem Jahresabschluss
+                Zinsen im Jahr {zins.year} — aus dem Jahresabschluss
                 <Beleg q="jahresabschluss" />, nicht aus der Reihe oben.
               </p>
               <p className="mt-2.5 max-w-[68ch] text-[12.5px] leading-relaxed text-foreground/85">
@@ -767,8 +739,14 @@ export default function SchuldenPage() {
           );
         })()}
 
+        {/* ZU WELCHEM ZINS — die Unterrichtungen des Rates (council/loans.py):
+            Kreditaufnahmen mit Zinssatz, Umschuldungen mit Volumen und
+            Ersparnis. Eine dritte Quelle neben Jahrbuch und Abschluss, mit
+            eigenem Beleg; ohne Bestand kein Block. */}
+        <KrediteBlock daten={krediteDaten ?? null} />
+
         <LottiErklaert
-          titel="Warum es zwei Schuldenzahlen gibt"
+          title="Warum es zwei Schuldenzahlen gibt"
           text={"Die Stadt hat Betriebe, die zu ihr gehören, und Gesellschaften, die ihr "
             + "gehören. Das ist nicht dasselbe: Ein Eigenbetrieb wie die Gebäudewirtschaft "
             + "ist rechtlich die Stadt — seine Schulden sind ihre Schulden. Eine GmbH oder "
@@ -781,14 +759,14 @@ export default function SchuldenPage() {
         {/* Die Zeitreihe */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {erster.jahr} bis {letzter.jahr}
+            {erster.year} bis {letzter.year}
           </p>
           <Segmented<Ansicht>
             value={ansicht}
             onChange={setAnsicht}
             options={[
-              { value: "insgesamt", label: "Insgesamt" },
-              { value: "je_einwohner", label: "Je Einwohner*in" },
+              { value: "total", label: "Insgesamt" },
+              { value: "per_capita", label: "Je Einwohner*in" },
             ]}
           />
         </div>
@@ -803,36 +781,36 @@ export default function SchuldenPage() {
               2010 mit seiner Erklärung am Ort des Knicks. Der ganze Satz samt
               Beleg steht darunter in „Zwei Sprünge, die keine Politik waren". */}
           <Zeitreihe
-            reihe={kurve}
-            titel={ansicht === "insgesamt" ? "Schulden insgesamt" : "Schulden je Einwohner*in"}
-            ariaTitel={`Schuldenstand ${erster.jahr} bis ${letzter.jahr}`}
-            einheit={ansicht === "insgesamt" ? "Mio. €" : "€ je Einwohner*in"}
+            series={kurve}
+            title={ansicht === "total" ? "Schulden total" : "Schulden je Einwohner*in"}
+            ariaTitel={`Schuldenstand ${erster.year} bis ${letzter.year}`}
+            unit={ansicht === "total" ? "Mio. €" : "€ je Einwohner*in"}
             // Millionen mit einer Stelle, Pro-Kopf-Beträge ohne — sonst stünde
             // „1.908,0 €" an einer Zahl, die die Quelle ganzzahlig ausweist.
-            format={ansicht === "insgesamt" ? (v) => deMio(v) : deEuro}
+            format={ansicht === "total" ? (v) => deMio(v) : deEuro}
             spruenge
             vorjahresdifferenz
             tabelle
             zweitreihe={zinsreihe && zinsreihe.length
-              ? { label: "Zinslast p. a.", reihe: zinsreihe, format: (v) => deMio(v) }
+              ? { label: "Zinslast p. a.", series: zinsreihe, format: (v) => deMio(v) }
               : undefined}
-            annotationen={ansicht === "insgesamt" ? [{
-              jahr: 2010,
+            annotationen={ansicht === "total" ? [{
+              year: 2010,
               kurz: "108,9 Mio. € umgebucht",
               text: "2010 übertrug die Stadt 108,9 Mio. € Kredite an den neuen "
                 + "Eigenbetrieb Gebäudewirtschaft. Dadurch änderte sich die Aufteilung, "
                 + "während die Gesamtsumme nahezu gleich blieb.",
             }] : []}
-            hinweis="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
+            note="Jahr überfahren, antippen oder mit den Pfeiltasten wechseln."
           />
           {/* Die beiden Richtungen nebeneinander — der Grund, warum es den
               Umschalter überhaupt gibt. Gerechnet, nicht geschrieben. */}
           {gegenlaeufig && (
             <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/90">
-              Über {letzter.jahr - erster.jahr} Jahre gehen die beiden Ansichten
+              Über {letzter.year - erster.year} Jahre gehen die beiden Ansichten
               auseinander: Insgesamt hat die Stadt heute{" "}
               {deMio(Math.abs(deltaAbs) / 1e6)}&#8239;Mio.&nbsp;€{" "}
-              {deltaAbs > 0 ? "mehr" : "weniger"} Schulden als {erster.jahr}, je
+              {deltaAbs > 0 ? "mehr" : "weniger"} Schulden als {erster.year}, je
               Einwohner*in aber {deEuro(Math.abs(deltaKopf!))}&nbsp;€{" "}
               {deltaKopf! > 0 ? "mehr" : "weniger"} — die Zahl der Einwohner*innen ist in
               derselben Zeit gewachsen.
@@ -855,7 +833,7 @@ export default function SchuldenPage() {
             einen Sprung zu behaupten, den man nicht sieht. */}
         <section className="@container rounded-2xl border border-border bg-card p-4 shadow-sm">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-            {ansicht === "insgesamt"
+            {ansicht === "total"
               ? "Zwei Brüche durch organisatorische Änderungen"
               : "Drei Brüche durch Organisation oder Statistik"}
           </p>
@@ -874,7 +852,7 @@ export default function SchuldenPage() {
               Kreditportfolios. Dieselbe Stadt, dieselben Schulden, andere
               Spalte.<Beleg q="schulden" />
             </li>
-            {ansicht === "je_einwohner" && (
+            {ansicht === "per_capita" && (
               <li>
                 <strong>2023 sank der Betrag je Einwohner*in um 36&nbsp;€ — obwohl
                 die Schulden stiegen.</strong> Der Zensus 2022 zählte 4.079 Menschen
@@ -885,7 +863,7 @@ export default function SchuldenPage() {
               </li>
             )}
           </ul>
-          {ansicht === "je_einwohner" && (
+          {ansicht === "per_capita" && (
             /* Der Vollständigkeit halber, aber NICHT als vierter Aufzählungspunkt:
                2012 wirkte dieselbe Mechanik, trug aber nur 30 der 125 € — den Rest
                hat die Stadt wirklich aufgenommen. Als gleichrangiger Punkt neben
@@ -908,10 +886,10 @@ export default function SchuldenPage() {
           <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-                Wer schuldet was ({jTeilung.jahr})
+                Wer schuldet was ({jTeilung.year})
               </p>
               <span className="font-mono text-[10px] uppercase text-muted-foreground">
-                {teilung.length} von {reihe.length} Jahren aufgeschlüsselt
+                {teilung.length} von {series.length} Jahren aufgeschlüsselt
               </span>
             </div>
             {/* --hh-aus-0 und --hh-aus-2, NICHT aus-3: Die Segmente tragen
@@ -922,9 +900,9 @@ export default function SchuldenPage() {
             <div className="mt-3 flex h-7 w-full overflow-hidden rounded-lg">
               {([
                 ["Verwaltung", jTeilung.kern, "var(--hh-aus-0)"],
-                ["Eigenbetriebe", jTeilung.eigenbetriebe, "var(--hh-aus-2)"],
-              ] as const).map(([label, wert, farbe]) => {
-                const anteil = (wert / (jTeilung.kern + jTeilung.eigenbetriebe)) * 100;
+                ["Eigenbetriebe", jTeilung.municipal_enterprises, "var(--hh-aus-2)"],
+              ] as const).map(([label, value, farbe]) => {
+                const anteil = (value / (jTeilung.kern + jTeilung.municipal_enterprises)) * 100;
                 return (
                   <div key={label} className="flex items-center px-2"
                     style={{ width: `${anteil}%`, background: farbe }}>
@@ -952,7 +930,7 @@ export default function SchuldenPage() {
                   style={{ background: "var(--hh-aus-2)" }} />
                 <dt className="text-muted-foreground">Eigenbetriebe</dt>
                 <dd className="font-semibold tabular-nums">
-                  {deMio(jTeilung.eigenbetriebe / 1e6)}&#8239;Mio.&nbsp;€
+                  {deMio(jTeilung.municipal_enterprises / 1e6)}&#8239;Mio.&nbsp;€
                 </dd>
               </div>
             </dl>
@@ -964,7 +942,7 @@ export default function SchuldenPage() {
             {/* Die Lücke benennen statt sie als Null zu zeichnen. */}
             {luecken.length > 0 && (
               <p className="mt-2 max-w-[76ch] border-t border-dashed border-border pt-2 text-[12px] leading-relaxed text-muted-foreground">
-                Für {luecken.map((z) => z.jahr).join(", ")} fehlt die Aufteilung: Dort
+                Für {luecken.map((z) => z.year).join(", ")} fehlt die Aufteilung: Dort
                 {luecken.length === 1 ? " ergibt " : " ergeben "}
                 die Summe der einzelnen Schuldenarten in der Quelltabelle nicht den Betrag,
                 der daneben als Gesamtschuld ausgewiesen ist. Welche Spalte danebenliegt,
@@ -1028,7 +1006,13 @@ export default function SchuldenPage() {
           </ul>
         </section>
 
-        {satzung && <RahmenBlock zeile={satzung}
+        {/* WIE VIEL GELD AUF DEM KONTO IST — die Monatsgrafik der Verwaltung
+            (council/liquidity.py), direkt vor dem Rahmen aus § 4: Der Stand
+            ist die Zahl, der Höchstbetrag darunter ihre Grenze. */}
+        <LiquiditaetsBlock daten={liquiDaten ?? null}
+          hoechstbetrag={satzung?.liquidity_loans ?? null} />
+
+        {satzung && <RahmenBlock row={satzung}
           herkunft={herkunftVon(satzungDaten, satzung.herkunft_id)} />}
 
         <Link href="/haushalt"
@@ -1040,7 +1024,7 @@ export default function SchuldenPage() {
 
         <SchrittWeiter href="/haushalt/schulden" />
 
-        <Quellenverzeichnis schluessel={[...QUELLEN]} />
+        <Quellenverzeichnis keys={[...QUELLEN]} />
       </div>
     </Quellenkontext>
   );

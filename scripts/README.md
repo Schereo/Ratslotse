@@ -11,14 +11,48 @@ Zeitpläne stehen in den jeweiligen Docstrings; maßgeblich ist die laufende
 
 | Skript | Schedule | Zweck |
 |--------|----------|-------|
-| `backup_db.py` | `0 3 * * *` | SQLite-Backup (7 Kopien je DB) |
+| `backup_db.py` | `0 3 * * *` | SQLite-Backup (7 Tages- + 4 Wochenstände je DB) |
 | `check_committees.py` | `0 7 * * *` | Ausschuss-Tagesordnungen prüfen, benachrichtigen |
 | `check_council.py` | `0 8,14 * * *` | Stadtratssitzungen auf Themen-Matches prüfen |
 | `check_protocols.py` | `0 9 * * *` | Protokolle parsen → ruft die Sub-Steps (s.u.) |
+| `check_council_videos.py` | `30 10 * * *` | Vorläufige Abstimmungsergebnisse aus O1-Aufzeichnungen lesen |
 | `remind_setup.py` | `0 11 * * *` | Eine Erinnerungsmail je Konto mit offener Einrichtung (≥ 48 h) |
+| `record_council_livestream.py` | `0 13 * * *` (UTC) | O1-Livestream aufnehmen, transkribieren und vorläufig auswerten |
 | `abendmeldungen.py` | `0 18 * * *` | Vorabend-Erinnerung (täglich) + Wochenüberblick (sonntags), Design 30a |
 | `weekly_enrich.py` | `0 3 * * 0` | LLM-/Embedding-Backfills → ruft die Sub-Steps (s.u.) |
 | `check_finanzdaten.py` | 14-tägig `30 4 * * 0` | Neue Haushalts-Jahrgänge aus dem Anlagenbestand nachziehen; meldet ausbleibende Jahrgänge |
+
+### Produktionsvoraussetzungen für Video und Livestream
+
+Der Produktions-Deploy prüft diese Voraussetzungen vor der Codeübertragung,
+ändert sie aber nicht: Beide Cron-Einträge müssen aktiv sein und mit
+`.venv/bin/python` laufen, `yt-dlp` muss entweder in `.venv/bin` oder im `PATH`
+liegen und das auf der VM erprobte FFmpeg-Build unter `~/bin/ffmpeg`. Außerdem
+muss `.env` einen nichtleeren `OPENROUTER_API_KEY` sowie für Release 2.0
+`APP_MIN_BUILD=19` oder höher enthalten. Die Modellvariablen dürfen fehlen;
+dann gelten die im Code dokumentierten Defaults.
+
+Der Server läuft auf UTC. Der Mitschnitt startet deshalb um 13 Uhr UTC, also
+je nach Sommerzeit um 14 oder 15 Uhr in Oldenburg; der Job wartet intern bis
+fünf Minuten vor dem lokalen Sitzungsbeginn. Ein Cron um 16 Uhr UTC käme im
+Sommer erst um 18 Uhr Ortszeit und könnte den Sitzungsanfang verpassen.
+
+Der Preflight ist absichtlich read-only und überschreibt keine Crontab. Ob der
+OpenRouter-Key Zugriff auf die gewählten Modelle hat und ob der externe
+HLS-Stream aktuell demuxt werden kann, bleibt ein separater produktiver Canary;
+ein Offline-Check könnte beides nicht belastbar nachweisen.
+
+Vor den vorwärtsgerichteten Release-Migrationen legt der Deploy zusätzlich
+`data/.release-maintenance` an und stoppt den API-Dienst. Bereits laufende
+Python-Prozesse aus dem Checkout sowie fremde offene SQLite-Handles müssen
+verschwunden sein. Danach sperrt `prepare_release_databases.py` beide
+autoritativen Datenbanken gegen Writes, erzeugt je einen eindeutigen,
+rotationsfreien `*_predeploy_*.sqlite`-Snapshot und ein JSON-Manifest mit
+SHA-256, Schema-Hash und Zeilenzahlen aller Tabellen. Erst nach explizitem Lauf
+beider Migrationsstapel und erneutem `quick_check` entfernt der Workflow die
+Barriere. Scheitert ein Schritt, bleiben Marker und API-Stopp bestehen; ein
+Restore erfolgt nie automatisch, weil inzwischen entstandene Writes sonst
+verloren gehen könnten.
 
 ## Sub-Steps (von einem Cron-Skript aufgerufen, nicht selbst geplant)
 

@@ -54,6 +54,7 @@ import { useState, type ReactNode } from "react";
 import { deMio } from "@/components/grafik/format";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { useBreite } from "@/lib/use-breite";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export type HantelZeile = {
@@ -65,10 +66,13 @@ export type HantelZeile = {
    *  dass die Quelle diese Zeile nicht erläutert — das Feld wegzulassen ist
    *  kein gültiger Zustand. */
   einordnung: ReactNode | null;
+  /** Wohin die Zeile führt (der Bereichs-Steckbrief). Ohne `href` ist der
+   *  Name nur Text — keine Zeigerhand, wo der Klick nichts tut. */
+  href?: string;
 };
 
-export type HantelMassstab = "prozent" | "betrag";
-export type HantelSortierung = "abweichung" | "alpha";
+export type HantelMassstab = "percent" | "amount";
+export type HantelSortierung = "deviation" | "alpha";
 
 /** Der Satz, der die Nicht-Wertung ausschreibt, wenn die Zeilen AUSGABEN sind.
  *
@@ -83,13 +87,14 @@ const AUSGABEN_KEINE_WERTUNG =
   + "oder eine Stelle nicht besetzt wurde.";
 
 export function Hantel({
-  zeilen, einheit = "Mio. €", massstab = "prozent",
-  sortierung = "abweichung", schwelle, beleg,
+  zeilen, unit = "Mio. €", massstab = "percent",
+  sortierung = "deviation", schwelle, beleg,
   wovon = "der Bereich", keineWertung = AUSGABEN_KEINE_WERTUNG,
+  planLabel = "geplant", istLabel = "tatsächlich",
 }: {
   zeilen: HantelZeile[];
   /** Einheit der Beträge — steht an den Skalenenden und in der Legende. */
-  einheit?: string;
+  unit?: string;
   /** Woran die Streckenlänge hängt — siehe Kommentar oben. */
   massstab?: HantelMassstab;
   /** |Abweichung| absteigend (Default, H4-07) oder nach Label. */
@@ -107,8 +112,16 @@ export function Hantel({
   /** Der ausgeschriebene Verzicht auf eine Wertung. Er bleibt Pflicht — nur
    *  sein Wortlaut hängt daran, worüber die Hantel spricht. */
   keineWertung?: ReactNode;
+  /** Was die beiden Enden heißen. „tatsächlich" stimmt nur, wo ein Abschluss
+   *  vorliegt; der Haushaltsvollzug setzt eine ERWARTUNG dagegen und sagt
+   *  deshalb „erwartet" — dieselbe Hantel, ein anderes Wort. */
+  planLabel?: string;
+  istLabel?: string;
 }) {
   const [alle, setAlle] = useState(false);
+  /** Die Zeile unter dem Zeiger — Spotlight (gb-zeile), aus React, nicht
+   *  aus `:hover`, damit der Fokus dasselbe bekommt. */
+  const [schwebt, setSchwebt] = useState<string | null>(null);
   const { box, breite } = useBreite();
   const schmal = breite < 520;
 
@@ -125,7 +138,7 @@ export function Hantel({
   // spreizen sich die Zeilen deutlich besser — bei den Ausgaben 2024 ist die
   // mittlere Strecke fünfmal so lang, und statt fünf sind nur zwei von zwölf
   // Zeilen kürzer als zwei Prozent der Breite.
-  const skala = (z: HantelZeile) => (massstab === "prozent" ? anteil(z) ?? 0 : diff(z));
+  const skala = (z: HantelZeile) => (massstab === "percent" ? anteil(z) ?? 0 : diff(z));
 
   const sortiert = [...gueltig].sort((a, b) =>
     sortierung === "alpha"
@@ -147,26 +160,30 @@ export function Hantel({
   // Die Achse trägt ihre Einheit selbst — „−6,2 Mio. €" statt einer nackten
   // Zahl, deren Einheit man in der Legende suchen muss (Review H4-07).
   const skalenEnde = (v: number) =>
-    massstab === "prozent"
+    massstab === "percent"
       ? `${v > 0 ? "+" : ""}${Math.round(v)} %`
-      : `${v > 0 ? "+" : ""}${deMio(v)} ${einheit}`;
+      : `${v > 0 ? "+" : ""}${deMio(v)} ${unit}`;
 
   const gitter = "grid-cols-[minmax(96px,150px)_1fr_auto]";
 
   /** Die Achse einer Zeile — Strecke, Null-Marke, beide Punkte. */
-  const achse = (z: HantelZeile) => {
+  const achse = (z: HantelZeile, rang: number) => {
     const s = skala(z);
     return (
       <div aria-hidden="true" className="relative h-5">
         <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border/60" />
         <div className="absolute inset-y-0 w-px bg-border" style={{ left: `${nullPos}%` }} />
         {/* Die Abweichung als Strecke, ab der Null — immer Signal-Orange,
-            die Punkte nie farbcodiert (GB-05). */}
+            die Punkte nie farbcodiert (GB-05). Beim Aufbau wächst sie AUS DER
+            NULL heraus (gb-balken-auf, Ursprung je Richtung), versetzt je
+            Zeile; beim Umschalten des Maßstabs gleitet sie (gb-lage). */}
         <div
-          className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-signal/70"
+          className="gb-lage gb-balken-auf absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-signal/70"
           style={{
             left: `${Math.min(nullPos, pos(s))}%`,
             width: `${Math.max(Math.abs(pos(s) - nullPos), 0.5)}%`,
+            transformOrigin: s < 0 ? "100% 50%" : "0 50%",
+            animationDelay: `${rang * 45}ms`,
           }}
         />
         {/* Geplant: offener Punkt auf der Null. Tatsächlich: gefüllter
@@ -183,8 +200,8 @@ export function Hantel({
         />
         <span
           aria-hidden="true"
-          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ left: `${pos(s)}%`, background: "var(--hh-aus-0)" }}
+          className="gb-lage gb-einblenden absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{ left: `${pos(s)}%`, background: "var(--hh-aus-0)", animationDelay: `${rang * 45 + 320}ms` }}
         />
       </div>
     );
@@ -197,19 +214,23 @@ export function Hantel({
   const zahlen = (z: HantelZeile, mitQuote: boolean) => {
     const d = diff(z);
     const quote = anteil(z);
+    // Die Abweichung ist die Aussage der Zeile — sie steht in Bricolage und
+    // größer als Plan und Ist, die nur ihre Herkunft sind. Bis 02.09. standen
+    // alle vier Zahlen in derselben 12-px-Zeile.
     return (
-      <span className="whitespace-nowrap text-right text-[12px] tabular-nums">
-        <span className="sr-only">geplant </span>
+      <span className="inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap text-right text-[12px] tabular-nums">
+        <span className="sr-only">{planLabel} </span>
         <span className="text-muted-foreground">{deMio(z.plan as number)}</span>
-        <span aria-hidden="true" className="mx-1 text-muted-foreground">→</span>
-        <span className="sr-only">, tatsächlich </span>
+        <span aria-hidden="true" className="text-muted-foreground">→</span>
+        <span className="sr-only">, {istLabel} </span>
         <span className="font-semibold">{deMio(z.ist as number)}</span>
         <span className="sr-only">, Abweichung </span>
-        <span className={cn("ml-1.5", d !== 0 && "text-signal")}>
+        <span className={cn("ml-1 font-display text-[15px] font-bold leading-none tracking-tight",
+                            d !== 0 && "text-signal")}>
           {d > 0 ? "+" : ""}{deMio(d)}
         </span>
         {mitQuote && quote != null && (
-          <span className="ml-1 text-[11px] text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">
             ({quote > 0 ? "+" : "−"}{Math.abs(quote).toLocaleString("de-DE", {
               minimumFractionDigits: 1, maximumFractionDigits: 1 })}&nbsp;%)
           </span>
@@ -218,16 +239,34 @@ export function Hantel({
     );
   };
 
+  /** Der Name der Zeile — Text, oder ein Link, wo die Zeile ein Ziel hat.
+   *  Zwei Zeilen statt `truncate`: „Finanzmanagement un…" sagte nichts. */
+  const name = (z: HantelZeile) => z.href ? (
+    <Link href={z.href} className="line-clamp-2 text-[12.5px] leading-tight text-primary hover:underline">
+      {z.label}
+    </Link>
+  ) : (
+    <span className="line-clamp-2 text-[12.5px] leading-tight">{z.label}</span>
+  );
+
   return (
-    <div ref={box} className="flex flex-col gap-2.5">
-      {gezeigt.map((z) => (
-        <div key={z.label} className="flex flex-col gap-1">
+    <div ref={box} className="flex flex-col gap-1.5" onMouseLeave={() => setSchwebt(null)}>
+      {gezeigt.map((z, rang) => (
+        <div
+          key={z.label}
+          data-schwebt={schwebt === z.label}
+          data-gedimmt={schwebt != null && schwebt !== z.label}
+          onMouseEnter={() => setSchwebt(z.label)}
+          onFocus={() => setSchwebt(z.label)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSchwebt(null); }}
+          className="gb-zeile -mx-2 flex flex-col gap-1 px-2 py-1"
+        >
           {schmal ? (
             // H4-A: Name über der Achse, Achse volle Breite, Werte unter den
             // Punkten — nie zweispaltig.
             <>
-              <span className="text-[12.5px] font-medium">{z.label}</span>
-              {achse(z)}
+              <span className="text-[12.5px] font-medium">{name(z)}</span>
+              {achse(z, rang)}
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[11px] text-muted-foreground">
                   ○ Plan <span className="tabular-nums">{deMio(z.plan as number)}</span>
@@ -246,8 +285,8 @@ export function Hantel({
             </>
           ) : (
             <div className={cn("grid items-center gap-x-3", gitter)}>
-              <span className="truncate text-[12.5px]">{z.label}</span>
-              {achse(z)}
+              {name(z)}
+              {achse(z, rang)}
               {zahlen(z, true)}
             </div>
           )}
@@ -271,9 +310,20 @@ export function Hantel({
       {/* Skalenenden — ohne sie wüsste niemand, wofür die Länge steht. */}
       <div className={cn("grid gap-x-3", schmal ? "grid-cols-1" : gitter)}>
         {!schmal && <span />}
-        <div className="relative h-4 text-[10px] tabular-nums text-muted-foreground">
-          {min < 0 && <span className="absolute left-0 top-0 whitespace-nowrap">{skalenEnde(min)}</span>}
-          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap" style={{ left: `${nullPos}%` }}>
+        {/* Der Nullpunkt-Text bleibt IN der Zeile: Bei einem Nullpunkt am
+            linken Rand ragte „wie geplant" halb aus der Karte (Durchsicht
+            02.09.2026, /steuer mobil). Sein Mittelpunkt hält 2,5 rem Abstand
+            zu beiden Enden; steht dort schon das linke Skalenende, rutscht das
+            in eine zweite Zeile. */}
+        <div className={cn("relative text-[10px] tabular-nums text-muted-foreground",
+          min < 0 && nullPos < 16 ? "h-8" : "h-4")}>
+          {min < 0 && (
+            <span className={cn("absolute left-0 whitespace-nowrap", nullPos < 16 ? "top-4" : "top-0")}>
+              {skalenEnde(min)}
+            </span>
+          )}
+          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `clamp(2.5rem, ${nullPos}%, calc(100% - 2.5rem))` }}>
             wie geplant
           </span>
           {max > 0 && <span className="absolute right-0 top-0 whitespace-nowrap">{skalenEnde(max)}</span>}
@@ -292,19 +342,19 @@ export function Hantel({
       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/60 pt-2.5 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full border-2 bg-card" style={{ borderColor: "var(--hh-ein-0)" }} />
-          geplant
+          {planLabel}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full" style={{ background: "var(--hh-aus-0)" }} />
-          tatsächlich
+          {istLabel}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-[3px] w-4 rounded-full bg-signal/70" />
-          {massstab === "prozent" ? "Abweichung in Prozent des Plans" : `Abweichung in ${einheit}`}
+          {massstab === "percent" ? "Abweichung in Prozent des Plans" : `Abweichung in ${unit}`}
         </span>
         {beleg && <span>{beleg}</span>}
         <span className="basis-full text-[11px] leading-relaxed">
-          {massstab === "prozent"
+          {massstab === "percent"
             ? `Die Strecke misst, um wie viel Prozent ${wovon} vom Plan abwich — so ist eine Zeile von 231 Mio. € mit einer von 6 Mio. € vergleichbar. Der Betrag steht rechts daneben.`
             : `Die Strecke misst den Betrag der Abweichung. Große Zeilen dominieren dabei; wie genau ${wovon} beim Plan lag, zeigt die Prozent-Ansicht besser.`}{" "}
           {keineWertung}

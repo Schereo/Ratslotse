@@ -14,14 +14,14 @@ _OLD_SCHEMA = """
 CREATE TABLE council_decisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ksinr INTEGER NOT NULL, position INTEGER NOT NULL,
     kind TEXT NOT NULL DEFAULT 'decision', parent_item TEXT, item_number TEXT, title TEXT,
-    beschluss TEXT, outcome TEXT, vote TEXT, gegenstimmen INTEGER, enthaltungen INTEGER,
-    factions TEXT, vorlage_nr TEXT, kvonr INTEGER, raw_result TEXT);
+    official_text TEXT, outcome TEXT, vote TEXT, no_votes INTEGER, abstentions INTEGER,
+    factions TEXT, template_number TEXT, kvonr INTEGER, raw_result TEXT);
 CREATE INDEX idx_decisions_ksinr ON council_decisions(ksinr);
 CREATE TABLE council_sessions (ksinr INTEGER PRIMARY KEY, committee TEXT, session_date TEXT,
     session_time TEXT, location TEXT, fetched_at TEXT NOT NULL DEFAULT '');
 INSERT INTO council_sessions VALUES (1,'Rat','2025-01-01','18:00','Rathaus','2025-01-01');
-INSERT INTO council_decisions (ksinr,position,kind,item_number,title,beschluss,outcome)
-    VALUES (1,0,'decision','1','Alt-Beschluss','Bestand vor Migration','angenommen');
+INSERT INTO council_decisions (ksinr,position,kind,item_number,title,official_text,outcome)
+    VALUES (1,0,'decision','1','Alt-Beschluss','Bestand vor Migration','accepted');
 """
 
 
@@ -71,15 +71,15 @@ def test_classification_roundtrip_and_filter(tmp_path):
 def test_party_analysis(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     motions = [
-        (["Bündnis 90/Die Grünen"], "verkehr", "angenommen", 0, 0),
-        (["Bündnis 90/DIE GRÜNEN", "SPD"], "klima_umwelt", "angenommen", 2, 1),
-        (["CDU"], "finanzen", "abgelehnt", 5, 0),
-        (["Verwaltung"], "finanzen", "angenommen", 0, 0),  # non-party → ignored
+        (["Bündnis 90/Die Grünen"], "verkehr", "accepted", 0, 0),
+        (["Bündnis 90/DIE GRÜNEN", "SPD"], "klima_umwelt", "accepted", 2, 1),
+        (["CDU"], "finanzen", "rejected", 5, 0),
+        (["Verwaltung"], "finanzen", "accepted", 0, 0),  # non-party → ignored
     ]
     for i, (fac, field, oc, g, e) in enumerate(motions, start=10):
         store._conn.execute(
             "INSERT INTO council_decisions "
-            "(ksinr,position,kind,item_number,title,beschluss,outcome,gegenstimmen,enthaltungen,factions,policy_field) "
+            "(ksinr,position,kind,item_number,title,official_text,outcome,no_votes,abstentions,factions,policy_field) "
             "VALUES (1,?,'decision',?,?,?,?,?,?,?,?)",
             (i, str(i), "T", "B", oc, g, e, json.dumps(fac), field),
         )
@@ -89,7 +89,7 @@ def test_party_analysis(tmp_path):
     assert a["coverage"]["with_factions"] == 3  # the Verwaltung-only motion is excluded
     # The two Grünen spellings collapse to one party.
     gruene = next(s for s in a["success_rates"] if s["party"] == "Grüne")
-    assert gruene["motions"] == 2 and gruene["angenommen"] == 2 and gruene["rate"] == 1.0
+    assert gruene["motions"] == 2 and gruene["accepted"] == 2 and gruene["rate"] == 1.0
     assert a["topic_matrix"]["matrix"]["Grüne"]["verkehr"] == 1
     assert {"a": "Grüne", "b": "SPD", "count": 1} in a["alliances"]
 
@@ -97,18 +97,18 @@ def test_party_analysis(tmp_path):
 def test_goal_links(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field) "
-        "VALUES (20,1,0,'decision','1','Photovoltaik Schuldach','Solaranlage aufs Dach','angenommen','klima_umwelt')"
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field) "
+        "VALUES (20,1,0,'decision','1','Photovoltaik Schuldach','Solaranlage aufs Dach','accepted','klima_umwelt')"
     )
     store._conn.commit()
 
     cands = store.get_goal_candidates(["photovoltaik", "solar"])
     assert any(c["id"] == 20 for c in cands)
 
-    store.save_goal_links("klima_2035", {20: {"relevant": True, "stance": "voran", "grund": "Solar."}})
-    assert store.goal_summary()["klima_2035"] == {"voran": 1, "bremst": 0, "neutral": 0, "total": 1}
+    store.save_goal_links("klima_2035", {20: {"relevant": True, "stance": "advances", "reason": "Solar."}})
+    assert store.goal_summary()["klima_2035"] == {"advances": 1, "hinders": 0, "neutral": 0, "total": 1}
     det = store.goal_detail("klima_2035")
-    assert len(det) == 1 and det[0]["stance"] == "voran" and det[0]["title"].startswith("Photovoltaik")
+    assert len(det) == 1 and det[0]["stance"] == "advances" and det[0]["title"].startswith("Photovoltaik")
 
     # Incremental cron: a decision already linked to the goal is excluded.
     assert all(c["id"] != 20 for c in store.get_goal_candidates(["photovoltaik"], exclude_goal="klima_2035"))
@@ -126,8 +126,8 @@ def test_qa_keywords_and_fetch(tmp_path):
 
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome) "
-        "VALUES (30,1,0,'decision','1','A','b','angenommen')"
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome) "
+        "VALUES (30,1,0,'decision','1','A','b','accepted')"
     )
     store._conn.commit()
     got = store.get_decisions_by_ids([30, 999])  # 999 missing → skipped, order preserved
@@ -138,8 +138,8 @@ def test_similar_neighbours(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     for i in (10, 11, 12):
         store._conn.execute(
-            f"INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome) "
-            f"VALUES ({i},1,0,'decision','1','T{i}','b','angenommen')"
+            f"INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome) "
+            f"VALUES ({i},1,0,'decision','1','T{i}','b','accepted')"
         )
     store._conn.commit()
 
@@ -181,8 +181,8 @@ def test_decisions_fts(tmp_path):
     for i, (t, b) in enumerate([("Radweg Nadorster Straße", "Ausbau eines Radwegs beschlossen"),
                                 ("Haushaltssatzung 2024", "Der Haushalt wird beschlossen")], 50):
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome) "
-            "VALUES (?,1,0,'decision','1',?,?,'angenommen')", (i, t, b))
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome) "
+            "VALUES (?,1,0,'decision','1',?,?,'accepted')", (i, t, b))
     store._conn.commit()
     store.rebuild_fts()
     assert store.search_decisions_fts("radweg")[0][0] == 50
@@ -195,10 +195,10 @@ def test_entities(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # seeds a session ksinr=1
     for i, t in ((60, "Bebauungsplan Fliegerhorst Nord"), (61, "Altlastensanierung Fliegerhorst Süd")):
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field,amount_eur) "
-            "VALUES (?,1,0,'decision','1',?,'b','angenommen','bauen_wohnen',1000000.0)", (i, t))
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field,amount_eur) "
+            "VALUES (?,1,0,'decision','1',?,'b','accepted','bauen_wohnen',1000000.0)", (i, t))
     store._conn.commit()
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 2)],
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "place", 2)],
                         [("fliegerhorst", 60), ("fliegerhorst", 61)])
     assert [e["slug"] for e in store.list_entities()] == ["fliegerhorst"]
     assert [e["slug"] for e in store.entities_for_decision(60)] == ["fliegerhorst"]
@@ -211,17 +211,17 @@ def test_entities(tmp_path):
 def test_money_by_field_and_trends_drivers(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1, date 2025-01-01
     seed = [
-        # id, title, field, amount, vorlage_nr
+        # id, title, field, amount, template_number
         (70, "Neubau Schwimmbad", "kultur_sport", 5_000_000.0, "22/0100"),
         (71, "Neubau Schwimmbad", "kultur_sport", 5_000_000.0, "22/0100/1"),  # Rat-Zwilling → dedupliziert
         (72, "Sanierung Radweg", "verkehr", 2_000_000.0, "22/0200"),
         (73, "Jahresabschluss 2023 der Stadt", "finanzen", 999_000_000.0, "22/0300"),  # Buchhaltung → ausgeschlossen
     ]
-    for i, title, field, amt, vnr in seed:
+    for i, title, field, office, vnr in seed:
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,"
-            "outcome,policy_field,amount_eur,vorlage_nr) "
-            "VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?,?)", (i, title, field, amt, vnr))
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,"
+            "outcome,policy_field,amount_eur,template_number) "
+            "VALUES (?,1,0,'decision','1',?,'b','accepted',?,?,?)", (i, title, field, office, vnr))
     store._conn.commit()
 
     # Buchhaltung raus, Zwilling dedupliziert → Schwimmbad einmal (5M), Radweg 2M.
@@ -241,10 +241,10 @@ def test_money_by_field_and_trends_drivers(tmp_path):
 def test_entity_meta_description_and_geo(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session ksinr=1
     store._conn.execute(
-        "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome,policy_field) "
-        "VALUES (80,1,0,'decision','1','Fliegerhorst Bebauungsplan','Beschluss','angenommen','bauen_wohnen')")
+        "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome,policy_field) "
+        "VALUES (80,1,0,'decision','1','Fliegerhorst Bebauungsplan','Beschluss','accepted','bauen_wohnen')")
     store._conn.commit()
-    store.save_entities([("fliegerhorst", "Fliegerhorst", "ort", 1)], [("fliegerhorst", 80)])
+    store.save_entities([("fliegerhorst", "Fliegerhorst", "place", 1)], [("fliegerhorst", 80)])
 
     # description: missing → set → read back via entity_detail; idempotent backfill list
     assert [e["slug"] for e in store.entities_without_description()] == ["fliegerhorst"]
@@ -272,13 +272,13 @@ def test_entity_money_dedup(tmp_path):
         (72, "Sanierung Dach", "22/0200", 200000.0),
         (73, "Jahresabschluss 2023 der Hallen GmbH", "22/0300", 99000000.0),  # Buchhaltung → raus
     ]
-    for i, title, vnr, amt in seed:
+    for i, title, vnr, office in seed:
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,"
-            "outcome,amount_eur,vorlage_nr) VALUES (?,1,0,'decision','1',?,'b','angenommen',?,?)",
-            (i, title, amt, vnr))
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,"
+            "outcome,amount_eur,template_number) VALUES (?,1,0,'decision','1',?,'b','accepted',?,?)",
+            (i, title, office, vnr))
     store._conn.commit()
-    store.save_entities([("halle", "Halle", "ort", 4)], [("halle", i) for i in (70, 71, 72, 73)])
+    store.save_entities([("halle", "Halle", "place", 4)], [("halle", i) for i in (70, 71, 72, 73)])
     # 600k (Zwilling einmal) + 200k = 800k; der 99-Mio-Jahresabschluss ist ausgeschlossen.
     assert store.entity_detail("halle")["money"] == 800000
 
@@ -289,8 +289,8 @@ def test_entity_obs_incremental(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1, decision id=1
     for i, title in [(2, "Beschluss zum Fliegerhorst"), (3, "Sanierung Rathaus")]:
         store._conn.execute(
-            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,beschluss,outcome) "
-            "VALUES (?,1,0,'decision','1',?,'b','angenommen')", (i, title))
+            "INSERT INTO council_decisions(id,ksinr,position,kind,item_number,title,official_text,outcome) "
+            "VALUES (?,1,0,'decision','1',?,'b','accepted')", (i, title))
     store._conn.commit()
 
     # First pass scans decisions 1 + 2.
@@ -307,7 +307,7 @@ def test_entity_obs_incremental(tmp_path):
 
     # Incremental pass: decision 3 also mentions Rathaus → it now crosses min_n,
     # because the earlier observation (decision 1) was retained.
-    store.add_entity_observations([(3, "rathaus", "Rathaus", "ort")], [3])
+    store.add_entity_observations([(3, "rathaus", "Rathaus", "place")], [3])
     store.rebuild_entities_from_obs(min_n=2)
     assert store.scanned_entity_decision_ids() == {1, 2, 3}
     assert {e["slug"]: e["n"] for e in store.list_entities()}.get("rathaus") == 2
@@ -322,10 +322,10 @@ def test_council_members_merge_by_slug(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))  # session 1 = Rat, 2025-01-01
     store._conn.execute("INSERT INTO council_sessions VALUES (2,'Bauausschuss','2025-02-01','17:00','Rathaus','2025-02-01')")
     rows = [
-        (1, "Dr. Max Mustermann", "SPD", "vorsitz"),   # title variant of the same person …
-        (2, "Max Mustermann", "SPD", "mitglied"),       # … merges by slug → one entry, unique key
-        (1, "Erika Musterfrau", "CDU", "mitglied"),
-        (1, "Frau Schmidt", "", "verwaltung"),          # excluded role
+        (1, "Dr. Max Mustermann", "SPD", "chair"),   # title variant of the same person …
+        (2, "Max Mustermann", "SPD", "member"),       # … merges by slug → one entry, unique key
+        (1, "Erika Musterfrau", "CDU", "member"),
+        (1, "Frau Schmidt", "", "administration"),          # excluded role
     ]
     for ksinr, name, party, role in rows:
         store._conn.execute("INSERT INTO council_attendance(ksinr,name,party,role) VALUES (?,?,?,?)", (ksinr, name, party, role))
@@ -358,11 +358,11 @@ def test_embedding_vectors(tmp_path):
 def test_party_filter(tmp_path):
     store = CouncilStore(_old_db(tmp_path / "old.sqlite"))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,factions) "
-        "VALUES (40,1,0,'decision','1','A','b','angenommen',?)", (json.dumps(["Bündnis 90/Die Grünen", "Fossil Free"]),))
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome,factions) "
+        "VALUES (40,1,0,'decision','1','A','b','accepted',?)", (json.dumps(["Bündnis 90/Die Grünen", "Fossil Free"]),))
     store._conn.execute(
-        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,beschluss,outcome,factions) "
-        "VALUES (41,1,0,'decision','2','B','b','angenommen',?)", (json.dumps(["CDU"]),))
+        "INSERT INTO council_decisions (id,ksinr,position,kind,item_number,title,official_text,outcome,factions) "
+        "VALUES (41,1,0,'decision','2','B','b','accepted',?)", (json.dumps(["CDU"]),))
     store._conn.commit()
 
     # _decision_row exposes normalised parties (Fossil Free filtered out).
@@ -422,10 +422,10 @@ def test_subvotes_hidden_by_default_and_summarised(tmp_path):
     store.save_session(CouncilSession(9001, "Rat", "2026-06-01", "18:00", "Rathaus"))
     with store._conn:
         store._insert_decision(9001, 0, "decision", None, "Ö 6.1", "Stadionneubau",
-                               "Zuschuss 57,3 Mio.", "angenommen", "mehrheitlich", 18, 2,
+                               "Zuschuss 57,3 Mio.", "accepted", "majority", 18, 2,
                                ["CDU"], None, None, None)
         store._insert_decision(9001, 1, "subvote", "Ö 6.1", None, "Änderungsantrag CDU",
-                               "Erhöhung auf 57,3 Mio.", "angenommen", "mehrheitlich", 2, 0,
+                               "Erhöhung auf 57,3 Mio.", "accepted", "majority", 2, 0,
                                ["CDU"], None, None, None)
 
     # Standard: nur der Hauptbeschluss, der Subvote ist ausgeblendet.
@@ -440,7 +440,7 @@ def test_subvotes_hidden_by_default_and_summarised(tmp_path):
 
     # Zusammenfassung je (ksinr, item_number).
     summ = store.subvote_summaries([(9001, "Ö 6.1"), (9001, "Ö 9")])
-    assert summ[(9001, "Ö 6.1")] == {"count": 1, "factions": ["CDU"], "outcomes": ["angenommen"]}
+    assert summ[(9001, "Ö 6.1")] == {"count": 1, "factions": ["CDU"], "outcomes": ["accepted"]}
     assert (9001, "Ö 9") not in summ            # kein Subvote → kein Eintrag
     assert store.subvote_summaries([]) == {}    # leer bleibt leer
 
@@ -459,10 +459,10 @@ def test_decision_rows_always_carry_session_columns(tmp_path):
     store.save_session(CouncilSession(9002, "Rat", "2026-06-02", "18:00", "Rathaus"))
     with store._conn:
         store._insert_decision(9002, 0, "decision", None, "Ö 3", "Radweg",
-                               "Beschlossen", "angenommen", "einstimmig", 0, 0,
+                               "Beschlossen", "accepted", "unanimous", 0, 0,
                                ["SPD"], None, None, None)
         store._insert_decision(9002, 1, "subvote", "Ö 3", None, "Änderungsantrag",
-                               "Mehr Bäume", "abgelehnt", "mehrheitlich", 10, 1,
+                               "Mehr Bäume", "rejected", "majority", 10, 1,
                                ["Grüne"], None, None, None)
 
     pflicht = ("committee", "session_date", "protocol_url")
@@ -515,10 +515,10 @@ def test_anlagen_embedding_roundtrip(tmp_path):
     try:
         with store._conn:
             store._conn.execute(
-                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
+                "INSERT INTO council_templates (kvonr, template_number, title, status, fetched_at) "
                 "VALUES (111, '26/0100', 'Grundsatzbeschluss Stadionneubau', 'ok', datetime('now'))")
             store._conn.executemany(
-                "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+                "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
                 "fetched_at, status) VALUES (?, ?, ?, ?, ?, datetime('now'), ?)",
                 [(901, 111, "Schalltechnisches Gutachten", "https://x/901",
                   "Lärmpegel liegt unter dem Grenzwert. " * 20, "ok"),
@@ -528,8 +528,8 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         todo = store.anlagen_missing_embeddings()
         # Nur die beiden ok-Anlagen, neueste (höchste id) zuerst; empty fehlt.
         assert [t["document_id"] for t in todo] == [903, 901]
-        assert todo[1]["vorlage_nr"] == "26/0100"
-        assert todo[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+        assert todo[1]["template_number"] == "26/0100"
+        assert todo[1]["template_title"] == "Grundsatzbeschluss Stadionneubau"
 
         for t in todo:
             store.replace_anlage_embeddings(
@@ -541,12 +541,12 @@ def test_anlagen_embedding_roundtrip(tmp_path):
         # Anzeige-Zeilen behalten die Treffer-Reihenfolge + tragen die Vorlage.
         rows = store.anlagen_by_ids([903, 901])
         assert [r["document_id"] for r in rows] == [903, 901]
-        assert rows[1]["vorlage_titel"] == "Grundsatzbeschluss Stadionneubau"
+        assert rows[1]["template_title"] == "Grundsatzbeschluss Stadionneubau"
 
         # Geänderter Text → anderer Hash → wieder in der Fehlt-Liste.
         with store._conn:
             store._conn.execute(
-                "UPDATE council_anlagen SET raw_text = 'Neuer Text, deutlich anders und lang genug fuer einen Chunk. ' || raw_text "
+                "UPDATE council_attachments SET raw_text = 'Neuer Text, deutlich anders und lang genug fuer einen Chunk. ' || raw_text "
                 "WHERE document_id = 901")
         assert [t["document_id"] for t in store.anlagen_missing_embeddings()] == [901]
     finally:
@@ -580,13 +580,13 @@ def test_anlagen_reranking_bekommt_vorlagentitel(tmp_path, monkeypatch):
     try:
         with store._conn:
             store._conn.executemany(
-                "INSERT INTO council_vorlagen (kvonr, vorlage_nr, title, status, fetched_at) "
+                "INSERT INTO council_templates (kvonr, template_number, title, status, fetched_at) "
                 "VALUES (?, ?, ?, 'ok', '')", [
                     (111, "26/0100", "Bebauungsplan Fliegerhorst"),
                     (222, "26/0200", "Bebauungsplan anderes Gebiet"),
                 ])
             store._conn.executemany(
-                "INSERT INTO council_anlagen (document_id, kvonr, label, url, raw_text, "
+                "INSERT INTO council_attachments (document_id, kvonr, label, url, raw_text, "
                 "fetched_at, status) VALUES (?, ?, 'Umweltbericht', 'https://x', "
                 "'Alter Chunk ohne Thema', '', 'ok')", [(901, 111), (902, 222)])
         monkeypatch.setattr(emb, "_anlage_matrix", lambda _store: (

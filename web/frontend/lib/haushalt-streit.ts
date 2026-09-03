@@ -2,7 +2,7 @@
 //
 // Die Seite zeigt drei Dinge je Haushaltsjahrgang: welche Änderungslisten zur
 // Abstimmung standen, was in der Debatte gesagt wurde und wie am Ende
-// abgestimmt wurde. Alles kommt aus `/council/haushalt/streit`, also aus den
+// abgestimmt wurde. Alles kommt aus `/council/budget/debate`, also aus den
 // Ratsprotokollen — nicht aus einem Finanzdokument.
 //
 // AUSGEWOGENHEIT IST HIER KEINE GESCHMACKSFRAGE, SONDERN DIE HAUPTREGEL.
@@ -25,7 +25,7 @@
 // Ergebnis je Abstimmung. Ein Balken „12 dafür, 8 dagegen" wäre erfunden.
 // Deshalb steht das Ergebnis als Wort und Badge da, sonst nichts.
 
-export type StreitRolle = "rat" | "verwaltung" | "leitung";
+export type StreitRolle = "council" | "administration" | "leadership";
 
 export type StreitWortbeitrag = {
   /** Anrede aus dem Protokoll — „Ratsherr", „Stadtkämmerin" … */
@@ -38,16 +38,16 @@ export type StreitWortbeitrag = {
   fraktion: string | null;
   /** Namensvettern im Rat: Fraktion nicht eindeutig bestimmbar. */
   fraktion_unklar: boolean;
-  rolle: StreitRolle;
+  role: StreitRolle;
   zeichen: number;
 };
 
 export type StreitAntrag = {
-  titel: string;
+  title: string;
   outcome: string | null;
   vote: string | null;
   /** Fraktion(en) bzw. Gruppe hinter der Liste, null bei Verwaltungslisten. */
-  urheber: string | null;
+  author: string | null;
   ist_verwaltung: boolean;
   top: string | null;
   ksinr: number;
@@ -56,29 +56,29 @@ export type StreitAntrag = {
 export type StreitBeschluss = {
   id: number;
   top: string | null;
-  titel: string;
+  title: string;
   outcome: string | null;
   vote: string | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  no_votes: number | null;
+  abstentions: number | null;
   /** Der Abstimmungssatz, wie er im Protokoll steht. */
   wortlaut: string | null;
-  vorlage_nr: string | null;
+  template_number: string | null;
 };
 
 export type StreitStation = {
   ksinr: number;
-  gremium: string;
-  datum: string;
+  committee: string;
+  date: string;
   top: string | null;
-  beschluss: StreitBeschluss | null;
+  official_text: StreitBeschluss | null;
   antraege: StreitAntrag[];
   debatte: StreitWortbeitrag[];
-  protokoll_url: string | null;
+  minutes_url: string | null;
 };
 
-export type StreitRunde = { jahr: number; stationen: StreitStation[] };
-export type StreitDaten = { runden: StreitRunde[] };
+export type StreitRunde = { year: number; stationen: StreitStation[] };
+export type StreitDaten = { rounds: StreitRunde[] };
 
 /** So viele Zeichen jeder Rede stehen ohne Aufklappen da — für jede gleich. */
 export const VORSCHAU_ZEICHEN = 320;
@@ -102,12 +102,12 @@ export function vorschau(text: string): { kopf: string; rest: string } {
 
 /** Die Jahrgänge, neueste zuerst — so steht der aktuelle Streit oben. */
 export function jahrgaenge(daten: StreitDaten | null): number[] {
-  return (daten?.runden ?? []).map((r) => r.jahr).sort((a, b) => b - a);
+  return (daten?.rounds ?? []).map((r) => r.year).sort((a, b) => b - a);
 }
 
-export function runde(daten: StreitDaten | null, jahr: number | null): StreitRunde | null {
-  if (!daten || jahr == null) return null;
-  return daten.runden.find((r) => r.jahr === jahr) ?? null;
+export function runde(daten: StreitDaten | null, year: number | null): StreitRunde | null {
+  if (!daten || year == null) return null;
+  return daten.rounds.find((r) => r.year === year) ?? null;
 }
 
 /** Die Station, an der die Debatte hängt: die mit den meisten Wortbeiträgen.
@@ -126,7 +126,7 @@ export function antragsStationen(r: StreitRunde | null): StreitStation[] {
 /** Die Schlussabstimmung über die Haushaltssatzung — die letzte Station, die
  *  eine trägt. Vorherige Stationen haben denselben Punkt vertagt. */
 export function schlussbeschluss(r: StreitRunde | null): StreitStation | null {
-  const mit = (r?.stationen ?? []).filter((s) => s.beschluss?.outcome === "angenommen");
+  const mit = (r?.stationen ?? []).filter((s) => s.official_text?.outcome === "accepted");
   return mit.length ? mit[mit.length - 1] : null;
 }
 
@@ -136,7 +136,7 @@ export function schlussbeschluss(r: StreitRunde | null): StreitStation | null {
 export function redenJeFraktion(station: StreitStation | null): { label: string; n: number }[] {
   const zaehler = new Map<string, number>();
   for (const b of station?.debatte ?? []) {
-    if (b.rolle !== "rat") continue;
+    if (b.role !== "council") continue;
     const label = b.fraktion ?? "ohne eindeutige Fraktion";
     zaehler.set(label, (zaehler.get(label) ?? 0) + 1);
   }
@@ -149,7 +149,7 @@ export function redenJeFraktion(station: StreitStation | null): { label: string;
 export const EINZELNE = "Einzelne Ratsmitglieder";
 
 export type BilanzStand = { ein: number; durch: number };
-export type BilanzZeile = { urheber: string; fa: BilanzStand; rat: BilanzStand };
+export type BilanzZeile = { author: string; fa: BilanzStand; rat: BilanzStand };
 
 /** Die Verhandlungsbilanz eines Jahrgangs für <PunkteBilanz> (GB-09):
  *  je Urheber, getrennt nach Finanzausschuss und Rat, wie viele
@@ -169,15 +169,15 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
     // Die Stationen sind in Oldenburg der Ausschuss für Finanzen und
     // Beteiligungen und der Rat (council/store.haushalt_streit) — alles,
     // was nicht der Rat ist, zählt deshalb zur Ausschuss-Spalte.
-    const seite: keyof Omit<BilanzZeile, "urheber"> = s.gremium === "Rat" ? "rat" : "fa";
+    const page: keyof Omit<BilanzZeile, "author"> = s.committee === "Rat" ? "rat" : "fa";
     for (const a of s.antraege) {
       if (a.ist_verwaltung) continue;
-      const urheber = a.urheber ?? EINZELNE;
-      const z = bilanz.get(urheber)
-        ?? { urheber, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
-      z[seite].ein += 1;
-      if (a.outcome === "angenommen") z[seite].durch += 1;
-      bilanz.set(urheber, z);
+      const author = a.author ?? EINZELNE;
+      const z = bilanz.get(author)
+        ?? { author, fa: { ein: 0, durch: 0 }, rat: { ein: 0, durch: 0 } };
+      z[page].ein += 1;
+      if (a.outcome === "accepted") z[page].durch += 1;
+      bilanz.set(author, z);
     }
   }
   return [...bilanz.values()];
@@ -189,11 +189,11 @@ export function verhandlungsBilanz(r: StreitRunde | null): BilanzZeile[] {
  *  nie zu `ohne`: Sitzungsleitung ist eine Rolle, keine Fraktion. */
 export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt: number } {
   let ohne = 0, gesamt = 0;
-  for (const r of daten?.runden ?? []) {
+  for (const r of daten?.rounds ?? []) {
     for (const s of r.stationen) {
       for (const b of s.debatte) {
         gesamt += 1;
-        if (b.rolle === "rat" && b.fraktion_unklar) ohne += 1;
+        if (b.role === "council" && b.fraktion_unklar) ohne += 1;
       }
     }
   }
@@ -203,22 +203,22 @@ export function ohneZuordnung(daten: StreitDaten | null): { ohne: number; gesamt
 /** Die ehrliche Mengenangabe der Quelle: wie viele Änderungslisten (alle,
  *  auch die der Verwaltung) und Wortbeiträge über welchen Zeitraum im
  *  Bestand stehen — gezählt, nicht geschrieben. */
-export function bestand(daten: StreitDaten | null): {
-  listen: number; beitraege: number; jahrgaenge: number; von: number; bis: number;
+export function balance(daten: StreitDaten | null): {
+  listen: number; contributions: number; jahrgaenge: number; von: number; bis: number;
 } {
-  const runden = daten?.runden ?? [];
-  let listen = 0, beitraege = 0;
+  const runden = daten?.rounds ?? [];
+  let listen = 0, contributions = 0;
   for (const r of runden) {
     for (const s of r.stationen) {
       listen += s.antraege.length;
-      beitraege += s.debatte.length;
+      contributions += s.debatte.length;
     }
   }
-  const jahre = runden.map((r) => r.jahr);
+  const years = runden.map((r) => r.year);
   return {
-    listen, beitraege, jahrgaenge: runden.length,
-    von: jahre.length ? Math.min(...jahre) : 0,
-    bis: jahre.length ? Math.max(...jahre) : 0,
+    listen, contributions, jahrgaenge: runden.length,
+    von: years.length ? Math.min(...years) : 0,
+    bis: years.length ? Math.max(...years) : 0,
   };
 }
 

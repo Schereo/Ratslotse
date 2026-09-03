@@ -50,7 +50,7 @@ export type PunkteZeile = {
   /** Identitätspunkt (8 px). Ohne Angabe neutral — Gruppen und kombinierte
    *  Labels bekommen NIE die Farbe der erstgenannten Partei. */
   farbe?: { bg: string; ring?: boolean };
-  gremien: { fa: PunkteStand; rat: PunkteStand };
+  committees: { fa: PunkteStand; rat: PunkteStand };
 };
 
 /** Punktgröße in px — fest, auf jedem Gerät (H4-A: „Fairness-Regel gilt auf
@@ -78,12 +78,12 @@ function IdentitaetsPunkt({ farbe }: { farbe?: { bg: string; ring?: boolean } })
 /** Eine Dot-Zeile: erst die Abstimmungen mit Mehrheit (gefüllt), dann die
  *  ohne (Umriss). Die Punkte sind dekorativ — der Satz für die Vorlesehilfe
  *  steht als sr-only daneben, mit denselben Zahlen. */
-function Punkte({ stand, kontext }: { stand: PunkteStand; kontext: string }) {
-  const ohne = Math.max(stand.ein - stand.durch, 0);
+function Punkte({ as_of, kontext }: { as_of: PunkteStand; kontext: string }) {
+  const ohne = Math.max(as_of.ein - as_of.durch, 0);
   return (
     <>
       <span aria-hidden className="flex flex-wrap items-center gap-1">
-        {Array.from({ length: stand.durch }, (_, i) => (
+        {Array.from({ length: as_of.durch }, (_, i) => (
           <span
             key={`d${i}`}
             className="flex-none rounded-full bg-foreground/75"
@@ -97,15 +97,15 @@ function Punkte({ stand, kontext }: { stand: PunkteStand; kontext: string }) {
             style={{ width: PUNKT, height: PUNKT }}
           />
         ))}
-        {stand.ein === 0 && (
+        {as_of.ein === 0 && (
           <span className="text-[11px] leading-none text-muted-foreground">—</span>
         )}
       </span>
       <span className="sr-only">
-        {kontext}: {stand.ein === 0
+        {kontext}: {as_of.ein === 0
           ? "keine Änderungsliste zur Abstimmung"
-          : `${stand.ein === 1 ? "1 Abstimmung" : `${stand.ein} Abstimmungen`} über Änderungslisten, `
-            + `${stand.durch} davon ${stand.durch === 1 ? "fand" : "fanden"} eine Mehrheit`}
+          : `${as_of.ein === 1 ? "1 Abstimmung" : `${as_of.ein} Abstimmungen`} über Änderungslisten, `
+            + `${as_of.durch} davon ${as_of.durch === 1 ? "fand" : "fanden"} eine Mehrheit`}
       </span>
     </>
   );
@@ -113,8 +113,8 @@ function Punkte({ stand, kontext }: { stand: PunkteStand; kontext: string }) {
 
 function summe(z: PunkteZeile): PunkteStand {
   return {
-    ein: z.gremien.fa.ein + z.gremien.rat.ein,
-    durch: z.gremien.fa.durch + z.gremien.rat.durch,
+    ein: z.committees.fa.ein + z.committees.rat.ein,
+    durch: z.committees.fa.durch + z.committees.rat.durch,
   };
 }
 
@@ -177,10 +177,10 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
                   </span>
                 </div>
                 <div role="cell" className={cn("flex min-h-[38px] items-center border-t border-border/60", TRENNER)}>
-                  <Punkte stand={z.gremien.fa} kontext="Im Finanzausschuss" />
+                  <Punkte as_of={z.committees.fa} kontext="Im Finanzausschuss" />
                 </div>
                 <div role="cell" className={cn("flex min-h-[38px] items-center border-t border-border/60", TRENNER)}>
-                  <Punkte stand={z.gremien.rat} kontext="Im Rat" />
+                  <Punkte as_of={z.committees.rat} kontext="Im Rat" />
                 </div>
                 <div role="cell" className={cn("flex min-h-[38px] items-center justify-end border-t border-border/60 font-mono text-[12px] tabular-nums", TRENNER)}>
                   {s.ein}
@@ -215,11 +215,11 @@ export function PunkteBilanz({ zeilen, beleg, className }: {
                 <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   FA
                 </span>
-                <Punkte stand={z.gremien.fa} kontext="Im Finanzausschuss" />
+                <Punkte as_of={z.committees.fa} kontext="Im Finanzausschuss" />
                 <span className="font-mono text-[9.5px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                   Rat
                 </span>
-                <Punkte stand={z.gremien.rat} kontext="Im Rat" />
+                <Punkte as_of={z.committees.rat} kontext="Im Rat" />
               </div>
             </li>
           );

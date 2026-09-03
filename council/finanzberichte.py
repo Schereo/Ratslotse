@@ -1,7 +1,7 @@
 """Jahresabschlüsse und Teilhaushalte aus dem Ratsinformationssystem lesen.
 
 Beide Dokumenttypen liegen längst als Anlagen zu Ratsvorlagen in
-``council_anlagen`` — mit Volltext, den der Protokoll-Scraper ohnehin zieht.
+``council_attachments`` — mit Volltext, den der Protokoll-Scraper ohnehin zieht.
 Kein neuer Download, keine neue Quelle:
 
 - **Jahresabschluss** (300+ Seiten, jährlich): enthält die Ergebnisrechnung
@@ -30,7 +30,7 @@ einschließlich Nachtragshaushalt, sonst der nackte Ansatz. Bei 2020 sind das
 27 Mio. € Unterschied, also der Unterschied zwischen „21,5 Mio. weniger
 ausgegeben als geplant" und „5,7 Mio. mehr". Deshalb speichert der Parser
 beides — ``ansatz`` (der ursprüngliche Haushaltsansatz) und ``plan`` (die
-Bezugsgröße der Abweichung) — und dazu in ``plan_art``, welche der beiden
+Bezugsgröße der Abweichung) — und dazu in ``plan_kind``, welche der beiden
 gemeint ist. Eine Kurve, die 2018 die Gesamtermächtigung und 2021 den nackten
 Ansatz gegen das Ist stellt, ohne das zu sagen, wäre still falsch.
 
@@ -89,9 +89,9 @@ _TOLERANZ_VORZEICHEN = 0.01
 #: Bezugsgrößen der Abweichung, menschenlesbar — für die Oberfläche.
 #: Ohne diese Angabe ist eine Mehrjahres-Kurve nicht ehrlich lesbar.
 PLAN_ARTEN = {
-    "ansatz": "Haushaltsansatz",
-    "ansatz_nachtrag": "Ansatz einschließlich Nachtragshaushalt",
-    "gesamtermaechtigung": "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
+    "budget": "Haushaltsansatz",
+    "supplementary_budget": "Ansatz einschließlich Nachtragshaushalt",
+    "total_authorization": "Gesamtermächtigung (Ansatz, Nachtrag, Übertragungen)",
 }
 
 
@@ -109,11 +109,11 @@ def _kopf_normalisieren(kopf: str) -> str:
     return " ".join(re.sub(r"-\s*\n\s*", "", kopf).split())
 
 
-def _tabellenkopf(kopf: str, jahr: int) -> dict | None:
+def _tabellenkopf(kopf: str, year: int) -> dict | None:
     """Aus dem Tabellenkopf lesen, welche Spalten es gibt und in welcher
     Reihenfolge — die Grundlage für alles Weitere.
 
-    Liefert ``{positionen, varianten, hat_vorjahr}``. ``varianten`` sind die
+    Liefert ``{positionen, varianten, has_prior_year}``. ``varianten`` sind die
     als Bezugsgröße der Abweichung zugelassenen Spalten, von der
     spezifischsten zur allgemeinsten; genannt wird nur, was im Kopf steht.
     ``None``, wenn der Kopf nicht genug hergibt — dann wird nichts geraten."""
@@ -129,50 +129,50 @@ def _tabellenkopf(kopf: str, jahr: int) -> dict | None:
 
     # Achtung: „Ermächtigungen des Haushaltsjahres" darf nicht als Ergebnis
     # durchgehen — deshalb steht „Ergebnis" in den Mustern immer mit dabei.
-    finde("vorjahr", r"Ergebnis des Vorjahres", rf"Ergebnis {jahr - 1}")
-    finde("ansatz", r"Ansätze des Haushaltsjahres", r"Ansätze des Haushaltsplanes",
-          rf"Ansätze? {jahr}", r"Ansätze des", r"\bAnsatz\b")
-    finde("nachtrag", r"Veränderung durch\s*Nachtrag", r"\bNachtrag\b")
-    finde("gesamtermaechtigung", r"Gesamtermächtigung")
-    finde("ergebnis", r"Ergebnis des Haushaltsjahres", rf"Ergebnis {jahr}")
+    finde("prior_year", r"Ergebnis des Vorjahres", rf"Ergebnis {year - 1}")
+    finde("budget", r"Ansätze des Haushaltsjahres", r"Ansätze des Haushaltsplanes",
+          rf"Ansätze? {year}", r"Ansätze des", r"\bAnsatz\b")
+    finde("supplement", r"Veränderung durch\s*Nachtrag", r"\bNachtrag\b")
+    finde("total_authorization", r"Gesamtermächtigung")
+    finde("result", r"Ergebnis des Haushaltsjahres", rf"Ergebnis {year}")
     # Der Zwischenraum vor der Klammer ist nicht verlässlich: Die
     # Finanzrechnung 2017 schreibt „mehr(+), weniger(-)" ohne Leerzeichen, und
     # ohne das ``\s*`` fand der Kopf dort gar keine Abweichungsspalte — der
     # ganze Jahrgang fiel durch. Die Stelle ist nur ein Vorhandenseins-Test
     # (die Reihenfolge kommt aus Ansatz und Ergebnis), Aufweiten also gefahrlos.
-    finde("abweichung", r"mehr\s*\(\+\)", r"Differenz", r"Abweichung", r"Vergleich")
+    finde("deviation", r"mehr\s*\(\+\)", r"Differenz", r"Abweichung", r"Vergleich")
 
-    if "ergebnis" not in positionen or "abweichung" not in positionen:
+    if "result" not in positionen or "deviation" not in positionen:
         return None
 
     varianten: list[str] = []
     # Die Gesamtermächtigung ist der spezifischste Bezug: Wo der Kopf sie
     # führt (2018), ist sie die Spalte direkt vor dem Ergebnis.
-    if "gesamtermaechtigung" in positionen:
-        varianten.append("gesamtermaechtigung")
-    if "ansatz" in positionen and "nachtrag" in positionen:
-        varianten.append("ansatz_nachtrag")
-    if "ansatz" in positionen:
-        varianten.append("ansatz")
+    if "total_authorization" in positionen:
+        varianten.append("total_authorization")
+    if "budget" in positionen and "supplement" in positionen:
+        varianten.append("supplementary_budget")
+    if "budget" in positionen:
+        varianten.append("budget")
     if not varianten:
         return None
     return {"positionen": positionen, "varianten": tuple(varianten),
-            "hat_vorjahr": "vorjahr" in positionen}
+            "has_prior_year": "prior_year" in positionen}
 
 
 def _plan_zuerst(kopf: dict, art: str) -> bool:
     """Steht die Plan-Spalte im Kopf vor der Ergebnis-Spalte? 2017 nicht —
     dort lautet die Reihenfolge Vorjahr, Ergebnis, Ansatz, Differenz."""
-    spalte = "gesamtermaechtigung" if art == "gesamtermaechtigung" else "ansatz"
-    return kopf["positionen"][spalte] < kopf["positionen"]["ergebnis"]
+    spalte = "total_authorization" if art == "total_authorization" else "budget"
+    return kopf["positionen"][spalte] < kopf["positionen"]["result"]
 
 
-def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
+def parse_ergebnisrechnung(text: str, year: int) -> list[dict]:
     """Ergebnisrechnung der Kernverwaltung aus dem Jahresabschluss-Volltext.
 
-    Liefert je Posten ``{nr, bezeichnung, vorjahr, ansatz, ergebnis,
-    abweichung}`` in Euro. ``ansatz`` ist der Planwert des Jahres,
-    ``ergebnis`` das tatsächliche Ergebnis — genau das Paar, aus dem
+    Liefert je Posten ``{nr, label, prior_year, budgeted, result,
+    deviation}`` in Euro. ``budgeted`` ist der Planwert des Jahres,
+    ``result`` das tatsächliche Ergebnis — genau das Paar, aus dem
     „geplant gegen tatsächlich" wird.
 
     Die Tabelle hat sieben Spalten, von denen zwei (Nachtrag, Ermächtigung)
@@ -196,10 +196,10 @@ def parse_ergebnisrechnung(text: str, jahr: int) -> list[dict]:
     ende = text.find("Gesamtergebnisrechnung", start + 6000)
     block = text[start:ende if ende > 0 else start + 12000]
 
-    return _posten_aus_block(block, jahr)
+    return _posten_aus_block(block, year)
 
 
-def _posten_aus_block(block: str, jahr: int) -> list[dict]:
+def _posten_aus_block(block: str, year: int) -> list[dict]:
     """Die Posten einer Ergebnisrechnungs-Tabelle lesen — gemeinsam genutzt
     von der Gesamtrechnung und den Teil-Ergebnisrechnungen je Teilhaushalt,
     die dieselbe Tabellenform haben.
@@ -207,7 +207,7 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
     Jeder Abschnitt trägt seinen eigenen Kopf; er steht vor der ersten
     Zwischenüberschrift („Ordentliche Erträge")."""
     schnitt = re.search(r"[Oo]rdentliche Erträge", block)
-    kopf = _tabellenkopf(block[:schnitt.start()] if schnitt else block[:900], jahr)
+    kopf = _tabellenkopf(block[:schnitt.start()] if schnitt else block[:900], year)
     if kopf is None:
         return []
 
@@ -226,7 +226,7 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
         inhalt.setdefault(nr, teile[i + 1])
 
     out: list[dict] = []
-    for nr, bezeichnung in ERGEBNIS_POSTEN.items():
+    for nr, label in ERGEBNIS_POSTEN.items():
         roh = inhalt.get(nr)
         if not roh:
             continue
@@ -234,13 +234,13 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
         # Spalten, deshalb etwas mehr Luft als die früher genügenden 200.
         # Hinter Posten 24 steht die Zeile „Jahresergebnis" ohne Nummer; ohne
         # diesen Schnitt gehörten ihre Zahlen noch zu Posten 24.
-        zeile = re.split(r"Jahresergebnis", roh[:240])[0]
-        zahlen = [_eur(z) for z in _BETRAG.findall(zeile)]
+        row = re.split(r"Jahresergebnis", roh[:240])[0]
+        zahlen = [_eur(z) for z in _BETRAG.findall(row)]
         werte = _spalten_zuordnen(zahlen, kopf)
         if werte is None:
             continue
-        out.append({"nr": nr, "bezeichnung": bezeichnung, "jahr": jahr,
-                    "ist_summe": 1 if nr in SUMMEN_POSTEN else 0, **werte})
+        out.append({"nr": nr, "label": label, "year": year,
+                    "is_total": 1 if nr in SUMMEN_POSTEN else 0, **werte})
     return out
 
 
@@ -254,11 +254,11 @@ def _posten_aus_block(block: str, jahr: int) -> list[dict]:
 _THH_ABSCHNITT = re.compile(r"Teil\s*-?\s*Ergebnisrechnung\s+THH\s?(\d\d)\s*([^\n]{0,60})")
 
 
-def parse_teilergebnisrechnungen(text: str, jahr: int) -> list[dict]:
+def parse_teilergebnisrechnungen(text: str, year: int) -> list[dict]:
     """Teil-Ergebnisrechnungen je Teilhaushalt aus dem Jahresabschluss.
 
     Liefert dieselben Posten wie ``parse_ergebnisrechnung``, zusätzlich mit
-    ``thh_nr`` und ``thh_name`` — die Grundlage für „geplant gegen
+    ``sub_budget_no`` und ``sub_budget_name`` — die Grundlage für „geplant gegen
     tatsächlich" je Bereich (Design H-16).
 
     Je Teilhaushalt stehen im Dokument mehrere Abschnitte (Ergebnis-, dann
@@ -268,18 +268,18 @@ def parse_teilergebnisrechnungen(text: str, jahr: int) -> list[dict]:
     treffer: dict[int, dict] = {}
     stellen = list(_THH_ABSCHNITT.finditer(text))
     for i, m in enumerate(stellen):
-        thh_nr = int(m.group(1))
-        if thh_nr in treffer:
+        sub_budget_no = int(m.group(1))
+        if sub_budget_no in treffer:
             continue
         # Bis zum nächsten Abschnitt lesen, damit keine Werte des folgenden
         # Teilhaushalts hineinrutschen.
         ende = stellen[i + 1].start() if i + 1 < len(stellen) else m.end() + 9000
-        posten = _posten_aus_block(text[m.end():ende], jahr)
+        posten = _posten_aus_block(text[m.end():ende], year)
         nummern = {p["nr"] for p in posten}
         if not {12, 20} <= nummern:
             continue  # kein vollständiger Ergebnis-Abschnitt
         name = re.sub(r"^\s*(THH\s?\d\d)?\s*", "", m.group(2)).strip(" -–—:")
-        treffer[thh_nr] = {"thh_nr": thh_nr, "thh_name": name, "posten": posten}
+        treffer[sub_budget_no] = {"sub_budget_no": sub_budget_no, "sub_budget_name": name, "posten": posten}
     return list(treffer.values())
 
 
@@ -302,13 +302,13 @@ def summenprobe(teilhaushalte: list[dict], gesamt: list[dict],
     Gibt ``(besteht, groesste_abweichung)`` zurück."""
     schlimmste = 0.0
     for nr in (12, 20):
-        for feld in ("plan", "ergebnis"):
-            ganz = next((p.get(feld) for p in gesamt if p["nr"] == nr), None)
+        for field in ("plan", "result"):
+            ganz = next((p.get(field) for p in gesamt if p["nr"] == nr), None)
             if not ganz:
                 return False, 1.0
-            teil = sum(next((p.get(feld) for p in x["posten"] if p["nr"] == nr), 0) or 0
+            part = sum(next((p.get(field) for p in x["posten"] if p["nr"] == nr), 0) or 0
                        for x in teilhaushalte)
-            schlimmste = max(schlimmste, abs(teil - ganz) / abs(ganz))
+            schlimmste = max(schlimmste, abs(part - ganz) / abs(ganz))
     return schlimmste <= toleranz, schlimmste
 
 
@@ -325,13 +325,13 @@ def strukturprobe(posten: list[dict], toleranz: float = _TOLERANZ) -> tuple[bool
     nach_nr = {p["nr"]: p for p in posten}
     if not {12, 20, 21} <= set(nach_nr):
         return False, "Posten 12, 20 oder 21 fehlt"
-    for feld in ("plan", "ergebnis"):
-        werte = [nach_nr[n].get(feld) for n in (12, 20, 21)]
+    for field in ("plan", "result"):
+        werte = [nach_nr[n].get(field) for n in (12, 20, 21)]
         if any(w is None for w in werte):
-            return False, f"{feld}: Wert fehlt"
+            return False, f"{field}: Wert fehlt"
         rest = (werte[0] - werte[1]) - werte[2]
         if abs(rest) > toleranz:
-            return False, f"{feld}: 12 − 20 − 21 = {rest:+.2f} €"
+            return False, f"{field}: 12 − 20 − 21 = {rest:+.2f} €"
     return True, ""
 
 
@@ -342,26 +342,26 @@ def vorjahreskette(je_jahr: dict[int, list[dict]],
 
     Geprüft werden die Summenzeilen 12 und 20 jedes benachbarten Paares.
     Zurück kommt die Liste der **gerissenen** Glieder als
-    ``(jahr, folgejahr, begruendung)`` — leer heißt: alles schließt.
+    ``(year, folgejahr, begruendung)`` — leer heißt: alles schließt.
 
     Weil ein gerissenes Glied nicht verrät, welche der beiden Seiten falsch
     gelesen wurde, verliert der Aufrufer beide. Das ist die konservative
     Lesart und entspricht dem Grundsatz dieses Moduls: lieber eine Lücke als
     eine Zahl, die niemand nachrechnen kann."""
     kaputt: list[tuple[int, int, str]] = []
-    for jahr in sorted(je_jahr):
-        folge = jahr + 1
+    for year in sorted(je_jahr):
+        folge = year + 1
         if folge not in je_jahr:
             continue
-        vorher = {p["nr"]: p for p in je_jahr[jahr]}
+        vorher = {p["nr"]: p for p in je_jahr[year]}
         nachher = {p["nr"]: p for p in je_jahr[folge]}
         for nr in (12, 20):
-            ist = vorher.get(nr, {}).get("ergebnis")
-            genannt = nachher.get(nr, {}).get("vorjahr")
+            ist = vorher.get(nr, {}).get("result")
+            genannt = nachher.get(nr, {}).get("prior_year")
             if ist is None or genannt is None:
-                kaputt.append((jahr, folge, f"Posten {nr}: Wert fehlt"))
+                kaputt.append((year, folge, f"Posten {nr}: Wert fehlt"))
             elif abs(ist - genannt) > toleranz:
-                kaputt.append((jahr, folge,
+                kaputt.append((year, folge,
                                f"Posten {nr}: Ist {ist:,.2f} ≠ Vorjahresspalte "
                                f"{genannt:,.2f}"))
     return kaputt
@@ -371,7 +371,7 @@ def _fenster(zahlen: list[float], kopf: dict, art: str) -> tuple | None:
     """Das Fenster in der Zahlenfolge suchen, das die Rechenprobe der
     jeweiligen Bezugsgröße erfüllt.
 
-    Zurück kommt ``(plan, ergebnis, abweichung, start_index, repariert)``.
+    Zurück kommt ``(plan, result, deviation, start_index, repariert)``.
 
     Genommen wird das **letzte** passende Fenster, also von rechts gelesen.
     Das ist die Anordnung, die der Kopf vorgibt: Ganz rechts steht die
@@ -385,32 +385,32 @@ def _fenster(zahlen: list[float], kopf: dict, art: str) -> tuple | None:
     * Fängt der Kopf mit einer Vorjahresspalte an, darf das Fenster nicht bei
       Index 0 beginnen — die erste Zahl der Zeile ist dann immer das Vorjahr.
     * Ein exakter Treffer schlägt immer eine Vorzeichen-Reparatur."""
-    mindest = 1 if kopf["hat_vorjahr"] else 0
+    mindest = 1 if kopf["has_prior_year"] else 0
     plan_zuerst = _plan_zuerst(kopf, art)
-    breite = 4 if art == "ansatz_nachtrag" else 3
-    if art == "ansatz_nachtrag" and not plan_zuerst:
+    breite = 4 if art == "supplementary_budget" else 3
+    if art == "supplementary_budget" and not plan_zuerst:
         return None  # Nachtragsspalte gibt es nur in der Ansatz-zuerst-Form
     exakt = repariert = None
     for i in range(mindest, len(zahlen) - breite + 1):
-        if art == "ansatz_nachtrag":
-            ansatz, nachtrag, ergebnis, abweichung = zahlen[i:i + 4]
-            if nachtrag == 0:
+        if art == "supplementary_budget":
+            ansatz, supplement, result, deviation = zahlen[i:i + 4]
+            if supplement == 0:
                 continue  # leere Nachtragsspalte → das ist der einfache Fall
-            plan = ansatz + nachtrag
+            plan = ansatz + supplement
         else:
-            a, b, abweichung = zahlen[i:i + 3]
-            plan, ergebnis = (a, b) if plan_zuerst else (b, a)
-        if abs((ergebnis - plan) - abweichung) <= _TOLERANZ:
-            exakt = (plan, ergebnis, abweichung, i, False)
-        elif (abs((ergebnis - plan) + abweichung) <= _TOLERANZ_VORZEICHEN
-                and abweichung and ergebnis and plan):
+            a, b, deviation = zahlen[i:i + 3]
+            plan, result = (a, b) if plan_zuerst else (b, a)
+        if abs((result - plan) - deviation) <= _TOLERANZ:
+            exakt = (plan, result, deviation, i, False)
+        elif (abs((result - plan) + deviation) <= _TOLERANZ_VORZEICHEN
+                and deviation and result and plan):
             # Im Dokument fehlt das Minuszeichen (gesehen 2020, Summenzeile 20
             # des Schlussberichts). Nur reparieren, wenn der Betrag auf den
             # Cent passt — und nur bei einem echten Tripel: Ohne die
             # Null-Bedingung erfüllt jedes „X | 0,00 | X" diese Probe, was im
             # Jahresabschluss 2018 einen ganzen Teilhaushalt mit einem Ist von
             # 0,00 € eingetragen hätte (THH11, richtig sind 105,0 Mio. €).
-            repariert = (plan, ergebnis, ergebnis - plan, i, True)
+            repariert = (plan, result, result - plan, i, True)
     return exakt or repariert
 
 
@@ -422,26 +422,26 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
     als Plan nur zugelassen ist, was der Tabellenkopf auch als Spalte nennt
     (Ansatz, Ansatz + Nachtrag oder Gesamtermächtigung). Geliefert werden
     beide Größen: ``ansatz`` der ursprüngliche Haushaltsansatz, ``plan`` die
-    Bezugsgröße der Abweichung, ``plan_art`` welche davon."""
+    Bezugsgröße der Abweichung, ``plan_kind`` welche davon."""
     if len(zahlen) < 4:
         return None
     for art in kopf["varianten"]:
         gefunden = _fenster(zahlen, kopf, art)
         if not gefunden:
             continue
-        plan, ergebnis, abweichung, start, repariert = gefunden
-        vorjahr = zahlen[0] if kopf["hat_vorjahr"] else None
-        if art == "ansatz_nachtrag":
+        plan, result, deviation, start, repariert = gefunden
+        prior_year = zahlen[0] if kopf["has_prior_year"] else None
+        if art == "supplementary_budget":
             ansatz = zahlen[start]          # Nachtrag steht direkt dahinter
-        elif art == "gesamtermaechtigung" and kopf["hat_vorjahr"] and start >= 2:
+        elif art == "total_authorization" and kopf["has_prior_year"] and start >= 2:
             # Der Kopf führt als zweite Spalte den Ansatz; die Zwischenspalten
             # (Nachtrag, sonstige Ermächtigungen, Übertragungen) dürfen leer
             # sein, die beiden ersten sind es nie.
             ansatz = zahlen[1]
         else:
             ansatz = plan
-        return {"vorjahr": vorjahr, "ansatz": ansatz, "plan": plan,
-                "plan_art": art, "ergebnis": ergebnis, "abweichung": abweichung,
+        return {"prior_year": prior_year, "budgeted": ansatz, "plan": plan,
+                "plan_kind": art, "result": result, "deviation": deviation,
                 "vorzeichen_repariert": repariert,
                 # Wo das gefundene Fenster in der Zahlenfolge anfängt. Die
                 # Ergebnisrechnung braucht das nicht; die Finanzrechnung liest
@@ -499,25 +499,21 @@ def _spalten_zuordnen(zahlen: list[float], kopf: dict) -> dict | None:
 #: veränderung „Finanzmittelbestand" — rechnet aber wie überall sonst
 #: Finanzmittelsaldo + Saldo der Finanzierungstätigkeit.
 ROLLEN: tuple[tuple[str, str], ...] = (
-    ("summe_ein_verwaltung", r"Summe der Einzahlungen aus laufender Verwaltungst"),
-    ("summe_aus_verwaltung", r"Summe der Auszahlungen aus laufender Verwaltungst"),
-    ("saldo_verwaltung", r"^Saldo aus laufender Verwaltungst"),
-    ("summe_ein_investition", r"Summe der Einzahlungen (?:aus|f[üu]r) Investitionst"),
-    ("summe_aus_investition", r"Summe der Auszahlungen (?:aus|f[üu]r) Investitionst"),
-    ("saldo_investition", r"^Saldo aus Investitionst"),
-    ("finanzmittel", r"^Finanzmittel-\s*[ÜU]berschuss"),
-    ("saldo_finanzierung", r"^Saldo aus Finanzierungst"),
-    ("finanzmittelveraenderung", r"^Finanzmittel(?:ver[äa]nderung|bestand)\b"),
-    ("saldo_haushaltsunwirksam", r"^Saldo aus haushaltsunwirksamen"),
-    ("anfangsbestand", r"Anfangsbestand an Zahlungsmitteln"),
-    ("endbestand", r"Endbestand an Zahlungsmitteln"),
-)
+    ("total_in_operating", r"Summe der Einzahlungen aus laufender Verwaltungst"),
+    ("total_out_operating", r"Summe der Auszahlungen aus laufender Verwaltungst"),
+    ("balance_operating", r"^Saldo aus laufender Verwaltungst"),
+    ("total_in_capital", r"Summe der Einzahlungen (?:aus|f[üu]r) Investitionst"),
+    ("total_out_capital", r"Summe der Auszahlungen (?:aus|f[üu]r) Investitionst"),
+    ("balance_capital", r"^Saldo aus Investitionst"),
+    ("cash_surplus", r"^Finanzmittel-\s*[ÜU]berschuss"),    ("balance_financing", r"^Saldo aus Finanzierungst"),
+    ("cash_change", r"^Finanzmittel(?:ver[äa]nderung|bestand)\b"),    ("balance_non_budgetary", r"^Saldo aus haushaltsunwirksamen"),
+    ("opening_balance", r"Anfangsbestand an Zahlungsmitteln"),    ("closing_balance", r"Endbestand an Zahlungsmitteln"),)
 
 #: Die sieben Zeilen, ohne die ein Jahrgang wertlos ist. Fehlt eine davon oder
 #: reißt eine ihrer Proben, kommt der ganze Jahrgang nicht herein.
-PFLICHT_ROLLEN = ("summe_ein_verwaltung", "summe_aus_verwaltung", "saldo_verwaltung",
-                  "summe_ein_investition", "summe_aus_investition",
-                  "saldo_investition", "finanzmittel")
+PFLICHT_ROLLEN = ("total_in_operating", "total_out_operating", "balance_operating",
+                  "total_in_capital", "total_out_capital",
+                  "balance_capital", "cash_surplus")
 
 #: Alle übrigen Rollen sind Kür: Das Dokument bezeichnet sie in seiner Fußnote
 #: selbst als optional („Die Zeilen 37 bis 41 können optional ergänzt werden").
@@ -529,7 +525,7 @@ PFLICHT_ROLLEN = ("summe_ein_verwaltung", "summe_aus_verwaltung", "saldo_verwalt
 #: „Plan" findet, ist der Vorjahreswert oder eine Wiederholung; 2018 kam so
 #: für den Anfangsbestand ein Ansatz von 61,7 Mio. € heraus, den niemand je
 #: beschlossen hat. Für diese Rollen wird deshalb nur das Ist gespeichert.
-OHNE_ANSATZ_ROLLEN = ("saldo_haushaltsunwirksam", "anfangsbestand", "endbestand")
+OHNE_ANSATZ_ROLLEN = ("balance_non_budgetary", "opening_balance", "closing_balance")
 
 #: Seitenfuß mitten in der Tabelle. Anders als in `_SEITENFUSS` wird hier auf
 #: derselben Zeile ersetzt und der Zeilenumbruch behalten: Die Postennummern
@@ -555,14 +551,14 @@ _FR_POSTEN = re.compile(r"^[ \t]*(\d\d)\.?(?:\s*=)?[ \t]", re.M)
 _FR_TOLERANZ = 1.0
 
 
-def _rolle(bezeichnung: str) -> str | None:
+def _rolle(label: str) -> str | None:
     for name, muster in ROLLEN:
-        if re.search(muster, bezeichnung):
+        if re.search(muster, label):
             return name
     return None
 
 
-def _leerer_ansatz(zahlen: list[float], hat_vorjahr: bool) -> dict | None:
+def _leerer_ansatz(zahlen: list[float], has_prior_year: bool) -> dict | None:
     """Die Zeile ohne Haushaltsansatz — erkannt an der Wiederholung.
 
     Das Dokument rechnet ``Abweichung = Ergebnis − Ansatz``. Wo kein Ansatz
@@ -588,12 +584,12 @@ def _leerer_ansatz(zahlen: list[float], hat_vorjahr: bool) -> dict | None:
     # Mit Vorjahresspalte zuerst hinter ihr suchen, dann davor: Auch das
     # Vorjahr darf leer sein („12. Versorgungsauszahlungen 6,00 6,00" im
     # Jahrgang 2019 — zwei Zahlen für eine Zeile mit sechs Spalten).
-    for i in ((1, 0) if hat_vorjahr else (0,)):
+    for i in ((1, 0) if has_prior_year else (0,)):
         if len(zahlen) > i + 1 and zahlen[i] and zahlen[i] == zahlen[i + 1] \
                 and not any(zahlen[i + 2:]):
-            return {"vorjahr": zahlen[0] if i else None,
-                    "ansatz": None, "plan": None, "plan_art": None,
-                    "ergebnis": zahlen[i], "abweichung": zahlen[i + 1],
+            return {"prior_year": zahlen[0] if i else None,
+                    "budgeted": None, "plan": None, "plan_kind": None,
+                    "result": zahlen[i], "deviation": zahlen[i + 1],
                     "vorzeichen_repariert": False, "_fenster_start": i}
     return None
 
@@ -618,7 +614,7 @@ def _fuehrt_ermaechtigung(kopfblock: str, kopf: dict) -> bool:
 
     2017 führt die Spalte gar nicht."""
     m = _ERMAECHTIGUNG_KOPF.search(_kopf_normalisieren(kopfblock))
-    return bool(m) and m.start() > kopf["positionen"]["ergebnis"]
+    return bool(m) and m.start() > kopf["positionen"]["result"]
 
 
 def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
@@ -633,29 +629,29 @@ def _ohne_vorjahr(zahlen: list[float], kopf: dict) -> dict | None:
     Summenprobe der Investitions-Auszahlungen um denselben Betrag."""
     if len(zahlen) != 3:
         return None
-    ohne = {**kopf, "hat_vorjahr": False}
+    ohne = {**kopf, "has_prior_year": False}
     for art in ohne["varianten"]:
         gefunden = _fenster(zahlen, ohne, art)
         if not gefunden:
             continue
-        plan, ergebnis, abweichung, start, repariert = gefunden
-        return {"vorjahr": None, "ansatz": plan, "plan": plan, "plan_art": art,
-                "ergebnis": ergebnis, "abweichung": abweichung,
+        plan, result, deviation, start, repariert = gefunden
+        return {"prior_year": None, "budgeted": plan, "plan": plan, "plan_kind": art,
+                "result": result, "deviation": deviation,
                 "vorzeichen_repariert": repariert, "_fenster_start": start}
     return None
 
 
-def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
+def parse_finanzrechnung(text: str, year: int) -> list[dict]:
     """Abschnitt 4.1 des Jahresabschlusses: was die Stadt wirklich ein- und
     ausgezahlt hat.
 
-    Liefert je Zeile ``{nr, rolle, bezeichnung, vorjahr, ansatz, plan,
-    plan_art, ergebnis, abweichung, ermaechtigung, ist_summe}``. ``nr`` ist
+    Liefert je Zeile ``{nr, role, label, prior_year, ansatz, plan,
+    plan_kind, result, deviation, authorization, is_total}``. ``nr`` ist
     die Nummer, die das Dokument vergibt (und die sich zwischen den
-    Jahrgängen verschiebt), ``rolle`` der stabile Name aus :data:`ROLLEN` —
+    Jahrgängen verschiebt), ``role`` der stabile Name aus :data:`ROLLEN` —
     Leser*innen und Frontend hängen an der Rolle, nie an der Nummer.
 
-    ``ermaechtigung`` ist die letzte Spalte: Geld, das aus Vorjahren
+    ``authorization`` ist die letzte Spalte: Geld, das aus Vorjahren
     übertragen wurde und in diesem Jahr noch ausgegeben werden durfte. Sie
     steht direkt hinter der Abweichung, deshalb wird sie über das Fenster
     abgegriffen, das die Rechenprobe gefunden hat — nicht über eine
@@ -678,7 +674,7 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
 
     schnitt = re.search(r"Einzahlungen aus\s+laufender", block)
     kopfblock = block[:schnitt.start()] if schnitt else block[:900]
-    kopf = _tabellenkopf(kopfblock, jahr)
+    kopf = _tabellenkopf(kopfblock, year)
     if kopf is None:
         return []
     hat_ermaechtigung = _fuehrt_ermaechtigung(kopfblock, kopf)
@@ -695,9 +691,9 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
             continue
         roh = inhalt[nr][:260]
         zahlen = [_eur(z) for z in _BETRAG.findall(roh)]
-        bezeichnung = " ".join(_BETRAG.split(roh)[0].split()).strip(" .")
-        rolle = _rolle(bezeichnung)
-        werte = (_leerer_ansatz(zahlen, kopf["hat_vorjahr"])
+        label = " ".join(_BETRAG.split(roh)[0].split()).strip(" .")
+        role = _rolle(label)
+        werte = (_leerer_ansatz(zahlen, kopf["has_prior_year"])
                  or _spalten_zuordnen(zahlen, kopf)
                  or _ohne_vorjahr(zahlen, kopf))
         if werte is None:
@@ -706,16 +702,16 @@ def parse_finanzrechnung(text: str, jahr: int) -> list[dict]:
         # Die Ermächtigung steht eine Spalte hinter der Abweichung. Es gibt
         # sie nur, wenn die Zeile dort auch wirklich noch eine Zahl trägt.
         stelle = werte.pop("_fenster_start") + (
-            4 if werte.get("plan_art") == "ansatz_nachtrag" else 3)
-        ermaechtigung = (zahlen[stelle] if hat_ermaechtigung
+            4 if werte.get("plan_kind") == "supplementary_budget" else 3)
+        authorization = (zahlen[stelle] if hat_ermaechtigung
                          and stelle < len(zahlen) else None)
-        if rolle in OHNE_ANSATZ_ROLLEN:
+        if role in OHNE_ANSATZ_ROLLEN:
             # Kein Ansatz im Dokument, also auch keiner bei uns (s. o.).
-            werte.update(ansatz=None, plan=None, plan_art=None, abweichung=None)
-            ermaechtigung = None
-        out.append({"nr": nr, "rolle": rolle, "bezeichnung": bezeichnung,
-                    "jahr": jahr, "ermaechtigung": ermaechtigung,
-                    "ist_summe": 1 if rolle else 0, **werte})
+            werte.update(ansatz=None, plan=None, plan_kind=None, deviation=None)
+            authorization = None
+        out.append({"nr": nr, "role": role, "label": label,
+                    "year": year, "authorization": authorization,
+                    "is_total": 1 if role else 0, **werte})
     return out
 
 
@@ -734,30 +730,30 @@ def _bereiche(nach_rolle: dict[str, dict]) -> list[tuple[str, int, int, str]] | 
     fehlend = [r for r in PFLICHT_ROLLEN if r not in nr]
     if fehlend:
         return "Zeilen nicht gefunden: " + ", ".join(fehlend)
-    if not (nr["saldo_verwaltung"] == nr["summe_aus_verwaltung"] + 1
-            and nr["saldo_investition"] == nr["summe_aus_investition"] + 1
-            and nr["finanzmittel"] == nr["saldo_investition"] + 1):
+    if not (nr["balance_operating"] == nr["total_out_operating"] + 1
+            and nr["balance_capital"] == nr["total_out_capital"] + 1
+            and nr["cash_surplus"] == nr["balance_capital"] + 1):
         return ("Reihenfolge passt nicht zur Nummerierung: "
                 + ", ".join(f"{r}={nr[r]}" for r in PFLICHT_ROLLEN))
     return [
         ("Einzahlungen aus laufender Verwaltungstätigkeit",
-         1, nr["summe_ein_verwaltung"] - 1, "summe_ein_verwaltung"),
+         1, nr["total_in_operating"] - 1, "total_in_operating"),
         ("Auszahlungen aus laufender Verwaltungstätigkeit",
-         nr["summe_ein_verwaltung"] + 1, nr["summe_aus_verwaltung"] - 1,
-         "summe_aus_verwaltung"),
+         nr["total_in_operating"] + 1, nr["total_out_operating"] - 1,
+         "total_out_operating"),
         ("Einzahlungen für Investitionstätigkeit",
-         nr["saldo_verwaltung"] + 1, nr["summe_ein_investition"] - 1,
-         "summe_ein_investition"),
+         nr["balance_operating"] + 1, nr["total_in_capital"] - 1,
+         "total_in_capital"),
         ("Auszahlungen für Investitionstätigkeit",
-         nr["summe_ein_investition"] + 1, nr["summe_aus_investition"] - 1,
-         "summe_aus_investition"),
+         nr["total_in_capital"] + 1, nr["total_out_capital"] - 1,
+         "total_out_capital"),
     ]
 
 
 #: Die drei Salden der Kaskade: ``ziel = a (±) b``.
-_SALDEN = (("summe_ein_verwaltung", "summe_aus_verwaltung", "saldo_verwaltung", -1),
-           ("summe_ein_investition", "summe_aus_investition", "saldo_investition", -1),
-           ("saldo_verwaltung", "saldo_investition", "finanzmittel", +1))
+_SALDEN = (("total_in_operating", "total_out_operating", "balance_operating", -1),
+           ("total_in_capital", "total_out_capital", "balance_capital", -1),
+           ("balance_operating", "balance_capital", "cash_surplus", +1))
 
 #: Die Kür-Ketten: ``(glieder, ziel, was die Kette belegt)``.
 #:
@@ -773,11 +769,11 @@ _SALDEN = (("summe_ein_verwaltung", "summe_aus_verwaltung", "saldo_verwaltung", 
 #: Finanzmittelveränderung. Fällt die erste Kette, ist die zweite nicht mehr
 #: belegt, auch wenn sie für sich aufginge.
 _KUER_KETTEN = (
-    (("finanzmittel", "saldo_finanzierung"), "finanzmittelveraenderung",
-     ("saldo_finanzierung", "finanzmittelveraenderung")),
-    (("anfangsbestand", "finanzmittelveraenderung", "saldo_haushaltsunwirksam"),
-     "endbestand",
-     ("anfangsbestand", "saldo_haushaltsunwirksam", "endbestand")),
+    (("cash_surplus", "balance_financing"), "cash_change",
+     ("balance_financing", "cash_change")),
+    (("opening_balance", "cash_change", "balance_non_budgetary"),
+     "closing_balance",
+     ("opening_balance", "balance_non_budgetary", "closing_balance")),
 )
 
 
@@ -812,7 +808,7 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
 
     Gibt ``(uebernommen, fehler, hinweise)`` zurück. Ist ``fehler`` nicht
     leer, gehört der Jahrgang nicht in den Bestand."""
-    nach_rolle = {p["rolle"]: p for p in posten if p.get("rolle")}
+    nach_rolle = {p["role"]: p for p in posten if p.get("role")}
     nach_nr = {p["nr"]: p for p in posten}
     bereiche = _bereiche(nach_rolle)
     if isinstance(bereiche, str):
@@ -821,19 +817,19 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
     fehler: list[str] = []
     hinweise: list[str] = []
 
-    def summe(von: int, bis: int, feld: str) -> float:
-        return sum(nach_nr[n].get(feld) or 0 for n in range(von, bis + 1) if n in nach_nr)
+    def summe(von: int, bis: int, field: str) -> float:
+        return sum(nach_nr[n].get(field) or 0 for n in range(von, bis + 1) if n in nach_nr)
 
-    for feld, wie in (("ergebnis", "Ist"), ("plan", "Ansatz")):
-        for name, von, bis, rolle in bereiche:
-            soll, ist = nach_rolle[rolle].get(feld), summe(von, bis, feld)
+    for field, wie in (("result", "Ist"), ("plan", "Ansatz")):
+        for name, von, bis, role in bereiche:
+            soll, ist = nach_rolle[role].get(field), summe(von, bis, field)
             if soll is None:
                 fehler.append(f"{wie}: {name} — Summenzeile ohne Wert")
             elif abs(ist - soll) > toleranz:
                 fehler.append(f"{wie}: {name} — Einzelzeilen {ist:,.2f} € ≠ "
                               f"Summenzeile {soll:,.2f} € (Δ {ist - soll:+,.2f} €)")
         for a, b, ziel, vorzeichen in _SALDEN:
-            werte = [nach_rolle[r].get(feld) for r in (a, b, ziel)]
+            werte = [nach_rolle[r].get(field) for r in (a, b, ziel)]
             if any(v is None for v in werte):
                 fehler.append(f"{wie}: {ziel} nicht nachrechenbar — Wert fehlt")
             elif abs((werte[0] + vorzeichen * werte[1]) - werte[2]) > toleranz:
@@ -844,9 +840,9 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
 
     # Die Ermächtigungen: eigene Probe, eigenes Schicksal.
     traegt_ermaechtigung = True
-    for name, von, bis, rolle in bereiche:
-        soll = nach_rolle[rolle].get("ermaechtigung")
-        ist = summe(von, bis, "ermaechtigung")
+    for name, von, bis, role in bereiche:
+        soll = nach_rolle[role].get("authorization")
+        ist = summe(von, bis, "authorization")
         if soll is None and not ist:
             continue  # der Jahrgang führt diese Spalte hier nicht
         if soll is None or abs(ist - (soll or 0)) > toleranz:
@@ -856,14 +852,14 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
             traegt_ermaechtigung = False
     if not traegt_ermaechtigung:
         for p in posten:
-            p["ermaechtigung"] = None
+            p["authorization"] = None
 
     # Die Kür: je Kette einzeln. Was nicht vollständig ist oder nicht aufgeht,
     # verliert die Zeilen, die diese Kette belegt — der Jahrgang bleibt.
     gestrichen: set[str] = set()
     for glieder, ziel, lizenziert in _KUER_KETTEN:
         alle = glieder + (ziel,)
-        werte = [nach_rolle[r].get("ergebnis") if r in nach_rolle else None
+        werte = [nach_rolle[r].get("result") if r in nach_rolle else None
                  for r in alle]
         if gestrichen & set(glieder):
             hinweise.append(f"{ziel} nicht gespeichert — die Kette davor trägt nicht")
@@ -877,7 +873,7 @@ def finanzprobe(posten: list[dict], toleranz: float = _FR_TOLERANZ
             continue
         gestrichen |= set(lizenziert)
 
-    uebernommen = [p for p in posten if p.get("rolle") not in gestrichen]
+    uebernommen = [p for p in posten if p.get("role") not in gestrichen]
     return (uebernommen if not fehler else []), fehler, hinweise
 
 
@@ -892,21 +888,21 @@ def kassenkette(je_jahr: dict[int, list[dict]],
     beiden fällt hier auf, ohne dass wir eine eigene Rechnung anstellen.
 
     Zurück kommt die Liste der **gerissenen** Glieder als
-    ``(jahr, folgejahr, begruendung)``. Geprüft wird nur, wo beide Jahrgänge
+    ``(year, folgejahr, begruendung)``. Geprüft wird nur, wo beide Jahrgänge
     ihre Bestandszeilen führen — sie sind laut Dokument optional, und ein
     fehlendes Glied ist keine gerissene Kette."""
     kaputt: list[tuple[int, int, str]] = []
-    for jahr in sorted(je_jahr):
-        if jahr + 1 not in je_jahr:
+    for year in sorted(je_jahr):
+        if year + 1 not in je_jahr:
             continue
-        ende = next((p.get("ergebnis") for p in je_jahr[jahr]
-                     if p.get("rolle") == "endbestand"), None)
-        anfang = next((p.get("ergebnis") for p in je_jahr[jahr + 1]
-                       if p.get("rolle") == "anfangsbestand"), None)
+        ende = next((p.get("result") for p in je_jahr[year]
+                     if p.get("role") == "closing_balance"), None)
+        anfang = next((p.get("result") for p in je_jahr[year + 1]
+                       if p.get("role") == "opening_balance"), None)
         if ende is None or anfang is None:
             continue
         if abs(ende - anfang) > toleranz:
-            kaputt.append((jahr, jahr + 1,
+            kaputt.append((year, year + 1,
                            f"Endbestand {ende:,.2f} € ≠ Anfangsbestand des "
                            f"Folgejahres {anfang:,.2f} €"))
     return kaputt
@@ -980,12 +976,12 @@ def _fliesstext(roh: str) -> str:
     return " ".join(_SEITENFUSS.sub(" ", ohne_trennung).split())
 
 
-def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
+def parse_abweichungsgruende(text: str, year: int) -> list[dict]:
     """Abschnitt 6.3.1 des Jahresabschlusses: **warum** ein Posten vom Plan
     abweicht, je Posten und in den Worten der Verwaltung.
 
-    Liefert je Posten ``{nr, bezeichnung, delta_mio, prozent, text}``.
-    ``delta_mio`` und ``prozent`` sind die Werte, die die Überschrift selbst
+    Liefert je Posten ``{nr, label, delta_meur, percent, text}``.
+    ``delta_meur`` und ``percent`` sind die Werte, die die Überschrift selbst
     nennt — sie sind die Eintrittskarte: Erst der Abgleich mit der geparsten
     Tabellenzeile (``pruefe_abweichungsgruende``) entscheidet, ob die
     Erläuterung übernommen wird.
@@ -1002,8 +998,8 @@ def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
     gewaehlt = None
     for i, s in enumerate(stellen):
         # „in der Ergebnis-rechnung der Kernverwaltung" — nach dem Entfalten.
-        titel = _kopf_normalisieren(text[s:s + 130]).replace(" ", "")
-        if "Ergebnisrechnung" not in titel:
+        title = _kopf_normalisieren(text[s:s + 130]).replace(" ", "")
+        if "Ergebnisrechnung" not in title:
             continue
         ende = stellen[i + 1] if i + 1 < len(stellen) else len(text)
         block = text[s:min(ende, s + 16000)]
@@ -1023,10 +1019,10 @@ def parse_abweichungsgruende(text: str, jahr: int) -> list[dict]:
         vorzeichen = -1 if m.group(3) == "-" else 1
         vz_prozent = -1 if m.group(5) == "-" else 1
         out.append({
-            "jahr": jahr, "nr": nr,
-            "bezeichnung": " ".join(m.group(2).split()),
-            "delta_mio": _eur_lose(m.group(4)) * vorzeichen,
-            "prozent": _eur_lose(m.group(6)) * vz_prozent,
+            "year": year, "nr": nr,
+            "label": " ".join(m.group(2).split()),
+            "delta_meur": _eur_lose(m.group(4)) * vorzeichen,
+            "percent": _eur_lose(m.group(6)) * vz_prozent,
             "text": _bis_abschnittsende(_fliesstext(gewaehlt[m.end():ende])),
         })
     return out
@@ -1060,20 +1056,20 @@ def pruefe_abweichungsgruende(gruende: list[dict], posten: list[dict],
     abgelehnt: list[str] = []
     for g in gruende:
         p = nach_nr.get(g["nr"])
-        if not p or p.get("abweichung") is None:
+        if not p or p.get("deviation") is None:
             abgelehnt.append(f"Posten {g['nr']}: keine passende Tabellenzeile")
             continue
-        ist_mio = p["abweichung"] / 1e6
-        if abs(ist_mio - g["delta_mio"]) > toleranz_mio:
+        ist_mio = p["deviation"] / 1e6
+        if abs(ist_mio - g["delta_meur"]) > toleranz_mio:
             abgelehnt.append(
-                f"Posten {g['nr']}: Text {g['delta_mio']:+.1f} Mio. ≠ Tabelle {ist_mio:+.2f} Mio.")
+                f"Posten {g['nr']}: Text {g['delta_meur']:+.1f} Mio. ≠ Tabelle {ist_mio:+.2f} Mio.")
             continue
         plan = p.get("plan")
         if plan:
-            ist_prozent = p["abweichung"] / plan * 100
-            if abs(ist_prozent - g["prozent"]) > toleranz_prozent:
+            ist_prozent = p["deviation"] / plan * 100
+            if abs(ist_prozent - g["percent"]) > toleranz_prozent:
                 abgelehnt.append(
-                    f"Posten {g['nr']}: Text {g['prozent']:+.2f} % ≠ Tabelle {ist_prozent:+.2f} %")
+                    f"Posten {g['nr']}: Text {g['percent']:+.2f} % ≠ Tabelle {ist_prozent:+.2f} %")
                 continue
         angenommen.append(g)
     return angenommen, abgelehnt
@@ -1101,7 +1097,7 @@ def pruefbericht_aus_anlage(label: str | None, raw_text: str | None) -> dict | N
     """Erkennt den Schlussbericht des Rechnungsprüfungsamts zur
     **Kernverwaltung** und sagt, ob sein Volltext brauchbar ist.
 
-    Liefert ``{jahr, lesbar, buchstabenanteil}`` oder ``None``. Gesucht wird
+    Liefert ``{year, readable, buchstabenanteil}`` oder ``None``. Gesucht wird
     zuerst im Text, ersatzweise im Label — beim Jahrgang 2024 ist der Text
     unbrauchbar, das Dokument aber vorhanden und verlinkbar.
 
@@ -1116,22 +1112,114 @@ def pruefbericht_aus_anlage(label: str | None, raw_text: str | None) -> dict | N
         return None
     buchstaben = sum(ch.isalpha() for ch in text)
     anteil = buchstaben / max(len(text), 1)
-    return {"jahr": int(treffer.group(1)), "lesbar": anteil >= _TEXT_MINDESTANTEIL,
+    return {"year": int(treffer.group(1)), "readable": anteil >= _TEXT_MINDESTANTEIL,
             "buchstabenanteil": round(anteil, 4)}
 
 
 # --- Teilhaushalte: Produktebene --------------------------------------------
 
+#: Der Kopf über jeder Produkttabelle: Teilhaushalt, Produkt, Amt.
+#:
+#: DAS AMT IST OPTIONAL, und das ist keine Vorsicht: THH13 („nicht rechtsfähige
+#: Stiftungen") führt gar keins — unter „Produkt: Stiftung Theodor Francksen
+#: (P53.111053)" steht direkt die Tabelle. Ohne den Vorbehalt schluckte dieser
+#: Ausdruck deren erste Zeile als Amtsnamen, und in der Datenbank stünde bei
+#: sieben Stiftungen „Erträge und Aufwendungen Ergebnis 2024" als zuständige
+#: Stelle. Eine Lücke ist besser als ein erfundenes Amt.
 _PRODUKT_KOPF = re.compile(
     r"Teilergebnishaushalt\s+THH(\d+):\s*([^\n]+?)\s*\n\s*"
-    r"Produkt:\s*(.+?)\s*\((P[\d.]+)\)\s*\n\s*([^\n]+)")
+    r"Produkt:\s*(.+?)\s*\((P[\d.]+)\)[ \t]*\n"
+    r"(?:[ \t]*(?!Erträge\s+und\s+Aufwendungen\b|Ergebnis\s+20\d\d\b)"
+    r"([^\n]+))?")
 #: Zahlen in den THH-Tabellen stehen teils ohne Nachkommastellen („484.239").
 _THH_BETRAG = re.compile(r"-?\d{1,3}(?:\.\d{3})*(?:,\d{2})?")
 
+# --- Welche Spalte der beschlossene Ansatz ist ------------------------------
+#
+# Der Kopf eines Teilhaushalts-Plans nennt sechs Jahre und sagt fünfmal
+# „Ansatz“::
+#
+#     Ergebnis 2024 | Ansatz 2025 | Ansatz 2026 | Ansatz 2027 | Ansatz 2028 | Ansatz 2029
+#
+# Eingebracht wird davon genau **eins** — hier 2026. 2025 ist der
+# fortgeschriebene Vorjahresansatz, 2027–2029 sind mittelfristige
+# Finanzplanung nach § 8 NKomVG. Genau dieselbe Kopfzeile trägt Anlage 005
+# (der Gesamtergebnishaushalt), und dort liest ``income_budget.budget_year``
+# seit jeher die **dritte** Spalte.
+#
+# DER FEHLER, DEN DAS BEHEBT: Bis 09/2026 nahm dieser Parser den ERSTEN
+# Ansatz. Damit stand die Produktebene ein Jahr hinter dem Plan, aus dem sie
+# stammt — der Verwaltungsentwurf 2026 füllte den Jahrgang 2025, und der
+# Jahrgang 2026 wäre erst mit dem Entwurf 2027 gekommen. Zwei Spuren führten
+# darauf: Die Schicht endete 2025, während Gesamtergebnishaushalt und
+# Investitionsprogramm aus **denselben** Haushaltsplänen bis 2026 reichen;
+# und die Anlage „2019 THH 08“ galt im Code als falsch beschriftet, weil der
+# Parser sie 2018 nannte.
+#
+# DIE JAHRGANGSPROBE: Vier Label-Generationen tragen den Jahrgang selbst
+# („007 2023 THH01“, „2024 007 IVw THH01“, „2025 …“, „2026 …“). Über alle 53
+# Anlagen mit Jahreszahl im Label trifft die dritte Kopfspalte diese Zahl —
+# 53 von 53, gemessen 02.09.2026 an den PDFs. Die Reihenfolgeannahme ist
+# damit belegt und keine Vermutung; ``lies_teilhaushalte`` hält sie bei jedem
+# Lauf gegen das Label.
 
-def _thh_zahlen(zeile: str) -> list[float]:
+#: Der Tabellenkopf: „Ergebnis JJJJ“ und dahinter n × „Ansatz JJJJ“.
+_THH_KOPF = re.compile(r"(Ergebnis|Ansatz)\s+(20\d\d)")
+
+#: Die Spalte mit dem beschlossenen Ansatz — die dritte (s. o.).
+_THH_PLANSPALTE = 2
+
+
+def thh_kopfspalten(text: str | None) -> list[tuple[str, int]]:
+    """Die Spalten des **ersten** Tabellenkopfs — ``[("Ergebnis", 2024), …]``.
+
+    Nur der erste Kopf: Er wiederholt sich auf jeder Seite, und ein Block über
+    einen Seitenumbruch hinweg trüge ihn sonst zweimal. Gelesen wird deshalb
+    ab dem ersten ``Ergebnis JJJJ`` so weit, wie die Jahre lückenlos
+    weiterzählen; die Wiederholung fängt wieder bei ihrem eigenen Ergebnis an
+    und bricht die Kette."""
+    spalten = [(art, int(jahr)) for art, jahr in _THH_KOPF.findall(text or "")]
+    if not spalten or spalten[0][0] != "Ergebnis":
+        # Ein Block kann mitten in der Tabelle beginnen; dann steht der Kopf
+        # weiter vorn. Ab dem ersten „Ergebnis“ suchen statt raten.
+        anfang = next((i for i, (art, _) in enumerate(spalten)
+                       if art == "Ergebnis"), None)
+        if anfang is None:
+            return []
+        spalten = spalten[anfang:]
+    lauf = [spalten[0]]
+    for art, jahr in spalten[1:]:
+        if art != "Ansatz" or jahr != lauf[-1][1] + 1:
+            break
+        lauf.append((art, jahr))
+    return lauf
+
+
+def thh_planspalte(kopf: list[tuple[str, int]]) -> int | None:
+    """Der Index der Ansatzspalte, die eingebracht wird — oder ``None``.
+
+    ``None`` heißt: Dieser Kopf sieht nicht aus wie der eines
+    Teilhaushalts-Plans (zu wenige Spalten, andere Reihenfolge, Jahressprung).
+    Dann wird das Produkt übersprungen. Zu raten, welche Spalte gemeint sein
+    könnte, hieße eine Zahl auf die Seite zu schreiben, für die niemand
+    einstehen kann."""
+    return _THH_PLANSPALTE if len(kopf) > _THH_PLANSPALTE else None
+
+
+def thh_budget_year(text: str | None) -> int | None:
+    """Für welchen Haushaltsjahrgang ein Teilhaushalts-Plan Ansätze liefert.
+
+    Aus dem Tabellenkopf, nicht aus dem Label: Drei der acht Jahrgänge tragen
+    gar keine Jahreszahl im Label („007 THH01“). Wo eine steht, ist sie
+    dieselbe — das ist die Jahrgangsprobe oben."""
+    kopf = thh_kopfspalten(text)
+    idx = thh_planspalte(kopf)
+    return kopf[idx][1] if idx is not None else None
+
+
+def _thh_zahlen(row: str) -> list[float]:
     out = []
-    for s in _THH_BETRAG.findall(zeile):
+    for s in _THH_BETRAG.findall(row):
         if s in {"-", ""}:
             continue
         out.append(float(s.replace(".", "").replace(",", ".")))
@@ -1208,14 +1296,14 @@ def _thh_wertezeile(block: str, muster: str, spalten: int) -> list[float] | None
     m = re.search(muster, block)
     if not m:
         return None
-    for zeile in block[m.end():].split("\n")[:_THH_MAX_ZEILEN]:
-        if _THH_NEUE_ZEILE.match(zeile):
+    for row in block[m.end():].split("\n")[:_THH_MAX_ZEILEN]:
+        if _THH_NEUE_ZEILE.match(row):
             return None
-        if not zeile.strip():
+        if not row.strip():
             continue
-        if not _THH_NUR_ZAHLEN.fullmatch(zeile.rstrip()):
+        if not _THH_NUR_ZAHLEN.fullmatch(row.rstrip()):
             continue
-        zahlen = _thh_zahlen(zeile)
+        zahlen = _thh_zahlen(row)
         if len(zahlen) >= spalten:
             return zahlen
     return None
@@ -1251,11 +1339,11 @@ def _thh_wertezeile(block: str, muster: str, spalten: int) -> list[float] | None
 
 #: Felder, die wir übernehmen: (Spalte, Label-Regex, Inhalt steht davor?).
 _STECKBRIEF_FELDER: tuple[tuple[str, str, bool], ...] = (
-    ("kurzbeschreibung", r"Kurzbeschreibung", True),
-    ("auftragsgrundlage", r"Auftragsgrundlage", True),
-    ("beeinflussbarkeit_roh", r"Grad der Beeinflussbarkeit", False),
-    ("wirkungskreis", r"Wirkungskreis", False),
-    ("zielgruppe", r"Zielgruppe\(n\)", True),
+    ("short_description", r"Kurzbeschreibung", True),
+    ("legal_basis", r"Auftragsgrundlage", True),
+    ("controllability_raw", r"Grad der Beeinflussbarkeit", False),
+    ("scope", r"Wirkungskreis", False),
+    ("target_group", r"Zielgruppe\(n\)", True),
 )
 
 #: Weitere Label des Steckbriefs. Wir lesen sie nicht, aber sie begrenzen die
@@ -1314,16 +1402,16 @@ _LEISTUNG_KOPF = re.compile(r"^[ \t]*Leistung:[^\n]*\(P[\d.]+\.\d+\)[ \t]*$", re
 
 #: Die Stadt schreibt denselben Spielraum mal „niedrig", mal „gering" — und
 #: mal groß. Wir vereinheitlichen für Filter und Vergleich, behalten den
-#: Rohwert aber in `beeinflussbarkeit_roh`: Was im Plan steht, bleibt
+#: Rohwert aber in `controllability_raw`: Was im Plan steht, bleibt
 #: nachlesbar, auch wenn wir es anders einsortieren.
 _BEEINFLUSSBARKEIT = {
-    "niedrig": "niedrig", "gering": "niedrig",
-    "mittel": "mittel", "hoch": "hoch",
+    "niedrig": "low", "gering": "low",
+    "mittel": "medium", "hoch": "high",
 }
 
 
 def normalisiere_beeinflussbarkeit(roh: str | None) -> str | None:
-    """„gering"/„Niedrig"/„niedrig" → ``"niedrig"``; Unbekanntes → ``None``.
+    """„gering"/„Niedrig"/„niedrig" → ``"low"``; Unbekanntes → ``None``.
 
     Bewusst streng: Mischformen („niedrig - mittel") bekommen keine der drei
     Stufen zugewiesen, weil jede Wahl eine Behauptung wäre. Sie bleiben über
@@ -1347,12 +1435,12 @@ def _saeubern(roh: str) -> str | None:
     diese Zahlenwüste als „Zielgruppe" auf der Seite. Deshalb wird nur der
     zusammenhängende Fließtext-Block am Ende übernommen."""
     absatz: list[str] = []
-    for zeile in reversed(_ohne_seitenkopf(roh.split("\n"))):
-        if not zeile.strip():
+    for row in reversed(_ohne_seitenkopf(roh.split("\n"))):
+        if not row.strip():
             continue
-        if _KEIN_FLIESSTEXT.match(zeile):
+        if _KEIN_FLIESSTEXT.match(row):
             break
-        absatz.append(zeile)
+        absatz.append(row)
     text = re.sub(r"\s+", " ", " ".join(reversed(absatz))).strip(" -–—·\t")
     # Zu kurz ist kein Inhalt (etwa ein übrig gebliebener Doppelpunkt), zu lang
     # heißt: Ein Label fehlte und wir haben doch eine Tabelle mitgelesen.
@@ -1396,21 +1484,23 @@ def _steckbrief(block: str) -> dict[str, str | None]:
             # Inhalt steht hinter dem Doppelpunkt, auf DERSELBEN Zeile: Ein
             # Umbruch bedeutet hier, dass der Wert fehlt — die nächste Zeile
             # gehört schon zum nächsten Feld.
-            zeile = stamm[m.end():].split("\n", 1)[0]
-            out[name] = _saeubern(zeile)
+            row = stamm[m.end():].split("\n", 1)[0]
+            out[name] = _saeubern(row)
     return out
 
 
 def parse_teilergebnishaushalt(text: str) -> list[dict]:
     """Produkte eines Teilhaushalts-Plans → je Produkt ein dict mit
-    ``{thh_nr, thh_name, produkt_nr, produkt_name, amt, jahr, ertraege,
-    aufwendungen, ergebnis}`` für das **Haushaltsjahr** des Dokuments — das
-    ist der ERSTE Ansatz im Tabellenkopf; die weiteren Spalten sind die
-    mittelfristige Finanzplanung und keine beschlossenen Ansätze.
+    ``{sub_budget_no, sub_budget_name, product_no, product_name, office, year, revenues,
+    expenses, result}`` für das **Haushaltsjahr** des Dokuments — das ist die
+    dritte Spalte des Tabellenkopfs (der zweite ``Ansatz``): davor steht der
+    fortgeschriebene Vorjahresansatz, dahinter die mittelfristige
+    Finanzplanung. Warum die dritte und woran das gemessen ist, steht bei
+    ``thh_kopfspalten``.
 
-    Dazu der Steckbrief des Produkts (``kurzbeschreibung``,
-    ``auftragsgrundlage``, ``beeinflussbarkeit`` + ``beeinflussbarkeit_roh``,
-    ``wirkungskreis``, ``zielgruppe``), soweit der Plan ihn führt — fehlende
+    Dazu der Steckbrief des Produkts (``short_description``,
+    ``legal_basis``, ``controllability`` + ``controllability_raw``,
+    ``scope``, ``target_group``), soweit der Plan ihn führt — fehlende
     Felder bleiben ``None``, nichts wird vom Nachbarprodukt übernommen.
     Zu den beiden Fallen dabei siehe den Abschnitt „Produkt-Steckbrief" oben.
 
@@ -1431,8 +1521,8 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
     koepfe = list(_PRODUKT_KOPF.finditer(text))
     gefunden: dict[str, dict] = {}
     for i, m in enumerate(koepfe):
-        thh_nr, thh_name, produkt_name, produkt_nr, amt = m.groups()
-        if produkt_nr in gefunden:
+        sub_budget_no, sub_budget_name, product_name, product_no, office = m.groups()
+        if product_no in gefunden:
             continue  # Fortsetzungsseite desselben Produkts
         # Nur bis zum nächsten Produkt-Kopf lesen: Fehlt einem Produkt die
         # Summenzeile, würden sonst die Werte des FOLGENDEN Produkts gelesen —
@@ -1446,45 +1536,45 @@ def parse_teilergebnishaushalt(text: str) -> list[dict]:
         # Kopf eines ANDEREN Produkts. Dieselbe Grenzziehung wie oben, nur eine
         # Ebene weiter: Wer hier am nächstbesten Kopf abschneidet, findet den
         # Steckbrief nie; wer gar nicht abschneidet, holt den des Nachbarn.
-        fremd = next((k for k in koepfe[i + 1:] if k.group(4) != produkt_nr), None)
+        fremd = next((k for k in koepfe[i + 1:] if k.group(4) != product_no), None)
         steckbrief = _steckbrief(text[m.end():fremd.start() if fremd else len(text)])
 
-        # Spalten aus dem Kopf: „Ergebnis JJJJ“ + n × „Ansatz JJJJ“.
-        # Das HAUSHALTSJAHR ist der ERSTE Ansatz — die weiteren Spalten sind
-        # die mittelfristige Finanzplanung (bis +4 Jahre). Die letzte Spalte
-        # zu nehmen hieße, Finanzplanungswerte als Haushaltsansatz auszugeben.
-        kopf = re.findall(r"(Ergebnis|Ansatz)\s+(20\d\d)", block[:600])
-        jahre = [int(j) for _, j in kopf]
-        if len(jahre) < 2:
+        # Spalten aus dem Kopf: „Ergebnis JJJJ“ + n × „Ansatz JJJJ“. Welche
+        # davon der beschlossene Ansatz ist, sagt `thh_planspalte`.
+        # Das Fenster beginnt beim Kopf, nicht beim Block: Wo ein Produkt
+        # kein Amt führt (THH13), steht die erste Kopfzeile der Tabelle
+        # unmittelbar hinter der Produktnummer — hinter `m.end()` fehlte
+        # damit ausgerechnet das „Ergebnis JJJJ", an dem die Spalten hängen.
+        kopf = thh_kopfspalten(text[m.start():m.end() + 600])
+        plan_idx = thh_planspalte(kopf)
+        if plan_idx is None:
             continue
-        spalten = len(jahre)
-        ansatz_idx = next((i for i, (art, _) in enumerate(kopf) if art == "Ansatz"), None)
-        if ansatz_idx is None:
-            continue
+        spalten = len(kopf)
 
         werte = {}
-        for schluessel, muster in (
-            ("ertraege", r"12\.\s*=?\s*Summe ordentliche\s*Erträge"),
-            ("aufwendungen", r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen"),
-            ("ergebnis", r"21\.\s*ordentliches Ergebnis"),
+        for key, muster in (
+            ("revenues", r"12\.\s*=?\s*Summe ordentliche\s*Erträge"),
+            ("expenses", r"20\.\s*=?\s*Summe ordentliche\s*Aufwendungen"),
+            ("result", r"21\.\s*ordentliches Ergebnis"),
         ):
             # Mindestens so viele Werte wie Spalten — alles danach ist
             # Seitenzahl. Zur Suche siehe `_thh_wertezeile`.
             zahlen = _thh_wertezeile(block, muster, spalten)
             if zahlen is None:
                 continue
-            werte[schluessel] = zahlen[ansatz_idx]
+            werte[key] = zahlen[plan_idx]
         if len(werte) < 3:
             continue
         # Prüfsumme des Dokuments: Erträge − Aufwendungen = Ergebnis.
-        if abs((werte["ertraege"] - werte["aufwendungen"]) - werte["ergebnis"]) > 1.0:
+        if abs((werte["revenues"] - werte["expenses"]) - werte["result"]) > 1.0:
             continue
-        gefunden[produkt_nr] = {
-            "thh_nr": int(thh_nr), "thh_name": thh_name.strip(),
-            "produkt_nr": produkt_nr, "produkt_name": produkt_name.strip(),
-            "amt": amt.strip(), "jahr": jahre[ansatz_idx], **werte,
+        gefunden[product_no] = {
+            "sub_budget_no": int(sub_budget_no), "sub_budget_name": sub_budget_name.strip(),
+            "product_no": product_no, "product_name": product_name.strip(),
+            "office": (office or "").strip() or None,
+            "year": kopf[plan_idx][1], **werte,
             **steckbrief,
-            "beeinflussbarkeit": normalisiere_beeinflussbarkeit(
-                steckbrief["beeinflussbarkeit_roh"]),
+            "controllability": normalisiere_beeinflussbarkeit(
+                steckbrief["controllability_raw"]),
         }
     return list(gefunden.values())

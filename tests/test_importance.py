@@ -6,8 +6,8 @@ from council.store import CouncilStore
 
 
 def _dec(**kw) -> dict:
-    base = {"amount_eur": None, "gegenstimmen": None, "enthaltungen": None,
-            "outcome": "angenommen", "title": "Sachbeschluss zu etwas",
+    base = {"amount_eur": None, "no_votes": None, "abstentions": None,
+            "outcome": "accepted", "title": "Sachbeschluss zu etwas",
             "committee": "Ausschuss für Stadtplanung und Bauen", "kind": "decision"}
     base.update(kw)
     return base
@@ -15,40 +15,40 @@ def _dec(**kw) -> dict:
 
 def test_score_bounds():
     for d in (_dec(), _dec(amount_eur=1e12, title="Satzung", committee="Rat der Stadt Oldenburg",
-                          gegenstimmen=40, enthaltungen=5)):
+                          no_votes=40, abstentions=5)):
         s = importance.importance_score(d, n_beratungen=8)
         assert 0 <= s <= 100
 
 
 def test_big_binding_council_decision_scores_high():
     d = _dec(amount_eur=12_000_000, title="Bebauungsplan Nr. 851 als Satzung beschlossen",
-             committee="Rat der Stadt Oldenburg", gegenstimmen=8, enthaltungen=3)
+             committee="Rat der Stadt Oldenburg", no_votes=8, abstentions=3)
     assert importance.importance_score(d, n_beratungen=5) >= 70
 
 
 def test_routine_note_scores_low():
-    d = _dec(title="Kenntnisnahme der Niederschrift", outcome="zur_kenntnis",
+    d = _dec(title="Kenntnisnahme der Niederschrift", outcome="noted",
              committee="Ausschuss für Soziales")
     # nur das Verbindlichkeits-Signal (Routine-Wort) ist da → niedrig
     assert importance.importance_score(d) <= 20
 
 
 def test_contention_raises_score():
-    quiet = _dec(amount_eur=500_000, vote="einstimmig", gegenstimmen=0, enthaltungen=0)
-    loud = _dec(amount_eur=500_000, vote="mehrheitlich", gegenstimmen=12, enthaltungen=4)
+    quiet = _dec(amount_eur=500_000, vote="unanimous", no_votes=0, abstentions=0)
+    loud = _dec(amount_eur=500_000, vote="majority", no_votes=12, abstentions=4)
     assert importance.importance_score(loud) > importance.importance_score(quiet)
 
 
 def test_vote_field_used_when_counts_missing():
-    # `gegenstimmen` oft NULL → auf das zuverlässigere `vote`-Feld stützen.
-    contested = importance.importance_breakdown(_dec(vote="mehrheitlich"))
-    unanimous = importance.importance_breakdown(_dec(vote="einstimmig"))
+    # `no_votes` oft NULL → auf das zuverlässigere `vote`-Feld stützen.
+    contested = importance.importance_breakdown(_dec(vote="majority"))
+    unanimous = importance.importance_breakdown(_dec(vote="unanimous"))
     assert contested["signals"]["umstritten"] > unanimous["signals"]["umstritten"]
     # Ganz ohne Abstimmungsinfo fehlt das Signal (zählt NICHT als 0):
-    none_info = importance.importance_breakdown(_dec(vote=None, outcome="angenommen"))
+    none_info = importance.importance_breakdown(_dec(vote=None, outcome="accepted"))
     assert none_info["signals"]["umstritten"] is None
     # Kenntnisnahme = keine Abstimmung → kein Umstrittenheits-Signal:
-    note = importance.importance_breakdown(_dec(vote="einstimmig", outcome="zur_kenntnis"))
+    note = importance.importance_breakdown(_dec(vote="unanimous", outcome="noted"))
     assert note["signals"]["umstritten"] is None
 
 
@@ -85,9 +85,9 @@ def test_fehlendes_geldsignal_zieht_nicht_nach_unten():
     normiert), eine Null zöge den Beschluss aktiv nach unten. Ein
     Feststellungsbeschluss ist nicht unwichtig — wir wissen über sein Geld
     nur nichts."""
-    ohne_betrag = _dec(amount_eur=None, title="Jahresabschluss 2024")
+    without_amount = _dec(amount_eur=None, title="Jahresabschluss 2024")
     mit_bilanzsumme = _dec(amount_eur=580_193_969, title="Jahresabschluss 2024")
-    assert importance.importance_score(ohne_betrag) \
+    assert importance.importance_score(without_amount) \
         == importance.importance_score(mit_bilanzsumme)
 
 
@@ -112,7 +112,7 @@ def test_missing_signals_renormalise():
     # Beratungsfolge) → Score stützt sich allein darauf, kein Absturz auf 0.
     b = importance.importance_breakdown(_dec(title="Bebauungsplan als Satzung",
                                              committee="Rat der Stadt Oldenburg"))
-    assert b["signals"]["geld"] is None and b["signals"]["aufwand"] is None
+    assert b["signals"]["geld"] is None and b["signals"]["expense"] is None
     assert b["signals"]["verbindlich"] is not None
     assert b["score"] > 50  # verbindlich + Ratsebene
 
@@ -124,8 +124,8 @@ def test_subvote_is_discounted():
 
 
 def test_breakdown_shape():
-    b = importance.importance_breakdown(_dec(amount_eur=1_000_000, gegenstimmen=5), n_beratungen=3)
-    assert set(b["signals"]) == {"geld", "umstritten", "verbindlich", "aufwand"}
+    b = importance.importance_breakdown(_dec(amount_eur=1_000_000, no_votes=5), n_beratungen=3)
+    assert set(b["signals"]) == {"geld", "umstritten", "verbindlich", "expense"}
     assert set(b["contributions"]) == set(b["signals"])
     assert isinstance(b["score"], int)
 
@@ -135,12 +135,12 @@ def test_contributions_sum_to_score():
     Heuristik-Score exakt ergeben, sonst geht die angezeigte Rechnung nicht auf."""
     cases = [
         (_dec(), None),
-        (_dec(amount_eur=1_000_000, gegenstimmen=5), 3),
-        (_dec(title="Kenntnisnahme der Niederschrift", outcome="zur_kenntnis"), None),
+        (_dec(amount_eur=1_000_000, no_votes=5), 3),
+        (_dec(title="Kenntnisnahme der Niederschrift", outcome="noted"), None),
         (_dec(amount_eur=12_000_000, title="Satzung", committee="Rat der Stadt Oldenburg",
-              gegenstimmen=8, enthaltungen=3), 6),
-        (_dec(vote="einstimmig", amount_eur=4_321), 2),
-        (_dec(amount_eur=999_999_999, vote="mehrheitlich"), 12),
+              no_votes=8, abstentions=3), 6),
+        (_dec(vote="unanimous", amount_eur=4_321), 2),
+        (_dec(amount_eur=999_999_999, vote="majority"), 12),
     ]
     for d, n in cases:
         b = importance.importance_breakdown(d, n_beratungen=n)
@@ -156,10 +156,10 @@ def test_contributions_show_renormalised_weight():
     ausgeschlagenes Signal liefert dann mehr als sein Rohgewicht von 24."""
     b = importance.importance_breakdown(
         _dec(title="Zukunft der Fahrradstraßen Haareneschstraße", committee="Rat",
-             vote="mehrheitlich", gegenstimmen=20))
-    assert b["signals"]["geld"] is None and b["signals"]["aufwand"] is None
+             vote="majority", no_votes=20))
+    assert b["signals"]["geld"] is None and b["signals"]["expense"] is None
     assert b["score"] == 81
-    assert b["contributions"] == {"geld": None, "umstritten": 52, "verbindlich": 29, "aufwand": None}
+    assert b["contributions"] == {"geld": None, "umstritten": 52, "verbindlich": 29, "expense": None}
 
 
 # ---- Store-Integration: Backfill + Sortierung -------------------------------
@@ -173,13 +173,13 @@ def test_backfill_importance_store(tmp_path):
         c.execute("INSERT INTO council_sessions(ksinr,committee,session_date,session_time,location,fetched_at) "
                   "VALUES (2,'Ausschuss für Soziales','2025-03-02','17:00','Rathaus','x')")
         # wichtig: Satzung im Rat, große Summe, umstritten, mit Beratungsfolge
-        c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome,vote,gegenstimmen,amount_eur,kvonr) "
-                  "VALUES (1,0,'decision','Bebauungsplan Nr. 851 als Satzung','angenommen','mehrheitlich',9,8000000,555)")
+        c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome,vote,no_votes,amount_eur,kvonr) "
+                  "VALUES (1,0,'decision','Bebauungsplan Nr. 851 als Satzung','accepted','majority',9,8000000,555)")
         # unwichtig: bloße Kenntnisnahme im Fachausschuss, kein Geld
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome) "
-                  "VALUES (2,0,'decision','Kenntnisnahme der Niederschrift','zur_kenntnis')")
-        for datum in ("2025-01-01", "2025-02-01"):
-            c.execute("INSERT INTO council_beratungen(kvonr,datum,gremium,fetched_at) VALUES (555,?,'Rat','x')", (datum,))
+                  "VALUES (2,0,'decision','Kenntnisnahme der Niederschrift','noted')")
+        for tag in ("2025-01-01", "2025-02-01"):
+            c.execute("INSERT INTO council_deliberations(kvonr,date,committee,fetched_at) VALUES (555,?,'Rat','x')", (tag,))
 
     assert store.backfill_importance() == 2
     by_title = {d["title"]: d for d in store.search_decisions(sort="importance", limit=10)}
@@ -205,13 +205,13 @@ def test_importance_sort_damps_old_decisions(tmp_path):
     alt = (date.today() - timedelta(days=5 * 365)).isoformat()
     neu = (date.today() - timedelta(days=20)).isoformat()
     with c:
-        for ksinr, datum in ((1, alt), (2, neu)):
+        for ksinr, tag in ((1, alt), (2, neu)):
             c.execute("INSERT INTO council_sessions(ksinr,committee,session_date,session_time,location,fetched_at)"
-                      " VALUES (?,'Rat',?,'18:00','Rathaus','x')", (ksinr, datum))
+                      " VALUES (?,'Rat',?,'18:00','Rathaus','x')", (ksinr, tag))
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome)"
-                  " VALUES (1,0,'decision','Haushaltssatzung 2021','angenommen')")
+                  " VALUES (1,0,'decision','Haushaltssatzung 2021','accepted')")
         c.execute("INSERT INTO council_decisions(ksinr,position,kind,title,outcome)"
-                  " VALUES (2,0,'decision','Radweg Musterstraße','angenommen')")
+                  " VALUES (2,0,'decision','Radweg Musterstraße','accepted')")
         # Scores direkt setzen — hier zählt die Sortierung, nicht die Heuristik.
         c.execute("UPDATE council_decisions SET importance = 100 WHERE ksinr = 1")
         c.execute("UPDATE council_decisions SET importance = 70 WHERE ksinr = 2")

@@ -14,13 +14,13 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from pathlib import Path
 
-from .antworten import Gesundheit
+from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut
 from .routers import account, admin, auth, auth_apple, bookmarks, council, feedback, kommunalwahl, onboarding, push, quiz, social, topics, badges
 from .session import SitzungsVerlaengerung
 
-logger = logging.getLogger("nwz.web.main")
+logger = logging.getLogger("ratslotse.web.main")
 
 
 def _warn_if_admin_bootstrap_pending() -> None:
@@ -41,7 +41,7 @@ def _warn_if_admin_bootstrap_pending() -> None:
             return
         from kern.store import Store
 
-        store = Store(settings.nwz_db)
+        store = Store(settings.ratslotse_db)
         try:
             users = store.list_web_users()
         finally:
@@ -118,7 +118,7 @@ def _deep_jobs_aufraeumen() -> None:
     try:
         from kern.store import Store
 
-        store = Store(get_settings().nwz_db)
+        store = Store(get_settings().ratslotse_db)
         try:
             n = store.deep_jobs_verwaiste_beenden()
             if n:
@@ -226,7 +226,7 @@ async def overflow_exception_handler(request: Request, exc: OverflowError) -> JS
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Strip password values from 422 error details before returning to the client."""
-    _SENSITIVE = {"password", "current_password", "new_password", "nwz_password"}
+    _SENSITIVE = {"password", "current_password", "new_password"}
     errors = []
     for e in exc.errors():
         loc = e.get("loc", ())
@@ -240,16 +240,16 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.get("/api/health")
-def health() -> Gesundheit:
+def health() -> Health:
     from kern.store import Store
     from council.store import CouncilStore
 
     try:
-        s = Store(settings.nwz_db)
+        s = Store(settings.ratslotse_db)
         s._conn.execute("SELECT 1")
         s.close()
     except Exception:
-        return JSONResponse({"status": "error", "db": "nwz"}, status_code=503)
+        return JSONResponse({"status": "error", "db": "ratslotse"}, status_code=503)
     try:
         c = CouncilStore(settings.council_db)
         c._conn.execute("SELECT 1")
@@ -264,5 +264,5 @@ def app_config() -> AppConfigOut:
     """Small public compatibility contract for installed native builds."""
     return AppConfigOut(
         min_build=max(0, settings.app_min_build),
-        hinweis=settings.app_update_notice.strip() or None,
+        note=settings.app_update_notice.strip() or None,
     )

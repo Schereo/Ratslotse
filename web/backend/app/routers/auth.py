@@ -13,6 +13,7 @@ from kern.store import Store
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 
+from ..clients import client_kind, is_app_client
 from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_current_user, get_store
@@ -31,7 +32,7 @@ from ..session import clear_session_cookie, set_session_cookie
 # Email-verification links stay valid for 24h (more forgiving than the 1h reset link).
 _VERIFY_TTL_HOURS = 24
 
-logger = logging.getLogger("nwz.web.auth")
+logger = logging.getLogger("ratslotse.web.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -88,7 +89,7 @@ def _notify_admins_registration(new_email: str) -> None:
     settings = get_settings()
     if not settings.resend_api_key:
         return
-    store = Store(settings.nwz_db)
+    store = Store(settings.ratslotse_db)
     try:
         admins = [
             u["email"] for u in store.list_web_users()
@@ -110,7 +111,7 @@ def _notify_admins_registration(new_email: str) -> None:
         + knopf(admin_url, "Im Admin-Bereich ansehen"),
         held=None,
         kicker="Für dich als Admin",
-        titel="Neue Registrierung",
+        title="Neue Registrierung",
         fusszeile="Nur zur Info — es ist nichts zu tun. Du bekommst diese E-Mail, "
                   "weil dein Ratslotse-Konto Admin-Rechte hat.",
     )
@@ -131,8 +132,14 @@ def _set_auth_cookie(response: Response, user: dict) -> None:
 
 
 def _is_app_client(request: Request) -> bool:
-    """The native (Capacitor) app sends `X-Client: app`; browsers don't."""
-    return request.headers.get("X-Client", "").lower() == "app"
+    """Kommt der Request aus einer App-Hülle? (Browser schicken keinen Header.)
+
+    Seit die Clients ihre Plattform mitschicken (``ios``/``android``) darf das
+    hier NICHT mehr auf ``== "app"`` prüfen: Die native iOS-App bekäme sonst bei
+    der Anmeldung kein Bearer-Token mehr in den Rumpf gelegt und stünde nach dem
+    nächsten Start abgemeldet da. ``app.clients`` kennt beide Schreibweisen.
+    """
+    return is_app_client(request)
 
 
 def _app_access_token(request: Request, user: dict) -> str | None:
@@ -162,7 +169,7 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         apple_linked=bool(user.get("apple_sub")),
         has_password=bool(user.get("password_set", 1)),
         display_name=user.get("display_name"),
-        qa_speichern=user.get("qa_speichern"),
+        saves_conversations=user.get("saves_conversations"),
         access_token=access_token,
     )
 
@@ -194,6 +201,8 @@ def register(
     user_id = store.create_web_user(
         email, hash_password(body.password), role, user_status, email_verified=verified,
         display_name=body.display_name,
+        # Womit dieses Konto entstanden ist — Browser oder App (Admin 20a).
+        signup_client=client_kind(request),
     )
     # Default to email delivery so new accounts actually receive notifications.
     # They can switch channels later in /account.
@@ -274,7 +283,7 @@ def _send_reset_email(email: str, raw_token: str, display_name: str | None = Non
         greeting_name=display_name,
         held="passwort",
         kicker="Dein Konto",
-        titel="Passwort zurücksetzen",
+        title="Passwort zurücksetzen",
         fusszeile="Wenn du das nicht warst, ignoriere diese E-Mail — "
                   "dein Passwort bleibt unverändert.",
     )
@@ -350,7 +359,7 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         greeting_name=display_name,
         held="willkommen",
         kicker="Willkommen an Bord",
-        titel="Schön, dass du da bist!",
+        title="Schön, dass du da bist!",
         fusszeile="Wenn du dich nicht registriert hast, ignoriere diese E-Mail — "
                   "dann passiert nichts.",
     )

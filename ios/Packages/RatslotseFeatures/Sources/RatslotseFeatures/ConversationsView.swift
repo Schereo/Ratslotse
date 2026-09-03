@@ -33,14 +33,14 @@ struct ConversationsView: View {
                             kicker: "Frag den Rat",
                             title: "Meine Gespräche",
                             message: "Öffne einen früheren Chat oder beginne mit einer neuen, unabhängigen Frage.",
-                            symbol: "bubble.left.and.bubble.right.fill"
+                            symbol: .messagesSquare
                         )
 
                         Button {
                             onNew()
                             dismiss()
                         } label: {
-                            Label("Neues Gespräch", systemImage: "square.and.pencil")
+                            RatsLabel("Neues Gespräch", .squarePen)
                                 .font(RatsFont.body(15, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                         }
@@ -50,8 +50,7 @@ struct ConversationsView: View {
                             MonoKicker("Gerade geöffnet")
                             Button { dismiss() } label: {
                                 HStack(spacing: 12) {
-                                    Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                                        .font(.system(size: 16))
+                                    RatsIcon(.messagesSquare, size: 16)
                                         .foregroundStyle(.white)
                                         .frame(width: 38, height: 38)
                                         .background(RatsColor.primary)
@@ -68,8 +67,7 @@ struct ConversationsView: View {
                                     Spacer(minLength: 4)
                                     VStack(alignment: .trailing, spacing: 10) {
                                         Pill("Aktuell")
-                                        Image(systemName: "checkmark")
-                                            .font(.caption.weight(.bold))
+                                        RatsIcon(.check, size: 12)
                                             .foregroundStyle(RatsColor.primary)
                                     }
                                 }
@@ -87,12 +85,12 @@ struct ConversationsView: View {
                         RatsEmptyState(
                             title: "Noch keine Gespräche",
                             message: "Sobald du dem Rat eine Frage stellst, kannst du die Unterhaltung hier erneut öffnen.",
-                            symbol: "bubble.left.and.bubble.right"
+                            symbol: .messagesSquare
                         )
                     } else {
                         if historicalConversations.count >= 8 {
                             HStack(spacing: 9) {
-                                Image(systemName: "magnifyingglass")
+                                RatsIcon(.search, size: 16)
                                     .foregroundStyle(RatsColor.muted)
                                 TextField("In Gesprächen suchen …", text: $search)
                                     .textInputAutocapitalization(.never)
@@ -113,15 +111,14 @@ struct ConversationsView: View {
                             RatsEmptyState(
                                 title: "Kein Treffer",
                                 message: "Kein Gespräch passt zu „\(search.trimmingCharacters(in: .whitespacesAndNewlines))“.",
-                                symbol: "text.magnifyingglass"
+                                symbol: .textSearch
                             )
                         }
                         ForEach(filteredConversations) { conversation in
                             HStack(spacing: 10) {
                                 Button { Task { await open(conversation.id) } } label: {
                                     HStack(spacing: 12) {
-                                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                                            .font(.system(size: 16))
+                                        RatsIcon(.messagesSquare, size: 16)
                                             .foregroundStyle(RatsColor.primary)
                                             .frame(width: 38, height: 38)
                                             .background(RatsColor.primary.opacity(0.08))
@@ -140,23 +137,22 @@ struct ConversationsView: View {
                                         if openingID == conversation.id {
                                             ProgressView().controlSize(.small).tint(RatsColor.primary)
                                         } else {
-                                            Image(systemName: "chevron.right")
-                                                .font(.caption)
+                                            RatsIcon(.chevronRight, size: 12)
                                                 .foregroundStyle(RatsColor.muted)
                                         }
                                     }
                                 }
                                 .buttonStyle(RatsPlainButtonStyle())
                                 Menu {
-                                    Button("Umbenennen", systemImage: "pencil") {
+                                    Button {
                                         renameTitle = conversation.title
                                         renameTarget = conversation
-                                    }
-                                    Button("Gespräch löschen", systemImage: "trash", role: .destructive) {
+                                    } label: { RatsLabel("Umbenennen", .pencil) }
+                                    Button(role: .destructive) {
                                         remove(conversation.id)
-                                    }
+                                    } label: { RatsLabel("Gespräch löschen", .trash2) }
                                 } label: {
-                                    Image(systemName: "ellipsis")
+                                    RatsIcon(.ellipsis, size: 16)
                                         .foregroundStyle(RatsColor.secondary)
                                         .frame(width: 30, height: 34)
                                 }
@@ -231,8 +227,8 @@ struct ConversationsView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response: JSONValue = try await model.api.get("/api/council/gespraeche")
-            conversations = response.object?["gespraeche"]?.array?.compactMap {
+            let response: JSONValue = try await model.api.get("/api/council/conversations")
+            conversations = response.object?["conversations"]?.array?.compactMap {
                 try? $0.decoded(ConversationSummary.self)
             } ?? []
             error = nil
@@ -243,7 +239,7 @@ struct ConversationsView: View {
         openingID = id
         defer { openingID = nil }
         do {
-            let payload: JSONValue = try await model.api.get("/api/council/gespraeche/\(id)")
+            let payload: JSONValue = try await model.api.get("/api/council/conversations/\(id)")
             onOpen(id, payload)
             dismiss()
         } catch { self.error = error.localizedDescription }
@@ -252,7 +248,7 @@ struct ConversationsView: View {
     private func remove(_ id: Int) {
         Task {
             do {
-                try await model.api.sendVoid("/api/council/gespraeche/\(id)", method: .delete)
+                try await model.api.sendVoid("/api/council/conversations/\(id)", method: .delete)
                 conversations.removeAll { $0.id == id }
                 if id == activeConversationID {
                     onDeletedActive()
@@ -263,14 +259,14 @@ struct ConversationsView: View {
     }
 
     private func rename(_ conversation: ConversationSummary) async {
-        struct Body: Codable, Sendable { let titel: String }
+        struct Body: Codable, Sendable { let title: String }
         let clean = renameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty else { return }
         do {
             try await model.api.sendVoid(
-                "/api/council/gespraeche/\(conversation.id)",
+                "/api/council/conversations/\(conversation.id)",
                 method: .patch,
-                body: Body(titel: clean)
+                body: Body(title: clean)
             )
             if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
                 conversations[index] = ConversationSummary(

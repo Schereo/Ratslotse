@@ -173,7 +173,7 @@ _PDF_LINK = re.compile(
 
 
 def berichtslinks(html: str) -> list[tuple[int, str]]:
-    """Aus der Übersichtsseite die Berichts-PDFs herauslesen → ``[(jahr, url)]``.
+    """Aus der Übersichtsseite die Berichts-PDFs herauslesen → ``[(year, url)]``.
 
     Das Jahr kommt aus dem **Dateinamen**, nicht aus dem Linktext: Der
     Linktext ist redaktionell gepflegt und lautet mal „Beteiligungsbericht
@@ -183,7 +183,7 @@ def berichtslinks(html: str) -> list[tuple[int, str]]:
     Jahreszahl darin immer das Berichtsjahr ist.
 
     Endgültig entscheidet ohnehin das Dokument selbst: ``beteiligungsbericht.
-    jahrgang()`` liest das Berichtsjahr aus der Kopfzeile, und wenn beide
+    budget_year()`` liest das Berichtsjahr aus der Kopfzeile, und wenn beide
     auseinanderlaufen, gilt das Dokument (s. Cron)."""
     aus: dict[int, str] = {}
     for pfad in _PDF_LINK.findall(html or ""):

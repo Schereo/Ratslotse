@@ -43,10 +43,15 @@ APP_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de")
 
 # Was im jeweiligen Schritt offen ist — die Mail sagt konkret, was noch fehlt,
 # statt allgemein „mach mal weiter".
+# Die Nummern zählen den Ablauf im Browser: 1 Gremien, 2 Stadtteil, 3 Themen,
+# 4 Mitteilungen. Die App kennt den Stadtteil-Schritt nicht und meldet 1–3 —
+# ihr Schritt 3 ist die Push-Frage. Der Satz zu 3 muss deshalb für beides
+# passen; deshalb nennt er die Themen und nicht „nur noch die Erlaubnis".
 OPEN_AT_STEP = {
     1: "Du wolltest gerade Gremien auswählen, über die Lotti dich informiert.",
-    2: "Du wolltest gerade Themen anlegen, zu denen Lotti sich meldet.",
-    3: "Es fehlt nur noch die Erlaubnis für Mitteilungen.",
+    2: "Du wolltest gerade Stadtteile auswählen, die dich interessieren.",
+    3: "Du wolltest gerade Themen anlegen, zu denen Lotti sich meldet.",
+    4: "Es fehlt nur noch, wie Lotti sich bei dir meldet.",
 }
 
 
@@ -65,8 +70,8 @@ def main() -> dict:
     # Store verlangt einen Pfad — `Store()` warf hier bei JEDEM Lauf sofort einen
     # TypeError, noch vor der Mail-Prüfung. Der Job hat also nie eine Erinnerung
     # verschickt, sondern ist immer abgestürzt. Pfad wie in den übrigen
-    # Cron-Skripten: NWZ_DB, sonst data/nwz.sqlite im Repo.
-    store = Store(os.environ.get("NWZ_DB") or ROOT / "data" / "nwz.sqlite")
+    # Cron-Skripten: RATSLOTSE_DB, sonst data/ratslotse.sqlite im Repo.
+    store = Store(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
     pending = store.setups_to_remind(older_than_hours=REMIND_AFTER_HOURS)
     if not pending:
         return {"kandidaten": 0, "gesendet": 0}
@@ -74,7 +79,7 @@ def main() -> dict:
         # Kein Schlüssel → nichts verschicken UND nichts als erinnert markieren,
         # sonst verlöre man die Kandidaten stillschweigend.
         print(f"{len(pending)} offene Einrichtungen, aber kein RESEND_API_KEY — übersprungen.")
-        return {"kandidaten": len(pending), "gesendet": 0, "grund": "kein_mailversand"}
+        return {"kandidaten": len(pending), "gesendet": 0, "reason": "kein_mailversand"}
 
     sent = 0
     for u in pending:
@@ -89,8 +94,8 @@ def main() -> dict:
                     greeting_name=u.get("display_name"),
                     held="erinnerung",
                     kicker="Deine Einrichtung",
-                    titel="Fast fertig eingerichtet",
-                    fusszeile="Diese Erinnerung schicken wir genau einmal — "
+                    title="Fast fertig eingerichtet",
+                    fusszeile="Diese Erinnerung schicken wir exact einmal — "
                               "du bekommst sie nicht noch einmal.",
                 ),
             )

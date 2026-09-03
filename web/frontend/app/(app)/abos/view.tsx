@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { vertrag } from "@/lib/vertrag";
 import type { CommitteeDetail } from "@/lib/types";
 import { CardListSkeleton, ErrorState, PageHeader, formatDate, toast } from "@/components/ui";
 import { wochentagKurz } from "@/lib/utils";
@@ -105,7 +106,7 @@ export function AbosView() {
 
   const subsQuery = useQuery({
     queryKey: ["subscriptions"],
-    queryFn: () => api.get<{ subscriptions: string[] }>("/subscriptions").then((d) => d.subscriptions),
+    queryFn: () => vertrag.get("/subscriptions").then((d) => d.subscriptions),
   });
 
   /* Welches Gremium gerade läutet. Nur beim Abonnieren, nicht beim Abbestellen

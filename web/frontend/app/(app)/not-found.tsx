@@ -27,7 +27,7 @@ import { useAuth } from "@/lib/auth";
  *  und passte damit nur zum Beschluss. Bei „Dieses Thema" und „Dieses
  *  Ratsmitglied" war das schlicht falsches Deutsch — und Ratsmitglieder werden
  *  ohnehin nicht zusammengeführt. */
-const NOMEN: [test: RegExp, titel: string, hinweis: string][] = [
+const NOMEN: [test: RegExp, title: string, note: string][] = [
   [/^\/council\/decision/, "Diesen Beschluss finde ich nicht",
    "Vielleicht hat sich die Adresse geändert. Über die Suche findest du ihn meist trotzdem."],
   [/^\/council\/person/, "Dieses Ratsmitglied finde ich nicht",
@@ -48,7 +48,7 @@ export default function AppNotFound() {
   const [q, setQ] = useState("");
 
   const treffer = NOMEN.find(([re]) => re.test(pfad ?? ""));
-  const [titel, hinweis] = treffer ? [treffer[1], treffer[2]] : FALLBACK;
+  const [title, note] = treffer ? [treffer[1], treffer[2]] : FALLBACK;
 
   const suchen = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export default function AppNotFound() {
 
   return (
     <div className="mx-auto max-w-xl py-6">
-      <EmptyState mascot="confused" title={titel} hint={hinweis} />
+      <EmptyState mascot="confused" title={title} hint={note} />
       {/* Die Suche gibt es nur für Angemeldete: `/council` verlangt ein Konto,
           Gästen (geteilter Link auf einen gelöschten Beschluss) hätte der Knopf
           also bloß die Anmeldewand vorgesetzt — eine Sackgasse hinter der

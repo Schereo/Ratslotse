@@ -53,7 +53,7 @@ struct PublicProfileView: View {
                     }
 
                     if let link = model.router.universalLink(for: route) {
-                        ShareLink(item: link) { Label("Profil teilen", systemImage: "square.and.arrow.up") }
+                        ShareLink(item: link) { RatsLabel("Profil teilen", .share) }
                             .buttonStyle(SecondaryButtonStyle())
                     }
                 } else if let error {
@@ -197,20 +197,20 @@ struct PublicProfileView: View {
                 person = PublicPersonProfile(
                     name: "Anne Beispiel",
                     slug: "anne-beispiel",
-                    type: "rat",
+                    type: "council",
                     party: "SPD",
                     currentAffiliation: .init(
                         label: "SPD-Fraktion",
                         kind: "fraktion",
                         parties: ["SPD"]
                     ),
-                    art: "rat",
+                    kind: "council",
                     organisation: nil,
                     nSessions: 18,
                     activeFrom: "2021-11-01",
                     activeTo: nil,
                     factionTimeline: [
-                        .init(label: "SPD-Fraktion", kind: "partei", parties: ["SPD"], first: "2021-11-01", last: "2026-08-28", n: 18),
+                        .init(label: "SPD-Fraktion", kind: "party", parties: ["SPD"], first: "2021-11-01", last: "2026-08-28", n: 18),
                     ],
                     ris: .init(kpenr: 42, name: "Anne Beispiel", currentFaction: "SPD-Fraktion", memberships: [
                         .init(kgrnr: 1, committee: "Verkehrsausschuss", role: "Vorsitzende", from: "2021-11-01", until: nil),
@@ -226,8 +226,8 @@ struct PublicProfileView: View {
                         .init(ksinr: 8102, committee: "Sozialausschuss", sessionDate: "2026-08-21"),
                     ],
                     speeches: [
-                        .init(kind: "rede", agendaItem: "Fahrradstraßen in Oldenburg", text: "Anne Beispiel hebt hervor, dass sichere Schulwege und durchgehende Radverbindungen gemeinsam geplant werden müssen.", committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
-                        .init(kind: "anfrage", agendaItem: "Ganztagsbetreuung", text: "Sie fragt nach dem Zeitplan für zusätzliche Betreuungsplätze und der Beteiligung der Schulen.", committee: "Sozialausschuss", sessionDate: "2026-08-21"),
+                        .init(kind: "speech", agendaItem: "Fahrradstraßen in Oldenburg", text: "Anne Beispiel hebt hervor, dass sichere Schulwege und durchgehende Radverbindungen gemeinsam geplant werden müssen.", committee: "Verkehrsausschuss", sessionDate: "2026-08-28"),
+                        .init(kind: "inquiry", agendaItem: "Ganztagsbetreuung", text: "Sie fragt nach dem Zeitplan für zusätzliche Betreuungsplätze und der Beteiligung der Schulen.", committee: "Sozialausschuss", sessionDate: "2026-08-21"),
                     ],
                     speechCount: 24,
                     speechCommittees: [
@@ -259,9 +259,9 @@ struct PublicProfileView: View {
                     "stadtplanung": "Stadtplanung"
                   },
                   "related": [
-                    {"slug": "radverkehr", "name": "Radverkehr", "kind": "thema", "rel_type": "belegt", "evidence": 12},
-                    {"slug": "grundschulen", "name": "Grundschulen", "kind": "thema", "rel_type": "belegt", "evidence": 7},
-                    {"slug": "verkehrssicherheit", "name": "Verkehrssicherheit", "kind": "thema", "rel_type": "aehnlich", "evidence": 0}
+                    {"slug": "radverkehr", "name": "Radverkehr", "kind": "thema", "rel_type": "documented", "evidence": 12},
+                    {"slug": "grundschulen", "name": "Grundschulen", "kind": "thema", "rel_type": "documented", "evidence": 7},
+                    {"slug": "verkehrssicherheit", "name": "Verkehrssicherheit", "kind": "thema", "rel_type": "similar", "evidence": 0}
                   ]
                 }
                 """#.utf8))
@@ -441,14 +441,14 @@ private struct TopicProfileMetadata: View {
                         alignment: .leading,
                         spacing: 7
                     ) {
-                        ForEach(detail.parties, id: \.self) { ProfilePartyChip(party: $0) }
+                        ForEach(detail.parties, id: \.self) { PartyChip(party: $0) }
                     }
                 }
                 .ratsCard()
             }
 
-            let proven = detail.related.filter { $0.relType == "belegt" }
-            let similar = detail.related.filter { $0.relType != "belegt" }
+            let proven = detail.related.filter { $0.relType == "documented" }
+            let similar = detail.related.filter { $0.relType != "documented" }
             if !proven.isEmpty || !similar.isEmpty {
                 VStack(alignment: .leading, spacing: 13) {
                     relatedRow("Hängt zusammen mit", detail: "gemeinsam behandelt", entries: proven, showsEvidence: true)
@@ -512,8 +512,7 @@ private struct TopicProfileMetadata: View {
                     ForEach(entries) { entry in
                         Button { model.navigation.append(.topic(slug: entry.slug)) } label: {
                             HStack(spacing: 7) {
-                                Image(systemName: "point.3.filled.connected.trianglepath.dotted")
-                                    .font(.caption)
+                                RatsIcon(.waypoints, size: 12)
                                 Text(entry.name).lineLimit(2)
                                 Spacer(minLength: 0)
                                 if showsEvidence {
@@ -545,7 +544,7 @@ private struct PlaceProfileMetadata: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                Image(systemName: "mappin.and.ellipse")
+                RatsIcon(.mapPin, size: 12.5)
                     .foregroundStyle(RatsColor.primary)
                 VStack(alignment: .leading, spacing: 2) {
                     MonoKicker(detail.place.kindLabel)
@@ -575,11 +574,10 @@ private struct PlaceProfileMetadata: View {
                         if let url = URL(string: source.url) {
                             Link(destination: url) {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "doc.text")
+                                    RatsIcon(.fileText, size: 12)
                                     Text(source.title)
                                     Spacer()
-                                    Image(systemName: "arrow.up.right")
-                                        .font(.caption)
+                                    RatsIcon(.arrowUpRight, size: 12)
                                 }
                                 .font(RatsFont.body(12, weight: .medium))
                                 .foregroundStyle(RatsColor.primary)
@@ -599,7 +597,7 @@ private struct PlaceProfileMetadata: View {
             model.navigation.removeAll()
             model.selectedTab = .questions
         } label: {
-            Label("Lotti dazu fragen", systemImage: "sparkles")
+            RatsLabel("Lotti dazu fragen", .sparkles)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(PrimaryButtonStyle())
@@ -609,7 +607,7 @@ private struct PlaceProfileMetadata: View {
             model.councilSection = .map
             model.selectedTab = .council
         } label: {
-            Label("Auf der Stadtkarte", systemImage: "map")
+            RatsLabel("Auf der Stadtkarte", .map)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(SecondaryButtonStyle())
@@ -646,35 +644,6 @@ private struct PlaceProfileMetadata: View {
                 }
             }
         }
-    }
-}
-
-private struct ProfilePartyChip: View {
-    let party: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Circle().fill(color).frame(width: 8, height: 8)
-            Text(party)
-                .font(RatsFont.body(10.5, weight: .semibold))
-                .lineLimit(1)
-        }
-        .foregroundStyle(RatsColor.bodyText)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.11))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
-    private var color: Color {
-        let value = party.lowercased()
-        if value.contains("spd") { return Color(red: 0.82, green: 0.10, blue: 0.15) }
-        if value.contains("cdu") { return RatsColor.bodyText }
-        if value.contains("grün") { return Color(red: 0.18, green: 0.55, blue: 0.25) }
-        if value.contains("fdp") { return Color(red: 0.93, green: 0.71, blue: 0.08) }
-        if value.contains("link") { return Color(red: 0.72, green: 0.10, blue: 0.43) }
-        if value.contains("volt") { return Color(red: 0.42, green: 0.17, blue: 0.62) }
-        return RatsColor.primary
     }
 }
 
@@ -763,8 +732,8 @@ struct PublicPersonProfile: Codable, Sendable {
 
             enum CodingKeys: String, CodingKey {
                 case kgrnr
-                case committee = "gremium"
-                case role = "rolle"
+                case committee = "committee"
+                case role = "role"
                 case from = "von"
                 case until = "bis"
             }
@@ -777,7 +746,7 @@ struct PublicPersonProfile: Codable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case kpenr, name, memberships
-            case currentFaction = "fraktion_aktuell"
+            case currentFaction = "current_faction"
         }
     }
 
@@ -790,9 +759,8 @@ struct PublicPersonProfile: Codable, Sendable {
         let sessionDate: String
 
         enum CodingKeys: String, CodingKey {
-            case text, committee
-            case kind = "art"
-            case agendaItem = "top"
+            case text, committee, kind
+            case agendaItem = "agenda_item"
             case sessionDate = "session_date"
         }
     }
@@ -808,7 +776,7 @@ struct PublicPersonProfile: Codable, Sendable {
     let type: String
     let party: String?
     let currentAffiliation: Affiliation?
-    let art: String?
+    let kind: String?
     let organisation: String?
     let nSessions: Int
     let activeFrom: String?
@@ -826,17 +794,16 @@ struct PublicPersonProfile: Codable, Sendable {
     let mentionedUntil: String?
 
     enum CodingKeys: String, CodingKey {
-        case name, slug, party, art, organisation, committees, recent, ris
-        case type = "typ"
+        case name, slug, type, party, kind, organisation, committees, recent, ris
         case currentAffiliation = "current_affiliation"
         case nSessions = "n_sessions"
         case activeFrom = "active_from"
         case activeTo = "active_to"
         case factionTimeline = "faction_timeline"
-        case speeches = "wortbeitraege"
-        case speechCount = "wortbeitraege_gesamt"
-        case speechCommittees = "wortbeitraege_gremien"
-        case administrationRole = "rolle"
+        case speeches
+        case speechCount = "speeches_total"
+        case speechCommittees = "speeches_committees"
+        case administrationRole = "role"
         case isActive = "aktiv"
         case mentionedFrom = "von"
         case mentionedUntil = "bis"
@@ -848,7 +815,7 @@ struct PublicPersonProfile: Codable, Sendable {
         type: String,
         party: String?,
         currentAffiliation: Affiliation?,
-        art: String?,
+        kind: String?,
         organisation: String?,
         nSessions: Int,
         activeFrom: String?,
@@ -870,7 +837,7 @@ struct PublicPersonProfile: Codable, Sendable {
         self.type = type
         self.party = party
         self.currentAffiliation = currentAffiliation
-        self.art = art
+        self.kind = kind
         self.organisation = organisation
         self.nSessions = nSessions
         self.activeFrom = activeFrom
@@ -892,10 +859,10 @@ struct PublicPersonProfile: Codable, Sendable {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         name = try values.decode(String.self, forKey: .name)
         slug = try values.decodeIfPresent(String.self, forKey: .slug) ?? ""
-        type = try values.decodeIfPresent(String.self, forKey: .type) ?? "rat"
+        type = try values.decodeIfPresent(String.self, forKey: .type) ?? "council"
         party = try values.decodeIfPresent(String.self, forKey: .party)
         currentAffiliation = try values.decodeIfPresent(Affiliation.self, forKey: .currentAffiliation)
-        art = try values.decodeIfPresent(String.self, forKey: .art)
+        kind = try values.decodeIfPresent(String.self, forKey: .kind)
         organisation = try values.decodeIfPresent(String.self, forKey: .organisation)
         nSessions = try values.decodeIfPresent(Int.self, forKey: .nSessions) ?? 0
         activeFrom = try values.decodeIfPresent(String.self, forKey: .activeFrom)
@@ -914,17 +881,17 @@ struct PublicPersonProfile: Codable, Sendable {
     }
 
     var roleLabel: String {
-        if type == "verwaltung" { return administrationRole ?? "Stadtverwaltung" }
-        return switch art {
-        case "rat": "Ratsmitglied"
-        case "beratend": "Beratendes Mitglied"
-        case "verwaltung": "Stadtverwaltung"
+        if type == "administration" { return administrationRole ?? "Stadtverwaltung" }
+        return switch kind {
+        case "council": "Ratsmitglied"
+        case "advisory": "Beratendes Mitglied"
+        case "administration": "Stadtverwaltung"
         default: "Person im Oldenburger Rat"
         }
     }
 
     var affiliation: String? {
-        if type == "verwaltung" { return "Stadt Oldenburg" }
+        if type == "administration" { return "Stadt Oldenburg" }
         return [currentAffiliation?.label, party, organisation]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty }
@@ -1005,8 +972,7 @@ private struct PersonProfileOverview: View {
                 }
                 Spacer(minLength: 0)
                 Button { showsMethodology = true } label: {
-                    Image(systemName: "info")
-                        .font(.system(size: 13, weight: .bold))
+                    RatsIcon(.info, size: 13)
                         .foregroundStyle(partyColor)
                         .frame(width: 36, height: 36)
                         .background(RatsColor.card.opacity(0.82))
@@ -1022,12 +988,12 @@ private struct PersonProfileOverview: View {
             }
 
             if let period {
-                Label(period, systemImage: "calendar.badge.clock")
+                RatsLabel(period, .calendarClock)
                     .font(RatsFont.mono(10))
                     .foregroundStyle(RatsColor.secondary)
             }
 
-            if person.type != "verwaltung" {
+            if person.type != "administration" {
                 HStack(spacing: 0) {
                     metric(value: person.nSessions, label: "Sitzungen")
                     metricDivider
@@ -1057,7 +1023,7 @@ private struct PersonProfileOverview: View {
         let current = person.ris?.memberships.filter { $0.until == nil } ?? []
         let past = person.ris?.memberships.filter { $0.until != nil } ?? []
         if !current.isEmpty || !past.isEmpty {
-            RatsSectionPanel("Ämter im Rat", detail: "Offizielle Mitgliedschaften im Zeitverlauf", symbol: "building.columns") {
+            RatsSectionPanel("Ämter im Rat", detail: "Offizielle Mitgliedschaften im Zeitverlauf", symbol: .landmark) {
                 if !current.isEmpty {
                     VStack(spacing: 13) {
                         ForEach(current) { membership in
@@ -1086,7 +1052,7 @@ private struct PersonProfileOverview: View {
     @ViewBuilder
     private var affiliationTimeline: some View {
         if !person.factionTimeline.isEmpty {
-            RatsSectionPanel("Zugehörigkeit im Zeitverlauf", detail: "Fraktion, Gruppe oder parteilos – so, wie es die Protokolle zur jeweiligen Zeit führen.", symbol: "point.3.connected.trianglepath.dotted") {
+            RatsSectionPanel("Zugehörigkeit im Zeitverlauf", detail: "Fraktion, Gruppe oder parteilos – so, wie es die Protokolle zur jeweiligen Zeit führen.", symbol: .waypoints) {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(person.factionTimeline.enumerated()), id: \.element.id) { index, phase in
                         HStack(alignment: .top, spacing: 10) {
@@ -1113,7 +1079,7 @@ private struct PersonProfileOverview: View {
     private var presenceChart: some View {
         if !person.committees.isEmpty {
             let maximum = max(1, person.committees.map(\.n).max() ?? 1)
-            RatsSectionPanel("Präsenz je Gremium", detail: "Besuchte Sitzungen im Vergleich", symbol: "chart.bar.xaxis") {
+            RatsSectionPanel("Präsenz je Gremium", detail: "Besuchte Sitzungen im Vergleich", symbol: .chartColumn) {
                 VStack(spacing: 14) {
                     ForEach(person.committees) { committee in
                         VStack(alignment: .leading, spacing: 6) {
@@ -1122,7 +1088,7 @@ private struct PersonProfileOverview: View {
                                     .font(RatsFont.body(13, weight: .semibold))
                                     .lineLimit(2)
                                 if committee.chair {
-                                    Label("Vorsitz", systemImage: "gavel")
+                                    RatsLabel("Vorsitz", .gavel)
                                         .font(RatsFont.body(9.5, weight: .semibold))
                                         .foregroundStyle(RatsColor.signal)
                                 }
@@ -1149,7 +1115,7 @@ private struct PersonProfileOverview: View {
     @ViewBuilder
     private var speechesCard: some View {
         if person.speechCount > 0 || !speeches.isEmpty {
-            RatsSectionPanel("Aus den Protokollen", detail: "Sinngemäß zusammengefasste Wortbeiträge – direkt aus den Niederschriften.", symbol: "quote.bubble") {
+            RatsSectionPanel("Aus den Protokollen", detail: "Sinngemäß zusammengefasste Wortbeiträge – direkt aus den Niederschriften.", symbol: .messageSquareQuote) {
                 if person.speechCommittees.count > 1 {
                     Menu {
                         Button("Alle Gremien (\(person.speechCount))") { selectSpeechCommittee("") }
@@ -1158,11 +1124,11 @@ private struct PersonProfileOverview: View {
                         }
                     } label: {
                         HStack {
-                            Image(systemName: "line.3.horizontal.decrease")
+                            RatsIcon(.listFilter, size: 12)
                             Text(selectedCommittee.isEmpty ? "Alle Gremien" : shortCommittee(selectedCommittee))
                                 .lineLimit(1)
                             Spacer()
-                            Image(systemName: "chevron.up.chevron.down")
+                            RatsIcon(.chevronsUpDown, size: 12)
                         }
                         .font(RatsFont.body(12, weight: .semibold))
                         .foregroundStyle(RatsColor.bodyText)
@@ -1203,7 +1169,7 @@ private struct PersonProfileOverview: View {
     @ViewBuilder
     private var recentSessionsCard: some View {
         if !person.recent.isEmpty {
-            RatsSectionPanel("Zuletzt anwesend", detail: "Die jüngsten protokollierten Teilnahmen", symbol: "clock.arrow.circlepath") {
+            RatsSectionPanel("Zuletzt anwesend", detail: "Die jüngsten protokollierten Teilnahmen", symbol: .history) {
                 ForEach(person.recent.prefix(5)) { session in
                     Button {
                         model.navigation.append(.sessions(ksinr: session.ksinr, tops: []))
@@ -1217,8 +1183,7 @@ private struct PersonProfileOverview: View {
                                     .foregroundStyle(RatsColor.muted)
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
+                            RatsIcon(.chevronRight, size: 12)
                                 .foregroundStyle(RatsColor.muted)
                         }
                     }
@@ -1230,7 +1195,7 @@ private struct PersonProfileOverview: View {
     }
 
     private var period: String? {
-        if person.type == "verwaltung" {
+        if person.type == "administration" {
             switch (person.mentionedFrom, person.mentionedUntil, person.isActive) {
             case let (start?, _, true): return "In Protokollen erwähnt seit \(start)"
             case let (start?, end?, _): return "In Protokollen erwähnt \(start)–\(end)"
@@ -1274,7 +1239,7 @@ private struct PersonProfileOverview: View {
     }
 
     private var methodologyText: String {
-        if person.type == "verwaltung" {
+        if person.type == "administration" {
             return "Amt und Zeitraum stammen aus den Anwesenheitslisten der Protokolle. Der Zeitraum beschreibt Erwähnungen – keine amtliche Amtszeit."
         }
         return "Präsenz stammt aus den Anwesenheitslisten der Protokolle ab 2018. Offizielle Gremien-Zeiträume reichen – soweit verfügbar – bis 2001 zurück. Präsenz zeigt Aktivität, nicht das Stimmverhalten."
@@ -1339,7 +1304,7 @@ private struct PersonProfileOverview: View {
         let isChair = membership.role?.localizedCaseInsensitiveContains("vorsitz") == true
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                if isChair { Image(systemName: "gavel").font(.caption).foregroundStyle(RatsColor.signal) }
+                if isChair { RatsIcon(.gavel, size: 12).foregroundStyle(RatsColor.signal) }
                 Text(shortCommittee(membership.committee)).font(RatsFont.body(13, weight: isChair ? .semibold : .regular))
                 Spacer()
                 Text("seit " + String(startYear)).font(RatsFont.mono(9.5)).foregroundStyle(RatsColor.secondary)
@@ -1391,10 +1356,10 @@ private struct PersonProfileOverview: View {
 
     private func speechKind(_ kind: String) -> String {
         switch kind {
-        case "rede": "REDE"
-        case "anfrage": "ANFRAGE"
-        case "einwohnerfrage": "EINWOHNERFRAGE"
-        case "zusage": "ZUSAGE"
+        case "speech": "REDE"
+        case "inquiry": "ANFRAGE"
+        case "citizen_question": "EINWOHNERFRAGE"
+        case "pledge": "ZUSAGE"
         default: kind.uppercased()
         }
     }
@@ -1416,10 +1381,10 @@ private struct PersonProfileOverview: View {
                 URLQueryItem(name: "limit", value: "20"),
             ]
             if !selectedCommittee.isEmpty {
-                query.append(URLQueryItem(name: "gremium", value: selectedCommittee))
+                query.append(URLQueryItem(name: "committee", value: selectedCommittee))
             }
             let page: SpeechPage = try await model.api.get(
-                "/api/council/person/\(person.slug)/wortbeitraege",
+                "/api/council/person/\(person.slug)/speeches",
                 query: query
             )
             speeches = reset ? page.items : speeches + page.items
@@ -1463,24 +1428,29 @@ struct QuizArea: Codable, Sendable, Identifiable {
     let label: String?
     let questions: Int
     let points: Int?
-    let stadtteile: [String]?
-    let stadtteil: String?
+    let districts: [String]?
+    let district: String?
 }
 
 struct QuizAreas: Codable, Sendable {
-    let wahlbereiche: [QuizArea]
-    let stadtteile: [QuizArea]
-    let themen: [QuizArea]
+    let electoralDistricts: [QuizArea]
+    let districts: [QuizArea]
+    let topics: [QuizArea]
     let categories: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case electoralDistricts = "electoral_districts"
+        case districts, topics, categories
+    }
 }
 
 private func quizCategoryLabel(_ category: String) -> String {
     switch category {
-    case "geschichte": "Geschichte"
-    case "orte": "Orte"
-    case "menschen": "Menschen"
-    case "ratspolitik": "Ratspolitik"
-    case "schaetzen": "Schätzfrage"
+    case "history": "Geschichte"
+    case "places": "Orte"
+    case "people": "Menschen"
+    case "council_politics": "Ratspolitik"
+    case "estimation": "Schätzfrage"
     default: category.capitalized
     }
 }
@@ -1595,7 +1565,7 @@ struct OwnQuizQuestion: Codable, Sendable, Identifiable {
     let question: String
     let options: [String]
     let correctIndex: Int
-    let stadtteil: String?
+    let district: String?
     let category: String
     let explanation: String?
     let qtype: String?
@@ -1607,7 +1577,7 @@ struct OwnQuizQuestion: Codable, Sendable, Identifiable {
     let correctCount: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, question, options, stadtteil, category, explanation, qtype, unit, practiced
+        case id, question, options, district, category, explanation, qtype, unit, practiced
         case correctIndex = "correct_index"
         case answerValue = "answer_value"
         case rangeMin = "range_min"
@@ -1704,22 +1674,22 @@ struct QuizView: View {
                 .buttonStyle(RatsPlainButtonStyle())
             }
             LazyVGrid(columns: quizModeColumns, spacing: 10) {
-                QuizModeButton(title: "Täglich", detail: daily?.done == nil ? "Heute offen" : "Heute erledigt", symbol: "bolt.fill") {
+                QuizModeButton(title: "Täglich", detail: daily?.done == nil ? "Heute offen" : "Heute erledigt", symbol: .zap) {
                     Task { await startDaily() }
                 }
-                QuizModeButton(title: "Fehler üben", detail: "\(stats?.wrong ?? 0) offen", symbol: "arrow.counterclockwise") {
+                QuizModeButton(title: "Fehler üben", detail: "\(stats?.wrong ?? 0) offen", symbol: .rotateCcw) {
                     Task { await startSpecial(path: "/api/quiz/review", mode: .review) }
                 }
-                QuizModeButton(title: "Karten-Quiz", detail: "Stadtteile finden", symbol: "map") {
+                QuizModeButton(title: "Karten-Quiz", detail: "Stadtteile finden", symbol: .map) {
                     showMapQuiz = true
                 }
-                QuizModeButton(title: "Eigene Karten", detail: "\(own.count) gespeichert", symbol: "pencil") {
+                QuizModeButton(title: "Eigene Karten", detail: "\(own.count) gespeichert", symbol: .pencil) {
                     if own.isEmpty { showOwnEditor = true }
                     else { Task { await startSpecial(path: "/api/quiz/own/round", mode: .own) } }
                 }
             }
             Button { showOwnEditor = true } label: {
-                Label(own.isEmpty ? "Erste eigene Karte erstellen" : "Eigene Karten verwalten", systemImage: "rectangle.stack.badge.plus")
+                RatsLabel(own.isEmpty ? "Erste eigene Karte erstellen" : "Eigene Karten verwalten", .copyPlus)
             }
             .buttonStyle(SecondaryButtonStyle())
             Divider().overlay(RatsColor.separator)
@@ -1733,26 +1703,26 @@ struct QuizView: View {
         RatsSectionPanel(
             "Deine Runde",
             detail: "Kombiniere mehrere Wahlbereiche, Orte und Themen. Kategorien sind optional.",
-            symbol: "slider.horizontal.3"
+            symbol: .slidersHorizontal
         ) {
             VStack(alignment: .leading, spacing: 17) {
-                if !catalog.wahlbereiche.isEmpty {
+                if !catalog.electoralDistricts.isEmpty {
                     quizChoiceSection(
                         title: "Wahlbereiche",
                         detail: "Große Auswahl mit einem Tipp",
-                        entries: catalog.wahlbereiche,
-                        prefix: "wahlbereich:"
+                        entries: catalog.electoralDistricts,
+                        prefix: "electoral_district:"
                     )
                 }
 
-                quizPlaces(catalog.stadtteile)
+                quizPlaces(catalog.districts)
 
-                if !catalog.themen.isEmpty {
+                if !catalog.topics.isEmpty {
                     quizChoiceSection(
                         title: "Themen",
                         detail: "Projekte und Debatten gezielt üben",
-                        entries: catalog.themen,
-                        prefix: "thema:"
+                        entries: catalog.topics,
+                        prefix: "topic:"
                     )
                 }
 
@@ -1789,7 +1759,7 @@ struct QuizView: View {
                                 Text("Lädt …")
                             }
                         } else {
-                            Label("Quiz starten", systemImage: "play.fill")
+                            RatsLabel("Quiz starten", .play)
                         }
                     }
                     .buttonStyle(PrimaryButtonStyle())
@@ -1828,14 +1798,14 @@ struct QuizView: View {
         VStack(alignment: .leading, spacing: 8) {
             quizSectionHeader("Orte", detail: "einzelne Stadtteile frei kombinieren")
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
+                RatsIcon(.search, size: 16)
                     .foregroundStyle(RatsColor.muted)
                 TextField("Ort suchen", text: $placeSearch)
                     .textFieldStyle(.plain)
                     .textInputAutocapitalization(.never)
                 if !placeSearch.isEmpty {
                     Button { placeSearch = "" } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        RatsIcon(.circleX, size: 16)
                             .foregroundStyle(RatsColor.muted)
                     }
                     .buttonStyle(RatsPlainButtonStyle())
@@ -1851,7 +1821,7 @@ struct QuizView: View {
 
             QuizFlowLayout(spacing: 7) {
                 ForEach(visiblePlaces(entries)) { entry in
-                    let key = "stadtteil:" + entry.key
+                    let key = "district:" + entry.key
                     QuizChoiceChip(
                         title: entry.label ?? entry.key,
                         detail: "\(entry.questions)",
@@ -1887,8 +1857,8 @@ struct QuizView: View {
             return entries.filter { ($0.label ?? $0.key).localizedCaseInsensitiveContains(needle) }
         }
         if showAllPlaces { return entries }
-        let selected = entries.filter { selectedAreas.contains("stadtteil:" + $0.key) }
-        let unselected = entries.filter { !selectedAreas.contains("stadtteil:" + $0.key) }
+        let selected = entries.filter { selectedAreas.contains("district:" + $0.key) }
+        let unselected = entries.filter { !selectedAreas.contains("district:" + $0.key) }
         return Array((selected + unselected).prefix(max(12, selected.count)))
     }
 
@@ -1899,9 +1869,9 @@ struct QuizView: View {
 
     private var quizAreaLabels: [String: String] {
         guard let areas else { return [:] }
-        let rows = areas.wahlbereiche.map { ("wahlbereich:\($0.key)", $0.label ?? $0.key) }
-            + areas.stadtteile.map { ("stadtteil:\($0.key)", $0.label ?? $0.key) }
-            + areas.themen.map { ("thema:\($0.key)", $0.label ?? $0.key) }
+        let rows = areas.electoralDistricts.map { ("electoral_district:\($0.key)", $0.label ?? $0.key) }
+            + areas.districts.map { ("district:\($0.key)", $0.label ?? $0.key) }
+            + areas.topics.map { ("topic:\($0.key)", $0.label ?? $0.key) }
         return Dictionary(uniqueKeysWithValues: rows)
     }
 
@@ -1969,9 +1939,9 @@ struct QuizView: View {
                             Text(option).multilineTextAlignment(.leading)
                             Spacer()
                             if let result, answerIndex == result.correctIndex {
-                                Image(systemName: "checkmark.circle.fill").foregroundStyle(RatsColor.success)
+                                RatsIcon(.circleCheckBig, size: 16).foregroundStyle(RatsColor.success)
                             } else if selectedAnswer == answerIndex, result != nil {
-                                Image(systemName: "xmark.circle.fill").foregroundStyle(RatsColor.danger)
+                                RatsIcon(.circleX, size: 16).foregroundStyle(RatsColor.danger)
                             }
                         }
                         .font(RatsFont.body(15, weight: .medium))
@@ -1986,7 +1956,7 @@ struct QuizView: View {
             }
             if let result {
                 VStack(alignment: .leading, spacing: 9) {
-                    Label(result.correct ? "Richtig – \(result.points) Punkte" : "Nicht ganz", systemImage: result.correct ? "checkmark" : "lightbulb")
+                    RatsLabel(result.correct ? "Richtig – \(result.points) Punkte" : "Nicht ganz", result.correct ? .check : .lightbulb)
                         .font(RatsFont.body(15, weight: .semibold))
                         .foregroundStyle(result.correct ? RatsColor.success : RatsColor.warning)
                     if let explanation = result.explanation { Text(explanation).foregroundStyle(RatsColor.secondary) }
@@ -2023,10 +1993,10 @@ struct QuizView: View {
         round = (0..<4).map { number in
             QuizQuestion(
                 id: number,
-                areaType: "stadtteil",
+                areaType: "district",
                 areaKey: "Osternburg",
                 category: "Oldenburg",
-                difficulty: "mittel",
+                difficulty: "medium",
                 question: "Vorschaufrage",
                 options: ["Antwort A", "Antwort B"],
                 qtype: nil,
@@ -2043,41 +2013,41 @@ struct QuizView: View {
 
     private func installDebugSetup() {
         areas = QuizAreas(
-            wahlbereiche: (1...6).map {
+            electoralDistricts: (1...6).map {
                 QuizArea(
                     key: "\($0)",
                     label: "Wahlbereich \($0)",
                     questions: 18 + $0 * 3,
                     points: $0 * 4,
-                    stadtteile: nil,
-                    stadtteil: nil
+                    districts: nil,
+                    district: nil
                 )
             },
-            stadtteile: ["Bloherfelde", "Bürgerfelde", "Donnerschwee", "Eversten", "Kreyenbrück", "Nadorst", "Ofenerdiek", "Osternburg", "Tweelbäke", "Wechloy", "Zentrum", "Etzhorn", "Ohmstede", "Alexandersfeld"].enumerated().map { offset, name in
+            districts: ["Bloherfelde", "Bürgerfelde", "Donnerschwee", "Eversten", "Kreyenbrück", "Nadorst", "Ofenerdiek", "Osternburg", "Tweelbäke", "Wechloy", "Zentrum", "Etzhorn", "Ohmstede", "Alexandersfeld"].enumerated().map { offset, name in
                 QuizArea(
                     key: name,
                     label: name,
                     questions: 7 + offset,
                     points: offset,
-                    stadtteile: nil,
-                    stadtteil: nil
+                    districts: nil,
+                    district: nil
                 )
             },
-            themen: [
-                QuizArea(key: "schulwege", label: "Sichere Schulwege", questions: 12, points: 8, stadtteile: nil, stadtteil: "Kreyenbrück"),
-                QuizArea(key: "wohnen", label: "Wohnen & Bauen", questions: 16, points: 5, stadtteile: nil, stadtteil: nil),
-                QuizArea(key: "klima", label: "Klima & Energie", questions: 14, points: 3, stadtteile: nil, stadtteil: nil),
-                QuizArea(key: "innenstadt", label: "Lebendige Innenstadt", questions: 9, points: 2, stadtteile: nil, stadtteil: "Zentrum"),
+            topics: [
+                QuizArea(key: "schulwege", label: "Sichere Schulwege", questions: 12, points: 8, districts: nil, district: "Kreyenbrück"),
+                QuizArea(key: "wohnen", label: "Wohnen & Bauen", questions: 16, points: 5, districts: nil, district: nil),
+                QuizArea(key: "klima", label: "Klima & Energie", questions: 14, points: 3, districts: nil, district: nil),
+                QuizArea(key: "innenstadt", label: "Lebendige Innenstadt", questions: 9, points: 2, districts: nil, district: "Zentrum"),
             ],
-            categories: ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+            categories: ["history", "places", "people", "council_politics", "estimation"]
         )
-        selectedAreas = ["wahlbereich:3", "thema:schulwege"]
-        selectedCategories = ["ratspolitik", "orte"]
+        selectedAreas = ["electoral_district:3", "topic:schulwege"]
+        selectedCategories = ["council_politics", "places"]
         stats = QuizStats(
             byArea: [
-                .init(areaType: "stadtteil", areaKey: "Osternburg", points: 18, answered: 14, correct: 7, lastAt: "2026-08-28"),
-                .init(areaType: "thema", areaKey: "schulwege", points: 22, answered: 12, correct: 10, lastAt: "2026-08-27"),
-                .init(areaType: "stadtteil", areaKey: "Nadorst", points: 31, answered: 18, correct: 14, lastAt: "2026-08-26"),
+                .init(areaType: "district", areaKey: "Osternburg", points: 18, answered: 14, correct: 7, lastAt: "2026-08-28"),
+                .init(areaType: "topic", areaKey: "schulwege", points: 22, answered: 12, correct: 10, lastAt: "2026-08-27"),
+                .init(areaType: "district", areaKey: "Nadorst", points: 31, answered: 18, correct: 14, lastAt: "2026-08-26"),
             ],
             total: .init(points: 148, answered: 63, correct: 47),
             wrong: 6,
@@ -2099,7 +2069,7 @@ struct QuizView: View {
         do {
             areas = try await model.api.get("/api/quiz/areas")
             if let area { selectedAreas = [area] }
-            else if let first = areas?.wahlbereiche.first { selectedAreas = ["wahlbereich:\(first.key)"] }
+            else if let first = areas?.electoralDistricts.first { selectedAreas = ["electoral_district:\(first.key)"] }
             await loadDashboard()
         } catch { self.error = error.localizedDescription }
     }
@@ -2222,8 +2192,7 @@ private struct QuizStatsSummary: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 17, weight: .semibold))
+            RatsIcon(.trendingUp, size: 17)
                 .foregroundStyle(RatsColor.primaryText)
                 .frame(width: 44, height: 44)
                 .background(RatsColor.primary)
@@ -2237,8 +2206,7 @@ private struct QuizStatsSummary: View {
                     .foregroundStyle(RatsColor.secondary)
             }
             Spacer(minLength: 4)
-            Image(systemName: "chevron.right")
-                .font(.caption)
+            RatsIcon(.chevronRight, size: 12)
                 .foregroundStyle(RatsColor.muted)
         }
         .padding(13)
@@ -2263,7 +2231,7 @@ private struct QuizStatsScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Button(action: back) {
-                Label("Zurück zum Quiz", systemImage: "chevron.left")
+                RatsLabel("Zurück zum Quiz", .chevronLeft)
                     .font(RatsFont.body(12, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
             }
@@ -2293,7 +2261,7 @@ private struct QuizProgressPanel: View {
         RatsSectionPanel(
             "Mein Fortschritt",
             detail: "Schwächere Gebiete stehen zuerst – von dort kannst du direkt weiterüben.",
-            symbol: "chart.line.uptrend.xyaxis"
+            symbol: .trendingUp
         ) {
             LazyVGrid(columns: metricColumns, alignment: .leading, spacing: 12) {
                 QuizMetric(value: "\(stats.total.points)", label: "Punkte")
@@ -2310,7 +2278,7 @@ private struct QuizProgressPanel: View {
                     MonoKicker("Quiz-Abzeichen", trailing: "\(stats.badges.count)")
                     QuizFlowLayout(spacing: 7) {
                         ForEach(stats.badges) { badge in
-                            Label(badge.label, systemImage: badge.tier == "gold" ? "trophy.fill" : "medal.fill")
+                            RatsLabel(badge.label, badge.tier == "gold" ? .quiz : .medal)
                                 .font(RatsFont.body(11, weight: .semibold))
                                 .foregroundStyle(badgeColor(badge.tier))
                                 .padding(.horizontal, 10)
@@ -2325,7 +2293,7 @@ private struct QuizProgressPanel: View {
 
             if stats.wrong > 0 {
                 HStack(spacing: 10) {
-                    Image(systemName: "arrow.counterclockwise")
+                    RatsIcon(.rotateCcw, size: 12)
                         .foregroundStyle(RatsColor.warning)
                     Text("\(stats.wrong) \(stats.wrong == 1 ? "Frage wartet" : "Fragen warten") auf einen zweiten Versuch.")
                         .font(RatsFont.body(12, weight: .medium))
@@ -2389,8 +2357,7 @@ private struct QuizAreaProgressTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: area.areaType == "thema" ? "sparkles" : "mappin.and.ellipse")
-                    .font(.system(size: 12, weight: .semibold))
+                RatsIcon(area.areaType == "topic" ? .sparkles : .mapPin, size: 12)
                     .foregroundStyle(RatsColor.primary)
                     .frame(width: 28, height: 28)
                     .background(RatsColor.primary.opacity(0.08))
@@ -2447,12 +2414,12 @@ private struct QuizMetric: View {
 private struct QuizModeButton: View {
     let title: String
     let detail: String
-    let symbol: String
+    let symbol: RatsGlyph
     let action: () -> Void
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: symbol).foregroundStyle(RatsColor.signal)
+                RatsIcon(symbol, size: 16).foregroundStyle(RatsColor.signal)
                 Text(title).font(RatsFont.body(14, weight: .semibold))
                 Text(detail).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
             }
@@ -2475,8 +2442,7 @@ private struct QuizChoiceChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: selected ? "checkmark" : "plus")
-                    .font(.system(size: 10, weight: .bold))
+                RatsIcon(selected ? .check : .plus, size: 10)
                 Text(title)
                     .lineLimit(1)
                 if let detail {
@@ -2549,7 +2515,7 @@ private struct OwnQuizEditor: View {
     @State private var question = ""
     @State private var answers = ["", ""]
     @State private var correctIndex = 0
-    @State private var category = "geschichte"
+    @State private var category = "history"
     @State private var stadtteil = ""
     @State private var explanation = ""
     @State private var answerValue = ""
@@ -2561,7 +2527,7 @@ private struct OwnQuizEditor: View {
     @State private var error: String?
     @State private var pendingDelete: OwnQuizQuestion?
 
-    private let categories = ["geschichte", "orte", "menschen", "ratspolitik", "schaetzen"]
+    private let categories = ["history", "places", "people", "council_politics", "estimation"]
 
     var body: some View {
         NavigationStack {
@@ -2573,12 +2539,12 @@ private struct OwnQuizEditor: View {
                         kicker: "Dein Lernbereich",
                         title: "Eigene Karten",
                         message: "Baue dein persönliches Oldenburg-Quiz – mit Auswahlfragen oder Zahlen zum Schätzen.",
-                        symbol: "rectangle.stack.badge.plus"
+                        symbol: .copyPlus
                     )
 
                     HStack(spacing: 10) {
                         Button { beginNew() } label: {
-                            Label("Neue Karte", systemImage: "plus")
+                            RatsLabel("Neue Karte", .plus)
                         }
                         .buttonStyle(PrimaryButtonStyle())
                         if !questions.isEmpty {
@@ -2597,7 +2563,7 @@ private struct OwnQuizEditor: View {
                         RatsEmptyState(
                             title: "Noch keine eigenen Karten",
                             message: "Lege eine Auswahl- oder Schätzfrage an. Deine Karten sind nur in deinem Konto sichtbar.",
-                            symbol: "rectangle.stack.badge.plus"
+                            symbol: .copyPlus
                         )
                     }
                     ForEach(questions) { entry in
@@ -2634,10 +2600,10 @@ private struct OwnQuizEditor: View {
     private var editorPanel: some View {
         RatsSectionPanel(
             editingID == nil ? "Neue Karte" : "Karte bearbeiten",
-            detail: category == "schaetzen"
+            detail: category == "estimation"
                 ? "Lege eine Zahl und einen sinnvollen Ratebereich fest."
                 : "Fülle zwei bis vier Antworten aus und markiere die richtige.",
-            symbol: editingID == nil ? "plus.bubble" : "pencil.line"
+            symbol: editingID == nil ? .feedback : .squarePen
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 RatsLabeledField(label: "Frage", hint: "mindestens 5 Zeichen") {
@@ -2658,7 +2624,7 @@ private struct OwnQuizEditor: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                if category == "schaetzen" {
+                if category == "estimation" {
                     estimateFields
                 } else {
                     answerFields
@@ -2667,7 +2633,7 @@ private struct OwnQuizEditor: View {
                 RatsLabeledField(label: "Ort", hint: "optional") {
                     Picker("Ort", selection: $stadtteil) {
                         Text("Stadtweit").tag("")
-                        ForEach(areas?.stadtteile ?? []) { place in
+                        ForEach(areas?.districts ?? []) { place in
                             Text(place.label ?? place.key).tag(place.key)
                         }
                     }
@@ -2687,7 +2653,7 @@ private struct OwnQuizEditor: View {
                     Button("Abbrechen") { cancelEditing() }
                         .buttonStyle(SecondaryButtonStyle())
                     Button { Task { await save() } } label: {
-                        Label(isSaving ? "Speichert …" : editingID == nil ? "Karte speichern" : "Änderungen speichern", systemImage: "tray.and.arrow.down")
+                        RatsLabel(isSaving ? "Speichert …" : editingID == nil ? "Karte speichern" : "Änderungen speichern", .inbox)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(PrimaryButtonStyle())
@@ -2711,8 +2677,7 @@ private struct OwnQuizEditor: View {
             ForEach(answers.indices, id: \.self) { index in
                 HStack(spacing: 8) {
                     Button { correctIndex = index } label: {
-                        Image(systemName: correctIndex == index ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 20))
+                        RatsIcon(correctIndex == index ? .circleCheckBig : .circle, size: 20)
                             .foregroundStyle(correctIndex == index ? RatsColor.success : RatsColor.muted)
                     }
                     .buttonStyle(RatsPlainButtonStyle())
@@ -2721,7 +2686,7 @@ private struct OwnQuizEditor: View {
                         .textFieldStyle(.plain)
                     if answers.count > 2 {
                         Button { removeAnswer(at: index) } label: {
-                            Image(systemName: "minus.circle")
+                            RatsIcon(.circleMinus, size: 16)
                                 .foregroundStyle(RatsColor.muted)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
@@ -2740,7 +2705,7 @@ private struct OwnQuizEditor: View {
             }
             if answers.count < 4 {
                 Button { answers.append("") } label: {
-                    Label("Antwort hinzufügen", systemImage: "plus")
+                    RatsLabel("Antwort hinzufügen", .plus)
                 }
                 .font(RatsFont.body(12, weight: .semibold))
                 .foregroundStyle(RatsColor.primary)
@@ -2799,21 +2764,21 @@ private struct OwnQuizEditor: View {
                     Text(entry.question)
                         .font(RatsFont.body(15, weight: .semibold))
                     QuizFlowLayout(spacing: 6) {
-                        Pill(quizCategoryLabel(entry.category), symbol: entry.qtype == "estimate" ? "slider.horizontal.3" : "checkmark.circle")
-                        if let place = entry.stadtteil { Pill(place, symbol: "mappin") }
+                        Pill(quizCategoryLabel(entry.category), symbol: entry.qtype == "estimate" ? .slidersHorizontal : .circleCheck)
+                        if let place = entry.district { Pill(place, symbol: .mapPin) }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 2) {
                     Button { beginEdit(entry) } label: {
-                        Image(systemName: "pencil")
+                        RatsIcon(.pencil, size: 16)
                             .frame(width: 34, height: 34)
                     }
                     .buttonStyle(RatsPlainButtonStyle())
                     .foregroundStyle(RatsColor.primary)
                     .accessibilityLabel("Karte bearbeiten")
                     Button { pendingDelete = entry } label: {
-                        Image(systemName: "trash")
+                        RatsIcon(.trash2, size: 16)
                             .frame(width: 34, height: 34)
                     }
                     .buttonStyle(RatsPlainButtonStyle())
@@ -2822,7 +2787,7 @@ private struct OwnQuizEditor: View {
                 }
             }
             HStack(spacing: 7) {
-                Image(systemName: "chart.line.uptrend.xyaxis")
+                RatsIcon(.trendingUp, size: 11)
                 Text(practiceLabel(entry))
             }
             .font(RatsFont.body(11))
@@ -2847,7 +2812,7 @@ private struct OwnQuizEditor: View {
 
     private var isValid: Bool {
         guard question.trimmingCharacters(in: .whitespacesAndNewlines).count >= 5 else { return false }
-        if category == "schaetzen" {
+        if category == "estimation" {
             guard let value = parsedAnswerValue else { return false }
             if rangeManual {
                 guard let lower = parsedRangeMin, let upper = parsedRangeMax else { return false }
@@ -2884,7 +2849,7 @@ private struct OwnQuizEditor: View {
         question = ""
         answers = ["", ""]
         correctIndex = 0
-        category = "geschichte"
+        category = "history"
         stadtteil = ""
         explanation = ""
         answerValue = ""
@@ -2903,7 +2868,7 @@ private struct OwnQuizEditor: View {
         while answers.count < 2 { answers.append("") }
         correctIndex = min(entry.correctIndex, answers.count - 1)
         category = entry.category
-        stadtteil = entry.stadtteil ?? ""
+        stadtteil = entry.district ?? ""
         explanation = entry.explanation ?? ""
         answerValue = entry.answerValue.map { String($0) } ?? ""
         unit = entry.unit ?? ""
@@ -2924,11 +2889,11 @@ private struct OwnQuizEditor: View {
 #if DEBUG
         if let debugMode = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_QUIZ_OWN"] {
             areas = QuizAreas(
-                wahlbereiche: [],
-                stadtteile: ["Bloherfelde", "Eversten", "Kreyenbrück", "Nadorst", "Osternburg", "Zentrum"].enumerated().map { offset, name in
-                    QuizArea(key: name, label: name, questions: 8 + offset, points: offset, stadtteile: nil, stadtteil: nil)
+                electoralDistricts: [],
+                districts: ["Bloherfelde", "Eversten", "Kreyenbrück", "Nadorst", "Osternburg", "Zentrum"].enumerated().map { offset, name in
+                    QuizArea(key: name, label: name, questions: 8 + offset, points: offset, districts: nil, district: nil)
                 },
-                themen: [],
+                topics: [],
                 categories: categories
             )
             questions = [
@@ -2937,8 +2902,8 @@ private struct OwnQuizEditor: View {
                     question: "Welcher Platz liegt direkt vor dem Oldenburger Rathaus?",
                     options: ["Schlossplatz", "Marktplatz", "Pferdemarkt"],
                     correctIndex: 1,
-                    stadtteil: "Zentrum",
-                    category: "orte",
+                    district: "Zentrum",
+                    category: "places",
                     explanation: "Der Marktplatz bildet gemeinsam mit Rathaus und Lambertikirche das historische Zentrum.",
                     qtype: "mc",
                     answerValue: nil,
@@ -2953,8 +2918,8 @@ private struct OwnQuizEditor: View {
                     question: "Wie viele Einwohnerinnen und Einwohner hat Oldenburg ungefähr?",
                     options: [],
                     correctIndex: 0,
-                    stadtteil: nil,
-                    category: "schaetzen",
+                    district: nil,
+                    category: "estimation",
                     explanation: nil,
                     qtype: "estimate",
                     answerValue: 176_000,
@@ -2986,7 +2951,7 @@ private struct OwnQuizEditor: View {
             let question: String
             let options: [String]
             let correct_index: Int
-            let stadtteil: String?
+            let district: String?
             let category: String
             let explanation: String?
             let answer_value: Double?
@@ -2996,7 +2961,7 @@ private struct OwnQuizEditor: View {
         }
 
         guard isValid else { return }
-        let isEstimate = category == "schaetzen"
+        let isEstimate = category == "estimation"
         let options = isEstimate ? [] : validAnswers
         let mappedCorrectIndex: Int
         if isEstimate {
@@ -3010,7 +2975,7 @@ private struct OwnQuizEditor: View {
             question: question.trimmingCharacters(in: .whitespacesAndNewlines),
             options: options,
             correct_index: mappedCorrectIndex,
-            stadtteil: stadtteil.isEmpty ? nil : stadtteil,
+            district: stadtteil.isEmpty ? nil : stadtteil,
             category: category,
             explanation: explanation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : explanation.trimmingCharacters(in: .whitespacesAndNewlines),
             answer_value: isEstimate ? parsedAnswerValue : nil,

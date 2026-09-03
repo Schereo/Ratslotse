@@ -19,18 +19,18 @@ const LocatorMap = dynamic(() => import("@/components/quiz-locator-map").then((m
 });
 
 export const CATEGORY_LABEL: Record<string, string> = {
-  geschichte: "Geschichte",
-  orte: "Orte & Wahrzeichen",
-  menschen: "Menschen",
-  ratspolitik: "Ratspolitik",
-  schaetzen: "Schätzfrage",
+  history: "Geschichte",
+  places: "Orte & Wahrzeichen",
+  people: "Menschen",
+  council_politics: "Ratspolitik",
+  estimation: "Schätzfrage",
 };
 const SOURCE_LABEL: Record<string, string> = {
   wikipedia: "Wikipedia",
-  stadt: "Stadt Oldenburg",
+  city: "Stadt Oldenburg",
   ratsinfo: "Ratsinformationssystem",
 };
-const DIFF_LABEL: Record<string, string> = { leicht: "leicht", mittel: "mittel", schwer: "schwer" };
+const DIFF_LABEL: Record<string, string> = { easy: "leicht", medium: "mittel", hard: "schwer" };
 
 const nf = new Intl.NumberFormat("de-DE");
 const fmt = (n: number | null | undefined) => (n == null ? "?" : nf.format(Math.round(n)));
@@ -182,7 +182,7 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
-        <Mascot pose={pose} regung={quote >= 90 ? "klatscht" : undefined} regie="lebhaft" className={cn("mx-auto h-24 w-24", quote >= 90 && "lotti-dance")} />
+        <Mascot pose={pose} regung={quote === 100 ? "hebt-pokal" : quote >= 90 ? "klatscht" : undefined} regie="lebhaft" className={cn("mx-auto h-24 w-24", quote >= 90 && "lotti-dance")} />
         <h2 className="mt-3 text-2xl font-bold text-foreground">
           {correct} von {questions.length} richtig
         </h2>

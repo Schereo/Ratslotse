@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
+import { vertrag } from "@/lib/vertrag";
 import { Topic } from "@/lib/types";
 import {
   Button, CardListSkeleton, EmptyState, ErrorState, Input, PageHeader, Textarea, toast,
@@ -57,7 +58,7 @@ export function TopicsView() {
   /* Ein Blick auf die Übersicht lässt die Bubble verstummen (Tims Wunsch
      18.08.). Fire-and-forget: Ein Fehler darf die Seite nicht stören. */
   useEffect(() => {
-    api.post("/topics/uebersicht-gesehen", {})
+    api.post("/topics/overview-seen", {})
       .then(() => qc.invalidateQueries({ queryKey: ["topics-unread"] }))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,7 +67,7 @@ export function TopicsView() {
   const suggestionsQuery = useQuery({
     queryKey: ["topic-suggestions"],
     queryFn: () =>
-      api.get<{ suggestions: { name: string; description: string; n: number }[] }>("/topics/suggestions")
+      vertrag.get("/topics/suggestions")
         .then((d) => d.suggestions),
   });
 

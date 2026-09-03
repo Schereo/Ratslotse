@@ -69,14 +69,14 @@ sie später mit Vorlagen verknüpfbar sind.
 Seither dazugekommen — beide Dokumentklassen werden **ohne LLM** ausgewertet:
 
 ```
-council_vorlagen           -- eine Zeile je Vorlage (kvonr = SessionNet-Dokument-ID)
+council_templates           -- eine Zeile je Vorlage (kvonr = SessionNet-Dokument-ID)
   kvonr PK, vorlage_nr, title, art,      -- art: Beschlussvorlage | Berichtsvorlage | …
   document_id, document_url,
   raw_text, n_pages,                     -- pypdf-Volltext (Sachverhalt & Begründung)
   fetched_at, status,                    -- ok | empty | no_pdf | failed
   anlagen_scanned
 
-council_anlagen            -- eine Zeile je Anlage einer Vorlage
+council_attachments            -- eine Zeile je Anlage einer Vorlage
   document_id PK, kvonr, label, url,
   is_antrag,                             -- Label-Muster: Antrag/Änderungsantrag/Anfrage
   antragsteller,                         -- JSON, erkannte Fraktionen (Wortlisten, parties_in_text)
@@ -101,7 +101,7 @@ council_anlagen            -- eine Zeile je Anlage einer Vorlage
 Drei weitere Seitentypen des Ratsinfos, ebenfalls ohne LLM ausgewertet:
 
 ```
-council_beratungen         -- eine Zeile je Beratungsstation einer Vorlage
+council_deliberations         -- eine Zeile je Beratungsstation einer Vorlage
   kvonr, datum, gremium, top, is_public,
   ergebnis,                              -- NULL = geplant/ohne Ergebnis
   ksinr                                  -- Link zur Sitzung
@@ -150,7 +150,7 @@ absichtlich auf).
 Beschlüsse werden gegen die Themen der Nutzer*innen klassifiziert (mit strengem
 Verify-Pass) und speisen „Beschlüsse zu deinen Themen" samt Benachrichtigung.
 Die Treffer liegen in **`council_topic_matches`** — und zwar in der **Konten-DB**
-(`nwz.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die
+(`ratslotse.sqlite`), nicht in `council.sqlite`: Sie hängen an einem Konto, die
 Ratsdaten selbst bleiben nutzerunabhängig. Welche Treffer schon gesehen wurden,
 steht in `topic_hits_seen` (Grundlage des „Neu"-Zählers).
 

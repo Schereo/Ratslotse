@@ -7,8 +7,8 @@ Rechnungsprüfungsamt prüft das Ergebnis und legt seinen Bericht dem Rat als
 Anlage vor — mit Volltext, den der Protokoll-Scraper ohnehin zieht. Dieses
 Skript liest ihn aus, ohne etwas herunterzuladen:
 
-- ``council_konzern_posten``   — die Gesamtergebnisrechnung des Konzerns
-- ``council_konzern_traeger``  — dieselben Summen, aufgeteilt auf die acht
+- ``council_group_items``   — die Gesamtergebnisrechnung des Konzerns
+- ``council_group_entities``  — dieselben Summen, aufgeteilt auf die acht
   einbezogenen Aufgabenträger plus die Zeile „Konsolidierung"
 
 Vier Proben entscheiden, was gespeichert wird; sie stehen in
@@ -57,12 +57,12 @@ def main() -> int:
     p = finanzquellen.Protokoll()
     try:
         print("Konsolidierte Gesamtabschlüsse (Konzern Stadt Oldenburg):")
-        ergebnis = finanzquellen.lies_konzernabschluesse(
+        result = finanzquellen.lies_konzernabschluesse(
             store, p, nur_fehlende=args.nur_fehlende,
             schuetzen=not args.auch_schrumpfen)
     finally:
         store.close()
-    print(f"Fertig: {ergebnis}")
+    print(f"Fertig: {result}")
     return 0
 
 

@@ -12,7 +12,7 @@ import { FortschrittMerker } from "@/components/haushalt/fortschritt-merker";
 // ungeschützt dazu. Das Layout greift für alles, was unter diesem Pfad liegt,
 // auch für später Hinzukommendes. Der Stellenplan (`/haushalt/personal`), die
 // Schuldenzeitreihe (`/haushalt/schulden`) und die Kennzahlen
-// (`/haushalt/kennzahlen`) sind genau dieser Fall: alle drei 08/2026
+// (`/haushalt/indicators`) sind genau dieser Fall: alle drei 08/2026
 // dazugekommen, ohne dass jemand das Gate anfassen musste.
 //
 // Der Bereich lebt INNERHALB von app/(app)/ und erbt damit dessen Layout

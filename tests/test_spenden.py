@@ -8,7 +8,7 @@ damit sich das im Bürgerinfo nachschlagen lässt.
 Der Aufbau folgt ``tests/test_ausgabenreihe.py``.
 """
 
-from council import herkunft, spenden
+from council import herkunft, donations
 from council.store import CouncilStore
 
 # --- Fixtures: echte Vorlagen, gekürzt --------------------------------------
@@ -115,30 +115,30 @@ Eine Begründung ist in der Anlage aufgeführt.
 """
 
 
-def zeile(nr, raw, beschluss, *, titel=None, outcome="angenommen",
-          sitzung="2024-03-11", gremiensitzung="Rat", dokument_id=4711):
-    return {"vorlage_nr": nr, "titel": titel or "Annahme von Zuwendungen durch den Rat",
-            "beschluss": beschluss, "outcome": outcome, "sitzung": sitzung,
+def row(nr, raw, official_text, *, title=None, outcome="accepted",
+          sitzung="2024-03-11", gremiensitzung="Rat", document_id=4711):
+    return {"template_number": nr, "title": title or "Annahme von Zuwendungen durch den Rat",
+            "official_text": official_text, "outcome": outcome, "session_date": sitzung,
             "gremiensitzung": gremiensitzung, "raw_text": raw,
-            "dokument_id": dokument_id,
-            "dokument_url": f"https://buergerinfo.example.org/getfile.php?id={dokument_id}"}
+            "document_id": document_id,
+            "dokument_url": f"https://buergerinfo.example.org/getfile.php?id={document_id}"}
 
 
 # --- Die Probe hält ---------------------------------------------------------
 
 def test_die_zerlegung_traegt_den_betrag():
     """26/0207: 421.316 + 14.625 = 435.941 — die Zweitstelle als Rechnung."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "26/0207", VORLAGE_NEU,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 435.941 Euro gemäß der anliegenden Liste an.")])
     assert len(erg["vorlagen"]) == 1
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 435_941
-    assert v["zweitstelle"] == "zerlegung"
-    assert v["layout"] == "neu"
-    assert spenden.ZWEITSTELLE in v["proben"]
-    assert spenden.PROTOKOLLABGLEICH in v["proben"]
+    assert v["amount"] == 435_941
+    assert v["second_mention"] == "split"
+    assert v["layout"] == "new"
+    assert donations.ZWEITSTELLE in v["probes"]
+    assert donations.PROTOKOLLABGLEICH in v["probes"]
 
 
 def test_das_aeltere_layout_traegt_dieselbe_probe():
@@ -146,41 +146,41 @@ def test_das_aeltere_layout_traegt_dieselbe_probe():
 
     Eine frühere Messung hielt 88 Vorlagen für „ohne Struktur" — die Struktur
     war da und hieß nur anders. Ohne diesen Test käme das zurück."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "18/0002", VORLAGE_ALT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 140.664,24 EUR laut anliegender Liste an.")])
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 140_664.24
-    assert v["layout"] == "alt"
-    assert v["zweitstelle"] == "zerlegung"
+    assert v["amount"] == 140_664.24
+    assert v["layout"] == "old"
+    assert v["second_mention"] == "split"
 
 
 def test_die_identische_zweitstelle_zaehlt_auch():
     """19/0709: Der Abschnitt nennt denselben Betrag, ohne ihn zu zerlegen."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "19/0709", VORLAGE_EUR_ZERLEGT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 1.800,00 EUR laut anliegender Liste an.",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 1_800
-    assert v["zweitstelle"] == "identisch"
-    assert v["gremium"] == "Verwaltungsausschuss"
+    assert v["amount"] == 1_800
+    assert v["second_mention"] == "identical"
+    assert v["committee"] == "Verwaltungsausschuss"
 
 
 # --- Die Probe hält NICHT ---------------------------------------------------
 
 def test_eine_vorlage_ohne_zweitstelle_kommt_nicht_rein():
     """Der Betrag steht nur einmal — dann fehlt die Zeile, mit Begründung."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "24/9999", VORLAGE_OHNE_ZWEITSTELLE,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 7.500,00 EUR laut anliegender Liste an.")])
     assert erg["vorlagen"] == []
     assert len(erg["verworfen"]) == 1
-    grund = erg["verworfen"][0]["grund"]
-    assert "finanziellen" in grund and grund.endswith(".")
+    reason = erg["verworfen"][0]["reason"]
+    assert "finanziellen" in reason and reason.endswith(".")
 
 
 def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
@@ -189,14 +189,14 @@ def test_ein_geaenderter_beschluss_kommt_nicht_ungeprueft_rein():
     Der Rat hat eine Position gestrichen. Die Vorlage belegt damit den
     beschlossenen Betrag nicht mehr — die Zeile fällt, statt 20.000 Euro zu
     buchen, die nie angenommen wurden."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     assert erg["vorlagen"] == []
-    assert "22.500,00" in erg["verworfen"][0]["grund"]
-    assert "2.500,00" in erg["verworfen"][0]["grund"]
+    assert "22.500,00" in erg["verworfen"][0]["reason"]
+    assert "2.500,00" in erg["verworfen"][0]["reason"]
 
 
 def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
@@ -209,31 +209,31 @@ def test_der_grund_traegt_die_zahlen_der_zeile_und_nicht_die_deutung():
     wörtlich untereinander. Er steht jetzt einmal über der Liste. Wer ihn
     hierher zurückholt, löscht diesen Test — dann ist es eine Entscheidung,
     kein Versehen."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "18/0587", VORLAGE_GEAENDERT,
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 2.500,00 EUR laut anliegender Liste an (ohne lfd. Nr. 2).",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
-    grund = erg["verworfen"][0]["grund"]
-    assert "Zahlendreher" not in grund and "geändert" not in grund
-    assert len(grund) < 120, grund
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+    reason = erg["verworfen"][0]["reason"]
+    assert "Zahlendreher" not in reason and "geändert" not in reason
+    assert len(reason) < 120, reason
 
 
 def test_ein_abgesetzter_punkt_ist_keine_einnahme():
     """21/0694: „Der Tagesordnungspunkt wurde abgesetzt.“"""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "21/0694", None, "Der Tagesordnungspunkt wurde abgesetzt.",
-        outcome="vertagt")])
+        outcome="postponed")])
     assert erg["vorlagen"] == []
-    assert "nicht beschlossen" in erg["verworfen"][0]["grund"]
+    assert "nicht beschlossen" in erg["verworfen"][0]["reason"]
 
 
 # --- Die drei Reparaturen am Textextrakt ------------------------------------
 
 def test_das_zerlegte_waehrungswort_wird_gelesen():
     """„1.800,00 E UR" — ein Leerzeichen im Wort, nicht zwischen zwei Zahlen."""
-    assert spenden.betraege("Mehrerträge in Höhe von 1.800,00 E UR.") == [1_800.0]
-    assert spenden.betraege("60,00 E UR") == [60.0]
+    assert donations.betraege("Mehrerträge in Höhe von 1.800,00 E UR.") == [1_800.0]
+    assert donations.betraege("60,00 E UR") == [60.0]
 
 
 def test_die_zerlegte_zahl_wird_gelesen_die_satzgrenze_nicht():
@@ -241,24 +241,24 @@ def test_die_zerlegte_zahl_wird_gelesen_die_satzgrenze_nicht():
 
     Deshalb steht das Leerzeichen NUR vor dem Tausenderpunkt im Muster: Ein
     Satzende trägt seinen Punkt direkt am Wort und das Leerzeichen dahinter."""
-    assert spenden.betraege("Mehrerträge in Höhe von 154 .472,86 EUR") == [154_472.86]
-    assert spenden.betraege("Teilhaushalt 06. 500,00 Euro") == [500.0]
+    assert donations.betraege("Mehrerträge in Höhe von 154 .472,86 EUR") == [154_472.86]
+    assert donations.betraege("Teilhaushalt 06. 500,00 Euro") == [500.0]
 
 
 def test_die_kurzform_mit_strich_wird_gelesen():
     """„6.000,- EUR" ist die Protokoll-Kurzform für 6.000,00."""
-    assert spenden.betraege("in Höhe von insgesamt 6.000,- EUR") == [6_000.0]
+    assert donations.betraege("in Höhe von insgesamt 6.000,- EUR") == [6_000.0]
 
 
 # --- Zuständigkeit ----------------------------------------------------------
 
 def test_die_schwellen_sagen_wer_entscheidet():
-    assert spenden.zustaendig(50) == "Oberbürgermeister"
-    assert spenden.zustaendig(100) == "Oberbürgermeister"
-    assert spenden.zustaendig(100.01) == "Verwaltungsausschuss"
-    assert spenden.zustaendig(2_000) == "Verwaltungsausschuss"
-    assert spenden.zustaendig(2_000.01) == "Rat"
-    assert spenden.zustaendig(435_941) == "Rat"
+    assert donations.zustaendig(50) == "Oberbürgermeister"
+    assert donations.zustaendig(100) == "Oberbürgermeister"
+    assert donations.zustaendig(100.01) == "Verwaltungsausschuss"
+    assert donations.zustaendig(2_000) == "Verwaltungsausschuss"
+    assert donations.zustaendig(2_000.01) == "Rat"
+    assert donations.zustaendig(435_941) == "Rat"
 
 
 def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
@@ -267,7 +267,7 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
     Maßgeblich ist die EINZELNE Zuwendung, nicht die Summe der Liste. Wer die
     Summe gegen 2.000 prüfte, prüfte etwas, das die Regel nicht behauptet —
     dieser Test hält fest, dass wir das nicht tun."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "22/0020",
         "Beschlussvorschlag:\nDie Stadt Oldenburg nimmt die angebotenen Zuwendungen "
         "in Höhe von insgesamt 2.746,20 Euro laut anliegender Liste an.\n\n"
@@ -276,112 +276,112 @@ def test_die_summe_einer_va_vorlage_darf_ueber_der_schwelle_liegen():
         "sich nicht aus.",
         "Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe von "
         "insgesamt 2.746,20 Euro laut anliegender Liste an.",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
     v = erg["vorlagen"][0]
-    assert v["betrag"] == 2_746.20
-    assert v["gremium"] == "Verwaltungsausschuss"
+    assert v["amount"] == 2_746.20
+    assert v["committee"] == "Verwaltungsausschuss"
 
 
 # --- Aufbereitung -----------------------------------------------------------
 
 def test_je_vorlage_bleibt_eine_zeile():
     """Dieselbe Liste läuft durch Fachausschuss UND Rat — einmal zählen."""
-    beschluss = ("Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe "
+    official_text = ("Die Stadt Oldenburg nimmt die angebotenen Zuwendungen in Höhe "
                  "von insgesamt 435.941 Euro gemäß der anliegenden Liste an.")
-    erg = spenden.lies([
-        zeile("26/0207", VORLAGE_NEU, beschluss, sitzung="2026-04-08",
+    erg = donations.lies([
+        row("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-08",
               gremiensitzung="Ausschuss für Finanzen und Beteiligungen"),
-        zeile("26/0207", VORLAGE_NEU, beschluss, sitzung="2026-04-13",
+        row("26/0207", VORLAGE_NEU, official_text, sitzung="2026-04-13",
               gremiensitzung="Rat"),
     ])
     assert len(erg["vorlagen"]) == 1
     # Gezählt wird die Sitzung, in der entschieden wurde.
-    assert erg["vorlagen"][0]["sitzung"] == "2026-04-13"
-    assert [j["betrag"] for j in erg["jahre"]] == [435_941]
-    assert erg["jahre"][0]["vorlagen"] == 1
+    assert erg["vorlagen"][0]["session_date"] == "2026-04-13"
+    assert [j["amount"] for j in erg["years"]] == [435_941]
+    assert erg["years"][0]["vorlagen"] == 1
 
 
 def test_die_jahresreihe_trennt_rat_und_verwaltungsausschuss():
-    erg = spenden.lies([
-        zeile("24/0001", VORLAGE_NEU,
+    erg = donations.lies([
+        row("24/0001", VORLAGE_NEU,
               "Zuwendungen in Höhe von insgesamt 435.941 Euro", sitzung="2024-02-05"),
-        zeile("24/0002", VORLAGE_EUR_ZERLEGT,
+        row("24/0002", VORLAGE_EUR_ZERLEGT,
               "Zuwendungen in Höhe von insgesamt 1.800,00 EUR", sitzung="2024-03-04",
-              titel="Annahme von Zuwendungen durch den Verwaltungsausschuss"),
+              title="Annahme von Zuwendungen durch den Verwaltungsausschuss"),
     ])
-    assert erg["jahre"] == [{"jahr": 2024, "betrag": 437_741.0, "vorlagen": 2,
+    assert erg["years"] == [{"year": 2024, "amount": 437_741.0, "vorlagen": 2,
                              "rat": 1, "verwaltungsausschuss": 1}]
 
 
 def test_fremde_beschluesse_werden_nicht_angefasst():
     """`erkenne()` ist die einzige Stelle, die entscheidet, was hierher gehört."""
-    assert spenden.erkenne("Annahme von Zuwendungen durch den Rat")
-    assert spenden.erkenne("Annahme einer Zuwendung in Höhe von 9.000 Euro durch den Rat")
-    assert not spenden.erkenne("Richtlinien der Stadt Oldenburg für die Gewährung "
+    assert donations.erkenne("Annahme von Zuwendungen durch den Rat")
+    assert donations.erkenne("Annahme einer Zuwendung in Höhe von 9.000 Euro durch den Rat")
+    assert not donations.erkenne("Richtlinien der Stadt Oldenburg für die Gewährung "
                                "von Zuwendungen")
-    assert not spenden.erkenne("Klimaoasen in Oldenburg - Beschluss über Zuwendung")
-    assert not spenden.erkenne(None)
+    assert not donations.erkenne("Klimaoasen in Oldenburg - Beschluss über Zuwendung")
+    assert not donations.erkenne(None)
 
 
 def test_der_probennachweis_nennt_zahlen():
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "26/0207", VORLAGE_NEU,
         "Zuwendungen in Höhe von insgesamt 435.941 Euro")])
-    nachweis = spenden.probennachweis(erg)
+    nachweis = donations.probennachweis(erg)
     assert "1" in nachweis and "Zweitstelle" in nachweis
     for wertung in ("gut", "zuverlässig", "korrekt", "sauber", "sorgfältig"):
         assert wertung not in nachweis.lower()
 
 
 def test_euro_schreibt_deutsch():
-    assert spenden.euro(1_234_567.8) == "1.234.567,80"
-    assert spenden.euro(60) == "60,00"
+    assert donations.euro(1_234_567.8) == "1.234.567,80"
+    assert donations.euro(60) == "60,00"
 
 
 # --- Der Weg in den Bestand -------------------------------------------------
 
 def test_speichern_und_lesen(tmp_path):
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "26/0207", VORLAGE_NEU,
         "Zuwendungen in Höhe von insgesamt 435.941 Euro")])
     lauf = herkunft.Herkunft(
-        art="ris", url="https://buergerinfo.example.org/vo040.asp",
-        probe=[spenden.ZWEITSTELLE], probe_ergebnis=spenden.probennachweis(erg))
+        kind="ris", url="https://buergerinfo.example.org/vo040.asp",
+        probe=[donations.ZWEITSTELLE], probe_result=donations.probennachweis(erg))
     for v in erg["vorlagen"]:
         v["herkunft"] = herkunft.Herkunft(
-            art="ris", dokument_id=v["dokument_id"], probe=v["proben"],
-            fundstelle=spenden.FUNDSTELLE, probe_ergebnis="Zerlegung geht auf")
+            kind="ris", document_id=v["document_id"], probe=v["probes"],
+            citation=donations.FUNDSTELLE, probe_result="Zerlegung geht auf")
 
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         assert store.save_spenden(erg["vorlagen"], erg["verworfen"], lauf) == 1
         zurueck = store.get_spenden()
         assert len(zurueck) == 1
-        assert zurueck[0]["betrag"] == 435_941
-        assert zurueck[0]["proben"] == [spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH]
+        assert zurueck[0]["amount"] == 435_941
+        assert zurueck[0]["probes"] == [donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH]
         assert all(z["herkunft_id"] for z in zurueck)
         assert store.spenden_jahre() == [2024]
-        assert "council_spenden" not in store.herkunft_luecken()
+        assert "council_donations" not in store.herkunft_luecken()
     finally:
         store.close()
 
 
 def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
     """Eine Lücke ist eine Auskunft — sie steht in der Datenbank, nicht nur im Log."""
-    erg = spenden.lies([zeile(
+    erg = donations.lies([row(
         "18/0587", VORLAGE_GEAENDERT,
         "Zuwendungen in Höhe von insgesamt 2.500,00 EUR laut anliegender Liste an "
         "(ohne lfd. Nr. 2).",
-        titel="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
-    lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
-                             probe=[spenden.ZWEITSTELLE], probe_ergebnis="0 Vorlagen")
+        title="Annahme von Zuwendungen durch den Verwaltungsausschuss")])
+    lauf = herkunft.Herkunft(kind="ris", url="https://buergerinfo.example.org/vo040.asp",
+                             probe=[donations.ZWEITSTELLE], probe_result="0 Vorlagen")
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_spenden(erg["vorlagen"], erg["verworfen"], lauf)
         ohne = store.get_spenden_verworfen()
         assert len(ohne) == 1
-        assert ohne[0]["vorlage_nr"] == "18/0587"
-        assert "22.500,00" in ohne[0]["grund"]
+        assert ohne[0]["template_number"] == "18/0587"
+        assert "22.500,00" in ohne[0]["reason"]
         assert ohne[0]["herkunft_id"]
     finally:
         store.close()
@@ -390,19 +390,19 @@ def test_verworfene_zeilen_kommen_mit_ihrem_grund_in_den_bestand(tmp_path):
 def test_eine_teillieferung_raeumt_den_bestand_nicht_ab(tmp_path):
     """`INSERT OR REPLACE`, kein `DELETE FROM` — sonst kostet ein halber Lauf
     die halbe Reihe."""
-    lauf = herkunft.Herkunft(art="ris", url="https://buergerinfo.example.org/vo040.asp",
-                             probe=[spenden.ZWEITSTELLE], probe_ergebnis="Probe")
-    a = spenden.lies([zeile("24/0001", VORLAGE_NEU,
+    lauf = herkunft.Herkunft(kind="ris", url="https://buergerinfo.example.org/vo040.asp",
+                             probe=[donations.ZWEITSTELLE], probe_result="Probe")
+    a = donations.lies([row("24/0001", VORLAGE_NEU,
                             "Zuwendungen in Höhe von insgesamt 435.941 Euro",
                             sitzung="2024-02-05")])
-    b = spenden.lies([zeile("25/0001", VORLAGE_ALT,
+    b = donations.lies([row("25/0001", VORLAGE_ALT,
                             "Zuwendungen in Höhe von insgesamt 140.664,24 EUR",
                             sitzung="2025-02-05")])
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         store.save_spenden(a["vorlagen"], [], lauf)
         store.save_spenden(b["vorlagen"], [], lauf)
-        assert {z["vorlage_nr"] for z in store.get_spenden()} == {"24/0001", "25/0001"}
+        assert {z["template_number"] for z in store.get_spenden()} == {"24/0001", "25/0001"}
     finally:
         store.close()
 
@@ -418,7 +418,7 @@ def test_die_tabelle_fuehrt_keine_gebenden(tmp_path):
     store = CouncilStore(tmp_path / "council.sqlite")
     try:
         spalten = {r[1].lower() for r in
-                   store._conn.execute("PRAGMA table_info(council_spenden)")}
+                   store._conn.execute("PRAGMA table_info(council_donations)")}
     finally:
         store.close()
     for verboten in ("spender", "spenderin", "geber", "name", "zuwendungsgeber",
@@ -427,13 +427,13 @@ def test_die_tabelle_fuehrt_keine_gebenden(tmp_path):
 
 
 def test_die_tabellen_sind_als_herkunftstraeger_angemeldet():
-    assert "council_spenden" in herkunft.HERKUNFT_TABELLEN
-    assert "council_spenden_verworfen" in herkunft.HERKUNFT_TABELLEN
+    assert "council_donations" in herkunft.HERKUNFT_TABELLEN
+    assert "council_donations_rejected" in herkunft.HERKUNFT_TABELLEN
 
 
 def test_die_proben_sind_fuer_leserinnen_erklaert():
-    for name in (spenden.ZWEITSTELLE, spenden.PROTOKOLLABGLEICH):
+    for name in (donations.ZWEITSTELLE, donations.PROTOKOLLABGLEICH):
         assert name in herkunft.PROBEN
         assert herkunft.PROBEN[name].endswith(".")
     assert herkunft.probe_texte(
-        f"{spenden.ZWEITSTELLE},{spenden.PROTOKOLLABGLEICH}") != []
+        f"{donations.ZWEITSTELLE},{donations.PROTOKOLLABGLEICH}") != []

@@ -25,22 +25,22 @@ def store(tmp_path):
     s.close()
 
 
-def sitzung(store, ksinr, gremium, datum, tops):
+def sitzung(store, ksinr, committee, date, tops):
     """Eine Sitzung samt Tagesordnung. `tops` = [(nummer, titel, kvonr)]."""
     store.save_session(CouncilSession(
-        ksinr=ksinr, committee=gremium, session_date=datum,
+        ksinr=ksinr, committee=committee, session_date=date,
         session_time="17:00", location="Rathaus",
         agenda_items=[AgendaItem(item_number=n, title=t, kvonr=k) for n, t, k in tops],
     ))
 
 
-def vorlage(store, kvonr, nr, titel):
-    store.save_vorlage({"kvonr": kvonr, "vorlage_nr": nr, "title": titel})
+def vorlage(store, kvonr, nr, title):
+    store.save_vorlage({"kvonr": kvonr, "template_number": nr, "title": title})
 
 
-def beratung(store, kvonr, datum, gremium, rolle, ksinr, top):
-    store.save_beratungen(kvonr, [{"datum": datum, "gremium": gremium, "top": top,
-                                   "is_public": True, "ergebnis": rolle, "ksinr": ksinr}])
+def beratung(store, kvonr, date, committee, role, ksinr, top):
+    store.save_beratungen(kvonr, [{"date": date, "committee": committee, "top": top,
+                                   "is_public": True, "result": role, "ksinr": ksinr}])
 
 
 def runde_2026(store):
@@ -64,10 +64,10 @@ def runde_2026(store):
              "Kenntnisnahme", 1, "5")
     beratung(store, 101, "2025-11-11", "Schulausschuss", "Kenntnisnahme", 2, "4")
     store.save_beratungen(102, [
-        {"datum": "2025-12-15", "gremium": "Rat", "top": "5", "is_public": True,
-         "ergebnis": "Entscheidung", "ksinr": 3},
-        {"datum": "2026-02-09", "gremium": "Rat", "top": "6", "is_public": True,
-         "ergebnis": "Entscheidung", "ksinr": 4},
+        {"date": "2025-12-15", "committee": "Rat", "top": "5", "is_public": True,
+         "result": "Entscheidung", "ksinr": 3},
+        {"date": "2026-02-09", "committee": "Rat", "top": "6", "is_public": True,
+         "result": "Entscheidung", "ksinr": 4},
     ])
 
 
@@ -75,22 +75,22 @@ def test_runde_hat_einbringung_fachausschuesse_und_stationen(store):
     runde_2026(store)
     [r] = store.haushalt_weg()
 
-    assert r["jahr"] == 2026
-    assert r["vorlage_nr"] == "25/0667"
+    assert r["year"] == 2026
+    assert r["template_number"] == "25/0667"
 
     # Die Einbringung ist die früheste Beratung einer Entwurfs-Vorlage.
-    assert r["einbringung"]["datum"] == "2025-10-01"
-    assert r["einbringung"]["gremium"] == "Ausschuss für Finanzen und Beteiligungen"
+    assert r["einbringung"]["date"] == "2025-10-01"
+    assert r["einbringung"]["committee"] == "Ausschuss für Finanzen und Beteiligungen"
     # Die TOP-Nummer kommt vollständig aus der Tagesordnung („Ö 5", nicht „5“) —
     # sonst zeigt der Link auf der Sitzungsseite auf den falschen Punkt.
     assert r["einbringung"]["top"] == "Ö 5"
 
     assert r["fachausschuesse"] == {
-        "von": "2025-11-11", "bis": "2025-11-11", "anzahl": 1,
-        "gremien": ["Schulausschuss"],
+        "von": "2025-11-11", "bis": "2025-11-11", "count": 1,
+        "committees": ["Schulausschuss"],
     }
 
-    assert [(s["datum"], s["gremium"], s["ergebnis"]) for s in r["stationen"]] == [
+    assert [(s["date"], s["committee"], s["result"]) for s in r["stationen"]] == [
         ("2025-12-15", "Rat", "zurückgestellt/abgesetzt"),
         ("2026-02-09", "Rat", "geändert beschlossen"),
     ]
@@ -100,7 +100,7 @@ def test_ergebnis_ohne_die_angehaengte_stimmenzaehlung(store):
     """Am TOP hängt mal eine Zählung, mal nicht — sie gehört nicht ins Ergebnis."""
     runde_2026(store)
     [r] = store.haushalt_weg()
-    assert r["stationen"][-1]["ergebnis"] == "geändert beschlossen"
+    assert r["stationen"][-1]["result"] == "geändert beschlossen"
 
 
 def test_falsch_betitelte_vorlage_verschiebt_den_zeitraum_nicht(store):
@@ -116,20 +116,20 @@ def test_falsch_betitelte_vorlage_verschiebt_den_zeitraum_nicht(store):
 
     [r] = store.haushalt_weg()
     assert r["fachausschuesse"]["bis"] == "2025-11-11"
-    assert r["fachausschuesse"]["anzahl"] == 1
+    assert r["fachausschuesse"]["count"] == 1
 
 
-@pytest.mark.parametrize("titel", [
+@pytest.mark.parametrize("title", [
     "Haushalt 2026 - Verwaltungsentwurf - Teilhaushalt 12 Schule",
     "Haushaltsentwurf 2026 Verwaltungsentwurf -Teilhaushalt 02 Personal",
     "HH 2026– Verwaltungsentwurf THH 12 Schule und Bildung - Bericht",
 ])
-def test_schreibweisen_des_titels(store, titel):
+def test_schreibweisen_des_titels(store, title):
     """Drei Schreibweisen, ein Jahrgang — alle drei stehen so im Bestand."""
     runde_2026(store)
-    store._conn.execute("UPDATE council_vorlagen SET title = ? WHERE kvonr = 101", (titel,))
+    store._conn.execute("UPDATE council_templates SET title = ? WHERE kvonr = 101", (title,))
     [r] = store.haushalt_weg()
-    assert r["fachausschuesse"]["gremien"] == ["Schulausschuss"]
+    assert r["fachausschuesse"]["committees"] == ["Schulausschuss"]
 
 
 def test_haushaltsplan_einer_stiftung_ist_keine_runde(store):
@@ -140,7 +140,7 @@ def test_haushaltsplan_einer_stiftung_ist_keine_runde(store):
     sitzung(store, 11, "Rat", "2026-02-09", [("Ö 6.1", "Klävemann Beschluss: ungeändert beschlossen", 300)])
     beratung(store, 300, "2026-02-09", "Rat", "Entscheidung", 11, "6.1")
 
-    assert [r["jahr"] for r in store.haushalt_weg()] == [2026]
+    assert [r["year"] for r in store.haushalt_weg()] == [2026]
 
 
 def test_ohne_sammelvorlage_keine_runde(store):
@@ -162,15 +162,15 @@ def test_votum_kommt_aus_dem_kernhaushalts_beschluss(store):
     runde_2026(store)
     store._conn.execute(
         "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
-        "outcome, vote, gegenstimmen) VALUES (4, 5, 'decision', '6.5', "
-        "'Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)', 'angenommen', "
-        "'mehrheitlich', 20)")
+        "outcome, vote, no_votes) VALUES (4, 5, 'decision', '6.5', "
+        "'Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)', 'accepted', "
+        "'majority', 20)")
     store._conn.commit()
 
     [r] = store.haushalt_weg()
     assert r["stationen"][0]["votum"] is None            # die vertagte Sitzung
-    assert r["stationen"][-1]["votum"]["outcome"] == "angenommen"
-    assert r["stationen"][-1]["votum"]["gegenstimmen"] == 20
+    assert r["stationen"][-1]["votum"]["outcome"] == "accepted"
+    assert r["stationen"][-1]["votum"]["no_votes"] == 20
 
 
 def test_fremdes_haushaltsjahr_im_votum_zaehlt_nicht(store):
@@ -180,7 +180,7 @@ def test_fremdes_haushaltsjahr_im_votum_zaehlt_nicht(store):
     store._conn.execute(
         "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, outcome) "
         "VALUES (4, 5, 'decision', '6.4', "
-        "'Haushaltssatzung und Haushaltsplan 2025 (Kernhaushalt)', 'angenommen')")
+        "'Haushaltssatzung und Haushaltsplan 2025 (Kernhaushalt)', 'accepted')")
     store._conn.commit()
 
     [r] = store.haushalt_weg()
@@ -194,5 +194,5 @@ def test_jahr_grenzt_ein(store):
             [("Ö 5", "Haushalt 2025 Beschluss: geändert beschlossen", 500)])
     beratung(store, 500, "2024-12-16", "Rat", "Entscheidung", 30, "5")
 
-    assert [r["jahr"] for r in store.haushalt_weg()] == [2025, 2026]
-    assert [r["jahr"] for r in store.haushalt_weg(2026)] == [2026]
+    assert [r["year"] for r in store.haushalt_weg()] == [2025, 2026]
+    assert [r["year"] for r in store.haushalt_weg(2026)] == [2026]

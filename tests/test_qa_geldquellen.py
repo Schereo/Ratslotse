@@ -23,7 +23,7 @@ jedem Push läuft.
 """
 import pytest
 
-from council import qa
+from council import geld, qa
 from council.store import CouncilStore
 
 
@@ -40,48 +40,52 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # --- Tims sechs Pflichtfragen ------------------------------------------
     # „Was kostet X?" ist die Frage der Produktebene: dort steht eine Aufgabe
     # mit ihren Kosten. Der Teilhaushalt (plan) trägt die grobe Summe dazu.
-    ("Was kostet die Feuerwehr?", "geld", {"plan", "produkte"}),
+    # Seit 09/2026 wird auch der Ansatz GEFRAGT (Posten-Ebene: „Personal" →
+    # Personalaufwendungen); in den Kontext kommt er nur bei einem Treffer im
+    # Fragewortlaut — s. test_qa_posten.py und die Stadion-Regression unten.
+    ("Was kostet die Feuerwehr?", "money", {"plan", "produkte", "ansatz"}),
     # Dieselbe Frage als KOMPOSITUM. `\bkost` trifft nur „kostet"/„Kosten" am
     # Wortanfang; „Personalkosten", „Baukosten", „Betriebskosten" gingen bis
     # zum 17.08. leer aus — gemessen, nicht vermutet. Die Endung `kosten\b`
     # fängt sie. Beim Personal kommt der Stellenplan dazu, und das ist die
     # bessere Antwort: Personalausgaben ohne die Stellen dahinter sind eine
     # Zahl ohne Erklärung.
-    ("Wie hoch sind die Personalkosten?", "geld", {"plan", "produkte", "stellenplan"}),
-    ("Was sind die Baukosten der Schule?", "geld", {"plan", "produkte"}),
+    ("Wie hoch sind die Personalkosten?", "money", {"plan", "produkte", "stellenplan", "ansatz"}),
+    ("Was sind die Baukosten der Schule?", "money", {"plan", "produkte", "ansatz"}),
     # Plan gegen Ist — das kann NUR der Jahresabschluss beantworten.
     # `kassensicht` kommt seit 08/2026 mit jedem `ist` mit: Für 2024 weist die
     # Ergebnisrechnung einen Überschuss aus und die Finanzrechnung einen
     # Fehlbetrag an Finanzmitteln. Wer nur eine der beiden nennt, sagt die
     # halbe Wahrheit — und zwar je nach Zufall die optimistische oder die
     # pessimistische Hälfte.
-    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "geld",
+    ("Hat die Stadt 2024 mehr ausgegeben als geplant?", "money",
      {"plan", "ist", "kassensicht"}),
     # Das „Warum" steht in den Erläuterungen; die Steuer-Ist-Zahlen und der
     # NFAG-Dämpfer gehören dazu, sonst klingt jede Mehreinnahme nach Gewinn.
-    ("Warum kam so viel mehr Gewerbesteuer rein?", "geld",
-     {"gruende", "ist", "steuern", "ausgleich", "kassensicht"}),
+    ("Warum kam so viel mehr Gewerbesteuer rein?", "money",
+     {"gruende", "ist", "taxes", "ausgleich", "kassensicht"}),
     # Präzise und allein: eine Prüfbericht-Frage will keinen Haushaltsplan.
-    ("Was hat das Rechnungsprüfungsamt beanstandet?", "thema", {"pruefung"}),
+    ("Was hat das Rechnungsprüfungsamt beanstandet?", "topic", {"pruefung"}),
     # „Insgesamt" ist das Stichwort für den Konzern: der Kernhaushalt
     # antwortet mit 799 Mio., der Gesamtabschluss mit 1.242 Mio.
-    ("Was kostet die Stadt insgesamt?", "geld", {"plan", "produkte", "konzern"}),
+    ("Was kostet die Stadt insgesamt?", "money", {"plan", "produkte", "konzern", "ansatz"}),
     # Keine Betragsfrage — eine Rechtsfrage. Nur die Produktebene führt die
     # Auftragsgrundlage je Aufgabe.
-    ("Muss die Stadt das Theater betreiben?", "thema", {"produkte"}),
-    ("Warum steigen die Abfallgebühren?", "thema", {"gebuehren"}),
-    ("Wie hoch ist die Straßenreinigungsgebühr?", "geld", {"gebuehren"}),
-    ("Wie werden die Müllgebühren berechnet?", "thema", {"gebuehren"}),
+    ("Muss die Stadt das Theater betreiben?", "topic", {"produkte"}),
+    ("Warum steigen die Abfallgebühren?", "topic", {"fees", "fee_rates"}),
+    ("Wie hoch ist die Straßenreinigungsgebühr?", "money", {"fees", "fee_rates"}),
+    ("Wie werden die Müllgebühren berechnet?", "topic", {"fees", "fee_rates"}),
 
     # --- Weitere echte Fragen ----------------------------------------------
-    ("Wie viel gibt Oldenburg für Soziales aus?", "geld", {"plan", "produkte"}),
-    ("Wie hoch ist der Hebesatz der Grundsteuer?", "geld", {"steuern", "ausgleich"}),
-    ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "geld", {"vergleich"}),
-    ("Welche Aufgaben könnte die Stadt streichen?", "thema", {"produkte"}),
+    ("Wie viel gibt Oldenburg für Soziales aus?", "money", {"plan", "produkte", "ansatz"}),
+    ("Wie hoch ist der Hebesatz der Grundsteuer?", "money",
+     {"taxes", "ausgleich", "tax_rates"}),
+    ("Wie steht Oldenburg im Vergleich zu Osnabrück da?", "money", {"vergleich"}),
+    ("Welche Aufgaben könnte die Stadt streichen?", "topic", {"produkte"}),
     # „Steuereinnahmen" trägt „einnahm" und zieht damit auch die Plan-Seite —
     # gewollt: Die Antwort kann Ist und Ansatz nebeneinanderstellen.
-    ("Wie hoch waren die Steuereinnahmen?", "geld",
-     {"plan", "ansatz", "steuern", "ausgleich"}),
+    ("Wie hoch waren die Steuereinnahmen?", "money",
+     {"plan", "ansatz", "taxes", "ausgleich"}),
 
     # --- Die vier Schichten, die die KI-Frage bis 17.08. nicht kannte -------
     # Vorher zog jede dieser Fragen die falsche Quelle oder gar keine; die
@@ -89,7 +93,7 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     #
     # Schulden sind ein BESTAND. Vorher: {"plan"} — der Ergebnishaushalt, in
     # dem der Schuldenstand nicht vorkommt.
-    ("Wie viel Schulden hat Oldenburg?", "geld", {"schulden"}),
+    ("Wie viel Schulden hat Oldenburg?", "money", {"schulden"}),
     # Der ANDERE Haushalt. Vorher: {} bzw. {"plan"}.
     #
     # Seit 17.08. IMMER BEIDE: `investitionen` ist der Plan aus dem
@@ -97,38 +101,44 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # Frage sagt fast nie, welches von beidem gemeint ist — und die Regel
     # „nie voneinander abziehen" hinge an einer Zahl, die gar nicht im
     # Kontext steht, wenn nur eine der beiden käme.
-    ("Was wird gebaut?", "thema", {"investitionen", "gebaut"}),
-    ("Wie viel investiert die Stadt?", "geld", {"investitionen", "gebaut"}),
+    ("Was wird gebaut?", "topic", {"investitionen", "gebaut", "measures"}),
+    ("Wie viel investiert die Stadt?", "money",
+     {"investitionen", "gebaut", "measures"}),
     # Stellen statt Euro. Vorher: {} — Personalfragen bekamen Aufwendungen.
-    ("Wie viele Stellen sind unbesetzt?", "thema", {"stellenplan"}),
-    ("Wie viele Mitarbeiter hat die Stadt?", "thema", {"stellenplan"}),
+    ("Wie viele Stellen sind unbesetzt?", "topic", {"stellenplan"}),
+    ("Wie viele Mitarbeiter hat die Stadt?", "topic", {"stellenplan"}),
     # Die Änderungslisten. Vorher: {"plan", "ansatz"} — die Plan-Zahlen des
     # Haushalts, aber kein Wort darüber, wer ihn ändern wollte.
-    ("Wer wollte den Haushalt ändern?", "thema", {"plan", "ansatz", "antraege"}),
-    ("Welche Änderungslisten gab es zum Haushalt 2026?", "thema",
-     {"plan", "ansatz", "antraege"}),
+    ("Wer wollte den Haushalt ändern?", "topic", {"plan", "ansatz", "antraege", "amendments"}),
+    ("Welche Änderungslisten gab es zum Haushalt 2026?", "topic",
+     {"plan", "ansatz", "antraege", "amendments"}),
 
     # --- Negativfälle -------------------------------------------------------
     # Ohne diese Zeilen optimiert man auf „lädt immer alles" und überflutet
     # den Kontext. Jede Frage hier muss GAR KEINE Haushaltsquelle ziehen.
-    ("Wie ist der Stand beim Stadion?", "verlauf", set()),
-    ("Was wurde zum Stadion beschlossen?", "thema", set()),
-    ("Wer stimmte gegen den Stadionumbau?", "partei", set()),
-    ("Wie lief die Debatte um das Stadion?", "verlauf", set()),
-    ("Was ist am Fliegerhorst geplant?", "thema", set()),
-    ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "thema", set()),
-    ("Wann tagt der Rat das nächste Mal?", "thema", set()),
-    ("Was sagte die SPD zum Klimaschutz?", "partei", set()),
-    ("Was sagte die SPD zum Stadionneubau?", "partei", set()),
-    ("Wie hat sich die Diskussion um den Stadionneubau entwickelt?", "verlauf", set()),
-    ("Was ist die GSG?", "thema", set()),
-    ("Wer ist im Verwaltungsausschuss?", "thema", set()),
+    ("Wie ist der Stand beim Stadion?", "history", set()),
+    ("Was wurde zum Stadion beschlossen?", "topic", set()),
+    ("Wer stimmte gegen den Stadionumbau?", "party", set()),
+    ("Wie lief die Debatte um das Stadion?", "history", set()),
+    ("Was ist am Fliegerhorst geplant?", "topic", set()),
+    ("Was wurde zum Radweg an der Donnerschweer Straße beschlossen?", "topic", set()),
+    ("Wann tagt der Rat das nächste Mal?", "topic", set()),
+    ("Was sagte die SPD zum Klimaschutz?", "party", set()),
+    ("Was sagte die SPD zum Stadionneubau?", "party", set()),
+    ("Wie hat sich die Diskussion um den Stadionneubau entwickelt?", "history", set()),
+    # „Was ist die GSG?" stand hier, solange es keine Quelle gab, die es
+    # beantwortet — die Frage zog vorher den Ergebnishaushalt, in dem die GSG
+    # nicht vorkommt. Seit 09/2026 gibt es den Beteiligungsbericht als eigene
+    # Facette (`council/geld/companies.py`), und der IST die Antwort:
+    # Wohnungsgesellschaft, wem sie gehört, was sie erwirtschaftet.
+    ("Was ist die GSG?", "topic", {"companies"}),
+    ("Wer ist im Verwaltungsausschuss?", "topic", set()),
     # Die Gegenprobe zu den vier Neuzugängen: Wörter, die ihnen nahekommen,
     # ohne sie zu meinen. „Anträge stellen" ist das Verb, keine Planstelle;
     # „Debatte" ohne Haushalts-Anker ist kein Haushaltsstreit.
-    ("Wie viele Anträge stellen die Fraktionen?", "thema", set()),
-    ("Wer stellte den Antrag zum Radweg?", "thema", set()),
-    ("Was wurde zum Müllkonzept beschlossen?", "thema", set()),
+    ("Wie viele Anträge stellen die Fraktionen?", "topic", set()),
+    ("Wer stellte den Antrag zum Radweg?", "topic", set()),
+    ("Was wurde zum Müllkonzept beschlossen?", "topic", set()),
 
     # --- Die fünfzehn Goldfragen der Jahresabschluss-Schichten (08/2026) ----
     # Bilanz, Kassensicht, Nachbewilligungen, Kennzahlen und die drei
@@ -139,54 +149,54 @@ KORPUS: list[tuple[str, str, set[str]]] = [
     # 1–3: Die Bilanz. Ein STICHTAG, kein Jahr — und deshalb bewusst ohne
     # `plan`: Wer nach dem Vermögen fragt, soll keine Jahresausgabe daneben
     # bekommen, die sich damit nicht verrechnen lässt.
-    ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "geld", {"bilanz"}),
-    ("Was besitzt die Stadt eigentlich?", "geld", {"bilanz"}),
-    ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "geld", {"bilanz"}),
+    ("Wie hoch ist das Eigenkapital der Stadt Oldenburg?", "money", {"bilanz"}),
+    ("Was besitzt die Stadt eigentlich?", "money", {"bilanz", "assets"}),
+    ("Wie viel hat die Stadt für Pensionen zurückgestellt?", "money", {"bilanz"}),
 
     # 4–5: Die Kassensicht. Sie kommt auch ungefragt mit, sobald es um das Ist
     # geht — 2024 weist die Ergebnisrechnung einen Überschuss aus und die
     # Finanzrechnung einen Fehlbetrag, und nur beide zusammen sind ehrlich.
-    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "geld", {"kassensicht"}),
-    ("Wie hoch waren die liquiden Mittel am Jahresende?", "geld",
+    ("Wie viel Geld ist 2024 tatsächlich geflossen?", "money", {"kassensicht"}),
+    ("Wie hoch waren die liquiden Mittel am Jahresende?", "money",
      {"bilanz", "kassensicht"}),   # „liquide" trifft beide Quellen — richtig so
 
     # 6–7: Nachbewilligungen. Geld außerhalb des beschlossenen Haushalts.
-    ("Was wurde 2024 nachbewilligt?", "geld", {"nachbewilligungen"}),
-    ("Wie viel wurde überplanmäßig bewilligt?", "geld", {"nachbewilligungen"}),
+    ("Was wurde 2024 nachbewilligt?", "money", {"supplementary_approvals", "approvals"}),
+    ("Wie viel wurde überplanmäßig bewilligt?", "money", {"supplementary_approvals", "approvals"}),
 
     # 8–10: Die Kennzahlen. Die einzige Quelle, die ihre Formeln mitliefert —
     # „Eigenkapitalquote" zieht zusätzlich die Bilanz, aus der sie stammt.
-    ("Wie hoch ist die Eigenkapitalquote?", "geld", {"bilanz", "kennzahlen"}),
-    ("Wie hat sich die Steuerquote entwickelt?", "geld",
-     {"kennzahlen", "steuern", "ausgleich"}),
-    ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "geld",
-     {"kennzahlen"}),
+    ("Wie hoch ist die Eigenkapitalquote?", "money", {"bilanz", "indicators"}),
+    ("Wie hat sich die Steuerquote entwickelt?", "money",
+     {"indicators", "taxes", "ausgleich"}),
+    ("Welche Kennzahlen nennt die Stadt zu ihrem Abschluss?", "money",
+     {"indicators"}),
 
     # 11–13: Die Bürgschaften — 220,3 Mio. €, die in keiner Schuldenreihe
     # stehen. Sie hängen an der Schulden-Facette, weil sie nur neben den
     # Schulden einen Sinn ergeben.
-    ("Wofür bürgt die Stadt Oldenburg?", "geld", {"schulden"}),
-    ("Wie hoch ist der Bürgschaftsbestand?", "geld", {"schulden"}),
-    ("Welche Eventualverbindlichkeiten hat die Stadt?", "geld", {"schulden"}),
+    ("Wofür bürgt die Stadt Oldenburg?", "money", {"schulden"}),
+    ("Wie hoch ist der Bürgschaftsbestand?", "money", {"schulden"}),
+    ("Welche Eventualverbindlichkeiten hat die Stadt?", "money", {"schulden"}),
 
     # 14–15: Die Gegenprobe. Beide Fragen klingen nach Haushalt und sind
     # keiner — „Bürgerbegehren" und „Oldenburg" haben beide „burg" im Wort,
     # und genau daran ist das erste Bürgschafts-Muster gescheitert.
-    ("Wie ist der Stand beim Bürgerbegehren zum Schloss?", "thema", set()),
-    ("Wie viele Bürgerinnen und Bürger hat Oldenburg?", "thema", set()),
+    ("Wie ist der Stand beim Bürgerbegehren zum Schloss?", "topic", set()),
+    ("Wie viele Bürgerinnen und Bürger hat Oldenburg?", "topic", set()),
 ]
 
 #: Welche Store-Methode eine Facette anfasst. Die zweite Hälfte der Messung:
 #: „richtige Quelle" heißt richtige Facette UND richtiger Datenzugriff.
 ERWARTETE_METHODEN = {
-    "gebuehren": "gebuehren_fuer_begriffe",
+    "fees": "gebuehren_fuer_begriffe",
     "plan": "haushalt_fuer_begriffe",
     "ansatz": "ansatz_fuer_begriffe",
-    "ist": "ergebnis_ist_fuer_begriffe",
+    "ist": "result_actual_for_terms",
     "gruende": "abweichungsgruende_fuer_begriffe",
     "pruefung": "pruefberichte_fuer_begriffe",
     "produkte": "produkte_fuer_begriffe",
-    "steuern": "steuern_fuer_begriffe",
+    "taxes": "steuern_fuer_begriffe",
     "ausgleich": "steuerkraft_kontext",
     "konzern": "konzern_kontext",
     "vergleich": "staedtevergleich_kontext",
@@ -197,8 +207,13 @@ ERWARTETE_METHODEN = {
     "antraege": "haushaltsantraege_kontext",
     "bilanz": "bilanz_kontext",
     "kassensicht": "kassensicht_kontext",
-    "nachbewilligungen": "nachbewilligungen_kontext",
-    "kennzahlen": "kennzahlen_kontext",
+    "supplementary_approvals": "nachbewilligungen_kontext",
+    "indicators": "kennzahlen_kontext",
+    # Die Modul-Facetten für die letzten vier Tabellen ohne Zugang (09/2026).
+    "fee_rates": "fee_rates_context",
+    "assets": "assets_context",
+    "approvals": "approvals_context",
+    "population": "population_context",
 }
 
 
@@ -213,71 +228,78 @@ class _MessStore:
         self.aufrufe: list[str] = []
         self._steuern_treffer = steuern_treffer
 
-    def _merken(self, name, wert):
+    def _merken(self, name, value):
         self.aufrufe.append(name)
-        return wert
+        return value
 
-    def bilanz_kontext(self):
+    def __getattr__(self, name):
+        # Die Modul-Facetten (council/geld/) — ihre Methoden heißen im
+        # Register; alles andere bleibt ein AttributeError wie zuvor.
+        if name in geld.METHODEN.values():
+            return lambda *a, **k: self._merken(name, None)
+        raise AttributeError(name)
+
+    def bilanz_kontext(self, **kw):
         return self._merken("bilanz_kontext", None)
 
-    def gebuehren_fuer_begriffe(self, b, limit_jahre=4):
+    def gebuehren_fuer_begriffe(self, b, limit_jahre=4, **kw):
         return self._merken("gebuehren_fuer_begriffe", None)
 
-    def kassensicht_kontext(self):
+    def kassensicht_kontext(self, **kw):
         return self._merken("kassensicht_kontext", None)
 
-    def nachbewilligungen_kontext(self, jahr=None):
+    def nachbewilligungen_kontext(self, year=None, **kw):
         return self._merken("nachbewilligungen_kontext", None)
 
-    def kennzahlen_kontext(self, limit=13):
+    def kennzahlen_kontext(self, limit=13, **kw):
         return self._merken("kennzahlen_kontext", None)
 
-    def haushalt_fuer_begriffe(self, b, limit=3):
+    def haushalt_fuer_begriffe(self, b, limit=3, **kw):
         return self._merken("haushalt_fuer_begriffe", [])
 
-    def ansatz_fuer_begriffe(self, b, limit=4):
+    def ansatz_fuer_begriffe(self, b, limit=4, **kw):
         return self._merken("ansatz_fuer_begriffe", None)
 
-    def steuern_fuer_begriffe(self, b):
+    def steuern_fuer_begriffe(self, b, **kw):
         return self._merken(
             "steuern_fuer_begriffe",
-            [{"art": "insgesamt", "jahr": 2025, "betrag": 1.0}] if self._steuern_treffer else [])
+            [{"art": "total", "year": 2025, "amount": 1.0}] if self._steuern_treffer else [])
 
-    def steuerkraft_kontext(self):
+    def steuerkraft_kontext(self, **kw):
         return self._merken("steuerkraft_kontext", None)
 
-    def ergebnis_ist_fuer_begriffe(self, b, limit=2):
-        return self._merken("ergebnis_ist_fuer_begriffe", None)
+    def result_actual_for_terms(self, b, limit=2, **kw):
+        return self._merken("result_actual_for_terms", None)
 
-    def abweichungsgruende_fuer_begriffe(self, b, limit=3):
+    def abweichungsgruende_fuer_begriffe(self, b, limit=3, **kw):
         return self._merken("abweichungsgruende_fuer_begriffe", [])
 
-    def pruefberichte_fuer_begriffe(self, b, limit=4):
+    def pruefberichte_fuer_begriffe(self, b, limit=4, **kw):
         return self._merken("pruefberichte_fuer_begriffe", None)
 
-    def produkte_fuer_begriffe(self, b, limit=4):
+    def produkte_fuer_begriffe(self, b, limit=4, **kw):
         return self._merken("produkte_fuer_begriffe", None)
 
-    def konzern_kontext(self):
+    def konzern_kontext(self, **kw):
         return self._merken("konzern_kontext", None)
 
-    def staedtevergleich_kontext(self, reihe="steuerkraft"):
+    def staedtevergleich_kontext(self, series="tax_capacity", **kw):
         return self._merken("staedtevergleich_kontext", None)
 
-    def schulden_kontext(self):
+    def schulden_kontext(self, **kw):
         return self._merken("schulden_kontext", None)
 
-    def investitionen_fuer_begriffe(self, b, limit=3):
+    def investitionen_fuer_begriffe(self, b, limit=3, **kw):
         return self._merken("investitionen_fuer_begriffe", None)
 
-    def investitionen_ist_kontext(self):
+    def investitionen_ist_kontext(self, **kw):
         return self._merken("investitionen_ist_kontext", None)
 
-    def stellenplan_kontext(self, jahrgang=None):
+    def stellenplan_kontext(self, budget_year=None, **kw):
         return self._merken("stellenplan_kontext", None)
 
-    def haushaltsantraege_kontext(self, jahr=None, limit=8):
-        self.jahr_argument = jahr
+    def haushaltsantraege_kontext(self, year=None, limit=8, **kw):
+        self.jahr_argument = year
         return self._merken("haushaltsantraege_kontext", None)
 
 
@@ -285,16 +307,16 @@ class _MessStore:
 # 1. Die Messtabelle
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("frage,typ,erwartet", KORPUS,
+@pytest.mark.parametrize("question,typ,erwartet", KORPUS,
                          ids=[f"{k[0][:44]}" for k in KORPUS])
-def test_korpus_zieht_die_richtigen_quellen(frage, typ, erwartet):
+def test_korpus_zieht_die_richtigen_quellen(question, typ, erwartet):
     """Erkennung: zieht diese Frage genau die Quellen, die sie beantworten?"""
-    assert qa.geld_facetten(frage, typ) == erwartet
+    assert qa.geld_facetten(question, typ) == erwartet
 
 
-@pytest.mark.parametrize("frage,typ,erwartet", KORPUS,
+@pytest.mark.parametrize("question,typ,erwartet", KORPUS,
                          ids=[f"{k[0][:44]}" for k in KORPUS])
-def test_korpus_ruft_die_richtigen_store_methoden(frage, typ, erwartet):
+def test_korpus_ruft_die_richtigen_store_methoden(question, typ, erwartet):
     """Verdrahtung: wird zu jeder erkannten Facette auch wirklich die
     zugehörige Store-Methode aufgerufen — und keine andere?
 
@@ -302,9 +324,9 @@ def test_korpus_ruft_die_richtigen_store_methoden(frage, typ, erwartet):
     zwar erkannt wird, deren Abfrage aber niemand mehr auslöst, sähe an
     ``geld_facetten`` allein völlig gesund aus."""
     store = _MessStore()
-    kontext = qa.geld_kontext(store, frage, "Suchbegriffe der Expansion", typ)
-    assert set(kontext["facetten"]) == erwartet
-    erwartete_calls = {ERWARTETE_METHODEN[f] for f in erwartet}
+    kontext = qa.geld_kontext(store, question, "Suchbegriffe der Expansion", typ)
+    assert set(kontext["facets"]) == erwartet
+    erwartete_calls = {{**ERWARTETE_METHODEN, **geld.METHODEN}[f] for f in erwartet}
     # `steuerkraft_kontext` läuft nur bei echtem Steuer-Treffer oder bei
     # ausdrücklicher NFAG-Frage — der Attrappen-Store liefert keinen Treffer.
     if "ausgleich" in erwartet and "steuerkraft_kontext" not in set(store.aufrufe):
@@ -318,12 +340,12 @@ def test_negativfaelle_fassen_die_datenbank_nicht_an():
 
     Ohne ihn optimiert man auf „lädt immer alles" — der Kontext ist knapp, und
     jede geladene Quelle verdrängt Beschlüsse, nach denen gefragt wurde."""
-    for frage, typ, erwartet in KORPUS:
+    for question, typ, erwartet in KORPUS:
         if erwartet:
             continue
         store = _MessStore()
-        kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", typ)
-        assert store.aufrufe == [], f"{frage} fasste {store.aufrufe} an"
+        kontext = qa.geld_kontext(store, question, "Stadion Neubau Finanzierung Kosten", typ)
+        assert store.aufrufe == [], f"{question} fasste {store.aufrufe} an"
         assert qa.geld_block(kontext) == ""
         assert qa.geld_regeln(kontext) == ""
 
@@ -353,8 +375,8 @@ STADION_FRAGEN = [
 ]
 
 
-@pytest.mark.parametrize("frage", STADION_FRAGEN)
-def test_stadion_regression(frage, tmp_path):
+@pytest.mark.parametrize("question", STADION_FRAGEN)
+def test_stadion_regression(question, tmp_path):
     """Tims stehende Direktive: Jede Verbesserung an der Suche wird an den
     Stadion-Fragen geprüft.
 
@@ -367,11 +389,11 @@ def test_stadion_regression(frage, tmp_path):
     Die Facette entscheidet, ob GEFRAGT wird, die Quelle, ob etwas
     ZURÜCKKOMMT."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, frage, "Stadion Neubau Finanzierung Kosten", "thema")
-    assert qa.geld_block(kontext) == "", sorted(kontext["facetten"])
+    kontext = qa.geld_kontext(store, question, "Stadion Neubau Finanzierung Kosten", "topic")
+    assert qa.geld_block(kontext) == "", sorted(kontext["facets"])
     messages, _ = qa._answer_messages(
-        frage, [{"id": 5, "title": "Stadion Marschweg", "beschluss": "Zugestimmt.",
-                 "amount_eur": 4_200_000}], typ="thema", geld=kontext)
+        question, [{"id": 5, "title": "Stadion Marschweg", "official_text": "Zugestimmt.",
+                 "amount_eur": 4_200_000}], typ="topic", geld=kontext)
     prompt = messages[0]["content"]
     assert "Volumen: 4.200.000 €" in prompt          # der Beschluss-Betrag bleibt
     for kopf in ("STADTHAUSHALT", "GEPLANT UND TATSÄCHLICH", "RECHNUNGSPRÜFUNGSAMT",
@@ -423,9 +445,9 @@ NEUE_FACETTEN = [
 @pytest.mark.parametrize("facette,fragen", NEUE_FACETTEN, ids=[f[0] for f in NEUE_FACETTEN])
 def test_neue_facetten_werden_erkannt(facette, fragen):
     """Fünf Formulierungen je Schicht — alle müssen ihre Quelle ziehen."""
-    for frage in fragen:
-        gefunden = qa.geld_facetten(frage, "thema")
-        assert facette in gefunden, f"„{frage}“ → {sorted(gefunden)}"
+    for question in fragen:
+        gefunden = qa.geld_facetten(question, "topic")
+        assert facette in gefunden, f"„{question}“ → {sorted(gefunden)}"
 
 
 @pytest.mark.parametrize("facette,fragen", NEUE_FACETTEN, ids=[f[0] for f in NEUE_FACETTEN])
@@ -442,16 +464,19 @@ def test_neue_facetten_ziehen_sich_nicht_gegenseitig(facette, fragen):
     ändern?" trägt „Haushalt" im Wortlaut, und die Plan-Zahlen sind dort der
     Gegenstand des Streits, nicht Beiwerk.
     """
-    zusatz = {"antraege": {"plan", "ansatz"},
+    zusatz = {"antraege": {"plan", "ansatz", "amendments"},
               # Plan und Ist derselben Frage — sie MÜSSEN zusammen kommen,
               # sonst hinge die Regel „nie voneinander abziehen" an einer
               # Zahl, die nicht im Kontext steht (council/qa.py).
-              "investitionen": {"gebaut"}}
+              # `measures` ist die Ebene DARUNTER (einzelne Vorhaben) und
+              # dockt an `investitionen` an — ohne benanntes Vorhaben
+              # liefert es nichts.
+              "investitionen": {"gebaut", "measures"}}
     erlaubt = {facette} | zusatz.get(facette, set())
-    for frage in fragen:
-        gefunden = qa.geld_facetten(frage, "thema")
+    for question in fragen:
+        gefunden = qa.geld_facetten(question, "topic")
         fremde = gefunden - erlaubt
-        assert not fremde, f"„{frage}“ zieht zusätzlich {sorted(fremde)}"
+        assert not fremde, f"„{question}“ zieht zusätzlich {sorted(fremde)}"
 
 
 def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
@@ -461,9 +486,9 @@ def test_schuldenfrage_zieht_weder_plan_noch_stellenplan():
     Schulden sind ein Bestand am Stichtag. Weder `plan` (Teilhaushalte) noch
     `ansatz` (Gesamtergebnishaushalt) führen sie; beide zu laden hieße, dem
     Modell Jahresbeträge neben einen Bestand zu legen."""
-    f = qa.geld_facetten("Wie viel Schulden hat Oldenburg?", "geld")
+    f = qa.geld_facetten("Wie viel Schulden hat Oldenburg?", "money")
     assert f == {"schulden"}
-    assert "plan" not in f and "ansatz" not in f and "stellenplan" not in f
+    assert "plan" not in f and "budget" not in f and "stellenplan" not in f
 
 
 def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
@@ -471,8 +496,8 @@ def test_investitionsfrage_zieht_nicht_den_ergebnishaushalt():
 
     Sie zieht den Finanzhaushalt — und zwar in beiden Fassungen: den Plan
     aus dem Haushaltsplan und das Ist aus dem Statistischen Jahrbuch."""
-    f = qa.geld_facetten("Wie viel investiert die Stadt?", "geld")
-    assert f == {"investitionen", "gebaut"}
+    f = qa.geld_facetten("Wie viel investiert die Stadt?", "money")
+    assert f == {"investitionen", "gebaut", "measures"}
     assert "plan" not in f and "ansatz" not in f
 
 
@@ -481,16 +506,16 @@ def test_stellen_als_verb_zieht_den_stellenplan_nicht():
 
     Ohne diese Unterscheidung hinge der ganze Stellenplan an einem der
     häufigsten deutschen Verben."""
-    assert qa.geld_facetten("Wie viele Anträge stellen die Fraktionen?", "thema") == set()
-    assert qa.geld_facetten("Wer stellte den Antrag zum Radweg?", "thema") == set()
+    assert qa.geld_facetten("Wie viele Anträge stellen die Fraktionen?", "topic") == set()
+    assert qa.geld_facetten("Wer stellte den Antrag zum Radweg?", "topic") == set()
     # Die echte Zählfrage bleibt erkannt.
-    assert "stellenplan" in qa.geld_facetten("Wie viele Stellen hat die Stadt?", "thema")
+    assert "stellenplan" in qa.geld_facetten("Wie viele Stellen hat die Stadt?", "topic")
 
 
 def test_debatte_ohne_haushalt_ist_kein_haushaltsstreit():
     """`antraege` braucht einen Haushalts-Anker; „Debatte" allein reicht nicht."""
-    assert "antraege" not in qa.geld_facetten("Wie lief die Debatte um das Stadion?", "verlauf")
-    assert "antraege" in qa.geld_facetten("Wie lief die Haushaltsdebatte?", "thema")
+    assert "antraege" not in qa.geld_facetten("Wie lief die Debatte um das Stadion?", "history")
+    assert "antraege" in qa.geld_facetten("Wie lief die Haushaltsdebatte?", "topic")
 
 
 def test_jahrgang_aus_der_frage_geht_an_die_aenderungslisten():
@@ -500,18 +525,18 @@ def test_jahrgang_aus_der_frage_geht_an_die_aenderungslisten():
     assert qa.haushaltsjahr("Wer wollte den Haushalt 2024 ändern?") == 2024
     assert qa.haushaltsjahr("Wer wollte den Haushalt ändern?") is None
     store = _MessStore()
-    qa.geld_kontext(store, "Wer wollte den Haushalt 2024 ändern?", "Haushalt 2026 Etat", "thema")
+    qa.geld_kontext(store, "Wer wollte den Haushalt 2024 ändern?", "Haushalt 2026 Etat", "topic")
     assert store.jahr_argument == 2024
     store = _MessStore()
-    qa.geld_kontext(store, "Wer wollte den Haushalt ändern?", "Haushalt 2026 Etat", "thema")
+    qa.geld_kontext(store, "Wer wollte den Haushalt ändern?", "Haushalt 2026 Etat", "topic")
     assert store.jahr_argument is None
 
 
 def test_typ_geld_bleibt_das_auffangnetz():
     """Rückwärtskompatibilität: Sagt das Modell ``geld`` und trifft kein
     Muster, kommen die Plan-Zahlen — genau wie vor dieser Runde."""
-    assert qa.geld_facetten("Wie hoch fiel das aus?", "geld") == {"plan"}
-    assert qa.geld_facetten("Wie hoch fiel das aus?", "thema") == set()
+    assert qa.geld_facetten("Wie hoch fiel das aus?", "money") == {"plan"}
+    assert qa.geld_facetten("Wie hoch fiel das aus?", "topic") == set()
 
 
 # ---------------------------------------------------------------------------
@@ -527,7 +552,7 @@ VARIANTEN = [
       "Feuerwehr Kosten",
       "Was gibt die Stadt für die Feuerwehr aus?",
       "Wie viel gibt Oldenburg für die Feuerwehr aus?"],
-     {"plan", "produkte"}),
+     {"plan", "produkte", "ansatz"}),
     ("Plan gegen Ist",
      ["Hat die Stadt 2024 mehr ausgegeben als geplant?",
       "Wurde der Haushalt 2024 eingehalten?",
@@ -558,11 +583,11 @@ def test_umformulierungen_landen_bei_derselben_quelle(name, fragen, erwartet):
     „Feuerwehr Kosten" tippt, und niemand sähe warum."""
     leitfacette = {"Kosten einer Aufgabe": "produkte", "Plan gegen Ist": "ist",
                    "Prüfbericht": "pruefung", "Pflichtaufgabe": "produkte"}[name]
-    for frage in fragen:
-        f = qa.geld_facetten(frage, "thema")
-        assert leitfacette in f, f"„{frage}“ verfehlt die Quelle {leitfacette} (fand {sorted(f)})"
+    for question in fragen:
+        f = qa.geld_facetten(question, "topic")
+        assert leitfacette in f, f"„{question}“ verfehlt die Quelle {leitfacette} (fand {sorted(f)})"
         if erwartet is not None:
-            assert f == erwartet, f"„{frage}“ → {sorted(f)}"
+            assert f == erwartet, f"„{question}“ → {sorted(f)}"
 
 
 # ---------------------------------------------------------------------------
@@ -575,79 +600,79 @@ def _befuellter_store(tmp_path) -> CouncilStore:
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
-            " seite, probe, stand, fetched_at) VALUES "
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
+            " page, probe, as_of, fetched_at) VALUES "
             "(1, 'k1', 'ris', 'Jahresabschluss 2024', 'https://example.org/ja2024', "
-            " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'summenprobe', '31.12.2024', '2026-08-16')")
+            " 'Abschnitt 6.2 Ergebnisrechnung', 41, 'sub_budget_sum_check', '31.12.2024', '2026-08-16')")
         store._conn.execute(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
-            " probe, stand, fetched_at) VALUES "
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
+            " probe, as_of, fetched_at) VALUES "
             "(2, 'k2', 'ris', 'Schlussbericht RPA 2023', 'https://example.org/rpa', "
             " 'Randmarken des Berichts', 'randmarkenprobe', '2023', '2026-08-16')")
         # Ergebnisrechnung: Gesamt + ein Teilhaushalt, je Erträge (12)/Aufwendungen (20)
-        for thh, name, e_plan, e_ist, a_plan, a_ist in [
+        for sub_budget, name, e_plan, e_ist, a_plan, a_ist in [
                 (None, None, 760_000_000.0, 781_400_000.0, 799_000_000.0, 812_300_000.0),
                 (5, "Soziales und Jugend", 90_000_000.0, 93_100_000.0,
                  240_000_000.0, 251_900_000.0)]:
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-                " ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, fetched_at, herkunft_id) "
+                "INSERT INTO council_income_statement (year, sub_budget_no, sub_budget_name, nr, label, "
+                " budgeted, plan, plan_kind, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,12,'Summe ordentliche Erträge',?,?,'ansatz',?,0,1,'',1)",
-                (thh, name, e_plan, e_plan, e_ist))
+                (sub_budget, name, e_plan, e_plan, e_ist))
             store._conn.execute(
-                "INSERT INTO council_ergebnisrechnung (jahr, thh_nr, thh_name, nr, bezeichnung, "
-                " ansatz, plan, plan_art, ergebnis, abweichung, ist_summe, fetched_at, herkunft_id) "
+                "INSERT INTO council_income_statement (year, sub_budget_no, sub_budget_name, nr, label, "
+                " budgeted, plan, plan_kind, result, deviation, is_total, fetched_at, herkunft_id) "
                 "VALUES (2024,?,?,20,'Summe ordentliche Aufwendungen',?,?,'ansatz',?,0,1,'',1)",
-                (thh, name, a_plan, a_plan, a_ist))
+                (sub_budget, name, a_plan, a_plan, a_ist))
         store._conn.execute(
-            "INSERT INTO council_abweichungsgruende (jahr, nr, bezeichnung, delta_mio, "
-            " prozent, text, fetched_at, herkunft_id) VALUES "
+            "INSERT INTO council_variance_reasons (year, nr, label, delta_meur, "
+            " percent, text, fetched_at, herkunft_id) VALUES "
             "(2024, 1, 'Steuern und ähnliche Abgaben', 21.4, 5.2, "
             " 'Die Mehrerträge beruhen im Wesentlichen auf Nachveranlagungen bei der "
             "Gewerbesteuer aus Vorjahren.', '', 1)")
         store._conn.execute(
-            "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, textziffer, "
-            " abschnitt, kette, seite, text, fetched_at, herkunft_id) VALUES "
+            "INSERT INTO council_audit_reports (year, seq, mark, mark_name, text_number, "
+            " section, chain, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 1, 'WB', 'Wiederholte Beanstandung', '4.5.2', 'Vergabewesen', 'verg', 87, "
             " 'Die Dokumentation der Vergabeentscheidungen ist erneut unvollständig.', '', 2)")
         store._conn.execute(
-            "INSERT INTO council_pruefberichte (jahr, lfd, marke, marke_name, textziffer, "
-            " abschnitt, seite, text, fetched_at, herkunft_id) VALUES "
+            "INSERT INTO council_audit_reports (year, seq, mark, mark_name, text_number, "
+            " section, page, text, fetched_at, herkunft_id) VALUES "
             "(2023, 2, 'H', 'Hinweis', '5.1', 'Anlagenbuchhaltung', 91, "
             " 'Es wird angeregt, die Nutzungsdauern zu überprüfen.', '', 2)")
         store._conn.execute(
-            "INSERT INTO council_produkte (jahr, produkt_nr, produkt_name, amt, ertraege, "
-            " aufwendungen, ergebnis, kurzbeschreibung, auftragsgrundlage, beeinflussbarkeit, "
+            "INSERT INTO council_products (year, product_no, product_name, office, revenues, "
+            " expenses, result, short_description, legal_basis, controllability, "
             " fetched_at, herkunft_id) VALUES "
             "(2023, 'P12.126001', 'Brandschutz und Feuerwehr', 'Amt für Brandschutz', "
             " 1200000, 23400000, -22200000, 'Abwehrender Brandschutz und Hilfeleistung.', "
             " '§ 2 NBrandSchG', 'niedrig', '', 1)")
         store._conn.execute(
-            "INSERT INTO council_produkte (jahr, produkt_nr, produkt_name, amt, ertraege, "
-            " aufwendungen, ergebnis, auftragsgrundlage, beeinflussbarkeit, fetched_at, "
+            "INSERT INTO council_products (year, product_no, product_name, office, revenues, "
+            " expenses, result, legal_basis, controllability, fetched_at, "
             " herkunft_id) VALUES "
             "(2023, 'P26.262001', 'Theater und Konzerte', 'Kulturamt', 300000, 9800000, "
             " -9500000, 'Freiwillige Leistung der Stadt', 'hoch', '', 1)")
         store._conn.executemany(
-            "INSERT INTO council_konzern_posten (jahr, nr, bezeichnung, rolle, betrag, "
-            " ist_summe, fetched_at, herkunft_id) VALUES (2024,?,?,?,?,1,'',1)",
-            [(13, 'Summe ordentliche Erträge', 'ertraege_summe', 1_238_000_000.0),
-             (21, 'Summe ordentliche Aufwendungen', 'aufwendungen_summe', 1_242_000_000.0)])
+            "INSERT INTO council_group_items (year, nr, label, role, amount, "
+            " is_total, fetched_at, herkunft_id) VALUES (2024,?,?,?,?,1,'',1)",
+            [(13, 'Summe ordentliche Erträge', 'revenues_total', 1_238_000_000.0),
+             (21, 'Summe ordentliche Aufwendungen', 'expenses_total', 1_242_000_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_konzern_traeger (jahr, art, traeger_key, traeger, "
-            " betrag_teur, fetched_at, herkunft_id) VALUES (2024,'aufwendungen',?,?,?,'',1)",
+            "INSERT INTO council_group_entities (year, kind, entity_key, entity, "
+            " amount_keur, fetched_at, herkunft_id) VALUES (2024,'expenses',?,?,?,'',1)",
             [("stadt", "Stadt Oldenburg (Kernverwaltung)", 812_300.0),
              ("klinikum", "Klinikum Oldenburg AöR", 390_000.0),
              ("konsolidierung", "Konsolidierung", -120_000.0)])
         store._conn.executemany(
-            "INSERT INTO council_staedtevergleich (reihe, jahr, schluessel, stadt, kennzahl, "
-            " wert, einheit, herkunft_id, fetched_at) VALUES "
-            "('steuerkraft',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
+            "INSERT INTO council_city_comparison (series, year, key, city, indicator, "
+            " value, unit, herkunft_id, fetched_at) VALUES "
+            "('tax_capacity',2024,?,?,'Steuerkraftmesszahl je Einwohner',?,'EUR',1,'')",
             [("03403", "Oldenburg", 1834.0), ("03404", "Osnabrück", 1712.0),
              ("03401", "Delmenhorst", 1104.0)])
         store._conn.executemany(
-            "INSERT INTO council_ergebnishaushalt (plan_jahrgang, jahr, art, nr, bezeichnung, "
-            " betrag, ist_summe, fetched_at, herkunft_id) VALUES (2026,2026,'ansatz',?,?,?,?,'',1)",
+            "INSERT INTO council_income_budget (plan_budget_year, year, kind, nr, label, "
+            " amount, is_total, fetched_at, herkunft_id) VALUES (2026,2026,'budget',?,?,?,?,'',1)",
             [(1, "Steuern und ähnliche Abgaben", 430_000_000.0, 0),
              (12, "Summe ordentliche Erträge", 812_000_000.0, 1),
              (20, "Summe ordentliche Aufwendungen", 846_000_000.0, 1)])
@@ -657,21 +682,21 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # SQLite-Versionen schlucken sie klaglos, die der CI nicht — lokal
         # grün, in der CI 17 Fehler (16.08.).
         store._conn.execute(
-            "INSERT INTO council_ergebnishaushalt (plan_jahrgang, jahr, art, nr, bezeichnung, "
-            " betrag, ist_summe, fetched_at, herkunft_id) "
-            "VALUES (2026, 2029, 'finanzplanung', 12, 'Summe ordentliche Erträge', "
+            "INSERT INTO council_income_budget (plan_budget_year, year, kind, nr, label, "
+            " amount, is_total, fetched_at, herkunft_id) "
+            "VALUES (2026, 2029, 'financial_plan', 12, 'Summe ordentliche Erträge', "
             " ?, 1, '', 1)", (999_000_000.0,))
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
-            " is_summe, fetched_at) VALUES "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, "
+            " is_total, fetched_at) VALUES "
             "(2026, 'Brandschutz und Rettungsdienst', 2000000, 31000000, -29000000, 0, '')")
         # --- Die vier Schichten der 17.08.-Runde ---------------------------
         # Schulden: Reihenanfang, Höchststand, Vorjahr, jüngstes Jahr. Vier
         # Zeilen reichen — der Baustein zeigt genau diese vier Bezugspunkte.
         store._conn.executemany(
-            "INSERT INTO council_schulden (jahr, kreditmarkt, sondermittel, "
-            " gebietskoerperschaften, eigenbetriebe, insgesamt, je_einwohner, "
-            " revidiert, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
+            "INSERT INTO council_debt (year, credit_market, special_funds, "
+            " public_authorities, municipal_enterprises, total, per_capita, "
+            " revised, herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,0,3,'')",
             [(1995, None, None, None, None, 198_000_000.0, 1_420.0),
              (2013, None, None, None, None, 512_400_000.0, 3_180.0),
              (2024, 214_000_000.0, 1_200_000.0, 8_600_000.0, 109_000_000.0,
@@ -681,20 +706,20 @@ def _befuellter_store(tmp_path) -> CouncilStore:
         # Investitionen: Summenzeile, drei Teilhaushalte und die Bezugsgröße
         # `finanzhaushalt` — die darf NICHT im Kontext landen (ungeprüft).
         store._conn.executemany(
-            "INSERT INTO council_investitionen (jahr, ebene, thh_nr, bezeichnung, "
-            " einzahlungen, auszahlungen, herkunft_id, fetched_at) VALUES (2026,?,?,?,?,?,4,'')",
-            [("investitionen", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
-             ("teilhaushalt", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
-             ("teilhaushalt", 7, "Verkehr und Straßenbau", 3_400_000.0, 10_500_000.0),
-             ("teilhaushalt", 9, "Feuerwehr", 200_000.0, 3_900_000.0),
-             ("finanzhaushalt", 0, "Gesamtbetrag des Finanzhaushaltes",
+            "INSERT INTO council_investments (year, level, sub_budget_no, label, "
+            " inflows, outflows, herkunft_id, fetched_at) VALUES (2026,?,?,?,?,?,4,'')",
+            [("investments", 0, "Summe Investitionstätigkeit", 22_300_000.0, 80_800_000.0),
+             ("sub_budget", 4, "Schule und Sport", 6_100_000.0, 24_600_000.0),
+             ("sub_budget", 7, "Verkehr und Straßenbau", 3_400_000.0, 10_500_000.0),
+             ("sub_budget", 9, "Feuerwehr", 200_000.0, 3_900_000.0),
+             ("financial_budget", 0, "Gesamtbetrag des Finanzhaushaltes",
               871_000_000.0, 903_000_000.0)])
         # Stellenplan: beide Teile, nur die Gesamtzeilen. besetzt +
         # nicht_besetzt = stellen_vorjahr (die Besetzungsprobe des Plans).
         store._conn.executemany(
-            "INSERT INTO council_stellenplan (jahrgang, teil, zeile, art, bezeichnung, "
-            " stellen_plan, stellen_vorjahr, besetzt, nicht_besetzt, stichtag, "
-            " herkunft_id, fetched_at) VALUES (2026,?,0,'gesamt',?,?,?,?,?,'30.06.2025',?,'')",
+            "INSERT INTO council_staff_plan (budget_year, part, row_no, kind, label, "
+            " positions_planned, positions_prior_year, filled, vacant, as_of_date, "
+            " herkunft_id, fetched_at) VALUES (2026,?,0,'total',?,?,?,?,?,'30.06.2025',?,'')",
             [("A", "Gesamt Teil A", 815.50, 802.00, 761.25, 40.75, 5),
              ("B", "Gesamt Teil B", 1_702.25, 1_688.50, 1_579.00, 109.50, 6)])
         # Der Streit ums Geld: eine Runde zum Haushalt 2026 mit zwei
@@ -710,61 +735,61 @@ def _befuellter_store(tmp_path) -> CouncilStore:
             eintraege.append((ksinr, 0, "decision", top, "Haushalt 2026", None, None))
             eintraege.append((ksinr, 1, "decision", f"{top}.9",
                               "Haushaltssatzung und Haushaltsplan 2026",
-                              "angenommen", "mehrheitlich"))
+                              "accepted", "majority"))
         for ksinr, top, lauf in ((9001, "6", 10), (9002, "7", 10)):
             listen = [
-                ("Änderungsliste Verwaltung I zum Ergebnishaushalt", "angenommen"),
-                ("Änderungsliste der CDU-Fraktion zum Ergebnishaushalt", "abgelehnt"),
-                ("Änderungsliste der CDU-Fraktion zum Finanzhaushalt", "abgelehnt"),
+                ("Änderungsliste Verwaltung I zum Ergebnishaushalt", "accepted"),
+                ("Änderungsliste der CDU-Fraktion zum Ergebnishaushalt", "rejected"),
+                ("Änderungsliste der CDU-Fraktion zum Finanzhaushalt", "rejected"),
                 ("Änderungsliste der Fraktionen SPD und Bündnis 90/Die Grünen "
-                 "zum Ergebnishaushalt", "angenommen"),
-                ("Änderungsliste der Gruppe FDP/Volt zum Ergebnishaushalt", "abgelehnt"),
+                 "zum Ergebnishaushalt", "accepted"),
+                ("Änderungsliste der Gruppe FDP/Volt zum Ergebnishaushalt", "rejected"),
                 ("So geänderter Ergebnishaushalt einschließlich der Änderungslisten",
-                 "angenommen"),
+                 "accepted"),
             ]
-            for i, (titel, ergebnis) in enumerate(listen):
+            for i, (title, result) in enumerate(listen):
                 eintraege.append((ksinr, lauf + i, "subvote", f"{top}.{i + 1}",
-                                  titel, ergebnis, "mehrheitlich"))
+                                  title, result, "majority"))
         store._conn.executemany(
             "INSERT INTO council_decisions (ksinr, position, kind, item_number, title, "
             " outcome, vote) VALUES (?,?,?,?,?,?,?)", eintraege)
         store._conn.executemany(
-            "INSERT INTO council_herkunft (id, schluessel, art, label, url, fundstelle, "
-            " probe, stand, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
+            "INSERT INTO council_provenance (id, key, kind, label, url, citation, "
+            " probe, as_of, fetched_at) VALUES (?,?,'ris',?,?,?,?,?,'2026-08-17')",
             [(3, "k3", "Statistisches Jahrbuch, Tabelle 1108",
               "https://example.org/1108", "Tabelle 1108", "prokopfprobe", "2025"),
              (4, "k4", "Haushaltsplan 2026, Finanzhaushalt",
-              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "summenprobe", "2026"),
+              "https://example.org/hh2026", "Gesamtfinanzhaushalt", "sub_budget_sum_check", "2026"),
              (5, "k5", "Haushaltsplan 2026, Stellenplan Teil A",
               "https://example.org/sp-a", "Anlage 21", "besetzungsprobe", "30.06.2025"),
              (6, "k6", "Haushaltsplan 2026, Stellenplan Teil B",
               "https://example.org/sp-b", "Anlage 22", "besetzungsprobe", "30.06.2025"),
              (7, "k7", "Gebührenbedarfsberechnung Abfall 2026",
-              "https://example.org/gebuehren", "Anlagen 1 und 2",
+              "https://example.org/fees", "Anlagen 1 und 2",
               "gebuehren_kaskade,gebuehren_division", "2026")])
         store._conn.executemany(
-            "INSERT INTO council_gebuehren (jahr, bereich, bereich_name, "
-            "kostenkalkulation, abzuege, zu_deckende_kosten, bezugsmenge, "
-            "bezugseinheit, gebuehr, gebuehrenvorschlag, vorlage_nr, proben, "
+            "INSERT INTO council_fees (year, area, area_name, "
+            "cost_calculation, deductions, costs_to_cover, reference_quantity, "
+            "reference_unit, fee, fee_proposed, template_number, probes, "
             "herkunft_id, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,7,'')",
-            [(2025, "abfallbehandlung", "Abfallbehandlungsanlagen", 18_000_000.0,
+            [(2025, "waste_treatment", "Abfallbehandlungsanlagen", 18_000_000.0,
               -2_000_000.0, 16_000_000.0, 114_475.0, "Mg", 139.772, 139.70,
               "24/0999", "gebuehren_kaskade,gebuehren_division"),
-             (2026, "abfallbehandlung", "Abfallbehandlungsanlagen", 19_000_000.0,
+             (2026, "waste_treatment", "Abfallbehandlungsanlagen", 19_000_000.0,
               -1_500_000.0, 17_500_000.0, 115_733.0, "Mg", 151.214, 151.21,
               "25/0999", "gebuehren_kaskade,gebuehren_division"),
-             (2026, "abfallsammlung", "Abfallsammlung", 12_000_000.0,
+             (2026, "waste_collection", "Abfallsammlung", 12_000_000.0,
               -1_000_000.0, 11_000_000.0, None, None, None, None,
-              "25/0999", "gebuehren_kaskade")])
+              "25/0999", "fee_cascade")])
     return store
 
 
 def test_gebuehrenquelle_filtert_bereiche_und_traegt_belege(tmp_path):
     store = _befuellter_store(tmp_path)
     g = store.gebuehren_fuer_begriffe(["Müllgebühren"])
-    assert [x["bereich"] for x in g["bereiche"]] == [
-        "abfallbehandlung", "abfallsammlung"]
-    assert [r["jahr"] for r in g["bereiche"][0]["werte"]] == [2026, 2025]
+    assert [x["area"] for x in g["bereiche"]] == [
+        "waste_treatment", "waste_collection"]
+    assert [r["year"] for r in g["bereiche"][0]["werte"]] == [2026, 2025]
     text = qa._gebuehren_block(g)
     assert "151,214 € je Mg" in text and "Gebührenvorschlag 151,21 €" in text
     assert "Grundgebühr und volumenabhängige Gebühr" in text
@@ -777,9 +802,9 @@ def test_gebuehrenquelle_filtert_bereiche_und_traegt_belege(tmp_path):
 
 def test_ist_block_nennt_jahr_plan_ist_und_beleg(tmp_path):
     store = _befuellter_store(tmp_path)
-    ist = store.ergebnis_ist_fuer_begriffe(["Soziales", "Jugend"])
+    ist = store.result_actual_for_terms(["Soziales", "Jugend"])
     text = qa._ist_block(ist)
-    assert ist["jahr"] == 2024
+    assert ist["year"] == 2024
     assert "812.300.000" in text and "799.000.000" in text   # Ist und Plan
     assert "Soziales und Jugend" in text                      # Teilhaushalt getroffen
     assert "Jahresabschluss 2024" in text and "Abschnitt 6.2" in text  # Beleg
@@ -796,7 +821,7 @@ def test_abweichungsgrund_findet_die_steuerzeile_ueber_den_wortstamm(tmp_path):
     einen Richtung auch keine gemeinsame Teilzeichenkette."""
     store = _befuellter_store(tmp_path)
     treffer = store.abweichungsgruende_fuer_begriffe(["Gewerbesteuer", "Mehreinnahmen"])
-    assert treffer and treffer[0]["bezeichnung"] == "Steuern und ähnliche Abgaben"
+    assert treffer and treffer[0]["label"] == "Steuern und ähnliche Abgaben"
     text = qa._gruende_block(treffer)
     assert "Nachveranlagungen" in text and "+21.4 Mio" in text
     # Es ist die Begründung der VERWALTUNG, keine Feststellung von uns.
@@ -807,11 +832,11 @@ def test_abweichungsgrund_findet_die_steuerzeile_ueber_den_wortstamm(tmp_path):
 def test_pruefung_block_fuehrt_wiederholte_beanstandung_zuerst(tmp_path):
     store = _befuellter_store(tmp_path)
     p = store.pruefberichte_fuer_begriffe(["Haushalt"])   # kein Treffer → Rangfolge
-    assert p["feststellungen"][0]["marke"] == "WB"
+    assert p["feststellungen"][0]["mark"] == "WB"
     text = qa._pruefung_block(p)
     assert "Wiederholte Beanstandung" in text and "Textziffer 4.5.2" in text
     assert "S. 87" in text
-    assert "2023" in text and "insgesamt 2 Feststellungen" in text
+    assert "2023" in text and "total 2 Feststellungen" in text
     assert "AUSWAHL" in text
     store.close()
 
@@ -862,7 +887,7 @@ def test_ansatz_block_laesst_die_finanzplanung_draussen(tmp_path):
     store = _befuellter_store(tmp_path)
     a = store.ansatz_fuer_begriffe(["Steuern"])
     text = qa._ansatz_block(a)
-    assert a["jahr"] == 2026
+    assert a["year"] == 2026
     assert "430.000.000" in text
     assert "999.000.000" not in text
     assert "2029" not in text
@@ -879,7 +904,7 @@ def test_schulden_block_traegt_die_abgrenzung_woertlich(tmp_path):
     store = _befuellter_store(tmp_path)
     s = store.schulden_kontext()
     text = qa._schulden_block(s)
-    assert s["jahr"] == 2025
+    assert s["year"] == 2025
     assert "337.400.000" in text and "1.932 €" in text        # Stand und Pro-Kopf
     assert "332.800.000" in text                              # das Jahr davor
     assert "2013 mit 512.400.000" in text                     # Höchststand der Reihe
@@ -902,7 +927,7 @@ def test_investitionen_block_warnt_vor_dem_zweiten_haushalt(tmp_path):
     store = _befuellter_store(tmp_path)
     i = store.investitionen_fuer_begriffe(["Schule", "Sport"])
     text = qa._investitionen_block(i)
-    assert i["jahr"] == 2026
+    assert i["year"] == 2026
     assert "80.800.000" in text                        # Summenzeile der Datei
     assert "Schule und Sport" in text                  # der getroffene Teilhaushalt
     assert "ZWEI HAUSHALTE, NICHT EINER" in text
@@ -926,7 +951,7 @@ def test_stellenplan_block_bindet_die_besetzung_an_das_vorjahr(tmp_path):
     store = _befuellter_store(tmp_path)
     s = store.stellenplan_kontext()
     text = qa._stellenplan_block(s)
-    assert s["jahrgang"] == 2026 and s["stichtag"] == "30.06.2025"
+    assert s["budget_year"] == 2026 and s["as_of_date"] == "30.06.2025"
     assert "815,50 Stellen im Haushaltsjahr 2026" in text
     assert "Im Vorjahr waren es 802,00 Stellen" in text
     assert "761,25 besetzt und 40,75 nicht besetzt" in text
@@ -947,7 +972,7 @@ def test_stellenplan_nennt_den_fehlenden_teil(tmp_path):
     eine Antwort, die dann „815 Stellen" sagt, unterschlägt 1.700."""
     store = _befuellter_store(tmp_path)
     with store._conn:
-        store._conn.execute("DELETE FROM council_stellenplan WHERE teil = 'B'")
+        store._conn.execute("DELETE FROM council_staff_plan WHERE part = 'B'")
     text = qa._stellenplan_block(store.stellenplan_kontext())
     assert "NICHT im Bestand: der Teil für Arbeitnehmerinnen und Arbeitnehmer" in text
     assert "nicht der ganze Stellenplan" in text
@@ -964,7 +989,7 @@ def test_antraege_block_sagt_wer_und_zieht_die_grenze(tmp_path):
     store = _befuellter_store(tmp_path)
     a = store.haushaltsantraege_kontext()
     text = qa._antraege_block(a)
-    assert a["jahr"] == 2026
+    assert a["year"] == 2026
     # Beide Stationen: Der Ausschuss stimmt über dieselben Listen ab wie der
     # Rat, oft mit anderem Ergebnis.
     assert "Ausschuss für Finanzen und Beteiligungen" in text and "Rat," in text
@@ -990,8 +1015,8 @@ def test_antraege_folgen_dem_jahrgang_aus_der_frage(tmp_path):
     """Das Haushaltsjahr ist nicht das Sitzungsjahr — und ein Jahrgang, den es
     nicht gibt, fällt auf den jüngsten zurück statt ins Leere."""
     store = _befuellter_store(tmp_path)
-    assert store.haushaltsantraege_kontext(2026)["jahr"] == 2026
-    assert store.haushaltsantraege_kontext(1999)["jahr"] == 2026
+    assert store.haushaltsantraege_kontext(2026)["year"] == 2026
+    assert store.haushaltsantraege_kontext(1999)["year"] == 2026
     store.close()
 
 
@@ -1003,12 +1028,12 @@ def test_leere_datenbank_liefert_leere_bausteine(tmp_path):
     bleiben es. Jede der vierzehn Quellen muss das aushalten — deshalb hier
     zwei Fragen, die zusammen alle vier Neuzugänge ziehen."""
     store = CouncilStore(tmp_path / "leer.sqlite")
-    for frage in ("Was kostet die Stadt insgesamt?",
+    for question in ("Was kostet die Stadt insgesamt?",
                   "Wie viel Schulden hat Oldenburg, was wird gebaut, wie viele "
                   "Stellen sind unbesetzt und wer wollte den Haushalt ändern?"):
-        kontext = qa.geld_kontext(store, frage, "", "geld")
-        assert qa.geld_block(kontext) == "", frage
-        assert qa.geld_regeln(kontext) == "", frage
+        kontext = qa.geld_kontext(store, question, "", "money")
+        assert qa.geld_block(kontext) == "", question
+        assert qa.geld_regeln(kontext) == "", question
     store.close()
 
 
@@ -1026,12 +1051,12 @@ def test_voller_geld_kontext_bleibt_im_budget(tmp_path):
     # Eine Frage, die acht der zehn Quellen zieht — mehr geht in einem Satz
     # kaum, ohne ihn zu erfinden.
     kontext = qa.geld_kontext(
-        store, "Warum kostet die Stadt insgesamt mehr als geplant, was hat das "
+        store, "Warum kostet die Stadt total mehr als geplant, was hat das "
                "Rechnungsprüfungsamt dazu beanstandet, wie sehen die Erträge im "
                "Haushalt aus und wie ist das im Vergleich zu Osnabrück?",
-        "Haushalt Soziales Theater Feuerwehr Steuern", "geld")
+        "Haushalt Soziales Theater Feuerwehr Steuern", "money")
     text = qa.geld_block(kontext)
-    assert len(kontext["facetten"]) >= 8, sorted(kontext["facetten"])
+    assert len(kontext["facets"]) >= 8, sorted(kontext["facets"])
     assert len(text) <= qa.GELD_MAX_CHARS, f"{len(text)} Zeichen"
     # Und er ist auch nicht leer — sonst misst der Deckel nichts.
     assert len(text) > 1500, f"nur {len(text)} Zeichen"
@@ -1048,7 +1073,8 @@ def test_voller_geld_kontext_bleibt_im_budget(tmp_path):
 #: die Antwort auf Tims Frage „wie viel brauchen die neuen Bausteine wirklich,
 #: BEVOR Du sie alle zuschaltest": Zusammen sind es rund 4.400 Zeichen — das
 #: ganze Budget. Sie feuern nur nie zusammen (s. die Gegenrichtungs-Tests
-#: oben), und genau deshalb ist der Deckel bei 4.500 geblieben.
+#: oben), und genau deshalb blieb der Deckel bis 09/2026 bei 4.500 (seit den
+#: neun Modul-Facetten 6.500 — Begründung an `GELD_MAX_CHARS`).
 NEUE_BAUSTEIN_GRENZEN = {
     "schulden": 1200,
     "stellenplan": 1200,
@@ -1062,13 +1088,13 @@ def test_neuer_baustein_bleibt_in_seiner_groesse(facette, grenze, tmp_path):
     """Jeder neue Baustein einzeln vermessen — wächst einer davon, fällt es
     hier auf und nicht erst, wenn er im Prompt die Beschlüsse verdrängt."""
     store = _befuellter_store(tmp_path)
-    frage = {"schulden": "Wie viel Schulden hat Oldenburg?",
+    question = {"schulden": "Wie viel Schulden hat Oldenburg?",
              "stellenplan": "Wie viele Stellen sind unbesetzt?",
              "investitionen": "Was wird gebaut?",
              "antraege": "Welche Änderungslisten gab es zum Haushalt 2026?"}[facette]
-    kontext = qa.geld_kontext(store, frage, frage, "thema")
-    schluessel, bauer = qa._GELD_BAUSTEINE[facette]
-    text = bauer(kontext.get(schluessel))
+    kontext = qa.geld_kontext(store, question, question, "topic")
+    key, bauer = qa._GELD_BAUSTEINE[facette]
+    text = bauer(kontext.get(key))
     assert text, f"{facette} liefert nichts — Fixture verrutscht?"
     assert len(text) <= grenze, f"{facette}: {len(text)} Zeichen (Grenze {grenze})"
     store.close()
@@ -1082,16 +1108,16 @@ def test_echte_fragen_bleiben_weit_unter_dem_deckel(tmp_path):
     den Normalfall keine Fessel — er greift erst bei Fragen, die ein halbes
     Dutzend Quellen auf einmal ziehen, und genau dafür ist er da."""
     store = _befuellter_store(tmp_path)
-    for frage in ["Wie viel Schulden hat Oldenburg?",
+    for question in ["Wie viel Schulden hat Oldenburg?",
                   "Was wird gebaut?",
                   "Wie viele Stellen sind unbesetzt?",
                   "Wer wollte den Haushalt 2026 ändern?",
                   "Wie viel gibt die Stadt für Personal aus?",
                   "Was kostet die Feuerwehr?",
                   "Warum kam so viel mehr Gewerbesteuer rein?"]:
-        kontext = qa.geld_kontext(store, frage, frage, "thema")
+        kontext = qa.geld_kontext(store, question, question, "topic")
         laenge = len(qa.geld_block(kontext))
-        assert 0 < laenge <= 2200, f"„{frage}“: {laenge} Zeichen"
+        assert 0 < laenge <= 2200, f"„{question}“: {laenge} Zeichen"
     store.close()
 
 
@@ -1105,13 +1131,13 @@ def test_die_neuen_facetten_verdraengen_die_alten_nicht_komplett(tmp_path):
     fragt, wäre kein Zeichensparen, sondern ein Datenverlust."""
     store = _befuellter_store(tmp_path)
     kontext = qa.geld_kontext(
-        store, "Warum kostet die Stadt insgesamt mehr als geplant, wie viele "
+        store, "Warum kostet die Stadt total mehr als geplant, wie viele "
                "Schulden hat sie, was wird gebaut, wie viele Stellen sind "
                "unbesetzt, was hat das Rechnungsprüfungsamt beanstandet und wie "
                "ist das im Vergleich zu Osnabrück?",
-        "Haushalt Soziales Theater Feuerwehr Steuern Schule", "geld")
+        "Haushalt Soziales Theater Feuerwehr Steuern Schule", "money")
     text = qa.geld_block(kontext)
-    assert len(kontext["facetten"]) >= 10, sorted(kontext["facetten"])
+    assert len(kontext["facets"]) >= 10, sorted(kontext["facets"])
     assert len(text) <= qa.GELD_MAX_CHARS
     # Die drei neuen Bestands-Quellen sind drin …
     for kopf in ("SCHULDENSTAND", "STELLENPLAN", "INVESTITIONEN"):
@@ -1128,9 +1154,9 @@ def test_budget_kappt_ganze_bausteine_statt_saetze(tmp_path):
     """Reißt das Budget, fallen die HINTEREN Facetten weg — nicht alle in der
     Mitte. Ein halb abgeschnittener Prüfbericht wäre schlimmer als keiner."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, "Warum gibt die Stadt insgesamt mehr aus als "
+    kontext = qa.geld_kontext(store, "Warum gibt die Stadt total mehr aus als "
                                      "geplant und was wurde beanstandet?",
-                              "Haushalt Steuern Soziales", "geld")
+                              "Haushalt Steuern Soziales", "money")
     voll = qa.geld_block(kontext)
     alt = qa.GELD_MAX_CHARS
     try:
@@ -1158,7 +1184,7 @@ def test_haushaltsregeln_haengen_am_kontext_nicht_am_fragetyp(tmp_path):
                               "Prüfbericht Beanstandung", "thema")
     messages, _ = qa._answer_messages(
         "Was hat das Rechnungsprüfungsamt beanstandet?",
-        [{"id": 1, "title": "T", "beschluss": "B"}], typ="thema", geld=kontext)
+        [{"id": 1, "title": "T", "official_text": "B"}], typ="topic", geld=kontext)
     prompt = messages[0]["content"]
     assert "RECHNUNGSPRÜFUNGSAMT" in prompt
     assert "JAHR IMMER NENNEN" in prompt and "PLAN IST NICHT IST" in prompt
@@ -1171,8 +1197,8 @@ def test_geldregeln_treten_bei_punktfragen_zurueck(tmp_path):
     """Punktfrage („Wie hoch war X?") — die Kürze-Regel gewinnt, es bleibt die
     Pflicht, Jahr und Quelle zu nennen."""
     store = _befuellter_store(tmp_path)
-    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr Brandschutz", "geld")
-    messages, _ = qa._answer_messages("Was kostet die Feuerwehr?", [], typ="geld",
+    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr Brandschutz", "money")
+    messages, _ = qa._answer_messages("Was kostet die Feuerwehr?", [], typ="money",
                                       geld=kontext, eng=True)
     prompt = messages[0]["content"]
     assert "HÖCHSTENS 3 Sätzen" in prompt
@@ -1188,9 +1214,9 @@ def test_alter_aufrufweg_bleibt_unveraendert():
     ruft ``geld_kontext`` wie ``/ask``), aber der Parameter-Weg bleibt: Er ist
     die Rückfallebene für Aufrufer außerhalb des Routers, und ein stiller
     Verhaltenswechsel wäre der schlechtere Weg, ihn abzuräumen."""
-    zeilen = [{"year": 2026, "bereich": "Verkehr und Straßenbau",
-               "aufwendungen": 46194645.0, "ertraege": 17510637.0}]
-    messages, _ = qa._answer_messages("Was kostet der Verkehr?", [], typ="geld",
+    zeilen = [{"year": 2026, "area": "Verkehr und Straßenbau",
+               "expenses": 46194645.0, "revenues": 17510637.0}]
+    messages, _ = qa._answer_messages("Was kostet der Verkehr?", [], typ="money",
                                       haushalt=zeilen)
     assert "STADTHAUSHALT" in messages[0]["content"]
     assert "46.194.645" in messages[0]["content"]
@@ -1226,27 +1252,32 @@ def test_deepresearch_ruft_geld_kontext_statt_einzelquellen():
     falsche Stelle") steht schon in der Zeile."""
     from pathlib import Path
 
-    quelle = (Path(__file__).resolve().parents[1] / "web" / "backend" / "app"
+    source = (Path(__file__).resolve().parents[1] / "web" / "backend" / "app"
               / "deepresearch.py").read_text(encoding="utf-8")
-    assert "qa.geld_kontext(" in quelle
+    assert "qa.geld_kontext(" in source
     for alt in ("store.haushalt_fuer_begriffe", "store.steuern_fuer_begriffe",
                 "store.steuerkraft_kontext"):
-        assert alt not in quelle, f"{alt} hängt noch am alten Einzelweg"
+        assert alt not in source, f"{alt} hängt noch am alten Einzelweg"
 
 
 def test_facetten_stehen_im_kontext_zum_mitloggen():
     store = _MessStore()
-    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "geld")
-    assert kontext["facetten"] == sorted({"plan", "produkte"})
+    kontext = qa.geld_kontext(store, "Was kostet die Feuerwehr?", "Feuerwehr", "money")
+    assert kontext["facets"] == sorted({"plan", "produkte", "ansatz"})
 
 
 def test_alle_facetten_haben_baustein_und_methode():
-    """Wer eine Facette hinzufügt, ohne sie zu verdrahten, fliegt hier auf."""
+    """Wer eine Facette hinzufügt, ohne sie zu verdrahten, fliegt hier auf.
+
+    Die Modul-Facetten (council/geld/) bringen Methode und Baustein selbst
+    mit; ihre Namen stehen deshalb nicht in ``ERWARTETE_METHODEN``, sondern
+    kommen aus dem Register."""
+    alle = {**ERWARTETE_METHODEN, **geld.METHODEN}
     assert set(qa.GELD_FACETTEN) == set(qa._GELD_BAUSTEINE)
-    assert set(qa.GELD_FACETTEN) == set(ERWARTETE_METHODEN)
-    for methode in ERWARTETE_METHODEN.values():
+    assert set(qa.GELD_FACETTEN) == set(alle)
+    for methode in alle.values():
         assert callable(getattr(CouncilStore, methode)), methode
-        assert hasattr(_MessStore, methode), methode
+        assert hasattr(_MessStore(), methode), methode
 
 
 def test_wortstamm_faltet_umlaute_und_kappt():
@@ -1284,13 +1315,13 @@ def _messlauf() -> int:
     print(kopf)
     print("-" * len(kopf))
     abweichungen = 0
-    for frage, erwartet_typ, erwartete_facetten in KORPUS:
-        analyse = qa.analyse_query(frage)
-        typ = analyse["typ"]
-        facetten = qa.geld_facetten(analyse["frage"], typ)
+    for question, erwartet_typ, erwartete_facetten in KORPUS:
+        analyse = qa.analyse_query(question)
+        typ = analyse["kind"]
+        facetten = qa.geld_facetten(analyse["question"], typ)
         passt = facetten == erwartete_facetten
         abweichungen += 0 if passt else 1
-        print(f"{frage[:52]:52} {typ:12} {erwartet_typ:10} "
+        print(f"{question[:52]:52} {typ:12} {erwartet_typ:10} "
               f"{'OK ' if passt else 'ABW'} {sorted(facetten)}")
     print(f"\n{len(KORPUS) - abweichungen}/{len(KORPUS)} Fälle mit den erwarteten Quellen.")
     return 1 if abweichungen else 0
@@ -1314,34 +1345,34 @@ def test_schuldenblock_nennt_alle_drei_abgrenzungen(tmp_path):
     Der Test hält außerdem die SPALTENNAMEN fest. Beide Abfragen stehen hinter
     einem `except sqlite3.OperationalError` — ein Tippfehler im Spaltennamen
     fiele sonst nie auf, sondern ließe die Zahl einfach weg (genau so passiert:
-    `betrag` statt `insgesamt`).
+    `amount` statt `total`).
     """
     from council import qa
     from council.store import CouncilStore
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    c.execute("INSERT INTO council_schulden (jahr, insgesamt, je_einwohner, fetched_at) "
+    c.execute("INSERT INTO council_debt (year, total, per_capita, fetched_at) "
               "VALUES (2024, 294851000, 1673, '2026-08-18')")
-    c.execute("INSERT INTO council_bilanz (jahr, rolle, seite, ebene, bezeichnung, wert, "
-              " fetched_at) VALUES (2024, 'geldschulden', 'passiva', 2, 'Geldschulden', "
+    c.execute("INSERT INTO council_balance_sheet (year, role, page, level, label, value, "
+              " fetched_at) VALUES (2024, 'financial_liabilities', 'passiva', 2, 'Geldschulden', "
               " 43690972, '2026-08-18')")
-    c.execute("INSERT INTO council_integrierte_schulden (jahr, ars, insgesamt, proben, "
+    c.execute("INSERT INTO council_integrated_debt (year, ars, total, probes, "
               " fetched_at) VALUES (2024, '03403000', 740300000, '', '2026-08-18')")
-    c.execute("INSERT INTO council_buergschaften (jahr, bestand, genau, aus_folgejahr, "
-              " quelle, proben, fetched_at) "
+    c.execute("INSERT INTO council_buergschaften (year, balance, exact, out_next_year, "
+              " source, probes, fetched_at) "
               "VALUES (2024, 220300000, 1, 0, 'jahresabschluss', '', '2026-08-18')")
     c.commit()
 
     k = store.schulden_kontext()
-    arten = {w["art"]: w["betrag"] for w in k["weitere"]}
+    arten = {w["art"]: w["amount"] for w in k["weitere"]}
     assert arten["Kernhaushalt (nur Geldschulden)"] == 43_690_972
     assert arten["Konzern Stadt (anteilig, mit Beteiligungen)"] == 740_300_000
-    assert k["buergschaften"]["bestand"] == 220_300_000
+    assert k["buergschaften"]["balance"] == 220_300_000
 
     text = qa._schulden_block(k)
-    for betrag in ("294.851.000", "43.690.972", "740.300.000", "220.300.000"):
-        assert betrag in text, betrag
+    for amount in ("294.851.000", "43.690.972", "740.300.000", "220.300.000"):
+        assert amount in text, amount
     # Und die Regel, ohne die drei Zahlen nebeneinander gefährlich sind.
     assert "NIE addieren" in text
     assert "KEINE Schuld" in text
@@ -1362,17 +1393,17 @@ def test_buergschaftsfragen_ziehen_die_schuldenquelle_ohne_oldenburg_zu_fangen()
     """
     from council import qa
 
-    for frage in ("Wofür bürgt die Stadt Oldenburg?",
+    for question in ("Wofür bürgt die Stadt Oldenburg?",
                   "Wie hoch ist der Bürgschaftsbestand?",
                   "Für welche Kredite hat die Stadt sich verbürgt?",
                   "Welche Eventualverbindlichkeiten hat die Stadt?"):
-        assert "schulden" in qa.geld_facetten(frage), frage
+        assert "schulden" in qa.geld_facetten(question), question
 
-    for frage in ("Wie viele Bürgerinnen und Bürger hat Oldenburg?",
+    for question in ("Wie viele Bürgerinnen und Bürger hat Oldenburg?",
                   "Wie ist der Stand beim Bürgerbegehren?",
                   "Was ist in Oldenburg mit dem Stadion?",
                   "Wie viele Einwohner hat Oldenburg?"):
-        assert "schulden" not in qa.geld_facetten(frage), frage
+        assert "schulden" not in qa.geld_facetten(question), question
 
 
 def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
@@ -1390,31 +1421,31 @@ def test_geld_grafik_liefert_rohreihen_aus_dem_store(tmp_path):
 
     store = CouncilStore(str(tmp_path / "c.sqlite"))
     c = store._conn                                       # noqa: SLF001
-    for jahr, betrag in ((1995, 190_000_000), (2024, 294_851_000), (2025, 336_994_000)):
-        c.execute("INSERT INTO council_schulden (jahr, insgesamt, fetched_at) "
-                  "VALUES (?, ?, '2026-08-18')", (jahr, betrag))
-    for jahr, betrag in ((1998, 80_000_000), (2025, 222_100_000)):
-        c.execute("INSERT INTO council_steuern (jahr, art, betrag, fetched_at) "
+    for year, amount in ((1995, 190_000_000), (2024, 294_851_000), (2025, 336_994_000)):
+        c.execute("INSERT INTO council_debt (year, total, fetched_at) "
+                  "VALUES (?, ?, '2026-08-18')", (year, amount))
+    for year, amount in ((1998, 80_000_000), (2025, 222_100_000)):
+        c.execute("INSERT INTO council_taxes (year, kind, amount, fetched_at) "
                   "VALUES (?, 'Gewerbesteuer (-umlage)', ?, '2026-08-18')",
-                  (jahr, betrag))
+                  (year, amount))
     c.commit()
 
     geld = qa.geld_kontext(store, "Wie hoch sind die Schulden der Stadt?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "schulden"
-    assert [p["jahr"] for p in g["reihe"]] == [1995, 2024, 2025]
-    assert g["reihe"][-1]["wert"] == 337.0            # Mio, gerundet
-    assert g["einheit"] == "Mio. €"
-    assert g["hinweis"], "Die Abgrenzung reist mit der Grafik"
+    assert g and g["kind"] == "schulden"
+    assert [p["year"] for p in g["series"]] == [1995, 2024, 2025]
+    assert g["series"][-1]["value"] == 337.0            # Mio, gerundet
+    assert g["unit"] == "Mio. €"
+    assert g["note"], "Die Abgrenzung reist mit der Grafik"
 
     geld = qa.geld_kontext(store, "Wie hoch sind Schulden und Gewerbesteuer?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "schulden", "Bei beiden gewinnt der Bestand"
+    assert g and g["kind"] == "schulden", "Bei beiden gewinnt der Bestand"
 
     geld = qa.geld_kontext(store, "Wie hat sich die Gewerbesteuer entwickelt?")
     g = qa.geld_grafik(store, geld)
-    assert g and g["art"] == "steuern"
-    assert g["reihe"][-1]["wert"] == 222.1
+    assert g and g["kind"] == "taxes"
+    assert g["series"][-1]["value"] == 222.1
 
     leer = CouncilStore(str(tmp_path / "leer.sqlite"))
     geld = qa.geld_kontext(leer, "Wie hoch sind die Schulden der Stadt?")
@@ -1436,23 +1467,23 @@ def test_grafik_pruefung_am_share_snapshot():
     sys.path.insert(0, "web/backend")
     from app.routers.council import _grafik_pruefen
 
-    gut = {"art": "schulden", "titel": "Schuldenstand", "einheit": "Mio. €",
-           "nachkomma": 1, "reihe": [{"jahr": 1995, "wert": 190.0},
-                                     {"jahr": 2025, "wert": 337.0}],
-           "hinweis": "Stadt als Rechtsträger", "quelle": "Jahrbuch 1108"}
+    gut = {"kind": "schulden", "title": "Schuldenstand", "unit": "Mio. €",
+           "nachkomma": 1, "series": [{"year": 1995, "value": 190.0},
+                                     {"year": 2025, "value": 337.0}],
+           "note": "Stadt als Rechtsträger", "source": "Jahrbuch 1108"}
     geprueft = _grafik_pruefen(gut)
-    assert geprueft and geprueft["reihe"] == gut["reihe"]
+    assert geprueft and geprueft["series"] == gut["series"]
 
     # Fremde Felder fallen weg, statt ausgeliefert zu werden.
     assert "boese" not in (_grafik_pruefen({**gut, "boese": "<script>"}) or {})
     # Kaputte Reihen: lieber keine Grafik als eine erfundene.
-    assert _grafik_pruefen({**gut, "reihe": [{"jahr": "x", "wert": 1}]}) is None
-    assert _grafik_pruefen({**gut, "reihe": [{"jahr": 2025, "wert": 337.0}]}) is None
+    assert _grafik_pruefen({**gut, "series": [{"year": "x", "value": 1}]}) is None
+    assert _grafik_pruefen({**gut, "series": [{"year": 2025, "value": 337.0}]}) is None
     assert _grafik_pruefen("kein dict") is None
     assert _grafik_pruefen(None) is None
     # Längen werden gekappt — der Snapshot ist kein Blob-Speicher.
-    lang = _grafik_pruefen({**gut, "titel": "x" * 999})
-    assert lang and len(lang["titel"]) == 120
+    lang = _grafik_pruefen({**gut, "title": "x" * 999})
+    assert lang and len(lang["title"]) == 120
 
     # Der „Mehr dazu"-Link: NUR relative Ziele in den Haushalts-Bereich.
     # Der Snapshot ist öffentlich — ein durchgereichtes href wäre sonst ein

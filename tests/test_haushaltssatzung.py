@@ -15,7 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from council.haushaltssatzung import (  # noqa: E402
+from council.budget_bylaw import (  # noqa: E402
     PROBE_FINANZHAUSHALT,
     PROBE_HEBESATZ,
     SatzungFehler,
@@ -92,10 +92,10 @@ def test_die_satzung_prueft_sich_selbst():
     Das ist der einzige Grund, dass diese Schicht ohne Zweitquelle auskommt:
     Zwei unabhängig gesetzte Stellen desselben Dokuments."""
     s = parse_satzung(SATZUNG_2024)
-    assert s.ein_laufend + s.ein_invest + s.ein_finanz == s.ein_gesamt
-    assert s.aus_laufend + s.aus_invest + s.aus_finanz == s.aus_gesamt
-    assert s.ein_gesamt == 696_646_544.0
-    assert s.aus_gesamt == 785_265_003.0
+    assert s.in_operating + s.in_capital + s.in_financing == s.in_total
+    assert s.out_operating + s.out_capital + s.out_financing == s.out_total
+    assert s.in_total == 696_646_544.0
+    assert s.out_total == 785_265_003.0
 
 
 def test_eine_verstellte_zahl_faellt_durch():
@@ -127,8 +127,8 @@ def test_jede_satzung_im_ris_ist_ein_entwurf():
     Sitzungsdatum. Wer das wegließe, machte aus einem Vorschlag der Verwaltung
     einen Ratsbeschluss."""
     s = parse_satzung(SATZUNG_2024)
-    assert s.fassung == "entwurf"
-    assert s.sitzung_am is None, "„xx.xx.2023“ ist kein Datum"
+    assert s.version == "draft"
+    assert s.session_date is None, "„xx.xx.2023“ ist kein Datum"
 
 
 def test_ohne_entwurfsvermerk_heisst_es_unbekannt_und_nicht_beschlossen():
@@ -137,19 +137,19 @@ def test_ohne_entwurfsvermerk_heisst_es_unbekannt_und_nicht_beschlossen():
     neutral = (SATZUNG_2024.replace("Verwaltungsentwurf", "")
                            .replace("xx.xx.2023", "15.12.2023"))
     s = parse_satzung(neutral)
-    assert s.fassung == "unbekannt"
-    assert s.sitzung_am == "15.12.2023"
+    assert s.version == "unknown"
+    assert s.session_date == "15.12.2023"
 
 
 def test_die_herkunft_nennt_die_fassung_im_stand():
     """Die Fassung gehört in den Stand und nicht in eine Fußnote."""
     s = parse_satzung(SATZUNG_2024)
-    h = herkunft_fuer(s, url=None, dokument_id=271310, label="Haushaltssatzung 2024")
-    assert "Verwaltungsentwurf" in h.stand
+    h = herkunft_fuer(s, url=None, document_id=271310, label="Haushaltssatzung 2024")
+    assert "Verwaltungsentwurf" in h.as_of
     assert PROBE_FINANZHAUSHALT in h.probe
     assert PROBE_HEBESATZ not in h.probe, "ohne Jahrbuch-Abgleich keine Hebesatz-Probe"
 
-    mit = herkunft_fuer(s, url=None, dokument_id=271310, label="x",
+    mit = herkunft_fuer(s, url=None, document_id=271310, label="x",
                         hebesatz_geprueft="Hebesatz gegen Tabelle 1105 gehalten")
     assert PROBE_HEBESATZ in mit.probe
 
@@ -165,15 +165,15 @@ def test_EUR_statt_Euro():
     Muster, das nur „Euro" kennt, findet dort einfach nichts und meldet keinen
     Fehler, sondern eine fehlende Zeile."""
     s = parse_satzung(SATZUNG_2020_EUR)
-    assert s.jahr == 2020
-    assert s.ein_gesamt == 696_646_544.0
+    assert s.year == 2020
+    assert s.in_total == 696_646_544.0
 
 
 def test_kredite_nicht_veranschlagt_ist_eine_null_und_keine_luecke():
     """§ 2 sagt in jedem gelesenen Jahrgang „werden nicht veranschlagt".
     Das ist eine Aussage — die Stadt nimmt keine Investitionskredite auf."""
     s = parse_satzung(SATZUNG_2024)
-    assert s.kredite_investitionen == 0.0
+    assert s.investment_loans == 0.0
 
 
 def test_fehlende_grundsteuer_ist_keine_luecke_im_einlesen():
@@ -186,15 +186,15 @@ festgesetzt.
 Die Grundsteuerhebesätze sind der aktuellen Satzung der Stadt Oldenburg (Oldb) zu entnehmen.
 """
     s = parse_satzung(ab2025)
-    assert s.hebesatz_gewerbesteuer == 439
-    assert s.hebesatz_grundsteuer_a is None
-    assert s.hebesatz_grundsteuer_b is None
+    assert s.trade_tax_rate == 439
+    assert s.property_tax_a_rate is None
+    assert s.property_tax_b_rate is None
 
 
 def test_hebesaetze_werden_gelesen():
     s = parse_satzung(SATZUNG_2024)
-    assert (s.hebesatz_grundsteuer_a, s.hebesatz_grundsteuer_b,
-            s.hebesatz_gewerbesteuer) == (390, 445, 439)
+    assert (s.property_tax_a_rate, s.property_tax_b_rate,
+            s.trade_tax_rate) == (390, 445, 439)
 
 
 # --------------------------------------------------------------------------
@@ -227,15 +227,15 @@ def test_speichern_und_wiederlesen(tmp_path):
     try:
         s = parse_satzung(SATZUNG_2024)
         store.save_haushaltssatzung(s, herkunft_fuer(
-            s, url=None, dokument_id=271310, label="Haushaltssatzung 2024"))
+            s, url=None, document_id=271310, label="Haushaltssatzung 2024"))
         zeilen = store.get_haushaltssatzungen()
         assert len(zeilen) == 1
         z = zeilen[0]
-        assert z["jahr"] == 2024 and z["fassung"] == "entwurf"
-        assert z["liquiditaetskredite"] == 100_000_000.0
-        assert z["kredite_investitionen"] == 0.0
+        assert z["year"] == 2024 and z["version"] == "draft"
+        assert z["liquidity_loans"] == 100_000_000.0
+        assert z["investment_loans"] == 0.0
         assert store.haushaltssatzung_jahre() == [2024]
-        assert "council_haushaltssatzung" not in store.herkunft_luecken()
+        assert "council_budget_bylaw" not in store.herkunft_luecken()
     finally:
         store.close()
 
@@ -251,7 +251,7 @@ def test_derselbe_jahrgang_zweimal_gibt_eine_zeile(tmp_path):
         s = parse_satzung(SATZUNG_2024)
         for dokument in (229865, 230043):
             store.save_haushaltssatzung(s, herkunft_fuer(
-                s, url=None, dokument_id=dokument, label="Haushaltssatzung"))
+                s, url=None, document_id=dokument, label="Haushaltssatzung"))
         assert len(store.get_haushaltssatzungen()) == 1
     finally:
         store.close()

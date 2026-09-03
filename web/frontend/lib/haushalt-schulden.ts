@@ -5,41 +5,41 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type SchuldenJahr = {
-  jahr: number;
+  year: number;
   /** Die vier Schuldenarten in Euro. `null`, wo die Aufteilung an ihrer Probe
-   *  gescheitert ist — dann steht in `aufteilung_verworfen`, wie groß die
+   *  gescheitert ist — dann steht in `breakdown_rejected`, wie groß die
    *  Lücke war. Die Summe daneben bleibt trotzdem gültig. */
-  kreditmarkt: number | null;
-  sondermittel: number | null;
-  gebietskoerperschaften: number | null;
-  eigenbetriebe: number | null;
-  insgesamt: number;
+  credit_market: number | null;
+  special_funds: number | null;
+  public_authorities: number | null;
+  municipal_enterprises: number | null;
+  total: number;
   /** Betrag je Einwohner*in — die Angabe DER QUELLE, nicht unsere Division. */
-  je_einwohner: number | null;
-  aufteilung_verworfen: number | null;
+  per_capita: number | null;
+  breakdown_rejected: number | null;
   /** Die Quelle hat diesen Jahrgang nachträglich korrigiert („r"). */
-  revidiert: number;
+  revised: number;
   herkunft_id: number | null;
 };
 
 /** Ein Ratsbeschluss zu einer Bürgschaft. */
 export type BuergschaftsVorlage = {
-  vorlage_nr: string;
+  template_number: string;
   title: string;
   document_url: string | null;
   /** Datum der jüngsten Beratung; `null`, solange keine Sitzung verknüpft ist. */
-  datum: string | null;
+  date: string | null;
   /** Zeigt auf die vorhandene Beschluss-Seite. */
-  beschluss_id: number | null;
+  decision_id: number | null;
 };
 
 export type SchuldenDaten = {
-  reihe: SchuldenJahr[];
-  jahre: number[];
+  series: SchuldenJahr[];
+  years: number[];
   /** Was diese Zahlen zählen — kommt aus `council/schulden.py`, damit
    *  Oberfläche und Datenbank dieselbe Auskunft geben. */
-  abgrenzung: string;
-  arten: { feld: string; titel: string }[];
+  scope_note: string;
+  column_kinds: { field: string; title: string }[];
   /** Was der Schuldenstand im Jahr kostet: Posten 17 der Ergebnisrechnung
    *  („Zinsen und ähnliche Aufwendungen"), also Ist aus dem Jahresabschluss —
    *  nicht aus dem Jahrbuch, aus dem der Bestand kommt.
@@ -49,7 +49,7 @@ export type SchuldenDaten = {
    *  keinem Dokument steht.
    *
    *  Leer, solange kein Jahresabschluss eingelesen ist. */
-  zinslast: { jahr: number; aufwand: number; herkunft_id: number | null }[];
+  interest_expense: { year: number; expense: number; herkunft_id: number | null }[];
   /** Wofür die Stadt geradesteht — die zweite, größere Zahl dieser Seite.
    *
    *  Sie ist **keine Schuld**: eine Bürgschaft wird nur fällig, wenn die
@@ -57,63 +57,63 @@ export type SchuldenDaten = {
    *  zusammen, und keine darf allein stehen — das Volumen (2024: 220,3 Mio.),
    *  die eigenen Geldschulden daneben (43,7 Mio.) und die Rückstellung für
    *  den erwarteten Ausfall (1,3 Mio.). */
-  buergschaften?: {
-    reihe: Buergschaft[];
+  guarantees?: {
+    series: Buergschaft[];
     /** Bilanzposten 3.7 je Jahr — nur 2021–2024 im Bestand; die früheren
      *  Abschlüsse gliedern die Rückstellungen anders. */
-    rueckstellung: { jahr: number; wert: number | null; herkunft_id: number | null }[];
-    geldschulden: { jahr: number; wert: number | null; herkunft_id: number | null }[];
-    abgrenzung: string;
+    provision: { year: number; value: number | null; herkunft_id: number | null }[];
+    financial_debt: { year: number; value: number | null; herkunft_id: number | null }[];
+    scope_note: string;
     /** Die Ratsbeschlüsse hinter dem Bestand — die GESCHICHTE, nicht die Summe.
      *
      *  Diese Beträge dürfen **nie addiert** werden, und die Liste zeigt selbst
      *  warum: „Verlängerung Ausfallbürgschaft … über 300.000 Euro für die
      *  Volkshochschule" ist dieselbe Bürgschaft wie zwei Jahre zuvor,
      *  „Anpassung … Weser-Ems Halle" ändert eine bestehende. Was der Bestand
-     *  ist, sagt allein der Jahresabschluss (`reihe`). */
-    vorlagen?: BuergschaftsVorlage[];
+     *  ist, sagt allein der Jahresabschluss (`series`). */
+    templates?: BuergschaftsVorlage[];
   };
   /** Die dritte Schuldenzahl — was der ganze „Konzern Stadt" anteilig
    *  schuldet. `null`, solange der Tabellenband nicht eingelesen ist.
    *
    *  **Nur ein Stichtag, nie eine Kurve.** Der Berichtskreis wechselt zwischen
    *  den Ausgaben; die Quelle rät selbst davon ab, Jahrgänge zu vergleichen.
-   *  `anteil_unter_50` kommt gerechnet aus dem Backend und ist keine
+   *  `share_below_50` kommt gerechnet aus dem Backend und ist keine
    *  Nebensache: Er sagt, welcher Teil der Summe aus Unternehmen stammt, für
    *  die die Stadt nicht haftet (2024: 58 %). */
-  integrierte_schulden?: {
-    stichtag: {
-      jahr: number; insgesamt: number; je_einwohner: number | null;
-      kernhaushalt: number | null; extrahaushalte: number | null;
-      sonstige: number | null; bevoelkerung: number | null;
-      veraenderung: number | null; herkunft_id: number | null;
+  integrated_debt?: {
+    as_of_date: {
+      year: number; total: number; per_capita: number | null;
+      core_budget: number | null; extra_budgets: number | null;
+      other: number | null; population: number | null;
+      change: number | null; herkunft_id: number | null;
     };
-    anteil_unter_50: number | null;
-    abgrenzung: string;
-    keine_reihe: string;
+    share_below_50: number | null;
+    scope_note: string;
+    no_series_note: string;
   } | null;
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 /** Ein Jahr Bürgschaftsbestand — mit zwei Angaben über seinen Beleg.
  *
- *  `genau` unterscheidet die beiden Darreichungsformen der Quelle: 2019/2020
+ *  `exact` unterscheidet die beiden Darreichungsformen der Quelle: 2019/2020
  *  stehen auf den Cent in einer Tabelle, ab 2022 nennt der Anhang nur noch
- *  gerundete Millionen. `aus_folgejahr` trifft genau ein Jahr — 2021 nennt
+ *  gerundete Millionen. `out_next_year` trifft genau ein Jahr — 2021 nennt
  *  seinen eigenen Bestand nicht, die Zahl steht nur im Abschluss von 2022.
  *  Beides gehört an die Anzeige, sonst sehen sechs verschieden belegte
  *  Jahrgänge gleich aus. */
 export type Buergschaft = {
-  jahr: number;
-  bestand: number;
-  genau: boolean;
-  aus_folgejahr: boolean;
-  quelle: string;
+  year: number;
+  balance: number;
+  exact: boolean;
+  out_next_year: boolean;
+  source: string;
   /** Die Begründung im Wortlaut der Stadt, wo das Dokument eine nennt. */
-  grund: string | null;
+  reason: string | null;
   /** Die im Grund genannte Einzelzahl — 2022 die 135,9 Mio. fürs Klinikum. */
-  einzelbetrag: number | null;
-  proben: string[];
+  single_amount: number | null;
+  probes: string[];
   herkunft_id: number | null;
 };
 
@@ -123,8 +123,8 @@ export type Buergschaft = {
  *  Jahresabschlüsse enden früher. Wer beide Reihen am selben Jahr aufhängt,
  *  zeigt für die Zinsen dauerhaft nichts. */
 export function juengsteZinslast(daten: SchuldenDaten | null) {
-  const reihe = daten?.zinslast ?? [];
-  return reihe.length ? reihe[reihe.length - 1] : null;
+  const series = daten?.interest_expense ?? [];
+  return series.length ? series[series.length - 1] : null;
 }
 
 // Die Suche stand hier bis zum 21.08.2026 als eigene Fassung — eine von neun
@@ -141,19 +141,19 @@ export { herkunftVon } from "@/lib/haushalt";
  *  gewachsen. Nur die absolute Reihe zu zeigen hieße, das Wachstum der Stadt
  *  als Schuldenaufbau zu lesen; nur die Pro-Kopf-Reihe zu zeigen, den
  *  absoluten Anstieg zu verschweigen. */
-export type Ansicht = "insgesamt" | "je_einwohner";
+export type Ansicht = "total" | "per_capita";
 
-export type Punkt = { jahr: number; wert: number };
+export type Punkt = { year: number; value: number };
 
-export function punkte(reihe: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
-  return reihe
+export function punkte(series: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
+  return series
     .map((z) => ({
-      jahr: z.jahr,
+      year: z.year,
       // Absolutbeträge in Mio., Pro-Kopf-Beträge in Euro — sonst stünde die
       // eine Reihe bei 337 und die andere bei 0,0019.
-      wert: ansicht === "insgesamt" ? z.insgesamt / 1e6 : (z.je_einwohner ?? NaN),
+      value: ansicht === "total" ? z.total / 1e6 : (z.per_capita ?? NaN),
     }))
-    .filter((p) => Number.isFinite(p.wert));
+    .filter((p) => Number.isFinite(p.value));
 }
 
 /** Der Kernhaushalt: alles außer den Eigenbetrieben.
@@ -164,28 +164,28 @@ export function punkte(reihe: SchuldenJahr[], ansicht: Ansicht): Punkt[] {
  *  die Trennung erklärt aber den Sprung von 2010, als die Stadt einen
  *  Eigenbetrieb gründete und 108,9 Mio. € Kredite dorthin übertrug.
  *  `null`, wo die Aufteilung nicht belegt ist. */
-export function kernhaushalt(z: SchuldenJahr): number | null {
-  if (z.kreditmarkt == null) return null;
-  return z.kreditmarkt + (z.sondermittel ?? 0) + (z.gebietskoerperschaften ?? 0);
+export function core_budget(z: SchuldenJahr): number | null {
+  if (z.credit_market == null) return null;
+  return z.credit_market + (z.special_funds ?? 0) + (z.public_authorities ?? 0);
 }
 
-export type Aufteilung = { jahr: number; kern: number; eigenbetriebe: number };
+export type Aufteilung = { year: number; kern: number; municipal_enterprises: number };
 
 /** Nur die Jahre, für die eine belegte Aufteilung vorliegt. */
-export function aufteilungen(reihe: SchuldenJahr[]): Aufteilung[] {
+export function aufteilungen(series: SchuldenJahr[]): Aufteilung[] {
   const aus: Aufteilung[] = [];
-  for (const z of reihe) {
-    const kern = kernhaushalt(z);
-    if (kern == null || z.eigenbetriebe == null) continue;
-    aus.push({ jahr: z.jahr, kern, eigenbetriebe: z.eigenbetriebe });
+  for (const z of series) {
+    const kern = core_budget(z);
+    if (kern == null || z.municipal_enterprises == null) continue;
+    aus.push({ year: z.year, kern, municipal_enterprises: z.municipal_enterprises });
   }
   return aus;
 }
 
 /** Die Jahre ohne belegte Aufteilung — die Seite benennt sie, statt einen
  *  leeren Balken unkommentiert zu lassen. */
-export function ohneAufteilung(reihe: SchuldenJahr[]): SchuldenJahr[] {
-  return reihe.filter((z) => z.aufteilung_verworfen != null);
+export function ohneAufteilung(series: SchuldenJahr[]): SchuldenJahr[] {
+  return series.filter((z) => z.breakdown_rejected != null);
 }
 
 /** Die größte Veränderung von einem Jahr aufs nächste — aus den Daten
@@ -193,13 +193,13 @@ export function ohneAufteilung(reihe: SchuldenJahr[]): SchuldenJahr[] {
  *  gesucht wird. */
 export function groessterSprung(
   p: Punkt[], richtung: "rauf" | "runter",
-): { jahr: number; delta: number } | null {
-  let treffer: { jahr: number; delta: number } | null = null;
+): { year: number; delta: number } | null {
+  let treffer: { year: number; delta: number } | null = null;
   for (let i = 1; i < p.length; i++) {
-    const delta = p[i].wert - p[i - 1].wert;
+    const delta = p[i].value - p[i - 1].value;
     if (richtung === "runter" ? delta >= 0 : delta <= 0) continue;
     if (!treffer || Math.abs(delta) > Math.abs(treffer.delta)) {
-      treffer = { jahr: p[i].jahr, delta };
+      treffer = { year: p[i].year, delta };
     }
   }
   return treffer;

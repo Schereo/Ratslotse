@@ -59,21 +59,21 @@ def test_fehlbetrag_ohne_minus_wird_negativ():
 
     Das Wort trägt die Richtung, nicht die Ziffernfolge. Wer beides gleich
     liest, macht aus einem Verlust einen Gewinn."""
-    wort, betrag = kernzahl_aus_beschluss(TEXT_STADION)
+    wort, amount = kernzahl_aus_beschluss(TEXT_STADION)
     assert "Fehlbetrag" in wort
-    assert betrag == -651_500.0
+    assert amount == -651_500.0
 
 
 def test_fehlbetrag_mit_minus_wird_nicht_doppelt_gedreht():
-    wort, betrag = kernzahl_aus_beschluss(TEXT_BBGO)
-    assert betrag == -10_128_335.0, "nicht +10.128.335 durch doppelte Negation"
+    wort, amount = kernzahl_aus_beschluss(TEXT_BBGO)
+    assert amount == -10_128_335.0, "nicht +10.128.335 durch doppelte Negation"
 
 
 def test_ausgeglichener_plan_ist_null_und_nicht_minus_null():
     """`-abs(0.0)` wäre `-0.0` und stünde als „-0,00 €" auf der Seite."""
-    _, betrag = kernzahl_aus_beschluss(TEXT_BBO)
-    assert betrag == 0.0
-    assert str(betrag) == "0.0"
+    _, amount = kernzahl_aus_beschluss(TEXT_BBO)
+    assert amount == 0.0
+    assert str(amount) == "0.0"
 
 
 def test_ueberschuss_mit_negativem_betrag_wirft():
@@ -93,8 +93,8 @@ def test_ueberschuss_mit_negativem_betrag_wirft():
 def test_zahl_aus_dem_beschluss_steht_in_der_anlage():
     plan, wort, lage = parse_kernzahl(
         "25/0819", TITEL_BBGO, TEXT_BBGO, 2026, [ANLAGE_BBGO])
-    assert plan.betrieb == "bbgo"
-    assert plan.ergebnis == -10_128_335.0
+    assert plan.enterprise == "bbgo"
+    assert plan.result == -10_128_335.0
     assert lage == "belegt"
 
 
@@ -102,8 +102,8 @@ def test_nur_das_ergebnis_kommt_aus_dieser_quelle():
     """Erträge und Aufwendungen bleiben NULL — die Quelle nennt sie nicht, und
     eine 0 wäre eine Behauptung."""
     plan, _, _ = parse_kernzahl("25/0819", TITEL_BBGO, TEXT_BBGO, 2026, [ANLAGE_BBGO])
-    assert plan.ertraege is None and plan.aufwendungen is None
-    assert plan.ergebnis is not None
+    assert plan.revenues is None and plan.expenses is None
+    assert plan.result is not None
 
 
 def test_widerspruch_zwischen_beschluss_und_anlage_wirft():
@@ -118,7 +118,7 @@ def test_ohne_anlagentext_wird_uebernommen_aber_angeschrieben():
     """Keine lesbare Anlage ist KEIN Widerspruch — der Beschlusstext bleibt die
     maßgebliche Stelle, aber die Herkunft sagt, dass die Gegenprobe fehlte."""
     plan, _, lage = parse_kernzahl("23/0858", TITEL_STADION, TEXT_STADION, 2026, [])
-    assert plan.ergebnis == -651_500.0
+    assert plan.result == -651_500.0
     assert lage == "ohne_anlage"
 
 
@@ -127,7 +127,7 @@ def test_null_gilt_als_nicht_gegenpruefbar():
     nichts, und deshalb ist das eine eigene Lage."""
     plan, _, lage = parse_kernzahl("25/0818", TITEL_BBO, TEXT_BBO, 2026,
                                    ["irgendein Text mit 0 darin"])
-    assert plan.ergebnis == 0.0
+    assert plan.result == 0.0
     assert lage == "ausgeglichen"
 
 
@@ -146,7 +146,7 @@ def test_die_anlage_darf_die_zahl_verklebt_fuehren():
 def test_planungsgesellschaft_und_betriebsgesellschaft_sind_zwei():
     """2024 legen BEIDE einen Wirtschaftsplan vor (−152.000 € und −190.000 €).
     Ein gemeinsames Muster „Stadion" schrieb den einen Betrag unter den Namen
-    der anderen — und die Tabelle hätte es nie gemerkt, weil (betrieb, jahr)
+    der anderen — und die Tabelle hätte es nie gemerkt, weil (betrieb, year)
     der Schlüssel ist."""
     assert betrieb_aus_titel(
         "Stadionplanungsgesellschaft mbH: Wirtschaftsplan 2024")[0] == "stadion_planung"
@@ -167,8 +167,8 @@ def test_die_herkunft_nennt_die_beleglage():
     plan, wort, lage = parse_kernzahl(
         "25/0819", TITEL_BBGO, TEXT_BBGO, 2026, [ANLAGE_BBGO])
     h = herkunft_fuer(plan, wort, lage, url=None, kvonr=28315)
-    assert "wirtschaftsplan_kernzahl" in h.probe
-    assert "in der Anlage" in h.probe_ergebnis
+    assert "business_plan_key_figure" in h.probe
+    assert "in der Anlage" in h.probe_result
     assert "kvonr=28315" in h.url
 
 
@@ -184,9 +184,9 @@ def test_zeile_ohne_ertraege_laesst_sich_speichern(tmp_path):
             plan, wort, lage, url=None, kvonr=28315))
         zeilen = store.get_wirtschaftsplaene("bbgo")
         assert len(zeilen) == 1
-        assert zeilen[0]["ertraege"] is None
-        assert zeilen[0]["ergebnis"] == -10_128_335.0
-        assert "council_wirtschaftsplaene" not in store.herkunft_luecken()
+        assert zeilen[0]["revenues"] is None
+        assert zeilen[0]["result"] == -10_128_335.0
+        assert "council_business_plans" not in store.herkunft_luecken()
     finally:
         store.close()
 
@@ -218,9 +218,9 @@ def test_verlust_ist_ein_minus():
     """Der Hafen schreibt weder „Fehlbetrag" noch „Überschuss". Ohne dieses
     Wort blieben seine beiden einzigen Jahrgänge draußen — und zwar lautlos:
     Die Vorlage wäre nie erkannt worden, es hätte nie einen Fehler gegeben."""
-    wort, betrag = kernzahl_aus_beschluss(TEXT_HAFEN)
+    wort, amount = kernzahl_aus_beschluss(TEXT_HAFEN)
     assert wort.lower() == "verlust"
-    assert betrag == -273_950.0
+    assert amount == -273_950.0
 
 
 def test_die_einheit_darf_auch_EUR_heissen():
@@ -231,9 +231,9 @@ def test_die_einheit_darf_auch_EUR_heissen():
 def test_hafen_ist_zweifach_belegt():
     plan, wort, lage = parse_kernzahl("18/0790", TITEL_HAFEN, TEXT_HAFEN, 2019,
                                       [ANLAGE_HAFEN])
-    assert plan.betrieb == "hafen"
-    assert plan.betrieb_name == "Eigenbetrieb Hafen der Stadt Oldenburg"
-    assert plan.ergebnis == -273_950.0
+    assert plan.enterprise == "hafen"
+    assert plan.enterprise_name == "Eigenbetrieb Hafen der Stadt Oldenburg"
+    assert plan.result == -273_950.0
     assert lage == "belegt"
 
 
@@ -242,9 +242,9 @@ def test_gewinn_bleibt_positiv():
     Zahl ins Minus, die zufällig neben einem dieser Wörter steht."""
     text = TEXT_HAFEN.replace("ein Verlust von 273.950 EUR",
                               "ein Gewinn von 273.950 EUR")
-    wort, betrag = kernzahl_aus_beschluss(text)
+    wort, amount = kernzahl_aus_beschluss(text)
     assert wort.lower() == "gewinn"
-    assert betrag == 273_950.0
+    assert amount == 273_950.0
 
 
 # ---------------------------------------------------------------------------
@@ -321,10 +321,10 @@ def test_probe_haengt_nur_dran_wo_sie_lief():
 
     def plan(investitionen):
         return Wirtschaftsplan(
-            betrieb="bbo", betrieb_name="Bäderbetrieb der Stadt Oldenburg",
-            jahr=2026, vorlage_nr="25/0818/1", ertraege=None, aufwendungen=None,
-            steuern=None, ergebnis=0.0, vermoegensplan=None,
-            verpflichtungen=None, entwurf_vom=None, investitionen=investitionen)
+            enterprise="bbo", enterprise_name="Bäderbetrieb der Stadt Oldenburg",
+            year=2026, template_number="25/0818/1", revenues=None, expenses=None,
+            taxes=None, result=0.0, capital_plan=None,
+            commitments=None, draft_date=None, investments=investitionen)
 
     mit = herkunft_fuer(plan(10_752_000.0), "0,00 Euro", "ausgeglichen",
                         url=None, kvonr=1)

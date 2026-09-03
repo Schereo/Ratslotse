@@ -20,9 +20,13 @@ export function formatEuro(n: number): string {
  *  Q&A sources, "Ähnliche Beschlüsse" and goal decision lists. */
 export function DecisionLinkCard({ id, title, committee, session_date, field, leading, sub, score, amount }: {
   id: number;
-  title: string | null;
-  committee: string;
-  session_date: string;
+  title?: string | null;
+  // Fehlen dürfen: Ein Beschluss ohne Sitzung im Bestand trägt weder Gremium
+  // noch Datum, und das Themenfeld ist erst nach der Klassifikation da. Die
+  // Karte zeigt dann eben weniger — vorher stand hier `string`, und die
+  // Antwort schickte trotzdem `null`.
+  committee?: string | null;
+  session_date?: string | null;
   field?: string | null;
   leading?: React.ReactNode;
   sub?: string | null;
@@ -36,7 +40,13 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {field !== undefined && <FieldBadge field={field} />}
-            <span className="text-xs text-muted-foreground" title={committee}>{shortCommittee(committee)} · {formatDate(session_date)}</span>
+            {/* Gremium und Datum können fehlen — ein Beschluss ohne Sitzung im
+                Bestand hat beides nicht. Dann steht die Zeile eben leer, statt
+                „undefined" zu zeigen. */}
+            <span className="text-xs text-muted-foreground" title={committee ?? undefined}>
+              {[committee && shortCommittee(committee), session_date && formatDate(session_date)]
+                .filter(Boolean).join(" · ")}
+            </span>
             {score !== undefined && (
               <span className="rounded bg-muted px-1.5 text-xs font-medium tabular-nums text-muted-foreground" title="Ähnlichkeit zur Frage">
                 {Math.round(score * 100)}%
@@ -116,7 +126,7 @@ export function ImportanceBadge({ score, minShow = 55, className }: {
 
 const IMPORTANCE_SIGNAL_LABEL: Record<keyof ImportanceBreakdown["signals"], string> = {
   geld: "Geldbetrag", umstritten: "Umstrittenheit",
-  verbindlich: "Verbindlichkeit & Ebene", aufwand: "Beratungsaufwand",
+  verbindlich: "Verbindlichkeit & Ebene", expense: "Beratungsaufwand",
 };
 
 /** Ausführliche Wichtigkeits-Anzeige auf der Beschluss-Seite: Score + welche
@@ -228,16 +238,27 @@ export function ImportanceMeter({ score, signals, contributions, baseScore, impa
 }
 
 export const OUTCOME_META: Record<DecisionOutcome, { label: string; cls: string }> = {
-  angenommen: { label: "Angenommen", cls: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
-  abgelehnt: { label: "Abgelehnt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
-  vertagt: { label: "Vertagt", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-  zur_kenntnis: { label: "Zur Kenntnis", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
-  kein_beschluss: { label: "Kein Beschluss", cls: "bg-muted text-muted-foreground" },
+  accepted: { label: "Angenommen", cls: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300" },
+  rejected: { label: "Abgelehnt", cls: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+  postponed: { label: "Vertagt", cls: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
+  noted: { label: "Zur Kenntnis", cls: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
+  no_decision: { label: "Kein Beschluss", cls: "bg-muted text-muted-foreground" },
 };
 
-export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
+/** „einstimmig" bzw. „mehrheitlich" — der gespeicherte Wert ist englisch,
+ *  freie Protokoll-Formulierungen („einstimmig bei einer Enthaltung") stehen
+ *  so in der Quelle und kommen unverändert durch. */
+export const VOTE_LABEL: Record<string, string> = {
+  unanimous: "einstimmig", majority: "mehrheitlich",
+};
+
+export function voteLabel(vote: string | null | undefined): string {
+  return vote ? (VOTE_LABEL[vote] ?? vote) : "";
+}
+
+export function OutcomeBadge({ outcome }: { outcome?: DecisionOutcome | null }) {
   if (!outcome) return null;
-  const m = OUTCOME_META[outcome] ?? OUTCOME_META.kein_beschluss;
+  const m = OUTCOME_META[outcome] ?? OUTCOME_META.no_decision;
   return (
     <span className={cn("shrink-0 whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium", m.cls)}>
       {m.label}
@@ -249,19 +270,19 @@ export function OutcomeBadge({ outcome }: { outcome: DecisionOutcome | null }) {
 // Wort, nie Balken/Border") — das gefüllte Badge bleibt dem Detail-Kopf
 // vorbehalten. Farben exakt aus der Spec.
 const OUTCOME_DOT_CLS: Record<DecisionOutcome, string> = {
-  angenommen: "bg-[#22c55e]",
-  abgelehnt: "bg-[#ef4444]",
-  vertagt: "bg-[#f59e0b]",
-  zur_kenntnis: "bg-blue-500",
-  kein_beschluss: "bg-muted-foreground/50",
+  accepted: "bg-[#22c55e]",
+  rejected: "bg-[#ef4444]",
+  postponed: "bg-[#f59e0b]",
+  noted: "bg-blue-500",
+  no_decision: "bg-muted-foreground/50",
 };
 
 export function OutcomeDot({ outcome }: { outcome: DecisionOutcome | null }) {
   if (!outcome) return null;
-  const m = OUTCOME_META[outcome] ?? OUTCOME_META.kein_beschluss;
+  const m = OUTCOME_META[outcome] ?? OUTCOME_META.no_decision;
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground">
-      <span className={cn("h-[7px] w-[7px] rounded-full", OUTCOME_DOT_CLS[outcome] ?? OUTCOME_DOT_CLS.kein_beschluss)} aria-hidden />
+      <span className={cn("h-[7px] w-[7px] rounded-full", OUTCOME_DOT_CLS[outcome] ?? OUTCOME_DOT_CLS.no_decision)} aria-hidden />
       {m.label}
     </span>
   );
@@ -330,12 +351,12 @@ export function AffiliationBadge({
   label, kind, parties = [], className,
 }: {
   label: string;
-  kind: "partei" | "gruppe" | "parteilos";
+  kind: "party" | "group" | "independent";
   parties?: string[];
   className?: string;
 }) {
-  if (kind === "partei") return <PartyBadge party={label} className={className} />;
-  if (kind === "parteilos") {
+  if (kind === "party") return <PartyBadge party={label} className={className} />;
+  if (kind === "independent") {
     return (
       <span className={cn("inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground", className)}>
         parteilos
@@ -384,13 +405,13 @@ export function PartyAttendanceBadge({ party, n }: { party: string; n: number })
  *  den Antrag, red = dagegen — so the majority block is red for a rejected motion
  *  (its "Gegenstimmen" are then the outvoted minority that voted *for*). */
 export function VoteBar({ d, presentCount }: { d: CouncilDecision; presentCount?: number }) {
-  const gegen = d.gegenstimmen ?? 0;
-  const enth = d.enthaltungen ?? 0;
-  const rejected = d.outcome === "abgelehnt";
-  const deferred = d.outcome === "vertagt";
+  const gegen = d.no_votes ?? 0;
+  const enth = d.abstentions ?? 0;
+  const rejected = d.outcome === "rejected";
+  const deferred = d.outcome === "postponed";
   const majColor = rejected ? "bg-red-500/80" : deferred ? "bg-amber-500/80" : "bg-green-500/80";
   const dissentColor = rejected ? "bg-green-500/80" : "bg-red-500/80";
-  const unanimous = d.vote === "einstimmig" || (gegen === 0 && enth === 0);
+  const unanimous = d.vote === "unanimous" || (gegen === 0 && enth === 0);
 
   if (unanimous) {
     return (

@@ -52,17 +52,20 @@ import {
 import { PruefberichtDaten, wiederholungsketten } from "@/lib/haushalt-pruefung";
 import { Warum } from "@/components/haushalt/warum";
 import type { QuellenSchluessel } from "@/lib/haushalt-quellen";
-import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/quelle";
+import { Beleg, Quellenkontext, Quellenverzeichnis } from "@/components/haushalt/source";
 import { LottiErklaert } from "@/components/haushalt/lotti-erklaert";
-import { MarkePille } from "@/components/haushalt/marke";
+import { MarkePille } from "@/components/haushalt/mark";
 import { Hantel, HantelMassstab } from "@/components/grafik/hantel";
 import {
   NachbewilligungsBefund, NachbewilligungsBlock,
-} from "@/components/haushalt/nachbewilligungen";
+} from "@/components/haushalt/supplementary-approvals";
 import { cn } from "@/lib/utils";
+import { ScrollZeile } from "@/components/ui";
 import { SchrittKicker, SchrittWeiter } from "@/components/haushalt/schritt-weiter";
 import { SchrittPfad } from "@/components/haushalt/schritt-pfad";
 import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
+import { Vollzug } from "@/components/haushalt/vollzug";
+import { berichteUrls, type VollzugDaten } from "@/lib/haushalt-vollzug";
 
 /** Hinweis auf die Prüfung — hier und nirgends sonst, weil das
  *  Rechnungsprüfungsamt genau diesen Vergleich seit Jahren beanstandet:
@@ -74,32 +77,32 @@ import { Seitenbuehne, ZaehlZahl } from "@/components/haushalt/seitenbuehne";
 function PruefungsHinweis() {
   // Nur die wiederholten Beanstandungen: Der volle Bestand ist rund 250 kB
   // Prosa und wird auf dieser Seite nirgends angezeigt.
-  const { data } = useFetch<PruefberichtDaten>("/council/haushalt/pruefberichte?marke=WB");
-  const kette = useMemo(() => {
-    if (!data?.feststellungen?.length) return null;
-    return wiederholungsketten(data.feststellungen)
-      .find((k) => k.schluessel.includes("planistvergleich")) ?? null;
+  const { data } = useFetch<PruefberichtDaten>("/council/budget/audit-reports?mark=WB");
+  const chain = useMemo(() => {
+    if (!data?.findings?.length) return null;
+    return wiederholungsketten(data.findings)
+      .find((k) => k.key.includes("planistvergleich")) ?? null;
   }, [data]);
-  if (!kette) return null;
+  if (!chain) return null;
   // Ausdrücklich die jüngste WIEDERHOLTE Beanstandung, nicht einfach den
   // letzten Eintrag: Der Abschnitt trägt in denselben Jahren auch Hinweise.
-  const juengste = [...kette.eintraege].reverse().find((f) => f.marke === "WB");
+  const juengste = [...chain.eintraege].reverse().find((f) => f.mark === "WB");
   if (!juengste) return null;
 
   return (
     <Link href="/haushalt/pruefung"
       className="group flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <MarkePille marke={juengste.marke} name={juengste.marke_name} klein />
+        <MarkePille mark={juengste.mark} name={juengste.mark_name} klein />
         <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          Rechnungsprüfungsamt · Schlussbericht {juengste.jahr} · Textziffer {juengste.textziffer}
+          Rechnungsprüfungsamt · Schlussbericht {juengste.year} · Textziffer {juengste.text_number}
         </span>
       </div>
       <p className="border-l-2 border-border pl-3 text-[13.5px] leading-relaxed text-foreground/90">
         {juengste.text}
       </p>
       <span className="flex items-center gap-1 text-[12.5px] font-semibold text-primary">
-        In {kette.jahre.length} von {data?.jahre.length} geprüften Jahren als wiederholte
+        In {chain.years.length} von {data?.years.length} geprüften Jahren als wiederholte
         Beanstandung ausgewiesen — alle Feststellungen ansehen
         <ArrowRight size={14} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -114,8 +117,8 @@ function PruefungsHinweis() {
  *  Vorzeichen steht als Zeichen da, nicht als Urteil — deshalb tragen alle
  *  Beträge dieselbe Textfarbe, und `stark` hebt nur die Summenzeile heraus,
  *  wie im Dokument. */
-function KassenZeile({ label, hinweis, wert, stark }: {
-  label: string; hinweis?: string; wert: number | null; stark?: boolean;
+function KassenZeile({ label, note, value, stark }: {
+  label: string; note?: string; value: number | null; stark?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2">
@@ -124,15 +127,15 @@ function KassenZeile({ label, hinweis, wert, stark }: {
           stark ? "font-semibold text-foreground" : "text-foreground/90")}>
           {label}
         </span>
-        {hinweis && (
+        {note && (
           <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">
-            {hinweis}
+            {note}
           </span>
         )}
       </dt>
       <dd className={cn("flex-none tabular-nums",
         stark ? "font-display text-[19px] font-bold" : "text-[15px] font-semibold")}>
-        {wert != null && wert > 0 && "+"}{deMio(wert)}
+        {value != null && value > 0 && "+"}{deMio(value)}
         <span className="ml-0.5 text-[11px] font-semibold text-muted-foreground">
           Mio.&nbsp;€
         </span>
@@ -155,70 +158,87 @@ type Bereich = {
 
 
 function PlanIstInner() {
-  const gewaehltesJahr = Number(useSearchParams().get("jahr")) || null;
+  const gewaehltesJahr = Number(useSearchParams().get("year")) || null;
   const { data, loading } = useFetch<HaushaltAuswahl<typeof FELDER[number]>>(haushaltUrl(FELDER));
   const [zahlenOffen, setZahlenOffen] = useState(false);
-  const [massstab, setMassstab] = useState<HantelMassstab>("prozent");
+  // Der Haushaltsvollzug hat seinen eigenen Jahrgang: Er läuft dem Abschluss
+  // um zwei Jahre voraus. Ohne Wahl zeigt er den jüngsten; die Teilhaushalte
+  // kommen nur für den gewählten Jahrgang mit (Endpunkt-Doku).
+  const [vollzugWahl, setVollzugWahl] = useState<number | null>(null);
+  const vollzugKopf = useFetch<VollzugDaten>("/council/budget/execution");
+  const vollzugJahr = vollzugWahl ?? vollzugKopf.data?.editions.at(-1) ?? null;
+  const vollzug = useFetch<VollzugDaten>(
+    vollzugJahr ? `/council/budget/execution?budget_year=${vollzugJahr}` : null);
+  const vollzugDaten = vollzug.data ?? vollzugKopf.data ?? null;
+  // Die Berichte des Vollzug-Jahrgangs bekommen im Verzeichnis eigene
+  // Nummern: Die Seite zeigt den Abschluss 2024 UND den Vollzug 2026 — über
+  // den Jahrgang der Seite fände das Verzeichnis für den Vollzug die
+  // falschen Papiere (die von 2024).
+  const jeDokument = useMemo(() => {
+    const urls = vollzugDaten && vollzugJahr ? berichteUrls(vollzugDaten, vollzugJahr) : [];
+    return urls.length ? { budget_execution: urls } : {};
+  }, [vollzugDaten, vollzugJahr]);
+  const [massstab, setMassstab] = useState<HantelMassstab>("percent");
 
-  const jahre = data?.plan_ist_jahre ?? [];
-  const jahr = gewaehltesJahr && jahre.includes(gewaehltesJahr) ? gewaehltesJahr : jahre.at(-1) ?? null;
+  const years = data?.plan_actual_years ?? [];
+  const year = gewaehltesJahr && years.includes(gewaehltesJahr) ? gewaehltesJahr : years.at(-1) ?? null;
 
   const { gesamt, bereiche, arten, planArt, ansatzAbweichend } = useMemo(() => {
     const leer = {
       gesamt: null as null | Record<string, number | null>, bereiche: [] as Bereich[],
-      arten: [] as ErgebnisPosten[], planArt: "ansatz" as PlanArt,
+      arten: [] as ErgebnisPosten[], planArt: "budget" as PlanArt,
       ansatzAbweichend: null as null | { ertr: number | null; aufw: number | null },
     };
-    if (!data || !jahr) return leer;
-    const zeilen = (data.ergebnisrechnung ?? []).filter((p) => p.jahr === jahr);
+    if (!data || !year) return leer;
+    const zeilen = (data.income_statement ?? []).filter((p) => p.year === year);
     const summe = (rows: ErgebnisPosten[], nr: number) => rows.find((p) => p.nr === nr);
-    const g = zeilen.filter((p) => p.thh_nr == null);
+    const g = zeilen.filter((p) => p.sub_budget_no == null);
     const e = summe(g, 12), a = summe(g, 20);
 
-    const nrs = [...new Set(zeilen.filter((p) => p.thh_nr != null).map((p) => p.thh_nr))];
+    const nrs = [...new Set(zeilen.filter((p) => p.sub_budget_no != null).map((p) => p.sub_budget_no))];
     const bereiche = nrs.map((nr) => {
-      const teil = zeilen.filter((p) => p.thh_nr === nr);
-      const te = summe(teil, 12), ta = summe(teil, 20);
+      const part = zeilen.filter((p) => p.sub_budget_no === nr);
+      const te = summe(part, 12), ta = summe(part, 20);
       return {
-        nr, name: teil[0]?.thh_name ?? `Teilhaushalt ${nr}`,
-        aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.ergebnis),
-        ertrPlan: mio(te?.plan), ertrIst: mio(te?.ergebnis),
+        nr, name: part[0]?.sub_budget_name ?? `Teilhaushalt ${nr}`,
+        aufwPlan: mio(ta?.plan), aufwIst: mio(ta?.result),
+        ertrPlan: mio(te?.plan), ertrIst: mio(te?.result),
       };
     });
     type Aufw = { aufwPlan: number | null; aufwIst: number | null };
     const abw = (b: Aufw) => (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
-    bereiche.sort((x, y) => massstab === "prozent"
+    bereiche.sort((x, y) => massstab === "percent"
       ? Math.abs(abw(y)) / Math.abs(y.aufwPlan || 1) - Math.abs(abw(x)) / Math.abs(x.aufwPlan || 1)
       : Math.abs(abw(y)) - Math.abs(abw(x)));
 
     // Woran es lag: die Ertragsarten (Posten 1–11) mit der größten Abweichung.
     const arten = g
-      .filter((p) => p.nr >= 1 && p.nr <= 11 && p.abweichung != null)
-      .sort((x, y) => Math.abs(y.abweichung ?? 0) - Math.abs(x.abweichung ?? 0))
+      .filter((p) => p.nr >= 1 && p.nr <= 11 && p.deviation != null)
+      .sort((x, y) => Math.abs(y.deviation ?? 0) - Math.abs(x.deviation ?? 0))
       .slice(0, 5);
 
     // Weicht der fortgeschriebene Plan vom ursprünglichen Ansatz ab, gehört
     // beides auf die Seite — 2020 sind das bei den Ausgaben 27 Mio. €.
     const weicht = (p?: ErgebnisPosten) =>
-      p?.plan != null && p?.ansatz != null && Math.abs(p.plan - p.ansatz) > 1;
+      p?.plan != null && p?.budgeted != null && Math.abs(p.plan - p.budgeted) > 1;
 
     return {
       gesamt: {
-        ertrPlan: mio(e?.plan), ertrIst: mio(e?.ergebnis),
-        aufwPlan: mio(a?.plan), aufwIst: mio(a?.ergebnis),
+        ertrPlan: mio(e?.plan), ertrIst: mio(e?.result),
+        aufwPlan: mio(a?.plan), aufwIst: mio(a?.result),
       },
       bereiche, arten,
-      planArt: (a?.plan_art ?? e?.plan_art ?? "ansatz") as PlanArt,
+      planArt: (a?.plan_kind ?? e?.plan_kind ?? "budget") as PlanArt,
       ansatzAbweichend: weicht(e) || weicht(a)
-        ? { ertr: mio(e?.ansatz), aufw: mio(a?.ansatz) }
+        ? { ertr: mio(e?.budgeted), aufw: mio(a?.budgeted) }
         : null,
     };
-  }, [data, jahr, massstab]);
+  }, [data, year, massstab]);
 
   if (loading || !data) {
     return <div className="py-16 text-center text-sm text-muted-foreground">Wird geladen …</div>;
   }
-  if (!jahr || !gesamt) {
+  if (!year || !gesamt) {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         Für kein Jahr liegt bisher ein ausgelesener Jahresabschluss vor.{" "}
@@ -244,33 +264,34 @@ function PlanIstInner() {
   // `planGegenIst()` in lib/haushalt.ts rechnet seit jeher mit 21 + 24 und
   // begründet es im Docstring; diese Seite war die einzige Stelle, die der
   // Regel nicht folgte. Deshalb hier derselbe Weg statt einer zweiten Formel.
-  const jahresergebnis = (art: "plan" | "ergebnis") => {
-    const teile = [21, 24].map((nr) => (data.ergebnisrechnung ?? []).find(
-      (p) => p.jahr === jahr && p.nr === nr && p.thh_nr == null));
+  const jahresergebnis = (art: "plan" | "result") => {
+    const teile = [21, 24].map((nr) => (data.income_statement ?? []).find(
+      (p) => p.year === year && p.nr === nr && p.sub_budget_no == null));
     if (teile.some((t) => !t || t[art] == null)) return null;
     return teile.reduce((s, t) => s + (t![art] as number), 0) / 1e6;
   };
   const saldoPlan = jahresergebnis("plan");
-  const saldoIst = jahresergebnis("ergebnis");
-  const kasse = kassensicht(data, jahr);
+  const saldoIst = jahresergebnis("result");
+  const kasse = kassensicht(data, year);
   // `ratsbeschluss` kommt dazu, sobald der Nachbewilligungs-Block etwas zu
   // zeigen hat: Seine Liste verlinkt Vorlagen aus dem Bürgerinformations-
   // system, und ein Beleg-Chip ohne angemeldete Quelle rendert nichts (siehe
-  // `components/haushalt/quelle.tsx`) — die Zeilen stünden dann ohne Beleg da.
-  const hatNachbewilligungen = (data.nachbewilligungen?.serie ?? []).length > 0;
+  // `components/haushalt/source.tsx`) — die Zeilen stünden dann ohne Beleg da.
+  const hatNachbewilligungen = (data.supplementary_approvals?.serie ?? []).length > 0;
   const quellen: QuellenSchluessel[] = [
+    ...(vollzugDaten?.reporting_dates.length ? (["budget_execution"] as const) : []),
     "jahresabschluss",
-    ...(kasse ? (["finanzrechnung"] as const) : []),
+    ...(kasse ? (["cash_flow_statement"] as const) : []),
     "plan",
     ...(hatNachbewilligungen ? (["ratsbeschluss"] as const) : []),
   ];
-  const pruefbericht = pruefberichtZuJahr(data, jahr);
+  const pruefbericht = pruefberichtZuJahr(data, year);
   // Die Zeilen der Hantel. Zwei Regeln, beide oben im Kopf begründet:
   // ein Wortlaut je Erläuterung, und nichts über EINORDNUNG_GRENZE im Bild.
   const wortlautBei = new Map<number, string>();
   const imBild = new Set<number>();
   const hantelZeilen = bereiche.map((b) => {
-    const alle = b.nr == null ? [] : gruendeFuerBereich(data, jahr, b.nr);
+    const alle = b.nr == null ? [] : gruendeFuerBereich(data, year, b.nr);
     const g = alle.find((x) => x.text.length <= EINORDNUNG_GRENZE);
     let einordnung: ReactNode = null;
     if (g) {
@@ -285,14 +306,10 @@ function PlanIstInner() {
       } else {
         wortlautBei.set(g.nr, b.name);
         imBild.add(g.nr);
-        einordnung = (
-          <>
-            {g.text}{" "}
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.09em] text-muted-foreground">
-              — Jahresabschluss {jahr}, Abschnitt 6.3.1, Wortlaut der Verwaltung
-            </span>
-          </>
-        );
+        // Eingeklappt wie im Einnahmen-Block darüber: Fünf Zeilen Wortlaut
+        // unter jeder Bereichszeile machten die Liste zum Dokument, und die
+        // Seite trug zwei Muster für dieselbe Auskunft (Durchsicht 02.09.2026).
+        einordnung = <Warum reason={g} kompakt />;
       }
     } else if (alle.length) {
       einordnung = (
@@ -310,12 +327,12 @@ function PlanIstInner() {
   // Bereichs-Sätze auch; hier der Rest — nichts doppelt, aber auch nichts
   // verloren: Was für die Hantel zu lang war, steht genau deshalb hier.
   const obenGezeigt = new Set([...arten.map((p) => p.nr), ...imBild]);
-  const uebrigeGruende = (data.abweichungsgruende ?? [])
-    .filter((g) => g.jahr === jahr && !obenGezeigt.has(g.nr))
-    .sort((a, b) => Math.abs(b.delta_mio ?? 0) - Math.abs(a.delta_mio ?? 0));
+  const uebrigeGruende = (data.variance_reasons ?? [])
+    .filter((g) => g.year === year && !obenGezeigt.has(g.nr))
+    .sort((a, b) => Math.abs(b.delta_meur ?? 0) - Math.abs(a.delta_meur ?? 0));
 
   return (
-    <Quellenkontext schluessel={quellen} jahr={jahr}>
+    <Quellenkontext keys={quellen} jeDokument={jeDokument} year={year}>
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <Link href="/haushalt" className="hover:text-foreground">Haushalt</Link>
@@ -340,12 +357,12 @@ function PlanIstInner() {
           (Regel an der Kernaussage unten). */}
       {planVorhanden && gesamt.aufwPlan != null && gesamt.aufwIst != null && (
         <Seitenbuehne
-          kicker={`Jahresabschluss ${jahr} · Mio. € Aufwand`}
+          kicker={`Jahresabschluss ${year} · Mio. € Aufwand`}
           zahl={
             <span className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-              <span>geplant <ZaehlZahl wert={gesamt.aufwPlan} nachkomma={1} /></span>
+              <span>geplant <ZaehlZahl value={gesamt.aufwPlan} nachkomma={1} /></span>
               <span aria-hidden="true" className="relative top-[-0.28em] h-0 w-9 flex-none border-t-2 border-foreground" />
-              <span>geworden <ZaehlZahl wert={gesamt.aufwIst} nachkomma={1} /></span>
+              <span>geworden <ZaehlZahl value={gesamt.aufwIst} nachkomma={1} /></span>
             </span>
           }
           sub={<>
@@ -402,23 +419,35 @@ function PlanIstInner() {
         und Ergebnis nebeneinander.
       </p>
 
+      {/* Erst die Erwartung, dann das Ergebnis: Der Haushaltsvollzug steht VOR
+          den abgeschlossenen Jahren, weil er das Jahr zeigt, das gerade
+          läuft — und das der Abschluss erst zwei Jahre später einholt. */}
+      {vollzugDaten && vollzugJahr && vollzugDaten.reporting_dates.length > 0 && (
+        <Vollzug daten={vollzugDaten} year={vollzugJahr} onYear={setVollzugWahl}
+          beleg={(h) => <Beleg q="budget_execution" h={h} />} />
+      )}
+
+      <h2 className="mt-2 font-display text-[19px] font-bold tracking-tight">
+        Was aus dem Plan wurde
+      </h2>
+
       {/* Jahr-Umschalter: nur Jahre mit echtem Abschluss (scrollbar wie #497). */}
-      {jahre.length > 1 && (
+      {years.length > 1 && (
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
             Abgeschlossenes Haushaltsjahr
           </span>
-          <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+          <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
             <div className="flex flex-none items-center gap-1 rounded-full border border-border bg-card p-1">
-              {jahre.map((j) => (
-                <Link key={j} href={`/haushalt/plan-ist?jahr=${j}`} scroll={false}
+              {years.map((j) => (
+                <Link key={j} href={`/haushalt/plan-ist?year=${j}`} scroll={false}
                   className={cn("rounded-full px-3 py-1 text-[12.5px]",
-                    j === jahr ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
+                    j === year ? "bg-primary font-semibold text-primary-foreground" : "text-foreground/75 hover:bg-accent")}>
                   {j}
                 </Link>
               ))}
             </div>
-          </div>
+          </ScrollZeile>
         </div>
       )}
 
@@ -431,7 +460,7 @@ function PlanIstInner() {
           dazu, dass die Bezugsgröße fehlt. */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-          Das Haushaltsjahr {jahr} auf einen Blick
+          Das Haushaltsjahr {year} auf einen Blick
         </p>
         {planVorhanden ? (
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
@@ -447,7 +476,7 @@ function PlanIstInner() {
           </p>
         ) : (
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
-            Die Stadt hat {jahr} <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong>{" "}
+            Die Stadt hat {year} <strong>{deMio(gesamt.ertrIst)}&#8239;Mio.&nbsp;€ eingenommen</strong>{" "}
             und <strong>{deMio(gesamt.aufwIst)}&#8239;Mio.&nbsp;€</strong> ausgegeben
             <Beleg q="jahresabschluss" />. Die Planwerte der Gesamtrechnung konnten wir für
             diesen Jahrgang nicht auslesen — deshalb steht hier kein „geplant“ daneben und
@@ -502,36 +531,36 @@ function PlanIstInner() {
           <p className="mt-2 max-w-[70ch] text-[15px] leading-relaxed text-foreground/90">
             Die Zahlen oben stammen aus der Ergebnisrechnung: Sie erfasst Erträge und
             Aufwendungen, auch wenn dabei nicht sofort Geld fließt. Die Finanzrechnung
-            <Beleg q="finanzrechnung" /> zeigt dagegen ausschließlich die tatsächlichen
+            <Beleg q="cash_flow_statement" /> zeigt dagegen ausschließlich die tatsächlichen
             Ein- und Auszahlungen.
           </p>
           <dl className="mt-3 divide-y divide-border/60 border-t border-border/60">
             <KassenZeile
               label="Aus laufender Arbeit blieb übrig"
-              hinweis="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
-              wert={mio(kasse.saldo_verwaltung?.ergebnis)} />
+              note="Steuern, Gebühren und Zuweisungen minus Personal, Sachkosten und Sozialleistungen"
+              value={mio(kasse.balance_operating?.result)} />
             <KassenZeile
               label="Für Investitionen floss ab"
-              hinweis={kasse.summe_aus_investition?.ergebnis != null
-                ? `${deMio(mio(kasse.summe_aus_investition.ergebnis))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
+              note={kasse.total_out_capital?.result != null
+                ? `${deMio(mio(kasse.total_out_capital.result))} Mio. € ausgezahlt für Bau, Grundstücke, Geräte und Zuschüsse — abzüglich der Einzahlungen`
                 : undefined}
-              wert={mio(kasse.saldo_investition?.ergebnis)} />
+              value={mio(kasse.balance_capital?.result)} />
             <KassenZeile
-              label={kasse.finanzmittel?.bezeichnung ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
-              wert={mio(kasse.finanzmittel?.ergebnis)} stark />
-            {kasse.finanzmittelveraenderung && kasse.saldo_finanzierung && (
+              label={kasse.cash_surplus?.label ?? "Finanzmittel-Überschuss/-Fehlbetrag"}
+              value={mio(kasse.cash_surplus?.result)} stark />
+            {kasse.cash_change && kasse.balance_financing && (
               <KassenZeile
                 label="Nach Kredittilgung"
-                hinweis={`${deMio(mio(Math.abs(kasse.saldo_finanzierung.ergebnis ?? 0)))} Mio. € Tilgung`}
-                wert={mio(kasse.finanzmittelveraenderung.ergebnis)} />
+                note={`${deMio(mio(Math.abs(kasse.balance_financing.result ?? 0)))} Mio. € Tilgung`}
+                value={mio(kasse.cash_change.result)} />
             )}
           </dl>
-          {kasse.anfangsbestand?.ergebnis != null && kasse.endbestand?.ergebnis != null && (
+          {kasse.opening_balance?.result != null && kasse.closing_balance?.result != null && (
             <p className="mt-3 max-w-[70ch] text-[13px] leading-relaxed text-foreground/85">
-              Am 1. Januar lagen <strong>{deMio(mio(kasse.anfangsbestand.ergebnis))}&#8239;Mio.&nbsp;€</strong>{" "}
+              Am 1. Januar lagen <strong>{deMio(mio(kasse.opening_balance.result))}&#8239;Mio.&nbsp;€</strong>{" "}
               in der Kasse, am 31. Dezember{" "}
-              <strong>{deMio(mio(kasse.endbestand.ergebnis))}&#8239;Mio.&nbsp;€</strong>
-              <Beleg q="finanzrechnung" />.
+              <strong>{deMio(mio(kasse.closing_balance.result))}&#8239;Mio.&nbsp;€</strong>
+              <Beleg q="cash_flow_statement" />.
             </p>
           )}
           {/* Die Ermächtigungen sind die Antwort auf die Frage, die sich beim
@@ -539,14 +568,14 @@ function PlanIstInner() {
               Geplante nicht gebaut? Weil ein Teil des Geldes aus Vorjahren
               stammt und die Genehmigung mitwandert — der Plan des Jahres ist
               nicht die Grenze dessen, was ausgegeben werden darf. */}
-          {kasse.summe_aus_investition?.ermaechtigung != null && (
+          {kasse.total_out_capital?.authorization != null && (
             <p className="mt-3 max-w-[70ch] border-t border-border/60 pt-3 text-[13px] leading-relaxed text-foreground/85">
               Ausgeben durfte die Stadt für Investitionen mehr als die geplanten{" "}
-              {deMio(mio(kasse.summe_aus_investition.plan))}&#8239;Mio.&nbsp;€: Weitere{" "}
-              <strong>{deMio(mio(kasse.summe_aus_investition.ermaechtigung))}&#8239;Mio.&nbsp;€</strong>{" "}
+              {deMio(mio(kasse.total_out_capital.plan))}&#8239;Mio.&nbsp;€: Weitere{" "}
+              <strong>{deMio(mio(kasse.total_out_capital.authorization))}&#8239;Mio.&nbsp;€</strong>{" "}
               standen als Ermächtigungen aus Vorjahren offen — bewilligtes Geld für
               Vorhaben, die noch nicht fertig sind, und das deshalb mit ins nächste Jahr
-              wandert<Beleg q="finanzrechnung" />.
+              wandert<Beleg q="cash_flow_statement" />.
             </p>
           )}
           <p className="mt-3 max-w-[70ch] text-[12.5px] leading-relaxed text-muted-foreground">
@@ -569,12 +598,12 @@ function PlanIstInner() {
             Was „geplant" in diesem Jahr heißt
           </p>
           <p className="mt-2 max-w-[70ch] text-[13px] leading-relaxed text-foreground/90">
-            Für {jahr} vergleicht der Jahresabschluss nicht mit dem ursprünglichen Haushaltsplan,
+            Für {year} vergleicht der Jahresabschluss nicht mit dem ursprünglichen Haushaltsplan,
             sondern mit dem fortgeschriebenen Plan — der Bezugsgröße{" "}
             <strong>{PLAN_ART_LABEL[planArt]}</strong>. Der Rat hatte im Ursprungsplan{" "}
             {deMio(ansatzAbweichend.ertr)}&#8239;Mio.&nbsp;€ Einnahmen und{" "}
             {deMio(ansatzAbweichend.aufw)}&#8239;Mio.&nbsp;€ Ausgaben beschlossen; unterjährig kam{" "}
-            {planArt === "ansatz_nachtrag" ? "ein Nachtragshaushalt" : "Ermächtigungen und Übertragungen"}{" "}
+            {planArt === "supplementary_budget" ? "ein Nachtragshaushalt" : "Ermächtigungen und Übertragungen"}{" "}
             hinzu. Die Zahlen unten messen gegen den fortgeschriebenen Plan — so rechnet die
             Stadt selbst<Beleg q="jahresabschluss" />.
           </p>
@@ -582,7 +611,7 @@ function PlanIstInner() {
       )}
 
       <LottiErklaert
-        titel="Warum ein Haushalt nie punktgenau aufgeht"
+        title="Warum ein Haushalt nie punktgenau aufgeht"
         text="Ein Haushalt wird ein Jahr im Voraus beschlossen — niemand weiß dann, wie viel Gewerbesteuer hereinkommt, welche Tarife steigen oder wie viele Kinder einen Kitaplatz brauchen. Die Stadt plant deshalb vorsichtig: lieber etwas zu wenig Einnahmen ansetzen als zu viel. Abweichungen sind normal und für sich genommen weder gut noch schlecht."
       />
 
@@ -594,7 +623,7 @@ function PlanIstInner() {
         <div id="hanteln" className="scroll-mt-20 rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Ausgaben je Bereich · {jahr}
+              Ausgaben je Bereich · {year}
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
               {bereiche.length} Teilhaushalte
@@ -604,24 +633,24 @@ function PlanIstInner() {
           {/* Umschalter wie brutto/netto auf der Bereichsseite: Der Wechsel
               dreht die Reihenfolge, und darin steckt die Aussage. */}
           <div className="mb-3 flex flex-col gap-1.5">
-            <div className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 py-0.5">
+            <ScrollZeile className="-mx-1 flex items-center gap-1 px-1 py-0.5">
               <div className="flex w-max flex-none items-center gap-1 rounded-full border border-border bg-muted/40 p-1">
                 {([
-                  ["prozent", "Abweichung in Prozent"],
-                  ["betrag", "Abweichung in Millionen"],
-                ] as [HantelMassstab, string][]).map(([wert, text]) => (
-                  <button key={wert} type="button" onClick={() => setMassstab(wert)}
+                  ["percent", "Abweichung in Prozent"],
+                  ["amount", "Abweichung in Millionen"],
+                ] as [HantelMassstab, string][]).map(([value, text]) => (
+                  <button key={value} type="button" onClick={() => setMassstab(value)}
                     className={cn("whitespace-nowrap rounded-full px-3 py-1 text-[12.5px]",
-                      massstab === wert
+                      massstab === value
                         ? "bg-card font-semibold shadow-sm"
                         : "text-foreground/70 hover:text-foreground")}>
                     {text}
                   </button>
                 ))}
               </div>
-            </div>
+            </ScrollZeile>
             <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              {massstab === "prozent"
+              {massstab === "percent"
                 ? "Gemessen am eigenen Plan — so lässt sich ein Bereich von 231 Mio. € mit einem von 6 Mio. € vergleichen. Vorn steht, wessen Plan am weitesten danebenlag."
                 : "Gemessen in Euro — vorn steht, wo am meisten Geld anders floss als geplant. Kleine Bereiche verschwinden dabei fast."}
             </p>
@@ -646,12 +675,12 @@ function PlanIstInner() {
           </p>
           <div className="mt-3 flex flex-col gap-2.5">
             {arten.map((p) => {
-              const abw = mio(p.abweichung) ?? 0;
-              const groesste = mio(Math.max(...arten.map((x) => Math.abs(x.abweichung ?? 0)))) ?? 1;
+              const abw = mio(p.deviation) ?? 0;
+              const groesste = mio(Math.max(...arten.map((x) => Math.abs(x.deviation ?? 0)))) ?? 1;
               return (
                 <div key={p.nr} className="flex flex-col gap-1.5">
                   <div className="grid grid-cols-[minmax(110px,190px)_1fr_auto] items-center gap-x-3">
-                    <span className="truncate text-[12.5px]">{p.bezeichnung}</span>
+                    <span className="truncate text-[12.5px]">{p.label}</span>
                     <div className="h-2.5 rounded-full bg-muted">
                       <div className="h-full rounded-full bg-signal/70"
                         style={{ width: `${Math.min((Math.abs(abw) / groesste) * 100, 100)}%` }} />
@@ -660,7 +689,7 @@ function PlanIstInner() {
                       {abw > 0 ? "+" : ""}{deMio(abw)}&#8239;Mio.&nbsp;€
                     </span>
                   </div>
-                  <Warum grund={grundZuPosten(data, jahr, p.nr)} />
+                  <Warum reason={grundZuPosten(data, year, p.nr)} />
                 </div>
               );
             })}
@@ -679,7 +708,7 @@ function PlanIstInner() {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-              Warum es anders kam · {jahr}
+              Warum es anders kam · {year}
             </p>
             <span className="font-mono text-[10px] uppercase text-muted-foreground">
               {uebrigeGruende.length} weitere Posten
@@ -689,18 +718,18 @@ function PlanIstInner() {
             {uebrigeGruende.map((g) => (
               <div key={g.nr} className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <span className="text-[12.5px] font-semibold">{g.bezeichnung}</span>
+                  <span className="text-[12.5px] font-semibold">{g.label}</span>
                   <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-signal">
-                    {(g.delta_mio ?? 0) > 0 ? "+" : ""}{deMio(g.delta_mio)}&#8239;Mio.&nbsp;€
-                    {g.prozent != null && (
+                    {(g.delta_meur ?? 0) > 0 ? "+" : ""}{deMio(g.delta_meur)}&#8239;Mio.&nbsp;€
+                    {g.percent != null && (
                       <span className="text-muted-foreground">
-                        {" "}({g.prozent > 0 ? "+" : ""}
-                        {g.prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
+                        {" "}({g.percent > 0 ? "+" : ""}
+                        {g.percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
                       </span>
                     )}
                   </span>
                 </div>
-                <Warum grund={g} />
+                <Warum reason={g} />
               </div>
             ))}
           </div>
@@ -719,7 +748,7 @@ function PlanIstInner() {
           von der anderen Seite: als Entscheidungen, die während des Jahres
           getroffen wurden, mit Datum, Betrag und Beschluss-Seite. Erst
           zusammen beantworten sie die Frage der Seite. */}
-      <NachbewilligungsBlock daten={data} jahr={jahr} />
+      <NachbewilligungsBlock daten={data} year={year} />
 
       {/* Wer den Plan gegen das Ist gelesen hat, gehört als Nächstes hierhin:
           Genau diesen Vergleich beanstandet das Rechnungsprüfungsamt. */}
@@ -735,7 +764,7 @@ function PlanIstInner() {
             Dieselben Ausgaben als Tabelle
           </p>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">
-            {bereiche.length} Teilhaushalte · {jahr}
+            {bereiche.length} Teilhaushalte · {year}
           </span>
         </div>
         <button type="button" onClick={() => setZahlenOffen((o) => !o)}
@@ -759,15 +788,15 @@ function PlanIstInner() {
               <tbody>
                 {bereiche.map((b) => {
                   const d = (b.aufwIst ?? 0) - (b.aufwPlan ?? 0);
-                  const prozent = b.aufwPlan ? (d / b.aufwPlan) * 100 : 0;
+                  const percent = b.aufwPlan ? (d / b.aufwPlan) * 100 : 0;
                   return (
                     <tr key={b.nr} className="border-t border-border/60">
                       <td className="py-1 pr-2">{b.name}</td>
                       <td className="py-1 pr-2 text-right">{deMio(b.aufwPlan)}</td>
                       <td className="py-1 pr-2 text-right font-semibold">{deMio(b.aufwIst)}</td>
-                      <td className={cn("py-1 text-right", Math.abs(prozent) >= 1 && "text-signal")}>
-                        {d > 0 ? "+" : ""}{deMio(d)} ({prozent > 0 ? "+" : ""}
-                        {prozent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
+                      <td className={cn("py-1 text-right", Math.abs(percent) >= 1 && "text-signal")}>
+                        {d > 0 ? "+" : ""}{deMio(d)} ({percent > 0 ? "+" : ""}
+                        {percent.toLocaleString("de-DE", { maximumFractionDigits: 1 })}&nbsp;%)
                       </td>
                     </tr>
                   );
@@ -792,7 +821,7 @@ function PlanIstInner() {
             Geprüft
           </p>
           <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
-            Das Rechnungsprüfungsamt hat den Jahresabschluss {jahr} geprüft und dazu einen
+            Das Rechnungsprüfungsamt hat den Jahresabschluss {year} geprüft und dazu einen
             Schlussbericht vorgelegt
             {pruefbericht.n_pages ? ` (${pruefbericht.n_pages} Seiten)` : ""}.{" "}
             <a href={pruefbericht.url} target="_blank" rel="noopener noreferrer"
@@ -801,7 +830,7 @@ function PlanIstInner() {
               <ExternalLink className="h-3 w-3" />
             </a>
           </p>
-          {pruefbericht.lesbar === 0 && (
+          {pruefbericht.readable === 0 && (
             <p className="mt-2 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
               Von diesem Jahrgang liegt uns nur das PDF vor: Der Text darin ist nicht
               maschinenlesbar hinterlegt, deshalb können wir daraus nichts zitieren oder
@@ -832,7 +861,7 @@ function PlanIstInner() {
 
       <SchrittWeiter href="/haushalt/plan-ist" />
 
-      <Quellenverzeichnis schluessel={quellen} />
+      <Quellenverzeichnis keys={quellen} />
     </div>
     </Quellenkontext>
   );
@@ -841,7 +870,7 @@ function PlanIstInner() {
 /** Was diese Seite rendert — und damit alles, was sie holt.
  *  Feldliste und Typ kommen aus derselben Zeile: Ein Zugriff auf ein
  *  nicht angefordertes Feld ist ein Fehler beim Bauen, kein leerer Block. */
-const FELDER = ["jahre", "ergebnisrechnung", "abweichungsgruende", "nachbewilligungen", "plan_ist_jahre", "finanzrechnung", "pruefbericht_quellen"] as const;
+const FELDER = ["years", "income_statement", "variance_reasons", "supplementary_approvals", "plan_actual_years", "cash_flow_statement", "audit_report_sources"] as const;
 
 export default function PlanIstPage() {
   return (

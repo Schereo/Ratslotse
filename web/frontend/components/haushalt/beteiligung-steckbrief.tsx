@@ -30,10 +30,10 @@
 //     in einer dritten. Wer keinen Eintrag hat, bleibt ein Element ohne Link;
 //     erfunden wird nichts.
 //
-// `funktion: null` HEISST UNBEKANNT, NICHT „KEINE". Der Bericht führt Namen
+// `position: null` HEISST UNBEKANNT, NICHT „KEINE". Der Bericht führt Namen
 // und Funktionen in zwei getrennten Spalten; paaren lassen sie sich nur nach
 // Position, und das nur bei exakt gleicher Länge. Wo die Probe scheitert
-// (`funktionen_zuordenbar === false`), zeigt die Seite die Namen OHNE Ämter
+// (`roles_assignable === false`), zeigt die Seite die Namen OHNE Ämter
 // und sagt in einem Satz, warum. Der Vorsitz bleibt trotzdem stehen: Er
 // steht in der Namenszeile selbst („…, Vorsitzende"), nicht in der Spalte.
 //
@@ -54,7 +54,7 @@ import {
   KENNZAHL_TITEL, Kennzahl, RECHTSFORM_TITEL,
   absatzVorschau, anteilsGewicht, aufsichtsgruppen,
   aufsichtspersonen, eigentuemerVon, einordnungFuer, eur, gremiumName, herkunftVon,
-  prozent, rechtsform, reihen, textVon, wertText,
+  percent, rechtsform, reihen, textVon, wertText,
 } from "@/lib/haushalt-beteiligungen";
 import { personHref } from "@/lib/routes";
 import type { JahrPunkt } from "@/components/grafik/daten";
@@ -63,7 +63,7 @@ import { ZeitreiheMini } from "@/components/grafik/zeitreihe";
 import { Einordnung } from "@/components/grafik/einordnung";
 import { Anteilsbalken } from "@/components/haushalt/anteilsbalken";
 import { FormZeichen } from "@/components/haushalt/konzernkarte";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { parteiDot, parteiKuerzel } from "@/components/qa-bausteine";
 import { cn } from "@/lib/utils";
 
@@ -74,23 +74,23 @@ const TRIO = ["jahresergebnis", "bilanzsumme", "eigenkapitalquote"] as const;
  *  hieße derselbe Abschnitt in der Struktur-Fassung anders als im Rückfall
  *  auf den Wortlaut. */
 const TITEL: Record<string, string> = Object.fromEntries(
-  ABSCHNITTE.map((a) => [a.key, a.titel]));
+  ABSCHNITTE.map((a) => [a.key, a.title]));
 
 /** Wo eine Angabe im Dokument steht — bei 200 Seiten der Unterschied zwischen
  *  „steht in dem PDF" und „steht auf Seite 178, Abschnitt 2.4.8". */
 export function Fundstelle({ h, className }: {
   h: ReturnType<typeof herkunftVon>; className?: string;
 }) {
-  if (!h?.fundstelle) return null;
-  const ziel = h.seite && h.url ? `${h.url}#page=${h.seite}` : h.url;
+  if (!h?.citation) return null;
+  const ziel = h.page && h.url ? `${h.url}#page=${h.page}` : h.url;
   return (
     <div className={cn("border-t border-dashed border-border pt-2.5", className)}>
       <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
         Woher das stammt
       </p>
       <p className="mt-1 max-w-[86ch] text-[11.5px] leading-relaxed text-muted-foreground">
-        {h.label ?? "Beteiligungsbericht"}, {h.fundstelle}
-        {h.seite ? `, Seite ${h.seite}` : ""}
+        {h.label ?? "Beteiligungsbericht"}, {h.citation}
+        {h.page ? `, Seite ${h.page}` : ""}
         {ziel && (
           <>
             {" · "}
@@ -130,16 +130,16 @@ function Abschnitt({ kicker, zusatz, className, children }: {
 /** Die Zeitreihe als `JahrPunkt[]` für den Baukasten: Werte in Mio. €, ohne
  *  erfundene Zwischenjahre — was der Bericht nicht nennt, bleibt Lücke. */
 function ergebnisReihe(ergebnisse: Kennzahl[]): JahrPunkt[] {
-  return ergebnisse.map((k) => ({ jahr: k.jahr, wert: k.wert / 1_000_000 }));
+  return ergebnisse.map((k) => ({ year: k.year, value: k.value / 1_000_000 }));
 }
 
 /** Eine Zahl im Kopf: Kennzahl, Jahr, Betrag — und wo nichts dasteht, der
  *  Satz, dass nichts dasteht. */
-function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
+function Kopfzahl({ title, k }: { title: string; k: Kennzahl | null }) {
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-        {titel} {k ? k.jahr : ""}
+        {title} {k ? k.year : ""}
       </dt>
       {k ? (
         <dd className="font-display text-[21px] font-bold leading-tight tracking-tight tabular-nums">
@@ -161,16 +161,16 @@ function Kopfzahl({ titel, k }: { titel: string; k: Kennzahl | null }) {
  *  reichen — ein gemeinsames „Stand 2024" über allen dreien wäre für die
  *  Eigenkapitalquote schlicht falsch. */
 function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft }) {
-  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
+  const alleReihen = useMemo(() => reihen(daten, g.company), [daten, g.company]);
   const ergebnisse = alleReihen.get("jahresergebnis") ?? [];
-  const reihe = ergebnisReihe(ergebnisse);
-  const von = ergebnisse[0]?.jahr, bis = ergebnisse[ergebnisse.length - 1]?.jahr;
+  const series = ergebnisReihe(ergebnisse);
+  const von = ergebnisse[0]?.year, bis = ergebnisse[ergebnisse.length - 1]?.year;
   const quote = alleReihen.get("eigenkapitalquote") ?? [];
   // Die Eigenkapitalquote des jüngsten Jahres trägt keine Probe und steht
   // deshalb nicht im Bestand (Begründung: council/beteiligungsbericht.py).
   // Eine stumme Lücke sähe nach Fehler aus.
   const quoteFehlt = !!ergebnisse.length && !!quote.length
-    && quote[quote.length - 1].jahr < ergebnisse[ergebnisse.length - 1].jahr;
+    && quote[quote.length - 1].year < ergebnisse[ergebnisse.length - 1].year;
   const herkunft = herkunftVon(daten, ergebnisse[ergebnisse.length - 1]?.herkunft_id
     ?? g.herkunft_id);
 
@@ -186,18 +186,18 @@ function Zahlenkopf({ daten, g }: { daten: BeteiligungsDaten; g: Gesellschaft })
           {TRIO.map((k) => {
             const liste = alleReihen.get(k) ?? [];
             return (
-              <Kopfzahl key={k} titel={KENNZAHL_TITEL[k]}
+              <Kopfzahl key={k} title={KENNZAHL_TITEL[k]}
                 k={liste[liste.length - 1] ?? null} />
             );
           })}
         </dl>
-        {reihe.length >= 2 && (
+        {series.length >= 2 && (
           <div className="w-[168px] flex-none">
             <ZeitreiheMini
-              reihe={reihe}
+              series={series}
               format={(v) => deZahl(v, 1)}
               ariaLabel={`Jahresergebnis ${von} bis ${bis} in Mio. Euro: ${ergebnisse
-                .map((k) => `${k.jahr} ${eur(k.wert)}`).join(", ")}.`}
+                .map((k) => `${k.year} ${eur(k.value)}`).join(", ")}.`}
             />
             <p className="mt-0.5 text-center font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
               Jahresergebnis in Mio. €
@@ -268,7 +268,7 @@ function Eigentuemerstreifen({ liste, herkunft }: {
   if (!(summe > 0)) return null;
   const segmente = liste.map((e, i) => ({
     label: e.name,
-    wert: anteilsGewicht(e),
+    value: anteilsGewicht(e),
     farbe: `var(--hh-ein-${Math.min(i, 6)})`,
   }));
 
@@ -283,14 +283,14 @@ function Eigentuemerstreifen({ liste, herkunft }: {
               <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 flex-none rounded-[3px]"
                 style={{ background: `var(--hh-ein-${Math.min(i, 6)})` }} />
               <span className="min-w-0 flex-1 leading-snug">{e.name}</span>
-              {e.betrag_eur != null && (
+              {e.amount_eur != null && (
                 <span className="flex-none tabular-nums text-muted-foreground">
-                  {eur(e.betrag_eur)}
+                  {eur(e.amount_eur)}
                 </span>
               )}
-              {e.anteil_prozent != null && (
+              {e.share_pct != null && (
                 <span className="w-[62px] flex-none text-right font-semibold tabular-nums">
-                  {prozent(e.anteil_prozent)}
+                  {percent(e.share_pct)}
                 </span>
               )}
             </li>
@@ -314,8 +314,8 @@ function Eigentuemerstreifen({ liste, herkunft }: {
  *  keine Fläche (Designsprache § 2): Eine parteigefärbte Karte machte aus
  *  einem Aufsichtsmandat ein Plakat. */
 function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boolean }) {
-  const dot = p.partei ? parteiDot(p.partei) : null;
-  const zusatz = [zeigeFunktion ? p.funktion : null, p.hinweis].filter(Boolean).join(" · ");
+  const dot = p.party ? parteiDot(p.party) : null;
+  const zusatz = [zeigeFunktion ? p.position : null, p.note].filter(Boolean).join(" · ");
 
   return (
     <li className="min-w-0 rounded-xl border border-border px-3 py-2">
@@ -338,9 +338,9 @@ function Person({ p, zeigeFunktion }: { p: Aufsichtsperson; zeigeFunktion: boole
         ) : (
           <span className="text-[13px] font-semibold leading-snug">{p.name}</span>
         )}
-        {p.partei && (
+        {p.party && (
           <span className="text-[10.5px] font-medium text-muted-foreground">
-            {parteiKuerzel(p.partei)}
+            {parteiKuerzel(p.party)}
           </span>
         )}
       </span>
@@ -360,7 +360,7 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
 }) {
   const gruppen = useMemo(() => aufsichtsgruppen(personen, zuordenbar),
     [personen, zuordenbar]);
-  const gremium = gremiumName(personen);
+  const committee = gremiumName(personen);
 
   return (
     <Abschnitt kicker={TITEL.aufsichtsorgane} className="@container/organ"
@@ -368,9 +368,9 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
       {/* Kein „x von y Namen wiedergefunden": Wie gut unser Abgleich mit dem
           Personenverzeichnis läuft, ist kein Seiteninhalt (DESIGNSPRACHE § 7).
           Wer einen Eintrag hat, ist verlinkt — das sieht man. */}
-      {gremium && (
+      {committee && (
         <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
-          Das Aufsichtsorgan ist der {gremium}.
+          Das Aufsichtsorgan ist der {committee}.
         </p>
       )}
 
@@ -378,12 +378,12 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
         {gruppen.map((gr) => (
           <div key={gr.key}>
             <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
-              {gr.titel}
+              {gr.title}
             </p>
             <ul className="mt-1.5 grid gap-1.5 @xl/organ:grid-cols-2 @4xl/organ:grid-cols-3">
               {gr.personen.map((p, i) => (
                 <Person key={`${p.name}-${i}`} p={p}
-                  zeigeFunktion={gr.key === "vorsitz" && zuordenbar} />
+                  zeigeFunktion={gr.key === "chair" && zuordenbar} />
               ))}
             </ul>
           </div>
@@ -408,18 +408,18 @@ function Aufsichtsorgan({ personen, zuordenbar, herkunft }: {
  *
  *  `whitespace-pre-line`, weil der Bericht in den Listen-Abschnitten je
  *  Eintrag eine Zeile setzt: Zu einem Absatz verschmolzen wären sie unlesbar. */
-function Rohtext({ kicker, text, herkunft, hinweis }: {
+function Rohtext({ kicker, text, herkunft, note }: {
   kicker: string; text: string; herkunft: ReturnType<typeof herkunftVon>;
-  hinweis?: string;
+  note?: string;
 }) {
   return (
     <Abschnitt kicker={kicker}>
       <p className="mt-1.5 max-w-[76ch] whitespace-pre-line text-[13px] leading-relaxed text-foreground/90">
         {text}
       </p>
-      {hinweis && (
+      {note && (
         <p className="mt-2.5 max-w-[74ch] text-[12px] leading-relaxed text-muted-foreground">
-          {hinweis}
+          {note}
         </p>
       )}
       <Fundstelle h={herkunft} className="mt-3" />
@@ -438,13 +438,13 @@ function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[]
   return (
     <div>
       <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
-        {KENNZAHL_TITEL[zeilen[0].kennzahl]}
+        {KENNZAHL_TITEL[zeilen[0].indicator]}
       </p>
       <dl className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
         {zeilen.map((k) => (
-          <div key={k.jahr} className="flex flex-col">
+          <div key={k.year} className="flex flex-col">
             <dt className="font-mono text-[10px] tabular-nums text-muted-foreground">
-              {k.jahr}
+              {k.year}
             </dt>
             <dd className="font-display text-[15px] font-semibold tabular-nums">
               {wertText(k)}
@@ -460,20 +460,20 @@ function Reihe({ daten, zeilen }: { daten: BeteiligungsDaten; zeilen: Kennzahl[]
 export function Steckbrief({ daten, g, zurueck }: {
   daten: BeteiligungsDaten; g: Gesellschaft; zurueck: () => void;
 }) {
-  const alleReihen = useMemo(() => reihen(daten, g.gesellschaft), [daten, g.gesellschaft]);
-  const vergleich = daten.konzernvergleich.find((z) => z.gesellschaft === g.gesellschaft);
+  const alleReihen = useMemo(() => reihen(daten, g.company), [daten, g.company]);
+  const vergleich = daten.group_comparison.find((z) => z.company === g.company);
   const form = rechtsform(g);
 
-  const personen = useMemo(() => aufsichtspersonen(daten, g.gesellschaft),
-    [daten, g.gesellschaft]);
-  const eigentuemer = useMemo(() => eigentuemerVon(daten, g.gesellschaft),
-    [daten, g.gesellschaft]);
-  const text = (key: string) => textVon(daten, g.gesellschaft, key);
-  const gegenstand = text("gegenstand");
-  const besitz = text("beteiligungsverhaeltnisse");
-  const organe = text("aufsichtsorgane");
-  const beteiligungen = text("beteiligungen");
-  const haushalt = text("haushalt");
+  const personen = useMemo(() => aufsichtspersonen(daten, g.company),
+    [daten, g.company]);
+  const eigentuemer = useMemo(() => eigentuemerVon(daten, g.company),
+    [daten, g.company]);
+  const text = (key: string) => textVon(daten, g.company, key);
+  const gegenstand = text("business_purpose");
+  const besitz = text("ownership_structure");
+  const organe = text("supervisory_bodies");
+  const beteiligungen = text("own_shareholdings");
+  const haushalt = text("budget_impact");
 
   return (
     <div className="flex flex-col gap-3">
@@ -487,7 +487,7 @@ export function Steckbrief({ daten, g, zurueck }: {
       <div>
         <p className="flex items-center gap-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground">
           {form && <FormZeichen form={form} className="h-3 w-3" />}
-          {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"} · Bericht {g.bericht_jahr}
+          {form ? RECHTSFORM_TITEL[form] : "Städtische Einheit"} · Bericht {g.report_year}
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-[27px]">
           {g.name}
@@ -513,7 +513,7 @@ export function Steckbrief({ daten, g, zurueck }: {
         <Aufsichtsorgan personen={personen}
           // Ohne Angabe gilt „unbekannt": Eine alte API, die das Feld nicht
           // kennt, darf keine Ämter behaupten.
-          zuordenbar={g.funktionen_zuordenbar === true}
+          zuordenbar={g.roles_assignable === true}
           herkunft={herkunftVon(daten, personen[0].herkunft_id ?? organe?.herkunft_id ?? null)} />
       ) : organe ? (
         <Rohtext kicker={TITEL.aufsichtsorgane} text={organe.text}
@@ -561,7 +561,7 @@ export function Steckbrief({ daten, g, zurueck }: {
           <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Beitrag im Konzern {vergleich.jahr}
+                Beitrag im Konzern {vergleich.year}
               </dt>
               <dd className="font-display text-[17px] font-bold tabular-nums">
                 {eur(vergleich.konzern_beitrag)}
@@ -569,7 +569,7 @@ export function Steckbrief({ daten, g, zurueck }: {
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-                Jahresergebnis {vergleich.jahr}
+                Jahresergebnis {vergleich.year}
               </dt>
               <dd className="font-display text-[17px] font-bold tabular-nums">
                 {eur(vergleich.jahresergebnis)}

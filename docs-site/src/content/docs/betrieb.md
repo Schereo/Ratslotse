@@ -80,13 +80,14 @@ sind, prüfen `tests/test_changelog_fragmente.py` und
 
 ## Deploy-Wege
 
-Fünf Workflows in `.github/workflows/`:
+Sechs Workflows in `.github/workflows/`:
 
 | Workflow | Trigger | Was passiert |
 |---|---|---|
 | `test.yml` | Push auf `main`, jeder Pull Request | Python 3.12, `requirements.txt` + `requirements-dev.txt`, dann `pytest tests/ -q`. |
 | `deploy.yml` | `pull_request: types:[closed]` auf `main` mit `merged == true`, zusätzlich `workflow_dispatch` | Test-Gate (derselbe Lauf wie `test.yml`, als harte `needs`-Abhängigkeit), dann Doku-Build, rsync des Codes auf die App-VM (SSH mit ProxyJump über die Edge-VM) und Neustart der beiden systemd-Services. |
 | `deploy-dev.yml` | jeder Push auf `dev`, zusätzlich `workflow_dispatch` | Deployt auf die Dev-VM — ohne Test-Gate (siehe unten). |
+| `deploy-feature.yml` | jeder Push auf `feature`, zusätzlich `workflow_dispatch` | Deployt auf die **zweite Instanz auf derselben Dev-VM** (eigenes Verzeichnis, eigene Ports, eigene Datenbanken) — ebenfalls ohne Test-Gate. |
 | `docs.yml` | PR und Push auf `main`, nur bei Änderungen unter `docs-site/**` | Baut die Starlight-Doku und schlägt fehl, wenn sie nicht mehr baut (kaputte Links, Frontmatter, MDX). |
 | `docs-review.yml` | PR `opened` / `reopened` / `ready_for_review`, keine Forks | KI-Review, das den Diff auf Doku-Drift prüft und **genau einen** PR-Kommentar postet. Nur `contents: read` — die Action kann nichts committen. `continue-on-error: true`, der Review ist also kein Qualitäts-Gate. |
 
@@ -153,10 +154,45 @@ sind (der Prod-Build setzt die Variable nicht, dort liefern solche Seiten
 werden, braucht die Dev-VM dafür keinen `.env`-Eintrag.
 
 Der Lauf hat **kein Test-Gate** (die Tests laufen ohnehin an jedem PR), ein
-`concurrency`-Block mit `cancel-in-progress: true` (bei schnell
-aufeinanderfolgenden Pushes gewinnt der neueste), ein Kommando-Timeout von 30
-Minuten für `npm ci` + `next build` und am Ende zwei Smoke-Checks gegen
-Frontend und `/api/health`. Prod bleibt davon vollständig unberührt.
+Kommando-Timeout von 30 Minuten für `npm ci` + `next build` und am Ende zwei
+Smoke-Checks gegen Frontend und `/api/health` plus die Rauchprobe. Prod bleibt
+davon vollständig unberührt.
+
+Der `concurrency`-Block teilt sich die Gruppe mit dem Feature-Deploy (siehe
+[Feature-Umgebung](#feature-umgebung)) und steht auf `cancel-in-progress:
+false`. Beide Instanzen liegen auf derselben VM; zwei gleichzeitige
+`next build` passen dort nicht nebeneinander, und der OOM-Killer trifft dann
+den *laufenden* Dienst der anderen Instanz. Sie bauen deshalb nacheinander,
+und keiner der beiden Läufe wird abgebrochen — ein abgebrochener Deploy
+hinterließe eine Umgebung auf altem Stand, ohne dass es jemandem auffällt.
+
+---
+
+## Feature-Umgebung
+
+Auf **derselben VM** wie die Dev-Umgebung läuft eine zweite, vollständig
+getrennte Instanz für den Branch `feature`. Sie hat ein eigenes
+Arbeitsverzeichnis, eigene systemd-Units, eigene Ports, eine eigene `.env`
+und **eigene Datenbanken** — dev und feature teilen sich nur die Maschine.
+
+Wozu: `dev` trägt den Stand, der als nächstes nach `main` fährt. Wer etwas
+Größeres oder Wackeliges vorzeigen will, ohne diesen Stand anzufassen, mergt
+es nach `feature` und zeigt es unter der eigenen Subdomain.
+
+- **Eigene Datenbanken sind der Kern der Trennung.** Ein Feature-Branch
+  bringt typischerweise Migrationen mit. Teilte er die Dateien mit dev, zöge
+  die erste Migration die Dev-Umgebung mit um — und zurück käme man nur über
+  ein Backup. Der Bestand wurde einmalig als konsistenter
+  `sqlite3`-Backup-Schnappschuss aus der Dev-Datenbank kopiert.
+- **Gleiches Umgebungs-Gate wie dev** (`NEXT_PUBLIC_RATSLOTSE_ENV=dev`) —
+  sonst wäre die Instanz für genau die Features blind, für die man sie baut.
+- **Basic-Auth vor dem vhost**, kein Mailversand, keine Crons.
+- **Kein Force-Push nötig, aber erlaubt:** `feature` ist ein Wegwerf-Zweig.
+  Der Deploy holt den Stand per `git fetch` + `git reset --hard <sha>` und
+  kommt mit jedem Umbau der Historie zurecht.
+
+Frisch halten heißt: `dev` nach `feature` mergen (nicht umgekehrt). Fertige
+Arbeit geht wie immer per Pull Request nach `dev`.
 
 ---
 
@@ -263,7 +299,7 @@ ist. Nur Collaborator können sie starten.
 |---|---|---|
 | `ops-vorlagen-backfill.yml` | Holt alle fehlenden Vorlagen-Volltexte und Anlagen (inkl. Antragsteller-Erkennung) nach und baut anschließend den FTS-Index neu. Timeout 120 min. | Ja — nur Fehlendes; der Rebuild ist reproduzierbar. |
 | `ops-stammdaten-backfill.yml` | Zieht Beratungsfolgen aller eingelesenen Vorlagen sowie Personen- und Gremien-Stammdaten aller Wahlperioden nach. Reines Netz-Parsing, kein LLM. Timeout 120 min. | Ja — die Mitarbeit wird je Person komplett ersetzt. |
-| `ops-recaps-regenerieren.yml` | Erzeugt alle Themenfeld-Rückblicke neu (`--force`), sinnvoll nach Änderungen am admin-editierbaren Recap-Prompt statt bis Sonntag zu warten. Kostet ein paar Cent LLM. | Nein im engeren Sinn — `--force` überschreibt bewusst alle Rückblicke. |
+| `ops-recaps-regenerieren.yml` | Erzeugt alle Themenfeld-Rückblicke neu (`--force`), sinnvoll nach einer Änderung am Recap-Prompt in `kern/prompts.py` statt bis Sonntag zu warten. Kostet ein paar Cent LLM. | Nein im engeren Sinn — `--force` überschreibt bewusst alle Rückblicke. |
 | `ops-quiz-backfill.yml` | Generiert Quizfragen für alle Gebiete (Stadtteile + große Themen) bis zur Ziel-Fragenzahl (`--target 10`), inkl. Verify-Pass. Timeout 60 min. | Ja — nur Gebiete unter Ziel werden aufgefüllt. |
 | `ops-tragweite-rollout.yml` | Schaltet den Tragweite-Score erstmals scharf: Voll-Backfill über alle Beschlüsse ohne `impact`, danach Neuberechnung des Wichtigkeits-Scores. | Ja — bewertet nur Beschlüsse ohne Score. |
 | `ops-entity-dubletten.yml` | Sucht doppelte Themen (dieselbe Sache unter mehreren Namen) und führt die vom LLM bestätigten zusammen. **Zwei Inputs:** `nur_bericht` (Default `true` → zeigt nur an, schreibt nichts) und `trocken` (mit LLM-Prüfung, ohne zu speichern). Timeout 40 min. | Ja — jede Zusammenführung ist im Admin-Panel einzeln wieder auflösbar. |
@@ -281,15 +317,30 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 ## Backups
 
 `scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken
-(`nwz.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
+(`ratslotse.sqlite` und `council.sqlite`) mit der `sqlite3`-Backup-API — also
 konsistent, ohne den laufenden Betrieb zu stoppen. Die Kopien landen unter
 `data/backups/` mit Datum im Dateinamen.
 
-- **Rotation:** `KEEP = 7` — je Datenbank bleiben die letzten sieben
-  Generationen, ältere werden gelöscht.
+- **Rotation:** zwei Stufen, `TAEGLICH = 7` und `WOECHENTLICH = 4`. Es bleiben
+  die sieben jüngsten Sicherungen, dazu aus jeder der vier Kalenderwochen
+  **vor** diesem Fenster die jüngste — zusammen 29 bis 35 Tage Abdeckung.
+  Sieben Tage feinkörnig decken „gestern war es noch gut" ab, die Wochenmarken
+  alles, was erst später auffällt. Der Zusatz „vor dem Fenster" ist nicht
+  kosmetisch: Reicht das Tagesfenster in die Vorwoche hinein, läge deren Marke
+  einen Tag neben einem Tagesstand und gewänne keinen Abstand — der Bestand
+  endete dann schon nach 22 Tagen.
+- **Handkopien bleiben liegen.** Gezählt wird nur, was `<stamm>_JJJJ-MM-TT.sqlite`
+  heißt. Eine von Hand gezogene `council_vor_release_v2.0.0.sqlite` fällt aus der
+  Rotation heraus: Sie wird nie gelöscht und kostet auch keinen Platz im Bestand.
+  Vorher war beides falsch herum — gelöscht wurde `sorted(...)[:-7]`, und weil
+  `council_pre_…` alphabetisch hinter `council_2026-…` steht, warfen zwei
+  Handkopien vom August zwei Tagesstände hinaus (am 03.09.2026 lagen deshalb nur
+  fünf Tagesstände von `council` vor, aber sieben von `nwz`).
 - **Off-Site-Mirror (optional):** Ist `BACKUP_RSYNC_TARGET` gesetzt, wird das
   Backup-Verzeichnis anschließend per `rsync -az --delete` gespiegelt; das Ziel
-  ist damit ein exaktes Abbild der 7-Tage-Rotation. Der SSH-Port kommt aus
+  ist damit ein exaktes Abbild der lokalen Rotation. Eine Kopie gegen
+  Serververlust, aber kein Archiv: Was lokal gelöscht wird, ist beim nächsten
+  Lauf auch dort weg. Der SSH-Port kommt aus
   `BACKUP_RSYNC_SSH_PORT` (Default `22`), `BatchMode=yes` verhindert
   Passwort-Prompts im Cron. Fehler werfen und landen damit im Alarmweg.
 - **Fehlt jede Datenbank**, wirft der Lauf bewusst eine Exception — ein
@@ -387,7 +438,7 @@ Jeder LLM-Aufruf kann seinen Token-Verbrauch protokollieren. `kern/llm.py`
 akzeptiert dafür ein Schlüsselwort `_feature="…"`, das vor dem eigentlichen
 API-Call herausgezogen wird; `kern/usage.py` schreibt daraus eine Zeile in die
 Tabelle `llm_usage` (`ts`, `feature`, `model`, `prompt_tokens`,
-`completion_tokens`) in `nwz.sqlite`. Die Erfassung ist **best-effort**: Sie
+`completion_tokens`) in `ratslotse.sqlite`. Die Erfassung ist **best-effort**: Sie
 fängt jede Exception ab, damit Tracking niemals einen LLM-Aufruf kaputt macht —
 unter Schreib-Konkurrenz paralleler Backfills bedeutet eine verlorene Zeile
 lediglich eine leicht zu niedrige Statistik. Auch der Streaming-Pfad
@@ -487,9 +538,9 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 
 | Variable | Wofür | Pflicht | Default |
 |---|---|---|---|
-| `NWZ_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/nwz.sqlite` |
+| `RATSLOTSE_DB` | Pfad zur Konten-/Themen-Datenbank | nein | `data/ratslotse.sqlite` |
 | `COUNCIL_DB` | Pfad zur Ratsdaten-Datenbank | nein | `data/council.sqlite` |
-| `NWZ_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `NWZ_DB`. Wer die Datenbank per `NWZ_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/nwz.sqlite` |
+| `RATSLOTSE_SQLITE` | Abweichender Pfad für das Usage-Tracking (`kern/usage.py`). **Achtung:** `kern/usage.py` liest ausschließlich diese Variable, der ganze Rest des Projekts `RATSLOTSE_DB`. Wer die Datenbank per `RATSLOTSE_DB` verschiebt, nimmt das Kosten-Tracking **nicht** mit — es schreibt still am alten Ort weiter. Beide zusammen setzen. | nein | `data/ratslotse.sqlite` |
 | `SETUP_REMIND_AFTER_HOURS` | Wartezeit, bevor `remind_setup.py` an eine offene Einrichtung erinnert | nein | `48` |
 
 ### E-Mail & Benachrichtigung

@@ -16,7 +16,7 @@ struct ConversationSettingsCard: View {
         RatsSectionPanel(
             "Gespräche",
             detail: "Deine Ratsgespräche können auf allen Geräten im Konto bereitstehen.",
-            symbol: "bubble.left.and.bubble.right.fill"
+            symbol: .messagesSquare
         ) {
             if isLoading {
                 RatsInlineLoadingState(message: "Einstellung wird geladen …", animation: .searching)
@@ -69,7 +69,7 @@ struct ConversationSettingsCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 } else if conversationCount > 0 {
                     Button(role: .destructive) { confirmsDeletion = true } label: {
-                        Label("Alle gespeicherten Gespräche löschen", systemImage: "trash")
+                        RatsLabel("Alle gespeicherten Gespräche löschen", .trash2)
                             .font(RatsFont.body(12, weight: .semibold))
                     }
                     .foregroundStyle(RatsColor.danger)
@@ -77,8 +77,7 @@ struct ConversationSettingsCard: View {
 
                 Divider().overlay(RatsColor.separator)
                 HStack(alignment: .top, spacing: 9) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 11, weight: .semibold))
+                    RatsIcon(.sparkles, size: 11)
                         .foregroundStyle(RatsColor.signal)
                         .padding(.top, 2)
                     Text("Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet; eine Drittlandverarbeitung ist möglich. Bitte keine personenbezogenen oder sensiblen Daten eingeben.")
@@ -130,9 +129,9 @@ struct ConversationSettingsCard: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response: JSONValue = try await model.api.get("/api/council/gespraeche")
-            setting = response.object?["einstellung"]?.int ?? model.conversationSavingPreference
-            conversationCount = response.object?["gespraeche"]?.array?.count ?? 0
+            let response: JSONValue = try await model.api.get("/api/council/conversations")
+            setting = response.object?["saves_conversations"]?.int ?? model.conversationSavingPreference
+            conversationCount = response.object?["conversations"]?.array?.count ?? 0
             error = nil
         } catch {
             self.error = error.localizedDescription
@@ -159,7 +158,7 @@ struct ConversationSettingsCard: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            try await model.api.sendVoid("/api/council/gespraeche", method: .delete)
+            try await model.api.sendVoid("/api/council/conversations", method: .delete)
             conversationCount = 0
             asksAboutExisting = false
             error = nil
@@ -177,7 +176,7 @@ struct AppearanceSettingsCard: View {
         RatsSectionPanel(
             "Erscheinungsbild",
             detail: "Automatisch folgt der Einstellung deines Geräts.",
-            symbol: "circle.lefthalf.filled"
+            symbol: .contrast
         ) {
             LazyVGrid(columns: columns, spacing: 9) {
                 ForEach(AppAppearance.allCases) { appearance in
@@ -186,8 +185,7 @@ struct AppearanceSettingsCard: View {
                             AppearancePreview(appearance: appearance)
                             HStack(spacing: 4) {
                                 if model.appearance == appearance {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .bold))
+                                    RatsIcon(.check, size: 9)
                                 }
                                 Text(label(appearance))
                             }

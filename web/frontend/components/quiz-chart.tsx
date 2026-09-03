@@ -70,22 +70,22 @@ function einheitKurz(unit: string): string {
  *  Labels keine Jahre sind. Dann rendert die Rangliste, statt eine Zeitachse
  *  zu behaupten, die es nicht gibt. */
 function jahresreihe(items: QuizChartData["items"]): JahrPunkt[] | null {
-  const reihe: JahrPunkt[] = [];
+  const series: JahrPunkt[] = [];
   for (const it of items) {
-    const jahr = Number(it.label);
-    if (!Number.isInteger(jahr) || jahr < 1900 || jahr > 2200) return null;
-    reihe.push({ jahr, wert: it.value });
+    const year = Number(it.label);
+    if (!Number.isInteger(year) || year < 1900 || year > 2200) return null;
+    series.push({ year, value: it.value });
   }
-  return reihe.length >= 2 ? reihe : null;
+  return series.length >= 2 ? series : null;
 }
 
 function Rangliste({ chart }: { chart: QuizChartData }) {
   const zeilen: RanglisteZeile[] = chart.items.map((it) => ({
     label: it.label,
-    wert: it.value,
+    value: it.value,
     hervorgehoben: it.highlight,
   }));
-  return <RanglisteSchiene zeilen={zeilen} einheit={einheitKurz(chart.unit)} />;
+  return <RanglisteSchiene zeilen={zeilen} unit={einheitKurz(chart.unit)} />;
 }
 
 /** Diagramm in der Quiz-Auflösung. Die Einheit trägt jede Form selbst (Zeile,
@@ -111,34 +111,34 @@ export function QuizChart({ chart, className }: { chart: QuizChartData; classNam
       .sort((a, b) => Number(!!b.highlight) - Number(!!a.highlight))
       .map((it) => ({
         label: it.label,
-        wert: it.value,
+        value: it.value,
         farbe: it.highlight ? "var(--hh-aus-0)" : "var(--hh-aus-5)",
       }));
     // Basis ist die SUMME der Segmente, nicht die runde 100: Rundet das
     // Backend einmal auf 99, zeigt die Leiste 99 als volle Breite statt einer
     // Lücke, die keine ist.
-    const basis = segmente.reduce((s, x) => s + x.wert, 0);
+    const basis = segmente.reduce((s, x) => s + x.value, 0);
     return (
       <div className={rahmen}>
-        {/* Der Titel steht hier IN der Leiste (`titel`), nicht über dem
+        {/* Der Titel steht hier IN der Leiste (`title`), nicht über dem
             Rahmen — sonst stünde er zweimal. */}
         <Gegenbalken
-          zeilen={[{ titel: chart.title, segmente }]}
+          zeilen={[{ title: chart.title, segmente }]}
           basis={basis}
-          einheit={einheitKurz(chart.unit)}
+          unit={einheitKurz(chart.unit)}
           nachkomma={0}
         />
       </div>
     );
   }
 
-  const reihe = type === "trend" ? jahresreihe(chart.items) : null;
+  const series = type === "trend" ? jahresreihe(chart.items) : null;
   return (
     <div className={rahmen}>
       <p className="text-xs font-semibold text-foreground">{chart.title}</p>
       <div className="mt-2">
-        {reihe
-          ? <Zeitreihe reihe={reihe} einheit={einheitKurz(chart.unit)}
+        {series
+          ? <Zeitreihe series={series} unit={einheitKurz(chart.unit)}
               ariaTitel={chart.title} nachkomma={0} />
           : <Rangliste chart={chart} />}
       </div>

@@ -86,11 +86,11 @@ def _render_items(decisions: list[dict]) -> str:
     lines = []
     for d in decisions:
         title = (d.get("title") or "").strip()
-        beschluss = " ".join((d.get("beschluss") or "").split())
-        if len(beschluss) > 400:
-            beschluss = beschluss[:400] + "…"
+        official_text = " ".join((d.get("official_text") or "").split())
+        if len(official_text) > 400:
+            official_text = official_text[:400] + "…"
         committee = d.get("committee") or ""
-        lines.append(f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {beschluss}')
+        lines.append(f'- id {d["id"]}: [{committee}] {title}\n  Beschluss: {official_text}')
     return "\n".join(lines)
 
 
@@ -111,7 +111,7 @@ def classify_batch(decisions: list[dict], model: str = MODEL):
     last_err: Exception = ValueError("no response")
     for _ in range(2):
         resp = llm.chat_complete(
-            model=model, _feature="themen_klassifikation", temperature=0, response_format={"type": "json_object"},
+            model=model, _feature="topic_classification", temperature=0, response_format={"type": "json_object"},
             max_tokens=4000, messages=messages, **extra,
         )
         content = _strip_fences(resp.choices[0].message.content or "")

@@ -80,9 +80,9 @@ export default function RegisterPage() {
                 bevor jemand tippt, nicht erst danach. */}
             <div className="mb-1 flex items-baseline justify-between gap-2">
               <label htmlFor="password" className="block text-sm font-medium text-foreground">Passwort</label>
-              <span id="password-hinweis" className="text-xs text-muted-foreground">Mindestens 8 Zeichen</span>
+              <span id="password-note" className="text-xs text-muted-foreground">Mindestens 8 Zeichen</span>
             </div>
-            <PasswordInput id="password" aria-describedby="password-hinweis" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
+            <PasswordInput id="password" aria-describedby="password-note" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           {/* RL-1001: Registrieren ist DIE Signal-Handlung dieses Screens. */}

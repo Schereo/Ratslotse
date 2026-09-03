@@ -29,7 +29,7 @@
 //  4. **Der Nenner darf gesagt werden.** Seit 08/2026 steht er auch da: Wie
 //     viele Betriebe erfasst sind und wie viele davon überhaupt zahlen,
 //     veröffentlicht das Landesamt für Statistik je Gemeinde
-//     (`council/gewerbesteuerstatistik.py`). Zwei Dinge gehören zwingend
+//     (`council/trade_tax_statistics.py`). Zwei Dinge gehören zwingend
 //     daneben, und beide stehen im Block: Das ist die **Veranlagung**, nicht
 //     das Aufkommen der Kurve weiter oben (Messbetrag mal Hebesatz lag in den
 //     prüfbaren Jahren zwischen 13 % darunter und 27 % darüber) — und der
@@ -41,28 +41,28 @@
 //
 // Alle Zahlen rechnet die Komponente aus den übergebenen Reihen. Keine steht
 // im Quelltext — dieselbe Lehre wie beim Hebesatz „439" (siehe
-// `lib/haushalt-steuern.ts`), der hier jahrelang als Konstante stand und nur
+// `lib/haushalt-taxes.ts`), der hier jahrelang als Konstante stand und nur
 // zufällig stimmte.
 
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { Gesetz } from "@/components/haushalt/gesetz";
 import { GlossaryText } from "@/components/glossary-text";
 import type { GewerbesteuerstatistikZeile } from "@/lib/haushalt";
 
-type SteuerZeile = { jahr: number; art: string; betrag: number | null };
-type Hebesatz = { jahr: number; hebesatz: number; vorheriger: number | null };
+type SteuerZeile = { year: number; kind: string; amount: number | null };
+type Hebesatz = { year: number; rate: number; prior_rate: number | null };
 
 /** Ab wann ein Jahressprung „groß" heißt. Die Schwelle ist gesetzt, nicht
  *  gemessen — deshalb steht sie im Text, den der Block ausgibt. */
 const SPRUNG = 15;
 
 /** Die Ist-Reihe einer Steuerart, aufsteigend und ohne Lücken-Jahre. */
-function reihe(zeilen: SteuerZeile[], art: string | null) {
+function series(zeilen: SteuerZeile[], art: string | null) {
   if (!art) return [];
   return zeilen
-    .filter((z) => z.art === art && z.betrag != null && z.betrag > 0)
-    .map((z) => ({ jahr: z.jahr, betrag: z.betrag as number }))
-    .sort((a, b) => a.jahr - b.jahr);
+    .filter((z) => z.kind === art && z.amount != null && z.amount > 0)
+    .map((z) => ({ year: z.year, amount: z.amount as number }))
+    .sort((a, b) => a.year - b.year);
 }
 
 /** Die Veränderung gegenüber dem Vorjahr, in Prozent — je Jahrespaar eines.
@@ -70,11 +70,11 @@ function reihe(zeilen: SteuerZeile[], art: string | null) {
  *  Nur unmittelbar aufeinanderfolgende Jahre: Läge im Datensatz eine Lücke,
  *  verglichen wir sonst über sie hinweg und schrieben einen Zweijahres-Sprung
  *  als Jahressprung. */
-function aenderungen(r: { jahr: number; betrag: number }[]) {
+function aenderungen(r: { year: number; amount: number }[]) {
   return r.slice(1)
-    .map((z, i) => ({ jahr: z.jahr, vorjahr: r[i].jahr,
-                      prozent: ((z.betrag - r[i].betrag) / r[i].betrag) * 100 }))
-    .filter((p) => p.jahr === p.vorjahr + 1);
+    .map((z, i) => ({ year: z.year, prior_year: r[i].year,
+                      percent: ((z.amount - r[i].amount) / r[i].amount) * 100 }))
+    .filter((p) => p.year === p.prior_year + 1);
 }
 
 function deProzent(v: number, stellen = 1): string {
@@ -91,18 +91,18 @@ function deZahl(v: number): string {
  *  `betont` markiert die eine Zahl, um die es geht (wie viele zahlen). Die
  *  beiden anderen sind ihr Bezug; alle drei gleich laut zu setzen hieße, die
  *  Frage nicht zu beantworten. */
-function Kennzahl({ wert, einheit, label, betont = false }: {
-  wert: string; einheit?: string; label: string; betont?: boolean;
+function Kennzahl({ value, unit, label, betont = false }: {
+  value: string; unit?: string; label: string; betont?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className={betont
         ? "font-display text-[24px] font-bold leading-none tabular-nums text-primary"
         : "font-display text-[24px] font-bold leading-none tabular-nums text-foreground"}>
-        {wert}
-        {einheit && (
+        {value}
+        {unit && (
           <span className="ml-0.5 text-[14px] font-semibold text-muted-foreground">
-            {einheit}
+            {unit}
           </span>
         )}
       </span>
@@ -112,8 +112,8 @@ function Kennzahl({ wert, einheit, label, betont = false }: {
 }
 
 /** Eine Vergleichszeile: Label · Balken · Wert (Baustein RG-04). */
-function Zeile({ label, wert, anteil, farbe }: {
-  label: string; wert: string; anteil: number; farbe: string;
+function Zeile({ label, value, anteil, farbe }: {
+  label: string; value: string; anteil: number; farbe: string;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -125,23 +125,23 @@ function Zeile({ label, wert, anteil, farbe }: {
           style={{ width: `${Math.max(anteil, 3)}%`, background: farbe }} />
       </span>
       <span className="w-[62px] flex-none text-right font-display text-[15px] font-bold tabular-nums">
-        {wert}<span className="text-[11px] font-semibold text-muted-foreground">&nbsp;%</span>
+        {value}<span className="text-[11px] font-semibold text-muted-foreground">&nbsp;%</span>
       </span>
     </div>
   );
 }
 
-export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetze,
+export function WerZahlt({ taxes, art, vergleichArt, vergleichTitel, tax_rates,
                            statistik = null, statistikKurz = "",
                            statistikAbgrenzung = "" }: {
-  steuern: SteuerZeile[];
+  taxes: SteuerZeile[];
   /** Die Schreibweise der Gewerbesteuer in `council_steuern.art`. */
   art: string | null;
   /** Die Steuer, gegen die gemessen wird — die andere mit einem Hebesatz. */
   vergleichArt: string | null;
   vergleichTitel: string;
   /** Die Hebesatz-Treppe DIESER Steuer, für die Frage, ob ein Sprung am Rat lag. */
-  hebesaetze: Hebesatz[];
+  tax_rates: Hebesatz[];
   /** Der jüngste Erhebungsjahrgang der Gewerbesteuerstatistik — der Nenner.
    *  `null`, solange der Ingest auf dieser Maschine nicht lief; dann bleibt
    *  der Block, was er vorher war. */
@@ -153,16 +153,16 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
    *  er gegen die Angabe an den Daten. */
   statistikAbgrenzung?: string;
 }) {
-  const eigen = reihe(steuern, art);
-  const andere = reihe(steuern, vergleichArt);
+  const eigen = series(taxes, art);
+  const andere = series(taxes, vergleichArt);
 
   // Beide Reihen auf denselben Zeitraum: Ein Mittelwert über 28 Jahre neben
   // einem über 12 verglichen zwei verschiedene Epochen und hieße trotzdem
   // „im Schnitt".
-  const von = Math.max(eigen[0]?.jahr ?? 0, andere[0]?.jahr ?? 0);
-  const bis = Math.min(eigen.at(-1)?.jahr ?? 0, andere.at(-1)?.jahr ?? 0);
-  const imFenster = (r: { jahr: number; betrag: number }[]) =>
-    r.filter((z) => z.jahr >= von && z.jahr <= bis);
+  const von = Math.max(eigen[0]?.year ?? 0, andere[0]?.year ?? 0);
+  const bis = Math.min(eigen.at(-1)?.year ?? 0, andere.at(-1)?.year ?? 0);
+  const imFenster = (r: { year: number; amount: number }[]) =>
+    r.filter((z) => z.year >= von && z.year <= bis);
 
   const eigenAend = aenderungen(imFenster(eigen));
   const andereAend = aenderungen(imFenster(andere));
@@ -170,20 +170,20 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // Messteil weg — der Rechtsgrund steht trotzdem, er hängt an keiner Reihe.
   const misst = eigenAend.length >= 5 && andereAend.length >= 5;
 
-  const mittel = (a: { prozent: number }[]) =>
-    a.reduce((s, p) => s + Math.abs(p.prozent), 0) / a.length;
+  const mittel = (a: { percent: number }[]) =>
+    a.reduce((s, p) => s + Math.abs(p.percent), 0) / a.length;
   const eigenMittel = misst ? mittel(eigenAend) : 0;
   const andereMittel = misst ? mittel(andereAend) : 0;
   const skala = Math.max(eigenMittel, andereMittel) || 1;
 
-  const spruenge = eigenAend.filter((p) => Math.abs(p.prozent) > SPRUNG);
-  const andereSpruenge = andereAend.filter((p) => Math.abs(p.prozent) > SPRUNG);
+  const spruenge = eigenAend.filter((p) => Math.abs(p.percent) > SPRUNG);
+  const andereSpruenge = andereAend.filter((p) => Math.abs(p.percent) > SPRUNG);
 
   // Hat der Rat in einem Sprungjahr den Hebesatz angefasst? Ausgezählt statt
   // behauptet: Steht im Bestand irgendwann ein Sprung, der doch auf einem
   // Beschluss beruht, sagt der Satz das dann auch.
   //
-  // NUR ECHTE ÄNDERUNGEN — dieselbe Bedingung wie in `hebesatz-treppe.tsx`.
+  // NUR ECHTE ÄNDERUNGEN — dieselbe Bedingung wie in `rate-treppe.tsx`.
   // Tabelle 1105 führt ein Jahr, sobald sich IRGENDEIN Realsteuer-Hebesatz
   // geändert hat, nicht nur der dieser Steuer: 2002 stieg die Grundsteuer,
   // die Gewerbesteuer stand unverändert bei 410 %. Ohne diesen Filter zählte
@@ -191,34 +191,34 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
   // der Block schrieb den größten Sprung der Reihe dem falschen Grund zu
   // (gesehen in der Vorschau am 24.08.2026).
   const beschlussJahre = new Set(
-    hebesaetze
-      .filter((z) => z.vorheriger != null && z.hebesatz !== z.vorheriger)
-      .map((z) => z.jahr)
+    tax_rates
+      .filter((z) => z.prior_rate != null && z.rate !== z.prior_rate)
+      .map((z) => z.year)
       .filter((j) => j > von && j <= bis));
-  const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.jahr)).length;
+  const mitBeschluss = spruenge.filter((p) => beschlussJahre.has(p.year)).length;
 
   // --- Der Nenner ---------------------------------------------------------
   // Alles gerechnet, nichts geschrieben: Kommt ein neuer Erhebungsjahrgang
   // herein, ändern sich die Sätze mit. Der Zerlegungs-Anteil bleibt weg, wo
-  // ein Betrag der Geheimhaltung unterliegt (`messbetrag_eur === null`) —
+  // ein Betrag der Geheimhaltung unterliegt (`tax_base_eur === null`) —
   // dann gibt es keinen Nenner, durch den sich teilen ließe. Für Oldenburg
   // ist das in keinem der Jahrgänge 2017–2021 der Fall, für Salzgitter und
   // Wolfsburg in jedem.
-  const ohneSteuer = statistik ? statistik.faelle - statistik.faelle_positiv : 0;
-  const zahlenAnteil = statistik && statistik.faelle
-    ? (statistik.faelle_positiv / statistik.faelle) * 100 : 0;
-  const zerlegtAnteil = statistik?.messbetrag_eur && statistik.zerlegung_messbetrag_eur != null
-    ? (statistik.zerlegung_messbetrag_eur / statistik.messbetrag_eur) * 100 : null;
+  const ohneSteuer = statistik ? statistik.cases - statistik.cases_positive : 0;
+  const zahlenAnteil = statistik && statistik.cases
+    ? (statistik.cases_positive / statistik.cases) * 100 : 0;
+  const zerlegtAnteil = statistik?.tax_base_eur && statistik.apportioned_assessment_eur != null
+    ? (statistik.apportioned_assessment_eur / statistik.tax_base_eur) * 100 : null;
   // Wie viel mehr eine zerlegte Betriebsstätte trägt als eine rein örtliche
   // Firma — je zahlendem Fall, nicht je Fall: Wer die Betriebe ohne
   // Steuermessbetrag mitteilte, vergliche zwei Zahlen, in denen unterschiedlich
   // viele Nullen stecken.
-  const je = (betrag: number | null, faelle: number | null) =>
-    betrag != null && faelle ? betrag / faelle : null;
-  const jeZerlegt = je(statistik?.zerlegung_messbetrag_eur ?? null,
-                       statistik?.zerlegungen_positiv ?? null);
-  const jeOertlich = je(statistik?.festsetzung_messbetrag_eur ?? null,
-                        statistik?.festsetzungen_positiv ?? null);
+  const je = (amount: number | null, cases: number | null) =>
+    amount != null && cases ? amount / cases : null;
+  const jeZerlegt = je(statistik?.apportioned_assessment_eur ?? null,
+                       statistik?.apportionments_positive ?? null);
+  const jeOertlich = je(statistik?.assessment_tax_base_eur ?? null,
+                        statistik?.assessments_positive ?? null);
   const zerlegtFaktor = jeZerlegt && jeOertlich ? jeZerlegt / jeOertlich : null;
 
   return (
@@ -256,21 +256,21 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
               Wie viele es sind
             </p>
             <span className="font-mono text-[9.5px] uppercase text-muted-foreground">
-              Erhebungsjahr {statistik.jahr}
+              Erhebungsjahr {statistik.year}
             </span>
           </div>
 
           <div className="mt-3 grid gap-3 @sm:grid-cols-3">
             <Kennzahl
-              wert={deZahl(statistik.faelle)}
+              value={deZahl(statistik.cases)}
               label="Betriebe und Betriebsstätten sind in Oldenburg erfasst" />
             <Kennzahl betont
-              wert={deZahl(statistik.faelle_positiv)}
+              value={deZahl(statistik.cases_positive)}
               label={`davon zahlen überhaupt Gewerbesteuer — ${deProzent(zahlenAnteil, 0)}\u00a0%`} />
-            {zerlegtAnteil != null && statistik.zerlegungen_positiv != null && (
+            {zerlegtAnteil != null && statistik.apportionments_positive != null && (
               <Kennzahl
-                wert={deProzent(zerlegtAnteil)} einheit="%"
-                label={`des Steuermessbetrags kommen von ${deZahl(statistik.zerlegungen_positiv)} `
+                value={deProzent(zerlegtAnteil)} unit="%"
+                label={`des Steuermessbetrags kommen von ${deZahl(statistik.apportionments_positive)} `
                        + "Betriebsstätten größerer Firmen"} />
             )}
           </div>
@@ -331,9 +331,9 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
           </p>
 
           <div className="mt-2.5 flex flex-col gap-2">
-            <Zeile label="Gewerbesteuer" wert={deProzent(eigenMittel)}
+            <Zeile label="Gewerbesteuer" value={deProzent(eigenMittel)}
               anteil={(eigenMittel / skala) * 100} farbe="var(--hh-ein-0)" />
-            <Zeile label={vergleichTitel} wert={deProzent(andereMittel)}
+            <Zeile label={vergleichTitel} value={deProzent(andereMittel)}
               anteil={(andereMittel / skala) * 100} farbe="var(--hh-ein-3)" />
           </div>
           <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -341,11 +341,19 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
             Veränderung über den ganzen Zeitraum — die steht in der Kurve oben. Hier zählt jedes
             Jahr einzeln: Unsere Rechnung aus der Ist-Reihe beider Steuern, Ausschläge ohne
             Vorzeichen gemittelt, damit sich ein gutes und ein schlechtes Jahr nicht aufheben.
-            <Beleg q="steuern" />
+            <Beleg q="taxes" />
           </p>
         </div>
       )}
 
+      {/* Die Herleitung — fünf Absätze und zwei Spalten Stichpunkte — steht
+          seit 02.09.2026 hinter einem Auslöser: Der Steckbrief ist zum Lesen
+          der Zahl da, nicht zum Studium der Gewerbesteuer. Nichts ist weg. */}
+      <details className="group mt-3">
+        <summary className="cursor-pointer list-none text-[12px] font-semibold text-primary marker:content-none">
+          <span className="group-open:hidden">Mehr dazu — was die Zahlen trotzdem verraten und woher die Steuer kommt</span>
+          <span className="hidden group-open:inline">Weniger</span>
+        </summary>
       {misst && (
         <p className="mt-3 max-w-[74ch] text-[13px] leading-relaxed text-foreground/90">
           <strong>Was die Zahlen trotzdem verraten.</strong> Bei beiden Steuern beschließt der
@@ -381,7 +389,7 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
               {zerlegtAnteil != null && zerlegtFaktor != null && statistik && (
                 <>
                   {" "}Dieser Weg trägt den größeren Teil: {deProzent(zerlegtAnteil)}&nbsp;% des
-                  Steuermessbetrags kamen {statistik.jahr} aus zerlegten Betriebsstätten, und je
+                  Steuermessbetrags kamen {statistik.year} aus zerlegten Betriebsstätten, und je
                   zahlendem Fall war das rund das{" "}
                   {deProzent(zerlegtFaktor)}-Fache einer Firma, die nur hier sitzt.
                 </>
@@ -419,6 +427,8 @@ export function WerZahlt({ steuern, art, vergleichArt, vergleichTitel, hebesaetz
           </ul>
         </div>
       </div>
+
+      </details>
 
       <p className="mt-3 max-w-[74ch] text-[11.5px] leading-relaxed text-muted-foreground">
         Deshalb nennen wir keine Unternehmen. Aus den öffentlich verfügbaren Daten lässt

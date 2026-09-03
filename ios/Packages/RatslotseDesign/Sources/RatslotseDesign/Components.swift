@@ -23,16 +23,16 @@ public struct MonoKicker: View {
 
 public struct Pill: View {
     private let text: String
-    private let symbol: String?
+    private let symbol: RatsGlyph?
 
-    public init(_ text: String, symbol: String? = nil) {
+    public init(_ text: String, symbol: RatsGlyph? = nil) {
         self.text = text
         self.symbol = symbol
     }
 
     public var body: some View {
         HStack(spacing: 5) {
-            if let symbol { Image(systemName: symbol) }
+            if let symbol { RatsIcon(symbol, size: 12) }
             Text(text)
         }
         .font(RatsFont.body(12, weight: .semibold))
@@ -62,31 +62,42 @@ public struct OutcomeBadge: View {
 
     private var label: String {
         switch outcome {
-        case "angenommen": "Angenommen"
-        case "abgelehnt": "Abgelehnt"
-        case "vertagt": "Vertagt"
-        case "zur_kenntnis": "Zur Kenntnis"
-        case "kein_beschluss": "Kein Beschluss"
+        case "accepted": "Angenommen"
+        case "rejected": "Abgelehnt"
+        case "postponed": "Vertagt"
+        case "noted": "Zur Kenntnis"
+        case "no_decision": "Kein Beschluss"
         default: outcome.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private var foreground: Color {
         switch outcome {
-        case "angenommen": RatsColor.success
-        case "abgelehnt": RatsColor.danger
-        case "vertagt": RatsColor.warning
+        case "accepted": RatsColor.success
+        case "rejected": RatsColor.danger
+        case "postponed": RatsColor.warning
         default: RatsColor.secondary
         }
     }
 
     private var background: Color {
         switch outcome {
-        case "angenommen": RatsColor.successTint
-        case "abgelehnt": RatsColor.dangerTint
-        case "vertagt": RatsColor.warningTint
+        case "accepted": RatsColor.successTint
+        case "rejected": RatsColor.dangerTint
+        case "postponed": RatsColor.warningTint
         default: RatsColor.separator
         }
+    }
+}
+
+/// „einstimmig" bzw. „mehrheitlich" — gespeichert wird der englische Wert.
+/// Freie Protokoll-Formulierungen („einstimmig bei einer Enthaltung") stehen
+/// so in der Quelle und kommen unverändert durch.
+public func voteLabel(_ vote: String) -> String {
+    switch vote {
+    case "unanimous": "einstimmig"
+    case "majority": "mehrheitlich"
+    default: vote
     }
 }
 
@@ -109,7 +120,7 @@ public struct SourceRow: View {
                 if let meta { Text(meta).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(RatsColor.muted)
+            RatsIcon(.chevronRight, size: 12).foregroundStyle(RatsColor.muted)
         }
         .foregroundStyle(RatsColor.text)
         .contentShape(Rectangle())
@@ -148,7 +159,7 @@ public struct QuestionComposer: View {
 
     public var body: some View {
         HStack(spacing: 9) {
-            Image(systemName: "sparkles")
+            RatsIcon(.sparkles, size: 16)
                 .foregroundStyle(RatsColor.signal)
             TextField("Was möchtest du über den Rat wissen?", text: $text, axis: .vertical)
                 .font(RatsFont.body())
@@ -156,8 +167,7 @@ public struct QuestionComposer: View {
                 .submitLabel(.send)
                 .onSubmit(action)
             Button(action: action) {
-                Image(systemName: isSending ? "stop.fill" : "arrow.up")
-                    .font(.system(size: 15, weight: .bold))
+                RatsIcon(isSending ? .square : .arrowUp, size: 15)
                     .foregroundStyle(RatsColor.primaryText)
                     .frame(width: 38, height: 38)
                     .background(RatsColor.primary.opacity(text.trimmingCharacters(in: .whitespaces).isEmpty ? 0.35 : 1))

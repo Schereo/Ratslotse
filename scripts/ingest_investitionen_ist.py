@@ -54,9 +54,9 @@ def link_suchen() -> str | None:
 
     ``None``, wenn die Seite ihn nicht (mehr) führt — dann greift die
     hinterlegte Adresse, und der Lauf sagt, dass er das tut."""
-    antwort = requests.get(ii.JAHRBUCH_URL, headers=_UA, timeout=120)
-    antwort.raise_for_status()
-    treffer = ii.LINK_MUSTER.search(antwort.text)
+    answer = requests.get(ii.JAHRBUCH_URL, headers=_UA, timeout=120)
+    answer.raise_for_status()
+    treffer = ii.LINK_MUSTER.search(answer.text)
     return urljoin(ii.JAHRBUCH_URL, treffer.group(1)) if treffer else None
 
 
@@ -90,11 +90,11 @@ def main() -> int:
                     url = ii.TABELLE_URL
                     print(f"HINWEIS: Die Übersichtsseite führt keinen Link auf "
                           f"1107 mehr — es gilt die hinterlegte Adresse: {url}")
-                antwort = requests.get(url, headers=_UA, timeout=120)
-                antwort.raise_for_status()
+                answer = requests.get(url, headers=_UA, timeout=120)
+                answer.raise_for_status()
                 pfad = Path(tmp) / "1107.pdf"
-                pfad.write_bytes(antwort.content)
-                print(f"  geladen: {ii.de_zahl(len(antwort.content))} Bytes")
+                pfad.write_bytes(answer.content)
+                print(f"  geladen: {ii.de_zahl(len(answer.content))} Bytes")
 
             text = pdf_text(pfad)
             spannen = ii.erkenne(text)
@@ -102,36 +102,36 @@ def main() -> int:
                 print("ABBRUCH: Tabelle 1107-1 ist nicht zu finden — ihr Titel "
                       "fehlt. Es wird nichts geschrieben.", file=sys.stderr)
                 return 1
-            for regelwerk, (von, bis) in sorted(spannen.items()):
-                print(f"{ii.REGELWERK[regelwerk]}: Spanne laut Titel {von}–{bis}")
+            for accounting_system, (von, bis) in sorted(spannen.items()):
+                print(f"{ii.REGELWERK[accounting_system]}: Spanne laut Titel {von}–{bis}")
 
-            ergebnis = ii.lies(text)
-            zeilen = ergebnis["zeilen"]
+            result = ii.lies(text)
+            zeilen = result["zeilen"]
             print(f"  {len(zeilen)} Jahrgänge übernommen · "
-                  f"{ii.probennachweis(ergebnis)}")
-            for v in ergebnis["verworfen"]:
-                print(f"    VERWORFEN {v['jahr']} ({v['regelwerk']}): {v['grund']}",
+                  f"{ii.probennachweis(result)}")
+            for v in result["verworfen"]:
+                print(f"    VERWORFEN {v['year']} ({v['accounting_system']}): {v['reason']}",
                       file=sys.stderr)
-            for regelwerk, jahre in sorted(ergebnis["fehlende_jahrgaenge"].items()):
-                for j in jahre:
-                    print(f"    FEHLT {j} ({regelwerk}): im Titel angekündigt, "
+            for accounting_system, years in sorted(result["fehlende_jahrgaenge"].items()):
+                for j in years:
+                    print(f"    FEHLT {j} ({accounting_system}): im Titel angekündigt, "
                           f"nicht übernommen", file=sys.stderr)
             if not zeilen:
                 print("ABBRUCH: kein einziger Jahrgang hat die Probe bestanden.",
                       file=sys.stderr)
                 return 1
 
-            doppik = [z for z in zeilen if z["regelwerk"] == "doppik"]
+            doppik = [z for z in zeilen if z["accounting_system"] == "doppik"]
             if doppik:
                 j = doppik[-1]
                 groesste = max(
                     ((f, j[f]) for f in ii.ARTEN["doppik"] if j.get(f)),
                     key=lambda p: p[1], default=None)
-                titel = dict(ii.SPALTEN["doppik"]).get(
+                title = dict(ii.SPALTEN["doppik"]).get(
                     groesste[0], "") if groesste else ""
-                print(f"  jüngster Jahrgang {j['jahr']}: "
-                      f"{ii.de_zahl(j['insgesamt'] / 1e6, 1)} Mio. € insgesamt"
-                      + (f", größter Posten „{titel}“ mit "
+                print(f"  jüngster Jahrgang {j['year']}: "
+                      f"{ii.de_zahl(j['total'] / 1e6, 1)} Mio. € total"
+                      + (f", größter Posten „{title}“ mit "
                          f"{ii.de_zahl(groesste[1] / 1e6, 1)} Mio. €" if groesste else ""))
 
             if args.trockenlauf:
@@ -148,47 +148,47 @@ def main() -> int:
             if not finanzquellen.bestandsschutz(
                     p, "Ist-Investitionen", alt, len(zeilen),
                     schuetzen=not args.schrumpf_erlauben):
-                for zeile in p.warnungen:
-                    print(zeile.strip(), file=sys.stderr)
+                for row in p.warnungen:
+                    print(row.strip(), file=sys.stderr)
                 print("ABBRUCH: Der vorhandene Bestand bleibt unangetastet. Wenn "
                       "das Schrumpfen Absicht ist: --schrumpf-erlauben.",
                       file=sys.stderr)
                 return 1
-            for zeile in p.zeilen:
-                print(zeile.strip())
+            for row in p.zeilen:
+                print(row.strip())
 
             # Eine Herkunft je Regelwerk, weil die beiden Tabellen zwei
             # Dokumentabschnitte mit zwei Abgrenzungen sind — dieselbe Datei,
             # aber nicht dieselbe Fundstelle und nicht dieselbe Aussage. Was
             # ein Leser im Beleg sieht, soll für SEINE Zahl gelten.
             #
-            # `stand` nennt nur den Berichtszeitraum. Die Abgrenzung stünde
+            # `as_of` nennt nur den Berichtszeitraum. Die Abgrenzung stünde
             # hier zwar gut, steht aber schon als eigenes Feld an der Antwort
             # des Endpunkts (`abgrenzung`) und damit auf der Seite direkt an
             # der großen Zahl.
             geschrieben = 0
-            for regelwerk in ("kameral", "doppik"):
-                teil = [z for z in zeilen if z["regelwerk"] == regelwerk]
-                verw = [v for v in ergebnis["verworfen"]
-                        if v["regelwerk"] == regelwerk]
+            for accounting_system in ("kameral", "doppik"):
+                part = [z for z in zeilen if z["accounting_system"] == accounting_system]
+                verw = [v for v in result["verworfen"]
+                        if v["accounting_system"] == accounting_system]
                 # Ein Regelwerk ganz ohne Jahrgänge wird trotzdem geschrieben,
                 # WENN es verworfene hat: Sonst verlöre die Seite genau dann
                 # die Begründung ihrer Lücke, wenn alles gerissen ist.
-                if not teil and not verw:
+                if not part and not verw:
                     continue
-                von, bis = spannen[regelwerk]
-                nummer = "1107-1" if regelwerk == "doppik" else "1107"
-                arten = ", ".join(t for _, t in ii.SPALTEN[regelwerk][:-1])
-                fundstelle = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle "
+                von, bis = spannen[accounting_system]
+                nummer = "1107-1" if accounting_system == "doppik" else "1107"
+                arten = ", ".join(t for _, t in ii.SPALTEN[accounting_system][:-1])
+                citation = (f"Kapitel 11 „Verwaltung und Finanzen“, Tabelle "
                               f"{nummer} — je Jahr die Auszahlungsarten "
                               f"({arten}) und ihre Summe")
                 nachweis = (
-                    f"Jahrgänge {teil[0]['jahr']}–{teil[-1]['jahr']} "
-                    f"({len(teil)} von {bis - von + 1} angekündigten): "
-                    f"Zeilensumme bestanden" if teil else
+                    f"Jahrgänge {part[0]['year']}–{part[-1]['year']} "
+                    f"({len(part)} von {bis - von + 1} angekündigten): "
+                    f"Zeilensumme bestanden" if part else
                     f"Kein Jahrgang von {bis - von + 1} angekündigten hat die "
                     f"Zeilensumme bestanden")
-                fehlt = ergebnis["fehlende_jahrgaenge"].get(regelwerk) or []
+                fehlt = result["fehlende_jahrgaenge"].get(accounting_system) or []
                 if fehlt:
                     # Was fehlt, gehört in den Messwert — sonst liest sich
                     # „Zeilensumme bestanden" wie eine Vollständigkeit, die
@@ -202,19 +202,19 @@ def main() -> int:
                 # Differenz ist die Auskunft, die die Lücke auf der Seite
                 # beziffert — im Fließtext des Grundes wäre sie für die
                 # Oberfläche verloren.
-                geschrieben += store.save_investitionen_ist(teil, h.Herkunft(
-                    art="stadt", url=url or ii.TABELLE_URL,
+                geschrieben += store.save_investitionen_ist(part, h.Herkunft(
+                    kind="city", url=url or ii.TABELLE_URL,
                     label=f"Statistisches Jahrbuch der Stadt Oldenburg, Tabelle "
                           f"{nummer} — Investitionen {von} bis {bis}",
-                    stand=f"Rechnungsergebnisse {von}–{bis}",
-                    probe="investitionen_ist_zeilensumme",
-                    fundstelle=fundstelle, probe_ergebnis=nachweis),
+                    as_of=f"Rechnungsergebnisse {von}–{bis}",
+                    probe="investments_actual_row_total",
+                    citation=citation, probe_result=nachweis),
                     verworfen=verw)
             print(f"  gespeichert: {geschrieben} Jahrgänge")
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t.startswith("council_investitionen_ist")}
+                   if t.startswith("council_investments_actual")}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}", file=sys.stderr)
     finally:

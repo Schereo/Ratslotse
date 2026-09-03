@@ -27,6 +27,6 @@
 //
 // Nicht abgedeckt und auch nicht nötig: Auf Prod laufen weder die
 // Ingest-Skripte noch der Cron `check_finanzdaten` — die Haushalts-Tabellen
-// entstehen dort leer und bleiben es. Die API-Routen unter /council/haushalt/*
+// entstehen dort leer und bleiben es. Die API-Routen unter /council/budget/*
 // antworten entsprechend leer statt falsch.
 export const HAUSHALT_FREI = process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev";

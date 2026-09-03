@@ -11,19 +11,19 @@ import { apiUrl, authHeaders } from "@/lib/api";
  *  sind bewusst zwei Handlungen. */
 export function GespraecheCard() {
   const [einstellung, setEinstellung] = useState<number | null | undefined>(undefined);
-  const [anzahl, setAnzahl] = useState(0);
+  const [count, setAnzahl] = useState(0);
   const [frageLoeschen, setFrageLoeschen] = useState(false);
 
   useEffect(() => {
     // `limit=0` holt nur die Zahlen: Hier zählt der Bestand, die Zeilen selbst
     // zeigt diese Karte nie. Vorher zählte sie die gelieferte Liste — und die
     // war auf 50 gedeckelt, „Alle löschen (50)" log also bei größeren Konten.
-    fetch(apiUrl("/council/gespraeche?limit=0"), { credentials: "include", headers: authHeaders() })
+    fetch(apiUrl("/council/conversations?limit=0"), { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((b) => {
         if (!b) return;
-        setEinstellung(b.einstellung);
-        setAnzahl(b.gesamt ?? 0);
+        setEinstellung(b.saves_conversations);
+        setAnzahl(b.total ?? 0);
       })
       .catch(() => {});
   }, []);
@@ -31,9 +31,9 @@ export function GespraecheCard() {
   const setzen = async (an: boolean) => {
     const vorher = einstellung;
     setEinstellung(an ? 1 : 0);
-    setFrageLoeschen(!an && anzahl > 0);
+    setFrageLoeschen(!an && count > 0);
     try {
-      const r = await fetch(apiUrl("/council/gespraeche/einstellung"), {
+      const r = await fetch(apiUrl("/council/conversations/setting"), {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ an }),
@@ -50,7 +50,7 @@ export function GespraecheCard() {
 
   const alleLoeschen = async () => {
     try {
-      const r = await fetch(apiUrl("/council/gespraeche"), {
+      const r = await fetch(apiUrl("/council/conversations"), {
         method: "DELETE", credentials: "include", headers: authHeaders(),
       });
       if (!r.ok) throw new Error();
@@ -98,17 +98,17 @@ export function GespraecheCard() {
         <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
           <p className="text-sm font-medium text-foreground">Speichern ist aus.</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Was soll mit deinen {anzahl} gespeicherten Gesprächen passieren?
+            Was soll mit deinen {count} gespeicherten Gesprächen passieren?
           </p>
           <div className="mt-2.5 flex gap-2">
             <Button size="sm" variant="secondary" onClick={() => setFrageLoeschen(false)}>Behalten</Button>
             <Button size="sm" variant="danger" onClick={() => void alleLoeschen()}>Alle löschen</Button>
           </div>
         </div>
-      ) : anzahl > 0 ? (
+      ) : count > 0 ? (
         <button type="button" onClick={() => void alleLoeschen()}
           className="mt-4 text-xs font-medium text-destructive hover:underline">
-          Alle gespeicherten Gespräche löschen ({anzahl})
+          Alle gespeicherten Gespräche löschen ({count})
         </button>
       ) : null}
 

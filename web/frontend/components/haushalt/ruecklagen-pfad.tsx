@@ -18,19 +18,19 @@ import type { RuecklagenPfad as Pfad } from "@/lib/haushalt-labor";
 const B = 300, H = 74, OBEN = 6, UNTEN = 16;
 
 export function RuecklagenPfadGrafik({ ohne, mit }: { ohne: Pfad; mit: Pfad }) {
-  const jahre = ohne.punkte.map((p) => p.jahr);
-  if (jahre.length < 2) return null;
-  const startJahr = jahre[0] - 1;
-  const x = (jahr: number) =>
-    ((jahr - startJahr) / (jahre[jahre.length - 1] - startJahr)) * B;
-  const y = (stand: number) =>
-    OBEN + (1 - stand / ohne.start) * (H - OBEN - UNTEN);
+  const years = ohne.punkte.map((p) => p.year);
+  if (years.length < 2) return null;
+  const startJahr = years[0] - 1;
+  const x = (year: number) =>
+    ((year - startJahr) / (years[years.length - 1] - startJahr)) * B;
+  const y = (as_of: number) =>
+    OBEN + (1 - as_of / ohne.start) * (H - OBEN - UNTEN);
 
   const linie = (p: Pfad) =>
     [`${x(startJahr)},${y(p.start)}`,
-      ...p.punkte.map((pt) => `${x(pt.jahr)},${y(pt.stand)}`)].join(" ");
+      ...p.punkte.map((pt) => `${x(pt.year)},${y(pt.as_of)}`)].join(" ");
   const verschieden = mit.punkte.some(
-    (pt, i) => Math.abs(pt.stand - ohne.punkte[i].stand) > 0.05);
+    (pt, i) => Math.abs(pt.as_of - ohne.punkte[i].as_of) > 0.05);
 
   return (
     <svg viewBox={`0 0 ${B} ${H}`} className="mt-1 block w-full" aria-hidden>
@@ -55,7 +55,7 @@ export function RuecklagenPfadGrafik({ ohne, mit }: { ohne: Pfad; mit: Pfad }) {
       <text x="0" y={H - 2} className="font-mono" fontSize="9"
         style={{ fill: "hsl(var(--muted-foreground))" }}>{startJahr}</text>
       <text x={B} y={H - 2} textAnchor="end" className="font-mono" fontSize="9"
-        style={{ fill: "hsl(var(--muted-foreground))" }}>{jahre[jahre.length - 1]}</text>
+        style={{ fill: "hsl(var(--muted-foreground))" }}>{years[years.length - 1]}</text>
     </svg>
   );
 }

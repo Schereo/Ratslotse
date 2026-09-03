@@ -30,12 +30,17 @@ Das Paket hieß bis 08/2026 `nwz/` — ein Rest aus der Zeit, als hier ein
 Zeitungs-Scraper lief. Der Inhalt hat damit nichts zu tun, deshalb heißt es
 jetzt `kern/`.
 
-Drei Stellen tragen den alten Namen bewusst weiter, weil ein Umbenennen dort
-Daten oder Betrieb anfasst statt nur Text:
+Die Datenbank hieß bis 08/2026 ebenfalls so: `data/nwz.sqlite` mit der Variable
+`NWZ_DB`. Sie heißt jetzt **`data/ratslotse.sqlite`** (`RATSLOTSE_DB`, für das
+Kosten-Tracking `RATSLOTSE_SQLITE`). Vor dem Umstellen stand hier die Warnung,
+ein Fehler dabei hieße „App startet mit leerer Datenbank" — deshalb zieht die
+Datei sich beim Start **selbst** um (`kern/store.py::_umzug_von_nwz`): Ist die
+neue nicht da und die alte schon, wird der WAL eingecheckt und umbenannt. Der
+Schritt ist idempotent und darf stehen bleiben, bis alle Umgebungen einmal
+gestartet sind.
 
-- **`data/nwz.sqlite`** und die Umgebungsvariable **`NWZ_DB`** — der Dateiname
-  ist unsichtbar, ein Fehler beim Umstellen hieße „App startet mit leerer
-  Datenbank".
+Zwei Stellen tragen den alten Namen weiter:
+
 - **die systemd-Units** `nwz-web-api` / `nwz-web-frontend` — Umbenennen braucht
   Root auf dem Server und einen Nachzug in `deploy.yml`.
 - **`web/frontend/components/nwz-link.tsx`** — der ist kein Rest: Auf
@@ -44,9 +49,18 @@ Daten oder Betrieb anfasst statt nur Text:
 ## Lokale Entwicklung
 
 ```bash
-# Backend (FastAPI)
-python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt -r web/backend/requirements.txt
-cd web/backend && ../../.venv/bin/uvicorn app.main:app --reload --port 8000
+# Backend (FastAPI) — einmal einrichten
+python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt \
+  -r web/backend/requirements.txt -c constraints.txt
+
+# und dann starten. Der Starter sucht sich einen freien Port, verdrahtet die
+# Datenbanken aus data/ und weigert sich, einen FREMDEN Prozess mitzubenutzen.
+# Genau daran ist am 02.09.2026 eine halbe Stunde draufgegangen: Auf dem
+# geratenen Port lag ein zwei Wochen alter Server einer anderen Sitzung, der
+# eigene startete gar nicht — und `/api/health` antwortete trotzdem.
+python scripts/dev.py start     # nennt Port, PID und die Zeile fürs Frontend
+python scripts/dev.py status
+python scripts/dev.py stop      # hält den EIGENEN an, nie einen fremden
 
 # Frontend (Next.js)
 cd web/frontend && npm install && npm run dev      # :3000, /api/* → Backend
@@ -55,12 +69,49 @@ cd web/frontend && npm install && npm run dev      # :3000, /api/* → Backend
 cd docs-site && npm install && npm run dev
 
 # Tests
-.venv/bin/pip install -r requirements-dev.txt && .venv/bin/python -m pytest tests/ -q
+.venv/bin/pip install -r requirements-dev.txt -c constraints.txt
+.venv/bin/python -m pytest tests/ -q
 ```
 
-Zwei SQLite-DBs unter `data/` (gitignored): `nwz.sqlite` (Konten, Themen, Prompts)
+Zwei SQLite-DBs unter `data/` (gitignored): `ratslotse.sqlite` (Konten, Themen, Gespräche)
 und `council.sqlite` (Sitzungen, Beschlüsse). Beide werden lokal beim ersten Lauf
 angelegt.
+
+**Mit echten Daten arbeiten.** Leer angelegt taugen die beiden wenig: Eine
+Liste, die nie mehr als drei Einträge sieht, bekommt keine Paginierung; ein
+Titel, der nie lang wird, bricht erst auf dem Server um. Deshalb:
+
+```bash
+python scripts/lokale_daten.py hol    # Ratsdaten von dev (~220 MB, ~25 s)
+python scripts/lokale_daten.py setz   # in data/ DIESES Worktrees legen
+python scripts/saat_konten.py         # erfundene Konten dazu
+```
+
+Der Abzug liegt in `~/.cache/ratslotse` und wird von allen Worktrees geteilt;
+`setz` legt je Worktree eine eigene Kopie an (auf APFS ein Copy-on-write-Klon,
+der erst beim Schreiben Platz kostet). `stand` sagt, wie alt er ist, und warnt
+ab zwei Wochen — gegen alte Daten zu prüfen fühlt sich an wie gegen echte.
+
+**Weil der Zwischenspeicher geteilt ist, kann deine Kopie hinterherhinken.**
+Holt eine andere Sitzung neu, fehlen dir ihre frischen Tabellen, ohne dass
+etwas darauf hindeutet. `stand` vergleicht deshalb Kopie und Abzug und nennt,
+was dir fehlt. Am 02.09.2026 stand `council_liquidity` deshalb lokal auf 0
+Zeilen, während der Abzug 137 hatte — der naheliegende Schluss („der Ingest
+ist ausgefallen") wäre falsch gewesen.
+
+**Auf dev laufen keine Cron-Jobs**, und was nur ein Cron füllt, fehlt im
+Abzug ganz. Gemessen gegen beide Server: Die Bauleitplan-Beteiligungen gibt es
+auf dev als Tabelle nicht (auf Prod drei Zeilen), sonst ist dev fast
+vollständig. Wer so eine Tabelle braucht: `hol --von prod` — dieselbe
+Abspeckung greift dort, die nutzerbezogenen Tabellen kommen also auch von dort
+nicht mit.
+
+**Die Konten werden gebaut, nicht geholt.** Die echte Konten-Datenbank trägt
+Adressen, Tokens und gespeicherte Gespräche; sie gehört auf kein Notebook. Aus
+dem Abzug fallen deshalb auch die nutzerbezogenen Tabellen der Rats-Datenbank
+heraus (die Liste dafür ist dieselbe, die das Konto-Löschen benutzt), dazu
+Embeddings und Anlagen-Volltexte — zusammen gut 60 % der Datei, und für die
+Arbeit an einer Oberfläche ohne Belang.
 
 **Dev-Server-Konfig für Coding-Agents:** `.claude/launch.json` ist **nicht**
 eingecheckt — Agent-Werkzeuge schreiben dort ihre eigenen Ports und Backends
@@ -68,6 +119,87 @@ hinein, das ist Arbeitsstand. Im neuen Checkout einmal
 `cp .claude/launch.example.json .claude/launch.json`; die Vorlage trägt die
 gemeinsamen Einträge (`frontend`, `docs`). Bis 08/2026 war die Datei getrackt,
 weshalb sich session-eigene Konfigs in fremde PRs geschmuggelt haben.
+
+## Arbeitsablauf für Coding-Agents
+
+> Diese Datei ist die einzige Quelle der Projektregeln. **`AGENTS.md` ist ein
+> Symlink hierauf** — wer Regeln ändert, ändert sie hier, und Codex liest
+> dieselben. Vorher trug `AGENTS.md` vier Zeilen Arbeitsablauf und sonst
+> nichts; ein Agent, der nur sie las, kannte weder das Branch-Modell noch die
+> Changelog-Pflicht noch die Designsprache.
+
+**Vor jedem Push — ein Befehl:**
+
+```bash
+python scripts/pruefe.py            # alles, was auch die CI prüft
+python scripts/pruefe.py --schnell  # die fünf Prüfungen unter ~4 s
+```
+
+Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
+einen Browser und dauern zwei Minuten. Sie laufen in der CI
+(`.github/workflows/e2e.yml`) und lokal auf Zuruf:
+
+```bash
+cd web/frontend && npx playwright test
+```
+
+Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
+verstreut stand: Adressen-Lint, ruff, den API-Vertrag, die generierten
+Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
+TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
+einzeln, `--nur ruff,vertrag` wählt aus.
+
+**Den Hook einschalten** (einmal je Checkout):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Danach läuft `--schnell` vor jedem `git push` und `lint_adressen.py` vor jedem
+Commit. In einer Claude-Code-Sitzung passiert das von selbst — `.claude/settings.json`
+setzt den Wert beim Sitzungsstart, **falls er noch nicht gesetzt ist**. Wer die
+Hooks bewusst nicht will, setzt `git config core.hooksPath /dev/null`; ein
+gesetzter Wert wird nie überschrieben. Für eine begründete Ausnahme im Einzelfall:
+`git push --no-verify`.
+
+**Regeln je Schicht.** Neben dieser Datei liegt in jedem größeren Verzeichnis
+eine eigene `CLAUDE.md` mit den Regeln, die genau dort gelten — sie wird
+automatisch mitgelesen, sobald dort gearbeitet wird:
+
+| Datei | Worum es geht |
+|---|---|
+| [`council/CLAUDE.md`](council/CLAUDE.md) | Scraper, Parser, Stores: Schema **und** Migration, Register mitpflegen |
+| [`kern/CLAUDE.md`](kern/CLAUDE.md) | Benachrichtigungen nur über `notify.einreihen`, LLM-Aufrufe, Cron-Takte |
+| [`web/backend/CLAUDE.md`](web/backend/CLAUDE.md) | Neue Endpunkte: Antwortform in `antworten.py`, Vertrag neu schneiden |
+| [`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md) | Nur über `lib/api.ts` ans Backend, Typen aus `lib/vertrag.ts`, Designsprache |
+| [`ios/CLAUDE.md`](ios/CLAUDE.md) | XcodeGen-Nachzug, handgeschriebene Modelle, Decode-Fallen |
+| [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Cron-Jobs: `run_guarded`, Takt in `kern/jobs.py`, Kennzahlen |
+| [`tests/CLAUDE.md`](tests/CLAUDE.md) | Wächter-Tests: was sie halten sollen und wie man einen neuen baut |
+
+**Ein Auftrag, ein Branch, ein Pull Request.** Branch von `dev` (Feature) bzw.
+`main` (Fix), committen, pushen, PR öffnen — Regeln dazu unten unter
+„Deployment & Branch-Modell". Fremde, nicht zum Auftrag gehörende Änderungen
+gehören nicht in den Commit.
+
+**Selbst mergen, sobald die CI grün ist** — mit einem Befehl, nicht von Hand:
+
+```bash
+python scripts/merge_wenn_gruen.py     # wartet, prüft gegen die Kopf-SHA, merged
+```
+
+Er prüft, was eine Handschleife übersieht: dass wirklich jede Prüfung
+`completed` ist (`gh pr checks` zeigt nach einem Force-Push minutenlang den
+alten Stand), dass überhaupt welche gelaufen sind (ein PR mit Konflikt bekommt
+gar keine — null Prüfungen sähen sonst aus wie „alles grün"), und dass der
+lokale Stand der des PR ist. Squash-Merge, danach wird der Zweig gelöscht.
+`--trocken` prüft nur.
+
+Das steht hier als Befehl, weil die Regel als Text nicht gereicht hat: Am
+02.09.2026 wurde #1000 gemergt, während die Testprüfung noch lief.
+
+Der **Release** bleibt Handarbeit — er ist ein Merge-Commit, kein Squash. Bei
+fehlenden Rechten, roten Checks oder Konflikten nicht mergen, sondern den
+konkreten Blocker melden.
 
 ## Deployment & Branch-Modell
 
@@ -77,8 +209,23 @@ Prod-Stand, `dev` der Integrations-Branch.**
 | Was | Wohin | Wie |
 |-----|-------|-----|
 | **Neues Feature** | PR mit `--base dev` | Squash-Merge; jeder Push auf `dev` deployt auf dev.ratslotse.de |
+| **Vorschau ohne dev anzufassen** | Merge nach `feature` | Jeder Push auf `feature` deployt auf feature.ratslotse.de (zweite Instanz auf derselben Dev-VM, eigene Datenbanken) |
 | **Fix/Hotfix** | PR mit `--base main` | Squash-Merge; deployt sofort auf Prod. Danach `main` nach `dev` zurückmergen (s. u.) |
 | **Release** | PR `dev` → `main` | **Merge-Commit, NICHT squashen** — sonst divergieren die Branches dauerhaft. Versionsschnitt (Changelog + Tag) gehört in diesen PR |
+
+**Vor dem Release: Was bricht die App im Store?** Sie wurde gegen `main`
+gebaut; nach dem Merge antwortet der Server nach dem neuen Vertrag. Ein
+umbenanntes Feld erreicht sie auf keinem Weg — bei einem nicht-optionalen
+bricht das Decodieren ab und die Ansicht bleibt leer.
+
+```bash
+python3 scripts/ios_vertrag.py --ausgeliefert
+```
+
+Zeigt nach Ansicht gruppiert, was abbricht und was still leer bleibt. Steht
+dort etwas, gehört ein neuer App-Build in den Store **und** `APP_MIN_BUILD`
+auf dessen Nummer gesetzt (die App fragt `/api/app-config` vor allem anderen
+und zeigt dann den Aktualisierungs-Schirm statt der kaputten Ansicht).
 
 **Nur ein gemergter Pull Request nach `main`** löst den Prod-Deploy aus
 (`.github/workflows/deploy.yml`, Trigger `pull_request: types:[closed]` +
@@ -86,6 +233,25 @@ Prod-Stand, `dev` der Integrations-Branch.**
 baut die Doku, rsync't den Code auf den Server (via SSH-ProxyJump, Ziel-Hosts
 als GitHub-Secrets) und startet die systemd-Services neu. Nicht überschrieben
 werden `.env`, `data/`, `.venv/`.
+
+**Nach dem Neustart läuft eine Rauchprobe.** `scripts/rauchprobe.py` ruft die
+Endpunkte ohne Konto auf dem frisch gestarteten Dienst auf und hält jede
+Antwort gegen `api/openapi.json` — Pflichtfeld da, Typ passend. Der Grund:
+`/api/health` fasst die Datenbank nicht an, eine Abfrage auf eine Spalte, die
+eine Migration gerade entfernt hat, wirft aber erst beim ersten echten Aufruf.
+Seit dem Ausbau gehört auch die **angemeldete** Fläche dazu: Die Probe baut
+sich auf dem Server selbst ein Token, gültig fünf Minuten, aus
+`WEB_JWT_SECRET` und der Konto-Zeile von `RAUCHPROBE_KONTO` (Vorgabe:
+`WEB_ADMIN_EMAIL`). Nichts gespeichert, nichts zusätzlich einzurichten. Sie
+ruft damit die Ratsinhalte, die Auswertungen und alle 20 Haushalts-Schichten
+ab — nichts Persönliches, nichts Schreibendes, nichts, was ein Sprachmodell
+kostet; `tests/test_rauchprobe.py` hält das fest. Ohne `.env` entfällt der
+Teil, statt zu scheitern.
+
+Scheitert eine Probe, ist der Deploy rot (die Dienste laufen dann trotzdem
+schon mit dem neuen Stand — die Meldung ist der Alarm, keine Rücknahme). Lokal
+gegen einen eigenen Server: `python3 scripts/rauchprobe.py --basis
+http://127.0.0.1:8000`.
 
 **Rückmerge nach jedem Fix auf `main`** (hält den nächsten Release-PR
 konfliktfrei, v. a. im Changelog):
@@ -127,7 +293,28 @@ auf jedem PR). Die Dev-VM zieht per `git fetch` + `reset --hard`, baut
 Frontend + Backend-Deps und startet ihre Services neu. Prod bleibt davon
 komplett unberührt. **Kein Force-Push auf `dev`** — der Branch trägt seit dem
 Umbau gemeinsame Historie; wer einen Wegwerf-Stand testen will, nimmt dafür
-einen PR nach `dev` oder fragt Tim.
+den Branch `feature` (s. u.).
+
+### Feature-Umgebung (feature.ratslotse.de)
+
+**Zweite Instanz auf derselben Dev-VM** — eigenes Verzeichnis `~/app-feature`,
+eigene Ports (Next 3001, uvicorn 8001), eigene Units `nwz-feature-api` /
+`nwz-feature-frontend`, eigene `.env` und **eigene Datenbanken**. Geteilt wird
+nur die Maschine. **Jeder Push auf den Branch `feature`** deployt dorthin
+(`.github/workflows/deploy-feature.yml`), Basic-Auth wie dev, Build ebenfalls
+mit `NEXT_PUBLIC_RATSLOTSE_ENV=dev`.
+
+Wozu: `dev` trägt den Stand, der als nächstes nach `main` fährt. Wer etwas
+Größeres vorzeigen will, ohne diesen Stand anzufassen, mergt es nach `feature`.
+`feature` ist ein Wegwerf-Zweig — Force-Push erlaubt, der Deploy zieht per
+`reset --hard`. Frisch halten heißt `dev` → `feature` mergen, nie umgekehrt;
+fertige Arbeit geht wie immer per PR nach `dev`.
+
+**Beide Deploys teilen sich eine `concurrency`-Gruppe** (`deploy-dev-vm`,
+`cancel-in-progress: false`). Zwei gleichzeitige `next build` passen nicht auf
+2 Kerne/8 GB — der OOM-Killer träfe sonst den *laufenden* Dienst der anderen
+Instanz, und der Ausfall sähe aus wie ein Fehler im gebauten Code. Preis: ein
+Dev-Deploy wartet ggf. auf einen Feature-Build.
 
 ## `.env` (nur auf dem Server, nicht im Repo)
 
@@ -155,6 +342,10 @@ COUNCIL_TOPIC_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_GOAL_MODEL=deepseek/deepseek-v4-pro
 COUNCIL_EMBED_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 COUNCIL_RECAP_MODEL=deepseek/deepseek-v4-pro
+COUNCIL_VIDEO_MODEL=openai/gpt-5.6-luna     # liest Abstimmungsergebnisse aus Sitzungs-Transkripten
+COUNCIL_STT_MODEL=google/gemini-2.5-flash   # transkribiert den Livestream-Mitschnitt (Audio-Input)
+COUNCIL_STREAM_URL=https://cdn.oeins.de/sd480/index.m3u8  # O1-Livestream (HLS)
+COUNCIL_RECORD_MAX_HOURS=6                  # Kappe des Sitzungs-Mitschnitts
 COUNCIL_QA_MODEL=google/gemini-2.5-flash          # Antwort-Modell der KI-Frage (schnell; Default passt)
 COUNCIL_QA_EXPAND_MODEL=google/gemini-2.5-flash-lite  # Query-Expansion der KI-Frage (schnell; Default passt)
 COUNCIL_RETRIEVAL_KLASSISCH=0        # "1" = Notausschalter: Retrieval-Stand vor dem Vorlagen-Chunk-Ausbau
@@ -237,7 +428,7 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   (`generate_fundstuecke.py`, 21 Tage Vorlauf)), `check_vorlage_follows.py`
   (täglich; holt die Beratungsfolge jeder Vorlage, der jemand folgt, und meldet
   neue Stationen bzw. nachgetragene Ergebnisse — Tabelle `vorlage_follows` in
-  `nwz.sqlite`), `check_presse.py` (täglich 5:15; Stadt-Quellen: RSS-Abgleich
+  `ratslotse.sqlite`), `check_presse.py` (täglich 5:15; Stadt-Quellen: RSS-Abgleich
   der Pressemitteilungen für den „Aktuelles von der Stadt"-Block der KI-Frage
   samt Sofort-Embedding, plus laufende Bauleitplan-Beteiligungen von
   oldenburg.planungsbeteiligung.de für Frist-Banner und KI-Kontext),
@@ -259,7 +450,12 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `off` greift in `kern.notify.gewuenscht()`, also **vor** der Warteschlange —
   wer einen neuen Meldeanlass baut, muss ihn über `notify.einreihen` schicken,
   sonst umgeht er Aus-Schalter, Nachtruhe und Tagesgrenze zugleich.
-- **Prompts** liegen in `kern/prompts.py` (DB-Tabelle `prompts`) und sind über das
-  Admin-UI live editierbar — Defaults greifen, solange kein Override existiert.
+- **Prompts** liegen in `kern/prompts.py` — als Code, nicht als Datenbankinhalt.
+  Wer einen ändert, ändert ihn dort: im PR sichtbar, mit Diff und Historie. Die
+  Möglichkeit, sie im Admin-UI zu überschreiben, ist seit 08/2026 ausgebaut (Tims
+  Entscheidung) — ein Prompt aus der Hüfte war zu leicht geändert und die Wirkung
+  zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
+  JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
+  Umbenennung still zerlegt.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

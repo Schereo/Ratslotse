@@ -1,6 +1,6 @@
 // Der Weg eines Haushalts durch den Rat — Typen und die Rechenwege dazu.
 //
-// Gegenstück zu `GET /api/council/haushalt/weg` (council/store.py:
+// Gegenstück zu `GET /api/council/budget/journey` (council/store.py:
 // `haushalt_weg`). Anders als der Rest des Haushalts-Bereichs kommen die
 // Angaben hier nicht aus einem Finanzdokument, sondern aus den Ratsdaten:
 // Beratungsfolge, Tagesordnung, Protokoll-Beschluss.
@@ -17,38 +17,38 @@ export type WegVotum = {
   item_number: string | null;
   outcome: string | null;
   vote: string | null;
-  gegenstimmen: number | null;
-  enthaltungen: number | null;
+  no_votes: number | null;
+  abstentions: number | null;
 };
 
 export type WegStation = {
   kvonr: number;
-  datum: string;
-  gremium: string;
+  date: string;
+  committee: string;
   /** Rolle laut Beratungsfolge: Kenntnisnahme, Vorberatung, Entscheidung. */
-  rolle: string | null;
+  role: string | null;
   is_public: number | null;
   ksinr: number;
-  vorlage_nr: string | null;
-  vorlage_titel: string;
+  template_number: string | null;
+  template_title: string;
   /** TOP-Nummer mit Präfix („Ö 6") — ohne Präfix zeigt der Link daneben. */
   top: string | null;
   /** Ergebnis in den Worten der Tagesordnung („geändert beschlossen"). */
-  ergebnis: string | null;
+  result: string | null;
   /** Der Beschluss über die Haushaltssatzung in dieser Sitzung, falls es ihn gibt. */
   votum: WegVotum | null;
 };
 
 export type WegRunde = {
-  jahr: number;
-  vorlage_nr: string | null;
+  year: number;
+  template_number: string | null;
   kvonr: number | null;
   einbringung: WegStation | null;
-  fachausschuesse: { von: string; bis: string; anzahl: number; gremien: string[] } | null;
+  fachausschuesse: { von: string; bis: string; count: number; committees: string[] } | null;
   stationen: WegStation[];
 };
 
-export type WegDaten = { runden: WegRunde[] };
+export type WegDaten = { rounds: WegRunde[] };
 
 export const MONATE = [
   "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -70,7 +70,7 @@ export function deTagMonat(iso: string): string {
 /** Die abschließende Station: die letzte im Rat, sonst schlicht die letzte.
  *  In den Ausschüssen wird vorberaten, entschieden wird im Rat. */
 export function entscheidung(r: WegRunde): WegStation | null {
-  const rat = r.stationen.filter((s) => s.gremium === "Rat");
+  const rat = r.stationen.filter((s) => s.committee === "Rat");
   return rat[rat.length - 1] ?? r.stationen[r.stationen.length - 1] ?? null;
 }
 
@@ -79,14 +79,14 @@ export function entscheidung(r: WegRunde): WegStation | null {
 export function tageZumJahresbeginn(r: WegRunde): number | null {
   const e = entscheidung(r);
   if (!e) return null;
-  const [j, m, t] = e.datum.split("-").map(Number);
-  return Math.round((Date.UTC(j, m - 1, t) - Date.UTC(r.jahr, 0, 1)) / 86_400_000);
+  const [j, m, t] = e.date.split("-").map(Number);
+  return Math.round((Date.UTC(j, m - 1, t) - Date.UTC(r.year, 0, 1)) / 86_400_000);
 }
 
 export type Rhythmus = {
   jahrgaenge: number;
   /** Monate, in denen der Entwurf eingebracht wurde — häufigster zuerst. */
-  entwurfMonate: { monat: number; anzahl: number }[];
+  entwurfMonate: { monat: number; count: number }[];
   /** Die beiden Ränder der Streuung, gemessen am Beginn des Haushaltsjahres. */
   frueheste: WegRunde | null;
   spaeteste: WegRunde | null;
@@ -99,12 +99,12 @@ export function rhythmus(runden: WegRunde[]): Rhythmus {
   const zaehler = new Map<number, number>();
   for (const r of runden) {
     if (!r.einbringung) continue;
-    const m = Number(r.einbringung.datum.split("-")[1]);
+    const m = Number(r.einbringung.date.split("-")[1]);
     zaehler.set(m, (zaehler.get(m) ?? 0) + 1);
   }
   const entwurfMonate = [...zaehler.entries()]
-    .map(([monat, anzahl]) => ({ monat, anzahl }))
-    .sort((a, b) => b.anzahl - a.anzahl || a.monat - b.monat);
+    .map(([monat, count]) => ({ monat, count }))
+    .sort((a, b) => b.count - a.count || a.monat - b.monat);
 
   const mitBeschluss = runden.filter((r) => tageZumJahresbeginn(r) !== null);
   const sortiert = [...mitBeschluss].sort(
@@ -123,7 +123,7 @@ export function rhythmus(runden: WegRunde[]): Rhythmus {
  *  „heute" liegt — das ist das Jahr, in dem das Geld gerade ausgegeben wird.
  *  Gibt es (noch) keine Runde zu diesem Jahr, trägt die jüngste. */
 export function strahlRunde(runden: WegRunde[], heute: Date): WegRunde | null {
-  return runden.find((r) => r.jahr === heute.getFullYear())
+  return runden.find((r) => r.year === heute.getFullYear())
     ?? runden[runden.length - 1] ?? null;
 }
 
@@ -134,12 +134,12 @@ export function monateZwischen(von: string, bis: string): number {
   return (bj - vj) * 12 + (bm - vm);
 }
 
-/** Ein Jahresabschluss-Dokument, wie `/council/haushalt/dokumente` es
+/** Ein Jahresabschluss-Dokument, wie `/council/budget/documents` es
  *  liefert — gebraucht werden nur Jahr und das Datum der Sitzung, in der
  *  der Rat den Abschluss festgestellt hat. */
 export type AbschlussDok = {
-  jahr: number | null;
-  beschluss: { datum: string | null } | null;
+  year: number | null;
+  official_text: { date: string | null } | null;
 };
 
 export type AbschlussMass = {
@@ -162,12 +162,12 @@ export function jahresabschlussMass(doks: AbschlussDok[] | undefined): Abschluss
   const monate: number[] = [];
   const versaetze = new Map<number, number>();
   for (const d of doks ?? []) {
-    const datum = d.beschluss?.datum;
-    if (d.jahr == null || !datum) continue;
-    const [bj, bm] = datum.split("-").map(Number);
+    const date = d.official_text?.date;
+    if (d.year == null || !date) continue;
+    const [bj, bm] = date.split("-").map(Number);
     if (!bj || !bm) continue;
-    monate.push((bj - d.jahr) * 12 + bm);
-    versaetze.set(bj - d.jahr, (versaetze.get(bj - d.jahr) ?? 0) + 1);
+    monate.push((bj - d.year) * 12 + bm);
+    versaetze.set(bj - d.year, (versaetze.get(bj - d.year) ?? 0) + 1);
   }
   if (!monate.length) return null;
   monate.sort((a, b) => a - b);
@@ -215,15 +215,15 @@ export function naechsterHaushaltsTermin(sitzungen: KommendeSitzung[] | undefine
  *  Original-Wortlaut: „geändert beschlossen" sagt mehr als „Angenommen", und
  *  es ist die Formulierung, unter der man den Punkt im Original wiederfindet. */
 export function ergebnisArt(
-  ergebnis: string | null,
-): "angenommen" | "abgelehnt" | "vertagt" | "zur_kenntnis" | "kein_beschluss" {
-  const e = (ergebnis ?? "").toLowerCase();
-  if (!e) return "kein_beschluss";
-  if (e.includes("abgelehnt")) return "abgelehnt";
-  if (e.includes("beschlossen")) return "angenommen";
-  if (e.includes("kenntnis")) return "zur_kenntnis";
+  result: string | null,
+): "accepted" | "rejected" | "postponed" | "noted" | "no_decision" {
+  const e = (result ?? "").toLowerCase();
+  if (!e) return "no_decision";
+  if (e.includes("abgelehnt")) return "rejected";
+  if (e.includes("beschlossen")) return "accepted";
+  if (e.includes("kenntnis")) return "noted";
   if (e.includes("zurückgestellt") || e.includes("abgesetzt") || e.includes("verwiesen")) {
-    return "vertagt";
+    return "postponed";
   }
-  return "kein_beschluss";
+  return "no_decision";
 }

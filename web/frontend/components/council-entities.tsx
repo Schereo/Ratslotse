@@ -18,7 +18,7 @@ import {
   ortsbereicheImWahlbereich,
   type OrtsbereichEntry,
   type OrtsbereichFeature,
-} from "@/lib/stadtteile";
+} from "@/lib/districts";
 
 // Form und Höhe der Stadtkarte stehen hier an EINER Stelle — Karte und beide
 // Platzhalter (Chunk, Geo-Fetch) müssen sie teilen, sonst springt das Layout
@@ -47,13 +47,13 @@ const CouncilMap = dynamic(() => import("@/components/council-map").then((m) => 
 });
 
 export const ENTITY_KIND: Record<string, { label: string; plural: string; Icon: typeof MapPin }> = {
-  ort: { label: "Ort", plural: "Orte", Icon: MapPin },
+  place: { label: "Ort", plural: "Orte", Icon: MapPin },
   organisation: { label: "Organisation", plural: "Organisationen", Icon: Building2 },
-  projekt: { label: "Projekt", plural: "Projekte", Icon: Boxes },
+  project: { label: "Projekt", plural: "Projekte", Icon: Boxes },
 };
 
 export function EntityChip({ e }: { e: Entity }) {
-  const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.projekt;
+  const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.project;
   return (
     <Link href={themaHref(e.slug)} className="block">
       <Card className="card-interactive flex items-center gap-2.5 p-3">
@@ -76,7 +76,7 @@ function lastLabel(d?: string | null): string | null {
 /** Größere Karte für die gerade aktiven Top-Themen: die 12-Monats-Zahl trägt,
  *  Gesamtzahl und letzte Sitzung liefern den Langzeit-Kontext. */
 function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
-  const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.projekt;
+  const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.project;
   const color = KIND_COLOR[e.kind] ?? KIND_COLOR.projekt;
   const recent = e.n_recent ?? 0;
   const last = lastLabel(e.last_date);
@@ -97,14 +97,14 @@ function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
           <div className="h-full rounded-full" style={{ width: `${Math.max(6, (recent / maxRecent) * 100)}%`, background: color }} />
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          {e.n} insgesamt{last ? ` · zuletzt ${last}` : ""}
+          {e.n} total{last ? ` · zuletzt ${last}` : ""}
         </p>
       </Card>
     </Link>
   );
 }
 
-type KindFilter = "" | "ort" | "organisation" | "projekt";
+type KindFilter = "" | "place" | "organisation" | "project";
 
 /** Kompakter Mehrfach-Auswahl-Popover für die 31 Ortsbereiche — filtert die
  *  Punkte auf der Karte (die Liste darunter bleibt vollständig). */
@@ -242,7 +242,7 @@ export function EntitiesTab() {
   const { data: geo, loading: geoLoading } = useFetch<{ entities: EntityMapPoint[] }>("/council/entities-map");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<KindFilter>("");
-  const [stadtteile, setStadtteile] = useState<OrtsbereichFeature[]>([]);
+  const [districts, setStadtteile] = useState<OrtsbereichFeature[]>([]);
   const [ortskatalog, setOrtskatalog] = useState<OrtsbereichEntry[]>([]);
   const [selectedST, setSelectedST] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -260,11 +260,11 @@ export function EntitiesTab() {
   // Stadtteil je Kartenpunkt (einmal berechnet); Punkte außerhalb Oldenburgs → null.
   const pointST = useMemo(() => {
     const m = new Map<string, string | null>();
-    if (stadtteile.length) {
-      for (const p of geo?.entities ?? []) m.set(p.slug, ortsbereichFor(p.lat, p.lon, stadtteile));
+    if (districts.length) {
+      for (const p of geo?.entities ?? []) m.set(p.slug, ortsbereichFor(p.lat, p.lon, districts));
     }
     return m;
-  }, [geo, stadtteile]);
+  }, [geo, districts]);
   const stCounts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const st of pointST.values()) if (st) c[st] = (c[st] ?? 0) + 1;
@@ -281,8 +281,8 @@ export function EntitiesTab() {
     [geo, kind, selectedST, pointST, orteFilter],
   );
   const outlines = useMemo(
-    () => (selectedST.size ? stadtteile.filter((f) => selectedST.has(f.properties.name)) : undefined),
-    [stadtteile, selectedST],
+    () => (selectedST.size ? districts.filter((f) => selectedST.has(f.properties.name)) : undefined),
+    [districts, selectedST],
   );
 
   if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={3} /></div>;
@@ -387,9 +387,9 @@ export function EntitiesTab() {
               {ENTITY_KIND[k].plural} · {counts[k] ?? 0}
             </button>
           ))}
-          {stadtteile.length > 0 && (geo?.entities.length ?? 0) > 0 && (
+          {districts.length > 0 && (geo?.entities.length ?? 0) > 0 && (
             <OrtsbereichFilter
-              names={stadtteile.map((f) => f.properties.name)}
+              names={districts.map((f) => f.properties.name)}
               places={ortskatalog}
               counts={stCounts}
               selected={selectedST}

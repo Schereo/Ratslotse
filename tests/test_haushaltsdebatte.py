@@ -42,19 +42,19 @@ def store(tmp_path):
 
 
 ANWESEND = [
-    {"name": "Kurt Bernhardt", "party": "Bündnis 90/Die Grünen", "role": "mitglied"},
-    {"name": "Lidia Bernhardt", "party": "AfD", "role": "mitglied"},
-    {"name": "Nicole Piechotta", "party": "SPD", "role": "mitglied"},
-    {"name": "Ulf Prange", "party": "SPD", "role": "mitglied"},
-    {"name": "Jens Lükermann", "party": "FDP/Volt", "role": "mitglied"},
-    {"name": "Thorsten van Ellen", "party": "Bündnis 90/Die Grünen", "role": "mitglied"},
-    {"name": "Dr. Esther Niewerth-Baumann", "party": "CDU", "role": "mitglied"},
-    {"name": "Dr. Sebastian Rohe", "party": "Bündnis 90/Die Grünen", "role": "mitglied"},
-    {"name": "Dr. Georg Rohe", "party": "FDP/Volt", "role": "mitglied"},
-    {"name": "Franz Norrenbrock", "party": "WFO-LKR", "role": "mitglied"},
-    {"name": "Vally Finke", "party": None, "role": "mitglied"},
-    {"name": "Tim Harms", "party": "Bündnis 90/Die Grünen", "role": "vorsitz"},
-    {"name": "Dr. Julia Figura", "party": "Verwaltung", "role": "verwaltung"},
+    {"name": "Kurt Bernhardt", "party": "Bündnis 90/Die Grünen", "role": "member"},
+    {"name": "Lidia Bernhardt", "party": "AfD", "role": "member"},
+    {"name": "Nicole Piechotta", "party": "SPD", "role": "member"},
+    {"name": "Ulf Prange", "party": "SPD", "role": "member"},
+    {"name": "Jens Lükermann", "party": "FDP/Volt", "role": "member"},
+    {"name": "Thorsten van Ellen", "party": "Bündnis 90/Die Grünen", "role": "member"},
+    {"name": "Dr. Esther Niewerth-Baumann", "party": "CDU", "role": "member"},
+    {"name": "Dr. Sebastian Rohe", "party": "Bündnis 90/Die Grünen", "role": "member"},
+    {"name": "Dr. Georg Rohe", "party": "FDP/Volt", "role": "member"},
+    {"name": "Franz Norrenbrock", "party": "WFO-LKR", "role": "member"},
+    {"name": "Vally Finke", "party": None, "role": "member"},
+    {"name": "Tim Harms", "party": "Bündnis 90/Die Grünen", "role": "chair"},
+    {"name": "Dr. Julia Figura", "party": "Verwaltung", "role": "administration"},
 ]
 
 
@@ -128,13 +128,13 @@ def test_unbekannter_top_bleibt_leer():
 # ----------------------------------------------------------------- Wortbeiträge
 
 def test_debatte_zerlegt_und_ordnet_zu():
-    beitraege = hd.debatte(hd.top_abschnitt(PROTOKOLL, "6", bis_unterpunkt=True), ANWESEND)
+    contributions = hd.debatte(hd.top_abschnitt(PROTOKOLL, "6", bis_unterpunkt=True), ANWESEND)
     # „Krogmann" steht nicht in der Anwesenheitsliste dieses Fixtures und
     # bleibt deshalb so stehen, wie das Protokoll ihn schreibt.
-    assert [b.name for b in beitraege] == ["Krogmann", "Nicole Piechotta", "Bernhardt"]
-    ob, spd, gruen = beitraege
-    assert ob.rolle == "verwaltung" and ob.fraktion is None
-    assert spd.rolle == "rat" and spd.fraktion == "SPD"
+    assert [b.name for b in contributions] == ["Krogmann", "Nicole Piechotta", "Bernhardt"]
+    ob, spd, gruen = contributions
+    assert ob.role == "administration" and ob.fraktion is None
+    assert spd.role == "council" and spd.fraktion == "SPD"
     # Namensvettern: ohne Vornamen im Protokoll KEINE Fraktion behaupten.
     assert gruen.fraktion is None and gruen.fraktion_unklar is True
 
@@ -203,7 +203,7 @@ def test_sitzungsleitung_zaehlt_zu_keiner_fraktion():
             "Er bittet die Fraktionen, sich an die vereinbarten Redezeiten zu halten, und "
             "kündigt an, die Reihenfolge beizubehalten.")
     (b,) = hd.debatte(text, ANWESEND)
-    assert b.rolle == "leitung"
+    assert b.role == "leadership"
     assert b.fraktion is None, "die Leitung spricht nicht für ihre Fraktion"
 
 
@@ -214,9 +214,9 @@ def test_rednerliste_in_einer_rede_wird_nicht_zerschnitten():
             "Redezeit auf zehn Minuten je Fraktion zu begrenzen. Somit ergebe sich die "
             "Reihenfolge SPD, CDU, Ratsfrau Finke,\nRatsherr Prange und dann Ratsherr "
             "Lükermann. Dem vorgeschaltet werde die Verwaltung mit ihrer Einführung.")
-    beitraege = hd.debatte(text, ANWESEND)
-    assert len(beitraege) == 1
-    assert beitraege[0].rolle == "leitung"
+    contributions = hd.debatte(text, ANWESEND)
+    assert len(contributions) == 1
+    assert contributions[0].role == "leadership"
 
 
 def test_kurzes_verfahren_ist_keine_rede():
@@ -244,13 +244,13 @@ def test_layout_ohne_leerzeilen():
         "die Rücklagen dadurch stärker beansprucht würden als dargestellt. Er "
         "fordert eine belastbare mittelfristige Planung ein."
     )
-    beitraege = hd.debatte(text, ANWESEND)
-    assert [b.fraktion for b in beitraege] == ["SPD", "FDP/Volt"]
+    contributions = hd.debatte(text, ANWESEND)
+    assert [b.fraktion for b in contributions] == ["SPD", "FDP/Volt"]
 
 
 # ---------------------------------------------------------------------- Anträge
 
-@pytest.mark.parametrize("titel, erwartet", [
+@pytest.mark.parametrize("title, erwartet", [
     ("Änderungsliste der CDU-Fraktion", ["CDU"]),
     ("Änderungsliste der Fraktionen SPD, CDU und FDP zum Ergebnishaushalt", ["SPD", "CDU", "FDP"]),
     ("Änderungsliste der CDU-Fraktion und Gruppe FDP/Volt zum Ergebnishaushalt", ["CDU", "FDP/Volt"]),
@@ -260,29 +260,29 @@ def test_layout_ohne_leerzeilen():
     ("Änderungsliste der Fraktionen Bündnis 90/Die Grünen und SPD", ["Grüne", "SPD"]),
     ("Änderungsliste der BSW-Fraktion zum Erfolgsplan", ["BSW"]),
 ])
-def test_urheber(titel, erwartet):
-    assert hd.urheber(titel) == erwartet
+def test_urheber(title, erwartet):
+    assert hd.author(title) == erwartet
 
 
 def test_gruppe_schluckt_die_einzelparteien():
     """„Gruppe FDP/Volt" darf nicht zusätzlich als „FDP" und „Volt" zählen."""
-    assert hd.urheber("Änderungsliste der Gruppe FDP/Volt") == ["FDP/Volt"]
+    assert hd.author("Änderungsliste der Gruppe FDP/Volt") == ["FDP/Volt"]
 
 
 def test_verwaltungsliste_ist_kein_fraktionsantrag():
     a = hd.antrag_aus_zeile({"title": "Änderungsliste Verwaltung I zum Ergebnishaushalt",
-                             "outcome": "angenommen", "vote": "einstimmig",
+                             "outcome": "accepted", "vote": "unanimous",
                              "item_number": "6.5", "ksinr": 1})
     assert a.ist_verwaltung is True
-    assert a.urheber is None
+    assert a.author is None
 
 
 def test_sammelabstimmung_ist_kein_antrag():
     """„So geänderter Ergebnishaushalt einschließlich der Änderungslisten" ist
     die Schlussabstimmung über das Ganze, kein weiterer Antrag."""
-    for titel in ("So geänderter Erfolgsplan einschließlich der Änderungslisten",
+    for title in ("So geänderter Erfolgsplan einschließlich der Änderungslisten",
                   "Abstimmung über den so geänderten Ergebnishaushalt"):
-        assert hd.antrag_aus_zeile({"title": titel, "outcome": "angenommen", "vote": None,
+        assert hd.antrag_aus_zeile({"title": title, "outcome": "accepted", "vote": None,
                                     "item_number": "6.5", "ksinr": 1}) is None
 
 
@@ -291,10 +291,10 @@ def test_sammelabstimmung_ist_kein_antrag():
 def _runde_2026(store):
     """Ein Jahrgang, wie er im Bestand liegt: Ausschuss und Rat stimmen über
     dieselben Listen ab, der Rat führt die Debatte."""
-    for ksinr, gremium, datum in ((10, "Ausschuss für Finanzen und Beteiligungen", "2026-02-04"),
+    for ksinr, committee, date in ((10, "Ausschuss für Finanzen und Beteiligungen", "2026-02-04"),
                                   (11, "Rat", "2026-02-09")):
         store.save_session(CouncilSession(
-            ksinr=ksinr, committee=gremium, session_date=datum, session_time="17:00",
+            ksinr=ksinr, committee=committee, session_date=date, session_time="17:00",
             location="Rathaus",
             agenda_items=[AgendaItem(item_number="6", title="Haushalt 2026", kvonr=None)],
         ))
@@ -302,24 +302,24 @@ def _runde_2026(store):
     # Teilabstimmungen hängen als ``sub_votes`` am Beschluss und tragen ihren
     # Text in ``description`` — so schreibt der Protokoll-Import sie.
     gemeinsam = [
-        {"item_number": "6", "title": "Haushalt 2026", "outcome": "angenommen",
-         "vote": "mehrheitlich"},
+        {"item_number": "6", "title": "Haushalt 2026", "outcome": "accepted",
+         "vote": "majority"},
         {"item_number": "6.5", "title": "Haushaltssatzung und Haushaltsplan 2026 (Kernhaushalt)",
-         "outcome": "angenommen", "vote": "mehrheitlich", "gegenstimmen": 20,
+         "outcome": "accepted", "vote": "majority", "no_votes": 20,
          "raw_result": "- mehrheitlich bei 20 Gegenstimmen angenommen -",
          "sub_votes": [
              {"description": "Änderungsliste der CDU-Fraktion zum Ergebnishaushalt",
-              "outcome": "abgelehnt", "vote": "mehrheitlich"},
+              "outcome": "rejected", "vote": "majority"},
              {"description": "Änderungsliste Verwaltung I zum Ergebnishaushalt",
-              "outcome": "angenommen", "vote": "einstimmig"},
+              "outcome": "accepted", "vote": "unanimous"},
              {"description": "Abstimmung über den so geänderten Ergebnishaushalt",
-              "outcome": "angenommen", "vote": "mehrheitlich"},
+              "outcome": "accepted", "vote": "majority"},
          ]},
         # Ein Punkt AUSSERHALB des Sammelpunkts darf nicht mitgezählt werden.
-        {"item_number": "7.1", "title": "Stellenplan 2026", "outcome": "angenommen",
-         "vote": "mehrheitlich",
+        {"item_number": "7.1", "title": "Stellenplan 2026", "outcome": "accepted",
+         "vote": "majority",
          "sub_votes": [{"description": "Änderungsliste der SPD-Fraktion zum Stellenplan",
-                        "outcome": "angenommen", "vote": "mehrheitlich"}]},
+                        "outcome": "accepted", "vote": "majority"}]},
     ]
     for ksinr in (10, 11):
         store.save_protocol(
@@ -333,28 +333,28 @@ def _runde_2026(store):
 def test_haushalt_streit_baut_jahrgang(store):
     _runde_2026(store)
     (runde,) = store.haushalt_streit()
-    assert runde["jahr"] == 2026
+    assert runde["year"] == 2026
     # Ausschuss vor Rat, auch wenn beide am selben Tag tagen.
-    assert [s["gremium"] for s in runde["stationen"]] == [
+    assert [s["committee"] for s in runde["stationen"]] == [
         "Ausschuss für Finanzen und Beteiligungen", "Rat"]
 
     rat = runde["stationen"][1]
     assert rat["top"] == "6", "der Sammelpunkt trägt die Debatte"
-    assert rat["beschluss"]["outcome"] == "angenommen"
-    assert rat["beschluss"]["gegenstimmen"] == 20
-    assert rat["protokoll_url"] == "https://example.org/p11.pdf"
+    assert rat["official_text"]["outcome"] == "accepted"
+    assert rat["official_text"]["no_votes"] == 20
+    assert rat["minutes_url"] == "https://example.org/p11.pdf"
 
 
 def test_nur_antraege_des_sammelpunkts(store):
     _runde_2026(store)
     rat = store.haushalt_streit()[0]["stationen"][1]
-    titel = [a["titel"] for a in rat["antraege"]]
-    assert any("CDU-Fraktion" in t for t in titel)
-    assert not any("Stellenplan" in t for t in titel), (
+    title = [a["title"] for a in rat["antraege"]]
+    assert any("CDU-Fraktion" in t for t in title)
+    assert not any("Stellenplan" in t for t in title), (
         "TOP 7.1 gehört nicht zum Haushalts-Sammelpunkt 6"
     )
     verwaltung = [a for a in rat["antraege"] if a["ist_verwaltung"]]
-    assert len(verwaltung) == 1 and verwaltung[0]["urheber"] is None
+    assert len(verwaltung) == 1 and verwaltung[0]["author"] is None
 
 
 def test_debatte_haengt_an_der_station(store):
@@ -362,7 +362,7 @@ def test_debatte_haengt_an_der_station(store):
     rat = store.haushalt_streit()[0]["stationen"][1]
     fraktionen = [b["fraktion"] for b in rat["debatte"]]
     assert "SPD" in fraktionen
-    assert rat["debatte"][0]["rolle"] == "verwaltung"
+    assert rat["debatte"][0]["role"] == "administration"
 
 
 def test_jahr_grenzt_ein(store):
@@ -410,8 +410,8 @@ def test_geaendertes_protokoll_wird_neu_gerechnet(store):
     store.save_protocol(
         11, {"document_id": 11, "url": "https://example.org/p11.pdf"},
         {"protocol_nr": "01/26"}, "zu 6 Haushalt 2026\nKurzbericht.\n", 22, "test",
-        [{"item_number": "6", "title": "Haushalt 2026", "outcome": "angenommen",
-          "vote": "mehrheitlich"}], ANWESEND)
+        [{"item_number": "6", "title": "Haushalt 2026", "outcome": "accepted",
+          "vote": "majority"}], ANWESEND)
 
     nachher = store.haushalt_streit()[0]["stationen"][-1]["debatte"]
     assert nachher != vorher

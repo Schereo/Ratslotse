@@ -28,7 +28,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 
-# Tables emptied in nwz.sqlite — scraped articles, editions, the FTS index and
+# Tables emptied in ratslotse.sqlite — scraped articles, editions, the FTS index and
 # the NWZ article↔topic matches / classification bookkeeping.
 NWZ_TABLES = [
     "articles",
@@ -66,21 +66,6 @@ def _purge_db(path: Path, tables: list[str], do_it: bool) -> None:
                 print(f"  {path.name}.{t}: {n} Zeilen gelöscht")
             else:
                 print(f"  {path.name}.{t}: {n} Zeilen (würde gelöscht)")
-        # Prompt-Overrides für entfernte NWZ-Prompts mitnehmen (falls vorhanden).
-        try:
-            like = con.execute(
-                "SELECT COUNT(*) FROM prompts WHERE key LIKE 'nwz\\_%' ESCAPE '\\' "
-                "OR key LIKE 'weekly_highlights%'"
-            ).fetchone()[0]
-            if do_it and like:
-                con.execute(
-                    "DELETE FROM prompts WHERE key LIKE 'nwz\\_%' ESCAPE '\\' "
-                    "OR key LIKE 'weekly_highlights%'"
-                )
-            print(f"  {path.name}.prompts: {like} NWZ-Overrides "
-                  f"{'gelöscht' if do_it else 'würden gelöscht'}")
-        except sqlite3.OperationalError:
-            pass
         if do_it:
             con.commit()
             con.execute("VACUUM")
@@ -94,14 +79,14 @@ def main() -> None:
     ap.add_argument("--yes", action="store_true", help="tatsächlich löschen (sonst Dry-Run)")
     args = ap.parse_args()
 
-    nwz_db = Path(os.environ.get("NWZ_DB", DATA / "nwz.sqlite"))
+    ratslotse_db = Path(os.environ.get("RATSLOTSE_DB", DATA / "ratslotse.sqlite"))
     council_db = Path(os.environ.get("COUNCIL_DB", DATA / "council.sqlite"))
 
     mode = "LÖSCHEN" if args.yes else "DRY-RUN (nichts wird verändert)"
     print(f"NWZ-Datenpurge — {mode}\n")
     if args.yes:
         print("⚠ Stelle sicher, dass vorher ein Backup lief (scripts/backup_db.py)\n")
-    _purge_db(nwz_db, NWZ_TABLES, args.yes)
+    _purge_db(ratslotse_db, NWZ_TABLES, args.yes)
     _purge_db(council_db, COUNCIL_TABLES, args.yes)
     if not args.yes:
         print("\nZum Ausführen erneut mit --yes starten.")

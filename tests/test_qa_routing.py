@@ -32,12 +32,12 @@ def _leerer_cache():
 
 def test_analyse_parst_sauberes_json(monkeypatch):
     calls = _llm_antwort(monkeypatch, json.dumps(
-        {"begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None}))
+        {"terms": "Radverkehr Fahrrad Radweg", "kind": "history", "party": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
     # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.).
-    assert a == {"frage": "Wie lief das mit dem Radweg?",
-                 "begriffe": "Radverkehr Fahrrad Radweg", "typ": "verlauf", "partei": None,
-                 "varianten": [], "eng": False,
+    assert a == {"question": "Wie lief das mit dem Radweg?",
+                 "terms": "Radverkehr Fahrrad Radweg", "kind": "history", "party": None,
+                 "variants": [], "eng": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
@@ -48,44 +48,44 @@ def test_analyse_parst_sauberes_json(monkeypatch):
 def test_analyse_varianten_geparst_und_gekappt(monkeypatch):
     """Multi-Query (Task 32): bis zu 2 saubere Varianten, Müll fliegt raus."""
     _llm_antwort(monkeypatch, json.dumps({
-        "begriffe": "Stadion", "typ": "thema",
-        "varianten": ["Finanzierung des Stadionneubaus", "  B-Plan   Stadion  ",
+        "terms": "Stadion", "kind": "topic",
+        "variants": ["Finanzierung des Stadionneubaus", "  B-Plan   Stadion  ",
                       "dritte wird gekappt", 42, ""],
     }))
     a = qa.analyse_query("Wie läuft es mit dem Stadion?")
-    assert a["varianten"] == ["Finanzierung des Stadionneubaus", "B-Plan Stadion"]
+    assert a["variants"] == ["Finanzierung des Stadionneubaus", "B-Plan Stadion"]
 
 
 def test_gross_regel_und_tokenbudget():
     """Task 32: große Themen bekommen Struktur-Erlaubnis und mehr Budget."""
-    assert qa._answer_tokens("thema") == 1000
-    assert qa._answer_tokens("thema", gross=True) == 2200
+    assert qa._answer_tokens("topic") == 1000
+    assert qa._answer_tokens("topic", gross=True) == 2200
     messages, _ = qa._answer_messages(
-        "Wie läuft es mit dem Stadion?", [{"id": 1, "title": "T", "beschluss": "B"}],
+        "Wie läuft es mit dem Stadion?", [{"id": 1, "title": "T", "official_text": "B"}],
         gross=True)
     assert "UMFANGREICHES Thema" in messages[0]["content"]
     assert "## " in messages[0]["content"]
     messages, _ = qa._answer_messages(
-        "Kurze Frage?", [{"id": 1, "title": "T", "beschluss": "B"}])
+        "Kurze Frage?", [{"id": 1, "title": "T", "official_text": "B"}])
     assert "UMFANGREICHES Thema" not in messages[0]["content"]
 
 
 def test_analyse_partei_nur_bei_partei_typ(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps(
-        {"begriffe": "Wohnraum", "typ": "geld", "partei": "SPD"}))
-    # partei wird verworfen, wenn der Typ nicht "partei" ist — sonst filtert
+        {"terms": "Wohnraum", "kind": "money", "party": "SPD"}))
+    # partei wird verworfen, wenn der Typ nicht "party" ist — sonst filtert
     # eine Geld-Frage plötzlich nach Fraktion.
-    assert qa.analyse_query("Was kostet das?")["partei"] is None
+    assert qa.analyse_query("Was kostet das?")["party"] is None
 
 
 def test_analyse_faellt_bei_muell_auf_thema(monkeypatch):
     _llm_antwort(monkeypatch, "kein json {")
     a = qa.analyse_query("Was wurde zum Hafen beschlossen?")
-    assert a["typ"] == "thema"
-    assert a["begriffe"] == "Was wurde zum Hafen beschlossen?"
-    _llm_antwort(monkeypatch, json.dumps({"begriffe": "Hafen", "typ": "quatsch"}))
+    assert a["kind"] == "topic"
+    assert a["terms"] == "Was wurde zum Hafen beschlossen?"
+    _llm_antwort(monkeypatch, json.dumps({"terms": "Hafen", "kind": "quatsch"}))
     qa._ANALYSE_CACHE.clear()
-    assert qa.analyse_query("Hafenfrage?")["typ"] == "thema"
+    assert qa.analyse_query("Hafenfrage?")["kind"] == "topic"
 
 
 def test_analyse_kondensiert_mit_verlauf(monkeypatch):
@@ -93,22 +93,22 @@ def test_analyse_kondensiert_mit_verlauf(monkeypatch):
     # weiter unten ersetzt den Stub, dieser Zähler wäre danach bedeutungslos.
     # Was dieser Test belegt, steht in `b` — nicht in der Zahl der Aufrufe.
     _llm_antwort(monkeypatch, json.dumps(
-        {"frage": "Was kostet der Neubau der Cäcilienbrücke?",
-         "begriffe": "Kosten Neubau Cäcilienbrücke", "typ": "geld", "partei": None}))
-    verlauf = [{"frage": "Wie ist der Stand bei der Cäcilienbrücke?",
-                "antwort": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
+        {"question": "Was kostet der Neubau der Cäcilienbrücke?",
+         "terms": "Kosten Neubau Cäcilienbrücke", "kind": "money", "party": None}))
+    verlauf = [{"question": "Wie ist der Stand bei der Cäcilienbrücke?",
+                "answer": "Der Rat forderte das WSA zur Beschleunigung auf. " * 20}]
     a = qa.analyse_query("Und was kostet das?", verlauf=verlauf)
-    assert a["frage"] == "Was kostet der Neubau der Cäcilienbrücke?"
+    assert a["question"] == "Was kostet der Neubau der Cäcilienbrücke?"
     # Cache-Schlüssel enthält den Verlauf: gleiche Frage OHNE Verlauf ist ein
     # eigener Eintrag und trifft nicht denselben Cache.
-    _llm_antwort(monkeypatch, json.dumps({"frage": "Und was kostet das?",
-                                          "begriffe": "Kosten", "typ": "geld"}))
+    _llm_antwort(monkeypatch, json.dumps({"question": "Und was kostet das?",
+                                          "terms": "Kosten", "kind": "money"}))
     b = qa.analyse_query("Und was kostet das?")
-    assert b["frage"] == "Und was kostet das?"
+    assert b["question"] == "Und was kostet das?"
 
 
 def test_verlauf_zeilen_kuerzt_und_begrenzt():
-    runden = [{"frage": f"Frage {i}?", "antwort": "A" * 1000} for i in range(6)]
+    runden = [{"question": f"Frage {i}?", "answer": "A" * 1000} for i in range(6)]
     text = qa._verlauf_zeilen(runden)
     # Nur die letzten VERLAUF_MAX_RUNDEN, Antworten gekürzt.
     assert text.count("- Frage:") == qa.VERLAUF_MAX_RUNDEN
@@ -120,7 +120,7 @@ def test_verlauf_zeilen_kuerzt_und_begrenzt():
 def test_antwortprompt_traegt_gespraechskontext():
     messages, _ = qa._answer_messages(
         "Und wer ist zuständig?", [],
-        verlauf=[{"frage": "Stand Cäcilienbrücke?", "antwort": "Resolution ans WSA."}])
+        verlauf=[{"question": "Stand Cäcilienbrücke?", "answer": "Resolution ans WSA."}])
     assert "Dies ist eine Anschlussfrage in einem Gespräch" in messages[0]["content"]
     assert "Resolution ans WSA." in messages[0]["content"]
     messages, _ = qa._answer_messages("Frage?", [])
@@ -132,15 +132,15 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
         raise RuntimeError("Provider weg")
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
-    assert a == {"frage": "Frage?", "begriffe": "Frage?", "typ": "thema", "partei": None,
-                 "varianten": [], "eng": False,
+    assert a == {"question": "Frage?", "terms": "Frage?", "kind": "topic", "party": None,
+                 "variants": [], "eng": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
 
 
 def test_rechercheplan_shadow_validiert_und_harte_kanaele_ergaenzt(monkeypatch):
     _llm_antwort(monkeypatch, json.dumps({
-        "begriffe": "Ellberg Kreyenbrück Schule", "typ": "thema",
+        "terms": "Ellberg Kreyenbrück Schule", "kind": "topic",
         "rechercheplan": {
             "intent": "position",
             "channels": ["debates", "press", "freies_internet", "debates"],
@@ -167,7 +167,7 @@ def test_rechercheplan_konsistenz_verknuepft_bedarf_und_kanal():
         "needs": ["amounts", "statements", "documents", "current_info",
                   "official_updates", "future_dates"],
     }})
-    resolved = qa.research_plan_with_mandatory(plan, typ="thema")
+    resolved = qa.research_plan_with_mandatory(plan, typ="topic")
     assert resolved["channels"] == [
         "decisions", "budget", "debates", "documents", "press", "future_agenda",
     ]
@@ -187,7 +187,7 @@ def test_deterministische_finanzquelle_macht_budget_zum_pflichtkanal(question):
         "intent": "fact", "channels": ["decisions"], "needs": [],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="thema", question=question)
+        plan, typ="topic", question=question)
     assert "budget" in resolved["channels"]
     assert "budget" in resolved["mandatory_channels"]
 
@@ -197,7 +197,7 @@ def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
         "intent": "status", "channels": ["decisions"], "sort": "newest",
         "needs": ["current_info"],
     }})
-    resolved = qa.research_plan_with_mandatory(plan, typ="verlauf")
+    resolved = qa.research_plan_with_mandatory(plan, typ="history")
     assert resolved["channels"] == ["decisions"]
 
     presse = qa._research_plan({"rechercheplan": {
@@ -206,9 +206,9 @@ def test_current_info_koppelt_presse_und_zukunft_nicht_mehr_pauschal():
     zukunft = qa._research_plan({"rechercheplan": {
         "channels": ["decisions"], "needs": ["future_dates"],
     }})
-    assert qa.research_plan_with_mandatory(presse, typ="thema")["channels"] == [
+    assert qa.research_plan_with_mandatory(presse, typ="topic")["channels"] == [
         "decisions", "press"]
-    assert qa.research_plan_with_mandatory(zukunft, typ="thema")["channels"] == [
+    assert qa.research_plan_with_mandatory(zukunft, typ="topic")["channels"] == [
         "decisions", "future_agenda"]
 
 
@@ -217,7 +217,7 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
         "intent": "session", "channels": ["decisions", "press", "future_agenda"],
         "needs": ["current_info", "future_dates"],
     }})
-    resolved = qa.research_plan_with_mandatory(nur_zukunft, typ="thema")
+    resolved = qa.research_plan_with_mandatory(nur_zukunft, typ="topic")
     assert resolved["channels"] == ["decisions", "future_agenda"]
     assert resolved["suppressed_channels"] == ["press"]
 
@@ -225,7 +225,7 @@ def test_reine_zukunftsfrage_entfernt_presse_ueber_bedarfe():
         "intent": "status", "channels": ["decisions", "press", "future_agenda"],
         "needs": ["current_info", "official_updates", "future_dates"],
     }})
-    resolved = qa.research_plan_with_mandatory(beides, typ="verlauf")
+    resolved = qa.research_plan_with_mandatory(beides, typ="history")
     assert resolved["channels"] == ["decisions", "press", "future_agenda"]
     assert resolved["suppressed_channels"] == []
 
@@ -235,14 +235,14 @@ def test_dokumentenkanal_braucht_auch_dokumentenbedarf():
         "intent": "fact", "channels": ["decisions", "documents"],
         "needs": ["dates", "votes"],
     }})
-    resolved = qa.research_plan_with_mandatory(vorsorglich, typ="thema")
+    resolved = qa.research_plan_with_mandatory(vorsorglich, typ="topic")
     assert resolved["channels"] == ["decisions"]
     assert resolved["suppressed_channels"] == ["documents"]
 
     fachdetail = qa._research_plan({"rechercheplan": {
         "intent": "fact", "channels": ["decisions"], "needs": ["documents"],
     }})
-    resolved = qa.research_plan_with_mandatory(fachdetail, typ="thema")
+    resolved = qa.research_plan_with_mandatory(fachdetail, typ="topic")
     assert resolved["channels"] == ["decisions", "documents"]
     assert resolved["consistency_added"] == ["documents"]
 
@@ -252,12 +252,12 @@ def test_metadatenfragen_entfernen_vorsorgliche_dokumente():
         "intent": "overview", "channels": ["decisions", "documents"],
         "needs": ["dates", "votes", "documents"],
     }})
-    faelle = [
+    cases = [
         ("thema", "Welcher Ausschuss hat über die Flötenteichschule beraten?"),
         ("thema", "Welche Beschlüsse gab es bisher zur Cäcilienbrücke?"),
         ("sitzung", "Was hat der Verkehrsausschuss am 17. Juni 2026 beschlossen?"),
     ]
-    for typ, question in faelle:
+    for typ, question in cases:
         resolved = qa.research_plan_with_mandatory(plan, typ=typ, question=question)
         assert resolved["channels"] == ["decisions"] or resolved["channels"] == [
             "decisions", "sessions"]
@@ -265,7 +265,7 @@ def test_metadatenfragen_entfernen_vorsorgliche_dokumente():
 
     # Die positive Dokumentabsicht hat Vorrang, selbst bei einer Sitzungsfrage.
     fachfrage = qa.research_plan_with_mandatory(
-        plan, typ="sitzung",
+        plan, typ="session",
         question="Was sagt das Gutachten aus der Sitzung zum Verkehrslärm?",
     )
     assert "documents" in fachfrage["channels"]
@@ -277,7 +277,7 @@ def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
         "needs": ["current_info"],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="thema",
+        plan, typ="topic",
         question="Was hat die Stadt zuletzt zum Radverkehr mitgeteilt?",
     )
     assert resolved["channels"] == ["decisions", "press"]
@@ -287,7 +287,7 @@ def test_eindeutige_stadtmitteilung_aktiviert_presse_als_leitplanke():
     # Das Verb allein reicht nicht: Eine Aussage irgendeiner Person ist keine
     # offizielle Veröffentlichung der Stadtverwaltung.
     ohne_offizielle_quelle = qa.research_plan_with_mandatory(
-        plan, typ="thema", question="Was hat Müller zuletzt mitgeteilt?",
+        plan, typ="topic", question="Was hat Müller zuletzt mitgeteilt?",
     )
     assert ohne_offizielle_quelle["channels"] == ["decisions"]
     assert ohne_offizielle_quelle["inferred_needs"] == []
@@ -299,7 +299,7 @@ def test_rechercheplan_entfernt_debatten_bei_neuester_ortsentscheidung():
         "sort": "newest", "needs": ["dates", "statements"],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="ort", place=True, latest_decision=True)
+        plan, typ="place", place=True, latest_decision=True)
     assert resolved["channels"] == ["decisions", "places"]
     assert resolved["suppressed_channels"] == ["debates"]
 
@@ -325,7 +325,7 @@ def test_ausdrueckliche_haushaltsdebatte_behaelt_debattenkanal():
         "needs": ["statements"],
     }})
     resolved = qa.research_plan_with_mandatory(
-        plan, typ="verlauf", question="Wie lief die Haushaltsdebatte 2026?")
+        plan, typ="history", question="Wie lief die Haushaltsdebatte 2026?")
     assert "debates" in resolved["channels"]
     assert "debates" not in resolved["suppressed_channels"]
 
@@ -359,7 +359,7 @@ def test_recherchekanal_nur_bei_validem_plan_gesteuert():
 
 def test_rechercheplan_shadow_loggt_keinen_fragetext():
     plan = qa.research_plan_with_mandatory(
-        qa._research_plan({}), typ="geld", place=True)
+        qa._research_plan({}), typ="money", place=True)
     record = qa.research_plan_log_record(
         "Was kostet die Sporthalle in Kreyenbrück?", plan, "geld",
         {"decisions": 4, "budget": 2, "places": 4},
@@ -398,9 +398,9 @@ def test_kontext_markiert_antragsteller_und_volumen():
 
 
 def test_antwortprompt_bekommt_extra_regeln():
-    messages, _ = qa._answer_messages("Wie lief es?", [], typ="verlauf")
+    messages, _ = qa._answer_messages("Wie lief es?", [], typ="history")
     assert "VERLAUF" in messages[0]["content"]
-    messages, _ = qa._answer_messages("Was ist?", [], typ="thema")
+    messages, _ = qa._answer_messages("Was ist?", [], typ="topic")
     assert "VERLAUF" not in messages[0]["content"]
 
 
@@ -418,7 +418,7 @@ def test_ort_ist_mit_geldtyp_kombinierbar_und_fundstelle_im_kontext():
     }]
 
     messages, _ = qa._answer_messages(
-        "Was kostet die Sanierung in Kreyenbrück?", candidates, typ="geld", ort=ort)
+        "Was kostet die Sanierung in Kreyenbrück?", candidates, typ="money", ort=ort)
     prompt = messages[0]["content"]
 
     assert "konkreten Summen" in prompt
@@ -434,7 +434,7 @@ def test_antrag_decision_ids_findet_fraktion(tmp_path):
             "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
             "VALUES (1, 'Rat', '2026-01-01', '18:00', 'Rathaus', '')")
         store._conn.execute(
-            "INSERT INTO council_decisions (ksinr, position, kind, title, factions, vorlage_nr) "
+            "INSERT INTO council_decisions (ksinr, position, kind, title, factions, template_number) "
             "VALUES (1, 0, 'decision', 'Radweg-Antrag', '[\"SPD\"]', '26/1')")
         store._conn.execute(
             "INSERT INTO council_decisions (ksinr, position, kind, title, factions) "
@@ -457,10 +457,10 @@ def test_orte_fuer_decisions(tmp_path):
     with store._conn:
         store._conn.executemany(
             "INSERT INTO council_entities (id, slug, name, kind, n) VALUES (?,?,?,?,?)",
-            [(1, "caeci", "Cäcilienbrücke", "ort", 30),
-             (2, "huntebad", "Huntebad", "ort", 5),
+            [(1, "caeci", "Cäcilienbrücke", "place", 30),
+             (2, "huntebad", "Huntebad", "place", 5),
              (3, "vhs", "VHS Oldenburg", "organisation", 9),
-             (4, "hannover", "Hannover", "ort", 20)])
+             (4, "hannover", "Hannover", "place", 20)])
         store._conn.executemany(
             "INSERT INTO council_entity_meta (slug, lat, lon) VALUES (?,?,?)",
             [("caeci", 53.135, 8.215), ("vhs", 53.14, 8.21),
@@ -483,11 +483,11 @@ def test_qa_feedback_speichern(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort " * 200, "down", "  zu vage  ", user_id=7)
     store.save_qa_feedback("Und sonst?", None, "up", None)
     rows = store._conn.execute(
-        "SELECT frage, bewertung, grund, user_id, length(antwort_auszug) AS al "
+        "SELECT question, rating, reason, user_id, length(answer_excerpt) AS al "
         "FROM council_qa_feedback ORDER BY id").fetchall()
-    assert rows[0]["bewertung"] == "down" and rows[0]["grund"] == "zu vage"
+    assert rows[0]["rating"] == "down" and rows[0]["reason"] == "zu vage"
     assert rows[0]["user_id"] == 7 and rows[0]["al"] <= 500
-    assert rows[1]["bewertung"] == "up" and rows[1]["grund"] is None
+    assert rows[1]["rating"] == "up" and rows[1]["reason"] is None
     import pytest as _pytest
     with _pytest.raises(ValueError):
         store.save_qa_feedback("x", None, "meh", None)
@@ -502,10 +502,10 @@ def test_qa_feedback_korrektur_ueberschreibt(tmp_path):
     store.save_qa_feedback("Wie lief es?", "Antwort", "down", "zu vage", user_id=7)
     store.save_qa_feedback("Wie lief es?", "Antwort", "up", None, user_id=7)
     rows = store._conn.execute(
-        "SELECT bewertung, grund FROM council_qa_feedback WHERE user_id = 7").fetchall()
+        "SELECT rating, reason FROM council_qa_feedback WHERE user_id = 7").fetchall()
     assert len(rows) == 1, "Korrektur darf keine zweite Zeile anlegen"
-    assert rows[0]["bewertung"] == "up"
-    assert rows[0]["grund"] is None, "Grund des Daumen-runter ist nach der Korrektur hinfällig"
+    assert rows[0]["rating"] == "up"
+    assert rows[0]["reason"] is None, "Grund des Daumen-runter ist nach der Korrektur hinfällig"
     # Andere Frage und anonyme Rückmeldungen bleiben eigene Zeilen.
     store.save_qa_feedback("Und sonst?", None, "down", None, user_id=7)
     store.save_qa_feedback("Wie lief es?", None, "down", None)
@@ -519,10 +519,10 @@ def test_juengste_sitzungen_mit_beschluessen(tmp_path):
     # extrahierten Beschlüssen, neueste zuerst.
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for ksinr, datum in ((1, "2026-06-01"), (2, "2026-07-01"), (3, "2026-07-15")):
+        for ksinr, date in ((1, "2026-06-01"), (2, "2026-07-01"), (3, "2026-07-15")):
             store._conn.execute(
                 "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, location, fetched_at) "
-                "VALUES (?, ?, ?, '18:00', '', '')", (ksinr, f"Gremium {ksinr}", datum))
+                "VALUES (?, ?, ?, '18:00', '', '')", (ksinr, f"Gremium {ksinr}", date))
         for ksinr in (1, 2):  # Sitzung 3 bleibt ohne Beschlüsse (kein Protokoll)
             store._conn.execute(
                 "INSERT INTO council_decisions (ksinr, position, kind, title) "
@@ -534,23 +534,23 @@ def test_juengste_sitzungen_mit_beschluessen(tmp_path):
 
 
 def test_haushalt_block_und_matching(tmp_path):
-    ctx = qa._haushalt_block([{"year": 2026, "bereich": "Verkehr und Straßenbau",
-                               "aufwendungen": 46194645.0, "ertraege": 17510637.0}])
+    ctx = qa._haushalt_block([{"year": 2026, "area": "Verkehr und Straßenbau",
+                               "expenses": 46194645.0, "revenues": 17510637.0}])
     assert "STADTHAUSHALT" in ctx and "46.194.645" in ctx
     assert qa._haushalt_block([]) == ""
 
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, is_summe, fetched_at) "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Verkehr und Straßenbau', 1, 2, -1, 0, '')")
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, is_summe, fetched_at) "
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, is_total, fetched_at) "
             "VALUES (2026, 'Summe', 10, 20, -10, 1, '')")
-    assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
+    assert [r["area"] for r in store.haushalt_fuer_begriffe(["Verkehr", "Radweg"])] == ["Verkehr und Straßenbau"]
     # Summenzeile nur bei ausdrücklicher Haushaltsfrage.
     assert store.haushalt_fuer_begriffe(["Kita"]) == []
-    assert [r["bereich"] for r in store.haushalt_fuer_begriffe(["Haushalt"])] == ["Summe"]
+    assert [r["area"] for r in store.haushalt_fuer_begriffe(["Haushalt"])] == ["Summe"]
     store.close()
 
 
@@ -559,8 +559,8 @@ def test_beschluss_kontext_traegt_deutsches_datum():
     schrieb das Modell „am 2026-06-01" in den Fließtext (Tims Befund 10.08.)."""
     messages, _ = qa._answer_messages(
         "Was wurde zum Stadion entschieden?",
-        [{"id": 7, "title": "Stadionneubau", "beschluss": "Zugestimmt.",
-          "committee": "Rat", "session_date": "2026-06-01", "outcome": "angenommen"}])
+        [{"id": 7, "title": "Stadionneubau", "official_text": "Zugestimmt.",
+          "committee": "Rat", "session_date": "2026-06-01", "outcome": "accepted"}])
     prompt = messages[0]["content"]
     assert "01.06.2026" in prompt
     assert "2026-06-01" not in prompt
@@ -573,22 +573,22 @@ def test_beschluss_kontext_traegt_deutsches_datum():
 # die noch niemand abgerechnet hat.
 
 def test_steuern_block_trennt_ist_von_plan():
-    ctx = qa._steuern_block([{"art": "Gewerbesteuer (-umlage)", "jahr": 2025,
-                              "betrag": 222117000.0, "jahr_davor": 2015,
-                              "betrag_davor": 120000000.0}])
+    ctx = qa._steuern_block([{"kind": "Gewerbesteuer (-umlage)", "year": 2025,
+                              "amount": 222117000.0, "year_before": 2015,
+                              "amount_before": 120000000.0}])
     assert "IST-Zahlen" in ctx and "NICHT der Haushaltsplan" in ctx
     assert "222.117.000" in ctx and "120.000.000" in ctx
     assert "2015" in ctx  # Entwicklung wird mitgegeben
     assert qa._steuern_block([]) == ""
     # „insgesamt" bekommt einen sprechenden Namen statt des CSV-Schlüssels.
     assert "Steuereinnahmen insgesamt" in qa._steuern_block(
-        [{"art": "insgesamt", "jahr": 2025, "betrag": 387208000.0}])
+        [{"kind": "total", "year": 2025, "amount": 387208000.0}])
 
 
 def test_steuerkraft_block_nennt_die_daempfer_regel():
-    ctx = qa._steuerkraft_block({"jahr": 2024, "messzahl": 325716249.0,
-                                 "zuweisungen": 69209992.0, "jahr_davor": 2023,
-                                 "messzahl_davor": 279815776.0,
+    ctx = qa._steuerkraft_block({"year": 2024, "tax_index": 325716249.0,
+                                 "allocations": 69209992.0, "year_before": 2023,
+                                 "tax_index_before": 279815776.0,
                                  "zuweisungen_davor": 99569120.0})
     assert "FINANZAUSGLEICH" in ctx
     assert "325.716.249" in ctx and "69.209.992" in ctx
@@ -601,26 +601,26 @@ def test_steuerkraft_block_nennt_die_daempfer_regel():
 def test_steuern_fuer_begriffe_matcht_kuratierte_synonyme(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for jahr, art, betrag in [
+        for year, art, amount in [
             (2025, "Gewerbesteuer (-umlage)", 222117000.0),
             (2015, "Gewerbesteuer (-umlage)", 120000000.0),
             (2025, "Grundsteuer A+B", 32585000.0),
-            (2025, "insgesamt", 387208000.0),
+            (2025, "total", 387208000.0),
         ]:
             store._conn.execute(
-                "INSERT INTO council_steuern (jahr, art, betrag, fetched_at) VALUES (?,?,?,'')",
-                (jahr, art, betrag))
+                "INSERT INTO council_taxes (year, kind, amount, fetched_at) VALUES (?,?,?,'')",
+                (year, art, amount))
 
     treffer = store.steuern_fuer_begriffe(["Wie", "hoch", "ist", "die", "Gewerbesteuer"])
-    assert [t["art"] for t in treffer] == ["Gewerbesteuer (-umlage)"]
-    assert treffer[0]["betrag"] == 222117000.0
-    assert treffer[0]["jahr_davor"] == 2015 and treffer[0]["betrag_davor"] == 120000000.0
+    assert [t["kind"] for t in treffer] == ["Gewerbesteuer (-umlage)"]
+    assert treffer[0]["amount"] == 222117000.0
+    assert treffer[0]["year_before"] == 2015 and treffer[0]["amount_before"] == 120000000.0
 
     # Allgemeine Geldfrage → Gesamtsumme; unpassende Frage → nichts.
-    assert [t["art"] for t in store.steuern_fuer_begriffe(["Steuereinnahmen"])] == ["insgesamt"]
+    assert [t["kind"] for t in store.steuern_fuer_begriffe(["Steuereinnahmen"])] == ["total"]
     assert store.steuern_fuer_begriffe(["Radweg", "Bauantrag"]) == []
     # Satzzeichen dürfen nicht am Match hindern.
-    assert store.steuern_fuer_begriffe(["Grundsteuer?"])[0]["art"] == "Grundsteuer A+B"
+    assert store.steuern_fuer_begriffe(["Grundsteuer?"])[0]["kind"] == "Grundsteuer A+B"
     store.close()
 
 
@@ -628,37 +628,37 @@ def test_steuerkraft_kontext_braucht_zwei_jahre(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (jahr, messzahl, zuweisungen, fetched_at) "
+            "INSERT INTO council_tax_capacity (year, tax_index, allocations, fetched_at) "
             "VALUES (2023, 279815776, 99569120, '')")
     assert store.steuerkraft_kontext() is None  # ein Jahr reicht nicht
     with store._conn:
         store._conn.execute(
-            "INSERT INTO council_steuerkraft (jahr, messzahl, zuweisungen, fetched_at) "
+            "INSERT INTO council_tax_capacity (year, tax_index, allocations, fetched_at) "
             "VALUES (2024, 325716249, 69209992, '')")
     k = store.steuerkraft_kontext()
-    assert k["jahr"] == 2024 and k["jahr_davor"] == 2023
-    assert k["zuweisungen"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
+    assert k["year"] == 2024 and k["year_before"] == 2023
+    assert k["allocations"] == 69209992.0 and k["zuweisungen_davor"] == 99569120.0
     store.close()
 
 
 def test_haushalt_fuer_begriffe_traegt_entwicklung(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     with store._conn:
-        for jahr, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
+        for year, aufw in [(2020, 30000000.0), (2026, 46194645.0)]:
             store._conn.execute(
-                "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
-                "is_summe, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
-                (jahr, aufw))
+                "INSERT INTO council_budget (year, area, revenues, expenses, result, "
+                "is_total, fetched_at) VALUES (?, 'Verkehr und Straßenbau', 1, ?, -1, 0, '')",
+                (year, aufw))
         # Bereich mit geändertem Zuschnitt: NUR im neuesten Jahr vorhanden.
         store._conn.execute(
-            "INSERT INTO council_haushalt (year, bereich, ertraege, aufwendungen, ergebnis, "
-            "is_summe, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
+            "INSERT INTO council_budget (year, area, revenues, expenses, result, "
+            "is_total, fetched_at) VALUES (2026, 'Klima/Umwelt/Mobilität', 1, 2, -1, 0, '')")
 
     r = store.haushalt_fuer_begriffe(["Verkehr"])[0]
-    assert r["jahr_davor"] == 2020 and r["aufwendungen_davor"] == 30000000.0
+    assert r["year_before"] == 2020 and r["expenses_before"] == 30000000.0
     assert "30.000.000" in qa._haushalt_block([r])
 
     # Umbenannter Bereich bekommt KEINEN erfundenen Vorjahreswert.
     k = store.haushalt_fuer_begriffe(["Klima"])[0]
-    assert "jahr_davor" not in k
+    assert "year_before" not in k
     store.close()

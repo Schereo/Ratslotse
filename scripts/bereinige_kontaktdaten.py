@@ -47,7 +47,7 @@ COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlit
 #: Wo überall Volltext liegt. Beide Tabellen tragen Kontaktdaten — die
 #: Vorlagen deutlich weniger (6 Dokumente), aber „deutlich weniger" ist kein
 #: Grund, sie stehen zu lassen.
-TABELLEN = (("council_anlagen", "document_id"), ("council_vorlagen", "kvonr"))
+TABELLEN = (("council_attachments", "document_id"), ("council_templates", "kvonr"))
 
 
 def main() -> dict:
@@ -60,15 +60,15 @@ def main() -> dict:
 
     store = CouncilStore(Path(args.db))
     gesamt = {"iban": 0, "bic": 0, "anschrift": 0}
-    berichte: list[str] = []
+    n_reports: list[str] = []
     try:
-        for tabelle, schluessel in TABELLEN:
+        for tabelle, key in TABELLEN:
             try:
                 rows = store._conn.execute(  # noqa: SLF001
-                    f"SELECT {schluessel} AS id, raw_text FROM {tabelle} "
+                    f"SELECT {key} AS id, raw_text FROM {tabelle} "
                     f"WHERE raw_text IS NOT NULL AND raw_text != ''").fetchall()
             except Exception as fehler:  # noqa: BLE001 — Tabelle kann fehlen
-                berichte.append(f"{tabelle}: {fehler}")
+                n_reports.append(f"{tabelle}: {fehler}")
                 continue
 
             betroffen, zeichen_vorher, zeichen_nachher = 0, 0, 0
@@ -92,13 +92,13 @@ def main() -> dict:
             if aenderungen and not args.trocken:
                 with store.transaktion():
                     store._conn.executemany(  # noqa: SLF001
-                        f"UPDATE {tabelle} SET raw_text = ? WHERE {schluessel} = ?",
+                        f"UPDATE {tabelle} SET raw_text = ? WHERE {key} = ?",
                         aenderungen)
             print(f"  {tabelle:20} {betroffen:>5} Dokumente · "
                   f"{zeichen_vorher - zeichen_nachher:>7,} Zeichen entfernt"
                   + ("  (Trockenlauf)" if args.trocken else ""), flush=True)
 
-        # DIE CHUNKS SIND EINE ZWEITE KOPIE. Was `council_anlagen.raw_text`
+        # DIE CHUNKS SIND EINE ZWEITE KOPIE. Was `council_attachments.raw_text`
         # verlässt, steht in `council_anlage_embeddings.chunk_text` weiter —
         # dort landete es, bevor es die Maskierung gab, und es bliebe dort,
         # bis jemand zufällig die Embeddings neu rechnet.
@@ -125,7 +125,7 @@ def main() -> dict:
                             [(r,) for r in betroffen])
                 chunks = len(betroffen)
             except Exception as fehler:  # noqa: BLE001 — Tabelle kann fehlen
-                berichte.append(f"council_anlage_embeddings: {fehler}")
+                n_reports.append(f"council_anlage_embeddings: {fehler}")
 
         print(f"\nEntfernt: {gesamt['iban']} IBAN, {gesamt['bic']} BIC, "
               f"{gesamt['anschrift']} Anschriften.", flush=True)
@@ -138,7 +138,7 @@ def main() -> dict:
             print("Die Chunk-Vektoren rechnet embed_anlagen.py beim nächsten "
                   "Lauf neu: Ihr Hash passt nicht mehr.", flush=True)
         return {**gesamt, "chunks": chunks,
-                "trocken": int(args.trocken), "befund": berichte}
+                "trocken": int(args.trocken), "befund": n_reports}
     finally:
         store.close()
 

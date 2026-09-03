@@ -1,6 +1,6 @@
 """Persönliche Merkliste über den beiden getrennten Ratslotse-Datenbanken.
 
-Die Eigentümerschaft lebt in ``nwz.sqlite``; Sitzungen, TOPs und Beschlüsse
+Die Eigentümerschaft lebt in ``ratslotse.sqlite``; Sitzungen, TOPs und Beschlüsse
 liegen in ``council.sqlite``. Dieses Modul löst die gespeicherten Snapshots
 gegen den aktuellen Ratsbestand auf. Besonders wichtig ist der Fallback über
 Vorlage und Titel: TOP-Nummern können sich bis zur Sitzung verschieben.
@@ -39,7 +39,7 @@ def normalized_title(value: str | None) -> str:
     text = " ".join(str(value or "").split()).lower().replace("ß", "ss")
     # Die Tagesordnungsseite hängt den später nachgetragenen Status teilweise
     # an den Titel ("Beschluss: geändert beschlossen"). Er ist keine Identität.
-    text = re.split(r"\s+beschluss:\s*", text, maxsplit=1)[0]
+    text = re.split(r"\s+official_text:\s*", text, maxsplit=1)[0]
     text = re.sub(r"\s*[-–]\s*(bericht|beschluss|antrag|sachstand)\s*$", "", text)
     return re.sub(r"[^0-9a-zäöü]+", " ", text).strip()
 
@@ -64,8 +64,8 @@ def _find_agenda_item(bookmark: dict, items: list[dict]) -> dict | None:
         found = next((i for i in items if i.get("kvonr") == kvonr), None)
         if found:
             return found
-    found = next((i for i in items if _same_vorlage(i.get("vorlage_nr"),
-                                                    bookmark.get("vorlage_nr"))), None)
+    found = next((i for i in items if _same_vorlage(i.get("template_number"),
+                                                    bookmark.get("template_number"))), None)
     if found:
         return found
     found = next((i for i in items if _same_title(i.get("title"), bookmark.get("title"))), None)
@@ -83,8 +83,8 @@ def _find_decision(bookmark: dict, decisions: list[dict], item: dict | None = No
         found = next((d for d in rows if d.get("kvonr") == kvonr), None)
         if found:
             return found
-    vorlage = wanted.get("vorlage_nr") or bookmark.get("vorlage_nr")
-    found = next((d for d in rows if _same_vorlage(d.get("vorlage_nr"), vorlage)), None)
+    vorlage = wanted.get("template_number") or bookmark.get("template_number")
+    found = next((d for d in rows if _same_vorlage(d.get("template_number"), vorlage)), None)
     if found:
         return found
     nr = top_number(wanted.get("item_number"))

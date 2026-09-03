@@ -5,7 +5,7 @@ Quelle ist der Statistische Bericht **L IV 13** des Landesamts für Statistik
 Niedersachsen, ohne Anmeldung als xlsx abrufbar. Gelesen werden die Blätter
 6.1 (kreisfreie Städte) und 6.2 (Gemeinden); was dabei herauskommt und warum
 es nicht neben die Aufkommenskurve gehört, steht im Kopf von
-``council/gewerbesteuerstatistik.py``.
+``council/trade_tax_statistics.py``.
 
 Warum von Hand und nicht per Cron
 ---------------------------------
@@ -32,7 +32,7 @@ Aufruf::
 
 Die Übersichtsseite mit den jeweils neuen Nummern:
 ``statistik.niedersachsen.de/themen/gewerbesteuer-niedersachsen/
-gewerbesteuer-in-niedersachsen-statistische-berichte-179300.html``
+gewerbesteuer-in-niedersachsen-statistische-n_reports-179300.html``
 
 Ältere Jahrgänge als 2017 gibt es nur als PDF (geprüft für 2013: die
 Gemeindetabelle ist da, aber im PDF-Satz). Sie brauchten einen zweiten Parser
@@ -49,7 +49,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from council import gewerbesteuerstatistik as gs  # noqa: E402
+from council import trade_tax_statistics as gs  # noqa: E402
 from council import herkunft as h  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
@@ -79,18 +79,18 @@ def _holen(ort: str, ablage: Path) -> tuple[Path, str | None]:
         return Path(ort), None
     import requests
 
-    antwort = requests.get(ort, timeout=180)
-    antwort.raise_for_status()
+    answer = requests.get(ort, timeout=180)
+    answer.raise_for_status()
     ziel = ablage / (ort.rstrip("/").rsplit("/", 1)[-1] + ".xlsx")
-    ziel.write_bytes(antwort.content)
-    print(f"  geladen: {ort} ({len(antwort.content):,} Bytes)".replace(",", "."))
+    ziel.write_bytes(answer.content)
+    print(f"  geladen: {ort} ({len(answer.content):,} Bytes)".replace(",", "."))
     return ziel, ort
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Gewerbesteuerstatistik (LSN, L IV 13) einlesen")
-    ap.add_argument("berichte", nargs="+",
+    ap.add_argument("n_reports", nargs="+",
                     help="Statistische Berichte als Datei oder Adresse")
     ap.add_argument("--db", default=str(COUNCIL_DB))
     args = ap.parse_args()
@@ -108,65 +108,65 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory() as tmp:
             ablage = Path(tmp)
-            for ort in args.berichte:
+            for ort in args.n_reports:
                 pfad, url = _holen(ort, ablage)
-                jahrgang = gs.lies_bericht(str(pfad))
-                print(f"Erhebungsjahr {jahrgang.jahr} "
-                      f"({jahrgang.stand or 'ohne Erscheinungsvermerk'}):")
+                budget_year = gs.lies_bericht(str(pfad))
+                print(f"Erhebungsjahr {budget_year.year} "
+                      f"({budget_year.as_of or 'ohne Erscheinungsvermerk'}):")
 
                 # --- Probe 1: die Rechnung in der Zeile ---
-                zeilen, verworfen = gs.zeilen(jahrgang)
+                zeilen, verworfen = gs.zeilen(budget_year)
                 for v in verworfen:
-                    print(f"    ÜBERSPRUNGEN {v['stadt']}: {v['grund']} — "
-                          f"{v['ergebnis']}")
+                    print(f"    ÜBERSPRUNGEN {v['stadt']}: {v['reason']} — "
+                          f"{v['result']}")
                 if not zeilen:
                     print("  ABBRUCH für diesen Jahrgang: keine einzige Stadt "
                           "hat ihre Summenprobe bestanden.")
                     continue
 
                 # --- Probe 2: dasselbe im zweiten Blatt ---
-                blatt = gs.probe_blaetter(jahrgang)
-                print(f"  Blattprobe 6.1 gegen 6.2: {blatt['ergebnis']}")
+                blatt = gs.probe_blaetter(budget_year)
+                print(f"  Blattprobe 6.1 gegen 6.2: {blatt['result']}")
                 if not blatt["ok"]:
                     for a in blatt["abweichungen"][:8]:
-                        print(f"    ABWEICHUNG {a['stadt']}: {a['grund']}")
+                        print(f"    ABWEICHUNG {a['stadt']}: {a['reason']}")
                     print("  ABBRUCH für diesen Jahrgang: Die beiden Blätter "
                           "widersprechen sich. Lieber keine Zahlen als falsche.")
                     continue
 
                 # --- Probe 3: der Hebesatz gegen das Jahrbuch ---
-                proben = ["gewst_summenprobe", "gewst_blattprobe"]
+                probes = ["trade_tax_sum_check", "trade_tax_sheet_check"]
                 ergebnisse = [f"{len(zeilen)} Städte nachgerechnet",
-                              blatt["ergebnis"]]
-                erwartet = gs.hebesatz_im_jahr(treppe, jahrgang.jahr)
-                hebe = gs.probe_hebesatz(jahrgang, gs.OLDENBURG, erwartet)
-                print(f"  Hebesatzprobe: {hebe['ergebnis']}")
+                              blatt["result"]]
+                erwartet = gs.hebesatz_im_jahr(treppe, budget_year.year)
+                hebe = gs.probe_hebesatz(budget_year, gs.OLDENBURG, erwartet)
+                print(f"  Hebesatzprobe: {hebe['result']}")
                 if hebe["ok"] is False:
                     print("  ABBRUCH für diesen Jahrgang: Landesamt und "
                           "Jahrbuch nennen verschiedene Hebesätze.")
                     continue
                 if hebe["ok"]:
-                    proben.append("gewst_hebesatzprobe")
-                    ergebnisse.append(hebe["ergebnis"])
+                    probes.append("trade_tax_assessment_rate_check")
+                    ergebnisse.append(hebe["result"])
 
-                geschrieben[jahrgang.jahr] = store.save_gewerbesteuerstatistik(
+                geschrieben[budget_year.year] = store.save_gewerbesteuerstatistik(
                     zeilen,
                     h.Herkunft(
-                        art="lsn", probe=proben,
-                        label=f"Gewerbesteuerstatistik {jahrgang.jahr} "
+                        kind="lsn", probe=probes,
+                        label=f"Gewerbesteuerstatistik {budget_year.year} "
                               f"(Statistischer Bericht L IV 13)",
-                        url=url or QUELLEN_STAND.get(jahrgang.jahr),
-                        fundstelle="Blatt 6.1 — Festsetzung und Zerlegung nach "
+                        url=url or QUELLEN_STAND.get(budget_year.year),
+                        citation="Blatt 6.1 — Festsetzung und Zerlegung nach "
                                    "Sitz des Betriebes/der Betriebsstätte, "
                                    "kreisfreie Städte; Blatt 6.2 — dieselben "
                                    "Zahlen je Gemeinde, mit dem Hebesatz",
-                        probe_ergebnis=" · ".join(ergebnisse),
-                        stand=jahrgang.stand))
-                print(f"  gespeichert: {geschrieben[jahrgang.jahr]} Städte")
+                        probe_result=" · ".join(ergebnisse),
+                        as_of=budget_year.as_of))
+                print(f"  gespeichert: {geschrieben[budget_year.year]} Städte")
 
         store.herkunft_aufraeumen()
         luecken = {t: n for t, n in store.herkunft_luecken().items()
-                   if t == "council_gewerbesteuerstatistik"}
+                   if t == "council_trade_tax_statistics"}
         if luecken:
             print(f"WARNUNG: Zeilen ohne Herkunft: {luecken}")
     finally:

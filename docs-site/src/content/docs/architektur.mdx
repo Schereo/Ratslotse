@@ -87,13 +87,13 @@ Details in [App & Konten](/docs/app-und-konten/#benachrichtigungen-sechs-anläss
 Zwei SQLite-Dateien: eine für Konten & Themen, eine für die Ratsdaten
 (siehe [ADR 0005](/docs/adr/0005-sqlite-fts5/)).
 
-Die Trennlinie ist: **alles Nutzerbezogene** liegt in `nwz.sqlite`, **alle
+Die Trennlinie ist: **alles Nutzerbezogene** liegt in `ratslotse.sqlite`, **alle
 Ratsdaten** in `council.sqlite`. Deshalb liegen z. B. Themen-Treffer und
 Quiz-Antworten in der Konten-DB, obwohl sie auf Beschlüsse bzw. Fragen zeigen —
 ein Join über beide Dateien ist nicht möglich, solche Zeilen denormalisieren die
 nötigen Felder.
 
-**Konten & Nutzerdaten (`nwz.sqlite`)**
+**Konten & Nutzerdaten (`ratslotse.sqlite`)**
 
 - `web_users` — Konten (E-Mail, Passwort-Hash, Rolle, Status, `display_name`,
   `delivery_channel`, `badges`, `onboarding`, `apple_sub`, `token_version`)
@@ -107,7 +107,6 @@ nötigen Felder.
 - `quiz_answers`, `quiz_ratings`, `quiz_daily`, `user_quiz_questions` — Quiz:
   Antworten/Punkte, 👍/👎, tägliche Challenge, eigene Fragen
 - `user_activity`, `llm_usage` — Aktivitätssignale und LLM-Kostenerfassung
-- `prompts` — live editierbare Prompt-Overrides (Admin-UI)
 
 **Ratsdaten (`council.sqlite`)**
 
@@ -116,7 +115,7 @@ nötigen Felder.
 - `council_alerts_sent`, `committee_notifications` — Deduplizierung der Benachrichtigungen
 - `committee_summaries` — gecachte Agenda-Zusammenfassungen
 - `council_protocols`, `council_decisions`, `council_attendance`,
-  `council_vorlagen`, `council_anlagen`, `council_beratungen` — Dokument-Auswertung
+  `council_templates`, `council_attachments`, `council_deliberations` — Dokument-Auswertung
   und Beratungsfolge (siehe [Beschlüsse](/docs/beschluesse/))
 - `council_persons`, `council_memberships` — Mandatsträger*innen und Gremien
 - `council_entities` (+ `_links`, `_meta`, `_obs`, `_scanned`) — erkannte Orte
@@ -125,9 +124,9 @@ nötigen Felder.
   („Ähnliche Beschlüsse", siehe [ADR 0003](/docs/adr/0003-fastembed-statt-torch/))
 - `council_field_recaps`, `council_goal_links` — Themenfeld-Rückblicke und
   Ziele-Tracking
-- `council_fundstuecke` — kuratierte „Fundstück des Tages"-Karten
+- `council_daily_finds` — kuratierte „Fundstück des Tages"-Karten
   (siehe [Bewertungs-Scores](/docs/bewertungen/))
-- `council_quiz_questions`, `council_haushalt` — Quizfragen und Haushaltszahlen
+- `council_quiz_questions`, `council_budget` — Quizfragen und Haushaltszahlen
 - `council_decisions_fts` — FTS5-Volltextindex über die Beschlüsse
 
 ---

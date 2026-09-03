@@ -62,8 +62,8 @@ def test_qa_eval_details_have_no_impact_map():
 # --------------------------------------------------------------------------- #
 
 _FAKE_DB = {
-    ("vorlage_nr", "25/0100"): [7, 8],
-    ("vorlage_nr", "25/0200"): [8, 9],  # 8 überschneidet — Dedupe-Probe
+    ("template_number", "25/0100"): [7, 8],
+    ("template_number", "25/0200"): [8, 9],  # 8 überschneidet — Dedupe-Probe
     ("title_like", "Wechloy"): [3],
 }
 
@@ -75,7 +75,7 @@ def _find_ids(**spec):
 
 def test_resolve_expected_prefers_keys_and_dedupes():
     case = {"id": "x", "expected_ids": [999],
-            "expected_keys": [{"vorlage_nr": "25/0100"}, {"vorlage_nr": "25/0200"}]}
+            "expected_keys": [{"template_number": "25/0100"}, {"template_number": "25/0200"}]}
     # Schlüssel schlagen die prod-ids; Reihenfolge der Specs bleibt, Duplikate raus.
     assert resolve_expected(_find_ids, case) == [7, 8, 9]
 
@@ -85,7 +85,7 @@ def test_resolve_expected_falls_back_to_ids():
 
 
 def test_resolve_expected_empty_when_unresolvable():
-    case = {"id": "z", "expected_ids": [999], "expected_keys": [{"vorlage_nr": "26/9999"}]}
+    case = {"id": "z", "expected_ids": [999], "expected_keys": [{"template_number": "26/9999"}]}
     assert resolve_expected(_find_ids, case) == []
 
 
@@ -118,27 +118,27 @@ def test_aggregate_latency_percentiles_and_missing_keys():
 # ---- Debatten-Erwartung (Gold-Case „fliegerhorst-sondermuell-debatte") ----
 
 DEBATTEN = [
-    {"id": 1, "sprecher": "Jaekel", "session_date": "2026-02-12",
-     "text": "Vinylchlorid im Grundwasser stammt aus der militärischen Nutzung.", "antwort": None},
-    {"id": 2, "sprecher": "Müller", "session_date": "2025-06-12",
-     "text": "Durch die Verfüllung können keine Schadstoffe austreten.", "antwort": None},
+    {"id": 1, "speaker": "Jaekel", "session_date": "2026-02-12",
+     "text": "Vinylchlorid im Grundwasser stammt aus der militärischen Nutzung.", "answer": None},
+    {"id": 2, "speaker": "Müller", "session_date": "2025-06-12",
+     "text": "Durch die Verfüllung können keine Schadstoffe austreten.", "answer": None},
 ]
 
 
 def test_debatten_treffer_matcht_ueber_natuerliche_schluessel():
     from eval.run_qa import debatten_treffer
-    assert debatten_treffer([{"sprecher": "jaekel"}], DEBATTEN) == [True]
+    assert debatten_treffer([{"speaker": "jaekel"}], DEBATTEN) == [True]
     assert debatten_treffer([{"text_like": "Vinylchlorid"}], DEBATTEN) == [True]
     # Alle Felder eines Specs müssen zusammen passen — nicht irgendeins.
-    assert debatten_treffer([{"sprecher": "Müller", "text_like": "Vinylchlorid"}], DEBATTEN) == [False]
+    assert debatten_treffer([{"speaker": "Müller", "text_like": "Vinylchlorid"}], DEBATTEN) == [False]
     assert debatten_treffer([{"session_date": "2026-02-12"}, {"session_date": "1999-01-01"}],
                             DEBATTEN) == [True, False]
 
 
 def test_debatten_treffer_prueft_auch_die_verwaltungsantwort():
     from eval.run_qa import debatten_treffer
-    rows = [{"sprecher": "Finke", "text": "Frage zu Messpunkten",
-             "antwort": "Die Werte liegen unter dem Prüfwert."}]
+    rows = [{"speaker": "Finke", "text": "Frage zu Messpunkten",
+             "answer": "Die Werte liegen unter dem Prüfwert."}]
     assert debatten_treffer([{"text_like": "Prüfwert"}], rows) == [True]
 
 

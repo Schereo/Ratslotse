@@ -8,11 +8,11 @@ import View from "./view";
  *  `/council?mode=fragen` leitet die Council-Seite hierher weiter. */
 export async function generateMetadata(): Promise<Metadata> {
   if (istExport()) return {};
-  const titel = "Fragen";
+  const title = "Fragen";
   const text =
     "Stell dem Oldenburger Stadtrat eine Frage in normaler Sprache — "
     + "Ratslotse antwortet mit Beschlüssen, Wortbeiträgen und Quellenangabe.";
-  return { title: titel, description: text, openGraph: { title: titel, description: text } };
+  return { title: title, description: text, openGraph: { title: title, description: text } };
 }
 
 export default function Page() {

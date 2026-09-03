@@ -32,7 +32,10 @@ import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 
 /* ------------------------------ Typen ------------------------------ */
 
-export type PresseHinweis = { titel: string; url: string; datum: string | null };
+export type PresseHinweis = { title: string; url: string; date: string | null;
+  /** Anriss der Meldung (600 Zeichen aus dem Volltext). Ältere gespeicherte
+   *  Gespräche kennen das Feld nicht — dann bleibt es die reine Titelzeile. */
+  excerpt?: string };
 
 /** Task 33: Anlagen-Fundstelle (Gutachten, Konzept, Stellungnahme) aus der
  *  schnellen oder gründlichen Recherche. */
@@ -42,7 +45,7 @@ export type AnlagenHinweis = {
    *  Karte einfach ohne Buchstabe (in diesen Texten steht auch kein Marker). */
   nr?: number | null;
   label: string | null; url: string | null;
-  vorlage_nr: string | null; vorlage_titel: string | null; auszug: string;
+  template_number: string | null; template_title: string | null; excerpt: string;
 };
 
 /** Task 16: Wortbeitrag aus einem Sitzungsprotokoll (Rede, Anfrage,
@@ -54,30 +57,30 @@ export type AnlagenHinweis = {
  *  weiß nicht einmal, dass es die Grafik gibt — sie hängt am
  *  Quellen-Ereignis, nicht an der Antwort. */
 export type QaGrafik = {
-  art: string;
-  titel: string;
-  einheit: string;
+  kind: string;
+  title: string;
+  unit: string;
   nachkomma: number;
-  reihe: { jahr: number; wert: number }[];
-  hinweis?: string | null;
-  quelle?: string | null;
+  series: { year: number; value: number }[];
+  note?: string | null;
+  source?: string | null;
   /** Anschlussstelle in den Haushalts-Bereich — der Link erscheint nur
    *  hinter dem Umgebungs-Gate (auf Prod ist /haushalt ein 404). */
   mehr?: { href: string; label: string } | null;
 };
 
 export type DebattenHinweis = {
-  sprecher: string | null; partei: string | null; art: string;
-  top: string | null; auszug: string; committee: string | null; datum: string | null;
+  speaker: string | null; party: string | null; art: string;
+  top: string | null; excerpt: string; committee: string | null; date: string | null;
   /** getfile-URL des Protokoll-PDFs — ältere gespeicherte Gespräche kennen
    *  das Feld nicht, dann fehlt schlicht das Icon. */
-  protokoll_url?: string | null;
+  minutes_url?: string | null;
   /** PDF-Seite der Fundstelle (über den Sprecher-Namen verankert) —
    *  null/fehlend = Link aufs ganze PDF, nie eine geratene Seite. */
-  protokoll_seite?: number | null;
+  minutes_page?: number | null;
 };
 
-/** Personen-Badge-Eintrag aus /council/personen-lexikon (Tims Wunsch 12.08.):
+/** Personen-Badge-Eintrag aus /council/people-directory (Tims Wunsch 12.08.):
  *  Ratsmitglieder mit Partei, Verwaltung mit geerntetem Amt; `aktiv` heißt in
  *  den letzten zwölf Monaten in einer Anwesenheitsliste gesehen. */
 export type PersonEintrag = {
@@ -87,15 +90,15 @@ export type PersonEintrag = {
    *  Oltmanns-Befund 12.08.).
    *  "beratend": beratendes Mitglied eines Ausschusses (Verband, Beirat,
    *  Fachperson) — dem Rat gehört es nicht an.
-   *  "beteiligung": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
+   *  "participation": nur aus dem Beteiligungsbericht bekannt — Aufsichtsorgane
    *  der städtischen Gesellschaften (Landkreis, Belegschaft,
    *  Mitgesellschafter). `von`/`bis` sind hier BERICHTSJAHRGÄNGE, nicht
    *  Sitzungsjahre, und `aktiv` heißt „steht im jüngsten Bericht". */
-  art: "rat" | "beratend" | "stadt" | "beteiligung" | "blocker";
-  partei: string | null; rolle: string | null;
+  art: "council" | "advisory" | "city" | "participation" | "blocker";
+  party: string | null; role: string | null;
   /** Fraktions-Phasen mit Zeitraum — NUR bei Wechslern gesetzt (13 Personen im
-   *  Bestand). `partei` ist die heutige; hier steht, was vorher war. */
-  phasen?: { partei: string; von: string; bis: string }[] | null;
+   *  Bestand). `party` ist die heutige; hier steht, was vorher war. */
+  phasen?: { party: string; von: string; bis: string }[] | null;
   aktiv: boolean; von: string | null; bis: string | null;
 };
 
@@ -107,7 +110,7 @@ let _lexikonPromise: Promise<PersonEintrag[]> | null = null;
 function usePersonenLexikon(): PersonEintrag[] {
   const [lex, setLex] = useState<PersonEintrag[]>([]);
   useEffect(() => {
-    _lexikonPromise ||= fetch(apiUrl("/council/personen-lexikon"),
+    _lexikonPromise ||= fetch(apiUrl("/council/people-directory"),
       { credentials: "include", headers: authHeaders() })
       .then((r) => (r.ok ? r.json() : { personen: [] }))
       .then((b) => (b?.personen ?? []) as PersonEintrag[])
@@ -165,8 +168,8 @@ function klammerIstParteiLabel(inhalt: string, badgePartei: string | null): bool
  *  entscheiden nur BELEGTE Merkmale (Vorname, sonst Fraktion und Sitzungsjahr
  *  der Zeile), sonst gibt es kein Badge (lieber keins als ein geratenes, Tims
  *  Oltmanns-Befund). */
-function usePersonSuche(): (name: string, partei?: string | null,
-                           jahr?: number | null) => PersonEintrag | null {
+function usePersonSuche(): (name: string, party?: string | null,
+                           year?: number | null) => PersonEintrag | null {
   const lexikon = usePersonenLexikon();
   const map = useMemo(() => {
     const m = new Map<string, PersonEintrag[]>();
@@ -178,7 +181,7 @@ function usePersonSuche(): (name: string, partei?: string | null,
     }
     return m;
   }, [lexikon]);
-  return (name: string, partei?: string | null, jahr?: number | null) => {
+  return (name: string, party?: string | null, year?: number | null) => {
     const woerter = (name || "").match(/[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}/g);
     if (!woerter || map.size === 0) return null;
     const nachname = falteName(woerter[woerter.length - 1]);
@@ -204,9 +207,9 @@ function usePersonSuche(): (name: string, partei?: string | null,
     // Badge würde eine Zugehörigkeit behaupten, die neben der Zeile falsch
     // aussieht. Es bewahrt außerdem vor echten Fehlgriffen: „Dr. Niewerth
     // Baumann (CDU)" hätte sonst das Badge von Udo Baumann bekommen.
-    const k = parteiKuerzel(partei ?? null);
+    const k = parteiKuerzel(party ?? null);
     if (k !== "Rat") {
-      echte = echte.filter((p) => hatteFraktion(p, k, jahr));
+      echte = echte.filter((p) => hatteFraktion(p, k, year));
       if (echte.length === 0) return null;
       if (echte.length === 1) return echte[0];
     }
@@ -215,9 +218,9 @@ function usePersonSuche(): (name: string, partei?: string | null,
     // Paul Behrens. Am Prod-Bestand gemessen bringt die Stufe rund 1.400
     // weitere Beiträge, ohne einer Zuordnung der Fraktions-Stufe zu
     // widersprechen (21.08.2026).
-    if (!jahr) return null;
+    if (!year) return null;
     const imZeitraum = echte.filter(
-      (p) => p.von && p.bis && Number(p.von) <= jahr && jahr <= Number(p.bis));
+      (p) => p.von && p.bis && Number(p.von) <= year && year <= Number(p.bis));
     return imZeitraum.length === 1 ? imZeitraum[0] : null;
   };
 }
@@ -229,11 +232,11 @@ function usePersonSuche(): (name: string, partei?: string | null,
  *  in den Anwesenheitslisten steht, und mit Jahr auch nur die passende Phase.
  *  Wer eine Fraktion nie hatte, bekommt weiter kein Badge — „Dr. Niewerth
  *  Baumann (CDU)" wird so nicht zu Udo Baumann. */
-function hatteFraktion(p: PersonEintrag, kuerzel: string, jahr?: number | null): boolean {
-  if (parteienPassen(parteiKuerzel(p.partei), kuerzel)) return true;
+function hatteFraktion(p: PersonEintrag, kuerzel: string, year?: number | null): boolean {
+  if (parteienPassen(parteiKuerzel(p.party), kuerzel)) return true;
   return (p.phasen ?? []).some((ph) =>
-    parteienPassen(parteiKuerzel(ph.partei), kuerzel)
-    && (!jahr || (Number(ph.von) <= jahr && jahr <= Number(ph.bis))));
+    parteienPassen(parteiKuerzel(ph.party), kuerzel)
+    && (!year || (Number(ph.von) <= year && year <= Number(ph.bis))));
 }
 
 /** Gruppen-Toleranz beim Fraktions-Vergleich: Die Protokolle labeln mal die
@@ -249,8 +252,8 @@ function parteienPassen(a: string, b: string): boolean {
 /** Jahreszahl aus einem Datum — die Zeilen tragen es mal als ISO
  *  („2025-06-30"), mal deutsch („30.06.2025"); die erste vierstellige Zahl
  *  ist in beiden Fällen das Jahr. */
-function jahrAus(datum?: string | null): number | null {
-  const treffer = (datum || "").match(/\d{4}/);
+function jahrAus(date?: string | null): number | null {
+  const treffer = (date || "").match(/\d{4}/);
   return treffer ? Number(treffer[0]) : null;
 }
 
@@ -260,39 +263,39 @@ function jahrAus(datum?: string | null): number | null {
  *  die Fraktion daneben noch etwas hinzufügt oder nur dasselbe wiederholt. */
 function personBadgeLabel(p: PersonEintrag): string {
   return !p.aktiv ? "ehem."
-    : p.art === "stadt" ? "Stadt"
-    : p.art === "beteiligung" ? "Aufsicht"
+    : p.art === "city" ? "Stadt"
+    : p.art === "participation" ? "Aufsicht"
     // Beratende Ausschuss-Mitglieder sind keine Ratsleute: „Rat" (das Ergebnis
     // von parteiKuerzel(null)) behauptete bei ihnen ein Mandat, das sie nicht
     // haben (Tims Skiba-Befund 21.08.2026).
-    : p.art === "beratend" ? "beratend"
-    : parteiKuerzel(p.partei);
+    : p.art === "advisory" ? "advisory"
+    : parteiKuerzel(p.party);
 }
 
 /** Sprechername mit Badge, wenn die Person eindeutig im Lexikon steht.
- *  `partei` ist die Fraktion, unter der die Zeile den Beitrag führt: Sie
+ *  `party` ist die Fraktion, unter der die Zeile den Beitrag führt: Sie
  *  trennt Namensvettern (s. o.) und wird mit `zeigePartei` hinter dem Namen
  *  ausgegeben — aber NUR, wenn sie mehr sagt als das Badge. „Woltmann ·CDU
  *  (CDU)" war doppelt gemoppelt (Tims Befund 21.08.); „Grösch ·ehem.
  *  (Naturschutzbund)" bleibt dagegen stehen, weil „ehem." die Fraktion nicht
  *  nennt. */
-export function SprecherName({ name, partei, datum, zeigePartei = false }: {
-  name: string; partei?: string | null; datum?: string | null; zeigePartei?: boolean;
+export function SprecherName({ name, party, date, zeigePartei = false }: {
+  name: string; party?: string | null; date?: string | null; zeigePartei?: boolean;
 }) {
   const suche = usePersonSuche();
-  const p = suche(name, partei, jahrAus(datum));
+  const p = suche(name, party, jahrAus(date));
   // Das Badge zeigt die Zugehörigkeit ZUR ZEIT DES BEITRAGS, nicht die von
   // heute: So wurde der Beitrag gehalten, und so steht er in der Quelle. Dass
   // sie heute eine andere ist, sagt das Badge daneben (s. PersonBadge).
-  const zeilenPartei = p && p.art === "rat" && parteiKuerzel(partei ?? null) !== "Rat"
-    ? partei ?? null : null;
+  const zeilenPartei = p && p.art === "council" && parteiKuerzel(party ?? null) !== "Rat"
+    ? party ?? null : null;
   const label = p ? (zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p)) : null;
-  const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(partei ?? null);
+  const doppelt = !!label && label !== "Rat" && label === parteiKuerzel(party ?? null);
   return (
     <>
       {name}
       {p && <PersonBadge p={p} zeilenPartei={zeilenPartei} />}
-      {zeigePartei && partei && !doppelt ? ` (${partei})` : ""}
+      {zeigePartei && party && !doppelt ? ` (${party})` : ""}
     </>
   );
 }
@@ -346,28 +349,28 @@ export function PersonBadge({ p, zeilenPartei = null }: {
   // Seit wann jemand wo sitzt, weiß das Lexikon — was die Zeile sagt, gilt
   // hier trotzdem vor: Der Beitrag stammt aus dieser Zeit.
   const gewechselt = !!zeilenPartei
-    && !!p.partei
-    && !parteienPassen(parteiKuerzel(zeilenPartei), parteiKuerzel(p.partei));
+    && !!p.party
+    && !parteienPassen(parteiKuerzel(zeilenPartei), parteiKuerzel(p.party));
   // „beteiligung" und „beratend" tragen einen neutralen Punkt und KEINE
   // Parteifarbe: Weder der Beteiligungsbericht noch eine Ausschuss-Beratung
   // nennt eine Fraktion. Ohne die eigenen Zweige fielen sie in
   // `parteiKuerzel(null)` — und das antwortet „Rat".
   const dot = zeilenPartei ? parteiDot(zeilenPartei)
     : !p.aktiv ? { bg: "hsl(209 10% 62%)", ring: false }
-    : p.art === "stadt" ? { bg: "#0764a6", ring: false }
-    : p.art === "beteiligung" ? { bg: "hsl(209 10% 62%)", ring: true }
-    : p.art === "beratend" ? { bg: "hsl(209 18% 65%)", ring: true }
-    : parteiDot(p.partei || "");
+    : p.art === "city" ? { bg: "#0764a6", ring: false }
+    : p.art === "participation" ? { bg: "hsl(209 10% 62%)", ring: true }
+    : p.art === "advisory" ? { bg: "hsl(209 18% 65%)", ring: true }
+    : parteiDot(p.party || "");
   const label = zeilenPartei ? parteiKuerzel(zeilenPartei) : personBadgeLabel(p);
-  const rolle = p.rolle
-    || (p.art === "rat" ? `Ratsmitglied${p.partei ? ` · ${p.partei}` : ""}`
-      : p.art === "beteiligung" ? "Aufsichtsorgan einer städtischen Gesellschaft"
-      : p.art === "beratend" ? "Beratendes Mitglied"
+  const role = p.role
+    || (p.art === "council" ? `Ratsmitglied${p.party ? ` · ${p.party}` : ""}`
+      : p.art === "participation" ? "Aufsichtsorgan einer städtischen Gesellschaft"
+      : p.art === "advisory" ? "Beratendes Mitglied"
       : "Stadtverwaltung");
   // Der Zeitraum sagt, WORAUS wir die Person kennen. Bei den Aufsichtsorganen
   // sind das Berichtsjahrgänge, nicht Sitzungen — „In den Sitzungen seit
   // 2022" wäre für eine Betriebsratsvorsitzende schlicht falsch.
-  const zeitraum = p.art === "beteiligung"
+  const period = p.art === "participation"
     ? (p.von && p.bis
       ? (p.von === p.bis ? `Im Beteiligungsbericht ${p.von}`
         : `In den Beteiligungsberichten ${p.von}–${p.bis}`)
@@ -379,7 +382,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
   return (
     <span ref={ref} className="relative inline-block align-baseline">
       <button type="button" onClick={oeffnen}
-        aria-expanded={offen} title={`${p.name} — ${rolle}`}
+        aria-expanded={offen} title={`${p.name} — ${role}`}
         className="ml-1 inline-flex -translate-y-[1px] items-center gap-1 rounded-full border border-border bg-card px-1.5 py-px align-baseline text-[10px] font-medium leading-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
         <span aria-hidden className={cn("h-[7px] w-[7px] shrink-0 rounded-full", dot.ring && "ring-1 ring-border")}
           style={{ backgroundColor: dot.bg }} />
@@ -391,7 +394,7 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           Einzelpartei („FDP/Volt" ↔ „FDP") ist keiner. */}
       {gewechselt && (
         <span className="ml-1 text-[10.5px] font-normal text-muted-foreground/80">
-          (heute {p.aktiv ? p.partei : "nicht mehr im Rat"})
+          (heute {p.aktiv ? p.party : "nicht mehr im Rat"})
         </span>
       )}
       {offen && pos && (
@@ -400,20 +403,20 @@ export function PersonBadge({ p, zeilenPartei = null }: {
           style={{ left: pos.left, top: pos.top }}>
           <span className="block text-[13px] font-semibold text-foreground">{p.name}</span>
           <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
-            {p.aktiv ? rolle : `Ehemals: ${rolle}`}
+            {p.aktiv ? role : `Ehemals: ${role}`}
           </span>
           {gewechselt && (
             <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
               Zum Zeitpunkt des Beitrags: <strong className="font-semibold text-foreground">{zeilenPartei}</strong>
             </span>
           )}
-          {zeitraum && (
-            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{zeitraum}</span>
+          {period && (
+            <span className="mt-1 block text-[10.5px] text-muted-foreground/70">{period}</span>
           )}
           {/* Verwaltung verlinkt nur mit ERKANNTEM Amt (Tims Wunsch 19.08.) —
               ohne rolle liefert /person/{slug} 404 (verwaltung_detail() im
               Backend), und ein toter Link ist schlimmer als kein Link (#588). */}
-          {(p.art === "rat" || (p.art === "stadt" && p.rolle)) && (
+          {(p.art === "council" || (p.art === "city" && p.role)) && (
             /* Next-Link statt <a>: Der harte Reload warf beim Zurückkommen
                den Gesprächs-State weg (Tims Befund 12.08.) — client-seitig
                bleibt die History intakt und der Restore greift. */
@@ -429,12 +432,12 @@ export function PersonBadge({ p, zeilenPartei = null }: {
 }
 
 export type ParteiMeinung = {
-  partei: string; haltung?: "dafür" | "dagegen" | "offen" | "gewandelt";
-  position: string; einig: boolean; hinweis: string | null;
-  kernaussage: { text: string; sprecher: string | null; datum: string | null } | null;
-  beitraege: number;
-  beitraege_liste?: { sprecher: string | null; datum: string; art: string | null;
-    gremium: string | null; text: string }[];
+  party: string; stance?: "dafür" | "dagegen" | "offen" | "gewandelt";
+  position: string; unanimous: boolean; note: string | null;
+  kernaussage: { text: string; speaker: string | null; date: string | null } | null;
+  contributions: number;
+  beitraege_liste?: { speaker: string | null; date: string; art: string | null;
+    committee: string | null; text: string }[];
 };
 
 /* --------------------------- Antworttext ---------------------------- */
@@ -511,7 +514,7 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       // Namen noch einmal in Klammern, ersetzt das Badge sie (Tims Befund
       // 12.08.). Geschluckt wird NUR das nackte Partei-Label derselben Partei.
       const klammer = s.slice(ende).match(/^\s*\(([^()]{2,40})\)/);
-      if (klammer && klammerIstParteiLabel(klammer[1], p.partei)) {
+      if (klammer && klammerIstParteiLabel(klammer[1], p.party)) {
         ende += klammer[0].length;
         re.lastIndex = ende;
       }
@@ -574,7 +577,7 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
                   {nummer}
                 </button>
               ) : (
-                <a key={id} href={quelleHref ? quelleHref(nummer) : `#quelle-${nummer}`}
+                <a key={id} href={quelleHref ? quelleHref(nummer) : `#source-${nummer}`}
                   title="Zur zitierten Quelle springen" aria-label={`Quelle ${nummer} anzeigen`}
                   className={chipClass}>
                   {nummer}
@@ -659,20 +662,20 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
  * Zitat-Reihenfolge. Eigene Komponente, damit die Server-Seite nur ein
  * schlichtes id-Array über die Grenze reichen muss und keine Map.
  */
-export function GeteilterAntwortText({ text, quellenIds, anlagen }: {
-  text: string; quellenIds: number[]; anlagen?: AnlagenHinweis[];
+export function GeteilterAntwortText({ text, quellenIds, attachments }: {
+  text: string; quellenIds: number[]; attachments?: AnlagenHinweis[];
 }) {
   const idToNum = new Map(quellenIds.map((id, i) => [id, i + 1] as const));
   return <AntwortText text={text} idToNum={idToNum}
-    anlBuchstaben={anlagenBuchstaben(text, anlagen)} />;
+    anlBuchstaben={anlagenBuchstaben(text, attachments)} />;
 }
 
 /* ------------------------ Belege-Bausteine -------------------------- */
 
 /** Task 33: Anlagen-Treffer der Gründlichen Recherche — Gutachten und
  *  Konzepte, verlinkt aufs öffentliche PDF im Ratsinformationssystem. */
-export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
-  anlagen: AnlagenHinweis[]; ankerPrefix: string;
+export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
+  attachments: AnlagenHinweis[]; ankerPrefix: string;
   /** nr → a/b/c für die im Bericht belegten Anlagen. */
   buchstaben: Map<number, string>;
 }) {
@@ -683,7 +686,7 @@ export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
         Aus den Anlagen <span className="text-muted-foreground/60">· Gutachten &amp; Konzepte</span>
       </p>
       <ul className="mt-1.5 space-y-2">
-        {anlagen.map((a, i) => {
+        {attachments.map((a, i) => {
           const nr = a.nr ?? i + 1;
           const b = buchstaben.get(nr);
           return (
@@ -704,44 +707,54 @@ export function AnlagenBlock({ anlagen, ankerPrefix, buchstaben }: {
               <span className="min-w-0 flex-1 truncate font-medium group-hover:underline">
                 {a.label || "Anlage"}
               </span>
-              {a.vorlage_nr && (
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.vorlage_nr}</span>
+              {a.template_number && (
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.template_number}</span>
               )}
               <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </a>
-            {a.vorlage_titel && (
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.vorlage_titel}</p>
+            {a.template_title && (
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.template_title}</p>
             )}
-            {a.auszug && (
-              <p className="mt-0.5 text-muted-foreground">{a.auszug}{a.auszug.length >= 220 ? "…" : ""}</p>
+            {a.excerpt && (
+              <p className="mt-0.5 text-muted-foreground">{a.excerpt}{a.excerpt.length >= 220 ? "…" : ""}</p>
             )}
           </li>
           );
         })}
       </ul>
-      {belegt > 0 && belegt < anlagen.length && (
+      {belegt > 0 && belegt < attachments.length && (
         <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
-          Die übrigen wurden gelesen, aber im Bericht nicht belegt.
+          Die übrigen wurden documents_read, aber im Bericht nicht belegt.
         </p>
       )}
     </div>
   );
 }
 
-export function PresseBlock({ presse }: { presse: PresseHinweis[] }) {
+export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[] }) {
   return (
     <div className="rounded-xl border border-dashed border-border p-3">
       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
         Aktuelles von der Stadt <span className="text-muted-foreground/60">· extern</span>
       </p>
       <ul className="mt-1.5 space-y-1">
-        {presse.map((p) => (
+        {press_releases.map((p) => (
           <li key={p.url}>
             <a href={p.url} target="_blank" rel="noopener noreferrer"
-              className="group flex items-baseline gap-2 rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
-              <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.titel}</span>
-              <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.datum)}</span>
-              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              className="group block rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
+              <span className="flex items-baseline gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.title}</span>
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.date)}</span>
+                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              </span>
+              {/* Die Meldung SELBST, nicht nur ihre Überschrift: Ohne den
+                  Anriss war die Karte eine reine Weiterleitung auf die
+                  Stadt-Seite (Tims Befund 01.09.2026). */}
+              {p.excerpt && (
+                <span className="mt-0.5 line-clamp-3 block text-[11.5px] leading-snug text-muted-foreground">
+                  {p.excerpt}
+                </span>
+              )}
             </a>
           </li>
         ))}
@@ -772,8 +785,8 @@ const fmtDatumVoll = (d?: string | null) =>
  *  reißt diese Karte die Tagesordnung an, deterministisch aus dem
  *  Sitzungskalender, nie vom Modell. Sitzungen MIT Beschlüssen brauchen die
  *  Karte nicht: Deren Inhalt steht bereits in den Quellen. */
-export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) {
-  const mitAgenda = sitzungen.filter((s) => s.n_agenda > 0);
+export function TagesordnungBlock({ sessions }: { sessions: SitzungsInfo[] }) {
+  const mitAgenda = sessions.filter((s) => s.n_agenda > 0);
   if (mitAgenda.length === 0) return null;
   return (
     <>
@@ -831,9 +844,9 @@ export function TagesordnungBlock({ sitzungen }: { sitzungen: SitzungsInfo[] }) 
 /** Task 16: Wortbeiträge aus den Sitzungsprotokollen — was im Rat GESAGT
  *  wurde (Reden, Anfragen mit Verwaltungsantwort, Einwohnerfragen, Zusagen),
  *  im Unterschied zu dem, was beschlossen wurde. */
-export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
+export function DebattenBlock({ debates }: { debates: DebattenHinweis[] }) {
   const artLabel: Record<string, string> = {
-    rede: "Rede", anfrage: "Anfrage", einwohnerfrage: "Einwohnerfrage", zusage: "Zusage",
+    speech: "Rede", inquiry: "Anfrage", citizen_question: "Einwohnerfrage", pledge: "Zusage",
   };
   return (
     <div className="rounded-xl border border-dashed border-border p-3">
@@ -841,7 +854,7 @@ export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
         Aus den Ratsdebatten <span className="text-muted-foreground/60">· Protokolle</span>
       </p>
       <ul className="mt-1.5 space-y-2">
-        {debatten.map((d, i) => (
+        {debates.map((d, i) => (
           <DebattenZeile key={i} d={d} artLabel={artLabel} />
         ))}
       </ul>
@@ -861,18 +874,18 @@ export function DebattenBlock({ debatten }: { debatten: DebattenHinweis[] }) {
 function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<string, string> }) {
   const [offen, setOffen] = useState(false);
   // Ab dieser Länge lohnt der Toggle; kürzere Beiträge stehen einfach ganz da.
-  const lang = d.auszug.length > 260;
+  const lang = d.excerpt.length > 260;
   return (
     <li className="text-[12.5px] leading-snug">
       <p className="flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate font-medium">
-          {d.sprecher
-            ? <SprecherName name={d.sprecher} partei={d.partei} datum={d.datum} zeigePartei />
-            : <>Ohne Namen{d.partei ? ` (${d.partei})` : ""}</>}
+          {d.speaker
+            ? <SprecherName name={d.speaker} party={d.party} date={d.date} zeigePartei />
+            : <>Ohne Namen{d.party ? ` (${d.party})` : ""}</>}
           {/* Zusagen der Verwaltung sind Selbstverpflichtungen — kein
               Meinungsbeitrag unter vielen. Sie bekommen deshalb ein eigenes
               Abzeichen statt nur ein graues Wörtchen. */}
-          {d.art === "zusage" ? (
+          {d.art === "pledge" ? (
             <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
               Zusage der Verwaltung
             </span>
@@ -880,20 +893,20 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
             <span className="ml-1.5 font-normal text-muted-foreground">· {artLabel[d.art] ?? d.art}</span>
           )}
         </span>
-        {d.datum && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.datum)}</span>}
+        {d.date && <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(d.date)}</span>}
         {/* Nachlesbar statt nur behauptet: leises Icon zum Protokoll-PDF —
             gleiche Trailing-Icon-Grammatik wie Anlagen/Presse, negative
             Margins vergrößern nur die Tippfläche, nicht die Optik. Mit
             bekannter Fundstelle springt #page direkt zur Seite (Chrome/
             Firefox/Edge; Safari öffnet dann schlicht das PDF). */}
-        {d.protokoll_url && (
+        {d.minutes_url && (
           <a target="_blank" rel="noopener noreferrer"
-            href={d.protokoll_seite ? `${d.protokoll_url}#page=${d.protokoll_seite}` : d.protokoll_url}
-            title={d.protokoll_seite
-              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+            href={d.minutes_page ? `${d.minutes_url}#page=${d.minutes_page}` : d.minutes_url}
+            title={d.minutes_page
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
-            aria-label={d.protokoll_seite
-              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.protokoll_seite})`
+            aria-label={d.minutes_page
+              ? `Sitzungsprotokoll öffnen (PDF, Seite ${d.minutes_page})`
               : "Sitzungsprotokoll öffnen (PDF)"}
             className="-m-1.5 shrink-0 p-1.5 text-muted-foreground/60 transition-colors hover:text-primary">
             <FileDown className="h-3 w-3" aria-hidden />
@@ -902,7 +915,7 @@ function DebattenZeile({ d, artLabel }: { d: DebattenHinweis; artLabel: Record<s
       </p>
       <p className={cn("mt-0.5 whitespace-pre-wrap text-muted-foreground",
         !offen && lang && "line-clamp-4")}>
-        {d.auszug}
+        {d.excerpt}
       </p>
       {lang && (
         <button type="button" onClick={() => setOffen((v) => !v)} aria-expanded={offen}
@@ -945,20 +958,20 @@ export function parteiDot(label: string): { bg: string; ring: boolean } {
  * „wird gerade geladen" — auf der geteilten Seite gibt es diesen Zustand
  * nicht, dort kommen die Positionen aus dem Snapshot.
  */
-export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: {
-  parteien: ParteiMeinung[] | null;
+export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
+  parties: ParteiMeinung[] | null;
   ohneBeitraege?: string[];
   onFrageStellen?: (text: string) => void;
 }) {
   // Klick auf die Zeile klappt die verdichteten Original-Beiträge auf
   // (Tims Wunsch: „auf die Partei klicken, um alle Beiträge zu sehen").
   const [offen, setOffen] = useState<string | null>(null);
-  const daten = [...new Set((parteien ?? []).map((p) => p.kernaussage?.datum).filter(Boolean))];
+  const daten = [...new Set((parties ?? []).map((p) => p.kernaussage?.date).filter(Boolean))];
   // In den Ausschüssen reden auch Verbände und beratende Mitglieder (NABU,
   // BUND, Ortslandvolkverband) — seit die Beiträge über die belegten
   // Beschlüsse kommen, oft ein Drittel der Zeilen. „13 Fraktionen" wäre dann
   // schlicht falsch gezählt.
-  const nurFraktionen = (parteien ?? []).every((p) => parteiKuerzel(p.partei) !== "Rat");
+  const nurFraktionen = (parties ?? []).every((p) => parteiKuerzel(p.party) !== "Rat");
   return (
     <div className="rounded-xl border border-border bg-card p-3.5 shadow-sm print:break-inside-avoid">
       <div className="flex items-baseline justify-between gap-2">
@@ -966,12 +979,12 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
           Aus den Ratsdebatten
         </p>
         <p className="text-[10.5px] text-muted-foreground/70">
-          {parteien === null ? "Positionen werden verdichtet …"
-            : `${parteien.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
+          {parties === null ? "Positionen werden verdichtet …"
+            : `${parties.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
               + (daten.length === 1 ? ` · Sitzung ${daten[0]}` : "")}
         </p>
       </div>
-      {parteien === null ? (
+      {parties === null ? (
         <div aria-hidden className="mt-3 flex animate-pulse flex-col gap-3.5">
           {[34, 28, 40].map((w, i) => (
             <div key={i} className="flex gap-2.5">
@@ -987,61 +1000,61 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
       ) : (
         <>
           <div className="mt-2 flex flex-col divide-y divide-border/60">
-            {parteien.map((p) => {
-              const dot = parteiDot(p.partei);
+            {parties.map((p) => {
+              const dot = parteiDot(p.party);
               const aufklappbar = (p.beitraege_liste?.length ?? 0) > 0;
-              const istOffen = offen === p.partei;
+              const istOffen = offen === p.party;
               return (
-                <div key={p.partei} role={aufklappbar ? "button" : undefined}
+                <div key={p.party} role={aufklappbar ? "button" : undefined}
                   tabIndex={aufklappbar ? 0 : undefined} aria-expanded={aufklappbar ? istOffen : undefined}
-                  onClick={() => aufklappbar && setOffen(istOffen ? null : p.partei)}
-                  onKeyDown={(e) => { if (aufklappbar && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOffen(istOffen ? null : p.partei); } }}
+                  onClick={() => aufklappbar && setOffen(istOffen ? null : p.party)}
+                  onKeyDown={(e) => { if (aufklappbar && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOffen(istOffen ? null : p.party); } }}
                   className={cn("group relative -mx-1.5 flex gap-2.5 rounded-lg px-1.5 py-2.5 transition-colors lg:hover:bg-primary/5",
                     aufklappbar && "cursor-pointer")}>
                   <span aria-hidden className="mt-[5px] h-2 w-2 shrink-0 rounded-full"
                     style={{ background: dot.bg, boxShadow: dot.ring ? "inset 0 0 0 1px rgba(0,0,0,0.15)" : undefined }} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-[12.5px] font-bold">{p.partei}</p>
-                      {p.haltung && HALTUNG_BADGE[p.haltung] && (
+                      <p className="text-[12.5px] font-bold">{p.party}</p>
+                      {p.stance && HALTUNG_BADGE[p.stance] && (
                         <span className={cn("rounded-full px-2 py-px text-[10px] font-semibold",
-                          HALTUNG_BADGE[p.haltung].cls)}>
-                          {HALTUNG_BADGE[p.haltung].label}
+                          HALTUNG_BADGE[p.stance].cls)}>
+                          {HALTUNG_BADGE[p.stance].label}
                         </span>
                       )}
                       {/* Ehrlichkeit zur Datenbasis: aus wie vielen Wortbeiträgen
                           die Position verdichtet ist (Tims Befund 10.08.). */}
-                      {p.beitraege > 0 && (
+                      {p.contributions > 0 && (
                         <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70">
-                          {p.beitraege === 1 ? "1 Beitrag" : `${p.beitraege} Beiträge`}
+                          {p.contributions === 1 ? "1 Beitrag" : `${p.contributions} Beiträge`}
                           {aufklappbar && (
                             <ChevronDown aria-hidden
                               className={cn("h-3 w-3 transition-transform", istOffen && "rotate-180")} />
                           )}
                         </span>
                       )}
-                      {!p.einig && (
+                      {!p.unanimous && (
                         <span className="rounded-full bg-amber-100 px-2 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
                           uneinheitlich
                         </span>
                       )}
                       {onFrageStellen && (
                         <button type="button"
-                          onClick={(e) => { e.stopPropagation(); onFrageStellen(`Was sagt ${p.partei} dazu im Detail?`); }}
+                          onClick={(e) => { e.stopPropagation(); onFrageStellen(`Was sagt ${p.party} dazu im Detail?`); }}
                           className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-opacity hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
-                          title={`Was sagt ${p.partei} dazu im Detail?`}>
+                          title={`Was sagt ${p.party} dazu im Detail?`}>
                           <MessageSquarePlus className="h-3 w-3" aria-hidden /> Dazu fragen
                         </button>
                       )}
                     </div>
                     <p className="mt-0.5 text-[12.5px] leading-relaxed text-foreground/90">
-                      {p.position}{!p.einig && p.hinweis ? ` — ${p.hinweis}` : ""}
+                      {p.position}{!p.unanimous && p.note ? ` — ${p.note}` : ""}
                     </p>
                     {p.kernaussage && (
                       <p className="mt-1 text-[12px] italic leading-snug text-muted-foreground">
                         {p.kernaussage.text}
                         <span className="font-mono text-[10px] not-italic text-muted-foreground/80">
-                          {" "}— {p.kernaussage.sprecher ? <SprecherName name={p.kernaussage.sprecher} partei={p.partei} datum={p.kernaussage.datum} /> : "ohne Namen"}{p.kernaussage.datum ? `, ${p.kernaussage.datum}` : ""}
+                          {" "}— {p.kernaussage.speaker ? <SprecherName name={p.kernaussage.speaker} party={p.party} date={p.kernaussage.date} /> : "ohne Namen"}{p.kernaussage.date ? `, ${p.kernaussage.date}` : ""}
                         </span>
                       </p>
                     )}
@@ -1050,8 +1063,8 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
                         {p.beitraege_liste.map((b, bi) => (
                           <li key={bi} className="text-[12px] leading-snug">
                             <p className="font-mono text-[10px] text-muted-foreground">
-                              {b.sprecher ? <SprecherName name={b.sprecher} partei={p.partei} datum={b.datum} /> : "Ohne Namen"} · {b.datum}
-                              {b.gremium ? ` · ${b.gremium}` : ""}
+                              {b.speaker ? <SprecherName name={b.speaker} party={p.party} date={b.date} /> : "Ohne Namen"} · {b.date}
+                              {b.committee ? ` · ${b.committee}` : ""}
                             </p>
                             <p className="mt-0.5 text-muted-foreground">{b.text}{b.text.length >= 300 ? "…" : ""}</p>
                           </li>
@@ -1085,35 +1098,35 @@ export function ParteienListe({ parteien, ohneBeitraege = [], onFrageStellen }: 
  *  Die Quellzeile sagt ausdrücklich, dass die Grafik NICHT vom Modell
  *  stammt — im Chat ist das die eine Verwechslung, die niemand riskieren
  *  darf: Alles andere auf dem Bildschirm ist generierter Text. */
-export function GrafikKarte({ grafik }: { grafik: QaGrafik }) {
-  if ((grafik.reihe?.length ?? 0) < 2) return null;
+export function GrafikKarte({ chart }: { chart: QaGrafik }) {
+  if ((chart.series?.length ?? 0) < 2) return null;
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <Zeitreihe
-        reihe={grafik.reihe}
-        einheit={grafik.einheit}
-        nachkomma={grafik.nachkomma}
-        titel={grafik.titel}
-        ariaTitel={`${grafik.titel} im Verlauf, aus den Daten der Stadt`}
+        series={chart.series}
+        unit={chart.unit}
+        nachkomma={chart.nachkomma}
+        title={chart.title}
+        ariaTitel={`${chart.title} im Verlauf, aus den Daten der Stadt`}
         tabelle
-        hinweis={grafik.hinweis ?? undefined}
+        note={chart.note ?? undefined}
         // Im Chat klebt schon die Eingabezeile am unteren Rand — eine
         // zweite klebende Ebene schob sich darüber (Tims Befund 18.08.).
         leisteHaftet={false}
       />
-      {grafik.quelle && (
+      {chart.source && (
         <p className="mt-2 border-t border-dashed border-border pt-2 text-[10.5px] leading-relaxed text-muted-foreground">
-          {grafik.quelle} — die Reihe kommt aus unserer Datenbank, nicht aus der
+          {chart.source} — die Reihe kommt aus unserer Datenbank, nicht aus der
           KI-Antwort.
         </p>
       )}
       {/* Die Anschlussstelle: Wer mehr wissen will, bekommt die Seite, die
           genau diese Reihe erklärt. Hinter dem Gate — auf Prod wäre der
           Link ein 404, und ein Satz, der auf nichts zeigt, bliebe stehen. */}
-      {HAUSHALT_FREI && grafik.mehr?.href && (
-        <Link href={grafik.mehr.href}
+      {HAUSHALT_FREI && chart.mehr?.href && (
+        <Link href={chart.mehr.href}
           className="group mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-primary">
-          Mehr dazu: {grafik.mehr.label}
+          Mehr dazu: {chart.mehr.label}
           <ArrowRight size={14} strokeWidth={2}
             className="transition-transform group-hover:translate-x-0.5" />
         </Link>

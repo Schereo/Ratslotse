@@ -67,7 +67,7 @@ def main() -> int:
         rows = []
         for g in golden:
             row = store._conn.execute(
-                """SELECT d.id, d.title, d.beschluss, d.summary, d.outcome, d.kind,
+                """SELECT d.id, d.title, d.official_text, d.summary, d.outcome, d.kind,
                           d.amount_eur, d.impact, cs.committee, cs.session_date
                    FROM council_decisions d JOIN council_sessions cs ON cs.ksinr = d.ksinr
                    WHERE d.title LIKE ? ORDER BY d.id LIMIT 1""",

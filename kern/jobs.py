@@ -31,6 +31,20 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "check_council_videos",
+        "label": "Video-Ergebnisse (vorläufig)",
+        "description": "Abstimmungsergebnisse aus der O1-Aufzeichnung der Ratssitzung — als vorläufiger Stand, bis das Protokoll kommt.",
+        "schedule": "täglich 10:30 Uhr",
+        "max_age_h": 30,
+    },
+    {
+        "key": "record_council_livestream",
+        "label": "Livestream-Mitschnitt (Rat)",
+        "description": "Schneidet die Ratssitzung live aus dem O1-Stream mit und liest die Abstimmungsergebnisse noch am Sitzungsabend — an Tagen ohne Ratssitzung ein Leerlauf.",
+        "schedule": "täglich 13 Uhr UTC (14/15 Uhr lokal)",
+        "max_age_h": 30,
+    },
+    {
         "key": "abendmeldungen",
         "label": "Abend-Anlässe (30a)",
         "description": "N5 Vorabend-Erinnerung (täglich) und N6 Wochenüberblick (sonntags).",
@@ -61,7 +75,7 @@ JOBS: list[dict] = [
     {
         "key": "check_finanzdaten",
         "label": "Haushaltsdaten",
-        "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand — plus Hinweis, wenn ein Jahrgang ausbleibt.",
+        "description": "Neue Jahresabschlüsse, Teilhaushalts-Pläne und Prüfberichte aus dem Anlagenbestand; ruft die Ingest-Skripte von Vollzug, Satzung, Gebühren und Wirtschaftsplänen, sobald ein neues Dokument da ist — plus Hinweis, wenn ein Jahrgang ausbleibt.",
         # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
         # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
         #

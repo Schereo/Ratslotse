@@ -29,7 +29,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { HaushaltZeile, deMio, mio, summe } from "@/lib/haushalt";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +40,8 @@ import { cn } from "@/lib/utils";
  *  `signal` an die Schraffur-Lücke. Die Einheit hängt an JEDER Zahl statt
  *  einmal am Ende der Reihe: Umbrechen die drei, stünde sie sonst allein in
  *  einer vierten Zeile und gehörte sichtbar zu nichts mehr. */
-export function Summe({ label, wert, ton, beleg }: {
-  label: string; wert: number | null; ton?: "signal" | "ein"; beleg?: ReactNode;
+export function Summe({ label, value, ton, beleg }: {
+  label: string; value: number | null; ton?: "signal" | "ein"; beleg?: ReactNode;
 }) {
   return (
     <div className="min-w-0">
@@ -57,7 +57,7 @@ export function Summe({ label, wert, ton, beleg }: {
           : ton === "ein" ? "text-[color:var(--hh-ein-0)]"
           : "text-foreground",
       )}>
-        {deMio(wert)}
+        {deMio(value)}
         {/* Unter sm steht die Einheit UNTER der Zahl: Drei Summen nebeneinander
             plus je „Mio. €" sind auf 375 px breiter als die Tafel — inline
             gesetzt kippte die Zeile aus der Karte. */}
@@ -72,9 +72,9 @@ export function Summe({ label, wert, ton, beleg }: {
   );
 }
 
-export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
+export function Tafel({ zeilen, year, aktuell, aktion, children }: {
   zeilen: HaushaltZeile[];
-  jahr: number;
+  year: number;
   /** Ist das das jüngste Haushaltsjahr? Steuert nur die Zeitform. */
   aktuell: boolean;
   /** Umschalter o. Ä., sitzt im Fuß der Tafel. */
@@ -83,24 +83,24 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
   children?: ReactNode;
 }) {
   const gesamt = summe(zeilen);
-  const einMio = mio(gesamt?.ertraege);
-  const ausMio = mio(gesamt?.aufwendungen);
+  const einMio = mio(gesamt?.revenues);
+  const ausMio = mio(gesamt?.expenses);
   // Saldo aus den Rohwerten runden: 812,9 − 883,9 ergäbe −71,0, tatsächlich
   // sind es −71,1 (dieselbe Falle wie in `gegenbalken.tsx`).
-  const saldo = gesamt?.ertraege != null && gesamt?.aufwendungen != null
-    ? mio(gesamt.ertraege - gesamt.aufwendungen)
+  const balance = gesamt?.revenues != null && gesamt?.expenses != null
+    ? mio(gesamt.revenues - gesamt.expenses)
     : null;
   if (ausMio == null) return null;
 
-  const fehlt = saldo != null && saldo < 0 ? -saldo : null;
-  const ueber = saldo != null && saldo > 0 ? saldo : null;
+  const fehlt = balance != null && balance < 0 ? -balance : null;
+  const ueber = balance != null && balance > 0 ? balance : null;
 
   return (
     <div className="hh-tafel rounded-2xl p-4 sm:p-6">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <div className="min-w-0">
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-primary sm:text-[10.5px]">
-            Stadthaushalt Oldenburg {jahr}
+            Stadthaushalt Oldenburg {year}
           </p>
           {/* 19ch war zu eng: Der Satz passt in zwei Zeilen, die Begrenzung erzwang
               aber eine dritte — und weil `hyphens: auto` auf allen Überschriften
@@ -111,7 +111,7 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
           <h1 className="mt-2.5 max-w-[30ch] text-balance font-display text-[23px] font-bold leading-[1.15] tracking-tight sm:text-[32px]">
             {aktuell
               ? <>Oldenburg plant Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>
-              : <>Für {jahr} plante Oldenburg Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>}
+              : <>Für {year} plante Oldenburg Ausgaben von {deMio(ausMio)} Millionen&nbsp;Euro.</>}
           </h1>
           {fehlt != null && (
             <p className="mt-3 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground sm:text-[15px]">
@@ -130,12 +130,12 @@ export function Tafel({ zeilen, jahr, aktuell, aktion, children }: {
         </div>
 
         <div className="flex flex-none gap-6 sm:gap-7 sm:pt-1">
-          <Summe label="geplante Einnahmen" wert={einMio} />
-          <Summe label="geplante Ausgaben" wert={ausMio} />
+          <Summe label="geplante Einnahmen" value={einMio} />
+          <Summe label="geplante Ausgaben" value={ausMio} />
           {fehlt != null
-            ? <Summe label="geplantes Minus" wert={fehlt} ton="signal" />
+            ? <Summe label="geplantes Minus" value={fehlt} ton="signal" />
             : ueber != null
-              ? <Summe label="geplantes Plus" wert={ueber} />
+              ? <Summe label="geplantes Plus" value={ueber} />
               : null}
         </div>
       </div>

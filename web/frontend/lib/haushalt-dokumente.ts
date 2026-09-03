@@ -12,7 +12,7 @@
 // Nachprüfbarkeit gebaut ist.
 //
 // Hier steht deshalb die andere Hälfte: je Quelle und Jahrgang das konkrete
-// PDF, aus `GET /api/council/haushalt/dokumente` (Zuordnung und Begründung in
+// PDF, aus `GET /api/council/budget/documents` (Zuordnung und Begründung in
 // `CouncilStore._DOKUMENT_QUELLEN`). Die statische Adresse bleibt die
 // Rückfallebene — aber wo sie greift, heißt der Link auch nicht mehr
 // „Dokument öffnen".
@@ -26,7 +26,7 @@ import type { Ratsvorgang } from "@/lib/herkunft";
 
 export type { Ratsvorgang };
 
-/** Ein konkretes Dokument hinter einer Quelle. `fundstelle` kommt aus
+/** Ein konkretes Dokument hinter einer Quelle. `citation` kommt aus
  *  `council_herkunft` und ist der eigentliche Gewinn: „Abschnitt 3.2" macht
  *  aus 300 Seiten eine Stelle, an der man nachschlägt.
  *
@@ -35,23 +35,23 @@ export type { Ratsvorgang };
  *  den Schichten von oldenburg.de und vom Landesamt — die hängen an keiner
  *  Vorlage. */
 export type HaushaltDokument = {
-  jahr: number | null;
+  year: number | null;
   url: string;
   label: string | null;
-  fundstelle: string | null;
-  seite: number | null;
-  beschluss: Ratsvorgang | null;
+  citation: string | null;
+  page: number | null;
+  official_text: Ratsvorgang | null;
 };
 
 /** Nach Quellenschlüssel. Ein Schlüssel fehlt, wo wir kein Dokument haben. */
 export type HaushaltDokumente = Partial<Record<QuellenSchluessel, HaushaltDokument[]>>;
 
 export type DokumenteAntwort = {
-  dokumente: HaushaltDokumente;
+  documents: HaushaltDokumente;
   /** Je Quelle die Jahrgänge, die wirklich im Bestand stehen — die Grundlage
    *  des Datenstands im Quellenverzeichnis (s. `standText`). Kommt aus
    *  derselben Antwort, weil es an derselben Stelle gebraucht wird. */
-  jahrgaenge: Jahrgaenge;
+  editions: Jahrgaenge;
 };
 
 /** Das Dokument, auf das ein Beleg zeigt — samt allem, was danebengeschrieben
@@ -69,7 +69,7 @@ export type DokumenteAntwort = {
 export type Belegziel = {
   dokument: HaushaltDokument;
   /** Jahrgang des verlinkten Dokuments (`null`, wo die Quelle keinen führt). */
-  jahrgang: number | null;
+  budget_year: number | null;
   abweichend: boolean;
   weitere: number;
 };
@@ -82,10 +82,10 @@ export type Belegziel = {
  *  Ergebnisse sagen „behandelt" — das stimmt immer und behauptet nichts. */
 export function vorgangVerb(outcome: string | null): string {
   switch (outcome) {
-    case "angenommen": return "beschlossen";
-    case "abgelehnt": return "abgelehnt";
-    case "vertagt": return "vertagt";
-    case "zur_kenntnis": return "zur Kenntnis genommen";
+    case "accepted": return "beschlossen";
+    case "rejected": return "abgelehnt";
+    case "postponed": return "vertagt";
+    case "noted": return "zur Kenntnis genommen";
     default: return "behandelt";
   }
 }
@@ -93,7 +93,7 @@ export function vorgangVerb(outcome: string | null): string {
 function neuester(liste: HaushaltDokument[]): HaushaltDokument | null {
   if (!liste.length) return null;
   return liste.reduce((best, d) =>
-    (d.jahr ?? -Infinity) > (best.jahr ?? -Infinity) ? d : best);
+    (d.year ?? -Infinity) > (best.year ?? -Infinity) ? d : best);
 }
 
 /** Das Dokument einer Quelle für das gerade gezeigte Jahr.
@@ -107,22 +107,22 @@ function neuester(liste: HaushaltDokument[]): HaushaltDokument | null {
 export function belegziel(
   dokumente: HaushaltDokumente | undefined,
   q: QuellenSchluessel,
-  jahr: number | null | undefined,
+  year: number | null | undefined,
 ): Belegziel | null {
   const liste = dokumente?.[q] ?? [];
   if (!liste.length) return null;
-  const passend = jahr == null ? [] : liste.filter((d) => d.jahr === jahr);
+  const passend = year == null ? [] : liste.filter((d) => d.year === year);
   const dokument = passend.length ? passend[0] : neuester(liste);
   if (!dokument) return null;
   // Gezählt werden DATEIEN, nicht Fundstellen: Der Satz „Alle 3 Dokumente im
   // Verzeichnis" führte sonst zu einem Verzeichnis mit einem Eintrag, weil
   // dieselbe Anlage dreimal gezählt worden war (s. `jeAdresseEinmal`).
   const gleicherJahrgang = jeAdresseEinmal(
-    liste.filter((d) => d.jahr === dokument.jahr));
+    liste.filter((d) => d.year === dokument.year));
   return {
     dokument,
-    jahrgang: dokument.jahr,
-    abweichend: jahr == null || dokument.jahr !== jahr,
+    budget_year: dokument.year,
+    abweichend: year == null || dokument.year !== year,
     weitere: Math.max(0, gleicherJahrgang.length - 1),
   };
 }
@@ -144,12 +144,12 @@ export function belegziel(
 export function belegzieleAlle(
   dokumente: HaushaltDokumente | undefined,
   q: QuellenSchluessel,
-  jahr: number | null | undefined,
+  year: number | null | undefined,
 ): HaushaltDokument[] {
-  const ziel = belegziel(dokumente, q, jahr);
+  const ziel = belegziel(dokumente, q, year);
   if (!ziel) return [];
   return jeAdresseEinmal(
-    (dokumente?.[q] ?? []).filter((d) => d.jahr === ziel.jahrgang));
+    (dokumente?.[q] ?? []).filter((d) => d.year === ziel.budget_year));
 }
 
 /** Aus einer Liste von Fundstellen die Liste der Dateien — Reihenfolge bleibt. */
@@ -196,15 +196,18 @@ export type NummerEintrag = {
  *  Regel dahinter ist inhaltlich: Eine eigene Nummer bekommt ein Papier dort,
  *  wo eine einzelne Aussage auf genau ihm ruht. */
 export function nummerierung(
-  schluessel: readonly QuellenSchluessel[],
+  key: readonly QuellenSchluessel[],
   jeDokument: JeDokument,
   dokumente: HaushaltDokumente | undefined,
-  jahr: number | null | undefined,
+  year: number | null | undefined,
 ): NummerEintrag[] {
   const aus: NummerEintrag[] = [];
-  for (const q of schluessel) {
+  for (const q of key) {
     const benutzte = jeDokument[q];
-    if (benutzte && benutzte.length > 1) {
+    // Auch EIN benanntes Papier bekommt seinen Eintrag: Sonst fiele die Art
+    // auf die Jahrgangsliste zurück — und die kennt nur den Jahrgang der
+    // Seite, nicht den der Zahl (Vollzug 2026 auf der Abschluss-Seite 2024).
+    if (benutzte && benutzte.length >= 1) {
       // DIE SEITE SAGT, WELCHE PAPIERE SIE BENUTZT — nicht der Jahrgang.
       //
       // Ein erster Versuch nahm die Dokumente des gezeigten Jahres. Auf
@@ -225,7 +228,7 @@ export function nummerierung(
     }
     aus.push({
       nr: aus.length + 1, q, dokument: null,
-      dokumente: belegzieleAlle(dokumente, q, jahr),
+      dokumente: belegzieleAlle(dokumente, q, year),
     });
   }
   return aus;
@@ -249,8 +252,8 @@ export function nummerFuer(
   const derArt = eintraege.filter((e) => e.q === q);
   if (!derArt.length) return null;
   if (url) {
-    const genau = derArt.find((e) => e.dokument?.url === url);
-    if (genau) return genau;
+    const exact = derArt.find((e) => e.dokument?.url === url);
+    if (exact) return exact;
   }
   return derArt[0];
 }

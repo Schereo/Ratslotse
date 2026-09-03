@@ -56,7 +56,7 @@ import {
 import type { VergleichDaten } from "@/lib/haushalt-vergleich";
 import type { ProgrammDaten } from "@/lib/haushalt-investitionsprogramm";
 import type { SchuldenDaten } from "@/lib/haushalt-schulden";
-import { Beleg } from "@/components/haushalt/quelle";
+import { Beleg } from "@/components/haushalt/source";
 import { EinnahmenWerkbank } from "@/components/haushalt/labor-einnahmen";
 import { AusgabenWerkbank } from "@/components/haushalt/labor-ausgaben";
 import { InvestWerkbank } from "@/components/haushalt/labor-invest";
@@ -80,14 +80,14 @@ function eur(v: number): string {
 
 /** Geplant gegen tatsächlich (Jahresabschlüsse) — der Maßstab dafür, wie
  *  belastbar die Zahl ist, gegen die hier angerechnet wird. */
-function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
-  const reihe = planGegenIst(daten);
-  if (reihe.length < 2) return null;
-  const spanne = Math.max(...reihe.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
-  const besser = reihe.filter((r) => r.delta > 0).length;
-  const deltas = reihe.map((r) => r.delta).sort((a, b) => a - b);
+function PlanIst({ daten }: { daten: HaushaltAuswahl<"income_statement"> }) {
+  const series = planGegenIst(daten);
+  if (series.length < 2) return null;
+  const spanne = Math.max(...series.flatMap((r) => [Math.abs(r.plan), Math.abs(r.ist)]));
+  const besser = series.filter((r) => r.delta > 0).length;
+  const deltas = series.map((r) => r.delta).sort((a, b) => a - b);
   // Jahrgänge, deren „geplant" nicht der nackte Ansatz ist (2018, 2020).
-  const abweichenderBezug = reihe.filter((r) => r.planArt !== "ansatz");
+  const abweichenderBezug = series.filter((r) => r.planArt !== "budget");
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -95,18 +95,18 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
         Wie verlässlich ist der Plan?
       </p>
       <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/85">
-        {besser === reihe.length ? (
-          <>In <strong>allen {reihe.length} Jahren</strong>, für die ein Jahresabschluss vorliegt,
+        {besser === series.length ? (
+          <>In <strong>allen {series.length} Jahren</strong>, für die ein Jahresabschluss vorliegt,
           fiel das Ergebnis besser aus als geplant — zwischen {deMio(deltas[0])} und{" "}
           {deMio(deltas[deltas.length - 1])}&#8239;Mio.&nbsp;€.</>
         ) : (
-          <>In {besser} von {reihe.length} Jahren fiel das Ergebnis besser aus als geplant.</>
+          <>In {besser} von {series.length} Jahren fiel das Ergebnis besser aus als geplant.</>
         )}
       </p>
       <div className="mt-3 flex flex-col gap-2">
-        {reihe.map((r) => (
-          <div key={r.jahr} className="flex items-center gap-2.5">
-            <span className="w-9 shrink-0 font-mono text-[11px] text-muted-foreground">{r.jahr}</span>
+        {series.map((r) => (
+          <div key={r.year} className="flex items-center gap-2.5">
+            <span className="w-9 shrink-0 font-mono text-[11px] text-muted-foreground">{r.year}</span>
             {/* Zwei Balken an gemeinsamer Nulllinie: Plan grau, Ist blau. */}
             <span className="relative h-6 min-w-0 flex-1">
               <span className="absolute inset-y-0 left-1/2 w-px bg-border" />
@@ -127,7 +127,7 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
               {/* Jahrgänge, deren „geplant" nicht der nackte Ansatz ist,
                   tragen ein Sternchen — die Fußnote sagt, was gemeint ist. */}
               <span className="w-2 text-left text-muted-foreground">
-                {r.planArt !== "ansatz" ? "*" : " "}
+                {r.planArt !== "budget" ? "*" : " "}
               </span>
             </span>
           </div>
@@ -145,10 +145,10 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
       <p className="mt-2.5 border-t border-dashed border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
         Aus den Jahresabschlüssen der Stadt <Beleg q="jahresabschluss" /> — ordentliches plus außerordentliches
         Ergebnis. Das heißt nicht, dass das Minus oben unecht wäre: Es heißt, dass ein Plan Vorsicht
-        einpreist. Für {reihe[reihe.length - 1].jahr + 1} und später liegt noch kein Abschluss vor.
+        einpreist. Für {series[series.length - 1].year + 1} und später liegt noch kein Abschluss vor.
         {abweichenderBezug.length > 0 && (
           <>
-            {" "}* In {abweichenderBezug.map((r) => r.jahr).join(" und ")} vergleicht der
+            {" "}* In {abweichenderBezug.map((r) => r.year).join(" und ")} vergleicht der
             Abschluss nicht mit dem ursprünglichen Ansatz, sondern mit dem fortgeschriebenen
             Plan ({[...new Set(abweichenderBezug.map((r) => PLAN_ART_LABEL[r.planArt]))].join(", ")}
             ) — so rechnet die Stadt dort selbst.
@@ -161,16 +161,16 @@ function PlanIst({ daten }: { daten: HaushaltAuswahl<"ergebnisrechnung"> }) {
 
 type Werkbank = "einnahmen" | "ausgaben" | "invest";
 
-const WERKBAENKE: { id: Werkbank; nr: number; titel: string; zielgroesse: string }[] = [
-  { id: "einnahmen", nr: 1, titel: "Einnahmen", zielgroesse: "Zielgröße: die Lücke" },
-  { id: "ausgaben", nr: 2, titel: "Ausgaben", zielgroesse: "Zielgröße: die Lücke" },
-  { id: "invest", nr: 3, titel: "Investitionen & Finanzierung", zielgroesse: "Zielgröße: Kasse & Schulden" },
+const WERKBAENKE: { id: Werkbank; nr: number; title: string; zielgroesse: string }[] = [
+  { id: "einnahmen", nr: 1, title: "Einnahmen", zielgroesse: "Zielgröße: die Lücke" },
+  { id: "ausgaben", nr: 2, title: "Ausgaben", zielgroesse: "Zielgröße: die Lücke" },
+  { id: "invest", nr: 3, title: "Investitionen & Finanzierung", zielgroesse: "Zielgröße: Kasse & Schulden" },
 ];
 
 export function Labor({ daten, produkte, produktJahr, vergleich, programm, schulden }: {
-  daten: HaushaltAuswahl<"jahre" | "steuern" | "steuerkraft" | "einwohner"
-    | "ergebnisrechnung" | "hebesaetze" | "ergebnishaushalt" | "gebuehren"
-    | "haushaltssatzung" | "ruecklage">;
+  daten: HaushaltAuswahl<"years" | "taxes" | "tax_capacity" | "population"
+    | "income_statement" | "tax_rates" | "income_budget" | "fees"
+    | "budget_bylaw" | "reserves">;
   produkte: Produkt[];
   produktJahr: number | null;
   vergleich: VergleichDaten | null;
@@ -191,18 +191,18 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const [kredit, setKredit] = useState(false);
 
   const basis = useMemo(() => {
-    const jahre = jahreSortiert(daten);
-    const jahr = jahre[jahre.length - 1];
-    const zeilen = daten.jahre[String(jahr)] ?? [];
+    const years = jahreSortiert(daten);
+    const year = years[years.length - 1];
+    const zeilen = daten.years[String(year)] ?? [];
     const g = summe(zeilen);
-    const defizit = g?.ertraege != null && g?.aufwendungen != null
-      ? mio(g.aufwendungen - g.ertraege) ?? 0 : 0;
+    const defizit = g?.revenues != null && g?.expenses != null
+      ? mio(g.expenses - g.revenues) ?? 0 : 0;
     const freiwillig = bereiche(zeilen)
-      .filter((z) => PFLICHT_ZUORDNUNG[z.bereich]?.stufe === "freiwillig")
-      .map((z) => ({ bereich: z.bereich, aus: mio(z.aufwendungen) ?? 0 }))
+      .filter((z) => PFLICHT_ZUORDNUNG[z.area]?.stufe === "freiwillig")
+      .map((z) => ({ area: z.area, aus: mio(z.expenses) ?? 0 }))
       .sort((a, b) => b.aus - a.aus);
-    const kraft = daten.steuerkraft.filter((k) => k.messzahl != null && k.zuweisungen != null).slice(-2);
-    return { jahr, defizit, freiwillig, kraft };
+    const kraft = daten.tax_capacity.filter((k) => k.tax_index != null && k.allocations != null).slice(-2);
+    return { year, defizit, freiwillig, kraft };
   }, [daten]);
 
   // Die Grundlagen der drei Einnahme-Regler — jeder aus seiner Reihe, keiner
@@ -210,30 +210,30 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // B-Hebesatz UND die Aufteilung des gemeinsamen Aufkommens „A+B“ aus dem
   // Realsteuervergleich des Landes — fehlt einer, zeigt die Werkbank den
   // ehrlichen Kasten von früher statt des Reglers.
-  const gewst = hebesatzHeute(daten.hebesaetze?.zeilen, "Gewerbesteuer");
-  const grundst = hebesatzHeute(daten.hebesaetze?.zeilen, "Grundsteuer B");
-  const gewstBetrag = letzterSteuerbetrag(daten.steuern, "Gewerbesteuer (-umlage)");
-  const grundstBetrag = letzterSteuerbetrag(daten.steuern, "Grundsteuer A+B");
+  const gewst = hebesatzHeute(daten.tax_rates?.zeilen, "Gewerbesteuer");
+  const grundst = hebesatzHeute(daten.tax_rates?.zeilen, "Grundsteuer B");
+  const gewstBetrag = letzterSteuerbetrag(daten.taxes, "Gewerbesteuer (-umlage)");
+  const grundstBetrag = letzterSteuerbetrag(daten.taxes, "Grundsteuer A+B");
   // Die Zeile „sonstige Steuern“ IST die Hundesteuer — der Abgleich mit
   // Jahrbuch 1103 beweist es jahrgangsweise (council/steuertabellen.py).
-  const hunde = letzterSteuerbetrag(daten.steuern, "sonstige Steuern");
+  const hunde = letzterSteuerbetrag(daten.taxes, "sonstige Steuern");
   const anteilA = useMemo(() => grundsteuerAnteilA(vergleich), [vergleich]);
   const staedte = useMemo(
     () => staedteHebesaetze(vergleich, "hebesatz_gewerbesteuer"), [vergleich]);
 
-  const proPunktGewst = gewstBetrag && gewst ? gewstBetrag.betrag / 1e6 / gewst.satz : 0;
+  const proPunktGewst = gewstBetrag && gewst ? gewstBetrag.amount / 1e6 / gewst.satz : 0;
   const proPunktGrundst = grundstBetrag && grundst && anteilA != null
-    ? (grundstBetrag.betrag * (1 - anteilA)) / 1e6 / grundst.satz : null;
+    ? (grundstBetrag.amount * (1 - anteilA)) / 1e6 / grundst.satz : null;
 
-  const einwohner = daten.einwohner?.einwohner ?? 0;
+  const population = daten.population?.population ?? 0;
   const mehrEinnahmen = Math.round(
     (proPunktGewst * punkte
       + (proPunktGrundst ?? 0) * grundstPunkte
-      + (hunde ? (hunde.betrag / 1e6) * (hundePct / 100) : 0)) * 10) / 10;
+      + (hunde ? (hunde.amount / 1e6) * (hundePct / 100) : 0)) * 10) / 10;
   // Negativ gedrehte Bereiche sparen, aufgestockte kosten — `gespart` darf
   // deshalb negativ werden und heißt dann ehrlich „mehr ausgegeben“.
   const gespart = Math.round(
-    basis.freiwillig.reduce((s, f) => s - (f.aus * (aenderung[f.bereich] ?? 0)) / 100, 0) * 10) / 10;
+    basis.freiwillig.reduce((s, f) => s - (f.aus * (aenderung[f.area] ?? 0)) / 100, 0) * 10) / 10;
   const wirkung = mehrEinnahmen + gespart;
   const neuesDefizit = Math.round((basis.defizit - wirkung) * 10) / 10;
   const geschlossen = basis.defizit > 0
@@ -242,21 +242,21 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const maxWirkung = Math.round(
     (proPunktGewst * MAX_PUNKTE
       + (proPunktGrundst ?? 0) * MAX_PUNKTE
-      + (hunde ? (hunde.betrag / 1e6) * (MAX_HUNDE / 100) : 0)
+      + (hunde ? (hunde.amount / 1e6) * (MAX_HUNDE / 100) : 0)
       + basis.freiwillig.reduce((s, f) => s + (f.aus * MAX_KUERZUNG) / 100, 0)) * 10) / 10;
 
   // Der Rücklagen-Pfad über die Planjahre — und sein Vorgänger als Rückfall:
   // Ohne die Reihe des Gesamtergebnishaushalts bleibt die alte
   // Reichweiten-Division stehen.
   const planjahre = useMemo(
-    () => planjahrErgebnisse(daten.ergebnishaushalt), [daten.ergebnishaushalt]);
-  const ruecklage = juengsteRuecklage(daten);
-  const ruecklageMio = (ruecklage?.stand_nach_ergebnis ?? 0) / 1e6;
+    () => planjahrErgebnisse(daten.income_budget), [daten.income_budget]);
+  const reserves = juengsteRuecklage(daten);
+  const ruecklageMio = (reserves?.state_after_result ?? 0) / 1e6;
   const pfadOhne = planjahre && ruecklageMio > 0
-    ? ruecklagenPfad(planjahre.reihe, 0, ruecklageMio) : null;
+    ? ruecklagenPfad(planjahre.series, 0, ruecklageMio) : null;
   const pfadMit = planjahre && ruecklageMio > 0
-    ? ruecklagenPfad(planjahre.reihe, wirkung, ruecklageMio) : null;
-  const daempfer = useMemo(() => daempferSpanne(daten.steuerkraft), [daten.steuerkraft]);
+    ? ruecklagenPfad(planjahre.series, wirkung, ruecklageMio) : null;
+  const daempfer = useMemo(() => daempferSpanne(daten.tax_capacity), [daten.tax_capacity]);
   const reichweiteVorher = basis.defizit > 0 && ruecklageMio > 0
     ? ruecklageMio / basis.defizit : Infinity;
   const reichweiteNachher = neuesDefizit > 0 && ruecklageMio > 0
@@ -269,11 +269,11 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   // Zahl unverändert, „zurücksetzen" erscheint — und nichts erklärt es).
   // Gleicher Schlüssel wie in der Invest-Werkbank: code || bezeichnung.
   const investGestrichenMio = useMemo(() => {
-    const jahrInv = programm?.jahre.at(-1) ?? null;
+    const jahrInv = programm?.years.at(-1) ?? null;
     if (jahrInv == null) return 0;
-    const summe = (programm?.massnahmen ?? [])
-      .filter((z) => z.jahr === jahrInv && vorhabenAus[z.code || z.bezeichnung])
-      .reduce((s, z) => s + z.gesamtsumme, 0);
+    const summe = (programm?.measures ?? [])
+      .filter((z) => z.year === jahrInv && vorhabenAus[z.code || z.label])
+      .reduce((s, z) => s + z.grand_total, 0);
     return Math.round((summe / 1e6) * 10) / 10;
   }, [programm, vorhabenAus]);
   const etwasGeaendert = lueckeGeaendert || kredit
@@ -282,14 +282,14 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
   const anteilText = (m: number) =>
     basis.defizit > 0 ? `${Math.round((m / basis.defizit) * 100)} % der Lücke` : "";
   const jeEinwohner = (m: number) =>
-    einwohner > 0 ? `${eur((m * 1e6) / einwohner)} € je Einwohner*in` : "";
+    population > 0 ? `${eur((m * 1e6) / population)} € je Einwohner*in` : "";
 
   const zuruecksetzen = () => {
     setPunkte(0); setGrundstPunkte(0); setHundePct(0);
     setAenderung({}); setVorhabenAus({}); setKredit(false);
   };
   const alle = (pct: number) =>
-    Object.fromEntries(basis.freiwillig.map((f) => [f.bereich, pct]));
+    Object.fromEntries(basis.freiwillig.map((f) => [f.area, pct]));
   const szenarien = [
     { label: "+20 Punkte Hebesatz", punkte: 20, grundst: 0, hunde: 0, pct: 0 },
     { label: "10 % weniger für die Kür", punkte: 0, grundst: 0, hunde: 0, pct: -10 },
@@ -317,7 +317,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
       kompakt ? "shadow-[0_6px_16px_-10px_rgba(2,32,71,0.5)]" : "shadow-sm")}>
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-signal">
-          Dein Haushalt {basis.jahr}
+          Dein Haushalt {basis.year}
         </p>
         {etwasGeaendert && (
           <button type="button" onClick={zuruecksetzen}
@@ -419,7 +419,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {deMio(mehrEinnahmen)}&#8239;Mio.&nbsp;€ mehr Steuerkraft blieben erfahrungsgemäß{" "}
           <span className="tabular-nums">
             {deMio(mehrEinnahmen * daempfer.verbleibVon)} bis {deMio(mehrEinnahmen * daempfer.verbleibBis)}
-          </span>&#8239;Mio.&nbsp;€ übrig <Beleg q="steuerkraft" /> — die Spanne aus{" "}
+          </span>&#8239;Mio.&nbsp;€ übrig <Beleg q="tax_capacity" /> — die Spanne aus{" "}
           {daempfer.paare} Ausgleichsjahren. Verrechnet wird sie nicht: Auch der Landestopf
           schwankt, die Richtung kann kippen.
         </p>
@@ -478,8 +478,8 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
                   )}
                 </p>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                  {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> gegen die
-                  Jahresergebnisse der Planjahre <Beleg q="ergebnishaushalt" /> — Entwurf der
+                  {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="reserves" /> gegen die
+                  Jahresergebnisse der Planjahre <Beleg q="income_budget" /> — Entwurf der
                   Verwaltung, Finanzplanung nach §&nbsp;8 NKomVG, deine Wirkung konstant
                   fortgeschrieben. Hinter {pfadMit.letztesPlanjahr} liegen keine Planzahlen.
                   Unsere Rechnung, keine Prognose der Stadt.
@@ -501,13 +501,13 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               )}
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="ruecklage" /> geteilt durch das Minus —
+              {deMio(ruecklageMio)}&#8239;Mio.&nbsp;€ Rücklage <Beleg q="reserves" /> geteilt durch das Minus —
               unsere Rechnung, keine Prognose der Stadt.
-              {/* Der Schlüssel `ergebnishaushalt` gehört zum Pfad oben; im
+              {/* Der Schlüssel `income_budget` gehört zum Pfad oben; im
                   Rückfall ohne die Reihe bliebe er stumm — deshalb hängt er
                   hier an der Auskunft, WARUM nur die einfache Division steht. */}
               {" "}Für den Rücklagen-Pfad fehlt gerade die Planjahres-Reihe des
-              Gesamtergebnishaushalts <Beleg q="ergebnishaushalt" />.
+              Gesamtergebnishaushalts <Beleg q="income_budget" />.
             </p>
           </>
         ) : (
@@ -547,7 +547,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               Werkbank {w.nr}{werkbank === w.id && " · aktiv"}
             </span>
             <span className="mt-0.5 block font-display text-[14.5px] font-bold leading-snug text-foreground">
-              {w.titel}
+              {w.title}
             </span>
             <span className="mt-0.5 block text-[11px] text-muted-foreground">{w.zielgroesse}</span>
           </button>
@@ -561,7 +561,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
         {szenarien.map((s) => {
           const aktiv = punkte === s.punkte && grundstPunkte === s.grundst
             && hundePct === s.hunde
-            && basis.freiwillig.every((f) => (aenderung[f.bereich] ?? 0) === s.pct);
+            && basis.freiwillig.every((f) => (aenderung[f.area] ?? 0) === s.pct);
           return (
             <button key={s.label} type="button"
               onClick={() => {
@@ -586,16 +586,16 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
         <div className="flex flex-col gap-3">
           {werkbank === "einnahmen" && (
             <EinnahmenWerkbank
-              basisJahr={basis.jahr}
+              basisJahr={basis.year}
               punkte={punkte} setPunkte={setPunkte}
               gewst={gewst} proPunktGewst={proPunktGewst}
-              gewstBasisJahr={gewstBetrag?.jahr ?? null}
+              gewstBasisJahr={gewstBetrag?.year ?? null}
               grundstPunkte={grundstPunkte} setGrundstPunkte={setGrundstPunkte}
               grundst={grundst} proPunktGrundst={proPunktGrundst} anteilA={anteilA}
               hundePct={hundePct} setHundePct={setHundePct} hunde={hunde}
               staedte={staedte}
-              historie={(daten.hebesaetze?.zeilen ?? []).filter((z) => z.art === "Gewerbesteuer")}
-              gebuehren={daten.gebuehren}
+              historie={(daten.tax_rates?.zeilen ?? []).filter((z) => z.kind === "Gewerbesteuer")}
+              fees={daten.fees}
               maxPunkte={MAX_PUNKTE}
               jeEinwohner={jeEinwohner} anteilText={anteilText}
             />
@@ -603,9 +603,9 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {werkbank === "ausgaben" && (
             <AusgabenWerkbank
               freiwillig={basis.freiwillig}
-              produkte={produkte} produktJahr={produktJahr} basisJahr={basis.jahr}
+              produkte={produkte} produktJahr={produktJahr} basisJahr={basis.year}
               aenderung={aenderung}
-              setAenderung={(bereich, pct) => setAenderung((k) => ({ ...k, [bereich]: pct }))}
+              setAenderung={(area, pct) => setAenderung((k) => ({ ...k, [area]: pct }))}
               maxProzent={MAX_KUERZUNG}
               jeEinwohner={jeEinwohner} anteilText={anteilText}
             />
@@ -613,7 +613,7 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
           {werkbank === "invest" && (
             <InvestWerkbank
               programm={programm} schulden={schulden}
-              satzung={daten.haushaltssatzung}
+              satzung={daten.budget_bylaw}
               vorhabenAus={vorhabenAus}
               toggleVorhaben={(s) => setVorhabenAus((v) => ({ ...v, [s]: !v[s] }))}
               kredit={kredit} setKredit={setKredit}
@@ -680,10 +680,10 @@ export function Labor({ daten, produkte, produktJahr, vergleich, programm, schul
               Schlüsselzuweisungen — wie stark, zeigt die Spanne an der Ergebnis-Karte.
               {basis.kraft.length === 2 && (
                 <>
-                  {" "}Zuletzt: {basis.kraft[0].jahr} auf {basis.kraft[1].jahr} stieg die
-                  Steuerkraft um {deMio(((basis.kraft[1].messzahl ?? 0) - (basis.kraft[0].messzahl ?? 0)) / 1e6)}
+                  {" "}Zuletzt: {basis.kraft[0].year} auf {basis.kraft[1].year} stieg die
+                  Steuerkraft um {deMio(((basis.kraft[1].tax_index ?? 0) - (basis.kraft[0].tax_index ?? 0)) / 1e6)}
                   &#8239;Mio.&nbsp;€ und die Zuweisung um{" "}
-                  {deMio(((basis.kraft[1].zuweisungen ?? 0) - (basis.kraft[0].zuweisungen ?? 0)) / 1e6)}
+                  {deMio(((basis.kraft[1].allocations ?? 0) - (basis.kraft[0].allocations ?? 0)) / 1e6)}
                   {/* Keine feste Aussage über dritte Jahrgänge, die basis.kraft
                       gar nicht führt — was immer gilt, ist die Mechanik
                       (Vorgeschichte: Git-Historie dieser Datei). */}

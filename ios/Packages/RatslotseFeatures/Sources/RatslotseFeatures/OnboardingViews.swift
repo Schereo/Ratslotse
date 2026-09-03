@@ -14,7 +14,13 @@ struct NativeOnboardingWelcomeView: View {
         GeometryReader { proxy in
             ScrollView {
                 Group {
-                    if horizontalSizeClass == .regular {
+                    // Die zweispaltige Fassung braucht 370 + 62 + 440 + 2×44 =
+                    // 960 pt. Ein iPad Pro 11" hat im HOCHFORMAT nur 834 —
+                    // dort quetschte der HStack beide Spalten auf je ~342 pt,
+                    // und die Karten brachen mitten im Satz um („… Mitteilung
+                    // bei / neuen Beschlüssen"). Deshalb entscheidet die
+                    // gemessene Breite mit, nicht die Größenklasse allein.
+                    if horizontalSizeClass == .regular && proxy.size.width >= 960 {
                         HStack(spacing: 62) {
                             VStack(spacing: 0) {
                                 mascot
@@ -123,19 +129,19 @@ struct NativeOnboardingWelcomeView: View {
     private var promises: some View {
         VStack(spacing: 10) {
             WelcomePromise(
-                symbol: "sparkles",
+                symbol: .sparkles,
                 color: Color(red: 0.98, green: 0.42, blue: 0.20),
                 title: "Frag den Rat",
                 detail: "Antworten mit Quellen"
             )
             WelcomePromise(
-                symbol: "bell.fill",
+                symbol: .bellRing,
                 color: Color(red: 0.35, green: 0.76, blue: 0.95),
                 title: "Bleib informiert",
                 detail: "Mitteilung bei neuen Beschlüssen"
             )
             WelcomePromise(
-                symbol: "building.columns.fill",
+                symbol: .landmark,
                 color: .white.opacity(0.82),
                 title: "Aus der amtlichen Quelle",
                 detail: "Rat Oldenburg"
@@ -160,15 +166,14 @@ struct NativeOnboardingWelcomeView: View {
 }
 
 private struct WelcomePromise: View {
-    let symbol: String
+    let symbol: RatsGlyph
     let color: Color
     let title: String
     let detail: String
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
+            RatsIcon(symbol, size: 15)
                 .foregroundStyle(color)
                 .frame(width: 34, height: 34)
                 .background(color.opacity(0.13))
@@ -352,13 +357,12 @@ private struct OnboardingStepPage<Content: View, Footer: View>: View {
 
 private struct OnboardingActionLabel: View {
     let title: String
-    let systemImage: String
+    let systemImage: RatsGlyph
 
     var body: some View {
         HStack(spacing: 9) {
             Text(title)
-            Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .bold))
+            RatsIcon(systemImage, size: 14)
                 .accessibilityHidden(true)
         }
         .font(RatsFont.body(15, weight: .semibold))
@@ -456,7 +460,7 @@ private struct CommitteeOnboardingStep: View {
                 } label: {
                     OnboardingActionLabel(
                         title: subscriptions.isEmpty ? "Weiter" : "\(subscriptions.count) abonniert",
-                        systemImage: "arrow.right"
+                        systemImage: .arrowRight
                     )
                 }
                 .onboardingGlassButton()
@@ -528,8 +532,7 @@ private struct CommitteeChoiceRow: View {
                             .controlSize(.mini)
                             .tint(selected ? RatsColor.primaryText : RatsColor.primary)
                     } else if selected {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
+                        RatsIcon(.check, size: 11)
                             .foregroundStyle(RatsColor.primaryText)
                     }
                 }
@@ -586,8 +589,7 @@ private struct TopicSuggestionChoice: View {
                 ZStack {
                     Circle()
                         .fill(exists ? RatsColor.primary : RatsColor.primary.opacity(0.1))
-                    Image(systemName: exists ? "checkmark" : "plus")
-                        .font(.system(size: 12, weight: .semibold))
+                    RatsIcon(exists ? .check : .plus, size: 12)
                         .foregroundStyle(exists ? RatsColor.primaryText : RatsColor.primary)
                 }
                 .frame(width: 25, height: 25)
@@ -742,7 +744,7 @@ private struct TopicOnboardingStep: View {
                                 }
                                 Spacer(minLength: 0)
                                 Button(role: .destructive) { remove(topic) } label: {
-                                    Image(systemName: "xmark").font(.caption.weight(.semibold))
+                                    RatsIcon(.x, size: 12)
                                 }
                                 .accessibilityLabel("\(topic.name) entfernen")
                             }
@@ -756,7 +758,7 @@ private struct TopicOnboardingStep: View {
             } },
             footer: {
                 Button { Task { await model.advanceOnboarding(to: 3) } } label: {
-                    OnboardingActionLabel(title: "Weiter", systemImage: "arrow.right")
+                    OnboardingActionLabel(title: "Weiter", systemImage: .arrowRight)
                 }
                 .onboardingGlassButton()
             }
@@ -784,7 +786,7 @@ private struct TopicOnboardingStep: View {
                     ProgressView().tint(RatsColor.primaryText)
                     Text("Lotti formuliert …")
                 } else {
-                    Image(systemName: "sparkles")
+                    RatsIcon(.sparkles, size: 16)
                         .accessibilityHidden(true)
                     Text("Mit Lotti anlegen")
                 }
@@ -826,7 +828,7 @@ private struct TopicOnboardingStep: View {
                         addFavoriteDistrict(district)
                     } label: {
                         if district.placeID == selectedDistrictID {
-                            Label(district.name, systemImage: "checkmark")
+                            RatsLabel(district.name, .check)
                         } else {
                             Text(district.name)
                         }
@@ -842,7 +844,7 @@ private struct TopicOnboardingStep: View {
                     if addingDistrict {
                         ProgressView().controlSize(.small).tint(RatsColor.primary)
                     } else if selectedDistrict != nil {
-                        Image(systemName: "checkmark.circle.fill")
+                        RatsIcon(.circleCheckBig, size: 16)
                             .foregroundStyle(RatsColor.success)
                     } else {
                         RatsGlyphView(glyph: .chevronDown, color: RatsColor.primary)
@@ -1037,8 +1039,7 @@ private struct TopicAddedConfirmation: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 20, weight: .semibold))
+            RatsIcon(.circleCheckBig, size: 20)
                 .foregroundStyle(RatsColor.success)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
@@ -1106,7 +1107,7 @@ private struct PushOnboardingStep: View {
                         } else {
                             OnboardingActionLabel(
                                 title: "Mitteilungen erlauben",
-                                systemImage: "bell.badge.fill"
+                                systemImage: .bellDot
                             )
                         }
                     }
@@ -1114,7 +1115,7 @@ private struct PushOnboardingStep: View {
                 .onboardingGlassButton()
                 .disabled(isWorking)
                 Button { Task { await model.completeOnboarding() } } label: {
-                    Label("Vielleicht später", systemImage: "clock")
+                    RatsLabel("Vielleicht später", .clock)
                 }
                     .font(RatsFont.body(14))
                     .foregroundStyle(RatsColor.secondary)

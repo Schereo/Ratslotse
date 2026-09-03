@@ -1,11 +1,11 @@
-"""Tests für den Gelesen-Status der Themen-Treffer (RL-903, nwz.sqlite)."""
+"""Tests für den Gelesen-Status der Themen-Treffer (RL-903, ratslotse.sqlite)."""
 from __future__ import annotations
 
 from kern.store import Store
 
 
 def _setup(tmp_path):
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     topic = store.add_topic(7, "Radwege", "Ausbau von Radwegen")
     with store._conn:
         store._conn.executemany(
@@ -162,7 +162,7 @@ def test_bubble_verstummt_nach_einem_blick_auf_die_uebersicht(tmp_path):
     Die „n neu"-Marker an den Themen selbst bleiben davon unberührt: Sie
     sagen, WELCHES Thema neue Treffer hat, und hängen weiter am Öffnen.
     """
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     owner = store.create_web_user(email="a@example.org", password_hash="x",
                                   role="user", status="active", display_name=None)
     topic = store.add_topic(owner, "Radwege", "Ausbau von Radwegen")
@@ -193,7 +193,7 @@ def test_bubble_verstummt_nach_einem_blick_auf_die_uebersicht(tmp_path):
 def test_bubble_ohne_besuch_zaehlt_wie_bisher(tmp_path):
     """Konten, die die Übersicht nie geöffnet haben (topics_seen_at NULL),
     behalten ihren Zähler — der Umstieg darf keine Meldung verschlucken."""
-    store = Store(tmp_path / "nwz.sqlite")
+    store = Store(tmp_path / "ratslotse.sqlite")
     owner = store.create_web_user(email="b@example.org", password_hash="x",
                                   role="user", status="active", display_name=None)
     topic = store.add_topic(owner, "Stadtbäume", "Baumschutz")

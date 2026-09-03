@@ -358,11 +358,11 @@ JA 31
 4.2"""
 
 
-def _rollen(text: str, jahr: int) -> dict[str, dict]:
+def _rollen(text: str, year: int) -> dict[str, dict]:
     zeilen, fehler, _ = finanzberichte.finanzprobe(
-        finanzberichte.parse_finanzrechnung(text, jahr))
+        finanzberichte.parse_finanzrechnung(text, year))
     assert fehler == []
-    return {z["rolle"]: z for z in zeilen if z["rolle"]}
+    return {z["role"]: z for z in zeilen if z["role"]}
 
 
 # --- Was auf der Seite steht -------------------------------------------------
@@ -372,51 +372,51 @@ def test_kassensicht_2024_neben_dem_jahresueberschuss():
     weist für 2024 einen Überschuss von 6,1 Mio. € aus — hier stehen
     22,4 Mio. € weniger Geld in der Kasse. Beides ist richtig."""
     r = _rollen(FR_2024, 2024)
-    assert r["saldo_verwaltung"]["ergebnis"] == 58_304_030.27
-    assert r["saldo_investition"]["ergebnis"] == -80_682_457.76
-    assert r["finanzmittel"]["ergebnis"] == -22_378_427.49
-    assert r["summe_aus_investition"]["ergebnis"] == 96_370_276.14
+    assert r["balance_operating"]["result"] == 58_304_030.27
+    assert r["balance_capital"]["result"] == -80_682_457.76
+    assert r["cash_surplus"]["result"] == -22_378_427.49
+    assert r["total_out_capital"]["result"] == 96_370_276.14
     # Und die Antwort auf „warum wird das Geplante nicht gebaut?": Geld aus
     # Vorjahren, das in diesem Jahr noch ausgegeben werden durfte.
-    assert r["summe_aus_investition"]["ermaechtigung"] == 58_768_256.08
+    assert r["total_out_capital"]["authorization"] == 58_768_256.08
     # Bis in die Kasse hinein: nach Tilgung, mit Anfangs- und Endbestand.
-    assert r["finanzmittelveraenderung"]["ergebnis"] == -25_264_573.53
-    assert r["anfangsbestand"]["ergebnis"] == 143_077_382.44
-    assert r["endbestand"]["ergebnis"] == 118_001_891.26
+    assert r["cash_change"]["result"] == -25_264_573.53
+    assert r["opening_balance"]["result"] == 143_077_382.44
+    assert r["closing_balance"]["result"] == 118_001_891.26
 
 
 def test_der_ansatz_steht_daneben():
     """Die Finanzrechnung führt Plan und Ist nebeneinander — geplant war ein
     Fehlbetrag von 94,2 Mio. €, geworden sind es 22,4 Mio. €."""
     r = _rollen(FR_2024, 2024)
-    assert r["finanzmittel"]["plan"] == -94_165_040.17
-    assert r["summe_aus_investition"]["plan"] == 109_052_867.00
-    assert r["summe_aus_investition"]["plan_art"] == "ansatz"
+    assert r["cash_surplus"]["plan"] == -94_165_040.17
+    assert r["total_out_capital"]["plan"] == 109_052_867.00
+    assert r["total_out_capital"]["plan_kind"] == "budget"
 
 
 # --- Die Kaskade -------------------------------------------------------------
 
-@pytest.mark.parametrize("text,jahr", [(FR_2024, 2024), (FR_2019, 2019)])
-def test_die_kaskade_geht_in_beiden_layouts_auf(text, jahr):
-    zeilen = finanzberichte.parse_finanzrechnung(text, jahr)
+@pytest.mark.parametrize("text,year", [(FR_2024, 2024), (FR_2019, 2019)])
+def test_die_kaskade_geht_in_beiden_layouts_auf(text, year):
+    zeilen = finanzberichte.parse_finanzrechnung(text, year)
     uebernommen, fehler, _ = finanzberichte.finanzprobe(zeilen)
     assert fehler == []
     assert uebernommen == zeilen
-    r = {z["rolle"]: z for z in zeilen if z["rolle"]}
-    for feld in ("ergebnis", "plan"):
-        assert (r["summe_ein_verwaltung"][feld] - r["summe_aus_verwaltung"][feld]
-                == pytest.approx(r["saldo_verwaltung"][feld], abs=1.0))
-        assert (r["summe_ein_investition"][feld] - r["summe_aus_investition"][feld]
-                == pytest.approx(r["saldo_investition"][feld], abs=1.0))
-        assert (r["saldo_verwaltung"][feld] + r["saldo_investition"][feld]
-                == pytest.approx(r["finanzmittel"][feld], abs=1.0))
+    r = {z["role"]: z for z in zeilen if z["role"]}
+    for field in ("result", "plan"):
+        assert (r["total_in_operating"][field] - r["total_out_operating"][field]
+                == pytest.approx(r["balance_operating"][field], abs=1.0))
+        assert (r["total_in_capital"][field] - r["total_out_capital"][field]
+                == pytest.approx(r["balance_capital"][field], abs=1.0))
+        assert (r["balance_operating"][field] + r["balance_capital"][field]
+                == pytest.approx(r["cash_surplus"][field], abs=1.0))
 
 
 def test_die_nummern_verschieben_sich_die_rollen_nicht():
     """Der Grund, warum an der Rolle gehangen wird und nicht an der Nummer:
     Der Finanzmittelsaldo ist 2019 die Zeile 33 und 2024 die Zeile 32."""
-    assert _rollen(FR_2019, 2019)["finanzmittel"]["nr"] == 33
-    assert _rollen(FR_2024, 2024)["finanzmittel"]["nr"] == 32
+    assert _rollen(FR_2019, 2019)["cash_surplus"]["nr"] == 33
+    assert _rollen(FR_2024, 2024)["cash_surplus"]["nr"] == 32
 
 
 def test_ein_jahrgang_der_die_probe_reisst_wird_verworfen():
@@ -437,7 +437,7 @@ def test_eine_fehlende_summenzeile_ist_kein_stiller_ausfall():
     uebernommen, fehler, _ = finanzberichte.finanzprobe(
         finanzberichte.parse_finanzrechnung(ohne, 2024))
     assert uebernommen == []
-    assert any("finanzmittel" in f for f in fehler)
+    assert any("cash_surplus" in f for f in fehler)
 
 
 # --- Die optionalen Zeilen ---------------------------------------------------
@@ -450,10 +450,10 @@ def test_die_optionalen_zeilen_duerfen_fehlen():
     zeilen = finanzberichte.parse_finanzrechnung(gekuerzt, 2024)
     uebernommen, fehler, hinweise = finanzberichte.finanzprobe(zeilen)
     assert fehler == []
-    rollen = {z["rolle"] for z in uebernommen if z["rolle"]}
-    assert "finanzmittel" in rollen and "finanzmittelveraenderung" in rollen
-    assert "endbestand" not in rollen and "anfangsbestand" not in rollen
-    assert any("endbestand" in h for h in hinweise)
+    roles = {z["role"] for z in uebernommen if z["role"]}
+    assert "cash_surplus" in roles and "cash_change" in roles
+    assert "closing_balance" not in roles and "opening_balance" not in roles
+    assert any("closing_balance" in h for h in hinweise)
 
 
 def test_eine_gerissene_kuer_kostet_nur_die_kuer():
@@ -468,10 +468,10 @@ def test_eine_gerissene_kuer_kostet_nur_die_kuer():
     uebernommen, fehler, hinweise = finanzberichte.finanzprobe(
         finanzberichte.parse_finanzrechnung(kaputt, 2024))
     assert fehler == []
-    rollen = {z["rolle"] for z in uebernommen if z["rolle"]}
-    assert "finanzmittel" in rollen
-    assert "endbestand" not in rollen
-    assert any("endbestand verworfen" in h for h in hinweise)
+    roles = {z["role"] for z in uebernommen if z["role"]}
+    assert "cash_surplus" in roles
+    assert "closing_balance" not in roles
+    assert any("closing_balance verworfen" in h for h in hinweise)
 
 
 # --- Die Fallen des PDF-Extrakts ---------------------------------------------
@@ -483,8 +483,8 @@ def test_der_seitenfuss_verdraengt_keinen_posten():
     assert "JA 29" in FR_2024
     zeilen = finanzberichte.parse_finanzrechnung(FR_2024, 2024)
     z29 = next(z for z in zeilen if z["nr"] == 29)
-    assert z29["bezeichnung"].startswith("Sonstige Investitionstätigkeit")
-    assert z29["ergebnis"] == 27_581_067.00
+    assert z29["label"].startswith("Sonstige Investitionstätigkeit")
+    assert z29["result"] == 27_581_067.00
 
 
 def test_querverweise_nehmen_der_zeile_nicht_ihre_zahlen():
@@ -492,14 +492,14 @@ def test_querverweise_nehmen_der_zeile_nicht_ihre_zahlen():
     abzüglich Zeile 17)". Die „10" darin sieht aus wie eine Zeilennummer."""
     assert "(Zeile 10 abzüglich" in FR_2019
     r = _rollen(FR_2019, 2019)
-    assert r["saldo_verwaltung"]["ergebnis"] == 57_180_726.91
-    assert "Zeile" not in r["saldo_verwaltung"]["bezeichnung"]
+    assert r["balance_operating"]["result"] == 57_180_726.91
+    assert "Zeile" not in r["balance_operating"]["label"]
 
 
 def test_postennummer_auch_ohne_punkt():
     """2021–2024 schreibt die Stadt „35 Saldo aus Finanzierungstätigkeit"."""
     assert re.search(r"^35 Saldo", FR_2024, re.M)
-    assert _rollen(FR_2024, 2024)["saldo_finanzierung"]["ergebnis"] == -2_886_146.04
+    assert _rollen(FR_2024, 2024)["balance_financing"]["result"] == -2_886_146.04
 
 
 def test_zeile_ohne_ansatz_erfindet_keinen():
@@ -508,30 +508,30 @@ def test_zeile_ohne_ansatz_erfindet_keinen():
     Ansatz von 6,00 € risse die Summenprobe des Ansatzes."""
     z = next(z for z in finanzberichte.parse_finanzrechnung(FR_2019, 2019)
              if z["nr"] == 12)
-    assert z["ergebnis"] == 6.0 and z["plan"] is None and z["ansatz"] is None
+    assert z["result"] == 6.0 and z["plan"] is None and z["budgeted"] is None
 
 
 def test_bestandszeilen_tragen_keinen_ansatz():
     """Ein Kassenbestand wird nicht veranschlagt. Was der Spaltenapparat dort
     als Plan fände, wäre der Vorjahreswert — deshalb steht dort nichts."""
     r = _rollen(FR_2024, 2024)
-    for rolle in ("anfangsbestand", "endbestand", "saldo_haushaltsunwirksam"):
-        assert r[rolle]["plan"] is None and r[rolle]["abweichung"] is None
-        assert r[rolle]["ergebnis"] is not None
+    for role in ("opening_balance", "closing_balance", "balance_non_budgetary"):
+        assert r[role]["plan"] is None and r[role]["deviation"] is None
+        assert r[role]["result"] is not None
 
 
 def test_ermaechtigungsspalte_nur_wo_der_kopf_sie_hinter_dem_ergebnis_fuehrt():
     """2019 und 2024 führen sie rechts außen. Fällt die Spaltenüberschrift
     weg, wird nichts geraten — die letzte Zahl der Zeile ist dann eine
     andere Spalte."""
-    assert _rollen(FR_2019, 2019)["summe_aus_investition"]["ermaechtigung"] \
+    assert _rollen(FR_2019, 2019)["total_out_capital"]["authorization"] \
         == 35_012_344.79
     ohne = FR_2024.replace("Ermächtigung\naus Haushalts-\nvorjahren", "Zu Spalte 6")
     assert ohne != FR_2024
     r = _rollen(ohne, 2024)
-    assert all(z["ermaechtigung"] is None for z in r.values())
+    assert all(z["authorization"] is None for z in r.values())
     # Die Zahlen selbst bleiben unberührt.
-    assert r["finanzmittel"]["ergebnis"] == -22_378_427.49
+    assert r["cash_surplus"]["result"] == -22_378_427.49
 
 
 def test_ermaechtigungen_haben_ihre_eigene_probe():
@@ -545,9 +545,9 @@ def test_ermaechtigungen_haben_ihre_eigene_probe():
         finanzberichte.parse_finanzrechnung(kaputt, 2024))
     assert fehler == []
     assert any("Ermächtigungen verworfen" in h for h in hinweise)
-    assert all(z["ermaechtigung"] is None for z in uebernommen)
-    r = {z["rolle"]: z for z in uebernommen if z["rolle"]}
-    assert r["finanzmittel"]["ergebnis"] == -22_378_427.49
+    assert all(z["authorization"] is None for z in uebernommen)
+    r = {z["role"]: z for z in uebernommen if z["role"]}
+    assert r["cash_surplus"]["result"] == -22_378_427.49
 
 
 # --- Über Dokumentgrenzen hinweg ---------------------------------------------
@@ -560,8 +560,8 @@ def test_kassenkette_zwischen_zwei_jahrgaengen():
     b = [dict(z) for z in finanzberichte.parse_finanzrechnung(FR_2024, 2024)]
     assert finanzberichte.kassenkette({2019: a, 2020: b}) != []
     for z in b:
-        if z["rolle"] == "anfangsbestand":
-            z["ergebnis"] = 72_529_788.52
+        if z["role"] == "opening_balance":
+            z["result"] = 72_529_788.52
     assert finanzberichte.kassenkette({2019: a, 2020: b}) == []
 
 
@@ -570,28 +570,28 @@ def test_kassenkette_schweigt_ohne_bestandszeilen():
     optional."""
     a = finanzberichte.parse_finanzrechnung(FR_2019, 2019)
     ohne = [z for z in finanzberichte.parse_finanzrechnung(FR_2024, 2024)
-            if z["rolle"] != "anfangsbestand"]
+            if z["role"] != "opening_balance"]
     assert finanzberichte.kassenkette({2019: a, 2020: ohne}) == []
 
 
 # --- Speichern ---------------------------------------------------------------
 
-def test_store_finanzrechnung_roundtrip(tmp_path, quelle):
+def test_store_finanzrechnung_roundtrip(tmp_path, source):
     store = CouncilStore(tmp_path / "c.sqlite")
     zeilen, _, _ = finanzberichte.finanzprobe(
         finanzberichte.parse_finanzrechnung(FR_2024, 2024))
-    q = quelle("Jahresabschluss 2024", "https://example.org/ja2024.pdf",
-               probe="finanzkaskade")
+    q = source("Jahresabschluss 2024", "https://example.org/ja2024.pdf",
+               probe="cash_flow_cascade")
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)
     assert store.save_finanzrechnung(2024, zeilen, q) == len(zeilen)  # idempotent
     assert store.finanzrechnung_jahre() == [2024]
-    geladen = {z["rolle"]: z for z in store.get_finanzrechnung(2024) if z["rolle"]}
-    assert geladen["finanzmittel"]["ergebnis"] == -22_378_427.49
-    assert geladen["summe_aus_investition"]["ermaechtigung"] == 58_768_256.08
-    assert geladen["endbestand"]["plan"] is None
+    geladen = {z["role"]: z for z in store.get_finanzrechnung(2024) if z["role"]}
+    assert geladen["cash_surplus"]["result"] == -22_378_427.49
+    assert geladen["total_out_capital"]["authorization"] == 58_768_256.08
+    assert geladen["closing_balance"]["plan"] is None
     # Jede Zeile weiß, woher sie kommt.
     assert all(z["herkunft_id"] for z in store.get_finanzrechnung(2024))
-    assert store.herkunft_luecken().get("council_finanzrechnung") is None
+    assert store.herkunft_luecken().get("council_cash_flow_statement") is None
     store.close()
 
 

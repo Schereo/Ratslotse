@@ -1,7 +1,7 @@
 // Typen und Rechenwege für „Was in den Listen stand" — die Inhalts-Ebene
 // unter dem Streit-Abschnitt (/haushalt/mitreden#streit).
 //
-// Die Daten kommen aus `/council/haushalt/aenderungslisten`: je Dokument
+// Die Daten kommen aus `/council/budget/amendment-lists`: je Dokument
 // (Verw. I–III, Beschluss-Datei des AFB) die Positionen des
 // Haushaltsjahrgangs und die Zusammenstellungen aller Planjahre. Jede
 // Positionsliste wurde beim Einlesen gegen ihre eigene Zusammenstellung
@@ -12,55 +12,106 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type AenderungsZeile = {
-  jahrgang: number;
-  liste: string;
-  jahr: number;
-  lfd: number;
+  budget_year: number;
+  list_key: string;
+  year: number;
+  seq: number;
   /** `null` = die Position gilt pauschal „alle" Teilhaushalte (2019). */
-  thh: number | null;
-  seite_entwurf: number | null;
-  produkt: string | null;
-  bezeichnung: string;
+  sub_budget: number | null;
+  page_draft: number | null;
+  product: string | null;
+  label: string;
   /** Euro, negativ = Minderung; `null` = kein Betrag in dieser Spalte. */
-  ertrag: number | null;
-  aufwand: number | null;
+  revenue: number | null;
+  expense: number | null;
   /** Die Erläuterungs-Spalte des Dokuments — was diese Änderung ist.
    *  `null` = Zelle leer oder Zuordnung nicht eindeutig (dann lieber gar
    *  kein Text als einer von der falschen Zeile). */
-  erlaeuterung: string | null;
+  explanation: string | null;
   /** Wer die Position vorgeschlagen hat („Verw. I", „SPD/ BÜNDNIS 90/ DIE
    *  GRÜNEN"). `null` überall dort, wo das Dokument die Spalte „Vorschlag
    *  von" nicht führt — das sind alle Jahrgänge außer 2021. */
-  urheber: string | null;
-  dokument_id: number;
+  author: string | null;
+  document_id: number;
   herkunft_id: number | null;
 };
 
 export type AenderungsSumme = {
-  jahrgang: number;
-  liste: string;
-  jahr: number;
-  typ: string; // "entwurf" | "liste" | "endsumme"
+  budget_year: number;
+  list_key: string;
+  year: number;
+  kind: string; // "draft" | "list" | "final_total"
   label: string;
-  ertraege: number;
-  aufwendungen: number;
-  saldo: number;
+  revenues: number;
+  expenses: number;
+  balance: number;
   /** 1 = die Zeile, die die Positionen dieses Dokuments summiert. */
-  eigene: number;
-  dokument_id: number;
+  own: number;
+  document_id: number;
+  herkunft_id: number | null;
+};
+
+/** Eine Position einer FINANZhaushalts-Änderungsliste.
+ *
+ *  Andere Form als beim Ergebnishaushalt, und deshalb ein eigener Typ: fünf
+ *  Betragsspalten statt zwei, dazu der Investitionscode. Die Namen sind die
+ *  des Dokuments — „Soll laut Entwurf", „neues Soll" —, damit sich die Zeile
+ *  im PDF wiederfinden lässt. */
+export type FhhZeile = {
+  budget_year: number;
+  list_key: string;
+  year: number;
+  seq: number;
+  sub_budget: number | null;
+  /** Auch „neu": Dann steht die Position im Entwurf noch gar nicht. */
+  page_draft: string | null;
+  /** Der Investitionscode des Programms („I10.089904.500") — über ihn führt
+   *  der Weg zum Vorhaben auf `/haushalt/investitionen`. `null`, wo die
+   *  Position keinem einzelnen Vorhaben zugeordnet ist. */
+  product: string | null;
+  label: string;
+  /** Euro. `null` = Zelle leer (reine Haushaltsvermerke tragen gar keine
+   *  Beträge), `0` = Gedankenstrich, also eine ausdrückliche Null. */
+  planned_draft: number | null;
+  inflow: number | null;
+  outflow: number | null;
+  /** Verpflichtungsermächtigungen — zählen NICHT in den Saldo. */
+  commitment_authorizations: number | null;
+  planned_new: number | null;
+  explanation: string | null;
+  author: string | null;
+  document_id: number;
+  herkunft_id: number | null;
+};
+
+export type FhhSumme = {
+  budget_year: number;
+  list_key: string;
+  year: number;
+  kind: string;
+  label: string;
+  inflows: number;
+  outflows: number;
+  balance: number;
+  commitment_authorizations: number | null;
+  own: number;
+  document_id: number;
   herkunft_id: number | null;
 };
 
 export type AenderungslistenDaten = {
-  zeilen: AenderungsZeile[];
-  summen: AenderungsSumme[];
-  herkunft: Record<string, Herkunft>;
+  rows: AenderungsZeile[];
+  totals: AenderungsSumme[];
+  /** Der Finanzhaushalt — leer, solange sein Ingest nicht gelaufen ist. */
+  cash_budget_rows?: FhhZeile[];
+  cash_budget_totals?: FhhSumme[];
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(
   daten: AenderungslistenDaten | null, id: number | null | undefined,
 ): Herkunft | null {
-  return daten && id != null ? daten.herkunft[String(id)] ?? null : null;
+  return daten && id != null ? daten.provenance[String(id)] ?? null : null;
 }
 
 /** Anzeige-Namen der Dokumente. Die Schlüssel kommen aus
@@ -68,17 +119,17 @@ export function herkunftVon(
  *  ergänzt, zieht ihn hier nach (eine unbekannte Liste erscheint sonst
  *  gar nicht, s. `listenFuerJahr`). */
 export const LISTEN_NAME: Record<string, string> = {
-  verwaltung_1: "Änderungsliste der Verwaltung I",
-  verwaltung_2: "Änderungsliste der Verwaltung II",
-  verwaltung_3: "Änderungsliste der Verwaltung III",
-  afb_beschlossen: "Beschlossene Änderungen (Finanzausschuss)",
+  administration_1: "Änderungsliste der Verwaltung I",
+  administration_2: "Änderungsliste der Verwaltung II",
+  administration_3: "Änderungsliste der Verwaltung III",
+  fc_decided: "Beschlossene Änderungen (Finanzausschuss)",
 };
 
 /** Verw. I → II → III → Beschluss: die Reihenfolge des Verfahrens. */
-const REIHENFOLGE = ["verwaltung_1", "verwaltung_2", "verwaltung_3", "afb_beschlossen"];
+const REIHENFOLGE = ["administration_1", "administration_2", "administration_3", "fc_decided"];
 
 export type ListeImJahr = {
-  schluessel: string;
+  key: string;
   name: string;
   /** Die Positionen des Haushaltsjahrgangs selbst. */
   zeilen: AenderungsZeile[];
@@ -87,7 +138,7 @@ export type ListeImJahr = {
    *  einrechnen als sie ausweisen, Endsumme minus Entwurf. `null`, wenn
    *  beides fehlt (dann trägt die Karte keine Summenzeile statt einer
    *  gerechneten, die das Dokument nicht deckt). */
-  saldo: { ertraege: number; aufwendungen: number; saldo: number } | null;
+  balance: { revenues: number; expenses: number; balance: number } | null;
   /** Bis zu welchem Planjahr die Liste außerdem ändert — `null`, wenn sie
    *  nur den Jahrgang selbst betrifft. */
   bisPlanjahr: number | null;
@@ -95,36 +146,36 @@ export type ListeImJahr = {
 };
 
 export function listenFuerJahr(
-  daten: AenderungslistenDaten | null, jahr: number | null,
+  daten: AenderungslistenDaten | null, year: number | null,
 ): ListeImJahr[] {
-  if (!daten || jahr == null) return [];
+  if (!daten || year == null) return [];
   const aus: ListeImJahr[] = [];
-  for (const schluessel of REIHENFOLGE) {
-    const zeilen = daten.zeilen.filter(
-      (z) => z.jahrgang === jahr && z.liste === schluessel);
+  for (const key of REIHENFOLGE) {
+    const zeilen = daten.rows.filter(
+      (z) => z.budget_year === year && z.list_key === key);
     if (!zeilen.length) continue;
-    const summen = daten.summen.filter(
-      (s) => s.jahrgang === jahr && s.liste === schluessel);
-    const imJahr = summen.filter((s) => s.jahr === jahr);
-    const eigene = imJahr.find((s) => s.eigene === 1);
-    const entwurf = imJahr.find((s) => s.typ === "entwurf");
-    const ende = imJahr.find((s) => s.typ === "endsumme");
-    const saldo = eigene
-      ? { ertraege: eigene.ertraege, aufwendungen: eigene.aufwendungen, saldo: eigene.saldo }
+    const summen = daten.totals.filter(
+      (s) => s.budget_year === year && s.list_key === key);
+    const imJahr = summen.filter((s) => s.year === year);
+    const eigene = imJahr.find((s) => s.own === 1);
+    const entwurf = imJahr.find((s) => s.kind === "draft");
+    const ende = imJahr.find((s) => s.kind === "final_total");
+    const balance = eigene
+      ? { revenues: eigene.revenues, expenses: eigene.expenses, balance: eigene.balance }
       : entwurf && ende
         ? {
-            ertraege: ende.ertraege - entwurf.ertraege,
-            aufwendungen: ende.aufwendungen - entwurf.aufwendungen,
-            saldo: ende.saldo - entwurf.saldo,
+            revenues: ende.revenues - entwurf.revenues,
+            expenses: ende.expenses - entwurf.expenses,
+            balance: ende.balance - entwurf.balance,
           }
         : null;
-    const bis = Math.max(...summen.map((s) => s.jahr));
+    const bis = Math.max(...summen.map((s) => s.year));
     aus.push({
-      schluessel,
-      name: LISTEN_NAME[schluessel] ?? schluessel,
+      key,
+      name: LISTEN_NAME[key] ?? key,
       zeilen,
-      saldo,
-      bisPlanjahr: bis > jahr ? bis : null,
+      balance,
+      bisPlanjahr: bis > year ? bis : null,
       herkunft: herkunftVon(daten, zeilen[0].herkunft_id),
     });
   }
@@ -136,11 +187,11 @@ export function listenFuerJahr(
  *  sie sind der einzige digitale Beleg der Fraktionslisten (die selbst
  *  Tischvorlagen blieben). */
 export function politikZeilen(
-  daten: AenderungslistenDaten | null, jahr: number | null,
+  daten: AenderungslistenDaten | null, year: number | null,
 ): AenderungsSumme[] {
-  if (!daten || jahr == null) return [];
-  return daten.summen.filter(
-    (s) => s.jahrgang === jahr && s.jahr === jahr && s.typ === "liste"
+  if (!daten || year == null) return [];
+  return daten.totals.filter(
+    (s) => s.budget_year === year && s.year === year && s.kind === "list"
       && !s.label.includes("nderungsliste"));
 }
 
@@ -165,10 +216,128 @@ export function positionenVon(
 ): AenderungsZeile[] {
   if (!daten) return [];
   const kern = labelKern(summe.label);
-  return daten.zeilen.filter(
-    (z) => z.jahrgang === summe.jahrgang && z.jahr === summe.jahr
-      && z.liste === summe.liste && z.urheber != null
-      && kern.includes(labelKern(z.urheber)));
+  return daten.rows.filter(
+    (z) => z.budget_year === summe.budget_year && z.year === summe.year
+      && z.list_key === summe.list_key && z.author != null
+      && kern.includes(labelKern(z.author)));
+}
+
+/** Was das Verfahren zwischen Entwurf und Beschluss bewegt hat — je Jahrgang.
+ *
+ *  Die Frage, die das Labor braucht, bevor jemand einen Regler anfasst: Wie
+ *  viel Spielraum hat der Rat selbst genutzt? Die Zusammenstellung jedes
+ *  Dokuments beantwortet sie, weil sie Entwurf und Endsumme nebeneinander
+ *  ausweist — dazwischen liegt alles, was das Verfahren geändert hat.
+ *
+ *  WELCHES DOKUMENT GILT. Je Jahrgang liegen mehrere vor, und sie sind
+ *  kumulativ: Die Liste der Verwaltung II führt Verw. I mit, die
+ *  Beschluss-Datei des Finanzausschusses zusätzlich die politischen Listen.
+ *  Genommen wird deshalb das VOLLSTÄNDIGSTE — die Beschluss-Datei, wo es sie
+ *  gibt, sonst die höchste Verwaltungsliste. Gegenprobe an 2026: Verw. III
+ *  endet bei −68.957.646, die Beschluss-Datei bei −68.739.348; die Differenz
+ *  ist auf den Euro die politische Zeile (218.299).
+ *
+ *  `beschlossen` sagt, ob das gilt, was der Name verspricht. Ohne
+ *  Beschluss-Datei endet der Weg beim letzten Stand der Verwaltung — das ist
+ *  NICHT der beschlossene Haushalt, und die Karte muss es anders nennen. */
+export type VerfahrensWeg = {
+  budget_year: number;
+  /** Saldo des Verwaltungsentwurfs — der Ausgangspunkt. */
+  entwurf: number;
+  /** Saldo am Ende des gelesenen Dokuments. */
+  ende: number;
+  /** `ende − entwurf`: was das Verfahren insgesamt bewegt hat. */
+  bewegt: number;
+  /** Anteil der Listen der VERWALTUNG daran. */
+  verwaltung: number;
+  /** Anteil der politischen Listen (Fraktionen) — 0, wo es keine gibt. */
+  politik: number;
+  /** Die politischen Zeilen einzeln, für die Urheber-Marken. */
+  politikZeilen: AenderungsSumme[];
+  /** Endet der Weg beim BESCHLOSSENEN Haushalt (Beschluss-Datei des
+   *  Finanzausschusses) — oder nur beim letzten Stand der Verwaltung? */
+  beschlossen: boolean;
+  herkunft: Herkunft | null;
+};
+
+export function verfahrensWeg(
+  daten: AenderungslistenDaten | null, budget_year: number | null,
+): VerfahrensWeg | null {
+  if (!daten || budget_year == null) return null;
+  const imJahr = daten.totals.filter(
+    (s) => s.budget_year === budget_year && s.year === budget_year);
+  if (!imJahr.length) return null;
+
+  // Das vollständigste Dokument: Beschluss zuerst, sonst die höchste
+  // Verwaltungsliste (REIHENFOLGE ist die des Verfahrens).
+  const kandidaten = [...REIHENFOLGE].reverse();
+  const liste = kandidaten.find((k) => imJahr.some((s) => s.list_key === k));
+  if (!liste) return null;
+  const zeilen = imJahr.filter((s) => s.list_key === liste);
+
+  const entwurf = zeilen.find((s) => s.kind === "draft");
+  const ende = zeilen.find((s) => s.kind === "final_total");
+  if (!entwurf || !ende) return null;
+
+  const listen = zeilen.filter((s) => s.kind === "list");
+  const politisch = listen.filter((s) => !s.label.includes("nderungsliste"));
+  const summeSaldo = (xs: AenderungsSumme[]) => xs.reduce((a, s) => a + s.balance, 0);
+
+  return {
+    budget_year,
+    entwurf: entwurf.balance,
+    ende: ende.balance,
+    bewegt: ende.balance - entwurf.balance,
+    verwaltung: summeSaldo(listen.filter((s) => s.label.includes("nderungsliste"))),
+    politik: summeSaldo(politisch),
+    politikZeilen: politisch,
+    beschlossen: liste === "fc_decided",
+    herkunft: herkunftVon(daten, entwurf.herkunft_id),
+  };
+}
+
+/** Die Positionen des Finanzhaushalts eines Jahrgangs, nach Dokument geordnet.
+ *
+ *  Dieselbe Verfahrens-Reihenfolge wie beim Ergebnishaushalt (Verw. I → II →
+ *  III → Beschluss). Positionen OHNE jeden Betrag bleiben draußen: Das sind
+ *  reine Haushaltsvermerke — Text, den die Verwaltung in den Plan schreibt,
+ *  ohne dass sich eine Zahl ändert. Sie in einer Liste „was am Bauen geändert
+ *  wurde" zu zeigen, hieße eine Änderung zu behaupten, die es nicht gibt. */
+export type FhhListeImJahr = {
+  key: string;
+  name: string;
+  zeilen: FhhZeile[];
+  /** Was die Liste im Jahrgang bewegt — die „eigene" Zeile der
+   *  Zusammenstellung, sonst `null`. */
+  balance: { inflows: number; outflows: number; balance: number } | null;
+  herkunft: Herkunft | null;
+};
+
+export function fhhListenFuerJahr(
+  daten: AenderungslistenDaten | null, year: number | null,
+): FhhListeImJahr[] {
+  if (!daten || year == null) return [];
+  const aus: FhhListeImJahr[] = [];
+  for (const key of REIHENFOLGE) {
+    const zeilen = (daten.cash_budget_rows ?? []).filter(
+      (z) => z.budget_year === year && z.list_key === key
+        && (z.inflow != null || z.outflow != null));
+    if (!zeilen.length) continue;
+    const eigene = (daten.cash_budget_totals ?? []).find(
+      (s) => s.budget_year === year && s.year === year && s.list_key === key
+        && s.own === 1);
+    aus.push({
+      key,
+      name: LISTEN_NAME[key] ?? key,
+      zeilen,
+      balance: eigene
+        ? { inflows: eigene.inflows, outflows: eigene.outflows,
+            balance: eigene.balance }
+        : null,
+      herkunft: herkunftVon(daten, zeilen[0].herkunft_id),
+    });
+  }
+  return aus;
 }
 
 /** Vorzeichenfester Euro-Betrag fürs Listen-Raster: „+1,73 Mio. €“,

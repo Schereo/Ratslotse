@@ -67,7 +67,7 @@ import { cn } from "@/lib/utils";
 const KLEBE_AB = "top-[calc(env(safe-area-inset-top)+110px)] desk:top-[49px]";
 
 export function ZahlenTabelle({ spalten, fuss, children, className }: {
-  spalten: { titel: string; zahl?: boolean }[];
+  spalten: { title: string; zahl?: boolean }[];
   /** Optionale Summenzeile(n) als <tr> — sie ankern die Spalten am Fuß. */
   fuss?: ReactNode;
   children: ReactNode;
@@ -83,7 +83,7 @@ export function ZahlenTabelle({ spalten, fuss, children, className }: {
           <tr>
             {spalten.map((s, i) => (
               <th
-                key={s.titel}
+                key={s.title}
                 scope="col"
                 className={cn(
                   "sticky z-[5] border-b border-border/60 bg-card px-3 py-1.5 font-mono text-[9.5px] font-medium uppercase tracking-[0.11em] text-muted-foreground",
@@ -93,7 +93,7 @@ export function ZahlenTabelle({ spalten, fuss, children, className }: {
                   s.zahl ? "border-l border-l-border/50 text-right" : "text-left",
                 )}
               >
-                {s.titel}
+                {s.title}
               </th>
             ))}
           </tr>

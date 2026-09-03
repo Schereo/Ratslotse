@@ -65,21 +65,21 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
         if not txt:
             continue
 
-        datum = _iso(txt)
-        if datum:  # Datum vorn abschneiden
+        date = _iso(txt)
+        if date:  # Datum vorn abschneiden
             txt = _DATE_RE.sub("", txt, count=1).strip()
 
         is_public: bool | None = None
-        ergebnis: str | None = None
+        result: str | None = None
         rest = txt
         vm = _VISIBILITY_RE.match(txt)
         if vm:
             rest = vm.group(1).strip()
             is_public = "nicht" not in vm.group(2).replace(" ", "").lower()
-            ergebnis = (vm.group(3) or "").strip() or None
+            result = (vm.group(3) or "").strip() or None
 
         tm = _TOP_RE.match(rest)
-        gremium = (tm.group(1) if tm else rest).strip()
+        committee = (tm.group(1) if tm else rest).strip()
         top = tm.group(2) if tm else None
 
         ksinr = None
@@ -89,10 +89,10 @@ def fetch_beratungsfolge(scraper: CouncilScraper, kvonr: int) -> list[dict]:
             if m:
                 ksinr = int(m.group(1))
 
-        if gremium or datum:
+        if committee or date:
             out.append({
-                "datum": datum, "gremium": gremium, "top": top,
-                "is_public": is_public, "ergebnis": ergebnis, "ksinr": ksinr,
+                "date": date, "committee": committee, "top": top,
+                "is_public": is_public, "result": result, "ksinr": ksinr,
             })
     return out
 
@@ -150,7 +150,7 @@ def fetch_mandatstraeger(scraper: CouncilScraper, wpnr: int | None = None) -> li
 
 def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
     """Alle Gremien-Mitgliedschaften einer Person über alle Wahlperioden:
-    ``[{kgrnr, gremium, rolle, von, bis}]``.
+    ``[{kgrnr, committee, role, von, bis}]``.
 
     Die Tabellenzeilen tragen am Ende einen Volltext „von DD.MM.YYYY
     [bis DD.MM.YYYY]" — die zuverlässigste Quelle für den Zeitraum. Die
@@ -161,8 +161,8 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
         tds = tr.find_all("td")
         if len(tds) < 3:
             continue  # Abschnitts-Überschriften („vom Rat", „Grundmandat" …)
-        gremium = " ".join(tds[0].get_text(" ", strip=True).split())
-        if not gremium:
+        committee = " ".join(tds[0].get_text(" ", strip=True).split())
+        if not committee:
             continue
         kgrnr = None
         a = tr.find("a", href=re.compile(r"__kgrnr=\d+"))
@@ -184,20 +184,20 @@ def fetch_person_mitarbeit(scraper: CouncilScraper, kpenr: int) -> list[dict]:
 
         # Rolle („Art der Mitarbeit"): letzte Zelle ohne Ziffern, die nicht das
         # Gremium ist — robust gegen die responsiven Kombi-Zellen der Tabelle.
-        rolle = None
+        role = None
         for td in tds[1:]:
             t = " ".join(td.get_text(" ", strip=True).split())
-            if t and not any(ch.isdigit() for ch in t) and t != gremium:
-                rolle = t
-        if rolle and len(rolle) > 60:  # Kombi-Zelle erwischt → letztes Wortpaar
-            rolle = rolle.split()[-1]
+            if t and not any(ch.isdigit() for ch in t) and t != committee:
+                role = t
+        if role and len(role) > 60:  # Kombi-Zelle erwischt → letztes Wortpaar
+            role = role.split()[-1]
 
         if von or kgrnr:
-            out.append({"kgrnr": kgrnr, "gremium": gremium, "rolle": rolle,
-                        "von": von, "bis": bis})
+            out.append({"kgrnr": kgrnr, "committee": committee, "role": role,
+                        "valid_from": von, "valid_until": bis})
     return out
 
 
-def is_future(datum: str | None) -> bool:
+def is_future(iso: str | None) -> bool:
     """True für Beratungsstationen, die noch bevorstehen."""
-    return bool(datum) and datum > date.today().isoformat()
+    return bool(iso) and iso > date.today().isoformat()

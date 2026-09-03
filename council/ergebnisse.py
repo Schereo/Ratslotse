@@ -14,7 +14,7 @@ das erscheint spät. Nachgemessen am 26.07.2026:
 
 Weder die Sitzungsseite noch die Beratungsfolge der Vorlage tragen das Ergebnis
 vorher: Auf der Sitzungsseite kommen „angenommen", „abgelehnt", „einstimmig"
-kein einziges Mal vor, und ``council_beratungen.ergebnis`` kennt nur
+kein einziges Mal vor, und ``council_deliberations.result`` kennt nur
 ``Kenntnisnahme`` / ``Entscheidung`` / ``Vorberatung`` — die Beratungsart, nicht
 das Ergebnis.
 
@@ -35,11 +35,11 @@ logger = logging.getLogger("council.ergebnisse")
 
 #: Wie ein Ergebnis in der Meldung heißt.
 ERGEBNIS_WORT = {
-    "angenommen": "angenommen",
-    "abgelehnt": "abgelehnt",
-    "vertagt": "vertagt",
-    "zur_kenntnis": "zur Kenntnis genommen",
-    "kein_beschluss": "ohne Beschluss geblieben",
+    "accepted": "angenommen",
+    "rejected": "abgelehnt",
+    "postponed": "vertagt",
+    "noted": "zur Kenntnis genommen",
+    "no_decision": "ohne Beschluss geblieben",
 }
 
 MONATE = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
@@ -69,15 +69,19 @@ def datum_lang(iso: str) -> str:
         return str(iso or "")
 
 
+#: Wie ein Abstimmungsverhältnis in der Meldung heißt.
+VOTE_WORT = {"unanimous": "einstimmig", "majority": "mehrheitlich"}
+
+
 def _stimmen(d: dict) -> str:
     """„einstimmig" bzw. „mehrheitlich, 11 dagegen" — nur, wenn belegt."""
     teile = []
     if d.get("vote"):
-        teile.append(str(d["vote"]))
-    if d.get("gegenstimmen"):
-        teile.append(f"{d['gegenstimmen']} dagegen")
-    if d.get("enthaltungen"):
-        teile.append(f"{d['enthaltungen']} Enthaltungen")
+        teile.append(VOTE_WORT.get(d["vote"], str(d["vote"])))
+    if d.get("no_votes"):
+        teile.append(f"{d['no_votes']} dagegen")
+    if d.get("abstentions"):
+        teile.append(f"{d['abstentions']} Enthaltungen")
     return ", ".join(teile)
 
 
@@ -102,9 +106,9 @@ def _html(beschluesse: list[dict], committee: str, session_date: str, decision_h
     zeilen = [f"<p>Im {wann} entschieden:</p>", "<ul style='margin:0;padding-left:18px'>"]
     for d in beschluesse:
         wort = ERGEBNIS_WORT.get(d.get("outcome") or "", "entschieden")
-        titel = (d.get("title") or "Beschluss").strip()
+        title = (d.get("title") or "Beschluss").strip()
         zeilen.append(f'<li style="margin-bottom:6px">'
-                      f'<a href="{decision_href(d["id"])}">{titel}</a> — {wort}</li>')
+                      f'<a href="{decision_href(d["id"])}">{title}</a> — {wort}</li>')
     zeilen.append("</ul>")
     return "\n".join(zeilen)
 
@@ -138,7 +142,7 @@ def sitzung_href(ksinr: int, tops: list[str] | None = None) -> str:
     return ziel
 
 
-def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
+def melde_ergebnisse(council_store, ratslotse_store, ksinrs: list[int]) -> int:
     """Für frisch geparste Sitzungen die Ergebnis-Meldungen einreihen.
 
     Empfänger sind die Konten, denen zu **dieser** Sitzung schon ein
@@ -161,31 +165,31 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
         # Weg zum selben Ereignis. Beide Wege hier zusammenführen, damit ein
         # Konto mit Themen-Treffer UND gemerktem TOP nicht zweimal dieselbe
         # Protokoll-Veröffentlichung bekommt.
-        bookmark_rows = nwz_store.bookmark_result_targets(ksinr)
+        bookmark_rows = ratslotse_store.bookmark_result_targets(ksinr)
         konkrete_bookmarks = []
         for row in bookmark_rows:
             resolved = bookmark_logic.resolve_bookmark(row, council_store)
             if resolved.get("agenda_group"):
                 # Altbestand: Oberpunkte wurden vor der Blatt-TOP-Regel noch
                 # akzeptiert. Kein Ergebnis versprechen, das es nicht gibt.
-                nwz_store.set_bookmark_result_notification(row["owner_id"], row["id"], False)
+                ratslotse_store.set_bookmark_result_notification(row["owner_id"], row["id"], False)
                 continue
             konkrete_bookmarks.append(row)
         bookmark_rows = konkrete_bookmarks
         bookmarks_by_owner: dict[int, list[dict]] = {}
         for row in bookmark_rows:
             bookmarks_by_owner.setdefault(row["owner_id"], []).append(row)
-        owners = set(nwz_store.owners_with_agenda_match(ksinr)) | set(bookmarks_by_owner)
+        owners = set(ratslotse_store.owners_with_agenda_match(ksinr)) | set(bookmarks_by_owner)
         if not alle and not bookmarks_by_owner:
             continue
 
         for owner_id in sorted(owners):
             eigene_bookmarks = bookmarks_by_owner.get(owner_id, [])
-            if nwz_store.result_already_sent(ksinr, owner_id):
-                nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
+            if ratslotse_store.result_already_sent(ksinr, owner_id):
+                ratslotse_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
                 continue
             tops = {m["item_number"] for m in
-                    nwz_store.agenda_matches_for_owner(owner_id, [ksinr]).get(ksinr, [])}
+                    ratslotse_store.agenda_matches_for_owner(owner_id, [ksinr]).get(ksinr, [])}
             treffer = [alle[t] for t in sorted(tops) if t in alle and alle[t].get("outcome")]
             # Gemerkte TOPs gegen den aktuellen Stand auflösen — nicht stumpf
             # über die gespeicherte Nummer, denn die kann sich bis zur Sitzung
@@ -201,12 +205,12 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
                 # still, wenn keine belastbare Entscheidung vorliegt.
                 if eigene_bookmarks:
                     erster = eigene_bookmarks[0]
-                    titel = erster.get("title") or "Gemerkter Tagesordnungspunkt"
+                    title = erster.get("title") or "Gemerkter Tagesordnungspunkt"
                     top_liste = [str(b.get("item_number") or "") for b in eigene_bookmarks]
                     ziel = sitzung_href(ksinr, top_liste)
                     queued = notify.einreihen(
-                        nwz_store, owner_id, notify.N3_ERGEBNIS,
-                        f"Protokoll ist da: {titel}",
+                        ratslotse_store, owner_id, notify.N3_ERGEBNIS,
+                        f"Protokoll ist da: {title}",
                         (f"<p>Das Protokoll des {sitzung['committee']} vom "
                          f"{_datum(sitzung['session_date'])} ist veröffentlicht.</p>"
                          "<p>Für den gemerkten TOP wurde kein eigener Beschluss erkannt — "
@@ -216,17 +220,17 @@ def melde_ergebnisse(council_store, nwz_store, ksinrs: list[int]) -> int:
                     )
                     if queued:
                         eingereiht += 1
-                nwz_store.mark_result_sent(ksinr, owner_id)
-                nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
+                ratslotse_store.mark_result_sent(ksinr, owner_id)
+                ratslotse_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
                 continue
             notify.einreihen(
-                nwz_store, owner_id, notify.N3_ERGEBNIS,
+                ratslotse_store, owner_id, notify.N3_ERGEBNIS,
                 _titel(treffer),
                 _html(treffer, sitzung["committee"], sitzung["session_date"], decision_href),
                 decision_href(treffer[0]["id"]),
             )
-            nwz_store.mark_result_sent(ksinr, owner_id)
-            nwz_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
+            ratslotse_store.mark_result_sent(ksinr, owner_id)
+            ratslotse_store.mark_bookmark_results_notified([b["id"] for b in eigene_bookmarks])
             eingereiht += 1
             logger.info("N3 für owner %s, Sitzung %s: %d Beschluss/Beschlüsse",
                         owner_id, ksinr, len(treffer))

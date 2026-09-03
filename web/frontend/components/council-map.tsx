@@ -7,7 +7,7 @@ import type { Map as LeafletMap, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import { EntityMapPoint } from "@/lib/types";
-import type { StadtteilFeature } from "@/lib/stadtteile";
+import type { StadtteilFeature } from "@/lib/districts";
 import { ortHref, themaHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { basemapUrl } from "@/lib/basemap";
@@ -23,9 +23,9 @@ const TILES = { light: VOYAGER, dark: VOYAGER };
 
 // Marker colour by entity kind (the legend in the Themen tab mirrors this).
 export const KIND_COLOR: Record<string, string> = {
-  ort: "#0764a6",
+  place: "#0764a6",
   organisation: "#7c3aed",
-  projekt: "#059669",
+  project: "#059669",
   beschlussort: "#dc6b19",
 };
 

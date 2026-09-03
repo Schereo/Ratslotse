@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 import { currentSession, isStadtrat, runningTimeText, timeOnDay, O1_STREAM_URL } from "@/lib/live";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,7 @@ type HeuteSitzung = {
   /** Startzeit der nächsten Sitzung des Tages — Ende des Live-Fensters. */
   live_until?: string | null;
   tops: string[];
-  rest: number;
+  remaining: number;
 };
 
 type Heute =
@@ -33,8 +34,11 @@ export function HeuteLeiste() {
   const [data, setData] = useState<Heute | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    fetch("/api/council/heute")
-      .then((r) => (r.ok ? r.json() : null))
+    // Über `lib/api`, nicht per nacktem fetch: Ein relativer Pfad zeigt in der
+    // Capacitor-Hülle ins Nichts (das Bundle läuft dort unter
+    // capacitor://localhost). Fehler bleiben still — die Leiste hat einen
+    // Leerzustand und soll die Landing nicht mit einer Meldung stören.
+    api.get<Heute>("/council/heute")
       .then((d) => d && setData(d))
       .catch(() => {});
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -48,7 +52,7 @@ export function HeuteLeiste() {
   // Der Rückfall auf die Kopf-Felder trägt ältere Antworten aus dem Cache.
   const tagesSitzungen: HeuteSitzung[] =
     data?.state === "heute"
-      ? data.sessions ?? [{ committee: data.committee, session_time: data.session_time, tops: data.tops, rest: data.rest }]
+      ? data.sessions ?? [{ committee: data.committee, session_time: data.session_time, tops: data.tops, remaining: data.remaining }]
       : [];
   const laufend = currentSession(tagesSitzungen, now);
   const aktuell =
@@ -61,7 +65,7 @@ export function HeuteLeiste() {
 
   const live = Boolean(laufend);
   const heute = Boolean(aktuell) && !live;
-  const nTops = aktuell ? aktuell.tops.length + aktuell.rest : 0;
+  const nTops = aktuell ? aktuell.tops.length + aktuell.remaining : 0;
   const stadtrat = Boolean(aktuell) && isStadtrat(aktuell.committee);
 
   return (
@@ -104,7 +108,7 @@ export function HeuteLeiste() {
             <>
               {aktuell.committee}, {aktuell.session_time} Uhr
               {aktuell.tops.length > 0 && <span className="text-muted-foreground"> — {aktuell.tops.join(" · ")}</span>}
-              {aktuell.rest > 0 && <span className="text-muted-foreground"> + {aktuell.rest} weitere</span>}
+              {aktuell.remaining > 0 && <span className="text-muted-foreground"> + {aktuell.remaining} weitere</span>}
             </>
           )}
           {data?.state === "naechste" && (

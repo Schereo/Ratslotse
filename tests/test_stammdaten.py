@@ -46,14 +46,14 @@ _VO0053 = """
 def test_beratungsfolge_parses_stations():
     rows = stammdaten.fetch_beratungsfolge(_FakeScraper(_VO0053), 1)
     assert len(rows) == 3
-    assert rows[0] == {"datum": "2026-06-10", "gremium": "Sportausschuss", "top": "8.1",
-                       "is_public": True, "ergebnis": "Kenntnisnahme", "ksinr": 4590}
+    assert rows[0] == {"date": "2026-06-10", "committee": "Sportausschuss", "top": "8.1",
+                       "is_public": True, "result": "Kenntnisnahme", "ksinr": 4590}
     # Geplante Station: kein Ergebnis, Datum in der Zukunft
-    assert rows[1]["ergebnis"] is None and rows[1]["ksinr"] == 9999
-    assert stammdaten.is_future(rows[1]["datum"])
+    assert rows[1]["result"] is None and rows[1]["ksinr"] == 9999
+    assert stammdaten.is_future(rows[1]["date"])
     # Nichtöffentlich wird erkannt (auch ohne Sitzungs-Link)
     assert rows[2]["is_public"] is False and rows[2]["ksinr"] is None
-    assert rows[2]["gremium"] == "Verwaltungsausschuss" and rows[2]["ergebnis"] == "Vorberatung"
+    assert rows[2]["committee"] == "Verwaltungsausschuss" and rows[2]["result"] == "Vorberatung"
 
 
 # ---- Mandatsträger (kp0041) ---------------------------------------------------
@@ -91,11 +91,11 @@ _KP0050 = """
 def test_person_mitarbeit_parses_memberships():
     rows = stammdaten.fetch_person_mitarbeit(_FakeScraper(_KP0050), 4)
     assert len(rows) == 2
-    assert rows[0] == {"kgrnr": 22, "gremium": "Rat", "rolle": "Ratsmitglied",
-                       "von": "1996-11-01", "bis": "2021-10-31"}
+    assert rows[0] == {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied",
+                       "valid_from": "1996-11-01", "valid_until": "2021-10-31"}
     # Gremium ohne eigene Seite: kein kgrnr, laufend (bis=None)
-    assert rows[1]["kgrnr"] is None and rows[1]["bis"] is None
-    assert rows[1]["rolle"] == "Beigeordnete/r"
+    assert rows[1]["kgrnr"] is None and rows[1]["valid_until"] is None
+    assert rows[1]["role"] == "Beigeordnete/r"
 
 
 # ---- Store: Beratungen + Personen ---------------------------------------------
@@ -103,19 +103,19 @@ def test_person_mitarbeit_parses_memberships():
 def test_store_beratungen_roundtrip_and_replace(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_beratungen(10, [
-        {"datum": "2026-06-25", "gremium": "Betriebsausschuss", "top": "5",
-         "is_public": True, "ergebnis": "Vorberatung", "ksinr": 4679},
-        {"datum": "2099-06-29", "gremium": "Rat", "top": "12.1",
-         "is_public": True, "ergebnis": None, "ksinr": None},
+        {"date": "2026-06-25", "committee": "Betriebsausschuss", "top": "5",
+         "is_public": True, "result": "Vorberatung", "ksinr": 4679},
+        {"date": "2099-06-29", "committee": "Rat", "top": "12.1",
+         "is_public": True, "result": None, "ksinr": None},
     ])
     rows = store.get_beratungen(10)
-    assert [r["gremium"] for r in rows] == ["Betriebsausschuss", "Rat"]
-    assert rows[0]["ergebnis"] == "Vorberatung" and rows[1]["ergebnis"] is None
+    assert [r["committee"] for r in rows] == ["Betriebsausschuss", "Rat"]
+    assert rows[0]["result"] == "Vorberatung" and rows[1]["result"] is None
     # Replace-Semantik: erneutes Speichern ersetzt vollständig
-    store.save_beratungen(10, [{"datum": "2099-06-29", "gremium": "Rat", "top": "12.1",
-                                "is_public": True, "ergebnis": "Entscheidung", "ksinr": 4695}])
+    store.save_beratungen(10, [{"date": "2099-06-29", "committee": "Rat", "top": "12.1",
+                                "is_public": True, "result": "Entscheidung", "ksinr": 4695}])
     rows = store.get_beratungen(10)
-    assert len(rows) == 1 and rows[0]["ergebnis"] == "Entscheidung"
+    assert len(rows) == 1 and rows[0]["result"] == "Entscheidung"
     # Rescan-Kandidaten: offene künftige Station → kvonr taucht auf
     assert 10 in store.kvonrs_for_beratungen_rescan()
     store.close()
@@ -125,14 +125,14 @@ def test_store_persons_memberships_and_slug_match(tmp_path):
     store = CouncilStore(tmp_path / "c.sqlite")
     store.save_person(4, "Hans-Henning Adler", "BSW")
     store.save_memberships(4, [
-        {"kgrnr": 22, "gremium": "Rat", "rolle": "Ratsmitglied", "von": "1996-11-01", "bis": "2021-10-31"},
-        {"kgrnr": 22, "gremium": "Rat", "rolle": "Ratsmitglied", "von": "2022-12-19", "bis": None},
+        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "valid_from": "1996-11-01", "valid_until": "2021-10-31"},
+        {"kgrnr": 22, "committee": "Rat", "role": "Ratsmitglied", "valid_from": "2022-12-19", "valid_until": None},
     ])
     # Slug-Match über Titel-Varianten hinweg (Anwesenheit schreibt teils "Dr. ...")
     p = store.person_stammdaten_for_names(["Dr. Hans-Henning Adler"])
-    assert p and p["kpenr"] == 4 and p["fraktion_aktuell"] == "BSW"
+    assert p and p["kpenr"] == 4 and p["current_faction"] == "BSW"
     # Laufende Mitgliedschaft zuerst
-    assert p["memberships"][0]["bis"] is None
+    assert p["memberships"][0]["valid_until"] is None
     assert store.person_stammdaten_for_names(["Unbekannte Person"]) is None
     stats = store.stammdaten_stats()
     assert stats["personen"] == 1 and stats["mitgliedschaften"] == 2
@@ -154,7 +154,7 @@ def test_member_detail_faction_timeline(tmp_path):
         for (ksinr, _), p in zip(sessions, parties):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Hans-Henning Adler', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Hans-Henning Adler', ?, 'member', NULL)", (ksinr, p))
     detail = store.member_detail(store._person_slug("Hans-Henning Adler"))
     tl = detail["faction_timeline"]
     # Ausreißer (eine einzelne SPD-Sitzung) liegt zwischen zwei VERSCHIEDENEN
@@ -187,7 +187,7 @@ def test_member_party_is_latest_not_most_frequent(tmp_path):
         for (ksinr, _), p in zip(sessions, parties):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Jens Lükermann', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Jens Lükermann', ?, 'member', NULL)", (ksinr, p))
     [m] = store.list_members()
     assert m["party"] == "Volt"
     detail = store.member_detail(store._person_slug("Jens Lükermann"))
@@ -199,7 +199,7 @@ def test_member_party_is_latest_not_most_frequent(tmp_path):
             "VALUES (7, 'Rat', '2024-09-01', '18:00', '', '')")
         store._conn.execute(
             "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-            "VALUES (7, 'Jens Lükermann', NULL, 'mitglied', NULL)")
+            "VALUES (7, 'Jens Lükermann', NULL, 'member', NULL)")
     [m] = store.list_members()
     assert m["party"] == "Volt"
 
@@ -209,18 +209,18 @@ def test_classify_faction_groups_vs_parties():
     kollabiert; „/" allein ist kein Gruppen-Signal (Grüne)."""
     from council.parties import classify_faction
     assert classify_faction("FDP/Volt") == {
-        "kind": "gruppe", "label": "FDP/Volt", "parties": ["FDP", "Volt"], "group": "FDP/Volt"}
-    assert classify_faction("Die LINKE./Piratenpartei")["kind"] == "gruppe"
+        "kind": "group", "label": "FDP/Volt", "parties": ["FDP", "Volt"], "group": "FDP/Volt"}
+    assert classify_faction("Die LINKE./Piratenpartei")["kind"] == "group"
     assert classify_faction("Für Oldenburg")["parties"] == ["parteilos", "Piraten"]
     assert classify_faction("Bündnis 90/Die Grünen") == {
-        "kind": "partei", "label": "Grüne", "parties": ["Grüne"], "group": None}
-    assert classify_faction("SPD")["kind"] == "partei"
-    assert classify_faction("")["kind"] == "parteilos"
-    assert classify_faction(None)["kind"] == "parteilos"
-    assert classify_faction("Verwaltung")["kind"] == "unbekannt"
+        "kind": "party", "label": "Grüne", "parties": ["Grüne"], "group": None}
+    assert classify_faction("SPD")["kind"] == "party"
+    assert classify_faction("")["kind"] == "independent"
+    assert classify_faction(None)["kind"] == "independent"
+    assert classify_faction("Verwaltung")["kind"] == "unknown"
     # WFO-LKR ist eine Ratsgruppe (Norrenbrock, Dr. Schreier sitzen im Plenum) —
     # ohne den Eintrag las das Verzeichnis beide als „parteilos" (21.08.2026).
-    assert classify_faction("WFO-LKR")["kind"] == "gruppe"
+    assert classify_faction("WFO-LKR")["kind"] == "group"
     assert classify_faction("WFO -LKR")["label"] == "WFO-LKR"
 
 
@@ -239,24 +239,24 @@ def test_member_detail_groups_and_parteilos(tmp_path):
         for ksinr, p in zip((1, 2, 3, 4, 5), ("FDP/Volt", "FDP/Volt", "FDP/Volt", "Volt", "Volt")):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Jens Lükermann', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Jens Lükermann', ?, 'member', NULL)", (ksinr, p))
         # Finke: SPD → parteilos (leeres Label) → Gruppe Für Oldenburg.
         for ksinr, p in zip((1, 2, 3, 4, 5), ("SPD", "", "", "Für Oldenburg", "Für Oldenburg")):
             store._conn.execute(
                 "INSERT INTO council_attendance (ksinr, name, party, role, note) "
-                "VALUES (?, 'Vally Finke', ?, 'mitglied', NULL)", (ksinr, p))
+                "VALUES (?, 'Vally Finke', ?, 'member', NULL)", (ksinr, p))
 
     luek = store.member_detail(store._person_slug("Jens Lükermann"))
     assert luek["party"] == "Volt"  # aktuelle Zugehörigkeit — NICHT FDP
     assert [(t["kind"], t["label"]) for t in luek["faction_timeline"]] == [
-        ("gruppe", "FDP/Volt"), ("partei", "Volt")]
+        ("group", "FDP/Volt"), ("party", "Volt")]
     assert luek["faction_timeline"][0]["parties"] == ["FDP", "Volt"]
     assert "FDP" not in [t["label"] for t in luek["faction_timeline"]]
 
     finke = store.member_detail(store._person_slug("Vally Finke"))
     assert finke["party"] == "Für Oldenburg"
     assert [(t["kind"], t["label"]) for t in finke["faction_timeline"]] == [
-        ("partei", "SPD"), ("parteilos", "parteilos"), ("gruppe", "Für Oldenburg")]
+        ("party", "SPD"), ("independent", "parteilos"), ("group", "Für Oldenburg")]
 
     members = {m["name"]: m["party"] for m in store.list_members()}
     assert members["Jens Lükermann"] == "Volt"

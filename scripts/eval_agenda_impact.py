@@ -59,7 +59,7 @@ def alte_heuristik(p: dict, entitaeten: list[tuple[str, int]], store: CouncilSto
         rang += 1.0
     if p.get("summary"):
         rang += 0.4
-    if p.get("vorlage_nr"):
+    if p.get("template_number"):
         rang += 0.2
     if store._PERSONALIE_RE.search(p["title"]):
         rang -= 2.0
@@ -76,24 +76,24 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     ph = ",".join("?" * len(sitzungen))
     nach_sitzung = {s["ksinr"]: s for s in sitzungen}
     rohe = store._conn.execute(
-        f"SELECT a.ksinr, a.item_number, a.title, a.vorlage_nr, a.kvonr, s.summary, "
+        f"SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, s.summary, "
         f"       substr(v.raw_text, 1, 1200) AS sachverhalt "
         f"FROM council_agenda_items a "
         f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
-        f"LEFT JOIN council_vorlagen v ON v.kvonr = a.kvonr "
+        f"LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
         f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
         [s["ksinr"] for s in sitzungen]).fetchall()
 
     punkte = []
     for r in rohe:
-        titel = (r["title"] or "").strip()
-        if not titel or store._FORMALIE_RE.search(titel):
+        title = (r["title"] or "").strip()
+        if not title or store._FORMALIE_RE.search(title):
             continue
         sitz = nach_sitzung[r["ksinr"]]
         punkte.append({
-            "ksinr": r["ksinr"], "item_number": r["item_number"], "title": titel,
+            "ksinr": r["ksinr"], "item_number": r["item_number"], "title": title,
             "summary": (r["summary"] or "").strip() or None,
-            "sachverhalt": r["sachverhalt"], "vorlage_nr": r["vorlage_nr"], "kvonr": r["kvonr"],
+            "sachverhalt": r["sachverhalt"], "template_number": r["template_number"], "kvonr": r["kvonr"],
             "committee": sitz["committee"], "session_date": sitz["session_date"],
         })
     # Behandlungsart und Vorgeschichte wie im Original
@@ -102,17 +102,17 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kvonrs:
         ph2 = ",".join("?" * len(kvonrs))
         for b in store._conn.execute(
-                f"SELECT kvonr, datum, ergebnis FROM council_beratungen "
-                f"WHERE kvonr IN ({ph2}) ORDER BY datum", kvonrs):
+                f"SELECT kvonr, date, result FROM council_deliberations "
+                f"WHERE kvonr IN ({ph2}) ORDER BY date", kvonrs):
             stationen.setdefault(b["kvonr"], []).append(dict(b))
     for p in punkte:
-        reihe = stationen.get(p["kvonr"] or 0, [])
-        heutige = next((b for b in reihe if b["datum"] == p["session_date"]), None)
-        p["behandlung"] = (heutige or {}).get("ergebnis")
-        p["vorgeschichte"] = sum(1 for b in reihe if (b["datum"] or "9999") < p["session_date"])
-        p["antragsteller"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
+        series = stationen.get(p["kvonr"] or 0, [])
+        heutige = next((b for b in series if b["date"] == p["session_date"]), None)
+        p["behandlung"] = (heutige or {}).get("result")
+        p["vorgeschichte"] = sum(1 for b in series if (b["date"] or "9999") < p["session_date"])
+        p["applicants"], p["titel_kurz"] = store._titel_zerlegen(p["title"])
         p["topic_name"] = None
-        p["stationen"] = len(reihe)
+        p["stationen"] = len(series)
         # Das Signal, das den Unterschied macht: Wie oft stand genau das schon
         # auf einer Tagesordnung? (Zuwendungen 101×, Haushaltssatzung 3×.)
         p["wiederkehr"] = store._wiederkehr().get(store._wiederkehr_schluessel(p["title"]), 1)
@@ -121,7 +121,7 @@ def punkte_der_woche(store: CouncilStore, von: str, bis: str) -> list[dict]:
     if kv:
         ph3 = ",".join("?" * len(kv))
         vor = {r["kvonr"]: dict(r) for r in store._conn.execute(
-            f"SELECT kvonr, beschlussvorschlag, finanz_check, amt FROM council_vorlagen "
+            f"SELECT kvonr, proposed_decision, financial_impact, office FROM council_templates "
             f"WHERE kvonr IN ({ph3})", kv)}
         for p in punkte:
             p.update({k: v for k, v in (vor.get(p["kvonr"]) or {}).items() if k != "kvonr"})
@@ -159,14 +159,14 @@ def main() -> int:
 
         if not args.ohne_llm:
             for start_i in range(0, len(punkte), BATCH_SIZE):
-                teil = punkte[start_i : start_i + BATCH_SIZE]
-                for j, p in enumerate(teil):
+                part = punkte[start_i : start_i + BATCH_SIZE]
+                for j, p in enumerate(part):
                     p["id"] = start_i + j
-                nach_id = {p["id"]: p for p in teil}
-                for iid, score, warum in rate_agenda_batch(teil):
+                nach_id = {p["id"]: p for p in part}
+                for iid, score, warum in rate_agenda_batch(part):
                     if iid in nach_id:
                         nach_id[iid]["tragweite"] = score
-                        nach_id[iid]["grund"] = warum
+                        nach_id[iid]["reason"] = warum
 
         alt_top = max(punkte, key=lambda p: p["alt"])
         neu_top = max(punkte, key=lambda p: p["wichtig"])
@@ -178,8 +178,8 @@ def main() -> int:
         print(f"  regeln    {neu_top['wichtig']:>5}  {kurz(neu_top)}")
         if llm_top:
             print(f"  tragweite {llm_top['tragweite']:>5}  {kurz(llm_top)}")
-            if llm_top.get("grund"):
-                print(f"            ↳ {llm_top['grund'][:88]}")
+            if llm_top.get("reason"):
+                print(f"            ↳ {llm_top['reason'][:88]}")
             if kurz(llm_top) != kurz(alt_top):
                 unterschiede += 1
 

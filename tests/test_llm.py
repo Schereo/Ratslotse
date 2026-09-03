@@ -1,4 +1,4 @@
-"""Offline tests for nwz/llm.py: singleton client and _is_transient predicate."""
+"""Offline tests for kern/llm.py: singleton client and _is_transient predicate."""
 from __future__ import annotations
 
 import pytest
@@ -185,7 +185,37 @@ def test_create_prueft_die_antwort(monkeypatch):
     class _FakeClient:
         chat = type("", (), {"completions": _FakeCompletions()})()
 
+    monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
     monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
     with pytest.raises(llm.EmptyResponseError):
         # __wrapped__ = ein Anlauf ohne die Wartezeiten von tenacity.
         llm._create.__wrapped__(model="openai/gpt-4o-mini", messages=[])
+
+
+def test_chat_complete_erlaubt_expliziten_leerantwort_fallback(monkeypatch):
+    """Der Opt-out ist nur für Aufrufer mit eigener Fachlogik; insbesondere
+    darf sein privates Keyword nie an OpenRouter weitergereicht werden."""
+    antwort = _AntwortOhneChoices({"message": "upstream timeout"})
+    calls = []
+
+    class _FakeCompletions:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return antwort
+
+    class _FakeClient:
+        chat = type("", (), {"completions": _FakeCompletions()})()
+
+    monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
+    monkeypatch.setattr(llm, "get_client", lambda: _FakeClient())
+    result = llm.chat_complete(
+        _allow_empty_response=True,
+        model="openai/gpt-4o-mini",
+        messages=[],
+    )
+    assert result is antwort
+    assert calls == [{
+        "model": "openai/gpt-4o-mini",
+        "messages": [],
+        "extra_body": {"usage": {"include": True}},
+    }]

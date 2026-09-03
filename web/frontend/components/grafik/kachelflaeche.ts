@@ -49,14 +49,14 @@ export type Kachel<T> = {
 };
 
 /** Das Layout, zur Laufzeit gerechnet — je Jahrgang, je Filter neu. */
-export function kacheln<T extends { wert: number }>(
+export function kacheln<T extends { value: number }>(
   knoten: T[], breite: number, hoehe: number,
 ): Kachel<T>[] {
   if (!knoten.length || breite <= 0 || hoehe <= 0) return [];
-  const wurzel = hierarchy<{ children?: T[]; wert?: number }>({ children: knoten })
-    .sum((d) => d.wert ?? 0)
+  const wurzel = hierarchy<{ children?: T[]; value?: number }>({ children: knoten })
+    .sum((d) => d.value ?? 0)
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-  return treemap<{ children?: T[]; wert?: number }>()
+  return treemap<{ children?: T[]; value?: number }>()
     .tile(QUADRATISCH)
     .size([breite, hoehe])
     .paddingInner(FUGE)(wurzel)
@@ -82,6 +82,7 @@ export function schmal(breite: number): boolean {
 
 /** Zeilenhöhe der Kachel-Beschriftung: 11 px auf `leading-tight` (1,25). */
 const ZEILE = 14;
+const ZEILE_KLEIN = ZEILE;
 /** Innenabstand der Kachel (`p-1.5`, oben und unten) plus die Wertzeile. */
 const RAND = 12;
 const WERTZEILE = 16;
@@ -103,6 +104,65 @@ export function namenszeilen(breite: number, hoehe: number): number {
     ? breite - RAND - 30
     : hoehe - RAND - WERTZEILE;
   return Math.max(1, Math.floor(platz / ZEILE));
+}
+
+/** Wie groß eine Kachel ihre Beschriftung setzt.
+ *
+ *  Bis 02.09. stand auf jeder Kachel dieselbe 11-px-Zeile — auf „Steuern"
+ *  (388 Mio. €, halbe Fläche) genauso klein wie auf einer 64-px-Kachel. Die
+ *  Fläche sagte „groß", die Schrift sagte nichts; Tim: „die Schrift steht da
+ *  ganz klein drin". Drei Stufen, an den Maßen der Kachel gemessen:
+ *
+ *  | Stufe  | ab (Breite × Höhe) | Name    | Zahl (Bricolage) | dazu             |
+ *  |--------|--------------------|---------|------------------|------------------|
+ *  | gross  | 200 × 130 px       | 13,5 px | 28 px            | Zusatz, Anteil   |
+ *  | mittel | 112 × 72 px        | 12,5 px | 18 px            | Anteil ab 100 px |
+ *  | klein  | (Rest)             | 11 px   | 11,5 px          | —                |
+ *
+ *  Schmale Kacheln (`schmal()`) bleiben vertikal beschriftet, unabhängig von
+ *  der Stufe. */
+export type Textstufe = "large" | "medium" | "small";
+
+export function textstufe(breite: number, hoehe: number): Textstufe {
+  if (breite >= 200 && hoehe >= 130) return "large";
+  if (breite >= 112 && hoehe >= 72) return "medium";
+  return "small";
+}
+
+/** Trägt die Kachel ihre Einheit hinter der Zahl?
+ *
+ *  „146,8" ohne „Mio. €" war die eine Kachel-Zahl ohne Einheit auf einer
+ *  Seite, deren Regel „€ hinter jeden Euro-Wert" heißt — die Einheit stand nur
+ *  in der Legende. Jetzt trägt sie jede Kachel, die den Platz hat: Die kleine
+ *  Stufe braucht für „146,8 Mio. €" bei 11,5 px rund 80 px Breite. Vertikal
+ *  beschriftete Kacheln zählen ihre Höhe. */
+export function traegtEinheit(breite: number, hoehe: number): boolean {
+  if (textstufe(breite, hoehe) !== "small") return true;
+  return (schmal(breite) ? hoehe : breite) >= 96;
+}
+
+/** Zeilenmaße je Stufe: Zeilenhöhe des Namens, Innenabstand oben + unten
+ *  und die Höhe des Zahlenblocks (Zahl plus Anteilszeile, wo sie steht).
+ *
+ *  Die Komponente setzt die Zeilenhöhen HIERAUS als feste Pixel, nicht über
+ *  Tailwind-Klassen: Ein `button` erbt 16 px / 24 px, und ein Zahlenblock,
+ *  der diese Strebe mitnimmt, ist 24 statt 16 px hoch — der Name darüber
+ *  wurde dann gestaucht und „Abrissmaßnahmen" in der dritten Zeile
+ *  durchgeschnitten (gemessen 02.09.). Was die Probe rechnet, muss die
+ *  Kachel auch setzen. */
+export const TEXTMASSE: Record<Textstufe, { zeile: number; rand: number; wertblock: number }> = {
+  large: { zeile: 17, rand: 20, wertblock: 50 },
+  medium: { zeile: 15, rand: 16, wertblock: 36 },
+  small: { zeile: ZEILE_KLEIN, rand: 12, wertblock: 16 },
+};
+
+/** Wie viele Zeilen der NAME auf einer Kachel dieser Stufe bekommt — die
+ *  Verallgemeinerung von `namenszeilen()`, die für die kleine Stufe dieselbe
+ *  Zahl liefert (die Probe hält beide gleich). */
+export function namenszeilenStufe(stufe: Textstufe, breite: number, hoehe: number): number {
+  if (stufe === "small") return namenszeilen(breite, hoehe);
+  const m = TEXTMASSE[stufe];
+  return Math.max(1, Math.floor((hoehe - m.rand - m.wertblock) / m.zeile));
 }
 
 /** Welche Textfarbe eine Kachel dieser Rampenstufe trägt.
@@ -148,7 +208,7 @@ export function buendelGrenze(werte: number[]): number {
   for (let ab = werte.length; ab >= 1; ab -= 1) {
     const rest = werte.slice(ab).reduce((s, w) => s + w, 0);
     const knoten = [...werte.slice(0, ab), ...(rest > 0 ? [rest] : [])]
-      .map((wert) => ({ wert }));
+      .map((value) => ({ value }));
     let alle = true;
     for (let b = 520; b <= 1200 && alle; b += 8) {
       for (const k of kacheln(knoten, b, kachelHoehe(b))) {

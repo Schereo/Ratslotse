@@ -2,7 +2,7 @@
 """Täglicher Abgleich der Stadt-Pressemitteilungen (RSS → Details → FTS/Chunks).
 
 Holt den RSS-Feed (60 Einträge), lädt fehlende Detailseiten, schreibt sie in
-council_presse (+FTS) und embeddet die neuen Texte direkt (best-effort — ohne
+council_press (+FTS) und embeddet die neuen Texte direkt (best-effort — ohne
 fastembed übernimmt der Wochenlauf embed_decisions.py). Kein LLM.
 
 Crontab (Server): täglich, z. B.  15 5 * * *  … scripts/check_presse.py
@@ -43,8 +43,8 @@ def main() -> dict:
             continue
         store.save_presse(
             eintrag["url"], eintrag["news_id"],
-            detail["titel"] or eintrag["titel"],
-            detail["datum"] or eintrag["datum"], detail["text"])
+            detail["title"] or eintrag["title"],
+            detail["date"] or eintrag["date"], detail["text"])
         neu += 1
     chunks = 0
     if neu:

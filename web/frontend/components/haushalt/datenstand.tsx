@@ -26,7 +26,7 @@
 // eine Änderung an den Texten der Übersichtsseite soll ihn nicht anfassen.
 
 import { Check, Clock } from "lucide-react";
-import { Apparat } from "@/components/haushalt/quelle";
+import { Apparat } from "@/components/haushalt/source";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
 
@@ -42,14 +42,14 @@ export type Datenschicht = {
   naechster_jahrgang: number;
   naechster_ab: string;
   erwarteter_monat: number;
-  monat: string;
+  month_name: string;
   herkunft: string;
   /** Die veröffentlichende Stelle im Klartext („Portal der Stadt"). */
-  quelle: string;
+  source: string;
   automatisch: boolean;
   /** Wie eine Einheit heißt („Teilhaushalte"), wo ein Jahrgang aus mehreren
    *  Dokumenten besteht — sonst null. */
-  einheit: string | null;
+  unit: string | null;
   /** Je Jahrgang die Zahl der Einheiten, und wie viele der bestbelegte hat. */
   einheiten: Record<string, number>;
   einheiten_voll: number | null;
@@ -57,12 +57,12 @@ export type Datenschicht = {
   teilweise: number[];
 };
 
-export type Antwort = { heute: string; schichten: Datenschicht[] };
+export type Antwort = { today: string; layers: Datenschicht[] };
 
 /** „2017–2024" bzw. „2024" — und nichts, wo nichts ist. */
-function spanne(jahre: number[]): string | null {
-  if (jahre.length === 0) return null;
-  const von = jahre[0], bis = jahre[jahre.length - 1];
+function spanne(years: number[]): string | null {
+  if (years.length === 0) return null;
+  const von = years[0], bis = years[years.length - 1];
   return von === bis ? String(von) : `${von}–${bis}`;
 }
 
@@ -71,11 +71,11 @@ function spanne(jahre: number[]): string | null {
  *  Nicht generisch formuliert: „Von 2023 haben wir 6 der 9 Einheiten" wäre
  *  Buchhaltersprache. Ein fehlender Teilhaushalt lässt sich zählen, eine
  *  fehlende Auswertungsebene nicht — die sagt man besser als Sache. */
-const LUECKENTEXT: Record<string, (jahr: number, hat: number, voll: number) => string> = {
-  Teilhaushalte: (jahr, hat, voll) =>
-    `Für ${jahr} haben wir ${hat} von ${voll} Teilhaushalten.`,
-  Ebenen: (jahr) =>
-    `Für ${jahr} fehlt noch die Aufteilung auf die einzelnen Bereiche.`,
+const LUECKENTEXT: Record<string, (year: number, hat: number, voll: number) => string> = {
+  Teilhaushalte: (year, hat, voll) =>
+    `Für ${year} haben wir ${hat} von ${voll} Teilhaushalten.`,
+  Ebenen: (year) =>
+    `Für ${year} fehlt noch die Aufteilung auf die einzelnen Bereiche.`,
 };
 
 /** „a", „a und b", „a, b und c" — für Namen, die aus den Daten kommen und
@@ -95,13 +95,13 @@ function aufzaehlung(teile: string[]): string {
  *  für Statistik — mit dem alten Satz hätte die Seite eine Landesbehörde zur
  *  Stadtverwaltung erklärt. Die Namen der Stellen kommen deshalb aus den
  *  Daten, genau wie die der Schichten. */
-function vonHandNachStelle(schichten: Datenschicht[]): { quelle: string; labels: string[] }[] {
-  const gruppen: { quelle: string; labels: string[] }[] = [];
+function vonHandNachStelle(schichten: Datenschicht[]): { source: string; labels: string[] }[] {
+  const gruppen: { source: string; labels: string[] }[] = [];
   for (const s of schichten) {
     if (s.automatisch) continue;
-    const treffer = gruppen.find((g) => g.quelle === s.quelle);
+    const treffer = gruppen.find((g) => g.source === s.source);
     if (treffer) treffer.labels.push(s.label);
-    else gruppen.push({ quelle: s.quelle, labels: [s.label] });
+    else gruppen.push({ source: s.source, labels: [s.label] });
   }
   return gruppen;
 }
@@ -114,19 +114,19 @@ function vonHandNachStelle(schichten: Datenschicht[]): { quelle: string; labels:
  *  „Fehlt" steht deshalb nirgends: Was die Stadt noch nicht veröffentlicht
  *  hat, fehlt uns nicht. */
 export function ausblick(s: Datenschicht, heute: string): { text: string; wartet: boolean } {
-  const jahr = s.naechster_jahrgang;
+  const year = s.naechster_jahrgang;
   const ab = new Date(s.naechster_ab);
-  const monatJahr = `${s.monat} ${ab.getFullYear()}`;
-  if (s.ueberfaellig.includes(jahr)) {
+  const monatJahr = `${s.month_name} ${ab.getFullYear()}`;
+  if (s.ueberfaellig.includes(year)) {
     return {
-      text: `Der Jahrgang ${jahr} wäre seit ${monatJahr} zu erwarten und liegt noch nicht vor.`,
+      text: `Der Jahrgang ${year} wäre seit ${monatJahr} zu erwarten und liegt noch nicht vor.`,
       wartet: true,
     };
   }
   if (new Date(heute) < ab) {
-    return { text: `Der Jahrgang ${jahr} wird üblicherweise im ${monatJahr} vorgelegt.`, wartet: false };
+    return { text: `Der Jahrgang ${year} wird üblicherweise im ${monatJahr} vorgelegt.`, wartet: false };
   }
-  return { text: `Der Jahrgang ${jahr} wird gerade erwartet (üblich: ${monatJahr}).`, wartet: false };
+  return { text: `Der Jahrgang ${year} wird gerade erwartet (üblich: ${monatJahr}).`, wartet: false };
 }
 
 /** Was der Block verspricht — und was er ausdrücklich nicht verspricht.
@@ -162,8 +162,8 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
           eine beliebige Liste nicht grammatisch bilden. Die Stelle steht in
           Klammern dahinter — ein Satzbau, der auch bei vier Stellen hält. */}
       {vonHand.length > 0 && <> Nicht dabei: {vonHand.map((g, i) => (
-        <span key={g.quelle}>
-          {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.quelle})
+        <span key={g.source}>
+          {i > 0 && "; "}{aufzaehlung(g.labels)} ({g.source})
         </span>
       ))} — diese Zahlen werden aus weiteren amtlichen Veröffentlichungen übernommen.</>}
     </p>
@@ -171,15 +171,15 @@ export function Fussnote({ schichten }: { schichten: Datenschicht[] }) {
 }
 
 export function Datenstand() {
-  const { data } = useFetch<Antwort>("/council/haushalt/datenstand");
+  const { data } = useFetch<Antwort>("/council/budget/data-status");
   // Still bleiben, solange nichts da ist: Ein Skelett für einen Nachtrag am
   // Seitenende wäre mehr Unruhe als Information.
-  if (!data || data.schichten.length === 0) return null;
+  if (!data || data.layers.length === 0) return null;
   // Die Spanne über ALLE Schichten — das, was in der zugeklappten Lade steht.
   // Ein „bis 2026" wäre gelogen: Der Plan reicht so weit, die Abrechnung
   // zwei Jahre kürzer. Beide Enden zu nennen ist die einzige Angabe, die für
   // die ganze Liste stimmt.
-  const alleJahre = data.schichten.flatMap((s) => s.jahrgaenge);
+  const alleJahre = data.layers.flatMap((s) => s.jahrgaenge);
   const gesamtspanne = spanne(
     [...new Set(alleJahre)].sort((a, b) => a - b));
 
@@ -198,13 +198,13 @@ export function Datenstand() {
       </p>
 
       <ul className="mt-3 flex flex-col gap-2.5">
-        {data.schichten.map((s) => {
-          const bereich = spanne(s.jahrgaenge);
-          const { text, wartet } = ausblick(s, data.heute);
+        {data.layers.map((s) => {
+          const area = spanne(s.jahrgaenge);
+          const { text, wartet } = ausblick(s, data.today);
           // Nur der jüngste unvollständige Jahrgang wird benannt: Die älteren
           // sind eine Geschichte für sich und würden die Zeile zumauern.
           const offen = s.teilweise[s.teilweise.length - 1];
-          const satz = s.einheit ? LUECKENTEXT[s.einheit] : undefined;
+          const satz = s.unit ? LUECKENTEXT[s.unit] : undefined;
           const luecke = offen != null && satz && s.einheiten_voll
             ? satz(offen, s.einheiten[String(offen)], s.einheiten_voll)
             : null;
@@ -217,7 +217,7 @@ export function Datenstand() {
               <div className="flex items-baseline justify-between gap-3">
                 <span className="min-w-0 text-[13px] font-bold leading-snug">{s.label}</span>
                 <span className="flex-none font-mono text-[11.5px] font-medium tabular-nums text-foreground/80">
-                  {bereich ?? "—"}
+                  {area ?? "—"}
                 </span>
               </div>
               <span className="text-[12px] leading-relaxed text-muted-foreground">{s.was}</span>
@@ -245,7 +245,7 @@ export function Datenstand() {
         })}
       </ul>
 
-      <Fussnote schichten={data.schichten} />
+      <Fussnote schichten={data.layers} />
     </Apparat>
   );
 }

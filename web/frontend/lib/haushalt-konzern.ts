@@ -21,60 +21,60 @@ import type { Herkunft } from "@/lib/herkunft";
 export type { Herkunft };
 
 export type KonzernJahr = {
-  jahr: number;
-  ertraege_summe?: number;
-  aufwendungen_summe?: number;
-  ord_ergebnis?: number;
-  gesamtergebnis?: number;
-  zinsaufwand?: number;
-  personalaufwand?: number;
-  steuern?: number;
+  year: number;
+  revenues_total?: number;
+  expenses_total?: number;
+  ordinary_result?: number;
+  total_result?: number;
+  interest_expenses?: number;
+  personnel_expenses?: number;
+  taxes?: number;
   herkunft_id: number | null;
 };
 
 export type KonzernTraeger = {
-  jahr: number;
-  art: "ertraege" | "aufwendungen";
-  traeger_key: string;
-  traeger: string;
+  year: number;
+  kind: "revenues" | "expenses";
+  entity_key: string;
+  entity: string;
   /** Euro — aus TEUR hochgerechnet, deshalb auf Tausend glatt. */
-  betrag: number;
-  vorjahr: number | null;
+  amount: number;
+  prior_year: number | null;
   herkunft_id: number | null;
 };
 
 export type KonzernPosten = {
-  jahr: number;
+  year: number;
   nr: number;
-  bezeichnung: string;
-  rolle: string | null;
-  betrag: number;
-  vorjahr: number | null;
+  label: string;
+  role: string | null;
+  amount: number;
+  prior_year: number | null;
   herkunft_id: number | null;
 };
 
 export type Gegenprobe = {
-  jahr: number;
-  art: "ertraege" | "aufwendungen";
-  konzern: number;
-  jahresabschluss: number;
+  year: number;
+  kind: "revenues" | "expenses";
+  consolidated: number;
+  annual_accounts: number;
   ok: boolean;
 };
 
 export type KonzernDaten = {
-  jahre: number[];
-  konzern: KonzernJahr[];
-  traeger: KonzernTraeger[];
-  posten: KonzernPosten[];
-  gegenprobe: Gegenprobe[];
+  years: number[];
+  consolidated: KonzernJahr[];
+  entity: KonzernTraeger[];
+  items: KonzernPosten[];
+  cross_check: Gegenprobe[];
   /** Nach `herkunft_id`. Die beiden Ebenen eines Jahrgangs tragen
    *  verschiedene IDs — verschiedene Abschnitte, verschiedene Proben. */
-  herkunft: Record<string, Herkunft>;
+  provenance: Record<string, Herkunft>;
 };
 
 export function herkunftVon(daten: KonzernDaten,
                             id: number | null | undefined): Herkunft | null {
-  return id == null ? null : daten.herkunft[String(id)] ?? null;
+  return id == null ? null : daten.provenance[String(id)] ?? null;
 }
 
 /** Die Zeile „Konsolidierung" ist kein Aufgabenträger, sondern der Abzug.
@@ -107,36 +107,36 @@ export const ART: Record<string, string> = {
   weh: "Veranstaltungshallen, städtische Beteiligung.",
 };
 
-export function jahrDaten(daten: KonzernDaten, jahr: number): KonzernJahr | null {
-  return daten.konzern.find((k) => k.jahr === jahr) ?? null;
+export function jahrDaten(daten: KonzernDaten, year: number): KonzernJahr | null {
+  return daten.consolidated.find((k) => k.year === year) ?? null;
 }
 
 /** Träger eines Jahres und einer Aufstellung, größter zuerst — ohne die
  *  Konsolidierungszeile, die separat danebensteht. */
 export function traegerListe(
-  daten: KonzernDaten, jahr: number, art: "ertraege" | "aufwendungen",
+  daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger[] {
-  return daten.traeger
-    .filter((t) => t.jahr === jahr && t.art === art && t.traeger_key !== KONSOLIDIERUNG)
-    .sort((a, b) => b.betrag - a.betrag);
+  return daten.entity
+    .filter((t) => t.year === year && t.kind === art && t.entity_key !== KONSOLIDIERUNG)
+    .sort((a, b) => b.amount - a.amount);
 }
 
 export function konsolidierung(
-  daten: KonzernDaten, jahr: number, art: "ertraege" | "aufwendungen",
+  daten: KonzernDaten, year: number, art: "revenues" | "expenses",
 ): KonzernTraeger | null {
-  return daten.traeger.find(
-    (t) => t.jahr === jahr && t.art === art && t.traeger_key === KONSOLIDIERUNG) ?? null;
+  return daten.entity.find(
+    (t) => t.year === year && t.kind === art && t.entity_key === KONSOLIDIERUNG) ?? null;
 }
 
 /** Jahre, für die die Trägeraufstellung vorliegt — nicht dieselben wie
- *  `daten.jahre`: Die Berichte bis 2016 führen den Abschnitt noch nicht, und
+ *  `daten.years`: Die Berichte bis 2016 führen den Abschnitt noch nicht, und
  *  2018 ist die Aufwendungsseite an ihrer eigenen Probe gescheitert. */
 export function traegerJahre(daten: KonzernDaten,
-                             art?: "ertraege" | "aufwendungen"): number[] {
-  const jahre = daten.traeger
-    .filter((t) => !art || t.art === art)
-    .map((t) => t.jahr);
-  return [...new Set(jahre)].sort((a, b) => a - b);
+                             art?: "revenues" | "expenses"): number[] {
+  const years = daten.entity
+    .filter((t) => !art || t.kind === art)
+    .map((t) => t.year);
+  return [...new Set(years)].sort((a, b) => a - b);
 }
 
 /** Der Anteil, den der Kernhaushalt am Konzern hat — die Zahl, um die es auf
@@ -144,18 +144,18 @@ export function traegerJahre(daten: KonzernDaten,
  *  Kernverwaltungs-Zeile ist der Anteil nicht bestimmbar, und ein geschätzter
  *  wäre hier das Gegenteil des Zwecks. */
 export function kernAnteil(
-  daten: KonzernDaten, jahr: number, art: "ertraege" | "aufwendungen" = "ertraege",
+  daten: KonzernDaten, year: number, art: "revenues" | "expenses" = "revenues",
 ): { kern: number; konzern: number; anteil: number } | null {
-  const jd = jahrDaten(daten, jahr);
-  const konzern = art === "ertraege" ? jd?.ertraege_summe : jd?.aufwendungen_summe;
-  const kern = daten.traeger.find(
-    (t) => t.jahr === jahr && t.art === art && t.traeger_key === "stadt");
+  const jd = jahrDaten(daten, year);
+  const konzern = art === "revenues" ? jd?.revenues_total : jd?.expenses_total;
+  const kern = daten.entity.find(
+    (t) => t.year === year && t.kind === art && t.entity_key === "stadt");
   if (!konzern || !kern) return null;
-  return { kern: kern.betrag, konzern, anteil: kern.betrag / konzern };
+  return { kern: kern.amount, konzern, anteil: kern.amount / konzern };
 }
 
 /** Das jüngste Jahr, für das sich der Anteil überhaupt bilden lässt. */
 export function juengstesVergleichsjahr(daten: KonzernDaten): number | null {
-  const jahre = traegerJahre(daten, "ertraege");
-  return jahre.length ? jahre[jahre.length - 1] : null;
+  const years = traegerJahre(daten, "revenues");
+  return years.length ? years[years.length - 1] : null;
 }

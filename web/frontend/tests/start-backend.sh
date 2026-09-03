@@ -7,7 +7,11 @@ set -e
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 TMP_DIR="$(mktemp -d /tmp/ratslotse-e2e-XXXXXX)"
 
-export NWZ_DB="$TMP_DIR/nwz.sqlite"
+# Der Schalter heißt RATSLOTSE_DB, seit die Konten-Datenbank umbenannt wurde
+# (08/2026). Hier stand danach noch NWZ_DB — den liest niemand mehr, und die
+# Vorgabe greift: Die Browsertests liefen damit gegen die ECHTE lokale
+# data/ratslotse.sqlite und legten dort ihre Testkonten an.
+export RATSLOTSE_DB="$TMP_DIR/ratslotse.sqlite"
 export COUNCIL_DB="$TMP_DIR/council.sqlite"
 export WEB_JWT_SECRET="e2e-test-secret"
 export WEB_ADMIN_EMAIL="admin@test.de"
@@ -20,13 +24,49 @@ export RESEND_API_KEY=""
 export PYTHONPATH="$REPO_ROOT"
 
 echo "E2E backend tmp dir: $TMP_DIR"
-echo "NWZ_DB=$NWZ_DB"
+echo "RATSLOTSE_DB=$RATSLOTSE_DB"
 
 # Trap cleans up temp dir when this process exits.
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
+# Das venv liegt im HAUPT-Checkout: `.venv/` ist gitignored und wird beim
+# Anlegen eines Worktrees nicht mitkopiert. Ohne diesen zweiten Kandidaten
+# startet die Browser-Suite aus einem Worktree gar nicht — der Server bricht
+# mit „No such file or directory" ab, und Playwright meldet nur, dass der
+# webServer nicht hochkam. Dieselbe Suche wie in `scripts/pruefe.py`.
+if [ -z "$PYTHON_BIN" ]; then
+  PYTHON_BIN="$REPO_ROOT/.venv/bin/python"
+  if [ ! -x "$PYTHON_BIN" ]; then
+    GEMEINSAM="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+    [ -n "$GEMEINSAM" ] && PYTHON_BIN="$(dirname "$GEMEINSAM")/.venv/bin/python"
+  fi
+fi
+if [ ! -x "$PYTHON_BIN" ]; then
+  echo "Kein Python-venv gefunden ($PYTHON_BIN)." >&2
+  echo "  python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt \\" >&2
+  echo "    -r web/backend/requirements.txt -c constraints.txt" >&2
+  exit 1
+fi
+
+# Ratsdaten aus dem lokalen Abzug, wenn einer da ist (scripts/lokale_daten.py).
+# Ohne ihn laufen die Tests wie bisher gegen eine leere Datenbank — in der CI
+# ist das der Normalfall. Der Klon kostet auf APFS nichts, weil er erst beim
+# Schreiben Platz braucht.
+ABZUG="${XDG_CACHE_HOME:-$HOME/.cache}/ratslotse/council.sqlite"
+if [ -f "$ABZUG" ]; then
+  cp -c "$ABZUG" "$COUNCIL_DB" 2>/dev/null || cp "$ABZUG" "$COUNCIL_DB"
+  echo "Ratsdaten aus dem Abzug: $ABZUG"
+else
+  echo "Kein Abzug da — leere Ratsdaten (python scripts/lokale_daten.py hol)"
+fi
+
+# Konten säen, bevor der Server startet. Die Saat legt `admin@test.de`
+# ABSICHTLICH nicht an — die Adresse registrieren die Tests selbst, und einer
+# prüft ausdrücklich, dass das Anlegen klappt.
+"$PYTHON_BIN" "$REPO_ROOT/scripts/saat_konten.py" --db "$RATSLOTSE_DB" \
+  --council-db "$COUNCIL_DB" >/dev/null || echo "Saat übersprungen"
+
 cd "$REPO_ROOT/web/backend"
-PYTHON_BIN="${PYTHON_BIN:-$REPO_ROOT/.venv/bin/python}"
 exec "$PYTHON_BIN" -m uvicorn \
   app.main:app \
   --host 127.0.0.1 \

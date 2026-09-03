@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Prompt, AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+import { AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
 // Aus dem API-Vertrag statt von Hand: Diese drei Formen stehen im Backend
 // vollständig, ein umbenanntes Feld bricht damit hier den Build.
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
@@ -25,9 +25,10 @@ type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
-import type { OrtsbereichCatalog } from "@/lib/stadtteile";
+import type { OrtsbereichCatalog } from "@/lib/districts";
+import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
-type Tab = "stats" | "feedback" | "llm" | "prompts" | "users" | "quiz" | "orte" | "themen";
+type Tab = "stats" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -42,7 +43,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <PageHeader title="Admin" description="Prompts und Web-Nutzer*innen verwalten." />
+      <PageHeader title="Admin" description="Web-Nutzer*innen, Moderation und Kennzahlen verwalten." />
       {/* Mobil sind sieben Tabs breiter als der Schirm — die Leiste scrollt
           seitlich (ohne Scrollbalken), statt über den Rand zu laufen. */}
       <div className="scrollbar-none mt-4 flex gap-1 overflow-x-auto border-b border-border [-webkit-overflow-scrolling:touch]">
@@ -50,7 +51,6 @@ export default function AdminPage() {
           ["stats", "Statistik"],
           ["feedback", "Feedback"],
           ["llm", "LLM-Kosten"],
-          ["prompts", "Prompts"],
           ["users", "Web-Nutzer*innen"],
           ["quiz", "Quiz"],
           ["orte", "Ortskandidaten"],
@@ -71,7 +71,6 @@ export default function AdminPage() {
         {tab === "stats" && <StatsTab />}
         {tab === "feedback" && <FeedbackTab />}
         {tab === "llm" && <LlmUsageTab />}
-        {tab === "prompts" && <PromptsTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
         {tab === "quiz" && <QuizModerationTab />}
         {tab === "orte" && <PlaceCandidatesTab />}
@@ -90,6 +89,98 @@ function TrendChip({ delta }: { delta: number }) {
       <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7" /><path d="M7 7h10v10" /></svg>
       +{delta}
     </span>
+  );
+}
+
+/** „App oder Web?" — zwei Balken nebeneinander.
+ *
+ *  Links die NUTZUNG der letzten 30 Tage, rechts der ANMELDEWEG des gesamten
+ *  Bestands. Die beiden zu trennen ist der Punkt: Wer sich im Browser
+ *  registriert und danach nur noch die App öffnet, taucht links als App und
+ *  rechts als Web auf — genau die Differenz, die man sehen will.
+ *
+ *  Bei der Nutzung zählen KONTEN, nicht Zugriffe: Ein einzelnes vielbenutztes
+ *  Gerät soll nicht wie eine Plattform mit vielen Leuten aussehen.
+ */
+function ClientCard({ clients, both, signup }: {
+  clients: AdminGrowth["clients"];
+  both: number;
+  signup: AdminGrowth["signup_clients"];
+}) {
+  // `unknown` fliegt raus: ungemessen ist keine Plattform. Es steht statt-
+  // dessen als Fußnote unter dem Anmeldeweg, damit die Summe erklärbar bleibt.
+  const nutzung = clients.filter((c) => c.users > 0);
+  const wege = signup.filter((c) => c.client !== "unknown" && c.n > 0);
+  const ungemessen = signup.find((c) => c.client === "unknown")?.n ?? 0;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Womit genutzt</StatKicker>
+          <span className="text-[11.5px] text-muted-foreground">30 Tage · Konten</span>
+        </div>
+        <ClientBalken werte={nutzung.map((c) => ({ client: c.client, n: c.users }))}
+          leer="Noch nichts gemessen." />
+        {/* Ohne diese Zeile liest sich der Balken so, als benutzte jede:r genau
+            eins. Jedes Konto steht dort unter seinem meistgenutzten Client —
+            wie viele überhaupt wechseln, sagt erst die Zahl hier. */}
+        {both > 0 && (
+          <p className="mt-2.5 text-[11.5px] text-muted-foreground">
+            Jedes Konto zählt einmal, unter dem Weg, den es am häufigsten
+            nimmt. {both === 1 ? "Ein Konto nutzt" : `${both} Konten nutzen`} beides.
+          </p>
+        )}
+      </Card>
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Womit registriert</StatKicker>
+          <span className="text-[11.5px] text-muted-foreground">gesamter Bestand</span>
+        </div>
+        <ClientBalken werte={wege} leer="Noch kein Konto seit Einführung der Messung." />
+        {ungemessen > 0 && (
+          <p className="mt-2.5 text-[11.5px] text-muted-foreground">
+            Dazu {ungemessen.toLocaleString("de-DE")} {ungemessen === 1 ? "Konto" : "Konten"} von vor
+            der Messung (09/2026) — deren Anmeldeweg wurde nie festgehalten.
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** Ein waagerechter Anteilsbalken plus Legende. Web trägt das Primär-, alles
+ *  Native das Signalblau — dieselbe Zuordnung wie im Nutzer-Detail. */
+function ClientBalken({ werte, leer }: { werte: { client: string; n: number }[]; leer: string }) {
+  const gesamt = werte.reduce((s, w) => s + w.n, 0);
+  if (!gesamt) return <p className="mt-3 text-[13px] text-muted-foreground">{leer}</p>;
+  const sortiert = werte.slice().sort((a, b) => b.n - a.n);
+  return (
+    <>
+      <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted">
+        {sortiert.map((w) => (
+          <span key={w.client} title={`${clientLabel(w.client)}: ${w.n}`}
+            className={cn("h-full", clientFarbe(w.client))}
+            style={{ width: `${(w.n / gesamt) * 100}%` }} />
+        ))}
+      </div>
+      <div className="mt-3 flex flex-col gap-1.5">
+        {sortiert.map((w) => (
+          <div key={w.client} className="flex items-baseline justify-between gap-2">
+            <span className="inline-flex items-center gap-2 text-[13px] text-foreground">
+              <span className={cn("h-2 w-2 shrink-0 rounded-full", clientFarbe(w.client))} />
+              {clientLabel(w.client)}
+            </span>
+            <span className="text-[13px] text-muted-foreground">
+              <span className="font-display text-base font-bold tabular-nums text-foreground">
+                {Math.round((w.n / gesamt) * 100)} %
+              </span>{" "}
+              <span className="tabular-nums">({w.n.toLocaleString("de-DE")})</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -159,6 +250,10 @@ function StatsTab() {
         <GrowthCard kicker="Registrierte Nutzer*innen" total={data.users.total} delta={data.users.delta} series={data.users.series} days={data.users.days} color="hsl(var(--primary))" />
         <GrowthCard kicker="Angelegte Themen" total={data.topics.total} delta={data.topics.delta} series={data.topics.series} days={data.topics.days} color="hsl(var(--signal))" />
       </div>
+
+      {/* App oder Web? Zwei getrennte Fragen nebeneinander: womit die Leute
+          GERADE arbeiten (30 Tage) und womit sie überhaupt hergekommen sind. */}
+      <ClientCard clients={data.clients} both={data.clients_both} signup={data.signup_clients} />
 
       {/* WAU + Ratsinfo-Import. */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -315,14 +410,47 @@ type LlmUsage = {
   budget_monthly: number; budget_pct: number; budget_level: "ok" | "warn" | "over";
 };
 
+/** Die Namen der LLM-Aufrufe, wie `llm_usage.feature` sie zählt — hier auf
+ *  Deutsch für die Kostentabelle. Der Schlüssel ist der gespeicherte Wert.
+ *
+ *  Die Liste war lange unvollständig, und ein fehlender Eintrag fiel nicht
+ *  auf, solange der Rückfall den deutschen Schlüssel zeigte. Seit die Werte
+ *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
+ *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
-  protokoll_extraktion: "Protokoll-Extraktion",
-  themen_klassifikation: "Themenfeld-Klassifikation",
-  ziel_bewertung: "Ziel-Bewertung",
-  entitaeten_ner: "Entitäten-Erkennung",
-  entitaeten_beschreibung: "Themen-Beschreibungen",
+  attachment_ocr: "Anlagen-Texterkennung",
+  committee_summary: "Ausschuss-Zusammenfassung",
+  daily_find_story: "Fundstück des Tages",
+  decision_places: "Orte eines Beschlusses",
+  deep_decomposition: "Gründliche Recherche — Zerlegung",
+  deep_report: "Gründliche Recherche — Bericht",
+  entity_description: "Themen-Beschreibungen",
+  entity_duplicates: "Entitäten-Dubletten",
+  entity_ner: "Entitäten-Erkennung",
+  exp_session_classification: "Experiment: Sitzungs-Klassifikation",
+  field_recap: "Themenfeld-Rückblick",
+  goal_rating: "Ziel-Bewertung",
+  impact_rating: "Tragweite eines Beschlusses",
+  impact_rating_agenda: "Tragweite eines Tagesordnungspunkts",
+  interest_rating: "Gesprächswert",
+  livestream_transcript: "Livestream-Transkript",
+  minutes_extraction: "Protokoll-Extraktion",
+  party_opinions: "Haltungen der Fraktionen",
+  qa_analysis: "Frag den Rat — Analyse",
+  qa_answer: "Frag den Rat — Antwort",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
-  qa_antwort: "Frag den Rat — Antwort",
+  qa_simple: "Frag den Rat — einfach erklärt",
+  quality_judge: "Eval: Qualitätsurteil",
+  quiz_generation: "Quiz-Fragen erzeugen",
+  quiz_verify: "Quiz-Fragen prüfen",
+  simple_summary: "Lotti erklärt's einfach",
+  social_card_text: "Social-Kartentext",
+  social_critic: "Social-Kritiker",
+  speeches: "Wortbeiträge",
+  topic_auto_description: "Themen-Beschreibung (automatisch)",
+  topic_classification: "Themenfeld-Klassifikation",
+  vagueness_check: "Themen-Vagheitsprüfung",
+  video_results: "Abstimmungsergebnisse aus dem Video",
 };
 
 const BUDGET_TONE: Record<LlmUsage["budget_level"], { dot: string; text: string; bar: string; ring: string }> = {
@@ -557,168 +685,6 @@ function LlmUsageTab() {
   );
 }
 
-/** Prompt-key → Feature-Gruppe (Design 21a: nach Feature gruppiert). Reihenfolge
- *  = Anzeigereihenfolge; unbekannte Präfixe landen unter „Weitere“. */
-const PROMPT_GROUPS: { label: string; match: (k: string) => boolean }[] = [
-  { label: "Frag den Rat", match: (k) => k.startsWith("qa_") },
-  { label: "Stadtrat", match: (k) => k.startsWith("council_") || k.startsWith("protokoll") || k.startsWith("committee_summary") || k.startsWith("ziel") },
-  { label: "Anreicherung", match: (k) => k.startsWith("interest") || k.startsWith("impact") || k.startsWith("entitaeten") || k.startsWith("recap") || k.startsWith("simple_summary") },
-  { label: "Quiz", match: (k) => k.startsWith("quiz") },
-  { label: "Themen", match: (k) => k.startsWith("vagueness") || k.startsWith("topic") },
-];
-function promptGroup(key: string): string {
-  return PROMPT_GROUPS.find((g) => g.match(key))?.label ?? "Weitere";
-}
-
-/** Einfacher Zeilen-Diff content↔default (Design 21a Diff-Vorschau): gleiche
- *  Zeilen als Kontext, Rest als −/+ (grobe, aber ausreichende Vorschau). */
-function lineDiff(oldText: string, newText: string): { type: "ctx" | "del" | "add"; text: string }[] {
-  const a = oldText.split("\n");
-  const b = newText.split("\n");
-  const bSet = new Set(b);
-  const aSet = new Set(a);
-  const out: { type: "ctx" | "del" | "add"; text: string }[] = [];
-  for (const line of a) if (!bSet.has(line)) out.push({ type: "del", text: line });
-  for (const line of b) out.push({ type: aSet.has(line) ? "ctx" : "add", text: line });
-  return out;
-}
-
-function PromptsTab() {
-  const [q, setQ] = useState("");
-  const { data: prompts = [], isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["admin", "prompts"],
-    queryFn: () => api.get<Prompt[]>("/admin/prompts"),
-  });
-
-  if (isPending) return <Spinner />;
-  if (isError) return <ErrorState title="Die Prompts kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
-
-  const needle = q.trim().toLowerCase();
-  const filtered = needle
-    ? prompts.filter((p) => (p.title + p.key + p.description).toLowerCase().includes(needle))
-    : prompts;
-  const groups = PROMPT_GROUPS.map((g) => g.label).concat("Weitere");
-
-  return (
-    <div className="space-y-5">
-      <div className="relative max-w-md">
-        <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Prompt suchen…"
-          className="h-9 w-full rounded-[10px] border border-input bg-card pl-9 pr-3 text-base maus:text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </div>
-      {groups.map((label) => {
-        const items = filtered.filter((p) => promptGroup(p.key) === label);
-        if (!items.length) return null;
-        return (
-          <div key={label} className="space-y-3">
-            <StatKicker>{label}</StatKicker>
-            {items.map((p) => <PromptEditor key={p.key} prompt={p} />)}
-          </div>
-        );
-      })}
-      {filtered.length === 0 && <p className="text-sm text-muted-foreground">Kein Prompt passt zu „{q}".</p>}
-    </div>
-  );
-}
-
-function metaLine(prompt: Prompt): string | null {
-  if (!prompt.is_overridden) return null;
-  const who = prompt.updated_by ? `von ${prompt.updated_by.split("@")[0]}@` : null;
-  let when: string | null = null;
-  if (prompt.updated_at) {
-    const days = Math.round((Date.now() - new Date(prompt.updated_at + "Z").getTime()) / 86400000);
-    when = days <= 0 ? "heute" : days === 1 ? "gestern" : `vor ${days} Tagen`;
-  }
-  return ["geändert", who, when].filter(Boolean).join(" · ");
-}
-
-function PromptEditor({ prompt }: { prompt: Prompt }) {
-  const qc = useQueryClient();
-  const [content, setContent] = useState(prompt.content);
-  const [showDiff, setShowDiff] = useState(false);
-  const dirty = content !== prompt.content;
-  const diff = lineDiff(prompt.default, content);
-  const changed = content !== prompt.default;
-
-  const saveMutation = useMutation({
-    mutationFn: (c: string) => api.put(`/admin/prompts/${prompt.key}`, { content: c }),
-    onSuccess: () => {
-      toast.success("Gespeichert.");
-      qc.invalidateQueries({ queryKey: ["admin", "prompts"] });
-    },
-    onError: (err: Error) => toast.error(err.message || "Fehler beim Speichern."),
-  });
-
-  const resetMutation = useMutation({
-    mutationFn: () => api.post(`/admin/prompts/${prompt.key}/reset`),
-    onSuccess: () => {
-      setContent(prompt.default);
-      qc.invalidateQueries({ queryKey: ["admin", "prompts"] });
-    },
-    onError: () => toast.error("Zurücksetzen fehlgeschlagen."),
-  });
-
-  const busy = saveMutation.isPending || resetMutation.isPending;
-
-  return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-foreground">{prompt.title}</h3>
-            {prompt.is_overridden ? <Badge color="amber">angepasst</Badge> : <Badge color="green">Standard</Badge>}
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{prompt.description}</p>
-          {metaLine(prompt) && <p className="mt-0.5 text-xs text-muted-foreground/80">{metaLine(prompt)}</p>}
-        </div>
-        <code className="text-xs text-muted-foreground">{prompt.key}</code>
-      </div>
-      {/* Prompt-Templates sind „Code" — hier ist Mono gewollt (Platzhalter, Einrückung). */}
-      <Textarea className="mt-3 font-mono" rows={Math.min(16, content.split("\n").length + 1)} value={content} onChange={(e) => setContent(e.target.value)} />
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => saveMutation.mutate(content)} disabled={busy || !dirty}>
-          {saveMutation.isPending ? "Speichern…" : "Speichern"}
-        </Button>
-        {changed && (
-          <Button variant="secondary" size="sm" onClick={() => setShowDiff((s) => !s)}>
-            {showDiff ? "Diff ausblenden" : "Diff zu Standard"}
-          </Button>
-        )}
-        {prompt.is_overridden && (
-          <Button variant="secondary" size="sm" onClick={() => resetMutation.mutate()} disabled={busy}>
-            Auf Standard zurücksetzen
-          </Button>
-        )}
-        {dirty && <span className="text-xs text-amber-600">Ungespeicherte Änderungen</span>}
-      </div>
-      {showDiff && changed && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-border">
-          <p className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">Diff-Vorschau · {prompt.key}</p>
-          <div className="max-h-72 overflow-auto font-mono text-[11px] leading-relaxed">
-            {diff.map((d, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "whitespace-pre-wrap px-3 py-0.5",
-                  d.type === "del" && "bg-destructive/10 text-destructive",
-                  d.type === "add" && "bg-green-500/10 text-green-700 dark:text-green-400",
-                  d.type === "ctx" && "text-muted-foreground",
-                )}
-              >
-                {d.type === "del" ? "− " : d.type === "add" ? "+ " : "  "}{d.text || " "}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 /** Aktivitäts-Ampel aus dem letzten Aktivitätstag (Design 20a). */
 function activitySignal(lastSeen: string | null): { dot: string; label: string } {
   if (!lastSeen) return { dot: "bg-muted-foreground/40", label: "nie aktiv" };
@@ -730,7 +696,8 @@ function activitySignal(lastSeen: string | null): { dot: string; label: string }
 }
 
 const USER_FEATURE_LABEL: [keyof AdminUserDetail["features"], string][] = [
-  ["ki_frage", "KI-Frage"], ["suche", "Beschluss-Suche"], ["quiz", "Quiz"], ["analyse", "Analyse"], ["karte", "Stadtkarte"],
+  ["ki_frage", "KI-Frage"], ["research", "Gründliche Recherche"], ["suche", "Beschluss-Suche"],
+  ["quiz", "Quiz"], ["analyse", "Analyse"], ["karte", "Stadtkarte"],
 ];
 
 function UsersTab({ currentUserId }: { currentUserId: number }) {
@@ -764,9 +731,12 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
             const chips = [
               u.n_topics > 0 && `${u.n_topics} ${u.n_topics === 1 ? "Thema" : "Themen"}`,
               u.n_ki > 0 && `${u.n_ki} KI-Fragen`,
-              u.n_abos > 0 && `${u.n_abos} Abos`,
+              u.n_subscriptions > 0 && `${u.n_subscriptions} Abos`,
               u.n_quiz > 0 && "Quiz",
             ].filter(Boolean) as string[];
+            // Womit gearbeitet wird — steht getrennt von den Inhalts-Chips, weil
+            // es eine andere Art Auskunft ist (Kanal, nicht Menge).
+            const womit = clientKurz(u.clients);
             return (
               <button key={u.id} onClick={() => setSelected(u.id)}
                 className={cn("grid w-full grid-cols-[1fr_auto_auto] items-center gap-2.5 px-4 py-2.5 text-left transition-colors hover:bg-accent",
@@ -778,6 +748,9 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                     {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">wartet</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
+                    {womit && (
+                      <span className="rounded bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">{womit}</span>
+                    )}
                     {chips.length ? chips.map((c) => (
                       <span key={c} className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">{c}</span>
                     )) : <span className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">noch nichts angelegt</span>}
@@ -821,7 +794,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
     onError: () => toast.error("Status konnte nicht geändert werden."),
   });
   const limitsMutation = useMutation({
-    mutationFn: (limits: { deep_limit: number | null; limits_frei: boolean }) =>
+    mutationFn: (limits: { deep_limit: number | null; limits_unlocked: boolean }) =>
       api.put(`/admin/users/${userId}/limits`, limits),
     onSuccess: () => { toast.success("Limits aktualisiert."); invalidate(); },
     onError: () => toast.error("Limits konnten nicht gespeichert werden."),
@@ -831,18 +804,66 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
 
   const sig = activitySignal(data.last_seen);
   const login = data.apple_linked ? "Apple-Login" : data.has_password ? "Passwort" : "Apple-Login";
+  // „Wie angemeldet" heißt hier zweierlei: mit welchem Verfahren (Apple oder
+  // Passwort) und von welchem Client aus. Beides gehört in die Kopfzeile.
+  const woher = data.signup_client ? clientLabel(data.signup_client) : null;
+  // Nur Gemessenes zeigen. `unknown` sind Zeilen von vor der Messung — sie als
+  // eigenen Balken zu führen behauptete eine Plattform, die niemand kennt.
+  const nutzung = Object.entries((data.clients ?? {}) as Record<string, number>)
+    .filter(([id, n]) => id !== "unknown" && n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const nutzungGesamt = nutzung.reduce((s, [, n]) => s + n, 0);
+  const fuehrend = hauptClient((data.clients ?? {}) as Record<string, number>);
   return (
     <Card className="bg-muted/20 p-5">
       <div className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{data.email[0].toUpperCase()}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-bold text-foreground">{data.email}</p>
-          <p className="text-xs text-muted-foreground">seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}</p>
+          <p className="text-xs text-muted-foreground">
+            seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}
+            {woher && <> · über {woher} registriert</>}
+          </p>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground lg:hidden" aria-label="Schließen">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
         </button>
       </div>
+
+      {/* Womit gearbeitet wird (Zugriffe je Client). Anteile statt roher
+          Zahlen: Die Frage ist „App oder Web?", nicht „wie viele Requests". */}
+      <StatKickerSpaced>Womit genutzt</StatKickerSpaced>
+      {nutzung.length ? (
+        <div className="mt-2 flex flex-col gap-1.5">
+          <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+            {nutzung.map(([id, n]) => (
+              <span key={id} title={`${clientLabel(id)}: ${n}`}
+                className={cn("h-full", clientFarbe(id))}
+                style={{ width: `${(n / nutzungGesamt) * 100}%` }} />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {nutzung.map(([id, n]) => (
+              <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                <span className={cn("h-2 w-2 rounded-full", clientFarbe(id))} />
+                {clientLabel(id)}
+                <span className="font-semibold tabular-nums text-foreground">
+                  {Math.round((n / nutzungGesamt) * 100)} %
+                </span>
+              </span>
+            ))}
+            {nutzung.length > 1 && fuehrend && (
+              <span className="inline-flex items-center rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground">
+                überwiegend {clientLabel(fuehrend)}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Noch nichts gemessen — die Zuordnung läuft erst seit 09/2026 mit.
+        </p>
+      )}
 
       <StatKickerSpaced>Genutzte Features</StatKickerSpaced>
       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -858,13 +879,13 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
       <StatKickerSpaced>Angelegt</StatKickerSpaced>
       <div className="mt-2 flex flex-col gap-1.5">
         <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
-        <DetailRow label={`${data.abos.length} Ausschuss-${data.abos.length === 1 ? "Abo" : "Abos"}`} value={data.abos.slice(0, 4).join(", ") || "—"} />
+        <DetailRow label={`${data.subscriptions.length} Ausschuss-${data.subscriptions.length === 1 ? "Abo" : "Abos"}`} value={data.subscriptions.slice(0, 4).join(", ") || "—"} />
         <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : data.delivery_channel === "off" ? "Aus" : "E-Mail"} />
-        <DetailRow label="Gespräche speichern" value={data.qa_speichern === 1 ? "An" : data.qa_speichern === 0 ? "Bewusst aus" : "Nie gefragt"} />
+        <DetailRow label="Gespräche speichern" value={data.saves_conversations === 1 ? "An" : data.saves_conversations === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
 
       <StatKickerSpaced>Aktivität (30 Tage)</StatKickerSpaced>
-      <MiniBars values={data.verlauf} days={data.verlauf_days} height={38} highlightLast={false} className="mt-2" />
+      <MiniBars values={data.history} days={data.history_days} height={38} highlightLast={false} className="mt-2" />
 
       {!isSelf && (
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
@@ -898,22 +919,22 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
           onClick={() => {
             const el = document.getElementById(`deep-limit-${data.id}`) as HTMLInputElement | null;
             const roh = (el?.value ?? "").trim();
-            const wert = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
-            if (wert !== null && Number.isNaN(wert)) return;
-            limitsMutation.mutate({ deep_limit: wert, limits_frei: data.limits_frei });
+            const value = roh === "" ? null : Math.max(0, Math.min(999, Number(roh)));
+            if (value !== null && Number.isNaN(value)) return;
+            limitsMutation.mutate({ deep_limit: value, limits_unlocked: data.limits_unlocked });
           }}>
           Speichern
         </Button>
         <Button variant="secondary" size="sm"
-          onClick={() => limitsMutation.mutate({ deep_limit: data.deep_limit, limits_frei: !data.limits_frei })}>
-          {data.limits_frei ? "Rate-Limits wieder an" : "Rate-Limits aus"}
+          onClick={() => limitsMutation.mutate({ deep_limit: data.deep_limit, limits_unlocked: !data.limits_unlocked })}>
+          {data.limits_unlocked ? "Rate-Limits wieder an" : "Rate-Limits aus"}
         </Button>
       </div>
       <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground/70">
         {data.deep_limit === 0 ? "Recherche: unbegrenzt." : data.deep_limit != null
           ? `Recherche: ${data.deep_limit}/Tag.` : "Recherche: Standard (5/Tag)."}
         {" "}0 = unbegrenzt, leer = Standard.
-        {data.limits_frei && " · Rate-Limits (schnelle Frage, Parteien, Teilen) sind für dieses Konto AUS."}
+        {data.limits_unlocked && " · Rate-Limits (schnelle Frage, Parteien, Teilen) sind für dieses Konto AUS."}
       </p>
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/70">
         Alles server-aggregiert & nur für Admins; nur eigene App-Aktivität, keine Dritt-Analytics.
@@ -938,7 +959,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 /** Schlecht bewertete Quizfragen (👎) sichten und ausmustern. Ausgemusterte
  *  Fragen fliegen aus künftigen Runden; der nächste Generierungslauf füllt das
  *  Gebiet wieder auf. Datenquelle: GET /admin/quiz/flagged. */
-const AREA_TYPE_LABEL: Record<string, string> = { stadtteil: "", wahlbereich: "Wahlbereich ", thema: "" };
+const AREA_TYPE_LABEL: Record<string, string> = { district: "", electoral_district: "Wahlbereich ", topic: "" };
 
 function QuizModerationTab() {
   const qc = useQueryClient();
@@ -948,7 +969,7 @@ function QuizModerationTab() {
   });
   const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin", "quiz", "flagged"],
-    queryFn: () => api.get<{ flagged: QuizFlagged[] }>("/admin/quiz/flagged"),
+    queryFn: () => vertrag.get("/admin/quiz/flagged"),
   });
 
   const retire = useMutation({
@@ -965,16 +986,16 @@ function QuizModerationTab() {
   if (isError) return <ErrorState title="Die Bewertungen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
   const flagged = data?.flagged ?? [];
   const stats = statsQuery.data;
-  const low = stats?.gebiete_niedrig ?? [];
+  const low = stats?.weak_categories ?? [];
 
   return (
     <div className="space-y-5">
       {/* Kennzahlen (21a). */}
       {stats && (
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.fragen_aktiv.toLocaleString("de-DE")}</p><p className="mt-1 text-[11px] text-muted-foreground">Fragen aktiv</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.questions_active.toLocaleString("de-DE")}</p><p className="mt-1 text-[11px] text-muted-foreground">Fragen aktiv</p></Card>
           <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.avg_accuracy} %</p><p className="mt-1 text-[11px] text-muted-foreground">⌀ Trefferquote</p></Card>
-          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.gemeldet}</p><p className="mt-1 text-[11px] text-muted-foreground">gemeldet 👎</p></Card>
+          <Card className="p-3.5"><p className="font-display text-xl font-extrabold leading-none tabular-nums">{stats.reported}</p><p className="mt-1 text-[11px] text-muted-foreground">gemeldet 👎</p></Card>
         </div>
       )}
 
@@ -1033,10 +1054,10 @@ function QuizModerationTab() {
 type PlaceReviewStatus = "pending" | "concrete" | "approved" | "alias" | "rejected";
 
 const concretePlaceKinds = [
-  ["strasse", "Straße"], ["platz", "Platz"],
-  ["gebaeude", "Gebäude"], ["gewaesser", "Gewässer"],
-  ["anlage", "Anlage oder Gelände"], ["bauwerk", "Bauwerk"],
-  ["verkehrsweg", "Verkehrsweg"],
+  ["street", "Straße"], ["square", "Platz"],
+  ["building", "Gebäude"], ["water", "Gewässer"],
+  ["facility", "Anlage oder Gelände"], ["structure", "Bauwerk"],
+  ["route", "Verkehrsweg"],
 ] as const;
 
 function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
@@ -1049,8 +1070,8 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
   const [name, setName] = useState(candidate.review_name ?? candidate.name);
   const [placeId, setPlaceId] = useState(candidate.review_place_id ?? candidate.slug);
   const [kind, setKind] = useState(
-    candidate.status === "approved" ? candidate.review_kind ?? "quartier" : "quartier");
-  const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.ortsbereich_id ?? "");
+    candidate.status === "approved" ? candidate.review_kind ?? "neighborhood" : "neighborhood");
+  const [parentId, setParentId] = useState(candidate.parent_id ?? candidate.local_area_id ?? "");
   const [aliases, setAliases] = useState((candidate.aliases ?? []).join(", "));
   const [description, setDescription] = useState(candidate.description ?? "");
   const [sourceUrl, setSourceUrl] = useState(candidate.source_url ?? "");
@@ -1060,11 +1081,11 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
     ? candidate.review_kind as typeof concretePlaceKinds[number][0]
     : concretePlaceKinds.some(([key]) => key === candidate.kind)
       ? candidate.kind as typeof concretePlaceKinds[number][0]
-      : "strasse";
+      : "street";
   const [concreteKind, setConcreteKind] = useState(initialConcreteKind);
-  const primaries = catalog.places.filter((p) => p.kind === "ortsbereich");
+  const primaries = catalog.places.filter((p) => p.kind === "local_area");
   const targets = catalog.places.filter((p) => p.id !== placeId);
-  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "ortsbereich");
+  const kinds = Object.entries(catalog.kinds).filter(([key]) => key !== "local_area");
   const payload = {
     place_id: placeId, name, kind, parent_id: parentId || null,
     aliases: aliases.split(",").map((value) => value.trim()).filter(Boolean),
@@ -1080,7 +1101,7 @@ function PlaceCandidateCard({ candidate, catalog, busy, onReview, onReopen }: {
             <p className="font-semibold">{candidate.name}</p>
             <Badge color="slate">{candidate.kind}</Badge>
             <Badge color={candidate.lat != null ? "green" : "amber"}>
-              {candidate.lat != null ? `verortet · ${candidate.stadtteil ?? "Oldenburg"}` : "ohne Koordinate"}
+              {candidate.lat != null ? `verortet · ${candidate.district ?? "Oldenburg"}` : "ohne Koordinate"}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">

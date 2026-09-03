@@ -6,7 +6,7 @@ Falle, die beim Vermessen der sechs Jahrgänge aufgefallen ist.
 
 Der Aufbau folgt ``tests/test_anlagenspiegel.py``.
 """
-from council import kennzahlen as kz
+from council import indicators as kz
 
 # Dok 295295, Rechenschaftsbericht 2024 — fünf Jahresspalten, Beschriftungen
 # über bis zu drei Zeilen, Werte in drei Formaten (Prozent, Tausenderpunkt,
@@ -103,7 +103,7 @@ def test_fuenf_jahresspalten_werden_gelesen():
 def test_mehrzeilige_beschriftungen_finden_ihre_kennzahl():
     zeilen, unbekannt = kz.parse_kennzahlen(TABELLE_2024, 2024)
     assert unbekannt == []
-    werte = {(z["kennzahl"], z["jahr"]): z["wert"] for z in zeilen}
+    werte = {(z["indicator"], z["year"]): z["value"] for z in zeilen}
     assert werte[("eigenkapitalquote_1", 2020)] == 53.15
     assert werte[("einwohner", 2024)] == 176_068
     assert werte[("verschuldung_je_einwohner", 2024)] == 1226.28
@@ -118,11 +118,11 @@ def test_neuverschuldung_ist_keine_verschuldung():
     der Verschuldung, und zwei Zeilen stritten sich um denselben Schlüssel.
     """
     zeilen, _ = kz.parse_kennzahlen(TABELLE_2024, 2024)
-    keys = {z["kennzahl"] for z in zeilen}
+    keys = {z["indicator"] for z in zeilen}
     assert "neuverschuldung_je_einwohner" in keys
     assert "verschuldung_je_einwohner" in keys
-    neu = [z for z in zeilen if z["kennzahl"] == "neuverschuldung_je_einwohner"]
-    assert all(z["wert"] < 0 for z in neu)          # nicht die andere Zeile
+    neu = [z for z in zeilen if z["indicator"] == "neuverschuldung_je_einwohner"]
+    assert all(z["value"] < 0 for z in neu)          # nicht die andere Zeile
 
 
 def test_die_fussnote_wird_keine_tabellenzeile():
@@ -132,8 +132,8 @@ def test_die_fussnote_wird_keine_tabellenzeile():
     im Bestand vor: 2024 bricht die Zeile vor der Zahl, 2022 mitten im Wort
     („Ei\\nnwohnerzahl").
     """
-    for text, jahr in ((TABELLE_2024, 2024), (TABELLE_2022, 2022)):
-        zeilen, unbekannt = kz.parse_kennzahlen(text, jahr)
+    for text, year in ((TABELLE_2024, 2024), (TABELLE_2022, 2022)):
+        zeilen, unbekannt = kz.parse_kennzahlen(text, year)
         assert unbekannt == []
         assert not any("nwohnerzahl" in z["label"].lower() for z in zeilen)
 
@@ -141,7 +141,7 @@ def test_die_fussnote_wird_keine_tabellenzeile():
 def test_seitenmarke_wird_kein_wert():
     """„RB 121" steht mitten im Text, und „121" passt auf das Zahlenmuster."""
     zeilen, _ = kz.parse_kennzahlen(TABELLE_2024, 2024)
-    assert 121 not in {z["wert"] for z in zeilen}
+    assert 121 not in {z["value"] for z in zeilen}
 
 
 def test_aktive_personalintensitaet_ist_dieselbe_zeile():
@@ -153,14 +153,14 @@ def test_aktive_personalintensitaet_ist_dieselbe_zeile():
     """
     zeilen, unbekannt = kz.parse_kennzahlen(TABELLE_2022, 2022)
     assert unbekannt == []
-    assert {z["kennzahl"] for z in zeilen} == {"personalintensitaet"}
+    assert {z["indicator"] for z in zeilen} == {"personalintensitaet"}
     assert len(zeilen) == 5
 
 
 def test_tippfehler_im_rechenweg_wird_erkannt():
     """Der Bericht 2019 schreibt „Eigenkaptalquote" — ohne i."""
     formeln = kz.parse_formeln(TABELLE_2019, 2019)
-    keys = {f["kennzahl"] for f in formeln}
+    keys = {f["indicator"] for f in formeln}
     assert "eigenkapitalquote_1" in keys
 
 
@@ -171,7 +171,7 @@ def test_rechenweg_endet_nicht_in_der_naechsten_ueberschrift():
     2019 keine Leerzeile. Wer bis zur nächsten Leerzeile liest, zieht die
     Überschrift in die Formel.
     """
-    formeln = {f["kennzahl"]: f["formel"] for f in kz.parse_formeln(TABELLE_2019, 2019)}
+    formeln = {f["indicator"]: f["formula"] for f in kz.parse_formeln(TABELLE_2019, 2019)}
     assert formeln["eigenkapitalquote_1"] == \
         "100 * Nettoposition (ohne Sonderposten) / Bilanzsumme"
     assert formeln["vermoegen_je_einwohner"] == \
@@ -185,8 +185,8 @@ def test_trennstrich_am_zeilenende_wird_geheilt():
             "Steuerquote\n"
             "Ermittlung: Steuerträge und ähnliche Abgaben * 100 / ordentliche "
             "Gesamtaufwen-\ndungen\n")
-    formel = kz.parse_formeln(text, 2019)[0]["formel"]
-    assert formel.endswith("ordentliche Gesamtaufwendungen")
+    formula = kz.parse_formeln(text, 2019)[0]["formula"]
+    assert formula.endswith("ordentliche Gesamtaufwendungen")
 
 
 def test_umbruch_ohne_trennstrich_wird_auch_geheilt():
@@ -206,7 +206,7 @@ def test_umbruch_ohne_trennstrich_wird_auch_geheilt():
             "   \n"
             "Steuerquote:  \n"
             "Ermittlung: Steuerträge und ähnliche Abgaben * 100 / ordentliche Gesamtaufwendungen\n")
-    formeln = {f["kennzahl"]: f["formel"] for f in kz.parse_formeln(text, 2021)}
+    formeln = {f["indicator"]: f["formula"] for f in kz.parse_formeln(text, 2021)}
     assert formeln["personalintensitaet"] == (
         "Aufwand für Personal (inklusive Versorgung) * 100 / ordentliche "
         "Gesamtaufwendungen")
@@ -227,12 +227,12 @@ def test_toleranz_kommt_aus_der_gedruckten_genauigkeit():
 def test_fassungen_trennen_rechenwege_und_nicht_schreibweisen():
     """Neuer Rechenweg = neue Nummer. „inkl." und „inklusive" sind einer."""
     formeln = [
-        {"kennzahl": "vermoegen_je_einwohner", "bericht_jahr": 2019,
-         "formel": "Gesamtvermögen (inkl. Liquide Mittel) / Einwohnerzahl"},
-        {"kennzahl": "vermoegen_je_einwohner", "bericht_jahr": 2020,
-         "formel": "Gesamtvermögen (inklusive Liquide Mittel) / Einwohnerzahl"},
-        {"kennzahl": "vermoegen_je_einwohner", "bericht_jahr": 2022,
-         "formel": "Aktiva (ohne Aktive Rechnungsabgrenzung) / Einwohnerzahl"},
+        {"indicator": "vermoegen_je_einwohner", "report_year": 2019,
+         "formula": "Gesamtvermögen (inkl. Liquide Mittel) / Einwohnerzahl"},
+        {"indicator": "vermoegen_je_einwohner", "report_year": 2020,
+         "formula": "Gesamtvermögen (inklusive Liquide Mittel) / Einwohnerzahl"},
+        {"indicator": "vermoegen_je_einwohner", "report_year": 2022,
+         "formula": "Aktiva (ohne Aktive Rechnungsabgrenzung) / Einwohnerzahl"},
     ]
     n = kz.fassungen(formeln)
     assert n[("vermoegen_je_einwohner", 2019)] == n[("vermoegen_je_einwohner", 2020)]
@@ -247,9 +247,9 @@ def test_ueberlappung_unterscheidet_korrektur_und_definitionswechsel():
     Wechsel im Bestand gar keine sind: „Gesamtschulden" wurde „Schulden",
     und die Werte blieben auf den Cent gleich.
     """
-    def zelle(bericht, wert, fassung=1, kennzahl="steuerquote"):
-        return {"kennzahl": kennzahl, "jahr": 2021, "bericht_jahr": bericht,
-                "wert": wert, "stellen": 2, "fassung": fassung}
+    def zelle(bericht, value, version=1, indicator="steuerquote"):
+        return {"indicator": indicator, "year": 2021, "report_year": bericht,
+                "value": value, "decimals": 2, "version": version}
 
     bestaetigt, funde = kz.ueberlappungsprobe([
         zelle(2021, 45.90), zelle(2022, 49.05), zelle(2023, 45.92),
@@ -274,15 +274,15 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
     um rund 880 €.
     """
     zeilen = [
-        {"kennzahl": "vermoegen_je_einwohner", "jahr": 2024, "bericht_jahr": 2024,
-         "wert": 8294.05, "stellen": 2},
-        {"kennzahl": "einwohner", "jahr": 2024, "bericht_jahr": 2024,
-         "wert": 176_068.0, "stellen": 0},
+        {"indicator": "vermoegen_je_einwohner", "year": 2024, "report_year": 2024,
+         "value": 8294.05, "decimals": 2},
+        {"indicator": "population", "year": 2024, "report_year": 2024,
+         "value": 176_068.0, "decimals": 0},
     ]
-    bilanz = [{"jahr": 2024, "rolle": r, "wert": w} for r, w in (
-        ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
-        ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),
-        ("aktive_rap", 19_671_338.55))]
+    bilanz = [{"year": 2024, "role": r, "value": w} for r, w in (
+        ("intangible_assets", 91_394_171.68), ("tangible_assets", 605_573_107.06),
+        ("financial_assets", 645_348_451.45), ("cash_and_equivalents", 118_001_891.26),
+        ("prepaid_expenses", 19_671_338.55))]
     # 8.294,05 € × 176.068 = 1.460.316.795,40 €; Aktiva ohne aktive
     # Rechnungsabgrenzung = 1.460.317.621,45 €. Die Differenz von 826,05 € auf
     # 1,46 Mrd. € ist genau das, was die gedruckte Cent-Stelle offenlässt —
@@ -290,7 +290,7 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
     geprueft, risse = kz.vermoegensprobe(zeilen, bilanz)
     assert (geprueft, risse) == (1, [])
 
-    zeilen[0]["wert"] = 8300.00
+    zeilen[0]["value"] = 8300.00
     geprueft, risse = kz.vermoegensprobe(zeilen, bilanz)
     assert geprueft == 0 and len(risse) == 1
 
@@ -298,44 +298,44 @@ def test_vermoegensprobe_multipliziert_zwei_zeilen_gegen_die_bilanz():
 def test_vermoegensprobe_mischt_keine_berichte():
     """Zwei Zeilen aus zwei Berichten wären eine andere Rechnung."""
     zeilen = [
-        {"kennzahl": "vermoegen_je_einwohner", "jahr": 2024, "bericht_jahr": 2024,
-         "wert": 8294.05, "stellen": 2},
-        {"kennzahl": "einwohner", "jahr": 2024, "bericht_jahr": 2023,
-         "wert": 176_068.0, "stellen": 0},
+        {"indicator": "vermoegen_je_einwohner", "year": 2024, "report_year": 2024,
+         "value": 8294.05, "decimals": 2},
+        {"indicator": "population", "year": 2024, "report_year": 2023,
+         "value": 176_068.0, "decimals": 0},
     ]
-    bilanz = [{"jahr": 2024, "rolle": "sachvermoegen", "wert": 1.0}]
+    bilanz = [{"year": 2024, "role": "tangible_assets", "value": 1.0}]
     assert kz.vermoegensprobe(zeilen, bilanz) == (0, [])
 
 
 def test_bilanz_gegenprobe_kennt_nur_die_drei_quoten():
     """Bei den je-Kopf-Zahlen rechnet die Stadt mit anderer Abgrenzung.
 
-    „Verschuldung je Einwohner" heißt hier 1.226 €, in ``council_schulden``
+    „Verschuldung je Einwohner" heißt hier 1.226 €, in ``council_debt``
     1.673 € — verschiedene Abgrenzung, eigenes Label, niemals in eine Reihe.
     Ein Abgleich meldete dort verlässlich eine Differenz, die keine ist.
     """
     assert set(kz.BILANZ_QUOTE) == {
         "eigenkapitalquote_2", "anlagenintensitaet", "infrastrukturquote"}
 
-    zeilen = [{"kennzahl": "anlagenintensitaet", "jahr": 2024, "bericht_jahr": 2024,
-               "wert": 40.92, "stellen": 2}]
-    bilanz = [{"jahr": 2024, "rolle": r, "wert": w} for r, w in (
-        ("immaterielles_vermoegen", 91_394_171.68), ("sachvermoegen", 605_573_107.06),
-        ("finanzvermoegen", 645_348_451.45), ("liquide_mittel", 118_001_891.26),
-        ("aktive_rap", 19_671_338.55))]
+    zeilen = [{"indicator": "anlagenintensitaet", "year": 2024, "report_year": 2024,
+               "value": 40.92, "decimals": 2}]
+    bilanz = [{"year": 2024, "role": r, "value": w} for r, w in (
+        ("intangible_assets", 91_394_171.68), ("tangible_assets", 605_573_107.06),
+        ("financial_assets", 645_348_451.45), ("cash_and_equivalents", 118_001_891.26),
+        ("prepaid_expenses", 19_671_338.55))]
     assert kz.gegen_bilanz(zeilen, bilanz) == (1, [])
 
-    zeilen[0]["wert"] = 44.0
+    zeilen[0]["value"] = 44.0
     geprueft, risse = kz.gegen_bilanz(zeilen, bilanz)
     assert geprueft == 0 and len(risse) == 1
 
 
 def test_neueste_nimmt_den_juengsten_bericht():
     zeilen = [
-        {"kennzahl": "steuerquote", "jahr": 2021, "bericht_jahr": 2021, "wert": 45.90},
-        {"kennzahl": "steuerquote", "jahr": 2021, "bericht_jahr": 2023, "wert": 45.92},
-        {"kennzahl": "steuerquote", "jahr": 2021, "bericht_jahr": 2022, "wert": 49.05},
+        {"indicator": "steuerquote", "year": 2021, "report_year": 2021, "value": 45.90},
+        {"indicator": "steuerquote", "year": 2021, "report_year": 2023, "value": 45.92},
+        {"indicator": "steuerquote", "year": 2021, "report_year": 2022, "value": 49.05},
     ]
-    reihe = kz.neueste(zeilen)
-    assert len(reihe) == 1
-    assert reihe[0]["wert"] == 45.92 and reihe[0]["bericht_jahr"] == 2023
+    series = kz.neueste(zeilen)
+    assert len(series) == 1
+    assert series[0]["value"] == 45.92 and series[0]["report_year"] == 2023

@@ -3,7 +3,7 @@
 // <Zeitstrahl> — der liegende Verfahrens-Strahl (GB-11).
 //
 // Ein Kreis hat kein Heute — der Strahl schon (H3-06). Er zeigt, WANN die
-// Stationen eines Verfahrens liegen, mit einem „Sie sind hier"-Pin auf dem
+// Stationen eines Verfahrens liegen, mit einem „Du bist hier"-Pin auf dem
 // aktuellen Datum. Die Geometrie rechnet `scaleTime` (d3-scale), die
 // Monats-Ticks kommen aus `scale.ticks()` — das sind die d3-time-Intervalle
 // (GB-15: Beifang von scaleTime, offiziell nutzbar). Gerendert wird eigenes
@@ -56,10 +56,10 @@ export type ZeitstrahlStation = {
 export type ZeitstrahlTermin = {
   label: string;
   /** ISO-Datum. */
-  datum: string;
+  date: string;
   /** Herkunft ist Teil des Vertrags: Der Strahl zeigt nur Termine, die
    *  wirklich im Ratskalender stehen — nichts Erratenes. */
-  quelle: "kalender";
+  source: "kalender";
 };
 
 // ---- Beschriftung: Intl statt d3-time-format (GB-15) ---------------------
@@ -122,7 +122,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
   const { skala, ticks } = useMemo(() => {
     const daten = sortiert.flatMap((s) => [datumAus(s.von), datumAus(s.bis ?? s.von)]);
     daten.push(heute);
-    if (termin) daten.push(datumAus(termin.datum));
+    if (termin) daten.push(datumAus(termin.date));
     const min = new Date(Math.min(...daten.map((d) => +d)));
     const max = new Date(Math.max(...daten.map((d) => +d)));
     // Auf Monatsgrenzen erweitern, damit weder der erste noch der letzte
@@ -149,7 +149,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
       const x1 = skala(datumAus(s.bis ?? s.von));
       const anker = (x0 + x1) / 2;
       const gewuenscht = Math.min(Math.max(anker - NOTE_W / 2, 0), Math.max(breite - NOTE_W, 0));
-      return { s, x0, x1, anker, gewuenscht, links: gewuenscht, ebene: 0 };
+      return { s, x0, x1, anker, gewuenscht, links: gewuenscht, level: 0 };
     });
     const frei = [-Infinity, -Infinity, -Infinity];
     const rechts = Math.max(breite - NOTE_W, 0);
@@ -158,28 +158,28 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
       const grenze = n.s.bis
         ? Math.max(n.x1 - 48, n.gewuenscht)
         : n.gewuenscht + 40;
-      let ebene = kandidaten.findIndex((k, e) => k >= frei[e] && k <= grenze);
-      if (ebene === -1) {
+      let level = kandidaten.findIndex((k, e) => k >= frei[e] && k <= grenze);
+      if (level === -1) {
         // Notlösung: die Ebene mit dem kleinsten Versatz.
-        ebene = kandidaten.reduce((best, k, e) => (k < kandidaten[best] ? e : best), 0);
+        level = kandidaten.reduce((best, k, e) => (k < kandidaten[best] ? e : best), 0);
       }
-      n.ebene = ebene;
-      n.links = kandidaten[ebene];
-      frei[ebene] = n.links + NOTE_W + 8;
+      n.level = level;
+      n.links = kandidaten[level];
+      frei[level] = n.links + NOTE_W + 8;
     }
     return platziert;
   })();
 
   // Höhe aus den wirklich belegten Ebenen — meist zwei, am Jahreswechsel
   // drei. Der Strahl rückt entsprechend nach unten.
-  const ebenen = Math.max(...noten.map((n) => n.ebene)) + 1;
+  const ebenen = Math.max(...noten.map((n) => n.level)) + 1;
   const RAIL_TOP = ebenen * EBENE_H + 6;
   const RAIL_MITTE = RAIL_TOP + BAND / 2;
   const H = RAIL_TOP + BAND + (termin ? 64 : 48);
 
   const heuteX = skala(heute);
-  const terminX = termin ? skala(datumAus(termin.datum)) : null;
-  const heuteText = `Sie sind hier · ${TAG_MONAT.format(heute)}`;
+  const terminX = termin ? skala(datumAus(termin.date)) : null;
+  const heuteText = `Du bist hier · ${TAG_MONAT.format(heute)}`;
 
   return (
     <div className={cn(className)}>
@@ -194,12 +194,12 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
           {/* Verbinder Notiz → Strahl. Vor dem Band gezeichnet, damit sie
               darunter enden statt darüber zu liegen. Ist eine Notiz zur
               Seite gerutscht, läuft ihr Verbinder schräg zum Anker. */}
-          {noten.map(({ s, anker, links, ebene }) => {
+          {noten.map(({ s, anker, links, level }) => {
             const vonX = Math.min(Math.max(anker, links + 12), links + NOTE_W - 12);
             return (
               <line
                 key={`v-${s.label}`}
-                x1={vonX} y1={ebene * EBENE_H + NOTE_H - 6} x2={anker} y2={RAIL_TOP}
+                x1={vonX} y1={level * EBENE_H + NOTE_H - 6} x2={anker} y2={RAIL_TOP}
                 strokeWidth={1}
                 strokeDasharray={s.ungefaehr ? "3 3" : undefined}
                 className="stroke-border"
@@ -284,7 +284,7 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
                 textAnchor="middle" fontSize={9}
                 className="fill-muted-foreground font-mono uppercase tracking-[0.08em]"
               >
-                {termin.label} · {TAG_MONAT.format(datumAus(termin.datum))} · Ratskalender
+                {termin.label} · {TAG_MONAT.format(datumAus(termin.date))} · Ratskalender
               </text>
             </>
           )}
@@ -292,11 +292,11 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
 
         {/* Die Notizen als echter Text über dem Strahl — Links bleiben Links,
             die Vorlesehilfe liest sie in Zeitreihenfolge. */}
-        {noten.map(({ s, links, ebene }) => (
+        {noten.map(({ s, links, level }) => (
           <div
             key={s.label}
             className="absolute"
-            style={{ left: links, top: ebene * EBENE_H, width: NOTE_W }}
+            style={{ left: links, top: level * EBENE_H, width: NOTE_W }}
           >
             <StationsText s={s} kompakt />
           </div>
@@ -340,8 +340,8 @@ export function Zeitstrahl({ stationen, heute, termin, beleg, className }: {
                 <>
                   <p className="text-[13px] font-semibold leading-snug">{termin.label}</p>
                   <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.07em] text-muted-foreground">
-                    {TAG_MONAT.format(datumAus(termin.datum))}{" "}
-                    {datumAus(termin.datum).getFullYear()} · aus dem Ratskalender
+                    {TAG_MONAT.format(datumAus(termin.date))}{" "}
+                    {datumAus(termin.date).getFullYear()} · aus dem Ratskalender
                   </p>
                 </>
               ) : e.station ? (
@@ -393,7 +393,7 @@ function StationsText({ s, kompakt = false }: { s: ZeitstrahlStation; kompakt?: 
 type SenkrechtEintrag = {
   key: string;
   art: "station" | "heute" | "termin";
-  datum: string;
+  date: string;
   station?: ZeitstrahlStation;
 };
 
@@ -407,9 +407,9 @@ function senkrechteEintraege(
   const iso = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const liste: SenkrechtEintrag[] = stationen.map((s) => ({
-    key: `s-${s.label}`, art: "station", datum: s.von, station: s,
+    key: `s-${s.label}`, art: "station", date: s.von, station: s,
   }));
-  liste.push({ key: "heute", art: "heute", datum: iso(heute) });
-  if (termin) liste.push({ key: "termin", art: "termin", datum: termin.datum });
-  return liste.sort((a, b) => a.datum.localeCompare(b.datum));
+  liste.push({ key: "heute", art: "heute", date: iso(heute) });
+  if (termin) liste.push({ key: "termin", art: "termin", date: termin.date });
+  return liste.sort((a, b) => a.date.localeCompare(b.date));
 }

@@ -73,7 +73,7 @@ gerundet wird nichts, und die Seite sagt, dass das Jahr fehlt und warum.
 
 Warum Plan und Ist hier **nicht** gegeneinander stehen
 -------------------------------------------------------
-Die naheliegende Seite wäre „geplant gegen gebaut": ``council_investitionen``
+Die naheliegende Seite wäre „geplant gegen gebaut": ``council_investments``
 führt für 2022–2025 die geplanten Auszahlungen, diese Schicht die
 tatsächlichen. Gerechnet ergäbe das Quoten zwischen 41 % und 75 %.
 
@@ -163,20 +163,20 @@ REGELWERK: dict[str, str] = {
 #: zu verbinden — genau das, was die Fußnote des Dokuments untersagt.
 SPALTEN: dict[str, tuple[tuple[str, str], ...]] = {
     "kameral": (
-        ("darlehen", "Gewährung von Darlehen"),
-        ("grundvermoegen", "Erwerb von Grundvermögen"),
-        ("baumassnahmen_k", "Baumaßnahmen"),
-        ("bewegliches_k", "Neuanschaffungen von beweglichen Vermögen"),
-        ("insgesamt", "insgesamt"),
+        ("loans_granted", "Gewährung von Darlehen"),
+        ("real_property", "Erwerb von Grundvermögen"),
+        ("construction_cameral", "Baumaßnahmen"),
+        ("movable_assets_cameral", "Neuanschaffungen von beweglichen Vermögen"),
+        ("total", "insgesamt"),
     ),
     "doppik": (
-        ("zuwendungen", "Aktivierbare Zuwendungen"),
-        ("grundstuecke", "Erwerb von Grundstücken und Gebäuden"),
-        ("baumassnahmen", "Baumaßnahmen"),
-        ("bewegliches", "Erwerb von beweglichem Sachvermögen"),
-        ("finanzanlagen", "Erwerb von Finanzanlagevermögen"),
-        ("sonstige", "Sonstige Investitionstätigkeit"),
-        ("insgesamt", "insgesamt"),
+        ("capitalizable_grants", "Aktivierbare Zuwendungen"),
+        ("land_and_buildings", "Erwerb von Grundstücken und Gebäuden"),
+        ("construction", "Baumaßnahmen"),
+        ("movable_assets", "Erwerb von beweglichem Sachvermögen"),
+        ("financial_assets_acquired", "Erwerb von Finanzanlagevermögen"),
+        ("other_investing", "Sonstige Investitionstätigkeit"),
+        ("total", "insgesamt"),
     ),
 }
 
@@ -225,7 +225,7 @@ def de_zahl(zahl: float, nachkomma: int = 0, vorzeichen: bool = False) -> str:
     return text.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
-def _zelle(feld: str) -> float | None:
+def _zelle(field: str) -> float | None:
     """Ein Tabellenfeld → Zahl, oder ``None``, wenn es keine ist.
 
     Ohne Tausenderpunkt gilt das Feld ungeteilt: ``239`` sind 239 und nicht 23
@@ -235,26 +235,26 @@ def _zelle(feld: str) -> float | None:
     um eine Stelle zu schrumpfen. (Wortgleich zu ``schulden._zelle`` gedacht,
     aber ohne das ``r`` für „revidiert" — 1107 kennt keine revidierten Werte.)
     """
-    feld = feld.strip()
-    if "." not in feld:
-        return float(feld) if feld.isdigit() else None
-    m = _ZELLE.match(feld)
+    field = field.strip()
+    if "." not in field:
+        return float(field) if field.isdigit() else None
+    m = _ZELLE.match(field)
     return float(m.group(1).replace(".", "")) if m else None
 
 
 def erkenne(text: str) -> dict[str, tuple[int, int]]:
     """Welche der beiden Tabellen steckt im Text — und welche Spanne deckt sie?
 
-    Rückgabe ``{regelwerk: (von, bis)}``, leer wenn keine gefunden wurde. Die
+    Rückgabe ``{accounting_system: (von, bis)}``, leer wenn keine gefunden wurde. Die
     Spannen kommen aus den Titeln und nicht aus den gelesenen Zeilen: Sie sind
     damit Angaben des Dokuments, gegen die sich prüfen lässt, ob der Parser
     alle Jahrgänge erwischt hat (:func:`lies` tut das)."""
     flach = re.sub(r"\s+", " ", text or "")
     gefunden: dict[str, tuple[int, int]] = {}
-    for regelwerk, muster in _TITEL.items():
+    for accounting_system, muster in _TITEL.items():
         m = muster.search(flach)
         if m:
-            gefunden[regelwerk] = (int(m.group(1)), int(m.group(2)))
+            gefunden[accounting_system] = (int(m.group(1)), int(m.group(2)))
     return gefunden
 
 
@@ -278,7 +278,7 @@ def _abschnitte(text: str) -> dict[str, str]:
             "doppik": "\n".join(zeilen[schnitt:])}
 
 
-def parse(text: str, regelwerk: str) -> list[dict]:
+def parse(text: str, accounting_system: str) -> list[dict]:
     """Die Datenzeilen **eines** Abschnitts → je Jahrgang ein dict in Euro.
 
     Die Quelle rechnet in Tausend Euro; die dabei behauptete Genauigkeit ist
@@ -288,7 +288,7 @@ def parse(text: str, regelwerk: str) -> list[dict]:
     Zeilen, deren Felderzahl nicht zum Regelwerk passt, werden als
     ``unlesbar`` markiert statt zurechtgebogen; welche das waren, sagt
     :func:`lies`."""
-    spalten = SPALTEN[regelwerk]
+    spalten = SPALTEN[accounting_system]
     zeilen: list[dict] = []
     for roh in (text or "").splitlines():
         m = _ZEILE.match(roh.strip())
@@ -296,18 +296,18 @@ def parse(text: str, regelwerk: str) -> list[dict]:
             continue
         felder = [_zelle(f) for f in m.group(2).split()]
         if len(felder) != len(spalten) or any(w is None for w in felder):
-            zeilen.append({"jahr": int(m.group(1)), "regelwerk": regelwerk,
+            zeilen.append({"year": int(m.group(1)), "accounting_system": accounting_system,
                            "unlesbar": roh.strip()})
             continue
-        zeile: dict = {"jahr": int(m.group(1)), "regelwerk": regelwerk,
+        row: dict = {"year": int(m.group(1)), "accounting_system": accounting_system,
                        "unlesbar": None}
-        for (feld, _), wert in zip(spalten, felder):
-            zeile[feld] = wert * TAUSEND
-        zeilen.append(zeile)
+        for (field, _), value in zip(spalten, felder):
+            row[field] = value * TAUSEND
+        zeilen.append(row)
     return zeilen
 
 
-def zeilensumme(zeile: dict) -> tuple[bool, float]:
+def zeilensumme(row: dict) -> tuple[bool, float]:
     """Ergeben die Auszahlungsarten die ausgewiesene Summe der Zeile?
 
     Rückgabe ``(bestanden, Abweichung in Euro)``. Ohne Toleranz: Die Quelle
@@ -315,10 +315,10 @@ def zeilensumme(zeile: dict) -> tuple[bool, float]:
     den Euro auf. Eine Toleranz würde hier nur den einen Jahrgang durchwinken,
     für den sie gedacht wäre — und der ist mit 1,3 Mio. € ohnehin zu weit weg,
     um von einer Rundungstoleranz gedeckt zu sein."""
-    arten = ARTEN[zeile["regelwerk"]]
-    summe = sum(zeile.get(a) or 0.0 for a in arten)
-    abweichung = summe - (zeile.get("insgesamt") or 0.0)
-    return abweichung == 0.0, abweichung
+    arten = ARTEN[row["accounting_system"]]
+    summe = sum(row.get(a) or 0.0 for a in arten)
+    deviation = summe - (row.get("total") or 0.0)
+    return deviation == 0.0, deviation
 
 
 def lies(text: str) -> dict:
@@ -327,18 +327,18 @@ def lies(text: str) -> dict:
     Rückgabe:
 
     ``zeilen``
-        Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``regelwerk``.
+        Die übernommenen Jahrgänge, aufsteigend. Jede trägt ihr ``accounting_system``.
     ``verworfen``
-        Jahrgänge, die die Probe nicht bestanden haben, mit ``grund`` und
-        ``differenz``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
+        Jahrgänge, die die Probe nicht bestanden haben, mit ``reason`` und
+        ``difference``. Ihre sieben Zahlen stehen nirgends in der Datenbank —
         anders als bei den Schulden gibt es hier keine zweite Probe, die
         wenigstens die Summe trüge (s. Modulkopf).
 
-        ``differenz`` ist die gemessene Lücke in Euro (Arten minus
+        ``difference`` ist die gemessene Lücke in Euro (Arten minus
         ausgewiesene Summe, vorzeichenbehaftet) — als **Zahl** neben dem
         Fließtext und nicht nur in ihm. Der Grund ist ein Satz für Menschen;
         die Zahl daraus zurückzuparsen wäre eine zweite, stille Schnittstelle.
-        Dieselbe Rolle wie ``aufteilung_verworfen`` bei den Schulden
+        Dieselbe Rolle wie ``breakdown_rejected`` bei den Schulden
         (``council/schulden.py``): Sie hält fest, wie groß die Lücke war,
         damit die Seite die Lücke **beziffern** kann statt sie nur zu
         behaupten. ``None``, wo es nichts zu messen gab — eine Zeile, die
@@ -348,7 +348,7 @@ def lies(text: str) -> dict:
         Was die Titel für jede Tabelle ankündigen.
     ``fehlende_jahrgaenge``
         Was daraus fehlt, je Regelwerk. Ein Befund, keine Geschmacksfrage.
-    ``proben``
+    ``probes``
         Was gerechnet wurde, in Zahlen — Grundlage des Beleg-Texts.
     """
     spannen = erkenne(text)
@@ -356,63 +356,63 @@ def lies(text: str) -> dict:
     verworfen: list[dict] = []
     bestanden = gerissen = 0
 
-    for regelwerk, abschnitt in _abschnitte(text).items():
-        if regelwerk not in spannen:
+    for accounting_system, section in _abschnitte(text).items():
+        if accounting_system not in spannen:
             # Kein Titel, keine Tabelle: Ein Abschnitt ohne seinen eigenen
             # Titel ist Beifang aus dem Seitenkopf und keine Datenquelle.
             continue
-        for zeile in parse(abschnitt, regelwerk):
-            if zeile.get("unlesbar"):
+        for row in parse(section, accounting_system):
+            if row.get("unlesbar"):
                 verworfen.append({
-                    "jahr": zeile["jahr"], "regelwerk": regelwerk,
+                    "year": row["year"], "accounting_system": accounting_system,
                     # Keine Differenz: Ohne zerlegte Felder gibt es keine
                     # Summe, die man gegen die ausgewiesene halten könnte.
-                    "differenz": None,
-                    "grund": f"Zeile nicht in {len(SPALTEN[regelwerk])} Felder "
-                             f"zerlegbar: {zeile['unlesbar']!r}"})
+                    "difference": None,
+                    "reason": f"Zeile nicht in {len(SPALTEN[accounting_system])} Felder "
+                             f"zerlegbar: {row['unlesbar']!r}"})
                 continue
-            ok, abweichung = zeilensumme(zeile)
+            ok, deviation = zeilensumme(row)
             bestanden += bool(ok)
             gerissen += not ok
             if not ok:
                 verworfen.append({
-                    "jahr": zeile["jahr"], "regelwerk": regelwerk,
+                    "year": row["year"], "accounting_system": accounting_system,
                     # Die Zahl neben dem Satz — s. Rückgabe-Beschreibung.
-                    "differenz": abweichung,
-                    "grund": f"Zeilensumme um "
-                             f"{de_zahl(abweichung, vorzeichen=True)} € gerissen; "
+                    "difference": deviation,
+                    "reason": f"Zeilensumme um "
+                             f"{de_zahl(deviation, vorzeichen=True)} € gerissen; "
                              f"eine zweite Probe trägt diese Tabelle nicht"})
                 continue
-            uebernommen = dict(zeile)
+            uebernommen = dict(row)
             uebernommen.pop("unlesbar", None)
-            uebernommen["probe"] = "investitionen_ist_zeilensumme"
+            uebernommen["probe"] = "investments_actual_row_total"
             zeilen.append(uebernommen)
 
-    zeilen.sort(key=lambda z: z["jahr"])
+    zeilen.sort(key=lambda z: z["year"])
     luecken: dict[str, list[int]] = {}
-    for regelwerk, (von, bis) in spannen.items():
-        da = {z["jahr"] for z in zeilen if z["regelwerk"] == regelwerk}
+    for accounting_system, (von, bis) in spannen.items():
+        da = {z["year"] for z in zeilen if z["accounting_system"] == accounting_system}
         fehlt = [j for j in range(von, bis + 1) if j not in da]
         if fehlt:
-            luecken[regelwerk] = fehlt
+            luecken[accounting_system] = fehlt
 
     return {
         "zeilen": zeilen,
         "verworfen": verworfen,
         "spannen": spannen,
         "fehlende_jahrgaenge": luecken,
-        "proben": {"bestanden": bestanden, "gerissen": gerissen},
+        "probes": {"bestanden": bestanden, "gerissen": gerissen},
     }
 
 
-def probennachweis(ergebnis: dict) -> str:
+def probennachweis(result: dict) -> str:
     """Der Messwert für die Herkunft — „was ist wirklich gelaufen?".
 
     Steht später im Beleg auf der Seite; deshalb Zahlen und keine Adjektive."""
-    p = ergebnis["proben"]
+    p = result["probes"]
     gesamt = p["bestanden"] + p["gerissen"]
     text = f"Zeilensumme {p['bestanden']} von {gesamt} Jahrgängen"
     if p["gerissen"]:
-        jahre = ", ".join(str(v["jahr"]) for v in ergebnis["verworfen"])
-        text += f"; verworfen: {jahre}"
+        years = ", ".join(str(v["year"]) for v in result["verworfen"])
+        text += f"; verworfen: {years}"
     return text
