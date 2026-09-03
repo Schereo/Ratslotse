@@ -22,12 +22,11 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 STORE = WURZEL / "council" / "store.py"
 
-#: Stand nach dem zehnten Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
-#: noch hier liegt, ist der Kern: Beschlüsse, Vorlagen, Anlagen, Suche und
-#: Embeddings. Schema und Migration stehen seit dem zehnten Schnitt daneben —
-#: `_migrate` allein war 2.458 Zeilen.
-HOECHSTENS_METHODEN = 222
-HOECHSTENS_ZEILEN = 6432
+#: Stand nach dem elften Schnitt (03.09.2026). Darf schrumpfen. Was jetzt
+#: noch hier liegt, ist der Kern: Beschlüsse, Vorlagen, Anlagen, Herkunft,
+#: Suche und Embeddings.
+HOECHSTENS_METHODEN = 167
+HOECHSTENS_ZEILEN = 5072
 
 
 def _klasse() -> ast.ClassDef:
@@ -74,7 +73,7 @@ def _mixins():
     #: Ecke → (Mixin, Mindestzahl eigener Methoden).
     return {
         "Fundstücke": (FundstueckeMixin, 9),
-        "Haushalt": (HaushaltMixin, 80),
+        "Haushalt": (HaushaltMixin, 135),
         "Orte": (OrteMixin, 25),
         "Personen": (PersonenMixin, 27),
         "Presse": (PresseMixin, 9),
