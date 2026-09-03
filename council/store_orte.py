@@ -342,11 +342,15 @@ class OrteMixin:
         nichts gefunden (``geo_tried = 1``, kein Umriss) — im
         Straßen-Schnappschuss stehen sie trotzdem oft.
 
-        Das ist eine Reparatur des Bestands, kein Dauerlauf: Neue Orte gehen
-        seit der ``kind``-Weiche in ``geocode_entities._is_street`` von
-        vornherein an Overpass. Am Prod-Bestand (03.09.2026) betrifft es 430
-        Straßen mit Einzelsegment, 96 davon mit einem Namen, den kein Muster
-        als Straße erkennt, plus 140 ohne jede Geometrie.
+        Zwei Leser: der wöchentliche Straßen-Schnappschuss
+        (``scripts/strassen_snapshot.py``), der diese Liste abarbeitet, und
+        das Orts-Geocoding, das ihre LÄNGE als Kennzahl meldet
+        (``strassen_ohne_vollgeometrie``) — sie sinkt nicht von selbst, klebt
+        sie, hat der Straßen-Weg ein Problem.
+
+        Was übrig bleibt, bleibt zu Recht übrig: Auf Prod sind das 291
+        Namen, die OSM so nicht kennt — Abkürzungen wie „Huntemannstr" und
+        Fragmente wie „Gneisenau-" aus Beschlusstexten.
         """
         sql = (
             "SELECT l.slug, l.name, l.kind, l.geojson, COUNT(dl.decision_id) AS n "
