@@ -8,33 +8,56 @@
 # ob der Parser auf dem echten Bestand trägt. Dieser Lauf schließt genau diese
 # Lücke — er ersetzt den Cron nicht, er zieht ihn vor.
 #
-# WARUM NUR DEV. Der Haushalts-Bereich steht hinterm Umgebungs-Gate
-# (`web/frontend/lib/haushalt-frei.ts`) und ist auf ratslotse.de nicht
-# sichtbar. Auf Prod sollen seine Tabellen deshalb leer bleiben; dieser
-# Workflow zielt bewusst auf `VPS_DEV_HOST` und NICHT auf `VPS_HOST`. Wer ihn
-# einmal auf Prod richten will, ändert damit eine Produktentscheidung, nicht
-# nur ein Secret.
+# WELCHE VM. Bis 09/2026 zielte dieser Workflow fest auf `VPS_DEV_HOST`, weil
+# der Haushalts-Bereich hinterm Umgebungs-Gate stand und auf ratslotse.de gar
+# nicht sichtbar war — leere Tabellen waren dort die richtige Antwort. Hier
+# stand deshalb: „Wer ihn einmal auf Prod richten will, ändert damit eine
+# Produktentscheidung, nicht nur ein Secret."
+#
+# Genau die hat Tim am 03.09.2026 getroffen: Der Bereich hängt jetzt am Recht
+# `budget` (Rolle Ratsmitglied, `kern/roles.py`) statt an der Umgebung und ist
+# auf Prod für Ratsmitglieder sichtbar. Ohne Daten wären das zwanzig leere
+# Seiten.
+#
+# Die Wahl bleibt trotzdem eine WAHL und wird nicht still zur Vorgabe: Der
+# Lauf verlangt beim Auslösen eine Umgebung und nimmt weiter `dev`, wenn
+# niemand etwas sagt. Ein Prod-Lauf ist damit immer eine bewusste Eingabe und
+# steht als solche im Action-Protokoll.
 #
 # Der Bestandsschutz in `council/finanzquellen.py` macht den Lauf gefahrlos
 # wiederholbar: Eine Quelle, die weniger liest als der gespeicherte Stand,
 # überschreibt ihn nicht, sondern meldet es.
-name: "Ops: Finanzdaten einlesen (dev)"
+#
+# NICHT ENTHALTEN: der Takt danach. `check_finanzdaten` hält den Bestand
+# aktuell, steht aber nur in der crontab der Dev-VM (`kern/jobs.py`). Auf Prod
+# braucht es dafür einen eigenen Eintrag — sonst ist dieser Lauf hier eine
+# Momentaufnahme, die langsam veraltet.
+name: "Ops: Finanzdaten einlesen"
 
 on:
   workflow_dispatch:
+    inputs:
+      umgebung:
+        description: "Welche VM? (prod = ratslotse.de)"
+        type: choice
+        required: true
+        default: dev
+        options: [dev, prod]
 
 concurrency:
-  group: ops-finanzdaten-ingest
+  # Je Umgebung eine eigene Gruppe: Ein Prod-Lauf soll nicht auf einen
+  # Dev-Lauf warten, die beiden Maschinen teilen sich nichts.
+  group: ops-finanzdaten-ingest-${{ inputs.umgebung }}
   cancel-in-progress: false
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
-      - name: Ingests auf der Dev-VM
+      - name: "Ingests auf der VM (${{ inputs.umgebung }})"
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_DEV_HOST }}
+          host: ${{ inputs.umgebung == 'prod' && secrets.VPS_HOST || secrets.VPS_DEV_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VPS_SSH_PORT }}

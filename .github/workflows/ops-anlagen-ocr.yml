@@ -30,8 +30,13 @@
 # WARUM NUR DEV. Der Lauf zielt bewusst auf `VPS_DEV_HOST` und nicht auf
 # `VPS_HOST`. Diese Dokumente liegen im Bürgerinfo zwar öffentlich, aber ihr
 # Volltext ist heute nirgends indiziert; ihn auf die Prod-Datenbank zu legen
-# ist eine eigene Entscheidung und nicht der Nebeneffekt eines Ops-Laufs —
-# dieselbe Überlegung, mit der `ops-finanzdaten-ingest.yml` auf dev bleibt.
+# ist eine eigene Entscheidung und nicht der Nebeneffekt eines Ops-Laufs.
+#
+# `ops-finanzdaten-ingest.yml` kann seit 09/2026 auch auf Prod zielen (der
+# Haushalts-Bereich ist dort für Ratsmitglieder sichtbar). Das ändert an
+# DIESEM Lauf nichts: Jener nimmt mit `--nur-finanz` die 293 Finanzdokumente,
+# dieser den ganzen Bestand — über die Hälfte davon Anträge mit Namen,
+# Anschriften und Unterschriften. Die beiden hängen nicht zusammen.
 name: "Ops: Gescannte Anlagen lesen (dev)"
 
 on:
