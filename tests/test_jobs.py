@@ -87,7 +87,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "check_council", "check_committees", "check_protocols", "weekly_enrich",
         # Vorläufige Ergebnisse aus der O1-Aufzeichnung der Ratssitzung, täglich.
         "check_council_videos",
-        # Live-Mitschnitt des O1-Streams an Sitzungstagen, täglich 16 Uhr.
+        # Live-Mitschnitt des O1-Streams an Sitzungstagen, 13 Uhr UTC.
         "record_council_livestream",
         "check_vorlage_follows", "remind_setup", "backup_db",
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags

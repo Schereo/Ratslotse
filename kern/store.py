@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
 from kern.dbfehler import tabelle_fehlt
+from kern.maintenance import require_database_available
 
 
 logger = logging.getLogger("kern.store")
@@ -486,63 +487,113 @@ def _tagesbeginn_utc() -> str:
     return start.astimezone(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
 
 
-def _umzug_von_nwz(ziel: Path) -> None:
-    """Benennt eine noch vorhandene ``ratslotse.sqlite`` einmalig in den neuen Namen um.
+def _begleitdateien_entfernen(pfad: Path) -> None:
+    """Entfernt entbehrliche WAL-/SHM-Reste nach einem vollständigen Checkpoint.
 
-    Bis 08/2026 hieß diese Datenbank ``ratslotse.sqlite`` — ein Rest aus der Zeit des
-    Zeitungs-Scrapers. Der Name ist unsichtbar, und genau das macht ihn
-    gefährlich: Ein Umstellen ohne Umzug hieße „App startet mit leerer
-    Datenbank" (CLAUDE.md warnte davor). Deshalb zieht der Start die Datei
-    selbst um, statt sich auf eine Handreichung auf dem Server zu verlassen.
-
-    Vorher wird der WAL eingecheckt: Nur so ist die Hauptdatei vollständig und
-    die Begleitdateien (``-wal``/``-shm``) sind entbehrlich.
+    Ein nicht leerer WAL ist kein Rest: Er kann noch Daten tragen, die in der
+    Hauptdatei fehlen. In diesem Fall darf der Start nicht mit der umbenannten
+    Hauptdatei fortfahren.
     """
-    if ziel.name == "nwz.sqlite":
+    wal = pfad.with_name(pfad.name + "-wal")
+    shm = pfad.with_name(pfad.name + "-shm")
+    if wal.exists() and wal.stat().st_size:
+        raise RuntimeError(f"{wal} ist nach dem WAL-Checkpoint nicht leer")
+    for rest in (wal, shm):
+        rest.unlink(missing_ok=True)
+
+
+def _umzug_von_nwz(ziel: Path) -> None:
+    """Benennt eine noch vorhandene ``nwz.sqlite`` einmalig in ``ratslotse.sqlite`` um.
+
+    Vor dem Umbenennen wird der WAL vollständig eingecheckt. Jeder Fehler lässt
+    den Start bewusst scheitern: Ein vermeintlicher Fallback auf den alten Pfad
+    wäre keiner, solange :class:`Store` danach den neuen Pfad öffnet, und könnte
+    dadurch unbemerkt eine leere Konten-Datenbank anlegen.
+    """
+    # Nur der echte Nachfolgername darf eine benachbarte `nwz.sqlite` beanspruchen.
+    if ziel.name != "ratslotse.sqlite":
         return
     alt = ziel.with_name("nwz.sqlite")
-    if ziel.exists():
-        # Eine LEERE Zieldatei ist kein Umzug, sondern ein Stolperstein: Sie
-        # entsteht, sobald irgendetwas den neuen Pfad einmal öffnet, ohne zu
-        # schreiben — und blockiert danach den Umzug für immer. Der Start
-        # fände dann eine Datenbank ohne Tabellen vor, legte das Schema neu an
-        # und die App käme mit LEEREN Konten hoch, während die echten Daten
-        # unberührt unter dem alten Namen liegen. Genau davor warnt CLAUDE.md.
-        #
-        # Auf Prod stand am 01.09.2026 eine solche 0-Byte-Datei neben einer
-        # 37-MB-`nwz.sqlite` mit 22 Konten. Deshalb: 0 Byte heißt „nicht da".
-        if ziel.stat().st_size or not alt.exists() or not alt.stat().st_size:
-            if ziel.stat().st_size and alt.exists() and alt.stat().st_size:
-                # Beide gefüllt — das kann keine Maschine entscheiden.
-                logging.getLogger("kern.store").warning(
-                    "Zwei gefüllte Datenbanken nebeneinander: %s (%d Bytes) und %s "
-                    "(%d Bytes). Es wird %s benutzt; die andere bitte von Hand "
-                    "prüfen und wegräumen.",
-                    ziel.name, ziel.stat().st_size, alt.name, alt.stat().st_size, ziel.name)
-            return
-        ziel.unlink()
-        logging.getLogger("kern.store").warning(
-            "Leere %s entfernt — sie hätte den Umzug von %s blockiert.",
-            ziel.name, alt.name)
-    if not alt.exists():
-        return
+
     try:
-        conn = sqlite3.connect(alt, timeout=15)
+        if ziel.exists() and ziel.stat().st_size:
+            if alt.exists() and alt.stat().st_size:
+                # Beide gefüllt — das kann keine Maschine entscheiden. Weder
+                # überschreiben wir eine davon, noch starten wir mit womöglich
+                # veralteten Konten. Der Preflight muss diesen Zustand klären.
+                raise RuntimeError(
+                    "Zwei gefüllte Datenbanken nebeneinander: "
+                    f"{ziel} ({ziel.stat().st_size} Bytes) und "
+                    f"{alt} ({alt.stat().st_size} Bytes)")
+            else:
+                # Ein vorheriger Lauf kann nach dem erfolgreichen Rename beim
+                # Entfernen der Begleitdateien abgebrochen sein. Erst wenn die
+                # Bereinigung gelingt, darf Store das bereits gefüllte Ziel öffnen.
+                # Das gilt auch für eine alte 0-Byte-Hauptdatei: Ihr WAL könnte
+                # trotzdem noch nicht eingecheckte Daten enthalten.
+                _begleitdateien_entfernen(alt)
+            return
+
+        if not alt.exists():
+            # Auch ohne Hauptdatei kann ein alter WAL Daten enthalten. Ihn zu
+            # ignorieren und eine frische Zieldatei anzulegen wäre Datenverlust.
+            _begleitdateien_entfernen(alt)
+            if ziel.exists():
+                _begleitdateien_entfernen(ziel)
+            return
+        if not alt.stat().st_size:
+            _begleitdateien_entfernen(alt)
+            if ziel.exists():
+                _begleitdateien_entfernen(ziel)
+            return
+
+        conn = sqlite3.connect(alt.resolve().as_uri() + "?mode=rw", uri=True, timeout=15)
         try:
-            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            ergebnis = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if ergebnis is None or len(ergebnis) < 3:
+                raise RuntimeError("wal_checkpoint(TRUNCATE) lieferte kein gültiges Ergebnis")
+            busy, wal_seiten, eingecheckte_seiten = map(int, ergebnis[:3])
+            if busy or wal_seiten != eingecheckte_seiten:
+                raise RuntimeError(
+                    "WAL-Checkpoint unvollständig "
+                    f"(busy={busy}, wal={wal_seiten}, eingecheckt={eingecheckte_seiten})")
+
+            # Ein erfolgreicher Checkpoint allein reicht nicht: Eine andere,
+            # gerade untätige WAL-Verbindung blockiert ihn nicht und könnte nach
+            # dem Rename weiter unter dem alten Namen schreiben. Der Wechsel in
+            # den DELETE-Modus verlangt exklusiven Zugriff auf den WAL-Zustand
+            # und scheitert schon bei einer solchen Fremdverbindung. Die danach
+            # gehaltene EXCLUSIVE-Transaktion schließt das Fenster bis zum Rename.
+            modus = conn.execute("PRAGMA journal_mode=DELETE").fetchone()
+            if not modus or str(modus[0]).lower() != "delete":
+                raise RuntimeError(f"Journal-Modus konnte nicht exklusiv beendet werden: {modus}")
+            conn.execute("BEGIN EXCLUSIVE")
+
+            if ziel.exists():
+                # Eine LEERE Zieldatei ist kein Umzug, sondern ein Stolperstein. Sie
+                # wird erst nach dem erfolgreichen Checkpoint entfernt. Falls sie
+                # inzwischen gefüllt wurde, brechen wir ab statt sie zu überschreiben.
+                if ziel.stat().st_size:
+                    raise RuntimeError(f"{ziel} wurde während des Umzugs befüllt")
+                _begleitdateien_entfernen(ziel)
+                ziel.unlink()
+                logger.warning(
+                    "Leere %s entfernt — sie hätte den Umzug von %s blockiert.",
+                    ziel.name, alt.name)
+
+            alt.rename(ziel)
         finally:
             conn.close()
-        alt.rename(ziel)
-        for endung in ("-wal", "-shm"):
-            rest = alt.with_name(alt.name + endung)
-            if rest.exists():
-                rest.unlink()
-        logging.getLogger("kern.store").warning(
-            "Datenbank umgezogen: %s → %s", alt.name, ziel.name)
-    except Exception:  # noqa: BLE001 — lieber am alten Ort weiterarbeiten als abstürzen
-        logging.getLogger("kern.store").exception(
-            "Umzug von %s nach %s fehlgeschlagen — die App nutzt weiter den alten Pfad",
+        # Die Hauptdatei ist jetzt vollständig am Ziel. Reste unter dem alten
+        # Namen bleiben trotzdem ein harter Fehler; der nächste Start versucht
+        # ihre Bereinigung erneut, bevor er das Ziel öffnet.
+        _begleitdateien_entfernen(alt)
+        logger.warning("Datenbank umgezogen: %s → %s", alt.name, ziel.name)
+    except Exception as exc:  # noqa: BLE001 — jeder Fehler muss den Start stoppen
+        logger.exception(
+            "Umzug von %s nach %s fehlgeschlagen — Start wird zum Schutz der Daten abgebrochen",
             alt, ziel)
+        raise RuntimeError(f"Sicherer Datenbank-Umzug von {alt} nach {ziel} fehlgeschlagen") from exc
 
 
 #: Die vier deutschen Tabellennamen der Konten-Datenbank und ihre Nachfolger
@@ -558,6 +609,7 @@ class Store:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        require_database_available(self.path)
         _umzug_von_nwz(self.path)
         self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row

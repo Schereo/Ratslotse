@@ -51,11 +51,16 @@ class WortbeitraegeMixin:
         return [dict(r) for r in rows]
 
     def sessions_needing_video_check(self, since: str) -> list[dict]:
-        """Rat-Sitzungen ohne Protokoll-Beschlüsse und ohne Video-Ergebnisse.
+        """Rat-Sitzungen ohne Protokoll-Beschlüsse und YouTube-Ergebnisse.
 
         Nur der Stadtrat — O1 überträgt kein anderes Gremium (s. lib/live.ts
         im Frontend). Sobald das Protokoll da ist, übernehmen dessen
-        Beschlüsse; die Sitzung fällt dann von selbst aus dieser Liste."""
+        Beschlüsse; die Sitzung fällt dann von selbst aus dieser Liste.
+
+        Ergebnisse aus dem direkten Livestream tragen absichtlich eine leere
+        ``video_id``. Sie bleiben Kandidaten, damit die spätere
+        YouTube-Fassung Sprung-Links und genauere Zeitmarken nachreichen kann.
+        Erst mindestens eine nichtleere Video-ID schließt die Sitzung aus."""
         rows = self._conn.execute(
             """SELECT s.ksinr, s.committee, s.session_date, s.session_time
                FROM council_sessions s
@@ -63,7 +68,10 @@ class WortbeitraegeMixin:
                  AND s.session_date >= ?
                  AND s.session_date <= date('now')
                  AND NOT EXISTS (SELECT 1 FROM council_decisions d WHERE d.ksinr = s.ksinr)
-                 AND NOT EXISTS (SELECT 1 FROM council_video_results v WHERE v.ksinr = s.ksinr)
+                 AND NOT EXISTS (
+                       SELECT 1 FROM council_video_results v
+                       WHERE v.ksinr = s.ksinr AND v.video_id <> ''
+                 )
                ORDER BY s.session_date DESC""",
             (since,),
         ).fetchall()
