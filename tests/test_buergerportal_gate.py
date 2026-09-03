@@ -10,6 +10,7 @@ SEED_COMMAND = "scripts/saat_buergerportal_feature.py"
 def test_problem_route_and_entry_points_share_the_environment_gate():
     gate = (FRONTEND / "lib" / "probleme-frei.ts").read_text()
     page = (FRONTEND / "app" / "(app)" / "probleme" / "page.tsx").read_text()
+    detail_page = (FRONTEND / "app" / "(app)" / "probleme" / "[id]" / "page.tsx").read_text()
     nav = (FRONTEND / "components" / "nav.tsx").read_text()
     sitemap = (FRONTEND / "app" / "sitemap.ts").read_text()
 
@@ -22,6 +23,12 @@ def test_problem_route_and_entry_points_share_the_environment_gate():
     )
     assert "generateMetadata" in page and "metadataFrei" in page, (
         "Auch die Metadaten in probleme/page.tsx hinter PROBLEME_FREI legen."
+    )
+    assert GATE in detail_page and "notFound()" in detail_page, (
+        "Die dynamische Problem-Detailseite muss dasselbe Feature-Gate verwenden."
+    )
+    assert "generateMetadata" in detail_page and "if (!PROBLEME_FREI) return {};" in detail_page, (
+        "Auch Detail-Metadaten außerhalb von app-feature geschlossen halten."
     )
     assert GATE in nav and 'href: "/probleme"' in nav, (
         "Den /probleme-Link in components/nav.tsx mit PROBLEME_FREI schützen."
