@@ -502,7 +502,18 @@ class TopicSuggestion(TypedDict):
     context: str | None
 
 
-class NearbySuggestion(TopicSuggestion):
+class LocalSuggestion(TopicSuggestion):
+    """Ein Vorschlag, der an einem Ortsbereich hängt."""
+    #: Warum er dort hängt — der Titel des jüngsten Beschlusses, der beide
+    #: verbindet, von Verfahrensschritten und Herkunftsklammern befreit
+    #: („Maßnahme Machbarkeitsstudien" für die Kommunale Wärmeplanung unter
+    #: Kreyenbrück). ``None``, wenn nichts übrig bleibt, was mehr sagt als der
+    #: Name selbst. Beantwortet die Frage, die ein stadtweites Thema unter
+    #: einem Stadtteil sonst aufwirft (Tim, 03.09.2026).
+    place_reason: str | None
+
+
+class NearbySuggestion(LocalSuggestion):
     #: Aus welchem Ortsbereich dieser Vorschlag stammt. Muss mit — ihn unter der
     #: Überschrift des Nachbarn zu zeigen wäre schlicht falsch.
     place: str
@@ -512,7 +523,7 @@ class DistrictSuggestions(TypedDict):
     """Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten."""
     place_id: str
     name: str
-    suggestions: list[TopicSuggestion]
+    suggestions: list[LocalSuggestion]
     #: Aus den nächstgelegenen Ortsbereichen, nur wenn der eigene keine sechs
     #: hergibt (15 von 31 tun das nicht). Getrennt, damit die Oberfläche es
     #: getrennt beschriften kann.
@@ -523,8 +534,23 @@ class DistrictSuggestions(TypedDict):
     months: int
 
 
+class CityTopicSuggestion(TopicSuggestion):
+    """Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
+    Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
+    Entitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung."""
+    #: Stabiler Schlüssel des Eintrags in der Registry (``cycling``, ``childcare``).
+    key: str
+    #: Zeitraum der Zahl ``n`` in Monaten — die Oberfläche schreibt ihn dazu.
+    months: int
+
+
 class TopicSuggestions(TypedDict):
-    #: Stadtweit — was gerade überhaupt im Rat läuft.
+    #: Kuratierte Stadtthemen mit Substanz, die aktivsten zuerst. Anders als
+    #: die übrigen Listen NICHT um die eigenen Themen bereinigt: Die Liste ist
+    #: stabil, die Oberfläche markiert, was schon angelegt ist. Leer bei
+    #: ``?city=0``.
+    city: list[CityTopicSuggestion]
+    #: Stadtweit — was gerade überhaupt im Rat läuft (Entitäten).
     suggestions: list[TopicSuggestion]
     #: Je mitgegebenem ``?district=`` eine Gruppe, in derselben Reihenfolge.
     #: Keine der Listen überschneidet sich mit einer anderen oder mit

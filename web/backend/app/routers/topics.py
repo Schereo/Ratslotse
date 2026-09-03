@@ -276,6 +276,78 @@ def _suggestion_context(name: str, candidate: dict) -> str | None:
     return None
 
 
+#: Ein abtrennbarer Verfahrens-Schwanz am Titelende: „ - Satzungsbeschluss",
+#: „ - Antrag mit mündlichem Bericht der Verwaltung". Für die Frage „warum
+#: steht das unter meinem Stadtteil?" sagt er nichts. Gebaut als ein Segment
+#: aus lauter Verfahrenswörtern und Füllwörtern — eine feste Liste ganzer
+#: Wendungen traf „Antrag mit mündlichem Bericht der Verwaltung" nicht.
+_VERFAHRENSWORT = (
+    r"(?:erneuter|zweiter|mündlich(?:em|er|en)?|schriftlich(?:em|er|en)?|"
+    r"(?:aufstellungs|auslegungs|satzungs|feststellungs|veröffentlichungs|offenlegungs)?"
+    r"beschluss(?:antrag|vorlage|fassung)?|bericht|berichte|sachstand|sachstandsbericht|"
+    r"antrag|anträge|vorlage|entscheidung|kenntnisnahme|information|informationsvorlage|"
+    r"prüfung|stellungnahmen?|grundzüge|planung|veröffentlichung|"
+    r"öffentlichkeitsbeteiligung|beteiligung|verwaltung|verfahren|"
+    r"mit|der|des|die|den|zur|zum|und|vor|über|einer|eines|\d\.)"
+)
+_TITEL_ANHANG = re.compile(r"\s*[-–—]\s*" + _VERFAHRENSWORT + r"(?:\s+" + _VERFAHRENSWORT + r"){0,7}\s*$",
+                           re.I)
+
+#: Der ganze Rest besteht nur noch aus Verfahrenswörtern („Prüfung der
+#: Stellungnahmen und Satzungsbeschluss") — dann erklärt er nichts. Bewusst
+#: NICHT ``_VERFAHRENSSCHRITT``: Der greift schon, wenn ein Titel mit einem
+#: solchen Wort ANFÄNGT, und hätte „Sachstandsbericht und weiteres Vorgehen
+#: Spielbereich Schlossplatz" verschluckt.
+_NUR_VERFAHREN = re.compile(r"^" + _VERFAHRENSWORT + r"(?:\s+" + _VERFAHRENSWORT + r")*$", re.I)
+
+#: Die Herkunftsklammer: „(SPD-Fraktion vom 16.02.2026)", „(beratendes Mitglied
+#: Frau …)". Sie nennt, WER etwas beantragt hat — eine andere Frage als die
+#: hier. Und sie trägt Personennamen, die auf einem Chip nichts verloren haben:
+#: Bei „Fällungen von Fichten im Heidbrook (beratendes Mitglied Frau Dr. …) -
+#: Antrag …" stand nach dem Kürzen der halbe Name einer Person auf dem Chip.
+#: Deshalb ÜBERALL entfernt, nicht nur am Ende.
+_TITEL_HERKUNFT = re.compile(
+    r"\s*\((?=[^()]*(?:fraktion|gruppe|mitglied|verwaltung|vom\s+\d{1,2}\.))[^()]*\)",
+    re.I)
+
+
+def _ortsgrund(name: str, titel: str | None, grenze: int = 72) -> str | None:
+    """Warum dieser Vorschlag unter diesem Stadtteil steht — aus dem Titel des
+    Beschlusses, der beide verbindet.
+
+    **Der Name wird NUR als Präfix abgeschnitten.** Ihn mitten im Satz
+    herauszuschneiden zerlegt die Grammatik: Aus „Bebauungsplan 831 (Stadion
+    Maastrichter Straße) – Prüfung der Stellungnahmen" wurde so
+    „Bebauungsplan 831 () – Prüfung der Stellungnahmen", aus „Erweiterung der
+    Zügigkeit der Grundschule Wechloy" ein Satzfragment (am Bestand gemessen,
+    03.09.2026). Steht der Name dagegen vorn und mit Doppelpunkt, ist das
+    Abschneiden verlustfrei: „Kommunale Wärmeplanung: Maßnahme
+    Machbarkeitsstudien" → „Maßnahme Machbarkeitsstudien".
+
+    ``None``, wenn nichts übrig bleibt, was mehr sagt als der Name selbst —
+    und ebenso, wenn nur noch der Verfahrensstand dasteht („Prüfung der
+    Stellungnahmen und Satzungsbeschluss"). Lieber keine Erklärung als eine,
+    die den Chip wiederholt oder nichts erklärt.
+    """
+    t = " ".join((titel or "").split())
+    t = _TITEL_HERKUNFT.sub(" ", t)
+    t = " ".join(t.split()).strip(" ,;:–—-")
+    for _ in range(4):                      # geschachtelt: „… - Prüfung … - Satzungsbeschluss"
+        gekuerzt = _TITEL_ANHANG.sub("", t).strip(" ,;:–—-")
+        if gekuerzt == t:
+            break
+        t = gekuerzt
+    t = re.sub(r"^" + re.escape(name) + r"\s*(?:\([^()]{0,40}\)\s*)?[:;–—-]\s*", "",
+               t, flags=re.I).strip(" ,;:–—-")
+    if len(t) < 5 or _NUR_VERFAHREN.match(t):
+        return None
+    if _name_tokens(t) == _name_tokens(name):
+        return None
+    if len(t) > grenze:
+        t = t[:grenze].rsplit(" ", 1)[0].rstrip(" ,;:–—-") + "…"
+    return t
+
+
 def _kontext_orte(context: str | None) -> list[frozenset[str]]:
     """Die Ortsnamen, die in der Einordnung einer Plannummer stecken.
 
@@ -394,6 +466,11 @@ def _build_suggestions(council: CouncilStore, candidates: list[dict],
                                                 existing_tokens + chosen_tokens + [tokens])]
         chosen_tokens.append(tokens)
         out.append({
+            # Der Slug ist NICHT Teil der Antwortform und wird von FastAPI
+            # wieder entfernt. Er steht hier, weil die Ortsbegründung ihn
+            # braucht (``_mit_ortsgrund``) — nachschlagen kann man sie erst,
+            # wenn feststeht, welche Vorschläge überhaupt übrig bleiben.
+            "slug": slug,
             "name": name,
             "description": description,
             "context": context,
@@ -431,8 +508,14 @@ NEIGHBOURS = 3
 
 
 def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
-                        chosen_tokens: list) -> tuple[list[dict], list[dict], int]:
+                        chosen_tokens: list, limit: int = 6,
+                        nearby: bool = True) -> tuple[list[dict], list[dict], int]:
     """Vorschläge für einen Ortsbereich: eigene, nebenan, und wie weit zurück.
+
+    ``limit`` ist die Zielzahl je Stadtteil (Vorgabe sechs). Der Assistent
+    fragt seit dem Umbau vom 03.09.2026 nur noch zwei je Stadtteil ab: Vier
+    Stadtteile mit je sechs Chips plus Nachbarschaft waren eine Wand aus
+    Straßennamen. ``nearby=False`` lässt das Auffüllen von nebenan weg.
 
     Gibt zurück, WIE WEIT gesucht wurde (in Monaten): Die Oberfläche schreibt das
     dazu. „Aus Bornhorst" über einen drei Jahre alten Vorgang wäre sonst eine
@@ -459,9 +542,9 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
         probe = list(chosen_tokens)
         gefunden = _build_suggestions(
             council, council.suggested_entity_topics(days_back=tage, limit=16, place_id=place.id),
-            existing_tokens, probe, limit=6)
+            existing_tokens, probe, limit=limit)
         runden.append((tage, gefunden))
-        if len(gefunden) >= 6 and _tragende(gefunden) >= TRAGENDE_MINDESTENS:
+        if len(gefunden) >= limit and _tragende(gefunden) >= min(TRAGENDE_MINDESTENS, limit):
             break
     # Das engste Fenster, das genug TRAGENDE Vorschläge hat — nicht einfach das
     # erste mit sechs Einträgen. Seit auch Straßen ihren Stadtteil sicher kennen,
@@ -472,13 +555,14 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
     tage, letzte = max(runden, key=lambda r: (_tragende(r[1]), len(r[1]), -r[0]))
     for eintrag in letzte:
         chosen_tokens.append(_name_tokens(eintrag["name"]))
+    _mit_ortsgrund(council, letzte, place, tage)
 
     nebenan: list[dict] = []
-    if len(letzte) < 6:
+    if nearby and len(letzte) < limit:
         from council import geo
 
         for nachbar in geo.nachbar_ortsbereiche(place.name, NEIGHBOURS):
-            if len(letzte) + len(nebenan) >= 6:
+            if len(letzte) + len(nebenan) >= limit:
                 break
             nb = council.resolve_place(nachbar)
             if not nb:
@@ -492,10 +576,35 @@ def _local_suggestions(council: CouncilStore, place, existing_tokens: list,
                     council.suggested_entity_topics(days_back=LOCAL_WINDOW_DAYS[-1], limit=16,
                                                     place_id=nb.id),
                     place),
-                existing_tokens, chosen_tokens, limit=6 - len(letzte) - len(nebenan),
+                existing_tokens, chosen_tokens, limit=limit - len(letzte) - len(nebenan),
             ):
                 nebenan.append({**eintrag, "place": nb.name})
+            _mit_ortsgrund(council, nebenan, nb, LOCAL_WINDOW_DAYS[-1],
+                           nur=[e for e in nebenan if e["place"] == nb.name])
     return letzte, nebenan, round(tage / 30.4)
+
+
+def _mit_ortsgrund(council: CouncilStore, eintraege: list[dict], place, tage: int,
+                   nur: list[dict] | None = None) -> None:
+    """``place_reason`` an Ort und Stelle ergänzen — ein Aufruf je Gruppe.
+
+    Immer gesetzt, auch als ``None``: Ein fehlender Schlüssel wäre in der
+    Antwortform ein 500er, kein leeres Feld.
+    """
+    ziel = eintraege if nur is None else nur
+    if not ziel:
+        return
+    from datetime import timedelta
+
+    cutoff = (date.today() - timedelta(days=tage)).isoformat()
+    titel = council.local_reason_titles([e["slug"] for e in ziel if e.get("slug")],
+                                        place, cutoff)
+    for e in ziel:
+        # Bei einer Plannummer erklärt schon ``context`` den Ortsbezug („Am
+        # Schulgraben / Tweelbäker Tredde"). Eine zweite Zeile daneben stünde
+        # entweder dasselbe oder nur der Verfahrensstand.
+        e["place_reason"] = (None if _ist_plannummer(e["name"])
+                             else _ortsgrund(e["name"], titel.get(e.get("slug") or "")))
 
 
 def _ohne_eigenen_ortsbereich(council: CouncilStore, kandidaten: list[dict], place) -> list[dict]:
@@ -524,6 +633,9 @@ def topic_suggestions(
     district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
     exclude: Annotated[list[str], Query()] = [],  # noqa: B006 — dito
     citywide: bool = True,
+    city: bool = True,
+    limit: Annotated[int, Query(ge=1, le=6)] = 6,
+    nearby: bool = True,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
@@ -555,7 +667,17 @@ def topic_suggestions(
     und schlimmer: Die dünne Gruppe füllte sich nicht mehr von nebenan auf, sie
     stünde einfach kürzer da. Deshalb wirkt der Wert wie ein vorhandenes Thema
     und nicht wie ein Filter über die fertige Liste.
+
+    ``city`` (Vorgabe an): die kuratierten Stadtthemen aus
+    ``council.city_topics`` — Radverkehr, Kitas, Wohnungsbau. Sie kosten kein
+    Modell, nur eine Zählung, und stehen im Assistenten ganz oben. ``?city=0``
+    lässt sie weg, ``?citywide=0&city=1`` holt NUR sie.
+
+    ``limit`` (1–6) und ``nearby`` gelten je Stadtteil-Gruppe: Der Assistent
+    fragt seit dem 03.09.2026 zwei je Stadtteil ohne Nachbarschaft ab.
     """
+    from council.city_topics import city_topic_suggestions
+
     # Stadtteil-Themen zählen beim Dedupe NICHT mit. Sie sind Ortsangaben,
     # keine Interessen: Wer „Krusenbusch" gewählt hat, bekäme sonst „Quartier
     # am Krusenbusch", „Grundschule Krusenbusch" und „Eisenbahnüberführung
@@ -574,7 +696,7 @@ def topic_suggestions(
         if not place:
             continue                              # geraten oder veraltet — still übergehen
         lokal, nebenan, fenster = _local_suggestions(
-            council, place, existing_tokens, chosen_tokens)
+            council, place, existing_tokens, chosen_tokens, limit=limit, nearby=nearby)
         # Auch mit leerer Liste antworten: „In diesem Stadtteil war zuletzt
         # nichts" ist eine Auskunft. Ein weggelassener Block sähe aus wie ein
         # Fehler.
@@ -584,7 +706,8 @@ def topic_suggestions(
     stadtweit = _build_suggestions(
         council, council.suggested_entity_topics(days_back=365, limit=16),
         existing_tokens, chosen_tokens, limit=6) if citywide else []
-    return {"suggestions": stadtweit, "districts": gruppen}
+    stadtthemen = city_topic_suggestions(council) if city else []
+    return {"city": stadtthemen, "suggestions": stadtweit, "districts": gruppen}
 
 
 @router.post("/describe")

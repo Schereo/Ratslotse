@@ -786,25 +786,34 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   // in einem React-Zustand, der beim Neuladen weg wäre.
   const stadtteile = gewaehlteOrtsbereiche(topics.data ?? [], orte.data ?? []);
   const ortsIds = stadtteile.map((o) => o.place_id);
+  const bereit = !topics.isPending && !orte.isPending;
+  // Die Stadtthemen ZUERST und aus einem eigenen Aufruf: Sie kosten kein
+  // Modell, nur eine Zählung, und stehen deshalb sofort da — noch bevor die
+  // Stadtteile ihre Vorschläge haben. Sie sind seit dem 03.09.2026 der Kern
+  // des Schritts: Radverkehr oder Kitas holen ab, wo eine Straße aus der
+  // Entitäts-Erkennung niemandem etwas sagt (Tims Befund: „schreckt eher ab").
+  const stadtQuery = useQuery({
+    queryKey: ["topic-suggestions", "city"],
+    queryFn: () => api.get<VorschlagsAntwort>("/topics/suggestions?citywide=0&city=1")
+      .then((d) => d.city),
+    enabled: bereit,
+  });
   // EIN Aufruf JE STADTTEIL statt einem für alle. Der Endpunkt beurteilt jeden
   // noch nie gesehenen Vorschlag einmal per Modell; bei zwei, drei Stadtteilen
   // wartete man vorher auf den letzten, bevor der erste erschien — und sah so
   // lange nur Platzhalter (Tims Befund, 03.09.2026). Getrennt gefragt steht
-  // jede Gruppe da, sobald sie fertig ist, und die noch laufenden sagen mit
-  // eigener Überschrift, dass sie noch kommen.
+  // jede Gruppe da, sobald sie fertig ist.
   //
   // NACHEINANDER, nicht gleichzeitig: Jeder Aufruf bekommt mit `exclude` zu
-  // hören, was oben schon steht. Das ist dasselbe gemeinsame Gedächtnis, das
-  // vorher im Server lag — ohne es stünde nicht nur dieselbe Baustelle
-  // zweimal, die zweite Gruppe füllte sich auch nicht mehr von nebenan auf
-  // und stünde einfach kürzer da (gemessen: Tweelbäke sank von sechs auf
-  // zwei). Schneller wird es dadurch nicht, aber die erste Gruppe steht nach
-  // ihrem eigenen Aufruf statt nach allen.
-  const bereit = !topics.isPending && !orte.isPending;
+  // hören, was oben schon steht — ohne das stünde dieselbe Baustelle zweimal.
+  //
+  // ZWEI je Stadtteil, ohne Nachbarschaft: Vier Stadtteile mit je sechs Chips
+  // plus „direkt nebenan" waren eine Wand aus Straßennamen. Die Stadtteile
+  // sind jetzt ein Sammelbecken unter den Stadtthemen, nicht die Hauptsache.
   const schluessel = (id: string, gesehen: string[]) =>
-    ["topic-suggestions", "district", id, gesehen.join("|")] as const;
+    ["topic-suggestions", "district", id, JE_STADTTEIL, gesehen.join("|")] as const;
   const namenVon = (g: VorschlagsGruppe | null | undefined) =>
-    g ? [...g.suggestions, ...g.nearby].map((v) => v.name) : [];
+    g ? g.suggestions.map((v) => v.name) : [];
   // Die Kette WÄHREND des Renderns aufbauen: Was schon da ist, steht im Cache
   // — und `useQueries` hängt an genau diesen Schlüsseln, der nächste Render
   // verlängert die Kette also von selbst.
@@ -825,25 +834,13 @@ function TopicStep({ onNext }: { onNext: () => void }) {
       // Auswahl aus dem Cache.
       queryKey: k.key,
       queryFn: () => api.get<VorschlagsAntwort>(
-        `/topics/suggestions?district=${encodeURIComponent(k.id)}&citywide=0`
+        `/topics/suggestions?district=${encodeURIComponent(k.id)}&citywide=0&city=0&limit=${JE_STADTTEIL}&nearby=0`
         + k.exclude.map((n) => `&exclude=${encodeURIComponent(n)}`).join(""))
         .then((d) => d.districts[0] ?? null),
       // Erst fragen, wenn die Auswahl feststeht — sonst liefe ein erster Aufruf
       // ohne sie und die lokalen Listen erschienen mit Verzögerung.
       enabled: k.enabled,
     })),
-  });
-  // Stadtweit kommt zuletzt: Was die Stadtteile schon zeigen, gehört dort nicht
-  // noch einmal hin.
-  const alleGruppenDa = gruppenQueries.every((q) => q.data !== undefined);
-  const stadtweitExclude = gruppenQueries.flatMap((q) => namenVon(q.data));
-  const stadtweitQuery = useQuery({
-    queryKey: ["topic-suggestions", "stadtweit", stadtweitExclude.join("|")],
-    queryFn: () => api.get<VorschlagsAntwort>(
-      "/topics/suggestions?citywide=1"
-      + stadtweitExclude.map((n) => `&exclude=${encodeURIComponent(n)}`).join(""))
-      .then((d) => d.suggestions),
-    enabled: bereit && alleGruppenDa,
   });
 
   /** RL-U17: Der Nutzer tippt nur den Namen — die Beschreibung entsteht aus den
@@ -909,6 +906,13 @@ function TopicStep({ onNext }: { onNext: () => void }) {
   const mine = topics.data ?? [];
   const gruppen = stadtteile.map((ort, i) => ({ ort, query: gruppenQueries[i] }));
   const nochUnterwegs = gruppen.filter((g) => g.query?.isPending).map((g) => g.ort.name);
+  // Alle Stadtteil-Vorschläge in EINER Reihe, jeder mit seinem Ort — derselbe
+  // Weg, auf dem vorher die Nachbarschafts-Chips ihre Herkunft trugen.
+  const stadtteilChips: Vorschlag[] = gruppen.flatMap(({ ort, query }) =>
+    (query?.data?.suggestions ?? []).map((v) => ({ ...v, place: ort.name })));
+  const stille = gruppen.filter((g) => g.query?.data && g.query.data.suggestions.length === 0)
+    .map((g) => g.ort.name);
+  const weitestesFenster = Math.max(0, ...gruppen.map((g) => g.query?.data?.months ?? 0));
   return (
     <StepShell
       title="Worüber willst du Bescheid wissen?"
@@ -963,74 +967,61 @@ function TopicStep({ onNext }: { onNext: () => void }) {
         </div>
       )}
 
-      {/* Solange die Vorschläge kommen, sagt die Fläche das — mit Platzhaltern
-          in Chip-Form, damit nichts springt, wenn sie eintreffen. Der
-          Endpunkt beurteilt jeden noch nie gesehenen Vorschlag einmal per
-          Modell; beim allerersten Aufruf sind das viele. */}
-      {/* Zwei Gruppen statt einer Liste: „bei mir um die Ecke" und „in der
-          Stadt" sind zwei verschiedene Interessen, und wer beides gemischt
-          untereinander sieht, kann nicht wählen. Der Stadtteil steht zuerst —
-          er ist der Grund, warum in Schritt 2 danach gefragt wurde.
-
-          Jede Gruppe erscheint, sobald IHR Aufruf zurück ist. Die noch
-          laufenden stehen mit ihrer eigenen Überschrift und Platzhaltern da:
-          So sieht man, was schon zur Auswahl steht, und weiß zugleich, dass
-          Bümmerstede noch kommt. */}
-      {gruppen.map(({ ort, query }) => {
-        const g = query?.data ?? null;
-        return (
-          <div key={ort.place_id} className="mt-4">
-            <Kicker className="text-primary">
-              <MapPin className="h-3 w-3" />
-              Aus {ort.name}
-              {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
-                  ruhigen Stadtteilen reicht ein Jahr nicht für sechs Vorschläge;
-                  das stumm zu weiten hieße, Aktualität zu behaupten. */}
-              {g && g.months > 12 && (
-                <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
-                  · letzte {Math.round(g.months / 12)} Jahre
-                </span>
-              )}
-              {!g && query?.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-            </Kicker>
-            {!g ? (
-              <VorschlagsPlatzhalter />
-            ) : g.suggestions.length > 0 ? (
-              <VorschlagsChips vorschlaege={g.suggestions} vorhanden={mine} busy={busy} betont
-                onWaehlen={(v) => void add(v.name, v.description, v.n)} />
-            ) : (
-              // Leere Liste ausdrücklich benennen statt den Block wegzulassen —
-              // sonst sähe es aus, als hätte der Schritt etwas verschluckt.
-              <p className="mt-2 text-xs text-muted-foreground">
-                Im Rat war {ort.name} zuletzt kaum ein Thema. Der Stadtteil bleibt trotzdem
-                beobachtet — Lotti meldet sich, sobald etwas kommt.
-              </p>
-            )}
-
-            {/* Nebenan: nur wenn der Stadtteil selbst keine sechs hergibt. Eigene
-                Beschriftung, weil es eben NICHT aus diesem Stadtteil ist — unter
-                „Aus Dobbenviertel" wäre das Kulturzentrum PFL schlicht falsch. */}
-            {g && g.nearby.length > 0 && (
-              <>
-                <Kicker className="mt-3">Direkt nebenan</Kicker>
-                <VorschlagsChips vorschlaege={g.nearby} vorhanden={mine} busy={busy}
-                  onWaehlen={(v) => void add(v.name, v.description, v.n)} />
-              </>
-            )}
-          </div>
-        );
-      })}
-
+      {/* Stadtthemen zuerst: Interessen, mit denen Menschen kommen — nicht
+          Vorgänge, die der Rat zuletzt benannt hat. Jeder Chip trägt die Zahl
+          der Beschlüsse aus zwölf Monaten; was darunter zu dünn ist, kommt
+          gar nicht erst aus dem Server (Zusage: nichts anbieten, wozu Lotti
+          nicht liefert). Die Liste ist stabil, Angelegtes wird markiert. */}
       <div className="mt-4">
-        <Kicker>
-          {gruppen.length ? "Stadtweit" : "Gerade aktuell im Rat"}
-          {stadtweitQuery.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+        <Kicker className="text-primary">
+          <Sparkles className="h-3 w-3" />
+          Gerade in Oldenburg
+          <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+            · Beschlüsse der letzten 12 Monate
+          </span>
+          {stadtQuery.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
         </Kicker>
-        {stadtweitQuery.isPending
+        {stadtQuery.isPending
           ? <VorschlagsPlatzhalter />
-          : <VorschlagsChips vorschlaege={stadtweitQuery.data ?? []} vorhanden={mine} busy={busy}
+          : <VorschlagsChips vorschlaege={stadtQuery.data ?? []} vorhanden={mine} busy={busy} betont alle zahl
               onWaehlen={(v) => void add(v.name, v.description, v.n)} />}
       </div>
+
+      {/* Ein Sammelbecken für ALLE gewählten Stadtteile: je Stadtteil ein bis
+          zwei Vorschläge, jeder Chip trägt seinen Stadtteil. Vorher stand je
+          Stadtteil ein eigener Block mit sechs Chips plus Nachbarschaft — bei
+          vier Stadtteilen eine Seite voller Straßennamen (Tims Befund,
+          03.09.2026). Jeder Chip erscheint, sobald SEIN Aufruf zurück ist. */}
+      {gruppen.length > 0 && (
+        <div className="mt-4">
+          <Kicker>
+            <MapPin className="h-3 w-3" />
+            Aus deinen Stadtteilen
+            {/* Zeitraum dazuschreiben, sobald es mehr als ein Jahr war. In
+                ruhigen Stadtteilen reicht ein Jahr nicht; das stumm zu weiten
+                hieße, Aktualität zu behaupten. */}
+            {weitestesFenster > 12 && (
+              <span className="font-sans text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+                · bis zu {Math.round(weitestesFenster / 12)} Jahre zurück
+              </span>
+            )}
+            {nochUnterwegs.length > 0 && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+          </Kicker>
+          {stadtteilChips.length > 0
+            ? <OrtsVorschlaege vorschlaege={stadtteilChips} vorhanden={mine} busy={busy}
+                onWaehlen={(v) => void add(v.name, v.description, v.n)} />
+            : nochUnterwegs.length > 0 ? <KartenPlatzhalter anzahl={JE_STADTTEIL * gruppen.length} /> : null}
+          {/* Leere Stadtteile ausdrücklich benennen statt sie wegzulassen —
+              sonst sähe es aus, als hätte der Schritt etwas verschluckt. */}
+          {stille.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Im Rat {stille.length === 1 ? "war" : "waren"} {stille.join(" und ")} zuletzt kaum
+              ein Thema. {stille.length === 1 ? "Der Stadtteil bleibt" : "Die Stadtteile bleiben"} trotzdem
+              beobachtet — Lotti meldet sich, sobald etwas kommt.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Was noch aussteht, EINMAL am Ende benennen — sonst liest sich die
           Seite, als wäre sie fertig, und die letzte Gruppe erschiene aus dem
@@ -1058,12 +1049,19 @@ type VorschlagsGruppe = {
   nearby: (Vorschlag & { place: string })[];
 };
 
-type VorschlagsAntwort = { suggestions: Vorschlag[]; districts: VorschlagsGruppe[] };
+type VorschlagsAntwort = { city: Vorschlag[]; suggestions: Vorschlag[]; districts: VorschlagsGruppe[] };
+
+/** Vorschläge je gewähltem Stadtteil. Zwei, nicht sechs: Die Stadtteile sind
+ *  ein Sammelbecken unter den Stadtthemen, nicht die Hauptsache. */
+const JE_STADTTEIL = 2;
 
 type Vorschlag = {
   name: string; description: string; n: number; context?: string | null;
   /** Nur bei „nebenan": aus welchem Ortsbereich der Vorschlag stammt. */
   place?: string;
+  /** Warum der Vorschlag an diesem Stadtteil hängt — der Titel des
+   *  Beschlusses, der beide verbindet. Nur bei Stadtteil-Vorschlägen. */
+  place_reason?: string | null;
 };
 
 /** Chips in Wartestellung: gleiche Höhe wie die echten, damit nichts springt,
@@ -1071,7 +1069,7 @@ type Vorschlag = {
 function VorschlagsPlatzhalter() {
   return (
     <div className="mt-2.5 flex flex-wrap gap-2" aria-busy="true">
-      {[104, 128, 92, 140, 112, 96].map((w, i) => (
+      {[104, 128, 92, 140, 112, 96, 120, 100, 132].map((w, i) => (
         <span key={i} style={{ width: w }}
           className="h-[34px] animate-pulse rounded-full border border-dashed border-border bg-muted/40" />
       ))}
@@ -1090,16 +1088,22 @@ function istPlannummer(name: string): boolean {
  *  verhalten, sonst liest man einen Unterschied hinein, den es nicht gibt.
  *  `betont` färbt nur den Rahmen: Die lokale Gruppe soll auffallen, aber nicht
  *  wie eine andere Art Knopf wirken. */
-function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
+function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, alle, zahl, onWaehlen }: {
   vorschlaege: Vorschlag[];
   vorhanden: { name: string }[];
   busy: boolean;
   betont?: boolean;
+  /** Alle zeigen statt höchstens sechs — die Stadtthemen sind kuratiert, das
+   *  Sammelbecken der Stadtteile ist schon je Stadtteil begrenzt. */
+  alle?: boolean;
+  /** Die Beschlusszahl im Chip. Nur bei den Stadtthemen: Dort ist sie der
+   *  Beleg, dass Lotti liefert; der Zeitraum steht in der Überschrift. */
+  zahl?: boolean;
   onWaehlen: (v: Vorschlag) => void;
 }) {
   return (
     <div className="mt-2.5 flex flex-wrap gap-2">
-      {vorschlaege.slice(0, 6).map((v) => {
+      {(alle ? vorschlaege : vorschlaege.slice(0, 6)).map((v) => {
         const have = vorhanden.some((t) => t.name === v.name);
         return (
           <button key={v.name} type="button" disabled={busy || have}
@@ -1120,16 +1124,91 @@ function VorschlagsChips({ vorschlaege, vorhanden, busy, betont, onWaehlen }: {
                 sie nur im title-Attribut, und auf dem Telefon gibt es keinen
                 Hover (Tims Befund, 02.09.2026). Bei allen anderen Namen wäre
                 sie der erste Satz der Beschreibung — „Die Sandkruger Straß…"
-                neben „Sandkruger Straße" wiederholt nur, was schon dasteht. */}
-            {v.context && !v.place && istPlannummer(v.name) && (
+                neben „Sandkruger Straße" wiederholt nur, was schon dasteht.
+                Auch MIT Ortsangabe: „Bebauungsplan 862 · Tweelbäke" sagt
+                immer noch nicht, was dort geplant ist. */}
+            {v.context && istPlannummer(v.name) && (
               <span className="max-w-[26ch] truncate text-[11px] text-muted-foreground">{v.context}</span>
             )}
             {/* Ohne den Ortsnamen wäre „Kulturzentrum PFL" unter dem eigenen
                 Stadtteil eine Falschauskunft. */}
             {v.place && <span className="text-[11px] text-muted-foreground">{v.place}</span>}
+            {zahl && (
+              <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-semibold tabular-nums text-primary">
+                {v.n}
+              </span>
+            )}
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Die Vorschläge aus den gewählten Stadtteilen — als kleine Karten, nicht als
+ *  Pillen. Grund ist die zweite Zeile: Sie sagt, WARUM der Vorschlag an diesem
+ *  Stadtteil hängt, und in eine Pille (Radius 9999, eine Zeile) passt das
+ *  nicht. „Kommunale Wärmeplanung" unter Kreyenbrück las sich sonst wie ein
+ *  Fehler — mit „Maßnahme Machbarkeitsstudien" darunter ist es sofort klar
+ *  (Tim, 03.09.2026: „es bräuchte manchmal nur eine ganz kurze Erklärung").
+ *
+ *  Der Ortsname bleibt auf der ERSTEN Zeile beim Namen. Ihn stattdessen in die
+ *  Begründung zu ziehen („Machbarkeitsstudien in Kreyenbrück") bräuchte den
+ *  richtigen Artikel — „in Innenstadt" statt „in der Innenstadt" — und der
+ *  hängt am Stadtteil, nicht an einer Regel. */
+function OrtsVorschlaege({ vorschlaege, vorhanden, busy, onWaehlen }: {
+  vorschlaege: Vorschlag[];
+  vorhanden: { name: string }[];
+  busy: boolean;
+  onWaehlen: (v: Vorschlag) => void;
+}) {
+  return (
+    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {vorschlaege.map((v) => {
+        const have = vorhanden.some((t) => t.name === v.name);
+        // Die Einordnung einer Plannummer ist selbst die Begründung — der
+        // Server schickt dann keine zweite dazu.
+        const zweite = v.place_reason || (istPlannummer(v.name) ? v.context : null);
+        return (
+          <button key={`${v.place}-${v.name}`} type="button" disabled={busy || have}
+            onClick={() => onWaehlen(v)}
+            className={cn(
+              "flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-colors",
+              have ? "border-primary/30 bg-primary/5"
+                   : "border-border bg-card hover:bg-muted disabled:opacity-50",
+            )}>
+            <span className="flex w-full items-center gap-1.5">
+              {have ? <Check className="h-3 w-3 shrink-0 text-primary" />
+                    : <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />}
+              <span className={cn("truncate text-[13px] font-medium",
+                                  have ? "text-primary" : "text-foreground")}>
+                {v.name}
+              </span>
+              {v.place && (
+                <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{v.place}</span>
+              )}
+            </span>
+            {zweite && (
+              <span className="w-full truncate pl-[18px] text-[11px] leading-snug text-muted-foreground">
+                {zweite}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Wartestellung für die Karten — gleiche Höhe wie die echten, damit nichts
+ *  springt, wenn sie eintreffen. */
+function KartenPlatzhalter({ anzahl }: { anzahl: number }) {
+  return (
+    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-busy="true">
+      {Array.from({ length: anzahl }, (_, i) => (
+        <span key={i}
+          className="h-[52px] animate-pulse rounded-xl border border-dashed border-border bg-muted/40" />
+      ))}
     </div>
   );
 }
