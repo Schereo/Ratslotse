@@ -50,8 +50,10 @@ kontrollierte Kategorien und Geografie, Zeitwerte, Revisionsbindung und die
 Unveränderlichkeit gespeicherter Beobachtungen zusätzlich zum Store ab.
 
 Die privaten Migrationen werden einzeln atomar in
-`civic_report_schema_migrations` protokolliert und sind wiederholbar. Sie legen
-nur private Tabellen, Indizes und Trigger an und verändern weder
+`civic_report_schema_migrations` protokolliert und sind wiederholbar. Eine
+eigene Folgemigration ergänzt ältere private Schemata um Inhaltsrevisionen und
+erneuert deren Invariantentrigger, ohne Meldungsdaten zu ersetzen. Die
+Migrationen verändern weder
 `civic_problems` noch `civic_problem_feature_examples`. Die explizite
 Kontolöschgrenze `erase_reporter_data` entfernt alle privaten Meldungen und ihre
 Beobachtungen einer Eigentümer-ID per Fremdschlüssel-Kaskade. Zusätzlich kennt

@@ -66,16 +66,25 @@ def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
         ).fetchall()
 
 
+def _downgrade_private_schema_to_version_two(database) -> None:
+    with sqlite3.connect(database) as connection:
+        triggers = connection.execute(
+            """SELECT name FROM sqlite_master
+               WHERE type = 'trigger' AND name LIKE 'trg_civic_report%'"""
+        ).fetchall()
+        for (trigger,) in triggers:
+            connection.execute(f'DROP TRIGGER "{trigger}"')
+        connection.execute(
+            "DELETE FROM civic_report_schema_migrations WHERE version >= 3"
+        )
+
+
 def _downgrade_private_schema_to_version_one(database) -> None:
+    _downgrade_private_schema_to_version_two(database)
     with sqlite3.connect(database) as connection:
         connection.executescript(
-            """DROP TRIGGER trg_civic_reports_revision_requires_observation;
-               DROP TRIGGER trg_civic_reports_submitted_insert_observation;
-               DROP TRIGGER trg_civic_reports_submission_observation;
-               DROP TRIGGER trg_civic_report_observations_no_update;
-               DROP INDEX idx_civic_report_observations_report;
-               DROP TABLE civic_report_observations;
-               DELETE FROM civic_report_schema_migrations WHERE version = 2;"""
+            """DROP TABLE civic_report_observations;
+               DELETE FROM civic_report_schema_migrations WHERE version >= 2;"""
         )
 
 
@@ -238,6 +247,7 @@ def test_database_enforces_private_report_invariants(tmp_path):
         "scope_kind = 'citywide'",
         "content_revision = -1",
         "observed_at = 'kein-datum'",
+        "draft_text = 'Änderung ohne neue Revision'",
         "status = 'submitted'",
     )
     with sqlite3.connect(database) as connection:
@@ -248,6 +258,14 @@ def test_database_enforces_private_report_invariants(tmp_path):
                     (draft_id,),
                 )
             connection.rollback()
+        with pytest.raises(sqlite3.IntegrityError, match="submission requires new revision"):
+            connection.execute(
+                """UPDATE civic_reports
+                   SET status = 'submitted', confirmed_text = 'Bestätigt',
+                       submitted_at = updated_at
+                   WHERE id = ?""",
+                (draft_id,),
+            )
 
 
 def test_only_owner_can_change_a_draft(tmp_path):
@@ -621,6 +639,118 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     assert "wiederholte Beobachtung" not in dump
 
 
+def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
+    from buergerportal.reports import DraftContent, PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
+    old_store = PrivateReportStore(database)
+    draft_id = old_store.create_draft(
+        reporter_id=17,
+        content=DraftContent(
+            text="Fiktiver Entwurf aus Schema-Version 2",
+            category="public_space",
+            scope_kind="citywide",
+            observed_on="2026-09-01",
+        ),
+    )
+    old_store.close()
+    _downgrade_private_schema_to_version_two(database)
+
+    migrated_store = PrivateReportStore(database)
+    submitted = migrated_store.submit_owned_draft(
+        draft_id,
+        reporter_id=17,
+        confirmed_text="Bestätigte fiktive Beobachtung nach Migration",
+    )
+    migrated_store.close()
+
+    assert submitted.content_revision == 1
+    assert [observation.text for observation in submitted.observations] == [
+        "Bestätigte fiktive Beobachtung nach Migration"
+    ]
+    with sqlite3.connect(database) as connection:
+        with pytest.raises(sqlite3.IntegrityError, match="revision requires observation"):
+            connection.execute(
+                "UPDATE civic_reports SET content_revision = 99 WHERE id = ?",
+                (draft_id,),
+            )
+        versions = connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall()
+    assert versions == [(1,), (2,), (3,)]
+
+
+def test_private_migration_preserves_legacy_reports_without_revision_columns(tmp_path):
+    from buergerportal.reports import PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """CREATE TABLE civic_report_schema_migrations (
+                   version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL
+               );
+               INSERT INTO civic_report_schema_migrations VALUES (1, '2026-08-01');
+               INSERT INTO civic_report_schema_migrations VALUES (2, '2026-08-01');
+               CREATE TABLE civic_reports (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   reporter_id INTEGER NOT NULL,
+                   draft_text TEXT NOT NULL,
+                   confirmed_text TEXT,
+                   category TEXT NOT NULL,
+                   scope_kind TEXT NOT NULL,
+                   location_label TEXT NOT NULL DEFAULT '',
+                   latitude REAL,
+                   longitude REAL,
+                   observed_at TEXT NOT NULL,
+                   status TEXT NOT NULL DEFAULT 'draft',
+                   submitted_at TEXT,
+                   created_at TEXT NOT NULL,
+                   updated_at TEXT NOT NULL
+               );
+               CREATE TABLE civic_report_observations (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   report_id INTEGER NOT NULL,
+                   text TEXT NOT NULL,
+                   observed_at TEXT NOT NULL,
+                   created_at TEXT NOT NULL,
+                   FOREIGN KEY (report_id) REFERENCES civic_reports(id) ON DELETE CASCADE
+               );
+               INSERT INTO civic_reports (
+                   id, reporter_id, draft_text, confirmed_text, category, scope_kind,
+                   observed_at, status, submitted_at, created_at, updated_at
+               ) VALUES (
+                   41, 17, 'Alter fiktiver Entwurf', 'Alte bestätigte Beobachtung',
+                   'other', 'citywide', '2026-08-01', 'submitted',
+                   '2026-08-01T12:00:00+00:00', '2026-08-01T11:00:00+00:00',
+                   '2026-08-01T12:00:00+00:00'
+               );
+               INSERT INTO civic_report_observations (
+                   report_id, text, observed_at, created_at
+               ) VALUES (
+                   41, 'Alte bestätigte Beobachtung', '2026-08-01',
+                   '2026-08-01T12:00:00+00:00'
+               );"""
+        )
+
+    store = PrivateReportStore(database)
+    migrated = store.get_owned_report(41, reporter_id=17)
+    updated = store.append_owned_observation(
+        41,
+        reporter_id=17,
+        text="Fiktive Beobachtung nach der Migration",
+        observed_on="2026-09-01",
+    )
+    store.close()
+
+    assert migrated is not None
+    assert migrated.content_revision == 1
+    assert [observation.content_revision for observation in migrated.observations] == [1]
+    assert updated.content_revision == 2
+    assert [observation.content_revision for observation in updated.observations] == [1, 2]
+
+
 def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
     from buergerportal.store import ProblemStore
@@ -664,7 +794,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,)]
+    assert versions == [(1,), (2,), (3,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
@@ -708,4 +838,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,)]
+    assert versions == [(1,), (2,), (3,)]

@@ -23,6 +23,174 @@ def _sql_enum(values: tuple[str, ...]) -> str:
     return ", ".join(f"'{value}'" for value in values)
 
 
+_INVARIANT_TRIGGERS = (
+    """CREATE TRIGGER trg_civic_reports_owner_insert
+           BEFORE INSERT ON civic_reports
+           WHEN NOT EXISTS (
+               SELECT 1 FROM web_users
+               WHERE id = NEW.reporter_id AND status = 'active' AND email_verified = 1
+           )
+           BEGIN
+               SELECT RAISE(ABORT, 'report owner must be a verified account');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_owner_update
+           BEFORE UPDATE OF reporter_id ON civic_reports
+           WHEN NOT EXISTS (
+               SELECT 1 FROM web_users
+               WHERE id = NEW.reporter_id AND status = 'active' AND email_verified = 1
+           )
+           BEGIN
+               SELECT RAISE(ABORT, 'report owner must be a verified account');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_submitted_content_no_update
+           BEFORE UPDATE OF
+               reporter_id, draft_text, confirmed_text, category, scope_kind,
+               location_label, latitude, longitude, observed_at, status,
+               submitted_at
+           ON civic_reports
+           WHEN OLD.status = 'submitted'
+           BEGIN
+               SELECT RAISE(ABORT, 'submitted reports are immutable');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_draft_content_requires_revision
+           BEFORE UPDATE OF
+               draft_text, category, scope_kind, location_label,
+               latitude, longitude, observed_at
+           ON civic_reports
+           WHEN OLD.status = 'draft'
+            AND (
+                NEW.draft_text IS NOT OLD.draft_text
+                OR NEW.category IS NOT OLD.category
+                OR NEW.scope_kind IS NOT OLD.scope_kind
+                OR NEW.location_label IS NOT OLD.location_label
+                OR NEW.latitude IS NOT OLD.latitude
+                OR NEW.longitude IS NOT OLD.longitude
+                OR NEW.observed_at IS NOT OLD.observed_at
+            )
+            AND NEW.content_revision != OLD.content_revision + 1
+           BEGIN
+               SELECT RAISE(ABORT, 'draft content requires new revision');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_submission_requires_revision
+           BEFORE UPDATE OF status ON civic_reports
+           WHEN OLD.status = 'draft' AND NEW.status = 'submitted'
+            AND NEW.content_revision != OLD.content_revision + 1
+           BEGIN
+               SELECT RAISE(ABORT, 'submission requires new revision');
+           END""",
+    """CREATE TRIGGER trg_civic_report_observations_match_revision
+           BEFORE INSERT ON civic_report_observations
+           WHEN NOT EXISTS (
+               SELECT 1 FROM civic_reports AS report
+               WHERE report.id = NEW.report_id
+                 AND report.status = 'submitted'
+                 AND (
+                     (
+                         NOT EXISTS (
+                             SELECT 1 FROM civic_report_observations
+                             WHERE report_id = NEW.report_id
+                         )
+                         AND NEW.content_revision = report.content_revision
+                     )
+                     OR
+                     (
+                         EXISTS (
+                             SELECT 1 FROM civic_report_observations
+                             WHERE report_id = NEW.report_id
+                         )
+                         AND NEW.content_revision = report.content_revision + 1
+                     )
+                 )
+           )
+           BEGIN
+               SELECT RAISE(ABORT, 'observation must match submitted report revision');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_revision_requires_observation
+           BEFORE UPDATE OF content_revision ON civic_reports
+           WHEN NEW.content_revision != OLD.content_revision
+            AND NOT (
+                (
+                    OLD.status = 'draft'
+                    AND NEW.status IN ('draft', 'submitted')
+                    AND NEW.content_revision = OLD.content_revision + 1
+                )
+                OR
+                (
+                    OLD.status = 'submitted' AND NEW.status = 'submitted'
+                    AND NEW.content_revision = OLD.content_revision + 1
+                    AND EXISTS (
+                        SELECT 1 FROM civic_report_observations
+                        WHERE report_id = NEW.id
+                          AND content_revision = NEW.content_revision
+                    )
+                )
+            )
+           BEGIN
+               SELECT RAISE(ABORT, 'report revision requires observation');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_submitted_insert_observation
+           AFTER INSERT ON civic_reports
+           WHEN NEW.status = 'submitted'
+           BEGIN
+               INSERT INTO civic_report_observations (
+                   report_id, content_revision, text, observed_at, created_at
+               ) VALUES (
+                   NEW.id, NEW.content_revision, NEW.confirmed_text,
+                   NEW.observed_at, NEW.submitted_at
+               );
+           END""",
+    """CREATE TRIGGER trg_civic_reports_submission_observation
+           AFTER UPDATE OF status ON civic_reports
+           WHEN OLD.status = 'draft' AND NEW.status = 'submitted'
+           BEGIN
+               INSERT INTO civic_report_observations (
+                   report_id, content_revision, text, observed_at, created_at
+               ) VALUES (
+                   NEW.id, NEW.content_revision, NEW.confirmed_text,
+                   NEW.observed_at, NEW.submitted_at
+               );
+           END""",
+    """CREATE TRIGGER trg_civic_report_observation_advances_revision
+           AFTER INSERT ON civic_report_observations
+           WHEN NEW.content_revision > (
+               SELECT content_revision FROM civic_reports WHERE id = NEW.report_id
+           )
+           BEGIN
+               UPDATE civic_reports
+               SET content_revision = NEW.content_revision,
+                   updated_at = NEW.created_at
+               WHERE id = NEW.report_id;
+           END""",
+    """CREATE TRIGGER trg_civic_report_observations_no_update
+           BEFORE UPDATE ON civic_report_observations
+           BEGIN
+               SELECT RAISE(ABORT, 'report observations are immutable');
+           END""",
+    """CREATE TRIGGER trg_civic_report_observations_no_direct_delete
+           BEFORE DELETE ON civic_report_observations
+           WHEN EXISTS (
+               SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+           )
+           BEGIN
+               SELECT RAISE(ABORT, 'report observations are append-only');
+           END""",
+)
+
+_TRIGGER_NAMES = (
+    "trg_civic_reports_owner_insert",
+    "trg_civic_reports_owner_update",
+    "trg_civic_reports_submitted_content_no_update",
+    "trg_civic_reports_draft_content_requires_revision",
+    "trg_civic_reports_submission_requires_revision",
+    "trg_civic_report_observations_match_revision",
+    "trg_civic_reports_revision_requires_observation",
+    "trg_civic_reports_submitted_insert_observation",
+    "trg_civic_reports_submission_observation",
+    "trg_civic_report_observation_advances_revision",
+    "trg_civic_report_observations_no_update",
+    "trg_civic_report_observations_no_direct_delete",
+)
+
 _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
     (
         1,
@@ -76,16 +244,6 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
                 )""",
             """CREATE INDEX idx_civic_reports_owner
                    ON civic_reports(reporter_id, updated_at DESC)""",
-            """CREATE TRIGGER trg_civic_reports_submitted_content_no_update
-                   BEFORE UPDATE OF
-                       reporter_id, draft_text, confirmed_text, category, scope_kind,
-                       location_label, latitude, longitude, observed_at, status,
-                       submitted_at
-                   ON civic_reports
-                   WHEN OLD.status = 'submitted'
-                   BEGIN
-                       SELECT RAISE(ABORT, 'submitted reports are immutable');
-                   END""",
         ),
     ),
     (
@@ -107,105 +265,75 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
                 )""",
             """CREATE INDEX idx_civic_report_observations_report
                    ON civic_report_observations(report_id, content_revision)""",
-            """CREATE TRIGGER trg_civic_report_observations_match_revision
-                   BEFORE INSERT ON civic_report_observations
-                   WHEN NOT EXISTS (
-                       SELECT 1 FROM civic_reports AS report
-                       WHERE report.id = NEW.report_id
-                         AND report.status = 'submitted'
-                         AND (
-                             (
-                                 NOT EXISTS (
-                                     SELECT 1 FROM civic_report_observations
-                                     WHERE report_id = NEW.report_id
-                                 )
-                                 AND NEW.content_revision = report.content_revision
-                             )
-                             OR
-                             (
-                                 EXISTS (
-                                     SELECT 1 FROM civic_report_observations
-                                     WHERE report_id = NEW.report_id
-                                 )
-                                 AND NEW.content_revision = report.content_revision + 1
-                             )
-                         )
-                   )
-                   BEGIN
-                       SELECT RAISE(ABORT, 'observation must match submitted report revision');
-                   END""",
-            """CREATE TRIGGER trg_civic_reports_revision_requires_observation
-                   BEFORE UPDATE OF content_revision ON civic_reports
-                   WHEN NEW.content_revision != OLD.content_revision
-                    AND NOT (
-                        (
-                            OLD.status = 'draft'
-                            AND NEW.status IN ('draft', 'submitted')
-                            AND NEW.content_revision = OLD.content_revision + 1
-                        )
-                        OR
-                        (
-                            OLD.status = 'submitted' AND NEW.status = 'submitted'
-                            AND NEW.content_revision = OLD.content_revision + 1
-                            AND EXISTS (
-                                SELECT 1 FROM civic_report_observations
-                                WHERE report_id = NEW.id
-                                  AND content_revision = NEW.content_revision
-                            )
-                        )
-                    )
-                   BEGIN
-                       SELECT RAISE(ABORT, 'report revision requires observation');
-                   END""",
-            """CREATE TRIGGER trg_civic_reports_submitted_insert_observation
-                   AFTER INSERT ON civic_reports
-                   WHEN NEW.status = 'submitted'
-                   BEGIN
-                       INSERT INTO civic_report_observations (
-                           report_id, content_revision, text, observed_at, created_at
-                       ) VALUES (
-                           NEW.id, NEW.content_revision, NEW.confirmed_text,
-                           NEW.observed_at, NEW.submitted_at
-                       );
-                   END""",
-            """CREATE TRIGGER trg_civic_reports_submission_observation
-                   AFTER UPDATE OF status ON civic_reports
-                   WHEN OLD.status = 'draft' AND NEW.status = 'submitted'
-                   BEGIN
-                       INSERT INTO civic_report_observations (
-                           report_id, content_revision, text, observed_at, created_at
-                       ) VALUES (
-                           NEW.id, NEW.content_revision, NEW.confirmed_text,
-                           NEW.observed_at, NEW.submitted_at
-                       );
-                   END""",
-            """CREATE TRIGGER trg_civic_report_observation_advances_revision
-                   AFTER INSERT ON civic_report_observations
-                   WHEN NEW.content_revision > (
-                       SELECT content_revision FROM civic_reports WHERE id = NEW.report_id
-                   )
-                   BEGIN
-                       UPDATE civic_reports
-                       SET content_revision = NEW.content_revision,
-                           updated_at = NEW.created_at
-                       WHERE id = NEW.report_id;
-                   END""",
-            """CREATE TRIGGER trg_civic_report_observations_no_update
-                   BEFORE UPDATE ON civic_report_observations
-                   BEGIN
-                       SELECT RAISE(ABORT, 'report observations are immutable');
-                   END""",
-            """CREATE TRIGGER trg_civic_report_observations_no_direct_delete
-                   BEFORE DELETE ON civic_report_observations
-                   WHEN EXISTS (
-                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
-                   )
-                   BEGIN
-                       SELECT RAISE(ABORT, 'report observations are append-only');
-                   END""",
+        ),
+    ),
+    (
+        3,
+        (
+            *(f"DROP TRIGGER IF EXISTS {name}" for name in _TRIGGER_NAMES),
+            """UPDATE civic_report_observations AS observation
+               SET content_revision = (
+                   SELECT COUNT(*) FROM civic_report_observations AS prior
+                   WHERE prior.report_id = observation.report_id
+                     AND prior.id <= observation.id
+               )
+               WHERE content_revision = 0""",
+            """UPDATE civic_reports
+               SET content_revision = MAX(
+                   content_revision,
+                   COALESCE((
+                       SELECT MAX(content_revision)
+                       FROM civic_report_observations
+                       WHERE report_id = civic_reports.id
+                   ), CASE WHEN status = 'submitted' THEN 1 ELSE 0 END)
+               )""",
+            """INSERT INTO civic_report_observations (
+                   report_id, content_revision, text, observed_at, created_at
+               )
+               SELECT id, content_revision, confirmed_text, observed_at, submitted_at
+               FROM civic_reports AS report
+               WHERE status = 'submitted'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM civic_report_observations
+                     WHERE report_id = report.id
+                 )""",
+            """CREATE UNIQUE INDEX IF NOT EXISTS
+                   uq_civic_report_observations_revision
+                   ON civic_report_observations(report_id, content_revision)""",
+            *_INVARIANT_TRIGGERS,
         ),
     ),
 )
+
+
+def _migration_upgrade_statements(
+    connection: sqlite3.Connection,
+    version: int,
+) -> tuple[str, ...]:
+    if version != 3:
+        return ()
+    report_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(civic_reports)")
+    }
+    observation_columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(civic_report_observations)")
+    }
+    statements: list[str] = []
+    if "content_revision" not in report_columns:
+        statements.append(
+            """ALTER TABLE civic_reports
+               ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
+               CHECK (content_revision >= 0)"""
+        )
+    if "content_revision" not in observation_columns:
+        statements.append(
+            """ALTER TABLE civic_report_observations
+               ADD COLUMN content_revision INTEGER NOT NULL DEFAULT 0
+               CHECK (content_revision >= 0)"""
+        )
+    return tuple(statements)
 
 
 @dataclass(frozen=True)
@@ -366,6 +494,8 @@ class PrivateReportStore:
                 if applied:
                     self._conn.commit()
                     continue
+                for statement in _migration_upgrade_statements(self._conn, version):
+                    self._conn.execute(statement)
                 for statement in statements:
                     self._conn.execute(statement)
                 self._conn.execute(
