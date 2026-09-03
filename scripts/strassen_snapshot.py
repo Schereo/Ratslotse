@@ -65,6 +65,31 @@ BBOX = (53.08, 8.10, 53.22, 8.30)
 #: jedes Auf und Ab in OSM.
 MINDESTENS_WEGE = 3000
 
+#: Wie oft eine Abfrage wiederholt wird und wie lange dazwischen gewartet wird.
+#: Am 03.09.2026 von tk-nwz gemessen: fünf identische Mini-Abfragen ergaben
+#: 2× 200 und 3× 504; drei schwere hintereinander endeten mit 429. Die
+#: öffentliche Instanz ist nicht gesperrt (``/api/status`` meldet „Rate limit:
+#: 2, 2 slots available"), sie ist ausgelastet — dagegen hilft warten, nicht
+#: schneller wiederholen. Die Wartezeiten wachsen deshalb deutlich.
+WARTEN = (10, 45, 120)
+
+
+def _netz_hinweis(fehler: BaseException) -> str:
+    """Die Meldung „Network is unreachable" führt hier in die Irre.
+
+    ``getaddrinfo`` liefert für overpass-api.de erst zwei IPv4-Adressen, dann
+    zwei IPv6; die VMs haben kein globales IPv6 (nur ``fe80``). Scheitern die
+    IPv4-Versuche, probiert Python die IPv6-Adressen und meldet DEREN Fehler.
+    Der Text beschuldigt dann das Netz, obwohl der Dienst das Problem war —
+    genau daran ist am 03.09.2026 eine Stunde draufgegangen.
+    """
+    if "unreachable" in str(fehler).lower():
+        return ("  HINWEIS: Diese Maschine hat kein globales IPv6. Python probiert die "
+                "IPv4-Adressen ZUERST — diese Meldung stammt vom letzten (IPv6-)Versuch, "
+                "die eigentliche Ursache liegt davor. Zum Nachsehen: "
+                "curl -4 https://overpass-api.de/api/status")
+    return ""
+
 
 def holen(url: str = OVERPASS, timeout: int = 300) -> dict:
     """Alle benannten Wege im Rechteck — ein Aufruf, rohe Overpass-Antwort."""
@@ -72,14 +97,9 @@ def holen(url: str = OVERPASS, timeout: int = 300) -> dict:
     query = (f"[out:json][timeout:180];"
              f'way["highway"]["name"]({lat_min},{lon_min},{lat_max},{lon_max});'
              f"out geom;")
-    start = time.time()
-    antwort = requests.post(url, data={"data": query}, headers=HEADERS, timeout=timeout)
-    antwort.raise_for_status()
-    daten = antwort.json()
+    daten = _mit_wiederholung(url, query, timeout)
     wege = [e for e in daten.get("elements", []) if e.get("geometry")]
-    print(f"Schnappschuss: {len(wege)} benannte Wege, "
-          f"{round(len(antwort.content) / 1e6, 1)} MB, {round(time.time() - start, 1)} s",
-          flush=True)
+    print(f"Schnappschuss: {len(wege)} benannte Wege", flush=True)
     if len(wege) < MINDESTENS_WEGE:
         # Lieber gar kein Schnappschuss als ein halber: Ein abgeschnittenes
         # Ergebnis (Overpass unter Last liefert das) sähe für den Abgleich aus
@@ -89,6 +109,47 @@ def holen(url: str = OVERPASS, timeout: int = 300) -> dict:
             f"(gemessen: 6.534). Die Antwort ist unvollständig oder kam aus dem "
             f"falschen Ausschnitt; nichts geschrieben.")
     return daten
+
+
+def _mit_wiederholung(url: str, query: str, timeout: int) -> dict:
+    """Die Abfrage, notfalls mehrmals — mit wachsender Pause.
+
+    Wiederholt wird bei 429 (Ratenbremse), 5xx (die Instanz ist überlastet und
+    antwortet mit 504) und bei Netzfehlern. Ein 400 dagegen ist unsere eigene
+    kaputte Abfrage und wird sofort durchgereicht: Sie wird beim vierten Mal
+    nicht besser.
+    """
+    letzte: str = ""
+    for nummer, pause in enumerate((*WARTEN, None), start=1):
+        start = time.time()
+        try:
+            antwort = requests.post(url, data={"data": query}, headers=HEADERS,
+                                    timeout=timeout)
+            dauer = round(time.time() - start, 1)
+            if antwort.status_code == 200:
+                print(f"Overpass: 200 nach {dauer} s "
+                      f"({round(len(antwort.content) / 1e6, 1)} MB, Versuch {nummer})",
+                      flush=True)
+                return antwort.json()
+            letzte = f"HTTP {antwort.status_code} nach {dauer} s"
+            if antwort.status_code < 500 and antwort.status_code != 429:
+                raise SystemExit(f"Overpass antwortet mit {antwort.status_code} — "
+                                 f"das ist unsere Abfrage, nicht die Auslastung:\n"
+                                 f"{antwort.text[:400]}")
+        except requests.RequestException as fehler:
+            # Den Text mitnehmen, nicht nur den Typ: In ihm steckt „Network is
+            # unreachable", woran `_netz_hinweis` den IPv6-Trugschluss erkennt.
+            letzte = (f"{type(fehler).__name__} nach {round(time.time() - start, 1)} s: "
+                      f"{str(fehler)[:200]}")
+        if pause is None:
+            break
+        print(f"Overpass: {letzte} — Versuch {nummer} von {len(WARTEN) + 1}, "
+              f"warte {pause} s.", flush=True)
+        time.sleep(pause)
+    raise SystemExit(
+        f"Overpass hat {len(WARTEN) + 1}-mal nicht geliefert (zuletzt: {letzte}). "
+        f"Die öffentliche Instanz ist zeitweise überlastet — später erneut "
+        f"versuchen.\n" + _netz_hinweis(RuntimeError(letzte)))
 
 
 def _nach_namen(daten: dict) -> dict[str, list[list[list[float]]]]:
@@ -144,10 +205,16 @@ def anwenden(council_db: Path, datei: Path, *, trocken: bool = False) -> dict:
     daten = json.loads(datei.read_text(encoding="utf-8"))
     nach_namen = _nach_namen(daten)
     store = CouncilStore(council_db)
-    stand = {"namen": len(nach_namen), "orte_offen": 0, "orte_neu": 0,
+    stand = {"namen": len(nach_namen), "abgleichbar": 0, "orte_offen": 0, "orte_neu": 0,
              "orte_unveraendert": 0, "orte_ohne_treffer": 0, "orte_ausserhalb": 0,
              "entitaeten_neu": 0}
     try:
+        # Erst der Prüfstein: Wie viele der bekannten Straßen kennt dieser
+        # Schnappschuss überhaupt? Bei der richtigen Datei sind das Hunderte,
+        # bei einer fremden null — unabhängig davon, wie viel zu tun ist.
+        bekannt = store.street_location_names()
+        stand["strassen_bekannt"] = len(bekannt)
+        stand["abgleichbar"] = sum(1 for n in bekannt if n.strip().casefold() in nach_namen)
         offen = store.street_locations_to_refine()
         stand["orte_offen"] = len(offen)
         for row in offen:
@@ -204,12 +271,28 @@ def main() -> int:
     hol.add_argument("--datei", type=Path, default=SCHNAPPSCHUSS)
     hol.add_argument("--url", default=OVERPASS)
 
+    akt = unter.add_parser(
+        "aktualisieren",
+        help="holen UND anwenden — der Weg für den wöchentlichen Lauf")
+    akt.add_argument("--datei", type=Path, default=SCHNAPPSCHUSS)
+    akt.add_argument("--db", type=Path, default=COUNCIL_DB)
+    akt.add_argument("--url", default=OVERPASS)
+
     anw = unter.add_parser("anwenden", help="Schnappschuss auf die Datenbank anwenden")
     anw.add_argument("--datei", type=Path, default=SCHNAPPSCHUSS)
     anw.add_argument("--db", type=Path, default=COUNCIL_DB)
     anw.add_argument("--trocken", action="store_true", help="nur zählen, nichts schreiben")
 
     args = ap.parse_args()
+    if args.befehl == "aktualisieren":
+        # Ein Schritt, weil der wöchentliche Lauf ihn als einen kennt. Der
+        # Schnappschuss bleibt liegen: Er ist die Quelle, gegen die sich das
+        # Ergebnis später nachprüfen lässt, und 4 MB tun niemandem weh.
+        args.datei.parent.mkdir(parents=True, exist_ok=True)
+        args.datei.write_text(json.dumps(holen(args.url), separators=(",", ":")),
+                              encoding="utf-8")
+        args.trocken = False
+        args.befehl = "anwenden"
     if args.befehl == "holen":
         daten = holen(args.url)
         args.datei.parent.mkdir(parents=True, exist_ok=True)
@@ -221,11 +304,12 @@ def main() -> int:
     print(("TROCKEN: " if args.trocken else "")
           + "Straßen-Schnappschuss: "
           + ", ".join(f"{k}={v}" for k, v in stand.items()))
-    # Ein Lauf, der auf 687 offene Orte keinen einzigen Treffer hat, hat nicht
-    # „nichts zu tun" — er hat die falsche Datei gelesen. Das muss der
-    # Rückgabewert sagen, sonst steht der Workflow grün und niemand sieht es.
-    if stand["orte_offen"] and not (stand["orte_neu"] + stand["orte_unveraendert"]):
-        print(f"FEHLER: {stand['orte_offen']} Straßen offen, aber KEIN Namenstreffer "
+    # Gemessen an der ÜBERDECKUNG, nicht an der Zahl der Änderungen: Ist alles
+    # Reparierbare repariert, ändert der richtige Schnappschuss null Zeilen.
+    # Die erste Fassung dieses Riegels schlug genau dann an — sie hätte jeden
+    # künftigen Wochenlauf rot gemacht (beim ersten echten Lauf aufgefallen).
+    if stand["strassen_bekannt"] and not stand["abgleichbar"]:
+        print(f"FEHLER: Von {stand['strassen_bekannt']} bekannten Straßen steht KEINE "
               f"im Schnappschuss ({stand['namen']} Namen). Falsche oder leere Datei?",
               file=sys.stderr)
         return 1
