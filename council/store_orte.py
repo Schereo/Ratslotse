@@ -311,6 +311,52 @@ class OrteMixin:
             args = (int(limit),)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def location_districts(self, slugs: list[str]) -> dict[str, set[str]]:
+        """Zu welchen Ortsbereichen ein Ort gehört — je Slug, klein geschrieben.
+
+        Ein Ort kann in mehreren liegen (die Alexanderstraße in fünf). Wer
+        wissen will, ob etwas im eigenen Stadtteil liegt, fragt hier und nicht
+        die eine Hauptspalte ``council_locations.district``.
+        """
+        slugs = [s for s in slugs if s]
+        if not slugs:
+            return {}
+        platz = ",".join("?" * len(slugs))
+        out: dict[str, set[str]] = {}
+        for r in self._conn.execute(
+            f"SELECT location_slug, district FROM council_location_districts "
+            f"WHERE location_slug IN ({platz})", slugs).fetchall():
+            out.setdefault(r["location_slug"], set()).add((r["district"] or "").casefold())
+        return out
+
+    def street_locations_to_refine(self, limit: int | None = None) -> list[dict]:
+        """Straßen, von denen nur EIN Segment gespeichert ist.
+
+        Nominatim gibt zu einem Straßennamen den Weg zurück, der zufällig
+        zuerst passt — bei „Tweelbäker Tredde" ein 800-m-Stück von 2,4 km.
+        Overpass gibt alle Segmente (``MultiLineString``). Woran man das
+        auseinanderhält: an der Geometrie-Art. Alles, was für eine Straße
+        KEIN ``MultiLineString`` ist, stammt aus dem Einzel-Segment-Weg.
+
+        Das ist eine Reparatur des Bestands, kein Dauerlauf: Neue Orte gehen
+        seit der ``kind``-Weiche in ``geocode_entities._is_street`` von
+        vornherein an Overpass. Am Prod-Bestand (03.09.2026) betrifft es 430
+        Straßen, 96 davon mit einem Namen, den kein Muster als Straße erkennt.
+        """
+        sql = (
+            "SELECT l.slug, l.name, l.kind, COUNT(dl.decision_id) AS n "
+            "FROM council_locations l LEFT JOIN council_decision_locations dl "
+            "ON dl.location_slug = l.slug "
+            "WHERE l.kind IN ('street','square') AND l.geojson IS NOT NULL "
+            "AND l.geojson NOT LIKE '%MultiLineString%' "
+            "GROUP BY l.slug ORDER BY n DESC, l.name"
+        )
+        args: tuple = ()
+        if limit is not None:
+            sql += " LIMIT ?"
+            args = (int(limit),)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
     def apply_curated_location_geocodes(self) -> int:
         """Schwierige Ratsorte vor dem freien Geocoder reproduzierbar verorten."""
         from council import geo
