@@ -14,6 +14,7 @@ import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from 
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { TopicSheet, type Described } from "@/components/topic-sheet";
+import { einladungStand, merkeEinladung } from "@/lib/tour-einladung";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
 
 /** Design 26a — geführtes Onboarding: einrichten statt nur vorstellen.
@@ -120,13 +121,11 @@ let flowEntscheidet = false;
 /** Die Tour-Einladung (`tour-einladung.tsx`) ist der letzte Takt der Einrichtung:
  *  Solange sie offen steht, halten die Abzeichen-Meldungen genauso still wie
  *  unter dem Assistenten — sonst knallte das „Frühwarner"-Abzeichen genau in
- *  Lottis Frage hinein. Die Einladung meldet sich hier an und ab. */
-let einladungOffen = false;
-export function setTourEinladungOffen(offen: boolean) {
-  einladungOffen = offen;
-}
+ *  Lottis Frage hinein. Gefragt wird die gemerkte Marke, nicht ein Zustand im
+ *  Speicher dieser Sitzung: Nach einem Neuladen mit offener Einladung ist die
+ *  Komponente noch gar nicht da, wenn die Abzeichen das erste Mal fragen. */
 export function isOnboardingVisible(): boolean {
-  return flowVisible || flowEntscheidet || einladungOffen;
+  return flowVisible || flowEntscheidet || einladungStand() === "offen";
 }
 /** Wird beim Abschluss/Abbruch gefeuert, damit aufgeschobene Abzeichen-Meldungen
  *  nachgeholt werden können. Feuert AUCH, wenn der Flow nur entschieden hat,
@@ -250,6 +249,12 @@ export function OnboardingFlow() {
         localStorage.setItem(PUSH_SNOOZE_KEY,
           String(Date.now() + PUSH_SNOOZE_DAYS * 24 * 60 * 60 * 1000));
       } catch { /* Speicher voll/gesperrt — dann eben nochmal beim nächsten Start */ }
+      // Lottis Einladung ist ab jetzt dran. Die Marke setzt der Assistent
+      // selbst, nicht erst der Empfänger des Ereignisses unten: Der hängt in
+      // der App-Hülle und ist in mehreren Momenten nicht gemountet (s.
+      // lib/tour-einladung.ts). Ohne die Marke war die Gelegenheit einmalig
+      // vorbei — genau so ist sie auf Prod verpufft.
+      merkeEinladung("offen");
       setStep(null);
       if (isUsable(user)) reportSetupStep(3, true);
       // Reihenfolge ist Absicht: Erst nimmt die Einladung ihren Platz ein
