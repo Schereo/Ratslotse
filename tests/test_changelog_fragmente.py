@@ -12,9 +12,15 @@ Zwei Dinge hält diese Datei fest:
    richtigen Stelle raus, Datei weg. Die PR-Nummer kommt aus der Git-Historie;
    hier wird sie als Attrappe hereingereicht, damit der Test nicht von echten
    Commits abhängt.
+3. **Aus dem Tag wird ein GitHub-Release.** Der Schritt fiel dreimal aus
+   (v1.14.0, v1.15.0, v2.0.0 hingen als Tags ohne Release), deshalb steht er
+   jetzt im Skript — und deshalb wird hier festgehalten, dass er den richtigen
+   Abschnitt nimmt, zu lange Jahrgänge kürzt statt zu scheitern, und einem
+   nachgereichten alten Release nicht „Latest" verpasst.
 """
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -23,10 +29,17 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.changelog_schnitt import (  # noqa: E402
+    GITHUB_TEXTGRENZE,
     KATEGORIEN,
     FragmentFehler,
+    ReleaseFehler,
+    _ist_neueste,
+    abschnitt,
+    kernsaetze,
     lies_fragment,
     pr_nummer,
+    release,
+    release_text,
     sammle_fragmente,
     schnitt,
 )
@@ -82,6 +95,32 @@ def test_kaputte_fragmente_werfen(tmp_path, inhalt, part):
     with pytest.raises(FragmentFehler) as fehler:
         lies_fragment(pfad)
     assert part in str(fehler.value)
+
+
+def test_ueberschrift_im_fragment_wird_abgewiesen(tmp_path):
+    """Der Schnitt zieht ein Fragment zu EINEM Listenpunkt zusammen. Eine
+    Überschrift darin landet deshalb mitten im Satz — genau so steckte #816
+    im Changelog: „- ### Kurzfassungen: … Die Tragweite-Gründe …". Der Prüfer
+    ließ das durch, weil er nur Frontmatter und Nicht-Leere ansah."""
+    pfad = _fragment(
+        tmp_path,
+        "---\nkategorie: geaendert\n---\n\n"
+        "### Kurzfassungen: genauer, aktuelleres Modell\n\n"
+        "Die Tragweite-Gründe laufen jetzt auf einem anderen Modell.\n",
+    )
+    with pytest.raises(FragmentFehler, match="Überschrift"):
+        lies_fragment(pfad)
+
+
+def test_mehrere_absaetze_bleiben_erlaubt(tmp_path):
+    """Nur die Überschrift ist das Problem, nicht der Aufbau: Absätze werden
+    zu einem Fließtext verbunden, das ist gewollt."""
+    pfad = _fragment(
+        tmp_path,
+        "---\nkategorie: geaendert\n---\n\n"
+        "**Kernsatz.** Erster Absatz.\n\nZweiter Absatz.\n",
+    )
+    assert lies_fragment(pfad).text == "**Kernsatz.** Erster Absatz. Zweiter Absatz."
 
 
 def test_readme_und_unterstrich_sind_keine_fragmente(tmp_path):
@@ -203,3 +242,106 @@ def test_pr_nummer_nimmt_den_anlegenden_commit(tmp_path):
                                      "fix: Tippfehler (#601)"]) == 578
     assert pr_nummer(pfad, betreffe=["wip: noch ohne PR"]) is None
     assert pr_nummer(pfad, betreffe=[]) is None
+
+
+# --------------------------------------------------------------------------
+# (c) GitHub-Release
+# --------------------------------------------------------------------------
+
+def test_abschnitt_nimmt_genau_eine_version(repo):
+    text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    block = abschnitt(text, "1.12.0")
+    assert "Irgendwas Älteres. (#99)" in block
+    # Weder die eigene Überschrift noch der Nachbarblock noch die Link-Liste:
+    assert "## [1.12.0]" not in block
+    assert "Ein von Hand eingetragener Punkt" not in block
+    assert "compare/" not in block
+
+
+def test_abschnitt_ohne_version_wirft(repo):
+    with pytest.raises(ReleaseFehler, match=r"9\.9\.9"):
+        abschnitt((repo / "CHANGELOG.md").read_text(encoding="utf-8"), "9.9.9")
+
+
+def test_kernsaetze_behalten_ueberschrift_und_nummer():
+    block = (
+        "### Hinzugefügt\n"
+        "- **Eine neue Karte.** Sie zeigt etwas, das vorher niemand sehen\n"
+        "  konnte, und der Absatz geht noch lange weiter. (#123)\n"
+        "\n"
+        "### Behoben\n"
+        "- **Ein Fehler weniger.** Ohne Nummer, das kommt vor.\n"
+    )
+    kurz = kernsaetze(block)
+    assert kurz.splitlines() == [
+        "### Hinzugefügt",
+        "- **Eine neue Karte.** (#123)",
+        "",
+        "### Behoben",
+        "- **Ein Fehler weniger.**",
+    ]
+
+
+def test_kernsatz_faellt_auf_den_ersten_satz_zurueck():
+    """Nicht jeder Eintrag beginnt fett — die Jahrgänge v1.0–v1.4 stammen aus der
+    Zeit vor den Fragmenten und schreiben schlichte Sätze."""
+    kurz = kernsaetze("- ### Kurzfassungen: genauer. Und dann viel mehr Text. (#816)")
+    assert kurz == "- **Kurzfassungen: genauer.** (#816)"
+
+
+def test_release_text_laesst_kurze_abschnitte_in_ruhe():
+    block = "### Behoben\n- **Klein.** Passt. (#1)"
+    assert release_text(block, "1.0.0") == block
+
+
+def test_release_text_kuerzt_zu_lange_abschnitte():
+    eintrag = "- **Kernsatz Nummer {n}.** " + ("Fließtext. " * 60) + "(#{n})\n"
+    block = "### Hinzugefügt\n" + "".join(eintrag.format(n=i) for i in range(400))
+    assert len(block) > GITHUB_TEXTGRENZE
+
+    text = release_text(block, "1.14.0")
+    assert len(text) < GITHUB_TEXTGRENZE
+    assert "**Kernsatz Nummer 399.** (#399)" in text      # kein Abschneiden am Limit
+    assert "blob/v1.14.0/CHANGELOG.md" in text            # Verweis auf den vollen Text
+    assert "Fließtext." not in text
+
+
+def test_nur_die_oberste_version_wird_latest(repo):
+    text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+    # Im Fixture steht [Unreleased] oben, darunter 1.12.0 als einzige Version.
+    assert _ist_neueste(text, "1.12.0")
+    assert not _ist_neueste(text, "1.11.0")
+
+
+def test_release_trocken_ruft_kein_gh(repo, monkeypatch, capsys):
+    """Der Probelauf fasst weder gh noch das Fernarchiv an — sonst wäre er auf
+    einem Rechner ohne gh nicht zu gebrauchen."""
+    import scripts.changelog_schnitt as modul
+
+    def verboten(*args, **kwargs):  # pragma: no cover — soll nie laufen
+        raise AssertionError("der Probelauf darf nichts nach außen tun")
+
+    monkeypatch.setattr(modul, "_gh", verboten)
+    monkeypatch.setattr(modul, "_tag_auf_remote", verboten)
+
+    text = release("1.12.0", titel="v1.12.0 — Test", wurzel=repo, trocken=True)
+    assert "Irgendwas Älteres. (#99)" in text
+    assert "--latest" in capsys.readouterr().err
+
+
+def test_release_ohne_gepushten_tag_wirft(repo, monkeypatch):
+    """Lokal getaggt reicht nicht: Das Release zeigt auf den Stand bei GitHub."""
+    import scripts.changelog_schnitt as modul
+    monkeypatch.setattr(modul, "_tag_auf_remote", lambda version, wurzel=None: False)
+    with pytest.raises(ReleaseFehler, match="nicht bei origin"):
+        release("1.12.0", wurzel=repo)
+
+
+def test_release_legt_nichts_doppelt_an(repo, monkeypatch):
+    import scripts.changelog_schnitt as modul
+    monkeypatch.setattr(modul, "_tag_auf_remote", lambda version, wurzel=None: True)
+    monkeypatch.setattr(
+        modul, "_gh",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, "", ""))
+    with pytest.raises(ReleaseFehler, match="gibt es schon"):
+        release("1.12.0", wurzel=repo)

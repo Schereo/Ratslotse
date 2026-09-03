@@ -398,6 +398,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   **Kernsatz fett.** Dann der Fließtext.
   ```
 
+  **Keine Überschrift im Fragment.** Der Text wird zu *einem* Listenpunkt
+  zusammengezogen; ein `### …` darin landet mitten im Satz. `--pruefen` weist
+  das seit 09/2026 ab — davor stand #816 als „- ### Kurzfassungen: … Die
+  Tragweite-Gründe …" im Changelog. Mehrere Absätze sind dagegen in Ordnung,
+  sie werden zu einem Fließtext verbunden.
   Ein Fragment je PR heißt: zwei parallele Zweige fassen nie dieselbe Datei an,
   der Merge kollidiert also nicht mehr im Changelog — und die Nummer muss
   niemand raten (sie existiert beim Schreiben ja noch gar nicht).
@@ -407,8 +412,22 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `.venv/bin/python scripts/changelog_schnitt.py x.y.z [--trocken]` — hängt an
   jedes Fragment die PR-Nummer aus dem Squash-Commit, der es angelegt hat,
   sortiert es unter `## [x.y.z] – Datum` in seinen Abschnitt, löscht die
-  Fragmente und zieht die Compare-Links am Dateiende nach. Danach annotierten
-  Git-Tag `vx.y.z` setzen + pushen. Die Seite ratslotse.de/changelog rendert zur
+  Fragmente und zieht die Compare-Links am Dateiende nach. Danach — **nach dem
+  Merge des Release-PRs** — annotierten Git-Tag `vx.y.z` setzen, pushen und
+  daraus das GitHub-Release machen:
+
+  ```bash
+  git tag -a vx.y.z -m "Ratslotse x.y.z" && git push origin vx.y.z
+  .venv/bin/python scripts/changelog_schnitt.py x.y.z --release --titel "vx.y.z — …"
+  ```
+
+  Der zweite Befehl war bis 09/2026 Handarbeit und fiel deshalb dreimal aus:
+  v1.14.0, v1.15.0 und v2.0.0 lagen als Tags bei GitHub, ohne dass ein Release
+  daraus wurde — die Release-Seite zeigte wochenlang v1.13.2 als „Latest". Ein
+  Tag allein erscheint dort nur unter „Tags". `--release` nimmt den fertigen
+  Abschnitt aus `CHANGELOG.md`, prüft Tag und Doppelanlage und kürzt einen zu
+  langen Jahrgang (GitHub: 125.000 Zeichen) auf die Kernsätze samt Verweis,
+  statt zu scheitern. Die Seite ratslotse.de/changelog rendert zur
   Build-Zeit `CHANGELOG.md` **plus** die offenen Fragmente (sie stehen dort
   unter „Unreleased") — für Leser*innen ändert sich dadurch nichts.
 - **Keine fremden E-Mail-Adressen im Repo.** Das Repo ist öffentlich; die

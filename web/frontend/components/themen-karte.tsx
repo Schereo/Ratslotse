@@ -8,6 +8,8 @@ import { formatDate } from "@/components/ui";
 import { decisionHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import type { Topic } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { STAFFEL, staffelStil } from "@/components/staffel";
 
 /** Eine Karte auf „Meine Themen".
  *
@@ -22,7 +24,7 @@ import type { Topic } from "@/lib/types";
  *  unterscheidet, ist nur die Spaltenzahl außen herum.
  */
 export function ThemenKarte({
-  topic, onEdit, onDelete, loeschFrage, onLoeschFrage, onAlleGelesen, onTrefferGelesen,
+  topic, onEdit, onDelete, loeschFrage, onLoeschFrage, onAlleGelesen, onTrefferGelesen, rang = 0,
 }: {
   topic: Topic;
   onEdit: () => void;
@@ -35,6 +37,8 @@ export function ThemenKarte({
   onAlleGelesen: () => void;
   /** EINEN Treffer als gelesen markieren — wer ihn öffnet, hat ihn gelesen. */
   onTrefferGelesen: (decisionId: number) => void;
+  /** Platz in der Liste — steuert den Versatz beim gestaffelten Einlaufen. */
+  rang?: number;
 }) {
   const treffer = topic.recent_hits ?? [];
   const gesamt = topic.decision_count;
@@ -52,7 +56,10 @@ export function ThemenKarte({
       : `Beobachtet seit ${formatDate(topic.created_at)}`;
 
   return (
-    <article className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:px-[18px]">
+    <article
+      className={cn("rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] sm:px-[18px]", STAFFEL)}
+      style={staffelStil(rang)}
+    >
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="truncate font-display text-base font-semibold text-foreground">{topic.name}</h3>

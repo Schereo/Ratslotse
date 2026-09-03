@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, ChevronDown, ChevronRight, Scale, SlidersHorizontal, Users, Sparkles, Split, X, Flame, History, CalendarPlus, Paperclip, MapPin } from "lucide-react";
 import { api, qs, ApiError } from "@/lib/api";
 import { fragenHref, decisionHref, ortHref } from "@/lib/routes";
+import { STAFFEL, staffelStil } from "@/components/staffel";
+import { Aufklapp } from "@/components/aufklapp";
 import { useDebounce } from "@/lib/use-debounce";
 import { clearRecentSearches, getRecentSearches, pushRecentSearch } from "@/lib/recent-searches";
 import { offerIcs } from "@/lib/ics";
@@ -170,7 +172,7 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
   return parts.join(" · ");
 }
 
-function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
+function DecisionCard({ d, query, rang = 0 }: { d: CouncilDecision; query: string; rang?: number }) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
@@ -186,7 +188,11 @@ function DecisionCard({ d, query }: { d: CouncilDecision; query: string }) {
     router.push(fragenHref({ q: `Erzähl mir mehr zu „${d.title ?? ""}".` }));
   };
   return (
-    <Link href={decisionHref(d.id)} className="block">
+    // Die Treffer laufen der Reihe nach ein, statt als Block dazustehen — bei
+    // einer neuen Suche oder einer neuen Seite montiert React sie ohnehin neu
+    // (`key` ist die Beschluss-ID), die Bewegung läuft also genau dann, wenn
+    // sich die Liste wirklich ändert.
+    <Link href={decisionHref(d.id)} className={cn("block", STAFFEL)} style={staffelStil(rang)}>
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
           (Ergebnis-Punkt + „Wichtig" zusammen, Chevron rechts; Gremium·Datum·TOP
           als ruhige zweite Zeile) → Titel + 2-Zeilen-Auszug → Fußzeile
@@ -881,8 +887,17 @@ function DecisionsTab({ committees }: { committees: string[] }) {
         </div>
       )}
 
-      <div ref={listRef} tabIndex={-1} className="mt-6 outline-none">
-        {loading ? (
+      {/* `aria-busy` statt eines Skeletts: Solange schon Treffer dastehen,
+          bleiben sie stehen und werden nur leiser (s. `.liste-laedt` in
+          globals.css) — sonst springt die Seitenhöhe beim Blättern zweimal.
+          Das Skelett bleibt für den Fall, dass es nichts zu halten gibt. */}
+      <div
+        ref={listRef}
+        tabIndex={-1}
+        aria-busy={loading || undefined}
+        className={cn("mt-6 outline-none", loading && decisions.length > 0 && "liste-laedt")}
+      >
+        {loading && decisions.length === 0 ? (
           <CardListSkeleton rows={5} />
         ) : decisions.length === 0 ? (
           <EmptyState
@@ -936,7 +951,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               <Pagination compact page={page} totalPages={totalPages}
                 onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
-            {decisions.map((d) => <DecisionCard key={d.id} d={d} query={query} />)}
+            {decisions.map((d, i) => <DecisionCard key={d.id} d={d} query={query} rang={i} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
         )}
@@ -1535,8 +1550,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
         </div>
       </Card>
 
-      <div ref={listRef} tabIndex={-1} className="mt-6 outline-none">
-        {loading ? (
+      <div
+        ref={listRef}
+        tabIndex={-1}
+        aria-busy={loading || undefined}
+        className={cn("mt-6 outline-none", loading && sessions.length > 0 && "liste-laedt")}
+      >
+        {loading && sessions.length === 0 ? (
           <CardListSkeleton rows={5} />
         ) : sessions.length === 0 ? (
           // RL-U04: In der Sitzungspause ist „Anstehend" leer, das Banner darüber
@@ -1589,7 +1609,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                 return (
                   <Fragment key={`${s.committee}|${s.session_date}|${s.session_time}`}>
                   {trenner}
-                  <Card className="p-4">
+                  <Card className={cn("p-4", STAFFEL)} style={staffelStil(i)}>
                     {/* Mobil wandert die Badge unter den Text — sonst quetscht
                         sie den Gremiumsnamen auf „Ausschuss …" zusammen. */}
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -1660,8 +1680,10 @@ function SessionsTab({ committees }: { committees: string[] }) {
                   id={`session-${s.ksinr}`}
                   className={cn(
                     "overflow-hidden p-0 transition-shadow",
+                    STAFFEL,
                     flashKsinr === s.ksinr && "ring-2 ring-primary",
                   )}
+                  style={staffelStil(i)}
                 >
                   <button type="button" onClick={() => toggle(s)} className="group flex w-full items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40">
                     <div className="flex min-w-0 items-center gap-3">
@@ -1694,11 +1716,31 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         </span>
                       )}
                       <Badge color="blue">{s.n_items} {s.n_items === 1 ? "TOP" : "TOPs"}</Badge>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground/50 transition-transform", isExpanded && "rotate-180 text-primary")} />
+                      {/* Solange die Tagesordnung geholt wird, steht hier ein
+                          Spinner statt des Pfeils — und der Bereich fährt erst
+                          auf, wenn sie da ist (s. `offen` unten). Vorher klappte
+                          er sofort auf Spinner-Höhe auf und sprang beim
+                          Eintreffen der Punkte ein zweites Mal: gemessen von
+                          118 auf 1.262 px in einem Bild. Ein Fortschritt an der
+                          Stelle, die man gerade angetippt hat, ist die
+                          ehrlichere Antwort (Designsprache § 6). */}
+                      {detailLoading[s.ksinr] ? (
+                        <span
+                          aria-label="Tagesordnung wird geladen"
+                          role="status"
+                          className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary [animation-duration:600ms]"
+                        />
+                      ) : (
+                        <ChevronDown className={cn("h-5 w-5 text-muted-foreground/50 transition-transform duration-weg ease-out-strong", isExpanded && "rotate-180 text-primary")} />
+                      )}
                     </div>
                   </button>
 
-                  {(query || isExpanded) && (
+                  {/* Fährt auf und zu, statt zu erscheinen und zu verschwinden.
+                      Der Rahmen oben gehört an den inneren Kasten: Am Wrapper
+                      stünde er auch im zugefahrenen Zustand als Strich unter
+                      der Karte. */}
+                  <Aufklapp offen={!!(query || (isExpanded && !detailLoading[s.ksinr]))}>
                     <div className="border-t border-border px-4 pb-4 pt-3">
                       {isExpanded ? (
                         detailLoading[s.ksinr] ? (
@@ -1764,7 +1806,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                         </a>
                       </div>
                     </div>
-                  )}
+                  </Aufklapp>
                 </Card>
                 </Fragment>
               );

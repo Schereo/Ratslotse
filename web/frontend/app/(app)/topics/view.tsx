@@ -257,10 +257,11 @@ export function TopicsView() {
            Karten trotzdem auf ihrer eigenen Höhe. */
         <div className="@container mt-6">
           <div className="grid grid-cols-1 items-start gap-4 @3xl:grid-cols-2">
-            {topics.map((t) => (
+            {topics.map((t, i) => (
               <ThemenKarte
                 key={t.id}
                 topic={t}
+                rang={i}
                 onEdit={() => setEditing(t)}
                 onDelete={() => deleteMutation.mutate(t.id)}
                 loeschFrage={loeschFrage === t.id}

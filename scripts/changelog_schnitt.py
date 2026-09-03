@@ -25,12 +25,33 @@ nach (der Squash-Commit, der die Datei angelegt hat, trägt sie im Titel).
 Erlaubte Kategorien: ``hinzugefuegt``, ``geaendert``, ``behoben`` (die
 Schreibweisen mit Umlaut werden ebenfalls gelesen).
 
+**Keine Überschrift im Fragment.** Der Text wird zu *einem* Listenpunkt
+zusammengezogen; ein ``### …`` darin landet mitten im Satz. Genau so steht #816
+im Changelog: „- ### Kurzfassungen: … Die Tragweite-Gründe …". Mehrere Absätze
+sind dagegen in Ordnung — sie werden zu einem Fließtext verbunden.
+
 **Aufruf beim Versionsschnitt** (im Release-PR ``dev`` → ``main``)::
 
     .venv/bin/python scripts/changelog_schnitt.py 1.13.0 --trocken   # anschauen
     .venv/bin/python scripts/changelog_schnitt.py 1.13.0             # schreiben
 
-Danach wie gehabt: Tag ``v1.13.0`` setzen und pushen.
+Danach, **nach dem Merge des Release-PRs**, den Tag setzen und daraus das
+GitHub-Release machen::
+
+    git tag -a v1.13.0 -m 'Ratslotse 1.13.0' && git push origin v1.13.0
+    .venv/bin/python scripts/changelog_schnitt.py 1.13.0 --release \\
+        --titel 'v1.13.0 — Belege bis zur Protokollseite'
+
+Der zweite Schritt war bis 09/2026 Handarbeit und fiel deshalb dreimal aus:
+v1.14.0, v1.15.0 und v2.0.0 lagen als Tags bei GitHub, ohne dass ein Release
+daraus wurde — die Release-Seite zeigte wochenlang v1.13.2 als „Latest".
+``--release`` liest den fertigen Abschnitt aus ``CHANGELOG.md``, prüft, dass
+der Tag beim Fernarchiv liegt und das Release noch nicht existiert, und legt es
+über ``gh`` an. Ist der Abschnitt zu lang für GitHub (125.000 Zeichen), gehen
+nur die Kernsätze samt Verweis auf den vollen Text raus. ``--latest`` bekommt
+das Release nur, wenn seine Version im Changelog obenauf steht: Ein
+nachgereichtes Release für einen alten Tag darf den aktuellen Stand nicht
+verdrängen.
 
 Das Skript kommt mit **beiden** Wegen zurecht: Was jemand von Hand unter
 ``## [Unreleased]`` eingetragen hat, bleibt erhalten und wandert unverändert
@@ -44,6 +65,7 @@ import argparse
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 from dataclasses import dataclass, field
 from datetime import date
@@ -67,6 +89,10 @@ REIHENFOLGE = ["Hinzugefügt", "Geändert", "Behoben"]
 FRONTMATTER = re.compile(r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n(.*)\Z", re.S)
 SCHLUESSEL = re.compile(r"^[ \t]*([A-Za-zäöüß_]+)[ \t]*:[ \t]*(.*?)[ \t]*$")
 PR_NUMMER = re.compile(r"\(#(\d+)\)")
+# Ein Fragment ist EIN Listenpunkt — eine Überschrift darin gibt es nicht.
+# #816 hat sich eine geschrieben; der Schnitt zog sie mit in den Punkt, und im
+# Changelog stand seitdem „- ### Kurzfassungen: … Die Tragweite-Gründe …".
+UEBERSCHRIFT = re.compile(r"^[ \t]*#{1,6}[ \t]")
 
 # Zeilenbreite des Changelogs. Die Datei ist von Hand auf ~80 Zeichen umbrochen;
 # ein Fragment, das als eine 900-Zeichen-Zeile landet, fiele sofort auf.
@@ -133,6 +159,15 @@ def lies_fragment(pfad: Path) -> Fragment:
         erlaubt = ", ".join(KATEGORIEN)
         raise FragmentFehler(
             f"{pfad.name}: kategorie '{werte.get('kategorie', '')}' unbekannt (erlaubt: {erlaubt})"
+        )
+
+    erste = next((z for z in rumpf.splitlines() if z.strip()), "")
+    if UEBERSCHRIFT.match(erste):
+        raise FragmentFehler(
+            f"{pfad.name}: der Text beginnt mit einer Überschrift ('{erste.strip()}'). "
+            "Der Eintrag wird beim Schnitt zu EINEM Listenpunkt zusammengezogen — "
+            "die Überschrift landet dann mitten darin. Stattdessen fett beginnen: "
+            "'**Kernsatz.** Dann der Fließtext.'"
         )
 
     text = " ".join(rumpf.split())
@@ -310,6 +345,198 @@ def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
     return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer, geschrieben=True)
 
 
+# ---------------------------------------------------------------------------
+# GitHub-Release
+# ---------------------------------------------------------------------------
+# Der Tag allein reicht nicht: GitHub führt ihn dann nur unter „Tags", die
+# Release-Seite bleibt leer. Genau das ist dreimal passiert (v1.14.0, v1.15.0
+# und v2.0.0 hingen als Tags ohne Release herum, während v1.13.2 wochenlang als
+# „Latest" stand). Deshalb ist der Schritt jetzt Teil dieses Skripts.
+#
+# Warum als **eigener Aufruf** und nicht am Ende des Schnitts: Der Schnitt läuft
+# im Release-PR, der Tag entsteht erst nach dessen Merge. Zum Schnitt-Zeitpunkt
+# gibt es also noch gar nichts, worauf ein Release zeigen könnte.
+
+# Grenze des Release-Textes bei GitHub. Der 1.14.0-Abschnitt lag mit 185.510
+# Zeichen darüber — ohne Kürzung scheitert `gh release create` mit 422.
+GITHUB_TEXTGRENZE = 125_000
+
+REPO_URL = "https://github.com/Schereo/Ratslotse"
+
+VERSIONSZEILE = re.compile(r"^## \[(\d+\.\d+\.\d+)\]")
+# Die Compare-Links am Dateiende. Sie stehen hinter der ältesten Version und
+# gehören in kein Release — ohne diese Grenze liefe der letzte Abschnitt bis
+# zum Dateiende und nähme die Linkliste mit.
+LINKZEILE = re.compile(r"^\[[^\]]+\]:\s")
+
+
+def _zahl(wert: int) -> str:
+    """185510 → '185.510'. ``:n`` hinge an der Locale und liefert ohne
+    ``setlocale`` dieselbe nackte Ziffernfolge wie ``:d``."""
+    return f"{wert:,}".replace(",", ".")
+
+
+class ReleaseFehler(RuntimeError):
+    """Das Release lässt sich nicht anlegen — Tag fehlt, Abschnitt fehlt,
+    ``gh`` fehlt oder das Release gibt es schon."""
+
+
+def abschnitt(changelog: str, version: str) -> str:
+    """Der Changelog-Block einer Version, ohne die ``## [x.y.z]``-Zeile."""
+    zeilen = changelog.split("\n")
+    start = next(
+        (i for i, z in enumerate(zeilen) if VERSIONSZEILE.match(z) and VERSIONSZEILE.match(z).group(1) == version),
+        None,
+    )
+    if start is None:
+        raise ReleaseFehler(f"CHANGELOG.md hat keinen Abschnitt '## [{version}]'")
+    ende = next(
+        (i for i in range(start + 1, len(zeilen))
+         if zeilen[i].startswith("## ") or LINKZEILE.match(zeilen[i])),
+        len(zeilen),
+    )
+    return "\n".join(zeilen[start + 1:ende]).strip("\n")
+
+
+def _kernsatz(text: str) -> str:
+    """Der fett gesetzte Kernsatz eines Eintrags — der Rest fällt weg.
+
+    Fällt auf den ersten Satz zurück, wenn ein Eintrag nicht fett beginnt. Das
+    ist im Bestand vor allem die Zeit vor den Fragmenten (v1.0–v1.4), wo Einträge
+    als schlichte Sätze geschrieben wurden.
+    """
+    text = " ".join(text.split()).lstrip("# ")
+    fett = re.match(r"\*\*(.+?)\*\*", text)
+    if fett:
+        return fett.group(1)
+    satz = re.match(r"(.+?[.!?])(\s|$)", text)
+    return satz.group(1) if satz else textwrap.shorten(text, width=120, placeholder=" …")
+
+
+def kernsaetze(block: str) -> str:
+    """Einen Changelog-Abschnitt auf seine Kernsätze eindampfen.
+
+    Die ``### …``-Überschriften bleiben, jeder Eintrag schrumpft auf seinen
+    Kernsatz samt PR-Nummer. Aus 185.510 Zeichen werden so rund 23.000.
+    """
+    zeilen: list[str] = []
+    puffer: str | None = None
+
+    def abgeben() -> None:
+        nonlocal puffer
+        if puffer is None:
+            return
+        text = " ".join(puffer.split())
+        nummer = re.search(r"\(#\d+\)\s*$", text)
+        zeilen.append(f"- **{_kernsatz(text)}**" + (f" {nummer.group(0)}" if nummer else ""))
+        puffer = None
+
+    for row in block.split("\n"):
+        if row.startswith("### "):
+            abgeben()
+            zeilen.append("")
+            zeilen.append(row)
+        elif row.startswith("- "):
+            abgeben()
+            puffer = row[2:]
+        elif puffer is not None and row.startswith("  "):
+            puffer += " " + row.strip()
+        elif not row.strip():
+            abgeben()
+    abgeben()
+    return "\n".join(zeilen).strip("\n")
+
+
+def release_text(block: str, version: str) -> str:
+    """Der Release-Text: der Abschnitt, notfalls als Kurzfassung mit Verweis."""
+    if len(block) <= GITHUB_TEXTGRENZE:
+        return block
+    return "\n".join([
+        f"> Dieser Jahrgang ist zu umfangreich für einen Release-Text "
+        f"({_zahl(len(block))} Zeichen, GitHub erlaubt {_zahl(GITHUB_TEXTGRENZE)}).",
+        "> Unten stehen deshalb nur die Kernsätze. Der vollständige Text mit allen",
+        f"> Begründungen steht im [CHANGELOG.md zum Tag v{version}]"
+        f"({REPO_URL}/blob/v{version}/CHANGELOG.md) und auf",
+        "> [ratslotse.de/changelog](https://ratslotse.de/changelog).",
+        "",
+        kernsaetze(block),
+    ])
+
+
+def _gh(*args: str, wurzel: Path = WURZEL) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(["gh", *args], cwd=wurzel, capture_output=True, text=True)
+    except FileNotFoundError as fehler:  # pragma: no cover — hängt am Rechner
+        raise ReleaseFehler("'gh' ist nicht installiert — Release von Hand anlegen.") from fehler
+
+
+def _tag_auf_remote(version: str, wurzel: Path = WURZEL) -> bool:
+    """Liegt der Tag beim Fernarchiv? Lokal reicht nicht — das Release zeigt
+    auf den Stand bei GitHub, und ein ungepushter Tag ist dort nichts."""
+    result = subprocess.run(
+        ["git", "ls-remote", "--tags", "origin", f"refs/tags/v{version}"],
+        cwd=wurzel, capture_output=True, text=True,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def _ist_neueste(changelog: str, version: str) -> bool:
+    """Ist das die oberste Version im Changelog? Nur dann wird sie „Latest".
+
+    Ein nachgereichtes Release für einen alten Tag darf den aktuellen Stand
+    nicht verdrängen — genau das wäre bei v1.14.0/v1.15.0 passiert.
+    """
+    for row in changelog.split("\n"):
+        treffer = VERSIONSZEILE.match(row)
+        if treffer:
+            return treffer.group(1) == version
+    return False
+
+
+def release(version: str, titel: str | None = None, wurzel: Path = WURZEL,
+            trocken: bool = False) -> str:
+    """Das GitHub-Release zu einer bereits getaggten Version anlegen.
+
+    Gibt den Release-Text zurück. Läuft absichtlich **nach** dem Tag-Push.
+    """
+    changelog = (wurzel / "CHANGELOG.md").read_text(encoding="utf-8")
+    text = release_text(abschnitt(changelog, version), version)
+
+    if not trocken:
+        if not _tag_auf_remote(version, wurzel):
+            raise ReleaseFehler(
+                f"Der Tag v{version} liegt nicht bei origin. Erst "
+                f"`git tag -a v{version} -m 'Ratslotse {version}' && git push origin v{version}`."
+            )
+        if _gh("release", "view", f"v{version}", wurzel=wurzel).returncode == 0:
+            raise ReleaseFehler(
+                f"Das Release v{version} gibt es schon. Text ändern: "
+                f"`gh release edit v{version} --notes-file …`."
+            )
+
+    argumente = ["release", "create", f"v{version}",
+                 "--title", titel or f"v{version}", "--verify-tag"]
+    if _ist_neueste(changelog, version):
+        argumente.append("--latest")
+
+    if trocken:
+        print(f"— Probelauf: `gh {' '.join(argumente)}` mit {_zahl(len(text))} Zeichen Text.",
+              file=sys.stderr)
+        return text
+
+    with tempfile.NamedTemporaryFile("w", suffix=".md", encoding="utf-8", delete=False) as datei:
+        datei.write(text)
+        notizen = datei.name
+    try:
+        result = _gh(*argumente, "--notes-file", notizen, wurzel=wurzel)
+    finally:
+        Path(notizen).unlink(missing_ok=True)
+    if result.returncode != 0:
+        raise ReleaseFehler(f"gh release create ist gescheitert:\n{result.stderr.strip()}")
+    print(result.stdout.strip())
+    return text
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Changelog-Fragmente zur Version zusammenfassen")
     p.add_argument("version", nargs="?", help="neue Version, z. B. 1.13.0")
@@ -317,6 +544,9 @@ def main() -> int:
     p.add_argument("--trocken", action="store_true", help="Ergebnis zeigen, nichts schreiben")
     p.add_argument("--pruefen", action="store_true",
                    help="nur prüfen, ob alle Fragmente wohlgeformt sind")
+    p.add_argument("--release", action="store_true",
+                   help="GitHub-Release zur (bereits getaggten und gepushten) Version anlegen")
+    p.add_argument("--titel", help="Titel des Releases (Default: 'vx.y.z')")
     args = p.parse_args()
 
     if args.pruefen:
@@ -333,6 +563,16 @@ def main() -> int:
     if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
         p.error(f"'{args.version}' sieht nicht wie eine Version aus (x.y.z)")
 
+    if args.release:
+        try:
+            text = release(args.version, args.titel, trocken=args.trocken)
+        except ReleaseFehler as fehler:
+            print(f"FEHLER: {fehler}", file=sys.stderr)
+            return 1
+        if args.trocken:
+            print(text)
+        return 0
+
     try:
         result = schnitt(args.version, args.date, trocken=args.trocken)
     except (FragmentFehler, ValueError) as fehler:
@@ -348,7 +588,10 @@ def main() -> int:
               file=sys.stderr)
     else:
         print(f"{len(result.fragmente)} Fragment(e) in Version {args.version} übernommen "
-              f"und gelöscht. Jetzt: Tag v{args.version} setzen und pushen.")
+              f"und gelöscht. Danach, nach dem Merge des Release-PRs:\n"
+              f"  git tag -a v{args.version} -m 'Ratslotse {args.version}' && git push origin v{args.version}\n"
+              f"  python scripts/changelog_schnitt.py {args.version} --release "
+              f"--titel 'v{args.version} — …'")
     return 0
 
 
