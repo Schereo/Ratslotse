@@ -79,19 +79,26 @@ JOBS: list[dict] = [
         # Bestandsgesteuert, nicht kalendergesteuert: Der Takt bestimmt nur,
         # wie schnell ein neuer Jahrgang auf der Seite steht (s. Skript-Kopf).
         #
-        # Steht bis heute NUR in der crontab der Dev-VM. Das war richtig,
-        # solange der Haushalts-Bereich hinterm Umgebungs-Gate stand und auf
-        # Prod niemand ihn sah; seit 09/2026 hängt er am Recht `budget` und ist
-        # dort für Ratsmitglieder sichtbar (kern/roles.py).
+        # AM 03.09.2026 IN DER PROD-CRONTAB NACHGESEHEN — vorher stand hier
+        # („alle zwei Wochen, sonntags 4:30 Uhr") eine Angabe, die nie zur
+        # Wirklichkeit gehört hat, und im Kommentar daneben die Behauptung, der
+        # Job laufe nur auf dev. Beides falsch: Er steht auf **Prod** und
+        # nirgends sonst, als `0 6 * * 0`. Auf der Dev-VM gibt es ihn gar nicht.
         #
-        # OFFEN: der Eintrag in der Prod-crontab. Ohne ihn bleibt der einmalige
-        # Ops-Lauf (`ops-finanzdaten-ingest.yml`, Umgebung `prod`) eine
-        # Momentaufnahme — neue Jahrgänge kämen nie nach. Auffallen würde das
-        # NICHT: In der Cron-Übersicht steht der Job auf Prod als „unknown"
-        # (nie gelaufen), nicht als überfällig; die Ampel kennt „stale" nur für
-        # Jobs mit mindestens einem Lauf. Genau deshalb steht es hier.
-        "schedule": "alle zwei Wochen, sonntags 4:30 Uhr",
-        "max_age_h": 16 * 24,
+        # Die Lehre daran ist die Datei selbst: Was hier steht, ist eine KOPIE
+        # der crontab, und eine Kopie wird nur dann nicht zur Lüge, wenn jemand
+        # nachsieht. Wer den Takt ändert, sieht auf dem Server nach — er rät
+        # ihn nicht aus dem Kommentar darüber ab.
+        #
+        # Sichtbar wurde die Abweichung erst über die Logdateien: `weekly_enrich`
+        # (0 3 * * 0) hat am 30.08. geschrieben, `check_finanzdaten.log` gibt es
+        # gar nicht. Der Eintrag ist also jünger als letzter Sonntag und feuert
+        # zum ersten Mal am kommenden.
+        "schedule": "sonntags 6:00 Uhr",
+        # Eine Woche plus Puffer, wie bei `render_plaene`. Die vorherigen
+        # 16 Tage hätten zu einem zweiwöchigen Takt gepasst, den es nicht gibt:
+        # Die Ampel hätte eine Woche Stillstand für normal gehalten.
+        "max_age_h": 8 * 24,
     },
     {
         "key": "check_beteiligungsbericht",
@@ -101,8 +108,13 @@ JOBS: list[dict] = [
         # herunterlädt. Bestandsgesteuert wie check_finanzdaten — der Takt
         # bestimmt nur, wie schnell ein neuer Bericht auf der Seite steht, und
         # die Quelle erscheint einmal im Jahr.
-        "schedule": "alle vier Wochen, sonntags 4:45 Uhr",
-        "max_age_h": 30 * 24,
+        #
+        # Ebenfalls am 03.09.2026 nachgesehen: `30 6 * * 0` auf Prod, also
+        # WÖCHENTLICH und nicht alle vier Wochen. Die Ampel misst „ist der Job
+        # gelaufen", nicht „gab es etwas zu tun" — ein Lauf, der nichts findet,
+        # zählt trotzdem.
+        "schedule": "sonntags 6:30 Uhr",
+        "max_age_h": 8 * 24,
     },
     {
         "key": "archive_statistik",
