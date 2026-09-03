@@ -31,25 +31,91 @@ _session = requests.Session()
 _session.headers["User-Agent"] = "Mozilla/5.0"
 
 
+#: „nichtöffentlich" in allen Schreibweisen, die im Ratsinfo vorkommen —
+#: zusammen, mit Bindestrich, mit Leerzeichen. Ein solches Protokoll wollen wir
+#: nicht: Es steht öffentlich gar nicht zum Abruf, und was daraus zitiert würde,
+#: gehörte nicht auf die Seite.
+_NICHTOEFFENTLICH = re.compile(r"nicht[-\s]?öffentlich")
+
+
+def is_public_protocol_label(label: str) -> bool:
+    """Ist diese Datei-Beschriftung das öffentliche Protokoll einer Sitzung?
+
+    Bis 09/2026 verlangte die Prüfung **beides**: das Wort „Protokoll"/
+    „Niederschrift" UND das Wort „öffentlich". Das ist die übliche Oldenburger
+    Beschriftung („Protokoll Rat 29.06.2026 öffentlich", „Protokoll KulturA
+    16.06.2026 öffentlich") — aber eben nur die übliche.
+
+    Der Ausschuss für Allgemeine Angelegenheiten beschriftet seine Dateien
+    „Protokoll AAA 17.08.2026", ohne den Zusatz. Damit fiel jedes seiner
+    Protokolle durch, ``find_protocol`` meldete „noch keins veröffentlicht",
+    und der Ausschuss stand seit seiner ersten Sitzung (01.06.2026) dauerhaft
+    auf null Beschlüssen — sichtbar auf der Abo-Seite als Gremium ohne jede
+    Zahl. Kein Fehler schlug an: „kein Protokoll" ist der Normalfall für eine
+    frische Sitzung, es sieht also nie nach einem Ausfall aus.
+
+    Die Regel ist deshalb umgedreht: Ein Protokoll gilt als öffentlich, solange
+    es sich nicht ausdrücklich als nichtöffentlich ausweist. Auf der
+    öffentlichen Seite steht ohnehin nur, was die Stadt dort zeigen will; der
+    Zusatz ist eine Beschriftung, keine Zugangskontrolle.
+    """
+    l = label.lower()
+    if not re.search(r"protokoll|niederschrift", l):
+        return False
+    if _NICHTOEFFENTLICH.search(l):
+        return False
+    # „Genehmigung des Protokolls Nr. 07/26" ist eine Vorlage ÜBER ein
+    # Protokoll, kein Protokoll — der Genitiv ist das Erkennungszeichen. Ohne
+    # diese Schranke zöge die gelockerte Regel eine fremde Sitzung als
+    # Niederschrift dieser Sitzung herein, und die Beschlüsse landeten am
+    # falschen Tag. (Vorher hielt die Pflicht zum Wort „öffentlich" das ab.)
+    if "genehmigung" in l or "protokolls" in l:
+        return False
+    return True
+
+
 def find_protocol(ksinr: int) -> dict | None:
     """Return {url, document_id, label} for the public protocol PDF of a session,
-    or None if none is published yet."""
+    or None if none is published yet.
+
+    Steht auf einer Seite mehr als ein Protokoll (Sitzungen, die die Fortsetzung
+    einer vertagten Sitzung protokollieren), gewinnt das ausdrücklich als
+    „öffentlich" beschriftete — sonst das erste, das ``is_public_protocol_label``
+    durchlässt.
+    """
     r = _session.get(f"{BASE}/si0057.php", params={"__ksinr": ksinr}, timeout=20)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
+    treffer: list[dict] = []
     for a in soup.find_all("a", href=True):
         if "getfile.php" not in a["href"]:
             continue
-        label = (a.get_text(" ", strip=True) + " " + a.get("title", "")).lower()
-        if re.search(r"protokoll|niederschrift", label) and "öffentlich" in label:
-            href = a["href"] if a["href"].startswith("http") else f"{BASE}/{a['href'].lstrip('/')}"
-            m = re.search(r"id=(\d+)", href)
-            return {
-                "url": href,
-                "document_id": int(m.group(1)) if m else None,
-                "label": a.get_text(" ", strip=True),
-            }
-    return None
+        # Nur Dateien der SITZUNG, nicht die Anlagen ihrer Tagesordnungspunkte.
+        # SessionNet stellt die Sitzungsdateien (Aushang, Protokoll) über die
+        # Tagesordnung; die Anlagen jedes TOP hängen in der Tabelle darunter,
+        # also in einer Zelle. Ohne diese Trennung zog die gelockerte Regel
+        # „Protokoll Bürgerinformationsveranstaltung" — die Anlage einer
+        # Bauleitplan-Vorlage — als Niederschrift der Ratssitzung herein und
+        # hätte deren Beschlüsse aus einem fremden Papier gelesen (gemessen am
+        # Prod-Bestand, 03.09.2026: 5 solcher Fehlgriffe in 20 Sitzungen).
+        if a.find_parent("td") is not None:
+            continue
+        text = a.get_text(" ", strip=True)
+        label = text + " " + a.get("title", "")
+        if not is_public_protocol_label(label):
+            continue
+        href = a["href"] if a["href"].startswith("http") else f"{BASE}/{a['href'].lstrip('/')}"
+        m = re.search(r"id=(\d+)", href)
+        treffer.append({
+            "url": href,
+            "document_id": int(m.group(1)) if m else None,
+            "label": text,
+            "_ausdruecklich": "öffentlich" in label.lower(),
+        })
+    if not treffer:
+        return None
+    gewaehlt = next((t for t in treffer if t["_ausdruecklich"]), treffer[0])
+    return {k: v for k, v in gewaehlt.items() if not k.startswith("_")}
 
 
 def page_offsets(seiten: list[str]) -> list[int]:
