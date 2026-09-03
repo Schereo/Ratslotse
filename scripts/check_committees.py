@@ -111,92 +111,8 @@ def _kartentexte(council_store: CouncilStore, ksinr: int) -> dict[str, str]:
         return {}
 
 
-#: Höchstens so viele Punkte bewertet der Mail-Lauf nach. Drei Tranchen zu 20
-#: — das deckt auch eine Ratssitzung mit 49 öffentlichen Punkten; was darüber
-#: läge, holt der Tranchen-Lauf am Ende des Skripts.
-_TRAGWEITE_MAIL_MAX = 60
-
-
-def _tragweite_der_sitzung(council_store: CouncilStore, ksinr: int) -> dict[str, int]:
-    """Die Tragweite dieser Sitzung — fehlende sofort bewerten.
-
-    Dasselbe Muster und derselbe Grund wie bei ``_kartentexte``: Der
-    Tranchen-Lauf am Ende dieses Skripts steht HINTER der Meldeschleife, eine
-    frisch erschienene Tagesordnung wäre also noch unbewertet, wenn ihre Mail
-    gebaut wird — und weil der Block gecacht wird (``save_summary``), bekäme
-    sie ihre Hervorhebung auch später nie.
-
-    Teurer wird es dadurch nicht: Diese Punkte stünden ohnehin auf der Liste
-    des Laufs unten, sie sind hier nur früher dran; ``agenda_item_impact`` ist
-    der Zwischenspeicher für beide Wege.
-
-    Best effort. Reißt das Modell, kommt ein leeres Verzeichnis zurück und die
-    Mail bleibt die lange Liste, die sie vorher war — das ist der ehrliche
-    Rückfall, keine geratene Rangfolge.
-    """
-    try:
-        from council.impact import BATCH_SIZE, rate_agenda_batch  # noqa: PLC0415
-
-        offen = council_store.agenda_items_needing_impact(
-            limit=_TRAGWEITE_MAIL_MAX, ksinr=ksinr)
-        for i, it in enumerate(offen):
-            it["id"] = i
-        nach_id = {it["id"]: it for it in offen}
-        bewertet = 0
-        for start in range(0, len(offen), BATCH_SIZE):
-            for iid, score, grund in rate_agenda_batch(offen[start:start + BATCH_SIZE]):
-                it = nach_id.get(iid)
-                if it:
-                    council_store.save_agenda_impact(
-                        it["ksinr"], it["item_number"], score, grund)
-                    bewertet += 1
-        if offen:
-            print(f"  Tragweite (für die Mail): {bewertet}/{len(offen)} bewertet")
-        if len(offen) >= _TRAGWEITE_MAIL_MAX:
-            print(f"  ⚠️ Deckel bei {_TRAGWEITE_MAIL_MAX} Punkten erreicht — "
-                  f"den Rest bewertet der Tranchen-Lauf")
-    except Exception as exc:  # noqa: BLE001 — Hervorhebung ist Kür, nie Blocker
-        print(f"  ⚠️ Tragweite für {ksinr} fehlgeschlagen: {exc!r} — "
-              f"die Mail bleibt bei der reinen Liste")
-    try:
-        return council_store.agenda_wichtigkeit(ksinr)
-    except Exception:  # noqa: BLE001
-        return {}
-
-
-#: Höchstens so viele Punkte stehen oben. Dieselbe Zahl wie auf der
-#: Wochen-Karte (``store_sitzungen``): Vier sind keine Auswahl mehr.
-_HERVOR_MAX = 3
-
-#: Erst ab so vielen Punkten wird überhaupt gegliedert. Bei vier Punkten gibt
-#: es nichts zu überblicken — da wäre der Kicker Bürokratie über einer Liste,
-#: die ohnehin auf den Schirm passt.
-_HERVOR_AB = 5
-
-
-def _hervorgehoben(wichtig: dict[str, int], punkte: list[dict]) -> set[str]:
-    """Die Nummern, die oben stehen: höchstens drei, und nur über der Schwelle.
-
-    Die Schwelle ist dieselbe wie auf der Wochen-Karte
-    (``CouncilStore.WICHTIG_MINDEST``) — derselbe Punkt soll nicht in der Mail
-    „das Wichtigste" heißen und auf der Karte durchfallen. Eine Tagesordnung
-    aus Widmungen und Kenntnisnahmen bekommt so gar keine Hervorhebung, statt
-    drei künstlich gekürte Belanglosigkeiten.
-
-    Unbewertete Punkte zählen nicht mit: Ohne Bewertung gibt es keine
-    Rangfolge, und geraten wird hier nichts.
-    """
-    if len(punkte) < _HERVOR_AB:
-        return set()
-    kandidaten = [p["number"] for p in punkte
-                  if wichtig.get(p["number"], 0) >= CouncilStore.WICHTIG_MINDEST]
-    kandidaten.sort(key=lambda n: -wichtig[n])
-    return set(kandidaten[:_HERVOR_MAX])
-
-
 def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) -> str:
-    """Die Aufzählung der Mail — je Punkt der bessere der beiden Sätze,
-    das Wichtigste vorweg.
+    """Die Aufzählung der Mail — je Punkt der bessere der beiden Sätze.
 
     Der Kartentext schlägt die Kurzfassung, weil er Vorlage UND Anlagen
     gesehen hat; die Kurzfassung entsteht allein aus dem Titel und bleibt der
@@ -205,37 +121,15 @@ def _aufzaehlung(council_store: CouncilStore, ksinr: int, punkte: list[dict]) ->
     Und die Kennung eines Dringlichkeitsantrags heißt in der Mail, was sie
     ist: „DZT 1" ist eine Nummer, die wir selbst vergeben haben — im
     Ratsinformationssystem sucht man sie vergeblich.
-
-    Über der vollständigen Liste stehen seit dem 03.09.2026 die höchstens drei
-    wichtigsten Punkte (Tims Befund: „momentan ist das einfach eine lange
-    Liste, die schwer zu überblicken ist"). Vollständig bleibt sie trotzdem —
-    die hervorgehobenen Punkte stehen unten ein zweites Mal, an ihrem Platz in
-    der Tagesordnung. Wer die Mail von oben nach unten liest, soll die
-    Tagesordnung lesen und nicht eine Auswahl daraus.
-
-    Die Reihenfolge oben ist die der Tagesordnung, nicht die der Punktzahl:
-    Ein Rang wäre eine Aussage über den Abstand zwischen zwei Punkten, und den
-    misst die Bewertung nicht genau genug.
     """
     kartentexte = _kartentexte(council_store, ksinr)
-
-    def zeile(p: dict) -> str:
+    zeilen = []
+    for p in punkte:
         nummer = p["number"]
         text = kartentexte.get(nummer) or p["summary"]
         marke = "Dringlichkeitsantrag" if ist_dringlichkeitsantrag(nummer) else nummer
-        return f"• <b>{marke}</b>: {text}"
-
-    alle = "\n".join(zeile(p) for p in punkte)
-    oben = _hervorgehoben(_tragweite_der_sitzung(council_store, ksinr), punkte)
-    if not oben:
-        return alle
-    # Ohne Zeilenumbruch an die Kicker gesetzt: Die Mail-Hülle rendert mit
-    # ``white-space:pre-wrap`` — jedes ``\n`` neben einem Block wäre dort eine
-    # sichtbare Leerzeile.
-    return (digest_email.abschnitt("Das Wichtigste")
-            + "\n".join(zeile(p) for p in punkte if p["number"] in oben)
-            + digest_email.abschnitt("Alle Punkte", str(len(punkte)))
-            + alle)
+        zeilen.append(f"• <b>{marke}</b>: {text}")
+    return "\n".join(zeilen)
 
 
 def _ohne_altlink(summary: str | None) -> str | None:
@@ -259,13 +153,8 @@ def _ohne_altkopf(summary: str | None) -> str | None:
 
 def _push_kurz(html: str, limit: int = 180) -> str:
     """HTML zu einem Push-tauglichen Kurztext einstampfen — wie
-    ``kern.delivery._plain``, nur ohne den Mail-Kopf davor.
-
-    Die Abschnitts-Kicker fallen vorher weg: Auf dem Sperrbildschirm sind 180
-    Zeichen alles, was es gibt — „Das Wichtigste Alle Punkte 10" wäre davon
-    ein Fünftel Gliederung und kein Wort Inhalt. Übrig bleibt genau die
-    Reihenfolge, die dort zählt: die hervorgehobenen Punkte zuerst."""
-    t = re.sub(r"<[^>]+>", "", digest_email.ohne_abschnitte(html or ""))
+    ``kern.delivery._plain``, nur ohne den Mail-Kopf davor."""
+    t = re.sub(r"<[^>]+>", "", html or "")
     t = re.sub(r"\s+", " ", t).strip()
     return (t[: limit - 1] + "…") if len(t) > limit else t
 
