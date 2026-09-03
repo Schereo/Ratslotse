@@ -251,7 +251,15 @@ class Finanzquelle:
     #: Welche Einheiten ein Kandidat füllen könnte — aus Label bzw. Textkopf,
     #: nie aus ``fetched_at``.
     einheiten_von: Callable[[dict], set[tuple]] | None = None
-    #: Einlesen: ``(store, protokoll, nur_fehlende, schuetzen) -> dict``.
+    #: Einlesen: ``(store, protokoll, nur_fehlende=…) -> dict``.
+    #:
+    #: `nur_fehlende` ist der einzige Zusatz, den der Cron übergibt
+    #: (`scripts/check_finanzdaten.py`); `schuetzen` stand hier jahrelang
+    #: mit, wird aber von keiner Aufrufstelle gesetzt. Wer sich auf diesen
+    #: Satz verlässt statt auf die Signatur, baut eine Funktion, die der Cron
+    #: nicht aufrufen kann — genau so ist `lies_kennzahlen` am 03.09.2026 auf
+    #: Prod abgestürzt. `tests/test_finanzquellen_vertrag.py` hält das jetzt
+    #: fest, statt es hier nur zu behaupten.
     einlesen: Callable[..., dict] | None = None
     #: Weitere Tabellen, die derselbe Lauf mitfüllt.
     nebentabellen: tuple[str, ...] = ()
@@ -1766,7 +1774,8 @@ def lies_anlagenspiegel(store: CouncilStore, p: Protokoll) -> dict:
             "vermoegensgruppen": gruppen_gesamt}
 
 
-def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
+def lies_kennzahlen(store: CouncilStore, p: Protokoll,
+                    nur_fehlende: bool = False) -> dict:
     """Die Kennzahlenübersicht aus den Rechenschaftsberichten (Anlage am Ende).
 
     Ein Bericht liefert fünf Jahrgänge, und die Jahrgänge überlappen sich
@@ -1783,9 +1792,23 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     VERWORFEN WIRD JE BERICHT, nicht insgesamt: Reißt eine Probe im Bericht
     2022, sagt das nichts über den Bericht 2024. Die Überlappungsprobe läuft
     dagegen erst **nach** allen Berichten — sie braucht mindestens zwei.
+
+    ``nur_fehlende`` schränkt deshalb das SPEICHERN ein und nicht das Lesen —
+    dasselbe wie bei :func:`lies_jahresabschluesse`. Gelesen und in die
+    Überlappungsprobe gegeben wird immer jeder Bericht; geschrieben wird nur,
+    was noch fehlt. Wer stattdessen das Lesen einschränkte, bekäme einen
+    Bericht ohne seine Vergleichsstände: Die Fassungsnummer eines Rechenwegs
+    wäre überall eine Eins, und jede Korrektur der Stadt bliebe unsichtbar.
+
+    Der Parameter fehlte bis zum 03.09.2026, obwohl die Quelle als
+    ``einlesen`` registriert ist und der Cron **jeden** Leser mit
+    ``nur_fehlende=True`` ruft. Ergebnis: ``TypeError`` mitten im Lauf, auf
+    Prod, nachdem der Haushaltsvollzug schon geschrieben war. Der Trockenlauf
+    konnte das nicht sehen — er ruft die Leser gar nicht auf.
     """
     source = QUELLEN["indicators"]
     rows = source.dokumente(store, "document_id, label, url, raw_text")
+    vorhanden = source.vorhandene(store, nur_fehlende)
 
     # ERSTER DURCHGANG: alles lesen. Die Fassungsnummer eines Rechenwegs lässt
     # sich erst vergeben, wenn ALLE Berichte vorliegen — sie sagt ja gerade,
@@ -1795,6 +1818,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
     # aktives Personal" sähe aus wie eine Korrektur der Stadt.
     gelesen: list[tuple[dict, int, list[dict], list[dict], list[str]]] = []
     ohne_tabelle = 0
+    uebersprungen = 0
     for r in rows:
         m = re.search(r"(20\d\d)", r["label"] or "")
         if not m:
@@ -1854,6 +1878,15 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
         bilanz_geprueft += bilanz_ok
         vermoegen_geprueft += verm_ok
 
+        # `gesammelt` wird IMMER gefüllt, auch für übersprungene Berichte: Die
+        # Überlappungsprobe unten vergleicht doppelt gedruckte Zellen und
+        # braucht dafür beide Seiten. Ein Bericht, den wir nicht neu speichern,
+        # ist trotzdem sein eigener Vergleichsstand.
+        gesammelt += zeilen
+        if (report_year,) in vorhanden:
+            uebersprungen += 1
+            continue
+
         store.save_kennzahlen(
             report_year, zeilen, formeln,
             herkunft.Herkunft(
@@ -1866,7 +1899,6 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
         n_reports += 1
         werte_gesamt += len(zeilen)
         formeln_gesamt += len(formeln)
-        gesammelt += zeilen
         years = sorted({z["year"] for z in zeilen})
         p.sagen(f"  Bericht {report_year}: {len(zeilen)} Werte "
                 f"({years[0]}–{years[-1]}), {len(formeln)} Rechenwege")
@@ -1885,6 +1917,7 @@ def lies_kennzahlen(store: CouncilStore, p: Protokoll) -> dict:
             f"{arten['umbenennung']} bloße Umbenennungen")
 
     return {"kennzahlen_berichte": n_reports,
+            "kennzahlen_uebersprungen": uebersprungen,
             "kennzahlen_werte": werte_gesamt,
             "kennzahlen_formeln": formeln_gesamt,
             "kennzahlen_ohne_tabelle": ohne_tabelle,
