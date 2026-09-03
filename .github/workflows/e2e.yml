@@ -1,0 +1,87 @@
+name: Browsertests
+
+# Die Browser-Suite prüft, was keine andere Prüfung sieht: dass die Seiten im
+# Browser wirklich erscheinen und die Wege durch sie funktionieren — Anmelden,
+# Themen anlegen und löschen, eine Tagesordnung aufklappen, eine Frage stellen,
+# eine Antwort bewerten.
+#
+# WARUM SIE BIS 09/2026 NICHT LIEF. Sie war da, aber 16 von 35 Prüfungen waren
+# rot — nicht wegen fehlender Daten, sondern weil sie eine Oberfläche
+# erwarteten, die es nicht mehr gab: Kacheln, die durch „Die Woche im Rat"
+# ersetzt sind, einen Dialog für die Tagesordnung, die inzwischen in der Karte
+# aufklappt, eine Überschrift „Ratsinformationssystem", die heute „Sitzungen"
+# heißt. Eine rote Suite ist kein Gate, sondern Hintergrundrauschen; deshalb
+# stand sie in keiner CI. Jetzt ist sie grün und darf blockieren.
+#
+# OHNE DATENABZUG. In der CI gibt es den lokalen Abzug nicht — die Ratsdaten
+# sind leer. Die Suite ist daraufhin geprüft (36/36 auch mit leerem Bestand):
+# Was Daten braucht, mockt seinen Endpunkt.
+
+on:
+  pull_request:
+    paths:
+      - 'web/frontend/**'
+      - 'web/backend/**'
+      - 'council/**'
+      - 'kern/**'
+      - '.github/workflows/e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'web/frontend/**'
+      - 'web/backend/**'
+      - '.github/workflows/e2e.yml'
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+
+      # Das venv liegt im Repo-Wurzelverzeichnis — genau dort sucht
+      # `tests/start-backend.sh` es zuerst.
+      - name: Backend-Umgebung
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt -r web/backend/requirements.txt \
+            -c constraints.txt
+
+      - name: Frontend-Abhängigkeiten
+        working-directory: web/frontend
+        run: npm ci --no-audit --no-fund
+
+      # Nur Chromium: Die Suite fährt ein Projekt (playwright.config.ts), und
+      # jeder weitere Browser kostet Minuten, ohne etwas anderes zu prüfen.
+      - name: Browser holen
+        working-directory: web/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Browsertests
+        working-directory: web/frontend
+        run: npx playwright test
+
+      # Bei Rot: der HTML-Bericht mit Screenshot, Video und Trace jedes
+      # gescheiterten Laufs. Ohne ihn steht in der CI nur „Timeout", und die
+      # Suche beginnt bei null.
+      - name: Bericht sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: |
+            web/frontend/playwright-report
+            web/frontend/test-results
+          retention-days: 7
