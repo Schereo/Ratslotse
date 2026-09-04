@@ -1,5 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Die Ports sind einstellbar, und das ist kein Luxus: Dieses Repo wird in
+// mehreren `git worktree`s gleichzeitig bearbeitet, und dort läuft fast immer
+// schon ein `next dev` auf 3000. Playwright bricht dann ab mit „is already
+// used" — und der naheliegende Ausweg, den fremden Prozess abzuschießen,
+// trifft die Arbeit einer anderen Sitzung.
+//
+//     E2E_PORT=3010 E2E_API_PORT=8011 npx playwright test
+//
+// `tests/start-backend.sh` liest dieselbe Variable für den API-Port.
+const PORT = Number(process.env.E2E_PORT || 3000);
+const API_PORT = Number(process.env.E2E_API_PORT || 8001);
+
 export default defineConfig({
   testDir: "./tests/e2e",
   timeout: 30_000,
@@ -12,7 +24,7 @@ export default defineConfig({
   workers: 1, // serial so the shared backend DB stays consistent
 
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: `http://localhost:${PORT}`,
     // Disable CSS animations/transitions so screenshots aren't captured mid-fade
     // (dialogs use a 200ms fade-in/zoom-in that otherwise renders semi-transparent).
     reducedMotion: "reduce",
@@ -36,7 +48,7 @@ export default defineConfig({
     {
       // FastAPI backend with isolated SQLite databases
       command: "/bin/sh tests/start-backend.sh",
-      url: "http://127.0.0.1:8001/api/health",
+      url: `http://127.0.0.1:${API_PORT}/api/health`,
       reuseExistingServer: false,
       timeout: 30_000,
       stdout: "pipe",
@@ -44,13 +56,13 @@ export default defineConfig({
     },
     {
       // Next.js dev server — proxies /api/* → :8001
-      command: "BACKEND_URL=http://127.0.0.1:8001 npm run dev -- --port 3000",
-      url: "http://localhost:3000",
+      command: `npm run dev -- --port ${PORT}`,
+      url: `http://localhost:${PORT}`,
       reuseExistingServer: false,
       timeout: 60_000,
       stdout: "pipe",
       stderr: "pipe",
-      env: { BACKEND_URL: "http://127.0.0.1:8001" },
+      env: { BACKEND_URL: `http://127.0.0.1:${API_PORT}` },
     },
   ],
 

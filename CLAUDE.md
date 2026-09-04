@@ -136,12 +136,24 @@ python scripts/pruefe.py --schnell  # die fünf Prüfungen unter ~4 s
 ```
 
 Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
-einen Browser und dauern zwei Minuten. Sie laufen in der CI
+einen Browser und dauern fünf Minuten. Sie laufen in der CI
 (`.github/workflows/e2e.yml`) und lokal auf Zuruf:
 
 ```bash
 cd web/frontend && npx playwright test
 ```
+
+Läuft in einem anderen Worktree schon ein `next dev` auf 3000, bricht das mit
+„is already used" ab. **Nicht den fremden Prozess abschießen** — er gehört
+einer anderen Sitzung; stattdessen freie Ports nehmen:
+
+```bash
+E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test
+```
+
+Was die 119 Browsertests abdecken und warum ein Lauf gegen eine **leere**
+Ratsdatenbank dazugehört, steht in
+[`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md).
 
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
 verstreut stand: Adressen-Lint, ruff, die Python-Typprüfung, den API-Vertrag,
