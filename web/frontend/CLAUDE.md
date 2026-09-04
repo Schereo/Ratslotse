@@ -151,3 +151,56 @@ liefert je nach ICU-Fassung „Mi." oder „Mi". Ein Test auf die genaue
 Schreibweise geht beim nächsten Node-Sprung kaputt, ohne dass jemand einen
 Fehler gemacht hat — prüfe die Zusage (welcher Tag, wie lang), nicht das
 Zeichen.
+
+
+## Browsertests: was sie abdecken und wie man sie startet
+
+```bash
+npx playwright test                       # alles
+npx playwright test tests/e2e/09-konto    # eine Datei
+E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test   # auf freien Ports
+```
+
+**Die Ports sind einstellbar, und das braucht man wirklich.** Dieses Repo wird
+in mehreren `git worktree`s gleichzeitig bearbeitet, und dort läuft fast immer
+schon ein `next dev` auf 3000. Playwright bricht dann mit „is already used" ab
+— und der naheliegende Ausweg, den fremden Prozess abzuschießen, trifft die
+Arbeit einer anderen Sitzung. Erst `lsof -ti :3000` fragen, dann einen freien
+Port nehmen.
+
+**Die Ratsdatenbank ist in der CI LEER.** Lokal zieht `tests/start-backend.sh`
+den Abzug aus `~/.cache/ratslotse`, in der CI gibt es ihn nicht. Ein Test, der
+auf einen bestimmten Beschluss zeigt, ist dort also blind — entweder mockt er
+seine Daten (`page.route`) oder er prüft eine Zusage, die in beiden Fällen
+gilt („die Seite bietet ein Spiel an ODER sagt, dass gerade keins da ist").
+**Vor dem Push einmal gegen leer laufen lassen:**
+
+```bash
+mkdir -p /tmp/leer && XDG_CACHE_HOME=/tmp/leer npx playwright test
+```
+
+Genau so ist der einzige Test aufgefallen, der nur mit Daten grün war.
+
+**Abgedeckt sind (Stand 09/2026):**
+
+| Datei | Worum es geht |
+|---|---|
+| `01-auth` | Registrieren, Anmelden, Abmelden, Passwort-Sichtbarkeit |
+| `02-dashboard` | „Heute" |
+| `03-oeffentlich` | Was OHNE Konto geht — und was nicht |
+| `04-council` | Beschlüsse, Sitzungen, Filter, geteilte Sitzung |
+| `05-topics` | Eigene Themen |
+| `06-visual-pages` | Screenshots aller Hauptseiten, mobil und am Schreibtisch |
+| `07-qa-feedback` | Daumen an der KI-Antwort |
+| `08-haushalt` | Das Rechte-Gate und alle 15 Haushaltsseiten |
+| `09-konto` | Anzeigename, Passwort, Erscheinungsbild, Löschung, Abmelden |
+| `10-merkliste-abos` | Merkliste (Gruppen, Suche, Entfernen) und Ausschuss-Abos |
+| `11-quiz-admin` | Quiz und die Admin-Grenze (drei Konten, drei Rechte) |
+| `12-navigation` | Jeder Navigationspunkt, der aktive Zustand, Deep-Links |
+| `13-einrichtung` | Der Assistent — den alle anderen absichtlich überspringen |
+
+**Der Assistent ist der Sonderfall.** `einrichtungUeberspringen()` schaltet ihn
+über den Server ab, weil seine Fläche (`fixed inset-0`) jeden Klick abfängt:
+Der Abmelde-Knopf ist dahinter sichtbar UND unerreichbar. Wer den Assistenten
+selbst prüft, ruft den Helfer NICHT auf — und braucht je Test ein **frisches**
+Konto, denn ein eingerichtetes bekommt ihn nie wieder zu sehen.
