@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 /** Pfade (ohne Query), die auch ohne Anmeldung eine Ansicht zeigen. */
 export const OEFFENTLICHE_PFADE = [
   "/council/decision",
+  "/council/sitzung",
   "/council/thema",
   "/council/person",
 ] as const;
