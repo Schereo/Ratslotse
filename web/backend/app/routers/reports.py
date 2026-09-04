@@ -14,7 +14,7 @@ from buergerportal.reports import (
 )
 
 from ..antworten import PrivateReportOut
-from ..deps import get_private_report_store, require_verified_reporter
+from ..deps import get_private_report_store, require_eligible_reporter
 from ..schemas import (
     PrivateDraftContentIn,
     PrivateDraftCreateIn,
@@ -75,7 +75,7 @@ def _http_exception(error: ValueError) -> HTTPException:
 @router.post("/entwuerfe", status_code=status.HTTP_201_CREATED)
 def create_draft(
     body: PrivateDraftCreateIn,
-    user: dict = Depends(require_verified_reporter),
+    user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
 ) -> PrivateReportOut:
     try:
@@ -92,7 +92,7 @@ def create_draft(
 @router.get("/{report_id}")
 def get_report(
     report_id: int,
-    user: dict = Depends(require_verified_reporter),
+    user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
 ) -> PrivateReportOut:
     report = store.get_owned_report(report_id, reporter_id=int(user["id"]))
@@ -105,7 +105,7 @@ def get_report(
 def update_draft(
     report_id: int,
     body: PrivateDraftUpdateIn,
-    user: dict = Depends(require_verified_reporter),
+    user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
 ) -> PrivateReportOut:
     try:
@@ -124,7 +124,7 @@ def update_draft(
 def submit_draft(
     report_id: int,
     body: PrivateSubmitIn,
-    user: dict = Depends(require_verified_reporter),
+    user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
 ) -> PrivateReportOut:
     try:

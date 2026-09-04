@@ -124,38 +124,52 @@ def _downgrade_private_schema_to_version_one(database) -> None:
         )
 
 
+def _install_pre_v6_owner_triggers(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """DROP TRIGGER trg_civic_reports_owner_insert;
+           DROP TRIGGER trg_civic_reports_owner_update;
+           CREATE TRIGGER trg_civic_reports_owner_insert
+               BEFORE INSERT ON civic_reports
+               WHEN NOT EXISTS (
+                   SELECT 1 FROM web_users
+                   WHERE id = NEW.reporter_id AND status = 'active'
+                     AND email_verified = 1
+               )
+               BEGIN
+                   SELECT RAISE(ABORT, 'pre-v6 owner trigger');
+               END;
+           CREATE TRIGGER trg_civic_reports_owner_update
+               BEFORE UPDATE OF reporter_id ON civic_reports
+               WHEN NOT EXISTS (
+                   SELECT 1 FROM web_users
+                   WHERE id = NEW.reporter_id AND status = 'active'
+                     AND email_verified = 1
+               )
+               BEGIN
+                   SELECT RAISE(ABORT, 'pre-v6 owner trigger');
+               END;"""
+    )
+
+
 def _downgrade_private_schema_to_version_four(database) -> None:
     with sqlite3.connect(database) as connection:
         connection.executescript(
             """DROP TRIGGER trg_civic_reports_idempotency_pair_insert;
                DROP TRIGGER trg_civic_reports_idempotency_pair_update;
                DROP TRIGGER trg_civic_reports_idempotency_no_update;
-               DROP TRIGGER trg_civic_reports_owner_insert;
-               DROP TRIGGER trg_civic_reports_owner_update;
                DROP INDEX uq_civic_reports_owner_idempotency;
                ALTER TABLE civic_reports DROP COLUMN creation_fingerprint;
                ALTER TABLE civic_reports DROP COLUMN idempotency_key;
-               CREATE TRIGGER trg_civic_reports_owner_insert
-                   BEFORE INSERT ON civic_reports
-                   WHEN NOT EXISTS (
-                       SELECT 1 FROM web_users
-                       WHERE id = NEW.reporter_id AND status = 'active'
-                         AND email_verified = 1
-                   )
-                   BEGIN
-                       SELECT RAISE(ABORT, 'pre-v5 owner trigger');
-                   END;
-               CREATE TRIGGER trg_civic_reports_owner_update
-                   BEFORE UPDATE OF reporter_id ON civic_reports
-                   WHEN NOT EXISTS (
-                       SELECT 1 FROM web_users
-                       WHERE id = NEW.reporter_id AND status = 'active'
-                         AND email_verified = 1
-                   )
-                   BEGIN
-                       SELECT RAISE(ABORT, 'pre-v5 owner trigger');
-                   END;
-               DELETE FROM civic_report_schema_migrations WHERE version = 5;"""
+               DELETE FROM civic_report_schema_migrations WHERE version >= 5;"""
+        )
+        _install_pre_v6_owner_triggers(connection)
+
+
+def _downgrade_private_schema_to_version_five(database) -> None:
+    with sqlite3.connect(database) as connection:
+        _install_pre_v6_owner_triggers(connection)
+        connection.execute(
+            "DELETE FROM civic_report_schema_migrations WHERE version = 6"
         )
 
 
@@ -173,7 +187,7 @@ def test_controlled_domain_types_match_their_runtime_values():
     assert get_args(ScopeKind) == SCOPE_KINDS
 
 
-def test_drafts_require_an_existing_verified_account(tmp_path):
+def test_drafts_require_an_eligible_reporter_account(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
     from kern.store import Store
 
@@ -808,7 +822,63 @@ def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_p
     with sqlite3.connect(database) as connection:
         assert connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,), (3,), (4,), (5,)]
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,)]
+
+
+def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
+    tmp_path,
+):
+    from buergerportal.reports import PrivateReportStore
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    account_store = Store(database)
+    admin_id = account_store.create_web_user(
+        "migration-admin@test.de",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
+    account_store.close()
+    old_store = PrivateReportStore(database)
+    old_store.close()
+    _downgrade_private_schema_to_version_five(database)
+
+    with sqlite3.connect(database) as connection:
+        old_trigger = connection.execute(
+            """SELECT sql FROM sqlite_master
+               WHERE type = 'trigger' AND name = 'trg_civic_reports_owner_insert'"""
+        ).fetchone()[0]
+    assert "role = 'user'" not in old_trigger
+
+    migrated_store = PrivateReportStore(database)
+    migrated_store.close()
+    reopened_store = PrivateReportStore(database)
+    reopened_store.close()
+
+    with sqlite3.connect(database) as connection:
+        migrated_trigger = connection.execute(
+            """SELECT sql FROM sqlite_master
+               WHERE type = 'trigger' AND name = 'trg_civic_reports_owner_insert'"""
+        ).fetchone()[0]
+        versions = connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall()
+        with pytest.raises(sqlite3.IntegrityError, match="eligible account"):
+            connection.execute(
+                """INSERT INTO civic_reports (
+                       reporter_id, draft_text, category, scope_kind,
+                       observed_at, created_at, updated_at
+                   ) VALUES (
+                       ?, 'Unzulässiger Admin-Entwurf', 'other', 'citywide',
+                       '2026-09-01', '2026-09-01T12:00:00+00:00',
+                       '2026-09-01T12:00:00+00:00'
+                   )""",
+                (admin_id,),
+            )
+    assert "role = 'user'" in migrated_trigger
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]
 
 
 def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
@@ -853,7 +923,7 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -981,7 +1051,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
@@ -1025,4 +1095,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]

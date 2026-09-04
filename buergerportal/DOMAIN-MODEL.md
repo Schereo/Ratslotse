@@ -53,8 +53,10 @@ Die privaten Migrationen werden einzeln atomar in
 `civic_report_schema_migrations` protokolliert und sind wiederholbar. Eine
 Folgemigration ergänzt ältere private Schemata um Inhaltsrevisionen und erneuert
 deren Invariantentrigger; eine weitere ergänzt Erstellungs-Idempotenz samt
-eindeutigem Konto-Schlüssel und privatem Anfragefingerabdruck. Bestehende
-Meldungsdaten werden dabei nicht ersetzt. Die Migrationen verändern weder
+eindeutigem Konto-Schlüssel und privatem Anfragefingerabdruck. Eine additive
+Folgemigration erneuert auch bei bereits angewendeter Idempotenzmigration die
+Eigentümertrigger für Nicht-Admin-Konten. Bestehende Meldungsdaten werden dabei
+nicht ersetzt. Die Migrationen verändern weder
 `civic_problems` noch `civic_problem_feature_examples`. Die explizite
 Kontolöschgrenze `erase_reporter_data` entfernt alle privaten Meldungen und ihre
 Beobachtungen einer Eigentümer-ID per Fremdschlüssel-Kaskade. Zusätzlich kennt

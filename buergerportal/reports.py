@@ -246,8 +246,6 @@ _INVARIANT_MIGRATION_STATEMENTS = (
 )
 
 _IDEMPOTENCY_MIGRATION_STATEMENTS = (
-    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_insert",
-    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_update",
     "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_pair_insert",
     "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_pair_update",
     "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_no_update",
@@ -273,6 +271,11 @@ _IDEMPOTENCY_MIGRATION_STATEMENTS = (
            BEGIN
                SELECT RAISE(ABORT, 'report creation identity is immutable');
            END""",
+)
+
+_REPORTER_ELIGIBILITY_MIGRATION_STATEMENTS = (
+    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_insert",
+    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_update",
     *_OWNER_TRIGGERS,
 )
 
@@ -358,6 +361,7 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # Legacy-Schema auf dieselben Tabellen-Constraints wie eine frische DB um.
     (4, _INVARIANT_MIGRATION_STATEMENTS),
     (5, _IDEMPOTENCY_MIGRATION_STATEMENTS),
+    (6, _REPORTER_ELIGIBILITY_MIGRATION_STATEMENTS),
 )
 
 
