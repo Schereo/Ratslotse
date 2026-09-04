@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ClipboardList, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
@@ -111,21 +111,41 @@ export function MyReports() {
   return (
     <div className="space-y-5">
       <div className="space-y-3">
-        {reports.map((report) => (
-          <ReportRow
-            key={report.id}
-            report={report}
-            selected={selectedId === report.id}
-            buttonRef={(button) => {
-              if (button) reportButtons.current.set(report.id, button);
-              else reportButtons.current.delete(report.id);
-            }}
-            onOpen={() => {
-              setContinuationError(null);
-              setSelectedId(report.id);
-            }}
-          />
-        ))}
+        {reports.map((report) => {
+          const selected = selectedId === report.id;
+          return (
+            <ReportRow
+              key={report.id}
+              report={report}
+              selected={selected}
+              buttonRef={(button) => {
+                if (button) reportButtons.current.set(report.id, button);
+                else reportButtons.current.delete(report.id);
+              }}
+              onOpen={() => {
+                setContinuationError(null);
+                setSelectedId(report.id);
+              }}
+            >
+              {selected && (
+                <ReportDetail
+                  reportId={report.id}
+                  ownerId={user.id}
+                  onClose={closeDetail}
+                  onContinue={(privateReport) => {
+                    if (!beginProblemReportContinuation(user.id, privateReport)) {
+                      setContinuationError(
+                        "Der Entwurf konnte nicht sicher geöffnet werden. Bitte versuche es erneut.",
+                      );
+                      return;
+                    }
+                    router.push("/probleme/melden");
+                  }}
+                />
+              )}
+            </ReportRow>
+          );
+        })}
       </div>
 
       {listQuery.hasNextPage && (
@@ -147,23 +167,6 @@ export function MyReports() {
           {continuationError}
         </p>
       )}
-
-      {selectedId !== null && (
-        <ReportDetail
-          reportId={selectedId}
-          ownerId={user.id}
-          onClose={closeDetail}
-          onContinue={(report) => {
-            if (!beginProblemReportContinuation(user.id, report)) {
-              setContinuationError(
-                "Der Entwurf konnte nicht sicher geöffnet werden. Bitte versuche es erneut.",
-              );
-              return;
-            }
-            router.push("/probleme/melden");
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -173,11 +176,13 @@ function ReportRow({
   selected,
   buttonRef,
   onOpen,
+  children,
 }: {
   report: PrivateReportSummary;
   selected: boolean;
   buttonRef: (button: HTMLButtonElement | null) => void;
   onOpen: () => void;
+  children?: ReactNode;
 }) {
   return (
     <Card className={selected ? "border-primary/50" : undefined}>
@@ -186,6 +191,7 @@ function ReportRow({
         type="button"
         aria-label={`${report.text_preview} öffnen`}
         aria-expanded={selected}
+        aria-controls={selected ? `private-report-detail-${report.id}` : undefined}
         onClick={onOpen}
         className="flex w-full min-w-0 items-start gap-3 rounded-xl p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:p-5"
       >
@@ -209,8 +215,13 @@ function ReportRow({
             Zuletzt geändert {formatOldenburgDateTime(report.updated_at)}
           </p>
         </div>
-        <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        {selected ? (
+          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        ) : (
+          <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        )}
       </button>
+      {children}
     </Card>
   );
 }
@@ -238,22 +249,26 @@ function ReportDetail({
     if (detailQuery.data) headingRef.current?.focus();
   }, [detailQuery.data]);
 
+  const detailId = `private-report-detail-${reportId}`;
+
   if (detailQuery.isPending) {
     return (
-      <Card>
+      <div id={detailId} className="border-t border-border">
         <Spinner label="Meldungsdetails werden geladen…" className="min-h-64" />
-      </Card>
+      </div>
     );
   }
 
   if (detailQuery.isError) {
     return (
-      <ErrorState
-        title="Die Meldung konnte nicht geöffnet werden"
-        hint="Versuche, die privaten Details noch einmal zu laden."
-        onRetry={() => void detailQuery.refetch()}
-        busy={detailQuery.isFetching}
-      />
+      <div id={detailId} className="border-t border-border p-4 sm:p-5">
+        <ErrorState
+          title="Die Meldung konnte nicht geöffnet werden"
+          hint="Versuche, die privaten Details noch einmal zu laden."
+          onRetry={() => void detailQuery.refetch()}
+          busy={detailQuery.isFetching}
+        />
+      </div>
     );
   }
 
@@ -261,16 +276,17 @@ function ReportDetail({
   const description = report.state === "submitted"
     ? report.confirmed_text ?? report.draft_text
     : report.draft_text;
+  const headingId = `${detailId}-heading`;
 
   return (
-    <Card className="p-5 sm:p-6" aria-labelledby="private-report-detail-heading">
+    <section id={detailId} className="border-t border-border p-5 sm:p-6" aria-labelledby={headingId}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <Badge color={report.state === "submitted" ? "green" : "blue"}>
             {REPORT_STATE[report.state]}
           </Badge>
           <h2
-            id="private-report-detail-heading"
+            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="mt-2 font-display text-xl font-bold text-foreground outline-none"
@@ -305,7 +321,7 @@ function ReportDetail({
           </p>
         )}
       </div>
-    </Card>
+    </section>
   );
 }
 

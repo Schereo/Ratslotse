@@ -112,7 +112,9 @@ private state, revision, submission time, and last update. It deliberately omits
 account identifiers, precise private locations, coordinates, idempotency data,
 screening evidence, and forwarding state.
 
-Selecting a row reads the existing owner-bound detail endpoint. Continuing a
-draft records that existing report ID in the short-lived account-bound browser
-session and reloads the authoritative server revision in the reporting flow. It
-never creates a replacement draft. Submitted reports remain read-only.
+Selecting a row expands its detail directly inside that report's summary card
+and reads the existing owner-bound detail endpoint. The detail is never detached
+below later reports in the overview. Continuing a draft records that existing
+report ID in the short-lived account-bound browser session and reloads the
+authoritative server revision in the reporting flow. It never creates a
+replacement draft. Submitted reports remain read-only.
