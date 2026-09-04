@@ -30,6 +30,7 @@ from .routers import (
     onboarding,
     problems,
     push,
+    reports,
     quiz,
     social,
     topics,
@@ -202,6 +203,7 @@ app.include_router(badges.router)
 app.include_router(kommunalwahl.router)
 app.include_router(social.router)
 app.include_router(problems.router)
+app.include_router(reports.router)
 
 # Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
 # selbst, also darf hier kein Token davor.
@@ -244,10 +246,15 @@ async def overflow_exception_handler(request: Request, exc: OverflowError) -> JS
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Strip password values from 422 error details before returning to the client."""
     _SENSITIVE = {"password", "current_password", "new_password"}
+    private_report_request = request.url.path.startswith("/api/meldungen")
     errors = []
     for e in exc.errors():
         loc = e.get("loc", ())
-        if any(str(part) in _SENSITIVE for part in loc):
+        if private_report_request:
+            # Fehlende Felder tragen bei Pydantic den gesamten Request unter
+            # ``input``. Darin stünden sonst privater Rohtext und genauer Ort.
+            e = {key: value for key, value in e.items() if key != "input"}
+        elif any(str(part) in _SENSITIVE for part in loc):
             e = {**e, "input": "***"}
         errors.append(e)
     return JSONResponse(

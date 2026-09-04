@@ -29,7 +29,7 @@ Rohtexte, Einzelmeldungen und Moderationsdaten bleiben privat.
 `PrivateReportStore` besitzt die Tabellen `civic_reports` und
 `civic_report_observations`; `ProblemStore` besitzt sie ausdrücklich nicht. Eine
 Meldung verweist per Fremdschlüssel auf ein bestehendes Ratslotse-Konto; nur ein
-aktives, bestätigtes Konto darf private Inhalte anlegen oder verändern. Jede
+aktives, bestätigtes Nicht-Admin-Konto darf private Inhalte anlegen oder verändern. Jede
 private Lese- und Änderungsoperation verlangt die ID der meldenden Person.
 Unbekannte und fremde Meldungs-IDs werden dabei nicht unterschieden und geben
 keinen Inhalt preis.
@@ -51,15 +51,41 @@ Unveränderlichkeit gespeicherter Beobachtungen zusätzlich zum Store ab.
 
 Die privaten Migrationen werden einzeln atomar in
 `civic_report_schema_migrations` protokolliert und sind wiederholbar. Eine
-eigene Folgemigration ergänzt ältere private Schemata um Inhaltsrevisionen und
-erneuert deren Invariantentrigger, ohne Meldungsdaten zu ersetzen. Die
-Migrationen verändern weder
+Folgemigration ergänzt ältere private Schemata um Inhaltsrevisionen und erneuert
+deren Invariantentrigger; eine weitere ergänzt Erstellungs-Idempotenz samt
+eindeutigem Konto-Schlüssel und privatem Anfragefingerabdruck. Eine additive
+Folgemigration erneuert auch bei bereits angewendeter Idempotenzmigration die
+Eigentümertrigger für Nicht-Admin-Konten. Bestehende Meldungsdaten werden dabei
+nicht ersetzt. Die Migrationen verändern weder
 `civic_problems` noch `civic_problem_feature_examples`. Die explizite
 Kontolöschgrenze `erase_reporter_data` entfernt alle privaten Meldungen und ihre
 Beobachtungen einer Eigentümer-ID per Fremdschlüssel-Kaskade. Zusätzlich kennt
 die zentrale Kontolöschung `civic_reports`, damit auch der bestehende
 DSGVO-Löschweg keine privaten Daten zurücklässt. Beide Wege schreiben nicht in
 öffentliche Projektionen.
+
+## Private HTTP-Grenze — Iteration 5
+
+`POST /api/meldungen/entwuerfe`, `GET /api/meldungen/{report_id}`,
+`PUT /api/meldungen/{report_id}/entwurf` und
+`POST /api/meldungen/{report_id}/absenden` bilden nur den bestehenden privaten
+Lebenslauf ab. Die Reporter-ID kommt ausschließlich aus der authentifizierten
+Sitzung. Zugelassen sind aktive, bestätigte Nicht-Admin-Konten; alle privaten
+Antworten besitzen eine eigene Form ohne Konto-ID, Idempotenzschlüssel oder
+Erstellungsfingerabdruck.
+
+Der Erstellungsschlüssel ist je Konto eindeutig. Ein Fingerabdruck der
+normalisierten ursprünglichen Anfrage lässt identische, auch konkurrierende
+Retries denselben Entwurf laden und weist denselben Schlüssel mit anderem
+Inhalt als Konflikt zurück. Änderungen und Absenden vergleichen die erwartete
+Inhaltsrevision atomar. Ein identischer Absende-Retry mit derselben erwarteten
+Vor-Revision liefert dieselbe bereits abgesendete Meldung; jede abweichende oder
+veraltete Wiederholung scheitert mit `409`. Fremde und unbekannte IDs liefern
+für Lesen, Ändern und Absenden dieselbe `404`-Antwort.
+
+Die HTTP-Grenze bietet noch keinen Nachtrag späterer Beobachtungen. Sie schreibt
+weder in `civic_problems` noch in Feature-Beispiele und ruft keine KI,
+Moderation, Clusterung oder Veröffentlichung auf.
 
 ## Veröffentlichung bleibt geschlossen
 

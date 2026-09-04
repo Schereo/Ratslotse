@@ -35,6 +35,8 @@ from typing import Any, Literal, NotRequired, TypedDict
 
 from fastapi.responses import FileResponse, StreamingResponse
 
+from buergerportal.domain import ProblemCategory, ScopeKind
+
 # --------------------------------------------------------------------------
 # Bausteine, die überall vorkommen
 # --------------------------------------------------------------------------
@@ -626,11 +628,8 @@ class PublicProblemSummary(TypedDict):
     id: int
     title: str
     summary: str
-    category: Literal[
-        "mobility", "public_space", "education", "childcare", "housing",
-        "environment", "accessibility", "administration", "other",
-    ]
-    scope_kind: Literal["point", "facility", "route", "area", "citywide"]
+    category: ProblemCategory
+    scope_kind: ScopeKind
     location_label: str
     latitude: float | None
     longitude: float | None
@@ -647,6 +646,34 @@ class PublicProblemSummary(TypedDict):
 class PublicProblemList(TypedDict):
     problems: list[PublicProblemSummary]
     total: int
+
+
+# --------------------------------------------------------------------------
+# Bürgerportal — eigentümergebundene private Antworten
+# --------------------------------------------------------------------------
+
+
+class PrivateReportOut(TypedDict):
+    """Eigentümergebundener Entwurf oder abgesendete private Meldung.
+
+    Bewusst ohne Konto-ID, Idempotenzschlüssel und Erstellungsfingerabdruck.
+    Diese Form wird nie für öffentliche Problemprojektionen verwendet.
+    """
+
+    id: int
+    draft_text: str
+    confirmed_text: str | None
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str
+    location_label: str
+    latitude: float | None
+    longitude: float | None
+    state: Literal["draft", "submitted"]
+    content_revision: int
+    submitted_at: str | None
+    created_at: str
+    updated_at: str
 
 
 # --------------------------------------------------------------------------

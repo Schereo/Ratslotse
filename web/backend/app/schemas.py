@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from typing import Literal
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from buergerportal.domain import ProblemCategory, ScopeKind
 
 
 # ---- auth ----
@@ -259,6 +261,40 @@ class NotifyPrefsIn(BaseModel):
     der Store weg — hier bleibt es bewusst offen, damit ein neu dazugekommener
     Anlass keinen 422 auslöst."""
     prefs: dict[str, bool]
+
+
+# ---- Bürgerportal: private Meldeentwürfe ----
+class PrivateDraftContentIn(BaseModel):
+    """Eng begrenzter privater Inhalt; die Store-Grenze prüft ihn erneut."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=4000)
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    location_label: str = Field(default="", max_length=200)
+    latitude: float | None = Field(default=None, ge=53.05, le=53.24)
+    longitude: float | None = Field(default=None, ge=8.08, le=8.33)
+
+
+class PrivateDraftCreateIn(PrivateDraftContentIn):
+    idempotency_key: str = Field(
+        min_length=8,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+    )
+
+
+class PrivateDraftUpdateIn(PrivateDraftContentIn):
+    expected_revision: int = Field(ge=0, le=2**31 - 1)
+
+
+class PrivateSubmitIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=0, le=2**31 - 1)
+    confirmed_text: str = Field(min_length=1, max_length=4000)
 
 
 # ---- feedback ----

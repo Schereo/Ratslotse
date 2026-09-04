@@ -124,7 +124,70 @@ def _downgrade_private_schema_to_version_one(database) -> None:
         )
 
 
-def test_drafts_require_an_existing_verified_account(tmp_path):
+def _install_pre_v6_owner_triggers(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """DROP TRIGGER trg_civic_reports_owner_insert;
+           DROP TRIGGER trg_civic_reports_owner_update;
+           CREATE TRIGGER trg_civic_reports_owner_insert
+               BEFORE INSERT ON civic_reports
+               WHEN NOT EXISTS (
+                   SELECT 1 FROM web_users
+                   WHERE id = NEW.reporter_id AND status = 'active'
+                     AND email_verified = 1
+               )
+               BEGIN
+                   SELECT RAISE(ABORT, 'pre-v6 owner trigger');
+               END;
+           CREATE TRIGGER trg_civic_reports_owner_update
+               BEFORE UPDATE OF reporter_id ON civic_reports
+               WHEN NOT EXISTS (
+                   SELECT 1 FROM web_users
+                   WHERE id = NEW.reporter_id AND status = 'active'
+                     AND email_verified = 1
+               )
+               BEGIN
+                   SELECT RAISE(ABORT, 'pre-v6 owner trigger');
+               END;"""
+    )
+
+
+def _downgrade_private_schema_to_version_four(database) -> None:
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """DROP TRIGGER trg_civic_reports_idempotency_pair_insert;
+               DROP TRIGGER trg_civic_reports_idempotency_pair_update;
+               DROP TRIGGER trg_civic_reports_idempotency_no_update;
+               DROP INDEX uq_civic_reports_owner_idempotency;
+               ALTER TABLE civic_reports DROP COLUMN creation_fingerprint;
+               ALTER TABLE civic_reports DROP COLUMN idempotency_key;
+               DELETE FROM civic_report_schema_migrations WHERE version >= 5;"""
+        )
+        _install_pre_v6_owner_triggers(connection)
+
+
+def _downgrade_private_schema_to_version_five(database) -> None:
+    with sqlite3.connect(database) as connection:
+        _install_pre_v6_owner_triggers(connection)
+        connection.execute(
+            "DELETE FROM civic_report_schema_migrations WHERE version = 6"
+        )
+
+
+def test_controlled_domain_types_match_their_runtime_values():
+    from typing import get_args
+
+    from buergerportal.domain import (
+        PROBLEM_CATEGORIES,
+        SCOPE_KINDS,
+        ProblemCategory,
+        ScopeKind,
+    )
+
+    assert get_args(ProblemCategory) == PROBLEM_CATEGORIES
+    assert get_args(ScopeKind) == SCOPE_KINDS
+
+
+def test_drafts_require_an_eligible_reporter_account(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
     from kern.store import Store
 
@@ -142,6 +205,13 @@ def test_drafts_require_an_existing_verified_account(tmp_path):
         status="active",
         email_verified=True,
     )
+    admin_id = account_store.create_web_user(
+        "meldung-admin@test.de",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
     account_store.close()
     private_store = PrivateReportStore(database)
     content = DraftContent(
@@ -151,16 +221,28 @@ def test_drafts_require_an_existing_verified_account(tmp_path):
         observed_on="2026-09-01",
     )
 
-    with pytest.raises(ValueError, match="bestätigtes Konto"):
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.create_draft(reporter_id=999_999, content=content)
-    with pytest.raises(ValueError, match="bestätigtes Konto"):
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.create_draft(reporter_id=pending_id, content=content)
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
+        private_store.create_draft(reporter_id=admin_id, content=content)
     draft_id = private_store.create_draft(reporter_id=verified_id, content=content)
     account_store = Store(database)
+    account_store.set_web_user_role(verified_id, "admin")
+    account_store.close()
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
+        private_store.submit_owned_draft(
+            draft_id,
+            reporter_id=verified_id,
+            confirmed_text="Bestätigte fiktive Beobachtung",
+        )
+    account_store = Store(database)
+    account_store.set_web_user_role(verified_id, "user")
     account_store.set_web_user_status(verified_id, "suspended")
     account_store.close()
 
-    with pytest.raises(ValueError, match="bestätigtes Konto"):
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.submit_owned_draft(
             draft_id,
             reporter_id=verified_id,
@@ -259,9 +341,19 @@ def test_drafts_enforce_controlled_private_content_and_geography(tmp_path):
 
 def test_database_enforces_private_report_invariants(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
+    from kern.store import Store
 
     database = tmp_path / "ratslotse.sqlite"
     _insert_verified_accounts(database, 17)
+    account_store = Store(database)
+    admin_id = account_store.create_web_user(
+        "invarianten-admin@test.de",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
+    account_store.close()
     store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
@@ -279,6 +371,7 @@ def test_database_enforces_private_report_invariants(tmp_path):
 
     invalid_assignments = (
         "reporter_id = 0",
+        f"reporter_id = {admin_id}",
         "category = 'unknown'",
         "scope_kind = 'citywide'",
         "content_revision = -1",
@@ -675,6 +768,119 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     assert "wiederholte Beobachtung" not in dump
 
 
+def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_path):
+    from buergerportal.reports import DraftContent, PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
+    old_store = PrivateReportStore(database)
+    old_draft_id = old_store.create_draft(
+        reporter_id=17,
+        content=DraftContent(
+            text="Fiktiver Entwurf vor der Idempotenzmigration",
+            category="public_space",
+            scope_kind="citywide",
+            observed_on="2026-09-01",
+        ),
+    )
+    old_store.close()
+    _downgrade_private_schema_to_version_four(database)
+
+    migrated_store = PrivateReportStore(database)
+    content = DraftContent(
+        text="Fiktiver idempotenter Entwurf nach der Migration",
+        category="mobility",
+        scope_kind="citywide",
+        observed_on="2026-09-02",
+    )
+    first = migrated_store.create_owned_draft_idempotent(
+        reporter_id=17,
+        idempotency_key="fiktiver-migrations-request",
+        content=content,
+    )
+    retry = migrated_store.create_owned_draft_idempotent(
+        reporter_id=17,
+        idempotency_key="fiktiver-migrations-request",
+        content=content,
+    )
+    preserved = migrated_store.get_owned_report(old_draft_id, reporter_id=17)
+    migrated_store.close()
+    migrated_schema = _private_schema_signature(database)
+    reopened_store = PrivateReportStore(database)
+    reopened_store.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh_store = PrivateReportStore(fresh_database)
+    fresh_store.close()
+
+    assert preserved is not None
+    assert preserved.draft_text == "Fiktiver Entwurf vor der Idempotenzmigration"
+    assert retry == first
+    assert _private_schema_signature(database) == migrated_schema
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,)]
+
+
+def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
+    tmp_path,
+):
+    from buergerportal.reports import PrivateReportStore
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    account_store = Store(database)
+    admin_id = account_store.create_web_user(
+        "migration-admin@test.de",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
+    account_store.close()
+    old_store = PrivateReportStore(database)
+    old_store.close()
+    _downgrade_private_schema_to_version_five(database)
+
+    with sqlite3.connect(database) as connection:
+        old_trigger = connection.execute(
+            """SELECT sql FROM sqlite_master
+               WHERE type = 'trigger' AND name = 'trg_civic_reports_owner_insert'"""
+        ).fetchone()[0]
+    assert "role = 'user'" not in old_trigger
+
+    migrated_store = PrivateReportStore(database)
+    migrated_store.close()
+    reopened_store = PrivateReportStore(database)
+    reopened_store.close()
+
+    with sqlite3.connect(database) as connection:
+        migrated_trigger = connection.execute(
+            """SELECT sql FROM sqlite_master
+               WHERE type = 'trigger' AND name = 'trg_civic_reports_owner_insert'"""
+        ).fetchone()[0]
+        versions = connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall()
+        with pytest.raises(sqlite3.IntegrityError, match="eligible account"):
+            connection.execute(
+                """INSERT INTO civic_reports (
+                       reporter_id, draft_text, category, scope_kind,
+                       observed_at, created_at, updated_at
+                   ) VALUES (
+                       ?, 'Unzulässiger Admin-Entwurf', 'other', 'citywide',
+                       '2026-09-01', '2026-09-01T12:00:00+00:00',
+                       '2026-09-01T12:00:00+00:00'
+                   )""",
+                (admin_id,),
+            )
+    assert "role = 'user'" in migrated_trigger
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]
+
+
 def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
 
@@ -717,7 +923,7 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -845,7 +1051,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
@@ -889,4 +1095,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,)]

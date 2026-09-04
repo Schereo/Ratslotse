@@ -5,43 +5,59 @@ Problemprojektionen werden nur über :mod:`buergerportal.store` gelesen.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import math
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Literal, cast
 
-from .domain import OLDENBURG_BOUNDS, PROBLEM_CATEGORIES, SCOPE_KINDS
+from .domain import (
+    OLDENBURG_BOUNDS,
+    PROBLEM_CATEGORIES,
+    SCOPE_KINDS,
+    ProblemCategory,
+    ScopeKind,
+)
 
 
 ReportState = Literal["draft", "submitted"]
 _SQLITE_INTEGER_MAX = 2**63 - 1
+_IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
 
 
 def _sql_enum(values: tuple[str, ...]) -> str:
     return ", ".join(f"'{value}'" for value in values)
 
 
-_INVARIANT_TRIGGERS = (
+_OWNER_TRIGGERS = (
     """CREATE TRIGGER trg_civic_reports_owner_insert
            BEFORE INSERT ON civic_reports
            WHEN NOT EXISTS (
                SELECT 1 FROM web_users
-               WHERE id = NEW.reporter_id AND status = 'active' AND email_verified = 1
+               WHERE id = NEW.reporter_id AND role = 'user'
+                 AND status = 'active' AND email_verified = 1
            )
            BEGIN
-               SELECT RAISE(ABORT, 'report owner must be a verified account');
+               SELECT RAISE(ABORT, 'report owner must be an eligible account');
            END""",
     """CREATE TRIGGER trg_civic_reports_owner_update
            BEFORE UPDATE OF reporter_id ON civic_reports
            WHEN NOT EXISTS (
                SELECT 1 FROM web_users
-               WHERE id = NEW.reporter_id AND status = 'active' AND email_verified = 1
+               WHERE id = NEW.reporter_id AND role = 'user'
+                 AND status = 'active' AND email_verified = 1
            )
            BEGIN
-               SELECT RAISE(ABORT, 'report owner must be a verified account');
+               SELECT RAISE(ABORT, 'report owner must be an eligible account');
            END""",
+)
+
+_INVARIANT_TRIGGERS = (
+    *_OWNER_TRIGGERS,
     """CREATE TRIGGER trg_civic_reports_submitted_content_no_update
            BEFORE UPDATE OF
                reporter_id, draft_text, confirmed_text, category, scope_kind,
@@ -229,6 +245,41 @@ _INVARIANT_MIGRATION_STATEMENTS = (
     *_INVARIANT_TRIGGERS,
 )
 
+_IDEMPOTENCY_MIGRATION_STATEMENTS = (
+    "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_pair_insert",
+    "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_pair_update",
+    "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_no_update",
+    """CREATE UNIQUE INDEX IF NOT EXISTS uq_civic_reports_owner_idempotency
+           ON civic_reports(reporter_id, idempotency_key)
+           WHERE idempotency_key IS NOT NULL""",
+    """CREATE TRIGGER trg_civic_reports_idempotency_pair_insert
+           BEFORE INSERT ON civic_reports
+           WHEN (NEW.idempotency_key IS NULL) != (NEW.creation_fingerprint IS NULL)
+           BEGIN
+               SELECT RAISE(ABORT, 'idempotency key requires request fingerprint');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_idempotency_pair_update
+           BEFORE UPDATE OF idempotency_key, creation_fingerprint ON civic_reports
+           WHEN (NEW.idempotency_key IS NULL) != (NEW.creation_fingerprint IS NULL)
+           BEGIN
+               SELECT RAISE(ABORT, 'idempotency key requires request fingerprint');
+           END""",
+    """CREATE TRIGGER trg_civic_reports_idempotency_no_update
+           BEFORE UPDATE OF idempotency_key, creation_fingerprint ON civic_reports
+           WHEN NEW.idempotency_key IS NOT OLD.idempotency_key
+             OR NEW.creation_fingerprint IS NOT OLD.creation_fingerprint
+           BEGIN
+               SELECT RAISE(ABORT, 'report creation identity is immutable');
+           END""",
+)
+
+_REPORTER_ELIGIBILITY_MIGRATION_STATEMENTS = (
+    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_insert",
+    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_update",
+    *_OWNER_TRIGGERS,
+)
+
+
 _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
     (
         1,
@@ -309,14 +360,17 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # Version 4 baut ein bereits von der früheren Version 3 markiertes
     # Legacy-Schema auf dieselben Tabellen-Constraints wie eine frische DB um.
     (4, _INVARIANT_MIGRATION_STATEMENTS),
+    (5, _IDEMPOTENCY_MIGRATION_STATEMENTS),
+    (6, _REPORTER_ELIGIBILITY_MIGRATION_STATEMENTS),
 )
 
 
-_REPORT_COLUMNS = (
+_REPORT_COLUMNS_V4 = (
     "id", "reporter_id", "draft_text", "confirmed_text", "category",
     "scope_kind", "location_label", "latitude", "longitude", "observed_at",
     "status", "content_revision", "submitted_at", "created_at", "updated_at",
 )
+_REPORT_COLUMNS = (*_REPORT_COLUMNS_V4, "idempotency_key", "creation_fingerprint")
 _OBSERVATION_COLUMNS = (
     "id", "report_id", "content_revision", "text", "observed_at", "created_at",
 )
@@ -349,7 +403,7 @@ def _private_schema_requires_rebuild(connection: sqlite3.Connection) -> bool:
     report_sql = str(report_sql_row["sql"] if report_sql_row else "")
     observation_sql = str(observation_sql_row["sql"] if observation_sql_row else "")
     return (
-        report_columns != _REPORT_COLUMNS
+        report_columns not in (_REPORT_COLUMNS_V4, _REPORT_COLUMNS)
         or observation_columns != _OBSERVATION_COLUMNS
         or ("reporter_id", "web_users", "id", "CASCADE") not in report_foreign_keys
         or (
@@ -381,6 +435,33 @@ def _migration_upgrade_statements(
     connection: sqlite3.Connection,
     version: int,
 ) -> tuple[str, ...]:
+    if version == 5:
+        report_columns = {
+            str(row["name"])
+            for row in connection.execute("PRAGMA table_info(civic_reports)")
+        }
+        additions = []
+        if "idempotency_key" not in report_columns:
+            additions.append(
+                """ALTER TABLE civic_reports ADD COLUMN idempotency_key TEXT
+                       CHECK (
+                           idempotency_key IS NULL OR (
+                               length(idempotency_key) BETWEEN 8 AND 128
+                               AND idempotency_key NOT GLOB '*[^A-Za-z0-9._:-]*'
+                           )
+                       )"""
+            )
+        if "creation_fingerprint" not in report_columns:
+            additions.append(
+                """ALTER TABLE civic_reports ADD COLUMN creation_fingerprint TEXT
+                       CHECK (
+                           creation_fingerprint IS NULL OR (
+                               length(creation_fingerprint) = 64
+                               AND creation_fingerprint NOT GLOB '*[^0-9a-f]*'
+                           )
+                       )"""
+            )
+        return tuple(additions)
     if version not in (3, 4) or not _private_schema_requires_rebuild(connection):
         return ()
     report_columns = {
@@ -434,8 +515,8 @@ class DraftContent:
     """Der private, von der meldenden Person kontrollierte Inhalt."""
 
     text: str
-    category: str
-    scope_kind: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
     observed_on: str
     location_label: str = ""
     latitude: float | None = None
@@ -455,8 +536,8 @@ class PrivateReport:
     id: int
     draft_text: str
     confirmed_text: str | None
-    category: str
-    scope_kind: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
     observed_on: str
     location_label: str
     latitude: float | None
@@ -477,6 +558,14 @@ class InvalidReportTransition(ValueError):
     """Der aktuelle Lebenslauf erlaubt die gewünschte Änderung nicht."""
 
 
+class IdempotencyConflict(InvalidReportTransition):
+    """Ein Erstellungsschlüssel wurde bereits für andere Eingaben verwendet."""
+
+
+class ReporterNotEligible(ValueError):
+    """Das Konto darf keine private Meldung anlegen oder verändern."""
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
@@ -487,6 +576,42 @@ def _is_storage_id(value: object) -> bool:
         and isinstance(value, int)
         and 1 <= value <= _SQLITE_INTEGER_MAX
     )
+
+
+def _normalized_expected_revision(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value < _SQLITE_INTEGER_MAX
+    ):
+        raise ValueError("Die erwartete Inhaltsrevision ist ungültig.")
+    return value
+
+
+def _normalized_idempotency_key(value: str) -> str:
+    if not _IDEMPOTENCY_KEY.fullmatch(value):
+        raise ValueError("Der Idempotenzschlüssel ist ungültig.")
+    return value
+
+
+def _creation_fingerprint(content: DraftContent) -> str:
+    serialized = json.dumps(
+        {
+            "category": content.category,
+            "latitude": content.latitude,
+            "location_label": content.location_label,
+            "longitude": content.longitude,
+            "observed_on": content.observed_on,
+            "scope_kind": content.scope_kind,
+            "text": content.text,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def _normalized_observed_on(value: str) -> str:
@@ -621,7 +746,7 @@ class PrivateReportStore:
     def create_draft(self, *, reporter_id: int, content: DraftContent) -> int:
         if not _is_storage_id(reporter_id):
             raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         normalized = _normalized_content(content)
         now = _now()
         with self._conn:
@@ -646,27 +771,39 @@ class PrivateReportStore:
             )
         return int(cursor.lastrowid)
 
-    def update_owned_draft(
+    def create_owned_draft_idempotent(
         self,
-        report_id: int,
         *,
         reporter_id: int,
+        idempotency_key: str,
         content: DraftContent,
     ) -> PrivateReport:
-        if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
-            raise PrivateReportNotFound("Meldung nicht gefunden.")
-        self._require_verified_reporter(reporter_id)
+        """Legt den Entwurf je Konto und Schlüssel höchstens einmal an.
+
+        Der Fingerabdruck hält die ursprüngliche, normalisierte Anfrage fest.
+        Dadurch bleibt ein späterer Retry auch dann erkennbar, wenn der Entwurf
+        inzwischen geändert wurde; derselbe Schlüssel mit anderem Inhalt
+        scheitert dagegen geschlossen.
+        """
+        if not _is_storage_id(reporter_id):
+            raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
+        self._require_eligible_reporter(reporter_id)
+        key = _normalized_idempotency_key(idempotency_key)
         normalized = _normalized_content(content)
+        fingerprint = _creation_fingerprint(normalized)
         now = _now()
         with self._conn:
-            updated = self._conn.execute(
-                """UPDATE civic_reports
-                   SET draft_text = ?, category = ?, scope_kind = ?,
-                       location_label = ?, latitude = ?, longitude = ?,
-                       observed_at = ?, content_revision = content_revision + 1,
-                       updated_at = ?
-                   WHERE id = ? AND reporter_id = ? AND status = 'draft'""",
+            self._conn.execute(
+                """INSERT INTO civic_reports (
+                       reporter_id, draft_text, category, scope_kind,
+                       location_label, latitude, longitude, observed_at,
+                       created_at, updated_at, idempotency_key,
+                       creation_fingerprint
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(reporter_id, idempotency_key)
+                   WHERE idempotency_key IS NOT NULL DO NOTHING""",
                 (
+                    reporter_id,
                     normalized.text,
                     normalized.category,
                     normalized.scope_kind,
@@ -675,9 +812,67 @@ class PrivateReportStore:
                     normalized.longitude,
                     normalized.observed_on,
                     now,
-                    report_id,
-                    reporter_id,
+                    now,
+                    key,
+                    fingerprint,
                 ),
+            )
+            existing = self._conn.execute(
+                """SELECT id, creation_fingerprint
+                   FROM civic_reports
+                   WHERE reporter_id = ? AND idempotency_key = ?""",
+                (reporter_id, key),
+            ).fetchone()
+            if existing is None:
+                raise RuntimeError("Idempotent angelegter Entwurf konnte nicht geladen werden.")
+            if existing["creation_fingerprint"] != fingerprint:
+                raise IdempotencyConflict(
+                    "Der Idempotenzschlüssel gehört bereits zu einer anderen Anfrage."
+                )
+            report_id = int(existing["id"])
+        draft = self.get_owned_report(report_id, reporter_id=reporter_id)
+        if draft is None:  # Durch die konto-spezifische Abfrage garantiert.
+            raise RuntimeError("Idempotent angelegter Entwurf konnte nicht geladen werden.")
+        return draft
+
+    def update_owned_draft(
+        self,
+        report_id: int,
+        *,
+        reporter_id: int,
+        content: DraftContent,
+        expected_revision: int | None = None,
+    ) -> PrivateReport:
+        if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
+            raise PrivateReportNotFound("Meldung nicht gefunden.")
+        self._require_eligible_reporter(reporter_id)
+        normalized = _normalized_content(content)
+        expected_revision = _normalized_expected_revision(expected_revision)
+        now = _now()
+        parameters: tuple[object, ...] = (
+            normalized.text,
+            normalized.category,
+            normalized.scope_kind,
+            normalized.location_label,
+            normalized.latitude,
+            normalized.longitude,
+            normalized.observed_on,
+            now,
+            report_id,
+            reporter_id,
+            expected_revision,
+            expected_revision,
+        )
+        with self._conn:
+            updated = self._conn.execute(
+                """UPDATE civic_reports
+                   SET draft_text = ?, category = ?, scope_kind = ?,
+                       location_label = ?, latitude = ?, longitude = ?,
+                       observed_at = ?, content_revision = content_revision + 1,
+                       updated_at = ?
+                   WHERE id = ? AND reporter_id = ? AND status = 'draft'
+                     AND (? IS NULL OR content_revision = ?)""",
+                parameters,
             )
             if updated.rowcount != 1:
                 self._raise_missing_or_transition(report_id, reporter_id=reporter_id)
@@ -692,25 +887,49 @@ class PrivateReportStore:
         *,
         reporter_id: int,
         confirmed_text: str,
+        expected_revision: int | None = None,
     ) -> PrivateReport:
         if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
             raise PrivateReportNotFound("Meldung nicht gefunden.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         confirmed_text = confirmed_text.strip()
         if not confirmed_text:
             raise ValueError("Vor dem Absenden muss der Meldetext bestätigt werden.")
+        expected_revision = _normalized_expected_revision(expected_revision)
         now = _now()
+        parameters: tuple[object, ...] = (
+            confirmed_text,
+            now,
+            now,
+            report_id,
+            reporter_id,
+            expected_revision,
+            expected_revision,
+        )
         with self._conn:
             updated = self._conn.execute(
                 """UPDATE civic_reports
                    SET confirmed_text = ?, status = 'submitted',
                        content_revision = content_revision + 1,
                        submitted_at = ?, updated_at = ?
-                   WHERE id = ? AND reporter_id = ? AND status = 'draft'""",
-                (confirmed_text, now, now, report_id, reporter_id),
+                   WHERE id = ? AND reporter_id = ? AND status = 'draft'
+                     AND (? IS NULL OR content_revision = ?)""",
+                parameters,
             )
             if updated.rowcount != 1:
-                self._raise_missing_or_transition(report_id, reporter_id=reporter_id)
+                existing = self.get_owned_report(report_id, reporter_id=reporter_id)
+                if existing is None:
+                    raise PrivateReportNotFound("Meldung nicht gefunden.")
+                if (
+                    expected_revision is not None
+                    and existing.state == "submitted"
+                    and existing.content_revision == expected_revision + 1
+                    and existing.confirmed_text == confirmed_text
+                ):
+                    return existing
+                raise InvalidReportTransition(
+                    "Dieser Meldeentwurf kann nicht mehr abgesendet werden."
+                )
         submitted = self.get_owned_report(report_id, reporter_id=reporter_id)
         if submitted is None:  # Durch den eigentümergebundenen Übergang garantiert.
             raise RuntimeError("Abgesendete Meldung konnte nicht geladen werden.")
@@ -726,7 +945,7 @@ class PrivateReportStore:
     ) -> PrivateReport:
         if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
             raise PrivateReportNotFound("Meldung nicht gefunden.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         text = text.strip()
         if not text:
             raise ValueError("Eine Beobachtung benötigt eine Beschreibung.")
@@ -761,7 +980,7 @@ class PrivateReportStore:
             )
         return deleted.rowcount
 
-    def _require_verified_reporter(self, reporter_id: int) -> None:
+    def _require_eligible_reporter(self, reporter_id: int) -> None:
         account_table = self._conn.execute(
             """SELECT 1 FROM sqlite_master
                WHERE type = 'table' AND name = 'web_users'"""
@@ -770,11 +989,14 @@ class PrivateReportStore:
         if account_table is not None:
             verified = self._conn.execute(
                 """SELECT 1 FROM web_users
-                   WHERE id = ? AND status = 'active' AND email_verified = 1""",
+                   WHERE id = ? AND role = 'user'
+                     AND status = 'active' AND email_verified = 1""",
                 (reporter_id,),
             ).fetchone()
         if verified is None:
-            raise ValueError("Private Meldungen benötigen ein bestätigtes Konto.")
+            raise ReporterNotEligible(
+                "Private Meldungen benötigen ein zugelassenes Konto."
+            )
 
     def _raise_missing_or_transition(self, report_id: int, *, reporter_id: int) -> None:
         owned = self._conn.execute(
@@ -814,8 +1036,8 @@ class PrivateReportStore:
             id=int(row["id"]),
             draft_text=str(row["draft_text"]),
             confirmed_text=row["confirmed_text"],
-            category=str(row["category"]),
-            scope_kind=str(row["scope_kind"]),
+            category=cast(ProblemCategory, row["category"]),
+            scope_kind=cast(ScopeKind, row["scope_kind"]),
             observed_on=str(row["observed_at"]),
             location_label=str(row["location_label"]),
             latitude=row["latitude"],

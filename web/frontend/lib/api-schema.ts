@@ -3007,6 +3007,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/meldungen/entwuerfe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Draft */
+        post: operations["create_draft_api_meldungen_entwuerfe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meldungen/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report */
+        get: operations["get_report_api_meldungen__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meldungen/{report_id}/absenden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Draft */
+        post: operations["submit_draft_api_meldungen__report_id__absenden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meldungen/{report_id}/entwurf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Draft */
+        put: operations["update_draft_api_meldungen__report_id__entwurf_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding": {
         parameters: {
             query?: never;
@@ -7198,6 +7266,115 @@ export interface components {
         PolicyFields: {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
+        };
+        /** PrivateDraftCreateIn */
+        PrivateDraftCreateIn: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Idempotency Key */
+            idempotency_key: string;
+            /** Latitude */
+            latitude?: number | null;
+            /**
+             * Location Label
+             * @default
+             */
+            location_label: string;
+            /** Longitude */
+            longitude?: number | null;
+            /** Observed On */
+            observed_on: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /** Text */
+            text: string;
+        };
+        /** PrivateDraftUpdateIn */
+        PrivateDraftUpdateIn: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Expected Revision */
+            expected_revision: number;
+            /** Latitude */
+            latitude?: number | null;
+            /**
+             * Location Label
+             * @default
+             */
+            location_label: string;
+            /** Longitude */
+            longitude?: number | null;
+            /** Observed On */
+            observed_on: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /** Text */
+            text: string;
+        };
+        /**
+         * PrivateReportOut
+         * @description Eigentümergebundener Entwurf oder abgesendete private Meldung.
+         *
+         *     Bewusst ohne Konto-ID, Idempotenzschlüssel und Erstellungsfingerabdruck.
+         *     Diese Form wird nie für öffentliche Problemprojektionen verwendet.
+         */
+        PrivateReportOut: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Confirmed Text */
+            confirmed_text: string | null;
+            /** Content Revision */
+            content_revision: number;
+            /** Created At */
+            created_at: string;
+            /** Draft Text */
+            draft_text: string;
+            /** Id */
+            id: number;
+            /** Latitude */
+            latitude: number | null;
+            /** Location Label */
+            location_label: string;
+            /** Longitude */
+            longitude: number | null;
+            /** Observed On */
+            observed_on: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "draft" | "submitted";
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Updated At */
+            updated_at: string;
+        };
+        /** PrivateSubmitIn */
+        PrivateSubmitIn: {
+            /** Confirmed Text */
+            confirmed_text: string;
+            /** Expected Revision */
+            expected_revision: number;
         };
         /**
          * ProblemGeometry
@@ -12373,6 +12550,140 @@ export interface operations {
             };
         };
     };
+    create_draft_api_meldungen_entwuerfe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateDraftCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_api_meldungen__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_draft_api_meldungen__report_id__absenden_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateSubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_draft_api_meldungen__report_id__entwurf_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateDraftUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_onboarding_api_onboarding_get: {
         parameters: {
             query?: never;
@@ -13687,4 +13998,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6f2602eaceb946cb33a9a8c40bcc41c531cef0800e17959c37e02edf10081395
+// vertrag-sha256: 83485b345a688865919b3bbd20f2471d47e4982acc23b694258b90f40e28f696

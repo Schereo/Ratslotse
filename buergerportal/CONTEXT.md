@@ -63,3 +63,12 @@ einen Entwurf genau einmal zur Meldung und übernimmt den bestätigten Text als
 erste unveränderliche Beobachtung. Weitere Beobachtungen werden angehängt; sie
 bleiben Beiträge derselben meldenden Person. Weder Meldung noch Beobachtung ist
 bereits ein öffentliches Problem.
+
+## Private HTTP-Grenze seit Iteration 5
+
+Ein aktives, bestätigtes Nicht-Admin-Konto kann seinen eigenen Entwurf über die
+private Meldungs-API anlegen, lesen, revisionsgebunden ändern und bewusst
+absenden. Die Eigentümer-ID stammt immer aus der Sitzung. Ein konto-spezifischer
+Idempotenzschlüssel bezeichnet die ursprüngliche Erstellung; er ist weder eine
+öffentliche Kennung noch Teil der Antwort. Fremde und unbekannte Meldungen sind
+über dieselbe `404`-Antwort ununterscheidbar.
