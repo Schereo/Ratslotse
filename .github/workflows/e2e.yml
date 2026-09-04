@@ -35,7 +35,19 @@ on:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 09/2026 von 20 auf 35 angehoben. Die Suite ist von 38 auf 137 Tests
+    # gewachsen; der erste Lauf danach brauchte in der CI exakt 20 Minuten und
+    # ging damit auf die Sekunde durch. Der nächste Test hätte die Grenze
+    # gerissen — und zwar als ZEITÜBERSCHREITUNG, also mit einer Meldung, die
+    # nicht sagt, was kaputt ist. Lokal dauert derselbe Lauf 5,9 Minuten; der
+    # geteilte Läufer ist etwa dreimal langsamer.
+    #
+    # Die Grenze ist kein Ziel, sondern der Notausgang für einen hängenden
+    # Lauf. Wenn die Suite weiter wächst, ist der richtige Hebel nicht diese
+    # Zahl, sondern die Anmeldung: Fast jeder Test meldet sich neu an
+    # (`anmelden()` in den Specs, `loginAdmin` in `helpers.ts`). Eine
+    # wiederverwendete Sitzung über `storageState` spart die Runde je Test.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
 
