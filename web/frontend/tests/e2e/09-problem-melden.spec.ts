@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { User } from "@/lib/types";
 import {
+  oldenburgTodayISO,
   PROBLEM_REPORT_SESSION_KEY,
   PROBLEM_REPORT_SESSION_TTL_MS,
 } from "@/lib/problem-report-session";
@@ -38,8 +39,7 @@ const badgeState = {
 type PrivateReport = ApiAntwort<"/meldungen/{report_id}">;
 
 function todayISO(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return oldenburgTodayISO();
 }
 
 async function signedIn(page: Page, user: User = signedInUser) {
@@ -112,6 +112,11 @@ async function seedServerDraft(
 }
 
 test.describe("Geführte private Problemmeldung", () => {
+  test("verwendet den Kalendertag in Oldenburg auch bei abweichender Gerätezeitzone", () => {
+    expect(oldenburgTodayISO(new Date("2026-03-28T23:30:00Z"))).toBe("2026-03-29");
+    expect(oldenburgTodayISO(new Date("2026-10-24T22:30:00Z"))).toBe("2026-10-25");
+  });
+
   test("führt prominent von der öffentlichen Übersicht über die Anmeldung zurück zum Meldeweg", async ({ page }) => {
     await page.route("**/api/probleme", (route) => route.fulfill({
       status: 200,
@@ -201,7 +206,7 @@ test.describe("Geführte private Problemmeldung", () => {
     await page.getByRole("button", { name: "Meldung privat absenden" }).click();
 
     await expect(page.getByRole("heading", { name: "Meldung privat eingegangen" })).toBeFocused();
-    await expect(page.getByText(/nicht automatisch öffentlich/i)).toBeVisible();
+    await expect(page.getByText("Sie ist nicht automatisch öffentlich.", { exact: true })).toBeVisible();
     expect(calls).toHaveLength(3);
     expect(calls[0]).toEqual({
       method: "POST",

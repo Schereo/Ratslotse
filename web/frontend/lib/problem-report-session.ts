@@ -32,6 +32,20 @@ export type ProblemReportSession = {
 export const PROBLEM_REPORT_SESSION_KEY = "ratslotse:private-problemmeldung:v1";
 export const PROBLEM_REPORT_SESSION_TTL_MS = 30 * 60 * 1_000;
 
+/** Der Beobachtungsort gibt den Kalendertag vor, nicht Server- oder Geräte-TZ. */
+export function oldenburgTodayISO(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    calendar: "gregory",
+    numberingSystem: "latn",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (kind: "year" | "month" | "day") => parts.find((part) => part.type === kind)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 const STAGES: ReportStage[] = ["scope", "location", "date", "category", "description", "review"];
 const SCOPES = PROBLEM_MELDEBEZUEGE.map(({ value }) => value);
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{8,128}$/;

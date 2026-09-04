@@ -187,6 +187,47 @@ def test_controlled_domain_types_match_their_runtime_values():
     assert get_args(ScopeKind) == SCOPE_KINDS
 
 
+def test_observation_date_uses_oldenburg_civil_day(monkeypatch, tmp_path):
+    from datetime import date, datetime, timezone
+
+    import buergerportal.reports as reports
+
+    assert reports._oldenburg_today(
+        datetime(2026, 3, 28, 23, 30, tzinfo=timezone.utc)
+    ) == date(2026, 3, 29)
+    assert reports._oldenburg_today(
+        datetime(2026, 10, 24, 22, 30, tzinfo=timezone.utc)
+    ) == date(2026, 10, 25)
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 16)
+    monkeypatch.setattr(reports, "_oldenburg_today", lambda: date(2026, 9, 5))
+    store = reports.PrivateReportStore(database)
+
+    draft_id = store.create_draft(
+        reporter_id=16,
+        content=reports.DraftContent(
+            text="Fiktive Beobachtung kurz nach Mitternacht in Oldenburg.",
+            category="other",
+            scope_kind="citywide",
+            observed_on="2026-09-05",
+        ),
+    )
+
+    assert store.get_owned_report(draft_id, reporter_id=16) is not None
+    with pytest.raises(ValueError, match="Beobachtungsdatum"):
+        store.create_draft(
+            reporter_id=16,
+            content=reports.DraftContent(
+                text="Fiktive Beobachtung vom Folgetag.",
+                category="other",
+                scope_kind="citywide",
+                observed_on="2026-09-06",
+            ),
+        )
+    store.close()
+
+
 def test_drafts_require_an_eligible_reporter_account(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
     from kern.store import Store

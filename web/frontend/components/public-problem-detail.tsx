@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/share-button";
 import {
   isProblemMappable,
   PROBLEM_KATEGORIEN,
-  PROBLEM_SCOPE,
+  PROBLEM_SCOPE_META,
   problemDetailHref,
   reportCountLabel,
   type PublicProblem,
@@ -87,7 +87,7 @@ export function PublicProblemDetail({
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <MapPin className="h-4 w-4" aria-hidden />
-            {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
+            {problem.location_label || PROBLEM_SCOPE_META[problem.scope_kind].publicLabel}
           </span>
           <span>{PROBLEM_KATEGORIEN[problem.category]}</span>
         </div>

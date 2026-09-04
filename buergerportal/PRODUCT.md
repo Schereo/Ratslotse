@@ -125,7 +125,8 @@ Meldeoberfläche eine Erklärung der Rollentrennung.
 Der Meldechat ist kein KI-Chat. Er fragt nacheinander räumlichen Bezug, privaten
 genauen Ort, Datum der eigenen Beobachtung, Kategorie und Beschreibung ab. Der
 Ort besteht aus eigener Bezeichnung und einer Markierung auf der Oldenburg-Karte;
-bei „Ganz Oldenburg“ entfallen beide bewusst. Ein zukünftiges Datum oder
+bei „Ganz Oldenburg“ entfallen beide bewusst. Der Kalendertag am
+Beobachtungsort Oldenburg ist dabei maßgeblich; ein zukünftiges Datum oder
 unvollständige Angaben gelangen nicht an die API. Vor und zurück verändert
 bereits gegebene Antworten nicht.
 

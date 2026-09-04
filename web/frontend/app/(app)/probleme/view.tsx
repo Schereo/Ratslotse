@@ -30,7 +30,7 @@ import {
   isProblemMappable,
   PROBLEM_ANGEBOT,
   PROBLEM_KATEGORIEN,
-  PROBLEM_SCOPE,
+  PROBLEM_SCOPE_META,
   parseProblemId,
   problemAppDetailHref,
   problemDetailHref,
@@ -245,7 +245,7 @@ function ProblemPreview({ problem, onShowMap }: { problem: PublicProblem; onShow
       <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
+        {problem.location_label || PROBLEM_SCOPE_META[problem.scope_kind].publicLabel}
         <span aria-hidden>·</span>
         {PROBLEM_KATEGORIEN[problem.category]}
       </p>
@@ -281,7 +281,7 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
       <p className="mt-1 max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
       <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
+        {problem.location_label || PROBLEM_SCOPE_META[problem.scope_kind].publicLabel}
       </p>
       <ProblemDetailLink problem={problem} className="mt-3" />
     </div>

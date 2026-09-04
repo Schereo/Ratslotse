@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Literal, cast
+from zoneinfo import ZoneInfo
 
 from .domain import (
     OLDENBURG_BOUNDS,
@@ -27,6 +28,7 @@ from .domain import (
 ReportState = Literal["draft", "submitted"]
 _SQLITE_INTEGER_MAX = 2**63 - 1
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
+_OLDENBURG_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 
 def _sql_enum(values: tuple[str, ...]) -> str:
@@ -614,6 +616,12 @@ def _creation_fingerprint(content: DraftContent) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
+def _oldenburg_today(now: datetime | None = None) -> date:
+    """Kalendertag am Ort der gemeldeten Beobachtung, unabhängig vom Server-TZ."""
+    instant = now or datetime.now(timezone.utc)
+    return instant.astimezone(_OLDENBURG_TIMEZONE).date()
+
+
 def _normalized_observed_on(value: str) -> str:
     try:
         observed_on = date.fromisoformat(value).isoformat()
@@ -621,7 +629,7 @@ def _normalized_observed_on(value: str) -> str:
         raise ValueError("Das Beobachtungsdatum ist ungültig.") from error
     if (
         observed_on != value
-        or date.fromisoformat(observed_on) > datetime.now(timezone.utc).date()
+        or date.fromisoformat(observed_on) > _oldenburg_today()
     ):
         raise ValueError("Das Beobachtungsdatum ist ungültig.")
     return observed_on

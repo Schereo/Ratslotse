@@ -38,7 +38,9 @@ Ein neuer Datensatz beginnt als `draft`. Beschreibung, kontrollierte Kategorie,
 geografischer Bezug, privater genauer Ort und Beobachtungsdatum können nur in
 diesem Zustand geändert werden. Stadtweite Entwürfe speichern keinen genauen
 Ort; alle anderen Bezüge brauchen Ortsbezeichnung und Koordinaten innerhalb
-einer konservativen Hülle Oldenburgs. Jede Inhaltsänderung erhöht die Revision.
+einer konservativen Hülle Oldenburgs. Ein Beobachtungsdatum darf nicht nach dem
+aktuellen Kalendertag in Oldenburg (`Europe/Berlin`) liegen. Jede Inhaltsänderung
+erhöht die Revision.
 
 `submit_owned_draft` ist ein atomarer, einmaliger Übergang zu `submitted`: Der
 bestätigte Text und Absendezeitpunkt werden gesetzt und dieselbe Transaktion

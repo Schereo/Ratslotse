@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import {
   clearProblemReportSession,
   loadProblemReportSession,
+  oldenburgTodayISO,
   saveProblemReportSession,
   scheduleProblemReportSessionExpiry,
   type PrivateReport,
@@ -50,17 +51,12 @@ type CompleteReportContent = Omit<ReportContent, "category" | "scope_kind"> & {
   scope_kind: ReportScope;
 };
 
-function todayISO(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 function emptyContent(): ReportContent {
   return {
     text: "",
     category: "",
     scope_kind: null,
-    observed_on: todayISO(),
+    observed_on: oldenburgTodayISO(),
     location_label: "",
     latitude: null,
     longitude: null,
@@ -83,30 +79,56 @@ function contentFromReport(report: PrivateReport): CompleteReportContent {
   };
 }
 
-function normalizeContent(content: ReportContent): CompleteReportContent | null {
-  if (!content.scope_kind || !content.category) return null;
+type ContentErrors = {
+  date: string | null;
+  location: string | null;
+  description: string | null;
+};
+
+function validISODate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match || Number(match[1]) < 1) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validateReportContent(content: ReportContent): {
+  normalized: CompleteReportContent | null;
+  errors: ContentErrors;
+} {
   const text = content.text.trim();
-  if (!text || text.length > 4000) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(content.observed_on) || content.observed_on > todayISO()) return null;
-  if (content.scope_kind === "citywide") {
-    return {
+  const location = content.location_label.trim();
+  const errors: ContentErrors = {
+    date: !content.observed_on
+      ? "Gib ein Beobachtungsdatum an."
+      : !validISODate(content.observed_on)
+        ? "Gib ein gültiges Beobachtungsdatum an."
+        : content.observed_on > oldenburgTodayISO() ? "Das Datum darf nicht in der Zukunft liegen." : null,
+    location: content.scope_kind === "citywide"
+      ? null
+      : !location
+        ? "Gib den privaten Ort an."
+        : content.latitude === null || content.longitude === null
+          ? "Markiere die private Lage auf der Karte."
+          : null,
+    description: !text
+      ? "Beschreibe deine eigene Beobachtung."
+      : text.length > 4000 ? "Die Beschreibung darf höchstens 4000 Zeichen lang sein." : null,
+  };
+  if (!content.scope_kind || !content.category || Object.values(errors).some(Boolean)) {
+    return { normalized: null, errors };
+  }
+  return {
+    errors,
+    normalized: {
       ...content,
       text,
       category: content.category,
       scope_kind: content.scope_kind,
-      location_label: "",
-      latitude: null,
-      longitude: null,
-    };
-  }
-  const location = content.location_label.trim();
-  if (!location || content.latitude === null || content.longitude === null) return null;
-  return {
-    ...content,
-    text,
-    category: content.category,
-    scope_kind: content.scope_kind,
-    location_label: location,
+      location_label: content.scope_kind === "citywide" ? "" : location,
+      latitude: content.scope_kind === "citywide" ? null : content.latitude,
+      longitude: content.scope_kind === "citywide" ? null : content.longitude,
+    },
   };
 }
 
@@ -291,7 +313,7 @@ export function ProblemReportFlow() {
   };
 
   const prepareReview = async () => {
-    const complete = normalizeContent(content);
+    const complete = validateReportContent(content).normalized;
     if (!complete) {
       setError("Bitte vervollständige deine Angaben, bevor du den Entwurf prüfst.");
       return;
@@ -300,7 +322,7 @@ export function ProblemReportFlow() {
       setStage("review");
       return;
     }
-    const firstAttempt = creationContent ? normalizeContent(creationContent) : complete;
+    const firstAttempt = creationContent ? validateReportContent(creationContent).normalized : complete;
     if (!firstAttempt) {
       setCreationContent(null);
       setError("Der frühere Anlegeversuch ist nicht mehr gültig. Bitte versuche es erneut.");
@@ -335,7 +357,7 @@ export function ProblemReportFlow() {
   };
 
   const submitReport = async () => {
-    const complete = normalizeContent(content);
+    const complete = validateReportContent(content).normalized;
     if (!confirmed || !complete || !serverReport || reportId === null) {
       setError("Bitte prüfe und bestätige zuerst alle Angaben.");
       return;
@@ -396,7 +418,7 @@ export function ProblemReportFlow() {
         </span>
         <h2 ref={completionHeadingRef} tabIndex={-1} className="mt-4 font-display text-xl font-bold text-foreground outline-none">Meldung privat eingegangen</h2>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
-          Sie ist nicht automatisch öffentlich. Eine spätere Prüfung und mögliche Veröffentlichung sind nicht Teil dieses Meldewegs.
+          Sie ist nicht automatisch öffentlich.
         </p>
         <Button asChild variant="secondary" className="mt-5"><Link href="/probleme">Zur Problemübersicht</Link></Button>
       </Card>
@@ -408,6 +430,7 @@ export function ProblemReportFlow() {
   }
 
   const step = stage === "review" ? null : STAGE_NUMBER[stage];
+  const contentErrors = validateReportContent(content).errors;
 
   return (
     <div className="space-y-4">
@@ -462,7 +485,7 @@ export function ProblemReportFlow() {
                 <BackButton onClick={() => setStage("scope")} />
                 <Button
                   type="button"
-                  disabled={!content.location_label.trim() || content.latitude === null || content.longitude === null}
+                  disabled={contentErrors.location !== null}
                   onClick={() => setStage("date")}
                 >
                   Ort übernehmen
@@ -480,17 +503,17 @@ export function ProblemReportFlow() {
                 <Input
                   id="report-date"
                   type="date"
-                  max={todayISO()}
+                  max={oldenburgTodayISO()}
                   value={content.observed_on}
                   onChange={(event) => patchContent({ observed_on: event.target.value })}
                 />
-                {content.observed_on > todayISO() && <p role="alert" className="text-sm text-destructive">Das Datum darf nicht in der Zukunft liegen.</p>}
+                {content.observed_on && contentErrors.date && <p role="alert" className="text-sm text-destructive">{contentErrors.date}</p>}
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <BackButton onClick={() => setStage(content.scope_kind === "citywide" ? "scope" : "location")} />
                 <Button
                   type="button"
-                  disabled={!content.observed_on || content.observed_on > todayISO()}
+                  disabled={contentErrors.date !== null}
                   onClick={() => setStage("category")}
                 >
                   Datum übernehmen
@@ -536,7 +559,7 @@ export function ProblemReportFlow() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <BackButton onClick={() => setStage("category")} disabled={busy} />
-                <Button type="button" disabled={!content.text.trim() || busy} onClick={() => void prepareReview()}>
+                <Button type="button" disabled={contentErrors.description !== null || busy} onClick={() => void prepareReview()}>
                   {busy ? <><Loader2 className="animate-spin" aria-hidden /> Entwurf wird angelegt…</> : "Entwurf prüfen"}
                 </Button>
               </div>
@@ -618,16 +641,9 @@ function Review({
     scope_kind: scope,
     ...(scope === "citywide" ? { location_label: "", latitude: null, longitude: null } : {}),
   });
-  const complete = normalizeContent(content) !== null;
-  const dateError = !content.observed_on
-    ? "Gib ein Beobachtungsdatum an."
-    : content.observed_on > todayISO() ? "Das Datum darf nicht in der Zukunft liegen." : null;
-  const locationError = content.scope_kind === "citywide"
-    ? null
-    : !content.location_label.trim()
-      ? "Gib den privaten Ort an."
-      : content.latitude === null || content.longitude === null ? "Markiere die private Lage auf der Karte." : null;
-  const descriptionError = content.text.trim() ? null : "Beschreibe deine eigene Beobachtung.";
+  const validation = validateReportContent(content);
+  const complete = validation.normalized !== null;
+  const { date: dateError, location: locationError, description: descriptionError } = validation.errors;
 
   return (
     <div className="space-y-5">
@@ -653,7 +669,7 @@ function Review({
           <Input
             id="review-date"
             type="date"
-            max={todayISO()}
+            max={oldenburgTodayISO()}
             value={content.observed_on}
             aria-invalid={!!dateError}
             aria-describedby={dateError ? "review-date-error" : undefined}
