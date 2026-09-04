@@ -111,8 +111,39 @@ identischer Absende-Retry ist idempotent, ein abweichender Retry bleibt
 geschlossen.
 
 Die API verändert keine öffentliche Problemprojektion. Sie ergänzt keine
-Oberfläche, keine späteren Beobachtungen, keine privaten Feature-Beispiele und
-keine KI-, Moderations-, Cluster- oder Veröffentlichungslogik.
+späteren Beobachtungen, keine privaten Feature-Beispiele und keine KI-,
+Moderations-, Cluster- oder Veröffentlichungslogik.
+
+## Geführter privater Meldechat — Iteration 6
+
+Von der öffentlichen Übersicht führt die hervorgehobene Aktion „Problem melden“
+nach `/probleme/melden`. Ohne Konto bewahrt die bestehende Anmeldung dieses Ziel
+für den Rücksprung. Die Melderoute selbst bleibt aktiven, bestätigten
+Nicht-Admin-Konten vorbehalten; Admin-Konten erhalten statt einer
+Meldeoberfläche eine Erklärung der Rollentrennung.
+
+Der Meldechat ist kein KI-Chat. Er fragt nacheinander räumlichen Bezug, privaten
+genauen Ort, Datum der eigenen Beobachtung, Kategorie und Beschreibung ab. Der
+Ort besteht aus eigener Bezeichnung und einer Markierung auf der Oldenburg-Karte;
+bei „Ganz Oldenburg“ entfallen beide bewusst. Ein zukünftiges Datum oder
+unvollständige Angaben gelangen nicht an die API. Vor und zurück verändert
+bereits gegebene Antworten nicht.
+
+Nach vollständiger Eingabe legt die Oberfläche mit einem stabilen,
+kontogebunden verwendeten Idempotenzschlüssel einen privaten Entwurf an. Ein
+kurzlebiger, kontogebundener Sitzungsstand ermöglicht die Wiederaufnahme; für
+einen schon angelegten Entwurf wird der maßgebliche Serverstand erneut gelesen.
+Auf der Prüfseite bleiben alle Angaben korrigierbar. Änderungen werden mit der
+erwarteten Revision gespeichert und erst danach wird exakt der ausdrücklich
+bestätigte Text abgesendet. Bei einem Revisionskonflikt bleibt die lokale
+Korrektur erhalten, bis die Person den neueren Serverstand bewusst lädt.
+
+Nach erfolgreichem Absenden ist der lokale Sitzungsstand entfernt. Die
+Bestätigung sagt nur, dass die Meldung privat eingegangen und nicht automatisch
+öffentlich ist. Der Meldeweg nennt dauerhaft die Projektunabhängigkeit und weist
+knapp darauf hin, dass er kein Notrufkanal ist; bei akuter Gefahr gilt 112. Er
+führt keinen öffentlichen Problemabgleich, keine Sicherheitsklassifikation,
+keinen KI-Aufruf, keine Moderation, Clusterung oder Veröffentlichung aus.
 
 ## Routen
 
@@ -121,10 +152,11 @@ keine KI-, Moderations-, Cluster- oder Veröffentlichungslogik.
 | `/probleme` | öffentlich | Iteration 2 |
 | `/probleme/[id]` | öffentlich | Iteration 3 |
 | `/probleme?problem=[id]` | öffentlich | Iteration 3, statischer App-Adapter |
-| `/probleme/melden` | verifiziertes Nicht-Admin-Konto | späterer eigener Schnitt |
+| `/probleme/melden` | verifiziertes Nicht-Admin-Konto | Iteration 6 |
 | `/meine-meldungen` | Eigentümer*in | reserviert |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 5 enthält trotz der privaten Entwurfs- und Einreichungs-API keine
-Meldeoberfläche, API für spätere Beobachtungen, öffentliche Zeitleiste,
-Moderationsoberfläche, automatische Veröffentlichung oder KI-Funktion.
+Iteration 6 ergänzt ausschließlich die geführte Erfassung. API für spätere
+Beobachtungen, privates Meldungs-Dashboard, öffentliche Zeitleiste,
+Sicherheitsklassifikation, KI-Funktion, Moderationsoberfläche, Clusterung und
+automatische Veröffentlichung bleiben späteren Schnitten vorbehalten.

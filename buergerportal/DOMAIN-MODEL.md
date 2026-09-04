@@ -87,6 +87,31 @@ Die HTTP-Grenze bietet noch keinen Nachtrag späterer Beobachtungen. Sie schreib
 weder in `civic_problems` noch in Feature-Beispiele und ruft keine KI,
 Moderation, Clusterung oder Veröffentlichung auf.
 
+## Geführter Frontend-Adapter — Iteration 6
+
+`/probleme/melden` bleibt hinter der bestehenden Anmeldungs- und Kontosperre.
+Der Adapter stellt deterministische Fragen und bildet die Antworten erst nach
+vollständiger Eingabe auf den privaten API-Inhalt ab. Für `citywide` sendet er
+bewusst leere Ortsbezeichnung und `null`-Koordinaten; alle anderen Bezüge
+verlangen eine private Ortsbezeichnung und eine innerhalb der Oldenburg-Hülle
+markierte Position. Er liest keine öffentlichen Problemprojektionen und ruft
+keinen KI- oder Assistenzendpunkt auf.
+
+Vor der ersten Serverpersistenz besitzt die Oberfläche einen stabilen
+Idempotenzschlüssel. Ein kurzlebiger `sessionStorage`-Datensatz ist an die
+Konto-ID aus der authentifizierten Sitzung gebunden, verwirft fremde,
+ungültige oder abgelaufene Inhalte und wird nach erfolgreichem Absenden
+entfernt. Enthält er eine Melde-ID, lädt die Oberfläche den maßgeblichen
+Serverentwurf über `GET` neu. Änderungen auf der Prüfseite werden mit der
+zuletzt gelesenen Inhaltsrevision per `PUT` gespeichert, bevor exakt der
+geprüfte Text per `POST …/absenden` bestätigt wird. Bei `409` bleibt die lokale
+Korrektur sichtbar; ein neuerer Serverstand wird erst auf ausdrücklichen Wunsch
+geladen.
+
+Der Adapter ist keine zweite Schreibdomäne. Er erzeugt weder eine öffentliche
+Projektion noch Problemzuordnungen, Moderationsdaten, KI-Urteile oder spätere
+Beobachtungen.
+
 ## Veröffentlichung bleibt geschlossen
 
 Eine reale Meldung darf erst in eine öffentliche Projektion einfließen, wenn

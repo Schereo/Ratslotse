@@ -72,3 +72,20 @@ absenden. Die Eigentümer-ID stammt immer aus der Sitzung. Ein konto-spezifische
 Idempotenzschlüssel bezeichnet die ursprüngliche Erstellung; er ist weder eine
 öffentliche Kennung noch Teil der Antwort. Fremde und unbekannte Meldungen sind
 über dieselbe `404`-Antwort ununterscheidbar.
+
+## Geführte Erfassung seit Iteration 6
+
+Der **Meldechat** ist ein deterministischer Eingabe-Adapter für einen
+Meldeentwurf, kein KI-Assistent und kein eigener Domänenakteur. Er sammelt
+räumlichen Bezug, privaten genauen Ort, Beobachtungsdatum, kontrollierte
+Kategorie und eigene Beschreibung schrittweise ein. Erst der vollständige
+Inhalt wird serverseitig als Meldeentwurf angelegt. Vor dem Absenden kann die
+meldende Person alle Angaben korrigieren und bestätigt ausdrücklich den eigenen
+Beobachtungstext.
+
+Eine kurzlebige, kontogebundene Browsersitzung hält unvollständige Eingaben und
+die Referenz auf einen bereits angelegten Entwurf für die Wiederaufnahme. Sie
+ist weder ein zweiter persistierter Meldeentwurf noch eine öffentliche Kennung.
+Der Serverstand bleibt maßgeblich: Wiederaufnahme liest ihn über die private
+HTTP-Grenze, Änderungen verwenden seine erwartete Inhaltsrevision, und ein
+Konflikt überschreibt keine Eingabe still.

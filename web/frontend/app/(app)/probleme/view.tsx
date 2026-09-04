@@ -10,6 +10,7 @@ import {
   Map as MapIcon,
   MapPin,
   Navigation,
+  Plus,
   X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import {
 } from "@/components/grafik/melde-rangbalken";
 import { ProblemHelp } from "@/components/problem-help";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
-import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
+import { Button, EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
@@ -103,7 +104,14 @@ export default function View() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={PROBLEM_ANGEBOT.name} />
+      <PageHeader
+        title={PROBLEM_ANGEBOT.name}
+        action={(
+          <Button asChild>
+            <Link href="/probleme/melden"><Plus aria-hidden /> Problem melden</Link>
+          </Button>
+        )}
+      />
 
       {detailParam === null && fictional && (
         <div className="inline-flex min-h-10 max-w-full items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
