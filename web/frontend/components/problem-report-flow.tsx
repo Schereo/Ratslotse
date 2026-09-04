@@ -18,8 +18,10 @@ import {
   clearProblemReportSession,
   loadProblemReportSession,
   oldenburgTodayISO,
+  reportContentFromPrivateReport,
   saveProblemReportSession,
   scheduleProblemReportSessionExpiry,
+  type CompleteReportContent,
   type PrivateReport,
   type ReportCategory,
   type ReportContent,
@@ -46,11 +48,6 @@ const STAGE_NUMBER: Record<Exclude<ReportStage, "review">, number> = {
   description: 5,
 };
 
-type CompleteReportContent = Omit<ReportContent, "category" | "scope_kind"> & {
-  category: ReportCategory;
-  scope_kind: ReportScope;
-};
-
 function emptyContent(): ReportContent {
   return {
     text: "",
@@ -65,18 +62,6 @@ function emptyContent(): ReportContent {
 
 function freshIdempotencyKey(): string {
   return crypto.randomUUID();
-}
-
-function contentFromReport(report: PrivateReport): CompleteReportContent {
-  return {
-    text: report.draft_text,
-    category: report.category,
-    scope_kind: report.scope_kind,
-    observed_on: report.observed_on,
-    location_label: report.location_label,
-    latitude: report.latitude,
-    longitude: report.longitude,
-  };
 }
 
 type ContentErrors = {
@@ -242,7 +227,7 @@ export function ProblemReportFlow() {
         setServerReport(report);
         return;
       }
-      setContent(contentFromReport(report));
+      setContent(reportContentFromPrivateReport(report));
       setServerReport(report);
       setStage("review");
       setReportId(report.id);
@@ -367,7 +352,7 @@ export function ProblemReportFlow() {
     setConflict(false);
     try {
       let currentReport = serverReport;
-      if (!sameContent(complete, contentFromReport(serverReport))) {
+      if (!sameContent(complete, reportContentFromPrivateReport(serverReport))) {
         currentReport = await api.put<PrivateReport>(`/meldungen/${reportId}/entwurf`, {
           ...complete,
           expected_revision: serverReport.content_revision,

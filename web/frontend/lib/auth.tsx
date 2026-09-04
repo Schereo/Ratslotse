@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AppleCredential } from "./apple";
 import { api, ApiError, setUnauthorizedHandler } from "./api";
 import { loadToken, setToken } from "./token";
@@ -22,6 +23,23 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const clearPrivateQueries = useCallback(() => {
+    queryClient.removeQueries({
+      predicate: (query) => query.meta?.privateData === true,
+    });
+  }, [queryClient]);
+  const authenticatedUserId = useRef<number | null>(null);
+  const acceptAuthenticatedUser = useCallback((nextUser: User) => {
+    if (authenticatedUserId.current !== nextUser.id) clearPrivateQueries();
+    authenticatedUserId.current = nextUser.id;
+    setUser(nextUser);
+  }, [clearPrivateQueries]);
+  const forgetAuthenticatedUser = useCallback(() => {
+    authenticatedUserId.current = null;
+    setUser(null);
+    clearPrivateQueries();
+  }, [clearPrivateQueries]);
 
   const refresh = useCallback(async () => {
     try {
@@ -31,11 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Web ist das Feld null (die Sitzung steckt im Cookie), also passiert
       // nichts.
       if (u.access_token) await setToken(u.access_token);
-      setUser(u);
+      acceptAuthenticatedUser(u);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setUser(null);
+      if (e instanceof ApiError && e.status === 401) forgetAuthenticatedUser();
     }
-  }, []);
+  }, [acceptAuthenticatedUser, forgetAuthenticatedUser]);
 
   useEffect(() => {
     (async () => {
@@ -47,20 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Clear state when any API call reports the session expired.
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(forgetAuthenticatedUser);
     return () => setUnauthorizedHandler(null);
-  }, []);
+  }, [forgetAuthenticatedUser]);
 
   const login = async (email: string, password: string) => {
     const u = await api.post<User>("/auth/login", { email, password });
     await setToken(u.access_token ?? null); // persist bearer token (native app only)
-    setUser(u);
+    acceptAuthenticatedUser(u);
   };
 
   const register = async (email: string, password: string, displayName?: string) => {
     const u = await api.post<User>("/auth/register", { email, password, display_name: displayName || null });
     await setToken(u.access_token ?? null);
-    setUser(u);
+    acceptAuthenticatedUser(u);
   };
 
   const loginWithApple = async (cred: AppleCredential) => {
@@ -72,14 +90,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       family_name: cred.familyName,
     });
     await setToken(u.access_token ?? null);
-    setUser(u);
+    acceptAuthenticatedUser(u);
   };
 
   const logout = async () => {
     await unregisterPush(); // while still authenticated — stops pushes for this account
     await api.post("/auth/logout");
     await setToken(null);
-    setUser(null);
+    forgetAuthenticatedUser();
   };
 
   return (

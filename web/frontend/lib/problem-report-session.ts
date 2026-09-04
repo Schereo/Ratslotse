@@ -16,6 +16,25 @@ export type ReportContent = {
   longitude: number | null;
 };
 
+export type CompleteReportContent = Omit<ReportContent, "category" | "scope_kind"> & {
+  category: ReportCategory;
+  scope_kind: ReportScope;
+};
+
+export function reportContentFromPrivateReport(
+  report: PrivateReport,
+): CompleteReportContent {
+  return {
+    text: report.draft_text,
+    category: report.category,
+    scope_kind: report.scope_kind,
+    observed_on: report.observed_on,
+    location_label: report.location_label,
+    latitude: report.latitude,
+    longitude: report.longitude,
+  };
+}
+
 export type ReportStage = "scope" | "location" | "date" | "category" | "description" | "review";
 
 export type ProblemReportSession = {
@@ -32,6 +51,10 @@ export type ProblemReportSession = {
 
 export const PROBLEM_REPORT_SESSION_KEY = "ratslotse:private-problemmeldung:v1";
 export const PROBLEM_REPORT_SESSION_TTL_MS = 30 * 60 * 1_000;
+export const PRIVATE_REPORT_QUERY_META = {
+  privateData: true,
+  persist: false,
+} as const;
 
 export function isEligiblePrivateReporter(user: User | null): user is User {
   return !!user
@@ -41,6 +64,26 @@ export function isEligiblePrivateReporter(user: User | null): user is User {
 }
 
 /** Der Beobachtungsort gibt den Kalendertag vor, nicht Server- oder Geräte-TZ. */
+export function formatOldenburgDateTime(iso: string): string {
+  const instant = new Date(iso);
+  if (Number.isNaN(instant.valueOf())) return iso;
+  const parts = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    calendar: "gregory",
+    numberingSystem: "latn",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instant);
+  const value = (kind: Intl.DateTimeFormatPartTypes) => (
+    parts.find((part) => part.type === kind)?.value ?? ""
+  );
+  return `${value("day")}.${value("month")}.${value("year")}, ${value("hour")}:${value("minute")}`;
+}
+
 export function oldenburgTodayISO(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("de-DE", {
     timeZone: "Europe/Berlin",
@@ -149,15 +192,7 @@ export function beginProblemReportContinuation(
       idempotencyKey: crypto.randomUUID(),
       reportId: report.id,
       creationContent: null,
-      content: {
-        text: report.draft_text,
-        category: report.category,
-        scope_kind: report.scope_kind,
-        observed_on: report.observed_on,
-        location_label: report.location_label,
-        latitude: report.latitude,
-        longitude: report.longitude,
-      },
+      content: reportContentFromPrivateReport(report),
     });
   } catch {
     return false;

@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  defaultShouldDehydrateQuery,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { AuthProvider } from "@/lib/auth";
@@ -87,7 +91,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         client={queryClient}
         // buster v2: verwirft bestehende Caches, in denen ["subscriptions"]
         // fälschlich als rohes Objekt statt als Array lag (Crash auf /topics).
-        persistOptions={{ persister, maxAge: PERSIST_MAX_AGE, buster: "v2" }}
+        persistOptions={{
+          persister,
+          maxAge: PERSIST_MAX_AGE,
+          buster: "v2",
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) => (
+              query.meta?.persist !== false
+              && defaultShouldDehydrateQuery(query)
+            ),
+          },
+        }}
       >
         {inner}
       </PersistQueryClientProvider>

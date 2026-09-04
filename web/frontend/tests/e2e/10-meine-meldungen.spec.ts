@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PROBLEM_REPORT_SESSION_KEY } from "@/lib/problem-report-session";
+import {
+  formatOldenburgDateTime,
+  PROBLEM_REPORT_SESSION_KEY,
+} from "@/lib/problem-report-session";
 import type { User } from "@/lib/types";
 import type { ApiAntwort } from "@/lib/vertrag";
 
@@ -84,6 +87,11 @@ function privateReport(overrides: Partial<PrivateReport> = {}): PrivateReport {
 }
 
 test.describe("Owner-bound private report history", () => {
+  test("formats update instants in Oldenburg civil time across DST boundaries", () => {
+    expect(formatOldenburgDateTime("2026-03-28T23:30:00Z")).toBe("29.03.2026, 00:30");
+    expect(formatOldenburgDateTime("2026-10-24T23:30:00Z")).toBe("25.10.2026, 01:30");
+  });
+
   test("returns to the private overview after authentication", async ({ page }) => {
     await page.route("**/api/auth/me", (route) => route.fulfill(json({ detail: "Nicht angemeldet." }, 401)));
 
@@ -132,6 +140,7 @@ test.describe("Owner-bound private report history", () => {
     await expect(page.getByRole("link", { name: "Meine Meldungen" })).toBeVisible();
     await expect(page.getByText("Entwurf", { exact: true })).toBeVisible();
     await expect(page.getByText("Privat eingegangen", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Zuletzt geändert 04\.09\.2026, 10:05/)).toBeVisible();
     await expect(page.getByText("Fiktiver Kanalweg am Hafen")).toHaveCount(0);
     await expect(page.getByText("53.1435")).toHaveCount(0);
 
@@ -249,6 +258,66 @@ test.describe("Owner-bound private report history", () => {
     await expect(page.getByText("Ältester fiktiver Entwurf.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Ältere Meldungen laden" })).toHaveCount(0);
     expect(offsets).toEqual([0, 10]);
+  });
+
+  test("never reuses cached private data after another account signs in", async ({ page }) => {
+    const secondUser = {
+      ...signedInUser,
+      id: 82,
+      email: "zweites-konto@example.org",
+    } satisfies User;
+    let currentUser: User | null = signedInUser;
+    let listReads = 0;
+    let detailReads = 0;
+    await page.route("**/api/auth/me", (route) => currentUser
+      ? route.fulfill(json(currentUser))
+      : route.fulfill(json({ detail: "Nicht angemeldet." }, 401)));
+    await page.route("**/api/auth/logout", (route) => {
+      currentUser = null;
+      return route.fulfill(json({ ok: true }));
+    });
+    await page.route("**/api/auth/login", (route) => {
+      currentUser = secondUser;
+      return route.fulfill(json(secondUser));
+    });
+    await page.route("**/api/onboarding", (route) => route.fulfill(json(onboardingState)));
+    await page.route("**/api/onboarding/setup", (route) => route.fulfill(json(setupState)));
+    await page.route("**/api/topics/unread-count", (route) => route.fulfill(json({ total: 0 })));
+    await page.route("**/api/badges", (route) => route.fulfill(json(badgeState)));
+    await page.route("**/api/meldungen?*", (route) => {
+      listReads += 1;
+      const ownerId = currentUser?.id;
+      return route.fulfill(json({
+        reports: [summary({ text_preview: `Private Übersicht von Konto ${ownerId}.` })],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      } satisfies PrivateReportList));
+    });
+    await page.route("**/api/meldungen/42", (route) => {
+      detailReads += 1;
+      return route.fulfill(json(privateReport({
+        draft_text: `Privates Detail von Konto ${currentUser?.id}.`,
+      })));
+    });
+
+    await page.goto("/meine-meldungen");
+    await page.getByRole("button", { name: /Private Übersicht von Konto 81.*öffnen/i }).click();
+    await expect(page.getByText("Privates Detail von Konto 81.")).toBeVisible();
+    await page.getByRole("button", { name: "Schließen" }).click();
+    await page.getByRole("button", { name: "Abmelden" }).click();
+    await expect(page).toHaveURL(/\/login\?weiter=%2Fmeine-meldungen$/);
+    await page.locator("#email").fill(secondUser.email);
+    await page.locator("#password").fill("fiktives-passwort");
+    await page.getByRole("button", { name: "Anmelden" }).click();
+    await expect(page).toHaveURL(/\/meine-meldungen$/);
+
+    await expect(page.getByText("Private Übersicht von Konto 82.")).toBeVisible();
+    await expect(page.getByText("Private Übersicht von Konto 81.")).toHaveCount(0);
+    await page.getByRole("button", { name: /Private Übersicht von Konto 82.*öffnen/i }).click();
+    await expect(page.getByText("Privates Detail von Konto 82.")).toBeVisible();
+    expect(listReads).toBeGreaterThanOrEqual(2);
+    expect(detailReads).toBeGreaterThanOrEqual(2);
   });
 
   test("continues the selected server draft without creating another report", async ({ page }) => {

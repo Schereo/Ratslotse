@@ -166,7 +166,9 @@ Draft continuation stores the selected existing report ID in the short-lived,
 account-bound browser session. Navigation proceeds only after that handoff is
 stored successfully. The reporting adapter then reads the authoritative server
 report and revision before any update, so continuation cannot fall through to a
-new draft creation. Submitted reports are read-only in this slice.
+new draft creation. Submitted reports are read-only in this slice. Client query keys include the
+account ID, private report queries are removed whenever authentication changes,
+and those queries are excluded from the native app's persisted offline cache.
 
 ## Veröffentlichung bleibt geschlossen
 

@@ -10,7 +10,9 @@ import { useAuth } from "@/lib/auth";
 import { PROBLEM_KATEGORIEN, PROBLEM_SCOPE_META } from "@/lib/probleme";
 import {
   beginProblemReportContinuation,
+  formatOldenburgDateTime,
   isEligiblePrivateReporter,
+  PRIVATE_REPORT_QUERY_META,
 } from "@/lib/problem-report-session";
 import type { ApiAntwort } from "@/lib/vertrag";
 import {
@@ -21,7 +23,6 @@ import {
   ErrorState,
   Spinner,
   formatDate,
-  formatDateTime,
 } from "@/components/ui";
 
 type PrivateReportList = ApiAntwort<"/meldungen">;
@@ -42,7 +43,7 @@ export function MyReports() {
   const [continuationError, setContinuationError] = useState<string | null>(null);
   const reportButtons = useRef(new Map<number, HTMLButtonElement>());
   const listQuery = useInfiniteQuery({
-    queryKey: ["private-reports"],
+    queryKey: ["private-reports", user?.id],
     queryFn: ({ pageParam }) => api.get<PrivateReportList>(
       `/meldungen?limit=${PAGE_SIZE}&offset=${pageParam}`,
     ),
@@ -53,12 +54,13 @@ export function MyReports() {
     },
     enabled: eligible,
     retry: false,
+    meta: PRIVATE_REPORT_QUERY_META,
   });
 
   if (!eligible || !user) {
     return (
       <Card className="p-6 text-center sm:p-8">
-        <ShieldCheck className="mx-auto h-10 w-10 text-primary" aria-hidden />
+        <ShieldCheck className="mx-auto h-5 w-5 text-primary" aria-hidden />
         <h2 className="mt-4 font-display text-xl font-bold text-foreground">
           Persönliche Meldungen sind Bürgerkonten vorbehalten
         </h2>
@@ -147,6 +149,7 @@ export function MyReports() {
       {selectedId !== null && (
         <ReportDetail
           reportId={selectedId}
+          ownerId={user.id}
           onClose={closeDetail}
           onContinue={(report) => {
             if (!beginProblemReportContinuation(user.id, report)) {
@@ -201,7 +204,7 @@ function ReportRow({
             {" · "}
             {PROBLEM_SCOPE_META[report.scope_kind].publicLabel}
             {" · "}
-            Zuletzt geändert {formatDateTime(report.updated_at)}
+            Zuletzt geändert {formatOldenburgDateTime(report.updated_at)}
           </p>
         </div>
         <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -212,18 +215,21 @@ function ReportRow({
 
 function ReportDetail({
   reportId,
+  ownerId,
   onClose,
   onContinue,
 }: {
   reportId: number;
+  ownerId: number;
   onClose: () => void;
   onContinue: (report: PrivateReport) => void;
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailQuery = useQuery({
-    queryKey: ["private-report", reportId],
+    queryKey: ["private-report", ownerId, reportId],
     queryFn: () => api.get<PrivateReport>(`/meldungen/${reportId}`),
     retry: false,
+    meta: PRIVATE_REPORT_QUERY_META,
   });
 
   useEffect(() => {
@@ -284,7 +290,7 @@ function ReportDetail({
           <DetailFact label="Raumbezug" value={PROBLEM_SCOPE_META[report.scope_kind].publicLabel} />
           {report.location_label && <DetailFact label="Privater Ort" value={report.location_label} />}
           <DetailFact label="Stand" value={`Revision ${report.content_revision}`} />
-          <DetailFact label="Zuletzt geändert" value={formatDateTime(report.updated_at)} />
+          <DetailFact label="Zuletzt geändert" value={formatOldenburgDateTime(report.updated_at)} />
         </dl>
       </div>
 
