@@ -93,6 +93,27 @@ ohne öffentliche Projektionen zu ändern. Es gibt in dieser Iteration keinen
 Endpunkt, keine Oberfläche, keinen Seeder für private Daten und keine KI-,
 Moderations-, Cluster- oder Veröffentlichungslogik.
 
+## Private Entwurfs- und Einreichungs-API — Iteration 5
+
+Unter `/api/meldungen` kann ein aktives, bestätigtes Nicht-Admin-Konto einen
+eigenen Entwurf idempotent anlegen, wieder lesen, mit erwarteter Inhaltsrevision
+ersetzen und genau einmal bewusst absenden. Die Eigentümer-ID stammt nur aus der
+authentifizierten Sitzung. Fremde und unbekannte IDs liefern dieselbe
+`404`-Antwort.
+
+Die privaten Antworten enthalten Beschreibung, kontrollierte Kategorie,
+privaten Ortsbezug, Lebenslauf und Revision, aber keine Konto-ID,
+Idempotenzschlüssel oder internen Anfragefingerabdruck. Derselbe
+Erstellungsschlüssel gilt nur innerhalb eines Kontos. Identische
+Erstellungs-Retries liefern denselben Entwurf; abweichende
+Schlüsselwiederverwendung und veraltete Revisionen liefern `409`. Ein exakt
+identischer Absende-Retry ist idempotent, ein abweichender Retry bleibt
+geschlossen.
+
+Die API verändert keine öffentliche Problemprojektion. Sie ergänzt keine
+Oberfläche, keine späteren Beobachtungen, keine privaten Feature-Beispiele und
+keine KI-, Moderations-, Cluster- oder Veröffentlichungslogik.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -104,6 +125,6 @@ Moderations-, Cluster- oder Veröffentlichungslogik.
 | `/meine-meldungen` | Eigentümer*in | reserviert |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 4 enthält trotz des privaten Persistenzmodells noch keinen
-Meldungsendpunkt, keine Meldeoberfläche, öffentliche Zeitleiste,
+Iteration 5 enthält trotz der privaten Entwurfs- und Einreichungs-API keine
+Meldeoberfläche, API für spätere Beobachtungen, öffentliche Zeitleiste,
 Moderationsoberfläche, automatische Veröffentlichung oder KI-Funktion.

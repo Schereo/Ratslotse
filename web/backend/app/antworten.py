@@ -649,6 +649,32 @@ class PublicProblemList(TypedDict):
     total: int
 
 
+class PrivateReportOut(TypedDict):
+    """Eigentümergebundener Entwurf oder abgesendete private Meldung.
+
+    Bewusst ohne Konto-ID, Idempotenzschlüssel und Erstellungsfingerabdruck.
+    Diese Form wird nie für öffentliche Problemprojektionen verwendet.
+    """
+
+    id: int
+    draft_text: str
+    confirmed_text: str | None
+    category: Literal[
+        "mobility", "public_space", "education", "childcare", "housing",
+        "environment", "accessibility", "administration", "other",
+    ]
+    scope_kind: Literal["point", "facility", "route", "area", "citywide"]
+    observed_on: str
+    location_label: str
+    latitude: float | None
+    longitude: float | None
+    state: Literal["draft", "submitted"]
+    content_revision: int
+    submitted_at: str | None
+    created_at: str
+    updated_at: str
+
+
 # --------------------------------------------------------------------------
 # Social-Schnittstelle (Instagram-Bot, eigenes Repo)
 # --------------------------------------------------------------------------

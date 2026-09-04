@@ -27,11 +27,14 @@ beginnt kein späterer Punkt.
 3. **Öffentliche Detailseite (#1058): auf `feature` umgesetzt und abgenommen.**
    Sichere Einzelprojektion, kanonische Web-Route, Query-Adapter im statischen
    Export, Teilen, Lotti-Hilfe und ehrliche Detailkarte.
-4. **Private Meldungs-Domäne und sichere Persistenz (#1071): umgesetzt auf
-   diesem Task-Branch.** Eigentümergebundene Entwürfe, einmaliges atomisches
-   Absenden, append-only Beobachtungen, versionierte Migrationen und
-   Kontolöschgrenze — weiterhin ohne HTTP- oder UI-Zugriff.
-5. Eigentümergebundene Entwurfs- und Einreichungs-API — offen.
+4. **Private Meldungs-Domäne und sichere Persistenz (#1071): auf `feature`
+   umgesetzt und abgenommen.** Eigentümergebundene Entwürfe, einmaliges
+   atomisches Absenden, append-only Beobachtungen, versionierte Migrationen und
+   Kontolöschgrenze.
+5. **Eigentümergebundene Entwurfs- und Einreichungs-API (#1075): umgesetzt auf
+   diesem Task-Branch.** Nur aktive, bestätigte Nicht-Admin-Konten; konto-sichere
+   Idempotenz beim Anlegen, erwartete Inhaltsrevisionen beim Ändern und
+   retry-sicheres einmaliges Absenden — weiterhin ohne Oberfläche.
 6. Geführter Meldechat und prominenter Einstieg — offen.
 7. Lokale Sicherheits-/Eignungsprüfung vor externen KI-Aufrufen — offen.
 8. Moderation, Clustering, privates Dashboard und Beta-Betrieb — in weitere,
@@ -39,7 +42,7 @@ beginnt kein späterer Punkt.
 
 ## Noch nicht Teil des Bürgerportal-Stands
 
-Keine privaten Meldungsendpunkte oder Meldeoberfläche, KI-Aufrufe,
+Keine Meldeoberfläche, API für spätere Beobachtungen, KI-Aufrufe,
 Moderationsoberfläche, automatische Veröffentlichung, Uploads oder öffentlichen
-Kommentare. Iteration 4 ist erst nach ausdrücklicher Abnahme des deployten
-Persistenzschnitts abgeschlossen.
+Kommentare. Iteration 5 ist erst nach ausdrücklicher Abnahme des deployten
+API-Schnitts abgeschlossen.

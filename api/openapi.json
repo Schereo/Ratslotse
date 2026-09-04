@@ -8297,6 +8297,305 @@
         "title": "PolicyFields",
         "type": "object"
       },
+      "PrivateDraftCreateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "maxLength": 128,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 53.24,
+            "minimum": 53.05,
+            "title": "Latitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "location_label": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Location Label",
+            "type": "string"
+          },
+          "longitude": {
+            "maximum": 8.33,
+            "minimum": 8.08,
+            "title": "Longitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "observed_on": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Observed On",
+            "type": "string"
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "category",
+          "scope_kind",
+          "observed_on",
+          "idempotency_key"
+        ],
+        "title": "PrivateDraftCreateIn",
+        "type": "object"
+      },
+      "PrivateDraftUpdateIn": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "expected_revision": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "latitude": {
+            "maximum": 53.24,
+            "minimum": 53.05,
+            "title": "Latitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "location_label": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Location Label",
+            "type": "string"
+          },
+          "longitude": {
+            "maximum": 8.33,
+            "minimum": 8.08,
+            "title": "Longitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "observed_on": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Observed On",
+            "type": "string"
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "category",
+          "scope_kind",
+          "observed_on",
+          "expected_revision"
+        ],
+        "title": "PrivateDraftUpdateIn",
+        "type": "object"
+      },
+      "PrivateReportOut": {
+        "description": "Eigentümergebundener Entwurf oder abgesendete private Meldung.\n\nBewusst ohne Konto-ID, Idempotenzschlüssel und Erstellungsfingerabdruck.\nDiese Form wird nie für öffentliche Problemprojektionen verwendet.",
+        "properties": {
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "confirmed_text": {
+            "title": "Confirmed Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content_revision": {
+            "title": "Content Revision",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft_text": {
+            "title": "Draft Text",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "location_label": {
+            "title": "Location Label",
+            "type": "string"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "observed_on": {
+            "title": "Observed On",
+            "type": "string"
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "draft",
+              "submitted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "submitted_at": {
+            "title": "Submitted At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "draft_text",
+          "confirmed_text",
+          "category",
+          "scope_kind",
+          "observed_on",
+          "location_label",
+          "latitude",
+          "longitude",
+          "state",
+          "content_revision",
+          "submitted_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PrivateReportOut",
+        "type": "object"
+      },
+      "PrivateSubmitIn": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed_text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Confirmed Text",
+            "type": "string"
+          },
+          "expected_revision": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "confirmed_text"
+        ],
+        "title": "PrivateSubmitIn",
+        "type": "object"
+      },
       "ProblemGeometry": {
         "description": "Vom Store kanonisiertes GeoJSON; die Tiefe hängt am Geometrietyp.",
         "properties": {
@@ -17341,6 +17640,193 @@
         "summary": "Quelle Pruefen",
         "tags": [
           "kommunalwahl"
+        ]
+      }
+    },
+    "/api/meldungen/entwuerfe": {
+      "post": {
+        "operationId": "create_draft_api_meldungen_entwuerfe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateDraftCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Draft",
+        "tags": [
+          "meldungen"
+        ]
+      }
+    },
+    "/api/meldungen/{report_id}": {
+      "get": {
+        "operationId": "get_report_api_meldungen__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Report",
+        "tags": [
+          "meldungen"
+        ]
+      }
+    },
+    "/api/meldungen/{report_id}/absenden": {
+      "post": {
+        "operationId": "submit_draft_api_meldungen__report_id__absenden_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateSubmitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Draft",
+        "tags": [
+          "meldungen"
+        ]
+      }
+    },
+    "/api/meldungen/{report_id}/entwurf": {
+      "put": {
+        "operationId": "update_draft_api_meldungen__report_id__entwurf_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivateDraftUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Draft",
+        "tags": [
+          "meldungen"
         ]
       }
     },

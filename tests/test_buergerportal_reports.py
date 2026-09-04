@@ -124,6 +124,19 @@ def _downgrade_private_schema_to_version_one(database) -> None:
         )
 
 
+def _downgrade_private_schema_to_version_four(database) -> None:
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """DROP TRIGGER trg_civic_reports_idempotency_pair_insert;
+               DROP TRIGGER trg_civic_reports_idempotency_pair_update;
+               DROP TRIGGER trg_civic_reports_idempotency_no_update;
+               DROP INDEX uq_civic_reports_owner_idempotency;
+               ALTER TABLE civic_reports DROP COLUMN creation_fingerprint;
+               ALTER TABLE civic_reports DROP COLUMN idempotency_key;
+               DELETE FROM civic_report_schema_migrations WHERE version = 5;"""
+        )
+
+
 def test_drafts_require_an_existing_verified_account(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
     from kern.store import Store
@@ -675,6 +688,63 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     assert "wiederholte Beobachtung" not in dump
 
 
+def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_path):
+    from buergerportal.reports import DraftContent, PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
+    old_store = PrivateReportStore(database)
+    old_draft_id = old_store.create_draft(
+        reporter_id=17,
+        content=DraftContent(
+            text="Fiktiver Entwurf vor der Idempotenzmigration",
+            category="public_space",
+            scope_kind="citywide",
+            observed_on="2026-09-01",
+        ),
+    )
+    old_store.close()
+    _downgrade_private_schema_to_version_four(database)
+
+    migrated_store = PrivateReportStore(database)
+    content = DraftContent(
+        text="Fiktiver idempotenter Entwurf nach der Migration",
+        category="mobility",
+        scope_kind="citywide",
+        observed_on="2026-09-02",
+    )
+    first = migrated_store.create_owned_draft_idempotent(
+        reporter_id=17,
+        idempotency_key="fiktiver-migrations-request",
+        content=content,
+    )
+    retry = migrated_store.create_owned_draft_idempotent(
+        reporter_id=17,
+        idempotency_key="fiktiver-migrations-request",
+        content=content,
+    )
+    preserved = migrated_store.get_owned_report(old_draft_id, reporter_id=17)
+    migrated_store.close()
+    migrated_schema = _private_schema_signature(database)
+    reopened_store = PrivateReportStore(database)
+    reopened_store.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh_store = PrivateReportStore(fresh_database)
+    fresh_store.close()
+
+    assert preserved is not None
+    assert preserved.draft_text == "Fiktiver Entwurf vor der Idempotenzmigration"
+    assert retry == first
+    assert _private_schema_signature(database) == migrated_schema
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,)]
+
+
 def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
 
@@ -717,7 +787,7 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -845,7 +915,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
@@ -889,4 +959,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,)]

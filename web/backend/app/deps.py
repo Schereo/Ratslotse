@@ -11,6 +11,7 @@ from .security import decode_access_token
 
 from kern.store import Store
 from council.store import CouncilStore
+from buergerportal.reports import PrivateReportStore
 from buergerportal.store import ProblemStore
 
 
@@ -26,6 +27,15 @@ def get_store() -> Iterator[Store]:
 def get_problem_store() -> Iterator[ProblemStore]:
     """Öffentliche Problemprojektion in der aktuellen Ratslotse-Datenbank."""
     store = ProblemStore(get_settings().ratslotse_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_private_report_store() -> Iterator[PrivateReportStore]:
+    """Privates Schreibmodell in der request-spezifischen Datenbankverbindung."""
+    store = PrivateReportStore(get_settings().ratslotse_db)
     try:
         yield store
     finally:
@@ -99,6 +109,20 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
             "Bitte bestätige zuerst deine E-Mail-Adresse."
             if not user.get("email_verified")
             else "Dein Konto ist derzeit deaktiviert.",
+        )
+    return user
+
+
+def require_verified_reporter(user: dict = Depends(require_active)) -> dict:
+    """Nur aktive, bestätigte Nicht-Admin-Konten dürfen privat melden."""
+    if (
+        user.get("role") == "admin"
+        or user.get("status") != "active"
+        or not user.get("email_verified")
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Dieses Konto kann keine privaten Meldungen abgeben.",
         )
     return user
 
