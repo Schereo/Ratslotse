@@ -39,6 +39,16 @@ def _dateien():
     for pfad in sorted(list(FRONTEND.rglob("*.ts")) + list(FRONTEND.rglob("*.tsx"))):
         if "node_modules" in pfad.parts or ".next" in str(pfad):
             continue
+        # `.test.ts` sind die vitest-Logiktests neben ihrem Modul. Sie rufen
+        # ABSICHTLICH Pfade auf, die es nicht gibt (`/x`), um die Hülle selbst
+        # zu prüfen — welche Kopfzeilen sie setzt, was sie aus einem Fehler
+        # macht. Ein Fund dort wäre immer falsch.
+        #
+        # Die Browsertests (`tests/e2e/*.spec.ts`) bleiben ausdrücklich DRIN:
+        # Die rufen echte Endpunkte auf, und ein Pfad, den sie anfahren und den
+        # es nicht mehr gibt, ist genau der Fehler, den dieser Wächter sucht.
+        if pfad.name.endswith(".test.ts"):
+            continue
         rel = pfad.relative_to(FRONTEND).as_posix()
         if rel in EIGENE_SACHE:
             continue
