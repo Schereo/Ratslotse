@@ -220,6 +220,10 @@ private struct RatsRouteScaffold<Content: View>: View {
         }
         .background(RatsColor.page)
         .toolbar(.hidden, for: .navigationBar)
+        // Die ausgeblendete Leiste nimmt UIKit die Rand-Geste mit — s.
+        // SwipeBack.swift. Ohne das hier gäbe es den Weg zurück nur über den
+        // Knopf oben links.
+        .ratsSwipeBack()
     }
 
     private var activeDestination: MainNavigationDestination {
