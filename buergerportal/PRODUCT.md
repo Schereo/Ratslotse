@@ -164,6 +164,26 @@ Prüf- oder Speicherfehler sperren die Weitergabe wieder. Die Prüfung sendet
 keinen Inhalt an externe Dienste, erscheint in keiner HTTP-Antwort und verändert
 keine öffentliche Projektion.
 
+## Owner-bound “Meine Meldungen” — Iteration 8
+
+`/meine-meldungen` is available only to active, verified non-admin accounts and
+is linked from their personal navigation. It lists the account's own activity
+newest first. Each row shows a bounded description preview, observation date,
+category, scope, last update, and exactly one honest state: `Entwurf` or
+`Privat eingegangen`. Older rows load through bounded `limit`/`offset`
+pagination. Loading, empty, failure, and retry states are explicit.
+
+The overview contains no account ID, precise private location, coordinates,
+idempotency or request fingerprint, screening outcome, forwarding state, or
+public metadata. Selecting a row fetches its complete owner-bound detail. Draft
+details can continue in `/probleme/melden`; the existing server report ID and
+current revision remain authoritative, and no second draft is created.
+Submitted details are read-only.
+
+This view does not claim that Ratslotse or the City of Oldenburg is processing a
+report. It performs no AI call, moderation, clustering, assignment, or
+publication and does not change the public problem projection.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -172,10 +192,10 @@ keine öffentliche Projektion.
 | `/probleme/[id]` | öffentlich | Iteration 3 |
 | `/probleme?problem=[id]` | öffentlich | Iteration 3, statischer App-Adapter |
 | `/probleme/melden` | verifiziertes Nicht-Admin-Konto | Iteration 6 |
-| `/meine-meldungen` | Eigentümer*in | reserviert |
+| `/meine-meldungen` | verifiziertes Nicht-Admin-Konto | Iteration 8 |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 7 ergänzt ausschließlich die lokale Weitergabesperre. API für spätere
-Beobachtungen, privates Meldungs-Dashboard, öffentliche Zeitleiste, externe
-KI-Funktion, Moderationsoberfläche, Clusterung und automatische Veröffentlichung
-bleiben späteren Schnitten vorbehalten.
+Iteration 8 adds only the owner-bound private read view and draft continuation.
+Later-observation APIs, a public timeline, external AI, moderation tooling,
+clustering, assignment, and automatic publication remain reserved for later
+slices.

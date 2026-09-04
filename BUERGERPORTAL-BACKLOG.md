@@ -40,17 +40,20 @@ beginnt kein späterer Punkt.
    Kartenort, sitzungsgebundene Wiederaufnahme, korrigierbare Prüfung und
    revisionssicheres Absenden über die bestehende API — ohne KI oder
    öffentlichen Problemabgleich.
-7. **Lokale Weitergabeprüfung vor externer KI (#1102): umgesetzt auf diesem
-   Task-Branch.** Revisionsgebundene, unveränderliche Sperre mit kontrollierten
-   Gründen; private Einreichungen bleiben erhalten, externe Verarbeitung und
-   öffentliche Projektionen bleiben geschlossen.
-8. Moderation, Clustering, privates Dashboard und Beta-Betrieb — in weitere,
-   einzeln abgenommene Schnitte zu zerlegen.
+7. **Local forwarding screening before external AI (#1102): deployed to
+   `feature` and accepted.** Revision-bound immutable evidence with controlled
+   blocking reasons; private submissions remain stored while external processing
+   and public projections stay closed.
+8. **Owner-bound “Meine Meldungen” (#1106): implemented on this task branch.**
+   Bounded newest-first summaries, private details, explicit loading/empty/error
+   states, and duplicate-safe continuation of an existing server draft.
+9. External AI pre-screening as separate immutable evidence.
+10. Private human moderation without publication.
+11. Human-confirmed assignment and public projection.
+12. Beta operations and hardening.
 
-## Noch nicht Teil des Bürgerportal-Stands
+## Not part of the Bürgerportal yet
 
-Weiterhin nicht enthalten sind eine API für spätere Beobachtungen, externe
-KI-Aufrufe, Moderationsoberfläche, Clusterung, automatische Veröffentlichung,
-Uploads, private Meldungsübersicht oder öffentliche Kommentare. Iteration 7 ist erst
-nach ausdrücklicher Abnahme der deployten lokalen Weitergabeprüfung
-abgeschlossen.
+Later-observation HTTP APIs, external AI calls, moderation tooling, clustering,
+automatic publication, uploads, and public comments remain excluded. Iteration 8
+is complete only after the deployed owner view has been explicitly accepted.

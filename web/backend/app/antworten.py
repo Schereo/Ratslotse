@@ -653,6 +653,27 @@ class PublicProblemList(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class PrivateReportSummaryOut(TypedDict):
+    """Bounded private summary without precise private location data."""
+
+    id: int
+    text_preview: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str
+    state: Literal["draft", "submitted"]
+    content_revision: int
+    submitted_at: str | None
+    updated_at: str
+
+
+class PrivateReportListOut(TypedDict):
+    reports: list[PrivateReportSummaryOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class PrivateReportOut(TypedDict):
     """Eigentümergebundener Entwurf oder abgesendete private Meldung.
 

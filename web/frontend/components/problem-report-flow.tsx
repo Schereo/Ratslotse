@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,8 +19,12 @@ import {
   clearProblemReportSession,
   loadProblemReportSession,
   oldenburgTodayISO,
+  privateReportDetailQueryKey,
+  privateReportListQueryKey,
+  reportContentFromPrivateReport,
   saveProblemReportSession,
   scheduleProblemReportSessionExpiry,
+  type CompleteReportContent,
   type PrivateReport,
   type ReportCategory,
   type ReportContent,
@@ -46,11 +51,6 @@ const STAGE_NUMBER: Record<Exclude<ReportStage, "review">, number> = {
   description: 5,
 };
 
-type CompleteReportContent = Omit<ReportContent, "category" | "scope_kind"> & {
-  category: ReportCategory;
-  scope_kind: ReportScope;
-};
-
 function emptyContent(): ReportContent {
   return {
     text: "",
@@ -65,18 +65,6 @@ function emptyContent(): ReportContent {
 
 function freshIdempotencyKey(): string {
   return crypto.randomUUID();
-}
-
-function contentFromReport(report: PrivateReport): CompleteReportContent {
-  return {
-    text: report.draft_text,
-    category: report.category,
-    scope_kind: report.scope_kind,
-    observed_on: report.observed_on,
-    location_label: report.location_label,
-    latitude: report.latitude,
-    longitude: report.longitude,
-  };
 }
 
 type ContentErrors = {
@@ -163,6 +151,7 @@ function BackButton({ onClick, disabled = false }: { onClick: () => void; disabl
 
 export function ProblemReportFlow() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [content, setContent] = useState<ReportContent>(emptyContent);
   const [stage, setStage] = useState<ReportStage>("scope");
   const [idempotencyKey, setIdempotencyKey] = useState("");
@@ -182,6 +171,18 @@ export function ProblemReportFlow() {
   const previousStage = useRef<ReportStage>(stage);
   const recoveryAttempt = useRef<number | null>(null);
   const focusAfterRecovery = useRef(false);
+
+  const discardCachedReportReads = useCallback((reportId: number) => {
+    if (!user) return;
+    queryClient.removeQueries({
+      queryKey: privateReportDetailQueryKey(user.id, reportId),
+      exact: true,
+    });
+    queryClient.removeQueries({
+      queryKey: privateReportListQueryKey(user.id),
+      exact: true,
+    });
+  }, [queryClient, user]);
 
   const resetLocal = useCallback((message?: string) => {
     clearProblemReportSession();
@@ -235,6 +236,7 @@ export function ProblemReportFlow() {
     setConflict(false);
     try {
       const report = await api.get<PrivateReport>(`/meldungen/${id}`);
+      discardCachedReportReads(report.id);
       setCreationContent(null);
       if (report.state === "submitted") {
         clearProblemReportSession();
@@ -242,7 +244,7 @@ export function ProblemReportFlow() {
         setServerReport(report);
         return;
       }
-      setContent(contentFromReport(report));
+      setContent(reportContentFromPrivateReport(report));
       setServerReport(report);
       setStage("review");
       setReportId(report.id);
@@ -256,7 +258,7 @@ export function ProblemReportFlow() {
     } finally {
       setRecovering(false);
     }
-  }, [resetLocal]);
+  }, [discardCachedReportReads, resetLocal]);
 
   useEffect(() => {
     if (!hydrated || reportId === null || serverReport || submitted) return;
@@ -336,6 +338,7 @@ export function ProblemReportFlow() {
         ...firstAttempt,
         idempotency_key: idempotencyKey,
       });
+      discardCachedReportReads(report.id);
       setReportId(report.id);
       setCreationContent(null);
       setServerReport(report);
@@ -367,11 +370,12 @@ export function ProblemReportFlow() {
     setConflict(false);
     try {
       let currentReport = serverReport;
-      if (!sameContent(complete, contentFromReport(serverReport))) {
+      if (!sameContent(complete, reportContentFromPrivateReport(serverReport))) {
         currentReport = await api.put<PrivateReport>(`/meldungen/${reportId}/entwurf`, {
           ...complete,
           expected_revision: serverReport.content_revision,
         });
+        discardCachedReportReads(currentReport.id);
         setServerReport(currentReport);
       }
       const result = await api.post<PrivateReport>(`/meldungen/${reportId}/absenden`, {
@@ -379,6 +383,7 @@ export function ProblemReportFlow() {
         confirmed_text: complete.text,
       });
       clearProblemReportSession();
+      discardCachedReportReads(result.id);
       setServerReport(result);
       setSubmitted(result);
     } catch (caught) {

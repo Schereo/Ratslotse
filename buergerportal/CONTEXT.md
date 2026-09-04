@@ -38,6 +38,13 @@ Private, deterministische Sperre vor einer möglichen externen Verarbeitung der
 aktuellen Meldungsrevision. „Kandidatin“ bedeutet nur, dass kein lokaler
 Sperrgrund erkannt wurde. Nicht: Sicherheitsurteil, KI-Vorprüfung, Freigabe.
 
+### Owner report history
+
+The private **“Meine Meldungen”** read view of one eligible account's drafts and
+submitted reports. Its overview is a bounded summary projection, not a public
+problem feed or a processing queue. The product states remain only `Entwurf`
+and `Privat eingegangen`.
+
 ### KI-Vorprüfung
 
 Privates, unveränderliches Eignungsurteil zur aktuellen Inhaltsrevision einer
@@ -95,3 +102,17 @@ ist weder ein zweiter persistierter Meldeentwurf noch eine öffentliche Kennung.
 Der Serverstand bleibt maßgeblich: Wiederaufnahme liest ihn über die private
 HTTP-Grenze, Änderungen verwenden seine erwartete Inhaltsrevision, und ein
 Konflikt überschreibt keine Eingabe still.
+
+## Owner read view since Iteration 8
+
+`PrivateReportStore.list_owned_reports` and `GET /api/meldungen` expose only a
+newest-first, account-bound summary page. A summary carries a text preview of at
+most 160 characters, controlled category and scope, observation date, honest
+private state, revision, submission time, and last update. It deliberately omits
+account identifiers, precise private locations, coordinates, idempotency data,
+screening evidence, and forwarding state.
+
+Selecting a row reads the existing owner-bound detail endpoint. Continuing a
+draft records that existing report ID in the short-lived account-bound browser
+session and reloads the authoritative server revision in the reporting flow. It
+never creates a replacement draft. Submitted reports remain read-only.

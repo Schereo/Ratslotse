@@ -323,6 +323,13 @@ def test_drafts_require_an_eligible_reporter_account(tmp_path):
         private_store.create_draft(reporter_id=pending_id, content=content)
     with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.create_draft(reporter_id=admin_id, content=content)
+    for ineligible_id in (999_999, pending_id, admin_id):
+        with pytest.raises(ValueError, match="zugelassenes Konto"):
+            private_store.list_owned_reports(
+                reporter_id=ineligible_id,
+                limit=20,
+                offset=0,
+            )
     draft_id = private_store.create_draft(reporter_id=verified_id, content=content)
     account_store = Store(database)
     account_store.set_web_user_role(verified_id, "admin")
@@ -332,6 +339,12 @@ def test_drafts_require_an_eligible_reporter_account(tmp_path):
             draft_id,
             reporter_id=verified_id,
             confirmed_text="Bestätigte fiktive Beobachtung",
+        )
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
+        private_store.list_owned_reports(
+            reporter_id=verified_id,
+            limit=20,
+            offset=0,
         )
     account_store = Store(database)
     account_store.set_web_user_role(verified_id, "user")
@@ -343,6 +356,12 @@ def test_drafts_require_an_eligible_reporter_account(tmp_path):
             draft_id,
             reporter_id=verified_id,
             confirmed_text="Bestätigte fiktive Beobachtung",
+        )
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
+        private_store.list_owned_reports(
+            reporter_id=verified_id,
+            limit=20,
+            offset=0,
         )
     assert private_store.get_owned_report(draft_id, reporter_id=verified_id) is not None
     private_store.close()
@@ -384,6 +403,113 @@ def test_owner_can_create_and_read_a_private_draft(tmp_path):
     assert draft.submitted_at is None
     assert draft.observations == ()
     assert store.get_owned_report(draft_id, reporter_id=18) is None
+    store.close()
+
+
+def test_owner_lists_private_reports_newest_first_with_bounded_summaries(tmp_path):
+    from buergerportal.reports import DraftContent, PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17, 18)
+    store = PrivateReportStore(database)
+    oldest_id = store.create_draft(
+        reporter_id=17,
+        content=DraftContent(
+            text="Ältester fiktiver Entwurf.",
+            category="other",
+            scope_kind="citywide",
+            observed_on="2026-09-01",
+        ),
+    )
+    submitted_id = store.create_draft(
+        reporter_id=17,
+        content=DraftContent(
+            text="Ursprünglicher fiktiver Entwurf.",
+            category="mobility",
+            scope_kind="citywide",
+            observed_on="2026-09-02",
+        ),
+    )
+    submitted = store.submit_owned_draft(
+        submitted_id,
+        reporter_id=17,
+        confirmed_text="Bestätigte fiktive Beobachtung.",
+        expected_revision=0,
+    )
+    store.create_draft(
+        reporter_id=18,
+        content=DraftContent(
+            text="Kontofremder fiktiver Entwurf.",
+            category="other",
+            scope_kind="citywide",
+            observed_on="2026-09-03",
+        ),
+    )
+    preview_source = "N" * 180
+    newest_id = store.create_draft(
+        reporter_id=17,
+        content=DraftContent(
+            text=preview_source,
+            category="environment",
+            scope_kind="citywide",
+            observed_on="2026-09-04",
+        ),
+    )
+
+    first_page = store.list_owned_reports(
+        reporter_id=17,
+        limit=2,
+        offset=0,
+    )
+    second_page = store.list_owned_reports(
+        reporter_id=17,
+        limit=2,
+        offset=2,
+    )
+
+    assert first_page.total == 3
+    assert [report.id for report in first_page.reports] == [newest_id, submitted_id]
+    assert first_page.reports[0].text_preview == preview_source[:160]
+    assert first_page.reports[0].state == "draft"
+    assert first_page.reports[1].text_preview == submitted.confirmed_text
+    assert first_page.reports[1].state == "submitted"
+    assert first_page.reports[1].content_revision == submitted.content_revision
+    assert second_page.total == 3
+    assert [report.id for report in second_page.reports] == [oldest_id]
+    assert not hasattr(first_page.reports[0], "location_label")
+    assert not hasattr(first_page.reports[0], "latitude")
+    assert not hasattr(first_page.reports[0], "screening")
+    store.close()
+
+
+@pytest.mark.parametrize(
+    ("limit", "offset"),
+    (
+        (0, 0),
+        (51, 0),
+        (True, 0),
+        (20, -1),
+        (20, True),
+        (20, 2**63),
+    ),
+)
+def test_private_report_listing_rejects_unbounded_pagination(
+    tmp_path,
+    limit,
+    offset,
+):
+    from buergerportal.reports import PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    _insert_verified_accounts(database, 17)
+    store = PrivateReportStore(database)
+
+    with pytest.raises(ValueError, match="Seitenauswahl"):
+        store.list_owned_reports(
+            reporter_id=17,
+            limit=limit,
+            offset=offset,
+        )
     store.close()
 
 

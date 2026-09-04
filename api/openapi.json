@@ -8460,6 +8460,37 @@
         "title": "PrivateDraftUpdateIn",
         "type": "object"
       },
+      "PrivateReportListOut": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/PrivateReportSummaryOut"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reports",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PrivateReportListOut",
+        "type": "object"
+      },
       "PrivateReportOut": {
         "description": "Eigentümergebundener Entwurf oder abgesendete private Meldung.\n\nBewusst ohne Konto-ID, Idempotenzschlüssel und Erstellungsfingerabdruck.\nDiese Form wird nie für öffentliche Problemprojektionen verwendet.",
         "properties": {
@@ -8571,6 +8602,85 @@
           "updated_at"
         ],
         "title": "PrivateReportOut",
+        "type": "object"
+      },
+      "PrivateReportSummaryOut": {
+        "description": "Bounded private summary without precise private location data.",
+        "properties": {
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "content_revision": {
+            "title": "Content Revision",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "observed_on": {
+            "title": "Observed On",
+            "type": "string"
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "draft",
+              "submitted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "submitted_at": {
+            "title": "Submitted At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text_preview": {
+            "title": "Text Preview",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text_preview",
+          "category",
+          "scope_kind",
+          "observed_on",
+          "state",
+          "content_revision",
+          "submitted_at",
+          "updated_at"
+        ],
+        "title": "PrivateReportSummaryOut",
         "type": "object"
       },
       "PrivateSubmitIn": {
@@ -17640,6 +17750,63 @@
         "summary": "Quelle Pruefen",
         "tags": [
           "kommunalwahl"
+        ]
+      }
+    },
+    "/api/meldungen": {
+      "get": {
+        "operationId": "list_reports_api_meldungen_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateReportListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reports",
+        "tags": [
+          "meldungen"
         ]
       }
     },
