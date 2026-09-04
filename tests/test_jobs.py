@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+WURZEL = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(WURZEL))
 
 from kern.alerts import run_guarded  # noqa: E402
 from kern.jobs import BY_KEY, JOBS  # noqa: E402
@@ -92,6 +93,7 @@ def test_registry_deckt_die_cron_eintraege_ab():
         "check_vorlage_follows", "remind_setup", "backup_db",
         "abendmeldungen",   # Design 30a: N5 täglich 18 Uhr, N6 sonntags
         "check_presse",     # Stufe 3a: Stadt-Pressemitteilungen, täglich 5:15
+        "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
         "render_plaene",    # P1: Planzeichnungen als Bilder, sonntags 4:30
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         # Der einzige Job, der selbst herunterlädt (oldenburg.de), alle vier
@@ -104,3 +106,80 @@ def test_registry_deckt_die_cron_eintraege_ab():
     for job in JOBS:
         assert BY_KEY[job["key"]] is job
         assert job["max_age_h"] > 0 and job["label"] and job["schedule"]
+
+
+#: Skripte, die ``run_guarded`` benutzen, aber KEIN eigener Cron sind: Sie
+#: werden von einem Elternjob gerufen (``weekly_enrich``, ``check_finanzdaten``)
+#: oder von Hand. Sie schreiben trotzdem eigene ``job_runs``-Zeilen — das ist
+#: gewollt, denn nur so verrät ein einzelner Schritt, dass er es war.
+UNTERSCHRITTE = {
+    # von weekly_enrich
+    "backfill_anlagen_texte", "embed_anlagen",
+    # von check_finanzdaten, sobald ein neues Dokument da ist
+    "ingest_haushaltsvollzug", "ingest_haushaltssatzung", "ingest_gebuehren",
+    "ingest_eigenbetriebe_abschluss", "ingest_nachbewilligungen",
+    # Einmal-/Ops-Läufe von Hand, kein Takt
+    "backfill_anlagen_ocr", "backfill_protokoll_seiten", "extract_wortbeitraege",
+    "bereinige_kontaktdaten",
+}
+
+
+def _run_guarded_schluessel() -> dict[str, str]:
+    """Jedes ``run_guarded`` in ``scripts/`` samt Datei — aus dem Syntaxbaum.
+
+    Nicht per Import: Die Skripte ziehen beim Laden `.env`, Netz und Modelle
+    nach. Der Baum reicht, weil der Schlüssel immer ein Literal ist oder eine
+    Modul-Konstante (``JOB = "…"``).
+    """
+    import ast
+
+    aus: dict[str, str] = {}
+    for pfad in sorted((WURZEL / "scripts").glob("*.py")):
+        baum = ast.parse(pfad.read_text(encoding="utf-8"))
+        konstanten = {n.targets[0].id: n.value.value for n in ast.walk(baum)
+                      if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)
+                      and isinstance(n.value, ast.Constant)}
+        for knoten in ast.walk(baum):
+            if (isinstance(knoten, ast.Call)
+                    and getattr(knoten.func, "id", "") == "run_guarded" and knoten.args):
+                erstes = knoten.args[0]
+                schluessel = (erstes.value if isinstance(erstes, ast.Constant)
+                              else konstanten.get(getattr(erstes, "id", "")))
+                if schluessel:
+                    aus[schluessel] = pfad.name
+    return aus
+
+
+def test_jeder_bewachte_lauf_ist_eingeordnet():
+    """Wer in ``job_runs`` schreibt, gehört ins Register ODER in UNTERSCHRITTE.
+
+    **Wogegen das steht.** Der Test darüber hält das Register gegen eine von
+    Hand abgeschriebene Liste — er prüft also nur, dass zwei Listen im selben
+    Repo übereinstimmen, und hat elf Wochen lang nicht bemerkt, dass
+    ``social_kartentexte`` täglich auf Prod lief, ohne Register-Eintrag und
+    ohne ``run_guarded``. Dieser hier misst gegen den QUELLTEXT: Ein neues
+    Skript mit ``run_guarded`` muss eine Heimat bekommen, bevor es grün wird.
+    """
+    fremd = sorted(set(_run_guarded_schluessel()) - {j["key"] for j in JOBS} - UNTERSCHRITTE)
+    assert not fremd, (
+        f"{fremd} schreiben nach job_runs, stehen aber weder in kern/jobs.py "
+        f"noch in UNTERSCHRITTE. Ist es ein Cron: Eintrag in kern/jobs.py "
+        f"(Takt + max_age_h), sonst hier eintragen.")
+
+
+def test_unterschritte_liste_hat_keine_leichen():
+    """Andere Richtung: Ein Eintrag, den es nicht mehr gibt, muss auffallen."""
+    schluessel = set(_run_guarded_schluessel())
+    tot = sorted(UNTERSCHRITTE - schluessel)
+    assert not tot, (f"{tot} stehen in UNTERSCHRITTE, benutzen aber kein "
+                     f"run_guarded mehr — Eintrag entfernen.")
+
+
+def test_registrierter_job_hat_auch_run_guarded():
+    """Ein Register-Eintrag ohne ``run_guarded`` bliebe im Panel ewig auf
+    „noch kein Lauf erfasst" stehen, ohne dass jemand den Grund sieht."""
+    schluessel = set(_run_guarded_schluessel())
+    ohne = sorted({j["key"] for j in JOBS} - schluessel)
+    assert not ohne, (
+        f"{ohne} stehen im Register, aber kein Skript ruft run_guarded damit — "
+        f"das Panel zeigte sie dauerhaft als „noch kein Lauf erfasst“.")

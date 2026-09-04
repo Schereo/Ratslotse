@@ -66,6 +66,13 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "social_kartentexte",
+        "label": "Kartentexte (Tagesordnung)",
+        "description": "Ein erklärender Satz je inhaltlichem Tagesordnungspunkt der nächsten drei Wochen — der einzige Text, der die ganze Vorlage samt Anlagen liest. Kostet LLM, schreibt nie zweimal dasselbe.",
+        "schedule": "täglich 7:45 Uhr",
+        "max_age_h": 30,
+    },
+    {
         "key": "render_plaene",
         "label": "Planzeichnungen rendern",
         "description": "Neue Bauleitplan-Anlagen (Planzeichnung, Lageplan, …) als Bilder für die Beschluss-Seite.",
