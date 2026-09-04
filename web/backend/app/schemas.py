@@ -442,3 +442,18 @@ class SetupUpdate(BaseModel):
 
     step: int = Field(ge=0, le=4)
     done: bool = False
+
+
+class ClientErrorIn(BaseModel):
+    """Eine Fehlermeldung aus dem Browser.
+
+    Alle Felder sind großzügig begrenzt und werden serverseitig NOCHMALS
+    gekürzt und maskiert (``kern/fehler.py``): Das Schema hält die Nutzlast
+    klein, die Säuberung hält Persönliches heraus. Beides ist nötig — das
+    Schema allein ließe eine Adresse durch, die Säuberung allein ein Megabyte.
+    """
+    name: str = Field(default="Error", max_length=100)
+    message: str = Field(default="", max_length=1000)
+    stack: str = Field(default="", max_length=4000)
+    #: Der Pfad OHNE Query — die Query kann Suchbegriffe tragen.
+    route: str = Field(default="", max_length=200)

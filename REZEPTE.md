@@ -133,6 +133,21 @@ Die zwei Dinge, die man dabei vergisst:
 
 ---
 
+## Einen Fehler nachsehen, den ein Nutzer gemeldet hat
+
+| Schritt | Datei |
+|---|---|
+| Liste ansehen | Admin-Panel → *Fehler* (`GET /api/admin/errors`) |
+| Woher er kommt | Spalte *Herkunft*: `server` = unbehandelte Ausnahme, `browser` = gemeldet vom Frontend |
+| Was gespeichert wird | `kern/fehler.py` — und `tests/test_fehlersammler.py` für das, was nicht |
+| Erledigt | Haken in der Zeile (`POST /api/admin/errors/{id}/resolve`); taucht er wieder auf, springt er zurück auf offen |
+
+**Was dich fängt:** `tests/test_fehlersammler.py` (was gespeichert wird und
+was nicht, Gruppierung, „nur die erste Meldung"),
+`tests/test_endpunkt_schutz.py` (der offene Endpunkt steht mit Begründung in
+`OEFFENTLICH`), `web/frontend/lib/fehler-melden.test.ts` (keine Query, kein
+Cookie, Deckel je Seite).
+
 ## Wenn ein Wächter anschlägt
 
 Er nennt in der Meldung den Befehl, der das Problem behebt. Falls nicht, ist das

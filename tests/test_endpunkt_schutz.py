@@ -63,6 +63,13 @@ OEFFENTLICH = {
     ("post", "/api/auth/forgot-password"),
     ("post", "/api/auth/reset-password"),
 
+    # Fehlermeldungen aus dem Browser. Ein Konto zu verlangen hieße, nur noch
+    # von Angemeldeten zu erfahren, dass die Seite kaputt ist — und der
+    # häufigste Fall ist der, in dem gerade gar nichts geht. Der Endpunkt
+    # nimmt nur vier gedeckelte Textfelder, antwortet immer 200 und ist
+    # gebremst (`client_error_limiter`).
+    ("post", "/api/client-errors"),
+
     # Öffentliche Ratsinhalte: Beschluss-, Personen- und Ortsseiten sind ohne
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).

@@ -613,6 +613,31 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
   JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
   Umbenennung still zerlegt.
+- **Fehler im Web sammeln sich selbst** (seit 09/2026). Ein Cron-Absturz
+  meldete sich immer schon per Mail und stand in `job_runs`; ein 500er im
+  Request ging ins `journalctl` und sonst nirgendwohin. Jetzt hält
+  [`kern/fehler.py`](kern/fehler.py) jede unbehandelte Ausnahme fest —
+  **gruppiert** nach Ausnahmetyp, letzter Zeile im eigenen Code und Route, mit
+  Zähler statt tausend Zeilen. Die **erste** Begegnung meldet sich per Mail an
+  `ALERT_EMAIL`, weitere werden nur gezählt (sonst flutet ein Ausfall das
+  Postfach). Sichtbar im Admin-Panel unter *Fehler*, samt 30-Tage-Verlauf;
+  abhaken heißt „behandelt", und ein Wiederauftauchen öffnet den Haken selbst
+  wieder.
+
+  Dieselbe Liste nimmt Meldungen aus dem **Browser** auf
+  ([`web/frontend/lib/fehler-melden.ts`](web/frontend/lib/fehler-melden.ts) →
+  offener Endpunkt `POST /api/client-errors`, antwortet immer 200, gebremst).
+  Sie beantworten dieselbe Frage — „was ist kaputt?" — und brauchen dieselbe
+  Behandlung.
+
+  **Was NICHT gespeichert wird**, und das ist der wichtigere Teil: keine
+  Anfragekörper, keine Kopfzeilen, keine Cookies, kein roher Pfad
+  (`/api/council/decision/8525` wird zu `…/{n}`), keine Variablenwerte aus dem
+  Traceback, aus dem Browser zusätzlich keine Query, kein Konto und kein
+  User-Agent. Adressen, Token und lange Kennungen im Fehlertext werden
+  maskiert. Wer ein Feld ergänzt, beantwortet zuerst die Frage, ob es etwas
+  Persönliches tragen kann — `tests/test_fehlersammler.py` und
+  `web/frontend/lib/fehler-melden.test.ts` halten die Liste fest.
 - **Ein Job, der gar nicht startet, stürzt auch nicht ab.** `run_guarded`
   meldet Abstürze; ein Job, der schweigt, fiel bis 09/2026 nur als Ampel im
   Admin-Panel auf — und wer nicht hinsieht, merkt monatelang nicht, dass die

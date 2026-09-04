@@ -4,7 +4,7 @@ from __future__ import annotations
 import html as _html
 import logging
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from kern.digest_email import render_html_email
 from kern.email import send_email
@@ -13,8 +13,8 @@ from kern.store import Store
 from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_store, require_active
-from ..ratelimit import support_limiter
-from ..schemas import FeedbackIn, SupportIn
+from ..ratelimit import client_error_limiter, support_limiter
+from ..schemas import ClientErrorIn, FeedbackIn, SupportIn
 
 logger = logging.getLogger("ratslotse.web.feedback")
 
@@ -143,4 +143,46 @@ def submit_support(
         )
     except Exception:  # noqa: BLE001 — ein gescheiterter Mailversand darf den Absender nicht treffen
         logger.exception("support-kontakt email failed (from=%s)", absender)
+    return {"ok": True}
+
+
+# Bewusst ein eigener Router ohne das `/api/feedback`-Präfix: Die Meldung ist
+# kein Feedback, sie kommt nicht von einem Menschen und braucht kein Konto.
+client_errors_router = APIRouter(prefix="/api/client-errors", tags=["client-errors"])
+
+
+@client_errors_router.post("")
+def melden(payload: ClientErrorIn, request: Request,
+           store: Store = Depends(get_store)) -> Ok:
+    """Ein Fehler aus dem Browser — dieselbe Tabelle wie die des Backends.
+
+    **Warum offen (ohne Konto).** Ein Fehler kann jeden treffen, auch jemanden
+    ohne Anmeldung, und gerade der Anmeldebildschirm ist eine Stelle, an der
+    etwas kaputtgehen kann. Ein Sammler, der genau dort schweigt, verfehlt
+    seinen Zweck.
+
+    **Was das kostet und wie es begrenzt ist.** Offen heißt fremde Eingabe:
+    Jeder kann hierher schreiben. Dagegen stehen drei Dinge — die Bremse je
+    Adresse, die Längengrenzen im Schema und die Säuberung in
+    ``kern/fehler.py``. Eine erfundene Meldung erzeugt eine eigene Zeile im
+    Panel und vermischt sich nicht mit echten; mehr Schaden kann sie nicht
+    anrichten.
+
+    **Immer 200.** Wer einen Fehler meldet, hat schon einen — ein zweiter
+    (weil unsere Bremse greift oder die Nutzlast krumm ist) hilft niemandem
+    und erzeugte im Browser nur eine weitere Fehlermeldung, die gemeldet
+    werden will.
+    """
+    try:
+        client_error_limiter.check(request)
+    except HTTPException:
+        return {"ok": True}
+
+    try:
+        from kern.fehler import browser_aufbereiten
+
+        store.merke_request_fehler(
+            browser_aufbereiten(payload.model_dump(), payload.route or "/"))
+    except Exception:  # noqa: BLE001 — der Sammler bleibt folgenlos
+        logger.exception("Browser-Fehler ließ sich nicht festhalten")
     return {"ok": True}
