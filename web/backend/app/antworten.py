@@ -665,6 +665,8 @@ class PrivateReportSummaryOut(TypedDict):
     content_revision: int
     submitted_at: str | None
     updated_at: str
+    moderation_outcome: Literal["approved", "rejected"] | None
+    rejection_explanation: str | None
 
 
 class PrivateReportListOut(TypedDict):
@@ -695,6 +697,88 @@ class PrivateReportOut(TypedDict):
     submitted_at: str | None
     created_at: str
     updated_at: str
+    moderation_outcome: Literal["approved", "rejected"] | None
+    rejection_explanation: str | None
+
+
+class ModerationReportSummaryOut(TypedDict):
+    """Data-minimal submitted report in the human review queue."""
+
+    id: int
+    text_preview: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str
+    local_outcome: Literal["external_review_candidate", "manual_review_only"]
+    local_reason_codes: list[Literal[
+        "potential_emergency",
+        "direct_contact_data",
+        "unsupported_text_format",
+    ]]
+    ai_verdict: Literal["suitable", "needs_human_review", "unsuitable"] | None
+    ai_reason_code: Literal[
+        "municipal_problem",
+        "insufficient_information",
+        "non_municipal_matter",
+        "personal_or_identifying_content",
+        "abusive_or_discriminatory_content",
+        "commercial_or_spam",
+        "possible_safety_context",
+        "model_uncertain",
+    ] | None
+
+
+class ModerationReportListOut(TypedDict):
+    reports: list[ModerationReportSummaryOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class ModerationObservationOut(TypedDict):
+    text: str
+    observed_on: str
+
+
+class ModerationReportOut(TypedDict):
+    """Private review detail without owner identity or exact location."""
+
+    id: int
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    content_revision: int
+    observations: list[ModerationObservationOut]
+    local_outcome: Literal["external_review_candidate", "manual_review_only"]
+    local_reason_codes: list[Literal[
+        "potential_emergency",
+        "direct_contact_data",
+        "unsupported_text_format",
+    ]]
+    ai_verdict: Literal["suitable", "needs_human_review", "unsuitable"] | None
+    ai_reason_code: Literal[
+        "municipal_problem",
+        "insufficient_information",
+        "non_municipal_matter",
+        "personal_or_identifying_content",
+        "abusive_or_discriminatory_content",
+        "commercial_or_spam",
+        "possible_safety_context",
+        "model_uncertain",
+    ] | None
+
+
+class RejectionDraftOut(TypedDict):
+    content_revision: int
+    suggestion: str | None
+    available: bool
+
+
+class ModerationDecisionOut(TypedDict):
+    report_id: int
+    content_revision: int
+    outcome: Literal["approved", "rejected"]
+    rejection_explanation: str | None
+    decided_at: str
 
 
 # --------------------------------------------------------------------------
@@ -1074,7 +1158,7 @@ class AdminUserDetail(TypedDict):
     der Aktivität, ``history_days`` nennt die zugehörigen Tage."""
     id: int
     email: str
-    role: str
+    role: Literal["user", "admin", "moderator"]
     status: str
     created_at: str | None
     last_seen: str | None
@@ -1292,7 +1376,7 @@ class AdminFeedbackRead(TypedDict):
 class AdminUserRow(TypedDict):
     id: int
     email: str
-    role: str
+    role: Literal["user", "admin", "moderator"]
     status: str
     created_at: str | None
     apple_linked: bool

@@ -27,6 +27,7 @@ from .routers import (
     council,
     feedback,
     kommunalwahl,
+    moderation,
     onboarding,
     problems,
     push,
@@ -204,6 +205,7 @@ app.include_router(kommunalwahl.router)
 app.include_router(social.router)
 app.include_router(problems.router)
 app.include_router(reports.router)
+app.include_router(moderation.router)
 
 # Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
 # selbst, also darf hier kein Token davor.

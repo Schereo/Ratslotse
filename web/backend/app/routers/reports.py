@@ -72,6 +72,8 @@ def _private_report_summary_out(
         "content_revision": report.content_revision,
         "submitted_at": report.submitted_at,
         "updated_at": report.updated_at,
+        "moderation_outcome": report.moderation_outcome,
+        "rejection_explanation": report.rejection_explanation,
     }
 
 
@@ -91,6 +93,8 @@ def _private_report_out(report: PrivateReport) -> PrivateReportOut:
         "submitted_at": report.submitted_at,
         "created_at": report.created_at,
         "updated_at": report.updated_at,
+        "moderation_outcome": report.moderation_outcome,
+        "rejection_explanation": report.rejection_explanation,
     }
 
 

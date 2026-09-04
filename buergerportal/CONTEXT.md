@@ -42,8 +42,9 @@ Sperrgrund erkannt wurde. Nicht: Sicherheitsurteil, KI-Vorprüfung, Freigabe.
 
 The private **“Meine Meldungen”** read view of one eligible account's drafts and
 submitted reports. Its overview is a bounded summary projection, not a public
-problem feed or a processing queue. The product states remain only `Entwurf`
-and `Privat eingegangen`.
+problem feed or a processing queue. Pending items remain `Entwurf` or `Privat eingegangen`; a final human decision
+adds `Von Ratslotse geprüft` or `Abgelehnt` plus the reporter-facing rejection
+explanation.
 
 ### KI-Vorprüfung
 
@@ -52,8 +53,9 @@ Meldung. Es darf allein nichts veröffentlichen. Nicht: automatische Freigabe.
 
 ### Moderationsentscheidung
 
-Private, unveränderliche menschliche Entscheidung eines Ratslotse-Admins. Kein
-amtlicher Bescheid.
+Private, unveränderliche menschliche Entscheidung eines aktiven Ratslotse-Admins
+oder eines aktiven, verifizierten dedizierten Moderationskontos. Sie bindet genau eine
+Meldungsrevision. Kein amtlicher Bescheid und keine Veröffentlichung.
 
 ### Statusereignis
 
@@ -67,7 +69,9 @@ Person hinter dem verifizierten Konto. Öffentlich steht ausschließlich
 
 ### Moderator*in
 
-Ratslotse-Admin. Nicht: Sachbearbeiter*in oder Stadtverwaltung.
+Eigenständige Ratslotse-Kontorolle für ausschließlich private Moderation, ohne
+allgemeine Admin- oder Meldebefugnis. Aktive Admins dürfen dieselbe
+Moderationsgrenze nutzen; Moderationskonten müssen zusätzlich bestätigt sein. Nicht: Sachbearbeiter*in oder Stadtverwaltung.
 
 ## Persistierte Beziehung seit Iteration 4
 
@@ -146,3 +150,25 @@ not to put personal or sensitive facts in free text. Owner HTTP responses and
 states still expose no screening or forwarding information. The AI verdict is
 private evidence for later human moderation, never a truth, urgency, safety,
 assignment, rejection, or publication decision.
+
+## Human moderation since Iteration 10
+
+Active `admin` accounts and active, verified `moderator` accounts share the
+dedicated `/api/moderation/meldungen` boundary. The `moderator` role cannot use general
+admin or owner-report interfaces. Queue and detail projections omit reporter
+identity, exact private location, coordinates, provider metadata, claims, and
+public-problem data. Pending reports are ordered oldest first and disappear
+through the same `404` seam after a decision.
+
+A human can approve or reject regardless of AI advice. Rejection requires a
+bounded final explanation for the reporting person. A revision-bound LLM
+suggestion is editable drafting help only; it never saves a decision. Locally
+blocked text never crosses that evaluator boundary—only controlled reason codes,
+category, and scope do. Provider failure leaves a blank manual path available.
+
+One immutable decision may exist per exact revision. Exact retries are
+idempotent; conflicting or concurrent attempts cannot replace the winner.
+Rejection is final and prevents later observations. Owner projections expose
+only the final outcome and rejection explanation, never reviewer identity or
+screening evidence. Approval creates no public projection, assignment, City
+forwarding, or notification.

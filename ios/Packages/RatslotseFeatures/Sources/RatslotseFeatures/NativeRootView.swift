@@ -45,8 +45,10 @@ public struct NativeRootView: View {
                         }
                     case .pending(let user):
                         VerificationPendingView(model: model, user: user)
-                    case .active:
-                        if model.onboardingStep == 0 {
+                    case .active(let user):
+                        if user.isModerator {
+                            NativeModeratorHandoffView(model: model)
+                        } else if model.onboardingStep == 0 {
                             NativeOnboardingWelcomeView(model: model)
                         } else if model.onboardingStep != nil {
                             NativeOnboardingFlow(model: model)
@@ -158,6 +160,34 @@ public struct NativeRootView: View {
         return try? JSONDecoder().decode(BadgeSnapshot.self, from: Data(json.utf8))
     }
 #endif
+}
+
+private struct NativeModeratorHandoffView: View {
+    let model: AppModel
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "checklist")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(RatsColor.primary)
+            Text("Meldungen prüfen")
+                .font(RatsFont.title(28))
+            Text("Das geschützte Moderationswerkzeug ist derzeit im Browser verfügbar. Dieses Konto hat keinen Zugriff auf die allgemeinen App-Bereiche.")
+                .font(RatsFont.body(14))
+                .foregroundStyle(RatsColor.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 440)
+            // The Bürgerportal is feature-only until product acceptance; the
+            // production host deliberately returns 404 for this route.
+            Link("Moderation im Browser öffnen", destination: URL(string: "https://feature.ratslotse.de/moderation/meldungen")!)
+                .buttonStyle(PrimaryButtonStyle())
+            Button("Abmelden") { Task { await model.logout() } }
+                .buttonStyle(SecondaryButtonStyle())
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(RatsColor.page)
+    }
 }
 
 private struct RatsRouteScaffold<Content: View>: View {

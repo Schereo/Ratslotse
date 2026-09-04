@@ -1,4 +1,5 @@
 import type { components } from "./api-schema";
+import type { ApiAntwort } from "./vertrag";
 
 /** Kurzform für die generierten Antwortformen aus `api-schema.ts`.
  *
@@ -465,42 +466,7 @@ export interface AdminStats {
 /** Eingegangenes Nutzer-Feedback im Admin-Panel. `read_at` null = offen. */
 export type AdminFeedback = S["AdminFeedbackRow"];
 
-export interface AdminUserDetail {
-  id: number;
-  email: string;
-  role: "user" | "admin";
-  status: "active" | "pending";
-  created_at: string;
-  last_seen: string | null;
-  apple_linked: boolean;
-  has_password: boolean;
-  delivery_channel: string;
-  /** Einwilligung „Gespräche speichern": null = nie gefragt, 1 = an, 0 = bewusst aus. */
-  saves_conversations: number | null;
-  /** Funktionsnutzung fürs Admin-Panel. Die Feldnamen dieses Blocks sind als
-   * einzige noch deutsch, die gespeicherten Werte englisch — siehe
-   * `admin_user_detail`. `quiz` zählt beantwortete Fragen, alles andere
-   * Aufrufe. */
-  features: {
-    ki_frage: number; research: number; suche: number;
-    quiz: number; analyse: number; karte: number;
-  };
-  topics: string[];
-  subscriptions: string[];
-  history: number[];
-  /** ISO-Datum je Verlaufs-Balken (x-Achse, 30 Tage). */
-  history_days: string[];
-  /** Recherchen/Tag: null = Standard (5), 0 = unbegrenzt, sonst eigenes Limit. */
-  deep_limit: number | null;
-  /** true = Rate-Limits der Frage-Endpoints für dieses Konto aus. */
-  limits_unlocked: boolean;
-  /** Womit das Konto angelegt wurde (web | ios | android | app). null = vor
-   *  Einführung der Messung registriert. */
-  signup_client: string | null;
-  /** Zugriffe je Client — {"web": 42, "ios": 7}. `unknown` steht für die
-   *  Zeilen aus der Zeit vor der Messung und zählt nirgends als Plattform. */
-  clients: Record<string, number>;
-}
+export type AdminUserDetail = ApiAntwort<"/admin/users/{user_id}">;
 
 export interface AdminGrowth {
   /** `days` = ISO-Datum je Serienpunkt (x-Achse, Serverdatum). */

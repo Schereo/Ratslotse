@@ -217,6 +217,34 @@ Assessment evidence remains private and absent from “Meine Meldungen” and al
 owner API responses. No admin decision, owner rejection state, clustering,
 assignment, or public projection is added in this iteration.
 
+## Private human moderation — Iteration 10
+
+`/moderation/meldungen` is a dedicated, authenticated workspace for active
+admins and active, verified moderation-only accounts. A `moderator` has no `/admin`,
+general user, or owner-report capability. Its queue is oldest first. Queue and
+detail responses include only report text/observations, controlled category and
+scope, observation dates, local reasons, and current controlled AI advice. They
+never include reporter identity, email, exact private location, coordinates,
+provider metadata, claims, or public-problem data, and the UI renders no map.
+
+Local and external AI results are clearly labelled as fallible advice. A human
+may approve despite `unsuitable` or reject despite `suitable`. Choosing the
+rejection path may request a bounded German draft, but the text remains editable
+and no decision is saved until the reviewer explicitly submits it. Locally
+blocked emergency/contact text is never sent externally for drafting; only
+controlled reason codes, category, and scope cross that seam. Provider failure
+offers retry and a fully manual explanation.
+
+Rejection requires a non-blank final explanation of at most 1000 characters.
+Exactly one immutable decision is stored per current report revision; exact
+retries are idempotent and conflicts cannot replace the first result. Rejection
+is final and read-only. Approval says only `Von Ratslotse geprüft`; it does not
+publish, assign, notify, imply City handling, or claim truth. “Meine Meldungen”
+shows the final outcome and rejection explanation without AI or reviewer data.
+
+This iteration sends no notification and creates no cluster, assignment, City
+forwarding, or public projection.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -225,10 +253,9 @@ assignment, or public projection is added in this iteration.
 | `/probleme/[id]` | öffentlich | Iteration 3 |
 | `/probleme?problem=[id]` | öffentlich | Iteration 3, statischer App-Adapter |
 | `/probleme/melden` | verifiziertes Nicht-Admin-Konto | Iteration 6 |
-| `/meine-meldungen` | verifiziertes Nicht-Admin-Konto | Iteration 8 |
-| `/admin/meldungen` | Admin | reserviert |
+| `/meine-meldungen` | verifiziertes Meldekonto | Iteration 8/10 |
+| `/moderation/meldungen` | aktives Admin- oder verifiziertes Moderationskonto | Iteration 10 |
 
-Iteration 9 adds only revision-bound private external AI pre-screening after
-local eligibility. Later-observation APIs, a public timeline, moderation
-tooling, clustering, assignment, and automatic publication remain reserved for
-later slices.
+Iteration 10 adds private human decisions but no later-observation HTTP API,
+public timeline, clustering, assignment, notification, City forwarding, or
+publication. Those remain reserved for later slices.

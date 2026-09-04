@@ -159,8 +159,9 @@ state.
 authenticated session and serializes the same narrow model. Exact private facts
 are fetched only after selection through the existing indistinguishable-404
 detail boundary. `/meine-meldungen` exposes loading, empty, retryable error, and
-bounded older-page states. Its only states are `Entwurf` and
-`Privat eingegangen`; it does not infer moderation or City processing.
+bounded older-page states. Before a human decision its states are `Entwurf` and `Privat eingegangen`.
+Iteration 10 adds only the exact final human outcome and a reporter-facing
+rejection explanation; it still does not infer City processing.
 
 Draft continuation stores the selected existing report ID in the short-lived,
 account-bound browser session. Navigation proceeds only after that handoff is
@@ -209,20 +210,55 @@ and cannot change or fail the private submission. No assessment is exposed to
 owners or public projections, and no verdict performs moderation, assignment,
 rejection, clustering, or publication.
 
+## Human moderation — Iteration 10
+
+`moderator` is a dedicated account role with no general admin or owner-report
+capability. Active admins and active, verified moderators may use
+`PrivateReportStore.list_reports_for_moderation`,
+`get_report_for_moderation`, and `decide_report` through the separate
+`/api/moderation/meldungen` boundary. Queue and detail values deliberately omit
+reporter/account identity, exact location labels, coordinates, idempotency data,
+provider/model metadata, claims, and public-problem fields. Only current
+submitted revisions with current local evidence and an eligible owner are
+reviewable, oldest first. Unknown and no-longer-reviewable IDs share one `404`.
+
+`civic_report_moderation_decisions` stores one `approved` or `rejected` decision
+per exact report revision, its authorized reviewer ID for internal audit, the
+decision time, and—only for rejection—a trimmed explanation of at most 1000
+characters. Database triggers revalidate report, owner, local evidence, and
+reviewer authorization. Decision rows are append-only and immutable; exact
+retries return the same row, while conflicting and concurrent attempts cannot
+replace it. Rejection prevents any later observation. Deleting the reporter cascades all report evidence. Deleting a reviewer account
+preserves the immutable decision and its historical integer reviewer ID without
+a cascading account foreign key; the deleted account row and identity are no
+longer available, and direct actor changes remain blocked.
+
+`civic_report_rejection_draft_claims` provides a durable version/revision lease.
+At dispatch, the Store revalidates the pending report and reviewer. For a local
+`manual_review_only` result, `RejectionDraftInput` contains no observation text
+or AI advice—only controlled local reason codes, category, and scope. Otherwise
+it may contain the already minimized observation texts and controlled AI advice.
+It never contains identities, report IDs, locations, coordinates, dates,
+idempotency data, or claims. The strict `kern.llm.chat_complete` adapter uses a
+named prompt, privacy routing, bounded JSON, and the distinct
+`civic_report_rejection_drafting` cost label. Cached suggestions are immutable revision-bound drafting evidence, not
+decisions. The active claim carries a reviewer ID only while work is pending;
+the database removes that ID atomically when it stores a suggestion. Failure
+always leaves manual wording available.
+
+Owner list/detail models expose only `moderation_outcome` and the final rejection
+explanation. They omit reviewer and screening evidence. A human may override any
+AI verdict: approval means only eligibility for a later assignment/projection
+slice, while rejection is final and read-only.
+
 ## Veröffentlichung bleibt geschlossen
 
-Eine reale Meldung darf erst in eine öffentliche Projektion einfließen, wenn
-beides zur aktuellen Inhaltsrevision unveränderlich belegt ist:
-
-1. eine eigenständige KI-Vorprüfung mit Urteil `suitable`;
-2. eine abschließende menschliche Freigabe durch einen Ratslotse-Admin.
-
-Fehlt ein Nachweis, ist er veraltet oder ist die Prüfung fehlgeschlagen, wird
-nichts veröffentlicht. `ProblemStore` bleibt eine reine öffentliche Lesegrenze.
-Iterations 4–9 persist and expose owner-bound private reports and add only the
-revision-bound private external pre-screening. They add no human moderation
-decision, problem assignment, or publication path. Application code still
-cannot create or publish a real public projection from a private report.
+No private report enters a public projection in Iteration 10. A future
+projection requires a current immutable human approval and a separate,
+explicitly confirmed assignment/projection step. AI remains advisory and may be
+missing or overridden. `ProblemStore` remains a pure public read boundary, and
+moderation writes no public problem, assignment, cluster, City-forwarding, or
+notification data.
 
 ## Geografie
 

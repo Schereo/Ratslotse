@@ -17,7 +17,7 @@ from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 from kern.store import Store
 
-from ..config import get_settings
+from ..config import Settings, get_settings
 from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
                          AdminPlaceCandidates, AdminQuizStats, AdminUnread, AdminUserDetail,
@@ -231,9 +231,13 @@ def set_role(
     body: RoleUpdate,
     admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
+    settings: Settings = Depends(get_settings),
 ) -> WebUserOut:
-    if body.role not in ("user", "admin"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Rolle muss 'user' oder 'admin' sein.")
+    if body.role == "moderator" and not settings.ratslotse_buergerportal:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Die Moderationsrolle ist in dieser Umgebung nicht verfügbar.",
+        )
     target = store.get_web_user_by_id(user_id)
     if not target:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")

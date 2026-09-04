@@ -11,6 +11,10 @@ from .security import decode_access_token
 
 from kern.store import Store
 from council.store import CouncilStore
+from buergerportal.rejection_drafting import (
+    OpenRouterRejectionDraftEvaluator,
+    RejectionDraftEvaluator,
+)
 from buergerportal.reports import PrivateReportStore
 from buergerportal.store import ProblemStore
 
@@ -49,6 +53,10 @@ def get_external_ai_screening_scheduler() -> BackgroundExternalAiScreeningSchedu
     return BackgroundExternalAiScreeningScheduler(get_settings().ratslotse_db)
 
 
+def get_rejection_draft_evaluator() -> RejectionDraftEvaluator:
+    return OpenRouterRejectionDraftEvaluator()
+
+
 def get_council_store() -> Iterator[CouncilStore]:
     settings = get_settings()
     store = CouncilStore(settings.council_db)
@@ -84,6 +92,13 @@ def get_current_user(request: Request, store: Store = Depends(get_store)) -> dic
     return user
 
 
+def _can_use_general_app(user: dict) -> bool:
+    """Whether an account may receive personal capabilities outside moderation."""
+    return user.get("role") == "admin" or (
+        user.get("role") == "user" and user.get("status") == "active"
+    )
+
+
 def optional_user(request: Request, store: Store = Depends(get_store)) -> dict | None:
     """Der angemeldete Nutzer — oder ``None`` statt 401.
 
@@ -102,15 +117,17 @@ def optional_user(request: Request, store: Store = Depends(get_store)) -> dict |
         user = get_current_user(request, store)
     except HTTPException:
         return None
-    if user.get("role") != "admin" and user.get("status") != "active":
-        return None
-    return user
+    return user if _can_use_general_app(user) else None
 
 
 def require_active(user: dict = Depends(get_current_user)) -> dict:
-    """Account must be active: email confirmed and not suspended by an admin
-    (admins are always active)."""
-    if user.get("role") != "admin" and user.get("status") != "active":
+    """Account must be active and allowed to use general user capabilities."""
+    if not _can_use_general_app(user):
+        if user.get("role") == "moderator":
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Dieses Konto verwendet ausschließlich die Moderation.",
+            )
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Bitte bestätige zuerst deine E-Mail-Adresse."
@@ -130,6 +147,21 @@ def require_eligible_reporter(user: dict = Depends(require_active)) -> dict:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Dieses Konto kann keine privaten Meldungen abgeben.",
+        )
+    return user
+
+
+def require_moderation_reviewer(user: dict = Depends(get_current_user)) -> dict:
+    """Allow active admins and active, verified moderation-only accounts."""
+    role = user.get("role")
+    if (
+        role not in ("admin", "moderator")
+        or user.get("status") != "active"
+        or (role == "moderator" and not user.get("email_verified"))
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Dieses Konto darf private Meldungen nicht moderieren.",
         )
     return user
 

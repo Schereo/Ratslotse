@@ -3092,6 +3092,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/moderation/meldungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reports */
+        get: operations["list_reports_api_moderation_meldungen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/meldungen/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report */
+        get: operations["get_report_api_moderation_meldungen__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/meldungen/{report_id}/ablehnungsentwurf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draft Rejection */
+        post: operations["draft_rejection_api_moderation_meldungen__report_id__ablehnungsentwurf_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/meldungen/{report_id}/entscheidung": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Report */
+        post: operations["decide_report_api_moderation_meldungen__report_id__entscheidung_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding": {
         parameters: {
             query?: never;
@@ -4305,8 +4373,11 @@ export interface components {
             last_seen: string | null;
             /** Limits Unlocked */
             limits_unlocked: boolean;
-            /** Role */
-            role: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "admin" | "moderator";
             /** Saves Conversations */
             saves_conversations: number | null;
             /** Signup Client */
@@ -4367,8 +4438,11 @@ export interface components {
             n_subscriptions: number;
             /** N Topics */
             n_topics: number;
-            /** Role */
-            role: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "admin" | "moderator";
             /** Signup Client */
             signup_client: string | null;
             /** Status */
@@ -6795,6 +6869,130 @@ export interface components {
             /** Urls */
             urls: string[];
         };
+        /** ModerationDecisionIn */
+        ModerationDecisionIn: {
+            /** Expected Revision */
+            expected_revision: number;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "approved" | "rejected";
+            /** Rejection Explanation */
+            rejection_explanation?: string | null;
+        };
+        /** ModerationDecisionOut */
+        ModerationDecisionOut: {
+            /** Content Revision */
+            content_revision: number;
+            /** Decided At */
+            decided_at: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "approved" | "rejected";
+            /** Rejection Explanation */
+            rejection_explanation: string | null;
+            /** Report Id */
+            report_id: number;
+        };
+        /** ModerationObservationOut */
+        ModerationObservationOut: {
+            /** Observed On */
+            observed_on: string;
+            /** Text */
+            text: string;
+        };
+        /** ModerationReportListOut */
+        ModerationReportListOut: {
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Reports */
+            reports: components["schemas"]["ModerationReportSummaryOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ModerationReportOut
+         * @description Private review detail without owner identity or exact location.
+         */
+        ModerationReportOut: {
+            /**
+             * Ai Reason Code
+             * @enum {string|null}
+             */
+            ai_reason_code: "municipal_problem" | "insufficient_information" | "non_municipal_matter" | "personal_or_identifying_content" | "abusive_or_discriminatory_content" | "commercial_or_spam" | "possible_safety_context" | "model_uncertain" | null;
+            /**
+             * Ai Verdict
+             * @enum {string|null}
+             */
+            ai_verdict: "suitable" | "needs_human_review" | "unsuitable" | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Content Revision */
+            content_revision: number;
+            /** Id */
+            id: number;
+            /**
+             * Local Outcome
+             * @enum {string}
+             */
+            local_outcome: "external_review_candidate" | "manual_review_only";
+            /** Local Reason Codes */
+            local_reason_codes: ("potential_emergency" | "direct_contact_data" | "unsupported_text_format")[];
+            /** Observations */
+            observations: components["schemas"]["ModerationObservationOut"][];
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+        };
+        /**
+         * ModerationReportSummaryOut
+         * @description Data-minimal submitted report in the human review queue.
+         */
+        ModerationReportSummaryOut: {
+            /**
+             * Ai Reason Code
+             * @enum {string|null}
+             */
+            ai_reason_code: "municipal_problem" | "insufficient_information" | "non_municipal_matter" | "personal_or_identifying_content" | "abusive_or_discriminatory_content" | "commercial_or_spam" | "possible_safety_context" | "model_uncertain" | null;
+            /**
+             * Ai Verdict
+             * @enum {string|null}
+             */
+            ai_verdict: "suitable" | "needs_human_review" | "unsuitable" | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Id */
+            id: number;
+            /**
+             * Local Outcome
+             * @enum {string}
+             */
+            local_outcome: "external_review_candidate" | "manual_review_only";
+            /** Local Reason Codes */
+            local_reason_codes: ("potential_emergency" | "direct_contact_data" | "unsupported_text_format")[];
+            /** Observed On */
+            observed_on: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /** Text Preview */
+            text_preview: string;
+        };
         /**
          * MoneyByField
          * @description Erkanntes Volumen je Themenfeld (``CouncilStore.money_by_field``).
@@ -7380,8 +7578,15 @@ export interface components {
             location_label: string;
             /** Longitude */
             longitude: number | null;
+            /**
+             * Moderation Outcome
+             * @enum {string|null}
+             */
+            moderation_outcome: "approved" | "rejected" | null;
             /** Observed On */
             observed_on: string;
+            /** Rejection Explanation */
+            rejection_explanation: string | null;
             /**
              * Scope Kind
              * @enum {string}
@@ -7411,8 +7616,15 @@ export interface components {
             content_revision: number;
             /** Id */
             id: number;
+            /**
+             * Moderation Outcome
+             * @enum {string|null}
+             */
+            moderation_outcome: "approved" | "rejected" | null;
             /** Observed On */
             observed_on: string;
+            /** Rejection Explanation */
+            rejection_explanation: string | null;
             /**
              * Scope Kind
              * @enum {string}
@@ -8112,6 +8324,20 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** RejectionDraftOut */
+        RejectionDraftOut: {
+            /** Available */
+            available: boolean;
+            /** Content Revision */
+            content_revision: number;
+            /** Suggestion */
+            suggestion: string | null;
+        };
+        /** RejectionDraftRequestIn */
+        RejectionDraftRequestIn: {
+            /** Expected Revision */
+            expected_revision: number;
+        };
         /**
          * RelatedEntity
          * @description Ein Nachbar-Thema (``CouncilStore.related_entities``).
@@ -8255,8 +8481,11 @@ export interface components {
         };
         /** RoleUpdate */
         RoleUpdate: {
-            /** Role */
-            role: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "admin" | "moderator";
         };
         /**
          * SessionDetail
@@ -8956,7 +9185,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "admin";
+            role: "user" | "admin" | "moderator";
             /** Saves Conversations */
             saves_conversations?: number | null;
             /**
@@ -9116,7 +9345,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "user" | "admin";
+            role: "user" | "admin" | "moderator";
             /**
              * Status
              * @default pending
@@ -12777,6 +13006,139 @@ export interface operations {
             };
         };
     };
+    list_reports_api_moderation_meldungen_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModerationReportListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_api_moderation_meldungen__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModerationReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_rejection_api_moderation_meldungen__report_id__ablehnungsentwurf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectionDraftRequestIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_report_api_moderation_meldungen__report_id__entscheidung_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModerationDecisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_onboarding_api_onboarding_get: {
         parameters: {
             query?: never;
@@ -14091,4 +14453,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 628b15363d419411467ea171ad311408bdf58b2a2fd3037c955b172554b3298d
+// vertrag-sha256: 2de3eed18d088393ac2105acbd848e475ccdac6e659384ead7eb8af19d6b0ceb

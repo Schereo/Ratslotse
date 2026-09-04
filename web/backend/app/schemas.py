@@ -38,7 +38,7 @@ class VerifyEmailRequest(BaseModel):
 #: Aufzählung im Vertrag ankommt — sonst muss jeder Client sie abschreiben,
 #: und genau das ist passiert: Das Web führte die Vereinigung von Hand, und
 #: sie war unvollständig (``blocked`` fehlte).
-Rolle = Literal["user", "admin"]
+Rolle = Literal["user", "admin", "moderator"]
 
 #: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
 #: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
@@ -219,7 +219,17 @@ class WebUserOut(BaseModel):
 
 
 class RoleUpdate(BaseModel):
-    role: str  # 'user' | 'admin'
+    role: Rolle
+
+
+class RejectionDraftRequestIn(BaseModel):
+    expected_revision: int = Field(ge=1)
+
+
+class ModerationDecisionIn(BaseModel):
+    expected_revision: int = Field(ge=1)
+    outcome: Literal["approved", "rejected"]
+    rejection_explanation: str | None = Field(default=None, max_length=1000)
 
 
 class StatusUpdate(BaseModel):

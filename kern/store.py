@@ -189,6 +189,18 @@ CREATE TABLE IF NOT EXISTS web_users (
     signup_client    TEXT,
     created_at       TEXT NOT NULL
 );
+CREATE TRIGGER IF NOT EXISTS trg_web_users_role_insert
+BEFORE INSERT ON web_users
+WHEN NEW.role NOT IN ('user', 'admin', 'moderator')
+BEGIN
+    SELECT RAISE(ABORT, 'web user role must be controlled');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_web_users_role_update
+BEFORE UPDATE OF role ON web_users
+WHEN NEW.role NOT IN ('user', 'admin', 'moderator')
+BEGIN
+    SELECT RAISE(ABORT, 'web user role must be controlled');
+END;
 
 -- Single-use password-reset tokens (only the sha256 hash is stored) with expiry.
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -1264,6 +1276,8 @@ class Store:
         """``signup_client`` hält fest, WOMIT das Konto entstanden ist (web |
         ios | android | app). ``None`` bleibt None statt „web" zu raten — so
         bleiben Bestandskonten in der Statistik als ungemessen erkennbar."""
+        if role not in ("user", "admin", "moderator"):
+            raise ValueError("Unbekannte Kontorolle.")
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
@@ -1976,6 +1990,8 @@ class Store:
         return [dict(r) for r in rows]
 
     def set_web_user_role(self, user_id: int, role: str) -> None:
+        if role not in ("user", "admin", "moderator"):
+            raise ValueError("Unbekannte Kontorolle.")
         with self._conn:
             self._conn.execute("UPDATE web_users SET role = ? WHERE id = ?", (role, user_id))
 

@@ -9,8 +9,9 @@ beginnt kein späterer Punkt.
 
 - Öffentliche Problemprojektion und private Meldungen bleiben getrennte Domänen.
 - Rohtexte, Identitäten, Moderationsnotizen und genaue private Orte bleiben privat.
-- Reale Veröffentlichung braucht aktuelle geeignete KI-Vorprüfung und
-  unveränderliche menschliche Freigabe; Fehler bleiben geschlossen.
+- KI-Hinweise bleiben advisory and overridable. Reale Veröffentlichung braucht
+  eine unveränderliche menschliche Freigabe und einen späteren bestätigten
+  Projektionsschritt; Fehler bleiben geschlossen.
 - Häufigkeitsfarben bedeuten nie Dringlichkeit.
 - Stadtweite oder ungültige Geometrien erhalten keinen erfundenen Kartenpunkt.
 - Ratslotse ist kein amtliches System der Stadt Oldenburg.
@@ -48,18 +49,21 @@ beginnt kein späterer Punkt.
    accepted.** Bounded newest-first summaries, private inline details, explicit
    loading/empty/error states, and duplicate-safe continuation of an existing
    server draft.
-9. **External AI pre-screening (#1113): implemented on this task branch.**
+9. **External AI pre-screening (#1113): deployed to `feature` and accepted.**
    Minimized provider input after dispatch-time eligibility revalidation,
    durable claims, account-scoped cost limiting, strict controlled output,
    immutable revision-bound evidence, automatic background scheduling, and
    visible privacy disclosure.
-10. Private human moderation without publication.
+10. **Dedicated moderator role and human decisions (#1117): implemented on this
+    task branch.** Data-minimal oldest-first queue/detail views, advisory AI,
+    privacy-gated editable rejection drafts, exact-revision immutable human
+    approval/rejection, and owner-visible final outcomes without publication.
 11. Human-confirmed assignment and public projection.
 12. Beta operations and hardening.
 
 ## Not part of the Bürgerportal yet
 
-Later-observation HTTP APIs, human moderation tooling, clustering, assignment,
-automatic publication, uploads, and public comments remain excluded. Iteration 9
-is complete only after deployment, guarded live verification, deletion/privacy
-checks, and explicit acceptance on `feature.ratslotse.de`.
+Later-observation HTTP APIs, clustering, assignment, automatic publication,
+uploads, notifications, appeals, and public comments remain excluded. Iteration
+10 is complete only after deployment, guarded moderator/owner verification,
+deletion/privacy checks, and explicit acceptance on `feature.ratslotse.de`.

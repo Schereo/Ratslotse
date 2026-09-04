@@ -37,6 +37,7 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
 
     public var isActive: Bool { status == "active" && emailVerified }
     public var isAdmin: Bool { role == "admin" }
+    public var isModerator: Bool { role == "moderator" }
 
     enum CodingKeys: String, CodingKey {
         case id, email, role, status
