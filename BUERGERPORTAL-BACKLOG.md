@@ -35,17 +35,22 @@ beginnt kein späterer Punkt.
    umgesetzt und abgenommen.** Nur aktive, bestätigte Nicht-Admin-Konten;
    konto-sichere Idempotenz beim Anlegen, erwartete Inhaltsrevisionen beim Ändern
    und retry-sicheres einmaliges Absenden.
-6. **Geführter Meldechat und prominenter Einstieg (#1086): umgesetzt auf diesem
-   Task-Branch.** Deterministische Fragen, privater genauer Kartenort,
-   sitzungsgebundene Wiederaufnahme, korrigierbare Prüfung und revisionssicheres
-   Absenden über die bestehende API — ohne KI oder öffentlichen Problemabgleich.
-7. Lokale Sicherheits-/Eignungsprüfung vor externen KI-Aufrufen — offen.
+6. **Geführter Meldechat und prominenter Einstieg (#1086): auf `feature`
+   umgesetzt und abgenommen.** Deterministische Fragen, privater genauer
+   Kartenort, sitzungsgebundene Wiederaufnahme, korrigierbare Prüfung und
+   revisionssicheres Absenden über die bestehende API — ohne KI oder
+   öffentlichen Problemabgleich.
+7. **Lokale Weitergabeprüfung vor externer KI (#1102): umgesetzt auf diesem
+   Task-Branch.** Revisionsgebundene, unveränderliche Sperre mit kontrollierten
+   Gründen; private Einreichungen bleiben erhalten, externe Verarbeitung und
+   öffentliche Projektionen bleiben geschlossen.
 8. Moderation, Clustering, privates Dashboard und Beta-Betrieb — in weitere,
    einzeln abgenommene Schnitte zu zerlegen.
 
 ## Noch nicht Teil des Bürgerportal-Stands
 
-Keine API für spätere Beobachtungen, Sicherheits-/Eignungsklassifikation,
+Weiterhin nicht enthalten sind eine API für spätere Beobachtungen, externe
 KI-Aufrufe, Moderationsoberfläche, Clusterung, automatische Veröffentlichung,
-Uploads, privaten Meldungsübersicht oder öffentlichen Kommentare. Iteration 6
-ist erst nach ausdrücklicher Abnahme des deployten Meldewegs abgeschlossen.
+Uploads, private Meldungsübersicht oder öffentliche Kommentare. Iteration 7 ist erst
+nach ausdrücklicher Abnahme der deployten lokalen Weitergabeprüfung
+abgeschlossen.

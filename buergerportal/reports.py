@@ -1,4 +1,4 @@
-"""Private Meldeentwürfe, Meldungen und Beobachtungen des Bürgerportals.
+"""Private Meldungen, Beobachtungen und lokale Weitergabeprüfungen.
 
 Dieses Modul besitzt ausschließlich das private Schreibmodell. Öffentliche
 Problemprojektionen werden nur über :mod:`buergerportal.store` gelesen.
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 import re
 import sqlite3
@@ -26,9 +27,55 @@ from .domain import (
 
 
 ReportState = Literal["draft", "submitted"]
+LocalScreeningOutcome = Literal[
+    "external_review_candidate",
+    "manual_review_only",
+]
+LocalScreeningReason = Literal[
+    "potential_emergency",
+    "direct_contact_data",
+    "unsupported_text_format",
+]
+LOCAL_SCREENING_OUTCOMES: tuple[LocalScreeningOutcome, ...] = (
+    "external_review_candidate",
+    "manual_review_only",
+)
+LOCAL_SCREENING_REASONS: tuple[LocalScreeningReason, ...] = (
+    "potential_emergency",
+    "direct_contact_data",
+    "unsupported_text_format",
+)
+_LOCAL_SCREENING_RULESET_VERSION = 1
 _SQLITE_INTEGER_MAX = 2**63 - 1
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
+_POTENTIAL_EMERGENCY = re.compile(
+    r"\b(?:112|notruf|notfall|lebensgefahr|akute\s+gefahr|bewusstlos|"
+    r"gasgeruch|explosionsgefahr|schwer\s+verletzt|feuer|brand|brennt)\b",
+    re.IGNORECASE,
+)
+_EMAIL_ADDRESS = re.compile(
+    r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[a-z]{2,}(?!\w)",
+    re.IGNORECASE,
+)
+_WRITTEN_DATE = re.compile(
+    r"(?<![\d/.-])\b(?:\d{4}-\d{2}-\d{2}|"
+    r"\d{1,2}\s*(?P<date_separator>[./-])\s*\d{1,2}\s*"
+    r"(?P=date_separator)\s*\d{2,4})\b(?!\d)"
+)
+_PHONE_NUMBER = re.compile(
+    r"(?<!\w)(?:(?:\+\d{1,3}|00\d{1,3}|0)[\d\s()/.-]{5,}\d)(?!\w)"
+)
+_PHONE_CONTEXT_NUMBER = re.compile(
+    r"\b(?:telefon(?:nummer)?|tel|mobil(?:telefon|nummer)?|handy(?:nummer)?|"
+    r"rückruf(?:nummer)?|rufnummer|anruf|durchwahl|kontakt|erreichbar|erreichen|"
+    r"zurückrufen|zurückruft|anrufen|anruft|rufen|ruft|nummer)\b\.?"
+    r"[^\n]{0,40}?(?<!\w)(?:\+\d{1,3}[\s()/.-]*)?"
+    r"\d[\d\s()/.-]{3,}\d(?!\w)",
+    re.IGNORECASE,
+)
+_UNSUPPORTED_TEXT_FORMAT = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _OLDENBURG_TIMEZONE = ZoneInfo("Europe/Berlin")
+_LOGGER = logging.getLogger(__name__)
 
 
 def _sql_enum(values: tuple[str, ...]) -> str:
@@ -364,6 +411,86 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
     (4, _INVARIANT_MIGRATION_STATEMENTS),
     (5, _IDEMPOTENCY_MIGRATION_STATEMENTS),
     (6, _REPORTER_ELIGIBILITY_MIGRATION_STATEMENTS),
+    (
+        7,
+        (
+            f"""CREATE TABLE civic_report_local_screenings (
+                    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id          INTEGER NOT NULL,
+                    content_revision   INTEGER NOT NULL,
+                    ruleset_version    INTEGER NOT NULL,
+                    outcome            TEXT NOT NULL,
+                    reason_codes_json  TEXT NOT NULL,
+                    created_at         TEXT NOT NULL,
+                    CHECK (content_revision >= 1),
+                    CHECK (ruleset_version >= 1),
+                    CHECK (outcome IN ({_sql_enum(LOCAL_SCREENING_OUTCOMES)})),
+                    CHECK (
+                        json_valid(reason_codes_json)
+                        AND json_type(reason_codes_json) = 'array'
+                    ),
+                    CHECK (datetime(created_at) IS NOT NULL),
+                    UNIQUE (report_id, content_revision, ruleset_version),
+                    FOREIGN KEY (report_id, content_revision)
+                        REFERENCES civic_report_observations(
+                            report_id, content_revision
+                        ) ON DELETE CASCADE
+                )""",
+            f"""CREATE TRIGGER trg_civic_report_local_screenings_controlled_result
+                   BEFORE INSERT ON civic_report_local_screenings
+                   WHEN CASE
+                       WHEN json_valid(NEW.reason_codes_json) = 0 THEN 1
+                       WHEN json_type(NEW.reason_codes_json) != 'array' THEN 1
+                       WHEN NEW.outcome = 'external_review_candidate'
+                         AND json_array_length(NEW.reason_codes_json) != 0 THEN 1
+                       WHEN NEW.outcome = 'manual_review_only'
+                         AND json_array_length(NEW.reason_codes_json) = 0 THEN 1
+                       WHEN EXISTS (
+                           SELECT 1 FROM json_each(NEW.reason_codes_json)
+                           WHERE type != 'text'
+                              OR value NOT IN ({_sql_enum(LOCAL_SCREENING_REASONS)})
+                       ) THEN 1
+                       WHEN (
+                           SELECT COUNT(*) FROM json_each(NEW.reason_codes_json)
+                       ) != (
+                           SELECT COUNT(DISTINCT value)
+                           FROM json_each(NEW.reason_codes_json)
+                       ) THEN 1
+                       ELSE 0
+                   END
+                   BEGIN
+                       SELECT RAISE(ABORT, 'local screening requires controlled screening result');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_local_screenings_current_revision
+                   BEFORE INSERT ON civic_report_local_screenings
+                   WHEN NOT EXISTS (
+                       SELECT 1 FROM civic_reports AS report
+                       JOIN web_users AS owner ON owner.id = report.reporter_id
+                       WHERE report.id = NEW.report_id
+                         AND report.status = 'submitted'
+                         AND report.content_revision = NEW.content_revision
+                         AND owner.role = 'user'
+                         AND owner.status = 'active'
+                         AND owner.email_verified = 1
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'screening requires current submitted revision and eligible owner');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_local_screenings_no_update
+                   BEFORE UPDATE ON civic_report_local_screenings
+                   BEGIN
+                       SELECT RAISE(ABORT, 'local screenings are immutable');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_local_screenings_no_direct_delete
+                   BEFORE DELETE ON civic_report_local_screenings
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'local screenings are append-only');
+                   END""",
+        ),
+    ),
 )
 
 
@@ -534,6 +661,18 @@ class PrivateObservation:
 
 
 @dataclass(frozen=True)
+class LocalReportScreening:
+    """Private, revisionsgebundene Sperre vor einer möglichen externen Prüfung."""
+
+    report_id: int
+    content_revision: int
+    ruleset_version: int
+    outcome: LocalScreeningOutcome
+    reason_codes: tuple[LocalScreeningReason, ...]
+    created_at: str
+
+
+@dataclass(frozen=True)
 class PrivateReport:
     id: int
     draft_text: str
@@ -614,6 +753,37 @@ def _creation_fingerprint(content: DraftContent) -> str:
         sort_keys=True,
     )
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _local_screening_reasons(texts: tuple[str, ...]) -> tuple[LocalScreeningReason, ...]:
+    combined = "\n".join(texts)
+    reasons: list[LocalScreeningReason] = []
+    if _POTENTIAL_EMERGENCY.search(combined):
+        reasons.append("potential_emergency")
+    contact_text = _WRITTEN_DATE.sub("", combined)
+    if (
+        _EMAIL_ADDRESS.search(contact_text)
+        or _PHONE_NUMBER.search(contact_text)
+        or _PHONE_CONTEXT_NUMBER.search(contact_text)
+    ):
+        reasons.append("direct_contact_data")
+    if _UNSUPPORTED_TEXT_FORMAT.search(combined):
+        reasons.append("unsupported_text_format")
+    return tuple(reasons)
+
+
+def _local_screening_from_row(row: sqlite3.Row) -> LocalReportScreening:
+    return LocalReportScreening(
+        report_id=int(row["report_id"]),
+        content_revision=int(row["content_revision"]),
+        ruleset_version=int(row["ruleset_version"]),
+        outcome=cast(LocalScreeningOutcome, row["outcome"]),
+        reason_codes=tuple(
+            cast(LocalScreeningReason, reason)
+            for reason in json.loads(row["reason_codes_json"])
+        ),
+        created_at=str(row["created_at"]),
+    )
 
 
 def _oldenburg_today(now: datetime | None = None) -> date:
@@ -914,6 +1084,7 @@ class PrivateReportStore:
             expected_revision,
             expected_revision,
         )
+        exact_retry: PrivateReport | None = None
         with self._conn:
             updated = self._conn.execute(
                 """UPDATE civic_reports
@@ -934,14 +1105,156 @@ class PrivateReportStore:
                     and existing.content_revision == expected_revision + 1
                     and existing.confirmed_text == confirmed_text
                 ):
-                    return existing
-                raise InvalidReportTransition(
-                    "Dieser Meldeentwurf kann nicht mehr abgesendet werden."
-                )
-        submitted = self.get_owned_report(report_id, reporter_id=reporter_id)
+                    exact_retry = existing
+                else:
+                    raise InvalidReportTransition(
+                        "Dieser Meldeentwurf kann nicht mehr abgesendet werden."
+                    )
+        submitted = exact_retry or self.get_owned_report(
+            report_id,
+            reporter_id=reporter_id,
+        )
         if submitted is None:  # Durch den eigentümergebundenen Übergang garantiert.
             raise RuntimeError("Abgesendete Meldung konnte nicht geladen werden.")
+        try:
+            self.assess_owned_submission(
+                report_id,
+                reporter_id=reporter_id,
+                expected_revision=submitted.content_revision,
+            )
+        except Exception:  # noqa: BLE001 — Meldeeingang bleibt, Weitergabe bleibt gesperrt.
+            _LOGGER.exception(
+                "Lokale Weitergabeprüfung nach privatem Meldeeingang fehlgeschlagen"
+            )
         return submitted
+
+    def assess_owned_submission(
+        self,
+        report_id: int,
+        *,
+        reporter_id: int,
+        expected_revision: int,
+    ) -> LocalReportScreening:
+        """Prüft die aktuelle eingereichte Revision ohne externe Weitergabe."""
+        if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
+            raise PrivateReportNotFound("Meldung nicht gefunden.")
+        self._require_eligible_reporter(reporter_id)
+        revision = _normalized_expected_revision(expected_revision)
+        if revision is None:
+            raise ValueError("Die erwartete Inhaltsrevision ist erforderlich.")
+        now = _now()
+        with self._conn:
+            report = self._conn.execute(
+                """SELECT 1 FROM civic_reports
+                   WHERE id = ? AND reporter_id = ? AND status = 'submitted'
+                     AND content_revision = ?""",
+                (report_id, reporter_id, revision),
+            ).fetchone()
+            if report is None:
+                self._raise_missing_or_transition(report_id, reporter_id=reporter_id)
+            texts = tuple(
+                str(row["text"])
+                for row in self._conn.execute(
+                    """SELECT text FROM civic_report_observations
+                       WHERE report_id = ? AND content_revision <= ?
+                       ORDER BY content_revision""",
+                    (report_id, revision),
+                )
+            )
+            reasons = _local_screening_reasons(texts)
+            outcome = (
+                "manual_review_only" if reasons else "external_review_candidate"
+            )
+            self._conn.execute(
+                """INSERT INTO civic_report_local_screenings (
+                       report_id, content_revision, ruleset_version,
+                       outcome, reason_codes_json, created_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(report_id, content_revision, ruleset_version)
+                   DO NOTHING""",
+                (
+                    report_id,
+                    revision,
+                    _LOCAL_SCREENING_RULESET_VERSION,
+                    outcome,
+                    json.dumps(reasons, separators=(",", ":")),
+                    now,
+                ),
+            )
+        screening = self.get_current_owned_screening(
+            report_id,
+            reporter_id=reporter_id,
+        )
+        if screening is None:
+            raise RuntimeError("Lokale Weitergabeprüfung konnte nicht geladen werden.")
+        return screening
+
+    def get_current_owned_screening(
+        self,
+        report_id: int,
+        *,
+        reporter_id: int,
+    ) -> LocalReportScreening | None:
+        """Liest nur die Prüfung der aktuellen Revision und Regelversion."""
+        if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
+            return None
+        row = self._conn.execute(
+            """SELECT screening.report_id, screening.content_revision,
+                      screening.ruleset_version, screening.outcome,
+                      screening.reason_codes_json, screening.created_at
+               FROM civic_report_local_screenings AS screening
+               JOIN civic_reports AS report ON report.id = screening.report_id
+               WHERE report.id = ? AND report.reporter_id = ?
+                 AND report.status = 'submitted'
+                 AND report.content_revision = screening.content_revision
+                 AND screening.ruleset_version = ?""",
+            (report_id, reporter_id, _LOCAL_SCREENING_RULESET_VERSION),
+        ).fetchone()
+        if row is None:
+            return None
+        return _local_screening_from_row(row)
+
+    def get_owned_external_review_candidate(
+        self,
+        report_id: int,
+        *,
+        reporter_id: int,
+        expected_revision: int,
+    ) -> LocalReportScreening | None:
+        """Gibt nur eine aktuelle lokal freigehaltene Kandidatin zurück."""
+        if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
+            return None
+        try:
+            revision = _normalized_expected_revision(expected_revision)
+        except ValueError:
+            return None
+        if revision is None:
+            return None
+        row = self._conn.execute(
+            """SELECT screening.report_id, screening.content_revision,
+                      screening.ruleset_version, screening.outcome,
+                      screening.reason_codes_json, screening.created_at
+               FROM civic_report_local_screenings AS screening
+               JOIN civic_reports AS report ON report.id = screening.report_id
+               JOIN web_users AS owner ON owner.id = report.reporter_id
+               WHERE report.id = ? AND report.reporter_id = ?
+                 AND report.status = 'submitted'
+                 AND report.content_revision = ?
+                 AND screening.content_revision = report.content_revision
+                 AND screening.ruleset_version = ?
+                 AND screening.outcome = 'external_review_candidate'
+                 AND owner.role = 'user' AND owner.status = 'active'
+                 AND owner.email_verified = 1""",
+            (
+                report_id,
+                reporter_id,
+                revision,
+                _LOCAL_SCREENING_RULESET_VERSION,
+            ),
+        ).fetchone()
+        if row is None:
+            return None
+        return _local_screening_from_row(row)
 
     def append_owned_observation(
         self,
