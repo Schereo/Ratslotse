@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from collections.abc import Iterable
 from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
 
@@ -2850,8 +2850,8 @@ class Store:
             # „App oder Web?" — die Nutzung der letzten 30 Tage bewusst fest,
             # nicht am Zeitraum-Umschalter: Die Frage ist „womit arbeiten die
             # Leute GERADE", nicht „womit über alle Zeit".
-            **{"clients": (aufteilung := self.client_split(30))["clients"],
-               "clients_both": aufteilung["both"]},
+            "clients": (aufteilung := self.client_split(30))["clients"],
+               "clients_both": aufteilung["both"],
             "signup_clients": [{**r, "users": 0} for r in self.signup_client_split()],
         }
 

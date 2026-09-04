@@ -432,10 +432,11 @@ def review_place_candidate(
             canonical_place_id=body.canonical_place_id, note=body.note,
             updated_by=admin.get("email"),
         )
-    except KeyError:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ortskandidat nicht gefunden.")
+    except KeyError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            "Ortskandidat nicht gefunden.") from exc
     except ValueError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
 
 @router.delete("/place-candidates/{location_slug}")

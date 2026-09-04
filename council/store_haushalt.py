@@ -3065,7 +3065,6 @@ class HaushaltMixin(StoreBasis):
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
-            pass
         try:
             r = self._conn.execute(
                 "SELECT year, total FROM council_integrated_debt "
@@ -3077,7 +3076,6 @@ class HaushaltMixin(StoreBasis):
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
-            pass
         return aus
 
     def _buergschafts_kontext(self) -> dict | None:
@@ -3108,6 +3106,5 @@ class HaushaltMixin(StoreBasis):
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
-            pass
         return {"year": r["year"], "balance": r["balance"], "reason": r["reason"],
                 "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}

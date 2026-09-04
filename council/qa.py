@@ -3290,7 +3290,7 @@ def resolve_citations(answer: str, valid: set[int]):
             if v in valid and v not in cited:
                 cited.append(v)
 
-    def _clean(m: "re.Match") -> str:
+    def _clean(m: re.Match) -> str:
         nums = [str(v) for v in citation_ids(m.group(1)) if v in valid]
         return f" [{', '.join(nums)}]" if nums else ""
 
