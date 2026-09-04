@@ -1,7 +1,17 @@
 """Eigentümergebundene HTTP-Grenze für private Bürgerportal-Meldungen."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import logging
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 
 from buergerportal.reports import (
     DraftContent,
@@ -19,7 +29,13 @@ from ..antworten import (
     PrivateReportOut,
     PrivateReportSummaryOut,
 )
-from ..deps import get_private_report_store, require_eligible_reporter
+from ..deps import (
+    get_external_ai_screening_scheduler,
+    get_private_report_store,
+    require_eligible_reporter,
+)
+from ..ratelimit import civic_report_screening_limiter
+from ..report_screening import BackgroundExternalAiScreeningScheduler
 from ..schemas import (
     PrivateDraftContentIn,
     PrivateDraftCreateIn,
@@ -28,6 +44,7 @@ from ..schemas import (
 )
 
 router = APIRouter(prefix="/api/meldungen", tags=["meldungen"])
+_LOGGER = logging.getLogger(__name__)
 
 
 def _content(body: PrivateDraftContentIn) -> DraftContent:
@@ -168,8 +185,13 @@ def update_draft(
 def submit_draft(
     report_id: int,
     body: PrivateSubmitIn,
+    background_tasks: BackgroundTasks,
+    request: Request,
     user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
+    screening_scheduler: BackgroundExternalAiScreeningScheduler = Depends(
+        get_external_ai_screening_scheduler
+    ),
 ) -> PrivateReportOut:
     try:
         report = store.submit_owned_draft(
@@ -180,4 +202,15 @@ def submit_draft(
         )
     except ValueError as error:
         raise _http_exception(error) from None
+    try:
+        civic_report_screening_limiter.check(request, subject=int(user["id"]))
+        screening_scheduler.schedule(
+            background_tasks,
+            report_id=report.id,
+            expected_revision=report.content_revision,
+        )
+    except HTTPException:
+        _LOGGER.warning("External AI pre-screening quota is exhausted")
+    except Exception:  # noqa: BLE001 - private submission remains authoritative
+        _LOGGER.warning("External AI pre-screening could not be scheduled")
     return _private_report_out(report)

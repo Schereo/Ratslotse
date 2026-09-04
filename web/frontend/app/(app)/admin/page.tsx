@@ -419,6 +419,7 @@ type LlmUsage = {
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
   attachment_ocr: "Anlagen-Texterkennung",
+  civic_report_screening: "KI-Vorprüfung privater Meldungen",
   committee_summary: "Ausschuss-Zusammenfassung",
   daily_find_story: "Fundstück des Tages",
   decision_places: "Orte eines Beschlusses",

@@ -53,6 +53,7 @@ export default function DatenschutzPage() {
               <li><strong>Push (optional):</strong> ein Geräte-Token, wenn du App-Push-Benachrichtigungen aktivierst.</li>
               <li><strong>Themen &amp; Watchlists:</strong> die von dir angelegten Suchthemen und Benachrichtigungseinstellungen.</li>
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
+              <li><strong>Private Problemmeldungen:</strong> Entwürfe und bestätigte Beschreibungstexte, Kategorie, räumlicher Bezug, Ortsangabe, Koordinaten und Beobachtungsdatum. Die Meldungen bleiben deinem Konto zugeordnet.</li>
               <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
@@ -60,9 +61,9 @@ export default function DatenschutzPage() {
 
           <Section title="Zwecke und Rechtsgrundlagen">
             <p>
-              Bereitstellung von Konto, Themen und Benachrichtigungen zur Erfüllung des Nutzungsverhältnisses
-              (Art. 6 Abs. 1 lit. b DSGVO). Server-Logs und Sicherheit auf Grundlage des berechtigten Interesses am
-              sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
+              Bereitstellung von Konto, privaten Problemmeldungen, Themen und Benachrichtigungen zur Erfüllung des
+              Nutzungsverhältnisses (Art. 6 Abs. 1 lit. b DSGVO). Server-Logs und Sicherheit auf Grundlage des
+              berechtigten Interesses am sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
             </p>
           </Section>
 
@@ -70,7 +71,7 @@ export default function DatenschutzPage() {
             <p>Zur Erbringung des Dienstes setze ich folgende Dienstleister ein:</p>
             <ul className="list-disc space-y-1 pl-5">
               <li><strong>Hosting:</strong> Hetzner Online GmbH (Serverstandort EU). Betrieb der Server und Verarbeitung von Server-Logs.</li>
-              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen werden zur Beantwortung an einen externen KI-Dienst übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. <strong>Bitte gib keine personenbezogenen oder sensiblen Daten in die Fragen ein.</strong></li>
+              <li><strong>KI-Verarbeitung (OpenRouter):</strong> „Frag den Rat"-Anfragen und geeignete private Beschreibungstexte werden für die jeweilige KI-Verarbeitung über OpenRouter an externe KI-Anbieter übermittelt; dabei kann eine Übermittlung in ein Drittland erfolgen. <strong>Bitte gib keine persönlichen oder sensiblen Daten in freie Textfelder ein.</strong></li>
               <li><strong>Resend:</strong> Versand von Benachrichtigungs-E-Mails (nur, wenn du E-Mail als Kanal wählst).</li>
               <li><strong>CARTO:</strong> Die Kartendarstellung lädt Kartenkacheln von CARTO; dabei wird deine IP-Adresse an CARTO übermittelt.</li>
               <li><strong>Apple / Google (Push):</strong> App-Benachrichtigungen werden über den Push-Dienst des Betriebssystems (APNs bzw. FCM) zugestellt — nur, wenn du Push als Kanal aktivierst.</li>
@@ -78,11 +79,33 @@ export default function DatenschutzPage() {
             </ul>
           </Section>
 
+          <Section title="KI-Vorprüfung privater Meldungen">
+            <p>
+              Nach dem privaten Eingang kann der bestätigte Beschreibungstext automatisch über OpenRouter an einen
+              externen KI-Anbieter gesendet werden. Die Vorprüfung liefert nur einen kontrollierten Hinweis für eine
+              spätere Prüfung durch einen Menschen. Sie trifft keine automatische Entscheidung über Wahrheit,
+              Dringlichkeit, Zuständigkeit, Weitergabe oder Veröffentlichung der Meldung.
+            </p>
+            <p>
+              Übermittelt werden nur die aktuellen Beschreibungstexte sowie die gewählte Kategorie und der räumliche
+              Bezug. Kontodaten, die separat gespeicherte Ortsangabe, Koordinaten und das Beobachtungsdatum werden
+              nicht an den Anbieter gesendet. Da der freie Beschreibungstext selbst persönliche Angaben enthalten
+              kann, nenne dort bitte keine persönlichen oder sensiblen Daten.
+            </p>
+            <p>
+              Für die Anbieterwahl werden OpenRouters Einstellungen gegen Datensammlung und Training sowie Zero Data
+              Retention (ZDR) verwendet. Trotzdem kann die Verarbeitung in einem Drittland außerhalb der EU/des EWR
+              stattfinden. Gespeichert wird nur das kontrollierte Ergebnis mit Modell- und Prüfungsversion, nicht die
+              Modellantwort oder der dafür erzeugte Prompt.
+            </p>
+          </Section>
+
           <Section title="Drittlandübermittlung">
             <p>
-              Bei der KI-Verarbeitung kann eine Übermittlung in Länder außerhalb der EU/des EWR erfolgen. Ich bemühe
-              mich, die Verarbeitung auf Anbieter mit angemessenem Datenschutzniveau bzw. geeigneten Garantien zu
-              beschränken und keine personenbezogenen Inhalte zu übermitteln.
+              Bei der KI-Verarbeitung kann eine Übermittlung in Länder außerhalb der EU/des EWR erfolgen. Die
+              Anbieterwahl wird technisch auf Endpunkte ohne Datensammlung oder Training und mit Zero Data Retention
+              beschränkt. Freie Texte werden dennoch nur übermittelt, wenn dies für die gewählte Funktion nötig ist;
+              sie können persönliche Inhalte enthalten, falls du solche selbst eingibst.
             </p>
           </Section>
 
@@ -99,8 +122,9 @@ export default function DatenschutzPage() {
 
           <Section title="Speicherdauer">
             <p>
-              Kontodaten werden gespeichert, solange dein Konto besteht. Server-Logs werden nur kurzzeitig zur
-              Sicherheit vorgehalten. Du kannst die Löschung deines Kontos jederzeit verlangen.
+              Kontodaten, private Problemmeldungen und ihre Prüfergebnisse werden gespeichert, solange dein Konto
+              besteht. Server-Logs werden nur kurzzeitig zur Sicherheit vorgehalten. Du kannst die Löschung deines
+              Kontos jederzeit verlangen.
             </p>
           </Section>
 

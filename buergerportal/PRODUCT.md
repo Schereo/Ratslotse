@@ -146,8 +146,10 @@ Nach erfolgreichem Absenden ist der lokale Sitzungsstand entfernt. Die
 Bestätigung sagt nur, dass die Meldung privat eingegangen und nicht automatisch
 öffentlich ist. Der Meldeweg nennt dauerhaft die Projektunabhängigkeit und weist
 knapp darauf hin, dass er kein Notrufkanal ist; bei akuter Gefahr gilt 112. Er
-führt keinen öffentlichen Problemabgleich, keine Sicherheitsklassifikation,
-keinen KI-Aufruf, keine Moderation, Clusterung oder Veröffentlichung aus.
+führt keinen öffentlichen Problemabgleich, keine Sicherheitsklassifikation und
+keinen direkten KI-Aufruf aus. Seit Iteration 9 erklärt die Prüfseite vor dem
+Absenden die getrennte automatische externe Vorprüfung; Moderation, Clusterung
+und Veröffentlichung bleiben ausgeschlossen.
 
 ## Lokale Weitergabeprüfung — Iteration 7
 
@@ -184,6 +186,37 @@ This view does not claim that Ratslotse or the City of Oldenburg is processing a
 report. It performs no AI call, moderation, clustering, assignment, or
 publication and does not change the public problem projection.
 
+## External AI pre-screening — Iteration 9
+
+After a private submission has succeeded, the backend automatically schedules
+external pre-screening for its exact revision. Only a current local
+`external_review_candidate` may reach the evaluator. The provider receives the
+current observation texts, category, and scope—never account/report identity,
+the separately stored location label, coordinates, observation dates,
+idempotency data, local evidence, forwarding state, or public-problem data.
+
+The reporting review screen explains before submission that description text
+may be sent automatically through OpenRouter. It identifies the fields that are
+not sent and tells people not to enter personal or sensitive information in the
+free text. The privacy page documents possible third-country processing,
+minimization, and the no-training/Zero Data Retention provider routing. This is
+a disclosure, not a second opt-in step.
+
+The provider can return only `suitable`, `needs_human_review`, or `unsuitable`
+with one controlled reason. `suitable` means only eligible for later human
+moderation. It does not establish truth, urgency, safety, severity, legal
+responsibility, assignment, City processing, or publication. Malformed output,
+provider failure, an active claim, stale/missing local evidence, or an
+ineligible owner produces no new assessment and cannot affect the private
+submission. The worker revalidates these prerequisites when provider dispatch
+starts. Durable claims prevent duplicate concurrent attempts, and an
+account-scoped rate limit bounds automatic provider cost without rejecting a
+successful private submission.
+
+Assessment evidence remains private and absent from “Meine Meldungen” and all
+owner API responses. No admin decision, owner rejection state, clustering,
+assignment, or public projection is added in this iteration.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -195,7 +228,7 @@ publication and does not change the public problem projection.
 | `/meine-meldungen` | verifiziertes Nicht-Admin-Konto | Iteration 8 |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 8 adds only the owner-bound private read view and draft continuation.
-Later-observation APIs, a public timeline, external AI, moderation tooling,
-clustering, assignment, and automatic publication remain reserved for later
-slices.
+Iteration 9 adds only revision-bound private external AI pre-screening after
+local eligibility. Later-observation APIs, a public timeline, moderation
+tooling, clustering, assignment, and automatic publication remain reserved for
+later slices.

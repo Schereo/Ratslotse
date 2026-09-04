@@ -44,16 +44,22 @@ beginnt kein späterer Punkt.
    `feature` and accepted.** Revision-bound immutable evidence with controlled
    blocking reasons; private submissions remain stored while external processing
    and public projections stay closed.
-8. **Owner-bound “Meine Meldungen” (#1106): implemented on this task branch.**
-   Bounded newest-first summaries, private details, explicit loading/empty/error
-   states, and duplicate-safe continuation of an existing server draft.
-9. External AI pre-screening as separate immutable evidence.
+8. **Owner-bound “Meine Meldungen” (#1106): deployed to `feature` and
+   accepted.** Bounded newest-first summaries, private inline details, explicit
+   loading/empty/error states, and duplicate-safe continuation of an existing
+   server draft.
+9. **External AI pre-screening (#1113): implemented on this task branch.**
+   Minimized provider input after dispatch-time eligibility revalidation,
+   durable claims, account-scoped cost limiting, strict controlled output,
+   immutable revision-bound evidence, automatic background scheduling, and
+   visible privacy disclosure.
 10. Private human moderation without publication.
 11. Human-confirmed assignment and public projection.
 12. Beta operations and hardening.
 
 ## Not part of the Bürgerportal yet
 
-Later-observation HTTP APIs, external AI calls, moderation tooling, clustering,
-automatic publication, uploads, and public comments remain excluded. Iteration 8
-is complete only after the deployed owner view has been explicitly accepted.
+Later-observation HTTP APIs, human moderation tooling, clustering, assignment,
+automatic publication, uploads, and public comments remain excluded. Iteration 9
+is complete only after deployment, guarded live verification, deletion/privacy
+checks, and explicit acceptance on `feature.ratslotse.de`.

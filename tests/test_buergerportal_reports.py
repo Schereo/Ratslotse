@@ -99,6 +99,8 @@ def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
                WHERE tbl_name IN (
                    'civic_reports', 'civic_report_observations',
                    'civic_report_local_screenings',
+                   'civic_report_ai_screening_claims',
+                   'civic_report_ai_screenings',
                    'civic_report_schema_migrations'
                )
                ORDER BY type, name"""
@@ -117,7 +119,14 @@ def _private_data_schema_signature(database) -> list[tuple[str, str, str | None]
     ]
 
 
+def _drop_ai_screening_schema(connection: sqlite3.Connection) -> None:
+    connection.execute("DROP TABLE IF EXISTS civic_report_ai_screenings")
+    connection.execute("DROP TABLE IF EXISTS civic_report_ai_screening_claims")
+    connection.execute("DROP INDEX IF EXISTS uq_civic_report_local_screening_identity")
+
+
 def _drop_local_screening_schema(connection: sqlite3.Connection) -> None:
+    _drop_ai_screening_schema(connection)
     connection.execute("DROP TABLE IF EXISTS civic_report_local_screenings")
 
 
@@ -128,6 +137,14 @@ def _drop_private_triggers(connection: sqlite3.Connection) -> None:
     ).fetchall()
     for (trigger,) in triggers:
         connection.execute(f'DROP TRIGGER "{trigger}"')
+
+
+def _downgrade_private_schema_to_version_seven(database) -> None:
+    with sqlite3.connect(database) as connection:
+        _drop_ai_screening_schema(connection)
+        connection.execute(
+            "DELETE FROM civic_report_schema_migrations WHERE version >= 8"
+        )
 
 
 def _downgrade_private_schema_to_version_two(database) -> None:
@@ -230,8 +247,12 @@ def test_controlled_domain_types_match_their_runtime_values():
     )
 
     from buergerportal.reports import (
+        EXTERNAL_AI_SCREENING_REASONS,
+        EXTERNAL_AI_SCREENING_VERDICTS,
         LOCAL_SCREENING_OUTCOMES,
         LOCAL_SCREENING_REASONS,
+        ExternalAiScreeningReason,
+        ExternalAiScreeningVerdict,
         LocalScreeningOutcome,
         LocalScreeningReason,
     )
@@ -240,6 +261,8 @@ def test_controlled_domain_types_match_their_runtime_values():
     assert get_args(ScopeKind) == SCOPE_KINDS
     assert get_args(LocalScreeningOutcome) == LOCAL_SCREENING_OUTCOMES
     assert get_args(LocalScreeningReason) == LOCAL_SCREENING_REASONS
+    assert get_args(ExternalAiScreeningVerdict) == EXTERNAL_AI_SCREENING_VERDICTS
+    assert get_args(ExternalAiScreeningReason) == EXTERNAL_AI_SCREENING_REASONS
 
 
 def test_observation_date_uses_oldenburg_civil_day(monkeypatch, tmp_path):
@@ -794,6 +817,323 @@ def test_local_screening_storage_does_not_copy_identity_or_report_content(tmp_pa
     )
 
 
+def test_current_local_candidate_becomes_immutable_external_ai_evidence(tmp_path):
+    database = tmp_path / "ratslotse.sqlite"
+    store, submitted = _create_submitted_citywide_report(
+        database,
+        "Am fiktiven Platz ist eine Leuchte ausgefallen.",
+    )
+
+    candidate = store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=submitted.content_revision,
+        assessment_version=1,
+        claim_token="fiktiver-claim-0001",
+    )
+
+    assert candidate is not None
+    assert candidate.report_id == submitted.id
+    assert candidate.content_revision == submitted.content_revision
+    assert candidate.assessment_version == 1
+    screening_input = store.start_claimed_external_ai_screening(candidate)
+    assert screening_input is not None
+    assert screening_input.observation_texts == (
+        "Am fiktiven Platz ist eine Leuchte ausgefallen.",
+    )
+    assert screening_input.category == "other"
+    assert screening_input.scope_kind == "citywide"
+    assessment = store.complete_external_ai_screening(
+        candidate,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="fiktives-modell-v1",
+    )
+    assert assessment.report_id == submitted.id
+    assert assessment.content_revision == submitted.content_revision
+    assert assessment.assessment_version == 1
+    assert assessment.verdict == "suitable"
+    assert assessment.reason_code == "municipal_problem"
+    assert assessment.model_identifier == "fiktives-modell-v1"
+    assert assessment.created_at
+    assert store.get_current_external_ai_screening(submitted.id) == assessment
+
+    retry_claim = store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=submitted.content_revision,
+        assessment_version=1,
+        claim_token="fiktiver-claim-0002",
+    )
+    assert retry_claim is None
+    store.close()
+
+    with sqlite3.connect(database) as connection:
+        claim_columns = tuple(
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(civic_report_ai_screening_claims)"
+            )
+        )
+        columns = tuple(
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(civic_report_ai_screenings)"
+            )
+        )
+    assert claim_columns == (
+        "report_id",
+        "content_revision",
+        "local_screening_id",
+        "assessment_version",
+        "claim_token",
+        "lease_until",
+        "attempt_started_at",
+    )
+    assert columns == (
+        "id",
+        "report_id",
+        "content_revision",
+        "local_screening_id",
+        "assessment_version",
+        "verdict",
+        "reason_code",
+        "model_identifier",
+        "created_at",
+    )
+
+
+def test_external_ai_claim_is_exclusive_releasable_and_expiry_recoverable(tmp_path):
+    from buergerportal.reports import PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    first_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung für einen dauerhaften Claim.",
+    )
+    second_store = PrivateReportStore(database)
+    first = first_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=1,
+        assessment_version=1,
+        claim_token="fiktiver-claim-a",
+    )
+    assert first is not None
+    assert second_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=1,
+        assessment_version=1,
+        claim_token="fiktiver-claim-b",
+    ) is None
+    with sqlite3.connect(database) as connection:
+        with pytest.raises(sqlite3.IntegrityError, match="active"):
+            connection.execute(
+                """UPDATE civic_report_ai_screening_claims
+                   SET claim_token = 'fiktiver-direkter-diebstahl'
+                   WHERE report_id = ?""",
+                (submitted.id,),
+            )
+
+    assert first_store.release_external_ai_screening(first)
+    recovered = second_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=1,
+        assessment_version=1,
+        claim_token="fiktiver-claim-b",
+    )
+    assert recovered is not None
+    assert second_store.release_external_ai_screening(recovered)
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """INSERT INTO civic_report_ai_screening_claims (
+                   report_id, content_revision, local_screening_id,
+                   assessment_version, claim_token, lease_until
+               ) VALUES (?, 1, ?, 1, 'fiktiver-abgelaufener-claim',
+                         '2000-01-01T00:00:00+00:00')""",
+            (submitted.id, recovered.local_screening_id),
+        )
+    after_expiry = first_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=1,
+        assessment_version=1,
+        claim_token="fiktiver-claim-c",
+    )
+    assert after_expiry is not None
+    assert after_expiry.claim_token == "fiktiver-claim-c"
+    first_store.close()
+    second_store.close()
+
+
+def test_concurrent_external_ai_claims_allow_only_one_provider_worker(tmp_path):
+    from buergerportal.reports import PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    first_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung für nebenläufige Claims.",
+    )
+    second_store = PrivateReportStore(database)
+    barrier = Barrier(2)
+
+    def claim(store, token):
+        barrier.wait()
+        return store.claim_external_ai_screening(
+            submitted.id,
+            expected_revision=1,
+            assessment_version=1,
+            claim_token=token,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        claims = list(
+            executor.map(
+                claim,
+                (first_store, second_store),
+                ("fiktiver-claim-a", "fiktiver-claim-b"),
+            )
+        )
+
+    assert sum(candidate is not None for candidate in claims) == 1
+    first_store.close()
+    second_store.close()
+
+
+def test_new_observation_makes_previous_external_ai_evidence_stale(tmp_path):
+    database = tmp_path / "ratslotse.sqlite"
+    store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung in Revision eins.",
+    )
+    candidate = store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=1,
+        assessment_version=1,
+        claim_token="fiktiver-claim-r1",
+    )
+    assert candidate is not None
+    assert store.start_claimed_external_ai_screening(candidate) is not None
+    stored = store.complete_external_ai_screening(
+        candidate,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="fiktives-modell-v1",
+    )
+
+    revised = store.append_owned_observation(
+        submitted.id,
+        reporter_id=17,
+        text="Fiktive ergänzende Beobachtung in Revision zwei.",
+        observed_on="2026-09-02",
+    )
+    assert revised.content_revision == 2
+    assert store.get_current_external_ai_screening(submitted.id) is None
+    assert store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=2,
+        assessment_version=1,
+        claim_token="fiktiver-claim-r2",
+    ) is None
+
+    store.assess_owned_submission(
+        submitted.id,
+        reporter_id=17,
+        expected_revision=2,
+    )
+    latest = store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=2,
+        assessment_version=1,
+        claim_token="fiktiver-claim-r2",
+    )
+    assert latest is not None
+    latest_input = store.start_claimed_external_ai_screening(latest)
+    assert latest_input is not None
+    assert latest_input.observation_texts == (
+        "Fiktive Beobachtung in Revision eins.",
+        "Fiktive ergänzende Beobachtung in Revision zwei.",
+    )
+    with sqlite3.connect(database) as connection:
+        preserved = connection.execute(
+            """SELECT verdict FROM civic_report_ai_screenings
+               WHERE report_id = ? AND content_revision = 1""",
+            (submitted.id,),
+        ).fetchone()
+    assert preserved == (stored.verdict,)
+    store.close()
+
+
+def test_external_ai_results_are_controlled_and_database_immutable(tmp_path):
+    database = tmp_path / "ratslotse.sqlite"
+    store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung für unveränderliche Evidenz.",
+    )
+    candidate = store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=1,
+        assessment_version=1,
+        claim_token="fiktiver-claim-immutable",
+    )
+    assert candidate is not None
+    assert store.start_claimed_external_ai_screening(candidate) is not None
+    with pytest.raises(ValueError, match="Grund"):
+        store.complete_external_ai_screening(
+            candidate,
+            verdict="suitable",
+            reason_code="commercial_or_spam",
+            model_identifier="fiktives-modell-v1",
+        )
+    with pytest.raises(ValueError, match="Modellkennung"):
+        store.complete_external_ai_screening(
+            candidate,
+            verdict="suitable",
+            reason_code="municipal_problem",
+            model_identifier="raw response must never be stored",
+        )
+    assessment = store.complete_external_ai_screening(
+        candidate,
+        verdict="needs_human_review",
+        reason_code="model_uncertain",
+        model_identifier="fiktives-modell-v1",
+    )
+    store.close()
+
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        with pytest.raises(sqlite3.IntegrityError, match="controlled result"):
+            connection.execute(
+                """INSERT INTO civic_report_ai_screenings (
+                       report_id, content_revision, local_screening_id,
+                       assessment_version, verdict, reason_code,
+                       model_identifier, created_at
+                   ) VALUES (?, 1, ?, 1, 'suitable', 'commercial_or_spam',
+                             'fiktives-modell-v1', ?)""",
+                (
+                    submitted.id,
+                    candidate.local_screening_id,
+                    assessment.created_at,
+                ),
+            )
+        connection.rollback()
+        with pytest.raises(sqlite3.IntegrityError, match="immutable"):
+            connection.execute(
+                """UPDATE civic_report_ai_screenings
+                   SET verdict = 'suitable' WHERE id = ?""",
+                (assessment.report_id,),
+            )
+        connection.rollback()
+        with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+            connection.execute(
+                "DELETE FROM civic_report_ai_screenings WHERE report_id = ?",
+                (submitted.id,),
+            )
+        connection.rollback()
+        with pytest.raises(sqlite3.IntegrityError, match="immutable"):
+            connection.execute(
+                """DELETE FROM civic_report_ai_screening_claims
+                   WHERE report_id = ?""",
+                (submitted.id,),
+            )
+
+
 def test_submission_runs_the_local_screening_without_external_processing(tmp_path):
     database = tmp_path / "ratslotse.sqlite"
     store, submitted = _create_submitted_citywide_report(
@@ -1149,6 +1489,12 @@ def test_database_rejects_screening_for_an_ineligible_owner(tmp_path):
         reporter_id=17,
         expected_revision=submitted.content_revision,
     ) is None
+    assert ineligible_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=submitted.content_revision,
+        assessment_version=1,
+        claim_token="fiktiver-gesperrter-claim",
+    ) is None
     ineligible_store.close()
 
     with sqlite3.connect(database) as connection:
@@ -1159,6 +1505,25 @@ def test_database_rejects_screening_for_an_ineligible_owner(tmp_path):
                        outcome, reason_codes_json, created_at
                    ) VALUES (?, ?, 2, 'external_review_candidate', '[]', ?)""",
                 (submitted.id, submitted.content_revision, submitted.submitted_at),
+            )
+        connection.rollback()
+        local_screening_id = connection.execute(
+            """SELECT id FROM civic_report_local_screenings
+               WHERE report_id = ? AND content_revision = ?""",
+            (submitted.id, submitted.content_revision),
+        ).fetchone()[0]
+        with pytest.raises(sqlite3.IntegrityError, match="current local candidate"):
+            connection.execute(
+                """INSERT INTO civic_report_ai_screening_claims (
+                       report_id, content_revision, local_screening_id,
+                       assessment_version, claim_token, lease_until
+                   ) VALUES (?, ?, ?, 1, 'fiktiver-direkt-claim', ?)""",
+                (
+                    submitted.id,
+                    submitted.content_revision,
+                    local_screening_id,
+                    "2099-01-01T00:00:00+00:00",
+                ),
             )
 
 
@@ -1431,6 +1796,20 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
         reporter_id=17,
         expected_revision=updated.content_revision,
     )
+    ai_candidate = private_store.claim_external_ai_screening(
+        second_id,
+        expected_revision=updated.content_revision,
+        assessment_version=1,
+        claim_token="fiktiver-loeschgrenzen-claim",
+    )
+    assert ai_candidate is not None
+    assert private_store.start_claimed_external_ai_screening(ai_candidate) is not None
+    private_store.complete_external_ai_screening(
+        ai_candidate,
+        verdict="needs_human_review",
+        reason_code="model_uncertain",
+        model_identifier="fiktives-modell-v1",
+    )
     other_id = private_store.create_draft(
         reporter_id=18,
         content=DraftContent(
@@ -1458,6 +1837,14 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     assert private_store.get_owned_report(first_id, reporter_id=17) is None
     assert private_store.get_owned_report(second_id, reporter_id=17) is None
     assert private_store.get_owned_report(other_id, reporter_id=18) is not None
+    assert private_store.get_current_external_ai_screening(second_id) is None
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM civic_report_ai_screening_claims"
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT COUNT(*) FROM civic_report_ai_screenings"
+        ).fetchone() == (0,)
     assert public_store.list_public_problems() == public_before
     private_store.close()
     public_store.close()
@@ -1468,6 +1855,57 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     assert "genauer Fantasieort" not in dump
     assert "bestätigter Inhalt" not in dump
     assert "wiederholte Beobachtung" not in dump
+
+
+def test_external_ai_migration_grows_version_seven_without_replacing_data(tmp_path):
+    from buergerportal.reports import PrivateReportStore
+    from buergerportal.store import ProblemStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    public_store = ProblemStore(database)
+    _insert_public_projection(database)
+    public_before = public_store.list_public_problems()
+    private_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive lokale Kandidatin vor der KI-Migration.",
+    )
+    private_store.close()
+    _downgrade_private_schema_to_version_seven(database)
+
+    migrated_store = PrivateReportStore(database)
+    candidate = migrated_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=submitted.content_revision,
+        assessment_version=1,
+        claim_token="fiktiver-migrations-claim",
+    )
+    assert candidate is not None
+    assert migrated_store.start_claimed_external_ai_screening(candidate) is not None
+    migrated_store.complete_external_ai_screening(
+        candidate,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="fiktives-modell-v1",
+    )
+    migrated_store.close()
+    migrated_schema = _private_schema_signature(database)
+    reopened_store = PrivateReportStore(database)
+    reopened_store.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh_store = PrivateReportStore(fresh_database)
+    fresh_store.close()
+
+    assert _private_schema_signature(database) == migrated_schema
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
+    assert public_store.list_public_problems() == public_before
+    public_store.close()
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
 
 
 def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_path):
@@ -1524,7 +1962,7 @@ def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_p
     with sqlite3.connect(database) as connection:
         assert connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
 
 
 def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
@@ -1583,7 +2021,7 @@ def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
                 (admin_id,),
             )
     assert "role = 'user'" in migrated_trigger
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -1631,7 +2069,7 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -1759,7 +2197,7 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
@@ -1803,4 +2241,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]

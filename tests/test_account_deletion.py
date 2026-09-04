@@ -114,6 +114,20 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
             reporter_id=owner,
             expected_revision=submitted.content_revision,
         )
+        candidate = private_reports.claim_external_ai_screening(
+            report_id,
+            expected_revision=submitted.content_revision,
+            assessment_version=1,
+            claim_token=f"fiktiver-loesch-claim-{owner}",
+        )
+        assert candidate is not None
+        assert private_reports.start_claimed_external_ai_screening(candidate) is not None
+        private_reports.complete_external_ai_screening(
+            candidate,
+            verdict="suitable",
+            reason_code="municipal_problem",
+            model_identifier="fiktives-modell-v1",
+        )
         report_ids[owner] = report_id
     with conn:
         for table, key in USER_OWNED_TABLES:
@@ -139,6 +153,16 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
         "SELECT report_id FROM civic_report_local_screenings ORDER BY report_id"
     ).fetchall()
     assert [row[0] for row in screenings] == [report_ids[2]]
+    ai_claims = conn.execute(
+        "SELECT report_id FROM civic_report_ai_screening_claims ORDER BY report_id"
+    ).fetchall()
+    ai_screenings = conn.execute(
+        "SELECT report_id FROM civic_report_ai_screenings ORDER BY report_id"
+    ).fetchall()
+    assert [row[0] for row in ai_claims] == [report_ids[2]]
+    assert [row[0] for row in ai_screenings] == [report_ids[2]]
+    assert private_reports.get_current_external_ai_screening(report_ids[1]) is None
+    assert private_reports.get_current_external_ai_screening(report_ids[2]) is not None
     assert private_reports.get_current_owned_screening(
         report_ids[1], reporter_id=1
     ) is None

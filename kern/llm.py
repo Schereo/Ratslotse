@@ -93,15 +93,28 @@ def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
 _IGNORE_CN_DEFAULT = "deepseek,baidu,streamlake,siliconflow,alibaba"
 
 
+def strict_privacy_routing_extra_body() -> dict[str, Any]:
+    """Non-overridable provider policy for private user-submitted content."""
+    return {
+        "provider": {
+            "data_collection": "deny",
+            "zdr": True,
+            "ignore": [slug for slug in _IGNORE_CN_DEFAULT.split(",") if slug],
+        }
+    }
+
+
 def _routing_extra_body() -> dict[str, Any]:
     if os.environ.get("NWZ_OPENROUTER_ROUTING", "on").strip().lower() == "off":
         return {}
-    provider: dict[str, Any] = {"data_collection": "deny"}
+    provider = dict(strict_privacy_routing_extra_body()["provider"])
     ignore = [s.strip() for s in os.environ.get("NWZ_OPENROUTER_IGNORE", _IGNORE_CN_DEFAULT).split(",") if s.strip()]
     if ignore:
         provider["ignore"] = ignore
-    if os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() not in ("0", "false", "off", "no"):
-        provider["zdr"] = True
+    else:
+        provider.pop("ignore")
+    if os.environ.get("NWZ_OPENROUTER_ZDR", "1").strip().lower() in ("0", "false", "off", "no"):
+        provider.pop("zdr")
     return {"provider": provider}
 
 

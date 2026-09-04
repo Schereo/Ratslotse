@@ -17,7 +17,7 @@ from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
 #: Wo `_feature=` gesetzt wird.
-QUELLEN = ("council", "kern", "scripts", "web/backend", "eval")
+QUELLEN = ("buergerportal", "council", "kern", "scripts", "web/backend", "eval")
 ADMIN = WURZEL / "web" / "frontend" / "app" / "(app)" / "admin" / "page.tsx"
 
 #: Werte, die es nur noch im BESTAND gibt — sie tauchen in der Kostentabelle

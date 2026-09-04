@@ -118,3 +118,31 @@ below later reports in the overview. Continuing a draft records that existing
 report ID in the short-lived account-bound browser session and reloads the
 authoritative server revision in the reporting flow. It never creates a
 replacement draft. Submitted reports remain read-only.
+
+## External AI pre-screening since Iteration 9
+
+A successful private submission schedules a background pre-screening only after
+its current revision has immutable `external_review_candidate` evidence under
+the active local ruleset. The worker opens a fresh `PrivateReportStore`
+connection and gives the evaluator only current observation texts plus the
+controlled category and scope. Account/report identity, separately stored
+location labels, coordinates, dates, idempotency data, local evidence, and
+public-problem data never cross the evaluator boundary.
+
+`civic_report_ai_screening_claims` provides a durable revision/version lease so
+one provider attempt is active at a time. Immediately before dispatch, the
+worker atomically marks the attempt started, revalidates the report revision,
+owner, and local evidence, and reads a fresh minimized payload. A per-account
+submission rate limit adds a cost ceiling without ever failing the private
+response. A valid controlled result becomes one immutable
+`civic_report_ai_screenings` row linked to the qualifying local evidence.
+Provider failures and malformed output release the unfinished claim without
+changing the private submission; expired claims can be recovered and completed
+evidence is reused. A later observation makes old evidence ineligible without
+deleting it.
+
+The browser discloses automatic processing before submission and warns people
+not to put personal or sensitive facts in free text. Owner HTTP responses and
+states still expose no screening or forwarding information. The AI verdict is
+private evidence for later human moderation, never a truth, urgency, safety,
+assignment, rejection, or publication decision.

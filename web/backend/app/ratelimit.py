@@ -74,6 +74,9 @@ verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
+# Private report submission must always succeed independently, but automatic
+# background AI work still needs an account-scoped cost ceiling.
+civic_report_screening_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Daumen-Feedback ist anonym beschreibbar — ohne Limit ließe sich die Tabelle
 # (und mit ihr Backups + Off-Site-Mirror) per Skript um Gigabytes aufblähen.
 # 20 pro 10 Minuten deckt jedes ehrliche Gespräch, auch mit Grund-Nachträgen.
