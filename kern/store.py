@@ -455,6 +455,17 @@ CREATE TABLE IF NOT EXISTS request_errors (
     first_seen  TEXT NOT NULL,           -- ISO, UTC
     last_seen   TEXT NOT NULL,
     count       INTEGER NOT NULL DEFAULT 1,
+    -- Woher der Fehler kam: `server` (unbehandelte Ausnahme im Backend) oder
+    -- `browser` (gemeldet vom Frontend). Beide teilen sich die Tabelle, weil
+    -- sie dieselbe Frage beantworten — „was ist kaputt?" — und dieselbe
+    -- Behandlung brauchen (gruppieren, melden, abhaken).
+    quelle      TEXT NOT NULL DEFAULT 'server',
+    -- Tagesverlauf als JSON-Objekt {"2026-09-04": 37, …}, auf 30 Tage
+    -- begrenzt. Ein eigener Ereignis-Tisch wäre genauer und würde bei einem
+    -- Ausfall in Minuten volllaufen; dies hier bleibt klein und reicht für
+    -- die einzige Frage, die man an den Verlauf stellt: seit wann, und wird
+    -- es mehr oder weniger?
+    daily       TEXT,
     -- Abgehakt heißt „angesehen und behandelt". Taucht der Fehler danach
     -- WIEDER auf, wird es zurückgesetzt: Ein Haken auf etwas, das weiter
     -- passiert, wäre eine Lüge.
@@ -656,6 +667,30 @@ TABELLEN_UMBENANNT: list[tuple[str, str]] = [
     ("migrationsmarken", "migration_marks"),
     ("vorlage_follows", "template_follows"),
 ]
+
+#: So viele Tage Verlauf werden je Fehlerart aufgehoben. Mehr zeigt keine
+#: Grafik, und jeder weitere Tag ist Text in einer Spalte.
+VERLAUF_TAGE = 30
+
+
+def _verlauf_lesen(roh: str | None) -> dict[str, int]:
+    """Den Tagesverlauf aus der Spalte holen. Kaputtes gilt als leer."""
+    try:
+        d = json.loads(roh) if roh else {}
+        return {str(k): int(v) for k, v in d.items()} if isinstance(d, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def _verlauf_plus(roh: str | None, tag: str) -> dict[str, int]:
+    """Einen Tag hochzählen und auf die letzten Tage beschneiden."""
+    d = _verlauf_lesen(roh)
+    d[tag] = d.get(tag, 0) + 1
+    if len(d) > VERLAUF_TAGE:
+        for alt in sorted(d)[:-VERLAUF_TAGE]:
+            del d[alt]
+    return d
+
 
 class Store:
     def __init__(self, path: str | Path):
@@ -1294,6 +1329,19 @@ class Store:
         if nq_cols and "push_text" not in nq_cols:
             with self._conn:
                 self._conn.execute("ALTER TABLE notification_queue ADD COLUMN push_text TEXT")
+        # Der Fehler-Sammler kam zuerst nur mit Server-Fehlern; Herkunft und
+        # Tagesverlauf sind nachgezogen. Ohne diesen Schritt scheitert das
+        # Festhalten auf einer bestehenden Datei — und zwar still, weil
+        # `merke_request_fehler` bewusst nie wirft.
+        re_cols = self._table_cols("request_errors")
+        if re_cols:
+            with self._conn:
+                if "quelle" not in re_cols:
+                    self._conn.execute(
+                        "ALTER TABLE request_errors ADD COLUMN "
+                        "quelle TEXT NOT NULL DEFAULT 'server'")
+                if "daily" not in re_cols:
+                    self._conn.execute("ALTER TABLE request_errors ADD COLUMN daily TEXT")
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
@@ -2735,21 +2783,25 @@ class Store:
         try:
             with self._conn:
                 vorher = self._conn.execute(
-                    "SELECT id, resolved_at FROM request_errors WHERE fingerprint = ?",
+                    "SELECT id, resolved_at, daily FROM request_errors WHERE fingerprint = ?",
                     (daten["fingerprint"],)).fetchone()
+                heute = jetzt[:10]
                 if vorher is None:
                     self._conn.execute(
                         "INSERT INTO request_errors (fingerprint, exc_type, message, "
-                        " route, method, trace, first_seen, last_seen, count) "
-                        "VALUES (?,?,?,?,?,?,?,?,1)",
+                        " route, method, trace, quelle, first_seen, last_seen, count, daily) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,1,?)",
                         (daten["fingerprint"], daten["exc_type"], daten["message"],
-                         daten["route"], daten["method"], daten["trace"], jetzt, jetzt))
+                         daten["route"], daten["method"], daten["trace"],
+                         daten.get("quelle", "server"), jetzt, jetzt,
+                         json.dumps({heute: 1})))
                     return True
                 war_abgehakt = vorher["resolved_at"] is not None
                 self._conn.execute(
                     "UPDATE request_errors SET last_seen = ?, count = count + 1, "
-                    " message = ?, trace = ?, resolved_at = NULL WHERE id = ?",
-                    (jetzt, daten["message"], daten["trace"], vorher["id"]))
+                    " message = ?, trace = ?, daily = ?, resolved_at = NULL WHERE id = ?",
+                    (jetzt, daten["message"], daten["trace"],
+                     json.dumps(_verlauf_plus(vorher["daily"], heute)), vorher["id"]))
                 return war_abgehakt
         except sqlite3.Error:
             logger.exception("Fehler ließ sich nicht festhalten")
@@ -2761,7 +2813,15 @@ class Store:
         rows = self._conn.execute(
             f"SELECT * FROM request_errors {where} ORDER BY last_seen DESC LIMIT ?",
             (limit,)).fetchall()
-        return [dict(r) for r in rows]
+        aus = []
+        for r in rows:
+            z = dict(r)
+            # Als Liste von Paaren statt als Objekt: Die Grafik braucht eine
+            # Reihenfolge, und ein JSON-Objekt hat keine.
+            verlauf = _verlauf_lesen(z.pop("daily", None))
+            z["daily"] = [{"tag": t, "n": n} for t, n in sorted(verlauf.items())]
+            aus.append(z)
+        return aus
 
     def request_fehler_offen(self) -> int:
         """Wie viele Fehlerarten sind unerledigt? Für das Abzeichen im Panel."""

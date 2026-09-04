@@ -17,7 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from kern.fehler import aufbereiten, fingerabdruck, route_vorlage, saeubern, spur
+from kern.fehler import (aufbereiten, browser_aufbereiten, fingerabdruck,
+                         route_vorlage, saeubern, spur)
 from kern.store import Store
 
 WURZEL = Path(__file__).resolve().parents[1]
@@ -207,21 +208,32 @@ def test_aufbereiten_liefert_genau_die_erlaubten_felder():
 # Der Weg durch die laufende API
 # ---------------------------------------------------------------------------
 
-def _api():
-    """Die App mit einer eigenen Datenbank — der Sammler schreibt echt."""
+def _api(tmp_path, monkeypatch):
+    """Die App mit einer EIGENEN, leeren Datenbank — der Sammler schreibt echt.
+
+    Die eigene Datei ist Pflicht, nicht Kosmetik: Ohne sie schreibt der Test in
+    ``data/ratslotse.sqlite`` des Arbeitsbaums, die Zeile überlebt den Lauf,
+    und beim zweiten Mal ist der Fehler nicht mehr neu — die Alarm-Prüfung
+    ginge dann still von grün nach rot, ohne dass sich am Code etwas geändert
+    hätte.
+    """
     import sys
 
     sys.path.insert(0, str(WURZEL / "web" / "backend"))
     from fastapi.testclient import TestClient
 
+    from app.config import get_settings
     from app.main import app
 
-    return app, TestClient(app, raise_server_exceptions=False)
+    db = str(tmp_path / "ratslotse.sqlite")
+    Store(db).close()                    # Schema anlegen
+    monkeypatch.setattr(get_settings(), "ratslotse_db", db)
+    return app, TestClient(app, raise_server_exceptions=False), db
 
 
-def test_ein_500er_landet_in_der_tabelle_und_meldet_sich_einmal(monkeypatch):
+def test_ein_500er_landet_in_der_tabelle_und_meldet_sich_einmal(tmp_path, monkeypatch):
     """Drei kaputte Aufrufe, EINE Zeile — und genau EINE Meldung."""
-    app, client = _api()
+    app, client, db = _api(tmp_path, monkeypatch)
     gemeldet: list[str] = []
     import kern.alerts
 
@@ -238,9 +250,7 @@ def test_ein_500er_landet_in_der_tabelle_und_meldet_sich_einmal(monkeypatch):
         # Der Nutzer bekommt einen Satz, keinen Traceback.
         assert "schiefgegangen" in antwort.json()["detail"]
 
-    from app.deps import get_settings
-
-    store = Store(get_settings().ratslotse_db)
+    store = Store(db)
     try:
         zeilen = [z for z in store.request_fehler()
                   if z["route"] == "/api/_probe_fehlersammler"]
@@ -256,10 +266,10 @@ def test_ein_500er_landet_in_der_tabelle_und_meldet_sich_einmal(monkeypatch):
         "Postfach, und die eine wichtige Mail geht darin unter.")
 
 
-def test_der_traceback_bleibt_im_log(caplog):
+def test_der_traceback_bleibt_im_log(caplog, tmp_path, monkeypatch):
     """Bisher schrieb ihn Starlettes Standard-Handler. Den ersetzen wir —
     ohne das `logger.exception` wäre er weg, und das Server-Log bliebe stumm."""
-    app, client = _api()
+    app, client, _ = _api(tmp_path, monkeypatch)
 
     @app.get("/api/_probe_log")
     def _kaputt():                      # pragma: no cover — wirft immer
@@ -269,3 +279,95 @@ def test_der_traceback_bleibt_im_log(caplog):
         client.get("/api/_probe_log")
     assert any("Unbehandelter Fehler" in r.message or "etwas ging schief" in str(r.exc_info)
                for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Meldungen aus dem Browser — FREMDE Eingabe
+# ---------------------------------------------------------------------------
+
+def test_eine_browser_meldung_wird_gesaeubert():
+    """Der Endpunkt ist offen; jeder kann hineinschreiben, was er will."""
+    d = browser_aufbereiten({
+        "name": "TypeError", "message": "Konto person@example.org, id 987654321",
+        "stack": "at h (/_next/static/chunks/abc.js:1:23)",
+        "route": "/haushalt/schulden"}, "/haushalt/schulden")
+    assert "@" not in d["message"]
+    assert "<zahl>" in d["message"]
+    assert d["quelle"] == "browser"
+    assert d["method"] == "BROWSER"
+
+
+def test_eine_leere_meldung_wird_nicht_abgelehnt():
+    """Eine Fehlermeldung, die selbst an einer Formalie scheitert, hilft
+    niemandem — ersetzen statt ablehnen."""
+    d = browser_aufbereiten({}, "/x")
+    assert d["exc_type"] == "Error"
+    assert d["route"] == "/x"
+    assert d["fingerprint"]
+
+
+def test_browser_und_server_vermischen_sich_nicht():
+    """Sonst könnte jemand mit einer erfundenen Meldung eine echte Zeile
+    überschreiben."""
+    def kaputt():
+        raise TypeError("x")
+
+    server = aufbereiten(_wirf(kaputt), "GET", "/api/x", "/api/x")
+    browser = browser_aufbereiten({"name": "TypeError", "message": "x", "route": "/api/x"},
+                                  "/api/x")
+    assert server["fingerprint"] != browser["fingerprint"]
+
+
+def test_der_stapel_wird_gekappt():
+    lang = "\n".join(f"at f{i} (/a.js:{i}:1)" for i in range(40))
+    d = browser_aufbereiten({"name": "E", "stack": lang, "route": "/x"}, "/x")
+    assert len(d["trace"].splitlines()) <= 8
+
+
+# ---------------------------------------------------------------------------
+# Der Tagesverlauf
+# ---------------------------------------------------------------------------
+
+def test_der_verlauf_zaehlt_je_tag(store):
+    for _ in range(4):
+        store.merke_request_fehler(_daten())
+    verlauf = store.request_fehler()[0]["daily"]
+    assert len(verlauf) == 1
+    assert verlauf[0]["n"] == 4
+
+
+def test_der_verlauf_bleibt_begrenzt():
+    """Ein eigener Ereignis-Tisch liefe bei einem Ausfall in Minuten voll;
+    dies hier bleibt klein."""
+    import json
+
+    from kern.store import VERLAUF_TAGE, _verlauf_plus
+
+    voll = json.dumps({f"2026-01-{i:02d}": 1 for i in range(1, 32)})
+    assert len(_verlauf_plus(voll, "2026-02-01")) == VERLAUF_TAGE
+
+
+def test_ein_kaputter_verlauf_gilt_als_leer():
+    from kern.store import _verlauf_lesen
+
+    for roh in (None, "", "{kein json", "[]", "3"):
+        assert _verlauf_lesen(roh) == {}
+
+
+def test_der_browser_endpunkt_speichert_und_antwortet_immer_200(tmp_path, monkeypatch):
+    app, client, db = _api(tmp_path, monkeypatch)
+    antwort = client.post("/api/client-errors", json={
+        "name": "TypeError", "message": "kaputt",
+        "stack": "at h (/x.js:1:1)", "route": "/haushalt"})
+    assert antwort.status_code == 200
+
+    store = Store(db)
+    try:
+        zeilen = [z for z in store.request_fehler() if z["quelle"] == "browser"]
+        assert zeilen and zeilen[0]["route"] == "/haushalt"
+    finally:
+        store.close()
+
+    # Auch krumme Nutzlast bekommt 200: Wer einen Fehler meldet, hat schon
+    # einen — ein zweiter hilft niemandem.
+    assert client.post("/api/client-errors", json={}).status_code == 200

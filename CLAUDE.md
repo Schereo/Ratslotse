@@ -629,5 +629,19 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   Traceback. Adressen und lange Kennungen im Fehlertext werden maskiert. Wer
   ein Feld ergänzt, beantwortet zuerst die Frage, ob es etwas Persönliches
   tragen kann — `tests/test_fehlersammler.py` hält die Liste fest.
+- **Fehler-Sammler**: Ein unbehandelter 500er im Web ging bis 09/2026 ins
+  `journalctl` und sonst nirgendwohin. Jetzt fängt ihn ein
+  `exception_handler` in `web/backend/app/main.py`, gruppiert ihn über einen
+  Fingerabdruck (`kern/fehler.py`) in die Tabelle `request_errors` und meldet
+  **nur die erste Begegnung** per Mail — sonst flutete ein Ausfall das
+  Postfach. Sichtbar im Admin-Panel unter *Fehler*, samt 30-Tage-Verlauf und
+  Haken zum Abarbeiten. Dieselbe Liste nimmt Meldungen aus dem **Browser**
+  auf (`web/frontend/lib/fehler-melden.ts` → offener Endpunkt
+  `POST /api/client-errors`, immer 200, gebremst). Gespeichert werden Typ,
+  Meldung, Stapel und die **Pfad-Vorlage**; maskiert werden Adressen, Token
+  und lange Kennungen — **keine Query, kein Konto, kein Cookie, kein
+  User-Agent**. Wer daran etwas ändert, liest zuerst
+  `tests/test_fehlersammler.py`: Er prüft vor allem, was NICHT gespeichert
+  wird.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

@@ -286,6 +286,24 @@
         "title": "AdminFeedbackRow",
         "type": "object"
       },
+      "AdminFehlerTag": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "n"
+        ],
+        "title": "AdminFehlerTag",
+        "type": "object"
+      },
       "AdminGrowth": {
         "properties": {
           "clients": {
@@ -1018,6 +1036,13 @@
             "title": "Count",
             "type": "integer"
           },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFehlerTag"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
           "exc_type": {
             "title": "Exc Type",
             "type": "string"
@@ -1043,6 +1068,10 @@
           },
           "method": {
             "title": "Method",
+            "type": "string"
+          },
+          "quelle": {
+            "title": "Quelle",
             "type": "string"
           },
           "resolved_at": {
@@ -1074,7 +1103,9 @@
           "first_seen",
           "last_seen",
           "count",
-          "resolved_at"
+          "resolved_at",
+          "quelle",
+          "daily"
         ],
         "title": "AdminRequestFehler",
         "type": "object"
@@ -4013,6 +4044,37 @@
           "months"
         ],
         "title": "CityTopicSuggestion",
+        "type": "object"
+      },
+      "ClientErrorIn": {
+        "description": "Eine Fehlermeldung aus dem Browser.\n\nAlle Felder sind großzügig begrenzt und werden serverseitig NOCHMALS\ngekürzt und maskiert (``kern/fehler.py``): Das Schema hält die Nutzlast\nklein, die Säuberung hält Persönliches heraus. Beides ist nötig — das\nSchema allein ließe eine Adresse durch, die Säuberung allein ein Megabyte.",
+        "properties": {
+          "message": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "default": "Error",
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          },
+          "route": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          },
+          "stack": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Stack",
+            "type": "string"
+          }
+        },
+        "title": "ClientErrorIn",
         "type": "object"
       },
       "CommitteeDetail": {
@@ -14663,6 +14725,48 @@
         "summary": "Set Notification",
         "tags": [
           "bookmarks"
+        ]
+      }
+    },
+    "/api/client-errors": {
+      "post": {
+        "description": "Ein Fehler aus dem Browser — dieselbe Tabelle wie die des Backends.\n\n**Warum offen (ohne Konto).** Ein Fehler kann jeden treffen, auch jemanden\nohne Anmeldung, und gerade der Anmeldebildschirm ist eine Stelle, an der\netwas kaputtgehen kann. Ein Sammler, der genau dort schweigt, verfehlt\nseinen Zweck.\n\n**Was das kostet und wie es begrenzt ist.** Offen heißt fremde Eingabe:\nJeder kann hierher schreiben. Dagegen stehen drei Dinge — die Bremse je\nAdresse, die Längengrenzen im Schema und die Säuberung in\n``kern/fehler.py``. Eine erfundene Meldung erzeugt eine eigene Zeile im\nPanel und vermischt sich nicht mit echten; mehr Schaden kann sie nicht\nanrichten.\n\n**Immer 200.** Wer einen Fehler meldet, hat schon einen — ein zweiter\n(weil unsere Bremse greift oder die Nutzlast krumm ist) hilft niemandem\nund erzeugte im Browser nur eine weitere Fehlermeldung, die gemeldet\nwerden will.",
+        "operationId": "melden_api_client_errors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientErrorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Melden",
+        "tags": [
+          "client-errors"
         ]
       }
     },

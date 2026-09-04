@@ -941,6 +941,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/client-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Melden
+         * @description Ein Fehler aus dem Browser — dieselbe Tabelle wie die des Backends.
+         *
+         *     **Warum offen (ohne Konto).** Ein Fehler kann jeden treffen, auch jemanden
+         *     ohne Anmeldung, und gerade der Anmeldebildschirm ist eine Stelle, an der
+         *     etwas kaputtgehen kann. Ein Sammler, der genau dort schweigt, verfehlt
+         *     seinen Zweck.
+         *
+         *     **Was das kostet und wie es begrenzt ist.** Offen heißt fremde Eingabe:
+         *     Jeder kann hierher schreiben. Dagegen stehen drei Dinge — die Bremse je
+         *     Adresse, die Längengrenzen im Schema und die Säuberung in
+         *     ``kern/fehler.py``. Eine erfundene Meldung erzeugt eine eigene Zeile im
+         *     Panel und vermischt sich nicht mit echten; mehr Schaden kann sie nicht
+         *     anrichten.
+         *
+         *     **Immer 200.** Wer einen Fehler meldet, hat schon einen — ein zweiter
+         *     (weil unsere Bremse greift oder die Nutzlast krumm ist) hilft niemandem
+         *     und erzeugte im Browser nur eine weitere Fehlermeldung, die gemeldet
+         *     werden will.
+         */
+        post: operations["melden_api_client_errors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/analysis": {
         parameters: {
             query?: never;
@@ -4023,6 +4060,13 @@ export interface components {
             /** Read At */
             read_at: string | null;
         };
+        /** AdminFehlerTag */
+        AdminFehlerTag: {
+            /** N */
+            n: number;
+            /** Tag */
+            tag: string;
+        };
         /** AdminGrowth */
         AdminGrowth: {
             /** Clients */
@@ -4306,6 +4350,8 @@ export interface components {
         AdminRequestFehler: {
             /** Count */
             count: number;
+            /** Daily */
+            daily: components["schemas"]["AdminFehlerTag"][];
             /** Exc Type */
             exc_type: string;
             /** First Seen */
@@ -4318,6 +4364,8 @@ export interface components {
             message: string | null;
             /** Method */
             method: string;
+            /** Quelle */
+            quelle: string;
             /** Resolved At */
             resolved_at: string | null;
             /** Route */
@@ -5585,6 +5633,37 @@ export interface components {
             n: number;
             /** Name */
             name: string;
+        };
+        /**
+         * ClientErrorIn
+         * @description Eine Fehlermeldung aus dem Browser.
+         *
+         *     Alle Felder sind großzügig begrenzt und werden serverseitig NOCHMALS
+         *     gekürzt und maskiert (``kern/fehler.py``): Das Schema hält die Nutzlast
+         *     klein, die Säuberung hält Persönliches heraus. Beides ist nötig — das
+         *     Schema allein ließe eine Adresse durch, die Säuberung allein ein Megabyte.
+         */
+        ClientErrorIn: {
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Name
+             * @default Error
+             */
+            name: string;
+            /**
+             * Route
+             * @default
+             */
+            route: string;
+            /**
+             * Stack
+             * @default
+             */
+            stack: string;
         };
         /** CommitteeDetail */
         CommitteeDetail: {
@@ -10587,6 +10666,39 @@ export interface operations {
             };
         };
     };
+    melden_api_client_errors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientErrorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     analysis_api_council_analysis_get: {
         parameters: {
             query?: never;
@@ -13978,4 +14090,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b3dfc5c61dbe40fc629eeee06cce1695ee9ec2e99c405dd33cbf5c7832b936a7
+// vertrag-sha256: d02d5c6caa1175b8eaefecefc3b2b9c4cc58f1fdafd3f887c541f6896507cf0c

@@ -139,3 +139,55 @@ def aufbereiten(exc: BaseException, methode: str, route: str | None,
         "method": (methode or "?").upper()[:10],
         "trace": saeubern(spur(exc), laenge=2000, zeilen=True),
     }
+
+
+# ---------------------------------------------------------------------------
+# Meldungen aus dem Browser
+# ---------------------------------------------------------------------------
+#
+# Dieselbe Tabelle, dieselbe Gruppierung, dieselbe Behandlung — nur kommt die
+# Ausnahme hier nicht aus unserem Prozess, sondern über die Leitung. Damit ist
+# sie FREMDE EINGABE: Jeder kann auf den Endpunkt schreiben, was er will.
+#
+# Zwei Folgen, die den Zuschnitt bestimmen:
+#
+# 1. **Alles wird gekürzt und maskiert**, bevor es gespeichert wird — sonst
+#    schriebe uns jemand die Datenbank voll oder legte eine fremde Adresse
+#    hinein, die dort nichts zu suchen hat.
+# 2. **Der Fingerabdruck entsteht aus dem, was gemeldet wurde**, nicht aus
+#    einem Traceback, den wir selbst gelaufen sind. Eine erfundene Meldung
+#    erzeugt damit eine eigene Zeile und vermischt sich nicht mit echten.
+
+#: So viele Zeilen Stapel werden aus einer Browser-Meldung übernommen. Der
+#: Rest ist Rauschen aus dem Framework.
+BROWSER_STAPEL_ZEILEN = 8
+
+
+def browser_aufbereiten(meldung: dict, pfad: str) -> dict:
+    """Aus einer Browser-Meldung das machen, was in die Tabelle darf.
+
+    ``meldung`` kommt vom Client und ist ungeprüft. Erwartet werden ``name``,
+    ``message``, ``stack`` und ``route``; fehlt etwas, wird es ersetzt statt
+    abgelehnt — eine Fehlermeldung, die selbst an einer Formalie scheitert,
+    hilft niemandem.
+    """
+    typ = saeubern(str(meldung.get("name") or "Error"), laenge=60) or "Error"
+    text = saeubern(str(meldung.get("message") or ""))
+    roher_stapel = str(meldung.get("stack") or "")
+    stapel = saeubern("\n".join(roher_stapel.splitlines()[:BROWSER_STAPEL_ZEILEN]),
+                      laenge=2000, zeilen=True)
+    route = route_vorlage(None, str(meldung.get("route") or pfad))
+    # Ohne echten Traceback wird der Fingerabdruck aus dem gebildet, was da
+    # ist: Typ, Route und die ERSTE Stapelzeile (die tiefste Stelle im Code).
+    erste = stapel.splitlines()[0] if stapel else text[:80]
+    roh = f"browser|{typ}|{erste}|{route}"
+    return {
+        "fingerprint": hashlib.sha1(roh.encode("utf-8"),
+                                    usedforsecurity=False).hexdigest()[:16],
+        "exc_type": typ,
+        "message": text,
+        "route": route,
+        "method": "BROWSER",
+        "trace": stapel,
+        "quelle": "browser",
+    }

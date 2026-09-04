@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
@@ -136,7 +137,11 @@ def request_fehler(
     Das Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in
     ``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.
     """
-    return store.request_fehler(limit=min(limit, 200), nur_offen=nur_offen)
+    # `cast`, weil der Store rohe SQLite-Zeilen als `dict` liefert. Die Form
+    # hält `AdminRequestFehler` in `antworten.py` fest, und der Vertrag prüft
+    # sie gegen das Schema — hier ist nur die Zusage nachgetragen.
+    return cast("list[AdminRequestFehler]",
+                store.request_fehler(limit=min(limit, 200), nur_offen=nur_offen))
 
 
 @router.get("/errors/open-count")

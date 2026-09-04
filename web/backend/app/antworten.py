@@ -1213,6 +1213,11 @@ class AdminJobStep(TypedDict):
     duration_s: float | None
 
 
+class AdminFehlerTag(TypedDict):
+    tag: str
+    n: int
+
+
 class AdminRequestFehler(TypedDict):
     """Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.
 
@@ -1230,6 +1235,12 @@ class AdminRequestFehler(TypedDict):
     last_seen: str
     count: int
     resolved_at: str | None
+    #: ``server`` (unbehandelte Ausnahme im Backend) oder ``browser``.
+    quelle: str
+    #: Tagesverlauf, älteste zuerst — für die Grafik im Panel. Als LISTE und
+    #: nicht als Objekt: Die Grafik braucht eine Reihenfolge, ein JSON-Objekt
+    #: hat keine.
+    daily: list[AdminFehlerTag]
 
 
 class AdminJob(TypedDict):
