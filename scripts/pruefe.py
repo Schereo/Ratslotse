@@ -177,6 +177,14 @@ PRUEFUNGEN: list[Pruefung] = [
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tests", "die Testsuite", befehl=[PY, "-m", "pytest", "tests/", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
+    # Die Logik in `web/frontend/lib/` — die größte ungeprüfte Fläche des Repos
+    # war bis 09/2026 genau hier: 94.000 Zeilen Frontend gegen 23 Browsertests.
+    # Die prüfen Flüsse und brauchen zwei Server und zwei Minuten; für eine
+    # Funktion, die aus einer Uhrzeit ein Live-Fenster rechnet, sind sie das
+    # falsche Werkzeug. Der Fall „16:29 gegen 16:30" ist dort nicht
+    # herstellbar, hier ist er eine Zeile. Läuft in unter einer Sekunde.
+    Pruefung("vitest", "Logik-Tests des Frontends (lib/)", schnell=True, cwd=FRONTEND,
+             befehl=["npx", "vitest", "run"], braucht=_node_fehlt),
     Pruefung("tsc", "TypeScript des Frontends übersetzen", cwd=FRONTEND,
              befehl=["npx", "tsc", "--noEmit"], braucht=_node_fehlt),
     Pruefung("lint", "ESLint des Frontends (Hook-Regeln)", cwd=FRONTEND,

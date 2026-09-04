@@ -123,3 +123,31 @@ keinen `next build`, keine Export-Variante. Die beiden Grafik-Proben rechnen
 Skalen und Kachelgeometrie nach, weil beide Fehler typkorrekt waren. Ein Bild
 vor dem Merge ersetzt keine dieser Prüfungen — und keine von ihnen ersetzt das
 Bild.
+
+
+## Logik in `lib/` gehört unter Test
+
+Seit 09/2026 läuft `npx vitest run` (auch über `pruefe.py` und die CI). Die
+Testdateien liegen **neben** ihrem Modul: `lib/live.ts` → `lib/live.test.ts`.
+
+**Was hierher gehört:** reine Funktionen — rechnen, formatieren, Adressen
+bauen, Text zerlegen. Der Grenzfall ist hier eine Zeile; im Browsertest ist er
+oft gar nicht herstellbar („16:29 gegen 16:30" im Live-Fenster bräuchte eine
+gestellte Systemuhr).
+
+**Was NICHT hierher gehört:** Komponenten. Ein Test, der JSX rendert, prüft am
+Ende meist die eigene Fixture (s. [`../../tests/CLAUDE.md`](../../tests/CLAUDE.md))
+und braucht eine DOM-Nachbildung, die mit jeder React-Fassung nachgezogen
+werden will. Flüsse durch die Oberfläche prüfen die Browsertests
+(`npx playwright test`).
+
+**Browser-Speicher ohne jsdom.** `lib/__testhilfen/speicher.ts` liefert einen
+`localStorage`/`sessionStorage`-Ersatz samt Schalter „gesperrt" — der echte
+Fall im privaten Fenster. Eine ganze DOM-Nachbildung dafür zu laden kostet
+Sekunden je Lauf.
+
+**Nicht auf Ausgaben der Sprachdatenbank festnageln.** `toLocaleDateString`
+liefert je nach ICU-Fassung „Mi." oder „Mi". Ein Test auf die genaue
+Schreibweise geht beim nächsten Node-Sprung kaputt, ohne dass jemand einen
+Fehler gemacht hat — prüfe die Zusage (welcher Tag, wie lang), nicht das
+Zeichen.
