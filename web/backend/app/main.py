@@ -270,7 +270,10 @@ def health() -> Health:
 @app.get("/api/app-config", response_model=AppConfigOut)
 def app_config() -> AppConfigOut:
     """Small public compatibility contract for installed native builds."""
+    from kern import features as schalter
+
     return AppConfigOut(
         min_build=max(0, settings.app_min_build),
         note=settings.app_update_notice.strip() or None,
+        features=schalter.aktive(),
     )

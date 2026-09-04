@@ -124,6 +124,14 @@ class AppConfigOut(BaseModel):
 
     min_build: int
     note: str | None = None
+    #: Die eingeschalteten Feature-Schalter (``kern/roles.py`` ist für Rechte,
+    #: ``kern/features.py`` für Reife). Bewusst eine LISTE von Namen und kein
+    #: Objekt mit festen Feldern: Ein Schalter kommt und geht, und ein Feld je
+    #: Schalter hieße, den Vertrag für jedes Kommen und Gehen neu zu schneiden.
+    #:
+    #: Voreingestellt leer — eine ältere App, die das Feld nicht kennt, sieht
+    #: schlicht nichts Neues, und das ist richtig so.
+    features: list[str] = []
 
 
 class TopicIn(BaseModel):

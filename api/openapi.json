@@ -1530,6 +1530,14 @@
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
+          "features": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
           "min_build": {
             "title": "Min Build",
             "type": "integer"
