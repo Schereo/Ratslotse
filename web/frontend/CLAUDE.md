@@ -198,9 +198,33 @@ Genau so ist der einzige Test aufgefallen, der nur mit Daten grün war.
 | `11-quiz-admin` | Quiz und die Admin-Grenze (drei Konten, drei Rechte) |
 | `12-navigation` | Jeder Navigationspunkt, der aktive Zustand, Deep-Links |
 | `13-einrichtung` | Der Assistent — den alle anderen absichtlich überspringen |
+| `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px) |
 
 **Der Assistent ist der Sonderfall.** `einrichtungUeberspringen()` schaltet ihn
 über den Server ab, weil seine Fläche (`fixed inset-0`) jeden Klick abfängt:
 Der Abmelde-Knopf ist dahinter sichtbar UND unerreichbar. Wer den Assistenten
 selbst prüft, ruft den Helfer NICHT auf — und braucht je Test ein **frisches**
 Konto, denn ein eingerichtetes bekommt ihn nie wieder zu sehen.
+
+
+## Layout-Invarianten statt Pixelvergleich
+
+`14-layout.spec.ts` prüft **eine** Zusage, und zwar auf jeder Seite: Die Seite
+scrollt nicht seitwärts. Auf dem Handy ist das der häufigste Layout-Fehler —
+eine breite Tabelle, ein langes Wort ohne Trennmöglichkeit, ein `min-w` zu
+viel —, und am Schreibtisch fällt er nie auf.
+
+**Warum kein Pixelvergleich.** Er meldet jede beabsichtigte Änderung als
+Fehler und wird nach dem dritten Mal weggeklickt. Was Gestaltung ist, gehört
+vor Tims Augen (Bild per `SendUserFile`, Gegenlesen abwarten); was Mechanik
+ist, gehört in einen Test, der nur bei echtem Bruch anschlägt.
+
+**Ein Element DARF überstehen**, wenn es oder ein Vorfahr selbst scrollt —
+genau so gehören breite Tabellen gebaut (`overflow-x: auto`). Der Test
+berücksichtigt das; er meldet nur, was das FENSTER schiebt.
+
+**Ein bekannter Befund steht als `test.fail()` drin.** Die Startseite ist bei
+320 px 14 px zu breit. Das ist Gestaltung, keine Mechanik — deshalb nicht
+nebenbei repariert, sondern sichtbar festgehalten: Der Test meldet sich,
+sobald jemand es behebt, und dann fliegt die Markierung raus. So verschwindet
+ein Befund nicht in einer Liste, die niemand liest.
