@@ -2915,10 +2915,22 @@ private struct SessionDetailView: View {
                             MonoKicker([RatsDate.weekday(detail.sessionDate), detail.sessionTime].compactMap { $0 }.joined(separator: " · "))
                             Text(detail.committee).font(RatsFont.title(28))
                             if let location = detail.location { RatsLabel(location, .mapPin) }
-                            Button { prepareCalendar(detail) } label: {
-                                RatsLabel("In Kalender", .calendarPlus)
+                            HStack(spacing: 10) {
+                                Button { prepareCalendar(detail) } label: {
+                                    RatsLabel("In Kalender", .calendarPlus)
+                                }
+                                .buttonStyle(SecondaryButtonStyle())
+                                // Die geteilte Adresse ist die eigenständige
+                                // Sitzungs-Seite: Sie liest sich ohne Konto,
+                                // die Sitzungsliste nicht (s. AppRoute).
+                                if let link = model.router.universalLink(for: .sessions(ksinr: ksinr, tops: [])) {
+                                    ShareLink(item: link) {
+                                        RatsLabel("Teilen", .share)
+                                    }
+                                    .buttonStyle(SecondaryButtonStyle())
+                                    .accessibilityLabel("Sitzung teilen")
+                                }
                             }
-                            .buttonStyle(SecondaryButtonStyle())
                         }
                         if shouldShowAgendaChanges(detail), let changes = detail.agendaChanges {
                             AgendaChangesPanel(changes: changes)
@@ -3017,6 +3029,11 @@ private struct SessionDetailView: View {
                 SessionAgendaRow(
                     item: item,
                     isHighlighted: highlightedTops.contains(item.itemNumber),
+                    // Teilen MIT diesem Punkt: Wer den Link öffnet, landet in
+                    // der Sitzung und direkt auf dieser Zeile.
+                    shareLink: model.router.universalLink(
+                        for: .sessions(ksinr: ksinr, tops: [item.itemNumber])
+                    ),
                     openAttachment: { previewAttachment = $0 }
                 )
                     .id(item.itemNumber)
@@ -3175,6 +3192,7 @@ private struct FlexibleChips: View {
 private struct SessionAgendaRow: View {
     let item: AgendaItem
     let isHighlighted: Bool
+    let shareLink: URL?
     let openAttachment: (AgendaAttachment) -> Void
 
     var body: some View {
@@ -3225,12 +3243,23 @@ private struct SessionAgendaRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let shareLink {
+                ShareLink(item: shareLink) {
+                    RatsIcon(.share, size: 15)
+                        .foregroundStyle(RatsColor.secondary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+                .accessibilityLabel("Tagesordnungspunkt \(item.itemNumber) teilen")
+            }
         }
         .padding(.horizontal, isHighlighted ? 10 : 0)
         .padding(.vertical, 14)
         .background(isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 

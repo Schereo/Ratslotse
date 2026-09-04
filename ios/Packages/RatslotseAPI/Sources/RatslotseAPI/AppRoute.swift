@@ -55,6 +55,14 @@ public struct AppRouter: Sendable {
         case "/g": return .sharedAnswer(token: value("t"))
         case "/topics": return .tab(.topics)
         case "/quiz": return .quiz(area: value("area"))
+        case "/council/sitzung":
+            // Die eigenständige, ohne Konto lesbare Sitzungs-Seite — Ziel der
+            // Teilen-Knöpfe in App und Web. Ein geteilter Link landet damit
+            // in der App auf derselben Detailansicht wie ein Tippen in der
+            // Liste; `top` hebt den gemeinten Punkt hervor.
+            let sitzung = value("ksinr").flatMap(Int.init)
+            let punkte = value("top")?.split(separator: ",").map(String.init) ?? []
+            return .sessions(ksinr: sitzung, tops: punkte)
         case "/council/decision":
             guard let raw = value("id"), let id = Int(raw), id > 0 else { return .tab(.council) }
             return .decision(id: id)
@@ -112,9 +120,18 @@ public struct AppRouter: Sendable {
         case .decision(let id):
             components.path = "/council/decision"; components.queryItems = [.init(name: "id", value: String(id))]
         case let .sessions(ksinr, tops):
-            components.path = "/council"
-            components.queryItems = [.init(name: "tab", value: "sessions")]
-            if let ksinr { components.queryItems?.append(.init(name: "ksinr", value: String(ksinr))) }
+            // Geteilt wird die eigenständige Sitzungs-Seite, nicht die Liste:
+            // Sie ist ohne Konto lesbar, `/council?tab=sessions` nicht (die
+            // ältere Adresse bleibt oben lesbar, sie steht in Mails und Push).
+            // Ohne Sitzung bleibt es bei der Liste — eine Sitzungs-Seite ohne
+            // Sitzung gibt es nicht.
+            guard let ksinr else {
+                components.path = "/council"
+                components.queryItems = [.init(name: "tab", value: "sessions")]
+                break
+            }
+            components.path = "/council/sitzung"
+            components.queryItems = [.init(name: "ksinr", value: String(ksinr))]
             if !tops.isEmpty { components.queryItems?.append(.init(name: "top", value: tops.joined(separator: ","))) }
         case .person(let slug):
             components.path = "/council/person"; components.queryItems = [.init(name: "slug", value: slug)]

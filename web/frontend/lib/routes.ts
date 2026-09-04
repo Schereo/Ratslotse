@@ -33,3 +33,22 @@ export const sessionHref = (ksinr: number, tops?: string[]) => {
   const sauber = (tops ?? []).map((t) => t.trim()).filter(Boolean);
   return sauber.length ? `${ziel}&top=${encodeURIComponent(sauber.join(","))}` : ziel;
 };
+
+/** Die eigenständige Sitzungs-Seite — Ziel der Teilen-Knöpfe.
+ *
+ *  Bewusst ein anderer Pfad als `sessionHref`: Der führt in die Sitzungs*liste*
+ *  und verlangt ein Konto (dort stehen Filter, Merkliste und die eigenen
+ *  Themen). Ein weitergereichter Link soll dagegen ohne Anmeldung lesbar sein
+ *  — „guck mal, was am Donnerstag drankommt" endet sonst im
+ *  Registrierungsformular. Diese Seite steht deshalb in
+ *  `lib/public-routes.ts::OEFFENTLICHE_PFADE` und holt ihre Tagesordnung vom
+ *  ohnehin offenen `/council/session/{ksinr}`.
+ *
+ *  `tops` reist wie bei `sessionHref` als volle Nummer („Ö 6", nicht „6"): Die
+ *  Seite rollt zu dieser Zeile und hebt sie kurz hervor.
+ */
+export const sitzungHref = (ksinr: number, tops?: string[]) => {
+  const ziel = `/council/sitzung?ksinr=${ksinr}`;
+  const sauber = (tops ?? []).map((t) => t.trim()).filter(Boolean);
+  return sauber.length ? `${ziel}&top=${encodeURIComponent(sauber.join(","))}` : ziel;
+};
