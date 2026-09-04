@@ -218,6 +218,21 @@ automatisch mitgelesen, sobald dort gearbeitet wird:
 | [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Cron-Jobs: `run_guarded`, Takt in `kern/jobs.py`, Kennzahlen |
 | [`tests/CLAUDE.md`](tests/CLAUDE.md) | Wächter-Tests: was sie halten sollen und wie man einen neuen baut |
 
+**Die Schichten zeigen nur nach unten**, und das hält seit 09/2026
+`tests/test_schichten.py` fest statt einer Prosa-Zeile:
+
+```
+kern  ←  council  ←  app  ←  scripts
+                  ↖  eval
+```
+
+`kern/` importiert aus keinem der anderen Pakete, `council/` nur aus `kern`,
+`web/backend/app/` nicht aus `scripts`. Ein Pfeil nach oben wäre ein Ring, und
+der Fehler daraus erscheint als `ImportError` beim Start eines **Dienstes** —
+nicht in der Testsuite, die ohnehin alles auf einmal lädt. Der Bestand hielt
+die Ordnung bereits vollständig; der Test räumt nichts auf, er hält. Er prüft
+auch die Gegenrichtung: eine Erlaubnis, die niemand braucht, fliegt raus.
+
 **Ein Auftrag, ein Branch, ein Pull Request.** Branch von `dev` (Feature) bzw.
 `main` (Fix), committen, pushen, PR öffnen — Regeln dazu unten unter
 „Deployment & Branch-Modell". Fremde, nicht zum Auftrag gehörende Änderungen

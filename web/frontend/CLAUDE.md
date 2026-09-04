@@ -40,6 +40,13 @@ funktioniert: In der nativen App läuft das Bundle unter `capacitor://localhost`
 der relative Pfad zeigt dort ins Nichts. Wo der Wrapper wirklich nicht passt
 (Streams), nimm `apiUrl()` und `authHeaders()` aus demselben Modul.
 
+Seit 09/2026 ist das keine Bitte mehr, sondern eine ESLint-Regel
+(`no-restricted-syntax` in `.eslintrc.json`) und damit Teil von `npm run lint`
+und `pruefe.py`. Sie trifft genau den Fehler — ein Zeichenketten- oder
+Template-Literal, das mit `/api/` beginnt — und lässt `apiUrl(…)` und absolute
+URLs in Ruhe. Eingeführt wurde sie mit **null** Verstößen im Bestand; sie
+räumt nichts auf, sie hält.
+
 ## Antworttypen aus dem Vertrag ziehen
 
 `lib/api-schema.ts` ist generiert (`npm run api:typen`), `lib/vertrag.ts` macht
