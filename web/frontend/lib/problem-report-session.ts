@@ -56,6 +56,14 @@ export const PRIVATE_REPORT_QUERY_META = {
   persist: false,
 } as const;
 
+export function privateReportListQueryKey(ownerId: number | null | undefined) {
+  return ["private-reports", ownerId] as const;
+}
+
+export function privateReportDetailQueryKey(ownerId: number, reportId: number) {
+  return ["private-report", ownerId, reportId] as const;
+}
+
 export function isEligiblePrivateReporter(user: User | null): user is User {
   return !!user
     && user.role === "user"

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,6 +19,8 @@ import {
   clearProblemReportSession,
   loadProblemReportSession,
   oldenburgTodayISO,
+  privateReportDetailQueryKey,
+  privateReportListQueryKey,
   reportContentFromPrivateReport,
   saveProblemReportSession,
   scheduleProblemReportSessionExpiry,
@@ -148,6 +151,7 @@ function BackButton({ onClick, disabled = false }: { onClick: () => void; disabl
 
 export function ProblemReportFlow() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [content, setContent] = useState<ReportContent>(emptyContent);
   const [stage, setStage] = useState<ReportStage>("scope");
   const [idempotencyKey, setIdempotencyKey] = useState("");
@@ -167,6 +171,18 @@ export function ProblemReportFlow() {
   const previousStage = useRef<ReportStage>(stage);
   const recoveryAttempt = useRef<number | null>(null);
   const focusAfterRecovery = useRef(false);
+
+  const recordServerReport = useCallback((report: PrivateReport) => {
+    if (!user) return;
+    queryClient.setQueryData(
+      privateReportDetailQueryKey(user.id, report.id),
+      report,
+    );
+    queryClient.removeQueries({
+      queryKey: privateReportListQueryKey(user.id),
+      exact: true,
+    });
+  }, [queryClient, user]);
 
   const resetLocal = useCallback((message?: string) => {
     clearProblemReportSession();
@@ -220,6 +236,7 @@ export function ProblemReportFlow() {
     setConflict(false);
     try {
       const report = await api.get<PrivateReport>(`/meldungen/${id}`);
+      recordServerReport(report);
       setCreationContent(null);
       if (report.state === "submitted") {
         clearProblemReportSession();
@@ -241,7 +258,7 @@ export function ProblemReportFlow() {
     } finally {
       setRecovering(false);
     }
-  }, [resetLocal]);
+  }, [recordServerReport, resetLocal]);
 
   useEffect(() => {
     if (!hydrated || reportId === null || serverReport || submitted) return;
@@ -321,6 +338,7 @@ export function ProblemReportFlow() {
         ...firstAttempt,
         idempotency_key: idempotencyKey,
       });
+      recordServerReport(report);
       setReportId(report.id);
       setCreationContent(null);
       setServerReport(report);
@@ -357,6 +375,7 @@ export function ProblemReportFlow() {
           ...complete,
           expected_revision: serverReport.content_revision,
         });
+        recordServerReport(currentReport);
         setServerReport(currentReport);
       }
       const result = await api.post<PrivateReport>(`/meldungen/${reportId}/absenden`, {
@@ -364,6 +383,7 @@ export function ProblemReportFlow() {
         confirmed_text: complete.text,
       });
       clearProblemReportSession();
+      recordServerReport(result);
       setServerReport(result);
       setSubmitted(result);
     } catch (caught) {

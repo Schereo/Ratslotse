@@ -362,6 +362,55 @@ test.describe("Owner-bound private report history", () => {
     });
   });
 
+  test("refreshes cached overview and detail after submitting a continued draft", async ({ page }) => {
+    await signedIn(page);
+    let submitted = false;
+    let listReads = 0;
+    const submittedReport = privateReport({
+      confirmed_text: "Am fiktiven Kanal fehlt an der Querung eine sichere Absenkung.",
+      state: "submitted",
+      content_revision: 4,
+      submitted_at: "2026-09-04T09:00:00Z",
+      updated_at: "2026-09-04T09:00:00Z",
+    });
+    await page.route("**/api/meldungen?*", (route) => {
+      listReads += 1;
+      return route.fulfill(json({
+        reports: [summary(submitted ? {
+          state: "submitted",
+          content_revision: 4,
+          submitted_at: submittedReport.submitted_at,
+          updated_at: submittedReport.updated_at,
+        } : {})],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      } satisfies PrivateReportList));
+    });
+    await page.route("**/api/meldungen/42", (route) => route.fulfill(json(
+      submitted ? submittedReport : privateReport(),
+    )));
+    await page.route("**/api/meldungen/42/absenden", (route) => {
+      submitted = true;
+      return route.fulfill(json(submittedReport));
+    });
+
+    await page.goto("/meine-meldungen");
+    await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).click();
+    await page.getByRole("button", { name: "Entwurf fortsetzen" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Meldung prüfen" })).toBeFocused();
+    await page.getByRole("checkbox", { name: /Angaben selbst geprüft/i }).check();
+    await page.getByRole("button", { name: "Meldung privat absenden" }).click();
+    await expect(page.getByRole("heading", { name: "Meldung privat eingegangen" })).toBeFocused();
+    await page.getByRole("link", { name: "Meine Meldungen" }).click();
+
+    await expect(page.getByText("Privat eingegangen", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).click();
+    await expect(page.getByText("Diese Meldung ist privat eingegangen und hier schreibgeschützt.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Entwurf fortsetzen" })).toHaveCount(0);
+    expect(listReads).toBe(2);
+  });
+
   test("does not enter a fresh reporting flow when continuation cannot be stored safely", async ({ page }) => {
     await signedIn(page);
     await page.addInitScript((key) => {

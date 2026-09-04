@@ -12,6 +12,8 @@ import {
   beginProblemReportContinuation,
   formatOldenburgDateTime,
   isEligiblePrivateReporter,
+  privateReportDetailQueryKey,
+  privateReportListQueryKey,
   PRIVATE_REPORT_QUERY_META,
 } from "@/lib/problem-report-session";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -43,7 +45,7 @@ export function MyReports() {
   const [continuationError, setContinuationError] = useState<string | null>(null);
   const reportButtons = useRef(new Map<number, HTMLButtonElement>());
   const listQuery = useInfiniteQuery({
-    queryKey: ["private-reports", user?.id],
+    queryKey: privateReportListQueryKey(user?.id),
     queryFn: ({ pageParam }) => api.get<PrivateReportList>(
       `/meldungen?limit=${PAGE_SIZE}&offset=${pageParam}`,
     ),
@@ -226,7 +228,7 @@ function ReportDetail({
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailQuery = useQuery({
-    queryKey: ["private-report", ownerId, reportId],
+    queryKey: privateReportDetailQueryKey(ownerId, reportId),
     queryFn: () => api.get<PrivateReport>(`/meldungen/${reportId}`),
     retry: false,
     meta: PRIVATE_REPORT_QUERY_META,
