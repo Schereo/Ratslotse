@@ -26,6 +26,16 @@ from scripts.geocode_entities import geocode, overpass_ausfaelle  # noqa: E402
 
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
+#: Ab wie vielen verlorenen Straßen eine Mail rausgeht.
+#:
+#: **Warum nicht ab einer.** Der Alarm misst „alle Versuche gescheitert" — bei
+#: EINEM Versuch ist das ein einzelner 429 der öffentlichen Instanz, und
+#: genau als solcher kam am 04.09.2026 die Meldung „2 von 2 Straßen" heraus,
+#: obwohl Overpass lief. Unterhalb dieser Schwelle tragen die Kennzahlen
+#: (``overpass_fehler``, ``strassen_ohne_vollgeometrie``) den Vorfall, und der
+#: wöchentliche Schnappschuss räumt ihn ohnehin weg.
+MINDESTENS_STRASSEN = 5
+
 
 def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
             erneut: bool = False) -> dict:
@@ -99,6 +109,9 @@ def process(council_db: Path, *, limit: int | None = None, sleep: float = 1.1,
             "overpass_fehler": overpass_ausfaelle["fehler"],
             "overpass_ohne_treffer": overpass_ausfaelle["ohne_treffer"],
             "overpass_nicht_erreichbar": overpass_ausfaelle["nicht_erreichbar"],
+            # Straßen, die der liegende Schnappschuss ohne jedes Netz
+            # beantwortet hat — der Normalfall, seit er wöchentlich fällt.
+            "strassen_aus_schnappschuss": overpass_ausfaelle["aus_schnappschuss"],
             # Der Gesundheitswert des Bestands: Straßen, von denen weiter nur
             # ein Teilstück gespeichert ist. Er gehört in die Kennzahlen, weil
             # er nicht von selbst sinkt — steigt oder klebt er, hat der
@@ -115,25 +128,42 @@ def _melde_overpass_ausfall(offen: int) -> None:
     und 498 Straßen bekamen ein Einzelsegment statt der ganzen Straße. Ein
     Lauf, der das nicht sagt, ist ein Lauf, der lügt.
 
+    **Und der Fall, an dem diese Meldung selbst gelogen hat.** Am 04.09.2026
+    kam sie als „2 von 2 Straßen" heraus, während Overpass in der Gegenprobe
+    dieselbe Straße in 0,3 s lieferte: Die Probe hatte einen einzelnen 429
+    erwischt (jede zweite Abfrage der öffentlichen Instanz endet so) und den
+    Weg für den ganzen Lauf abgeschaltet. Dagegen stehen jetzt drei Dinge —
+    der Schnappschuss beantwortet die meisten Straßen ohne Netz, Probe und
+    Abfrage wiederholen, und gemeldet wird erst ab ``MINDESTENS_STRASSEN``.
+    Eine einzelne neue Straße an einem Tag mit schlechter Laune der Instanz
+    ist kein Betriebsvorfall.
+
     Gemeldet wird nur, wenn es wirklich Straßen zu holen GAB und **alle**
     scheiterten. Damit kommt die Mail an dem Tag, an dem etwas verdorben wurde,
     und nicht jeden Tag, an dem gar keine neue Straße dazukam.
     """
     versucht = overpass_ausfaelle["strassen_versucht"]
     verloren = overpass_ausfaelle["nicht_erreichbar"] + overpass_ausfaelle["fehler"]
-    if not versucht or verloren < versucht:
+    if versucht < MINDESTENS_STRASSEN or verloren < versucht:
         return
     notify_admin(
-        f"<b>Overpass nicht erreichbar</b> — {verloren} von {versucht} Straßen "
+        f"<b>Overpass hat nicht geliefert</b> — {verloren} von {versucht} Straßen "
         f"haben in diesem Lauf nur ein <i>einzelnes</i> Nominatim-Segment "
         f"bekommen statt der ganzen Straße. Sie kennen damit nur einen Teil "
         f"der Ortsbereiche, durch die sie führen; im Einrichtungs-Assistenten "
         f"landen sie unter „direkt nebenan\", obwohl sie durch den eigenen "
         f"Stadtteil laufen.<br><br>"
-        f"Aktuell {offen} Straßen ohne vollständige Geometrie. Reparatur: "
-        f"Workflow <code>Ops: Straßen vollständig nachtragen</code> "
-        f"(<code>scripts/strassen_snapshot.py</code>) — der holt den ganzen "
-        f"Bestand in einem Aufruf von einer Maschine mit Zugang.",
+        f"Der Schnappschuss <code>data/strassen-snapshot.json</code> kannte "
+        f"diese Namen nicht — sie sind entweder neu oder OSM kennt sie so "
+        f"nicht. Erster Griff ist deshalb der Workflow "
+        f"<code>Ops: Straßen vollständig nachtragen</code> "
+        f"(<code>scripts/strassen_snapshot.py</code>): Er holt einen frischen "
+        f"Bestand in einem Aufruf von einer Maschine mit Zugang.<br><br>"
+        f"Zum Einordnen: {offen} Straßen tragen derzeit keine vollständige "
+        f"Geometrie. Diese Zahl sinkt durch den Workflow <i>nicht</i> — es "
+        f"sind fast durchweg Namen, die OSM gar nicht führt („Huntemannstr\", "
+        f"„Gneisenau-\" aus Beschlusstexten). Alarmierend ist die Zahl oben, "
+        f"nicht diese.",
         betreff="Ratslotse – Straßen-Geokodierung eingeschränkt",
         fusszeile="Hinweis eines Cron-Jobs — der Lauf selbst ist nicht "
                   "gescheitert, sein Ergebnis aber unvollständig.")
