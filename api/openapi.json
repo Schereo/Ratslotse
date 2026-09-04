@@ -2512,6 +2512,13 @@
                   "null"
                 ]
               },
+              "highlights": {
+                "items": {
+                  "$ref": "#/components/schemas/WeekPreviewItem"
+                },
+                "title": "Highlights",
+                "type": "array"
+              },
               "ksinr": {
                 "title": "Ksinr",
                 "type": [
@@ -10373,6 +10380,13 @@
             "title": "Has Protocol",
             "type": "boolean"
           },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/WeekPreviewItem"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
           "ksinr": {
             "title": "Ksinr",
             "type": [
@@ -10492,6 +10506,13 @@
               "string",
               "null"
             ]
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/WeekPreviewItem"
+            },
+            "title": "Highlights",
+            "type": "array"
           },
           "ksinr": {
             "title": "Ksinr",

@@ -1065,9 +1065,12 @@ private struct WeekCountBadge: View {
     }
 }
 
-private struct WeekAgendaItemRow: View {
+/// Ein Tagesordnungspunkt mit Rang — auf der Wochenkarte und, mit anderem
+/// Kicker, in der Sitzungsliste. Dieselbe Zeile, weil es dieselben Daten sind.
+struct WeekAgendaItemRow: View {
     let item: WeekPreviewItem
     let compact: Bool
+    var featuredKicker = "Highlight der Woche"
 
     var body: some View {
         HStack(alignment: .top, spacing: 9) {
@@ -1124,7 +1127,7 @@ private struct WeekAgendaItemRow: View {
 
     private var kicker: String? {
         if let topic = item.topicName, !topic.isEmpty { return "WICHTIGES THEMA · \(topic.uppercased())" }
-        if item.featured == true { return "HIGHLIGHT DER WOCHE" }
+        if item.featured == true { return featuredKicker.uppercased() }
         return nil
     }
 

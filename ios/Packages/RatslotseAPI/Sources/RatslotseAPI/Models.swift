@@ -676,9 +676,13 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     public let location: String?
     public let itemCount: Int
     public let myTopicItems: [JSONValue]?
+    /// Die wichtigsten Punkte der Sitzung — dieselbe Form wie die Punkte der
+    /// Wochenvorschau, dieselbe Bewertung auf dem Server. Fehlt, wenn kein
+    /// Punkt über der Schwelle liegt.
+    public let highlights: [WeekPreviewItem]?
 
     enum CodingKeys: String, CodingKey {
-        case ksinr, committee, location
+        case ksinr, committee, location, highlights
         case sessionDate = "session_date"
         case sessionTime = "session_time"
         case liveUntil = "live_until"
@@ -696,6 +700,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         location = try values.decodeIfPresent(String.self, forKey: .location)
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
         myTopicItems = try values.decodeIfPresent([JSONValue].self, forKey: .myTopicItems)
+        highlights = try values.decodeIfPresent([WeekPreviewItem].self, forKey: .highlights)
     }
 }
 
@@ -879,7 +884,7 @@ public struct WeekPreview: Codable, Sendable {
     }
 }
 
-public struct WeekPreviewItem: Codable, Sendable, Identifiable {
+public struct WeekPreviewItem: Codable, Sendable, Identifiable, Hashable {
     public var id: String { "\(sessionID):\(itemNumber)" }
     public let sessionID: Int
     public let itemNumber: String

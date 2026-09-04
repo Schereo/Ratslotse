@@ -855,6 +855,56 @@ function DecisionsTab({ committees }: { committees: string[] }) {
  *  weit scrollte, sah irgendwann wieder Juni und konnte nicht sagen, ob das
  *  dieses Jahr ist oder 2021. Der Trenner steht am Kopf jeder Gruppe — auch
  *  ganz oben, damit die Antwort nie erst nach dem ersten Wechsel kommt. */
+/** Derselbe In-Seiten-Link wie auf der Wochenkarte: Die Liste klappt die
+ *  Sitzung auf und hebt den Punkt hervor (`targetKsinr`/`flashTop`). */
+function topHref(ksinr: number, itemNumber: string) {
+  return `/council?tab=sessions&ksinr=${ksinr}` +
+    (itemNumber ? `&top=${encodeURIComponent(itemNumber)}` : "");
+}
+
+/** Die wichtigsten Punkte einer Sitzung in der zugeklappten Karte — vom
+ *  Server bewertet (`CouncilStore.sitzungs_highlights`, dieselbe Schwelle wie
+ *  die Wochenkarte). Ein hervorgehobener Punkt (`top`) trägt seinen Grund;
+ *  ein Treffer zum eigenen Thema den Themennamen in Signal-Orange. */
+function SessionHighlights({ punkte, ksinr }: { punkte: NonNullable<CouncilSession["highlights"]>; ksinr: number }) {
+  return (
+    <ul className="space-y-1 border-t border-border px-3 pb-3 pt-2.5">
+      {punkte.map((p) => (
+        <li key={p.item_number}>
+          <Link
+            href={topHref(ksinr, p.item_number)}
+            className={cn(
+              "flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/60",
+              p.top && "border border-primary/[0.12] bg-primary/[0.04] hover:bg-primary/[0.07]",
+            )}
+          >
+            <span className={cn(
+              "mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full",
+              p.topic_name ? "bg-signal" : p.top ? "bg-primary" : "bg-muted-foreground/50",
+            )} />
+            <span className="min-w-0 flex-1">
+              {(p.topic_name || p.top) && (
+                <span className={cn(
+                  "mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]",
+                  p.topic_name ? "text-signal" : "text-primary/80",
+                )}>
+                  {p.topic_name ? `Dein Thema · ${p.topic_name}` : p.dringlich ? "Dringlichkeitsantrag" : "Wichtiger Punkt"}
+                </span>
+              )}
+              <span className={cn("block text-[13px] leading-snug text-foreground", p.top && "font-semibold")}>
+                {p.titel_kurz || p.title}
+              </span>
+              {p.top && p.wichtig_grund && (
+                <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted-foreground">{p.wichtig_grund}</span>
+              )}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function YearDivider({ year }: { year: string }) {
   return (
     <div className="flex items-center gap-3 pt-2 first:pt-0">
@@ -1237,6 +1287,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     </div>
                   </button>
 
+                  {/* Die wichtigsten Punkte schon in der zugeklappten Karte —
+                      dieselbe Bewertung wie „Diese Woche im Rat", jetzt für
+                      jede Sitzung (Tims Frage 04.09.2026). Aufgeklappt zeigt
+                      die Liste ohnehin alles, bei einer Suche die Treffer. */}
+                  {!isExpanded && !query && (s.highlights?.length ?? 0) > 0 && (
+                    <SessionHighlights punkte={s.highlights!} ksinr={s.ksinr} />
+                  )}
                   {/* Fährt auf und zu, statt zu erscheinen und zu verschwinden.
                       Der Rahmen oben gehört an den inneren Kasten: Am Wrapper
                       stünde er auch im zugefahrenen Zustand als Strich unter

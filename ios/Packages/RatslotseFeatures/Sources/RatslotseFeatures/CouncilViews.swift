@@ -1161,7 +1161,30 @@ private struct SessionRow: View {
                             RoundedRectangle(cornerRadius: 11, style: .continuous)
                                 .strokeBorder(RatsColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                         )
+                } else if session.itemCount == 0 {
+                    // Eine Sitzung MIT Nummer, aber ohne einen öffentlichen Punkt:
+                    // Das Ratsinfo verlinkt erst mit der Tagesordnung — steht sie
+                    // da und ist leer, tagt das Gremium nichtöffentlich.
+                    Text("Keine öffentlichen Tagesordnungspunkte")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                } else if let highlights = session.highlights, !highlights.isEmpty {
+                    // Die wichtigsten Punkte, vom Server bewertet wie auf der
+                    // Wochenkarte — die Karte sagt, was zählt, nicht nur wie viel.
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(highlights) { item in
+                            WeekAgendaItemRow(item: item, compact: true, featuredKicker: "Wichtiger Punkt")
+                        }
+                        if remainingCount > 0 {
+                            Text("+ \(remainingCount) weitere \(remainingCount == 1 ? "Punkt" : "Punkte")")
+                                .font(RatsFont.body(11.5, weight: .semibold))
+                                .foregroundStyle(RatsColor.primary)
+                                .padding(.leading, 16)
+                        }
+                    }
                 } else if !topicMatches.isEmpty {
+                    // Rückfall für Antworten ohne `highlights`: wenigstens die
+                    // Treffer zu eigenen Themen.
                     VStack(alignment: .leading, spacing: 7) {
                         ForEach(topicMatches.prefix(2), id: \.number) { match in
                             HStack(alignment: .top, spacing: 9) {
@@ -1229,7 +1252,8 @@ private struct SessionRow: View {
     }
 
     private var remainingCount: Int {
-        max(0, session.itemCount - min(topicMatches.count, 2))
+        let shown = session.highlights?.count ?? min(topicMatches.count, 2)
+        return max(0, session.itemCount - shown)
     }
 
     private var shortCommittee: String {
@@ -1256,6 +1280,7 @@ private struct SessionRow: View {
             session.sessionTime.map { "\(String($0.prefix(5))) Uhr" },
             cleanLocation,
             session.ksinr == nil ? "Tagesordnung folgt" : "\(session.itemCount) öffentliche Punkte",
+            (session.highlights ?? []).isEmpty ? nil : "Wichtig: " + (session.highlights ?? []).map { $0.shortTitle ?? $0.title }.joined(separator: "; "),
             topicMatches.isEmpty ? nil : "\(topicMatches.count) zu deinen Themen",
         ].compactMap { $0 }.joined(separator: ", ")
     }

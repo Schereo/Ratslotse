@@ -262,10 +262,17 @@ def sessions(
     # Klassifikation für die eingeloggte Nutzer*in (eine Batch-Abfrage).
     ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
     mine = ratslotse.agenda_matches_for_owner(user["id"], ksinrs)
+    # Die wichtigsten Punkte je Sitzung, mit derselben Bewertung wie „Diese
+    # Woche im Rat" — damit die Liste nicht nur „13 TOPs" sagt, sondern was
+    # davon zählt. Fehlt an Sitzungen ohne Punkt über der Schwelle.
+    highlights = store.sitzungs_highlights(ksinrs, meine=mine)
     for r in rows:
         matches = mine.get(r.get("ksinr") or 0)
         if matches:
             r["my_topic_items"] = matches
+        punkte = highlights.get(r.get("ksinr") or 0)
+        if punkte:
+            r["highlights"] = punkte
 
     return {"count": len(rows), "total": total, "sessions": _stamp_live_windows(rows, store)}
 
