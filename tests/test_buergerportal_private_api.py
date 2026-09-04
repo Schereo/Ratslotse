@@ -52,9 +52,7 @@ def private_api(tmp_path):
 
     app.dependency_overrides[deps.get_store] = get_store
     app.dependency_overrides[deps.get_problem_store] = get_problem_store
-    private_dependency = getattr(deps, "get_private_report_store", None)
-    if private_dependency is not None:
-        app.dependency_overrides[private_dependency] = get_private_report_store
+    app.dependency_overrides[deps.get_private_report_store] = get_private_report_store
     try:
         yield TestClient(app), database
     finally:

@@ -1,8 +1,6 @@
 """Eigentümergebundene HTTP-Grenze für private Bürgerportal-Meldungen."""
 from __future__ import annotations
 
-from typing import cast
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from buergerportal.reports import (
@@ -18,12 +16,10 @@ from buergerportal.reports import (
 from ..antworten import PrivateReportOut
 from ..deps import get_private_report_store, require_verified_reporter
 from ..schemas import (
-    Ortsbezug,
     PrivateDraftContentIn,
     PrivateDraftCreateIn,
     PrivateDraftUpdateIn,
     PrivateSubmitIn,
-    Problemkategorie,
 )
 
 router = APIRouter(prefix="/api/meldungen", tags=["meldungen"])
@@ -46,8 +42,8 @@ def _private_report_out(report: PrivateReport) -> PrivateReportOut:
         "id": report.id,
         "draft_text": report.draft_text,
         "confirmed_text": report.confirmed_text,
-        "category": cast(Problemkategorie, report.category),
-        "scope_kind": cast(Ortsbezug, report.scope_kind),
+        "category": report.category,
+        "scope_kind": report.scope_kind,
         "observed_on": report.observed_on,
         "location_label": report.location_label,
         "latitude": report.latitude,

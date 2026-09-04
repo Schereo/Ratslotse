@@ -4,6 +4,8 @@ from __future__ import annotations
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from buergerportal.domain import ProblemCategory, ScopeKind
+
 
 # ---- auth ----
 class RegisterRequest(BaseModel):
@@ -262,28 +264,14 @@ class NotifyPrefsIn(BaseModel):
 
 
 # ---- Bürgerportal: private Meldeentwürfe ----
-Problemkategorie = Literal[
-    "mobility",
-    "public_space",
-    "education",
-    "childcare",
-    "housing",
-    "environment",
-    "accessibility",
-    "administration",
-    "other",
-]
-Ortsbezug = Literal["point", "facility", "route", "area", "citywide"]
-
-
 class PrivateDraftContentIn(BaseModel):
     """Eng begrenzter privater Inhalt; die Store-Grenze prüft ihn erneut."""
 
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(min_length=1, max_length=4000)
-    category: Problemkategorie
-    scope_kind: Ortsbezug
+    category: ProblemCategory
+    scope_kind: ScopeKind
     observed_on: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     location_label: str = Field(default="", max_length=200)
     latitude: float | None = Field(default=None, ge=53.05, le=53.24)

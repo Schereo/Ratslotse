@@ -1,4 +1,20 @@
 """Kontrollierte Begriffe des privaten und öffentlichen Bürgerportal-Modells."""
+from typing import Literal, TypeAlias
+
+
+ProblemCategory: TypeAlias = Literal[
+    "mobility",
+    "public_space",
+    "education",
+    "childcare",
+    "housing",
+    "environment",
+    "accessibility",
+    "administration",
+    "other",
+]
+ScopeKind: TypeAlias = Literal["point", "facility", "route", "area", "citywide"]
+
 
 # Konservative Hülle des Oldenburger Stadtgebiets. Sie verhindert versehentliche
 # Meldungen in anderen Städten; die Moderation bestimmt später die genaue Geografie.
@@ -9,7 +25,7 @@ OLDENBURG_BOUNDS = {
     "east": 8.33,
 }
 
-PROBLEM_CATEGORIES = (
+PROBLEM_CATEGORIES: tuple[ProblemCategory, ...] = (
     "mobility",
     "public_space",
     "education",
@@ -20,7 +36,9 @@ PROBLEM_CATEGORIES = (
     "administration",
     "other",
 )
-SCOPE_KINDS = ("point", "facility", "route", "area", "citywide")
+SCOPE_KINDS: tuple[ScopeKind, ...] = (
+    "point", "facility", "route", "area", "citywide",
+)
 PROBLEM_STATUSES = (
     "new",
     "multiple_reports",

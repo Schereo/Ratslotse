@@ -81,7 +81,7 @@ Links deshalb im Web.
 Die noch nicht über HTTP erreichbare Persistenz trennt private Meldeentwürfe und
 Beobachtungen vollständig von öffentlichen Problemprojektionen. Jeder private
 Zugriff ist an die ID der meldenden Person gebunden; Änderungen verlangen ein
-bestehendes, aktives und bestätigtes Ratslotse-Konto. Ein Entwurf kann geändert
+bestehendes, aktives und bestätigtes Nicht-Admin-Konto. Ein Entwurf kann geändert
 und genau einmal bewusst abgesendet werden; dabei entsteht atomar seine erste
 unveränderliche Beobachtung. Spätere Beobachtungen werden
 angehängt und zählen nicht als weitere Person.

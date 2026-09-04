@@ -130,11 +130,47 @@ def _downgrade_private_schema_to_version_four(database) -> None:
             """DROP TRIGGER trg_civic_reports_idempotency_pair_insert;
                DROP TRIGGER trg_civic_reports_idempotency_pair_update;
                DROP TRIGGER trg_civic_reports_idempotency_no_update;
+               DROP TRIGGER trg_civic_reports_owner_insert;
+               DROP TRIGGER trg_civic_reports_owner_update;
                DROP INDEX uq_civic_reports_owner_idempotency;
                ALTER TABLE civic_reports DROP COLUMN creation_fingerprint;
                ALTER TABLE civic_reports DROP COLUMN idempotency_key;
+               CREATE TRIGGER trg_civic_reports_owner_insert
+                   BEFORE INSERT ON civic_reports
+                   WHEN NOT EXISTS (
+                       SELECT 1 FROM web_users
+                       WHERE id = NEW.reporter_id AND status = 'active'
+                         AND email_verified = 1
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'pre-v5 owner trigger');
+                   END;
+               CREATE TRIGGER trg_civic_reports_owner_update
+                   BEFORE UPDATE OF reporter_id ON civic_reports
+                   WHEN NOT EXISTS (
+                       SELECT 1 FROM web_users
+                       WHERE id = NEW.reporter_id AND status = 'active'
+                         AND email_verified = 1
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'pre-v5 owner trigger');
+                   END;
                DELETE FROM civic_report_schema_migrations WHERE version = 5;"""
         )
+
+
+def test_controlled_domain_types_match_their_runtime_values():
+    from typing import get_args
+
+    from buergerportal.domain import (
+        PROBLEM_CATEGORIES,
+        SCOPE_KINDS,
+        ProblemCategory,
+        ScopeKind,
+    )
+
+    assert get_args(ProblemCategory) == PROBLEM_CATEGORIES
+    assert get_args(ScopeKind) == SCOPE_KINDS
 
 
 def test_drafts_require_an_existing_verified_account(tmp_path):
@@ -155,6 +191,13 @@ def test_drafts_require_an_existing_verified_account(tmp_path):
         status="active",
         email_verified=True,
     )
+    admin_id = account_store.create_web_user(
+        "meldung-admin@test.de",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
     account_store.close()
     private_store = PrivateReportStore(database)
     content = DraftContent(
@@ -164,16 +207,28 @@ def test_drafts_require_an_existing_verified_account(tmp_path):
         observed_on="2026-09-01",
     )
 
-    with pytest.raises(ValueError, match="bestätigtes Konto"):
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.create_draft(reporter_id=999_999, content=content)
-    with pytest.raises(ValueError, match="bestätigtes Konto"):
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.create_draft(reporter_id=pending_id, content=content)
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
+        private_store.create_draft(reporter_id=admin_id, content=content)
     draft_id = private_store.create_draft(reporter_id=verified_id, content=content)
     account_store = Store(database)
+    account_store.set_web_user_role(verified_id, "admin")
+    account_store.close()
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
+        private_store.submit_owned_draft(
+            draft_id,
+            reporter_id=verified_id,
+            confirmed_text="Bestätigte fiktive Beobachtung",
+        )
+    account_store = Store(database)
+    account_store.set_web_user_role(verified_id, "user")
     account_store.set_web_user_status(verified_id, "suspended")
     account_store.close()
 
-    with pytest.raises(ValueError, match="bestätigtes Konto"):
+    with pytest.raises(ValueError, match="zugelassenes Konto"):
         private_store.submit_owned_draft(
             draft_id,
             reporter_id=verified_id,
@@ -272,9 +327,19 @@ def test_drafts_enforce_controlled_private_content_and_geography(tmp_path):
 
 def test_database_enforces_private_report_invariants(tmp_path):
     from buergerportal.reports import DraftContent, PrivateReportStore
+    from kern.store import Store
 
     database = tmp_path / "ratslotse.sqlite"
     _insert_verified_accounts(database, 17)
+    account_store = Store(database)
+    admin_id = account_store.create_web_user(
+        "invarianten-admin@test.de",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
+    account_store.close()
     store = PrivateReportStore(database)
     draft_id = store.create_draft(
         reporter_id=17,
@@ -292,6 +357,7 @@ def test_database_enforces_private_report_invariants(tmp_path):
 
     invalid_assignments = (
         "reporter_id = 0",
+        f"reporter_id = {admin_id}",
         "category = 'unknown'",
         "scope_kind = 'citywide'",
         "content_revision = -1",

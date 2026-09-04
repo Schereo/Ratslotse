@@ -116,7 +116,7 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
 def require_verified_reporter(user: dict = Depends(require_active)) -> dict:
     """Nur aktive, bestätigte Nicht-Admin-Konten dürfen privat melden."""
     if (
-        user.get("role") == "admin"
+        user.get("role") != "user"
         or user.get("status") != "active"
         or not user.get("email_verified")
     ):

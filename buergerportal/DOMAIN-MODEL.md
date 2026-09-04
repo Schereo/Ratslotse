@@ -29,7 +29,7 @@ Rohtexte, Einzelmeldungen und Moderationsdaten bleiben privat.
 `PrivateReportStore` besitzt die Tabellen `civic_reports` und
 `civic_report_observations`; `ProblemStore` besitzt sie ausdrücklich nicht. Eine
 Meldung verweist per Fremdschlüssel auf ein bestehendes Ratslotse-Konto; nur ein
-aktives, bestätigtes Konto darf private Inhalte anlegen oder verändern. Jede
+aktives, bestätigtes Nicht-Admin-Konto darf private Inhalte anlegen oder verändern. Jede
 private Lese- und Änderungsoperation verlangt die ID der meldenden Person.
 Unbekannte und fremde Meldungs-IDs werden dabei nicht unterschieden und geben
 keinen Inhalt preis.

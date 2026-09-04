@@ -15,7 +15,13 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Literal, cast
 
-from .domain import OLDENBURG_BOUNDS, PROBLEM_CATEGORIES, SCOPE_KINDS
+from .domain import (
+    OLDENBURG_BOUNDS,
+    PROBLEM_CATEGORIES,
+    SCOPE_KINDS,
+    ProblemCategory,
+    ScopeKind,
+)
 
 
 ReportState = Literal["draft", "submitted"]
@@ -27,25 +33,31 @@ def _sql_enum(values: tuple[str, ...]) -> str:
     return ", ".join(f"'{value}'" for value in values)
 
 
-_INVARIANT_TRIGGERS = (
+_OWNER_TRIGGERS = (
     """CREATE TRIGGER trg_civic_reports_owner_insert
            BEFORE INSERT ON civic_reports
            WHEN NOT EXISTS (
                SELECT 1 FROM web_users
-               WHERE id = NEW.reporter_id AND status = 'active' AND email_verified = 1
+               WHERE id = NEW.reporter_id AND role = 'user'
+                 AND status = 'active' AND email_verified = 1
            )
            BEGIN
-               SELECT RAISE(ABORT, 'report owner must be a verified account');
+               SELECT RAISE(ABORT, 'report owner must be an eligible account');
            END""",
     """CREATE TRIGGER trg_civic_reports_owner_update
            BEFORE UPDATE OF reporter_id ON civic_reports
            WHEN NOT EXISTS (
                SELECT 1 FROM web_users
-               WHERE id = NEW.reporter_id AND status = 'active' AND email_verified = 1
+               WHERE id = NEW.reporter_id AND role = 'user'
+                 AND status = 'active' AND email_verified = 1
            )
            BEGIN
-               SELECT RAISE(ABORT, 'report owner must be a verified account');
+               SELECT RAISE(ABORT, 'report owner must be an eligible account');
            END""",
+)
+
+_INVARIANT_TRIGGERS = (
+    *_OWNER_TRIGGERS,
     """CREATE TRIGGER trg_civic_reports_submitted_content_no_update
            BEFORE UPDATE OF
                reporter_id, draft_text, confirmed_text, category, scope_kind,
@@ -234,6 +246,8 @@ _INVARIANT_MIGRATION_STATEMENTS = (
 )
 
 _IDEMPOTENCY_MIGRATION_STATEMENTS = (
+    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_insert",
+    "DROP TRIGGER IF EXISTS trg_civic_reports_owner_update",
     "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_pair_insert",
     "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_pair_update",
     "DROP TRIGGER IF EXISTS trg_civic_reports_idempotency_no_update",
@@ -259,6 +273,7 @@ _IDEMPOTENCY_MIGRATION_STATEMENTS = (
            BEGIN
                SELECT RAISE(ABORT, 'report creation identity is immutable');
            END""",
+    *_OWNER_TRIGGERS,
 )
 
 
@@ -496,8 +511,8 @@ class DraftContent:
     """Der private, von der meldenden Person kontrollierte Inhalt."""
 
     text: str
-    category: str
-    scope_kind: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
     observed_on: str
     location_label: str = ""
     latitude: float | None = None
@@ -517,8 +532,8 @@ class PrivateReport:
     id: int
     draft_text: str
     confirmed_text: str | None
-    category: str
-    scope_kind: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
     observed_on: str
     location_label: str
     latitude: float | None
@@ -727,7 +742,7 @@ class PrivateReportStore:
     def create_draft(self, *, reporter_id: int, content: DraftContent) -> int:
         if not _is_storage_id(reporter_id):
             raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         normalized = _normalized_content(content)
         now = _now()
         with self._conn:
@@ -768,7 +783,7 @@ class PrivateReportStore:
         """
         if not _is_storage_id(reporter_id):
             raise ValueError("Eine Meldung benötigt ein gültiges Konto.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         key = _normalized_idempotency_key(idempotency_key)
         normalized = _normalized_content(content)
         fingerprint = _creation_fingerprint(normalized)
@@ -826,7 +841,7 @@ class PrivateReportStore:
     ) -> PrivateReport:
         if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
             raise PrivateReportNotFound("Meldung nicht gefunden.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         normalized = _normalized_content(content)
         expected_revision = _normalized_expected_revision(expected_revision)
         now = _now()
@@ -872,7 +887,7 @@ class PrivateReportStore:
     ) -> PrivateReport:
         if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
             raise PrivateReportNotFound("Meldung nicht gefunden.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         confirmed_text = confirmed_text.strip()
         if not confirmed_text:
             raise ValueError("Vor dem Absenden muss der Meldetext bestätigt werden.")
@@ -926,7 +941,7 @@ class PrivateReportStore:
     ) -> PrivateReport:
         if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
             raise PrivateReportNotFound("Meldung nicht gefunden.")
-        self._require_verified_reporter(reporter_id)
+        self._require_eligible_reporter(reporter_id)
         text = text.strip()
         if not text:
             raise ValueError("Eine Beobachtung benötigt eine Beschreibung.")
@@ -961,7 +976,7 @@ class PrivateReportStore:
             )
         return deleted.rowcount
 
-    def _require_verified_reporter(self, reporter_id: int) -> None:
+    def _require_eligible_reporter(self, reporter_id: int) -> None:
         account_table = self._conn.execute(
             """SELECT 1 FROM sqlite_master
                WHERE type = 'table' AND name = 'web_users'"""
@@ -970,12 +985,13 @@ class PrivateReportStore:
         if account_table is not None:
             verified = self._conn.execute(
                 """SELECT 1 FROM web_users
-                   WHERE id = ? AND status = 'active' AND email_verified = 1""",
+                   WHERE id = ? AND role = 'user'
+                     AND status = 'active' AND email_verified = 1""",
                 (reporter_id,),
             ).fetchone()
         if verified is None:
             raise ReporterNotEligible(
-                "Private Meldungen benötigen ein bestätigtes Konto."
+                "Private Meldungen benötigen ein zugelassenes Konto."
             )
 
     def _raise_missing_or_transition(self, report_id: int, *, reporter_id: int) -> None:
@@ -1016,8 +1032,8 @@ class PrivateReportStore:
             id=int(row["id"]),
             draft_text=str(row["draft_text"]),
             confirmed_text=row["confirmed_text"],
-            category=str(row["category"]),
-            scope_kind=str(row["scope_kind"]),
+            category=cast(ProblemCategory, row["category"]),
+            scope_kind=cast(ScopeKind, row["scope_kind"]),
             observed_on=str(row["observed_at"]),
             location_label=str(row["location_label"]),
             latitude=row["latitude"],
