@@ -158,18 +158,19 @@ struct TodayView: View {
             .ratsStaggered(5)
         }
 
-        // Das eine dunkle Widget je Seite (Designdoc 3b3/4a): Das Fundstück
-        // wird zum Farbtupfer und trägt den Humor, den der Rest nicht haben
-        // darf.
+        // Das eine hervorgehobene Widget je Seite (Designdoc 3b3/4a): Das
+        // Fundstück steht auf der Anzeigetafel und trägt den Humor, den der
+        // Rest nicht haben darf. Der Entwurf sah es dunkel; dunkle Karten im
+        // hellen Design lehnt Tim ab (04.09.2026) — besonders ja, dunkel nein.
         if let foundPiece, foundPiece.found, let id = foundPiece.decisionID {
             Button { model.navigation.append(.decision(id: id)) } label: {
-                RatsWidget("Fundstück", accent: .buoy, glyph: .compass, deep: true) {
+                RatsWidget("Fundstück", accent: .buoy, glyph: .compass, board: true) {
                     VStack(alignment: .leading, spacing: 8) {
                         if let kicker = foundPiece.kicker, !kicker.isEmpty {
                             Text(kicker.uppercased())
                                 .font(RatsFont.mono(9, weight: .semibold))
                                 .tracking(0.8)
-                                .foregroundStyle(RatsColor.signal)
+                                .foregroundStyle(RatsColor.signalInk)
                         }
                         Text(foundPiece.title ?? "Aus dem Archiv")
                             .font(RatsFont.title(16.5, weight: .semibold))

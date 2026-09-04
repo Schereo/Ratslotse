@@ -91,11 +91,15 @@ public enum RatsColor {
     /// Signal-Orange als Schrift- und Icon-Farbe auf hellen Tönungen —
     /// #F05A22 hält auf Weiß keinen Textkontrast, #C2410C schon.
     public static let signalInk = Color.adaptive(light: 0xC2410C, dark: 0xFA7440)
-    /// Tiefsee — der Grund des einen dunklen Widgets je Seite. Im
-    /// Dunkelmodus eine Stufe HELLER als die Nachbarn, damit der Akzent
-    /// bleibt.
-    public static let deepSea = Color.adaptive(light: 0x0B2135, dark: 0x16293B)
-    public static let deepSeaBorder = Color.adaptive(light: 0x16354F, dark: 0x264059)
+    /// Die Anzeigetafel — der Grund des einen hervorgehobenen Widgets je
+    /// Seite (Fundstück, Ratssitzung). Nie die Farbe der Seite, immer plus
+    /// Rand (Designsprache § 4): hell hsl(205 52% 92%) auf einer Seite von
+    /// 97,5 %, dunkel eine Stufe HELLER als die Nachbarn. Dunkle Karten im
+    /// hellen Design lehnt Tim ab — zweimal gemessen (Tafel 16.08.2026,
+    /// Fundstück und Ratskarte 04.09.2026): „darf gerne besonders aussehen,
+    /// sollte aber nicht so dunkel sein".
+    public static let board = Color.adaptive(light: 0xE0ECF5, dark: 0x16293B)
+    public static let boardBorder = Color.adaptive(light: 0xC0D3E3, dark: 0x264059)
 
     /// Zwei Familienfarben für die Gremien (Tims Entscheidung 04.09.2026):
     /// Ziegel für das Gebaute (Stadtplanung, Gebäudewirtschaft, Verkehr),

@@ -57,16 +57,17 @@ public struct RatsWaveEdge: Shape {
 /// in der Akzentfarbe plus Name halbfett; die Mono-Schrift trägt nur noch
 /// die Nebenangabe rechts.
 ///
-/// `deep` ist das eine dunkle Widget je Seite (Tiefsee-Grund, Akzent
-/// Signal-Orange): Sein Inhalt liest die dunklen Token, egal in welchem
-/// Modus die Seite steht. Im Dunkelmodus liegt der Grund eine Stufe HELLER
-/// als die Nachbarn — der Akzent bleibt, die Rolle kippt.
+/// `board` ist das eine hervorgehobene Widget je Seite: Es steht auf der
+/// Anzeigetafel — hell eine getönte Fläche mit Rand, dunkel eine Stufe
+/// heller als die Nachbarn. Besonders, aber nie dunkel im hellen Design
+/// (Tims Regel, s. `RatsColor.board`). Die Kopfleiste zieht darauf etwas
+/// an, damit sie auf dem Tafel-Grund noch als Leiste liest.
 public struct RatsWidget<Content: View>: View {
     private let title: String
     private let accent: RatsWidgetAccent
     private let glyph: RatsGlyph?
     private let note: String?
-    private let deep: Bool
+    private let board: Bool
     private let content: Content
     @Environment(\.colorScheme) private var colorScheme
 
@@ -75,14 +76,14 @@ public struct RatsWidget<Content: View>: View {
         accent: RatsWidgetAccent,
         glyph: RatsGlyph? = nil,
         note: String? = nil,
-        deep: Bool = false,
+        board: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.accent = accent
         self.glyph = glyph
         self.note = note
-        self.deep = deep
+        self.board = board
         self.content = content()
     }
 
@@ -94,21 +95,20 @@ public struct RatsWidget<Content: View>: View {
                 .padding(EdgeInsets(top: 12, leading: 13, bottom: 13, trailing: 13))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .environment(\.colorScheme, deep ? .dark : colorScheme)
-        .background(deep ? RatsColor.deepSea : RatsColor.card)
+        .background(board ? RatsColor.board : RatsColor.card)
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(deep ? RatsColor.deepSeaBorder : RatsColor.border, lineWidth: 1)
+                .stroke(board ? RatsColor.boardBorder : RatsColor.border, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
     }
 
-    private var isDark: Bool { deep || colorScheme == .dark }
-    private var accentColor: Color { deep ? RatsColor.signal : accent.color }
-    private var headerTint: Double { deep ? 0.13 : (isDark ? 0.10 : 0.06) }
+    private var isDark: Bool { colorScheme == .dark }
+    private var accentColor: Color { accent.color }
+    private var headerTint: Double { board ? 0.12 : (isDark ? 0.10 : 0.06) }
     private var tileTint: Double { isDark ? 0.20 : 0.13 }
-    private var waveOpacity: Double { deep ? 0.45 : (isDark ? 0.42 : 0.30) }
+    private var waveOpacity: Double { board ? 0.42 : (isDark ? 0.42 : 0.30) }
 
     private var header: some View {
         HStack(spacing: 9) {
@@ -152,16 +152,16 @@ public struct RatsWidget<Content: View>: View {
 
 /// Die Kopfleiste einer Sitzungskarte: Zeichen des Gremiums, Uhrzeit in
 /// Mono plus Gremium — gleiche Hülle wie die Start-Widgets, andere Füllung,
-/// so ist die Sitzungsliste erkennbar dieselbe App. `deep` macht die Karte
-/// zum einen dunklen Anker der Liste (die Ratssitzung): Tiefsee-Grund,
-/// Inhalt liest die dunklen Token, der Akzent bleibt der des Gremiums.
+/// so ist die Sitzungsliste erkennbar dieselbe App. `board` macht die Karte
+/// zum einen Anker der Liste (die Ratssitzung): Sie steht auf der
+/// Anzeigetafel, der Akzent bleibt der des Gremiums.
 public struct RatsTimedWidget<Content: View>: View {
     private let time: String?
     private let title: String
     private let subtitle: String?
     private let accent: RatsWidgetAccent
     private let glyph: RatsGlyph?
-    private let deep: Bool
+    private let board: Bool
     private let content: Content
     @Environment(\.colorScheme) private var colorScheme
 
@@ -171,7 +171,7 @@ public struct RatsTimedWidget<Content: View>: View {
         subtitle: String? = nil,
         accent: RatsWidgetAccent = .harbor,
         glyph: RatsGlyph? = nil,
-        deep: Bool = false,
+        board: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
         self.time = time
@@ -179,14 +179,14 @@ public struct RatsTimedWidget<Content: View>: View {
         self.subtitle = subtitle
         self.accent = accent
         self.glyph = glyph
-        self.deep = deep
+        self.board = board
         self.content = content()
     }
 
-    private var isDark: Bool { deep || colorScheme == .dark }
-    private var headerTint: Double { deep ? 0.13 : (isDark ? 0.10 : 0.06) }
+    private var isDark: Bool { colorScheme == .dark }
+    private var headerTint: Double { board ? 0.12 : (isDark ? 0.10 : 0.06) }
     private var tileTint: Double { isDark ? 0.20 : 0.13 }
-    private var waveOpacity: Double { deep ? 0.45 : (isDark ? 0.42 : 0.30) }
+    private var waveOpacity: Double { board ? 0.42 : (isDark ? 0.42 : 0.30) }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -238,11 +238,10 @@ public struct RatsTimedWidget<Content: View>: View {
                 .padding(EdgeInsets(top: 12, leading: 13, bottom: 13, trailing: 13))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .environment(\.colorScheme, deep ? .dark : colorScheme)
-        .background(deep ? RatsColor.deepSea : RatsColor.card)
+        .background(board ? RatsColor.board : RatsColor.card)
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(deep ? RatsColor.deepSeaBorder : RatsColor.border, lineWidth: 1)
+                .stroke(board ? RatsColor.boardBorder : RatsColor.border, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 2, y: 1)

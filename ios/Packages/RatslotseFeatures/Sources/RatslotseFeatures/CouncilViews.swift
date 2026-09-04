@@ -1125,9 +1125,10 @@ private struct SessionRow: View {
             subtitle: committee.explains ?? (committee.short == session.committee ? nil : session.committee),
             accent: committee.family.accent,
             glyph: committee.glyph,
-            // Die Ratssitzung ist der eine dunkle Anker der Liste: Im Monat
-            // gibt es genau eine, und sie ist die, um die es geht.
-            deep: Committee.isCouncil(session.committee)
+            // Die Ratssitzung ist der eine Anker der Liste: Im Monat gibt es
+            // genau eine, und sie ist die, um die es geht — auf der
+            // Anzeigetafel, nicht dunkel.
+            board: Committee.isCouncil(session.committee)
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 if cleanLocation != nil || itemCountLabel != nil {
