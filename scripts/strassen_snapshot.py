@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -191,6 +192,56 @@ def _geometrie(linien: list[list[list[float]]]) -> tuple | None:
     lat = (min(p[0] for p in punkte) + max(p[0] for p in punkte)) / 2
     lon = (min(p[1] for p in punkte) + max(p[1] for p in punkte)) / 2
     return lat, lon, json.dumps(beschnitten, separators=(",", ":"))
+
+
+#: Der eingelesene Schnappschuss, Name (klein) → Segmente. Einmal je Prozess,
+#: samt der Datei, aus der er stammt.
+_gecacht: dict[str, list[list[list[float]]]] | None = None
+_gecachte_datei: Path | None = None
+
+
+def nach_namen_aus_datei(datei: Path = SCHNAPPSCHUSS) -> dict[str, list[list[list[float]]]]:
+    """Den liegenden Schnappschuss einlesen — einmal je Prozess.
+
+    Fehlt die Datei oder ist sie kaputt, ist das **kein Fehler**: Der Aufrufer
+    geht dann seinen alten Weg über das Netz. Deshalb gibt es hier ein leeres
+    Verzeichnis statt einer Ausnahme.
+    """
+    global _gecacht, _gecachte_datei
+
+    if _gecacht is not None and _gecachte_datei == datei:
+        return _gecacht
+    _gecachte_datei, _gecacht = datei, {}
+    if not datei.exists():
+        return _gecacht
+    try:
+        _gecacht = _nach_namen(json.loads(datei.read_text(encoding="utf-8")))
+    except (OSError, ValueError) as fehler:
+        logging.getLogger(__name__).warning(
+            "Straßen-Schnappschuss %s unlesbar (%r) — Straßen gehen über das Netz.",
+            datei, fehler)
+        return _gecacht
+    logging.getLogger(__name__).info(
+        "Straßen-Schnappschuss: %d Namen, %.1f Tage alt (%s).",
+        len(_gecacht), (time.time() - datei.stat().st_mtime) / 86400, datei)
+    return _gecacht
+
+
+def strasse_aus_schnappschuss(name: str, datei: Path = SCHNAPPSCHUSS) -> tuple | None:
+    """``(lat, lon, geojson)`` einer Straße aus dem liegenden Schnappschuss.
+
+    **Wozu das hier steht.** Der wöchentliche Lauf holt ohnehin alle 6.534
+    benannten Wege Oldenburgs in EINEM Aufruf und lässt die Datei liegen. Wer
+    danach eine einzelne Straße sucht, braucht Overpass also gar nicht mehr zu
+    fragen — die Antwort liegt schon da. Genau das fehlte dem täglichen
+    Orts-Geocoding: Es ging für jede neue Straße wieder ans Netz und erklärte
+    einen 429 der öffentlichen Instanz zum Totalausfall (04.09.2026).
+
+    ``None`` heißt „steht nicht drin" (neue Straße, oder ein Name, den OSM so
+    nicht kennt) — dann bleibt der Weg über das Netz.
+    """
+    linien = nach_namen_aus_datei(datei).get((name or "").strip().casefold())
+    return _geometrie(linien) if linien else None
 
 
 def anwenden(council_db: Path, datei: Path, *, trocken: bool = False) -> dict:
