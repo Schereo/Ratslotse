@@ -60,13 +60,15 @@ _EMAIL_ADDRESS = re.compile(
 _WRITTEN_DATE = re.compile(
     r"(?<![\d/.-])\b"
     r"(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4})"
-    r"\b(?![\d/.-])"
+    r"\b(?!\d)"
 )
 _PHONE_NUMBER = re.compile(
     r"(?<!\w)(?:(?:\+\d{1,3}|00\d{1,3}|0)[\d\s()/.-]{5,}\d)(?!\w)"
 )
 _PHONE_CONTEXT_NUMBER = re.compile(
-    r"\b(?:telefon|tel|mobiltelefon|handy|rückruf|anruf|erreichbar|rufen|ruft)\b\.?"
+    r"\b(?:telefon(?:nummer)?|tel|mobil(?:telefon|nummer)?|handy(?:nummer)?|"
+    r"rückruf(?:nummer)?|anruf|erreichbar|erreichen|zurückrufen|zurückruft|"
+    r"anrufen|anruft|rufen|ruft|nummer)\b\.?"
     r"[^\n]{0,40}?(?<!\w)(?:\+\d{1,3}[\s()/.-]*)?"
     r"\d[\d\s()/.-]{5,}\d(?!\w)",
     re.IGNORECASE,

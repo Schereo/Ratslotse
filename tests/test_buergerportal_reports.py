@@ -811,11 +811,23 @@ def test_local_screening_requires_current_submitted_owned_report(tmp_path):
     store.close()
 
 
-def test_dates_and_civic_numbers_are_not_mistaken_for_contact_data(tmp_path):
+@pytest.mark.parametrize(
+    "confirmed_text",
+    (
+        "Seit 2026-09-01 (01.09.2026) sind die fiktiven Laternen 12 und 14 ausgefallen.",
+        "Die fiktive Beobachtung stammt vom 01.09.2026.",
+        "Der fiktive Termin ist am 01/09/2026.",
+        "Der fiktive Rückruf war am 01/09/2026.",
+    ),
+)
+def test_dates_and_civic_numbers_are_not_mistaken_for_contact_data(
+    tmp_path,
+    confirmed_text,
+):
     database = tmp_path / "ratslotse.sqlite"
     store, submitted = _create_submitted_citywide_report(
         database,
-        "Seit 2026-09-01 (01.09.2026) sind die fiktiven Laternen 12 und 14 ausgefallen.",
+        confirmed_text,
     )
 
     screening = store.get_current_owned_screening(submitted.id, reporter_id=17)
@@ -848,6 +860,10 @@ def test_unsupported_text_format_requires_manual_review(tmp_path):
         "Rückruf zur fiktiven Meldung bitte unter 0441 123456.",
         "Rückruf zur fiktiven Meldung: 0441/12.34.56.",
         "Telefon: 12345678.",
+        "Meine Telefonnummer lautet 12345678.",
+        "Meine Rückrufnummer ist 12345678.",
+        "Meine Nummer ist 12345678.",
+        "Bitte zurückrufen: 12345678.",
         "Meine Nummer ist +1 212 555 0199.",
     ),
 )
