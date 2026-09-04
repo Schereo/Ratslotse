@@ -1119,8 +1119,15 @@ private struct SessionRow: View {
     var body: some View {
         RatsTimedWidget(
             time: session.sessionTime.map { String($0.prefix(5)) },
-            title: shortCommittee,
-            subtitle: shortCommittee == session.committee ? nil : session.committee
+            title: committee.short,
+            // Unter dem Kurznamen steht, was das Gremium verhandelt — nicht
+            // noch einmal der Amtsname (der bleibt im Accessibility-Label).
+            subtitle: committee.explains ?? (committee.short == session.committee ? nil : session.committee),
+            accent: committee.family.accent,
+            glyph: committee.glyph,
+            // Die Ratssitzung ist der eine dunkle Anker der Liste: Im Monat
+            // gibt es genau eine, und sie ist die, um die es geht.
+            deep: Committee.isCouncil(session.committee)
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 if cleanLocation != nil || itemCountLabel != nil {
@@ -1256,11 +1263,7 @@ private struct SessionRow: View {
         return max(0, session.itemCount - shown)
     }
 
-    private var shortCommittee: String {
-        session.committee
-            .replacingOccurrences(of: "Ausschuss für ", with: "")
-            .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
-    }
+    private var committee: Committee.Entry { Committee.entry(session.committee) }
 
     private var cleanLocation: String? {
         guard let location = session.location?.trimmingCharacters(in: .whitespacesAndNewlines),

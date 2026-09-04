@@ -10,6 +10,10 @@ public enum RatsWidgetAccent: Sendable {
     case marsh
     case buoy
     case ink
+    /// Das Gebaute — Stadtplanung, Gebäudewirtschaft, Verkehr.
+    case brick
+    /// Die Menschen — Soziales, Jugend, Schule, Integration, Kultur, Sport.
+    case plum
 
     public var color: Color {
         switch self {
@@ -17,6 +21,8 @@ public enum RatsWidgetAccent: Sendable {
         case .marsh: RatsColor.marsh
         case .buoy: RatsColor.signalInk
         case .ink: RatsColor.bodyText
+        case .brick: RatsColor.brick
+        case .plum: RatsColor.plum
         }
     }
 }
@@ -144,14 +150,18 @@ public struct RatsWidget<Content: View>: View {
     }
 }
 
-/// Die Kopfleiste einer Sitzungskarte: Uhrzeit in Mono plus Gremium —
-/// gleiche Hülle wie die Start-Widgets, andere Füllung, so ist die
-/// Sitzungsliste erkennbar dieselbe App.
+/// Die Kopfleiste einer Sitzungskarte: Zeichen des Gremiums, Uhrzeit in
+/// Mono plus Gremium — gleiche Hülle wie die Start-Widgets, andere Füllung,
+/// so ist die Sitzungsliste erkennbar dieselbe App. `deep` macht die Karte
+/// zum einen dunklen Anker der Liste (die Ratssitzung): Tiefsee-Grund,
+/// Inhalt liest die dunklen Token, der Akzent bleibt der des Gremiums.
 public struct RatsTimedWidget<Content: View>: View {
     private let time: String?
     private let title: String
     private let subtitle: String?
     private let accent: RatsWidgetAccent
+    private let glyph: RatsGlyph?
+    private let deep: Bool
     private let content: Content
     @Environment(\.colorScheme) private var colorScheme
 
@@ -160,29 +170,48 @@ public struct RatsTimedWidget<Content: View>: View {
         title: String,
         subtitle: String? = nil,
         accent: RatsWidgetAccent = .harbor,
+        glyph: RatsGlyph? = nil,
+        deep: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
         self.time = time
         self.title = title
         self.subtitle = subtitle
         self.accent = accent
+        self.glyph = glyph
+        self.deep = deep
         self.content = content()
     }
 
+    private var isDark: Bool { deep || colorScheme == .dark }
+    private var headerTint: Double { deep ? 0.13 : (isDark ? 0.10 : 0.06) }
+    private var tileTint: Double { isDark ? 0.20 : 0.13 }
+    private var waveOpacity: Double { deep ? 0.45 : (isDark ? 0.42 : 0.30) }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 9) {
-                if let time {
-                    Text(time)
-                        .font(RatsFont.mono(11, weight: .semibold))
+            HStack(alignment: .center, spacing: 10) {
+                if let glyph {
+                    RatsIcon(glyph, size: 15)
                         .foregroundStyle(accent.color)
-                        .fixedSize()
+                        .frame(width: 30, height: 30)
+                        .background(accent.color.opacity(tileTint))
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .accessibilityHidden(true)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(RatsFont.body(14.5, weight: .bold))
-                        .foregroundStyle(RatsColor.text)
-                        .multilineTextAlignment(.leading)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        if let time {
+                            Text(time)
+                                .font(RatsFont.mono(11, weight: .semibold))
+                                .foregroundStyle(accent.color)
+                                .fixedSize()
+                        }
+                        Text(title)
+                            .font(RatsFont.body(14.5, weight: .bold))
+                            .foregroundStyle(RatsColor.text)
+                            .multilineTextAlignment(.leading)
+                    }
                     if let subtitle {
                         Text(subtitle)
                             .font(RatsFont.body(11.5))
@@ -195,10 +224,10 @@ public struct RatsTimedWidget<Content: View>: View {
             }
             .padding(EdgeInsets(top: 10, leading: 13, bottom: 13, trailing: 13))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(accent.color.opacity(colorScheme == .dark ? 0.10 : 0.06))
+            .background(accent.color.opacity(headerTint))
             .overlay(alignment: .bottom) {
                 RatsWaveEdge()
-                    .stroke(accent.color.opacity(colorScheme == .dark ? 0.42 : 0.30), lineWidth: 1)
+                    .stroke(accent.color.opacity(waveOpacity), lineWidth: 1)
                     .frame(height: 8)
                     .offset(y: 1)
                     .accessibilityHidden(true)
@@ -209,8 +238,12 @@ public struct RatsTimedWidget<Content: View>: View {
                 .padding(EdgeInsets(top: 12, leading: 13, bottom: 13, trailing: 13))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RatsColor.card)
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(RatsColor.border, lineWidth: 1))
+        .environment(\.colorScheme, deep ? .dark : colorScheme)
+        .background(deep ? RatsColor.deepSea : RatsColor.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(deep ? RatsColor.deepSeaBorder : RatsColor.border, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
     }

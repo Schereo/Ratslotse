@@ -96,6 +96,16 @@ public enum RatsColor {
     /// bleibt.
     public static let deepSea = Color.adaptive(light: 0x0B2135, dark: 0x16293B)
     public static let deepSeaBorder = Color.adaptive(light: 0x16354F, dark: 0x264059)
+
+    /// Zwei Familienfarben für die Gremien (Tims Entscheidung 04.09.2026):
+    /// Ziegel für das Gebaute (Stadtplanung, Gebäudewirtschaft, Verkehr),
+    /// Pflaume für die Menschen (Soziales, Jugend, Schule, Integration,
+    /// Kultur, Sport). Rat und Verwaltung bleiben Hafenblau, Grün und Abfall
+    /// Watt-Grün. Beide nur als Tönung und Zeichenfarbe, nie als Fläche —
+    /// und beide bewusst weit weg vom Signal-Orange, das dem Ungesehenen
+    /// gehört.
+    public static let brick = Color.adaptive(light: 0xA84A32, dark: 0xE9A08A)
+    public static let plum = Color.adaptive(light: 0x7B4A93, dark: 0xC9A3DB)
 }
 
 private extension Color {

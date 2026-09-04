@@ -23,7 +23,7 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
-import { shortCommittee, hasShortCommittee } from "@/lib/committees";
+import { shortCommittee, hasShortCommittee, committeeIcon } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
@@ -905,6 +905,16 @@ function SessionHighlights({ punkte, ksinr }: { punkte: NonNullable<CouncilSessi
   );
 }
 
+/** Das Lucide-Zeichen des Gremiums als kleine getönte Kachel. */
+function CommitteeGlyph({ name }: { name: string }) {
+  const Icon = committeeIcon(name);
+  return (
+    <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/[0.09] text-primary">
+      <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+    </span>
+  );
+}
+
 function YearDivider({ year }: { year: string }) {
   return (
     <div className="flex items-center gap-3 pt-2 first:pt-0">
@@ -1240,7 +1250,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     <div className="flex min-w-0 items-center gap-3">
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
-                        <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
+                        {/* Das Zeichen des Gremiums vor dem Namen — dieselbe
+                            Tabelle wie im Onboarding und in der App, damit
+                            man die Karte erkennt, bevor man sie liest. */}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <CommitteeGlyph name={s.committee} />
+                          <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
+                        </span>
                         {/* „Morgen · 17:00 Uhr" statt nur der Uhrzeit — die
                             Kachel links nennt den Tag, der Kopf benennt die
                             Nähe (Tims Wunsch 12.08.). */}
