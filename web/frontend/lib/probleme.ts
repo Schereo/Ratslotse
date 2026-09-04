@@ -29,13 +29,23 @@ export const PROBLEM_STATUS: Record<ProblemStatus, string> = {
   persists: "Weiterhin vorhanden",
 };
 
-export const PROBLEM_SCOPE: Record<PublicProblem["scope_kind"], string> = {
-  point: "Punkt",
-  facility: "Einrichtung",
-  route: "Route",
-  area: "Gebiet",
-  citywide: "Stadtweit",
-};
+/** Eine vollständige Quelle für öffentliche und private Bezeichnungen je Raumbezug. */
+export const PROBLEM_SCOPE_META = {
+  point: { publicLabel: "Punkt", reportLabel: "Ein Ort", reportHint: "zum Beispiel eine Querung oder ein Platz" },
+  facility: { publicLabel: "Einrichtung", reportLabel: "Eine Einrichtung", reportHint: "zum Beispiel Schule, Kita oder Haltestelle" },
+  route: { publicLabel: "Route", reportLabel: "Eine Straße oder Strecke", reportHint: "ein Abschnitt oder eine Verbindung" },
+  area: { publicLabel: "Gebiet", reportLabel: "Ein Gebiet", reportHint: "ein Quartier oder Stadtteil" },
+  citywide: { publicLabel: "Stadtweit", reportLabel: "Ganz Oldenburg", reportHint: "wenn kein einzelner Ort ehrlich passt" },
+} as const satisfies Record<PublicProblem["scope_kind"], {
+  publicLabel: string;
+  reportLabel: string;
+  reportHint: string;
+}>;
+
+/** Kontrollierte räumliche Bezüge samt verständlicher Auswahl im Meldeweg. */
+export const PROBLEM_MELDEBEZUEGE = (
+  Object.entries(PROBLEM_SCOPE_META) as [PublicProblem["scope_kind"], (typeof PROBLEM_SCOPE_META)[PublicProblem["scope_kind"]]][]
+).map(([value, meta]) => ({ value, label: meta.reportLabel, hint: meta.reportHint }));
 
 export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
   once: "1 Meldung",

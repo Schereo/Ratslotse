@@ -31,18 +31,21 @@ beginnt kein späterer Punkt.
    umgesetzt und abgenommen.** Eigentümergebundene Entwürfe, einmaliges
    atomisches Absenden, append-only Beobachtungen, versionierte Migrationen und
    Kontolöschgrenze.
-5. **Eigentümergebundene Entwurfs- und Einreichungs-API (#1075): umgesetzt auf
-   diesem Task-Branch.** Nur aktive, bestätigte Nicht-Admin-Konten; konto-sichere
-   Idempotenz beim Anlegen, erwartete Inhaltsrevisionen beim Ändern und
-   retry-sicheres einmaliges Absenden — weiterhin ohne Oberfläche.
-6. Geführter Meldechat und prominenter Einstieg — offen.
+5. **Eigentümergebundene Entwurfs- und Einreichungs-API (#1075): auf `feature`
+   umgesetzt und abgenommen.** Nur aktive, bestätigte Nicht-Admin-Konten;
+   konto-sichere Idempotenz beim Anlegen, erwartete Inhaltsrevisionen beim Ändern
+   und retry-sicheres einmaliges Absenden.
+6. **Geführter Meldechat und prominenter Einstieg (#1086): umgesetzt auf diesem
+   Task-Branch.** Deterministische Fragen, privater genauer Kartenort,
+   sitzungsgebundene Wiederaufnahme, korrigierbare Prüfung und revisionssicheres
+   Absenden über die bestehende API — ohne KI oder öffentlichen Problemabgleich.
 7. Lokale Sicherheits-/Eignungsprüfung vor externen KI-Aufrufen — offen.
 8. Moderation, Clustering, privates Dashboard und Beta-Betrieb — in weitere,
    einzeln abgenommene Schnitte zu zerlegen.
 
 ## Noch nicht Teil des Bürgerportal-Stands
 
-Keine Meldeoberfläche, API für spätere Beobachtungen, KI-Aufrufe,
-Moderationsoberfläche, automatische Veröffentlichung, Uploads oder öffentlichen
-Kommentare. Iteration 5 ist erst nach ausdrücklicher Abnahme des deployten
-API-Schnitts abgeschlossen.
+Keine API für spätere Beobachtungen, Sicherheits-/Eignungsklassifikation,
+KI-Aufrufe, Moderationsoberfläche, Clusterung, automatische Veröffentlichung,
+Uploads, privaten Meldungsübersicht oder öffentlichen Kommentare. Iteration 6
+ist erst nach ausdrücklicher Abnahme des deployten Meldewegs abgeschlossen.

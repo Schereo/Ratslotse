@@ -5,7 +5,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import type { GeoJSON as LeafletGeoJSON, LatLngBounds, Map as LeafletMap, Marker, Path, PathOptions, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { basemapUrl } from "@/lib/basemap";
-import { isProblemMappable, PROBLEM_SCOPE, reportCountLabel, type ProblemFrequency, type PublicProblem } from "@/lib/probleme";
+import { isProblemMappable, PROBLEM_SCOPE_META, reportCountLabel, type ProblemFrequency, type PublicProblem } from "@/lib/probleme";
 import { cn } from "@/lib/utils";
 
 const TILES = basemapUrl("voyager");
@@ -94,7 +94,7 @@ export function ProblemMap({ problems, selectedId, onSelect, className }: {
         for (const problem of problems) {
           if (!isProblemMappable(problem)) continue;
           const selected = problem.id === selectedRef.current;
-          const label = `${problem.title} · ${PROBLEM_SCOPE[problem.scope_kind]} · ${reportCountLabel(problem.independent_reports)}`;
+          const label = `${problem.title} · ${PROBLEM_SCOPE_META[problem.scope_kind].publicLabel} · ${reportCountLabel(problem.independent_reports)}`;
           if (problem.scope_kind === "point" || problem.scope_kind === "facility") {
             const size = problem.scope_kind === "facility" ? 40 : 34;
             const marker = L.marker([problem.latitude!, problem.longitude!], {

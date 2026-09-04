@@ -10,6 +10,7 @@ import {
   Map as MapIcon,
   MapPin,
   Navigation,
+  Plus,
   X,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import {
 } from "@/components/grafik/melde-rangbalken";
 import { ProblemHelp } from "@/components/problem-help";
 import { PublicProblemDetail } from "@/components/public-problem-detail";
-import { EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
+import { Button, EmptyState, ErrorState, PageHeader, Segmented, Spinner } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { isNativeApp } from "@/lib/platform";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,7 @@ import {
   isProblemMappable,
   PROBLEM_ANGEBOT,
   PROBLEM_KATEGORIEN,
-  PROBLEM_SCOPE,
+  PROBLEM_SCOPE_META,
   parseProblemId,
   problemAppDetailHref,
   problemDetailHref,
@@ -103,7 +104,14 @@ export default function View() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={PROBLEM_ANGEBOT.name} />
+      <PageHeader
+        title={PROBLEM_ANGEBOT.name}
+        action={(
+          <Button asChild>
+            <Link href="/probleme/melden"><Plus aria-hidden /> Problem melden</Link>
+          </Button>
+        )}
+      />
 
       {detailParam === null && fictional && (
         <div className="inline-flex min-h-10 max-w-full items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
@@ -237,7 +245,7 @@ function ProblemPreview({ problem, onShowMap }: { problem: PublicProblem; onShow
       <p className="max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
+        {problem.location_label || PROBLEM_SCOPE_META[problem.scope_kind].publicLabel}
         <span aria-hidden>·</span>
         {PROBLEM_KATEGORIEN[problem.category]}
       </p>
@@ -273,7 +281,7 @@ function SelectedProblem({ problem, onClose }: { problem: PublicProblem; onClose
       <p className="mt-1 max-w-[76ch] text-[13px] leading-relaxed text-foreground/85">{problem.summary}</p>
       <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        {problem.location_label || PROBLEM_SCOPE[problem.scope_kind]}
+        {problem.location_label || PROBLEM_SCOPE_META[problem.scope_kind].publicLabel}
       </p>
       <ProblemDetailLink problem={problem} className="mt-3" />
     </div>
