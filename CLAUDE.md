@@ -240,6 +240,13 @@ Hook **gefunden** wird, und repariert nur den Fall, der `.githooks` schon
 meint und ihn verfehlt. `python3 scripts/hooks_einrichten.py --pruefen` sagt
 für ein Arbeitsverzeichnis, woran man ist.
 
+**Wo fange ich an?** [`REZEPTE.md`](REZEPTE.md) beantwortet das für die
+Aufgaben, die hier immer wieder vorkommen: Endpunkt hinzufügen, Seite bauen,
+Spalte ändern, Cron einhängen, Rolle vergeben, etwas hinter einem Schalter
+ausliefern, Release fahren. Je Rezept die Dateien in der Reihenfolge, in der
+man sie anfasst — und welcher Wächter den jeweiligen Fehler fängt. Sie ersetzt
+die Regeln unten nicht, sie führt zu ihnen.
+
 **Regeln je Schicht.** Neben dieser Datei liegt in jedem größeren Verzeichnis
 eine eigene `CLAUDE.md` mit den Regeln, die genau dort gelten — sie wird
 automatisch mitgelesen, sobald dort gearbeitet wird:
