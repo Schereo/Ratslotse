@@ -14,7 +14,7 @@
  * gestrichelter Rahmen für Externes, Paraphrasen kursiv ohne Anführungszeichen.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ChevronDown, ExternalLink, FileDown, MessageSquarePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ import {
   ANL_EXACT_RE, ANL_SOURCE, anlagenBuchstaben, anlagenNr, BELEG_SPLIT_RE,
   CITE_EXACT_RE, CITE_SOURCE, citationIds, datenEindeutschen, fmtDatumKurz,
 } from "@/lib/qa-belege";
+import { markiereBegriffe } from "@/components/glossary-text";
 import { apiUrl, authHeaders } from "@/lib/api";
 import { Zeitreihe } from "@/components/grafik/zeitreihe";
 import { useAuth } from "@/lib/auth";
@@ -525,6 +526,26 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
     teile.push(s.slice(last));
     return teile;
   };
+  // Fachwörter erklären, wo sie stehen. Ein Begriff je Antwort nur einmal —
+  // deshalb ein Set über den ganzen Text, wie bei den Personen-Badges.
+  // Die Reihenfolge ist nicht beliebig: Erst die Personen, dann das Glossar
+  // über das, was als reiner Text übrig bleibt. Andersherum liefe die
+  // Namenssuche über Knoten statt über Zeichen und fände nichts mehr.
+  const begriffeGesetzt = new Set<string>();
+  const mitLexika = (s: string, keyBase: string): React.ReactNode => {
+    const nachPersonen = mitPersonen(s, keyBase);
+    if (typeof nachPersonen === "string") {
+      return markiereBegriffe(nachPersonen, keyBase, begriffeGesetzt)
+        .map((n, i) => <Fragment key={`${keyBase}-b-${i}`}>{n}</Fragment>);
+    }
+    return (nachPersonen as React.ReactNode[]).map((teil, i) =>
+      typeof teil === "string"
+        ? <Fragment key={`${keyBase}-b-${i}`}>
+            {markiereBegriffe(teil, `${keyBase}-${i}`, begriffeGesetzt)
+              .map((n, j) => <Fragment key={j}>{n}</Fragment>)}
+          </Fragment>
+        : teil);
+  };
   // Belege ohne Gegenstück fliegen SAMT führendem Leerzeichen raus (der Deep-
   // Bericht wird roh gespeichert, nur die schnelle Antwort putzt serverseitig).
   // Ohne das bliebe „… nichts her ." mit einer Lücke vor dem Punkt stehen.
@@ -591,8 +612,8 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
       const seg = part.split(/(\*\*[^*]+\*\*)/g);
       return seg.map((s, j) =>
         /^\*\*[^*]+\*\*$/.test(s)
-          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{mitPersonen(s.slice(2, -2), `${keyBase}-${i}-${j}`)}</strong>
-          : <span key={`${keyBase}-${i}-${j}`}>{mitPersonen(s, `${keyBase}-${i}-${j}`)}</span>);
+          ? <strong key={`${keyBase}-${i}-${j}`} className="font-semibold">{mitLexika(s.slice(2, -2), `${keyBase}-${i}-${j}`)}</strong>
+          : <span key={`${keyBase}-${i}-${j}`}>{mitLexika(s, `${keyBase}-${i}-${j}`)}</span>);
     });
   };
 

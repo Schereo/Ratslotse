@@ -561,7 +561,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": (
             "Schreibt eine schon vorliegende Antwort in einfache Sprache um (Knopf "
             "„Einfacher erklären“). Ton wie „Lotti erklärt's einfach“. Platzhalter: "
-            "{question}, {bisher}, {context}."
+            "{question}, {bisher}, {glossar}, {context}."
         ),
         "template": (
             "Du erklärst die Arbeit des Oldenburger Stadtrats in einfacher Sprache — für\n"
@@ -578,6 +578,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "  Nahverkehrsplans“ → „der Plan für Busse und Bahnen wird an einer Stelle\n"
             "  überarbeitet“; „Federführung beim Amt für …“ → „zuständig ist …“;\n"
             "  „Aufstellungsbeschluss“ → „die Stadt beginnt offiziell mit der Planung“.\n"
+            "{glossar}"
             "- Abkürzungen nur, wenn du sie im selben Satz ausgeschrieben und erklärt hast.\n"
             "  Sonst schreib, was dahintersteckt („der Verkehrsverbund, in dem Oldenburg\n"
             "  und die Nachbarkreise ihre Busse und Bahnen abstimmen“). Nie eine Abkürzung\n"

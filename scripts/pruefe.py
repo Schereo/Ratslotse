@@ -172,6 +172,11 @@ PRUEFUNGEN: list[Pruefung] = [
              funktion=_generierte_typen),
     Pruefung("changelog", "changelog.d/-Fragmente sind wohlgeformt", schnell=True,
              befehl=[PY, "scripts/changelog_schnitt.py", "--pruefen"]),
+    # Zwei Listen von Fachbegriffen wären lautlos auseinandergelaufen: Kennt
+    # nur eine Seite ein Wort, fehlt der Tooltip bzw. rät das Modell — nichts
+    # scheitert dabei.
+    Pruefung("glossar", "lib/glossary.ts passt zu kern/glossar.py", schnell=True,
+             befehl=[PY, "scripts/glossar_ts.py", "--pruefen"]),
     # Die App ist die einzige Schicht ohne erzeugte Typen: Ihre `struct`s stehen
     # von Hand da, und eine Umbenennung im Backend erreicht sie auf keinem Weg.
     Pruefung("ios", "Swift-Modelle gegen ihr Schema halten", schnell=True,
