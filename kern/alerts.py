@@ -102,6 +102,31 @@ def _record_run(name: str, started: datetime, status: str,
         logger.exception("job_run für %s konnte nicht protokolliert werden", name)
 
 
+#: Reservierter Schlüssel INNERHALB der Kennzahlen eines Laufs: darunter steht
+#: eine Liste der Unterschritte statt einer Zahl. Nur ``weekly_enrich`` füllt
+#: sie heute; das Admin-Panel klappt sie unter dem Elternjob auf. Der Name
+#: steht hier und nicht in ``kern/jobs.py``, weil er zum **Kennzahlen-Vertrag**
+#: gehört: Wer ihn liest (`web/backend/app/routers/admin.py`) und wer ihn
+#: schreibt (`scripts/weekly_enrich.py`) meinen dieselbe Stelle.
+SCHRITTE_SCHLUESSEL = "Schritte"
+
+
+class JobFehler(RuntimeError):
+    """Ein Lauf, der teilweise gelungen ist — und seine Kennzahlen mitbringt.
+
+    **Wogegen das steht.** ``run_guarded`` verwarf bei einer Exception die
+    Kennzahlen komplett (``_record_run(..., "error", None, ...)``). Ausgerechnet
+    an dem Tag, an dem ``weekly_enrich`` einen Schritt verliert, stand in
+    ``job_runs`` also nur „error" und der Traceback — welcher der 18 Schritte
+    es war, musste man aus dem Log fischen. Wer eine solche Bilanz hat, wirft
+    diesen Fehler und behält sie.
+    """
+
+    def __init__(self, nachricht: str, kennzahlen: dict | None = None):
+        super().__init__(nachricht)
+        self.kennzahlen = kennzahlen or {}
+
+
 def run_guarded(name: str, fn: Callable[[], object]) -> None:
     """Run a cron entrypoint; on crash alert the admin, then re-raise so cron/
     systemd still see a non-zero exit and log the traceback.
@@ -118,7 +143,13 @@ def run_guarded(name: str, fn: Callable[[], object]) -> None:
         result = fn()
     except Exception as exc:
         detail = html.escape(f"{type(exc).__name__}: {exc}")
-        _record_run(name, started, "error", None, f"{type(exc).__name__}: {exc}")
+        # Kennzahlen auch im Fehlerfall — sofern der Fehler welche mitbringt
+        # (s. JobFehler). Ein gescheiterter Lauf ist der, bei dem die Bilanz
+        # am meisten wert ist.
+        kennzahlen = getattr(exc, "kennzahlen", None)
+        _record_run(name, started, "error",
+                    kennzahlen if isinstance(kennzahlen, dict) else None,
+                    f"{type(exc).__name__}: {exc}")
         notify_admin(f"⚠️ Cron <b>{html.escape(name)}</b> ist fehlgeschlagen:\n<code>{detail}</code>")
         traceback.print_exc(file=sys.stderr)
         raise

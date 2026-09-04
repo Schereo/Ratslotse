@@ -6145,3 +6145,80 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
     ich = client.get("/api/auth/me").json()["id"]
     assert client.put(f"/api/admin/users/{ich}/roles", json={"roles": []}).status_code == 400
     assert client.put(f"/api/admin/users/{ich}/role", json={"role": "user"}).status_code == 400
+
+
+def test_admin_jobs_loest_die_unterschritte_heraus(client):
+    """Die Schritt-Liste wird ein eigenes Feld — und verlässt die Kennzahlen.
+
+    **Beides ist nötig.** Ohne das eigene Feld gäbe es die Schritte im
+    Frontend gar nicht; ohne das Herauslösen stünden sie zusätzlich in der
+    Chip-Zeile, die jede Kennzahl als „Name + Zahl" rendert — aus einer Liste
+    würde dort „[object Object]".
+    """
+    from datetime import datetime, timedelta
+
+    from kern.alerts import SCHRITTE_SCHLUESSEL
+
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    frisch = datetime.utcnow() - timedelta(hours=1)
+    store.record_job_run(
+        "weekly_enrich", frisch.isoformat(timespec="seconds"),
+        frisch.isoformat(timespec="seconds"), "ok", 900.0,
+        {"Schritte gesamt": 2, "davon fehlgeschlagen": 1,
+         SCHRITTE_SCHLUESSEL: [
+             {"name": "Entitäten (NER)", "script": "extract_entities.py",
+              "status": "ok", "duration_s": 12.5},
+             {"name": "Quizfragen", "script": "generate_quiz.py",
+              "status": "error", "duration_s": 3.0},
+         ]}, None)
+    store.close()
+
+    job = next(j for j in client.get("/api/admin/jobs").json()
+               if j["key"] == "weekly_enrich")
+    assert [s["name"] for s in job["steps"]] == ["Entitäten (NER)", "Quizfragen"]
+    assert [s["status"] for s in job["steps"]] == ["ok", "error"]
+    assert job["steps"][0]["duration_s"] == 12.5
+    # Und sie stehen NICHT mehr in den Kennzahlen.
+    assert job["last"]["stats"] == {"Schritte gesamt": 2, "davon fehlgeschlagen": 1}
+
+
+def test_admin_jobs_ohne_unterschritte_liefert_leere_liste(client):
+    """Kein Sammel-Job, keine Schritte — aber immer das Feld, nie ``null``.
+
+    Das Frontend liest ``job.steps.length``; ein fehlendes Feld wäre dort ein
+    Absturz statt einer leeren Liste.
+    """
+    _register(client)
+    for job in client.get("/api/admin/jobs").json():
+        assert job["steps"] == []
+
+
+def test_kennzahlen_bleiben_flach(client):
+    """Wächter für die Chip-Zeile: Was in ``last["stats"]`` ankommt, muss sich
+    als Text anzeigen lassen.
+
+    Legt ein künftiger Job eine Liste oder ein dict unter einen anderen
+    Schlüssel, rendert das Panel „[object Object]" — sichtbar erst auf Prod
+    und erst beim nächsten Lauf. Hier fällt es sofort auf.
+    """
+    from datetime import datetime, timedelta
+
+    from kern.alerts import SCHRITTE_SCHLUESSEL
+
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    jetzt = datetime.utcnow() - timedelta(minutes=5)
+    store.record_job_run(
+        "backup_db", jetzt.isoformat(timespec="seconds"),
+        jetzt.isoformat(timespec="seconds"), "ok", 5.0,
+        {"Zahl": 3, "Text": "ok", SCHRITTE_SCHLUESSEL: [{"name": "x"}]}, None)
+    store.close()
+
+    job = next(j for j in client.get("/api/admin/jobs").json() if j["key"] == "backup_db")
+    krumm = {k: v for k, v in (job["last"]["stats"] or {}).items()
+             if not isinstance(v, (int, float, str, bool))}
+    assert not krumm, (
+        f"{sorted(krumm)} sind keine Skalare — die Chip-Zeile des Admin-Panels "
+        f"zeigte dafür „[object Object]“. Entweder flach machen oder wie die "
+        f"Schritte in ein eigenes Vertragsfeld heben.")
