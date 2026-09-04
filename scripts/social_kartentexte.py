@@ -37,6 +37,7 @@ from council.social_text import (  # noqa: E402
     _dringlichkeit_nachladen, _mit_anlagen, kontext, schreibe_fehlende, text_fuer,
 )
 from council.store import CouncilStore  # noqa: E402
+from kern.alerts import run_guarded  # noqa: E402
 
 COUNCIL_DB = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
 
@@ -73,7 +74,10 @@ def probe(db_path: Path, count: int, tage: int, mindest_wichtig: int) -> None:
         store.close()
 
 
-def main() -> int:
+def main() -> dict:
+    """Ein dict, kein Exit-Code: ``run_guarded`` speichert es als Kennzahlen
+    des Laufs (``kern/alerts.py``). Wer hier ``int`` zurückgibt, bekommt einen
+    ``job_runs``-Eintrag ohne jede Zahl — geprüft wird das nicht."""
     ap = argparse.ArgumentParser(description="Kartentexte für Social Media (LLM)")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--tage", type=int, default=21, help="Vorlauf in Tagen (Default 21)")
@@ -88,13 +92,18 @@ def main() -> int:
 
     if args.probe:
         probe(Path(args.db), args.probe, args.tage, args.mindest_wichtig)
-        return 0
+        return {"Probe": args.probe}
 
     todo, geschrieben = process(Path(args.db), args.limit, args.tage,
                                 args.workers, args.mindest_wichtig)
     print(f"Social-Kartentexte: {geschrieben}/{todo} Punkte geschrieben", flush=True)
-    return 0
+    return {"Punkte geschrieben": geschrieben, "Punkte offen": max(todo - geschrieben, 0)}
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # **Warum das hier steht.** Bis 09/2026 lief dieses Skript als einziger
+    # Cron auf Prod OHNE `run_guarded` — täglich um 7:45, mit LLM-Kosten, und
+    # damit doppelt blind: kein `job_runs`-Eintrag (also nichts im Admin-Panel)
+    # und keine Alarmmail beim Absturz. Aufgefallen ist es erst beim
+    # Nachzählen am 04.09.2026, weil `kern/jobs.py` es auch nicht kannte.
+    raise SystemExit(run_guarded("social_kartentexte", main))

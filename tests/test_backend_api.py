@@ -519,6 +519,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "record_council_livestream",  # Live-Mitschnitt des O1-Streams an Sitzungstagen
         "check_vorlage_follows", "remind_setup", "backup_db", "abendmeldungen",
         "check_presse",  # Stufe 3a: Stadt-Pressemitteilungen, täglich
+        "social_kartentexte",  # ein Satz je Tagesordnungspunkt (LLM), täglich 7:45
         "render_plaene",  # P1: Planzeichnungen als Bilder, sonntags
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
