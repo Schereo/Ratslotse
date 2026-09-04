@@ -12,6 +12,8 @@ sauber und damit reif für die nächste Stufe?
 """
 from __future__ import annotations
 
+import collections
+import functools
 import json
 import re
 import shutil
@@ -106,3 +108,138 @@ def test_ausnahmen_sind_noch_noetig():
             f"überflüssig. Aus `exclude` in pyrightconfig.json und aus "
             f"NOCH_NICHT hier entfernen, dann hält die CI es fest.\n"
             f"Grund, aus dem es draußen stand: {grund}")
+
+
+# ---------------------------------------------------------------------------
+# Der Schuldenstand — was noch NICHT im Geltungsbereich ist.
+# ---------------------------------------------------------------------------
+#
+# Der Gate oben ist hart: `kern/` und der Backend-Kern müssen NULL Befunde
+# haben. Der Rest des Bestands steht außerhalb, und das hieße ohne diesen Test:
+# gar keine Prüfung. Ein neues `x.split()[0]` auf einem `str | None` in
+# `council/` fällt dann niemandem auf.
+#
+# Die Sperrklinke dreht das um: Die Zahl DARF NICHT STEIGEN. Wer eine Datei
+# anfasst und dabei einen Befund erzeugt, merkt es sofort; wer aufräumt, senkt
+# die Zahl und macht den Fortschritt sichtbar. Kein Aufräumen wird verlangt,
+# nur kein Rückschritt geduldet.
+#
+# Gemessen mit `pyrightconfig.ratsche.json` — derselben Einstellung wie der
+# Gate, nur über den ganzen Bestand.
+
+RATSCHE = WURZEL / "pyrightconfig.ratsche.json"
+
+#: Stand vom 04.09.2026. **Diese Zahlen dürfen nur SINKEN.** Wer aufräumt,
+#: trägt die neue Zahl hier ein — das ist der halbe Lohn der Arbeit.
+SCHULDEN = {
+    "council": 194,
+    "web/backend/app/routers": 111,
+    "scripts": 44,
+    "eval": 7,
+}
+
+
+def _bereich(rel: str) -> str:
+    if rel.startswith("web/backend/app/routers/"):
+        return "web/backend/app/routers"
+    if rel.startswith("web/backend/app/"):
+        return "web/backend/app"
+    return rel.split("/")[0]
+
+
+@functools.lru_cache(maxsize=1)
+def _befunde_je_bereich() -> dict[str, int] | None:
+    """Ein pyright-Lauf für alle drei Tests — er kostet rund fünf Sekunden."""
+    r = subprocess.run(
+        [sys.executable, "-m", "pyright", "--pythonpath", sys.executable,
+         "--project", str(RATSCHE), "--outputjson"],
+        cwd=WURZEL, capture_output=True, text=True)
+    if not r.stdout.strip():
+        return None
+    daten = json.loads(r.stdout)
+    zaehler: collections.Counter[str] = collections.Counter()
+    for d in daten["generalDiagnostics"]:
+        if d["severity"] != "error":
+            continue
+        rel = Path(d["file"]).resolve().relative_to(WURZEL).as_posix()
+        zaehler[_bereich(rel)] += 1
+    return dict(zaehler)
+
+
+def test_die_ratsche_misst_dasselbe_wie_der_gate():
+    """Beide Konfigurationen müssen dieselben Regeln fahren.
+
+    Zählte die Ratsche milder als der Gate, ginge ein Befund im Gate-Bereich
+    hier durch — und der Schuldenstand wäre eine Zahl über etwas anderes.
+    """
+    gate = _konfig()
+    ratsche = json.loads(re.sub(r"^\s*//.*$", "", RATSCHE.read_text(encoding="utf-8"),
+                                flags=re.MULTILINE))
+    for feld in ("typeCheckingMode", "pythonVersion",
+                 "reportMissingImports", "reportMissingModuleSource"):
+        assert ratsche[feld] == gate[feld], (
+            f"`{feld}` weicht ab: Gate {gate[feld]!r}, Ratsche {ratsche[feld]!r}. "
+            "Beide müssen dieselben Regeln fahren, sonst zählt der "
+            "Schuldenstand etwas anderes als der Gate prüft.")
+    # Die Ratsche darf NICHTS ausnehmen, was der Gate ausnimmt — sonst wäre
+    # genau der Bereich unbeobachtet, um dessentwillen es sie gibt.
+    for pfad in NOCH_NICHT:
+        assert pfad not in ratsche["exclude"], (
+            f"{pfad} steht auch in der Ratsche unter `exclude` — dann zählt "
+            "sie ihn nicht, und er ist völlig unbeobachtet.")
+
+
+@pytest.mark.skipif(shutil.which("node") is None,
+                    reason="pyright braucht eine Node-Laufzeit")
+def test_der_schuldenstand_steigt_nicht():
+    ist = _befunde_je_bereich()
+    if ist is None:
+        pytest.skip("pyright nicht lauffähig")
+
+    gestiegen = {b: (ist.get(b, 0), soll) for b, soll in SCHULDEN.items()
+                 if ist.get(b, 0) > soll}
+    assert not gestiegen, (
+        "Neue Typbefunde außerhalb des Geltungsbereichs:\n  "
+        + "\n  ".join(f"{b}: {jetzt} statt {soll} (+{jetzt - soll})"
+                       for b, (jetzt, soll) in sorted(gestiegen.items()))
+        + "\n\nSie stehen nicht im harten Gate, aber sie sind neu. Zeig sie dir an:\n"
+          "  .venv/bin/pyright --project pyrightconfig.ratsche.json <bereich>")
+
+
+@pytest.mark.skipif(shutil.which("node") is None,
+                    reason="pyright braucht eine Node-Laufzeit")
+def test_der_schuldenstand_ist_nicht_veraltet():
+    """Die zweite Richtung: Ist die Zahl GESUNKEN, gehört sie nachgetragen.
+
+    Sonst wächst zwischen Zahl und Wirklichkeit ein Puffer, in dem neue
+    Befunde unbemerkt Platz haben — die Sperrklinke griffe dann erst wieder,
+    wenn der Puffer voll ist.
+    """
+    ist = _befunde_je_bereich()
+    if ist is None:
+        pytest.skip("pyright nicht lauffähig")
+
+    gesunken = {b: (ist.get(b, 0), soll) for b, soll in SCHULDEN.items()
+                if ist.get(b, 0) < soll}
+    assert not gesunken, (
+        "Aufgeräumt — schön! Trag die neuen Zahlen in SCHULDEN "
+        "(tests/test_typpruefung.py) ein:\n  "
+        + "\n  ".join(f'"{b}": {jetzt},   # war {soll}'
+                       for b, (jetzt, soll) in sorted(gesunken.items())))
+
+
+@pytest.mark.skipif(shutil.which("node") is None,
+                    reason="pyright braucht eine Node-Laufzeit")
+def test_ein_bereich_ohne_schulden_gehoert_in_den_geltungsbereich():
+    """Steht ein Bereich bei null, ist die Schuld getilgt — dann gehört er in
+    `include` und nicht mehr in diese Liste. Ohne das bliebe er für immer in
+    der weichen Prüfung, obwohl er den harten Gate bestehen würde."""
+    ist = _befunde_je_bereich()
+    if ist is None:
+        pytest.skip("pyright nicht lauffähig")
+
+    fertig = sorted(b for b, soll in SCHULDEN.items() if soll == 0 and ist.get(b, 0) == 0)
+    assert not fertig, (
+        f"Diese Bereiche sind sauber: {fertig}. Ab in `include` von "
+        "pyrightconfig.json (und aus SCHULDEN raus) — dann hält der harte "
+        "Gate sie, statt der Sperrklinke.")
