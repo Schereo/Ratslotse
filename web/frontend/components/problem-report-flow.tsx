@@ -172,12 +172,12 @@ export function ProblemReportFlow() {
   const recoveryAttempt = useRef<number | null>(null);
   const focusAfterRecovery = useRef(false);
 
-  const recordServerReport = useCallback((report: PrivateReport) => {
+  const discardCachedReportReads = useCallback((reportId: number) => {
     if (!user) return;
-    queryClient.setQueryData(
-      privateReportDetailQueryKey(user.id, report.id),
-      report,
-    );
+    queryClient.removeQueries({
+      queryKey: privateReportDetailQueryKey(user.id, reportId),
+      exact: true,
+    });
     queryClient.removeQueries({
       queryKey: privateReportListQueryKey(user.id),
       exact: true,
@@ -236,7 +236,7 @@ export function ProblemReportFlow() {
     setConflict(false);
     try {
       const report = await api.get<PrivateReport>(`/meldungen/${id}`);
-      recordServerReport(report);
+      discardCachedReportReads(report.id);
       setCreationContent(null);
       if (report.state === "submitted") {
         clearProblemReportSession();
@@ -258,7 +258,7 @@ export function ProblemReportFlow() {
     } finally {
       setRecovering(false);
     }
-  }, [recordServerReport, resetLocal]);
+  }, [discardCachedReportReads, resetLocal]);
 
   useEffect(() => {
     if (!hydrated || reportId === null || serverReport || submitted) return;
@@ -338,7 +338,7 @@ export function ProblemReportFlow() {
         ...firstAttempt,
         idempotency_key: idempotencyKey,
       });
-      recordServerReport(report);
+      discardCachedReportReads(report.id);
       setReportId(report.id);
       setCreationContent(null);
       setServerReport(report);
@@ -375,7 +375,7 @@ export function ProblemReportFlow() {
           ...complete,
           expected_revision: serverReport.content_revision,
         });
-        recordServerReport(currentReport);
+        discardCachedReportReads(currentReport.id);
         setServerReport(currentReport);
       }
       const result = await api.post<PrivateReport>(`/meldungen/${reportId}/absenden`, {
@@ -383,7 +383,7 @@ export function ProblemReportFlow() {
         confirmed_text: complete.text,
       });
       clearProblemReportSession();
-      recordServerReport(result);
+      discardCachedReportReads(result.id);
       setServerReport(result);
       setSubmitted(result);
     } catch (caught) {
