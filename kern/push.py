@@ -90,6 +90,16 @@ def _apns_jwt() -> str:
     signing_input = f"{header}.{payload}".encode()
 
     key = load_pem_private_key(_load_apns_key_pem(), password=None)
+    # Apple signiert APNs-Tokens mit ES256, der Schlüssel aus dem Developer-
+    # Portal ist also immer ein EC-Schlüssel. `load_pem_private_key` liefert
+    # aber jede Art, die in einer PEM-Datei stehen kann (RSA, Ed25519, DH …),
+    # und die kennen `sign(daten, ECDSA)` nicht. Ohne diese Prüfung wäre eine
+    # verwechselte Datei ein „AttributeError: 'RSAPrivateKey' object has no
+    # attribute ..." tief im Versand — mit ihr steht da, was zu tun ist.
+    if not isinstance(key, ec.EllipticCurvePrivateKey):
+        raise RuntimeError(
+            f"APNS_KEY_PATH enthält keinen EC-Schlüssel, sondern {type(key).__name__}. "
+            "Erwartet wird die .p8-Datei aus dem Apple Developer Portal.")
     der = key.sign(signing_input, ec.ECDSA(SHA256()))
     r, s = decode_dss_signature(der)  # DER → JOSE raw r||s (32 bytes each)
     jose_sig = _b64url(r.to_bytes(32, "big") + s.to_bytes(32, "big"))

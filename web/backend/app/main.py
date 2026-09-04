@@ -239,6 +239,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+# Die beiden Fehlerwege geben eine `JSONResponse` zurück, nicht die deklarierte
+# Form: So kommt der Status 503 zustande, den der Deploy und die Rauchprobe
+# lesen. FastAPI lässt eine `Response` bewusst unverändert durch, die
+# Annotation bleibt trotzdem `Health` — sie ist es, aus der `/openapi.json`
+# den Vertrag baut. Ein Typprüfer kann diese FastAPI-Eigenheit nicht kennen;
+# darum hier eine benannte Ausnahme statt einer aufgeweichten Annotation.
 @app.get("/api/health")
 def health() -> Health:
     from kern.store import Store
@@ -249,13 +255,15 @@ def health() -> Health:
         s._conn.execute("SELECT 1")
         s.close()
     except Exception:
-        return JSONResponse({"status": "error", "db": "ratslotse"}, status_code=503)
+        return JSONResponse(  # pyright: ignore[reportReturnType] — siehe oben
+            {"status": "error", "db": "ratslotse"}, status_code=503)
     try:
         c = CouncilStore(settings.council_db)
         c._conn.execute("SELECT 1")
         c.close()
     except Exception:
-        return JSONResponse({"status": "error", "db": "council"}, status_code=503)
+        return JSONResponse(  # pyright: ignore[reportReturnType] — siehe oben
+            {"status": "error", "db": "council"}, status_code=503)
     return {"status": "ok"}
 
 

@@ -40,5 +40,11 @@ jobs:
       - name: Python-Linter (ruff, nur Fehler)
         run: ruff check .
 
+      # Ebenfalls ein eigener Schritt, ebenfalls damit der Befund oben im Log
+      # steht. Was er prüft und warum der Geltungsbereich klein ist, steht in
+      # `pyrightconfig.json`. Er kostet unter zwei Sekunden.
+      - name: Python-Typen (pyright)
+        run: pyright --pythonpath "$(which python)"
+
       - name: Run tests
         run: python -m pytest tests/ -q
