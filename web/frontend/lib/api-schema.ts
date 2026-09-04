@@ -4457,6 +4457,11 @@ export interface components {
          * @description Compatibility contract consumed before a native app starts loading data.
          */
         AppConfigOut: {
+            /**
+             * Features
+             * @default []
+             */
+            features: string[];
             /** Min Build */
             min_build: number;
             /** Note */
@@ -13768,4 +13773,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c5a3e9555dedb2b7fce6e5cf2a0049ec89c27cf5e3311ca56a786e86100d9ac8
+// vertrag-sha256: e72ec844c71df05f80abcff1dfe008a069577dc739a2c4a689e900c68e2fc406

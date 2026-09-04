@@ -335,6 +335,29 @@ prüfen `process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"` und liefern sonst
 Code darf also gefahrlos mit einem Release nach `main` fahren, die Seite
 bleibt dort ein 404.
 
+**Feature-Schalter (seit 09/2026), wenn das Gate zu grob ist.** Das
+Umgebungs-Gate kennt nur „auf dev sichtbar, auf Prod nicht". Wer etwas auf
+Prod ausliefern und dort **einzeln** an- und ausschalten will, nimmt einen
+Schalter aus [`kern/features.py`](kern/features.py):
+
+```bash
+FEATURE_FLAGS=neue-suche      # in der .env, dann Dienst neu starten
+```
+
+Im Frontend `useFeature("neue-suche")` aus `lib/features.ts`. Die Liste kommt
+über `/api/app-config` — **bewusst nicht** über `NEXT_PUBLIC_…`: Das wird zur
+BAUZEIT einkompiliert, ein Umlegen bräuchte also einen Neubau und einen
+Deploy, und genau das soll der Schalter ersparen (dieselbe Falle wie beim
+CARTO-Schlüssel, s. o.).
+
+**Ein Schalter ist keine Rechteprüfung.** Er sagt, ob etwas *schon so weit*
+ist, nicht *wer* es sehen darf — dafür gibt es Rechte, und die setzt das
+Backend durch. **Und er ist eine Schuld:** Jeder Eintrag nennt unter
+`fertig_wenn`, woran man erkennt, dass er weg kann; `tests/test_features.py`
+meldet einen Schalter, den niemand mehr liest, und eine Verwendung, die in der
+Registry fehlt (ein Tippfehler dort ist dauerhaft AUS und sieht aus wie „noch
+nicht angeschaltet").
+
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
 `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`),
 `CARTO_API_KEY` (Kartenkacheln, s. u.).
@@ -398,6 +421,7 @@ APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
+FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)
 APPLE_TEAM_ID=…                       # Pflicht für Apple-Token-Widerruf bei Kontolöschung
