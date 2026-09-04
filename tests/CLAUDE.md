@@ -42,6 +42,15 @@ Stand: eine Datenbank im alten Schema anlegen, migrieren, und Spalte für
 Spalte mit einer frisch angelegten vergleichen. Und zweimal migrieren — eine
 Migration, die beim zweiten Lauf stolpert, bricht den nächsten Deploy.
 
+`test_migration_bestand.py` tut das automatisch, gegen die eingecheckten
+Schema-Auszüge von dev **und** Prod — und seit 09/2026 auch mit **zwei Zeilen
+je Tabelle**. Der Unterschied ist gemessen: Auf dem leeren Auszug fasst kein
+einziger Migrationsschritt eine Zeile an, mit Inhalt sind es drei. Alles
+Inhaltsabhängige — eine Werte-Migration auf einem schon vergebenen Zielwert,
+ein `NOT NULL` ohne Vorgabewert, ein Umzug, der auf zwei gefüllte Tabellen
+trifft — war vorher unerreichbar. Zwei Zeilen und nicht eine, weil ein
+doppelter Zielwert sonst gar nicht entstehen kann.
+
 ## Echte Daten, wo sie fehlen
 
 Die Suite läuft absichtlich gegen leere Datenbanken — das hält sie schnell und
