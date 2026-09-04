@@ -725,13 +725,23 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     public let isPublic: Int
     public let summary: String?
     public let attachments: [AgendaAttachment]
+    /// Dringlichkeitsantrag — nachgereicht, nicht in der ursprünglichen
+    /// Tagesordnung. Das Web markiert ihn an der Zeile; die App tat es nicht.
+    public let isUrgent: Bool
 
     enum CodingKeys: String, CodingKey {
         case title, summary
         case itemNumber = "item_number"
         case templateNumber = "template_number"
         case isPublic = "is_public"
-        case attachments = "attachments"
+        // Der Server nennt das Feld `anlagen`. Die App las bis 09/2026
+        // `attachments` — ein Name, den es auf der Leitung nie gab, also
+        // immer eine leere Liste und nie eine Fehlermeldung. Genau der Fall,
+        // vor dem ios/CLAUDE.md warnt; gefunden hat ihn Tim in der App, nicht
+        // der Vertragsprüfer (er bindet nur die Typen, die an einer
+        // Aufrufstelle stehen — `AgendaItem` hängt unter `SessionDetail`).
+        case attachments = "anlagen"
+        case isUrgent = "dringlich"
     }
 
     public init(from decoder: Decoder) throws {
@@ -742,6 +752,7 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
         isPublic = try values.decodeIfPresent(Int.self, forKey: .isPublic) ?? 1
         summary = try values.decodeIfPresent(String.self, forKey: .summary)
         attachments = try values.decodeIfPresent([AgendaAttachment].self, forKey: .attachments) ?? []
+        isUrgent = try values.decodeIfPresent(Bool.self, forKey: .isUrgent) ?? false
     }
 }
 
