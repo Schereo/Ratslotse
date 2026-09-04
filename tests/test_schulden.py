@@ -302,6 +302,18 @@ def test_speichern_und_lesen(tmp_path, gelesen):
         store.close()
 
 
+def _ohne_zeitstempel(zeilen):
+    """Die Zeilen ohne ``fetched_at`` — das ist der Teil, der idempotent ist.
+
+    ``merke_herkunft`` schreibt dort „zuletzt bestätigt" und schiebt den Wert
+    bei jedem Lauf VORWÄRTS; das ist Absicht und dokumentiert. Ein Vergleich
+    über die ganze Zeile hielt deshalb nur, solange beide Aufrufe in dieselbe
+    Sekunde fielen — in der CI ist der Test daran umgefallen
+    (``11:13:35`` gegen ``11:13:36``).
+    """
+    return [{k: v for k, v in z.items() if k != "fetched_at"} for z in zeilen]
+
+
 def test_zweimal_speichern_aendert_nichts(tmp_path, gelesen):
     """Der Lauf ist idempotent — sonst wüchse die Tabelle mit der Zahl der
     Läufe statt mit der Zahl der Jahrgänge."""
@@ -310,7 +322,12 @@ def test_zweimal_speichern_aendert_nichts(tmp_path, gelesen):
         store.save_schulden(gelesen["zeilen"], _herkunft())
         erst = store.get_schulden()
         store.save_schulden(gelesen["zeilen"], _herkunft())
-        assert store.get_schulden() == erst
+        zweit = store.get_schulden()
+        assert _ohne_zeitstempel(zweit) == _ohne_zeitstempel(erst)
+        # Und die eine Ausnahme verhält sich wie zugesagt: Sie wandert nur
+        # vorwärts, nie zurück.
+        for a, b in zip(erst, zweit):
+            assert b["fetched_at"] >= a["fetched_at"]
     finally:
         store.close()
 
