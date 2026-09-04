@@ -393,6 +393,13 @@
             ],
             "title": "State",
             "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AdminJobStep"
+            },
+            "title": "Steps",
+            "type": "array"
           }
         },
         "required": [
@@ -403,7 +410,8 @@
           "state",
           "age_h",
           "last",
-          "history"
+          "history",
+          "steps"
         ],
         "title": "AdminJob",
         "type": "object"
@@ -432,6 +440,42 @@
           "duration_s"
         ],
         "title": "AdminJobRun",
+        "type": "object"
+      },
+      "AdminJobStep": {
+        "description": "Ein Unterschritt eines Sammel-Jobs (heute nur ``weekly_enrich``).\n\nSie stehen hier als eigenes Feld und nicht als weiterer Eintrag in\n``last[\"stats\"]``: Das Panel rendert die Kennzahlen als Chips mit einer\nZahl darin — eine Liste darunter ergäbe „[object Object]\".",
+        "properties": {
+          "duration_s": {
+            "title": "Duration S",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "script": {
+            "title": "Script",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "script",
+          "status",
+          "duration_s"
+        ],
+        "title": "AdminJobStep",
         "type": "object"
       },
       "AdminLimits": {

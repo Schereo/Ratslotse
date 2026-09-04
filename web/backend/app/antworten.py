@@ -1200,6 +1200,19 @@ class AdminJobRun(TypedDict):
     duration_s: float | None
 
 
+class AdminJobStep(TypedDict):
+    """Ein Unterschritt eines Sammel-Jobs (heute nur ``weekly_enrich``).
+
+    Sie stehen hier als eigenes Feld und nicht als weiterer Eintrag in
+    ``last["stats"]``: Das Panel rendert die Kennzahlen als Chips mit einer
+    Zahl darin — eine Liste darunter ergäbe „[object Object]".
+    """
+    name: str
+    script: str
+    status: Literal["ok", "error"]
+    duration_s: float | None
+
+
 class AdminJob(TypedDict):
     """``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
     kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.
@@ -1213,6 +1226,9 @@ class AdminJob(TypedDict):
     age_h: float | None
     last: dict[str, Any] | None
     history: list[AdminJobRun]
+    #: Die Unterschritte des letzten Laufs, leer bei Jobs ohne welche. Aus
+    #: ``last["stats"]`` herausgelöst, damit die Chip-Zeile Zahlen behält.
+    steps: list[AdminJobStep]
 
 
 class AdminFeedbackList(TypedDict):

@@ -105,6 +105,25 @@ def quiz_stats(
     }
 
 
+def _schritt(roh: dict) -> dict:
+    """Einen Unterschritt auf die Vertragsform bringen — nachsichtig.
+
+    ``job_runs.stats`` ist freies JSON, geschrieben von einem Cron-Skript. Ein
+    Eintrag, dem ein Feld fehlt, darf nicht die **ganze** Übersicht mit einem
+    500 aus der Antwortprüfung reißen — ausgerechnet die Ansicht, die stille
+    Ausfälle sichtbar machen soll, wäre dann selbst der stille Ausfall. Also
+    auffüllen statt vertrauen (der Testfall dazu steht in
+    ``tests/test_backend_api.py::test_kennzahlen_bleiben_flach``).
+    """
+    dauer = roh.get("duration_s")
+    return {
+        "name": str(roh.get("name") or roh.get("script") or "?"),
+        "script": str(roh.get("script") or ""),
+        "status": "error" if roh.get("status") == "error" else "ok",
+        "duration_s": float(dauer) if isinstance(dauer, (int, float)) else None,
+    }
+
+
 @router.get("/jobs")
 def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[AdminJob]:
     """Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus
@@ -113,6 +132,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
     Ausfall auf, auch wenn keine Fehler-Mail kam (Job lief ja gar nicht)."""
     from datetime import datetime
 
+    from kern.alerts import SCHRITTE_SCHLUESSEL
     from kern.jobs import JOBS
 
     runs = store.job_runs(limit=500)
@@ -138,11 +158,25 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
                 state = "stale"
             else:
                 state = "ok"
+        # Die Schritt-Liste aus den Kennzahlen herauslösen: Sie ist ein
+        # eigenes, getyptes Feld, und in der Chip-Zeile des Panels stünde sie
+        # sonst als „[object Object]". `last` wird dafür kopiert — die Zeile
+        # aus `job_runs` gehört dem Store, nicht diesem Router.
+        steps: list[dict] = []
+        if last and isinstance(last.get("stats"), dict):
+            roh = last["stats"].get(SCHRITTE_SCHLUESSEL)
+            if isinstance(roh, list):
+                steps = [_schritt(e) for e in roh if isinstance(e, dict)]
+            if SCHRITTE_SCHLUESSEL in last["stats"]:
+                last = {**last,
+                        "stats": {k: v for k, v in last["stats"].items()
+                                  if k != SCHRITTE_SCHLUESSEL}}
         out.append({
             **{k: job[k] for k in ("key", "label", "description", "schedule")},
             "state": state,
             "age_h": age_h,
             "last": last,
+            "steps": steps,
             # Älteste zuerst, damit der Verlauf links→rechts in der Zeit läuft.
             "history": [
                 {"started_at": h["started_at"], "status": h["status"], "duration_s": h["duration_s"]}

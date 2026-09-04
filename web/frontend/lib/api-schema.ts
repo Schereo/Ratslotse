@@ -4001,6 +4001,8 @@ export interface components {
              * @enum {string}
              */
             state: "ok" | "stale" | "error" | "unknown";
+            /** Steps */
+            steps: components["schemas"]["AdminJobStep"][];
         };
         /** AdminJobRun */
         AdminJobRun: {
@@ -4010,6 +4012,27 @@ export interface components {
             started_at: string;
             /** Status */
             status: string;
+        };
+        /**
+         * AdminJobStep
+         * @description Ein Unterschritt eines Sammel-Jobs (heute nur ``weekly_enrich``).
+         *
+         *     Sie stehen hier als eigenes Feld und nicht als weiterer Eintrag in
+         *     ``last["stats"]``: Das Panel rendert die Kennzahlen als Chips mit einer
+         *     Zahl darin — eine Liste darunter ergäbe „[object Object]".
+         */
+        AdminJobStep: {
+            /** Duration S */
+            duration_s: number | null;
+            /** Name */
+            name: string;
+            /** Script */
+            script: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "error";
         };
         /** AdminLimits */
         AdminLimits: {
@@ -13773,4 +13796,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e72ec844c71df05f80abcff1dfe008a069577dc739a2c4a689e900c68e2fc406
+// vertrag-sha256: 8c3fa8629cf2e7cc269e22a4411db2dbc599307f6fb9b9945034bf0d3841f315

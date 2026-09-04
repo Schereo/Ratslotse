@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
@@ -375,6 +376,8 @@ function JobsSection() {
                 <p className="mt-2.5 text-xs text-muted-foreground">{job.description}</p>
               )}
 
+              <JobSchritte steps={job.steps} />
+
               {job.history.length > 1 && (
                 <div className="mt-3 flex items-end gap-1" aria-hidden>
                   {job.history.map((h, i) => (
@@ -391,6 +394,57 @@ function JobsSection() {
         })}
       </div>
     </div>
+  );
+}
+
+/** Die Unterschritte eines Sammel-Jobs, aufklappbar unter seiner Karte.
+ *
+ *  **Wozu.** `weekly_enrich` läuft sonntags 18 Schritte durch und stand im
+ *  Panel als EINE Kachel mit „Schritte gesamt 18 · davon fehlgeschlagen 0".
+ *  Welcher Schritt zwei Stunden brauchte und welcher stumm nichts tat, wusste
+ *  nur das Log auf dem Server — obwohl der Lauf es die ganze Zeit mitschrieb.
+ *  16 der 18 Schritte rufen kein `run_guarded` und haben deshalb auch keine
+ *  eigene Kachel, unter der man nachsehen könnte.
+ *
+ *  Natives `<details>`: Tastatur und Screenreader können das ohne Zutun, und
+ *  eine Liste, die nur beim Nachsehen aufgeht, kostet zugeklappt nichts. */
+function JobSchritte({ steps }: { steps: AdminJob["steps"] }) {
+  if (!steps.length) return null;
+  const fehler = steps.filter((s) => s.status === "error").length;
+  // Der längste Schritt setzt den Maßstab der Balken. Sie sind der eigentliche
+  // Gewinn dieser Liste: Wo die Zeit hingeht, sieht man in einer Spalte
+  // Sekundenzahlen erst beim Durchlesen, im Balken sofort.
+  const laengster = Math.max(...steps.map((s) => s.duration_s ?? 0), 1);
+  return (
+    <details className="group mt-2.5">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11.5px] text-muted-foreground">
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-fluss ease-out-strong group-open:rotate-180" />
+        {steps.length} Schritte
+        {fehler > 0
+          ? <span className="font-semibold text-destructive">· {fehler} fehlgeschlagen</span>
+          : <span>· alle durchgelaufen</span>}
+      </summary>
+      <ul className="mt-1.5 space-y-px border-l-2 border-border pl-2.5">
+        {steps.map((s, i) => (
+          <li key={`${s.script}-${i}`} className="flex items-center gap-2 py-0.5">
+            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full",
+              s.status === "ok" ? "bg-green-500" : "bg-red-500")} />
+            <span className="min-w-0 flex-1 truncate text-[11.5px] text-foreground">{s.name}</span>
+            <span aria-hidden className="hidden h-1 w-16 shrink-0 overflow-hidden rounded-full bg-border sm:block">
+              <span className="block h-full rounded-full bg-primary/45"
+                style={{ width: `${Math.round(((s.duration_s ?? 0) / laengster) * 100)}%` }} />
+            </span>
+            {/* Feste Breite, rechtsbündig: Ohne sie schiebt die unterschiedlich
+                breite Zeitangabe („8 s" vs. „31 min") den Balken davor hin und
+                her — und eine Balkenspalte, die nicht fluchtet, taugt nicht
+                zum Vergleichen, wozu sie allein da ist. */}
+            <span className="w-12 shrink-0 text-right tabular-nums text-[11px] text-muted-foreground">
+              {s.duration_s != null ? formatDuration(s.duration_s) : "—"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
