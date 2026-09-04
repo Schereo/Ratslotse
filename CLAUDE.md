@@ -536,7 +536,8 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `.venv/bin/python scripts/changelog_schnitt.py x.y.z [--trocken]` — hängt an
   jedes Fragment die PR-Nummer aus dem Squash-Commit, der es angelegt hat,
   sortiert es unter `## [x.y.z] – Datum` in seinen Abschnitt, löscht die
-  Fragmente und zieht die Compare-Links am Dateiende nach. Danach — **nach dem
+  Fragmente, zieht die Compare-Links am Dateiende nach und setzt die
+  **App-Version** (`MARKETING_VERSION` in `ios/`) auf dieselbe Zahl. Danach — **nach dem
   Merge des Release-PRs** — annotierten Git-Tag `vx.y.z` setzen, pushen und
   daraus das GitHub-Release machen:
 
