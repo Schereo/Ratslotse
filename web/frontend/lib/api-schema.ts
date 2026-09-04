@@ -3007,6 +3007,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/meldungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reports */
+        get: operations["list_reports_api_meldungen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/meldungen/entwuerfe": {
         parameters: {
             query?: never;
@@ -7323,6 +7340,17 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** PrivateReportListOut */
+        PrivateReportListOut: {
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Reports */
+            reports: components["schemas"]["PrivateReportSummaryOut"][];
+            /** Total */
+            total: number;
+        };
         /**
          * PrivateReportOut
          * @description Eigentümergebundener Entwurf oder abgesendete private Meldung.
@@ -7366,6 +7394,39 @@ export interface components {
             state: "draft" | "submitted";
             /** Submitted At */
             submitted_at: string | null;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * PrivateReportSummaryOut
+         * @description Bounded private summary without precise private location data.
+         */
+        PrivateReportSummaryOut: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Content Revision */
+            content_revision: number;
+            /** Id */
+            id: number;
+            /** Observed On */
+            observed_on: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "draft" | "submitted";
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Text Preview */
+            text_preview: string;
             /** Updated At */
             updated_at: string;
         };
@@ -12550,6 +12611,38 @@ export interface operations {
             };
         };
     };
+    list_reports_api_meldungen_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateReportListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_draft_api_meldungen_entwuerfe_post: {
         parameters: {
             query?: never;
@@ -13998,4 +14091,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 83485b345a688865919b3bbd20f2471d47e4982acc23b694258b90f40e28f696
+// vertrag-sha256: 628b15363d419411467ea171ad311408bdf58b2a2fd3037c955b172554b3298d

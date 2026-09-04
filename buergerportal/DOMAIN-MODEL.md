@@ -143,6 +143,31 @@ unbrauchbar. Schlägt die lokale Prüfung oder ihre Persistenz fehl, bleibt die
 private Einreichung erhalten, aber es existiert keine weitergabefähige
 Kandidatin. Es gibt weder externen Aufruf noch HTTP-Ausgabe des Ergebnisses.
 
+## Owner-bound read model — Iteration 8
+
+`PrivateReportStore.list_owned_reports(reporter_id, limit, offset)` returns an
+explicit `PrivateReportPage`, ordered by `updated_at DESC, id DESC`. The Store
+accepts only active, verified non-admin owners and bounds each page to 1–50
+rows. Each `PrivateReportSummary` uses at most 160 characters of the current
+draft or submitted description and includes only category, scope, observation
+date, honest private state, revision, submission time, and update time. The
+query does not select account identity, precise location, coordinates,
+idempotency or request fingerprints, local screening evidence, or forwarding
+state.
+
+`GET /api/meldungen?limit=…&offset=…` takes the owner exclusively from the
+authenticated session and serializes the same narrow model. Exact private facts
+are fetched only after selection through the existing indistinguishable-404
+detail boundary. `/meine-meldungen` exposes loading, empty, retryable error, and
+bounded older-page states. Its only states are `Entwurf` and
+`Privat eingegangen`; it does not infer moderation or City processing.
+
+Draft continuation stores the selected existing report ID in the short-lived,
+account-bound browser session. Navigation proceeds only after that handoff is
+stored successfully. The reporting adapter then reads the authoritative server
+report and revision before any update, so continuation cannot fall through to a
+new draft creation. Submitted reports are read-only in this slice.
+
 ## Veröffentlichung bleibt geschlossen
 
 Eine reale Meldung darf erst in eine öffentliche Projektion einfließen, wenn
@@ -153,10 +178,10 @@ beides zur aktuellen Inhaltsrevision unveränderlich belegt ist:
 
 Fehlt ein Nachweis, ist er veraltet oder ist die Prüfung fehlgeschlagen, wird
 nichts veröffentlicht. `ProblemStore` bleibt eine reine öffentliche Lesegrenze.
-Iteration 4 persistiert zwar private Entwürfe und Beobachtungen, führt aber weder
-HTTP-Zugriff noch KI-Prüfung, Moderation, Problemzuordnung oder
-Veröffentlichungslogik ein. Anwendungscode kann weiterhin keine reale
-öffentliche Projektion anlegen oder veröffentlichen.
+Iterations 4–8 persist and expose owner-bound private reports but add no external
+AI call, moderation decision, problem assignment, or publication path.
+Application code still cannot create or publish a real public projection from a
+private report.
 
 ## Geografie
 

@@ -46,6 +46,7 @@ LOCAL_SCREENING_REASONS: tuple[LocalScreeningReason, ...] = (
     "unsupported_text_format",
 )
 _LOCAL_SCREENING_RULESET_VERSION = 1
+_PRIVATE_REPORT_PREVIEW_LENGTH = 160
 _SQLITE_INTEGER_MAX = 2**63 - 1
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
 _POTENTIAL_EMERGENCY = re.compile(
@@ -670,6 +671,25 @@ class LocalReportScreening:
     outcome: LocalScreeningOutcome
     reason_codes: tuple[LocalScreeningReason, ...]
     created_at: str
+
+
+@dataclass(frozen=True)
+class PrivateReportSummary:
+    id: int
+    text_preview: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str
+    state: ReportState
+    content_revision: int
+    submitted_at: str | None
+    updated_at: str
+
+
+@dataclass(frozen=True)
+class PrivateReportPage:
+    reports: tuple[PrivateReportSummary, ...]
+    total: int
 
 
 @dataclass(frozen=True)
@@ -1327,6 +1347,66 @@ class PrivateReportStore:
         if owned is None:
             raise PrivateReportNotFound("Meldung nicht gefunden.")
         raise InvalidReportTransition("Dieser Meldeentwurf kann nicht mehr geändert werden.")
+
+    def list_owned_reports(
+        self,
+        *,
+        reporter_id: int,
+        limit: int,
+        offset: int,
+    ) -> PrivateReportPage:
+        """Return a bounded, newest-first page of the owner's private reports."""
+        if (
+            type(limit) is not int
+            or limit < 1
+            or limit > 50
+            or type(offset) is not int
+            or offset < 0
+            or offset > _SQLITE_INTEGER_MAX
+        ):
+            raise ValueError("Ungültige Seitenauswahl.")
+        if not _is_storage_id(reporter_id):
+            raise ReporterNotEligible(
+                "Private Meldungen benötigen ein zugelassenes Konto."
+            )
+        self._require_eligible_reporter(reporter_id)
+        total = int(
+            self._conn.execute(
+                "SELECT COUNT(*) FROM civic_reports WHERE reporter_id = ?",
+                (reporter_id,),
+            ).fetchone()[0]
+        )
+        rows = self._conn.execute(
+            """SELECT id,
+                      CASE WHEN status = 'submitted'
+                           THEN confirmed_text ELSE draft_text END AS text_preview,
+                      category, scope_kind, observed_at, status,
+                      content_revision, submitted_at, updated_at
+               FROM civic_reports
+               WHERE reporter_id = ?
+               ORDER BY updated_at DESC, id DESC
+               LIMIT ? OFFSET ?""",
+            (reporter_id, limit, offset),
+        ).fetchall()
+        return PrivateReportPage(
+            reports=tuple(
+                PrivateReportSummary(
+                    id=int(row["id"]),
+                    text_preview=str(row["text_preview"])[
+                        :_PRIVATE_REPORT_PREVIEW_LENGTH
+                    ],
+                    category=cast(ProblemCategory, row["category"]),
+                    scope_kind=cast(ScopeKind, row["scope_kind"]),
+                    observed_on=str(row["observed_at"]),
+                    state=cast(ReportState, row["status"]),
+                    content_revision=int(row["content_revision"]),
+                    submitted_at=row["submitted_at"],
+                    updated_at=str(row["updated_at"]),
+                )
+                for row in rows
+            ),
+            total=total,
+        )
 
     def get_owned_report(
         self,

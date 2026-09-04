@@ -1,4 +1,5 @@
 import { PROBLEM_KATEGORIEN, PROBLEM_MELDEBEZUEGE } from "./probleme";
+import type { User } from "./types";
 import type { ApiAntwort } from "./vertrag";
 
 export type PrivateReport = ApiAntwort<"/meldungen/{report_id}">;
@@ -31,6 +32,13 @@ export type ProblemReportSession = {
 
 export const PROBLEM_REPORT_SESSION_KEY = "ratslotse:private-problemmeldung:v1";
 export const PROBLEM_REPORT_SESSION_TTL_MS = 30 * 60 * 1_000;
+
+export function isEligiblePrivateReporter(user: User | null): user is User {
+  return !!user
+    && user.role === "user"
+    && user.status === "active"
+    && user.email_verified;
+}
 
 /** Der Beobachtungsort gibt den Kalendertag vor, nicht Server- oder Geräte-TZ. */
 export function oldenburgTodayISO(now = new Date()): string {
@@ -117,11 +125,42 @@ export function loadProblemReportSession(
   }
 }
 
-export function saveProblemReportSession(session: ProblemReportSession): void {
+export function saveProblemReportSession(session: ProblemReportSession): boolean {
   try {
     sessionStorage.setItem(PROBLEM_REPORT_SESSION_KEY, JSON.stringify(session));
+    return true;
   } catch {
     // The report still works without optional browser recovery.
+    return false;
+  }
+}
+
+export function beginProblemReportContinuation(
+  ownerId: number,
+  report: PrivateReport,
+  now = Date.now(),
+): boolean {
+  try {
+    return saveProblemReportSession({
+      version: 1,
+      ownerId,
+      savedAt: now,
+      stage: "review",
+      idempotencyKey: crypto.randomUUID(),
+      reportId: report.id,
+      creationContent: null,
+      content: {
+        text: report.draft_text,
+        category: report.category,
+        scope_kind: report.scope_kind,
+        observed_on: report.observed_on,
+        location_label: report.location_label,
+        latitude: report.latitude,
+        longitude: report.longitude,
+      },
+    });
+  } catch {
+    return false;
   }
 }
 

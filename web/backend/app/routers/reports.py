@@ -1,7 +1,7 @@
 """Eigentümergebundene HTTP-Grenze für private Bürgerportal-Meldungen."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from buergerportal.reports import (
     DraftContent,
@@ -9,11 +9,16 @@ from buergerportal.reports import (
     InvalidReportTransition,
     PrivateReport,
     PrivateReportNotFound,
+    PrivateReportSummary,
     PrivateReportStore,
     ReporterNotEligible,
 )
 
-from ..antworten import PrivateReportOut
+from ..antworten import (
+    PrivateReportListOut,
+    PrivateReportOut,
+    PrivateReportSummaryOut,
+)
 from ..deps import get_private_report_store, require_eligible_reporter
 from ..schemas import (
     PrivateDraftContentIn,
@@ -35,6 +40,22 @@ def _content(body: PrivateDraftContentIn) -> DraftContent:
         latitude=body.latitude,
         longitude=body.longitude,
     )
+
+
+def _private_report_summary_out(
+    report: PrivateReportSummary,
+) -> PrivateReportSummaryOut:
+    return {
+        "id": report.id,
+        "text_preview": report.text_preview,
+        "category": report.category,
+        "scope_kind": report.scope_kind,
+        "observed_on": report.observed_on,
+        "state": report.state,
+        "content_revision": report.content_revision,
+        "submitted_at": report.submitted_at,
+        "updated_at": report.updated_at,
+    }
 
 
 def _private_report_out(report: PrivateReport) -> PrivateReportOut:
@@ -70,6 +91,29 @@ def _http_exception(error: ValueError) -> HTTPException:
             "Dieses Konto kann keine privaten Meldungen abgeben.",
         )
     return HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error))
+
+
+@router.get("")
+def list_reports(
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0, le=2**63 - 1),
+    user: dict = Depends(require_eligible_reporter),
+    store: PrivateReportStore = Depends(get_private_report_store),
+) -> PrivateReportListOut:
+    try:
+        page = store.list_owned_reports(
+            reporter_id=int(user["id"]),
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as error:
+        raise _http_exception(error) from None
+    return {
+        "reports": [_private_report_summary_out(report) for report in page.reports],
+        "total": page.total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.post("/entwuerfe", status_code=status.HTTP_201_CREATED)

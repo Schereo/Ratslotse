@@ -134,6 +134,7 @@ def test_private_routes_reject_missing_ineligible_and_admin_sessions(private_api
     assert created.status_code == 201
     report_id = created.json()["id"]
     calls = (
+        ("get", "/api/meldungen?limit=20&offset=0", None),
         ("post", "/api/meldungen/entwuerfe", _draft(key="fiktiver-request-0002")),
         ("get", f"/api/meldungen/{report_id}", None),
         (
@@ -228,6 +229,85 @@ def test_foreign_and_unknown_ids_have_the_same_404_for_every_operation(private_a
         unknown = client.request(method, path.format(report_id=unknown_id), headers=other, **kwargs)
         assert (foreign.status_code, foreign.json()) == (404, {"detail": "Meldung nicht gefunden."})
         assert (unknown.status_code, unknown.json()) == (foreign.status_code, foreign.json())
+
+
+def test_owner_lists_only_own_private_report_summaries_with_pagination(private_api):
+    client, database = private_api
+    _, owner = _account(database, email="liste@example.org")
+    _, other = _account(database, email="listenfremd@example.org")
+    oldest = client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="listen-entwurf-1", text="Ältester fiktiver Entwurf."),
+        headers=owner,
+    ).json()
+    submitted = client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="listen-entwurf-2", text="Zweiter fiktiver Entwurf."),
+        headers=owner,
+    ).json()
+    submitted = client.post(
+        f"/api/meldungen/{submitted['id']}/absenden",
+        json={
+            "expected_revision": 0,
+            "confirmed_text": "Bestätigte fiktive Beobachtung.",
+        },
+        headers=owner,
+    ).json()
+    client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="listen-fremd", text="Kontofremder fiktiver Entwurf."),
+        headers=other,
+    )
+    newest = client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="listen-entwurf-3", text="Neuester fiktiver Entwurf."),
+        headers=owner,
+    ).json()
+
+    first = client.get("/api/meldungen?limit=2&offset=0", headers=owner)
+    second = client.get("/api/meldungen?limit=2&offset=2", headers=owner)
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["total"] == second.json()["total"] == 3
+    assert first.json()["limit"] == second.json()["limit"] == 2
+    assert (first.json()["offset"], second.json()["offset"]) == (0, 2)
+    assert [report["id"] for report in first.json()["reports"]] == [
+        newest["id"],
+        submitted["id"],
+    ]
+    assert [report["id"] for report in second.json()["reports"]] == [oldest["id"]]
+    assert first.json()["reports"][1]["text_preview"] == submitted["confirmed_text"]
+    assert first.json()["reports"][1]["state"] == "submitted"
+    assert set(first.json()["reports"][0]) == {
+        "id",
+        "text_preview",
+        "category",
+        "scope_kind",
+        "observed_on",
+        "state",
+        "content_revision",
+        "submitted_at",
+        "updated_at",
+    }
+    _assert_no_account_identifier(first.json())
+    assert "location_label" not in first.text
+    assert "latitude" not in first.text
+    assert "longitude" not in first.text
+    assert "screen" not in first.text.lower()
+    assert "forward" not in first.text.lower()
+
+
+@pytest.mark.parametrize(
+    "query",
+    ("limit=0", "limit=51", "offset=-1", f"offset={2**63}"),
+)
+def test_private_report_listing_rejects_invalid_pagination(private_api, query):
+    client, database = private_api
+    _, owner = _account(database, email=f"seitenwahl-{query}@example.org")
+
+    response = client.get(f"/api/meldungen?{query}", headers=owner)
+
+    assert response.status_code == 422
 
 
 def test_draft_creation_is_account_scoped_idempotent_and_conflict_closed(private_api):
@@ -411,12 +491,15 @@ def test_private_api_does_not_change_public_problem_projections(private_api):
         json={"expected_revision": 1, "confirmed_text": "Bestätigter privater Text."},
         headers=owner,
     )
+    assert client.get("/api/meldungen?limit=20&offset=0", headers=owner).status_code == 200
+    assert client.get(f"/api/meldungen/{created['id']}", headers=owner).status_code == 200
 
     assert client.get("/api/probleme").json() == before
 
 
 def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
     operation_paths = {
+        ("get", "/api/meldungen"),
         ("post", "/api/meldungen/entwuerfe"),
         ("get", "/api/meldungen/{report_id}"),
         ("put", "/api/meldungen/{report_id}/entwurf"),
@@ -429,6 +512,27 @@ def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
         for method in operations
     }
     private_report = schema["components"]["schemas"]["PrivateReportOut"]
+    private_report_summary = schema["components"]["schemas"][
+        "PrivateReportSummaryOut"
+    ]
+    private_report_list = schema["components"]["schemas"]["PrivateReportListOut"]
+    assert set(private_report_list["required"]) == {
+        "reports",
+        "total",
+        "limit",
+        "offset",
+    }
+    assert set(private_report_summary["required"]) == {
+        "id",
+        "text_preview",
+        "category",
+        "scope_kind",
+        "observed_on",
+        "state",
+        "content_revision",
+        "submitted_at",
+        "updated_at",
+    }
     assert set(private_report["required"]) == {
         "id",
         "draft_text",
@@ -445,7 +549,9 @@ def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
         "created_at",
         "updated_at",
     }
-    serialized = str(private_report).lower()
+    serialized = str(
+        {"detail": private_report, "list": private_report_list, "summary": private_report_summary}
+    ).lower()
     assert "reporter" not in serialized
     assert "owner" not in serialized
     assert "account" not in serialized

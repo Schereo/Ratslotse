@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
-  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell,
+  MoreHorizontal, MessageCircle, Bookmark, ClipboardList, Euro, Bell,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -16,6 +16,7 @@ import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 import { PROBLEME_FREI } from "@/lib/probleme-frei";
+import { isEligiblePrivateReporter } from "@/lib/problem-report-session";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
@@ -110,6 +111,7 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   ...(HAUSHALT_FREI ? [{ href: "/haushalt", label: "Haushalt", icon: Euro }] : []),
 ];
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
+const PRIVATE_REPORTS: Item = { href: "/meine-meldungen", label: "Meine Meldungen", icon: ClipboardList };
 // Split 28.08.2026: Ausschuss-Abos hingen als Block unter „Meine Themen" und
 // bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
 // den Themen vorbeiscrollen. Zwei Arten, dem Rat zu folgen (ein Anliegen vs.
@@ -137,7 +139,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || pathname.startsWith("/council/")
-  || ["/abos", "/bookmarks", "/quiz", "/account", "/admin", "/probleme"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/abos", "/bookmarks", "/quiz", "/account", "/admin", "/probleme", "/meine-meldungen"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -189,6 +191,9 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
 
       <SectionHeader>Persönlich</SectionHeader>
       <NavItem item={PERSONAL} active={isActive("/topics")} badge={unread} onNavigate={onNavigate} />
+      {PROBLEME_FREI && isEligiblePrivateReporter(user) && (
+        <NavItem item={PRIVATE_REPORTS} active={isActive("/meine-meldungen")} onNavigate={onNavigate} />
+      )}
       <NavItem item={ABOS} active={isActive("/abos")} onNavigate={onNavigate} />
       <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
@@ -538,6 +543,9 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
           {PROBLEME_FREI && <MehrZeile href="/probleme" icon={MapIcon} label="Probleme" onClose={onClose} />}
+          {PROBLEME_FREI && isEligiblePrivateReporter(user) && (
+            <MehrZeile href="/meine-meldungen" icon={ClipboardList} label="Meine Meldungen" onClose={onClose} />
+          )}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
           {HAUSHALT_FREI && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
