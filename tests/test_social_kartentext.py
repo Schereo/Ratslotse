@@ -210,7 +210,7 @@ def test_der_text_wird_auf_kartenlaenge_gekappt(monkeypatch):
 
     lang = "Zur Abstimmung steht " + "sehr viel Text " * 60
     monkeypatch.setattr(social_text.llm, "chat_complete",
-                        lambda **kw: _Antwort('{"text": "%s"}' % lang))
+                        lambda **kw: _Antwort(f'{{"text": "{lang}"}}'))
     monkeypatch.setattr(social_text.prompts, "get", lambda *a, **k: "system")
     monkeypatch.setattr(social_text.prompts, "render", lambda *a, **k: "user")
 

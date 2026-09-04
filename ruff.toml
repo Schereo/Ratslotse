@@ -41,5 +41,43 @@
 # Voreinstellung: Die fiel in 0.16.3 deutlich breiter aus als dokumentiert
 # (1.178 Funde), und eine Voreinstellung, die sich mit dem Werkzeug ändert,
 # taugt nicht als Merge-Gate.
+# ────────────────────────────────────────────────────────────────────────────
+# NACHTRAG 09/2026: von „F" auf sieben Klassen.
+#
+# Oben steht, warum „ALL" nicht geht (21.780 Funde, fast alles Geschmack) und
+# dass eine Erweiterung „nicht in denselben PR" gehört. Das ist hier der eigene
+# PR. Der Maßstab blieb derselbe — eine Regel kommt nur dazu, wenn ihr Fund ein
+# FEHLER ist und nicht eine Meinung. Gemessen am Stand von `dev`, 04.09.2026:
+#
+#     E71x    0 Funde   `== None`, `== True`, `not x in y`
+#     ASYNC   0 Funde   blockierende Aufrufe in async-Funktionen
+#     PLE     0 Funde   die Fehlerklasse von pylint
+#     B006    0 Funde   veränderliches Default-Argument
+#     PIE     4 Funde
+#     UP     18 Funde
+#     B      (s. u.)
+#
+# Fünf davon stehen bei NULL. Sie kosten nichts und verhindern trotzdem je eine
+# Klasse, die keine Testsuite zuverlässig fängt — ein `== None` auf einer
+# SQLite-Spalte tut fast immer das Richtige und einmal nicht; ein veränderliches
+# Default-Argument teilt sich zwischen Aufrufen und fällt erst beim zweiten auf.
+#
+# DREI B-REGELN BLEIBEN AUS, mit Grund:
+#
+#   B008 (330×)  „Funktionsaufruf im Default-Argument". Das IST die Bauform von
+#                FastAPI — `_admin: dict = Depends(require_admin)`. Hier wäre
+#                jeder Fund falsch.
+#   B905  (54×)  `zip(..., strict=)`. Eine Modernisierung, kein Fehler; 54
+#                Stellen anzufassen ist eine eigene Entscheidung.
+#   B007  (14×)  ungenutzte Schleifenvariable. Geschmack.
+#
+# Die 31 Funde des Bestands sind in diesem PR behoben, 19 davon maschinell.
+# Von den zwölf übrigen war keiner ein Fehler, aber jeder eine ungeschriebene
+# Annahme — drei Closures, die ihre Schleifenvariable erst beim Aufruf lesen
+# (B023, heute harmlos, nach einem Umbau nicht mehr), zwei `raise` ohne
+# `from exc`, ein `pytest.raises(Exception)`, das jeden Fehler durchgehen ließ
+# (es ist ein `ValueError`), und drei `sha1`-Aufrufe, die Fingerabdrücke
+# bilden und keine Sicherheit — jetzt mit `usedforsecurity=False` sichtbar.
 [lint]
-select = ["F"]
+select = ["F", "E71", "B", "UP", "ASYNC", "PIE", "PLE", "S324"]
+ignore = ["B008", "B905", "B007"]

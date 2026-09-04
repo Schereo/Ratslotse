@@ -129,7 +129,7 @@ class QuizMixin(StoreBasis):
         params: list = [x for pair in areas for x in pair]
         sql = f"SELECT * FROM council_quiz_questions WHERE status = 'active' AND ({area_clause})"
         if categories:
-            sql += " AND category IN (%s)" % ",".join("?" * len(categories))
+            sql += f" AND category IN ({','.join('?' * len(categories))})"
             params += categories
         rows = self._conn.execute(sql, params).fetchall()
         seen = set(exclude_ids or [])

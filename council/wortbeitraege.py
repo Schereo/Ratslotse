@@ -124,7 +124,8 @@ def extract_wortbeitraege(raw_text: str, model: str = MODEL) -> list[dict]:
             gesehen.add(key)
             art = str(r.get("kind") or "speech").strip().lower()
 
-            def field(name: str, max_len: int | None = None) -> str | None:
+            # `r=r` bindet die Zeile dieser Runde — siehe konzernabschluss.py.
+            def field(name: str, max_len: int | None = None, r=r) -> str | None:
                 value = str(r.get(name) or "").strip()
                 if max_len and len(value) > max_len:
                     # NIE mitten im Wort abschneiden: Aus „Fraktion Bündnis
