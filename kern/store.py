@@ -432,6 +432,37 @@ CREATE TABLE IF NOT EXISTS job_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_job_runs_job ON job_runs(job, started_at DESC);
 
+-- Ein Eintrag je FEHLERART im Web-Backend, geschrieben vom Ausnahme-Handler
+-- (web/backend/app/main.py). Das Gegenstück zu `job_runs`: Cron-Abstürze
+-- melden sich seit je per Mail, ein 500er im Request ging bis 09/2026 ins
+-- journalctl und sonst nirgendwohin.
+--
+-- GRUPPIERT, nicht protokolliert: `fingerprint` fasst Ausnahmetyp, letzte
+-- Zeile im eigenen Code und Route zusammen (kern/fehler.py). Ein Ausfall
+-- erzeugt damit EINE Zeile mit hohem `count` statt tausend Zeilen — sonst
+-- wäre die Liste nach dem ersten Vorfall unlesbar und die Datenbank voll.
+--
+-- Was hier NICHT steht: Anfragekörper, Kopfzeilen, Cookies, roher Pfad,
+-- Variablenwerte. Die Begründung steht in kern/fehler.py.
+CREATE TABLE IF NOT EXISTS request_errors (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint TEXT NOT NULL UNIQUE,
+    exc_type    TEXT NOT NULL,
+    message     TEXT,
+    route       TEXT NOT NULL,
+    method      TEXT NOT NULL,
+    trace       TEXT,
+    first_seen  TEXT NOT NULL,           -- ISO, UTC
+    last_seen   TEXT NOT NULL,
+    count       INTEGER NOT NULL DEFAULT 1,
+    -- Abgehakt heißt „angesehen und behandelt". Taucht der Fehler danach
+    -- WIEDER auf, wird es zurückgesetzt: Ein Haken auf etwas, das weiter
+    -- passiert, wäre eine Lüge.
+    resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_request_errors_last
+    ON request_errors(last_seen DESC);
+
 -- Nutzer-Feedback. Ging bisher nur per Mail raus; die Kopie hier macht es im
 -- Admin-Panel sicht- und abarbeitbar. `read_at` ist absichtlich global (nicht
 -- je Admin): Es geht um „ist das erledigt?", nicht um „habe ich das gesehen?".
@@ -2688,6 +2719,64 @@ class Store:
                 )
         except Exception:  # noqa: BLE001 — Protokollierung ist Beiwerk
             pass
+
+    def merke_request_fehler(self, daten: dict) -> bool:
+        """Eine Fehlerart festhalten. Gibt True, wenn sie NEU ist.
+
+        „Neu" heißt: erstmals gesehen, oder nach einem Haken wieder aufgetaucht.
+        Nur dann wird alarmiert — sonst flutete ein Ausfall mit tausend
+        Anfragen das Postfach mit tausend Mails, und die eine wichtige ginge
+        darin unter.
+
+        Wirft nie: Ein Sammler, der die Antwort mit umbringt, ist schlimmer
+        als kein Sammler.
+        """
+        jetzt = datetime.utcnow().isoformat(timespec="seconds")
+        try:
+            with self._conn:
+                vorher = self._conn.execute(
+                    "SELECT id, resolved_at FROM request_errors WHERE fingerprint = ?",
+                    (daten["fingerprint"],)).fetchone()
+                if vorher is None:
+                    self._conn.execute(
+                        "INSERT INTO request_errors (fingerprint, exc_type, message, "
+                        " route, method, trace, first_seen, last_seen, count) "
+                        "VALUES (?,?,?,?,?,?,?,?,1)",
+                        (daten["fingerprint"], daten["exc_type"], daten["message"],
+                         daten["route"], daten["method"], daten["trace"], jetzt, jetzt))
+                    return True
+                war_abgehakt = vorher["resolved_at"] is not None
+                self._conn.execute(
+                    "UPDATE request_errors SET last_seen = ?, count = count + 1, "
+                    " message = ?, trace = ?, resolved_at = NULL WHERE id = ?",
+                    (jetzt, daten["message"], daten["trace"], vorher["id"]))
+                return war_abgehakt
+        except sqlite3.Error:
+            logger.exception("Fehler ließ sich nicht festhalten")
+            return False
+
+    def request_fehler(self, limit: int = 100, nur_offen: bool = False) -> list[dict]:
+        """Die Fehlerarten, zuletzt gesehene zuerst."""
+        where = "WHERE resolved_at IS NULL" if nur_offen else ""
+        rows = self._conn.execute(
+            f"SELECT * FROM request_errors {where} ORDER BY last_seen DESC LIMIT ?",
+            (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def request_fehler_offen(self) -> int:
+        """Wie viele Fehlerarten sind unerledigt? Für das Abzeichen im Panel."""
+        r = self._conn.execute(
+            "SELECT COUNT(*) FROM request_errors WHERE resolved_at IS NULL").fetchone()
+        return int(r[0])
+
+    def request_fehler_abhaken(self, fehler_id: int, abgehakt: bool = True) -> bool:
+        """Einen Haken setzen oder wegnehmen."""
+        jetzt = datetime.utcnow().isoformat(timespec="seconds") if abgehakt else None
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE request_errors SET resolved_at = ? WHERE id = ?",
+                (jetzt, fehler_id))
+        return cur.rowcount > 0
 
     def job_runs(self, job: str | None = None, limit: int = 200) -> list[dict]:
         """Cron-Läufe, neueste zuerst; `stats` bereits als dict."""

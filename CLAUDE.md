@@ -613,5 +613,21 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
   JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
   Umbenennung still zerlegt.
+- **Fehler im Web sammeln sich selbst** (seit 09/2026). Ein Cron-Absturz
+  meldete sich immer schon per Mail und stand in `job_runs`; ein 500er im
+  Request ging ins `journalctl` und sonst nirgendwohin. Jetzt hält
+  [`kern/fehler.py`](kern/fehler.py) jede unbehandelte Ausnahme fest —
+  **gruppiert** nach Ausnahmetyp, letzter Zeile im eigenen Code und Route, mit
+  Zähler statt tausend Zeilen. Die **erste** Begegnung meldet sich per Mail an
+  `ALERT_EMAIL`, weitere werden nur gezählt (sonst flutet ein Ausfall das
+  Postfach). Sichtbar im Admin-Panel unter *Fehler*; abhaken heißt „behandelt",
+  und ein Wiederauftauchen öffnet den Haken selbst wieder.
+
+  **Was NICHT gespeichert wird**, und das ist der wichtigere Teil: keine
+  Anfragekörper, keine Kopfzeilen, keine Cookies, kein roher Pfad
+  (`/api/council/decision/8525` wird zu `…/{n}`), keine Variablenwerte aus dem
+  Traceback. Adressen und lange Kennungen im Fehlertext werden maskiert. Wer
+  ein Feld ergänzt, beantwortet zuerst die Frage, ob es etwas Persönliches
+  tragen kann — `tests/test_fehlersammler.py` hält die Liste fest.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

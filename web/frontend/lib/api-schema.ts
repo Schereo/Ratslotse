@@ -193,6 +193,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Request Fehler
+         * @description Die Fehlerarten des Web-Backends, zuletzt gesehene zuerst.
+         *
+         *     Das Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in
+         *     ``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.
+         */
+        get: operations["request_fehler_api_admin_errors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/errors/open-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Request Fehler Offen
+         * @description Für das Abzeichen am Reiter — dieselbe Bauform wie beim Feedback.
+         */
+        get: operations["request_fehler_offen_api_admin_errors_open_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/errors/{fehler_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Fehler Abhaken
+         * @description Abhaken heißt „angesehen und behandelt".
+         *
+         *     Taucht die Fehlerart danach WIEDER auf, setzt der Sammler den Haken
+         *     zurück und meldet erneut — ein Haken auf etwas, das weiter passiert, wäre
+         *     eine Lüge.
+         */
+        post: operations["request_fehler_abhaken_api_admin_errors__fehler_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/feedback": {
         parameters: {
             query?: never;
@@ -4227,6 +4294,36 @@ export interface components {
             reported: number;
             /** Weak Categories */
             weak_categories: components["schemas"]["AdminQuizArea"][];
+        };
+        /**
+         * AdminRequestFehler
+         * @description Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.
+         *
+         *     Gleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);
+         *     ``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,
+         *     roher Pfad, Variablenwerte —, steht dort begründet.
+         */
+        AdminRequestFehler: {
+            /** Count */
+            count: number;
+            /** Exc Type */
+            exc_type: string;
+            /** First Seen */
+            first_seen: string;
+            /** Id */
+            id: number;
+            /** Last Seen */
+            last_seen: string;
+            /** Message */
+            message: string | null;
+            /** Method */
+            method: string;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Route */
+            route: string;
+            /** Trace */
+            trace: string | null;
         };
         /** AdminSeries */
         AdminSeries: {
@@ -9391,6 +9488,91 @@ export interface operations {
             };
         };
     };
+    request_fehler_api_admin_errors_get: {
+        parameters: {
+            query?: {
+                nur_offen?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRequestFehler"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_fehler_offen_api_admin_errors_open_count_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUnread"];
+                };
+            };
+        };
+    };
+    request_fehler_abhaken_api_admin_errors__fehler_id__resolve_post: {
+        parameters: {
+            query?: {
+                abgehakt?: boolean;
+            };
+            header?: never;
+            path: {
+                fehler_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_feedback_api_admin_feedback_get: {
         parameters: {
             query?: {
@@ -13796,4 +13978,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8c3fa8629cf2e7cc269e22a4411db2dbc599307f6fb9b9945034bf0d3841f315
+// vertrag-sha256: b3dfc5c61dbe40fc629eeee06cce1695ee9ec2e99c405dd33cbf5c7832b936a7

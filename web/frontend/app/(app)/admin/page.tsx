@@ -7,7 +7,7 @@ import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
-import { AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+import { AdminUserDetail, AdminGrowth, AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
 // Aus dem API-Vertrag statt von Hand: Diese drei Formen stehen im Backend
 // vollständig, ein umbenanntes Feld bricht damit hier den Build.
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
@@ -26,13 +26,13 @@ type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
-import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
+import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
-type Tab = "stats" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
+type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -53,6 +53,7 @@ export default function AdminPage() {
       <div className="scrollbar-none mt-4 flex gap-1 overflow-x-auto border-b border-border [-webkit-overflow-scrolling:touch]">
         {([
           ["stats", "Statistik"],
+          ["fehler", "Fehler"],
           ["feedback", "Feedback"],
           ["llm", "LLM-Kosten"],
           ["users", "Web-Nutzer*innen"],
@@ -73,6 +74,7 @@ export default function AdminPage() {
       </div>
       <div className="mt-6">
         {tab === "stats" && <StatsTab />}
+        {tab === "fehler" && <FehlerTab />}
         {tab === "feedback" && <FeedbackTab />}
         {tab === "llm" && <LlmUsageTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
@@ -531,6 +533,106 @@ const FEEDBACK_KIND: Record<string, { label: string; cls: string }> = {
 /** Eingegangenes Nutzer-Feedback. Offene Einträge stehen optisch vorn und
  *  treiben das Zeichen an der Admin-Navigation; „erledigt" ist umkehrbar,
  *  damit ein Fehlklick nichts kostet. */
+/** Die Fehlerarten des Web-Backends — das Gegenstück zu den Cron-Jobs.
+ *
+ *  Eine Zeile je FEHLERART, nicht je Vorkommen: Gleiche Fehler fallen über
+ *  ihren Fingerabdruck zusammen (`kern/fehler.py`), `count` sagt wie oft. Ein
+ *  Ausfall füllt die Liste damit nicht zu.
+ *
+ *  Abhaken heißt „angesehen und behandelt". Taucht der Fehler danach wieder
+ *  auf, setzt der Sammler den Haken selbst zurück und meldet erneut.
+ */
+function FehlerTab() {
+  const qc = useQueryClient();
+  const [nurOffen, setNurOffen] = useState(true);
+
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin-fehler", nurOffen],
+    queryFn: () => api.get<AdminRequestFehler[]>(`/admin/errors?nur_offen=${nurOffen}`),
+  });
+
+  const haken = useMutation({
+    mutationFn: ({ id, ab }: { id: number; ab: boolean }) =>
+      api.post(`/admin/errors/${id}/resolve?abgehakt=${ab}`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-fehler"] });
+      qc.invalidateQueries({ queryKey: ["admin-fehler-offen"] });
+    },
+    onError: () => toast.error("Konnte nicht gespeichert werden."),
+  });
+
+  if (isLoading) return <CardListSkeleton rows={3} />;
+  if (isError || !data) {
+    return <ErrorState title="Die Fehlerliste kam nicht durch"
+      onRetry={() => void refetch()} busy={isFetching} />;
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Unbehandelte Fehler im Web-Backend, nach Art zusammengefasst. Die
+          erste Begegnung meldet sich per Mail; weitere werden nur gezählt.
+        </p>
+        <label className="flex shrink-0 items-center gap-2 text-sm">
+          <input type="checkbox" checked={nurOffen}
+            onChange={(e) => setNurOffen(e.target.checked)} />
+          nur offene
+        </label>
+      </div>
+
+      {data.length === 0 ? (
+        <EmptyState mascot="celebrate" title="Keine offenen Fehler"
+          hint="Seit dem letzten Haken ist im Web nichts abgestürzt." />
+      ) : (
+        <div className="space-y-3">
+          {data.map((f) => (
+            <Card key={f.id} className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-sm font-semibold text-foreground">
+                    {f.exc_type}
+                    <span className="ml-2 font-sans font-normal text-muted-foreground">
+                      {f.method} {f.route}
+                    </span>
+                  </p>
+                  {f.message && (
+                    <p className="mt-1 break-words text-sm text-muted-foreground">{f.message}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge>{f.count}&times;</Badge>
+                  <Button variant="secondary" size="sm"
+                    disabled={haken.isPending}
+                    onClick={() => haken.mutate({ id: f.id, ab: !f.resolved_at })}>
+                    {f.resolved_at ? "Wieder öffnen" : "Abhaken"}
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                zuerst {formatDateTime(f.first_seen)} &middot; zuletzt {formatDateTime(f.last_seen)}
+              </p>
+              {f.trace && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Spur
+                  </summary>
+                  {/* Breite Spuren scrollen in ihrem eigenen Kasten — die Seite
+                      selbst darf sich nicht seitwärts schieben lassen. */}
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-muted/40 p-3 text-xs leading-relaxed">
+                    {f.trace}
+                  </pre>
+                </details>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function FeedbackTab() {
   const qc = useQueryClient();
   const [onlyUnread, setOnlyUnread] = useState(false);

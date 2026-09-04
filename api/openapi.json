@@ -1011,6 +1011,74 @@
         "title": "AdminQuizStats",
         "type": "object"
       },
+      "AdminRequestFehler": {
+        "description": "Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.\n\nGleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);\n``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,\nroher Pfad, Variablenwerte —, steht dort begründet.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "exc_type": {
+            "title": "Exc Type",
+            "type": "string"
+          },
+          "first_seen": {
+            "title": "First Seen",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_seen": {
+            "title": "Last Seen",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "resolved_at": {
+            "title": "Resolved At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "trace": {
+            "title": "Trace",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "exc_type",
+          "message",
+          "route",
+          "method",
+          "trace",
+          "first_seen",
+          "last_seen",
+          "count",
+          "resolved_at"
+        ],
+        "title": "AdminRequestFehler",
+        "type": "object"
+      },
       "AdminSeries": {
         "properties": {
           "days": {
@@ -13104,6 +13172,139 @@
           }
         },
         "summary": "Delete Entity Alias",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/errors": {
+      "get": {
+        "description": "Die Fehlerarten des Web-Backends, zuletzt gesehene zuerst.\n\nDas Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in\n``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.",
+        "operationId": "request_fehler_api_admin_errors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nur_offen",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Nur Offen",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminRequestFehler"
+                  },
+                  "title": "Response Request Fehler Api Admin Errors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Fehler",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/errors/open-count": {
+      "get": {
+        "description": "Für das Abzeichen am Reiter — dieselbe Bauform wie beim Feedback.",
+        "operationId": "request_fehler_offen_api_admin_errors_open_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUnread"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Request Fehler Offen",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/errors/{fehler_id}/resolve": {
+      "post": {
+        "description": "Abhaken heißt „angesehen und behandelt\".\n\nTaucht die Fehlerart danach WIEDER auf, setzt der Sammler den Haken\nzurück und meldet erneut — ein Haken auf etwas, das weiter passiert, wäre\neine Lüge.",
+        "operationId": "request_fehler_abhaken_api_admin_errors__fehler_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fehler_id",
+            "required": true,
+            "schema": {
+              "title": "Fehler Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "abgehakt",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Abgehakt",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Fehler Abhaken",
         "tags": [
           "admin"
         ]

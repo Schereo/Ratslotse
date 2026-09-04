@@ -1213,6 +1213,25 @@ class AdminJobStep(TypedDict):
     duration_s: float | None
 
 
+class AdminRequestFehler(TypedDict):
+    """Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.
+
+    Gleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);
+    ``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,
+    roher Pfad, Variablenwerte —, steht dort begründet.
+    """
+    id: int
+    exc_type: str
+    message: str | None
+    route: str
+    method: str
+    trace: str | None
+    first_seen: str
+    last_seen: str
+    count: int
+    resolved_at: str | None
+
+
 class AdminJob(TypedDict):
     """``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
     kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.

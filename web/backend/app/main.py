@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from pathlib import Path
@@ -199,6 +200,72 @@ if _medien:
     _pfad = Path(_medien)
     _pfad.mkdir(parents=True, exist_ok=True)
     app.mount("/api/social-media", StaticFiles(directory=_pfad), name="social-media")
+
+
+@app.exception_handler(Exception)
+async def unbehandelter_fehler(request: Request, exc: Exception) -> JSONResponse:
+    """Jeder 500er wird festgehalten — und beim ERSTEN Mal gemeldet.
+
+    **Die Lücke, die das schließt.** Ein Cron-Absturz meldet sich per Mail
+    (``run_guarded``) und steht in ``job_runs``. Ein Fehler im Web-Request ging
+    bis 09/2026 ins ``journalctl`` und sonst nirgendwohin: Wer nicht zufällig
+    auf dem Server nachsah, erfuhr nie davon. Ein Nutzer sah einen 500er, und
+    niemand wusste es.
+
+    **Gruppiert, nicht protokolliert.** Gleiche Fehler fallen über ihren
+    Fingerabdruck zusammen (``kern/fehler.py``); ein Ausfall erzeugt EINE Zeile
+    mit hohem Zähler statt tausend Zeilen. Gemeldet wird nur die erste
+    Begegnung — sonst flutete derselbe Ausfall das Postfach, und die eine
+    wichtige Mail ginge darin unter.
+
+    **Die Meldung fährt NACH der Antwort** (``BackgroundTask``): Der Versand
+    geht über das Netz, und ein Nutzer soll nicht darauf warten, dass wir
+    unsere Mail loswerden.
+
+    **Der Traceback bleibt im Log.** Ohne das ``logger.exception`` hier ginge
+    er verloren — bisher schrieb ihn Starlettes Standard-Handler, und den
+    ersetzen wir gerade.
+
+    **Der Sammler darf die Antwort nie mit umbringen.** Jeder Schritt ist
+    einzeln abgesichert; im schlimmsten Fall gibt es den 500er wie vorher, nur
+    ohne Eintrag.
+    """
+    logger.exception("Unbehandelter Fehler bei %s %s", request.method, request.url.path)
+
+    hintergrund = None
+    try:
+        from kern import fehler as fehlerhilfe
+        from kern.store import Store
+
+        route = getattr(request.scope.get("route"), "path", None)
+        daten = fehlerhilfe.aufbereiten(exc, request.method, route, request.url.path)
+
+        store = Store(settings.ratslotse_db)
+        try:
+            neu = store.merke_request_fehler(daten)
+        finally:
+            store.close()
+
+        if neu:
+            from kern.alerts import notify_admin
+
+            text = (f"<b>{daten['exc_type']}</b> bei "
+                    f"<code>{daten['method']} {daten['route']}</code>\n\n"
+                    f"{daten['message']}\n\n<code>{daten['trace']}</code>")
+            hintergrund = BackgroundTask(
+                notify_admin, text,
+                betreff="Ratslotse – neuer Fehler im Web",
+                fusszeile="Erste Begegnung mit dieser Fehlerart. "
+                          "Weitere Vorkommen zählt das Admin-Panel mit, ohne "
+                          "erneut zu melden.")
+    except Exception:  # noqa: BLE001 — der Sammler bleibt folgenlos
+        logger.exception("Fehler ließ sich nicht sammeln")
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Da ist etwas schiefgegangen. Wir wissen davon."},
+        background=hintergrund,
+    )
 
 
 @app.exception_handler(OverflowError)

@@ -21,8 +21,8 @@ from kern.store import Store
 from ..config import get_settings
 from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminPlaceCandidates, AdminQuizStats, AdminUnread, AdminUserDetail,
-                         AdminUserRow, Ok)
+                         AdminPlaceCandidates, AdminQuizStats, AdminRequestFehler,
+                         AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
                        RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate, WebUserOut)
@@ -122,6 +122,48 @@ def _schritt(roh: dict) -> dict:
         "status": "error" if roh.get("status") == "error" else "ok",
         "duration_s": float(dauer) if isinstance(dauer, (int, float)) else None,
     }
+
+
+@router.get("/errors")
+def request_fehler(
+    nur_offen: bool = False,
+    limit: int = 100,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> list[AdminRequestFehler]:
+    """Die Fehlerarten des Web-Backends, zuletzt gesehene zuerst.
+
+    Das Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in
+    ``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.
+    """
+    return store.request_fehler(limit=min(limit, 200), nur_offen=nur_offen)
+
+
+@router.get("/errors/open-count")
+def request_fehler_offen(
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminUnread:
+    """Für das Abzeichen am Reiter — dieselbe Bauform wie beim Feedback."""
+    return {"total": store.request_fehler_offen()}
+
+
+@router.post("/errors/{fehler_id}/resolve")
+def request_fehler_abhaken(
+    fehler_id: int,
+    abgehakt: bool = True,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> Ok:
+    """Abhaken heißt „angesehen und behandelt".
+
+    Taucht die Fehlerart danach WIEDER auf, setzt der Sammler den Haken
+    zurück und meldet erneut — ein Haken auf etwas, das weiter passiert, wäre
+    eine Lüge.
+    """
+    if not store.request_fehler_abhaken(fehler_id, abgehakt):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Fehlerart nicht gefunden.")
+    return {"ok": True}
 
 
 @router.get("/jobs")
