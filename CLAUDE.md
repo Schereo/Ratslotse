@@ -169,17 +169,41 @@ noch draußen. Der Grund und der Weg nach vorn stehen in
 kein Zustand**: Der Wächter meldet, sobald ein ausgenommenes Verzeichnis von
 selbst sauber geworden ist.
 
-Der Bestand schrumpft in Stufen. Gemessen wurde am 03.09.2026:
+**Der Rest steht unter einer Sperrklinke, nicht ungeprüft da.** Wäre er nur
+außerhalb des Gates, gäbe es dort gar keine Prüfung, und ein neues
+`x.split()[0]` auf einem `str | None` fiele niemandem auf. Der Wächter zählt
+deshalb die Befunde je Bereich, und die Zahl **darf nur sinken** — kein
+Aufräumen wird verlangt, nur kein Rückschritt geduldet. Gemessen am
+04.09.2026:
 
-| Stand | Befunde in `council/` |
-|---|---:|
-| vor `StoreBasis` | 1.037 |
-| danach | **194** |
+| Bereich | Befunde | Zustand |
+|---|---:|---|
+| `kern/` | **0** | harter Gate |
+| `web/backend/app/` (ohne Router) | **0** | harter Gate |
+| `council/` | 194 | Sperrklinke |
+| `web/backend/app/routers/` | 111 | Sperrklinke |
+| `scripts/` | 44 | Sperrklinke |
+| `eval/` | 7 | Sperrklinke |
 
-Fast tausend Befunde kamen aus **einer** Ursache: Die Store-Mixins erbten
-keine Basis, die `self._conn` kennt (s. [`council/CLAUDE.md`](council/CLAUDE.md)).
-Was bleibt, verteilt sich auf 44 Dateien und ist einzeln zu lesen — danach
-kann `council/` in den Geltungsbereich.
+In `council/` waren es vor `StoreBasis` noch 1.037: Fast tausend Befunde kamen
+aus **einer** Ursache — die Store-Mixins erbten keine Basis, die `self._conn`
+kennt (s. [`council/CLAUDE.md`](council/CLAUDE.md)).
+
+Wer aufräumt, trägt die neue Zahl in `SCHULDEN`
+([`scripts/pruefe_typschulden.py`](scripts/pruefe_typschulden.py)) ein — der
+Wächter verlangt das ab zehn Befunden Abstand, damit zwischen Zahl und
+Wirklichkeit kein Puffer wächst, in dem neue Befunde unbemerkt Platz haben.
+Fällt ein Bereich auf null, gehört er in `include`; dann hält ihn der harte
+Gate.
+
+```bash
+python scripts/pruefe_typschulden.py --zeigen          # der Stand
+.venv/bin/pyright --project pyrightconfig.ratsche.json council   # die Befunde
+```
+
+**Die Zahlen haben etwas Luft.** pyright löst Typen über die INSTALLIERTEN
+Pakete auf, und die sind nie bitgleich: Auf dem Entwicklungsrechner sind es
+194 Befunde in `council/`, in der CI 190. Die Schranke ist der höhere Wert.
 
 **Den Hook einschalten** (einmal je Checkout):
 

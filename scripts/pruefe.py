@@ -158,6 +158,13 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("typen-py", "Python-Typen (pyright, Stufe 1)", schnell=True,
              befehl=[PY, "-m", "pyright", "--pythonpath", PY],
              braucht=_modul_fehlt("pyright", DEV_INSTALL)),
+    # Der Rest des Bestands steht außerhalb des harten Gates — ohne diese
+    # Prüfung wäre er ganz ungeprüft. Sie zählt die Befunde je Bereich; die
+    # Zahl darf nur sinken. Warum getrennt von `typen-py`: Sie fährt pyright
+    # über ALLES (rund 5 s statt 1,7 s) und gehört damit nicht in `--schnell`.
+    Pruefung("typen-schuld", "Typ-Schuldenstand steigt nicht (pyright, alles)",
+             befehl=[PY, "scripts/pruefe_typschulden.py"],
+             braucht=_modul_fehlt("pyright", DEV_INSTALL)),
     Pruefung("vertrag", "api/openapi.json passt zum Backend-Code", schnell=True,
              befehl=[PY, "scripts/openapi_schnitt.py", "--pruefen"],
              braucht=_modul_fehlt("fastapi", DEV_INSTALL)),

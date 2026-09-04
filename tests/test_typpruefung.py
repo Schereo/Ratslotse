@@ -106,3 +106,20 @@ def test_ausnahmen_sind_noch_noetig():
             f"überflüssig. Aus `exclude` in pyrightconfig.json und aus "
             f"NOCH_NICHT hier entfernen, dann hält die CI es fest.\n"
             f"Grund, aus dem es draußen stand: {grund}")
+
+
+def test_der_schuldenstand_wohnt_woanders():
+    """Der Schuldenstand-Wächter läuft NICHT in dieser Suite.
+
+    Er braucht einen pyright-Lauf über den ganzen Bestand, und der hat die
+    Testprüfung in der CI von drei auf elf Minuten verlängert — für eine
+    Prüfung, die neben dem ohnehin vorhandenen pyright-Schritt Sekunden
+    kostet. Er steht deshalb in `scripts/pruefe_typschulden.py` und läuft über
+    `pruefe.py` und einen eigenen CI-Schritt.
+
+    Dieser Test hält nur fest, dass es ihn noch gibt.
+    """
+    assert (WURZEL / "scripts" / "pruefe_typschulden.py").exists(), (
+        "Der Schuldenstand-Wächter ist weg. Ohne ihn ist alles außerhalb von "
+        "`include` völlig ungeprüft — s. dortigen Docstring.")
+    assert (WURZEL / "pyrightconfig.ratsche.json").exists()
