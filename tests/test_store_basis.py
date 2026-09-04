@@ -16,7 +16,6 @@ from pathlib import Path
 
 import pytest
 
-from council.store import CouncilStore
 from council.store_basis import StoreBasis
 
 WURZEL = Path(__file__).resolve().parents[1]
@@ -56,7 +55,7 @@ def test_jedes_mixin_erbt_die_basis(datei: Path):
     klassen = [k for k in baum.body if isinstance(k, ast.ClassDef)]
     ohne = [k.name for k in klassen
             if not any(isinstance(b, ast.Name) and b.id == "StoreBasis" for b in k.bases)
-            and re.search(rf"(?:self|cls)\.", ast.unparse(k))]
+            and re.search(r"(?:self|cls)\.", ast.unparse(k))]
     assert not ohne, (
         f"{datei.relative_to(WURZEL)}: {ohne} erbt nicht von StoreBasis. "
         "`class X(StoreBasis):` schreiben und "
