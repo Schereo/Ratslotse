@@ -46,5 +46,13 @@ jobs:
       - name: Python-Typen (pyright)
         run: pyright --pythonpath "$(which python)"
 
+      # Der Rest des Bestands: nicht im harten Gate, aber auch nicht
+      # ungeprüft. Die Zahl der Befunde je Bereich darf nur SINKEN. Steht hier
+      # direkt hinter dem Schritt darüber, weil die Node-Laufzeit dann schon
+      # warm ist — als pytest-Test hat dieselbe Arbeit den Testlauf von drei
+      # auf elf Minuten verlängert.
+      - name: Typ-Schuldenstand
+        run: python scripts/pruefe_typschulden.py
+
       - name: Run tests
         run: python -m pytest tests/ -q
