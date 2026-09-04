@@ -10,7 +10,6 @@ import sqlite3
 from council import geld as _geld
 
 from .parties import order_key, parties_for_faction
-from . import importance as _importance
 from council.kontaktdaten import maskieren
 from kern.dbfehler import tabelle_fehlt
 from kern.maintenance import require_database_available
@@ -148,30 +147,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             self._sammelt = False
 
 
-    #: Die Eimer eines Tagesordnungs-Diffs. NUR die oberste Ebene — `anlagen`
-    #: ist dort ein Eimer, INNERHALB eines Punktes aber dessen Anlagenliste,
-    #: und die heißt weiter so.
-    _DIFF_EIMER = {
-        "neu": "new", "entfernt": "removed", "verschoben": "moved",
-        "umformuliert": "reworded", "vorlage": "template", "anlagen": "attachments",
-    }
-
-
-
-
-
-
-    #: `art` → `kind` in zehn Tabellen. Steht GANZ VORNE in `_migrate`, weil
-    #: mehrere Wert-Migrationen weiter unten auf der Spalte arbeiten
-    #: (`council_group_entities`, `council_taxes`, `council_tax_plan`):
-    #: Liefe die Umbenennung später, fänden sie ihre Spalte nicht und kehrten
-    #: still zurück — die Werte blieben deutsch, ohne dass etwas auffiele.
-    _ART_TABELLEN = (
-        "council_income_budget", "council_tax_rates", "council_provenance",
-        "council_group_entities", "council_supplementary_approvals", "council_staff_plan",
-        "council_taxes", "council_tax_plan", "council_templates",
-        "council_speeches",
-    )
 
 
 
@@ -179,113 +154,12 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
 
 
-    #: Wie eine Tabelle ihre Herkunft bisher führte: (Label-Spalte,
-    #: URL-Spalte, Quellenart). Drei Schreibweisen für dieselbe Sache — genau
-    #: das war der Anlass für `council/herkunft.py`.
-    #:
-    #: Die Quellenart steht hier nur, wo sie aus der Tabelle folgt. Bei
-    #: `council_budget` folgt sie das nicht: Ein Jahrgang kam als PDF von
-    #: oldenburg.de, ein anderer als CSV aus dem Open-Data-Portal — dort
-    #: entscheidet die URL (s. `_herkunft_art_aus_url`).
-    _HERKUNFT_ALTFELDER: dict[str, tuple[str | None, str, str | None]] = {
-        "council_budget":             (None, "source_url", None),
-        "council_taxes":              (None, "source_url", "opendata"),
-        "council_tax_capacity":          (None, "source_url", "opendata"),
-        "council_einwohner":            (None, "source_url", "opendata"),
-        "council_income_statement":     ("source_label", "source_url", "ris"),
-        # Neu mit der Kassensicht, ohne Altbestand — nichts nachzutragen.
-        "council_cash_flow_statement":       (None, None, "ris"),
-        # Ebenso die Bilanz und ihre Erläuterungen: erst mit der Herkunft
-        # entstanden, keine Altspalten.
-        "council_balance_sheet":               (None, None, "ris"),
-        "council_balance_sheet_notes": (None, None, "ris"),
-        "council_variance_reasons":   ("source_label", "source_url", "ris"),
-        "council_audit_report_sources": ("label", "url", "ris"),
-        "council_products":             ("source_label", "source_url", "ris"),
-        "council_audit_reports":        ("source_label", "source_url", "ris"),
-        # Die beiden Konzern-Tabellen sind erst mit der Herkunft entstanden
-        # und tragen gar keine Altspalten. Sie stehen hier trotzdem, weil
-        # `_herkunft_nachtragen` jede Tabelle aus `HERKUNFT_TABELLEN`
-        # nachschlägt; ohne URL-Spalte kehrt es sofort zurück, ohne etwas zu
-        # tun. Ein Eintrag „nichts nachzutragen" ist billiger als eine
-        # Ausnahme im Nachrüst-Weg.
-        "council_group_items":       (None, "source_url", "ris"),
-        "council_group_entities":      (None, "source_url", "ris"),
-        # Ebenso der Städtevergleich: erst mit der Herkunft entstanden, keine
-        # Altspalten, nichts nachzutragen.
-        "council_city_comparison":     (None, "source_url", "lsn"),
-        # Und die Gewerbesteuerstatistik, ebenfalls vom Landesamt.
-        "council_trade_tax_statistics": (None, "source_url", "lsn"),
-        # Und die Planjahre aus dem Gesamtergebnishaushalt.
-        "council_income_budget":     (None, "source_url", "ris"),
-        # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
-        # Herkunft ausschließlich über `herkunft_id`.
-        "council_investments":        (None, "source_url", "opendata"),
-        # Und die Maßnahmen aus Anlage 004: ebenfalls neu, ebenfalls ohne
-        # Altspalten. Der Eintrag muss trotzdem stehen — `_herkunft_nachtragen`
-        # schlägt hier nach, bevor es merkt, dass es nichts nachzutragen gibt.
-        "council_investment_measures": (None, "source_url", "ris"),
-        # Das Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als Plan
-        # und Programm kommt es weder vom Portal noch aus dem RIS, sondern von
-        # oldenburg.de.
-        "council_investments_actual":       (None, "source_url", "city"),
-        "council_investments_actual_kinds": (None, "source_url", "city"),
-        "council_investments_actual_rejected": (None, "source_url", "city"),
-        # Der Stellenplan — ebenfalls neu und ohne Altbestand.
-        "council_staff_plan":          (None, "source_url", "ris"),
-        # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
-        "council_debt":             (None, "source_url", "city"),
-        # Die lange Ausgabenreihe: zwei Quellen — das Jahrbuch der Stadt und
-        # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
-        # ohnehin nichts, die Tabelle ist neu.
-        "council_expense_series":        (None, "source_url", None),
-        # Der Bürgschaftsbestand: eine Quelle, der Jahresabschluss als Anlage
-        # im Ratsinformationssystem.
-        "council_buergschaften":        (None, "source_url", "ris"),
-        "council_fixed_assets":       (None, "source_url", "ris"),
-        # Die Kennzahlen und ihre Rechenwege: Anlage des Rechenschaftsberichts,
-        # also ebenfalls ein Dokument im Ratsinformationssystem.
-        "council_indicators":           (None, "source_url", "ris"),
-        "council_indicator_formulas":     (None, "source_url", "ris"),
-        "council_vermoegensgruppen":    (None, "source_url", "ris"),
-        # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
-        # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
-        # wie beim Städtevergleich.
-        "council_integrated_debt": (None, "source_url", "lsn"),
-        # Die Nachbewilligungen: neu, ohne Altspalten. Beide Quellen liegen im
-        # Ratsinformationssystem — die Vorlagen selbst und der
-        # Rechenschaftsbericht als Anlage zum Jahresabschluss.
-        "council_supplementary_approvals":        (None, "source_url", "ris"),
-        "council_supplementary_years":    (None, "source_url", "ris"),
-        "council_supplementary_channels":  (None, "source_url", "ris"),
-        # Die Zuwendungen: Quelle sind Ratsvorlagen im Bürgerinfo, also „ris".
-        # Nachzutragen ist nichts, beide Tabellen sind neu.
-        "council_donations":              (None, "source_url", "ris"),
-        "council_donations_rejected":    (None, "source_url", "ris"),
-        # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
-        "council_tax_plan":           (None, "source_url", "city"),
-        "council_tax_rates":           (None, "source_url", "city"),
-        # Gebührenbedarf und Anlage-4-Tarife sind neu mit Herkunft entstanden;
-        # sie haben keine doppelten Altspalten, die nachzutragen wären.
-        "council_fees":            (None, "source_url", "ris"),
-        "council_fee_rates":      (None, "source_url", "ris"),
-        # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
-        # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
-        "council_companies":            (None, "source_url", "city"),
-        "council_company_texts":        (None, "source_url", "city"),
-        "council_company_indicators":   (None, "source_url", "city"),
-        "council_company_people":     (None, "source_url", "city"),
-        "council_company_owners":  (None, "source_url", "city"),
-        # Der Haushaltsvollzug: neu, ohne Altbestand, ohne Altspalten. Der
-        # Eintrag muss trotzdem stehen — `_herkunft_nachtragen` schlägt hier
-        # nach, bevor es merkt, dass es nichts nachzutragen gibt.
-        "council_budget_execution": (None, "source_url", "ris"),
-        "council_liquidity": (None, "url", "ris"),
-    "council_enterprise_accounts": (None, None, "ris"),
-        # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
-        "council_loan_notices": (None, "document_url", "ris"),
-        "council_loan_items": (None, "document_url", "ris"),
-    }
+
+
+
+
+
+
 
     @staticmethod
     def _herkunft_art_aus_url(url: str | None) -> str | None:
@@ -414,111 +288,25 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                 (ksinr, topic_id, now),
             )
 
-    # Kommende Sitzungen kommen aus ZWEI Quellen: echten Sitzungen mit
-    # Tagesordnung und bloß terminierten aus dem Kalender. Liste und Zählung
-    # müssen dieselbe Menge meinen — deshalb steht die Bedingung genau einmal
-    # hier und wird von beiden benutzt.
-    _UPCOMING_FROM = """
-        FROM (
-            SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
-                   COUNT(ci.id) AS n_items
-            FROM council_sessions cs
-            LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
-            WHERE cs.session_date >= ?
-            GROUP BY cs.ksinr
-            UNION ALL
-            SELECT NULL AS ksinr, ss.committee, ss.session_date, ss.session_time, ss.location,
-                   0 AS n_items
-            FROM council_scheduled_sessions ss
-            WHERE ss.session_date >= ?
-              AND NOT EXISTS (
-                  SELECT 1 FROM council_sessions cs2
-                  WHERE cs2.committee = ss.committee AND cs2.session_date = ss.session_date
-              )
-        )
-    """
 
 
 
 
 
-    #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
-    #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
-    #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
-    #: spannendsten Titeln der Woche („Ermittlungen Abfallentsorgung
-    #: Fliegerhorst (CDU-Fraktion) - Bericht der Verwaltung"). Ein auf das
-    #: Zeilenende verankertes Muster warf davon neun weg, darunter fast alle
-    #: Fraktionsanträge — deshalb greift die Formalie nur, wenn der Punkt
-    #: NICHTS ANDERES ist als diese Floskel.
-    _FORMALIE_RE = re.compile(
-        r"Beschlussf[äa]higkeit|Genehmigung der Tagesordnung|Genehmigung des Protokolls|"
-        r"Einwohnerfragestunde|^Mitteilungen|Anfragen und Anregungen|Verschiedenes|"
-        r"^\s*Bericht(?:e)? der Verwaltung\s*$|Wahl der Schriftf[üu]hrung",
-        re.IGNORECASE)
 
-    #: „(CDU-Fraktion vom 10.06.2026)", „(Fraktionen BSW und SPD)", „(FDP-Fraktion …)"
-    _ANTRAG_RE = re.compile(r"\(\s*(?:die\s+)?(?:Fraktion(?:en)?|Gruppe|Ratsherr|Ratsfrau)\b|"
-                            r"[A-ZÄÖÜ][\wÄÖÜäöüß/. ]{1,24}-Fraktion\b", re.IGNORECASE)
 
-    _PERSONALIE_RE = re.compile(
-        r"Berufung|Umbesetzung|Bestellung\s+(?:eines|einer)|"
-        r"Wahl\s+(?:des|der|eines|einer)\s+(?:stellv|Vorsitz|Schriftf)|"
-        r"beratende[sn]?\s+Mitglied", re.IGNORECASE)
 
-    #: Bindende Gegenstände: Was hier greift, wirkt über den Tag hinaus —
-    #: Satzungen, Gebühren, Haushalt, Bauleitplanung, Verträge, Grundsätze.
-    #: Genau die Rubrik „Bindungswirkung" des Tragweite-Prompts, nur als Regel.
-    _BINDEND_RE = re.compile(
-        r"Satzung|Geb[üu]hren|Beitrags|Entgelt|Haushalt|Nachtragshaushalt|"
-        r"Bebauungsplan|Fl[äa]chennutzungsplan|Bauleitplan|Grundsatzbeschluss|"
-        r"Vertrag|Vereinbarung|Konzession|Verordnung|Richtlinie", re.IGNORECASE)
 
-    #: Wo entschieden wird, wiegt schwerer als wo vorberaten wird. Der Rat und
-    #: der Verwaltungsausschuss binden die Stadt, ein Fachausschuss bereitet vor.
-    _GREMIUM_GEWICHT = ((("stadtrat", "rat der stadt"), 1.5), (("verwaltungsausschuss",), 1.0))
 
-    #: Ab hier gilt ein Punkt als Schwerpunkt der Woche und wird hervorgehoben.
-    #: Darunter zeigt die Karte ihre Zeilen ohne Hervorhebung — lieber kein
-    #: Schwerpunkt als ein behaupteter.
-    TOP_MINDEST = 60
 
-    #: Mehr als zwei Hervorhebungen entwerten sich gegenseitig.
-    TOP_MAX = 2
 
-    #: Unter diesem Wert kommt ein Punkt gar nicht auf die Karte. Skala ist die
-    #: Tragweite (0–100, s. council/impact.py): 20 ≈ Bericht zur Kenntnis,
-    #: 35 ≈ Maßnahme an einer Einrichtung. Darunter lohnt keine Zeile.
-    WICHTIG_MINDEST = 30
 
     #: Alte Heuristik-Schwelle — nur noch für die Umrechnung relevant.
     RANG_MINDEST = 1.5
 
-    #: Lazy geladener Wiederkehr-Zähler (s. _wiederkehr).
-    _wiederkehr_cache: dict[str, int] | None = None
 
-    #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
-    #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
-    _ANTRAGSTELLER_RE = re.compile(
-        r"\s*\(\s*(?:die\s+)?(?P<wer>[^)]*?)\s*(?:vom\s+\d{1,2}\.\d{1,2}\.\d{2,4})?\s*\)")
-    #: Verfahrens-Anhängsel am Titelende, die auf der Karte nichts erklären.
-    _TITEL_ANHANG_RE = re.compile(
-        r"\s*[-–]\s*(?:\w*[Aa]ntrag mit Bericht der Verwaltung|Bericht(?:e)? der Verwaltung|"
-        r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
-        re.IGNORECASE)
 
-    #: „Ö 11.3" → Präfix „Ö", Nummer „11.3". Das Präfix ist zugleich der
-    #: Öffentlichkeitsmarker (Ö/N) und gehört zur Nummer, nicht davor weg.
-    _TOP_NUMMER_RE = re.compile(r"^\s*([A-Za-zÖÄÜöäü]+)\s+([\d.]+?)\.?\s*$")
 
-    #: Wörter, die in Tagesordnungs-Überschriften stehen, ohne einen
-    #: Gegenstand zu benennen — sie dürfen keine Gruppe begründen.
-    _RUBRIK_WORTE = frozenset({
-        "antraege", "antrag", "fraktionen", "fraktion", "gruppen", "gruppe",
-        "ratsund", "ausschussmitglieder", "mitglieder", "berichte", "bericht",
-        "anfragen", "anregungen", "mitteilungen", "verschiedenes", "verwaltung",
-        "beschluss", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
-        "protokolle", "protokolls", "tagesordnung", "oeffentlicher", "teil",
-    })
 
 
 
@@ -718,9 +506,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         d["parties"] = sorted({p for f in d["factions"] for p in parties_for_faction(f)}, key=order_key)
         return d
 
-    # Outcomes grouped into "real votes" vs "reports / no decision".
-    _VOTE_OUTCOMES = ("accepted", "rejected", "postponed")
-    _REPORT_OUTCOMES = ("noted", "no_decision")
 
     def decision_ids_for_party(self, party: str) -> list[int]:
         """IDs of main decisions whose Antragsteller includes ``party`` —
@@ -994,13 +779,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             args = (limit,)
         return [dict(r) for r in self._conn.execute(sql, args).fetchall()]
 
-    #: Titel auf seinen Kern eindampfen, damit „Annahme von Zuwendungen durch
-    #: den Rat - Beschluss (ungeändert beschlossen)" und dieselbe Zeile drei
-    #: Sitzungen später als EIN Punkt zählen: Klammern raus, Zahlen zu #,
-    #: Ergebniszusatz weg.
-    _WIEDERKEHR_UNWICHTIG = re.compile(
-        r"\([^)]*\)|\b(?:ungeändert|geändert)\s+beschlossen\b|"
-        r"\s+-\s+(?:beschluss|bericht|antrag|vorlage)\b", re.IGNORECASE)
 
 
 
@@ -1013,14 +791,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                 (max(0, min(100, int(score))), reason, decision_id),
             )
 
-    #: Gewichte des Fundwerts. Erzählbarkeit zählt etwas mehr als Tragweite
-    #: — ein Haushaltsbeschluss ist bedeutend, aber kein Fundstück. Die
-    #: Sperren darunter sind der eigentliche Hebel: Ohne sie gewinnt die
-    #: Kuriosität, weil sie leichter hohe Interest-Werte erreicht.
-    FUND_GEWICHT_INTERESSE = 0.55
-    FUND_GEWICHT_TRAGWEITE = 0.45
-    FUND_MIN_INTERESSE = 50
-    FUND_MIN_TRAGWEITE = 50
 
 
 
@@ -1414,8 +1184,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
 
 
-    # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
-    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt"}
 
 
     # --- Herkunft der Finanzzahlen (council.herkunft) ------------------------
@@ -1457,13 +1225,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
              f["as_of"], jetzt))
         return int(cur.lastrowid)
 
-    #: Welcher Beschluss zu einem Dokument der maßgebliche ist. Der Rat zuerst
-    #: — eine Vorlage läuft durch mehrere Gremien, aber verabschiedet wird sie
-    #: dort. Innerhalb eines Gremiums die jüngste Sitzung: Ein vertagter Punkt
-    #: kommt wieder, und es gilt, was zuletzt entschieden wurde. Dieselbe
-    #: Ordnung nutzt schon `vorlage_beschluesse` (s. u. „committee LIKE 'Rat%'").
-    _BESCHLUSS_ORDNUNG = ("ORDER BY (cs.committee LIKE 'Rat%') DESC, "
-                          "cs.session_date DESC, d.id DESC")
 
     def beschluesse_zu_dokumenten(self, dokument_ids: list[int]) -> dict[int, dict]:
         """Zu jedem Dokument der Ratsbeschluss, der es verabschiedet hat.
@@ -1635,143 +1396,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                 aus[tabelle] = n
         return aus
 
-    #: Welches **Dokument** hinter einer Quelle des Haushalts-Bereichs steht —
-    #: je Schlüssel die Tabelle, ihre Jahresspalte, eine Einschränkung und die
-    #: Alt-Spalte mit der URL.
-    #:
-    #: Die Schlüssel sind die des Quellenverzeichnisses im Frontend
-    #: (``web/frontend/lib/haushalt-quellen.ts``). Das ist Absicht und der
-    #: einzige Grund, warum diese Zuordnung hier steht und nicht dort: Welche
-    #: Zeile aus welchem Dokument stammt, weiß die Datenbank — das Frontend
-    #: kennt nur den Absatz, der eine ganze Seite beschreibt. Wer einen
-    #: Schlüssel dort ergänzt, ergänzt ihn hier; wer ihn hier vergisst,
-    #: bekommt keinen kaputten Link, sondern den Rückfall auf die statische
-    #: Adresse (und das Frontend schreibt dann „im Ratsinformationssystem
-    #: suchen" statt „Dokument öffnen").
-    #:
-    #: Die Alt-Spalte ist die Rückfallebene für Bestände, die vor der
-    #: Herkunfts-Vereinheitlichung (#513) geschrieben wurden: Dort steht die
-    #: URL an der Datenzeile, aber noch keine ``herkunft_id``. Die beiden
-    #: Konzern-Tabellen haben keine — sie sind erst mit der Herkunft
-    #: entstanden (s. ``_HERKUNFT_ALTFELDER``).
-    _DOKUMENT_QUELLEN: dict[str, tuple[str, str, str | None, str | None]] = {
-        "plan":                 ("council_budget", "year", None, "source_url"),
-        # Die zwei Ebenen eines Jahresabschlusses stehen in derselben Tabelle
-        # und im selben Dokument, tragen aber verschiedene Herkünfte (eigene
-        # Abschnitte, eigene Proben). Beide Schlüssel gibt es im Verzeichnis.
-        "jahresabschluss":      ("council_income_statement", "year",
-                                 "sub_budget_no IS NULL", "source_url"),
-        "ergebnisrechnung_thh": ("council_income_statement", "year",
-                                 "sub_budget_no IS NOT NULL", "source_url"),
-        # Dritte Ebene desselben Dokuments: Abschnitt 4.1, die Kassensicht.
-        "cash_flow_statement":       ("council_cash_flow_statement", "year", None, None),
-        # Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
-        # Postengliederung für Jahre ohne Abschluss.
-        #
-        # Der Filter auf ``kind = 'budget'`` ist hier PFLICHT und keine
-        # Verfeinerung: Ein Dokument trägt sein Planjahr UND drei
-        # Finanzplanungsjahre, dieselbe Jahreszahl kommt also in drei
-        # Haushaltsplänen vor (2026 im Plan 2024 als Vorausschau, im Plan 2025
-        # als Vorausschau, im Plan 2026 als Ansatz). Ohne den Filter stünden an
-        # einer Ansatz-Zahl bis zu drei Dokumente, und zwei davon meinen etwas
-        # anderes. Mit ihm gilt ``year == plan_budget_year``, und es bleibt genau
-        # eines.
-        "income_budget":     ("council_income_budget", "year",
-                                 "t.kind = 'budget'", None),
-        # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
-        # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
-        # deshalb dessen Dokument, mit eigener Fundstelle.
-        "bilanz":               ("council_balance_sheet", "year", None, None),
-        # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
-        # stehen: Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn
-        # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
-        "teilhaushalt":         ("council_products", "year", None, "source_url"),
-        "pruefbericht":         ("council_audit_report_sources", "year", None, "url"),
-        "gesamtabschluss":      ("council_group_items", "year", None, None),
-        # Nur die geprüften Zeilen: Die Bezugsgröße „Gesamtbetrag des
-        # Finanzhaushaltes" steht in derselben Datei, aber an einer anderen
-        # Fundstelle und ohne Probe — ohne diesen Filter stünden je Jahrgang
-        # zwei Dokumente im Verzeichnis, wo es eines ist.
-        "investitionen":        ("council_investments", "year",
-                                 "t.level = 'sub_budget'", None),
-        # Alle Zeilen eines Jahrgangs teilen sich eine Herkunft; die
-        # `gesamt`-Zeile gibt es genau einmal und steht hier für das Dokument.
-        "investitionsprogramm": ("council_investment_measures", "year",
-                                 "t.level = 'total'", None),
-        # Ein Jahrgang, zwei Herkünfte (Teil A und Teil B im selben PDF, aber
-        # unter verschiedenen Proben). Beide zeigen auf dieselbe Datei; die
-        # Fundstelle unterscheidet sie, und `DISTINCT` fasst sie deshalb nicht
-        # zusammen — genau richtig, denn ein Beleg an einer Beamtenzahl soll
-        # „Teil A" sagen und nicht „Stellenplan".
-        "stellenplan":          ("council_staff_plan", "budget_year", None, None),
-        # Der einzige Schlüssel, dessen Jahresspalte NICHT das Datenjahr ist:
-        # Ein Bericht liefert fünf Jahrgänge, gehört aber zu genau einem
-        # Dokument — und das ist seines.
-        "indicators":           ("council_indicators", "report_year", None, None),
-        # Die drei Schichten vom 20.08.2026. Sie standen bis zum 21.08. NICHT
-        # hier, und man hat es der Seite angesehen: Unter 33 Wirtschaftsplänen
-        # aus sieben Betrieben stand eine einzige Quelle, deren Link auf die
-        # Startseite des Ratsinformationssystems führte. Der Eintrag hier ist
-        # der ganze Unterschied zwischen „kommt aus dem RIS" und „steht in
-        # diesem PDF".
-        #
-        # Wie ``teilhaushalt`` tragen alle drei je Jahrgang MEHRERE Dokumente,
-        # und das ist hier keine Eigenheit, sondern der Kern: Ein Jahrgang
-        # Wirtschaftsplan besteht aus sieben Plänen von sieben Betrieben, und
-        # jeder ist ein eigenes Papier mit eigener Vorlagennummer.
-        "wirtschaftsplan":      ("council_business_plans", "year", None, None),
-        # Nachträge tragen eine eigene Satzung und ein eigenes Dokument; der
-        # Schlüssel unterscheidet sie nicht, die Fundstelle tut es.
-        "budget_bylaw":     ("council_budget_bylaw", "year", None, None),
-        "fees":            ("council_fees", "year", None, None),
-        # Der Haushaltsvollzug trägt je Jahrgang bis zu ACHT Dokumente (vier
-        # Stichtage × zwei Haushalte), und jedes ist ein eigenes Papier mit
-        # eigener Vorlagennummer — dieselbe Lage wie beim Wirtschaftsplan.
-        # Gefiltert wird auf die Summenzeile, damit der Join nicht jede der
-        # 42 Zeilen einer Tabelle anfasst; ihre Herkunft ist dieselbe.
-        "budget_execution": ("council_budget_execution", "budget_year",
-                             "t.is_total = 1", None),
-        # Kredite und Zinsen: je Unterrichtung eine Vorlage mit eigener
-        # Herkunft — die Papierliste eines Jahrgangs sind die Berichte des
-        # Jahres. `document_url` ist die Rückfallebene der Zeile.
-        "loans":            ("council_loan_notices", "year", None, "document_url"),
-        # Der Liquiditätsstand: je Monat die Grafik, aus der der Wert zuletzt
-        # bestätigt wurde — die Papierliste eines Jahrgangs sind die Grafiken.
-        "liquidity":        ("council_liquidity", "year", None, "url"),
-        # Die Jahresabschlüsse der Eigenbetriebe: je Jahrgang bis zu vier
-        # Prüfberichte (ein Betrieb, ein Papier), jede Kennzahl zeigt auf den
-        # jüngsten Bericht, der sie nennt.
-        "enterprise_accounts": ("council_enterprise_accounts", "year", None, None),
-        # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
-        # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
-        # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
-        # eine Herkunft, DISTINCT macht daraus die Papierliste des Jahrgangs.
-        "aenderungsliste":      ("council_budget_amendments_totals",
-                                 "budget_year", None, None),
-    }
 
-    #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und
-    #: deshalb nicht in ``_DOKUMENT_QUELLEN`` stehen — Downloads von
-    #: oldenburg.de, Open Data und die Landesstatistik. Für die Frage „welche
-    #: Jahrgänge deckt diese Quelle ab?" zählen sie genauso.
-    _WEITERE_JAHRESQUELLEN: dict[str, tuple[str, str, str | None]] = {
-        "taxes":     ("council_taxes", "year", None),
-        "tax_capacity": ("council_tax_capacity", "year", None),
-        "population":   ("council_einwohner", "year", None),
-        "schulden":    ("council_debt", "year", None),
-        "gebaut":      ("council_investments_actual", "year", None),
-        "expense_series": ("council_expense_series", "year", None),
-        "buergschaften": ("council_buergschaften", "year", None),
-        "anlagenspiegel": ("council_fixed_assets", "year", None),
-        "vermoegensgruppen": ("council_vermoegensgruppen", "year", None),
-        "integrierte_schulden": ("council_integrated_debt", "year", None),
-        "donations":     ("council_donations", "year", None),
-        "loans":         ("council_loan_notices", "year", None),
-        "liquidity":     ("council_liquidity", "year", None),
-        "enterprise_accounts": ("council_enterprise_accounts", "year", None),
-        "tax_plan":  ("council_tax_plan", "year", None),
-        "tax_rates":  ("council_tax_rates", "year", None),
-    }
 
 
 
@@ -2615,12 +2240,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
 
 
-    #: Ab welchem Anteil der Stützpunkte ein Ortsbereich als berührt gilt.
-    #: Zehn Prozent von bis zu 60 Punkten sind ein echtes Straßenstück, keine
-    #: angeschnittene Ecke — und die zusätzliche Mindestzahl fängt sehr kurze
-    #: Geometrien ab, bei denen ein einzelner Punkt schon 10 % wäre.
-    ORTSBEREICH_ANTEIL = 0.10
-    ORTSBEREICH_MINDESTPUNKTE = 2
 
 
 
@@ -2663,22 +2282,8 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         return dict(row) if row else None
 
 
-    #: Ab wie vielen Ortsbereichen eine Entität als stadtweit gilt. Auf dem
-    #: Prod-Bestand (01.09.2026) trennt 4 sauber: „Startchancen-Programm" (8),
-    #: „Lärmaktionsplan" (7), „Mobilitätsplan Oldenburg 2030" (6) und „Housing
-    #: First" (5) fallen raus, alles Ortsgebundene bleibt.
-    CITYWIDE_FROM_DISTRICTS = 4
 
-    #: Ab wie vielen Beschlüssen im Fenster ein bloßer Straßenname als
-    #: Vorschlag taugt. Darunter ist er eine Adresse aus einem Bebauungsplan.
-    STRASSE_MINDESTENS = 5
 
-    #: Was nach Adresse klingt statt nach Vorhaben. Starke Straßen bleiben
-    #: (s. STRASSE_MINDESTENS) — und rutschen hinter alles andere.
-    _STRASSE = re.compile(r"(stra(ß|ss)e|str\.|weg|allee|ring|damm|chaussee|gasse|pfad|steig)$",
-                          re.IGNORECASE)
-    _STRASSE_VORNE = re.compile(r"^(am|an der|an den|auf dem|auf der|zum|zur|im|in der)\s",
-                                re.IGNORECASE)
 
 
 
@@ -2753,17 +2358,8 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
     # --- Personen-Paket (10.08.26): Stammdaten für Auflösung + Fragetyp -----
 
-    # Vertretungs- und Zeit-Notizen sind keine Ämter („Für Oberbürgermeister
-    # Krogmann", „bis TOP 8.2") — nur echte Amtsbezeichnungen zählen.
-    _ROLLEN_RE = re.compile(
-        r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
-        r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
 
 
-    #: Funktionsangabe des Beteiligungsberichts, die „diese Person sitzt im
-    #: Stadtrat" behauptet — mit optionalem Klammerzusatz, wie ihn der Bericht
-    #: auch anderswo führt („1. Kreisrat (Vorsitzender)").
-    _FUNKTION_RATSMITGLIED = re.compile(r"(?i)^ratsmitglied(\s*\(.*\))?$")
 
     @staticmethod
     def _ein_buchstabe_abstand(a: str, b: str) -> bool:
@@ -2804,17 +2400,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
 
 
 
-    #: Name des Plenar-Gremiums in den Sitzungsdaten. Es ist der Prüfstein für
-    #: ein Ratsmandat (s. list_members) — die Ausschüsse führen daneben
-    #: beratende Mitglieder, die dem Rat nicht angehören.
-    PLENUM = "Rat"
 
-    #: Wörter, die im Fraktions-Feld nur die ROLLE beschreiben („Beratendes
-    #: Mitglied", „beratend", „Verwaltung") — sie benennen keine entsendende
-    #: Organisation und taugen deshalb nicht als Herkunfts-Label.
-    _ROLLEN_LABEL = re.compile(
-        r"^(beratend\w*|beratende[sr]?\s+mitglied\w*|gast|gäste|verwaltung|"
-        r"protokoll\w*|stellv\w*|vertretung|mitglied\w*)$", re.IGNORECASE)
 
 
 
@@ -2839,15 +2425,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             self._conn.executemany("UPDATE council_decisions SET amount_eur = ? WHERE id = ?", rows)
         return len(rows)
 
-    # Titles excluded from the "largest" view: accounting / whole-budget reports
-    # (balance totals, not a discrete decision) and treasury operations (debt
-    # refinancing / credit reporting) — neither is "the city spends X on Y".
-    #
-    # Die Liste lebt in `council/importance.py` (Blatt-Modul, kein Zirkel) und
-    # wird hier nur weitergereicht. Vorher stand sie ausschließlich hier — mit
-    # der Folge, dass die drei Geld-Ansichten filterten, das Geld-Signal des
-    # Wichtig-Werts aber nicht.
-    _NON_SPENDING_TITLES = _importance.NON_SPENDING_TITLES
 
     def activity_trends(self, quarters: int = 12) -> dict:
         """Council activity over time for the trends view: decisions and recognised €
@@ -4572,11 +4149,6 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
             f"WHERE ksinr IN ({ph}) AND document_url IS NOT NULL", ids).fetchall()
         return {r["ksinr"]: r["document_url"] for r in rows}
 
-    # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
-    # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.
-    _SAMMEL_TOPS = ("anfragen und anregungen", "einwohnerfragestunde",
-                    "genehmigung der tagesordnung", "mitteilungen",
-                    "verschiedenes", "niederschrift")
 
 
 
@@ -4747,14 +4319,7 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
     # Volltext-Backfills, nicht der Tag der Veröffentlichung. Das Datum einer
     # Station kommt ausschließlich aus `council_sessions.session_date`.
 
-    #: Ein Haushaltsjahr trägt drei Sorten Vorlagen, und sie heißen nicht
-    #: einheitlich. Die Jahreszahl steht immer vorn, das Wort davor variiert
-    #: („Haushalt 2026", „Haushaltsentwurf 2024", „HH 2020").
-    _HH_TITEL = re.compile(r"^(?:Haushaltsentwurf|Haushalt|HH)\s*(\d{4})")
 
-    #: Woran ein Verwaltungsentwurf als Teilhaushalts-Bericht erkennbar ist —
-    #: er geht in den jeweiligen Fachausschuss, nicht in den Finanzausschuss.
-    _HH_TEILBERICHT = ("Teilhaushalt", "THH", "Budget", "Stiftung")
 
 
 
@@ -4774,12 +4339,3 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
     # Seite nicht veralten, und ein nachgetragenes Protokoll erscheint ohne
     # Backfill.
 
-    #: Die Schlussabstimmung trägt in jedem Jahrgang denselben Titel; die
-    #: Jahreszahl darin ist das HAUSHALTSJAHR, nicht das Sitzungsjahr (der
-    #: Haushalt 2023 wurde im Dezember 2022 beschlossen, der Haushalt 2026
-    #: erst im Februar 2026).
-    _STREIT_SATZUNG = re.compile(r"^Haushaltssatzung und Haushaltsplan\s+(\d{4})")
-    #: Der Sammelpunkt, unter dem die Debatte geführt wird. Er steht nicht in
-    #: jedem Protokoll als eigene Beschlusszeile — wo er fehlt, wird der
-    #: Oberpunkt aus der Nummer der Schlussabstimmung abgeleitet.
-    _STREIT_SAMMEL = re.compile(r"^Haushalt\s+(\d{4})\s*$")

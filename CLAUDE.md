@@ -153,12 +153,21 @@ einzeln, `--nur ruff,vertrag` wählt aus.
 `kern/` und den Backend-Kern; `council/`, `scripts/` und die Router stehen
 noch draußen. Der Grund und der Weg nach vorn stehen in
 [`pyrightconfig.json`](pyrightconfig.json), festgehalten von
-`tests/test_typpruefung.py`. Kurz: Über den ganzen Bestand sind es 1.309
-Befunde, fast tausend davon aus **einer** Ursache — die Store-Mixins erben
-keine Basisklasse, die `self._conn` kennt. Wer daran arbeitet, hebt damit die
-größte Stufe auf einmal. **Eine Ausnahme in `exclude` ist eine Schuld, kein
-Zustand**: Der Wächter meldet, sobald ein ausgenommenes Verzeichnis von selbst
-sauber geworden ist.
+`tests/test_typpruefung.py`. **Eine Ausnahme in `exclude` ist eine Schuld,
+kein Zustand**: Der Wächter meldet, sobald ein ausgenommenes Verzeichnis von
+selbst sauber geworden ist.
+
+Der Bestand schrumpft in Stufen. Gemessen wurde am 03.09.2026:
+
+| Stand | Befunde in `council/` |
+|---|---:|
+| vor `StoreBasis` | 1.037 |
+| danach | **194** |
+
+Fast tausend Befunde kamen aus **einer** Ursache: Die Store-Mixins erbten
+keine Basis, die `self._conn` kennt (s. [`council/CLAUDE.md`](council/CLAUDE.md)).
+Was bleibt, verteilt sich auf 44 Dateien und ist einzeln zu lesen — danach
+kann `council/` in den Geltungsbereich.
 
 **Den Hook einschalten** (einmal je Checkout):
 

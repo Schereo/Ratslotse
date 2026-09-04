@@ -24,6 +24,7 @@ import sqlite3
 from pathlib import Path
 
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 
 SCHEMA = """
@@ -714,11 +715,131 @@ TABELLEN_UMBENANNT: list[tuple[str, str]] = [
 ]
 
 
-class SchemaMixin:
+class SchemaMixin(StoreBasis):
     """Schema und Migration von :class:`council.store.CouncilStore`.
 
     Nur zum Mitvererben; ``self._conn`` kommt von dort.
     """
+
+    #: `art` → `kind` in zehn Tabellen. Steht GANZ VORNE in `_migrate`, weil
+    #: mehrere Wert-Migrationen weiter unten auf der Spalte arbeiten
+    #: (`council_group_entities`, `council_taxes`, `council_tax_plan`):
+    #: Liefe die Umbenennung später, fänden sie ihre Spalte nicht und kehrten
+    #: still zurück — die Werte blieben deutsch, ohne dass etwas auffiele.
+    _ART_TABELLEN = (
+        "council_income_budget", "council_tax_rates", "council_provenance",
+        "council_group_entities", "council_supplementary_approvals", "council_staff_plan",
+        "council_taxes", "council_tax_plan", "council_templates",
+        "council_speeches",
+    )
+
+    #: Wie eine Tabelle ihre Herkunft bisher führte: (Label-Spalte,
+    #: URL-Spalte, Quellenart). Drei Schreibweisen für dieselbe Sache — genau
+    #: das war der Anlass für `council/herkunft.py`.
+    #:
+    #: Die Quellenart steht hier nur, wo sie aus der Tabelle folgt. Bei
+    #: `council_budget` folgt sie das nicht: Ein Jahrgang kam als PDF von
+    #: oldenburg.de, ein anderer als CSV aus dem Open-Data-Portal — dort
+    #: entscheidet die URL (s. `_herkunft_art_aus_url`).
+    _HERKUNFT_ALTFELDER: dict[str, tuple[str | None, str, str | None]] = {
+        "council_budget":             (None, "source_url", None),
+        "council_taxes":              (None, "source_url", "opendata"),
+        "council_tax_capacity":          (None, "source_url", "opendata"),
+        "council_einwohner":            (None, "source_url", "opendata"),
+        "council_income_statement":     ("source_label", "source_url", "ris"),
+        # Neu mit der Kassensicht, ohne Altbestand — nichts nachzutragen.
+        "council_cash_flow_statement":       (None, None, "ris"),
+        # Ebenso die Bilanz und ihre Erläuterungen: erst mit der Herkunft
+        # entstanden, keine Altspalten.
+        "council_balance_sheet":               (None, None, "ris"),
+        "council_balance_sheet_notes": (None, None, "ris"),
+        "council_variance_reasons":   ("source_label", "source_url", "ris"),
+        "council_audit_report_sources": ("label", "url", "ris"),
+        "council_products":             ("source_label", "source_url", "ris"),
+        "council_audit_reports":        ("source_label", "source_url", "ris"),
+        # Die beiden Konzern-Tabellen sind erst mit der Herkunft entstanden
+        # und tragen gar keine Altspalten. Sie stehen hier trotzdem, weil
+        # `_herkunft_nachtragen` jede Tabelle aus `HERKUNFT_TABELLEN`
+        # nachschlägt; ohne URL-Spalte kehrt es sofort zurück, ohne etwas zu
+        # tun. Ein Eintrag „nichts nachzutragen" ist billiger als eine
+        # Ausnahme im Nachrüst-Weg.
+        "council_group_items":       (None, "source_url", "ris"),
+        "council_group_entities":      (None, "source_url", "ris"),
+        # Ebenso der Städtevergleich: erst mit der Herkunft entstanden, keine
+        # Altspalten, nichts nachzutragen.
+        "council_city_comparison":     (None, "source_url", "lsn"),
+        # Und die Gewerbesteuerstatistik, ebenfalls vom Landesamt.
+        "council_trade_tax_statistics": (None, "source_url", "lsn"),
+        # Und die Planjahre aus dem Gesamtergebnishaushalt.
+        "council_income_budget":     (None, "source_url", "ris"),
+        # Ebenso die Investitionen des Finanzhaushalts: neu, ohne Altspalten,
+        # Herkunft ausschließlich über `herkunft_id`.
+        "council_investments":        (None, "source_url", "opendata"),
+        # Und die Maßnahmen aus Anlage 004: ebenfalls neu, ebenfalls ohne
+        # Altspalten. Der Eintrag muss trotzdem stehen — `_herkunft_nachtragen`
+        # schlägt hier nach, bevor es merkt, dass es nichts nachzutragen gibt.
+        "council_investment_measures": (None, "source_url", "ris"),
+        # Das Ist-Gegenstück aus dem Statistischen Jahrbuch — anders als Plan
+        # und Programm kommt es weder vom Portal noch aus dem RIS, sondern von
+        # oldenburg.de.
+        "council_investments_actual":       (None, "source_url", "city"),
+        "council_investments_actual_kinds": (None, "source_url", "city"),
+        "council_investments_actual_rejected": (None, "source_url", "city"),
+        # Der Stellenplan — ebenfalls neu und ohne Altbestand.
+        "council_staff_plan":          (None, "source_url", "ris"),
+        # Und die Schuldenzeitreihe aus dem Statistischen Jahrbuch.
+        "council_debt":             (None, "source_url", "city"),
+        # Die lange Ausgabenreihe: zwei Quellen — das Jahrbuch der Stadt und
+        # das Open-Data-Portal —, deshalb keine feste Art. Nachzutragen ist
+        # ohnehin nichts, die Tabelle ist neu.
+        "council_expense_series":        (None, "source_url", None),
+        # Der Bürgschaftsbestand: eine Quelle, der Jahresabschluss als Anlage
+        # im Ratsinformationssystem.
+        "council_buergschaften":        (None, "source_url", "ris"),
+        "council_fixed_assets":       (None, "source_url", "ris"),
+        # Die Kennzahlen und ihre Rechenwege: Anlage des Rechenschaftsberichts,
+        # also ebenfalls ein Dokument im Ratsinformationssystem.
+        "council_indicators":           (None, "source_url", "ris"),
+        "council_indicator_formulas":     (None, "source_url", "ris"),
+        "council_vermoegensgruppen":    (None, "source_url", "ris"),
+        # Die dritte Schuldenzahl: Tabellenband der Statistischen Ämter,
+        # also weder Stadt noch Ratsinformationssystem — eigene Art "lsn"
+        # wie beim Städtevergleich.
+        "council_integrated_debt": (None, "source_url", "lsn"),
+        # Die Nachbewilligungen: neu, ohne Altspalten. Beide Quellen liegen im
+        # Ratsinformationssystem — die Vorlagen selbst und der
+        # Rechenschaftsbericht als Anlage zum Jahresabschluss.
+        "council_supplementary_approvals":        (None, "source_url", "ris"),
+        "council_supplementary_years":    (None, "source_url", "ris"),
+        "council_supplementary_channels":  (None, "source_url", "ris"),
+        # Die Zuwendungen: Quelle sind Ratsvorlagen im Bürgerinfo, also „ris".
+        # Nachzutragen ist nichts, beide Tabellen sind neu.
+        "council_donations":              (None, "source_url", "ris"),
+        "council_donations_rejected":    (None, "source_url", "ris"),
+        # Die beiden Steuertabellen des Jahrbuchs — neu, ohne Altbestand.
+        "council_tax_plan":           (None, "source_url", "city"),
+        "council_tax_rates":           (None, "source_url", "city"),
+        # Gebührenbedarf und Anlage-4-Tarife sind neu mit Herkunft entstanden;
+        # sie haben keine doppelten Altspalten, die nachzutragen wären.
+        "council_fees":            (None, "source_url", "ris"),
+        "council_fee_rates":      (None, "source_url", "ris"),
+        # Der Beteiligungsbericht: ebenfalls erst mit der Herkunft entstanden.
+        # Seine Dokumente kommen von oldenburg.de, nicht aus dem Bürgerinfo.
+        "council_companies":            (None, "source_url", "city"),
+        "council_company_texts":        (None, "source_url", "city"),
+        "council_company_indicators":   (None, "source_url", "city"),
+        "council_company_people":     (None, "source_url", "city"),
+        "council_company_owners":  (None, "source_url", "city"),
+        # Der Haushaltsvollzug: neu, ohne Altbestand, ohne Altspalten. Der
+        # Eintrag muss trotzdem stehen — `_herkunft_nachtragen` schlägt hier
+        # nach, bevor es merkt, dass es nichts nachzutragen gibt.
+        "council_budget_execution": (None, "source_url", "ris"),
+        "council_liquidity": (None, "url", "ris"),
+    "council_enterprise_accounts": (None, None, "ris"),
+        # Kredite und Zinsen: neu, ohne Altbestand — derselbe Platzhalter.
+        "council_loan_notices": (None, "document_url", "ris"),
+        "council_loan_items": (None, "document_url", "ris"),
+    }
 
     def _spalten_umbenennen(self, tabelle: str, paare: list[tuple[str, str]]) -> None:
         """Benennt Spalten um, sofern sie noch alt heißen — idempotent.

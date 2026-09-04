@@ -12,9 +12,13 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime
+from council.store_basis import StoreBasis
 
-class QuizMixin:
+class QuizMixin(StoreBasis):
     """Die Quiz-Abfragen — nur zum Mitvererben."""
+
+    # Themen ohne Entität dahinter (kuratierte Spezial-Gebiete) → Anzeigename.
+    _THEMA_LABELS = {"haushalt": "Stadt-Haushalt"}
 
     def save_quiz_questions(self, rows: list[dict]) -> int:
         """Neue Quizfragen speichern; Duplikate (gleicher content_hash) werden

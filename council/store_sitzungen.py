@@ -14,9 +14,126 @@ import re
 from datetime import datetime
 
 from council.scraper import CouncilSession
+from council.store_basis import StoreBasis
 
-class SitzungenMixin:
+class SitzungenMixin(StoreBasis):
     """Die Sitzungs-Abfragen — nur zum Mitvererben."""
+
+    #: Die Eimer eines Tagesordnungs-Diffs. NUR die oberste Ebene — `anlagen`
+    #: ist dort ein Eimer, INNERHALB eines Punktes aber dessen Anlagenliste,
+    #: und die heißt weiter so.
+    _DIFF_EIMER = {
+        "neu": "new", "entfernt": "removed", "verschoben": "moved",
+        "umformuliert": "reworded", "vorlage": "template", "anlagen": "attachments",
+    }
+
+    # Kommende Sitzungen kommen aus ZWEI Quellen: echten Sitzungen mit
+    # Tagesordnung und bloß terminierten aus dem Kalender. Liste und Zählung
+    # müssen dieselbe Menge meinen — deshalb steht die Bedingung genau einmal
+    # hier und wird von beiden benutzt.
+    _UPCOMING_FROM = """
+        FROM (
+            SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                   COUNT(ci.id) AS n_items
+            FROM council_sessions cs
+            LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+            WHERE cs.session_date >= ?
+            GROUP BY cs.ksinr
+            UNION ALL
+            SELECT NULL AS ksinr, ss.committee, ss.session_date, ss.session_time, ss.location,
+                   0 AS n_items
+            FROM council_scheduled_sessions ss
+            WHERE ss.session_date >= ?
+              AND NOT EXISTS (
+                  SELECT 1 FROM council_sessions cs2
+                  WHERE cs2.committee = ss.committee AND cs2.session_date = ss.session_date
+              )
+        )
+    """
+
+    #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
+    #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
+    #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    #: spannendsten Titeln der Woche („Ermittlungen Abfallentsorgung
+    #: Fliegerhorst (CDU-Fraktion) - Bericht der Verwaltung"). Ein auf das
+    #: Zeilenende verankertes Muster warf davon neun weg, darunter fast alle
+    #: Fraktionsanträge — deshalb greift die Formalie nur, wenn der Punkt
+    #: NICHTS ANDERES ist als diese Floskel.
+    _FORMALIE_RE = re.compile(
+        r"Beschlussf[äa]higkeit|Genehmigung der Tagesordnung|Genehmigung des Protokolls|"
+        r"Einwohnerfragestunde|^Mitteilungen|Anfragen und Anregungen|Verschiedenes|"
+        r"^\s*Bericht(?:e)? der Verwaltung\s*$|Wahl der Schriftf[üu]hrung",
+        re.IGNORECASE)
+
+    #: „(CDU-Fraktion vom 10.06.2026)", „(Fraktionen BSW und SPD)", „(FDP-Fraktion …)"
+    _ANTRAG_RE = re.compile(r"\(\s*(?:die\s+)?(?:Fraktion(?:en)?|Gruppe|Ratsherr|Ratsfrau)\b|"
+                            r"[A-ZÄÖÜ][\wÄÖÜäöüß/. ]{1,24}-Fraktion\b", re.IGNORECASE)
+
+    _PERSONALIE_RE = re.compile(
+        r"Berufung|Umbesetzung|Bestellung\s+(?:eines|einer)|"
+        r"Wahl\s+(?:des|der|eines|einer)\s+(?:stellv|Vorsitz|Schriftf)|"
+        r"beratende[sn]?\s+Mitglied", re.IGNORECASE)
+
+    #: Bindende Gegenstände: Was hier greift, wirkt über den Tag hinaus —
+    #: Satzungen, Gebühren, Haushalt, Bauleitplanung, Verträge, Grundsätze.
+    #: Genau die Rubrik „Bindungswirkung" des Tragweite-Prompts, nur als Regel.
+    _BINDEND_RE = re.compile(
+        r"Satzung|Geb[üu]hren|Beitrags|Entgelt|Haushalt|Nachtragshaushalt|"
+        r"Bebauungsplan|Fl[äa]chennutzungsplan|Bauleitplan|Grundsatzbeschluss|"
+        r"Vertrag|Vereinbarung|Konzession|Verordnung|Richtlinie", re.IGNORECASE)
+
+    #: Wo entschieden wird, wiegt schwerer als wo vorberaten wird. Der Rat und
+    #: der Verwaltungsausschuss binden die Stadt, ein Fachausschuss bereitet vor.
+    _GREMIUM_GEWICHT = ((("stadtrat", "rat der stadt"), 1.5), (("verwaltungsausschuss",), 1.0))
+
+    #: Ab hier gilt ein Punkt als Schwerpunkt der Woche und wird hervorgehoben.
+    #: Darunter zeigt die Karte ihre Zeilen ohne Hervorhebung — lieber kein
+    #: Schwerpunkt als ein behaupteter.
+    TOP_MINDEST = 60
+
+    #: Mehr als zwei Hervorhebungen entwerten sich gegenseitig.
+    TOP_MAX = 2
+
+    #: Unter diesem Wert kommt ein Punkt gar nicht auf die Karte. Skala ist die
+    #: Tragweite (0–100, s. council/impact.py): 20 ≈ Bericht zur Kenntnis,
+    #: 35 ≈ Maßnahme an einer Einrichtung. Darunter lohnt keine Zeile.
+    WICHTIG_MINDEST = 30
+
+    #: Lazy geladener Wiederkehr-Zähler (s. _wiederkehr).
+    _wiederkehr_cache: dict[str, int] | None = None
+
+    #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
+    #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
+    _ANTRAGSTELLER_RE = re.compile(
+        r"\s*\(\s*(?:die\s+)?(?P<wer>[^)]*?)\s*(?:vom\s+\d{1,2}\.\d{1,2}\.\d{2,4})?\s*\)")
+
+    #: Verfahrens-Anhängsel am Titelende, die auf der Karte nichts erklären.
+    _TITEL_ANHANG_RE = re.compile(
+        r"\s*[-–]\s*(?:\w*[Aa]ntrag mit Bericht der Verwaltung|Bericht(?:e)? der Verwaltung|"
+        r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
+        re.IGNORECASE)
+
+    #: „Ö 11.3" → Präfix „Ö", Nummer „11.3". Das Präfix ist zugleich der
+    #: Öffentlichkeitsmarker (Ö/N) und gehört zur Nummer, nicht davor weg.
+    _TOP_NUMMER_RE = re.compile(r"^\s*([A-Za-zÖÄÜöäü]+)\s+([\d.]+?)\.?\s*$")
+
+    #: Wörter, die in Tagesordnungs-Überschriften stehen, ohne einen
+    #: Gegenstand zu benennen — sie dürfen keine Gruppe begründen.
+    _RUBRIK_WORTE = frozenset({
+        "antraege", "antrag", "fraktionen", "fraktion", "gruppen", "gruppe",
+        "ratsund", "ausschussmitglieder", "mitglieder", "berichte", "bericht",
+        "anfragen", "anregungen", "mitteilungen", "verschiedenes", "verwaltung",
+        "beschluss", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
+        "protokolle", "protokolls", "tagesordnung", "oeffentlicher", "teil",
+    })
+
+    #: Titel auf seinen Kern eindampfen, damit „Annahme von Zuwendungen durch
+    #: den Rat - Beschluss (ungeändert beschlossen)" und dieselbe Zeile drei
+    #: Sitzungen später als EIN Punkt zählen: Klammern raus, Zahlen zu #,
+    #: Ergebniszusatz weg.
+    _WIEDERKEHR_UNWICHTIG = re.compile(
+        r"\([^)]*\)|\b(?:ungeändert|geändert)\s+beschlossen\b|"
+        r"\s+-\s+(?:beschluss|bericht|antrag|vorlage)\b", re.IGNORECASE)
 
     def _agenda_diff_schluessel_neu(self) -> None:
         """Die Eimer-Namen in `agenda_changes.diff_json` nachziehen — einmalig.

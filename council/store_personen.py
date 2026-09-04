@@ -22,9 +22,33 @@ import sqlite3
 from datetime import datetime
 
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
-class PersonenMixin:
+class PersonenMixin(StoreBasis):
     """Die Personen-Abfragen — nur zum Mitvererben."""
+
+    # Vertretungs- und Zeit-Notizen sind keine Ämter („Für Oberbürgermeister
+    # Krogmann", „bis TOP 8.2") — nur echte Amtsbezeichnungen zählen.
+    _ROLLEN_RE = re.compile(
+        r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
+        r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
+
+    #: Funktionsangabe des Beteiligungsberichts, die „diese Person sitzt im
+    #: Stadtrat" behauptet — mit optionalem Klammerzusatz, wie ihn der Bericht
+    #: auch anderswo führt („1. Kreisrat (Vorsitzender)").
+    _FUNKTION_RATSMITGLIED = re.compile(r"(?i)^ratsmitglied(\s*\(.*\))?$")
+
+    #: Name des Plenar-Gremiums in den Sitzungsdaten. Es ist der Prüfstein für
+    #: ein Ratsmandat (s. list_members) — die Ausschüsse führen daneben
+    #: beratende Mitglieder, die dem Rat nicht angehören.
+    PLENUM = "Rat"
+
+    #: Wörter, die im Fraktions-Feld nur die ROLLE beschreiben („Beratendes
+    #: Mitglied", „beratend", „Verwaltung") — sie benennen keine entsendende
+    #: Organisation und taugen deshalb nicht als Herkunfts-Label.
+    _ROLLEN_LABEL = re.compile(
+        r"^(beratend\w*|beratende[sr]?\s+mitglied\w*|gast|gäste|verwaltung|"
+        r"protokoll\w*|stellv\w*|vertretung|mitglied\w*)$", re.IGNORECASE)
 
     #: Anreden, die vor einem Namen stehen dürfen, ohne ihn zu einem anderen zu
     #: machen. Ohne die Liste hielte „Ratsfrau Hufeland" einen Vornamen für
