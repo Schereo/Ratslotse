@@ -29,6 +29,7 @@ import sqlite3
 
 from council import geld
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 NAME = "business_plans"
 
@@ -84,7 +85,7 @@ def recognize(text: str, typ: str, facets: set[str]) -> bool:
     return bool(_TRIFFT.search(text))
 
 
-class Store:
+class Store(StoreBasis):
     """Store-Mixin: die Wirtschaftspläne zu einer Frage."""
 
     def business_plans_context(self, terms: list[str],

@@ -383,7 +383,9 @@ _SPERRLISTEN = (
     ("council/embeddings.py", "_ANLAGE_META_STOPP", "beschluss"),
     ("council/fundstueck.py", "_ALLERWELT", "beschluss"),
     ("council/store.py", "_AUSBLICK_STOPP", "beschluss"),
-    ("council/store.py", "_RUBRIK_WORTE", "beschluss"),
+    # `_RUBRIK_WORTE` steht seit dem Mixin-Schnitt bei seinem einzigen
+    # Nutzer, nicht mehr in `store.py`.
+    ("council/store_sitzungen.py", "_RUBRIK_WORTE", "beschluss"),
 )
 
 
