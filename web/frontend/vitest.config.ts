@@ -23,6 +23,13 @@ export default defineConfig({
     env: { TZ: "Europe/Berlin", LANG: "de_DE.UTF-8" },
   },
   resolve: {
-    alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+      // `server-only` ist eine Next-MARKIERUNG, kein echtes Paket: Ein Modul,
+      // das sie importiert, darf nicht ins Browser-Bündel. Außerhalb von Next
+      // ließe sich so ein Modul gar nicht laden. Für die Tests ist die
+      // Markierung bedeutungslos — sie laufen ohnehin in Node.
+      "server-only": fileURLToPath(new URL("./lib/__testhilfen/server-only.ts", import.meta.url)),
+    },
   },
 });
