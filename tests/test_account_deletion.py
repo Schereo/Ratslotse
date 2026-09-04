@@ -93,6 +93,7 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
             "(2, 'bleibt@test.de', 'x', 'user', 'active', 1, '2026-01-01')"
         )
     private_reports = PrivateReportStore(database)
+    report_ids = {}
     for owner in (1, 2):
         report_id = private_reports.create_draft(
             reporter_id=owner,
@@ -103,11 +104,17 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
                 observed_on="2026-01-01",
             ),
         )
-        private_reports.submit_owned_draft(
+        submitted = private_reports.submit_owned_draft(
             report_id,
             reporter_id=owner,
             confirmed_text=f"Fiktive Beobachtung {owner}",
         )
+        private_reports.assess_owned_submission(
+            report_id,
+            reporter_id=owner,
+            expected_revision=submitted.content_revision,
+        )
+        report_ids[owner] = report_id
     with conn:
         for table, key in USER_OWNED_TABLES:
             if table != "civic_reports":
@@ -128,6 +135,16 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
         "SELECT text FROM civic_report_observations ORDER BY id"
     ).fetchall()
     assert [row[0] for row in observations] == ["Fiktive Beobachtung 2"]
+    screenings = conn.execute(
+        "SELECT report_id FROM civic_report_local_screenings ORDER BY report_id"
+    ).fetchall()
+    assert [row[0] for row in screenings] == [report_ids[2]]
+    assert private_reports.get_current_owned_screening(
+        report_ids[1], reporter_id=1
+    ) is None
+    assert private_reports.get_current_owned_screening(
+        report_ids[2], reporter_id=2
+    ) is not None
     private_reports.close()
     store.close()
 

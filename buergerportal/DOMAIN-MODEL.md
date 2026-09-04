@@ -118,6 +118,31 @@ Der Adapter ist keine zweite Schreibdomäne. Er erzeugt weder eine öffentliche
 Projektion noch Problemzuordnungen, Moderationsdaten, KI-Urteile oder spätere
 Beobachtungen.
 
+## Lokale Weitergabeprüfung — Iteration 7
+
+Nach dem privaten Absenden prüft `PrivateReportStore` alle bis zur aktuellen
+Inhaltsrevision bestätigten Beobachtungstexte mit einem versionierten lokalen
+Regelsatz. Eindeutige Notfallformulierungen, direkte E-Mail- oder deutsche
+Telefonangaben sowie nicht unterstützte Steuerzeichen halten die Revision bei
+`manual_review_only`. Andernfalls bedeutet `external_review_candidate` nur,
+dass diese begrenzten Regeln keinen Sperrgrund gefunden haben — nie, dass der
+Inhalt sicher, geeignet, wahr oder nicht dringend ist.
+
+`civic_report_local_screenings` speichert ausschließlich Meldungs-ID,
+Inhaltsrevision, Regelsatzversion, kontrolliertes Ergebnis und Grundcodes sowie
+den Erstellungszeitpunkt. Konto-ID, Roh- und bestätigter Text, genauer Ort und
+Koordinaten werden nicht dupliziert. Ein zusammengesetzter Fremdschlüssel bindet
+die Evidenz an eine vorhandene Beobachtungsrevision; Trigger erlauben nur die
+aktuelle eingereichte Revision eines weiterhin zugelassenen Kontos und
+verhindern Änderung oder direkte Löschung. Konto- und Meldungslöschung kaskadieren
+weiterhin vollständig.
+
+Gleiche und konkurrierende Prüfversuche liefern dieselbe unveränderliche
+Evidenz. Eine spätere Beobachtung macht sie als aktuelle Weitergabebedingung
+unbrauchbar. Schlägt die lokale Prüfung oder ihre Persistenz fehl, bleibt die
+private Einreichung erhalten, aber es existiert keine weitergabefähige
+Kandidatin. Es gibt weder externen Aufruf noch HTTP-Ausgabe des Ergebnisses.
+
 ## Veröffentlichung bleibt geschlossen
 
 Eine reale Meldung darf erst in eine öffentliche Projektion einfließen, wenn

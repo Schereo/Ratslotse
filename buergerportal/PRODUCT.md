@@ -149,6 +149,21 @@ knapp darauf hin, dass er kein Notrufkanal ist; bei akuter Gefahr gilt 112. Er
 führt keinen öffentlichen Problemabgleich, keine Sicherheitsklassifikation,
 keinen KI-Aufruf, keine Moderation, Clusterung oder Veröffentlichung aus.
 
+## Lokale Weitergabeprüfung — Iteration 7
+
+Eine bewusst abgesendete Meldung erhält serverseitig eine private,
+revisionsgebundene lokale Weitergabeprüfung. Der begrenzte Regelsatz hält
+Meldungen mit eindeutigen Notfallformulierungen, direkten Kontaktangaben oder
+nicht unterstützten Textformaten für ausschließlich manuelle Behandlung zurück.
+Die Meldung selbst bleibt in jedem Fall privat eingegangen.
+
+Ohne lokalen Sperrgrund heißt das Ergebnis nur „Kandidatin für eine mögliche
+spätere externe Vorprüfung“. Es behauptet weder Sicherheit noch Eignung,
+Wahrheit, Dringlichkeit oder Veröffentlichung. Eine neuere Beobachtung und jeder
+Prüf- oder Speicherfehler sperren die Weitergabe wieder. Die Prüfung sendet
+keinen Inhalt an externe Dienste, erscheint in keiner HTTP-Antwort und verändert
+keine öffentliche Projektion.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -160,7 +175,7 @@ keinen KI-Aufruf, keine Moderation, Clusterung oder Veröffentlichung aus.
 | `/meine-meldungen` | Eigentümer*in | reserviert |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 6 ergänzt ausschließlich die geführte Erfassung. API für spätere
-Beobachtungen, privates Meldungs-Dashboard, öffentliche Zeitleiste,
-Sicherheitsklassifikation, KI-Funktion, Moderationsoberfläche, Clusterung und
-automatische Veröffentlichung bleiben späteren Schnitten vorbehalten.
+Iteration 7 ergänzt ausschließlich die lokale Weitergabesperre. API für spätere
+Beobachtungen, privates Meldungs-Dashboard, öffentliche Zeitleiste, externe
+KI-Funktion, Moderationsoberfläche, Clusterung und automatische Veröffentlichung
+bleiben späteren Schnitten vorbehalten.

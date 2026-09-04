@@ -32,6 +32,12 @@ neutrale Zusammenfassung, freigegebene Kategorie und Geografie sowie belegbaren
 Status. Rohtexte, Identitäten, genaue private Orte, KI-Begründungen und
 Moderationsnotizen gehören nie hinein. Nicht: anonymisierte Meldung.
 
+### Lokale Weitergabeprüfung
+
+Private, deterministische Sperre vor einer möglichen externen Verarbeitung der
+aktuellen Meldungsrevision. „Kandidatin“ bedeutet nur, dass kein lokaler
+Sperrgrund erkannt wurde. Nicht: Sicherheitsurteil, KI-Vorprüfung, Freigabe.
+
 ### KI-Vorprüfung
 
 Privates, unveränderliches Eignungsurteil zur aktuellen Inhaltsrevision einer
