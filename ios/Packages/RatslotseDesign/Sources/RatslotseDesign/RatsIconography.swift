@@ -92,6 +92,7 @@ public enum RatsGlyph: Sendable, Equatable {
     case landmark
     case leaf
     case lifeBuoy
+    case compass
     case list
     case listFilter
     case listOrdered
@@ -233,6 +234,7 @@ public enum RatsGlyph: Sendable, Equatable {
         case .landmark: "LucideLandmark"
         case .leaf: "LucideLeaf"
         case .lifeBuoy: "LucideLifeBuoy"
+        case .compass: "LucideCompass"
         case .list: "LucideList"
         case .listFilter: "LucideListFilter"
         case .listOrdered: "LucideListOrdered"

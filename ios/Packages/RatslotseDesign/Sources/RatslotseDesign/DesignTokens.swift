@@ -83,6 +83,19 @@ public enum RatsColor {
     public static let dangerTint = Color.adaptive(light: 0xFEF2F2, dark: 0x321616)
     public static let warning = Color.adaptive(light: 0x92400E, dark: 0xF4BD68)
     public static let warningTint = Color.adaptive(light: 0xFFFBEB, dark: 0x33260E)
+
+    /// Watt-Grün — die dritte Farbe (Designdoc „iOS Charakter", 1b): dunkel
+    /// genug für Text, nicht die Semantik-Grün-Kachel. Akzent der Widgets,
+    /// die aus Protokollen sprechen.
+    public static let marsh = Color.adaptive(light: 0x2F6E4F, dark: 0x7AC69C)
+    /// Signal-Orange als Schrift- und Icon-Farbe auf hellen Tönungen —
+    /// #F05A22 hält auf Weiß keinen Textkontrast, #C2410C schon.
+    public static let signalInk = Color.adaptive(light: 0xC2410C, dark: 0xFA7440)
+    /// Tiefsee — der Grund des einen dunklen Widgets je Seite. Im
+    /// Dunkelmodus eine Stufe HELLER als die Nachbarn, damit der Akzent
+    /// bleibt.
+    public static let deepSea = Color.adaptive(light: 0x0B2135, dark: 0x16293B)
+    public static let deepSeaBorder = Color.adaptive(light: 0x16354F, dark: 0x264059)
 }
 
 private extension Color {

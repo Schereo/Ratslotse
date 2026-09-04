@@ -134,27 +134,62 @@ struct RatsSettingsRow<Content: View>: View {
     }
 }
 
+/// Die drei Zustände, die jede Liste hat — und in allen dreien wohnt Lotti
+/// (Designdoc „iOS Charakter", 5c): links das Sprite auf einer weichen
+/// Tönung, rechts Kicker, Titel, Text. Leer- und Ladezustände sind die
+/// häufigsten Screens einer App mit Verzugsdaten; wer Lotti dort trifft,
+/// kennt sie nach einer Woche — ohne dass ein Alltagsscreen umgebaut wurde.
+struct RatsStatePortrait: View {
+    let animation: LottiAnimation
+    var tint: Color = RatsColor.primary
+
+    var body: some View {
+        ZStack {
+            Circle().fill(tint.opacity(0.08))
+            LottiSpriteView(animation: animation)
+                .padding(3)
+        }
+        .frame(width: 58, height: 58)
+        .accessibilityHidden(true)
+    }
+}
+
+struct RatsStateKicker: View {
+    let text: String
+    var color: Color = RatsColor.muted
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(RatsFont.mono(9))
+            .tracking(0.9)
+            .foregroundStyle(color)
+    }
+}
+
 struct RatsEmptyState: View {
     let title: String
     let message: String
     let symbol: RatsGlyph
-    var animation: LottiAnimation = .searching
+    /// Lotti schläft, wo nichts ist — ein leerer Zustand ist kein Fehler.
+    var animation: LottiAnimation = .sleeping
 
     var body: some View {
-        VStack(spacing: 12) {
-            LottiSpriteView(animation: animation)
-                .frame(width: 86, height: 86)
-            Text(title)
-                .font(RatsFont.title(20))
-                .foregroundStyle(RatsColor.text)
-            Text(message)
-                .font(RatsFont.body(13))
-                .foregroundStyle(RatsColor.secondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(2)
+        HStack(alignment: .center, spacing: 14) {
+            RatsStatePortrait(animation: animation)
+            VStack(alignment: .leading, spacing: 3) {
+                RatsStateKicker(text: "Leer")
+                Text(title)
+                    .font(RatsFont.body(14, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+                Text(message)
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity)
         .ratsCard()
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -162,21 +197,45 @@ struct RatsLoadingState: View {
     let message: String
 
     var body: some View {
-        HStack(spacing: 14) {
-            LottiSpriteView(animation: .juggling)
-                .frame(width: 72, height: 72)
+        HStack(alignment: .center, spacing: 14) {
+            RatsStatePortrait(animation: .juggling)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Lotti ist dran")
-                    .font(RatsFont.body(13.5, weight: .semibold))
-                    .foregroundStyle(RatsColor.text)
+                RatsStateKicker(text: "Laden")
                 Text(message)
-                    .font(RatsFont.body(12))
-                    .foregroundStyle(RatsColor.secondary)
+                    .font(RatsFont.body(14, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+                RatsLoadingBar()
+                    .padding(.top, 6)
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, minHeight: 96)
         .ratsCard()
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Ein Balken, der langsam hin und her gleitet — 1,4 s je Richtung, keine
+/// Dauer-Unruhe im Blickfeld; bei reduzierter Bewegung steht er still.
+private struct RatsLoadingBar: View {
+    @State private var toRight = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(RatsColor.separator)
+                Capsule()
+                    .fill(RatsColor.primary)
+                    .frame(width: geometry.size.width * 0.38)
+                    .offset(x: toRight ? geometry.size.width * 0.62 : 0)
+            }
+        }
+        .frame(height: 4)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) { toRight = true }
+        }
     }
 }
 
