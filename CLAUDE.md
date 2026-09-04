@@ -176,11 +176,33 @@ git config core.hooksPath .githooks
 ```
 
 Danach läuft `--schnell` vor jedem `git push` und `lint_adressen.py` vor jedem
-Commit. In einer Claude-Code-Sitzung passiert das von selbst — `.claude/settings.json`
-setzt den Wert beim Sitzungsstart, **falls er noch nicht gesetzt ist**. Wer die
-Hooks bewusst nicht will, setzt `git config core.hooksPath /dev/null`; ein
-gesetzter Wert wird nie überschrieben. Für eine begründete Ausnahme im Einzelfall:
-`git push --no-verify`.
+Commit. In einer Claude-Code-Sitzung passiert das von selbst:
+`.claude/settings.json` ruft beim Sitzungsstart
+[`scripts/hooks_einrichten.py`](scripts/hooks_einrichten.py). Wer die Hooks
+bewusst nicht will, setzt `git config core.hooksPath /dev/null` — eine Abwahl
+bleibt stehen. Für eine begründete Ausnahme im Einzelfall: `git push
+--no-verify`.
+
+**Der Pfad muss relativ sein, und das ist keine Kosmetik.** Git löst
+`.githooks` gegen den jeweiligen Arbeitsbaum auf; ein **absoluter** Pfad zeigt
+dagegen fest auf den Haupt-Checkout. Steht der auf einem Zweig, der
+`.githooks/pre-push` noch nicht kennt, sucht Git die Datei dort vergeblich und
+pusht **ohne eine einzige Prüfung** — lautlos, aus jedem Arbeitsverzeichnis.
+Am 04.09.2026 über die zehn Worktrees dieses Repos gezählt:
+
+| `core.hooksPath` | Worktrees | `pre-push` |
+|---|---:|---|
+| relativ (`.githooks`) | 4 | läuft |
+| absolut auf den Haupt-Checkout | 5 | **lief nicht** |
+| gar nicht gesetzt | 1 | **lief nicht** |
+
+Es ist kein theoretischer Fall: An diesem Tag ging so ein Push mit zwei
+ruff-Befunden durch, gemerkt hat es erst die CI. Die frühere Bedingung
+(„ist überhaupt ein Wert gesetzt?") ließ das durch, weil ein gesetzter, aber
+wirkungsloser Wert wie ein guter aussah. Das Skript fragt stattdessen, ob der
+Hook **gefunden** wird, und repariert nur den Fall, der `.githooks` schon
+meint und ihn verfehlt. `python3 scripts/hooks_einrichten.py --pruefen` sagt
+für ein Arbeitsverzeichnis, woran man ist.
 
 **Regeln je Schicht.** Neben dieser Datei liegt in jedem größeren Verzeichnis
 eine eigene `CLAUDE.md` mit den Regeln, die genau dort gelten — sie wird
