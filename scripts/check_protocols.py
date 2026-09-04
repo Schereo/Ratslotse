@@ -170,6 +170,22 @@ def main() -> dict:
         "Vorlagen geladen": vstats["fetched"],
         "Beschlüsse mit Ortszuordnung": lstats["assigned"],
         "Orte geokodiert": geostats["located"],
+        # Die Straßen-Kennzahlen gehören hier hinein, sonst gibt es sie nicht.
+        # `geocode_decision_locations.process` rechnet sie aus und beschreibt
+        # sie als „gehört in die Kennzahlen" — nur nahm sie hier niemand
+        # entgegen, und damit standen sie in KEINEM job_runs-Eintrag (am
+        # 04.09.2026 auf Prod nachgesehen: elf Wochen lang keine einzige).
+        # Genau deshalb musste der Ausfall vom 03.09. als Mail auffallen statt
+        # als Ausschlag im Admin-Panel — und genau deshalb war die Mail so
+        # schreckhaft eingestellt.
+        "Straßen aus Schnappschuss": geostats["strassen_aus_schnappschuss"],
+        "Overpass-Ausfälle": (geostats["overpass_fehler"]
+                              + geostats["overpass_nicht_erreichbar"]),
+        # Getrennt von den Ausfällen: Das ist kein Vorfall, sondern ein Name,
+        # den OSM nicht führt („91er-Straße", „Die Straße"). Zusammengezählt
+        # sähe der Normalzustand wie ein Dauerausfall aus.
+        "Straßennamen ohne OSM-Treffer": geostats["overpass_ohne_treffer"],
+        "Straßen ohne Vollgeometrie": geostats["strassen_ohne_vollgeometrie"],
         "Wichtig-Score neu": wichtig,
         "Ergebnis-Meldungen": ergebnisse,
         "LLM-Kosten $": round(cstats["cost"] + gstats["cost"], 4),
