@@ -613,5 +613,21 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
   JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
   Umbenennung still zerlegt.
+- **Ein Job, der gar nicht startet, stürzt auch nicht ab.** `run_guarded`
+  meldet Abstürze; ein Job, der schweigt, fiel bis 09/2026 nur als Ampel im
+  Admin-Panel auf — und wer nicht hinsieht, merkt monatelang nicht, dass die
+  Protokolle nicht mehr geholt werden. `scripts/check_herzschlag.py` prüft
+  einmal täglich alle Jobs gegen ihren Takt aus [`kern/jobs.py`](kern/jobs.py)
+  und meldet, was fehlt. Dieselbe Regel (`jobs.zustand`) benutzt die Ampel im
+  Panel — zwei Fassungen liefen unweigerlich auseinander.
+
+  Derselbe Lauf schaut auf den **freien Speicherplatz**. Läuft die Platte voll,
+  scheitern SQLite-Schreibvorgänge mit „attempt to write a readonly database" —
+  das sieht wie ein Anwendungsfehler aus, und man sucht am falschen Ende.
+
+  **Was er NICHT auffängt:** Stirbt der Cron-Dienst als GANZES, stirbt er mit.
+  Er merkt, dass EIN Job schweigt, nicht dass alle schweigen. Dafür bräuchte es
+  eine Prüfung von außerhalb der Maschine; die gehört nicht ins Repo, sondern
+  auf einen zweiten Rechner.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

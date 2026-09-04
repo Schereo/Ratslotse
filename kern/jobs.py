@@ -8,6 +8,8 @@ damit ein einzelner verspäteter Lauf nicht sofort Alarm auslöst.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 JOBS: list[dict] = [
     {
         "key": "check_committees",
@@ -155,6 +157,50 @@ JOBS: list[dict] = [
         "schedule": "täglich 3 Uhr",
         "max_age_h": 30,
     },
+    {
+        "key": "check_herzschlag",
+        "label": "Herzschlag",
+        "description": "Meldet Jobs, die nicht mehr laufen, und einen vollen Datenträger. "
+                       "Ein Job, der gar nicht startet, stürzt auch nicht ab — "
+                       "ohne diese Prüfung fällt sein Schweigen niemandem auf.",
+        "schedule": "täglich 6:30 Uhr",
+        "max_age_h": 30,
+    },
 ]
 
 BY_KEY = {j["key"]: j for j in JOBS}
+
+
+def zustand(job: dict, letzter: dict | None,
+            jetzt: datetime | None = None) -> tuple[str, float | None]:
+    """Wie steht dieser Job da? ``(zustand, alter_in_stunden)``.
+
+    Vier Zustände, und der interessanteste ist ``stale``:
+
+    * ``ok``      — lief zuletzt erfolgreich und rechtzeitig.
+    * ``error``   — der letzte Lauf ist abgestürzt. Dafür kam schon eine Mail
+                    aus ``run_guarded``; hier steht er der Vollständigkeit halber.
+    * ``stale``   — er lief LÄNGER NICHT als erwartet. Das ist der Fall, für den
+                    es sonst gar keine Meldung gibt: Ein Job, der gar nicht
+                    startet, stürzt auch nicht ab.
+    * ``unknown`` — noch kein einziger Lauf verzeichnet.
+
+    Steht bewusst HIER und nicht im Admin-Router: Seit 09/2026 fragt auch
+    ``scripts/check_herzschlag.py`` danach, und zwei Fassungen derselben Regel
+    liefen unweigerlich auseinander — die Ampel im Panel zeigte dann etwas
+    anderes als die Mail.
+    """
+    if not letzter:
+        return "unknown", None
+    jetzt = jetzt or datetime.utcnow()
+    alter = None
+    try:
+        alter = round((jetzt - datetime.fromisoformat(letzter["started_at"]))
+                      .total_seconds() / 3600, 1)
+    except (ValueError, TypeError, KeyError):
+        alter = None
+    if letzter.get("status") == "error":
+        return "error", alter
+    if alter is not None and alter > job["max_age_h"]:
+        return "stale", alter
+    return "ok", alter
