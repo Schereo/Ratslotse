@@ -58,19 +58,19 @@ _EMAIL_ADDRESS = re.compile(
     re.IGNORECASE,
 )
 _WRITTEN_DATE = re.compile(
-    r"(?<![\d/.-])\b"
-    r"(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4})"
-    r"\b(?!\d)"
+    r"(?<![\d/.-])\b(?:\d{4}-\d{2}-\d{2}|"
+    r"\d{1,2}\s*(?P<date_separator>[./-])\s*\d{1,2}\s*"
+    r"(?P=date_separator)\s*\d{2,4})\b(?!\d)"
 )
 _PHONE_NUMBER = re.compile(
     r"(?<!\w)(?:(?:\+\d{1,3}|00\d{1,3}|0)[\d\s()/.-]{5,}\d)(?!\w)"
 )
 _PHONE_CONTEXT_NUMBER = re.compile(
     r"\b(?:telefon(?:nummer)?|tel|mobil(?:telefon|nummer)?|handy(?:nummer)?|"
-    r"rückruf(?:nummer)?|anruf|erreichbar|erreichen|zurückrufen|zurückruft|"
-    r"anrufen|anruft|rufen|ruft|nummer)\b\.?"
+    r"rückruf(?:nummer)?|rufnummer|anruf|durchwahl|kontakt|erreichbar|erreichen|"
+    r"zurückrufen|zurückruft|anrufen|anruft|rufen|ruft|nummer)\b\.?"
     r"[^\n]{0,40}?(?<!\w)(?:\+\d{1,3}[\s()/.-]*)?"
-    r"\d[\d\s()/.-]{5,}\d(?!\w)",
+    r"\d[\d\s()/.-]{3,}\d(?!\w)",
     re.IGNORECASE,
 )
 _UNSUPPORTED_TEXT_FORMAT = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")

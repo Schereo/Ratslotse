@@ -818,6 +818,8 @@ def test_local_screening_requires_current_submitted_owned_report(tmp_path):
         "Die fiktive Beobachtung stammt vom 01.09.2026.",
         "Der fiktive Termin ist am 01/09/2026.",
         "Der fiktive Rückruf war am 01/09/2026.",
+        "Die fiktive Beobachtung war am 01-09-2026.",
+        "Die fiktive Beobachtung war am 01. 09. 2026.",
     ),
 )
 def test_dates_and_civic_numbers_are_not_mistaken_for_contact_data(
@@ -864,6 +866,9 @@ def test_unsupported_text_format_requires_manual_review(tmp_path):
         "Meine Rückrufnummer ist 12345678.",
         "Meine Nummer ist 12345678.",
         "Bitte zurückrufen: 12345678.",
+        "Meine Rufnummer ist 123456.",
+        "Durchwahl: 12345.",
+        "Kontakt: 987654.",
         "Meine Nummer ist +1 212 555 0199.",
     ),
 )
