@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Iterable
-from kern.dbfehler import tabelle_fehlt
+from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
 
 
@@ -1437,12 +1437,13 @@ class Store:
         # gewöhnlichen Nutzer, das Admin-Panel einen Admin. Genau ein Aufrufer
         # macht das (der Apple-Weg für die konfigurierte Admin-Adresse).
         from kern import roles as _roles
+        user_id = neue_id(cur)
         if role in _roles.ROLES and role != _roles.DEFAULT_ROLE:
             with self._conn:
                 self._conn.execute(
                     "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
-                    "VALUES (?, ?, ?)", (cur.lastrowid, role, now))
-        return cur.lastrowid
+                    "VALUES (?, ?, ?)", (user_id, role, now))
+        return user_id
 
     def set_display_name(self, user_id: int, display_name: str | None) -> None:
         with self._conn:
@@ -1840,7 +1841,7 @@ class Store:
                     (owner_id, data["question"], opts, data["correct_index"],
                      data.get("district"), data["category"], data.get("explanation"),
                      *est, now))
-                return int(cur.lastrowid)
+                return neue_id(cur)
             cur = self._conn.execute(
                 "UPDATE user_quiz_questions SET question=?, options=?, correct_index=?, "
                 "district=?, category=?, explanation=?, qtype=?, answer_value=?, "
@@ -2008,7 +2009,7 @@ class Store:
                 "VALUES (?,?,?,?,?,?,?,?)",
                 (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text),
             )
-        return cur.lastrowid
+        return neue_id(cur)
 
     #: Nach so vielen erfolglosen Anläufen gilt eine Meldung als unzustellbar.
     #: Sie bleibt als Beleg in der Tabelle stehen (``sent_at`` bleibt NULL),
@@ -2519,7 +2520,7 @@ class Store:
             cur = self._conn.execute(
                 "INSERT INTO qa_conversations (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (title or "Gespräch").strip()[:120], now, now))
-            return int(cur.lastrowid)
+            return neue_id(cur)
 
     def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
                           answer: str, quellen_json: str | None) -> bool:
@@ -2637,7 +2638,7 @@ class Store:
                 " VALUES (?, ?, ?, ?, ?)",
                 (owner_id, email, kind, message, now),
             )
-        return int(cur.lastrowid or 0)
+        return neue_id(cur)
 
     def list_feedback(self, limit: int = 100, only_unread: bool = False) -> list[dict]:
         """Neueste zuerst — so steht Unerledigtes oben."""
@@ -3338,7 +3339,7 @@ class Store:
             (owner_id, chat_id, name.strip(), description.strip(), now),
         )
         self._conn.commit()
-        return TopicRow(id=cur.lastrowid, owner_id=owner_id, chat_id=chat_id,
+        return TopicRow(id=neue_id(cur), owner_id=owner_id, chat_id=chat_id,
                         name=name, description=description, created_at=now)
 
     # Alles, was an EINEM Thema hängt. Wird ein Thema gelöscht, muss das hier

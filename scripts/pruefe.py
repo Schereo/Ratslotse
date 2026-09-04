@@ -143,6 +143,21 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("ruff", "ungenutzte Importe, undefinierte Namen (nur „F“)", schnell=True,
              befehl=[PY, "-m", "ruff", "check", "."],
              braucht=_modul_fehlt("ruff", DEV_INSTALL)),
+    # WOZU EIN TYPPRÜFER, WO ES 2.614 TESTS GIBT. Die Tests messen, was ein Lauf
+    # TUT; sie sagen nichts über die Wege, die kein Test nimmt. Genau dort saßen
+    # die teuren Fehler der letzten Wochen: ein `None`, das als ID weiterwandert,
+    # ein Pflichtfeld, das eine Antwortform nicht trägt (#970 — die Seite blieb
+    # leer), ein Argument, das nicht zur Signatur passt (#1065 — der Cron stürzte
+    # nachts ab). Alle drei stehen im Code, bevor irgendetwas läuft.
+    #
+    # DER GELTUNGSBEREICH IST KLEIN UND WÄCHST IN STUFEN — er steht in
+    # `pyrightconfig.json`, mitsamt der Begründung. Kurz: Über den ganzen
+    # Bestand gemessen sind es 1.309 Befunde, fast tausend davon aus EINER
+    # Ursache. Ein Lauf, der immer rot ist, wird abgeschaltet und prüft dann
+    # gar nichts. Stufe 1 ist `kern/` und der Backend-Kern; beide sind grün.
+    Pruefung("typen-py", "Python-Typen (pyright, Stufe 1)", schnell=True,
+             befehl=[PY, "-m", "pyright", "--pythonpath", PY],
+             braucht=_modul_fehlt("pyright", DEV_INSTALL)),
     Pruefung("vertrag", "api/openapi.json passt zum Backend-Code", schnell=True,
              befehl=[PY, "scripts/openapi_schnitt.py", "--pruefen"],
              braucht=_modul_fehlt("fastapi", DEV_INSTALL)),

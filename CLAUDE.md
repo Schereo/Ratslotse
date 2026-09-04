@@ -144,10 +144,21 @@ cd web/frontend && npx playwright test
 ```
 
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
-verstreut stand: Adressen-Lint, ruff, den API-Vertrag, die generierten
-Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
+verstreut stand: Adressen-Lint, ruff, die Python-Typprüfung, den API-Vertrag,
+die generierten Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
 TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
 einzeln, `--nur ruff,vertrag` wählt aus.
+
+**Die Python-Typprüfung (pyright) deckt noch nicht alles ab.** Sie läuft über
+`kern/` und den Backend-Kern; `council/`, `scripts/` und die Router stehen
+noch draußen. Der Grund und der Weg nach vorn stehen in
+[`pyrightconfig.json`](pyrightconfig.json), festgehalten von
+`tests/test_typpruefung.py`. Kurz: Über den ganzen Bestand sind es 1.309
+Befunde, fast tausend davon aus **einer** Ursache — die Store-Mixins erben
+keine Basisklasse, die `self._conn` kennt. Wer daran arbeitet, hebt damit die
+größte Stufe auf einmal. **Eine Ausnahme in `exclude` ist eine Schuld, kein
+Zustand**: Der Wächter meldet, sobald ein ausgenommenes Verzeichnis von selbst
+sauber geworden ist.
 
 **Den Hook einschalten** (einmal je Checkout):
 
