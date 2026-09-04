@@ -620,28 +620,39 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   **gruppiert** nach Ausnahmetyp, letzter Zeile im eigenen Code und Route, mit
   Zähler statt tausend Zeilen. Die **erste** Begegnung meldet sich per Mail an
   `ALERT_EMAIL`, weitere werden nur gezählt (sonst flutet ein Ausfall das
-  Postfach). Sichtbar im Admin-Panel unter *Fehler*; abhaken heißt „behandelt",
-  und ein Wiederauftauchen öffnet den Haken selbst wieder.
+  Postfach). Sichtbar im Admin-Panel unter *Fehler*, samt 30-Tage-Verlauf;
+  abhaken heißt „behandelt", und ein Wiederauftauchen öffnet den Haken selbst
+  wieder.
+
+  Dieselbe Liste nimmt Meldungen aus dem **Browser** auf
+  ([`web/frontend/lib/fehler-melden.ts`](web/frontend/lib/fehler-melden.ts) →
+  offener Endpunkt `POST /api/client-errors`, antwortet immer 200, gebremst).
+  Sie beantworten dieselbe Frage — „was ist kaputt?" — und brauchen dieselbe
+  Behandlung.
 
   **Was NICHT gespeichert wird**, und das ist der wichtigere Teil: keine
   Anfragekörper, keine Kopfzeilen, keine Cookies, kein roher Pfad
   (`/api/council/decision/8525` wird zu `…/{n}`), keine Variablenwerte aus dem
-  Traceback. Adressen und lange Kennungen im Fehlertext werden maskiert. Wer
-  ein Feld ergänzt, beantwortet zuerst die Frage, ob es etwas Persönliches
-  tragen kann — `tests/test_fehlersammler.py` hält die Liste fest.
-- **Fehler-Sammler**: Ein unbehandelter 500er im Web ging bis 09/2026 ins
-  `journalctl` und sonst nirgendwohin. Jetzt fängt ihn ein
-  `exception_handler` in `web/backend/app/main.py`, gruppiert ihn über einen
-  Fingerabdruck (`kern/fehler.py`) in die Tabelle `request_errors` und meldet
-  **nur die erste Begegnung** per Mail — sonst flutete ein Ausfall das
-  Postfach. Sichtbar im Admin-Panel unter *Fehler*, samt 30-Tage-Verlauf und
-  Haken zum Abarbeiten. Dieselbe Liste nimmt Meldungen aus dem **Browser**
-  auf (`web/frontend/lib/fehler-melden.ts` → offener Endpunkt
-  `POST /api/client-errors`, immer 200, gebremst). Gespeichert werden Typ,
-  Meldung, Stapel und die **Pfad-Vorlage**; maskiert werden Adressen, Token
-  und lange Kennungen — **keine Query, kein Konto, kein Cookie, kein
-  User-Agent**. Wer daran etwas ändert, liest zuerst
-  `tests/test_fehlersammler.py`: Er prüft vor allem, was NICHT gespeichert
-  wird.
+  Traceback, aus dem Browser zusätzlich keine Query, kein Konto und kein
+  User-Agent. Adressen, Token und lange Kennungen im Fehlertext werden
+  maskiert. Wer ein Feld ergänzt, beantwortet zuerst die Frage, ob es etwas
+  Persönliches tragen kann — `tests/test_fehlersammler.py` und
+  `web/frontend/lib/fehler-melden.test.ts` halten die Liste fest.
+- **Ein Job, der gar nicht startet, stürzt auch nicht ab.** `run_guarded`
+  meldet Abstürze; ein Job, der schweigt, fiel bis 09/2026 nur als Ampel im
+  Admin-Panel auf — und wer nicht hinsieht, merkt monatelang nicht, dass die
+  Protokolle nicht mehr geholt werden. `scripts/check_herzschlag.py` prüft
+  einmal täglich alle Jobs gegen ihren Takt aus [`kern/jobs.py`](kern/jobs.py)
+  und meldet, was fehlt. Dieselbe Regel (`jobs.zustand`) benutzt die Ampel im
+  Panel — zwei Fassungen liefen unweigerlich auseinander.
+
+  Derselbe Lauf schaut auf den **freien Speicherplatz**. Läuft die Platte voll,
+  scheitern SQLite-Schreibvorgänge mit „attempt to write a readonly database" —
+  das sieht wie ein Anwendungsfehler aus, und man sucht am falschen Ende.
+
+  **Was er NICHT auffängt:** Stirbt der Cron-Dienst als GANZES, stirbt er mit.
+  Er merkt, dass EIN Job schweigt, nicht dass alle schweigen. Dafür bräuchte es
+  eine Prüfung von außerhalb der Maschine; die gehört nicht ins Repo, sondern
+  auf einen zweiten Rechner.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

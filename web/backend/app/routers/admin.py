@@ -180,7 +180,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
     from datetime import datetime
 
     from kern.alerts import SCHRITTE_SCHLUESSEL
-    from kern.jobs import JOBS
+    from kern.jobs import JOBS, zustand
 
     runs = store.job_runs(limit=500)
     by_job: dict[str, list[dict]] = {}
@@ -192,19 +192,9 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
     for job in JOBS:
         history = by_job.get(job["key"], [])  # neueste zuerst
         last = history[0] if history else None
-        state = "unknown"
-        age_h = None
-        if last:
-            try:
-                age_h = round((now - datetime.fromisoformat(last["started_at"])).total_seconds() / 3600, 1)
-            except (ValueError, TypeError):
-                age_h = None
-            if last["status"] == "error":
-                state = "error"
-            elif age_h is not None and age_h > job["max_age_h"]:
-                state = "stale"
-            else:
-                state = "ok"
+        # Dieselbe Regel, die `scripts/check_herzschlag.py` für die Mail
+        # benutzt — zwei Fassungen liefen unweigerlich auseinander.
+        state, age_h = zustand(job, last, now)
         # Die Schritt-Liste aus den Kennzahlen herauslösen: Sie ist ein
         # eigenes, getyptes Feld, und in der Chip-Zeile des Panels stünde sie
         # sonst als „[object Object]". `last` wird dafür kopiert — die Zeile

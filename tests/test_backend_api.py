@@ -544,6 +544,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
+        "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
