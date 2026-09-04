@@ -13,7 +13,7 @@ import json
 import os
 import re
 
-from kern import llm, prompts
+from kern import glossar, llm, prompts
 from council import ernte
 from council import geld as _geld
 from council.topics import _strip_fences  # noqa: F401  (kept for symmetry / future use)
@@ -1076,6 +1076,48 @@ def beleglage(candidates: list[dict]) -> str:
     return "solide"
 
 
+#: Wie viele Fachbegriffe je Frage erklärt werden. Drei reichen: Mehr Begriffe
+#: hat kaum eine Frage, und jede Erklärung verdrängt im Prompt einen Beschluss.
+GLOSSAR_MAX = 3
+
+
+def begriffe_fuer(text: str, max_n: int = GLOSSAR_MAX) -> list[dict]:
+    """Die erklärten Fachbegriffe in einem Text (Frage oder Antwort).
+
+    Deterministisch aus ``kern/glossar.py``, ohne Modell und ohne Datenbank —
+    dieselbe Regel, nach der das Frontend die Wörter im Antworttext
+    unterringelt. Leer bei Fehlern: Eine Erklärung ist Zusatz, nie Blocker.
+    """
+    try:
+        return glossar.finde(text or "", max_n=max_n)
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _glossar_block(begriffe: list[dict] | None) -> str:
+    """Kontext-Absatz „Was die Fachwörter bedeuten".
+
+    Der Grund steht in ``kern/glossar.py``: „Was ist eine Ausfallbürgschaft?"
+    hing bis 09/2026 daran, ob zufällig ein zitierter Beschluss den Begriff
+    nebenbei miterklärt — zweimal dieselbe Frage, zweimal ein anderes Ergebnis
+    (gemessen 04.09.2026). Eine Definition ist aber kein Beschluss, deshalb
+    trägt sie keine [id] und hebt den Ehrlichkeits-Vorbehalt nur für sich
+    selbst auf, nicht für die Beschlusslage.
+    """
+    if not begriffe:
+        return ""
+    zeilen = "\n".join(f"- {b['begriff']}: {b['erklaerung']}"
+                       for b in begriffe[:GLOSSAR_MAX])
+    return ("\nWAS DIE FACHWÖRTER BEDEUTEN (geprüfte Erklärungen aus dem Ratslotse-Glossar,\n"
+            "KEINE Beschlüsse — nie mit [id] zitieren):\n"
+            f"{zeilen}\n"
+            "Diese Erklärungen sind gesichert. Fragt jemand, was ein Begriff bedeutet, ist\n"
+            "das die Antwort: Sag sie geradeheraus und in eigenen Worten, ohne den\n"
+            "Vorbehalt, die Beschlüsse gäben nichts her. Für alles, was der Rat dazu\n"
+            "ENTSCHIEDEN hat, gilt der Vorbehalt unverändert — dafür brauchst du weiter\n"
+            "Beschlüsse mit [id].\n")
+
+
 def _steckbrief_block(steckbriefe: list[dict] | None) -> str:
     """Hintergrundwissen zu den genannten Objekten — beantwortet „Was ist X?",
     ist aber KEIN Beschluss und darf deshalb nie eine [id] bekommen."""
@@ -1344,7 +1386,11 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     Zahlen, weil ihr eigener Wortlaut auf „eigene Abschnitte unten" verweist.
     """
     geld = _geld_vereinheitlichen(geld, haushalt, taxes, tax_capacity)
-    zusatz = (_debatten_block(debatten) + _presse_block(presse)
+    # Der lange Bericht rendert im Frontend durch dieselbe Komponente wie die
+    # kurze Antwort — die Fachwörter darin tragen also ohnehin ihre Erklärung
+    # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
+    zusatz = (_glossar_block(begriffe_fuer(question))
+              + _debatten_block(debatten) + _presse_block(presse)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
                             context=_build_context(candidates),
@@ -3002,6 +3048,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             + (DUENN_REGEL if duenn else "")
                             + geld_regeln(geld, eng),
                             presse=_sitzungen_block(sitzungen)
+                            + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
                             + geld_block(geld) + _debatten_block(debatten, eng)
                             + _anlagen_block(anlagen),
@@ -3065,6 +3112,26 @@ def _bisher_block(bisher: str | None) -> str:
             f"{text[:VEREINFACHEN_MAX_CHARS]}\n---\n\n")
 
 
+#: Hier darf es mehr sein als die drei der normalen Antwort: Der ganze Zweck
+#: dieses Prompts ist, die Fachwörter loszuwerden — und eine Antwort trägt
+#: mehr davon als die Frage, die sie ausgelöst hat.
+GLOSSAR_MAX_EINFACH = 5
+
+
+def _glossar_block_einfach(begriffe: list[dict] | None) -> str:
+    """Dieselben Erklärungen, andere Aufgabe: Der Vereinfachungs-Prompt soll
+    nicht definieren, sondern übersetzen. Er verlangt „KEIN Fachwort ohne
+    Erklärung im SELBEN Satz" — bislang aus dem Bauchgefühl des Modells,
+    obwohl die geprüfte Erklärung danebenlag."""
+    if not begriffe:
+        return ""
+    zeilen = "\n".join(f"  · {b['begriff']}: {b['erklaerung']}"
+                       for b in begriffe[:GLOSSAR_MAX_EINFACH])
+    return ("- SO sind die Fachwörter aus der Antwort oben gemeint (geprüfte Erklärungen,\n"
+            "  nicht wörtlich übernehmen — daraus einen kurzen Alltagssatz machen):\n"
+            f"{zeilen}\n")
+
+
 def vereinfachen_messages(question: str, bisher: str | None, candidates: list[dict],
                           model: str = MODEL) -> tuple[list[dict], dict]:
     """Prompt für den Vereinfachungs-Modus. Bewusst OHNE Presse-, Debatten- und
@@ -3073,6 +3140,11 @@ def vereinfachen_messages(question: str, bisher: str | None, candidates: list[di
     Bitte im normalen Prompt schon gescheitert."""
     prompt = prompts.render("qa_simple", question=question.strip()[:300],
                             bisher=_bisher_block(bisher),
+                            # Die Begriffe stehen in der ANTWORT, nicht in der
+                            # Bitte: „Erklär das einfacher" nennt selbst keins.
+                            glossar=_glossar_block_einfach(
+                                begriffe_fuer(f"{bisher or ''}\n{question or ''}",
+                                              max_n=GLOSSAR_MAX_EINFACH)),
                             context=_build_context(candidates))
     extra = {"extra_body": {"reasoning": {"enabled": False}}} if "deepseek" in model else {}
     return [{"role": "user", "content": prompt}], extra
