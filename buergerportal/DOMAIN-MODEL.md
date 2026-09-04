@@ -122,7 +122,7 @@ Beobachtungen.
 
 Nach dem privaten Absenden prüft `PrivateReportStore` alle bis zur aktuellen
 Inhaltsrevision bestätigten Beobachtungstexte mit einem versionierten lokalen
-Regelsatz. Eindeutige Notfallformulierungen, direkte E-Mail- oder deutsche
+Regelsatz. Eindeutige Notfallformulierungen, direkte E-Mail- oder
 Telefonangaben sowie nicht unterstützte Steuerzeichen halten die Revision bei
 `manual_review_only`. Andernfalls bedeutet `external_review_candidate` nur,
 dass diese begrenzten Regeln keinen Sperrgrund gefunden haben — nie, dass der

@@ -58,6 +58,7 @@ def _create_submitted_citywide_report(
     confirmed_text: str,
     *,
     reporter_id: int = 17,
+    reject_screening: bool = False,
 ):
     from buergerportal.reports import DraftContent, PrivateReportStore
 
@@ -72,10 +73,20 @@ def _create_submitted_citywide_report(
             observed_on="2026-09-01",
         ),
     )
+    if reject_screening:
+        with sqlite3.connect(database) as connection:
+            connection.execute(
+                """CREATE TRIGGER test_reject_local_screening
+                       BEFORE INSERT ON civic_report_local_screenings
+                       BEGIN
+                           SELECT RAISE(ABORT, 'simulated local screening failure');
+                       END"""
+            )
     submitted = store.submit_owned_draft(
         report_id,
         reporter_id=reporter_id,
         confirmed_text=confirmed_text,
+        expected_revision=0,
     )
     return store, submitted
 
@@ -204,7 +215,7 @@ def _downgrade_private_schema_to_version_five(database) -> None:
         _drop_local_screening_schema(connection)
         _install_pre_v6_owner_triggers(connection)
         connection.execute(
-            "DELETE FROM civic_report_schema_migrations WHERE version = 6"
+            "DELETE FROM civic_report_schema_migrations WHERE version >= 6"
         )
 
 
@@ -679,41 +690,42 @@ def test_submission_runs_the_local_screening_without_external_processing(tmp_pat
     store.close()
 
 
+@pytest.mark.parametrize(
+    "confirmed_text",
+    (
+        "Das ist am fiktiven Ort ein Notfall.",
+        "Hier brennt ein fiktives Haus.",
+        "Eine Person ist schwer verletzt.",
+        "An der fiktiven Leitung besteht Explosionsgefahr.",
+    ),
+)
+def test_obvious_emergency_language_requires_manual_review(
+    tmp_path,
+    confirmed_text,
+):
+    database = tmp_path / "ratslotse.sqlite"
+    store, submitted = _create_submitted_citywide_report(database, confirmed_text)
+
+    screening = store.get_current_owned_screening(submitted.id, reporter_id=17)
+
+    assert screening is not None
+    assert screening.outcome == "manual_review_only"
+    assert screening.reason_codes == ("potential_emergency",)
+    store.close()
+
+
 def test_local_screening_failure_never_loses_the_private_submission(
     caplog,
     tmp_path,
 ):
-    from buergerportal.reports import DraftContent, PrivateReportStore
-
     database = tmp_path / "ratslotse.sqlite"
-    _insert_verified_accounts(database, 17)
-    store = PrivateReportStore(database)
-    report_id = store.create_draft(
-        reporter_id=17,
-        content=DraftContent(
-            text="Fiktiver Entwurf",
-            category="other",
-            scope_kind="citywide",
-            observed_on="2026-09-01",
-        ),
-    )
-    with sqlite3.connect(database) as connection:
-        connection.execute(
-            """CREATE TRIGGER test_reject_local_screening
-                   BEFORE INSERT ON civic_report_local_screenings
-                   BEGIN
-                       SELECT RAISE(ABORT, 'simulated local screening failure');
-                   END"""
-        )
-
-    submitted = store.submit_owned_draft(
-        report_id,
-        reporter_id=17,
-        confirmed_text="Fiktive Beobachtung bleibt sicher privat gespeichert.",
-        expected_revision=0,
+    store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung bleibt sicher privat gespeichert.",
+        reject_screening=True,
     )
     retry = store.submit_owned_draft(
-        report_id,
+        submitted.id,
         reporter_id=17,
         confirmed_text="Fiktive Beobachtung bleibt sicher privat gespeichert.",
         expected_revision=0,
@@ -721,9 +733,9 @@ def test_local_screening_failure_never_loses_the_private_submission(
 
     assert retry == submitted
     assert len(submitted.observations) == 1
-    assert store.get_current_owned_screening(report_id, reporter_id=17) is None
+    assert store.get_current_owned_screening(submitted.id, reporter_id=17) is None
     assert store.get_owned_external_review_candidate(
-        report_id,
+        submitted.id,
         reporter_id=17,
         expected_revision=submitted.content_revision,
     ) is None
@@ -781,6 +793,21 @@ def test_local_screening_requires_current_submitted_owned_report(tmp_path):
             reporter_id=17,
             expected_revision=submitted.content_revision,
         )
+    assert store.get_owned_external_review_candidate(
+        report_id,
+        reporter_id=18,
+        expected_revision=submitted.content_revision,
+    ) is None
+    assert store.get_owned_external_review_candidate(
+        999_999,
+        reporter_id=17,
+        expected_revision=submitted.content_revision,
+    ) is None
+    assert store.get_owned_external_review_candidate(
+        report_id,
+        reporter_id=17,
+        expected_revision=submitted.content_revision - 1,
+    ) is None
     store.close()
 
 
@@ -819,6 +846,9 @@ def test_unsupported_text_format_requires_manual_review(tmp_path):
     (
         "Rückfrage bitte an person@example.org senden.",
         "Rückruf zur fiktiven Meldung bitte unter 0441 123456.",
+        "Rückruf zur fiktiven Meldung: 0441/12.34.56.",
+        "Telefon: 12345678.",
+        "Meine Nummer ist +1 212 555 0199.",
     ),
 )
 def test_direct_contact_data_requires_manual_review(tmp_path, confirmed_text):
@@ -873,7 +903,14 @@ def test_local_screening_is_idempotent_under_concurrent_retries(tmp_path):
     first_store, submitted = _create_submitted_citywide_report(
         database,
         "Fiktive Beobachtung für nebenläufige Prüfversuche.",
+        reject_screening=True,
     )
+    assert first_store.get_current_owned_screening(
+        submitted.id,
+        reporter_id=17,
+    ) is None
+    with sqlite3.connect(database) as connection:
+        connection.execute("DROP TRIGGER test_reject_local_screening")
     second_store = PrivateReportStore(database)
     barrier = Barrier(2)
 
@@ -1374,6 +1411,9 @@ def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
     migrated_store.close()
     reopened_store = PrivateReportStore(database)
     reopened_store.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh_store = PrivateReportStore(fresh_database)
+    fresh_store.close()
 
     with sqlite3.connect(database) as connection:
         migrated_trigger = connection.execute(
@@ -1397,6 +1437,9 @@ def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
             )
     assert "role = 'user'" in migrated_trigger
     assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
 
 
 def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):

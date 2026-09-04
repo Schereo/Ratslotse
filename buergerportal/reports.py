@@ -49,7 +49,8 @@ _LOCAL_SCREENING_RULESET_VERSION = 1
 _SQLITE_INTEGER_MAX = 2**63 - 1
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
 _POTENTIAL_EMERGENCY = re.compile(
-    r"\b(?:112|notruf|lebensgefahr|akute\s+gefahr|bewusstlos|gasgeruch)\b",
+    r"\b(?:112|notruf|notfall|lebensgefahr|akute\s+gefahr|bewusstlos|"
+    r"gasgeruch|explosionsgefahr|schwer\s+verletzt|feuer|brand|brennt)\b",
     re.IGNORECASE,
 )
 _EMAIL_ADDRESS = re.compile(
@@ -57,10 +58,18 @@ _EMAIL_ADDRESS = re.compile(
     re.IGNORECASE,
 )
 _WRITTEN_DATE = re.compile(
-    r"\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4})\b"
+    r"(?<![\d/.-])\b"
+    r"(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{2,4})"
+    r"\b(?![\d/.-])"
 )
 _PHONE_NUMBER = re.compile(
-    r"(?<!\w)(?:(?:\+49|0049|0)[\d\s()/.-]{5,}\d)(?!\w)"
+    r"(?<!\w)(?:(?:\+\d{1,3}|00\d{1,3}|0)[\d\s()/.-]{5,}\d)(?!\w)"
+)
+_PHONE_CONTEXT_NUMBER = re.compile(
+    r"\b(?:telefon|tel|mobiltelefon|handy|rückruf|anruf|erreichbar|rufen|ruft)\b\.?"
+    r"[^\n]{0,40}?(?<!\w)(?:\+\d{1,3}[\s()/.-]*)?"
+    r"\d[\d\s()/.-]{5,}\d(?!\w)",
+    re.IGNORECASE,
 )
 _UNSUPPORTED_TEXT_FORMAT = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _OLDENBURG_TIMEZONE = ZoneInfo("Europe/Berlin")
@@ -750,7 +759,11 @@ def _local_screening_reasons(texts: tuple[str, ...]) -> tuple[LocalScreeningReas
     if _POTENTIAL_EMERGENCY.search(combined):
         reasons.append("potential_emergency")
     contact_text = _WRITTEN_DATE.sub("", combined)
-    if _EMAIL_ADDRESS.search(contact_text) or _PHONE_NUMBER.search(contact_text):
+    if (
+        _EMAIL_ADDRESS.search(contact_text)
+        or _PHONE_NUMBER.search(contact_text)
+        or _PHONE_CONTEXT_NUMBER.search(contact_text)
+    ):
         reasons.append("direct_contact_data")
     if _UNSUPPORTED_TEXT_FORMAT.search(combined):
         reasons.append("unsupported_text_format")
