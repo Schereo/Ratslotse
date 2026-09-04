@@ -212,7 +212,8 @@ jobs:
               exit 1
             fi
             cutover_aktiv=1
-            trap 'if [ "$cutover_aktiv" = 1 ]; then echo "BLOCKIERT: Wartungsbarriere bleibt aktiv; API wird nicht automatisch gestartet."; fi' EXIT
+            vorprobe_pid=""
+            trap 'if [ -n "$vorprobe_pid" ]; then kill "$vorprobe_pid" 2>/dev/null || true; fi; if [ "$cutover_aktiv" = 1 ]; then echo "BLOCKIERT: Wartungsbarriere bleibt aktiv; API wird nicht automatisch gestartet."; fi' EXIT
             sudo /bin/systemctl stop nwz-web-api
             .venv/bin/python scripts/verify_release_runtime.py \
               --root . --minimum-app-build 19 --require-quiescent \
@@ -227,6 +228,55 @@ jobs:
             RATSLOTSE_RELEASE_MAINTENANCE=1 \
               .venv/bin/python scripts/prepare_release_databases.py \
               --root . --snapshot-label "$snapshot_label"
+            # VORPROBE — der neue Code gegen die MIGRIERTE Datenbank, bevor
+            # irgendjemand ihn zu sehen bekommt.
+            #
+            # Die Rauchprobe unten läuft erst NACH dem Start und ist damit ein
+            # Alarm, keine Rücknahme: Scheitert sie, liefert ratslotse.de den
+            # kaputten Stand bereits aus. Hier steht der Dienst noch, die
+            # Wartungsbarriere ist noch oben — ein Fehler lässt beides so und
+            # bricht ab, genau wie jeder andere Fehler in diesem Abschnitt.
+            #
+            # Gestartet wird wie die echte Unit (`deploy/nwz-web-api.service`),
+            # nur auf einem Ersatzport: dasselbe Arbeitsverzeichnis, dasselbe
+            # venv, dieselbe `.env` (die liest `app/config.py` selbst).
+            vorprobe_port=8010
+            # ERST prüfen, ob der Port frei ist. Hält ihn schon jemand, bindet
+            # der eigene Dienst NICHT — und die Gesundheitsprüfung darunter
+            # antwortet trotzdem, nämlich aus dem fremden Prozess. Die Probe
+            # liefe dann gegen den falschen Stand und meldete grün. Genau so
+            # ist am 02.09.2026 eine halbe Stunde draufgegangen (s. CLAUDE.md,
+            # „Lokale Entwicklung"); hier wäre der Preis ein durchgewinkter
+            # Deploy.
+            if curl -sf -o /dev/null --max-time 2 \
+               "http://127.0.0.1:$vorprobe_port/api/health"; then
+              echo "FEHLER: Auf Port $vorprobe_port antwortet schon jemand."
+              echo "Die Vorprobe würde gegen einen FREMDEN Prozess laufen."
+              exit 1
+            fi
+            ( cd web/backend && exec ../../.venv/bin/uvicorn app.main:app \
+                --host 127.0.0.1 --port "$vorprobe_port" --log-level warning ) &
+            vorprobe_pid=$!
+            vorprobe_bereit=
+            for i in $(seq 1 40); do
+              sleep 1
+              if curl -sf -o /dev/null "http://127.0.0.1:$vorprobe_port/api/health"; then
+                vorprobe_bereit=1
+                break
+              fi
+              # Ein Prozess, der schon gestorben ist, kommt nicht mehr hoch.
+              kill -0 "$vorprobe_pid" 2>/dev/null || break
+            done
+            if [ -z "$vorprobe_bereit" ]; then
+              echo "FEHLER: Der neue Stand kam auf dem Ersatzport nicht hoch."
+              exit 1
+            fi
+            .venv/bin/python scripts/rauchprobe.py \
+              --basis "http://127.0.0.1:$vorprobe_port"
+            kill "$vorprobe_pid" 2>/dev/null || true
+            wait "$vorprobe_pid" 2>/dev/null || true
+            vorprobe_pid=""
+
             rm -f "$wartung"
             cutover_aktiv=0
             trap - EXIT
@@ -254,6 +304,12 @@ jobs:
               exit 1
             fi
 
+            # Dieselbe Probe noch einmal, jetzt gegen den ECHTEN Dienst. Die
+            # Vorprobe oben hat den Code geprüft; diese hier prüft die Unit —
+            # eine falsche `EnvironmentFile`, ein fehlendes venv, ein Port, den
+            # schon jemand hält. Sie kostet Sekunden und deckt genau das ab,
+            # was ein Lauf im Vordergrund nicht sehen kann.
+            #
             # „Der Prozess läuft" ist nicht „er tut das Richtige": `health`
             # fasst die Datenbank nicht an, eine Abfrage auf eine Spalte, die
             # eine Migration gerade entfernt hat, wirft aber erst beim ersten
