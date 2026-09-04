@@ -98,10 +98,14 @@ markierte Position. Er liest keine öffentlichen Problemprojektionen und ruft
 keinen KI- oder Assistenzendpunkt auf.
 
 Vor der ersten Serverpersistenz besitzt die Oberfläche einen stabilen
-Idempotenzschlüssel. Ein kurzlebiger `sessionStorage`-Datensatz ist an die
-Konto-ID aus der authentifizierten Sitzung gebunden, verwirft fremde,
-ungültige oder abgelaufene Inhalte und wird nach erfolgreichem Absenden
-entfernt. Enthält er eine Melde-ID, lädt die Oberfläche den maßgeblichen
+Idempotenzschlüssel. Nach einem mehrdeutigen Netzfehler bewahrt sie zusätzlich
+die unveränderte erste Anlegenutzlast: So kann sie zunächst die ID desselben
+Entwurfs wiedererlangen und eine inzwischen lokale Korrektur anschließend als
+revisionsgebundene Änderung speichern, statt den Schlüssel mit anderem Inhalt
+zu wiederholen. Ein kurzlebiger `sessionStorage`-Datensatz ist an die Konto-ID
+aus der authentifizierten Sitzung gebunden, verwirft fremde, ungültige oder
+abgelaufene Inhalte und wird nach erfolgreichem Absenden entfernt. Enthält er
+eine Melde-ID, lädt die Oberfläche den maßgeblichen
 Serverentwurf über `GET` neu. Änderungen auf der Prüfseite werden mit der
 zuletzt gelesenen Inhaltsrevision per `PUT` gespeichert, bevor exakt der
 geprüfte Text per `POST …/absenden` bestätigt wird. Bei `409` bleibt die lokale

@@ -25,7 +25,7 @@ import {
   type ReportScope,
   type ReportStage,
 } from "@/lib/problem-report-session";
-import { PROBLEM_KATEGORIEN } from "@/lib/probleme";
+import { PROBLEM_KATEGORIEN, PROBLEM_MELDEBEZUEGE } from "@/lib/probleme";
 import { Button, Card, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 const LocationPicker = dynamic(
@@ -36,13 +36,6 @@ const LocationPicker = dynamic(
   },
 );
 
-const SCOPES: { value: ReportScope; label: string; hint: string }[] = [
-  { value: "point", label: "Ein Ort", hint: "zum Beispiel eine Querung oder ein Platz" },
-  { value: "facility", label: "Eine Einrichtung", hint: "zum Beispiel Schule, Kita oder Haltestelle" },
-  { value: "route", label: "Eine Straße oder Strecke", hint: "ein Abschnitt oder eine Verbindung" },
-  { value: "area", label: "Ein Gebiet", hint: "ein Quartier oder Stadtteil" },
-  { value: "citywide", label: "Ganz Oldenburg", hint: "wenn kein einzelner Ort ehrlich passt" },
-];
 const CATEGORIES = Object.entries(PROBLEM_KATEGORIEN) as [ReportCategory, string][];
 const STAGE_NUMBER: Record<Exclude<ReportStage, "review">, number> = {
   scope: 1,
@@ -138,9 +131,9 @@ function Question({ children }: { children: ReactNode }) {
   );
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
+function BackButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
   return (
-    <Button type="button" variant="ghost" onClick={onClick}>
+    <Button type="button" variant="ghost" onClick={onClick} disabled={disabled}>
       <ArrowLeft aria-hidden /> Zurück
     </Button>
   );
@@ -152,6 +145,7 @@ export function ProblemReportFlow() {
   const [stage, setStage] = useState<ReportStage>("scope");
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [reportId, setReportId] = useState<number | null>(null);
+  const [creationContent, setCreationContent] = useState<ReportContent | null>(null);
   const [serverReport, setServerReport] = useState<PrivateReport | null>(null);
   const [submitted, setSubmitted] = useState<PrivateReport | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -162,8 +156,10 @@ export function ProblemReportFlow() {
   const [notice, setNotice] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const completionHeadingRef = useRef<HTMLHeadingElement>(null);
   const previousStage = useRef<ReportStage>(stage);
   const recoveryAttempt = useRef<number | null>(null);
+  const focusAfterRecovery = useRef(false);
 
   const resetLocal = useCallback((message?: string) => {
     clearProblemReportSession();
@@ -171,6 +167,7 @@ export function ProblemReportFlow() {
     setStage("scope");
     setIdempotencyKey(freshIdempotencyKey());
     setReportId(null);
+    setCreationContent(null);
     setServerReport(null);
     setSubmitted(null);
     setConfirmed(false);
@@ -193,6 +190,7 @@ export function ProblemReportFlow() {
       setStage(saved.reportId === null ? saved.stage : "review");
       setIdempotencyKey(saved.idempotencyKey);
       setReportId(saved.reportId);
+      setCreationContent(saved.creationContent);
       setServerReport(null);
       setSubmitted(null);
       setNotice(null);
@@ -201,6 +199,7 @@ export function ProblemReportFlow() {
       setStage("scope");
       setIdempotencyKey(freshIdempotencyKey());
       setReportId(null);
+      setCreationContent(null);
       setServerReport(null);
       setSubmitted(null);
     }
@@ -208,11 +207,13 @@ export function ProblemReportFlow() {
   }, [user]);
 
   const loadServerReport = useCallback(async (id: number) => {
+    focusAfterRecovery.current = true;
     setRecovering(true);
     setError(null);
     setConflict(false);
     try {
       const report = await api.get<PrivateReport>(`/meldungen/${id}`);
+      setCreationContent(null);
       if (report.state === "submitted") {
         clearProblemReportSession();
         setSubmitted(report);
@@ -253,15 +254,26 @@ export function ProblemReportFlow() {
       idempotencyKey,
       reportId,
       content,
+      creationContent,
     });
     return scheduleProblemReportSessionExpiry(savedAt);
-  }, [content, hydrated, idempotencyKey, reportId, stage, submitted, user]);
+  }, [content, creationContent, hydrated, idempotencyKey, reportId, stage, submitted, user]);
 
   useEffect(() => {
     if (previousStage.current === stage) return;
     previousStage.current = stage;
     headingRef.current?.focus();
   }, [stage]);
+
+  useEffect(() => {
+    if (!focusAfterRecovery.current || recovering || !headingRef.current) return;
+    headingRef.current.focus();
+    focusAfterRecovery.current = false;
+  }, [recovering, serverReport, stage]);
+
+  useEffect(() => {
+    completionHeadingRef.current?.focus();
+  }, [submitted]);
 
   const patchContent = (patch: Partial<ReportContent>) => {
     setContent((current) => ({ ...current, ...patch }));
@@ -288,16 +300,24 @@ export function ProblemReportFlow() {
       setStage("review");
       return;
     }
+    const firstAttempt = creationContent ? normalizeContent(creationContent) : complete;
+    if (!firstAttempt) {
+      setCreationContent(null);
+      setError("Der frühere Anlegeversuch ist nicht mehr gültig. Bitte versuche es erneut.");
+      return;
+    }
+    if (!creationContent) setCreationContent(firstAttempt);
     setBusy(true);
     setError(null);
     try {
       const report = await api.post<PrivateReport>("/meldungen/entwuerfe", {
-        ...complete,
+        ...firstAttempt,
         idempotency_key: idempotencyKey,
       });
       setReportId(report.id);
+      setCreationContent(null);
       setServerReport(report);
-      setContent(contentFromReport(report));
+      setContent(complete);
       if (report.state === "submitted") {
         clearProblemReportSession();
         setSubmitted(report);
@@ -305,6 +325,9 @@ export function ProblemReportFlow() {
         setStage("review");
       }
     } catch (caught) {
+      if (caught instanceof ApiError && caught.status >= 400 && caught.status < 500 && caught.status !== 409) {
+        setCreationContent(null);
+      }
       setError(friendlyError(caught, "Der private Entwurf konnte nicht angelegt werden."));
     } finally {
       setBusy(false);
@@ -371,7 +394,7 @@ export function ProblemReportFlow() {
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300">
           <CheckCircle2 className="h-6 w-6" aria-hidden />
         </span>
-        <h2 className="mt-4 font-display text-xl font-bold text-foreground">Meldung privat eingegangen</h2>
+        <h2 ref={completionHeadingRef} tabIndex={-1} className="mt-4 font-display text-xl font-bold text-foreground outline-none">Meldung privat eingegangen</h2>
         <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">
           Sie ist nicht automatisch öffentlich. Eine spätere Prüfung und mögliche Veröffentlichung sind nicht Teil dieses Meldewegs.
         </p>
@@ -399,7 +422,7 @@ export function ProblemReportFlow() {
         {stage === "scope" && (
           <QuestionStage headingRef={headingRef} title="Worauf bezieht sich deine Beobachtung?">
             <div className="grid gap-2 sm:grid-cols-2">
-              {SCOPES.map((scope) => (
+              {PROBLEM_MELDEBEZUEGE.map((scope) => (
                 <button
                   key={scope.value}
                   type="button"
@@ -507,11 +530,12 @@ export function ProblemReportFlow() {
                   rows={7}
                   placeholder="Beschreibe konkret, was du gesehen oder erlebt hast."
                   onChange={(event) => patchContent({ text: event.target.value })}
+                  disabled={busy}
                 />
                 <p className="text-right text-xs tabular-nums text-muted-foreground">{content.text.length} / 4000</p>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <BackButton onClick={() => setStage("category")} />
+                <BackButton onClick={() => setStage("category")} disabled={busy} />
                 <Button type="button" disabled={!content.text.trim() || busy} onClick={() => void prepareReview()}>
                   {busy ? <><Loader2 className="animate-spin" aria-hidden /> Entwurf wird angelegt…</> : "Entwurf prüfen"}
                 </Button>
@@ -595,6 +619,15 @@ function Review({
     ...(scope === "citywide" ? { location_label: "", latitude: null, longitude: null } : {}),
   });
   const complete = normalizeContent(content) !== null;
+  const dateError = !content.observed_on
+    ? "Gib ein Beobachtungsdatum an."
+    : content.observed_on > todayISO() ? "Das Datum darf nicht in der Zukunft liegen." : null;
+  const locationError = content.scope_kind === "citywide"
+    ? null
+    : !content.location_label.trim()
+      ? "Gib den privaten Ort an."
+      : content.latitude === null || content.longitude === null ? "Markiere die private Lage auf der Karte." : null;
+  const descriptionError = content.text.trim() ? null : "Beschreibe deine eigene Beobachtung.";
 
   return (
     <div className="space-y-5">
@@ -611,33 +644,62 @@ function Review({
       <div className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="review-scope">Räumlicher Bezug</Label>
-          <Select id="review-scope" value={content.scope_kind ?? ""} onChange={(event) => changeScope(event.target.value as ReportScope)}>
-            {SCOPES.map((scope) => <option key={scope.value} value={scope.value}>{scope.label}</option>)}
+          <Select id="review-scope" value={content.scope_kind ?? ""} onChange={(event) => changeScope(event.target.value as ReportScope)} disabled={busy}>
+            {PROBLEM_MELDEBEZUEGE.map((scope) => <option key={scope.value} value={scope.value}>{scope.label}</option>)}
           </Select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="review-date">Beobachtungsdatum</Label>
-          <Input id="review-date" type="date" max={todayISO()} value={content.observed_on} onChange={(event) => onPatch({ observed_on: event.target.value })} />
+          <Input
+            id="review-date"
+            type="date"
+            max={todayISO()}
+            value={content.observed_on}
+            aria-invalid={!!dateError}
+            aria-describedby={dateError ? "review-date-error" : undefined}
+            onChange={(event) => onPatch({ observed_on: event.target.value })}
+            disabled={busy}
+          />
+          {dateError && <p id="review-date-error" role="alert" className="text-sm text-destructive">{dateError}</p>}
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="review-category">Kategorie</Label>
-          <Select id="review-category" value={content.category} onChange={(event) => onPatch({ category: event.target.value as ReportCategory })}>
+          <Select id="review-category" value={content.category} onChange={(event) => onPatch({ category: event.target.value as ReportCategory })} disabled={busy}>
             {CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </Select>
         </div>
         {content.scope_kind !== "citywide" && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="review-location">Ortsangabe</Label>
-            <Input id="review-location" value={content.location_label} maxLength={200} onChange={(event) => onPatch({ location_label: event.target.value })} />
+            <Input
+              id="review-location"
+              value={content.location_label}
+              maxLength={200}
+              aria-invalid={!!locationError}
+              aria-describedby={locationError ? "review-location-error" : undefined}
+              onChange={(event) => onPatch({ location_label: event.target.value })}
+              disabled={busy}
+            />
+            {locationError && <p id="review-location-error" role="alert" className="text-sm text-destructive">{locationError}</p>}
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" aria-hidden /> {content.latitude === null ? "Keine Lage markiert" : "Private Lage markiert"}</span>
-              <button type="button" onClick={onChooseLocation} className="min-h-10 rounded-lg px-2 font-medium text-primary hover:bg-primary/5 hover:underline">Ort auf der Karte ändern</button>
+              <button type="button" onClick={onChooseLocation} disabled={busy} className="min-h-10 rounded-lg px-2 font-medium text-primary hover:bg-primary/5 hover:underline disabled:pointer-events-none disabled:opacity-50">Ort auf der Karte ändern</button>
             </div>
           </div>
         )}
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="review-description">Beschreibung</Label>
-          <Textarea id="review-description" value={content.text} maxLength={4000} rows={7} onChange={(event) => onPatch({ text: event.target.value })} />
+          <Textarea
+            id="review-description"
+            value={content.text}
+            maxLength={4000}
+            rows={7}
+            aria-invalid={!!descriptionError}
+            aria-describedby={descriptionError ? "review-description-error" : undefined}
+            onChange={(event) => onPatch({ text: event.target.value })}
+            disabled={busy}
+          />
+          {descriptionError && <p id="review-description-error" role="alert" className="text-sm text-destructive">{descriptionError}</p>}
           <p className="text-right text-xs tabular-nums text-muted-foreground">{content.text.length} / 4000</p>
         </div>
       </div>
@@ -647,6 +709,7 @@ function Review({
           type="checkbox"
           checked={confirmed}
           onChange={(event) => onConfirm(event.target.checked)}
+          disabled={busy}
           className="mt-0.5 h-5 w-5 shrink-0 rounded border-input accent-primary"
         />
         <span>Ich habe meine Angaben selbst geprüft. Der Text beschreibt meine eigene Beobachtung.</span>
@@ -656,7 +719,7 @@ function Review({
         Deine Meldung bleibt privat und wird durch das Absenden nicht automatisch veröffentlicht.
       </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <BackButton onClick={onBack} />
+        <BackButton onClick={onBack} disabled={busy} />
         <Button type="button" disabled={!confirmed || !complete || busy} onClick={onSubmit}>
           {busy ? <><Loader2 className="animate-spin" aria-hidden /> Wird privat gesendet…</> : "Meldung privat absenden"}
         </Button>

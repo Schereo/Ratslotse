@@ -90,6 +90,7 @@ async function seedServerDraft(
       stage: "review",
       idempotencyKey: "iteration-6-resume-key",
       reportId,
+      creationContent: null,
       content: {
         text,
         category: "mobility",
@@ -199,7 +200,7 @@ test.describe("Geführte private Problemmeldung", () => {
     await confirmation.check();
     await page.getByRole("button", { name: "Meldung privat absenden" }).click();
 
-    await expect(page.getByRole("heading", { name: "Meldung privat eingegangen" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Meldung privat eingegangen" })).toBeFocused();
     await expect(page.getByText(/nicht automatisch öffentlich/i)).toBeVisible();
     expect(calls).toHaveLength(3);
     expect(calls[0]).toEqual({
@@ -349,12 +350,16 @@ test.describe("Geführte private Problemmeldung", () => {
     await page.getByRole("button", { name: /Ganz Oldenburg/ }).click();
     await page.getByRole("button", { name: "Datum übernehmen" }).click();
     await page.getByRole("button", { name: "Wohnen" }).click();
-    await page.getByLabel("Eigene Beobachtung").fill("Fiktive Beobachtung zu Wohnungen im gesamten Stadtgebiet.");
+    const firstText = "Fiktive Beobachtung zu Wohnungen im gesamten Stadtgebiet.";
+    const correctedText = "Korrigierte fiktive Beobachtung zu Wohnungen im gesamten Stadtgebiet.";
+    await page.getByLabel("Eigene Beobachtung").fill(firstText);
     await page.getByRole("button", { name: "Entwurf prüfen" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Vorübergehend" })).toBeVisible();
+    await page.getByLabel("Eigene Beobachtung").fill(correctedText);
     await page.getByRole("button", { name: "Entwurf prüfen" }).click();
 
     await expect(page.getByRole("heading", { name: "Meldung prüfen" })).toBeVisible();
+    await expect(page.getByLabel("Beschreibung")).toHaveValue(correctedText);
     expect(bodies).toHaveLength(2);
     expect(bodies[1]).toEqual(bodies[0]);
   });
@@ -390,9 +395,11 @@ test.describe("Geführte private Problemmeldung", () => {
 
     await page.goto("/probleme/melden");
 
-    await expect(page.getByRole("heading", { level: 2, name: "Meldung prüfen" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Meldung prüfen" })).toBeFocused();
     await expect(page.getByLabel("Beschreibung")).toHaveValue(remote.draft_text);
     await expect(page.getByLabel("Ortsangabe")).toHaveValue(remote.location_label);
+    await page.getByLabel("Beobachtungsdatum").fill("2999-01-01");
+    await expect(page.getByRole("alert").filter({ hasText: "nicht in der Zukunft" })).toBeVisible();
     expect(getCalls).toBe(1);
   });
 

@@ -4,10 +4,14 @@ import { ProblemReportDisclosures, ProblemReportFlow } from "@/components/proble
 import { PageHeader } from "@/components/ui";
 import { PROBLEME_FREI } from "@/lib/probleme-frei";
 
-export const metadata: Metadata = {
+const metadataFrei: Metadata = {
   title: "Problem melden",
   description: "Eine eigene Beobachtung privat an Ratslotse melden.",
 };
+
+export function generateMetadata(): Metadata {
+  return PROBLEME_FREI ? metadataFrei : {};
+}
 
 export default function Page() {
   if (!PROBLEME_FREI) notFound();

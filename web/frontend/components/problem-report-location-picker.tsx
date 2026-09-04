@@ -66,7 +66,7 @@ export function ProblemReportLocationPicker({
             radius: 9,
             color: "#ffffff",
             weight: 3,
-            fillColor: "#2563eb",
+            fillColor: "hsl(var(--primary))",
             fillOpacity: 1,
           }).addTo(map);
         };

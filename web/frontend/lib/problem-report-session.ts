@@ -1,3 +1,4 @@
+import { PROBLEM_KATEGORIEN, PROBLEM_MELDEBEZUEGE } from "./probleme";
 import type { ApiAntwort } from "./vertrag";
 
 export type PrivateReport = ApiAntwort<"/meldungen/{report_id}">;
@@ -24,24 +25,15 @@ export type ProblemReportSession = {
   idempotencyKey: string;
   reportId: number | null;
   content: ReportContent;
+  /** Unveränderliche erste POST-Nutzlast für sichere Wiederholungen nach Netzfehlern. */
+  creationContent: ReportContent | null;
 };
 
 export const PROBLEM_REPORT_SESSION_KEY = "ratslotse:private-problemmeldung:v1";
 export const PROBLEM_REPORT_SESSION_TTL_MS = 30 * 60 * 1_000;
 
 const STAGES: ReportStage[] = ["scope", "location", "date", "category", "description", "review"];
-const SCOPES: ReportScope[] = ["point", "facility", "route", "area", "citywide"];
-const CATEGORIES: ReportCategory[] = [
-  "mobility",
-  "public_space",
-  "education",
-  "childcare",
-  "housing",
-  "environment",
-  "accessibility",
-  "administration",
-  "other",
-];
+const SCOPES = PROBLEM_MELDEBEZUEGE.map(({ value }) => value);
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{8,128}$/;
 
 function finiteCoordinate(value: unknown, min: number, max: number): value is number {
@@ -54,7 +46,10 @@ function isContent(value: unknown): value is ReportContent {
   return (
     typeof content.text === "string"
     && content.text.length <= 4000
-    && (content.category === "" || CATEGORIES.includes(content.category as ReportCategory))
+    && (content.category === "" || (
+      typeof content.category === "string"
+      && Object.prototype.hasOwnProperty.call(PROBLEM_KATEGORIEN, content.category)
+    ))
     && (content.scope_kind === null || SCOPES.includes(content.scope_kind as ReportScope))
     && typeof content.observed_on === "string"
     && content.observed_on.length <= 10
@@ -93,6 +88,9 @@ export function loadProblemReportSession(
       && IDEMPOTENCY_KEY.test(saved.idempotencyKey)
       && (saved.reportId === null || (typeof saved.reportId === "number" && Number.isSafeInteger(saved.reportId) && saved.reportId > 0))
       && isContent(saved.content)
+      && (saved.creationContent === null || isContent(saved.creationContent))
+      && (saved.reportId === null || saved.creationContent === null)
+      && (saved.reportId !== null || saved.stage !== "review")
     );
     if (!valid) {
       clearStoredSession();

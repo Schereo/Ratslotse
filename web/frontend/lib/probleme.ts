@@ -37,6 +37,19 @@ export const PROBLEM_SCOPE: Record<PublicProblem["scope_kind"], string> = {
   citywide: "Stadtweit",
 };
 
+/** Kontrollierte räumliche Bezüge samt verständlicher Auswahl im Meldeweg. */
+export const PROBLEM_MELDEBEZUEGE = [
+  { value: "point", label: "Ein Ort", hint: "zum Beispiel eine Querung oder ein Platz" },
+  { value: "facility", label: "Eine Einrichtung", hint: "zum Beispiel Schule, Kita oder Haltestelle" },
+  { value: "route", label: "Eine Straße oder Strecke", hint: "ein Abschnitt oder eine Verbindung" },
+  { value: "area", label: "Ein Gebiet", hint: "ein Quartier oder Stadtteil" },
+  { value: "citywide", label: "Ganz Oldenburg", hint: "wenn kein einzelner Ort ehrlich passt" },
+] as const satisfies readonly {
+  value: PublicProblem["scope_kind"];
+  label: string;
+  hint: string;
+}[];
+
 export const MELDE_HAEUFIGKEIT: Record<ProblemFrequency, string> = {
   once: "1 Meldung",
   several: "2–4 Meldungen",

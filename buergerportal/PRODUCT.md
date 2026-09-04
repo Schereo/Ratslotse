@@ -130,9 +130,12 @@ unvollständige Angaben gelangen nicht an die API. Vor und zurück verändert
 bereits gegebene Antworten nicht.
 
 Nach vollständiger Eingabe legt die Oberfläche mit einem stabilen,
-kontogebunden verwendeten Idempotenzschlüssel einen privaten Entwurf an. Ein
-kurzlebiger, kontogebundener Sitzungsstand ermöglicht die Wiederaufnahme; für
-einen schon angelegten Entwurf wird der maßgebliche Serverstand erneut gelesen.
+kontogebunden verwendeten Idempotenzschlüssel einen privaten Entwurf an. Nach
+einem mehrdeutigen Netzfehler wiederholt sie dafür unverändert die erste
+Anlegenutzlast; spätere lokale Korrekturen folgen erst revisionsgebunden, sobald
+die Entwurfs-ID wieder vorliegt. Ein kurzlebiger, kontogebundener Sitzungsstand
+ermöglicht die Wiederaufnahme; für einen schon angelegten Entwurf wird der
+maßgebliche Serverstand erneut gelesen.
 Auf der Prüfseite bleiben alle Angaben korrigierbar. Änderungen werden mit der
 erwarteten Revision gespeichert und erst danach wird exakt der ausdrücklich
 bestätigte Text abgesendet. Bei einem Revisionskonflikt bleibt die lokale
