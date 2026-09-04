@@ -11,13 +11,13 @@ from kern.store import USER_OWNED_TABLES, Store
 
 
 def _user_keyed_tables(conn) -> set[tuple[str, str]]:
-    """Alle Tabellen des angelegten Schemas mit `owner_id`/`user_id`."""
+    """Alle Tabellen mit `owner_id`, `user_id` oder `reporter_id`."""
     found = set()
     for (table,) in conn.execute(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
     ):
         cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-        for key in ("owner_id", "user_id"):
+        for key in ("owner_id", "user_id", "reporter_id"):
             if key in cols:
                 found.add((table, key))
     return found
@@ -55,7 +55,12 @@ def test_delete_web_user_covers_every_user_table(tmp_path):
     Ohne diesen Test bleiben bei einer Konto-Löschung stillschweigend Daten
     zurück, sobald jemand eine neue nutzerbezogene Tabelle anlegt.
     """
-    store = Store(tmp_path / "ratslotse.sqlite")
+    from buergerportal.reports import PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    store = Store(database)
+    private_reports = PrivateReportStore(database)
+    private_reports.close()
     im_schema = _user_keyed_tables(store._conn)
     store.close()
 
@@ -71,18 +76,43 @@ def test_delete_web_user_covers_every_user_table(tmp_path):
 def test_delete_web_user_really_empties_every_table(tmp_path):
     """Nicht nur die Liste, auch das Löschen selbst: eine Zeile je Tabelle rein,
     Konto löschen, alles muss weg sein — und das fremde Konto unberührt."""
-    store = Store(tmp_path / "ratslotse.sqlite")
+    from buergerportal.reports import DraftContent, PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    store = Store(database)
     conn = store._conn
     with conn:
+        conn.execute(
+            "INSERT INTO web_users (id, email, password_hash, role, status, "
+            "email_verified, created_at) VALUES "
+            "(1, 'weg@test.de', 'x', 'user', 'active', 1, '2026-01-01')"
+        )
+        conn.execute(
+            "INSERT INTO web_users (id, email, password_hash, role, status, "
+            "email_verified, created_at) VALUES "
+            "(2, 'bleibt@test.de', 'x', 'user', 'active', 1, '2026-01-01')"
+        )
+    private_reports = PrivateReportStore(database)
+    for owner in (1, 2):
+        report_id = private_reports.create_draft(
+            reporter_id=owner,
+            content=DraftContent(
+                text=f"Fiktiver Entwurf {owner}",
+                category="other",
+                scope_kind="citywide",
+                observed_on="2026-01-01",
+            ),
+        )
+        private_reports.submit_owned_draft(
+            report_id,
+            reporter_id=owner,
+            confirmed_text=f"Fiktive Beobachtung {owner}",
+        )
+    with conn:
         for table, key in USER_OWNED_TABLES:
-            _insert_dummy(conn, table, key, 1)
-            _insert_dummy(conn, table, key, 2)  # zweites Konto als Kontrolle
-        conn.execute(
-            "INSERT INTO web_users (id, email, password_hash, role, status, created_at)"
-            " VALUES (1, 'weg@test.de', 'x', 'user', 'active', '2026-01-01')")
-        conn.execute(
-            "INSERT INTO web_users (id, email, password_hash, role, status, created_at)"
-            " VALUES (2, 'bleibt@test.de', 'x', 'user', 'active', '2026-01-01')")
+            if table != "civic_reports":
+                _insert_dummy(conn, table, key, 1)
+                _insert_dummy(conn, table, key, 2)  # zweites Konto als Kontrolle
 
     store.delete_web_user(1)
 
@@ -94,6 +124,11 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
 
     assert conn.execute("SELECT COUNT(*) FROM web_users WHERE id = 1").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM web_users WHERE id = 2").fetchone()[0] == 1
+    observations = conn.execute(
+        "SELECT text FROM civic_report_observations ORDER BY id"
+    ).fetchall()
+    assert [row[0] for row in observations] == ["Fiktive Beobachtung 2"]
+    private_reports.close()
     store.close()
 
 

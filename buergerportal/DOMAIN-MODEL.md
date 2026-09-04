@@ -24,6 +24,43 @@ bedeuten gemeinschaftliche Bestätigung und Aufmerksamkeit, nie Wahrheit,
 Dringlichkeit, Schadenshöhe oder die Zahl betroffener Personen. Identitäten,
 Rohtexte, Einzelmeldungen und Moderationsdaten bleiben privat.
 
+## Privates Schreibmodell — Iteration 4
+
+`PrivateReportStore` besitzt die Tabellen `civic_reports` und
+`civic_report_observations`; `ProblemStore` besitzt sie ausdrücklich nicht. Eine
+Meldung verweist per Fremdschlüssel auf ein bestehendes Ratslotse-Konto; nur ein
+aktives, bestätigtes Konto darf private Inhalte anlegen oder verändern. Jede
+private Lese- und Änderungsoperation verlangt die ID der meldenden Person.
+Unbekannte und fremde Meldungs-IDs werden dabei nicht unterschieden und geben
+keinen Inhalt preis.
+
+Ein neuer Datensatz beginnt als `draft`. Beschreibung, kontrollierte Kategorie,
+geografischer Bezug, privater genauer Ort und Beobachtungsdatum können nur in
+diesem Zustand geändert werden. Stadtweite Entwürfe speichern keinen genauen
+Ort; alle anderen Bezüge brauchen Ortsbezeichnung und Koordinaten innerhalb
+einer konservativen Hülle Oldenburgs. Jede Inhaltsänderung erhöht die Revision.
+
+`submit_owned_draft` ist ein atomarer, einmaliger Übergang zu `submitted`: Der
+bestätigte Text und Absendezeitpunkt werden gesetzt und dieselbe Transaktion
+hängt genau eine erste Beobachtung an. Danach bleibt der Entwurf unveränderlich.
+Weitere Beobachtungen erhöhen die Inhaltsrevision und werden angehängt, nie
+überschrieben; sie gehören weiterhin derselben Person und sind keine zusätzliche
+unabhängige Meldung. Datenbank-Constraints und Trigger sichern Eigentümer-ID,
+kontrollierte Kategorien und Geografie, Zeitwerte, Revisionsbindung und die
+Unveränderlichkeit gespeicherter Beobachtungen zusätzlich zum Store ab.
+
+Die privaten Migrationen werden einzeln atomar in
+`civic_report_schema_migrations` protokolliert und sind wiederholbar. Eine
+eigene Folgemigration ergänzt ältere private Schemata um Inhaltsrevisionen und
+erneuert deren Invariantentrigger, ohne Meldungsdaten zu ersetzen. Die
+Migrationen verändern weder
+`civic_problems` noch `civic_problem_feature_examples`. Die explizite
+Kontolöschgrenze `erase_reporter_data` entfernt alle privaten Meldungen und ihre
+Beobachtungen einer Eigentümer-ID per Fremdschlüssel-Kaskade. Zusätzlich kennt
+die zentrale Kontolöschung `civic_reports`, damit auch der bestehende
+DSGVO-Löschweg keine privaten Daten zurücklässt. Beide Wege schreiben nicht in
+öffentliche Projektionen.
+
 ## Veröffentlichung bleibt geschlossen
 
 Eine reale Meldung darf erst in eine öffentliche Projektion einfließen, wenn
@@ -33,11 +70,11 @@ beides zur aktuellen Inhaltsrevision unveränderlich belegt ist:
 2. eine abschließende menschliche Freigabe durch einen Ratslotse-Admin.
 
 Fehlt ein Nachweis, ist er veraltet oder ist die Prüfung fehlgeschlagen, wird
-nichts veröffentlicht. Iteration 1 führt bewusst keine reale Schreib- oder
-Veröffentlichungs-API ein. `ProblemStore` ist eine reine Lesegrenze. Die
-persistente Freigabelogik und privaten Tabellen folgen erst in einem eigenen,
-getesteten Schnitt; bis dahin kann Anwendungscode keine reale Projektion
-anlegen oder veröffentlichen.
+nichts veröffentlicht. `ProblemStore` bleibt eine reine öffentliche Lesegrenze.
+Iteration 4 persistiert zwar private Entwürfe und Beobachtungen, führt aber weder
+HTTP-Zugriff noch KI-Prüfung, Moderation, Problemzuordnung oder
+Veröffentlichungslogik ein. Anwendungscode kann weiterhin keine reale
+öffentliche Projektion anlegen oder veröffentlichen.
 
 ## Geografie
 

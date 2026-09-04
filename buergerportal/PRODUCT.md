@@ -76,6 +76,23 @@ der ausschließlich auf `feature` vorhandenen Beispiele sind gültig. Die native
 iOS-App besitzt noch keine Bürgerportal-Ansicht und öffnet diese öffentlichen
 Links deshalb im Web.
 
+## Private Meldungs-Domäne — Iteration 4
+
+Die noch nicht über HTTP erreichbare Persistenz trennt private Meldeentwürfe und
+Beobachtungen vollständig von öffentlichen Problemprojektionen. Jeder private
+Zugriff ist an die ID der meldenden Person gebunden; Änderungen verlangen ein
+bestehendes, aktives und bestätigtes Ratslotse-Konto. Ein Entwurf kann geändert
+und genau einmal bewusst abgesendet werden; dabei entsteht atomar seine erste
+unveränderliche Beobachtung. Spätere Beobachtungen werden
+angehängt und zählen nicht als weitere Person.
+
+Private Rohtexte, bestätigte Texte, genaue Orte, Beobachtungsdaten und
+Kontozuordnung werden nicht über `ProblemStore` lesbar. Die Kontolöschgrenze des
+privaten Stores und die bestehende zentrale Kontolöschung entfernen diese Daten,
+ohne öffentliche Projektionen zu ändern. Es gibt in dieser Iteration keinen
+Endpunkt, keine Oberfläche, keinen Seeder für private Daten und keine KI-,
+Moderations-, Cluster- oder Veröffentlichungslogik.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -87,5 +104,6 @@ Links deshalb im Web.
 | `/meine-meldungen` | Eigentümer*in | reserviert |
 | `/admin/meldungen` | Admin | reserviert |
 
-Iteration 3 enthält keine private Meldung, öffentliche Zeitleiste,
+Iteration 4 enthält trotz des privaten Persistenzmodells noch keinen
+Meldungsendpunkt, keine Meldeoberfläche, öffentliche Zeitleiste,
 Moderationsoberfläche, automatische Veröffentlichung oder KI-Funktion.

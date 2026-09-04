@@ -55,3 +55,11 @@ Person hinter dem verifizierten Konto. Öffentlich steht ausschließlich
 ### Moderator*in
 
 Ratslotse-Admin. Nicht: Sachbearbeiter*in oder Stadtverwaltung.
+
+## Persistierte Beziehung seit Iteration 4
+
+Ein Konto kann mehrere private Meldeentwürfe besitzen. Bewusstes Absenden macht
+einen Entwurf genau einmal zur Meldung und übernimmt den bestätigten Text als
+erste unveränderliche Beobachtung. Weitere Beobachtungen werden angehängt; sie
+bleiben Beiträge derselben meldenden Person. Weder Meldung noch Beobachtung ist
+bereits ein öffentliches Problem.
