@@ -197,6 +197,11 @@ test.describe("Geführte private Problemmeldung", () => {
     await page.getByRole("button", { name: "Entwurf prüfen" }).click();
 
     await expect(page.getByRole("heading", { level: 2, name: "Meldung prüfen" })).toBeVisible();
+    await expect(page.getByText(/Beschreibungstext kann nach dem Absenden automatisch.*OpenRouter/i)).toBeVisible();
+    await expect(page.getByText(/Kontodaten.*separat gespeicherte Ortsangabe.*Koordinaten.*Beobachtungsdatum.*nicht gesendet/i)).toBeVisible();
+    await expect(page.getByText(/keine persönlichen oder sensiblen Daten/i)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Mehr zum Datenschutz" }))
+      .toHaveAttribute("href", "/datenschutz");
     const confirmation = page.getByRole("checkbox", { name: /Angaben selbst geprüft/i });
     await confirmation.check();
     const corrected = "Am fiktiven Testort fehlt an der Querung weiterhin eine sichere Absenkung.";
@@ -483,6 +488,25 @@ test.describe("Geführte private Problemmeldung", () => {
     expect(getCalls).toBe(2);
   });
 
+  test("explains external AI pre-screening on the privacy page", async ({ page }) => {
+    await page.goto("/datenschutz");
+
+    await expect(page.getByRole("heading", { name: "KI-Vorprüfung privater Meldungen" })).toBeVisible();
+    const section = page.getByRole("heading", { name: "KI-Vorprüfung privater Meldungen" })
+      .locator("..")
+      .locator("div");
+    await expect(section).toContainText("OpenRouter");
+    await expect(section).toContainText("Drittland");
+    await expect(section).toContainText("Kontodaten");
+    await expect(section).toContainText("Ortsangabe");
+    await expect(section).toContainText("Koordinaten");
+    await expect(section).toContainText("Beobachtungsdatum");
+    await expect(section).toContainText("keine persönlichen oder sensiblen Daten");
+    await expect(section).toContainText("Zero Data Retention");
+    await expect(section).toContainText("Training");
+    await expect(section).toContainText("keine automatische Entscheidung");
+  });
+
   test("weist Admin-Konten ohne Aufruf der privaten API verständlich ab", async ({ page }) => {
     await signedIn(page, { ...signedInUser, id: 1, email: "admin@example.org", role: "admin" });
     let privateCalls = 0;
@@ -500,6 +524,28 @@ test.describe("Geführte private Problemmeldung", () => {
 
 test.describe("Geführte Problemmeldung auf schmalem Touch-Gerät", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, colorScheme: "dark" });
+
+  test("shows the AI disclosure on mobile without horizontal overflow", async ({ page }, testInfo) => {
+    await signedIn(page);
+    await page.addInitScript(() => localStorage.setItem("theme", "dark"));
+    const remote = privateReport();
+    await seedServerDraft(page, remote);
+    await page.route("**/api/meldungen/42", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(remote),
+    }));
+
+    await page.goto("/probleme/melden");
+
+    await expect(page.getByLabel("Externe KI-Vorprüfung")).toBeVisible();
+    const geometry = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      page: document.documentElement.scrollWidth,
+    }));
+    expect(geometry.page).toBeLessThanOrEqual(geometry.viewport);
+    await page.screenshot({ path: testInfo.outputPath("ai-disclosure-review-mobile-dark.png"), fullPage: true });
+  });
 
   test("bleibt ohne horizontalen Seitenüberlauf bedienbar", async ({ page }, testInfo) => {
     await signedIn(page);

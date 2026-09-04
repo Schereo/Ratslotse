@@ -126,6 +126,18 @@ def test_provider_routing_excludes_china_and_requires_zdr(monkeypatch):
     assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
 
 
+def test_strict_privacy_routing_cannot_be_disabled_by_environment(monkeypatch):
+    monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
+    monkeypatch.setenv("NWZ_OPENROUTER_ZDR", "0")
+    monkeypatch.setenv("NWZ_OPENROUTER_IGNORE", "")
+
+    provider = llm.strict_privacy_routing_extra_body()["provider"]
+
+    assert provider["zdr"] is True
+    assert provider["data_collection"] == "deny"
+    assert {"deepseek", "baidu", "alibaba"} <= set(provider["ignore"])
+
+
 def test_provider_routing_disabled_by_env(monkeypatch):
     monkeypatch.setenv("NWZ_OPENROUTER_ROUTING", "off")
     assert llm._routing_extra_body() == {}

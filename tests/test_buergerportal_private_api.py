@@ -15,13 +15,20 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 os.environ.setdefault("COOKIE_SECURE", "false")
 os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
 
+from fastapi import HTTPException  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from app import deps  # noqa: E402
+from app.routers import reports as reports_router  # noqa: E402
 from app.main import app  # noqa: E402
 from app.security import create_access_token  # noqa: E402
 from buergerportal.reports import PrivateReportStore  # noqa: E402
 from buergerportal.store import ProblemStore  # noqa: E402
 from kern.store import Store  # noqa: E402
+
+
+class _NoopExternalAiScreeningScheduler:
+    def schedule(self, _background_tasks, *, report_id, expected_revision):
+        return None
 
 
 @pytest.fixture
@@ -53,6 +60,9 @@ def private_api(tmp_path):
     app.dependency_overrides[deps.get_store] = get_store
     app.dependency_overrides[deps.get_problem_store] = get_problem_store
     app.dependency_overrides[deps.get_private_report_store] = get_private_report_store
+    app.dependency_overrides[deps.get_external_ai_screening_scheduler] = (
+        lambda: _NoopExternalAiScreeningScheduler()
+    )
     try:
         yield TestClient(app), database
     finally:
@@ -353,6 +363,115 @@ def test_draft_creation_is_account_scoped_idempotent_and_conflict_closed(private
     report_store.close()
 
 
+def test_submission_schedules_background_ai_without_changing_private_response(
+    private_api,
+    monkeypatch,
+):
+    client, database = private_api
+    owner_id, owner = _account(database, email="hintergrund@example.org")
+    limited_subjects = []
+
+    class RecordingLimiter:
+        def check(self, _request, *, subject):
+            limited_subjects.append(subject)
+
+    monkeypatch.setattr(
+        reports_router,
+        "civic_report_screening_limiter",
+        RecordingLimiter(),
+    )
+    created = client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="fiktiver-hintergrund-request"),
+        headers=owner,
+    ).json()
+    scheduled = []
+    completed = []
+
+    class RecordingScheduler:
+        def schedule(
+            self,
+            background_tasks,
+            *,
+            report_id,
+            expected_revision,
+        ):
+            scheduled.append((report_id, expected_revision))
+            background_tasks.add_task(
+                completed.append,
+                (report_id, expected_revision),
+            )
+
+    app.dependency_overrides[deps.get_external_ai_screening_scheduler] = (
+        lambda: RecordingScheduler()
+    )
+    submission_body = {
+        "expected_revision": 0,
+        "confirmed_text": "Bestätigte fiktive Beobachtung.",
+    }
+    response = client.post(
+        f"/api/meldungen/{created['id']}/absenden",
+        json=submission_body,
+        headers=owner,
+    )
+
+    assert response.status_code == 200
+    assert scheduled == [(created["id"], 1)]
+    assert completed == scheduled
+    assert limited_subjects == [owner_id]
+    assert set(response.json()) == {
+        "id",
+        "draft_text",
+        "confirmed_text",
+        "category",
+        "scope_kind",
+        "observed_on",
+        "location_label",
+        "latitude",
+        "longitude",
+        "state",
+        "content_revision",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    }
+    assert "screen" not in response.text.lower()
+    assert "assessment" not in response.text.lower()
+
+    class FailingScheduler:
+        def schedule(self, *_args, **_kwargs):
+            raise RuntimeError("raw provider failure must-not-appear")
+
+    app.dependency_overrides[deps.get_external_ai_screening_scheduler] = (
+        lambda: FailingScheduler()
+    )
+    exact_retry = client.post(
+        f"/api/meldungen/{created['id']}/absenden",
+        json=submission_body,
+        headers=owner,
+    )
+    assert exact_retry.status_code == 200
+    assert exact_retry.json() == response.json()
+
+    class RejectingLimiter:
+        def check(self, _request, *, subject):
+            assert subject == owner_id
+            raise HTTPException(429, "must-not-reach-private-response")
+
+    monkeypatch.setattr(
+        reports_router,
+        "civic_report_screening_limiter",
+        RejectingLimiter(),
+    )
+    limited_retry = client.post(
+        f"/api/meldungen/{created['id']}/absenden",
+        json=submission_body,
+        headers=owner,
+    )
+    assert limited_retry.status_code == 200
+    assert limited_retry.json() == response.json()
+
+
 def test_updates_are_revision_safe_and_submission_retries_are_exact(private_api):
     client, database = private_api
     owner_id, owner = _account(database, email="revision@example.org")
@@ -486,14 +605,40 @@ def test_private_api_does_not_change_public_problem_projections(private_api):
         json={**_content(text="Geänderter privater Text."), "expected_revision": 0},
         headers=owner,
     )
-    client.post(
+    submitted = client.post(
         f"/api/meldungen/{created['id']}/absenden",
         json={"expected_revision": 1, "confirmed_text": "Bestätigter privater Text."},
         headers=owner,
+    ).json()
+    owner_list_before = client.get(
+        "/api/meldungen?limit=20&offset=0", headers=owner
+    ).json()
+    owner_detail_before = client.get(
+        f"/api/meldungen/{created['id']}", headers=owner
+    ).json()
+    report_store = PrivateReportStore(database)
+    candidate = report_store.claim_external_ai_screening(
+        created["id"],
+        expected_revision=submitted["content_revision"],
+        assessment_version=1,
+        claim_token="fiktiver-projektions-claim",
     )
-    assert client.get("/api/meldungen?limit=20&offset=0", headers=owner).status_code == 200
-    assert client.get(f"/api/meldungen/{created['id']}", headers=owner).status_code == 200
+    assert candidate is not None
+    assert report_store.start_claimed_external_ai_screening(candidate) is not None
+    report_store.complete_external_ai_screening(
+        candidate,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="fiktives-modell-v1",
+    )
+    report_store.close()
 
+    assert client.get(
+        "/api/meldungen?limit=20&offset=0", headers=owner
+    ).json() == owner_list_before
+    assert client.get(
+        f"/api/meldungen/{created['id']}", headers=owner
+    ).json() == owner_detail_before
     assert client.get("/api/probleme").json() == before
 
 

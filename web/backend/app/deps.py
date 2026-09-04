@@ -14,6 +14,8 @@ from council.store import CouncilStore
 from buergerportal.reports import PrivateReportStore
 from buergerportal.store import ProblemStore
 
+from .report_screening import BackgroundExternalAiScreeningScheduler
+
 
 def get_store() -> Iterator[Store]:
     settings = get_settings()
@@ -40,6 +42,11 @@ def get_private_report_store() -> Iterator[PrivateReportStore]:
         yield store
     finally:
         store.close()
+
+
+def get_external_ai_screening_scheduler() -> BackgroundExternalAiScreeningScheduler:
+    """Background adapter; each task opens a fresh private store connection."""
+    return BackgroundExternalAiScreeningScheduler(get_settings().ratslotse_db)
 
 
 def get_council_store() -> Iterator[CouncilStore]:

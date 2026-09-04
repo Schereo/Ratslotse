@@ -725,6 +725,18 @@ function Review({
         </div>
       </div>
 
+      <aside aria-label="Externe KI-Vorprüfung" className="space-y-2 rounded-xl border border-border bg-muted/45 p-4 text-sm leading-relaxed text-foreground">
+        <p>
+          <strong>Private KI-Vorprüfung.</strong> Dein bestätigter Beschreibungstext kann nach dem Absenden automatisch über OpenRouter an einen externen KI-Anbieter gesendet werden.
+        </p>
+        <p className="text-muted-foreground">
+          Kontodaten, die separat gespeicherte Ortsangabe, Koordinaten und das Beobachtungsdatum werden nicht gesendet. Nenne im Beschreibungstext keine persönlichen oder sensiblen Daten.
+        </p>
+        <Link href="/datenschutz" className="inline-flex min-h-10 items-center font-medium text-primary hover:underline">
+          Mehr zum Datenschutz
+        </Link>
+      </aside>
+
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed text-foreground">
         <input
           type="checkbox"

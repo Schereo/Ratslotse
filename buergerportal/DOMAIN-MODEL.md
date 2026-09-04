@@ -170,6 +170,45 @@ new draft creation. Submitted reports are read-only in this slice. Client query 
 account ID, private report queries are removed whenever authentication changes,
 and those queries are excluded from the native app's persisted offline cache.
 
+## Revision-bound external AI pre-screening — Iteration 9
+
+The external screening module can claim only a submitted report whose current
+revision has `external_review_candidate` evidence under the active local
+ruleset and whose owner remains an active, verified non-admin account. The
+evaluator input is a deliberately narrow value containing only ordered current
+observation texts, controlled category, and controlled scope. It has no
+account/report identity, stored location label, coordinates, observation dates,
+idempotency/fingerprint data, local-screening result, forwarding state, or
+public-problem data.
+
+`civic_report_ai_screening_claims` owns the durable lease for one report
+revision and assessment version. Immediately before provider dispatch, a
+single transaction marks the attempt started, revalidates the current revision,
+owner eligibility, and local evidence, and reads the minimized input. An active
+lease blocks duplicate provider work; a failed worker releases its unfinished
+claim and an expired lease can be reclaimed. A completed assessment is reused.
+The account-scoped submission limiter provides an additional cost ceiling while
+quota exhaustion leaves the private response unchanged. The adapter calls only
+`kern.llm.chat_complete`, uses a non-overridable no-training/Zero Data Retention
+provider policy and `_feature="civic_report_screening"`, treats report text as
+untrusted data, and accepts only strict JSON with one allowed verdict/reason
+combination. Its named system prompt lives in `kern/prompts.py`.
+
+`civic_report_ai_screenings` stores the report/revision identity, qualifying
+local-screening row, assessment/prompt version, controlled verdict and reason,
+model identifier, and creation time. It stores no owner, report text, location,
+date, raw prompt/response, provider error, or reasoning. Foreign keys and
+triggers keep evidence revision-bound, controlled, append-only, and immutable.
+A newer observation makes previous evidence stale while preserving its audit
+record; report/account deletion cascades through claims and assessments.
+
+Submission schedules this work as a FastAPI background task and returns the
+unchanged private owner model. The worker always opens its own store connection.
+Provider, parsing, persistence, and scheduling failures are logged generically
+and cannot change or fail the private submission. No assessment is exposed to
+owners or public projections, and no verdict performs moderation, assignment,
+rejection, clustering, or publication.
+
 ## Veröffentlichung bleibt geschlossen
 
 Eine reale Meldung darf erst in eine öffentliche Projektion einfließen, wenn
@@ -180,10 +219,10 @@ beides zur aktuellen Inhaltsrevision unveränderlich belegt ist:
 
 Fehlt ein Nachweis, ist er veraltet oder ist die Prüfung fehlgeschlagen, wird
 nichts veröffentlicht. `ProblemStore` bleibt eine reine öffentliche Lesegrenze.
-Iterations 4–8 persist and expose owner-bound private reports but add no external
-AI call, moderation decision, problem assignment, or publication path.
-Application code still cannot create or publish a real public projection from a
-private report.
+Iterations 4–9 persist and expose owner-bound private reports and add only the
+revision-bound private external pre-screening. They add no human moderation
+decision, problem assignment, or publication path. Application code still
+cannot create or publish a real public projection from a private report.
 
 ## Geografie
 

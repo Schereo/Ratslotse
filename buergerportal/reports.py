@@ -1,7 +1,7 @@
-"""Private Meldungen, Beobachtungen und lokale Weitergabeprüfungen.
+"""Private reports and revision-bound local and external screening evidence.
 
-Dieses Modul besitzt ausschließlich das private Schreibmodell. Öffentliche
-Problemprojektionen werden nur über :mod:`buergerportal.store` gelesen.
+This module exclusively owns the private write model. Public problem
+projections are read only through :mod:`buergerportal.store`.
 """
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ import logging
 import math
 import re
 import sqlite3
-from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal, cast
 from zoneinfo import ZoneInfo
@@ -45,10 +45,60 @@ LOCAL_SCREENING_REASONS: tuple[LocalScreeningReason, ...] = (
     "direct_contact_data",
     "unsupported_text_format",
 )
-_LOCAL_SCREENING_RULESET_VERSION = 1
+ExternalAiScreeningVerdict = Literal[
+    "suitable",
+    "needs_human_review",
+    "unsuitable",
+]
+ExternalAiScreeningReason = Literal[
+    "municipal_problem",
+    "insufficient_information",
+    "non_municipal_matter",
+    "personal_or_identifying_content",
+    "abusive_or_discriminatory_content",
+    "commercial_or_spam",
+    "possible_safety_context",
+    "model_uncertain",
+]
+EXTERNAL_AI_SCREENING_VERDICTS: tuple[ExternalAiScreeningVerdict, ...] = (
+    "suitable",
+    "needs_human_review",
+    "unsuitable",
+)
+EXTERNAL_AI_SCREENING_REASONS: tuple[ExternalAiScreeningReason, ...] = (
+    "municipal_problem",
+    "insufficient_information",
+    "non_municipal_matter",
+    "personal_or_identifying_content",
+    "abusive_or_discriminatory_content",
+    "commercial_or_spam",
+    "possible_safety_context",
+    "model_uncertain",
+)
+_EXTERNAL_AI_REASON_VERDICTS: dict[
+    ExternalAiScreeningVerdict,
+    tuple[ExternalAiScreeningReason, ...],
+] = {
+    "suitable": ("municipal_problem",),
+    "needs_human_review": (
+        "insufficient_information",
+        "personal_or_identifying_content",
+        "possible_safety_context",
+        "model_uncertain",
+    ),
+    "unsuitable": (
+        "non_municipal_matter",
+        "abusive_or_discriminatory_content",
+        "commercial_or_spam",
+    ),
+}
+LOCAL_SCREENING_RULESET_VERSION = 1
+EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION = 1
 _PRIVATE_REPORT_PREVIEW_LENGTH = 160
 _SQLITE_INTEGER_MAX = 2**63 - 1
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
+_AI_CLAIM_TOKEN = re.compile(r"[A-Za-z0-9._:-]{8,128}")
+_AI_MODEL_IDENTIFIER = re.compile(r"[A-Za-z0-9._:/-]{1,200}")
 _POTENTIAL_EMERGENCY = re.compile(
     r"\b(?:112|notruf|notfall|lebensgefahr|akute\s+gefahr|bewusstlos|"
     r"gasgeruch|explosionsgefahr|schwer\s+verletzt|feuer|brand|brennt)\b",
@@ -492,6 +542,219 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
                    END""",
         ),
     ),
+    (
+        8,
+        (
+            """CREATE UNIQUE INDEX uq_civic_report_local_screening_identity
+                   ON civic_report_local_screenings(
+                       id, report_id, content_revision
+                   )""",
+            """CREATE TABLE civic_report_ai_screening_claims (
+                    report_id          INTEGER NOT NULL,
+                    content_revision   INTEGER NOT NULL,
+                    local_screening_id INTEGER NOT NULL,
+                    assessment_version INTEGER NOT NULL,
+                    claim_token        TEXT NOT NULL,
+                    lease_until        TEXT NOT NULL,
+                    attempt_started_at TEXT,
+                    PRIMARY KEY (
+                        report_id, content_revision, assessment_version
+                    ),
+                    UNIQUE (
+                        report_id, content_revision, assessment_version,
+                        claim_token
+                    ),
+                    CHECK (content_revision >= 1),
+                    CHECK (assessment_version >= 1),
+                    CHECK (
+                        length(claim_token) BETWEEN 8 AND 128
+                        AND claim_token NOT GLOB '*[^A-Za-z0-9._:-]*'
+                    ),
+                    CHECK (datetime(lease_until) IS NOT NULL),
+                    CHECK (
+                        attempt_started_at IS NULL
+                        OR datetime(attempt_started_at) IS NOT NULL
+                    ),
+                    FOREIGN KEY (report_id, content_revision)
+                        REFERENCES civic_report_observations(
+                            report_id, content_revision
+                        ) ON DELETE CASCADE,
+                    FOREIGN KEY (
+                        local_screening_id, report_id, content_revision
+                    ) REFERENCES civic_report_local_screenings(
+                        id, report_id, content_revision
+                    ) ON DELETE CASCADE
+                )""",
+            """CREATE TABLE civic_report_ai_screenings (
+                    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id          INTEGER NOT NULL,
+                    content_revision   INTEGER NOT NULL,
+                    local_screening_id INTEGER NOT NULL,
+                    assessment_version INTEGER NOT NULL,
+                    verdict            TEXT NOT NULL,
+                    reason_code        TEXT NOT NULL,
+                    model_identifier   TEXT NOT NULL,
+                    created_at         TEXT NOT NULL,
+                    CHECK (content_revision >= 1),
+                    CHECK (assessment_version >= 1),
+                    CHECK (
+                        length(model_identifier) BETWEEN 1 AND 200
+                        AND model_identifier NOT GLOB '*[^A-Za-z0-9._:/-]*'
+                    ),
+                    CHECK (datetime(created_at) IS NOT NULL),
+                    UNIQUE (report_id, content_revision, assessment_version),
+                    FOREIGN KEY (report_id, content_revision)
+                        REFERENCES civic_report_observations(
+                            report_id, content_revision
+                        ) ON DELETE CASCADE,
+                    FOREIGN KEY (
+                        local_screening_id, report_id, content_revision
+                    ) REFERENCES civic_report_local_screenings(
+                        id, report_id, content_revision
+                    ) ON DELETE CASCADE,
+                    FOREIGN KEY (
+                        report_id, content_revision, assessment_version
+                    ) REFERENCES civic_report_ai_screening_claims(
+                        report_id, content_revision, assessment_version
+                    ) ON DELETE CASCADE
+                )""",
+            f"""CREATE TRIGGER trg_civic_report_ai_claims_current_candidate_insert
+                   BEFORE INSERT ON civic_report_ai_screening_claims
+                   WHEN NEW.assessment_version != {EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION}
+                     OR NOT EXISTS (
+                       SELECT 1
+                       FROM civic_reports AS report
+                       JOIN web_users AS owner ON owner.id = report.reporter_id
+                       JOIN civic_report_local_screenings AS screening
+                         ON screening.report_id = report.id
+                        AND screening.content_revision = report.content_revision
+                       WHERE report.id = NEW.report_id
+                         AND report.status = 'submitted'
+                         AND report.content_revision = NEW.content_revision
+                         AND screening.id = NEW.local_screening_id
+                         AND screening.ruleset_version = {LOCAL_SCREENING_RULESET_VERSION}
+                         AND screening.outcome = 'external_review_candidate'
+                         AND owner.role = 'user' AND owner.status = 'active'
+                         AND owner.email_verified = 1
+                     )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'AI claim requires current local candidate');
+                   END""",
+            f"""CREATE TRIGGER trg_civic_report_ai_claims_current_candidate_update
+                   BEFORE UPDATE ON civic_report_ai_screening_claims
+                   WHEN NEW.assessment_version != {EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION}
+                     OR NOT EXISTS (
+                       SELECT 1
+                       FROM civic_reports AS report
+                       JOIN web_users AS owner ON owner.id = report.reporter_id
+                       JOIN civic_report_local_screenings AS screening
+                         ON screening.report_id = report.id
+                        AND screening.content_revision = report.content_revision
+                       WHERE report.id = NEW.report_id
+                         AND report.status = 'submitted'
+                         AND report.content_revision = NEW.content_revision
+                         AND screening.id = NEW.local_screening_id
+                         AND screening.ruleset_version = {LOCAL_SCREENING_RULESET_VERSION}
+                         AND screening.outcome = 'external_review_candidate'
+                         AND owner.role = 'user' AND owner.status = 'active'
+                         AND owner.email_verified = 1
+                     )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'AI claim requires current local candidate');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_ai_claims_expired_update_only
+                   BEFORE UPDATE ON civic_report_ai_screening_claims
+                   WHEN OLD.report_id != NEW.report_id
+                     OR OLD.content_revision != NEW.content_revision
+                     OR OLD.local_screening_id != NEW.local_screening_id
+                     OR OLD.assessment_version != NEW.assessment_version
+                     OR (
+                       OLD.lease_until > strftime(
+                           '%Y-%m-%dT%H:%M:%f+00:00', 'now'
+                       )
+                       AND NOT (
+                           OLD.attempt_started_at IS NULL
+                           AND NEW.attempt_started_at IS NOT NULL
+                           AND NEW.attempt_started_at <= NEW.lease_until
+                           AND OLD.claim_token = NEW.claim_token
+                           AND OLD.lease_until = NEW.lease_until
+                       )
+                     )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'active AI claims are immutable');
+                   END""",
+            f"""CREATE TRIGGER trg_civic_report_ai_screenings_controlled_result
+                   BEFORE INSERT ON civic_report_ai_screenings
+                   WHEN NEW.verdict NOT IN ({_sql_enum(EXTERNAL_AI_SCREENING_VERDICTS)})
+                     OR NEW.reason_code NOT IN ({_sql_enum(EXTERNAL_AI_SCREENING_REASONS)})
+                     OR (NEW.verdict = 'suitable'
+                         AND NEW.reason_code NOT IN ({_sql_enum(_EXTERNAL_AI_REASON_VERDICTS['suitable'])}))
+                     OR (NEW.verdict = 'needs_human_review'
+                         AND NEW.reason_code NOT IN ({_sql_enum(_EXTERNAL_AI_REASON_VERDICTS['needs_human_review'])}))
+                     OR (NEW.verdict = 'unsuitable'
+                         AND NEW.reason_code NOT IN ({_sql_enum(_EXTERNAL_AI_REASON_VERDICTS['unsuitable'])}))
+                   BEGIN
+                       SELECT RAISE(ABORT, 'AI screening requires controlled result');
+                   END""",
+            f"""CREATE TRIGGER trg_civic_report_ai_screenings_current_candidate
+                   BEFORE INSERT ON civic_report_ai_screenings
+                   WHEN NEW.assessment_version != {EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION}
+                     OR NOT EXISTS (
+                       SELECT 1
+                       FROM civic_reports AS report
+                       JOIN web_users AS owner ON owner.id = report.reporter_id
+                       JOIN civic_report_local_screenings AS screening
+                         ON screening.report_id = report.id
+                        AND screening.content_revision = report.content_revision
+                       JOIN civic_report_ai_screening_claims AS claim
+                         ON claim.report_id = report.id
+                        AND claim.content_revision = report.content_revision
+                        AND claim.assessment_version = NEW.assessment_version
+                       WHERE report.id = NEW.report_id
+                         AND report.status = 'submitted'
+                         AND report.content_revision = NEW.content_revision
+                         AND screening.id = NEW.local_screening_id
+                         AND screening.ruleset_version = {LOCAL_SCREENING_RULESET_VERSION}
+                         AND screening.outcome = 'external_review_candidate'
+                         AND claim.local_screening_id = screening.id
+                         AND claim.attempt_started_at IS NOT NULL
+                         AND claim.attempt_started_at <= NEW.created_at
+                         AND claim.lease_until > NEW.created_at
+                         AND owner.role = 'user' AND owner.status = 'active'
+                         AND owner.email_verified = 1
+                     )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'AI screening requires current claimed candidate');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_ai_claims_keep_completed
+                   BEFORE DELETE ON civic_report_ai_screening_claims
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_report_ai_screenings AS completed
+                       WHERE completed.report_id = OLD.report_id
+                         AND completed.content_revision = OLD.content_revision
+                         AND completed.assessment_version = OLD.assessment_version
+                   )
+                     AND EXISTS (
+                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'completed AI claims are immutable');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_ai_screenings_no_update
+                   BEFORE UPDATE ON civic_report_ai_screenings
+                   BEGIN
+                       SELECT RAISE(ABORT, 'AI screenings are immutable');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_ai_screenings_no_direct_delete
+                   BEFORE DELETE ON civic_report_ai_screenings
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'AI screenings are append-only');
+                   END""",
+        ),
+    ),
 )
 
 
@@ -674,6 +937,38 @@ class LocalReportScreening:
 
 
 @dataclass(frozen=True)
+class ExternalAiScreeningInput:
+    """The only private report fields allowed to reach the AI adapter."""
+
+    observation_texts: tuple[str, ...]
+    category: ProblemCategory
+    scope_kind: ScopeKind
+
+
+@dataclass(frozen=True)
+class ClaimedExternalAiScreening:
+    report_id: int
+    content_revision: int
+    local_screening_id: int
+    assessment_version: int
+    claim_token: str = field(repr=False)
+
+
+@dataclass(frozen=True)
+class ExternalAiScreening:
+    """Private immutable AI evidence; never an automatic decision."""
+
+    report_id: int
+    content_revision: int
+    local_screening_id: int
+    assessment_version: int
+    verdict: ExternalAiScreeningVerdict
+    reason_code: ExternalAiScreeningReason
+    model_identifier: str
+    created_at: str
+
+
+@dataclass(frozen=True)
 class PrivateReportSummary:
     id: int
     text_preview: str
@@ -804,6 +1099,40 @@ def _local_screening_from_row(row: sqlite3.Row) -> LocalReportScreening:
         ),
         created_at=str(row["created_at"]),
     )
+
+
+def _external_ai_screening_from_row(row: sqlite3.Row) -> ExternalAiScreening:
+    return ExternalAiScreening(
+        report_id=int(row["report_id"]),
+        content_revision=int(row["content_revision"]),
+        local_screening_id=int(row["local_screening_id"]),
+        assessment_version=int(row["assessment_version"]),
+        verdict=cast(ExternalAiScreeningVerdict, row["verdict"]),
+        reason_code=cast(ExternalAiScreeningReason, row["reason_code"]),
+        model_identifier=str(row["model_identifier"]),
+        created_at=str(row["created_at"]),
+    )
+
+
+def validate_external_ai_screening_result(
+    verdict: str,
+    reason_code: str,
+) -> tuple[ExternalAiScreeningVerdict, ExternalAiScreeningReason]:
+    if verdict not in EXTERNAL_AI_SCREENING_VERDICTS:
+        raise ValueError("Unbekanntes Ergebnis der externen KI-Vorprüfung.")
+    controlled_verdict = cast(ExternalAiScreeningVerdict, verdict)
+    if reason_code not in _EXTERNAL_AI_REASON_VERDICTS[controlled_verdict]:
+        raise ValueError("Ungültiger Grund der externen KI-Vorprüfung.")
+    return controlled_verdict, cast(ExternalAiScreeningReason, reason_code)
+
+
+def normalize_external_ai_model_identifier(model_identifier: str) -> str:
+    controlled_model = (
+        model_identifier.strip() if isinstance(model_identifier, str) else ""
+    )
+    if not _AI_MODEL_IDENTIFIER.fullmatch(controlled_model):
+        raise ValueError("Ungültige Modellkennung der externen KI-Vorprüfung.")
+    return controlled_model
 
 
 def _oldenburg_today(now: datetime | None = None) -> date:
@@ -1195,7 +1524,7 @@ class PrivateReportStore:
                 (
                     report_id,
                     revision,
-                    _LOCAL_SCREENING_RULESET_VERSION,
+                    LOCAL_SCREENING_RULESET_VERSION,
                     outcome,
                     json.dumps(reasons, separators=(",", ":")),
                     now,
@@ -1228,7 +1557,7 @@ class PrivateReportStore:
                  AND report.status = 'submitted'
                  AND report.content_revision = screening.content_revision
                  AND screening.ruleset_version = ?""",
-            (report_id, reporter_id, _LOCAL_SCREENING_RULESET_VERSION),
+            (report_id, reporter_id, LOCAL_SCREENING_RULESET_VERSION),
         ).fetchone()
         if row is None:
             return None
@@ -1269,12 +1598,312 @@ class PrivateReportStore:
                 report_id,
                 reporter_id,
                 revision,
-                _LOCAL_SCREENING_RULESET_VERSION,
+                LOCAL_SCREENING_RULESET_VERSION,
             ),
         ).fetchone()
         if row is None:
             return None
         return _local_screening_from_row(row)
+
+    def claim_external_ai_screening(
+        self,
+        report_id: int,
+        *,
+        expected_revision: int,
+        assessment_version: int,
+        claim_token: str,
+        lease_seconds: int = 600,
+    ) -> ClaimedExternalAiScreening | None:
+        """Durably claim a current locally eligible revision for one AI call."""
+        if not _is_storage_id(report_id):
+            return None
+        try:
+            revision = _normalized_expected_revision(expected_revision)
+        except ValueError:
+            return None
+        if revision is None:
+            return None
+        if (
+            type(assessment_version) is not int
+            or assessment_version != EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION
+        ):
+            raise ValueError("Unbekannte Version der externen KI-Vorprüfung.")
+        if not isinstance(claim_token, str) or not _AI_CLAIM_TOKEN.fullmatch(
+            claim_token
+        ):
+            raise ValueError("Ungültige Claim-ID der externen KI-Vorprüfung.")
+        if (
+            isinstance(lease_seconds, bool)
+            or not isinstance(lease_seconds, int)
+            or not 1 <= lease_seconds <= 3600
+        ):
+            raise ValueError("Ungültige Laufzeit des KI-Claims.")
+
+        claimed_at = datetime.now(timezone.utc)
+        claimed_at_text = claimed_at.isoformat(timespec="microseconds")
+        lease_until = (claimed_at + timedelta(seconds=lease_seconds)).isoformat(
+            timespec="microseconds"
+        )
+        with self._conn:
+            claim = self._conn.execute(
+                """INSERT INTO civic_report_ai_screening_claims (
+                       report_id, content_revision, local_screening_id,
+                       assessment_version, claim_token, lease_until
+                   )
+                   SELECT report.id, report.content_revision, screening.id,
+                          ?, ?, ?
+                   FROM civic_reports AS report
+                   JOIN web_users AS owner ON owner.id = report.reporter_id
+                   JOIN civic_report_local_screenings AS screening
+                     ON screening.report_id = report.id
+                    AND screening.content_revision = report.content_revision
+                   WHERE report.id = ?
+                     AND report.status = 'submitted'
+                     AND report.content_revision = ?
+                     AND screening.ruleset_version = ?
+                     AND screening.outcome = 'external_review_candidate'
+                     AND owner.role = 'user' AND owner.status = 'active'
+                     AND owner.email_verified = 1
+                     AND NOT EXISTS (
+                         SELECT 1 FROM civic_report_ai_screenings AS completed
+                         WHERE completed.report_id = report.id
+                           AND completed.content_revision = report.content_revision
+                           AND completed.assessment_version = ?
+                     )
+                   ON CONFLICT (
+                       report_id, content_revision, assessment_version
+                   ) DO UPDATE SET
+                       local_screening_id = excluded.local_screening_id,
+                       claim_token = excluded.claim_token,
+                       lease_until = excluded.lease_until,
+                       attempt_started_at = NULL
+                   WHERE civic_report_ai_screening_claims.lease_until <= ?
+                   RETURNING local_screening_id""",
+                (
+                    assessment_version,
+                    claim_token,
+                    lease_until,
+                    report_id,
+                    revision,
+                    LOCAL_SCREENING_RULESET_VERSION,
+                    assessment_version,
+                    claimed_at_text,
+                ),
+            ).fetchone()
+            if claim is None:
+                return None
+        return ClaimedExternalAiScreening(
+            report_id=report_id,
+            content_revision=revision,
+            local_screening_id=int(claim["local_screening_id"]),
+            assessment_version=assessment_version,
+            claim_token=claim_token,
+        )
+
+    def start_claimed_external_ai_screening(
+        self,
+        candidate: ClaimedExternalAiScreening,
+    ) -> ExternalAiScreeningInput | None:
+        """Linearize provider dispatch and return freshly revalidated input."""
+        started_at = _now()
+        with self._conn:
+            started = self._conn.execute(
+                """UPDATE civic_report_ai_screening_claims AS claim
+                   SET attempt_started_at = ?
+                   WHERE claim.report_id = ?
+                     AND claim.content_revision = ?
+                     AND claim.local_screening_id = ?
+                     AND claim.assessment_version = ?
+                     AND claim.claim_token = ?
+                     AND claim.attempt_started_at IS NULL
+                     AND claim.lease_until > ?
+                     AND EXISTS (
+                         SELECT 1
+                         FROM civic_reports AS report
+                         JOIN web_users AS owner ON owner.id = report.reporter_id
+                         JOIN civic_report_local_screenings AS screening
+                           ON screening.id = claim.local_screening_id
+                          AND screening.report_id = report.id
+                          AND screening.content_revision = report.content_revision
+                         WHERE report.id = claim.report_id
+                           AND report.status = 'submitted'
+                           AND report.content_revision = claim.content_revision
+                           AND screening.ruleset_version = ?
+                           AND screening.outcome = 'external_review_candidate'
+                           AND owner.role = 'user' AND owner.status = 'active'
+                           AND owner.email_verified = 1
+                     )
+                   RETURNING local_screening_id""",
+                (
+                    started_at,
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.local_screening_id,
+                    candidate.assessment_version,
+                    candidate.claim_token,
+                    started_at,
+                    LOCAL_SCREENING_RULESET_VERSION,
+                ),
+            ).fetchone()
+            if started is None:
+                return None
+            report = self._conn.execute(
+                """SELECT category, scope_kind
+                   FROM civic_reports
+                   WHERE id = ? AND content_revision = ?""",
+                (candidate.report_id, candidate.content_revision),
+            ).fetchone()
+            observations = self._conn.execute(
+                """SELECT text FROM civic_report_observations
+                   WHERE report_id = ? AND content_revision <= ?
+                   ORDER BY content_revision""",
+                (candidate.report_id, candidate.content_revision),
+            ).fetchall()
+            if report is None or not observations:
+                raise InvalidReportTransition(
+                    "Gestarteter KI-Claim hat keine aktuelle private Meldung."
+                )
+        return ExternalAiScreeningInput(
+            observation_texts=tuple(str(row["text"]) for row in observations),
+            category=cast(ProblemCategory, report["category"]),
+            scope_kind=cast(ScopeKind, report["scope_kind"]),
+        )
+
+    def complete_external_ai_screening(
+        self,
+        candidate: ClaimedExternalAiScreening,
+        *,
+        verdict: str,
+        reason_code: str,
+        model_identifier: str,
+    ) -> ExternalAiScreening:
+        """Persist a controlled result only while the candidate claim is valid."""
+        controlled_verdict, controlled_reason = validate_external_ai_screening_result(
+            verdict,
+            reason_code,
+        )
+        controlled_model = normalize_external_ai_model_identifier(model_identifier)
+        created_at = _now()
+        with self._conn:
+            inserted = self._conn.execute(
+                """INSERT INTO civic_report_ai_screenings (
+                       report_id, content_revision, local_screening_id,
+                       assessment_version, verdict, reason_code,
+                       model_identifier, created_at
+                   )
+                   SELECT claim.report_id, claim.content_revision,
+                          claim.local_screening_id, claim.assessment_version,
+                          ?, ?, ?, ?
+                   FROM civic_report_ai_screening_claims AS claim
+                   WHERE claim.report_id = ?
+                     AND claim.content_revision = ?
+                     AND claim.local_screening_id = ?
+                     AND claim.assessment_version = ?
+                     AND claim.claim_token = ?
+                     AND claim.attempt_started_at IS NOT NULL
+                     AND claim.attempt_started_at <= ?
+                     AND claim.lease_until > ?
+                   ON CONFLICT (
+                       report_id, content_revision, assessment_version
+                   ) DO NOTHING
+                   RETURNING id""",
+                (
+                    controlled_verdict,
+                    controlled_reason,
+                    controlled_model,
+                    created_at,
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.local_screening_id,
+                    candidate.assessment_version,
+                    candidate.claim_token,
+                    created_at,
+                    created_at,
+                ),
+            ).fetchone()
+            if inserted is None:
+                existing = self._conn.execute(
+                    """SELECT * FROM civic_report_ai_screenings
+                       WHERE report_id = ? AND content_revision = ?
+                         AND assessment_version = ?""",
+                    (
+                        candidate.report_id,
+                        candidate.content_revision,
+                        candidate.assessment_version,
+                    ),
+                ).fetchone()
+                if existing is not None:
+                    return _external_ai_screening_from_row(existing)
+                raise InvalidReportTransition(
+                    "Der Claim für die externe KI-Vorprüfung ist nicht mehr gültig."
+                )
+            row = self._conn.execute(
+                "SELECT * FROM civic_report_ai_screenings WHERE id = ?",
+                (int(inserted["id"]),),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("Gespeicherte KI-Vorprüfung fehlt.")
+        return _external_ai_screening_from_row(row)
+
+    def release_external_ai_screening(
+        self,
+        candidate: ClaimedExternalAiScreening,
+    ) -> bool:
+        """Release an unfinished claim after a local/provider failure."""
+        with self._conn:
+            deleted = self._conn.execute(
+                """DELETE FROM civic_report_ai_screening_claims
+                   WHERE report_id = ? AND content_revision = ?
+                     AND assessment_version = ? AND claim_token = ?
+                     AND NOT EXISTS (
+                         SELECT 1 FROM civic_report_ai_screenings AS completed
+                         WHERE completed.report_id = ?
+                           AND completed.content_revision = ?
+                           AND completed.assessment_version = ?
+                     )""",
+                (
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.assessment_version,
+                    candidate.claim_token,
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.assessment_version,
+                ),
+            )
+        return deleted.rowcount == 1
+
+    def get_current_external_ai_screening(
+        self,
+        report_id: int,
+    ) -> ExternalAiScreening | None:
+        """Return only evidence for the report's current eligible revision."""
+        if not _is_storage_id(report_id):
+            return None
+        row = self._conn.execute(
+            """SELECT completed.*
+               FROM civic_report_ai_screenings AS completed
+               JOIN civic_reports AS report ON report.id = completed.report_id
+               JOIN web_users AS owner ON owner.id = report.reporter_id
+               JOIN civic_report_local_screenings AS local
+                 ON local.id = completed.local_screening_id
+                AND local.report_id = completed.report_id
+                AND local.content_revision = completed.content_revision
+               WHERE completed.report_id = ?
+                 AND completed.content_revision = report.content_revision
+                 AND completed.assessment_version = ?
+                 AND report.status = 'submitted'
+                 AND local.ruleset_version = ?
+                 AND local.outcome = 'external_review_candidate'
+                 AND owner.role = 'user' AND owner.status = 'active'
+                 AND owner.email_verified = 1""",
+            (
+                report_id,
+                EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION,
+                LOCAL_SCREENING_RULESET_VERSION,
+            ),
+        ).fetchone()
+        return _external_ai_screening_from_row(row) if row is not None else None
 
     def append_owned_observation(
         self,
