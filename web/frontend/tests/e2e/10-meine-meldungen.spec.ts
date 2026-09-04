@@ -159,6 +159,33 @@ test.describe("Owner-bound private report history", () => {
     await expect(page.getByRole("button", { name: "Entwurf fortsetzen" })).toHaveCount(0);
   });
 
+  test("expands details inside the selected report instead of below later reports", async ({ page }) => {
+    await signedIn(page);
+    await page.route("**/api/meldungen?*", (route) => route.fulfill(json({
+      reports: [
+        summary(),
+        summary({ id: 41, text_preview: "Zweite fiktive Meldung." }),
+      ],
+      total: 2,
+      limit: 10,
+      offset: 0,
+    } satisfies PrivateReportList)));
+    await page.route("**/api/meldungen/42", (route) => route.fulfill(json(privateReport())));
+
+    await page.goto("/meine-meldungen");
+    const selectedReport = page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i });
+    const laterReport = page.getByRole("button", { name: /Zweite fiktive Meldung.*öffnen/i });
+    await selectedReport.click();
+
+    const detailHeading = page.getByRole("heading", { level: 2, name: "Meldung im Detail" });
+    await expect(detailHeading).toBeFocused();
+    const detailBox = await detailHeading.boundingBox();
+    const laterReportBox = await laterReport.boundingBox();
+    expect(detailBox).not.toBeNull();
+    expect(laterReportBox).not.toBeNull();
+    expect(detailBox!.y).toBeLessThan(laterReportBox!.y);
+  });
+
   test("shows loading and empty states explicitly", async ({ page }) => {
     await signedIn(page);
     let releaseResponse: (() => void) | undefined;
