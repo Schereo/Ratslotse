@@ -118,10 +118,56 @@ jobs:
             NEXT_PUBLIC_RATSLOTSE_ENV=dev \
             NEXT_PUBLIC_CARTO_API_KEY="${{ secrets.CARTO_API_KEY }}" \
             npm run build
+            # VORPROBE — der neue Stand auf einem Ersatzport, BEVOR der
+            # laufende Dienst angefasst wird. Scheitert sie, bleibt dev auf dem
+            # alten Stand stehen, statt den kaputten auszuliefern.
+            #
+            # Gestartet wie die echte Unit (`deploy/nwz-web-api.service`), nur
+            # auf einem anderen Port: dasselbe Arbeitsverzeichnis, dasselbe
+            # venv, dieselbe `.env` (die liest `app/config.py` selbst).
+            #
+            # WAS SIE NICHT AUFFÄNGT: Der Probelauf öffnet die Datenbanken und
+            # MIGRIERT sie damit. Scheitert die Probe danach, steht dev mit
+            # altem Code auf migrierten Daten. Auf dev ist das vertretbar —
+            # eigene Datenbanken, keine Crons, Wegwerf-Stand. Auf Prod hängt
+            # dieselbe Probe deshalb hinter der Wartungsbarriere (deploy.yml).
+            vorprobe_port=8010
+            # Hält den Port schon jemand, bindet der eigene Dienst NICHT — und
+            # die Gesundheitsprüfung antwortet trotzdem, nämlich aus dem
+            # fremden Prozess. Die Probe liefe dann gegen den falschen Stand.
+            if curl -sf -o /dev/null --max-time 2 \
+               "http://127.0.0.1:$vorprobe_port/api/health"; then
+              echo "FEHLER: Auf Port $vorprobe_port antwortet schon jemand."
+              exit 1
+            fi
+            cd ~/app
+            ( cd web/backend && exec ../../.venv/bin/uvicorn app.main:app \
+                --host 127.0.0.1 --port "$vorprobe_port" --log-level warning ) &
+            vorprobe_pid=$!
+            trap 'kill "$vorprobe_pid" 2>/dev/null || true' EXIT
+            vorprobe_bereit=
+            for i in $(seq 1 40); do
+              sleep 1
+              if curl -sf -o /dev/null "http://127.0.0.1:$vorprobe_port/api/health"; then
+                vorprobe_bereit=1
+                break
+              fi
+              kill -0 "$vorprobe_pid" 2>/dev/null || break
+            done
+            if [ -z "$vorprobe_bereit" ]; then
+              echo "FEHLER: Der neue Stand kam auf dem Ersatzport nicht hoch."
+              exit 1
+            fi
+            python3 ~/app/scripts/rauchprobe.py --basis "http://127.0.0.1:$vorprobe_port"
+            kill "$vorprobe_pid" 2>/dev/null || true
+            wait "$vorprobe_pid" 2>/dev/null || true
+            trap - EXIT
+
             sudo systemctl restart nwz-web-api nwz-web-frontend
             sleep 3
             curl -sf -o /dev/null http://127.0.0.1:3000 && echo "Frontend OK"
             curl -sf http://127.0.0.1:8000/api/health && echo " API OK"
-            # Dieselbe Rauchprobe wie auf Prod — hier zuerst, damit ein Bruch
-            # auffällt, bevor er dorthin fährt.
+            # Dieselbe Probe noch einmal, jetzt gegen den ECHTEN Dienst: Die
+            # Vorprobe oben hat den Code geprüft, diese hier die Unit — eine
+            # falsche EnvironmentFile, ein fehlendes venv, ein belegter Port.
             python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
