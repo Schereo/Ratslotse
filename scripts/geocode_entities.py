@@ -53,11 +53,68 @@ _STREET_KINDS = frozenset({"street", "square"})
 #: hat, dabei aber 500 Overpass-Ausfälle zählt, hat NICHT das getan, was er
 #: sollte (s. `geocode`).
 overpass_ausfaelle = {"fehler": 0, "ohne_treffer": 0, "nicht_erreichbar": 0,
-                      "strassen_versucht": 0}
+                      "strassen_versucht": 0, "aus_schnappschuss": 0}
 
 #: Ergebnis der Erreichbarkeitsprobe, einmal je Prozess. ``None`` = noch nicht
 #: gemessen.
 _overpass_bereit: bool | None = None
+
+
+#: Wartezeiten zwischen zwei Anläufen an Overpass — für die Probe (einmal je
+#: Lauf, darf lange warten) und für eine einzelne Straße (kürzer, es können
+#: mehrere sein).
+#:
+#: **Warum es sie überhaupt braucht.** Am 04.09.2026 von einem unbelasteten
+#: Anschluss gemessen: Von zehn identischen Mini-Abfragen kamen fünf als
+#: 429/504/Timeout zurück, die übrigen fünf in unter 2 s. Ein EINZELNER
+#: Versuch ist an der öffentlichen Instanz also ein Münzwurf — und genau daran
+#: hat die Erreichbarkeitsprobe vom 03.09. den Lauf vom 04.09. für einen
+#: Totalausfall erklärt und eine Alarmmail über „2 von 2 Straßen" geschickt,
+#: während Overpass die Straße bei der Gegenprobe anstandslos lieferte.
+PROBE_WARTEN = (5, 20, 60)
+STRASSE_WARTEN = (5, 20)
+
+
+def _overpass_abfrage(query: str, *, url: str = OVERPASS, timeout: int,
+                      warten: tuple[int, ...]) -> dict:
+    """Eine Overpass-Abfrage, notfalls mehrmals — mit wachsender Pause.
+
+    Wiederholt wird bei 429 (Ratenbremse), 5xx (die Instanz ist überlastet und
+    antwortet mit 504) und bei Netz- und Parse-Fehlern (eine abgeschnittene
+    Antwort ist kein JSON). Ein 4xx darunter ist unsere eigene kaputte Abfrage
+    und fliegt sofort — sie wird beim vierten Mal nicht besser.
+
+    Dasselbe Muster wie ``strassen_snapshot._mit_wiederholung``, nur ohne
+    ``SystemExit``: Hier ruft ein Cron-Job, der weiterlaufen soll.
+    """
+    letzte: Exception = RuntimeError("Overpass wurde nie gefragt")
+    for pause in (*warten, None):
+        try:
+            antwort = requests.post(url, data={"data": query}, headers=HEADERS,
+                                    timeout=timeout)
+        except (requests.RequestException, OSError) as fehler:
+            letzte = fehler
+        else:
+            if antwort.status_code == 200:
+                try:
+                    return antwort.json()
+                except ValueError as fehler:
+                    # 200 mit halbem Körper: Overpass bricht unter Last mitten
+                    # im JSON ab. Auch das ist ein Grund, es noch mal zu
+                    # versuchen — und keiner, ihn durchzureichen.
+                    letzte = fehler
+            elif antwort.status_code != 429 and antwort.status_code < 500:
+                # ABSICHTLICH ausserhalb eines `except`: Ein 400 soll den
+                # Aufrufer erreichen, nicht als „letzter Fehler" in die
+                # nächste Runde wandern.
+                antwort.raise_for_status()
+                letzte = requests.HTTPError(f"HTTP {antwort.status_code} ohne Inhalt")
+            else:
+                letzte = requests.HTTPError(f"HTTP {antwort.status_code} von Overpass")
+        if pause is None:
+            break
+        time.sleep(pause)
+    raise letzte
 
 
 def overpass_bereit(url: str = OVERPASS) -> bool:
@@ -72,14 +129,20 @@ def overpass_bereit(url: str = OVERPASS) -> bool:
 
     Gefragt wird der Endpunkt, der auch benutzt wird: ``/api/status`` einiger
     Spiegel antwortete, während ``/api/interpreter`` in den Timeout lief.
+
+    **Und sie fragt mehrmals.** Ein einzelner Versuch war die Kehrseite der
+    Probe: An der öffentlichen Instanz scheitert rund jede zweite Mini-Abfrage
+    mit 429 oder 504 (04.09.2026 gemessen, s. ``PROBE_WARTEN``). Die Probe
+    erklärte damit einen ausgelasteten Dienst zum unerreichbaren, schaltete
+    den Overpass-Weg für den ganzen Lauf ab und alarmierte — obwohl dieselbe
+    Straße im nächsten Anlauf sauber kam. „Nicht erreichbar" heißt hier erst,
+    was nach vier Anläufen über anderthalb Minuten nicht geantwortet hat.
     """
     global _overpass_bereit
     if _overpass_bereit is None:
         try:
-            antwort = requests.post(
-                url, data={"data": "[out:json][timeout:10];out count;"},
-                headers=HEADERS, timeout=15)
-            antwort.raise_for_status()
+            _overpass_abfrage("[out:json][timeout:10];out count;", url=url,
+                              timeout=15, warten=PROBE_WARTEN)
             _overpass_bereit = True
         except Exception as fehler:  # noqa: BLE001 — genau das ist die Auskunft
             _overpass_bereit = False
@@ -128,10 +191,9 @@ def overpass_street(name: str) -> tuple | None:
     q = (f'[out:json][timeout:25];'
          f'way["name"="{name}"]["highway"]({LAT_MIN},{LON_MIN},{LAT_MAX},{LON_MAX});'
          f'out geom;')
-    r = requests.post(OVERPASS, data={"data": q}, headers=HEADERS, timeout=45)
-    r.raise_for_status()
+    daten = _overpass_abfrage(q, timeout=45, warten=STRASSE_WARTEN)
     lines = [[[p["lon"], p["lat"]] for p in el.get("geometry", [])]
-             for el in r.json().get("elements", []) if el.get("geometry")]
+             for el in daten.get("elements", []) if el.get("geometry")]
     lines = [ln for ln in lines if len(ln) >= 2]
     if not lines:
         return None
@@ -174,6 +236,19 @@ def geocode(name: str, kind: str | None = None) -> tuple | None:
     verloren, obwohl sein Oldenburger Teil sauber in Kreyenbrück liegt.
     """
     if _is_street(name, kind):
+        # ERST der Schnappschuss, DANN das Netz. Der wöchentliche Lauf holt
+        # ohnehin alle benannten Wege Oldenburgs in einem Aufruf und lässt die
+        # Datei liegen; wer danach eine einzelne Straße sucht, hat die Antwort
+        # schon auf der Platte. Das tägliche Orts-Geocoding ging bis 09/2026
+        # trotzdem für jede neue Straße wieder ans Netz — und lieferte damit
+        # die Ausfälle, gegen die der Schnappschuss gebaut wurde.
+        aus_datei = _aus_schnappschuss(name)
+        if aus_datei:
+            overpass_ausfaelle["aus_schnappschuss"] += 1
+            return aus_datei
+        # Erst hier ist es ein echter Overpass-Versuch. Was der Schnappschuss
+        # beantwortet hat, darf den Alarm nicht mitzählen: Sonst löst ein
+        # Lauf, der alles richtig gemacht hat, „alle Straßen verloren" aus.
         overpass_ausfaelle["strassen_versucht"] += 1
         if not overpass_bereit():
             # Die Probe hat es schon gemeldet; hier wird nur gezählt, damit die
@@ -200,6 +275,24 @@ def geocode(name: str, kind: str | None = None) -> tuple | None:
                     "Bestand geht über scripts/strassen_snapshot.py.",
                     type(fehler).__name__, fehler, name)
     return nominatim(name)
+
+
+def _aus_schnappschuss(name: str) -> tuple | None:
+    """Die volle Geometrie einer Straße aus dem liegenden Schnappschuss.
+
+    ``None`` heißt „steht nicht drin oder keine Datei da" — dann bleibt der
+    Weg über das Netz. Ein Fehler beim Lesen darf das Geocoding nicht
+    aufhalten, deshalb wird er gemeldet und nicht geworfen.
+    """
+    from scripts.strassen_snapshot import strasse_aus_schnappschuss
+
+    try:
+        return strasse_aus_schnappschuss(name)
+    except Exception as fehler:  # noqa: BLE001 — das Netz ist der Rückfall
+        logging.getLogger(__name__).warning(
+            "Straßen-Schnappschuss nicht auswertbar (%s: %s) — %r geht über das Netz.",
+            type(fehler).__name__, fehler, name)
+        return None
 
 
 def _auf_stadtgebiet(res: tuple) -> tuple | None:
