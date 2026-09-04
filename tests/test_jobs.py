@@ -183,3 +183,72 @@ def test_registrierter_job_hat_auch_run_guarded():
     assert not ohne, (
         f"{ohne} stehen im Register, aber kein Skript ruft run_guarded damit — "
         f"das Panel zeigte sie dauerhaft als „noch kein Lauf erfasst“.")
+def test_kennzahlen_ueberleben_einen_fehlschlag(tmp_path, monkeypatch):
+    """Ein gescheiterter Lauf behält seine Bilanz — sonst fehlt sie genau dann,
+    wenn sie gebraucht wird.
+
+    ``run_guarded`` schrieb bei jeder Exception ``stats = None``. Ein
+    ``weekly_enrich``, das einen von 18 Schritten verliert, hinterließ damit
+    „error" und einen Traceback — welcher Schritt es war, stand nur im Log auf
+    dem Server. ``JobFehler`` trägt die Kennzahlen mit.
+    """
+    from kern.alerts import JobFehler
+
+    monkeypatch.setenv("RATSLOTSE_DB", str(tmp_path / "ratslotse.sqlite"))
+
+    def kaputt():
+        raise JobFehler("ein Schritt hat nicht geliefert",
+                        {"Schritte gesamt": 3, "davon fehlgeschlagen": 1})
+
+    with pytest.raises(JobFehler):
+        run_guarded("weekly_enrich", kaputt)
+
+    store = Store(tmp_path / "ratslotse.sqlite")
+    lauf = store.job_runs("weekly_enrich")[0]
+    store.close()
+    assert lauf["status"] == "error"
+    assert lauf["stats"] == {"Schritte gesamt": 3, "davon fehlgeschlagen": 1}
+    assert "ein Schritt hat nicht geliefert" in lauf["error"]
+
+
+def test_gewoehnlicher_absturz_bleibt_ohne_kennzahlen(tmp_path, monkeypatch):
+    """Die Gegenprobe: Ein Job, der einfach fliegt, hat nichts zu berichten —
+    und darf keine erfundenen Zahlen erzeugen."""
+    monkeypatch.setenv("RATSLOTSE_DB", str(tmp_path / "ratslotse.sqlite"))
+
+    with pytest.raises(ValueError):
+        run_guarded("check_council", lambda: (_ for _ in ()).throw(ValueError("bumm")))
+
+    store = Store(tmp_path / "ratslotse.sqlite")
+    lauf = store.job_runs("check_council")[0]
+    store.close()
+    assert lauf["status"] == "error" and lauf["stats"] is None
+
+
+def test_weekly_enrich_protokolliert_jeden_schritt(monkeypatch):
+    """Die Schritt-Bilanz entsteht im Lauf selbst — 16 der 18 Schritte rufen
+    kein ``run_guarded`` und haben deshalb keine eigene ``job_runs``-Zeile."""
+    import subprocess
+
+    from kern.alerts import SCHRITTE_SCHLUESSEL
+    from scripts import weekly_enrich as we
+
+    monkeypatch.setattr(we, "STEPS", [("Erster", "a.py"), ("Zweiter", "b.py --limit 5")])
+
+    class Ergebnis:
+        def __init__(self, code): self.returncode = code
+
+    monkeypatch.setattr(subprocess, "run",
+                        lambda befehl, **kw: Ergebnis(0 if befehl[1].endswith("a.py") else 1))
+    with pytest.raises(Exception) as fehler:
+        we._guarded_main()
+
+    schritte = fehler.value.kennzahlen[SCHRITTE_SCHLUESSEL]
+    assert [(s["name"], s["status"]) for s in schritte] == [("Erster", "ok"), ("Zweiter", "error")]
+    # Das Argument gehört zum Schritt, nicht zum Namen — es steht mit im
+    # Protokoll, damit „--limit 500" nachvollziehbar bleibt.
+    assert schritte[1]["script"] == "b.py --limit 5"
+    assert all(s["duration_s"] is not None for s in schritte)
+    # Und NUR die Liste: Eine abgeleitete Zahl daneben wäre eine zweite
+    # Darstellung derselben Tatsache — gezählt wird beim Anzeigen.
+    assert set(fehler.value.kennzahlen) == {SCHRITTE_SCHLUESSEL}

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -45,6 +46,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")  # für die Alert-Mail (RESEND_API_KEY, ALERT_EMAIL)
+
+from kern.alerts import SCHRITTE_SCHLUESSEL, JobFehler  # noqa: E402
 
 STEPS: list[tuple[str, str]] = [
     ("Entitäten (NER)", "extract_entities.py"),
@@ -98,12 +101,26 @@ STEPS: list[tuple[str, str]] = [
 ]
 
 
-def main() -> list[str]:
-    """Läuft alle Schritte durch und gibt die Namen der gescheiterten zurück
-    (leere Liste = alles ok, wirkt als Exit-Code weiterhin falsy)."""
-    failed: list[str] = []
+def main() -> list[dict]:
+    """Läuft alle Schritte durch und gibt je Schritt ein Protokoll zurück.
+
+    **Warum je Schritt und nicht nur die Gescheiterten.** Bis 09/2026 gab es
+    hier nur die Namen der Fehlschläge, und in der Cron-Übersicht stand
+    entsprechend eine einzige Zahl („16 Schritte, 0 fehlgeschlagen"). Welcher
+    Schritt zwei Stunden brauchte und welcher stumm nichts tat, sah man nur im
+    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 16 der 18
+    Schritte rufen kein ``run_guarded``, schreiben also auch keine eigene
+    ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
+
+    Ein Eintrag ist ``{"name", "script", "status", "duration_s"}``; ``status``
+    ist ``ok`` oder ``error``. Falsy bei Erfolg ist die Rückgabe damit nicht
+    mehr — ``_guarded_main`` wertet sie aus, und ``__main__`` ruft nur den.
+    """
+    protokoll: list[dict] = []
     for name, script in STEPS:
         print(f"\n=== {name} ({script}) ===", flush=True)
+        start = time.monotonic()
+        status = "ok"
         try:
             # Der Step-String darf Argumente tragen ("rate_interest.py --limit 500").
             parts = script.split()
@@ -111,25 +128,42 @@ def main() -> list[str]:
                 [sys.executable, str(ROOT / "scripts" / parts[0]), *parts[1:]], cwd=str(ROOT)
             )
             if r.returncode != 0:
-                failed.append(name)
+                status = "error"
                 print(f"!! {name} fehlgeschlagen (exit {r.returncode}) — weiter mit dem Rest.", flush=True)
         except Exception as exc:  # noqa: BLE001 — never let one step abort the run
-            failed.append(name)
+            status = "error"
             print(f"!! {name} abgebrochen: {exc!r}", flush=True)
+        protokoll.append({"name": name, "script": script, "status": status,
+                          "duration_s": round(time.monotonic() - start, 1)})
+    failed = [s["name"] for s in protokoll if s["status"] == "error"]
     print(f"\n=== weekly_enrich fertig — {len(STEPS) - len(failed)}/{len(STEPS)} ok"
           + (f", fehlgeschlagen: {', '.join(failed)}" if failed else "") + " ===", flush=True)
-    return failed
+    return protokoll
 
 
 def _guarded_main() -> dict:
     """main() meldet Teil-Fehler über die Rückgabe, nicht per Exception — für
     den Alert-Weg (run_guarded) in eine Exception übersetzen. Bei Erfolg sind
-    die Kennzahlen die Schritt-Bilanz für die Cron-Übersicht."""
-    failed = main()
+    die Kennzahlen die Schritt-Bilanz für die Cron-Übersicht.
+
+    Der Fehlerfall trägt sie seit 09/2026 **mit** (``JobFehler``): Vorher warf
+    dieser Weg ein nacktes ``RuntimeError``, und ``run_guarded`` verwarf die
+    Kennzahlen bei jeder Exception — ausgerechnet am Tag eines Fehlschlags
+    stand in ``job_runs`` also nur „error".
+    """
+    protokoll = main()
+    # NUR die Liste, keine abgeleiteten Zahlen daneben. Bis 09/2026 standen
+    # hier zusätzlich „Schritte gesamt" und „davon fehlgeschlagen" — im Panel
+    # als zwei Chips, direkt über der Zeile „18 Schritte · 1 fehlgeschlagen",
+    # die dasselbe sagt. Zwei Darstellungen einer Zahl können auseinanderlaufen;
+    # die Liste ist die Quelle, das Zählen macht, wer sie anzeigt.
+    kennzahlen = {SCHRITTE_SCHLUESSEL: protokoll}
+    failed = [s["name"] for s in protokoll if s["status"] == "error"]
     if failed:
-        raise RuntimeError(
-            "mindestens ein Teil-Schritt ist fehlgeschlagen (Details im Log): " + ", ".join(failed))
-    return {"Schritte gesamt": len(STEPS), "davon fehlgeschlagen": 0}
+        raise JobFehler(
+            "mindestens ein Teil-Schritt ist fehlgeschlagen (Details im Log): "
+            + ", ".join(failed), kennzahlen)
+    return kennzahlen
 
 
 if __name__ == "__main__":

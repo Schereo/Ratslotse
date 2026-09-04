@@ -60,8 +60,7 @@ def test_keine_kennzahl_bleibt_liegen(tmp_path):
     nach ``check_protocols`` — sonst wiederholt sich der stille Verlust.
     """
     stats = _kennzahlen_eines_leerlaufs(tmp_path)
-    kandidaten = {k for k in stats
-                  if k.startswith("overpass_") or k.startswith("strassen_")}
+    kandidaten = {k for k in stats if k.startswith(("overpass_", "strassen_"))}
     vergessen = kandidaten - STRASSEN_KENNZAHLEN
     assert not vergessen, (
         f"{sorted(vergessen)} misst process(), steht aber in keiner Liste. "
