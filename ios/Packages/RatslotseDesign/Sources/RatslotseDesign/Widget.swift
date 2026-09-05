@@ -62,21 +62,25 @@ public struct RatsWaveEdge: Shape {
 /// heller als die Nachbarn. Besonders, aber nie dunkel im hellen Design
 /// (Tims Regel, s. `RatsColor.board`). Die Kopfleiste zieht darauf etwas
 /// an, damit sie auf dem Tafel-Grund noch als Leiste liest.
-public struct RatsWidget<Content: View>: View {
+public struct RatsWidget<Content: View, Trailing: View>: View {
     private let title: String
     private let accent: RatsWidgetAccent
     private let glyph: RatsGlyph?
     private let note: String?
     private let board: Bool
+    private let trailing: Trailing
     private let content: Content
     @Environment(\.colorScheme) private var colorScheme
 
+    /// `trailing` steht rechts in der Kopfleiste — für ein Menü oder eine
+    /// Pille, die zum Widget gehört (Themen-Karte: „2 neue" und „…").
     public init(
         _ title: String,
         accent: RatsWidgetAccent,
         glyph: RatsGlyph? = nil,
         note: String? = nil,
         board: Bool = false,
+        @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
@@ -84,6 +88,7 @@ public struct RatsWidget<Content: View>: View {
         self.glyph = glyph
         self.note = note
         self.board = board
+        self.trailing = trailing()
         self.content = content()
     }
 
@@ -134,6 +139,7 @@ public struct RatsWidget<Content: View>: View {
                     .foregroundStyle(RatsColor.muted)
                     .lineLimit(1)
             }
+            trailing
         }
         .padding(EdgeInsets(top: 10, leading: 13, bottom: 13, trailing: 13))
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,8 +151,20 @@ public struct RatsWidget<Content: View>: View {
                 .offset(y: 1)
                 .accessibilityHidden(true)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+public extension RatsWidget where Trailing == EmptyView {
+    init(
+        _ title: String,
+        accent: RatsWidgetAccent,
+        glyph: RatsGlyph? = nil,
+        note: String? = nil,
+        board: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(title, accent: accent, glyph: glyph, note: note, board: board, trailing: { EmptyView() }, content: content)
     }
 }
 

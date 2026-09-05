@@ -722,6 +722,7 @@ private struct WeekPreviewCard: View {
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: selectedDay)
     }
 
     private var wideLayout: Bool { horizontalSizeClass == .regular }

@@ -167,5 +167,7 @@ public struct RatsSegmentedControl<Option: Hashable & Identifiable>: View {
         .background(RatsColor.separator)
         .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        // Der Wechsel bestätigt sich in der Hand, wie beim System-Picker.
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }
