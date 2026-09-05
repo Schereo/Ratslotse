@@ -105,6 +105,30 @@ CREATE TABLE IF NOT EXISTS civic_problem_projection_baselines (
     baseline_last_observed_at     TEXT,
     FOREIGN KEY (problem_id) REFERENCES civic_problems(id) ON DELETE RESTRICT
 );
+CREATE TRIGGER IF NOT EXISTS trg_civic_problem_projection_baselines_valid_insert
+BEFORE INSERT ON civic_problem_projection_baselines
+WHEN NOT EXISTS (
+    SELECT 1
+    FROM civic_problems AS problem
+    WHERE problem.id = NEW.problem_id
+      AND (
+          (problem.published_at IS NOT NULL
+           AND problem.independent_reports >= 1
+           AND problem.status != 'apparently_resolved'
+           AND NEW.baseline_independent_reports = problem.independent_reports
+           AND NEW.baseline_first_observed_at IS problem.first_observed_at
+           AND NEW.baseline_last_observed_at IS problem.last_observed_at)
+          OR
+          (problem.published_at IS NULL
+           AND problem.independent_reports = 0
+           AND NEW.baseline_independent_reports = 0
+           AND NEW.baseline_first_observed_at IS NULL
+           AND NEW.baseline_last_observed_at IS NULL)
+      )
+)
+BEGIN
+    SELECT RAISE(ABORT, 'projection baseline must snapshot its target');
+END;
 CREATE TRIGGER IF NOT EXISTS trg_civic_problem_projection_baselines_no_update
 BEFORE UPDATE ON civic_problem_projection_baselines
 BEGIN

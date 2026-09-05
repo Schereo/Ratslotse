@@ -800,6 +800,14 @@ def test_projection_database_evidence_is_immutable(tmp_path):
                      0, '2026-09-01', '2026-09-01', NULL, '2026-09-05')"""
     )
     fake_problem_id = int(fake.lastrowid)
+    with pytest.raises(sqlite3.IntegrityError, match="must snapshot its target"):
+        connection.execute(
+            """INSERT INTO civic_problem_projection_baselines (
+                   problem_id, baseline_independent_reports,
+                   baseline_first_observed_at, baseline_last_observed_at
+               ) VALUES (?, 99, '1900-01-01', '2999-01-01')""",
+            (fake_problem_id,),
+        )
     connection.execute(
         """INSERT INTO civic_problem_projection_baselines (
                problem_id, baseline_independent_reports,

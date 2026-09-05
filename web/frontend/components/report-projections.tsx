@@ -319,7 +319,7 @@ function ProjectionDetail({
             ))}
           </div>
         </section>
-        <p className="rounded-xl border border-signal/30 bg-signal/5 p-4 text-sm leading-relaxed">
+        <p className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm leading-relaxed">
           Private Texte werden nicht automatisch veröffentlicht. Erst deine bestätigte Zuordnung macht ausschließlich Titel, Zusammenfassung und öffentliche Metadaten sichtbar. Das ist keine Annahme, Zuordnung oder Bearbeitung durch die Stadt und keine Aussage über Dringlichkeit oder Lösung.
         </p>
 
@@ -368,7 +368,7 @@ function ProjectionDetail({
           <section className="space-y-4" aria-labelledby={`new-heading-${report.id}`}>
             <div>
               <h3 id={`new-heading-${report.id}`} className="font-display text-lg font-bold">Neue stadtweite Projektion</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Formuliere eigenständig. Diese Angaben werden öffentlich.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Formuliere eigenständig auf Deutsch, sachlich und neutral. Diese Angaben werden öffentlich.</p>
             </div>
             <div>
               <Label htmlFor={`projection-title-${report.id}`}>Öffentlicher Titel</Label>

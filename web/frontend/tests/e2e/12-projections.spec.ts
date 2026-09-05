@@ -84,6 +84,7 @@ test.describe("Human-confirmed public projection", () => {
     await expect(page.getByText(/Koordinaten/)).toHaveCount(0);
     await expect(page.getByText(/keine Annahme, Zuordnung oder Bearbeitung durch die Stadt.*keine Aussage über Dringlichkeit oder Lösung/)).toBeVisible();
     await page.getByRole("button", { name: "Neue stadtweite Projektion" }).click();
+    await expect(page.getByText("Formuliere eigenständig auf Deutsch, sachlich und neutral. Diese Angaben werden öffentlich.")).toBeVisible();
     await page.getByLabel("Öffentlicher Titel").fill("Fiktive öffentliche Sitzmöglichkeiten");
     await page.getByLabel("Öffentliche Zusammenfassung").fill("Eine bewusst öffentliche, fiktive Zusammenfassung ohne private Rohdaten.");
     await page.getByRole("button", { name: "Veröffentlichung abschließend prüfen" }).click();

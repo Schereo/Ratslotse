@@ -116,23 +116,60 @@ def _approved_report(database, *, reporter_id: int, reviewer_id: int):
     return submitted
 
 
-def test_disabled_projection_dependencies_do_not_provision_storage(tmp_path, monkeypatch):
-    from fastapi import HTTPException
+def test_disabled_owner_http_does_not_provision_projection_storage(tmp_path, monkeypatch):
+    import sqlite3
 
     database = tmp_path / "disabled.sqlite"
+    _, owner_headers = _account(database, "fiktive-deaktivierte-projektion@test.de", role="user")
+    private = PrivateReportStore(database)
+    private.close()
     settings = get_settings()
     monkeypatch.setattr(settings, "ratslotse_buergerportal", False)
     monkeypatch.setattr(settings, "ratslotse_db", str(database))
 
-    owner_dependency = deps.get_owner_projection_store()
-    assert next(owner_dependency) is None
-    with pytest.raises(StopIteration):
-        next(owner_dependency)
-    with pytest.raises(HTTPException) as blocked:
-        next(deps.get_projection_store())
+    def account_store():
+        store = Store(database)
+        try:
+            yield store
+        finally:
+            store.close()
 
-    assert blocked.value.status_code == 404
-    assert not database.exists()
+    def private_store():
+        store = PrivateReportStore(database)
+        try:
+            yield store
+        finally:
+            store.close()
+
+    app.dependency_overrides[deps.get_store] = account_store
+    app.dependency_overrides[deps.get_private_report_store] = private_store
+    try:
+        with TestClient(app) as client:
+            owner_response = client.get(
+                "/api/meldungen?limit=20&offset=0",
+                headers=owner_headers,
+            )
+            operator_response = client.get(
+                "/api/moderation/projektionen",
+                headers=owner_headers,
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert owner_response.status_code == 200
+    assert owner_response.json()["reports"] == []
+    assert operator_response.status_code == 404
+    connection = sqlite3.connect(database)
+    projection_tables = connection.execute(
+        """SELECT name FROM sqlite_master
+           WHERE type = 'table' AND name IN (
+               'civic_projection_schema_migrations',
+               'civic_problem_projection_baselines',
+               'civic_report_problem_assignments'
+           )"""
+    ).fetchall()
+    connection.close()
+    assert projection_tables == []
 
 
 def test_projection_http_entrypoint_is_hidden_when_feature_gate_is_closed(
