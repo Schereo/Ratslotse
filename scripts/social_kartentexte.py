@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kartentexte für Social Media schreiben — ein Satz je Tagesordnungspunkt.
+"""Kartentexte für Social Media schreiben — Überschrift und Satz je Punkt.
 
 Der dritte Text neben Kurzfassung und Tragweite-Grund, und der einzige, der
 die **ganze Vorlage samt Anlagen** sieht. Warum das nötig ist, steht in
@@ -69,6 +69,7 @@ def probe(db_path: Path, count: int, tage: int, mindest_wichtig: int) -> None:
                   f"Tragweite {punkt.get('impact')}")
             print(f"TITEL  : {(punkt['title'] or '')[:150]}")
             print(f"QUELLE : {source}, {len(ktx)} Zeichen, {len(anlagen)} Anlagen")
+            print(f"KOPF   : {result[2] if result and result[2] else '— (keine Überschrift)'}")
             print(f"TEXT   : {result[0] if result else '— (kein Text)'}")
     finally:
         store.close()

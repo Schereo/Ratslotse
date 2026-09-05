@@ -246,7 +246,20 @@ class SitzungenMixin:
             wer = " ".join((m.group("wer") or "").split()) or None
             title = (title[:m.start()] + title[m.end():]).strip()
         kurz = cls._TITEL_ANHANG_RE.sub("", title or "").strip(" -–;,")
+        # „Änderungsantrag der CDU-Fraktion vom 10.06.2026": Der Absender steht
+        # nicht in einer Klammer, sondern IST der Titel. Auch hier gehört er
+        # als eigenes Merkmal daneben; das Datum erklärt auf keiner Karte etwas.
+        if wer is None and (m2 := cls._ANTRAG_IM_TITEL_RE.match(kurz)):
+            wer = " ".join(m2.group("wer").split())
+            kurz = f"{m2.group('art')} der {wer}"
         return wer, kurz or (title or "")
+
+    @classmethod
+    def _ist_aenderungsantrag(cls, title: str | None) -> bool:
+        """„Änderungsantrag der CDU-Fraktion vom 10.06.2026" — ein Antrag zu
+        einem anderen Antrag. Er nennt den Gegenstand nie selbst; wozu er
+        gehört, sagt allein seine Einrückung unter dem Hauptantrag."""
+        return bool(cls._AENDERUNGSANTRAG_RE.match(title or ""))
 
     def _punkte_bewerten(self, punkte: list[dict]) -> None:
         """Wichtigkeit je Tagesordnungspunkt — deterministisch, ohne Modell.
@@ -413,7 +426,7 @@ class SitzungenMixin:
         # Es lag bis 19.08.26 ungenutzt in der Datenbank.
         rohe = self._conn.execute(
             f"SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, s.summary, "
-            f"       v.kind, so.text AS social_text "
+            f"       v.kind, so.text AS social_text, so.headline AS social_headline "
             f"FROM council_agenda_items a "
             f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
             f"LEFT JOIN agenda_item_social so ON so.ksinr = a.ksinr AND so.item_number = a.item_number "
@@ -443,12 +456,25 @@ class SitzungenMixin:
         # dieselbe Sache ist: ein tragendes Wort der Überschrift steht in
         # JEDEM Unterpunkt („Meerweg", „Brokhausen") — bei einer Rubrik in
         # keinem.
+        #
+        # Ein ÄNDERUNGSANTRAG nennt den Gegenstand nicht — er heißt
+        # „Änderungsantrag der CDU-Fraktion vom 10.06.2026" und hängt unter
+        # dem Antrag, den er ändert. Das Ratsinformationssystem sagt mit der
+        # Einrückung schon, wozu er gehört; die Wortprobe kann er nur
+        # verlieren. Deshalb bleibt er bei der Probe außen vor und wird
+        # danach mitgebündelt: Zwei Anträge zur Baumschutzsatzung (SPD/BSW,
+        # dazu der Änderungsantrag der CDU) sind EIN Thema mit zwei
+        # Absendern, nicht zwei Themen (Tims Befund 05.09.26 — auf der Karte
+        # stand „Änderungsantrag der CDU-Fraktion vom 10.06.2026", und
+        # niemand konnte lesen, worum es ging).
         kinder_worte: dict[tuple, list[set]] = {}
         for r in rohe:
             eltern = eltern_von.get((r["ksinr"], r["item_number"]))
-            if eltern:
-                kinder_worte.setdefault((r["ksinr"], eltern), []).append(
-                    self._titel_worte(r["title"]))
+            if not eltern:
+                continue
+            liste = kinder_worte.setdefault((r["ksinr"], eltern), [])
+            if not self._ist_aenderungsantrag(r["title"]):
+                liste.append(self._titel_worte(r["title"]))
         #
         # Zwei Dinge, die auseinandergehalten werden müssen: Eine KOPFZEILE
         # trägt selbst keinen Inhalt (weder Vorlage noch Gegenstand) und darf
@@ -462,8 +488,16 @@ class SitzungenMixin:
             if schl not in kopfzeile:
                 continue
             eigene = self._titel_worte(r["title"])
+            # Ohne ein einziges Kind, das den Gegenstand nennt, gibt es
+            # nichts zu belegen — dann ist es keine Gruppe.
+            if not kinder_worte[schl]:
+                continue
             if any(all(w in kind for kind in kinder_worte[schl]) for w in eigene):
-                heading[schl] = (r["title"] or "").strip()
+                # Der Gruppentitel ist der Gegenstand, nicht der Absender:
+                # „Änderungen der Baumschutzsatzung", nicht „… (Fraktionen
+                # BSW und SPD vom 28.05.2026)". Wer beantragt hat, steht in
+                # group_applicants — und dort für ALLE Absender der Gruppe.
+                heading[schl] = self._titel_zerlegen((r["title"] or "").strip())[1]
 
         kandidaten = []
         for r in rohe:
@@ -483,6 +517,9 @@ class SitzungenMixin:
                 # Vorlage und Anlagen und wertet nicht. Fehlt er, bleibt es bei
                 # der Kurzfassung; der Bot behandelt beides gleich.
                 "social_text": (r["social_text"] or "").strip() or None,
+                # Die Karten-Überschrift aus demselben Lauf: sagt, worum es
+                # geht, wo der Titel nur sagt, wer wann eingereicht hat.
+                "social_headline": (r["social_headline"] or "").strip() or None,
                 # Ein kurzfristig eingebrachter Antrag (council/dringlichkeit.py).
                 # Die Karte sagt das dazu, statt ihn wie einen Punkt der
                 # amtlichen Tagesordnung zu zeigen — er steht in keiner.
@@ -518,6 +555,19 @@ class SitzungenMixin:
             k["behandlung"] = (heutige or {}).get("result")
             k["vorgeschichte"] = sum(1 for b in series if (b["date"] or "9999") < k["session_date"])
             k["applicants"], k["titel_kurz"] = self._titel_zerlegen(k["title"])
+
+        # Wer hat in einer Gruppe alles etwas eingereicht? In Tagesordnungs-
+        # Reihenfolge, jeder Absender einmal. Die Karte macht daraus „2 Anträge
+        # · Fraktionen BSW und SPD · CDU-Fraktion" — und das Feld steht auch am
+        # Einzelpunkt (dann höchstens ein Eintrag), damit der Leser nicht zwei
+        # Wege braucht.
+        antragsteller_je_gruppe: dict[tuple, list[str]] = {}
+        for k in kandidaten:
+            liste = antragsteller_je_gruppe.setdefault((k["ksinr"], k["gruppe_nr"]), [])
+            if k["applicants"] and k["applicants"] not in liste:
+                liste.append(k["applicants"])
+        for k in kandidaten:
+            k["group_applicants"] = list(antragsteller_je_gruppe[(k["ksinr"], k["gruppe_nr"])])
 
         # Eigene Themen-Treffer anheften. Der Abgleich läuft über (ksinr,
         # item_number) — dieselbe Kennung, die auch die Benachrichtigungen
@@ -672,6 +722,8 @@ class SitzungenMixin:
                 # stand deshalb auf der Karte — und darunter nichts. Wer hier
                 # ein Feld ergänzt, muss es an BEIDEN Stellen tun.
                 "summary": k["summary"], "social_text": k.get("social_text"),
+                "social_headline": k.get("social_headline"),
+                "group_applicants": k.get("group_applicants", []),
                 "dringlich": k.get("dringlich", False),
                 "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
                 "template_number": k["template_number"], "kvonr": k["kvonr"],
@@ -822,7 +874,10 @@ class SitzungenMixin:
                  LEFT JOIN council_templates v ON v.kvonr = a.kvonr
                  LEFT JOIN agenda_item_social so
                         ON so.ksinr = a.ksinr AND so.item_number = a.item_number
-                 WHERE a.is_public = 1 AND so.text IS NULL
+                 -- Offen ist auch, was schon einen Text, aber noch keine
+                 -- Überschrift hat (Zeilen von vor 09/2026): Beides entsteht
+                 -- in EINEM Aufruf, der Text wird dabei neu geschrieben.
+                 WHERE a.is_public = 1 AND (so.text IS NULL OR so.headline IS NULL)
                    AND COALESCE(i.impact, 0) >= ?
                    AND cs.session_date >= ? AND cs.session_date <= ?
                    AND a.title IS NOT NULL AND length(a.title) >= 8
