@@ -3119,10 +3119,11 @@ private struct SessionDetailView: View {
         }
         .task {
             // Solange die Übertragung einen frischen Stand liefert, holt die
-            // Tagesordnung ihn im Minutentakt nach — der laufende Punkt
-            // wandert dann von selbst.
+            // Tagesordnung ihn alle 20 s nach — der laufende Punkt wandert
+            // dann von selbst.
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
+                let live = detail?.liveState.map { LiveStateText.isFresh($0, now: .now) } ?? false
+                try? await Task.sleep(for: .seconds(live ? 20 : 60))
                 now = .now
                 if let state = detail?.liveState, LiveStateText.isFresh(state, now: now) { await load() }
             }
@@ -3238,7 +3239,7 @@ private struct SessionDetailView: View {
             if let liveState, let topLabel = LiveStateText.topLabel(liveState) {
                 // Über der Liste EINMAL, woher die Marke stammt — ehrlich
                 // mit Verzug, wie im Web (Ehrlichkeit als Designprinzip).
-                Text("Live: \(topLabel) läuft gerade — aus der Übertragung, Stand \(LiveStateText.agoText(liveState, now: now)), rund 2 Min. Verzug.")
+                Text("Live: \(topLabel) läuft gerade — aus der Übertragung, Stand \(LiveStateText.agoText(liveState, now: now)), unter einer Minute Verzug.")
                     .font(RatsFont.body(11))
                     .foregroundStyle(RatsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true)

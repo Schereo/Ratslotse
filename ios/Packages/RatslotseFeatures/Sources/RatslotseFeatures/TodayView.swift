@@ -78,10 +78,11 @@ struct TodayView: View {
         }
         .task {
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
+                // Der Übertragungsstand wechselt alle 30 Sekunden — solange
+                // eine Sitzung läuft, holt die Karte ihn alle 20 s nach,
+                // sonst tickt nur die Uhr im Minutentakt.
+                try? await Task.sleep(for: .seconds(liveSession == nil ? 60 : 20))
                 now = .now
-                // Der Übertragungsstand wechselt alle zwei Minuten — solange
-                // eine Sitzung läuft, holt die Karte ihn im Minutentakt nach.
                 if liveSession != nil { await refreshLiveSessions() }
             }
         }
@@ -463,7 +464,7 @@ private struct LiveCouncilCard: View {
                     .foregroundStyle(RatsColor.bodyText)
                 if let stand, let topLabel = LiveStateText.topLabel(stand) {
                     // Der Stand aus der Übertragung — ehrlich beschriftet: Er
-                    // hinkt dem Saal rund zwei Minuten hinterher (Stück +
+                    // hinkt dem Saal knapp eine Minute hinterher (Stück +
                     // Transkription + Verfolgung, s. council/livetracker.py).
                     Divider().overlay(RatsColor.separator).padding(.vertical, 3)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -481,7 +482,7 @@ private struct LiveCouncilCard: View {
                             .font(RatsFont.body(13))
                             .foregroundStyle(RatsColor.bodyText)
                     }
-                    Text("Aus der Live-Übertragung, Stand \(LiveStateText.agoText(stand, now: now)) — rund 2 Min. Verzug.")
+                    Text("Aus der Live-Übertragung, Stand \(LiveStateText.agoText(stand, now: now)) — unter einer Minute Verzug.")
                         .font(RatsFont.body(10))
                         .foregroundStyle(RatsColor.secondary)
                         .lineSpacing(2)

@@ -180,11 +180,11 @@ class WeekPreviewItem(TypedDict):
 
 class LiveState(TypedDict):
     """Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript
-    des O1-Streams (``council/livetracker.py``), je zwei Minuten neu.
+    des O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.
 
     ``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);
     der Client rechnet daraus „vor N Min." und sagt dazu, dass es aus der
-    Übertragung stammt — mit rund 2,5 Minuten Verzug. ``block_start`` ist
+    Übertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist
     gesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind
     (Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8". Nach der
     Schlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.

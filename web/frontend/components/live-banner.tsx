@@ -29,7 +29,7 @@ type Session = {
  * Startzeit erreicht, Nachfolgerin noch nicht dran. Beim Stadtrat kommt seit
  * 09/2026 der Stand aus der Übertragung dazu (`live_state`, s. `lib/live`):
  * welcher TOP gerade läuft und wer spricht — ehrlich beschriftet als
- * Übertragungsstand mit Verzug, denn er hinkt dem Saal rund 2,5 Minuten
+ * Übertragungsstand mit Verzug, denn er hinkt dem Saal knapp eine Minute
  * hinterher. Der O1-Stream-Knopf erscheint ausschließlich beim Stadtrat
  * (einziges übertragenes Gremium).
  *
@@ -48,10 +48,10 @@ export function LiveBanner() {
   const { data } = useQuery({
     queryKey: ["upcoming-sessions"],
     queryFn: () => api.get<{ sessions: Session[] }>("/council/sessions?scope=upcoming&limit=6"),
-    // Der Übertragungsstand wechselt alle zwei Minuten — die Karte holt ihn
-    // im Minutentakt nach, solange sie steht (sonst zeigte sie den TOP vom
-    // Seitenaufruf, bis jemand neu lädt).
-    refetchInterval: 60_000,
+    // Der Übertragungsstand wechselt alle 30 Sekunden — die Karte holt ihn
+    // alle 20 s nach, solange sie steht (sonst zeigte sie den TOP vom
+    // Seitenaufruf, bis jemand neu lädt). Billig: nur an Sitzungstagen.
+    refetchInterval: (query) => (currentSessionToday(query.state.data?.sessions) ? 20_000 : 60_000),
   });
   const live = currentSessionToday(data?.sessions, now);
   if (!live) return null;
@@ -113,7 +113,7 @@ export function LiveBanner() {
               <p className="mt-0.5 text-sm text-foreground">{liveSpeakerText(stand)}</p>
             )}
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Aus der Live-Übertragung, Stand {liveAgoText(stand.as_of, now)} — rund 2 Min. Verzug.
+              Aus der Live-Übertragung, Stand {liveAgoText(stand.as_of, now)} — unter einer Minute Verzug.
             </p>
           </div>
         ) : state?.finished ? (

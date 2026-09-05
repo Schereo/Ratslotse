@@ -1,7 +1,7 @@
 """Live-Verfolgung der Ratssitzung: Welcher TOP läuft gerade, wer spricht?
 
 Läuft im Mitschnitt-Job (``scripts/record_council_livestream.py``) je
-fertigem Audio-Stück: Das Transkript der letzten zwei Minuten geht zusammen
+fertigem Audio-Stück: Das Transkript des Stücks (plus 30 s Überlappung) geht zusammen
 mit der Tagesordnung, dem Sprecher-Verzeichnis und dem letzten Stand an ein
 schnelles Modell, das antwortet, welcher Punkt am Ende des Fensters läuft,
 in welcher Phase, und wer das Wort hat. Das Ergebnis steht in
@@ -9,12 +9,17 @@ in welcher Phase, und wer das Wort hat. Das Ergebnis steht in
 Web und App liest sie.
 
 Gemessen am 05.09.2026 gegen die Aufzeichnung der Ratssitzung vom 31.08.
-(3 h 49 min, 2-Minuten-Fenster, Gemini 2.5 Flash für beides):
+(3 h 49 min, Gemini 2.5 Flash für beides), mit 30-s- und 120-s-Stücken:
 
-- Kosten: Transkription 0,47 $ je Sitzung, Verfolgung 0,11 $ — zusammen
-  unter 0,70 $.
-- Jeder TOP mit Aussprache (länger als zwei Minuten) wurde richtig
-  verfolgt, auch die Umnummerierung eines Dringlichkeitsantrags.
+- Kosten je Sitzung: 30-s-Stücke 0,58 $ Transkription + 0,47 $ Verfolgung
+  (459 Aufrufe); 120-s-Stücke 0,47 $ + 0,14 $.
+- Jeder TOP mit Aussprache wurde richtig verfolgt, auch die Umnummerierung
+  eines Dringlichkeitsantrags; zwischen zwei Abstimmungen stimmte die
+  Anzeige bei beiden Stücklängen in denselben Minuten (52 % bzw. 50 % —
+  der Rest sind Strecken, in denen die Abstimmungs-Zeitmarken als
+  Wahrheit taugen, nicht die Anzeige: Punkte ohne Abstimmung, Blöcke).
+- Der neue Punkt ist mit 30-s-Stücken im Median 40 s nach seinem Aufruf
+  sichtbar (20–55 s), mit 120-s-Stücken bis zu 125 s.
 - Die Grenze ist die Zeitauflösung, nicht die Erkennung: Formalien, die im
   Block in einer Minute durchlaufen (vier Veränderungssperren in 50 s),
   erscheinen nicht einzeln. Dafür gibt es ``block_start`` — die Karte sagt
@@ -23,12 +28,14 @@ Gemessen am 05.09.2026 gegen die Aufzeichnung der Ratssitzung vom 31.08.
   Fälle falsch. Mit der Anwesenheitsliste der vorigen Ratssitzung
   (``CouncilStore.council_roster_before``) und unscharfem Nachnamen-
   Abgleich (die Erkennung verschreibt: Bark → Baak, Pichotta → Piechotta) stand in
-  77 von 107 Fenstern Name und Fraktion. Die Sitzungsleitung kündigt fast
+  355 von 456 Stücken Name und Fraktion (31 verschiedene Sprecher). Die
+  Sitzungsleitung kündigt fast
   jede Rednerin an („Herr Ellberg, dann Herr Paul") — daraus, nicht aus
   der Stimme.
 
-Der Verzug gegenüber dem Saal ist Stücklänge plus Transkription plus
-Verfolgung, mit 2-Minuten-Stücken rund 2,5 Minuten. ``as_of`` trägt den
+Der Verzug gegenüber dem Saal ist Stücklänge plus Transkription (~2 s je
+30-s-Stück) plus Verfolgung (~1,5 s), dazu die Latenz des HLS-Streams
+selbst — zusammen unter einer Minute. ``as_of`` trägt den
 Audio-Stand, den eine Zeile abbildet; die Clients rechnen daraus „vor
 N Min." mit ihrer eigenen Uhr und sagen ehrlich dazu, woher es kommt.
 """

@@ -124,9 +124,9 @@ export function currentSessionToday<T extends { session_date: string } & LiveSes
 //
 // Seit 09/2026 weiß der Server MEHR als die Kalenderdaten: Der Mitschnitt-Job
 // verfolgt die Ratssitzung im O1-Stream (`council/livetracker.py`) und schreibt
-// je zwei Minuten, welcher TOP läuft und wer spricht. Das kommt als
-// `live_state` an der heutigen Ratssitzung. Der Stand hinkt dem Saal rund
-// 2,5 Minuten hinterher (Stück + Transkription + Verfolgung) — die Karte sagt
+// alle 30 Sekunden, welcher TOP läuft und wer spricht. Das kommt als
+// `live_state` an der heutigen Ratssitzung. Der Stand hinkt dem Saal unter
+// einer Minute hinterher (Stück + Transkription + Verfolgung) — die Karte sagt
 // das dazu, mit „vor N Min." aus `as_of` und der Uhr der Leserin.
 
 import type { components } from "@/lib/api-schema";

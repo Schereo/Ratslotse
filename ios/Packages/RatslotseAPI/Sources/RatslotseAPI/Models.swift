@@ -651,11 +651,11 @@ public struct FollowPage: Codable, Sendable {
 }
 
 /// What is happening in the council chamber RIGHT NOW — from the transcript
-/// of the O1 livestream (`council/livetracker.py`), rewritten every two
-/// minutes while the recording job runs. Only today's council session
+/// of the O1 livestream (`council/livetracker.py`), rewritten every 30
+/// seconds while the recording job runs. Only today's council session
 /// carries one. `asOf` is the audio position the row reflects (ISO 8601 with
 /// offset); the card derives "vor N Min." from it and says where it comes
-/// from — it trails the room by roughly 2.5 minutes.
+/// from — it trails the room by under a minute.
 public struct LiveState: Codable, Sendable, Hashable {
     /// Running item without the Ö/N prefix ("9.3"), nil before the first call.
     public let itemNumber: String?

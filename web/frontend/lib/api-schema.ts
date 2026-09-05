@@ -6845,11 +6845,11 @@ export interface components {
         /**
          * LiveState
          * @description Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript
-         *     des O1-Streams (``council/livetracker.py``), je zwei Minuten neu.
+         *     des O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.
          *
          *     ``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);
          *     der Client rechnet daraus „vor N Min." und sagt dazu, dass es aus der
-         *     Übertragung stammt — mit rund 2,5 Minuten Verzug. ``block_start`` ist
+         *     Übertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist
          *     gesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind
          *     (Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8". Nach der
          *     Schlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.
@@ -14133,4 +14133,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8778f370282bc3400912e294cddd9e2b019143b3751545b1d4d3965a3e7a9bfd
+// vertrag-sha256: fef67a26d15f06c6d0df11f08bcd76320f81b30cb50a1e4228fd368f0672341b

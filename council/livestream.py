@@ -58,9 +58,12 @@ STT_MODEL = os.environ.get("COUNCIL_STT_MODEL", "google/gemini-2.5-flash")
 #: Abstimmungsergebnisse am Abend, nicht für „welcher TOP läuft gerade":
 #: Die Live-Verfolgung (``council/livetracker.py``) sieht die Sitzung erst,
 #: wenn ein Stück fertig ist, ihr Verzug ist also mindestens die Stücklänge.
-#: Mit zwei Minuten liegt er bei ~2,5 Minuten (Stück + Transkription +
-#: Tracker); die Transkription kostet je Audio-Minute dasselbe.
-CHUNK_SECONDS = int(os.environ.get("COUNCIL_CHUNK_SECONDS", "120"))
+#: Mit 30 Sekunden liegt er bei ~35 s (Stück + ~2 s Transkription + ~1,5 s
+#: Tracker) — gemessen 05.09.2026 an der Sitzung vom 31.08.: kürzere Stücke
+#: erkennen nicht schlechter, nur MEHR Sprecherwechsel (90 statt 55), und
+#: die Transkription kostet je Audio-Minute dasselbe. Der Tracker wird
+#: viermal öfter gerufen (~0,50 $ statt 0,14 $ je Sitzung).
+CHUNK_SECONDS = int(os.environ.get("COUNCIL_CHUNK_SECONDS", "30"))
 #: Längste gemessene Ratssitzung (01.06.2026) lief 5 h — mit Luft.
 MAX_HOURS = float(os.environ.get("COUNCIL_RECORD_MAX_HOURS", "6"))
 
