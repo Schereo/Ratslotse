@@ -7,7 +7,7 @@ import { ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
-import { AdminUserDetail, AdminGrowth, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
+import { AdminUserDetail, AdminGrowth, AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
 // Aus dem API-Vertrag statt von Hand: Diese drei Formen stehen im Backend
 // vollständig, ein umbenanntes Feld bricht damit hier den Build.
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
@@ -26,13 +26,13 @@ type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
-import { Badge, Button, Card, ChartSkeleton, ConfirmDialog, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
+import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
-type Tab = "stats" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
+type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -53,6 +53,7 @@ export default function AdminPage() {
       <div className="scrollbar-none mt-4 flex gap-1 overflow-x-auto border-b border-border [-webkit-overflow-scrolling:touch]">
         {([
           ["stats", "Statistik"],
+          ["fehler", "Fehler"],
           ["feedback", "Feedback"],
           ["llm", "LLM-Kosten"],
           ["users", "Web-Nutzer*innen"],
@@ -73,6 +74,7 @@ export default function AdminPage() {
       </div>
       <div className="mt-6">
         {tab === "stats" && <StatsTab />}
+        {tab === "fehler" && <FehlerTab />}
         {tab === "feedback" && <FeedbackTab />}
         {tab === "llm" && <LlmUsageTab />}
         {tab === "users" && <UsersTab currentUserId={user.id} />}
@@ -531,6 +533,215 @@ const FEEDBACK_KIND: Record<string, { label: string; cls: string }> = {
 /** Eingegangenes Nutzer-Feedback. Offene Einträge stehen optisch vorn und
  *  treiben das Zeichen an der Admin-Navigation; „erledigt" ist umkehrbar,
  *  damit ein Fehlklick nichts kostet. */
+/** Ein Balkenverlauf der letzten Tage — reines SVG, keine Bibliothek.
+ *
+ *  Die eine Frage, die man an den Verlauf stellt: seit wann, und wird es mehr
+ *  oder weniger? Dafür braucht es keine Achsen und keine Beschriftung, nur
+ *  Höhen im Verhältnis zum größten Tag.
+ */
+function Verlauf({ tage }: { tage: { tag: string; n: number }[] }) {
+  if (!tage.length) return null;
+  const max = Math.max(...tage.map((t) => t.n), 1);
+  const breite = 4;
+  const luecke = 2;
+  return (
+    <svg
+      role="img"
+      aria-label={`Verlauf über ${tage.length} Tage, am stärksten ${max} an einem Tag`}
+      width={tage.length * (breite + luecke)}
+      height={28}
+      className="shrink-0 overflow-visible"
+    >
+      {tage.map((t, i) => {
+        const h = Math.max(2, Math.round((t.n / max) * 26));
+        return (
+          <rect
+            key={t.tag}
+            x={i * (breite + luecke)}
+            y={28 - h}
+            width={breite}
+            height={h}
+            rx={1}
+            className="fill-primary/60"
+          >
+            <title>{`${t.tag}: ${t.n}`}</title>
+          </rect>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** Die Fehlerarten des Web-Backends und des Browsers — das Gegenstück zu den
+ *  Cron-Jobs.
+ *
+ *  Eine Zeile je FEHLERART, nicht je Vorkommen: Gleiche Fehler fallen über
+ *  ihren Fingerabdruck zusammen (`kern/fehler.py`), `count` sagt wie oft. Ein
+ *  Ausfall füllt die Liste damit nicht zu.
+ *
+ *  Abhaken heißt „angesehen und behandelt". Taucht der Fehler danach wieder
+ *  auf, setzt der Sammler den Haken selbst zurück und meldet erneut.
+ */
+function FehlerTab() {
+  const qc = useQueryClient();
+  const [nurOffen, setNurOffen] = useState(true);
+  const [offen, setOffen] = useState<number | null>(null);
+
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin-fehler", nurOffen],
+    queryFn: () => api.get<AdminRequestFehler[]>(`/admin/errors?nur_offen=${nurOffen}`),
+  });
+
+  const haken = useMutation({
+    mutationFn: ({ id, ab }: { id: number; ab: boolean }) =>
+      api.post(`/admin/errors/${id}/resolve?abgehakt=${ab}`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-fehler"] });
+      qc.invalidateQueries({ queryKey: ["admin-fehler-offen"] });
+    },
+    onError: () => toast.error("Konnte nicht gespeichert werden."),
+  });
+
+  if (isLoading) return <CardListSkeleton rows={3} />;
+  if (isError || !data) {
+    return <ErrorState title="Die Fehlerliste kam nicht durch"
+      onRetry={() => void refetch()} busy={isFetching} />;
+  }
+
+  // Die Kennzahlen werden GERECHNET, nicht vom Server geliefert: Sie sind
+  // Aussagen über genau die Liste, die gerade dasteht (offen oder alle).
+  const heute = new Date().toISOString().slice(0, 10);
+  const vorkommen = data.reduce((n, f) => n + f.count, 0);
+  const heuteN = data.reduce(
+    (n, f) => n + (f.daily.find((t) => t.tag === heute)?.n ?? 0), 0);
+  const ausDemBrowser = data.filter((f) => f.quelle === "browser").length;
+  const haeufigste = [...data].sort((a, b) => b.count - a.count)[0];
+
+  return (
+    // `@container`: Die Kennzahlen richten sich nach der Breite des
+    // INHALTSBEREICHS, nicht des Fensters — mit offener Seitenleiste bleibt
+    // sonst Platz übrig, den die Karten nicht nutzen.
+    <div className="@container">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-sm text-muted-foreground">
+          Fehler aus dem Backend und aus dem Browser, nach Art zusammengefasst.
+          Die erste Begegnung meldet sich per Mail; weitere werden nur gezählt.
+        </p>
+        <label className="flex shrink-0 items-center gap-2 text-sm">
+          <input type="checkbox" checked={nurOffen}
+            onChange={(e) => setNurOffen(e.target.checked)} />
+          nur offene
+        </label>
+      </div>
+
+      {data.length > 0 && (
+        <div className="mb-5 grid grid-cols-2 gap-3 @2xl:grid-cols-4">
+          {([
+            ["Fehlerarten", String(data.length), null],
+            ["Vorkommen", vorkommen.toLocaleString("de-DE"), null],
+            ["heute", String(heuteN), heuteN > 0 ? "warn" : null],
+            ["aus dem Browser", String(ausDemBrowser), null],
+          ] as [string, string, string | null][]).map(([label, wert, ton]) => (
+            <Card key={label} className="p-4">
+              <p className={`font-display text-2xl font-bold tabular-nums ${
+                ton === "warn" ? "text-signal" : "text-foreground"}`}>{wert}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {haeufigste && haeufigste.count > 1 && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Am häufigsten: <span className="font-medium text-foreground">
+            {haeufigste.exc_type}</span> auf <code className="text-xs">
+            {haeufigste.route}</code> ({haeufigste.count}&times;).
+        </p>
+      )}
+
+      {data.length === 0 ? (
+        <EmptyState mascot="celebrate" title="Keine offenen Fehler"
+          hint="Seit dem letzten Haken ist weder im Backend noch im Browser etwas abgestürzt." />
+      ) : (
+        <div className="space-y-3">
+          {data.map((f) => {
+            const auf = offen === f.id;
+            return (
+              <Card key={f.id} className="overflow-hidden">
+                <button type="button" onClick={() => setOffen(auf ? null : f.id)}
+                  aria-expanded={auf}
+                  className="flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-muted/20">
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                    f.resolved_at ? "bg-muted-foreground/40" : "bg-signal"}`} aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block">
+                      <span className="font-mono text-sm font-semibold text-foreground">
+                        {f.exc_type}
+                      </span>
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        {f.method === "BROWSER" ? "Browser" : f.method} {f.route}
+                      </span>
+                    </span>
+                    {f.message && (
+                      <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                        {f.message}
+                      </span>
+                    )}
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      zuerst {formatDateTime(f.first_seen)} &middot; zuletzt {formatDateTime(f.last_seen)}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3">
+                    <Verlauf tage={f.daily} />
+                    <Badge>{f.count}&times;</Badge>
+                  </span>
+                </button>
+
+                {auf && (
+                  <div className="border-t border-border bg-muted/20 p-4">
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs @xl:grid-cols-4">
+                      {([
+                        ["Herkunft", f.quelle === "browser" ? "Browser" : "Backend"],
+                        ["Vorkommen", `${f.count}\u00d7`],
+                        ["Tage mit Fehlern", String(f.daily.length)],
+                        ["Zustand", f.resolved_at ? "abgehakt" : "offen"],
+                      ] as [string, string][]).map(([k, v]) => (
+                        <div key={k}>
+                          <dt className="text-muted-foreground">{k}</dt>
+                          <dd className="font-medium text-foreground">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+
+                    {f.trace && (
+                      <>
+                        <p className="mt-4 text-xs font-medium text-muted-foreground">Spur</p>
+                        {/* Breite Spuren scrollen in ihrem eigenen Kasten — die
+                            Seite selbst darf sich nicht seitwärts schieben. */}
+                        <pre className="mt-1 overflow-x-auto rounded-lg bg-background p-3 text-xs leading-relaxed">
+                          {f.trace}
+                        </pre>
+                      </>
+                    )}
+
+                    <div className="mt-4 flex justify-end">
+                      <Button variant="secondary" size="sm" disabled={haken.isPending}
+                        onClick={() => haken.mutate({ id: f.id, ab: !f.resolved_at })}>
+                        {f.resolved_at ? "Wieder öffnen" : "Abhaken"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function FeedbackTab() {
   const qc = useQueryClient();
   const [onlyUnread, setOnlyUnread] = useState(false);

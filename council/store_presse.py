@@ -15,8 +15,9 @@ import re
 import sqlite3
 
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
-class PresseMixin:
+class PresseMixin(StoreBasis):
     """Presse und Beteiligungen — nur zum Mitvererben."""
 
     def save_beteiligungen(self, rows: list[dict]) -> dict:

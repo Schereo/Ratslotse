@@ -136,18 +136,74 @@ python scripts/pruefe.py --schnell  # die fünf Prüfungen unter ~4 s
 ```
 
 Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
-einen Browser und dauern zwei Minuten. Sie laufen in der CI
+einen Browser und dauern fünf Minuten. Sie laufen in der CI
 (`.github/workflows/e2e.yml`) und lokal auf Zuruf:
 
 ```bash
 cd web/frontend && npx playwright test
 ```
 
+Läuft in einem anderen Worktree schon ein `next dev` auf 3000, bricht das mit
+„is already used" ab. **Nicht den fremden Prozess abschießen** — er gehört
+einer anderen Sitzung; stattdessen freie Ports nehmen:
+
+```bash
+E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test
+```
+
+Was die 119 Browsertests abdecken und warum ein Lauf gegen eine **leere**
+Ratsdatenbank dazugehört, steht in
+[`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md).
+
 Er bündelt, was vorher über `CONTRIBUTING.md` und drei Workflow-Dateien
-verstreut stand: Adressen-Lint, ruff, den API-Vertrag, die generierten
-Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
+verstreut stand: Adressen-Lint, ruff, die Python-Typprüfung, den API-Vertrag,
+die generierten Frontend-Typen, die Changelog-Fragmente, die Testsuite, den
 TypeScript-Übersetzer und die beiden Grafik-Proben. `--liste` zeigt sie
 einzeln, `--nur ruff,vertrag` wählt aus.
+
+**Die Python-Typprüfung (pyright) deckt noch nicht alles ab.** Sie läuft über
+`kern/` und den Backend-Kern; `council/`, `scripts/` und die Router stehen
+noch draußen. Der Grund und der Weg nach vorn stehen in
+[`pyrightconfig.json`](pyrightconfig.json), festgehalten von
+`tests/test_typpruefung.py`. **Eine Ausnahme in `exclude` ist eine Schuld,
+kein Zustand**: Der Wächter meldet, sobald ein ausgenommenes Verzeichnis von
+selbst sauber geworden ist.
+
+**Der Rest steht unter einer Sperrklinke, nicht ungeprüft da.** Wäre er nur
+außerhalb des Gates, gäbe es dort gar keine Prüfung, und ein neues
+`x.split()[0]` auf einem `str | None` fiele niemandem auf. Der Wächter zählt
+deshalb die Befunde je Bereich, und die Zahl **darf nur sinken** — kein
+Aufräumen wird verlangt, nur kein Rückschritt geduldet. Gemessen am
+04.09.2026:
+
+| Bereich | Befunde | Zustand |
+|---|---:|---|
+| `kern/` | **0** | harter Gate |
+| `web/backend/app/` (ohne Router) | **0** | harter Gate |
+| `council/` | 194 | Sperrklinke |
+| `web/backend/app/routers/` | 111 | Sperrklinke |
+| `scripts/` | 44 | Sperrklinke |
+| `eval/` | 7 | Sperrklinke |
+
+In `council/` waren es vor `StoreBasis` noch 1.037: Fast tausend Befunde kamen
+aus **einer** Ursache — die Store-Mixins erbten keine Basis, die `self._conn`
+kennt (s. [`council/CLAUDE.md`](council/CLAUDE.md)).
+
+Wer aufräumt, trägt die neue Zahl in `SCHULDEN`
+([`scripts/pruefe_typschulden.py`](scripts/pruefe_typschulden.py)) ein — der
+Wächter verlangt das ab zehn Befunden Abstand, damit zwischen Zahl und
+Wirklichkeit kein Puffer wächst, in dem neue Befunde unbemerkt Platz haben.
+Fällt ein Bereich auf null, gehört er in `include`; dann hält ihn der harte
+Gate.
+
+```bash
+python scripts/pruefe_typschulden.py --zeigen          # der Stand
+.venv/bin/pyright --project pyrightconfig.ratsche.json council   # die Befunde
+```
+
+**Die Zahlen haben etwas Luft.** pyright löst Typen über die INSTALLIERTEN
+Pakete auf, und die sind nie bitgleich: Auf dem Entwicklungsrechner sind es
+194 Befunde in `council/`, in der CI 190. Die Schranke ist der höhere Wert.
 
 **Den Hook einschalten** (einmal je Checkout):
 
@@ -156,11 +212,40 @@ git config core.hooksPath .githooks
 ```
 
 Danach läuft `--schnell` vor jedem `git push` und `lint_adressen.py` vor jedem
-Commit. In einer Claude-Code-Sitzung passiert das von selbst — `.claude/settings.json`
-setzt den Wert beim Sitzungsstart, **falls er noch nicht gesetzt ist**. Wer die
-Hooks bewusst nicht will, setzt `git config core.hooksPath /dev/null`; ein
-gesetzter Wert wird nie überschrieben. Für eine begründete Ausnahme im Einzelfall:
-`git push --no-verify`.
+Commit. In einer Claude-Code-Sitzung passiert das von selbst:
+`.claude/settings.json` ruft beim Sitzungsstart
+[`scripts/hooks_einrichten.py`](scripts/hooks_einrichten.py). Wer die Hooks
+bewusst nicht will, setzt `git config core.hooksPath /dev/null` — eine Abwahl
+bleibt stehen. Für eine begründete Ausnahme im Einzelfall: `git push
+--no-verify`.
+
+**Der Pfad muss relativ sein, und das ist keine Kosmetik.** Git löst
+`.githooks` gegen den jeweiligen Arbeitsbaum auf; ein **absoluter** Pfad zeigt
+dagegen fest auf den Haupt-Checkout. Steht der auf einem Zweig, der
+`.githooks/pre-push` noch nicht kennt, sucht Git die Datei dort vergeblich und
+pusht **ohne eine einzige Prüfung** — lautlos, aus jedem Arbeitsverzeichnis.
+Am 04.09.2026 über die zehn Worktrees dieses Repos gezählt:
+
+| `core.hooksPath` | Worktrees | `pre-push` |
+|---|---:|---|
+| relativ (`.githooks`) | 4 | läuft |
+| absolut auf den Haupt-Checkout | 5 | **lief nicht** |
+| gar nicht gesetzt | 1 | **lief nicht** |
+
+Es ist kein theoretischer Fall: An diesem Tag ging so ein Push mit zwei
+ruff-Befunden durch, gemerkt hat es erst die CI. Die frühere Bedingung
+(„ist überhaupt ein Wert gesetzt?") ließ das durch, weil ein gesetzter, aber
+wirkungsloser Wert wie ein guter aussah. Das Skript fragt stattdessen, ob der
+Hook **gefunden** wird, und repariert nur den Fall, der `.githooks` schon
+meint und ihn verfehlt. `python3 scripts/hooks_einrichten.py --pruefen` sagt
+für ein Arbeitsverzeichnis, woran man ist.
+
+**Wo fange ich an?** [`REZEPTE.md`](REZEPTE.md) beantwortet das für die
+Aufgaben, die hier immer wieder vorkommen: Endpunkt hinzufügen, Seite bauen,
+Spalte ändern, Cron einhängen, Rolle vergeben, etwas hinter einem Schalter
+ausliefern, Release fahren. Je Rezept die Dateien in der Reihenfolge, in der
+man sie anfasst — und welcher Wächter den jeweiligen Fehler fängt. Sie ersetzt
+die Regeln unten nicht, sie führt zu ihnen.
 
 **Regeln je Schicht.** Neben dieser Datei liegt in jedem größeren Verzeichnis
 eine eigene `CLAUDE.md` mit den Regeln, die genau dort gelten — sie wird
@@ -175,6 +260,21 @@ automatisch mitgelesen, sobald dort gearbeitet wird:
 | [`ios/CLAUDE.md`](ios/CLAUDE.md) | XcodeGen-Nachzug, handgeschriebene Modelle, Decode-Fallen |
 | [`scripts/CLAUDE.md`](scripts/CLAUDE.md) | Cron-Jobs: `run_guarded`, Takt in `kern/jobs.py`, Kennzahlen |
 | [`tests/CLAUDE.md`](tests/CLAUDE.md) | Wächter-Tests: was sie halten sollen und wie man einen neuen baut |
+
+**Die Schichten zeigen nur nach unten**, und das hält seit 09/2026
+`tests/test_schichten.py` fest statt einer Prosa-Zeile:
+
+```
+kern  ←  council  ←  app  ←  scripts
+                  ↖  eval
+```
+
+`kern/` importiert aus keinem der anderen Pakete, `council/` nur aus `kern`,
+`web/backend/app/` nicht aus `scripts`. Ein Pfeil nach oben wäre ein Ring, und
+der Fehler daraus erscheint als `ImportError` beim Start eines **Dienstes** —
+nicht in der Testsuite, die ohnehin alles auf einmal lädt. Der Bestand hielt
+die Ordnung bereits vollständig; der Test räumt nichts auf, er hält. Er prüft
+auch die Gegenrichtung: eine Erlaubnis, die niemand braucht, fliegt raus.
 
 **Ein Auftrag, ein Branch, ein Pull Request.** Branch von `dev` (Feature) bzw.
 `main` (Fix), committen, pushen, PR öffnen — Regeln dazu unten unter
@@ -266,6 +366,29 @@ prüfen `process.env.NEXT_PUBLIC_RATSLOTSE_ENV === "dev"` und liefern sonst
 Code darf also gefahrlos mit einem Release nach `main` fahren, die Seite
 bleibt dort ein 404.
 
+**Feature-Schalter (seit 09/2026), wenn das Gate zu grob ist.** Das
+Umgebungs-Gate kennt nur „auf dev sichtbar, auf Prod nicht". Wer etwas auf
+Prod ausliefern und dort **einzeln** an- und ausschalten will, nimmt einen
+Schalter aus [`kern/features.py`](kern/features.py):
+
+```bash
+FEATURE_FLAGS=neue-suche      # in der .env, dann Dienst neu starten
+```
+
+Im Frontend `useFeature("neue-suche")` aus `lib/features.ts`. Die Liste kommt
+über `/api/app-config` — **bewusst nicht** über `NEXT_PUBLIC_…`: Das wird zur
+BAUZEIT einkompiliert, ein Umlegen bräuchte also einen Neubau und einen
+Deploy, und genau das soll der Schalter ersparen (dieselbe Falle wie beim
+CARTO-Schlüssel, s. o.).
+
+**Ein Schalter ist keine Rechteprüfung.** Er sagt, ob etwas *schon so weit*
+ist, nicht *wer* es sehen darf — dafür gibt es Rechte, und die setzt das
+Backend durch. **Und er ist eine Schuld:** Jeder Eintrag nennt unter
+`fertig_wenn`, woran man erkennt, dass er weg kann; `tests/test_features.py`
+meldet einen Schalter, den niemand mehr liest, und eine Verwendung, die in der
+Registry fehlt (ein Tippfehler dort ist dauerhaft AUS und sieht aus wie „noch
+nicht angeschaltet").
+
 **GitHub-Secrets:** `SSH_PRIVATE_KEY` (Deploy-Key), `VPS_HOST`, `VPS_DEV_HOST`,
 `VPS_PROXY_HOST`, `VPS_USER`, `VPS_SSH_PORT`, `ANTHROPIC_API_KEY` (für `docs-review.yml`),
 `CARTO_API_KEY` (Kartenkacheln, s. u.).
@@ -329,6 +452,7 @@ APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
+FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)
 APPLE_TEAM_ID=…                       # Pflicht für Apple-Token-Widerruf bei Kontolöschung
@@ -412,7 +536,8 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   `.venv/bin/python scripts/changelog_schnitt.py x.y.z [--trocken]` — hängt an
   jedes Fragment die PR-Nummer aus dem Squash-Commit, der es angelegt hat,
   sortiert es unter `## [x.y.z] – Datum` in seinen Abschnitt, löscht die
-  Fragmente und zieht die Compare-Links am Dateiende nach. Danach — **nach dem
+  Fragmente, zieht die Compare-Links am Dateiende nach und setzt die
+  **App-Version** (`MARKETING_VERSION` in `ios/`) auf dieselbe Zahl. Danach — **nach dem
   Merge des Release-PRs** — annotierten Git-Tag `vx.y.z` setzen, pushen und
   daraus das GitHub-Release machen:
 
@@ -489,5 +614,46 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   zu schwer abzuschätzen. Nebeneffekt: Die Prompts schreiben dem Modell
   JSON-Schlüssel vor, die der Parser wieder einliest; ein Override hätte jede
   Umbenennung still zerlegt.
+- **Fehler im Web sammeln sich selbst** (seit 09/2026). Ein Cron-Absturz
+  meldete sich immer schon per Mail und stand in `job_runs`; ein 500er im
+  Request ging ins `journalctl` und sonst nirgendwohin. Jetzt hält
+  [`kern/fehler.py`](kern/fehler.py) jede unbehandelte Ausnahme fest —
+  **gruppiert** nach Ausnahmetyp, letzter Zeile im eigenen Code und Route, mit
+  Zähler statt tausend Zeilen. Die **erste** Begegnung meldet sich per Mail an
+  `ALERT_EMAIL`, weitere werden nur gezählt (sonst flutet ein Ausfall das
+  Postfach). Sichtbar im Admin-Panel unter *Fehler*, samt 30-Tage-Verlauf;
+  abhaken heißt „behandelt", und ein Wiederauftauchen öffnet den Haken selbst
+  wieder.
+
+  Dieselbe Liste nimmt Meldungen aus dem **Browser** auf
+  ([`web/frontend/lib/fehler-melden.ts`](web/frontend/lib/fehler-melden.ts) →
+  offener Endpunkt `POST /api/client-errors`, antwortet immer 200, gebremst).
+  Sie beantworten dieselbe Frage — „was ist kaputt?" — und brauchen dieselbe
+  Behandlung.
+
+  **Was NICHT gespeichert wird**, und das ist der wichtigere Teil: keine
+  Anfragekörper, keine Kopfzeilen, keine Cookies, kein roher Pfad
+  (`/api/council/decision/8525` wird zu `…/{n}`), keine Variablenwerte aus dem
+  Traceback, aus dem Browser zusätzlich keine Query, kein Konto und kein
+  User-Agent. Adressen, Token und lange Kennungen im Fehlertext werden
+  maskiert. Wer ein Feld ergänzt, beantwortet zuerst die Frage, ob es etwas
+  Persönliches tragen kann — `tests/test_fehlersammler.py` und
+  `web/frontend/lib/fehler-melden.test.ts` halten die Liste fest.
+- **Ein Job, der gar nicht startet, stürzt auch nicht ab.** `run_guarded`
+  meldet Abstürze; ein Job, der schweigt, fiel bis 09/2026 nur als Ampel im
+  Admin-Panel auf — und wer nicht hinsieht, merkt monatelang nicht, dass die
+  Protokolle nicht mehr geholt werden. `scripts/check_herzschlag.py` prüft
+  einmal täglich alle Jobs gegen ihren Takt aus [`kern/jobs.py`](kern/jobs.py)
+  und meldet, was fehlt. Dieselbe Regel (`jobs.zustand`) benutzt die Ampel im
+  Panel — zwei Fassungen liefen unweigerlich auseinander.
+
+  Derselbe Lauf schaut auf den **freien Speicherplatz**. Läuft die Platte voll,
+  scheitern SQLite-Schreibvorgänge mit „attempt to write a readonly database" —
+  das sieht wie ein Anwendungsfehler aus, und man sucht am falschen Ende.
+
+  **Was er NICHT auffängt:** Stirbt der Cron-Dienst als GANZES, stirbt er mit.
+  Er merkt, dass EIN Job schweigt, nicht dass alle schweigen. Dafür bräuchte es
+  eine Prüfung von außerhalb der Maschine; die gehört nicht ins Repo, sondern
+  auf einen zweiten Rechner.
 - **Sicherheit**: Der Reverse-Proxy setzt `X-Forwarded-For` selbst
   (verhindert Rate-Limit-Bypass via XFF-Spoofing).

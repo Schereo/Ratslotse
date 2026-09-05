@@ -268,3 +268,53 @@ import Testing
 
     #expect(object["conversation_id"] is NSNull)
 }
+
+/// Die Tagesordnung liest die Anlagen unter dem Namen, den der SERVER benutzt.
+///
+/// Die App las bis 09/2026 `attachments`; auf der Leitung heißt das Feld
+/// `anlagen`. `decodeIfPresent` machte daraus eine leere Liste — kein Fehler,
+/// keine Meldung, nur eine Tagesordnung ohne Anlagen. Gerade Fraktionsanträge
+/// ohne Vorlage hängen NUR dort. Genau die stille Sorte Fehler, vor der
+/// `ios/CLAUDE.md` warnt; gefunden hat ihn ein Blick in die App.
+///
+/// Die Attrappe hier trägt deshalb bewusst den Feldnamen des Vertrags
+/// (`api/openapi.json`, Schema `AgendaItemRow`) — vorher stand in der
+/// Debug-Attrappe der App derselbe falsche Name und deckte den Fehler mit zu.
+@Test func agendaItemReadsAttachmentsUnderTheNameTheServerUses() throws {
+    let json = #"""
+    {
+      "ksinr": 88, "committee": "Verkehrsausschuss", "session_date": "2026-02-01",
+      "agenda_items": [{
+        "item_number": "Ö 4", "title": "Radverkehrskonzept", "is_public": 1,
+        "template_number": "26/0400", "dringlich": false,
+        "anlagen": [{"label": "Antrag der Fraktion", "url": "https://example.org/a.pdf"}]
+      }, {
+        "item_number": "Ö 7", "title": "Sichere Querung", "is_public": 1,
+        "dringlich": true, "anlagen": []
+      }],
+      "decisions": [], "has_protocol": false
+    }
+    """#
+    let detail = try JSONDecoder().decode(SessionDetail.self, from: Data(json.utf8))
+    #expect(detail.agendaItems.count == 2)
+    #expect(detail.agendaItems[0].attachments.count == 1)
+    #expect(detail.agendaItems[0].attachments.first?.label == "Antrag der Fraktion")
+    #expect(detail.agendaItems[0].isUrgent == false)
+    // Ein Dringlichkeitsantrag steht nicht in der ursprünglichen Tagesordnung;
+    // ohne die Marke liest er sich wie ein gewöhnlicher Punkt.
+    #expect(detail.agendaItems[1].isUrgent == true)
+    #expect(detail.agendaItems[1].attachments.isEmpty)
+}
+
+/// Fehlt das Feld ganz, bleibt die Zeile stehen — eine Tagesordnung ohne
+/// Anlagen ist ein normaler Fall, kein Fehler.
+@Test func agendaItemSurvivesMissingAttachments() throws {
+    let json = #"""
+    {"ksinr": 1, "committee": "Rat", "session_date": "2026-02-01",
+     "agenda_items": [{"item_number": "Ö 1", "title": "Eröffnung", "is_public": 1}],
+     "decisions": [], "has_protocol": false}
+    """#
+    let detail = try JSONDecoder().decode(SessionDetail.self, from: Data(json.utf8))
+    #expect(detail.agendaItems[0].attachments.isEmpty)
+    #expect(detail.agendaItems[0].isUrgent == false)
+}

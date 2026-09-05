@@ -112,4 +112,10 @@ yt-dlp==2026.8.19
 iniconfig==2.3.0
 pluggy==1.6.0
 pytest==9.1.1
+# Der Typprüfer wird ANDERS behandelt als ruff, das bewusst offen bleibt: Eine
+# neue pyright-Fassung bringt regelmäßig neue Schlüsse mit und färbt damit über
+# Nacht einen PR rot, der nichts damit zu tun hat. Genau daran stirbt so eine
+# Prüfung — beim dritten Mal steht das Verzeichnis in `exclude`. Aktualisieren
+# also bewusst, in einem eigenen PR, wie bei allem anderen hier.
+pyright==1.1.411
 responses==0.26.3

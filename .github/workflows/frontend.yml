@@ -52,6 +52,15 @@ jobs:
       - name: TypeScript übersetzen (ohne Ausgabe)
         run: npx tsc --noEmit
 
+      # Die Logik-Tests aus `lib/` (vitest). Bis 09/2026 gab es hier GAR
+      # KEINE: 94.000 Zeilen Frontend gegen 23 Browsertests, und die brauchen
+      # zwei Server und zwei Minuten. Was sie strukturell nicht erreichen, ist
+      # der Grenzfall in einer reinen Funktion — „16:29 gegen 16:30" im
+      # Live-Fenster lässt sich in einem Browsertest nicht herstellen, ohne die
+      # Systemuhr zu stellen. Der Lauf kostet unter einer Sekunde.
+      - name: Logik-Tests (vitest)
+        run: npx vitest run
+
       # ESLint, bewusst auf EINE Klasse eingestellt — dieselbe Überlegung wie
       # bei ruff („nur F", s. `ruff.toml`). Gemessen am 02.09.2026 auf dem
       # Bestand:

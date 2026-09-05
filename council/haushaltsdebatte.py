@@ -383,7 +383,7 @@ def _gedaechtnis_schluessel(text: str, top: str, anwesende: list[dict]) -> str:
     for a in anwesende:
         h.update(b"\x00")
         h.update(f"{a.get('name')}\x1f{a.get('party')}\x1f{a.get('role')}"
-                 .encode("utf-8"))
+                 .encode())
     return h.hexdigest()
 
 

@@ -1,7 +1,7 @@
 """Pydantic request/response models."""
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, EmailStr, Field
 
 from kern import roles as rollen
@@ -43,11 +43,26 @@ class VerifyEmailRequest(BaseModel):
 #: neue Rolle dort und ein vergessenes Literal hier hieße, dass der Vertrag
 #: einen Wert verschweigt, den die Antwort trägt — und ein Client, der ihn
 #: nicht kennt, bricht beim Decodieren ab (die App tut genau das).
-Rolle = Literal[tuple(rollen.ROLE_ORDER)]  # type: ignore[valid-type]
+#:
+#: **Warum die beiden Zweige.** ``Literal[tuple(...)]`` ist eine Aufzählung,
+#: die zur LAUFZEIT entsteht — Pydantic baut daraus das richtige Schema, ein
+#: Typprüfer kann darin aber nichts lesen (für ihn steht in der eckigen
+#: Klammer eine Variable, kein Wert). Er bekommt deshalb ``str``: dieselbe
+#: Zusicherung, die er vorher hatte, nur ohne Fehlermeldung an jeder
+#: Verwendung. Am Vertrag ändert das nichts, denn ``/openapi.json`` entsteht
+#: zur Laufzeit — und ``tests/test_rollen.py::test_vertrag_kennt_genau_die_rollen_und_rechte_der_registry``
+#: hält das fest.
+if TYPE_CHECKING:
+    Rolle = str
+else:
+    Rolle = Literal[tuple(rollen.ROLE_ORDER)]
 
 #: Ein einzelnes Recht. Rechte sind das, wogegen geprüft wird; Rollen bündeln
 #: sie nur. Auch hier: gerechnet, nicht abgetippt.
-Recht = Literal[tuple(rollen.PERMISSIONS)]  # type: ignore[valid-type]
+if TYPE_CHECKING:
+    Recht = str
+else:
+    Recht = Literal[tuple(rollen.PERMISSIONS)]
 
 #: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
 #: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
@@ -109,6 +124,14 @@ class AppConfigOut(BaseModel):
 
     min_build: int
     note: str | None = None
+    #: Die eingeschalteten Feature-Schalter (``kern/roles.py`` ist für Rechte,
+    #: ``kern/features.py`` für Reife). Bewusst eine LISTE von Namen und kein
+    #: Objekt mit festen Feldern: Ein Schalter kommt und geht, und ein Feld je
+    #: Schalter hieße, den Vertrag für jedes Kommen und Gehen neu zu schneiden.
+    #:
+    #: Voreingestellt leer — eine ältere App, die das Feld nicht kennt, sieht
+    #: schlicht nichts Neues, und das ist richtig so.
+    features: list[str] = []
 
 
 class TopicIn(BaseModel):
@@ -419,3 +442,18 @@ class SetupUpdate(BaseModel):
 
     step: int = Field(ge=0, le=4)
     done: bool = False
+
+
+class ClientErrorIn(BaseModel):
+    """Eine Fehlermeldung aus dem Browser.
+
+    Alle Felder sind großzügig begrenzt und werden serverseitig NOCHMALS
+    gekürzt und maskiert (``kern/fehler.py``): Das Schema hält die Nutzlast
+    klein, die Säuberung hält Persönliches heraus. Beides ist nötig — das
+    Schema allein ließe eine Adresse durch, die Säuberung allein ein Megabyte.
+    """
+    name: str = Field(default="Error", max_length=100)
+    message: str = Field(default="", max_length=1000)
+    stack: str = Field(default="", max_length=4000)
+    #: Der Pfad OHNE Query — die Query kann Suchbegriffe tragen.
+    route: str = Field(default="", max_length=200)

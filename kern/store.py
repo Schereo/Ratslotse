@@ -7,8 +7,8 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
-from kern.dbfehler import tabelle_fehlt
+from collections.abc import Iterable
+from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
 
 
@@ -432,6 +432,48 @@ CREATE TABLE IF NOT EXISTS job_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_job_runs_job ON job_runs(job, started_at DESC);
 
+-- Ein Eintrag je FEHLERART im Web-Backend, geschrieben vom Ausnahme-Handler
+-- (web/backend/app/main.py). Das Gegenstück zu `job_runs`: Cron-Abstürze
+-- melden sich seit je per Mail, ein 500er im Request ging bis 09/2026 ins
+-- journalctl und sonst nirgendwohin.
+--
+-- GRUPPIERT, nicht protokolliert: `fingerprint` fasst Ausnahmetyp, letzte
+-- Zeile im eigenen Code und Route zusammen (kern/fehler.py). Ein Ausfall
+-- erzeugt damit EINE Zeile mit hohem `count` statt tausend Zeilen — sonst
+-- wäre die Liste nach dem ersten Vorfall unlesbar und die Datenbank voll.
+--
+-- Was hier NICHT steht: Anfragekörper, Kopfzeilen, Cookies, roher Pfad,
+-- Variablenwerte. Die Begründung steht in kern/fehler.py.
+CREATE TABLE IF NOT EXISTS request_errors (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint TEXT NOT NULL UNIQUE,
+    exc_type    TEXT NOT NULL,
+    message     TEXT,
+    route       TEXT NOT NULL,
+    method      TEXT NOT NULL,
+    trace       TEXT,
+    first_seen  TEXT NOT NULL,           -- ISO, UTC
+    last_seen   TEXT NOT NULL,
+    count       INTEGER NOT NULL DEFAULT 1,
+    -- Woher der Fehler kam: `server` (unbehandelte Ausnahme im Backend) oder
+    -- `browser` (gemeldet vom Frontend). Beide teilen sich die Tabelle, weil
+    -- sie dieselbe Frage beantworten — „was ist kaputt?" — und dieselbe
+    -- Behandlung brauchen (gruppieren, melden, abhaken).
+    quelle      TEXT NOT NULL DEFAULT 'server',
+    -- Tagesverlauf als JSON-Objekt {"2026-09-04": 37, …}, auf 30 Tage
+    -- begrenzt. Ein eigener Ereignis-Tisch wäre genauer und würde bei einem
+    -- Ausfall in Minuten volllaufen; dies hier bleibt klein und reicht für
+    -- die einzige Frage, die man an den Verlauf stellt: seit wann, und wird
+    -- es mehr oder weniger?
+    daily       TEXT,
+    -- Abgehakt heißt „angesehen und behandelt". Taucht der Fehler danach
+    -- WIEDER auf, wird es zurückgesetzt: Ein Haken auf etwas, das weiter
+    -- passiert, wäre eine Lüge.
+    resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_request_errors_last
+    ON request_errors(last_seen DESC);
+
 -- Nutzer-Feedback. Ging bisher nur per Mail raus; die Kopie hier macht es im
 -- Admin-Panel sicht- und abarbeitbar. `read_at` ist absichtlich global (nicht
 -- je Admin): Es geht um „ist das erledigt?", nicht um „habe ich das gesehen?".
@@ -625,6 +667,30 @@ TABELLEN_UMBENANNT: list[tuple[str, str]] = [
     ("migrationsmarken", "migration_marks"),
     ("vorlage_follows", "template_follows"),
 ]
+
+#: So viele Tage Verlauf werden je Fehlerart aufgehoben. Mehr zeigt keine
+#: Grafik, und jeder weitere Tag ist Text in einer Spalte.
+VERLAUF_TAGE = 30
+
+
+def _verlauf_lesen(roh: str | None) -> dict[str, int]:
+    """Den Tagesverlauf aus der Spalte holen. Kaputtes gilt als leer."""
+    try:
+        d = json.loads(roh) if roh else {}
+        return {str(k): int(v) for k, v in d.items()} if isinstance(d, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def _verlauf_plus(roh: str | None, tag: str) -> dict[str, int]:
+    """Einen Tag hochzählen und auf die letzten Tage beschneiden."""
+    d = _verlauf_lesen(roh)
+    d[tag] = d.get(tag, 0) + 1
+    if len(d) > VERLAUF_TAGE:
+        for alt in sorted(d)[:-VERLAUF_TAGE]:
+            del d[alt]
+    return d
+
 
 class Store:
     def __init__(self, path: str | Path):
@@ -1263,6 +1329,19 @@ class Store:
         if nq_cols and "push_text" not in nq_cols:
             with self._conn:
                 self._conn.execute("ALTER TABLE notification_queue ADD COLUMN push_text TEXT")
+        # Der Fehler-Sammler kam zuerst nur mit Server-Fehlern; Herkunft und
+        # Tagesverlauf sind nachgezogen. Ohne diesen Schritt scheitert das
+        # Festhalten auf einer bestehenden Datei — und zwar still, weil
+        # `merke_request_fehler` bewusst nie wirft.
+        re_cols = self._table_cols("request_errors")
+        if re_cols:
+            with self._conn:
+                if "quelle" not in re_cols:
+                    self._conn.execute(
+                        "ALTER TABLE request_errors ADD COLUMN "
+                        "quelle TEXT NOT NULL DEFAULT 'server'")
+                if "daily" not in re_cols:
+                    self._conn.execute("ALTER TABLE request_errors ADD COLUMN daily TEXT")
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
@@ -1437,12 +1516,13 @@ class Store:
         # gewöhnlichen Nutzer, das Admin-Panel einen Admin. Genau ein Aufrufer
         # macht das (der Apple-Weg für die konfigurierte Admin-Adresse).
         from kern import roles as _roles
+        user_id = neue_id(cur)
         if role in _roles.ROLES and role != _roles.DEFAULT_ROLE:
             with self._conn:
                 self._conn.execute(
                     "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
-                    "VALUES (?, ?, ?)", (cur.lastrowid, role, now))
-        return cur.lastrowid
+                    "VALUES (?, ?, ?)", (user_id, role, now))
+        return user_id
 
     def set_display_name(self, user_id: int, display_name: str | None) -> None:
         with self._conn:
@@ -1840,7 +1920,7 @@ class Store:
                     (owner_id, data["question"], opts, data["correct_index"],
                      data.get("district"), data["category"], data.get("explanation"),
                      *est, now))
-                return int(cur.lastrowid)
+                return neue_id(cur)
             cur = self._conn.execute(
                 "UPDATE user_quiz_questions SET question=?, options=?, correct_index=?, "
                 "district=?, category=?, explanation=?, qtype=?, answer_value=?, "
@@ -2008,7 +2088,7 @@ class Store:
                 "VALUES (?,?,?,?,?,?,?,?)",
                 (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text),
             )
-        return cur.lastrowid
+        return neue_id(cur)
 
     #: Nach so vielen erfolglosen Anläufen gilt eine Meldung als unzustellbar.
     #: Sie bleibt als Beleg in der Tabelle stehen (``sent_at`` bleibt NULL),
@@ -2519,7 +2599,7 @@ class Store:
             cur = self._conn.execute(
                 "INSERT INTO qa_conversations (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (title or "Gespräch").strip()[:120], now, now))
-            return int(cur.lastrowid)
+            return neue_id(cur)
 
     def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
                           answer: str, quellen_json: str | None) -> bool:
@@ -2637,7 +2717,7 @@ class Store:
                 " VALUES (?, ?, ?, ?, ?)",
                 (owner_id, email, kind, message, now),
             )
-        return int(cur.lastrowid or 0)
+        return neue_id(cur)
 
     def list_feedback(self, limit: int = 100, only_unread: bool = False) -> list[dict]:
         """Neueste zuerst — so steht Unerledigtes oben."""
@@ -2687,6 +2767,76 @@ class Store:
                 )
         except Exception:  # noqa: BLE001 — Protokollierung ist Beiwerk
             pass
+
+    def merke_request_fehler(self, daten: dict) -> bool:
+        """Eine Fehlerart festhalten. Gibt True, wenn sie NEU ist.
+
+        „Neu" heißt: erstmals gesehen, oder nach einem Haken wieder aufgetaucht.
+        Nur dann wird alarmiert — sonst flutete ein Ausfall mit tausend
+        Anfragen das Postfach mit tausend Mails, und die eine wichtige ginge
+        darin unter.
+
+        Wirft nie: Ein Sammler, der die Antwort mit umbringt, ist schlimmer
+        als kein Sammler.
+        """
+        jetzt = datetime.utcnow().isoformat(timespec="seconds")
+        try:
+            with self._conn:
+                vorher = self._conn.execute(
+                    "SELECT id, resolved_at, daily FROM request_errors WHERE fingerprint = ?",
+                    (daten["fingerprint"],)).fetchone()
+                heute = jetzt[:10]
+                if vorher is None:
+                    self._conn.execute(
+                        "INSERT INTO request_errors (fingerprint, exc_type, message, "
+                        " route, method, trace, quelle, first_seen, last_seen, count, daily) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,1,?)",
+                        (daten["fingerprint"], daten["exc_type"], daten["message"],
+                         daten["route"], daten["method"], daten["trace"],
+                         daten.get("quelle", "server"), jetzt, jetzt,
+                         json.dumps({heute: 1})))
+                    return True
+                war_abgehakt = vorher["resolved_at"] is not None
+                self._conn.execute(
+                    "UPDATE request_errors SET last_seen = ?, count = count + 1, "
+                    " message = ?, trace = ?, daily = ?, resolved_at = NULL WHERE id = ?",
+                    (jetzt, daten["message"], daten["trace"],
+                     json.dumps(_verlauf_plus(vorher["daily"], heute)), vorher["id"]))
+                return war_abgehakt
+        except sqlite3.Error:
+            logger.exception("Fehler ließ sich nicht festhalten")
+            return False
+
+    def request_fehler(self, limit: int = 100, nur_offen: bool = False) -> list[dict]:
+        """Die Fehlerarten, zuletzt gesehene zuerst."""
+        where = "WHERE resolved_at IS NULL" if nur_offen else ""
+        rows = self._conn.execute(
+            f"SELECT * FROM request_errors {where} ORDER BY last_seen DESC LIMIT ?",
+            (limit,)).fetchall()
+        aus = []
+        for r in rows:
+            z = dict(r)
+            # Als Liste von Paaren statt als Objekt: Die Grafik braucht eine
+            # Reihenfolge, und ein JSON-Objekt hat keine.
+            verlauf = _verlauf_lesen(z.pop("daily", None))
+            z["daily"] = [{"tag": t, "n": n} for t, n in sorted(verlauf.items())]
+            aus.append(z)
+        return aus
+
+    def request_fehler_offen(self) -> int:
+        """Wie viele Fehlerarten sind unerledigt? Für das Abzeichen im Panel."""
+        r = self._conn.execute(
+            "SELECT COUNT(*) FROM request_errors WHERE resolved_at IS NULL").fetchone()
+        return int(r[0])
+
+    def request_fehler_abhaken(self, fehler_id: int, abgehakt: bool = True) -> bool:
+        """Einen Haken setzen oder wegnehmen."""
+        jetzt = datetime.utcnow().isoformat(timespec="seconds") if abgehakt else None
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE request_errors SET resolved_at = ? WHERE id = ?",
+                (jetzt, fehler_id))
+        return cur.rowcount > 0
 
     def job_runs(self, job: str | None = None, limit: int = 200) -> list[dict]:
         """Cron-Läufe, neueste zuerst; `stats` bereits als dict."""
@@ -2849,8 +2999,8 @@ class Store:
             # „App oder Web?" — die Nutzung der letzten 30 Tage bewusst fest,
             # nicht am Zeitraum-Umschalter: Die Frage ist „womit arbeiten die
             # Leute GERADE", nicht „womit über alle Zeit".
-            **{"clients": (aufteilung := self.client_split(30))["clients"],
-               "clients_both": aufteilung["both"]},
+            "clients": (aufteilung := self.client_split(30))["clients"],
+               "clients_both": aufteilung["both"],
             "signup_clients": [{**r, "users": 0} for r in self.signup_client_split()],
         }
 
@@ -3338,7 +3488,7 @@ class Store:
             (owner_id, chat_id, name.strip(), description.strip(), now),
         )
         self._conn.commit()
-        return TopicRow(id=cur.lastrowid, owner_id=owner_id, chat_id=chat_id,
+        return TopicRow(id=neue_id(cur), owner_id=owner_id, chat_id=chat_id,
                         name=name, description=description, created_at=now)
 
     # Alles, was an EINEM Thema hängt. Wird ein Thema gelöscht, muss das hier

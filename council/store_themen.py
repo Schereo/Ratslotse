@@ -12,12 +12,43 @@ benutzt. Die Ortsangaben einer Entität liegen seit dem zweiten Schnitt in
 from __future__ import annotations
 
 import json
+import re
 
+from council import importance as _importance
 from council.parties import order_key
 from council.store_helfer import _dedup_keys
+from council.store_basis import StoreBasis
 
-class ThemenMixin:
+class ThemenMixin(StoreBasis):
     """Die Themen-Abfragen — nur zum Mitvererben."""
+
+    #: Ab wie vielen Ortsbereichen eine Entität als stadtweit gilt. Auf dem
+    #: Prod-Bestand (01.09.2026) trennt 4 sauber: „Startchancen-Programm" (8),
+    #: „Lärmaktionsplan" (7), „Mobilitätsplan Oldenburg 2030" (6) und „Housing
+    #: First" (5) fallen raus, alles Ortsgebundene bleibt.
+    CITYWIDE_FROM_DISTRICTS = 4
+
+    #: Ab wie vielen Beschlüssen im Fenster ein bloßer Straßenname als
+    #: Vorschlag taugt. Darunter ist er eine Adresse aus einem Bebauungsplan.
+    STRASSE_MINDESTENS = 5
+
+    #: Was nach Adresse klingt statt nach Vorhaben. Starke Straßen bleiben
+    #: (s. STRASSE_MINDESTENS) — und rutschen hinter alles andere.
+    _STRASSE = re.compile(r"(stra(ß|ss)e|str\.|weg|allee|ring|damm|chaussee|gasse|pfad|steig)$",
+                          re.IGNORECASE)
+
+    _STRASSE_VORNE = re.compile(r"^(am|an der|an den|auf dem|auf der|zum|zur|im|in der)\s",
+                                re.IGNORECASE)
+
+    # Titles excluded from the "largest" view: accounting / whole-budget reports
+    # (balance totals, not a discrete decision) and treasury operations (debt
+    # refinancing / credit reporting) — neither is "the city spends X on Y".
+    #
+    # Die Liste lebt in `council/importance.py` (Blatt-Modul, kein Zirkel) und
+    # wird hier nur weitergereicht. Vorher stand sie ausschließlich hier — mit
+    # der Folge, dass die drei Geld-Ansichten filterten, das Geld-Signal des
+    # Wichtig-Werts aber nicht.
+    _NON_SPENDING_TITLES = _importance.NON_SPENDING_TITLES
 
     def decisions_for_entities(self) -> list[dict]:
         """Main decisions (id, title, official_text) for the entity-extraction backfill."""

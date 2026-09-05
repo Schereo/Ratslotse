@@ -12,9 +12,22 @@ dem Beschluss-Kern, auch wenn hier der einzige Leser sitzt.
 from __future__ import annotations
 
 from datetime import datetime
+from council.store_basis import StoreBasis
 
-class FundstueckeMixin:
+class FundstueckeMixin(StoreBasis):
     """Fundstücke, Rückblicke, Social-Text — nur zum Mitvererben."""
+
+    #: Gewichte des Fundwerts. Erzählbarkeit zählt etwas mehr als Tragweite
+    #: — ein Haushaltsbeschluss ist bedeutend, aber kein Fundstück. Die
+    #: Sperren darunter sind der eigentliche Hebel: Ohne sie gewinnt die
+    #: Kuriosität, weil sie leichter hohe Interest-Werte erreicht.
+    FUND_GEWICHT_INTERESSE = 0.55
+
+    FUND_GEWICHT_TRAGWEITE = 0.45
+
+    FUND_MIN_INTERESSE = 50
+
+    FUND_MIN_TRAGWEITE = 50
 
     def save_social_text(self, ksinr: int, item_number: str, text: str,
                          source: str) -> None:

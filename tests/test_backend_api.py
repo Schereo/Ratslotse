@@ -67,9 +67,29 @@ def test_health(client):
 
 
 def test_native_app_config_contract(client):
+    """Die Antwort, die JEDE Oberfläche vor allem anderen abfragt.
+
+    `features` ist seit 09/2026 dabei und ohne gesetzte `FEATURE_FLAGS` leer —
+    die ausgelieferte App kennt das Feld nicht und darf es auch nicht müssen.
+    """
     response = client.get("/api/app-config")
     assert response.status_code == 200
-    assert response.json() == {"min_build": 0, "note": None}
+    assert response.json() == {"min_build": 0, "note": None, "features": []}
+
+
+def test_app_config_meldet_eingeschaltete_features(client, monkeypatch):
+    """Der Weg von der `.env` bis in die Antwort — der einzige, den es gibt."""
+    from kern import features as schalter
+
+    monkeypatch.setattr(
+        schalter, "FEATURES",
+        {"probe-schalter": schalter.Feature(
+            key="probe-schalter", description="Nur für diesen Test.",
+            fertig_wenn="Wenn dieser Test nicht mehr gebraucht wird.")})
+    monkeypatch.setenv("FEATURE_FLAGS", "probe-schalter,gibtesnicht")
+    daten = client.get("/api/app-config").json()
+    # Der unbekannte Name wird verworfen, nicht durchgereicht.
+    assert daten["features"] == ["probe-schalter"]
 
 
 def test_native_api_top_level_contracts(client):
@@ -524,6 +544,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
+        "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []

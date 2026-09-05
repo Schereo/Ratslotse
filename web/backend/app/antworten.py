@@ -1217,6 +1217,36 @@ class AdminJobStep(TypedDict):
     duration_s: float | None
 
 
+class AdminFehlerTag(TypedDict):
+    tag: str
+    n: int
+
+
+class AdminRequestFehler(TypedDict):
+    """Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.
+
+    Gleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);
+    ``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,
+    roher Pfad, Variablenwerte —, steht dort begründet.
+    """
+    id: int
+    exc_type: str
+    message: str | None
+    route: str
+    method: str
+    trace: str | None
+    first_seen: str
+    last_seen: str
+    count: int
+    resolved_at: str | None
+    #: ``server`` (unbehandelte Ausnahme im Backend) oder ``browser``.
+    quelle: str
+    #: Tagesverlauf, älteste zuerst — für die Grafik im Panel. Als LISTE und
+    #: nicht als Objekt: Die Grafik braucht eine Reihenfolge, ein JSON-Objekt
+    #: hat keine.
+    daily: list[AdminFehlerTag]
+
+
 class AdminJob(TypedDict):
     """``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
     kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.

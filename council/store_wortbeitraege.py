@@ -17,9 +17,16 @@ import sqlite3
 from datetime import datetime
 
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
-class WortbeitraegeMixin:
+class WortbeitraegeMixin(StoreBasis):
     """Die Wortbeitrags-Abfragen — nur zum Mitvererben."""
+
+    # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
+    # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.
+    _SAMMEL_TOPS = ("anfragen und anregungen", "einwohnerfragestunde",
+                    "genehmigung der tagesordnung", "mitteilungen",
+                    "verschiedenes", "niederschrift")
 
     def save_video_results(self, ksinr: int, video_id: str, model: str,
                            results: list[dict]) -> int:

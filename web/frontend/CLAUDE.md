@@ -40,6 +40,13 @@ funktioniert: In der nativen App läuft das Bundle unter `capacitor://localhost`
 der relative Pfad zeigt dort ins Nichts. Wo der Wrapper wirklich nicht passt
 (Streams), nimm `apiUrl()` und `authHeaders()` aus demselben Modul.
 
+Seit 09/2026 ist das keine Bitte mehr, sondern eine ESLint-Regel
+(`no-restricted-syntax` in `.eslintrc.json`) und damit Teil von `npm run lint`
+und `pruefe.py`. Sie trifft genau den Fehler — ein Zeichenketten- oder
+Template-Literal, das mit `/api/` beginnt — und lässt `apiUrl(…)` und absolute
+URLs in Ruhe. Eingeführt wurde sie mit **null** Verstößen im Bestand; sie
+räumt nichts auf, sie hält.
+
 ## Antworttypen aus dem Vertrag ziehen
 
 `lib/api-schema.ts` ist generiert (`npm run api:typen`), `lib/vertrag.ts` macht
@@ -116,3 +123,108 @@ keinen `next build`, keine Export-Variante. Die beiden Grafik-Proben rechnen
 Skalen und Kachelgeometrie nach, weil beide Fehler typkorrekt waren. Ein Bild
 vor dem Merge ersetzt keine dieser Prüfungen — und keine von ihnen ersetzt das
 Bild.
+
+
+## Logik in `lib/` gehört unter Test
+
+Seit 09/2026 läuft `npx vitest run` (auch über `pruefe.py` und die CI). Die
+Testdateien liegen **neben** ihrem Modul: `lib/live.ts` → `lib/live.test.ts`.
+
+**Was hierher gehört:** reine Funktionen — rechnen, formatieren, Adressen
+bauen, Text zerlegen. Der Grenzfall ist hier eine Zeile; im Browsertest ist er
+oft gar nicht herstellbar („16:29 gegen 16:30" im Live-Fenster bräuchte eine
+gestellte Systemuhr).
+
+**Was NICHT hierher gehört:** Komponenten. Ein Test, der JSX rendert, prüft am
+Ende meist die eigene Fixture (s. [`../../tests/CLAUDE.md`](../../tests/CLAUDE.md))
+und braucht eine DOM-Nachbildung, die mit jeder React-Fassung nachgezogen
+werden will. Flüsse durch die Oberfläche prüfen die Browsertests
+(`npx playwright test`).
+
+**Browser-Speicher ohne jsdom.** `lib/__testhilfen/speicher.ts` liefert einen
+`localStorage`/`sessionStorage`-Ersatz samt Schalter „gesperrt" — der echte
+Fall im privaten Fenster. Eine ganze DOM-Nachbildung dafür zu laden kostet
+Sekunden je Lauf.
+
+**Nicht auf Ausgaben der Sprachdatenbank festnageln.** `toLocaleDateString`
+liefert je nach ICU-Fassung „Mi." oder „Mi". Ein Test auf die genaue
+Schreibweise geht beim nächsten Node-Sprung kaputt, ohne dass jemand einen
+Fehler gemacht hat — prüfe die Zusage (welcher Tag, wie lang), nicht das
+Zeichen.
+
+
+## Browsertests: was sie abdecken und wie man sie startet
+
+```bash
+npx playwright test                       # alles
+npx playwright test tests/e2e/09-konto    # eine Datei
+E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test   # auf freien Ports
+```
+
+**Die Ports sind einstellbar, und das braucht man wirklich.** Dieses Repo wird
+in mehreren `git worktree`s gleichzeitig bearbeitet, und dort läuft fast immer
+schon ein `next dev` auf 3000. Playwright bricht dann mit „is already used" ab
+— und der naheliegende Ausweg, den fremden Prozess abzuschießen, trifft die
+Arbeit einer anderen Sitzung. Erst `lsof -ti :3000` fragen, dann einen freien
+Port nehmen.
+
+**Die Ratsdatenbank ist in der CI LEER.** Lokal zieht `tests/start-backend.sh`
+den Abzug aus `~/.cache/ratslotse`, in der CI gibt es ihn nicht. Ein Test, der
+auf einen bestimmten Beschluss zeigt, ist dort also blind — entweder mockt er
+seine Daten (`page.route`) oder er prüft eine Zusage, die in beiden Fällen
+gilt („die Seite bietet ein Spiel an ODER sagt, dass gerade keins da ist").
+**Vor dem Push einmal gegen leer laufen lassen:**
+
+```bash
+mkdir -p /tmp/leer && XDG_CACHE_HOME=/tmp/leer npx playwright test
+```
+
+Genau so ist der einzige Test aufgefallen, der nur mit Daten grün war.
+
+**Abgedeckt sind (Stand 09/2026):**
+
+| Datei | Worum es geht |
+|---|---|
+| `01-auth` | Registrieren, Anmelden, Abmelden, Passwort-Sichtbarkeit |
+| `02-dashboard` | „Heute" |
+| `03-oeffentlich` | Was OHNE Konto geht — und was nicht |
+| `04-council` | Beschlüsse, Sitzungen, Filter, geteilte Sitzung |
+| `05-topics` | Eigene Themen |
+| `06-visual-pages` | Screenshots aller Hauptseiten, mobil und am Schreibtisch |
+| `07-qa-feedback` | Daumen an der KI-Antwort |
+| `08-haushalt` | Das Rechte-Gate und alle 15 Haushaltsseiten |
+| `09-konto` | Anzeigename, Passwort, Erscheinungsbild, Löschung, Abmelden |
+| `10-merkliste-abos` | Merkliste (Gruppen, Suche, Entfernen) und Ausschuss-Abos |
+| `11-quiz-admin` | Quiz und die Admin-Grenze (drei Konten, drei Rechte) |
+| `12-navigation` | Jeder Navigationspunkt, der aktive Zustand, Deep-Links |
+| `13-einrichtung` | Der Assistent — den alle anderen absichtlich überspringen |
+| `14-layout` | Keine Seite scrollt seitwärts (390 px und 320 px) |
+
+**Der Assistent ist der Sonderfall.** `einrichtungUeberspringen()` schaltet ihn
+über den Server ab, weil seine Fläche (`fixed inset-0`) jeden Klick abfängt:
+Der Abmelde-Knopf ist dahinter sichtbar UND unerreichbar. Wer den Assistenten
+selbst prüft, ruft den Helfer NICHT auf — und braucht je Test ein **frisches**
+Konto, denn ein eingerichtetes bekommt ihn nie wieder zu sehen.
+
+
+## Layout-Invarianten statt Pixelvergleich
+
+`14-layout.spec.ts` prüft **eine** Zusage, und zwar auf jeder Seite: Die Seite
+scrollt nicht seitwärts. Auf dem Handy ist das der häufigste Layout-Fehler —
+eine breite Tabelle, ein langes Wort ohne Trennmöglichkeit, ein `min-w` zu
+viel —, und am Schreibtisch fällt er nie auf.
+
+**Warum kein Pixelvergleich.** Er meldet jede beabsichtigte Änderung als
+Fehler und wird nach dem dritten Mal weggeklickt. Was Gestaltung ist, gehört
+vor Tims Augen (Bild per `SendUserFile`, Gegenlesen abwarten); was Mechanik
+ist, gehört in einen Test, der nur bei echtem Bruch anschlägt.
+
+**Ein Element DARF überstehen**, wenn es oder ein Vorfahr selbst scrollt —
+genau so gehören breite Tabellen gebaut (`overflow-x: auto`). Der Test
+berücksichtigt das; er meldet nur, was das FENSTER schiebt.
+
+**Ein bekannter Befund steht als `test.fail()` drin.** Die Startseite ist bei
+320 px 14 px zu breit. Das ist Gestaltung, keine Mechanik — deshalb nicht
+nebenbei repariert, sondern sichtbar festgehalten: Der Test meldet sich,
+sobald jemand es behebt, und dann fliegt die Markierung raus. So verschwindet
+ein Befund nicht in einer Liste, die niemand liest.

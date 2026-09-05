@@ -1,7 +1,7 @@
 """Request-scoped dependencies: DB stores and the authenticated user."""
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from collections.abc import Callable, Iterator
 
 from fastapi import Depends, HTTPException, Request, status
 

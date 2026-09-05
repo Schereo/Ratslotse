@@ -3077,7 +3077,22 @@ private struct SessionDetailView: View {
                         }
                         agenda(detail)
                         if let raw = detail.url, let url = URL(string: raw) {
-                            Link("Sitzung im Ratsinfosystem öffnen", destination: url)
+                            // Vorher ein nackter blauer Textlink am Seitenfuß:
+                            // Er sah nach nichts aus und stand unter der Karte
+                            // in der Luft („sieht nicht aus wie ein Button und
+                            // ist extrem ugly", Tim 04.09.2026). Als Knopf
+                            // trägt er dieselbe Form wie „In Kalender" und
+                            // „Teilen" weiter oben — und das Pfeil-Zeichen
+                            // sagt, dass es aus der App hinausgeht.
+                            Link(destination: url) {
+                                HStack(spacing: 7) {
+                                    RatsLabel("Im Ratsinfosystem öffnen", .fileText)
+                                    RatsIcon(.arrowUpRight, size: 11)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                            .padding(.top, 2)
                         }
                     } else if let error {
                         ErrorCard(message: error) { Task { await load() } }
@@ -3132,8 +3147,8 @@ private struct SessionDetailView: View {
           "session_time": "17:00",
           "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
           "agenda_items": [
-            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","attachments":[]},
-            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"attachments":[]}
+            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","template_number":"25/0412","anlagen":[{"label":"Antrag der Fraktion (PDF)","url":"https://ratslotse.de"}]},
+            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"dringlich":true,"anlagen":[]}
           ],
           "decisions": [],
           "has_protocol": false,
@@ -3180,7 +3195,6 @@ private struct SessionDetailView: View {
                 if index < publicItems.count - 1 {
                     Divider()
                         .overlay(RatsColor.separator)
-                        .padding(.leading, 52)
                 }
             }
         }
@@ -3334,68 +3348,113 @@ private struct SessionAgendaRow: View {
     let shareLink: URL?
     let openAttachment: (AgendaAttachment) -> Void
 
+    /// Nummer und Teilen stehen ÜBER dem Text, nicht daneben.
+    ///
+    /// Vorher war die Zeile dreispaltig: links die TOP-Nummer als gefüllte
+    /// Plakette (31 pt Mindestbreite plus Polster), rechts ein 30 pt breiter
+    /// Teilen-Knopf, dazu zweimal 12 pt Abstand — auf einem iPhone gingen so
+    /// gut 90 pt von rund 340 an zwei Elemente, die niemand liest. Titel und
+    /// Kurzfassung, also das Einzige, worum es geht, brachen dafür früher um
+    /// („für den Namen des TOPs und die Zusammenfassung relativ wenig Platz",
+    /// Tim 04.09.2026).
+    ///
+    /// Jetzt trägt eine Kopfzeile die Nummer als Mono-Kicker, dahinter die
+    /// Vorlage und ganz rechts das Teilen-Zeichen; darunter läuft der Text
+    /// über die VOLLE Breite. Das ist zugleich die Anordnung der Web-Ansicht
+    /// — dieselbe Sache soll auf beiden Geräten gleich gebaut sein.
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(item.itemNumber)
-                .font(RatsFont.mono(9, weight: .semibold))
-                .tracking(0.4)
-                .foregroundStyle(isHighlighted ? RatsColor.primaryText : RatsColor.primary)
-                .frame(minWidth: 31)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 5)
-                .background(isHighlighted ? RatsColor.primary : RatsColor.primary.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .fixedSize()
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(item.title)
-                    .font(RatsFont.body(15, weight: .semibold))
-                    .foregroundStyle(RatsColor.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let summary = item.summary, !summary.isEmpty {
-                    Text(summary)
-                        .font(RatsFont.body(13))
-                        .foregroundStyle(RatsColor.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // Die Plakette bleibt — sie kostet hier keine Textbreite mehr,
+                // und als nackte graue Ziffer war die Nummer bei 10 pt kaum
+                // noch zu lesen („kann man fast gar nicht mehr lesen", Tim).
+                Text(item.itemNumber)
+                    .font(RatsFont.mono(12, weight: .semibold))
+                    .tracking(0.3)
+                    .foregroundStyle(RatsColor.primary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(RatsColor.primary.opacity(isHighlighted ? 0.16 : 0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .fixedSize()
+                if let template = item.templateNumber, !template.isEmpty {
+                    Text("Vorlage \(template)")
+                        .font(RatsFont.mono(11))
+                        .foregroundStyle(RatsColor.muted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                if !item.attachments.isEmpty {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(item.attachments) { attachment in
-                            Button { openAttachment(attachment) } label: {
-                                HStack(spacing: 6) {
-                                    RatsIcon(.paperclip, size: 10)
-                                    Text(attachment.label)
-                                        .font(RatsFont.body(11, weight: .semibold))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    RatsIcon(.arrowUpRight, size: 8)
-                                }
-                                .foregroundStyle(RatsColor.primary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(RatsPlainButtonStyle())
-                            .accessibilityLabel("Anlage öffnen: \(attachment.label)")
-                        }
+                Spacer(minLength: 8)
+                if let shareLink {
+                    ShareLink(item: shareLink) {
+                        RatsIcon(.share, size: 13)
+                            .foregroundStyle(RatsColor.muted)
+                            // 28 pt statt 30, und die Fläche ragt nach oben
+                            // aus der Kicker-Zeile heraus, statt eine eigene
+                            // Spalte aufzumachen.
+                            .frame(width: 28, height: 22)
+                            .contentShape(Rectangle())
                     }
-                    .padding(.top, 3)
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityLabel("Tagesordnungspunkt \(item.itemNumber) teilen")
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, -4)
 
-            if let shareLink {
-                ShareLink(item: shareLink) {
-                    RatsIcon(.share, size: 15)
-                        .foregroundStyle(RatsColor.secondary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Rectangle())
+            if item.isUrgent {
+                // Ein Dringlichkeitsantrag steht nicht in der ursprünglichen
+                // Tagesordnung. Ohne die Marke liest er sich wie ein
+                // gewöhnlicher Punkt — das Web sagt es seit 08/2026, die App
+                // schwieg.
+                HStack(spacing: 5) {
+                    RatsIcon(.flame, size: 12)
+                    Text("Dringlichkeitsantrag")
+                        .font(RatsFont.body(12, weight: .semibold))
                 }
-                .buttonStyle(RatsPlainButtonStyle())
-                .accessibilityLabel("Tagesordnungspunkt \(item.itemNumber) teilen")
+                .foregroundStyle(RatsColor.signal)
+            }
+
+            Text(item.title)
+                .font(RatsFont.body(15, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let summary = item.summary, !summary.isEmpty {
+                // „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst
+                // hat — dieselbe Ehrlichkeit wie im Web.
+                Text(summary)
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !item.attachments.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(item.attachments) { attachment in
+                        Button { openAttachment(attachment) } label: {
+                            HStack(spacing: 6) {
+                                RatsIcon(.paperclip, size: 10)
+                                Text(attachment.label)
+                                    .font(RatsFont.body(11, weight: .semibold))
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                RatsIcon(.arrowUpRight, size: 8)
+                            }
+                            .foregroundStyle(RatsColor.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(RatsPlainButtonStyle())
+                        .accessibilityLabel("Anlage öffnen: \(attachment.label)")
+                    }
+                }
+                .padding(.top, 2)
             }
         }
         .padding(.horizontal, isHighlighted ? 10 : 0)
-        .padding(.vertical, 14)
+        .padding(.vertical, 13)
         .background(isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityElement(children: .contain)

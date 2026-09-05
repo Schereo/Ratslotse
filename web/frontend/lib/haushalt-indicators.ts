@@ -84,7 +84,9 @@ export function formatVon(unit: string): (value: number) => string {
  *  Schreibweise. Bei Euro und Personen ändert sich nichts. */
 export function differenzFormatVon(unit: string): (value: number) => string {
   if (unit !== "percent") return formatVon(unit);
-  return (value) => `${deZahl(value, 2)} %-Punkte`;
+  // Schmales Leerzeichen wie in `schreibe` — ein gewöhnliches ließe die
+  // Zeile zwischen Zahl und Einheit umbrechen.
+  return (value) => `${deZahl(value, 2)}\u2009%-Punkte`;
 }
 
 /** Die Einheit für die Kopfzeile der Grafik. */

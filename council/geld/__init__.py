@@ -43,7 +43,8 @@ import pkgutil
 import re
 import sqlite3
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 from kern.dbfehler import tabelle_fehlt
 
 

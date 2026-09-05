@@ -9,7 +9,7 @@ import time
 import unicodedata
 from collections import Counter, defaultdict
 from datetime import date
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -2061,8 +2061,9 @@ def partei_meinungen_endpoint(
         # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
         # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
         alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
-        key = "v3:" + hashlib.sha1(
-            ",".join(str(wid) for wid in alle_ids).encode()).hexdigest()
+        key = "v3:" + hashlib.sha1(  # Cache-Schlüssel, keine Sicherheitsfunktion
+            ",".join(str(wid) for wid in alle_ids).encode(),
+            usedforsecurity=False).hexdigest()
         meinungen = store.partei_meinungen_cache_get(key) if alle_ids else None
         if meinungen is None and alle_ids:
             vektor = store.wortbeitraege_by_ids([wid for wid, _ in hits])
