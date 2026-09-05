@@ -93,6 +93,12 @@ OEFFENTLICH = {
     ("get", "/api/council/preview/{kind}/{key:path}"),
     ("get", "/api/council/plan-bild/{document_id}"),
 
+    # Der Kalender-Feed: Apple Kalender, Google und Outlook rufen ihn ohne
+    # Konto ab, ein Kalender-Abo kennt keine Anmeldung. Autorisiert ist er
+    # über das Token in der Adresse (eigenes Geheimnis je Konto, erneuerbar);
+    # unbekanntes Token und gesperrtes Konto antworten gleich mit 404.
+    ("get", "/api/calendar/{token}.ics"),
+
     # Wahlprogramm-Quellen: Belege einer öffentlichen Vergleichsseite.
     ("get", "/api/kommunalwahl/source/{slug}"),
 

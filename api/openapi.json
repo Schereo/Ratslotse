@@ -3924,6 +3924,30 @@
         "title": "BudgetStaffPlan",
         "type": "object"
       },
+      "CalendarSubscription": {
+        "description": "Die Kalender-Adresse eines Kontos (``/api/calendar/subscription``).\n\n``url`` ist die https-Adresse zum Kopieren, ``webcal_url`` dieselbe mit\ndem Schema, das auf dem Telefon direkt den Abo-Dialog öffnet.",
+        "properties": {
+          "subscribed_committees": {
+            "title": "Subscribed Committees",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "webcal_url": {
+            "title": "Webcal Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "webcal_url",
+          "subscribed_committees"
+        ],
+        "title": "CalendarSubscription",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -14746,6 +14770,96 @@
         "summary": "Set Notification",
         "tags": [
           "bookmarks"
+        ]
+      }
+    },
+    "/api/calendar/subscription": {
+      "get": {
+        "description": "Die Kalender-Adresse dieses Kontos — beim ersten Aufruf angelegt.",
+        "operationId": "subscription_api_calendar_subscription_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Subscription",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/subscription/rotate": {
+      "post": {
+        "description": "Neue Adresse; die alte antwortet ab sofort mit 404.",
+        "operationId": "rotate_subscription_api_calendar_subscription_rotate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rotate Subscription",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/{token}.ics": {
+      "get": {
+        "description": "Der Feed — öffentlich, autorisiert über das Token in der Adresse.\nEin unbekanntes oder erneuertes Token und ein nicht aktives Konto sehen\ngleich aus (404), damit die Adresse nichts über Konten verrät.",
+        "operationId": "feed_api_calendar__token__ics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Der Kalender des Kontos als ICS (RFC 5545): die Sitzungen der abonnierten Ausschüsse und zu den eigenen Themen, je Termin die wichtigsten Punkte und der Link zur Sitzungsseite. Für Kalender-Apps gedacht, die die Adresse alle paar Stunden abrufen."
+          },
+          "404": {
+            "description": "Unbekannte oder erneuerte Kalender-Adresse."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feed",
+        "tags": [
+          "calendar"
         ]
       }
     },

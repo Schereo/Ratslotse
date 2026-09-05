@@ -508,6 +508,30 @@ public struct CommitteeOptions: Codable, Sendable {
     public let details: [CommitteeDetail]?
 }
 
+/// Die Kalender-Adresse eines Kontos (`/api/calendar/subscription`).
+///
+/// `webcalURL` öffnet auf dem iPhone direkt den Abo-Dialog von Apple
+/// Kalender; `url` ist dieselbe Adresse als https zum Kopieren (Google,
+/// Outlook). Das Token darin ist ein eigenes Geheimnis — „Neue Adresse"
+/// (`POST /api/calendar/subscription/rotate`) macht die alte ungültig.
+public struct CalendarSubscription: Decodable, Sendable, Equatable {
+    public let url: String
+    public let webcalURL: String
+    public let subscribedCommittees: Int
+
+    enum CodingKeys: String, CodingKey {
+        case url
+        case webcalURL = "webcal_url"
+        case subscribedCommittees = "subscribed_committees"
+    }
+
+    public init(url: String, webcalURL: String, subscribedCommittees: Int) {
+        self.url = url
+        self.webcalURL = webcalURL
+        self.subscribedCommittees = subscribedCommittees
+    }
+}
+
 public struct CommitteeDetail: Codable, Sendable, Hashable, Identifiable {
     public var id: String { name }
     public let name: String
