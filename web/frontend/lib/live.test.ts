@@ -138,3 +138,53 @@ describe("timeOnDay", () => {
     expect(timeOnDay("abends", uhr("09:00"))).toBeNull();
   });
 });
+
+// ------------------------------------------------------------------ Live-Stand
+
+import { liveAgoText, liveItemKeys, liveSpeakerText, liveStateFresh, liveTopLabel, partyShort } from "./live";
+
+const STAND = {
+  item_number: "9.3", item_title: "Radweg", block_start: null, phase: "aussprache",
+  speaker: "Susanne Drügemöller", party: "Bündnis 90/Die Grünen",
+  since: "2026-09-03T18:12:00+02:00", as_of: "2026-09-03T18:20:00+02:00",
+  updated_at: "2026-09-03T18:20:30+02:00", finished: false,
+};
+
+describe("Live-Stand aus der Übertragung", () => {
+  it("benennt den laufenden Punkt — als Block, wenn mehrere durchliefen", () => {
+    expect(liveTopLabel(STAND)).toBe("TOP 9.3");
+    expect(liveTopLabel({ ...STAND, block_start: "9.1" })).toBe("TOP 9.1–9.3");
+    expect(liveTopLabel({ ...STAND, block_start: "9.3" })).toBe("TOP 9.3");
+    expect(liveTopLabel({ ...STAND, item_number: null })).toBeNull();
+  });
+
+  it("kürzt die Fraktion in der Sprecherzeile", () => {
+    expect(liveSpeakerText(STAND)).toBe("Susanne Drügemöller (Grüne) spricht");
+    expect(liveSpeakerText({ ...STAND, party: null })).toBe("Susanne Drügemöller spricht");
+    expect(liveSpeakerText({ ...STAND, speaker: null })).toBeNull();
+    expect(partyShort("Die Linke")).toBe("Linke");
+    expect(partyShort("Verwaltung")).toBe("Verwaltung");
+  });
+
+  it("rechnet den Verzug gegen die eigene Uhr, nie negativ", () => {
+    expect(liveAgoText(STAND.as_of, new Date("2026-09-03T18:22:30+02:00"))).toBe("vor 2 Min.");
+    expect(liveAgoText(STAND.as_of, new Date("2026-09-03T18:20:20+02:00"))).toBe("gerade eben");
+    expect(liveAgoText(STAND.as_of, new Date("2026-09-03T18:19:00+02:00"))).toBe("gerade eben");
+    expect(liveAgoText("kaputt")).toBe("");
+  });
+
+  it("hält einen Stand nach 20 Minuten Stille für abgebrochen", () => {
+    expect(liveStateFresh(STAND, new Date("2026-09-03T18:39:00+02:00"))).toBe(true);
+    expect(liveStateFresh(STAND, new Date("2026-09-03T18:41:00+02:00"))).toBe(false);
+    expect(liveStateFresh({ ...STAND, finished: true }, new Date("2026-09-03T18:21:00+02:00"))).toBe(false);
+  });
+
+  it("markiert in der Tagesordnung den Punkt — oder den ganzen Block", () => {
+    const keys = ["1", "2", "9.1", "9.2", "9.3", "9.4"];
+    expect([...liveItemKeys(STAND, keys)]).toEqual(["9.3"]);
+    expect([...liveItemKeys({ ...STAND, block_start: "9.1" }, keys)]).toEqual(["9.1", "9.2", "9.3"]);
+    // Unbekannte Nummer (Dringlichkeitsantrag ohne Zeile): nur sie selbst.
+    expect([...liveItemKeys({ ...STAND, item_number: "DZT 1" }, keys)]).toEqual(["DZT 1"]);
+    expect(liveItemKeys(null, keys).size).toBe(0);
+  });
+});

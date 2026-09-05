@@ -3044,6 +3044,7 @@ private struct SessionDetailView: View {
     @State private var error: String?
     @State private var calendarDraft: CalendarDraft?
     @State private var previewAttachment: AgendaAttachment?
+    @State private var now = Date.now
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -3116,6 +3117,16 @@ private struct SessionDetailView: View {
             await load()
             await model.reportBadgeEvent("sitzung")
         }
+        .task {
+            // Solange die Übertragung einen frischen Stand liefert, holt die
+            // Tagesordnung ihn im Minutentakt nach — der laufende Punkt
+            // wandert dann von selbst.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                now = .now
+                if let state = detail?.liveState, LiveStateText.isFresh(state, now: now) { await load() }
+            }
+        }
         .sheet(item: $calendarDraft) { draft in CalendarEditSheet(draft: draft, isPresented: Binding(
             get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
         )) }
@@ -3128,6 +3139,12 @@ private struct SessionDetailView: View {
 #if DEBUG
         if ratsDebugValue("RATSLOTSE_DEBUG_SESSION_CHANGES") == "1",
            let fixture = Self.debugSessionWithChanges() {
+            detail = fixture
+            error = nil
+            return
+        }
+        if ratsDebugValue("RATSLOTSE_DEBUG_SESSION_LIVE") == "1",
+           let fixture = Self.debugSessionLive(now: now) {
             detail = fixture
             error = nil
             return
@@ -3171,18 +3188,68 @@ private struct SessionDetailView: View {
         """#
         return try? JSONDecoder().decode(SessionDetail.self, from: Data(raw.utf8))
     }
+
+    /// Eine laufende Ratssitzung mit Übertragungsstand: TOP 9.3 läuft, eine
+    /// Rednerin hat das Wort — für Screenshots der Hervorhebung.
+    private static func debugSessionLive(now: Date) -> SessionDetail? {
+        let iso = ISO8601DateFormatter()
+        let raw = #"""
+        {
+          "ksinr": 4702,
+          "committee": "Rat",
+          "session_date": "2099-09-07",
+          "session_time": "18:00",
+          "location": "Kulturzentrum PFL, Peterstraße 3, Vortragssaal",
+          "agenda_items": [
+            {"item_number":"Ö 9","title":"Anträge der Fraktionen","is_public":1,"anlagen":[]},
+            {"item_number":"Ö 9.1","title":"Antrag: Nachtbuslinie für Eversten und Bloherfelde","is_public":1,"summary":"Die SPD-Fraktion beantragt eine Nachtbuslinie am Wochenende.","anlagen":[]},
+            {"item_number":"Ö 9.2","title":"Antrag: Trinkwasserspender in der Innenstadt","is_public":1,"anlagen":[]},
+            {"item_number":"Ö 9.3","title":"Radverkehrskonzept: Achse Alexanderstraße","is_public":1,"summary":"Der Rat entscheidet über den ersten Bauabschnitt der Radachse zwischen Pferdemarkt und Ofenerdiek.","template_number":"26/0412","anlagen":[]},
+            {"item_number":"Ö 9.4","title":"Veränderungssperre Nr. 118 – Alexandersfeld","is_public":1,"anlagen":[]},
+            {"item_number":"Ö 10","title":"Anfragen und Anregungen","is_public":1,"anlagen":[]}
+          ],
+          "decisions": [],
+          "has_protocol": false,
+          "url": "https://ratslotse.de",
+          "live_state": {
+            "item_number": "9.3", "item_title": "Radverkehrskonzept: Achse Alexanderstraße", "block_start": null,
+            "phase": "aussprache", "speaker": "Susanne Drügemöller", "party": "Bündnis 90/Die Grünen",
+            "since": "\#(iso.string(from: now.addingTimeInterval(-9 * 60)))",
+            "as_of": "\#(iso.string(from: now.addingTimeInterval(-2 * 60)))",
+            "updated_at": "\#(iso.string(from: now.addingTimeInterval(-100)))",
+            "finished": false
+          }
+        }
+        """#
+        return try? JSONDecoder().decode(SessionDetail.self, from: Data(raw.utf8))
+    }
 #endif
 
     private func agenda(_ detail: SessionDetail) -> some View {
         let publicItems = detail.agendaItems.filter { $0.isPublic != 0 }
+        // Der Stand aus der Übertragung, solange er frisch ist: Der laufende
+        // Punkt (oder Block) bekommt die rote Marke.
+        let liveState = detail.liveState.flatMap { LiveStateText.isFresh($0, now: now) ? $0 : nil }
+        let running = LiveStateText.runningKeys(liveState, agendaKeys: publicItems.map { LiveStateText.itemKey($0.itemNumber) })
         return VStack(alignment: .leading, spacing: 0) {
             MonoKicker("Tagesordnung", trailing: "\(publicItems.count) öffentlich")
                 .padding(.bottom, 7)
+
+            if let liveState, let topLabel = LiveStateText.topLabel(liveState) {
+                // Über der Liste EINMAL, woher die Marke stammt — ehrlich
+                // mit Verzug, wie im Web (Ehrlichkeit als Designprinzip).
+                Text("Live: \(topLabel) läuft gerade — aus der Übertragung, Stand \(LiveStateText.agoText(liveState, now: now)), rund 2 Min. Verzug.")
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 9)
+            }
 
             ForEach(Array(publicItems.enumerated()), id: \.element.id) { index, item in
                 SessionAgendaRow(
                     item: item,
                     isHighlighted: highlightedTops.contains(item.itemNumber),
+                    isLive: running.contains(LiveStateText.itemKey(item.itemNumber)),
                     // Teilen MIT diesem Punkt: Wer den Link öffnet, landet in
                     // der Sitzung und direkt auf dieser Zeile.
                     shareLink: model.router.universalLink(
@@ -3345,6 +3412,8 @@ private struct FlexibleChips: View {
 private struct SessionAgendaRow: View {
     let item: AgendaItem
     let isHighlighted: Bool
+    /// Läuft GERADE — nach dem Stand der Übertragung (`LiveStateText.runningKeys`).
+    var isLive: Bool = false
     let shareLink: URL?
     let openAttachment: (AgendaAttachment) -> Void
 
@@ -3401,6 +3470,22 @@ private struct SessionAgendaRow: View {
             }
             .padding(.trailing, -4)
 
+            if isLive {
+                // Dieselbe Bauform wie die LIVE-Zeile der Karte, an der
+                // Zeile: Dieser Punkt ist gerade dran.
+                HStack(spacing: 6) {
+                    ZStack {
+                        Circle().fill(RatsColor.danger.opacity(0.18)).frame(width: 12, height: 12)
+                        Circle().fill(RatsColor.danger).frame(width: 6, height: 6)
+                    }
+                    .accessibilityHidden(true)
+                    Text("LÄUFT GERADE")
+                        .font(RatsFont.mono(9, weight: .semibold))
+                        .tracking(0.8)
+                }
+                .foregroundStyle(RatsColor.danger)
+            }
+
             if item.isUrgent {
                 // Ein Dringlichkeitsantrag steht nicht in der ursprünglichen
                 // Tagesordnung. Ohne die Marke liest er sich wie ein
@@ -3453,9 +3538,16 @@ private struct SessionAgendaRow: View {
                 .padding(.top, 2)
             }
         }
-        .padding(.horizontal, isHighlighted ? 10 : 0)
+        .padding(.horizontal, isHighlighted || isLive ? 10 : 0)
         .padding(.vertical, 13)
-        .background(isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
+        // Läuft gerade: weiche rote Tönung mit Rand — keine dunkle Fläche im
+        // hellen Design (Tims Regel), die Marke trägt die Farbe.
+        .background(isLive ? RatsColor.danger.opacity(0.06)
+                    : isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(isLive ? RatsColor.danger.opacity(0.22) : Color.clear)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityElement(children: .contain)
     }

@@ -119,3 +119,77 @@ export function currentSessionToday<T extends { session_date: string } & LiveSes
   const heute = localTodayISO(now);
   return currentSession((sessions ?? []).filter((s) => String(s.session_date).slice(0, 10) === heute), now);
 }
+
+// ---------------------------------------------------------------- Live-Stand
+//
+// Seit 09/2026 weiß der Server MEHR als die Kalenderdaten: Der Mitschnitt-Job
+// verfolgt die Ratssitzung im O1-Stream (`council/livetracker.py`) und schreibt
+// je zwei Minuten, welcher TOP läuft und wer spricht. Das kommt als
+// `live_state` an der heutigen Ratssitzung. Der Stand hinkt dem Saal rund
+// 2,5 Minuten hinterher (Stück + Transkription + Verfolgung) — die Karte sagt
+// das dazu, mit „vor N Min." aus `as_of` und der Uhr der Leserin.
+
+import type { components } from "@/lib/api-schema";
+
+export type LiveState = components["schemas"]["LiveState"];
+
+/** „TOP 9.3" — oder „TOP 9.4–9.8", wenn ein Block von Formalien in einem
+ *  Fenster durchgelaufen ist (dann trägt der Stand nur den letzten). */
+export function liveTopLabel(state: LiveState): string | null {
+  if (!state.item_number) return null;
+  if (state.block_start && state.block_start !== state.item_number) {
+    return `TOP ${state.block_start}–${state.item_number}`;
+  }
+  return `TOP ${state.item_number}`;
+}
+
+/** Fraktionsnamen sind auf einer Karte zu lang: „Bündnis 90/Die Grünen (…)"
+ *  brach die Sprecherzeile um. Dieselben Kurzformen wie in der Fraktions-
+ *  Farblegende der Beschluss-Seiten. */
+export function partyShort(party: string | null | undefined): string | null {
+  if (!party) return null;
+  const p = party.trim();
+  if (/grünen?$/i.test(p) || /^bündnis 90/i.test(p)) return "Grüne";
+  if (/^die linke/i.test(p)) return "Linke";
+  return p;
+}
+
+/** „Frau Drügemöller (Grüne) spricht" — oder null, wenn niemand bekannt ist. */
+export function liveSpeakerText(state: LiveState): string | null {
+  if (!state.speaker) return null;
+  const party = partyShort(state.party);
+  return party ? `${state.speaker} (${party}) spricht` : `${state.speaker} spricht`;
+}
+
+/** „vor 2 Min." aus dem Audio-Stand, den der Server abgebildet hat; unter
+ *  einer Minute „gerade eben". Läuft die Uhr der Leserin vor (falsche
+ *  Systemzeit), nie negativ. */
+export function liveAgoText(asOf: string, now: Date = new Date()): string {
+  const then = new Date(asOf).getTime();
+  if (!Number.isFinite(then)) return "";
+  const mins = Math.max(0, Math.floor((now.getTime() - then) / 60_000));
+  if (mins < 1) return "gerade eben";
+  return `vor ${mins} Min.`;
+}
+
+/** Ist der Stand noch brauchbar? Nach 20 Minuten ohne neues Stück ist der
+ *  Mitschnitt vermutlich abgebrochen — dann lieber nichts behaupten. */
+export const LIVE_STATE_STALE_MINUTES = 20;
+export function liveStateFresh(state: LiveState, now: Date = new Date()): boolean {
+  if (state.finished) return false;
+  const then = new Date(state.as_of).getTime();
+  return Number.isFinite(then) && now.getTime() - then <= LIVE_STATE_STALE_MINUTES * 60_000;
+}
+
+/** Welche Zeilen der Tagesordnung „laufen gerade": der TOP selbst — oder
+ *  bei einem Block alle Punkte von `block_start` bis `item_number` in der
+ *  Reihenfolge der Tagesordnung. Nummern ohne Ö/N-Präfix, wie `videoKey`. */
+export function liveItemKeys(state: LiveState | null | undefined, agendaKeys: string[]): Set<string> {
+  const out = new Set<string>();
+  if (!state?.item_number) return out;
+  const end = agendaKeys.indexOf(state.item_number);
+  if (end < 0) { out.add(state.item_number); return out; }
+  const start = state.block_start ? agendaKeys.indexOf(state.block_start) : end;
+  for (let i = (start >= 0 && start <= end ? start : end); i <= end; i++) out.add(agendaKeys[i]);
+  return out;
+}

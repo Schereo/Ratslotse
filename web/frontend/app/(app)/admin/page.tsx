@@ -493,6 +493,7 @@ const FEATURE_LABELS: Record<string, string> = {
   impact_rating_agenda: "Tragweite eines Tagesordnungspunkts",
   interest_rating: "Gesprächswert",
   livestream_transcript: "Livestream-Transkript",
+  live_top_tracker: "Live-Verfolgung (welcher TOP läuft)",
   minutes_extraction: "Protokoll-Extraktion",
   party_opinions: "Haltungen der Fraktionen",
   qa_analysis: "Frag den Rat — Analyse",

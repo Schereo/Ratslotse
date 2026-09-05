@@ -80,7 +80,22 @@ struct TodayView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(60))
                 now = .now
+                // Der Übertragungsstand wechselt alle zwei Minuten — solange
+                // eine Sitzung läuft, holt die Karte ihn im Minutentakt nach.
+                if liveSession != nil { await refreshLiveSessions() }
             }
+        }
+    }
+
+    private func refreshLiveSessions() async {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TODAY_LIVE"] == "1" { return }
+#endif
+        if let page: SessionPage = try? await model.api.get(
+            "/api/council/sessions",
+            query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "6")]
+        ) {
+            upcomingSessions = page.sessions
         }
     }
 
@@ -328,7 +343,15 @@ struct TodayView: View {
           "location": "Altes Rathaus",
           "title": "Sitzung des Rates",
           "n_items": 18,
-          "my_topic_items": [{"item_number":"Ö 7"}, {"item_number":"Ö 12"}]
+          "my_topic_items": [{"item_number":"Ö 7"}, {"item_number":"Ö 12"}],
+          "live_state": {
+            "item_number": "9.3", "item_title": "Radverkehrskonzept: Achse Alexanderstraße", "block_start": null,
+            "phase": "aussprache", "speaker": "Susanne Drügemöller", "party": "Bündnis 90/Die Grünen",
+            "since": "\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-9 * 60)))",
+            "as_of": "\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-2 * 60)))",
+            "updated_at": "\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-100)))",
+            "finished": false
+          }
         }
         """
         if let session = try? JSONDecoder().decode(CouncilSession.self, from: Data(json.utf8)) {
@@ -438,10 +461,43 @@ private struct LiveCouncilCard: View {
                 Text(liveMeta)
                     .font(RatsFont.body(13, weight: .medium))
                     .foregroundStyle(RatsColor.bodyText)
-                Text("Welcher TOP gerade dran ist, veröffentlicht das Ratsinfo nicht. Ergebnisse folgen mit dem Protokoll.")
-                    .font(RatsFont.body(10))
-                    .foregroundStyle(RatsColor.secondary)
-                    .lineSpacing(2)
+                if let stand, let topLabel = LiveStateText.topLabel(stand) {
+                    // Der Stand aus der Übertragung — ehrlich beschriftet: Er
+                    // hinkt dem Saal rund zwei Minuten hinterher (Stück +
+                    // Transkription + Verfolgung, s. council/livetracker.py).
+                    Divider().overlay(RatsColor.separator).padding(.vertical, 3)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("GERADE")
+                            .font(RatsFont.mono(9, weight: .semibold))
+                            .tracking(0.8)
+                            .foregroundStyle(RatsColor.danger)
+                        Text(stand.itemTitle.map { "\(topLabel) · \($0)" } ?? topLabel)
+                            .font(RatsFont.body(13, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let speaker = LiveStateText.speakerText(stand) {
+                        Text(speaker)
+                            .font(RatsFont.body(13))
+                            .foregroundStyle(RatsColor.bodyText)
+                    }
+                    Text("Aus der Live-Übertragung, Stand \(LiveStateText.agoText(stand, now: now)) — rund 2 Min. Verzug.")
+                        .font(RatsFont.body(10))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineSpacing(2)
+                } else if session.liveState?.finished == true {
+                    Text("Der öffentliche Teil ist laut Übertragung beendet — Ergebnisse folgen in Kürze.")
+                        .font(RatsFont.body(10))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineSpacing(2)
+                } else {
+                    Text(isCouncil
+                         ? "Welcher TOP gerade dran ist, meldet die Karte, sobald die Übertragung läuft. Ergebnisse folgen mit dem Protokoll."
+                         : "Welcher TOP gerade dran ist, veröffentlicht das Ratsinfo nicht. Ergebnisse folgen mit dem Protokoll.")
+                        .font(RatsFont.body(10))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineSpacing(2)
+                }
             }
             .padding(11)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -479,6 +535,13 @@ private struct LiveCouncilCard: View {
     }
 
     private var isCouncil: Bool { RatslotseFeatures.isCouncil(session.committee) }
+
+    /// Nur ein frischer Stand zählt — nach 20 Minuten Stille ist der
+    /// Mitschnitt vermutlich abgebrochen (s. `LiveStateText.isFresh`).
+    private var stand: LiveState? {
+        guard let state = session.liveState, LiveStateText.isFresh(state, now: now) else { return nil }
+        return state
+    }
 
     private var topicItemCount: Int {
         Set((session.myTopicItems ?? []).compactMap { $0.object?["item_number"]?.string }).count

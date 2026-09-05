@@ -10,6 +10,11 @@ Sitzungsabend auf der Seite — als vorläufiger Stand ohne Video-Sprung-Links
 (``video_id=''``); die YouTube-Fassung reicht Links und exakte Timestamps
 nach, das Protokoll ersetzt später beides.
 
+Nebenher, je fertigem Stück, die **Live-Verfolgung** (``council/livetracker``):
+Welcher TOP läuft gerade, wer spricht — in ``council_live_state``, für die
+Live-Karte in Web und App. Sie ist Zugabe: Fällt sie aus, läuft der
+Mitschnitt weiter.
+
 An Tagen ohne Ratssitzung ist der Lauf ein billiger Leerlauf (Kennzahl
 ``sitzung_heute: 0``) — die Überfällig-Ampel braucht den täglichen Takt.
 
@@ -32,7 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import livestream, videos  # noqa: E402
+from council import livestream, livetracker, videos  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -51,13 +56,23 @@ MAX_WAIT_HOURS = 5
 RECORDING_ROOT = Path(tempfile.gettempdir()) / "council-livestream"
 
 
-def _record_fresh(ksinr: int) -> list[tuple[float, str]]:
+def _record_fresh(ksinr: int, on_chunk=None) -> list[tuple[float, str]]:
     """Eine Aufnahme in einem garantiert leeren, danach gelöschten Run-Pfad."""
     RECORDING_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=f"{ksinr}-", dir=RECORDING_ROOT
     ) as run_dir:
-        return livestream.record_and_transcribe(Path(run_dir))
+        return livestream.record_and_transcribe(Path(run_dir), on_chunk=on_chunk)
+
+
+def _tracker(store: CouncilStore, ksinr: int) -> livetracker.LiveTracker | None:
+    """Die Live-Verfolgung anwerfen — oder ohne sie aufnehmen, wenn sie
+    schon beim Aufbau scheitert (fehlende Tagesordnung, DB-Fehler)."""
+    try:
+        return livetracker.LiveTracker(store, ksinr, livestream.CHUNK_SECONDS)
+    except Exception:  # noqa: BLE001 — Zugabe, s. Modulkopf
+        log.exception("Live-Verfolgung für Sitzung %s nicht gestartet", ksinr)
+        return None
 
 
 def main() -> dict:
@@ -97,9 +112,21 @@ def main() -> dict:
         time.sleep(wait.total_seconds())
 
     t0 = time.monotonic()
-    segments = _record_fresh(s["ksinr"])
+    tracker = _tracker(store, s["ksinr"])
+    try:
+        segments = _record_fresh(s["ksinr"],
+                                 on_chunk=tracker.on_chunk if tracker else None)
+    finally:
+        # Auch nach einem Abbruch darf die Karte nicht „gerade" sagen.
+        if tracker:
+            try:
+                tracker.finish()
+            except Exception:  # noqa: BLE001
+                log.exception("Live-Stand für Sitzung %s nicht abgeschlossen", s["ksinr"])
     stats["aufnahme_min"] = int((time.monotonic() - t0) / 60)
     stats["transkript_segmente"] = len(segments)
+    if tracker:
+        stats["live_staende"] = tracker.updates
     if not segments:
         return stats
 
