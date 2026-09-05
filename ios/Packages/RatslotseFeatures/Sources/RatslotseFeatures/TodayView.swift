@@ -677,34 +677,67 @@ private struct WeekPreviewCard: View {
     let open: (Int, String) -> Void
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expandedSessions: Set<Int> = []
+    /// Der im Band gewählte Tag (ISO); `nil` heißt: ab heute, wie beim
+    /// Aufruf. Die Liste darunter zeigt die Sitzungen ab diesem Tag.
+    @State private var selectedDay: String?
 
     /// Die Ratswoche als Widget mit Wochenband (Designdoc 2a): sieben Spalten,
-    /// heute gefüllt, ein Punkt nur, wo eine Sitzung liegt. Darunter wie
-    /// bisher die Termine mit ihren wichtigen Punkten.
+    /// heute gefüllt, ein Punkt nur, wo eine Sitzung liegt. Das Band ist
+    /// zugleich der Tageswähler (Tims Wunsch 05.09.2026): Ein Tipp fährt die
+    /// Markierung zum Tag, darunter stehen die Sitzungen ab diesem Tag.
     var body: some View {
         RatsWidget("Deine Ratswoche", accent: .harbor, glyph: .calendar, note: rangeLabel) {
             VStack(alignment: .leading, spacing: 14) {
-                WeekBand(from: preview.from, through: preview.through, sessions: preview.sessions)
+                WeekBand(
+                    from: preview.from,
+                    through: preview.through,
+                    sessions: preview.sessions,
+                    selected: activeDay
+                ) { day in
+                    withAnimation(reduceMotion ? nil : RatsMotion.travel) { selectedDay = day }
+                }
 
-                if importantCount > 0 {
+                if importantCount > 0, selectedDay == nil {
                     WeekCountBadge(text: importantCount == 1 ? "1 wichtiger Punkt" : "\(importantCount) wichtige Punkte")
                 }
 
-                VStack(alignment: .leading, spacing: wideLayout ? 14 : 16) {
-                    ForEach(Array(preview.sessions.enumerated()), id: \.element.id) { index, session in
-                        if wideLayout {
-                            wideSession(session, at: index)
-                        } else {
-                            compactSession(session, at: index)
+                if visibleSessions.isEmpty {
+                    Text("Ab \(selectedDayLabel) steht in dieser Woche nichts mehr an.")
+                        .font(RatsFont.body(12.5))
+                        .foregroundStyle(RatsColor.secondary)
+                        .transition(.opacity)
+                } else {
+                    VStack(alignment: .leading, spacing: wideLayout ? 14 : 16) {
+                        ForEach(Array(visibleSessions.enumerated()), id: \.element.id) { index, session in
+                            if wideLayout {
+                                wideSession(session, at: index)
+                            } else {
+                                compactSession(session, at: index)
+                            }
                         }
                     }
+                    .transition(.opacity)
                 }
             }
         }
     }
 
     private var wideLayout: Bool { horizontalSizeClass == .regular }
+
+    private var activeDay: String { selectedDay ?? preview.from }
+
+    /// Die Sitzungen ab dem gewählten Tag — die Vorschau reicht ohnehin nur
+    /// eine Woche, ein Filter „nur dieser Tag" ließe die Liste meist leer.
+    private var visibleSessions: [CouncilSession] {
+        preview.sessions.filter { $0.sessionDate.prefix(10) >= activeDay }
+    }
+
+    private var selectedDayLabel: String {
+        guard let value = Self.isoFormatter.date(from: activeDay) else { return activeDay }
+        return value.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month(.abbreviated))
+    }
 
     private var rangeLabel: String {
         "\(date(preview.from)) – \(date(preview.through))"
@@ -771,7 +804,7 @@ private struct WeekPreviewCard: View {
         }
         .padding(.bottom, 2)
         .overlay(alignment: .bottom) {
-            if session.id != preview.sessions.last?.id {
+            if session.id != visibleSessions.last?.id {
                 Rectangle().fill(RatsColor.separator).frame(height: 1).offset(y: 9)
             }
         }
@@ -882,7 +915,9 @@ private struct WeekPreviewCard: View {
     }
 
     private func startsNewDay(at index: Int) -> Bool {
-        index == 0 || preview.sessions[index - 1].sessionDate != preview.sessions[index].sessionDate
+        let sessions = visibleSessions
+        guard sessions.indices.contains(index) else { return false }
+        return index == 0 || sessions[index - 1].sessionDate != sessions[index].sessionDate
     }
 
     private func isToday(_ iso: String) -> Bool {
@@ -951,50 +986,71 @@ private struct WeekPreviewCard: View {
 /// Das Wochenband (Designdoc 2a): sieben Spalten, heute gefüllt, ein Punkt
 /// nur, wo eine Sitzung liegt — grau = gewesen, orange = zu deinen Themen,
 /// blau = kommt noch.
+/// Das Wochenband (Designdoc 2a): sieben Spalten, heute gefüllt, ein Punkt
+/// nur, wo eine Sitzung liegt — grau = gewesen, orange = zu deinen Themen,
+/// blau = kommt noch. Seit 05.09.2026 zugleich der Tageswähler: Der
+/// gefüllte Kreis ist die Markierung und FÄHRT zum angetippten Tag
+/// (gleitende Aktiv-Markierung, Designsprache § 7); „heute" bleibt am
+/// Wochentag in Signal-Orange erkennbar, auch wenn ein anderer Tag gewählt ist.
 private struct WeekBand: View {
     let from: String
     let through: String
     let sessions: [CouncilSession]
+    let selected: String
+    let onSelect: (String) -> Void
+
+    @Namespace private var marker
 
     private struct Day: Identifiable {
         let id: String
         let weekday: String
         let number: String
+        let longName: String
         let isToday: Bool
         let isPast: Bool
-        let session: CouncilSession?
+        let sessions: [CouncilSession]
+
+        var session: CouncilSession? {
+            sessions.first { !($0.myTopicItems ?? []).isEmpty } ?? sessions.first
+        }
     }
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(days) { day in
-                VStack(spacing: 5) {
-                    Text(day.weekday)
-                        .font(RatsFont.mono(9, weight: day.isToday ? .semibold : .medium))
-                        .tracking(0.4)
-                        .foregroundStyle(day.isToday ? RatsColor.signal : RatsColor.muted)
-                    if day.isToday {
+                let isSelected = day.id == selected
+                Button {
+                    onSelect(day.id)
+                } label: {
+                    VStack(spacing: 5) {
+                        Text(day.weekday)
+                            .font(RatsFont.mono(9, weight: day.isToday ? .semibold : .medium))
+                            .tracking(0.4)
+                            .foregroundStyle(day.isToday ? RatsColor.signal : RatsColor.muted)
                         Text(day.number)
-                            .font(RatsFont.body(13, weight: .bold))
-                            .foregroundStyle(RatsColor.primaryText)
+                            .font(RatsFont.body(13, weight: isSelected ? .bold : .semibold))
+                            .foregroundStyle(isSelected ? RatsColor.primaryText : numberColor(day))
                             .frame(width: 24, height: 24)
-                            .background(RatsColor.primary)
-                            .clipShape(Circle())
-                    } else {
-                        Text(day.number)
-                            .font(RatsFont.body(13, weight: .semibold))
-                            .foregroundStyle(numberColor(day))
-                            .frame(height: 24)
+                            .background {
+                                if isSelected {
+                                    Circle()
+                                        .fill(RatsColor.primary)
+                                        .matchedGeometryEffect(id: "selected-day", in: marker)
+                                }
+                            }
+                        Circle()
+                            .fill(dotColor(day))
+                            .frame(width: 5, height: 5)
                     }
-                    Circle()
-                        .fill(dotColor(day))
-                        .frame(width: 5, height: 5)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
+                .buttonStyle(RatsPlainButtonStyle())
+                .accessibilityLabel(accessibilityLabel(day))
+                .accessibilityHint("Zeigt die Sitzungen ab diesem Tag")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     /// Die Vorschau reicht von heute bis in sieben Tagen — das sind acht
@@ -1011,17 +1067,16 @@ private struct WeekBand: View {
         return (0..<count).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
             let iso = Self.isoFormatter.string(from: date)
-            let daySessions = sessions.filter { $0.sessionDate.prefix(10) == iso }
-            let session = daySessions.first { !($0.myTopicItems ?? []).isEmpty } ?? daySessions.first
             return Day(
                 id: iso,
                 weekday: date.formatted(.dateTime.locale(german).weekday(.abbreviated))
                     .replacingOccurrences(of: ".", with: "")
                     .uppercased(),
                 number: "\(calendar.component(.day, from: date))",
+                longName: date.formatted(.dateTime.locale(german).weekday(.wide).day().month(.wide)),
                 isToday: calendar.isDate(date, inSameDayAs: today),
                 isPast: date < today,
-                session: session
+                sessions: sessions.filter { $0.sessionDate.prefix(10) == iso }
             )
         }
     }
@@ -1037,9 +1092,10 @@ private struct WeekBand: View {
         return day.isPast ? RatsColor.border : RatsColor.primary.opacity(0.55)
     }
 
-    private var accessibilityLabel: String {
-        let count = sessions.count
-        return "Wochenband: \(count) \(count == 1 ? "Sitzung" : "Sitzungen") in dieser Woche"
+    private func accessibilityLabel(_ day: Day) -> String {
+        let count = day.sessions.count
+        let sessions = count == 0 ? "keine Sitzung" : "\(count) \(count == 1 ? "Sitzung" : "Sitzungen")"
+        return "\(day.isToday ? "Heute, " : "")\(day.longName), \(sessions)"
     }
 
     private static let isoFormatter: DateFormatter = {
