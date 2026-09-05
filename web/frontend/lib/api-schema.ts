@@ -3160,6 +3160,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/moderation/projektionen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Candidates */
+        get: operations["list_candidates_api_moderation_projektionen_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/projektionen/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidate */
+        get: operations["get_candidate_api_moderation_projektionen__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/projektionen/{report_id}/bestehendes-problem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign Existing */
+        post: operations["assign_existing_api_moderation_projektionen__report_id__bestehendes_problem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/projektionen/{report_id}/neue-stadtweite-projektion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Citywide */
+        post: operations["create_citywide_api_moderation_projektionen__report_id__neue_stadtweite_projektion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/moderation/projektionen/{report_id}/ziele": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Targets */
+        get: operations["list_targets_api_moderation_projektionen__report_id__ziele_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding": {
         parameters: {
             query?: never;
@@ -6277,6 +6362,13 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /** ExistingProjectionConfirmationIn */
+        ExistingProjectionConfirmationIn: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Problem Id */
+            problem_id: number;
+        };
         /**
          * FactionPhase
          * @description Eine Phase der Fraktions-/Gruppenzugehörigkeit aus den
@@ -7041,6 +7133,15 @@ export interface components {
             /** Place */
             place: string;
         };
+        /** NewCitywideProjectionConfirmationIn */
+        NewCitywideProjectionConfirmationIn: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
         /**
          * NotifyKind
          * @description Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
@@ -7585,6 +7686,16 @@ export interface components {
             moderation_outcome: "approved" | "rejected" | null;
             /** Observed On */
             observed_on: string;
+            /**
+             * PublicProjectionLinkOut
+             * @description Already-public projection link safe for the reporting person.
+             */
+            public_projection: {
+                /** Id */
+                id: number;
+                /** Title */
+                title: string;
+            } | null;
             /** Rejection Explanation */
             rejection_explanation: string | null;
             /**
@@ -7623,6 +7734,16 @@ export interface components {
             moderation_outcome: "approved" | "rejected" | null;
             /** Observed On */
             observed_on: string;
+            /**
+             * PublicProjectionLinkOut
+             * @description Already-public projection link safe for the reporting person.
+             */
+            public_projection: {
+                /** Id */
+                id: number;
+                /** Title */
+                title: string;
+            } | null;
             /** Rejection Explanation */
             rejection_explanation: string | null;
             /**
@@ -7661,6 +7782,100 @@ export interface components {
              * @enum {string}
              */
             type: "LineString" | "Polygon" | "MultiPolygon";
+        };
+        /** ProjectionCandidateListOut */
+        ProjectionCandidateListOut: {
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Reports */
+            reports: components["schemas"]["ProjectionCandidateSummaryOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ProjectionCandidateOut
+         * @description Minimized approved detail without identity, location, or AI evidence.
+         */
+        ProjectionCandidateOut: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Content Revision */
+            content_revision: number;
+            /** Id */
+            id: number;
+            /** Observations */
+            observations: components["schemas"]["ModerationObservationOut"][];
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+        };
+        /**
+         * ProjectionCandidateSummaryOut
+         * @description Approved private report awaiting a separate projection confirmation.
+         */
+        ProjectionCandidateSummaryOut: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Content Revision */
+            content_revision: number;
+            /** Id */
+            id: number;
+            /** Observed On */
+            observed_on: string;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /** Text Preview */
+            text_preview: string;
+        };
+        /** ProjectionConfirmationOut */
+        ProjectionConfirmationOut: {
+            /** Content Revision */
+            content_revision: number;
+            /** Problem Id */
+            problem_id: number;
+            /** Problem Title */
+            problem_title: string;
+            /** Report Id */
+            report_id: number;
+        };
+        /** ProjectionTargetOut */
+        ProjectionTargetOut: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "mobility" | "public_space" | "education" | "childcare" | "housing" | "environment" | "accessibility" | "administration" | "other";
+            /** Independent Reports */
+            independent_reports: number;
+            /** Problem Id */
+            problem_id: number;
+            /**
+             * Scope Kind
+             * @enum {string}
+             */
+            scope_kind: "point" | "facility" | "route" | "area" | "citywide";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "multiple_reports" | "verified" | "persists";
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
         };
         /**
          * PublicNumbers
@@ -7734,6 +7949,16 @@ export interface components {
             status: "new" | "multiple_reports" | "verified" | "persists";
             /** Summary */
             summary: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PublicProjectionLinkOut
+         * @description Already-public projection link safe for the reporting person.
+         */
+        PublicProjectionLinkOut: {
+            /** Id */
+            id: number;
             /** Title */
             title: string;
         };
@@ -13139,6 +13364,173 @@ export interface operations {
             };
         };
     };
+    list_candidates_api_moderation_projektionen_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectionCandidateListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_candidate_api_moderation_projektionen__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectionCandidateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_existing_api_moderation_projektionen__report_id__bestehendes_problem_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExistingProjectionConfirmationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectionConfirmationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_citywide_api_moderation_projektionen__report_id__neue_stadtweite_projektion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewCitywideProjectionConfirmationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectionConfirmationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_targets_api_moderation_projektionen__report_id__ziele_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                report_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectionTargetOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_onboarding_api_onboarding_get: {
         parameters: {
             query?: never;
@@ -14453,4 +14845,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2de3eed18d088393ac2105acbd848e475ccdac6e659384ead7eb8af19d6b0ceb
+// vertrag-sha256: 4112b50a96c231be0c11dca453aa5cce39d8d7edf0b9eb936ffde4ee27cdeb92

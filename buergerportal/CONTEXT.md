@@ -32,6 +32,24 @@ neutrale Zusammenfassung, freigegebene Kategorie und Geografie sowie belegbaren
 Status. Rohtexte, Identitäten, genaue private Orte, KI-Begründungen und
 Moderationsnotizen gehören nie hinein. Nicht: anonymisierte Meldung.
 
+### Projektionskandidatin
+
+Private Meldung, deren aktuelle Revision menschlich freigegeben ist und noch
+keine Problemzuordnung besitzt. Die Freigabe allein macht sie nicht öffentlich.
+
+### Problemzuordnung
+
+Private, unveränderliche Evidenz, die genau eine freigegebene Meldungsrevision
+mit genau einem öffentlichen Problem verbindet. Nicht: Veröffentlichungstext,
+Cluster oder städtische Zuständigkeit.
+
+### Projektionsbestätigung
+
+Getrennte, ausdrückliche menschliche Handlung, die eine Problemzuordnung
+speichert und dadurch eine bestehende öffentliche Projektion aktualisiert oder
+eine eigenständig formulierte stadtweite Projektion erstmals sichtbar macht.
+Nicht: Moderationsfreigabe oder automatische Veröffentlichung.
+
 ### Lokale Weitergabeprüfung
 
 Private, deterministische Sperre vor einer möglichen externen Verarbeitung der
@@ -44,7 +62,8 @@ The private **“Meine Meldungen”** read view of one eligible account's drafts
 submitted reports. Its overview is a bounded summary projection, not a public
 problem feed or a processing queue. Pending items remain `Entwurf` or `Privat eingegangen`; a final human decision
 adds `Von Ratslotse geprüft` or `Abgelehnt` plus the reporter-facing rejection
-explanation.
+explanation. Nach einer Projektionsbestätigung kommt ausschließlich der bereits
+öffentliche Problemtitel samt Link als `Öffentlich zugeordnet` hinzu.
 
 ### KI-Vorprüfung
 
@@ -172,3 +191,18 @@ Rejection is final and prevents later observations. Owner projections expose
 only the final outcome and rejection explanation, never reviewer identity or
 screening evidence. Approval creates no public projection, assignment, City
 forwarding, or notification.
+
+## Human-confirmed projection since Iteration 11
+
+A projection candidate can become part of a public problem only through a
+separate projection confirmation. The human either selects an existing public
+problem or authors a new citywide public title and summary. Moderation approval
+alone remains private.
+
+A problem assignment remains private evidence. The public projection contains
+only deliberately authored public facts and counts each qualifying reporting
+person once. Private text, identity, exact place, moderation and AI evidence are
+not public projection facts. A later report revision or ineligible reporting
+person stops contributing; erasure removes the dependent assignment. Ratslotse
+publication is not City acceptance, assignment, processing, urgency, or
+resolution.

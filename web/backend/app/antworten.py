@@ -653,6 +653,13 @@ class PublicProblemList(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class PublicProjectionLinkOut(TypedDict):
+    """Already-public projection link safe for the reporting person."""
+
+    id: int
+    title: str
+
+
 class PrivateReportSummaryOut(TypedDict):
     """Bounded private summary without precise private location data."""
 
@@ -667,6 +674,7 @@ class PrivateReportSummaryOut(TypedDict):
     updated_at: str
     moderation_outcome: Literal["approved", "rejected"] | None
     rejection_explanation: str | None
+    public_projection: PublicProjectionLinkOut | None
 
 
 class PrivateReportListOut(TypedDict):
@@ -699,6 +707,7 @@ class PrivateReportOut(TypedDict):
     updated_at: str
     moderation_outcome: Literal["approved", "rejected"] | None
     rejection_explanation: str | None
+    public_projection: PublicProjectionLinkOut | None
 
 
 class ModerationReportSummaryOut(TypedDict):
@@ -765,6 +774,51 @@ class ModerationReportOut(TypedDict):
         "possible_safety_context",
         "model_uncertain",
     ] | None
+
+
+class ProjectionCandidateSummaryOut(TypedDict):
+    """Approved private report awaiting a separate projection confirmation."""
+
+    id: int
+    content_revision: int
+    text_preview: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str
+
+
+class ProjectionCandidateListOut(TypedDict):
+    reports: list[ProjectionCandidateSummaryOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class ProjectionCandidateOut(TypedDict):
+    """Minimized approved detail without identity, location, or AI evidence."""
+
+    id: int
+    content_revision: int
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observations: list[ModerationObservationOut]
+
+
+class ProjectionTargetOut(TypedDict):
+    problem_id: int
+    title: str
+    summary: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    status: Literal["new", "multiple_reports", "verified", "persists"]
+    independent_reports: int
+
+
+class ProjectionConfirmationOut(TypedDict):
+    report_id: int
+    content_revision: int
+    problem_id: int
+    problem_title: str
 
 
 class RejectionDraftOut(TypedDict):

@@ -64,6 +64,7 @@ function summary(overrides: Partial<PrivateReportSummary> = {}): PrivateReportSu
     updated_at: "2026-09-04T08:05:00Z",
     moderation_outcome: null,
     rejection_explanation: null,
+    public_projection: null,
     ...overrides,
   };
 }
@@ -86,6 +87,7 @@ function privateReport(overrides: Partial<PrivateReport> = {}): PrivateReport {
     updated_at: "2026-09-04T08:05:00Z",
     moderation_outcome: null,
     rejection_explanation: null,
+    public_projection: null,
     ...overrides,
   };
 }
@@ -215,6 +217,37 @@ test.describe("Owner-bound private report history", () => {
     await page.getByRole("button", { name: "Schließen" }).click();
     await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).nth(1).click();
     await expect(page.getByText(/nicht öffentlich.*nicht an die Stadt/i)).toBeVisible();
+  });
+
+  test("shows the data-minimized public projection without implying City processing", async ({ page }) => {
+    await signedIn(page);
+    const publicProjection = { id: 501, title: "Fiktive öffentliche Sitzmöglichkeiten" };
+    await page.route("**/api/meldungen?*", (route) => route.fulfill(json({
+      reports: [summary({
+        id: 51,
+        state: "submitted",
+        moderation_outcome: "approved",
+        public_projection: publicProjection,
+      })],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    })));
+    await page.route("**/api/meldungen/51", (route) => route.fulfill(json(privateReport({
+      id: 51,
+      state: "submitted",
+      moderation_outcome: "approved",
+      public_projection: publicProjection,
+    }))));
+
+    await page.goto("/meine-meldungen");
+    await expect(page.getByText("Öffentlich zugeordnet")).toBeVisible();
+    await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).click();
+
+    await expect(page.getByText("Datensparsam öffentlich zugeordnet")).toBeVisible();
+    await expect(page.getByText(/keine Annahme, Bearbeitung oder Zuständigkeit der Stadt/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Öffentliches Problem öffnen" })).toHaveAttribute("href", "/probleme/501");
+    await expect(page.getByText(/KI|Reviewer|Prüfer/i)).toHaveCount(0);
   });
 
   test("expands details inside the selected report instead of below later reports", async ({ page }) => {

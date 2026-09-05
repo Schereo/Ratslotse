@@ -29,6 +29,7 @@ from .routers import (
     kommunalwahl,
     moderation,
     onboarding,
+    projections,
     problems,
     push,
     reports,
@@ -129,6 +130,17 @@ def _warm_models() -> None:
     threading.Thread(target=_load, daemon=True).start()
 
 
+def _prepare_buergerportal_projections() -> None:
+    """Apply the feature-only projection schema before owner or moderation reads."""
+    settings = get_settings()
+    if not settings.ratslotse_buergerportal:
+        return
+    from buergerportal.projections import ProjectionStore
+
+    store = ProjectionStore(settings.ratslotse_db)
+    store.close()
+
+
 def _deep_jobs_aufraeumen() -> None:
     """„Gründliche Recherche"-Jobs, die laut DB noch laufen, sind nach einem
     Neustart tot (ihr Thread starb mit dem alten Prozess) → als Fehler
@@ -151,6 +163,7 @@ def _deep_jobs_aufraeumen() -> None:
 async def lifespan(app: FastAPI):  # noqa: ANN001
     _startup_checks()
     _warn_if_admin_bootstrap_pending()
+    _prepare_buergerportal_projections()
     _deep_jobs_aufraeumen()
     _warm_models()
     yield
@@ -206,6 +219,7 @@ app.include_router(social.router)
 app.include_router(problems.router)
 app.include_router(reports.router)
 app.include_router(moderation.router)
+app.include_router(projections.router)
 
 # Die abgelegten Social-Bilder öffentlich ausliefern — Instagram holt sie
 # selbst, also darf hier kein Token davor.

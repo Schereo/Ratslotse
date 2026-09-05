@@ -23,6 +23,7 @@ from app.routers import moderation as moderation_router  # noqa: E402
 from app.routers import reports as reports_router  # noqa: E402
 from app.main import app  # noqa: E402
 from app.security import create_access_token  # noqa: E402
+from buergerportal.projections import ProjectionStore  # noqa: E402
 from buergerportal.reports import PrivateReportStore  # noqa: E402
 from buergerportal.store import ProblemStore  # noqa: E402
 from kern.store import Store  # noqa: E402
@@ -59,9 +60,17 @@ def private_api(tmp_path):
         finally:
             store.close()
 
+    def get_projection_store():
+        store = ProjectionStore(database)
+        try:
+            yield store
+        finally:
+            store.close()
+
     app.dependency_overrides[deps.get_store] = get_store
     app.dependency_overrides[deps.get_problem_store] = get_problem_store
     app.dependency_overrides[deps.get_private_report_store] = get_private_report_store
+    app.dependency_overrides[deps.get_projection_store] = get_projection_store
     app.dependency_overrides[deps.get_external_ai_screening_scheduler] = (
         lambda: _NoopExternalAiScreeningScheduler()
     )
@@ -494,7 +503,9 @@ def test_owner_lists_only_own_private_report_summaries_with_pagination(private_a
         "updated_at",
         "moderation_outcome",
         "rejection_explanation",
+        "public_projection",
     }
+    assert first.json()["reports"][0]["public_projection"] is None
     _assert_no_account_identifier(first.json())
     assert "location_label" not in first.text
     assert "latitude" not in first.text
@@ -632,7 +643,9 @@ def test_submission_schedules_background_ai_without_changing_private_response(
         "updated_at",
         "moderation_outcome",
         "rejection_explanation",
+        "public_projection",
     }
+    assert response.json()["public_projection"] is None
     assert "screen" not in response.text.lower()
     assert "assessment" not in response.text.lower()
 
@@ -937,6 +950,7 @@ def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
         "updated_at",
         "moderation_outcome",
         "rejection_explanation",
+        "public_projection",
     }
     assert set(private_report["required"]) == {
         "id",
@@ -955,6 +969,7 @@ def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
         "updated_at",
         "moderation_outcome",
         "rejection_explanation",
+        "public_projection",
     }
     serialized = str(
         {"detail": private_report, "list": private_report_list, "summary": private_report_summary}
