@@ -155,6 +155,7 @@ struct TodayView: View {
                 }
             }
             .buttonStyle(RatsPlainButtonStyle())
+            .ratsZoomSource(RatsZoomID.decision(id))
             .ratsStaggered(5)
         }
 
@@ -192,6 +193,7 @@ struct TodayView: View {
                 }
             }
             .buttonStyle(RatsPlainButtonStyle())
+            .ratsZoomSource(RatsZoomID.decision(id))
             .ratsStaggered(5)
         }
 
@@ -203,6 +205,8 @@ struct TodayView: View {
                             DecisionRow(decision: decision)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
+                        .ratsZoomSource(RatsZoomID.decision(decision.id))
+                        .decisionContextMenu(decision, model: model)
                         if decision.id != recent.last?.id { Divider().overlay(RatsColor.separator) }
                     }
                 }
@@ -574,6 +578,7 @@ private struct LatestTopicHitsCard: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(RatsPlainButtonStyle())
+                    .ratsZoomSource(RatsZoomID.decision(hit.id))
                     if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
                 }
             }
@@ -848,6 +853,7 @@ private struct WeekPreviewCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(RatsPlainButtonStyle())
+        .ratsZoomSource(session.ksinr.map(RatsZoomID.session))
         .accessibilityHint("Öffnet die Tagesordnung")
     }
 

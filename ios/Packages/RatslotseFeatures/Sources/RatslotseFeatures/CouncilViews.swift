@@ -83,6 +83,7 @@ struct CouncilBrowserView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var showsFilters = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_COUNCIL_FILTER"] == "1"
+    @State private var calendarDraft: CalendarDraft?
 
     private let pageSize = 50
     /// Nur der erste Bildschirm läuft gestaffelt ein. Zeilen, die beim
@@ -265,6 +266,8 @@ struct CouncilBrowserView: View {
                                 DecisionRow(decision: decision).ratsCard()
                             }
                             .buttonStyle(RatsPlainButtonStyle())
+                            .ratsZoomSource(RatsZoomID.decision(decision.id))
+                            .decisionContextMenu(decision, model: model)
                             .ratsStaggered(index, enabled: index < staggeredRows)
                         }
                         } else {
@@ -282,10 +285,12 @@ struct CouncilBrowserView: View {
                                             SessionRow(session: session)
                                         }
                                         .buttonStyle(RatsPlainButtonStyle())
+                                        .ratsZoomSource(RatsZoomID.session(id))
                                     } else {
                                         SessionRow(session: session)
                                     }
                                 }
+                                .sessionContextMenu(session, model: model) { requestCalendar(for: session) }
                                 .ratsStaggered(index, enabled: index < staggeredRows)
                             }
                         }
@@ -313,6 +318,11 @@ struct CouncilBrowserView: View {
         .background(RatsColor.page)
         .navigationTitle("Im Rat stöbern")
         .toolbarTitleDisplayMode(.inline)
+        .sheet(item: $calendarDraft) { draft in
+            CalendarEditSheet(draft: draft, isPresented: Binding(
+                get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
+            ))
+        }
         .onChange(of: model.councilSection) { _, _ in page = 0; Task { await load() } }
         .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
         .onChange(of: model.isOffline) { wasOffline, isOffline in
@@ -452,6 +462,19 @@ struct CouncilBrowserView: View {
     private func isFirstSessionInYear(at index: Int) -> Bool {
         guard sessions.indices.contains(index) else { return false }
         return index == 0 || sessionYear(sessions[index - 1].sessionDate) != sessionYear(sessions[index].sessionDate)
+    }
+
+    /// Aus dem Kontextmenü einer Sitzungskarte in den Kalender — wie auf der
+    /// Detailseite, nur ohne den Umweg dorthin.
+    private func requestCalendar(for session: CouncilSession) {
+        let link = session.ksinr.flatMap { model.router.universalLink(for: .sessions(ksinr: $0, tops: [])) }
+        Task {
+            if let draft = await sessionCalendarDraft(for: session, link: link) {
+                calendarDraft = draft
+            } else {
+                error = calendarAccessDeniedMessage
+            }
+        }
     }
 
     private func clearFilters() {
@@ -1113,7 +1136,7 @@ private let sessionDayFormatter: DateFormatter = {
     return formatter
 }()
 
-private struct SessionRow: View {
+struct SessionRow: View {
     let session: CouncilSession
 
     var body: some View {
@@ -2907,6 +2930,7 @@ private struct SessionListView: View {
     @State private var sessions: [CouncilSession] = []
     @State private var error: String?
     @State private var isLoading = true
+    @State private var calendarDraft: CalendarDraft?
 
     var body: some View {
         ScrollView {
@@ -2944,14 +2968,18 @@ private struct SessionListView: View {
                             RatsDayDivider(sessionDayLabel(session.sessionDate), highlighted: isSessionToday(session.sessionDate))
                                 .padding(.top, index == 0 ? 0 : 4)
                         }
-                        if let ksinr = session.ksinr {
-                            NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
+                        Group {
+                            if let ksinr = session.ksinr {
+                                NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
+                                    SessionRow(session: session)
+                                }
+                                .buttonStyle(RatsPlainButtonStyle())
+                                .ratsZoomSource(RatsZoomID.session(ksinr))
+                            } else {
                                 SessionRow(session: session)
                             }
-                            .buttonStyle(RatsPlainButtonStyle())
-                        } else {
-                            SessionRow(session: session)
                         }
+                        .sessionContextMenu(session, model: model) { requestCalendar(for: session) }
                     }
                 }
                 if let error { ErrorCard(message: error) { Task { await loadSessions() } } }
@@ -2962,7 +2990,23 @@ private struct SessionListView: View {
         .background(RatsColor.page)
         .navigationTitle("Sitzungen")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $calendarDraft) { draft in
+            CalendarEditSheet(draft: draft, isPresented: Binding(
+                get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
+            ))
+        }
         .task { await loadSessions() }
+    }
+
+    private func requestCalendar(for session: CouncilSession) {
+        let link = session.ksinr.flatMap { model.router.universalLink(for: .sessions(ksinr: $0, tops: [])) }
+        Task {
+            if let draft = await sessionCalendarDraft(for: session, link: link) {
+                calendarDraft = draft
+            } else {
+                error = calendarAccessDeniedMessage
+            }
+        }
     }
 
     private func loadSessions() async {
@@ -3358,7 +3402,7 @@ private struct SessionAgendaRow: View {
     }
 }
 
-private struct CalendarDraft: Identifiable {
+struct CalendarDraft: Identifiable {
     let id = UUID()
     let title: String
     let start: Date
@@ -3367,7 +3411,7 @@ private struct CalendarDraft: Identifiable {
     let notes: String?
 }
 
-private struct CalendarEditSheet: UIViewControllerRepresentable {
+struct CalendarEditSheet: UIViewControllerRepresentable {
     let draft: CalendarDraft
     @Binding var isPresented: Bool
 
