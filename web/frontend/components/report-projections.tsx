@@ -309,7 +309,7 @@ function ProjectionDetail({
 
       <div className="mt-5 space-y-5">
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Private Beobachtungen</h3>
+          <h3 className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Private Beobachtungen</h3>
           <div className="mt-2 space-y-3">
             {current.observations.map((observation, index) => (
               <div key={`${observation.observed_on}-${index}`} className="rounded-xl bg-muted/60 p-3">
@@ -320,7 +320,7 @@ function ProjectionDetail({
           </div>
         </section>
         <p className="rounded-xl border border-signal/30 bg-signal/5 p-4 text-sm leading-relaxed">
-          Private Texte werden nicht automatisch veröffentlicht. Erst deine bestätigte Zuordnung macht ausschließlich Titel, Zusammenfassung und öffentliche Metadaten sichtbar.
+          Private Texte werden nicht automatisch veröffentlicht. Erst deine bestätigte Zuordnung macht ausschließlich Titel, Zusammenfassung und öffentliche Metadaten sichtbar. Das ist keine Annahme, Zuordnung oder Bearbeitung durch die Stadt und keine Aussage über Dringlichkeit oder Lösung.
         </p>
 
         {mode === null && (

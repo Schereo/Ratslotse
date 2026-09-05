@@ -32,8 +32,8 @@ from ..antworten import (
 )
 from ..deps import (
     get_external_ai_screening_scheduler,
+    get_owner_projection_store,
     get_private_report_store,
-    get_projection_store,
     require_eligible_reporter,
 )
 from ..ratelimit import civic_report_screening_limiter
@@ -136,7 +136,7 @@ def list_reports(
     offset: int = Query(0, ge=0, le=2**63 - 1),
     user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
-    projections: ProjectionStore = Depends(get_projection_store),
+    projections: ProjectionStore | None = Depends(get_owner_projection_store),
 ) -> PrivateReportListOut:
     try:
         page = store.list_owned_reports(
@@ -146,9 +146,13 @@ def list_reports(
         )
     except ValueError as error:
         raise _http_exception(error) from None
-    public_assignments = projections.list_owner_assignments(
-        reporter_id=int(user["id"]),
-        report_ids=[report.id for report in page.reports],
+    public_assignments = (
+        projections.list_owner_assignments(
+            reporter_id=int(user["id"]),
+            report_ids=[report.id for report in page.reports],
+        )
+        if projections is not None
+        else {}
     )
     return {
         "reports": [
@@ -183,16 +187,20 @@ def get_report(
     report_id: int,
     user: dict = Depends(require_eligible_reporter),
     store: PrivateReportStore = Depends(get_private_report_store),
-    projections: ProjectionStore = Depends(get_projection_store),
+    projections: ProjectionStore | None = Depends(get_owner_projection_store),
 ) -> PrivateReportOut:
     reporter_id = int(user["id"])
     report = store.get_owned_report(report_id, reporter_id=reporter_id)
     if report is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Meldung nicht gefunden.")
-    assignment = projections.list_owner_assignments(
-        reporter_id=reporter_id,
-        report_ids=[report.id],
-    ).get(report.id)
+    assignment = (
+        projections.list_owner_assignments(
+            reporter_id=reporter_id,
+            report_ids=[report.id],
+        ).get(report.id)
+        if projections is not None
+        else None
+    )
     return _private_report_out(report, assignment)
 
 

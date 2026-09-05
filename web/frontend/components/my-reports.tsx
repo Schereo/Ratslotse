@@ -354,7 +354,7 @@ function ReportDetail({
           </p>
         ) : report.public_projection ? (
           <p className="text-sm text-muted-foreground">
-            Ratslotse zeigt eine getrennt formulierte Projektion öffentlich. Das bedeutet keine Annahme, Bearbeitung oder Zuständigkeit der Stadt.
+            Ratslotse zeigt eine getrennt formulierte Projektion öffentlich. Das bedeutet keine Annahme, Zuordnung oder Bearbeitung durch die Stadt und keine Aussage über Dringlichkeit oder Lösung.
           </p>
         ) : report.moderation_outcome === "approved" ? (
           <p className="text-sm text-muted-foreground">

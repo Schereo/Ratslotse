@@ -159,6 +159,47 @@ def test_human_confirmation_creates_one_minimized_citywide_projection(tmp_path):
     public_after.close()
 
 
+def test_owner_link_disappears_when_public_target_is_resolved(tmp_path):
+    import sqlite3
+
+    from buergerportal.projections import NewCitywideProjection, ProjectionStore
+    from buergerportal.store import ProblemStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    owner_id, reviewer_id, approved = _approved_report(
+        database,
+        reporter_email="fiktive-geloeste-projektion@test.de",
+        reviewer_email="fiktive-geloeste-pruefung@test.de",
+        text="Fiktive Beobachtung für eine später gelöste Projektion.",
+    )
+    projections = ProjectionStore(database)
+    assignment = projections.confirm_assignment(
+        approved.id,
+        reviewer_id=reviewer_id,
+        expected_revision=1,
+        target=NewCitywideProjection(
+            title="Fiktive später gelöste Projektion",
+            summary="Nach der Lösung darf kein Owner-Link auf ein unsichtbares Ziel zeigen.",
+        ),
+    )
+    connection = sqlite3.connect(database)
+    connection.execute(
+        "UPDATE civic_problems SET status = 'apparently_resolved' WHERE id = ?",
+        (assignment.problem_id,),
+    )
+    connection.commit()
+    connection.close()
+
+    assert projections.list_owner_assignments(
+        reporter_id=owner_id,
+        report_ids=[approved.id],
+    ) == {}
+    public = ProblemStore(database)
+    assert public.get_public_problem(assignment.problem_id) is None
+    public.close()
+    projections.close()
+
+
 def test_projection_candidates_are_oldest_first_bounded_and_minimized(tmp_path):
     from dataclasses import asdict
 
@@ -621,20 +662,33 @@ def test_new_projection_rejects_non_citywide_private_reports(tmp_path):
     projections.close()
 
 
-def test_projection_migration_preserves_an_upgraded_public_database(tmp_path):
+def test_projection_migration_matches_fresh_schema_and_is_repeatable(tmp_path):
     import sqlite3
 
-    from buergerportal.projections import ProjectionStore
+    from buergerportal.projections import ExistingProjection, ProjectionStore
     from buergerportal.store import ProblemStore
     from kern.store import Store
 
-    database = tmp_path / "ratslotse.sqlite"
-    accounts = Store(database)
+    def projection_columns(path):
+        connection = sqlite3.connect(path)
+        result = {
+            table: connection.execute(f"PRAGMA table_info({table})").fetchall()
+            for table in (
+                "civic_projection_schema_migrations",
+                "civic_problem_projection_baselines",
+                "civic_report_problem_assignments",
+            )
+        }
+        connection.close()
+        return result
+
+    upgraded_database = tmp_path / "upgraded.sqlite"
+    accounts = Store(upgraded_database)
     accounts.close()
-    public = ProblemStore(database)
+    public = ProblemStore(upgraded_database)
     public.close()
-    connection = sqlite3.connect(database)
-    connection.execute(
+    connection = sqlite3.connect(upgraded_database)
+    inserted = connection.execute(
         """INSERT INTO civic_problems (
                title, summary, category, tags_json, scope_kind, location_label,
                latitude, longitude, geometry_json, status, independent_reports,
@@ -650,23 +704,48 @@ def test_projection_migration_preserves_an_upgraded_public_database(tmp_path):
             "2026-08-03T00:00:00+00:00",
         ),
     )
+    existing_problem_id = int(inserted.lastrowid)
     connection.commit()
     connection.close()
-    before_store = ProblemStore(database)
+    before_store = ProblemStore(upgraded_database)
     before = before_store.list_public_problems()
     before_store.close()
 
-    migrated = ProjectionStore(database)
+    migrated = ProjectionStore(upgraded_database)
     migrated.close()
+    migrated_again = ProjectionStore(upgraded_database)
+    migrated_again.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh = ProjectionStore(fresh_database)
+    fresh.close()
 
-    after_store = ProblemStore(database)
+    assert projection_columns(upgraded_database) == projection_columns(fresh_database)
+    after_store = ProblemStore(upgraded_database)
     assert after_store.list_public_problems() == before
     after_store.close()
-    connection = sqlite3.connect(database)
+    connection = sqlite3.connect(upgraded_database)
     assert connection.execute(
         "SELECT version FROM civic_projection_schema_migrations ORDER BY version"
     ).fetchall() == [(1,)]
     connection.close()
+
+    _, reviewer_id, approved = _approved_report(
+        upgraded_database,
+        reporter_email="fiktive-migrationsmeldung@test.de",
+        reviewer_email="fiktive-migrationspruefung@test.de",
+        text="Fiktive Beobachtung nach einer Bestandsmigration.",
+    )
+    projections = ProjectionStore(upgraded_database)
+    projections.confirm_assignment(
+        approved.id,
+        reviewer_id=reviewer_id,
+        expected_revision=1,
+        target=ExistingProjection(existing_problem_id),
+    )
+    projections.close()
+    exercised = ProblemStore(upgraded_database)
+    assert exercised.get_public_problem(existing_problem_id)["independent_reports"] == 4
+    exercised.close()
 
 
 def test_projection_database_evidence_is_immutable(tmp_path):
@@ -696,6 +775,7 @@ def test_projection_database_evidence_is_immutable(tmp_path):
         reporter_id=owner_id,
         reviewer_id=reviewer_id,
         text="Fiktive zweite Beobachtung für Datenbankwächter.",
+        scope_kind="point",
     )
     projections.close()
     connection = sqlite3.connect(database)
@@ -716,7 +796,7 @@ def test_projection_database_evidence_is_immutable(tmp_path):
                latitude, longitude, geometry_json, status, independent_reports,
                first_observed_at, last_observed_at, published_at, updated_at
            ) VALUES ('Fiktives falsches Ziel', 'Fiktive falsche Zusammenfassung',
-                     'mobility', '[]', 'citywide', '', NULL, NULL, NULL, 'new',
+                     'public_space', '[]', 'citywide', '', NULL, NULL, NULL, 'new',
                      0, '2026-09-01', '2026-09-01', NULL, '2026-09-05')"""
     )
     fake_problem_id = int(fake.lastrowid)

@@ -245,7 +245,7 @@ test.describe("Owner-bound private report history", () => {
     await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).click();
 
     await expect(page.getByText("Datensparsam öffentlich zugeordnet")).toBeVisible();
-    await expect(page.getByText(/keine Annahme, Bearbeitung oder Zuständigkeit der Stadt/)).toBeVisible();
+    await expect(page.getByText(/keine Annahme, Zuordnung oder Bearbeitung durch die Stadt.*keine Aussage über Dringlichkeit oder Lösung/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Öffentliches Problem öffnen" })).toHaveAttribute("href", "/probleme/501");
     await expect(page.getByText(/KI|Reviewer|Prüfer/i)).toHaveCount(0);
   });

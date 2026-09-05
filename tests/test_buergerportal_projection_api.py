@@ -61,6 +61,7 @@ def projection_api(tmp_path):
     app.dependency_overrides[deps.get_problem_store] = public_store
     app.dependency_overrides[deps.get_private_report_store] = private_store
     app.dependency_overrides[deps.get_projection_store] = projection_store
+    app.dependency_overrides[deps.get_owner_projection_store] = projection_store
     try:
         yield TestClient(app), database
     finally:
@@ -113,6 +114,25 @@ def _approved_report(database, *, reporter_id: int, reviewer_id: int):
     )
     reports.close()
     return submitted
+
+
+def test_disabled_projection_dependencies_do_not_provision_storage(tmp_path, monkeypatch):
+    from fastapi import HTTPException
+
+    database = tmp_path / "disabled.sqlite"
+    settings = get_settings()
+    monkeypatch.setattr(settings, "ratslotse_buergerportal", False)
+    monkeypatch.setattr(settings, "ratslotse_db", str(database))
+
+    owner_dependency = deps.get_owner_projection_store()
+    assert next(owner_dependency) is None
+    with pytest.raises(StopIteration):
+        next(owner_dependency)
+    with pytest.raises(HTTPException) as blocked:
+        next(deps.get_projection_store())
+
+    assert blocked.value.status_code == 404
+    assert not database.exists()
 
 
 def test_projection_http_entrypoint_is_hidden_when_feature_gate_is_closed(

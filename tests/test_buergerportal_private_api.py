@@ -71,6 +71,7 @@ def private_api(tmp_path):
     app.dependency_overrides[deps.get_problem_store] = get_problem_store
     app.dependency_overrides[deps.get_private_report_store] = get_private_report_store
     app.dependency_overrides[deps.get_projection_store] = get_projection_store
+    app.dependency_overrides[deps.get_owner_projection_store] = get_projection_store
     app.dependency_overrides[deps.get_external_ai_screening_scheduler] = (
         lambda: _NoopExternalAiScreeningScheduler()
     )

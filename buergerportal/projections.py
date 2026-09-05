@@ -171,6 +171,7 @@ WHEN NOT EXISTS (
            AND problem.status != 'apparently_resolved')
           OR
           (NEW.creates_problem = 1
+           AND candidate_report.scope_kind = 'citywide'
            AND baseline.baseline_independent_reports = 0
            AND problem.published_at IS NULL
            AND problem.independent_reports = 0
@@ -502,6 +503,7 @@ class ProjectionStore:
                   AND owner.email_verified = 1
                   AND problem.published_at IS NOT NULL
                   AND problem.independent_reports >= 1
+                  AND problem.status != 'apparently_resolved'
                   AND report.id IN ({placeholders})""",
             (reporter_id, *normalized_ids),
         ).fetchall()

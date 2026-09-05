@@ -50,8 +50,24 @@ def get_private_report_store() -> Iterator[PrivateReportStore]:
 
 
 def get_projection_store() -> Iterator[ProjectionStore]:
-    """Human-confirmed bridge into the public problem projection."""
-    store = ProjectionStore(get_settings().ratslotse_db)
+    """Feature-only human-confirmed bridge into the public projection."""
+    settings = get_settings()
+    if not settings.ratslotse_buergerportal:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
+    store = ProjectionStore(settings.ratslotse_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_owner_projection_store() -> Iterator[ProjectionStore | None]:
+    """Read owner links without provisioning projection storage outside feature."""
+    settings = get_settings()
+    if not settings.ratslotse_buergerportal:
+        yield None
+        return
+    store = ProjectionStore(settings.ratslotse_db)
     try:
         yield store
     finally:
