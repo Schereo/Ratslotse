@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from dataclasses import asdict
+from threading import Barrier, Event
 import sqlite3
 
 import pytest
@@ -101,6 +102,11 @@ def _private_schema_signature(database) -> list[tuple[str, str, str | None]]:
                    'civic_report_local_screenings',
                    'civic_report_ai_screening_claims',
                    'civic_report_ai_screenings',
+                   'civic_report_moderation_decisions',
+                   'civic_report_rejection_draft_claims',
+                   'civic_report_rejection_drafts',
+                   'civic_report_current_reviewable',
+                   'civic_report_eligible_reviewers',
                    'civic_report_schema_migrations'
                )
                ORDER BY type, name"""
@@ -119,7 +125,19 @@ def _private_data_schema_signature(database) -> list[tuple[str, str, str | None]
     ]
 
 
+def _drop_moderation_schema(connection: sqlite3.Connection) -> None:
+    connection.execute("DROP VIEW IF EXISTS civic_report_current_reviewable")
+    connection.execute("DROP VIEW IF EXISTS civic_report_eligible_reviewers")
+    connection.execute("DROP TABLE IF EXISTS civic_report_rejection_drafts")
+    connection.execute("DROP TABLE IF EXISTS civic_report_rejection_draft_claims")
+    connection.execute("DROP TABLE IF EXISTS civic_report_moderation_decisions")
+    connection.execute("DROP TRIGGER IF EXISTS trg_civic_report_rejection_is_final")
+    connection.execute("DROP TRIGGER IF EXISTS trg_web_users_controlled_role_insert")
+    connection.execute("DROP TRIGGER IF EXISTS trg_web_users_controlled_role_update")
+
+
 def _drop_ai_screening_schema(connection: sqlite3.Connection) -> None:
+    _drop_moderation_schema(connection)
     connection.execute("DROP TABLE IF EXISTS civic_report_ai_screenings")
     connection.execute("DROP TABLE IF EXISTS civic_report_ai_screening_claims")
     connection.execute("DROP INDEX IF EXISTS uq_civic_report_local_screening_identity")
@@ -137,6 +155,14 @@ def _drop_private_triggers(connection: sqlite3.Connection) -> None:
     ).fetchall()
     for (trigger,) in triggers:
         connection.execute(f'DROP TRIGGER "{trigger}"')
+
+
+def _downgrade_private_schema_to_version_eight(database) -> None:
+    with sqlite3.connect(database) as connection:
+        _drop_moderation_schema(connection)
+        connection.execute(
+            "DELETE FROM civic_report_schema_migrations WHERE version >= 9"
+        )
 
 
 def _downgrade_private_schema_to_version_seven(database) -> None:
@@ -1857,6 +1883,65 @@ def test_erasing_reporter_data_removes_only_private_owned_content(tmp_path):
     assert "wiederholte Beobachtung" not in dump
 
 
+def test_moderation_migration_grows_version_eight_without_replacing_data(tmp_path):
+    from buergerportal.reports import PrivateReportStore
+    from buergerportal.store import ProblemStore
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    public_store = ProblemStore(database)
+    _insert_public_projection(database)
+    public_before = public_store.list_public_problems()
+    public_store.close()
+    old_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Meldung vor der Moderationsmigration.",
+    )
+    old_store.close()
+    accounts = Store(database)
+    reviewer_id = accounts.create_web_user(
+        "migration-pruefung@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    accounts.close()
+    _downgrade_private_schema_to_version_eight(database)
+
+    migrated = PrivateReportStore(database)
+    decision = migrated.decide_report(
+        submitted.id,
+        reviewer_id=reviewer_id,
+        expected_revision=submitted.content_revision,
+        outcome="approved",
+        rejection_explanation=None,
+    )
+    migrated.close()
+    reopened = PrivateReportStore(database)
+    owner = reopened.get_owned_report(submitted.id, reporter_id=17)
+    reopened.close()
+    fresh_database = tmp_path / "fresh.sqlite"
+    fresh = PrivateReportStore(fresh_database)
+    fresh.close()
+
+    assert decision.outcome == "approved"
+    assert owner is not None and owner.moderation_outcome == "approved"
+    assert _private_data_schema_signature(database) == _private_data_schema_signature(
+        fresh_database
+    )
+    public_store = ProblemStore(database)
+    assert public_store.list_public_problems() == public_before
+    public_store.close()
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute(
+            "SELECT version FROM civic_report_schema_migrations ORDER BY version"
+        ).fetchall() == [
+            (1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)
+        ]
+
+
 def test_external_ai_migration_grows_version_seven_without_replacing_data(tmp_path):
     from buergerportal.reports import PrivateReportStore
     from buergerportal.store import ProblemStore
@@ -1905,7 +1990,7 @@ def test_external_ai_migration_grows_version_seven_without_replacing_data(tmp_pa
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)]
 
 
 def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_path):
@@ -1962,7 +2047,7 @@ def test_private_migration_adds_idempotency_to_a_grown_version_four_schema(tmp_p
     with sqlite3.connect(database) as connection:
         assert connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
+        ).fetchall() == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)]
 
 
 def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
@@ -2021,7 +2106,7 @@ def test_private_migration_refreshes_owner_triggers_after_applied_version_five(
                 (admin_id,),
             )
     assert "role = 'user'" in migrated_trigger
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -2069,7 +2154,7 @@ def test_private_migration_upgrades_the_pre_fix_version_two_schema(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)]
     assert _private_data_schema_signature(database) == _private_data_schema_signature(
         fresh_database
     )
@@ -2197,10 +2282,549 @@ def test_private_migration_grows_repeatably_without_replacing_public_data(tmp_pa
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)]
     public_store = ProblemStore(grown_database)
     assert public_store.list_public_problems() == public_before
     public_store.close()
+
+
+def test_admin_and_moderator_share_a_location_free_moderation_queue(tmp_path):
+    from buergerportal.reports import ReporterNotEligible, ReviewerNotEligible
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    report_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung für die menschliche Prüfung.",
+    )
+    account_store = Store(database)
+    moderator_id = account_store.create_web_user(
+        "moderation@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    admin_id = account_store.create_web_user(
+        "verwaltung@example.org",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=True,
+    )
+    ordinary_id = account_store.create_web_user(
+        "weitere-meldung@example.org",
+        "x",
+        role="user",
+        status="active",
+        email_verified=True,
+    )
+    with pytest.raises(ValueError, match="Kontorolle"):
+        account_store.create_web_user(
+            "unbekannt@example.org",
+            "x",
+            role="reviewer",
+        )
+    with pytest.raises(ValueError, match="Kontorolle"):
+        account_store.set_web_user_role(ordinary_id, "reviewer")
+    with pytest.raises(sqlite3.IntegrityError, match="role must be controlled"):
+        account_store._conn.execute(
+            "UPDATE web_users SET role = 'reviewer' WHERE id = ?",
+            (ordinary_id,),
+        )
+    with pytest.raises(sqlite3.IntegrityError, match="role must be controlled"):
+        account_store._conn.execute(
+            """INSERT INTO web_users (
+                   email, password_hash, role, status, email_verified, created_at
+               ) VALUES ('direkt@example.org', 'x', 'reviewer', 'active', 1,
+                         '2026-09-05T08:00:00+00:00')"""
+        )
+    account_store.close()
+    newer_store, newer = _create_submitted_citywide_report(
+        database,
+        "Später eingegangene fiktive Beobachtung.",
+    )
+    newer_store.close()
+
+    moderator_page = report_store.list_reports_for_moderation(
+        reviewer_id=moderator_id,
+        limit=20,
+        offset=0,
+    )
+    admin_page = report_store.list_reports_for_moderation(
+        reviewer_id=admin_id,
+        limit=20,
+        offset=0,
+    )
+
+    assert moderator_page == admin_page
+    assert moderator_page.total == 2
+    assert [report.id for report in moderator_page.reports] == [
+        submitted.id,
+        newer.id,
+    ]
+    assert moderator_page.reports[0].id == submitted.id
+    assert moderator_page.reports[0].text_preview == (
+        "Fiktive Beobachtung für die menschliche Prüfung."
+    )
+    assert moderator_page.reports[0].local_outcome == "external_review_candidate"
+    assert moderator_page.reports[0].local_reason_codes == ()
+    assert moderator_page.reports[0].ai_verdict is None
+    assert moderator_page.reports[0].ai_reason_code is None
+    serialized = asdict(moderator_page.reports[0])
+    assert {
+        "reporter_id",
+        "email",
+        "location_label",
+        "latitude",
+        "longitude",
+        "content_revision",
+        "submitted_at",
+        "created_at",
+    }.isdisjoint(serialized)
+    with pytest.raises(ReviewerNotEligible):
+        report_store.list_reports_for_moderation(
+            reviewer_id=ordinary_id,
+            limit=20,
+            offset=0,
+        )
+    with sqlite3.connect(database) as connection:
+        with pytest.raises(sqlite3.IntegrityError, match="eligible report and reviewer"):
+            connection.execute(
+                """INSERT INTO civic_report_moderation_decisions (
+                       report_id, content_revision, reviewer_id, outcome, decided_at
+                   ) VALUES (?, ?, ?, 'approved', '2026-09-05T08:00:00+00:00')""",
+                (submitted.id, submitted.content_revision, ordinary_id),
+            )
+
+    account_store = Store(database)
+    account_store.set_web_user_role(17, "moderator")
+    account_store.close()
+    assert report_store.get_owned_report(submitted.id, reporter_id=17) is None
+    with pytest.raises(ReporterNotEligible, match="zugelassenes Konto"):
+        report_store.list_owned_reports(reporter_id=17, limit=20, offset=0)
+    assert report_store.list_reports_for_moderation(
+        reviewer_id=moderator_id,
+        limit=20,
+        offset=0,
+    ).total == 0
+    report_store.close()
+
+
+def test_moderation_detail_keeps_one_revision_during_concurrent_appends(tmp_path):
+    from buergerportal.reports import PrivateReportStore
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    setup, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive erste Beobachtung für einen konsistenten Lesestand.",
+    )
+    setup.close()
+    accounts = Store(database)
+    reviewer_id = accounts.create_web_user(
+        "konsistenz-pruefung@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    accounts.close()
+    barrier = Barrier(2)
+    intermediate_ready = Event()
+    intermediate_read = Event()
+    write_loop_active = Event()
+    racing_read_observed = Event()
+    finished = Event()
+
+    def append_observations():
+        writer = PrivateReportStore(database)
+        barrier.wait()
+        try:
+            for revision in range(2, 302):
+                if revision == 3:
+                    write_loop_active.set()
+                updated = writer.append_owned_observation(
+                    submitted.id,
+                    reporter_id=17,
+                    text=f"Fiktive konkurrierende Beobachtung {revision}.",
+                    observed_on="2026-09-02",
+                )
+                writer.assess_owned_submission(
+                    submitted.id,
+                    reporter_id=17,
+                    expected_revision=updated.content_revision,
+                )
+                if revision == 2:
+                    intermediate_ready.set()
+                    assert intermediate_read.wait(5)
+        finally:
+            write_loop_active.clear()
+            finished.set()
+            writer.close()
+
+    def read_details():
+        reader = PrivateReportStore(database)
+        snapshots = []
+        barrier.wait()
+        try:
+            assert intermediate_ready.wait(5)
+            intermediate = reader.get_report_for_moderation(
+                submitted.id,
+                reviewer_id=reviewer_id,
+            )
+            assert intermediate is not None
+            assert intermediate.content_revision == 2
+            assert len(intermediate.observations) == 2
+            snapshots.append(intermediate)
+            intermediate_read.set()
+            while not finished.is_set():
+                writer_was_active = write_loop_active.is_set()
+                detail = reader.get_report_for_moderation(
+                    submitted.id,
+                    reviewer_id=reviewer_id,
+                )
+                if detail is not None:
+                    snapshots.append(detail)
+                    if (
+                        writer_was_active
+                        and write_loop_active.is_set()
+                        and 3 <= detail.content_revision <= 300
+                    ):
+                        racing_read_observed.set()
+            final = reader.get_report_for_moderation(
+                submitted.id,
+                reviewer_id=reviewer_id,
+            )
+            if final is not None:
+                snapshots.append(final)
+            return snapshots
+        finally:
+            intermediate_read.set()
+            reader.close()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        writer = executor.submit(append_observations)
+        snapshots = executor.submit(read_details).result()
+        writer.result()
+
+    assert snapshots
+    assert racing_read_observed.is_set()
+    for detail in snapshots:
+        assert len(detail.observations) == detail.content_revision
+    assert snapshots[-1].content_revision == 301
+    assert len(snapshots[-1].observations) == 301
+
+
+def test_human_rejection_overrides_ai_and_is_immutable_and_owner_visible(tmp_path):
+    from buergerportal.reports import (
+        InvalidReportTransition,
+        ModerationConflict,
+    )
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    report_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive kommunale Beobachtung mit genug Angaben.",
+    )
+    account_store = Store(database)
+    reviewer_id = account_store.create_web_user(
+        "pruefung@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    account_store.close()
+    candidate = report_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=submitted.content_revision,
+        assessment_version=1,
+        claim_token="fiktive-moderation-ki-pruefung",
+    )
+    assert candidate is not None
+    assert report_store.start_claimed_external_ai_screening(candidate) is not None
+    report_store.complete_external_ai_screening(
+        candidate,
+        verdict="suitable",
+        reason_code="municipal_problem",
+        model_identifier="fiktives-modell-v1",
+    )
+
+    detail = report_store.get_report_for_moderation(
+        submitted.id,
+        reviewer_id=reviewer_id,
+    )
+    assert detail is not None
+    assert detail.ai_verdict == "suitable"
+    assert detail.ai_reason_code == "municipal_problem"
+    assert detail.observations[0].text == (
+        "Fiktive kommunale Beobachtung mit genug Angaben."
+    )
+    assert set(asdict(detail.observations[0])) == {"text", "observed_on"}
+    assert {
+        "reporter_id",
+        "email",
+        "location_label",
+        "latitude",
+        "longitude",
+        "model_identifier",
+        "submitted_at",
+        "created_at",
+    }.isdisjoint(detail.__dataclass_fields__)
+
+    decision = report_store.decide_report(
+        submitted.id,
+        reviewer_id=reviewer_id,
+        expected_revision=submitted.content_revision,
+        outcome="rejected",
+        rejection_explanation="  Diese Meldung kann so nicht weiterbearbeitet werden.  ",
+    )
+    exact_retry = report_store.decide_report(
+        submitted.id,
+        reviewer_id=reviewer_id,
+        expected_revision=submitted.content_revision,
+        outcome="rejected",
+        rejection_explanation="Diese Meldung kann so nicht weiterbearbeitet werden.",
+    )
+
+    assert exact_retry == decision
+    assert decision.outcome == "rejected"
+    assert decision.rejection_explanation == (
+        "Diese Meldung kann so nicht weiterbearbeitet werden."
+    )
+    with pytest.raises(ModerationConflict):
+        report_store.decide_report(
+            submitted.id,
+            reviewer_id=reviewer_id,
+            expected_revision=submitted.content_revision,
+            outcome="approved",
+            rejection_explanation=None,
+        )
+    assert report_store.get_report_for_moderation(
+        submitted.id,
+        reviewer_id=reviewer_id,
+    ) is None
+    assert report_store.list_reports_for_moderation(
+        reviewer_id=reviewer_id,
+        limit=20,
+        offset=0,
+    ).total == 0
+
+    owner_detail = report_store.get_owned_report(submitted.id, reporter_id=17)
+    assert owner_detail is not None
+    assert owner_detail.moderation_outcome == "rejected"
+    assert owner_detail.rejection_explanation == decision.rejection_explanation
+    assert {
+        "reviewer_id",
+        "ai_verdict",
+        "ai_reason_code",
+    }.isdisjoint(owner_detail.__dataclass_fields__)
+    with pytest.raises(InvalidReportTransition):
+        report_store.append_owned_observation(
+            submitted.id,
+            reporter_id=17,
+            text="Fiktive Ergänzung nach finaler Ablehnung.",
+            observed_on="2026-09-02",
+        )
+    with sqlite3.connect(database) as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                """UPDATE civic_report_moderation_decisions
+                   SET rejection_explanation = 'Manipuliert' WHERE report_id = ?""",
+                (submitted.id,),
+            )
+        with pytest.raises(sqlite3.IntegrityError, match="immutable"):
+            connection.execute(
+                """UPDATE civic_report_moderation_decisions
+                   SET reviewer_id = 999 WHERE report_id = ?""",
+                (submitted.id,),
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "DELETE FROM civic_report_moderation_decisions WHERE report_id = ?",
+                (submitted.id,),
+            )
+    report_store.close()
+
+
+def test_human_approval_can_override_unsuitable_ai_advice(tmp_path):
+    from buergerportal.reports import PrivateReportNotFound
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    report_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung, die dennoch menschlich freigegeben wird.",
+    )
+    account_store = Store(database)
+    reviewer_id = account_store.create_web_user(
+        "freigabe@example.org",
+        "x",
+        role="admin",
+        status="active",
+        email_verified=False,
+    )
+    account_store.close()
+    candidate = report_store.claim_external_ai_screening(
+        submitted.id,
+        expected_revision=submitted.content_revision,
+        assessment_version=1,
+        claim_token="fiktive-ungeeignet-pruefung",
+    )
+    assert candidate is not None
+    assert report_store.start_claimed_external_ai_screening(candidate) is not None
+    report_store.complete_external_ai_screening(
+        candidate,
+        verdict="unsuitable",
+        reason_code="non_municipal_matter",
+        model_identifier="fiktives-modell-v1",
+    )
+
+    with pytest.raises(ValueError, match="keinen Ablehnungsgrund"):
+        report_store.decide_report(
+            submitted.id,
+            reviewer_id=reviewer_id,
+            expected_revision=submitted.content_revision,
+            outcome="approved",
+            rejection_explanation="Nicht verwendet",
+        )
+    with pytest.raises(ValueError, match="benötigt eine Erklärung"):
+        report_store.decide_report(
+            submitted.id,
+            reviewer_id=reviewer_id,
+            expected_revision=submitted.content_revision,
+            outcome="rejected",
+            rejection_explanation="   ",
+        )
+
+    decision = report_store.decide_report(
+        submitted.id,
+        reviewer_id=reviewer_id,
+        expected_revision=submitted.content_revision,
+        outcome="approved",
+        rejection_explanation=None,
+    )
+    assert decision.outcome == "approved"
+    assert decision.rejection_explanation is None
+    owner = report_store.get_owned_report(submitted.id, reporter_id=17)
+    assert owner is not None
+    assert owner.moderation_outcome == "approved"
+    assert owner.rejection_explanation is None
+    with pytest.raises(PrivateReportNotFound):
+        report_store.decide_report(
+            submitted.id,
+            reviewer_id=reviewer_id,
+            expected_revision=submitted.content_revision + 1,
+            outcome="approved",
+            rejection_explanation=None,
+        )
+    report_store.close()
+
+
+def test_concurrent_human_decisions_keep_exactly_one_result(tmp_path):
+    from buergerportal.reports import ModerationConflict, PrivateReportStore
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    setup_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung für konkurrierende Prüfungen.",
+    )
+    setup_store.close()
+    account_store = Store(database)
+    reviewers = tuple(
+        account_store.create_web_user(
+            f"pruefung-{index}@example.org",
+            "x",
+            role="moderator",
+            status="active",
+            email_verified=True,
+        )
+        for index in (1, 2)
+    )
+    account_store.close()
+    barrier = Barrier(2)
+
+    def decide(index: int):
+        store = PrivateReportStore(database)
+        barrier.wait()
+        try:
+            if index == 0:
+                return store.decide_report(
+                    submitted.id,
+                    reviewer_id=reviewers[index],
+                    expected_revision=submitted.content_revision,
+                    outcome="approved",
+                    rejection_explanation=None,
+                )
+            return store.decide_report(
+                submitted.id,
+                reviewer_id=reviewers[index],
+                expected_revision=submitted.content_revision,
+                outcome="rejected",
+                rejection_explanation="Fiktive konkurrierende Ablehnung.",
+            )
+        except ModerationConflict:
+            return "conflict"
+        finally:
+            store.close()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(decide, (0, 1)))
+
+    assert results.count("conflict") == 1
+    decisions = [result for result in results if result != "conflict"]
+    assert len(decisions) == 1
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM civic_report_moderation_decisions"
+        ).fetchone()[0] == 1
+
+
+def test_moderation_decision_keeps_audit_after_reviewer_deletion(tmp_path):
+    from kern.store import Store
+
+    database = tmp_path / "ratslotse.sqlite"
+    report_store, submitted = _create_submitted_citywide_report(
+        database,
+        "Fiktive Beobachtung mit beständigem Prüfnachweis.",
+    )
+    account_store = Store(database)
+    reviewer_id = account_store.create_web_user(
+        "audit-pruefung@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    decision = report_store.decide_report(
+        submitted.id,
+        reviewer_id=reviewer_id,
+        expected_revision=submitted.content_revision,
+        outcome="rejected",
+        rejection_explanation="Fiktive finale Erklärung für die meldende Person.",
+    )
+
+    account_store.delete_web_user(reviewer_id)
+
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            """SELECT reviewer_id, outcome, rejection_explanation
+               FROM civic_report_moderation_decisions WHERE report_id = ?""",
+            (submitted.id,),
+        ).fetchone()
+    assert row == (
+        decision.reviewer_id,
+        "rejected",
+        "Fiktive finale Erklärung für die meldende Person.",
+    )
+    owner = report_store.get_owned_report(submitted.id, reporter_id=17)
+    assert owner is not None
+    assert owner.moderation_outcome == "rejected"
+    account_store.close()
+    report_store.close()
 
 
 def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
@@ -2241,4 +2865,4 @@ def test_failed_private_migration_rolls_back_the_whole_version(tmp_path):
         versions = connection.execute(
             "SELECT version FROM civic_report_schema_migrations ORDER BY version"
         ).fetchall()
-    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,)]
+    assert versions == [(1,), (2,), (3,), (4,), (5,), (6,), (7,), (8,), (9,)]

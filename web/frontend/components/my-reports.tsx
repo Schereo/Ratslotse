@@ -37,6 +37,12 @@ const REPORT_STATE = {
   submitted: "Privat eingegangen",
 } as const satisfies Record<PrivateReportSummary["state"], string>;
 
+function reportState(report: Pick<PrivateReportSummary, "state" | "moderation_outcome">) {
+  if (report.moderation_outcome === "rejected") return "Abgelehnt";
+  if (report.moderation_outcome === "approved") return "Von Ratslotse geprüft";
+  return REPORT_STATE[report.state];
+}
+
 export function MyReports() {
   const { user } = useAuth();
   const router = useRouter();
@@ -197,8 +203,8 @@ function ReportRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge color={report.state === "submitted" ? "green" : "blue"}>
-              {REPORT_STATE[report.state]}
+            <Badge color={report.moderation_outcome === "rejected" ? "red" : report.state === "submitted" ? "green" : "blue"}>
+              {reportState(report)}
             </Badge>
             <span className="text-xs text-muted-foreground">
               Beobachtet am {formatDate(report.observed_on)}
@@ -282,8 +288,8 @@ function ReportDetail({
     <section id={detailId} className="border-t border-border p-5 sm:p-6" aria-labelledby={headingId}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Badge color={report.state === "submitted" ? "green" : "blue"}>
-            {REPORT_STATE[report.state]}
+          <Badge color={report.moderation_outcome === "rejected" ? "red" : report.state === "submitted" ? "green" : "blue"}>
+            {reportState(report)}
           </Badge>
           <h2
             id={headingId}
@@ -302,6 +308,14 @@ function ReportDetail({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Beschreibung</h3>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{description}</p>
         </section>
+        {report.moderation_outcome === "rejected" && report.rejection_explanation && (
+          <section className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+            <h3 className="text-sm font-semibold text-foreground">Warum die Meldung abgelehnt wurde</h3>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+              {report.rejection_explanation}
+            </p>
+          </section>
+        )}
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
           <DetailFact label="Beobachtet am" value={formatDate(report.observed_on)} />
           <DetailFact label="Kategorie" value={PROBLEM_KATEGORIEN[report.category]} />
@@ -315,6 +329,14 @@ function ReportDetail({
       <div className="mt-6 border-t border-border pt-4">
         {report.state === "draft" ? (
           <Button type="button" onClick={() => onContinue(report)}>Entwurf fortsetzen</Button>
+        ) : report.moderation_outcome === "rejected" ? (
+          <p className="text-sm text-muted-foreground">
+            Diese Entscheidung ist endgültig und schreibgeschützt. Antworten oder erneutes Absenden sind in diesem Schritt nicht möglich.
+          </p>
+        ) : report.moderation_outcome === "approved" ? (
+          <p className="text-sm text-muted-foreground">
+            Ratslotse hat diese Meldung geprüft. Sie ist dadurch noch nicht öffentlich und wurde nicht an die Stadt weitergegeben.
+          </p>
         ) : (
           <p className="text-sm text-muted-foreground">
             Diese Meldung ist privat eingegangen und hier schreibgeschützt.

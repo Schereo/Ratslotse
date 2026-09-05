@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Clock, MailWarning } from "lucide-react";
+import { Clock, MailWarning, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -22,9 +22,11 @@ import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Skeleton, toast } from "@/components/ui";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
+import { canModerateReports, isModerationOnly } from "@/lib/account-capabilities";
+import { PROBLEME_FREI } from "@/lib/probleme-frei";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, refresh } = useAuth();
+  const { user, loading, refresh, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   // Geteilte Detailseiten lassen sich ohne Konto lesen (s. lib/public-routes.ts).
@@ -42,6 +44,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     refetchInterval: gated ? 30_000 : false,
     enabled: gated,
   });
+
+  useEffect(() => {
+    if (
+      !loading
+      && PROBLEME_FREI
+      && isModerationOnly(user)
+      && canModerateReports(user)
+      && !pathname.startsWith("/moderation/")
+    ) {
+      router.replace("/moderation/meldungen");
+    }
+  }, [loading, pathname, router, user]);
 
   useEffect(() => {
     if (loading || user || oeffentlich) return;
@@ -84,6 +98,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // sofort (Logo, Navigations-Silhouette), nur der Inhalt füllt sich nach.
   if (loading || !user) return <ShellSkeleton />;
 
+  if (isModerationOnly(user) && (!PROBLEME_FREI || !canModerateReports(user))) {
+    const unavailableHere = !PROBLEME_FREI;
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-waves px-4 py-10">
+        <Card className="w-full max-w-md p-6 text-center sm:p-8">
+          <ShieldCheck className="mx-auto h-6 w-6 text-primary" aria-hidden />
+          <h1 className="mt-4 font-display text-xl font-bold">Moderation ist hier nicht verfügbar</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {unavailableHere
+              ? "Dieser geschützte Arbeitsbereich ist in dieser Umgebung nicht freigeschaltet."
+              : "Dieses Moderationskonto ist derzeit nicht für den geschützten Arbeitsbereich zugelassen."}
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-5"
+            onClick={() => void logout().then(() => router.replace("/login"))}
+          >
+            Abmelden
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col desk:flex-row">
       {/* Screenreader/Tastatur: direkt zum Inhalt, an Sidebar und Topbar vorbei. */}
@@ -93,16 +132,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         Zum Inhalt springen
       </a>
-      <SlashSearchShortcut />
-      <GuidedTour />
-      <CommandPalette />
-      <FeedbackDialog />
-      {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}
-      <Suspense fallback={null}>
-        <OnboardingTracker />
-      </Suspense>
-      {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
-      <BadgeCelebrator />
+      {!isModerationOnly(user) && (
+        <>
+          <SlashSearchShortcut />
+          <GuidedTour />
+          <CommandPalette />
+          <FeedbackDialog />
+          {/* useSearchParams braucht eine Suspense-Grenze (CSR-Bailout beim Prerender). */}
+          <Suspense fallback={null}>
+            <OnboardingTracker />
+          </Suspense>
+          {/* RL-U12: feiert neu verdiente Lotsen-Abzeichen — auf jeder Seite. */}
+          <BadgeCelebrator />
+        </>
+      )}
       {/* BackToTop liest useSearchParams (im Ratsgespräch ausgeblendet). */}
       <Suspense fallback={null}>
         <BackToTop />

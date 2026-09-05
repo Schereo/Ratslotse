@@ -1087,6 +1087,11 @@
             "type": "boolean"
           },
           "role": {
+            "enum": [
+              "user",
+              "admin",
+              "moderator"
+            ],
             "title": "Role",
             "type": "string"
           },
@@ -1238,6 +1243,11 @@
             "type": "integer"
           },
           "role": {
+            "enum": [
+              "user",
+              "admin",
+              "moderator"
+            ],
             "title": "Role",
             "type": "string"
           },
@@ -7172,6 +7182,339 @@
         "title": "MediaUpload",
         "type": "object"
       },
+      "ModerationDecisionIn": {
+        "properties": {
+          "expected_revision": {
+            "minimum": 1.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "rejection_explanation": {
+            "maxLength": 1000,
+            "title": "Rejection Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "expected_revision",
+          "outcome"
+        ],
+        "title": "ModerationDecisionIn",
+        "type": "object"
+      },
+      "ModerationDecisionOut": {
+        "properties": {
+          "content_revision": {
+            "title": "Content Revision",
+            "type": "integer"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "rejection_explanation": {
+            "title": "Rejection Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "report_id",
+          "content_revision",
+          "outcome",
+          "rejection_explanation",
+          "decided_at"
+        ],
+        "title": "ModerationDecisionOut",
+        "type": "object"
+      },
+      "ModerationObservationOut": {
+        "properties": {
+          "observed_on": {
+            "title": "Observed On",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "observed_on"
+        ],
+        "title": "ModerationObservationOut",
+        "type": "object"
+      },
+      "ModerationReportListOut": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/ModerationReportSummaryOut"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reports",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ModerationReportListOut",
+        "type": "object"
+      },
+      "ModerationReportOut": {
+        "description": "Private review detail without owner identity or exact location.",
+        "properties": {
+          "ai_reason_code": {
+            "enum": [
+              "municipal_problem",
+              "insufficient_information",
+              "non_municipal_matter",
+              "personal_or_identifying_content",
+              "abusive_or_discriminatory_content",
+              "commercial_or_spam",
+              "possible_safety_context",
+              "model_uncertain"
+            ],
+            "title": "Ai Reason Code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ai_verdict": {
+            "enum": [
+              "suitable",
+              "needs_human_review",
+              "unsuitable"
+            ],
+            "title": "Ai Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "content_revision": {
+            "title": "Content Revision",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "local_outcome": {
+            "enum": [
+              "external_review_candidate",
+              "manual_review_only"
+            ],
+            "title": "Local Outcome",
+            "type": "string"
+          },
+          "local_reason_codes": {
+            "items": {
+              "enum": [
+                "potential_emergency",
+                "direct_contact_data",
+                "unsupported_text_format"
+              ],
+              "type": "string"
+            },
+            "title": "Local Reason Codes",
+            "type": "array"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/ModerationObservationOut"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "scope_kind",
+          "content_revision",
+          "observations",
+          "local_outcome",
+          "local_reason_codes",
+          "ai_verdict",
+          "ai_reason_code"
+        ],
+        "title": "ModerationReportOut",
+        "type": "object"
+      },
+      "ModerationReportSummaryOut": {
+        "description": "Data-minimal submitted report in the human review queue.",
+        "properties": {
+          "ai_reason_code": {
+            "enum": [
+              "municipal_problem",
+              "insufficient_information",
+              "non_municipal_matter",
+              "personal_or_identifying_content",
+              "abusive_or_discriminatory_content",
+              "commercial_or_spam",
+              "possible_safety_context",
+              "model_uncertain"
+            ],
+            "title": "Ai Reason Code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ai_verdict": {
+            "enum": [
+              "suitable",
+              "needs_human_review",
+              "unsuitable"
+            ],
+            "title": "Ai Verdict",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "enum": [
+              "mobility",
+              "public_space",
+              "education",
+              "childcare",
+              "housing",
+              "environment",
+              "accessibility",
+              "administration",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "local_outcome": {
+            "enum": [
+              "external_review_candidate",
+              "manual_review_only"
+            ],
+            "title": "Local Outcome",
+            "type": "string"
+          },
+          "local_reason_codes": {
+            "items": {
+              "enum": [
+                "potential_emergency",
+                "direct_contact_data",
+                "unsupported_text_format"
+              ],
+              "type": "string"
+            },
+            "title": "Local Reason Codes",
+            "type": "array"
+          },
+          "observed_on": {
+            "title": "Observed On",
+            "type": "string"
+          },
+          "scope_kind": {
+            "enum": [
+              "point",
+              "facility",
+              "route",
+              "area",
+              "citywide"
+            ],
+            "title": "Scope Kind",
+            "type": "string"
+          },
+          "text_preview": {
+            "title": "Text Preview",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text_preview",
+          "category",
+          "scope_kind",
+          "observed_on",
+          "local_outcome",
+          "local_reason_codes",
+          "ai_verdict",
+          "ai_reason_code"
+        ],
+        "title": "ModerationReportSummaryOut",
+        "type": "object"
+      },
       "MoneyByField": {
         "description": "Erkanntes Volumen je Themenfeld (``CouncilStore.money_by_field``).",
         "properties": {
@@ -8550,9 +8893,27 @@
               "null"
             ]
           },
+          "moderation_outcome": {
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Moderation Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "observed_on": {
             "title": "Observed On",
             "type": "string"
+          },
+          "rejection_explanation": {
+            "title": "Rejection Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "scope_kind": {
             "enum": [
@@ -8599,7 +8960,9 @@
           "content_revision",
           "submitted_at",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "moderation_outcome",
+          "rejection_explanation"
         ],
         "title": "PrivateReportOut",
         "type": "object"
@@ -8630,9 +8993,27 @@
             "title": "Id",
             "type": "integer"
           },
+          "moderation_outcome": {
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Moderation Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "observed_on": {
             "title": "Observed On",
             "type": "string"
+          },
+          "rejection_explanation": {
+            "title": "Rejection Explanation",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "scope_kind": {
             "enum": [
@@ -8678,7 +9059,9 @@
           "state",
           "content_revision",
           "submitted_at",
-          "updated_at"
+          "updated_at",
+          "moderation_outcome",
+          "rejection_explanation"
         ],
         "title": "PrivateReportSummaryOut",
         "type": "object"
@@ -10427,6 +10810,46 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "RejectionDraftOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "content_revision": {
+            "title": "Content Revision",
+            "type": "integer"
+          },
+          "suggestion": {
+            "title": "Suggestion",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "content_revision",
+          "suggestion",
+          "available"
+        ],
+        "title": "RejectionDraftOut",
+        "type": "object"
+      },
+      "RejectionDraftRequestIn": {
+        "properties": {
+          "expected_revision": {
+            "minimum": 1.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "title": "RejectionDraftRequestIn",
+        "type": "object"
+      },
       "RelatedEntity": {
         "description": "Ein Nachbar-Thema (``CouncilStore.related_entities``).\n\n``evidence`` ist die Zahl der Beschlüsse, in denen beide zusammen\nvorkommen; ``score`` gewichtet das gegen ihre Häufigkeit.",
         "properties": {
@@ -10693,6 +11116,11 @@
       "RoleUpdate": {
         "properties": {
           "role": {
+            "enum": [
+              "user",
+              "admin",
+              "moderator"
+            ],
             "title": "Role",
             "type": "string"
           }
@@ -12409,7 +12837,8 @@
           "role": {
             "enum": [
               "user",
-              "admin"
+              "admin",
+              "moderator"
             ],
             "title": "Role",
             "type": "string"
@@ -12827,7 +13256,8 @@
           "role": {
             "enum": [
               "user",
-              "admin"
+              "admin",
+              "moderator"
             ],
             "title": "Role",
             "type": "string"
@@ -17994,6 +18424,209 @@
         "summary": "Update Draft",
         "tags": [
           "meldungen"
+        ]
+      }
+    },
+    "/api/moderation/meldungen": {
+      "get": {
+        "operationId": "list_reports_api_moderation_meldungen_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationReportListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reports",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/moderation/meldungen/{report_id}": {
+      "get": {
+        "operationId": "get_report_api_moderation_meldungen__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Report",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/moderation/meldungen/{report_id}/ablehnungsentwurf": {
+      "post": {
+        "operationId": "draft_rejection_api_moderation_meldungen__report_id__ablehnungsentwurf_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectionDraftRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectionDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Draft Rejection",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/moderation/meldungen/{report_id}/entscheidung": {
+      "post": {
+        "operationId": "decide_report_api_moderation_meldungen__report_id__entscheidung_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide Report",
+        "tags": [
+          "moderation"
         ]
       }
     },

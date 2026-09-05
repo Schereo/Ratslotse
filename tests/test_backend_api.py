@@ -21,9 +21,12 @@ os.environ["WEB_JWT_SECRET"] = "test-secret"
 os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
 os.environ["COOKIE_SECURE"] = "false"  # TestClient uses http://testserver
 os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
+os.environ["RATSLOTSE_BUERGERPORTAL"] = "1"
 
 from fastapi.testclient import TestClient  # noqa: E402
+from app.config import get_settings  # noqa: E402
 from app.main import app  # noqa: E402
+from app.security import create_access_token  # noqa: E402
 from kern.store import Store  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 from council.scraper import CouncilSession, AgendaItem  # noqa: E402
@@ -353,6 +356,33 @@ def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
     assert r.json()["role"] == "user"
 
 
+def test_grant_moderator_cli_promotes_only_existing_accounts(client):
+    from scripts.grant_moderator import grant_moderator
+
+    client.post(
+        "/api/auth/register",
+        json={"email": "moderation@example.org", "password": "password123"},
+    )
+
+    ok, _ = grant_moderator("MODERATION@example.org", RATSLOTSE_DB)
+    assert ok is True
+    store = Store(RATSLOTSE_DB)
+    account = store.get_web_user_by_email("moderation@example.org")
+    assert account is not None
+    assert account["role"] == "moderator"
+    assert account["status"] == "active"
+    assert account["email_verified"] == 1
+    store.close()
+
+    ok_again, message = grant_moderator("moderation@example.org", RATSLOTSE_DB)
+    assert ok_again is True and "bereits Moderator" in message
+    missing, _ = grant_moderator("nicht-registriert@example.org", RATSLOTSE_DB)
+    assert missing is False
+    store = Store(RATSLOTSE_DB)
+    assert store.get_web_user_by_email("nicht-registriert@example.org") is None
+    store.close()
+
+
 def test_grant_admin_cli_promotes_only_existing_accounts(client):
     """Der Ops-Weg für Deployments ohne E-Mail-Versand: befördert ein
     vorhandenes Konto, legt keines an, und ein zweiter Lauf ändert nichts."""
@@ -546,11 +576,50 @@ def test_admin_endpoints_forbidden_for_regular_user(client):
 def test_admin_can_change_role(client):
     _register(client)  # `client` stays logged in as admin
     # Register bob on a separate client so the admin cookie on `client` is kept.
-    TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
+    bob_client = TestClient(app)
+    bob_client.post(
+        "/api/auth/register",
+        json={"email": "bob@test.de", "password": "password123"},
+    )
     users = client.get("/api/admin/users").json()
     bob = next(u for u in users if u["email"] == "bob@test.de")
-    r = client.put(f"/api/admin/users/{bob['id']}/role", json={"role": "admin"})
-    assert r.status_code == 200 and r.json()["role"] == "admin"
+    moderator = client.put(
+        f"/api/admin/users/{bob['id']}/role",
+        json={"role": "moderator"},
+    )
+    assert moderator.status_code == 200
+    assert moderator.json()["role"] == "moderator"
+    assert bob_client.get("/api/admin/users").status_code == 403
+    promoted = client.put(
+        f"/api/admin/users/{bob['id']}/role",
+        json={"role": "admin"},
+    )
+    assert promoted.status_code == 200 and promoted.json()["role"] == "admin"
+
+
+def test_admin_cannot_assign_moderator_when_buergerportal_gate_is_closed(client, monkeypatch):
+    _register(client)
+    bob_client = TestClient(app)
+    bob_client.post(
+        "/api/auth/register",
+        json={"email": "bob@test.de", "password": "password123"},
+    )
+    bob = next(
+        user for user in client.get("/api/admin/users").json()
+        if user["email"] == "bob@test.de"
+    )
+    monkeypatch.setattr(get_settings(), "ratslotse_buergerportal", False)
+
+    response = client.put(
+        f"/api/admin/users/{bob['id']}/role",
+        json={"role": "moderator"},
+    )
+
+    assert response.status_code == 404
+    assert next(
+        user for user in client.get("/api/admin/users").json()
+        if user["id"] == bob["id"]
+    )["role"] == "user"
 
 
 def test_admin_user_rows_and_detail(client):
@@ -4780,6 +4849,28 @@ def test_angemeldete_bekommen_auf_derselben_seite_ihren_folge_zustand(client):
     did = _seed_geteilter_beschluss(ksinr=5151)
     data = client.get(f"/api/council/decision/{did}").json()
     assert data["follow"] == {"kvonr": 4711, "following": False}
+
+
+def test_moderator_bleibt_auf_geteiltem_beschluss_anonym(client):
+    """Ein Moderationskonto bekommt an öffentlichen Routen keine Konto-Funktionen."""
+    store = Store(RATSLOTSE_DB)
+    moderator_id = store.create_web_user(
+        "geteilte-moderation@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    store.close()
+    did = _seed_geteilter_beschluss(ksinr=5154)
+
+    response = client.get(
+        f"/api/council/decision/{did}",
+        headers={"Authorization": f"Bearer {create_access_token(moderator_id)}"},
+    )
+
+    assert response.status_code == 200
+    assert "follow" not in response.json()
 
 
 def test_thema_und_person_sind_ohne_anmeldung_lesbar(client):

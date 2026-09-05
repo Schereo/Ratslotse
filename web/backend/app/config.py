@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Zero keeps every build enabled until an operator deliberately raises it.
     app_min_build: int = 0
     app_update_notice: str = ""
+    # Bürgerportal operator controls stay off outside the isolated feature
+    # deployment until product acceptance. The explicit environment override
+    # also keeps tests and future deployment promotion intentional.
+    ratslotse_buergerportal: bool = ROOT.name == "app-feature"
     # This address becomes admin once it registers AND confirms its email — and
     # only while the deployment has no admin yet (see routers/auth.py). Without
     # email delivery: scripts/grant_admin.py.

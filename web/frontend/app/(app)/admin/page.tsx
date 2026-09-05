@@ -27,6 +27,7 @@ import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
+import { PROBLEME_FREI } from "@/lib/probleme-frei";
 
 type Tab = "stats" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
 
@@ -419,6 +420,7 @@ type LlmUsage = {
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
   attachment_ocr: "Anlagen-Texterkennung",
+  civic_report_rejection_drafting: "KI-Entwurf für Ablehnungen",
   civic_report_screening: "KI-Vorprüfung privater Meldungen",
   committee_summary: "Ausschuss-Zusammenfassung",
   daily_find_story: "Fundstück des Tages",
@@ -746,6 +748,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[13.5px] font-semibold text-foreground">{u.email}</span>
                     {u.role === "admin" && <span className="shrink-0 rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">admin</span>}
+                    {u.role === "moderator" && <span className="shrink-0 rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">moderation</span>}
                     {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">wartet</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
@@ -785,7 +788,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
     qc.invalidateQueries({ queryKey: ["admin", "users"] });
   };
   const roleMutation = useMutation({
-    mutationFn: (role: "user" | "admin") => api.put(`/admin/users/${userId}/role`, { role }),
+    mutationFn: (role: "user" | "admin" | "moderator") => api.put(`/admin/users/${userId}/role`, { role }),
     onSuccess: () => { toast.success("Rolle aktualisiert."); invalidate(); },
     onError: () => toast.error("Rolle konnte nicht geändert werden."),
   });
@@ -822,7 +825,7 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-bold text-foreground">{data.email}</p>
           <p className="text-xs text-muted-foreground">
-            seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}
+            {data.created_at ? `seit ${formatDate(data.created_at.slice(0, 10))}` : "Angelegt vor der Datenerfassung"} · {sig.label} · {login}
             {woher && <> · über {woher} registriert</>}
           </p>
         </div>
@@ -889,15 +892,26 @@ function UserDetailPanel({ userId, isSelf, onClose }: { userId: number; isSelf: 
       <MiniBars values={data.history} days={data.history_days} height={38} highlightLast={false} className="mt-2" />
 
       {!isSelf && (
-        <div className="mt-4 flex gap-2 border-t border-border pt-4">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
           <Button variant="secondary" size="sm"
             onClick={() => statusMutation.mutate(data.status === "active" ? "pending" : "active")}>
             {data.status === "active" ? "Sperren" : "Freischalten"}
           </Button>
-          <Button variant="secondary" size="sm"
-            onClick={() => roleMutation.mutate(data.role === "admin" ? "user" : "admin")}>
-            {data.role === "admin" ? "Zu Nutzer*in" : "Zu Admin"}
-          </Button>
+          {data.role !== "user" && (
+            <Button variant="secondary" size="sm" onClick={() => roleMutation.mutate("user")}>
+              Zu Nutzer*in
+            </Button>
+          )}
+          {PROBLEME_FREI && data.role !== "moderator" && (
+            <Button variant="secondary" size="sm" onClick={() => roleMutation.mutate("moderator")}>
+              Zu Moderation
+            </Button>
+          )}
+          {data.role !== "admin" && (
+            <Button variant="secondary" size="sm" onClick={() => roleMutation.mutate("admin")}>
+              Zu Admin
+            </Button>
+          )}
         </div>
       )}
 

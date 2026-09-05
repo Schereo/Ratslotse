@@ -50,6 +50,13 @@ ExternalAiScreeningVerdict = Literal[
     "needs_human_review",
     "unsuitable",
 ]
+HumanModerationOutcome = Literal["approved", "rejected"]
+HUMAN_MODERATION_OUTCOMES: tuple[HumanModerationOutcome, ...] = (
+    "approved",
+    "rejected",
+)
+_MAX_REJECTION_EXPLANATION_LENGTH = 1000
+
 ExternalAiScreeningReason = Literal[
     "municipal_problem",
     "insufficient_information",
@@ -94,6 +101,7 @@ _EXTERNAL_AI_REASON_VERDICTS: dict[
 }
 LOCAL_SCREENING_RULESET_VERSION = 1
 EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION = 1
+REJECTION_DRAFT_VERSION = 1
 _PRIVATE_REPORT_PREVIEW_LENGTH = 160
 _SQLITE_INTEGER_MAX = 2**63 - 1
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9._:-]{8,128}")
@@ -755,17 +763,308 @@ _MIGRATIONS: tuple[tuple[int, tuple[str, ...]], ...] = (
                    END""",
         ),
     ),
+    (
+        9,
+        (
+            f"""CREATE TABLE civic_report_moderation_decisions (
+                    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id             INTEGER NOT NULL,
+                    content_revision      INTEGER NOT NULL,
+                    reviewer_id           INTEGER NOT NULL,
+                    outcome               TEXT NOT NULL,
+                    rejection_explanation TEXT,
+                    decided_at            TEXT NOT NULL,
+                    CHECK (content_revision >= 1),
+                    CHECK (reviewer_id > 0),
+                    CHECK (outcome IN ({_sql_enum(HUMAN_MODERATION_OUTCOMES)})),
+                    CHECK (
+                        (outcome = 'approved' AND rejection_explanation IS NULL)
+                        OR
+                        (outcome = 'rejected'
+                         AND length(trim(rejection_explanation)) BETWEEN 1
+                             AND {_MAX_REJECTION_EXPLANATION_LENGTH}
+                         AND rejection_explanation = trim(rejection_explanation))
+                    ),
+                    CHECK (datetime(decided_at) IS NOT NULL),
+                    UNIQUE (report_id, content_revision),
+                    FOREIGN KEY (report_id, content_revision)
+                        REFERENCES civic_report_observations(
+                            report_id, content_revision
+                        ) ON DELETE CASCADE
+                )""",
+            """CREATE INDEX idx_civic_report_moderation_queue
+                   ON civic_report_moderation_decisions(report_id, content_revision)""",
+            """CREATE VIEW civic_report_eligible_reviewers AS
+                   SELECT id AS reviewer_id
+                   FROM web_users
+                   WHERE status = 'active'
+                     AND (role = 'admin'
+                          OR (role = 'moderator' AND email_verified = 1))""",
+            f"""CREATE VIEW civic_report_current_reviewable AS
+                   SELECT report.id AS report_id,
+                          report.content_revision AS content_revision,
+                          screening.id AS local_screening_id
+                   FROM civic_reports AS report
+                   JOIN web_users AS owner ON owner.id = report.reporter_id
+                   JOIN civic_report_local_screenings AS screening
+                     ON screening.report_id = report.id
+                    AND screening.content_revision = report.content_revision
+                    AND screening.ruleset_version = {LOCAL_SCREENING_RULESET_VERSION}
+                   WHERE report.status = 'submitted'
+                     AND owner.role = 'user' AND owner.status = 'active'
+                     AND owner.email_verified = 1
+                     AND NOT EXISTS (
+                       SELECT 1 FROM civic_report_moderation_decisions AS decision
+                       WHERE decision.report_id = report.id
+                         AND decision.content_revision = report.content_revision
+                     )""",
+            """CREATE TRIGGER trg_civic_report_moderation_decisions_eligible_insert
+                   BEFORE INSERT ON civic_report_moderation_decisions
+                   WHEN NOT EXISTS (
+                       SELECT 1
+                       FROM civic_report_current_reviewable AS reviewable
+                       JOIN civic_report_eligible_reviewers AS reviewer
+                         ON reviewer.reviewer_id = NEW.reviewer_id
+                       WHERE reviewable.report_id = NEW.report_id
+                         AND reviewable.content_revision = NEW.content_revision
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'decision requires current eligible report and reviewer');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_moderation_decisions_no_update
+                   BEFORE UPDATE ON civic_report_moderation_decisions
+                   BEGIN
+                       SELECT RAISE(ABORT, 'moderation decisions are immutable');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_moderation_decisions_no_direct_delete
+                   BEFORE DELETE ON civic_report_moderation_decisions
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'moderation decisions are append-only');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_is_final
+                   BEFORE INSERT ON civic_report_observations
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_report_moderation_decisions
+                       WHERE report_id = NEW.report_id AND outcome = 'rejected'
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'rejected reports are final');
+                   END""",
+            """CREATE TABLE civic_report_rejection_draft_claims (
+                    report_id          INTEGER NOT NULL,
+                    content_revision   INTEGER NOT NULL,
+                    local_screening_id INTEGER NOT NULL,
+                    reviewer_id        INTEGER,
+                    drafting_version   INTEGER NOT NULL,
+                    claim_token        TEXT NOT NULL,
+                    lease_until        TEXT NOT NULL,
+                    attempt_started_at TEXT,
+                    PRIMARY KEY (report_id, content_revision, drafting_version),
+                    UNIQUE (report_id, content_revision, drafting_version, claim_token),
+                    CHECK (content_revision >= 1),
+                    CHECK (reviewer_id IS NULL OR reviewer_id >= 1),
+                    CHECK (drafting_version >= 1),
+                    CHECK (
+                        length(claim_token) BETWEEN 8 AND 128
+                        AND claim_token NOT GLOB '*[^A-Za-z0-9._:-]*'
+                    ),
+                    CHECK (datetime(lease_until) IS NOT NULL),
+                    CHECK (
+                        attempt_started_at IS NULL
+                        OR datetime(attempt_started_at) IS NOT NULL
+                    ),
+                    FOREIGN KEY (report_id, content_revision)
+                        REFERENCES civic_report_observations(
+                            report_id, content_revision
+                        ) ON DELETE CASCADE,
+                    FOREIGN KEY (local_screening_id, report_id, content_revision)
+                        REFERENCES civic_report_local_screenings(
+                            id, report_id, content_revision
+                        ) ON DELETE CASCADE
+                )""",
+            f"""CREATE TABLE civic_report_rejection_drafts (
+                    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                    report_id          INTEGER NOT NULL,
+                    content_revision   INTEGER NOT NULL,
+                    local_screening_id INTEGER NOT NULL,
+                    drafting_version   INTEGER NOT NULL,
+                    suggestion         TEXT NOT NULL,
+                    model_identifier   TEXT NOT NULL,
+                    created_at         TEXT NOT NULL,
+                    CHECK (content_revision >= 1),
+                    CHECK (drafting_version >= 1),
+                    CHECK (
+                        length(trim(suggestion)) BETWEEN 1
+                            AND {_MAX_REJECTION_EXPLANATION_LENGTH}
+                        AND suggestion = trim(suggestion)
+                    ),
+                    CHECK (
+                        length(model_identifier) BETWEEN 1 AND 200
+                        AND model_identifier NOT GLOB '*[^A-Za-z0-9._:/-]*'
+                    ),
+                    CHECK (datetime(created_at) IS NOT NULL),
+                    UNIQUE (report_id, content_revision, drafting_version),
+                    FOREIGN KEY (report_id, content_revision, drafting_version)
+                        REFERENCES civic_report_rejection_draft_claims(
+                            report_id, content_revision, drafting_version
+                        ) ON DELETE CASCADE,
+                    FOREIGN KEY (local_screening_id, report_id, content_revision)
+                        REFERENCES civic_report_local_screenings(
+                            id, report_id, content_revision
+                        ) ON DELETE CASCADE
+                )""",
+            f"""CREATE TRIGGER trg_civic_report_rejection_claims_current_insert
+                   BEFORE INSERT ON civic_report_rejection_draft_claims
+                   WHEN NEW.drafting_version != {REJECTION_DRAFT_VERSION}
+                     OR NOT EXISTS (
+                       SELECT 1
+                       FROM civic_report_current_reviewable AS reviewable
+                       JOIN civic_report_eligible_reviewers AS reviewer
+                         ON reviewer.reviewer_id = NEW.reviewer_id
+                       WHERE reviewable.report_id = NEW.report_id
+                         AND reviewable.content_revision = NEW.content_revision
+                         AND reviewable.local_screening_id = NEW.local_screening_id
+                     )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'rejection draft requires current pending report and reviewer');
+                   END""",
+            f"""CREATE TRIGGER trg_civic_report_rejection_claims_current_update
+                   BEFORE UPDATE ON civic_report_rejection_draft_claims
+                   WHEN NEW.drafting_version != {REJECTION_DRAFT_VERSION}
+                     OR (
+                       NEW.reviewer_id IS NOT NULL
+                       AND NOT EXISTS (
+                         SELECT 1
+                         FROM civic_report_current_reviewable AS reviewable
+                         JOIN civic_report_eligible_reviewers AS reviewer
+                           ON reviewer.reviewer_id = NEW.reviewer_id
+                         WHERE reviewable.report_id = NEW.report_id
+                           AND reviewable.content_revision = NEW.content_revision
+                           AND reviewable.local_screening_id = NEW.local_screening_id
+                       )
+                     )
+                     OR (
+                       NEW.reviewer_id IS NULL
+                       AND NOT EXISTS (
+                         SELECT 1 FROM civic_report_rejection_drafts AS completed
+                         WHERE completed.report_id = NEW.report_id
+                           AND completed.content_revision = NEW.content_revision
+                           AND completed.drafting_version = NEW.drafting_version
+                       )
+                     )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'rejection draft requires current pending report and reviewer');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_claims_completed_update
+                   BEFORE UPDATE ON civic_report_rejection_draft_claims
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_report_rejection_drafts AS completed
+                       WHERE completed.report_id = OLD.report_id
+                         AND completed.content_revision = OLD.content_revision
+                         AND completed.drafting_version = OLD.drafting_version
+                   ) AND NOT (
+                       OLD.reviewer_id IS NOT NULL
+                       AND NEW.reviewer_id IS NULL
+                       AND NEW.report_id IS OLD.report_id
+                       AND NEW.content_revision IS OLD.content_revision
+                       AND NEW.local_screening_id IS OLD.local_screening_id
+                       AND NEW.drafting_version IS OLD.drafting_version
+                       AND NEW.claim_token IS OLD.claim_token
+                       AND NEW.lease_until IS OLD.lease_until
+                       AND NEW.attempt_started_at IS OLD.attempt_started_at
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'completed rejection draft claims are immutable');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_drafts_current_claim
+                   BEFORE INSERT ON civic_report_rejection_drafts
+                   WHEN NOT EXISTS (
+                       SELECT 1 FROM civic_report_rejection_draft_claims AS claim
+                       JOIN civic_report_current_reviewable AS reviewable
+                         ON reviewable.report_id = claim.report_id
+                        AND reviewable.content_revision = claim.content_revision
+                        AND reviewable.local_screening_id = claim.local_screening_id
+                       JOIN civic_report_eligible_reviewers AS reviewer
+                         ON reviewer.reviewer_id = claim.reviewer_id
+                       WHERE claim.report_id = NEW.report_id
+                         AND claim.content_revision = NEW.content_revision
+                         AND claim.local_screening_id = NEW.local_screening_id
+                         AND claim.drafting_version = NEW.drafting_version
+                         AND claim.attempt_started_at IS NOT NULL
+                         AND claim.attempt_started_at <= NEW.created_at
+                         AND claim.lease_until > NEW.created_at
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'rejection draft requires current started claim');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_drafts_forget_reviewer
+                   AFTER INSERT ON civic_report_rejection_drafts
+                   BEGIN
+                       UPDATE civic_report_rejection_draft_claims
+                       SET reviewer_id = NULL
+                       WHERE report_id = NEW.report_id
+                         AND content_revision = NEW.content_revision
+                         AND drafting_version = NEW.drafting_version;
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_drafts_no_update
+                   BEFORE UPDATE ON civic_report_rejection_drafts
+                   BEGIN
+                       SELECT RAISE(ABORT, 'rejection drafts are immutable');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_drafts_no_direct_delete
+                   BEFORE DELETE ON civic_report_rejection_drafts
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'rejection drafts are append-only');
+                   END""",
+            """CREATE TRIGGER trg_civic_report_rejection_claims_keep_completed
+                   BEFORE DELETE ON civic_report_rejection_draft_claims
+                   WHEN EXISTS (
+                       SELECT 1 FROM civic_report_rejection_drafts AS completed
+                       WHERE completed.report_id = OLD.report_id
+                         AND completed.content_revision = OLD.content_revision
+                         AND completed.drafting_version = OLD.drafting_version
+                   ) AND EXISTS (
+                       SELECT 1 FROM civic_reports WHERE id = OLD.report_id
+                   )
+                   BEGIN
+                       SELECT RAISE(ABORT, 'completed rejection draft claims are immutable');
+                   END""",
+        ),
+    ),
 )
 
 
 _REPORT_COLUMNS_V4 = (
-    "id", "reporter_id", "draft_text", "confirmed_text", "category",
-    "scope_kind", "location_label", "latitude", "longitude", "observed_at",
-    "status", "content_revision", "submitted_at", "created_at", "updated_at",
+    "id",
+    "reporter_id",
+    "draft_text",
+    "confirmed_text",
+    "category",
+    "scope_kind",
+    "location_label",
+    "latitude",
+    "longitude",
+    "observed_at",
+    "status",
+    "content_revision",
+    "submitted_at",
+    "created_at",
+    "updated_at",
 )
 _REPORT_COLUMNS = (*_REPORT_COLUMNS_V4, "idempotency_key", "creation_fingerprint")
 _OBSERVATION_COLUMNS = (
-    "id", "report_id", "content_revision", "text", "observed_at", "created_at",
+    "id",
+    "report_id",
+    "content_revision",
+    "text",
+    "observed_at",
+    "created_at",
 )
 
 
@@ -969,6 +1268,94 @@ class ExternalAiScreening:
 
 
 @dataclass(frozen=True)
+class RejectionDraftInput:
+    """Only fields allowed to reach the rejection-drafting evaluator."""
+
+    observation_texts: tuple[str, ...]
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    local_reason_codes: tuple[LocalScreeningReason, ...]
+    ai_verdict: ExternalAiScreeningVerdict | None
+    ai_reason_code: ExternalAiScreeningReason | None
+
+
+@dataclass(frozen=True)
+class ClaimedRejectionDraft:
+    report_id: int
+    content_revision: int
+    local_screening_id: int
+    reviewer_id: int
+    drafting_version: int
+    claim_token: str = field(repr=False)
+
+
+@dataclass(frozen=True)
+class RejectionDraftSuggestion:
+    report_id: int
+    content_revision: int
+    drafting_version: int
+    suggestion: str
+    model_identifier: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class HumanModerationDecision:
+    """Immutable exact-revision human evidence, including its audit actor."""
+
+    report_id: int
+    content_revision: int
+    reviewer_id: int
+    outcome: HumanModerationOutcome
+    rejection_explanation: str | None
+    decided_at: str
+
+
+@dataclass(frozen=True)
+class ModerationObservation:
+    """Only the observation fields a human reviewer needs."""
+
+    text: str
+    observed_on: str
+
+
+@dataclass(frozen=True)
+class ModerationReport:
+    """Review detail with no reporter identity or exact private location."""
+
+    id: int
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    content_revision: int
+    observations: tuple[ModerationObservation, ...]
+    local_outcome: LocalScreeningOutcome
+    local_reason_codes: tuple[LocalScreeningReason, ...]
+    ai_verdict: ExternalAiScreeningVerdict | None
+    ai_reason_code: ExternalAiScreeningReason | None
+
+
+@dataclass(frozen=True)
+class ModerationReportSummary:
+    """Data-minimal queue projection for an authorized human reviewer."""
+
+    id: int
+    text_preview: str
+    category: ProblemCategory
+    scope_kind: ScopeKind
+    observed_on: str
+    local_outcome: LocalScreeningOutcome
+    local_reason_codes: tuple[LocalScreeningReason, ...]
+    ai_verdict: ExternalAiScreeningVerdict | None
+    ai_reason_code: ExternalAiScreeningReason | None
+
+
+@dataclass(frozen=True)
+class ModerationReportPage:
+    reports: tuple[ModerationReportSummary, ...]
+    total: int
+
+
+@dataclass(frozen=True)
 class PrivateReportSummary:
     id: int
     text_preview: str
@@ -979,6 +1366,8 @@ class PrivateReportSummary:
     content_revision: int
     submitted_at: str | None
     updated_at: str
+    moderation_outcome: HumanModerationOutcome | None
+    rejection_explanation: str | None
 
 
 @dataclass(frozen=True)
@@ -1004,6 +1393,8 @@ class PrivateReport:
     created_at: str
     updated_at: str
     observations: tuple[PrivateObservation, ...]
+    moderation_outcome: HumanModerationOutcome | None
+    rejection_explanation: str | None
 
 
 class PrivateReportNotFound(ValueError):
@@ -1020,6 +1411,14 @@ class IdempotencyConflict(InvalidReportTransition):
 
 class ReporterNotEligible(ValueError):
     """Das Konto darf keine private Meldung anlegen oder verändern."""
+
+
+class ReviewerNotEligible(ValueError):
+    """Das Konto darf keine privaten Meldungen moderieren."""
+
+
+class ModerationConflict(InvalidReportTransition):
+    """An exact revision already has a different official decision."""
 
 
 def _now() -> str:
@@ -1111,6 +1510,30 @@ def _external_ai_screening_from_row(row: sqlite3.Row) -> ExternalAiScreening:
         reason_code=cast(ExternalAiScreeningReason, row["reason_code"]),
         model_identifier=str(row["model_identifier"]),
         created_at=str(row["created_at"]),
+    )
+
+
+def _rejection_draft_from_row(row: sqlite3.Row) -> RejectionDraftSuggestion:
+    return RejectionDraftSuggestion(
+        report_id=int(row["report_id"]),
+        content_revision=int(row["content_revision"]),
+        drafting_version=int(row["drafting_version"]),
+        suggestion=str(row["suggestion"]),
+        model_identifier=str(row["model_identifier"]),
+        created_at=str(row["created_at"]),
+    )
+
+
+def _human_moderation_decision_from_row(
+    row: sqlite3.Row,
+) -> HumanModerationDecision:
+    return HumanModerationDecision(
+        report_id=int(row["report_id"]),
+        content_revision=int(row["content_revision"]),
+        reviewer_id=int(row["reviewer_id"]),
+        outcome=cast(HumanModerationOutcome, row["outcome"]),
+        rejection_explanation=row["rejection_explanation"],
+        decided_at=str(row["decided_at"]),
     )
 
 
@@ -1905,6 +2328,307 @@ class PrivateReportStore:
         ).fetchone()
         return _external_ai_screening_from_row(row) if row is not None else None
 
+    def get_current_rejection_draft(
+        self,
+        report_id: int,
+        *,
+        reviewer_id: int,
+    ) -> RejectionDraftSuggestion | None:
+        self._require_eligible_reviewer(reviewer_id)
+        if not _is_storage_id(report_id):
+            return None
+        row = self._conn.execute(
+            """SELECT draft.*
+               FROM civic_report_rejection_drafts AS draft
+               JOIN civic_report_current_reviewable AS reviewable
+                 ON reviewable.report_id = draft.report_id
+                AND reviewable.content_revision = draft.content_revision
+                AND reviewable.local_screening_id = draft.local_screening_id
+               WHERE draft.report_id = ? AND draft.drafting_version = ?""",
+            (report_id, REJECTION_DRAFT_VERSION),
+        ).fetchone()
+        return _rejection_draft_from_row(row) if row is not None else None
+
+    def claim_rejection_draft(
+        self,
+        report_id: int,
+        *,
+        expected_revision: int,
+        reviewer_id: int,
+        drafting_version: int,
+        claim_token: str,
+        lease_seconds: int = 600,
+    ) -> ClaimedRejectionDraft | None:
+        """Durably claim one current pending revision for one drafting call."""
+        self._require_eligible_reviewer(reviewer_id)
+        if not _is_storage_id(report_id):
+            return None
+        try:
+            revision = _normalized_expected_revision(expected_revision)
+        except ValueError:
+            return None
+        if revision is None:
+            return None
+        if (
+            type(drafting_version) is not int
+            or drafting_version != REJECTION_DRAFT_VERSION
+        ):
+            raise ValueError("Unbekannte Version des Ablehnungsentwurfs.")
+        if not isinstance(claim_token, str) or not _AI_CLAIM_TOKEN.fullmatch(
+            claim_token
+        ):
+            raise ValueError("Ungültige Claim-ID des Ablehnungsentwurfs.")
+        if (
+            isinstance(lease_seconds, bool)
+            or not isinstance(lease_seconds, int)
+            or not 1 <= lease_seconds <= 3600
+        ):
+            raise ValueError("Ungültige Laufzeit des Entwurfs-Claims.")
+        claimed_at = datetime.now(timezone.utc)
+        claimed_at_text = claimed_at.isoformat(timespec="microseconds")
+        lease_until = (claimed_at + timedelta(seconds=lease_seconds)).isoformat(
+            timespec="microseconds"
+        )
+        with self._conn:
+            claim = self._conn.execute(
+                """INSERT INTO civic_report_rejection_draft_claims (
+                       report_id, content_revision, local_screening_id,
+                       reviewer_id, drafting_version, claim_token, lease_until
+                   )
+                   SELECT reviewable.report_id, reviewable.content_revision,
+                          reviewable.local_screening_id, ?, ?, ?, ?
+                   FROM civic_report_current_reviewable AS reviewable
+                   WHERE reviewable.report_id = ?
+                     AND reviewable.content_revision = ?
+                     AND NOT EXISTS (
+                         SELECT 1 FROM civic_report_rejection_drafts AS completed
+                         WHERE completed.report_id = reviewable.report_id
+                           AND completed.content_revision = reviewable.content_revision
+                           AND completed.drafting_version = ?
+                     )
+                   ON CONFLICT (report_id, content_revision, drafting_version)
+                   DO UPDATE SET
+                       local_screening_id = excluded.local_screening_id,
+                       reviewer_id = excluded.reviewer_id,
+                       claim_token = excluded.claim_token,
+                       lease_until = excluded.lease_until,
+                       attempt_started_at = NULL
+                   WHERE civic_report_rejection_draft_claims.lease_until <= ?
+                   RETURNING local_screening_id""",
+                (
+                    reviewer_id,
+                    drafting_version,
+                    claim_token,
+                    lease_until,
+                    report_id,
+                    revision,
+                    drafting_version,
+                    claimed_at_text,
+                ),
+            ).fetchone()
+        if claim is None:
+            return None
+        return ClaimedRejectionDraft(
+            report_id=report_id,
+            content_revision=revision,
+            local_screening_id=int(claim["local_screening_id"]),
+            reviewer_id=reviewer_id,
+            drafting_version=drafting_version,
+            claim_token=claim_token,
+        )
+
+    def start_claimed_rejection_draft(
+        self,
+        candidate: ClaimedRejectionDraft,
+        *,
+        reviewer_id: int,
+    ) -> RejectionDraftInput | None:
+        """Linearize dispatch and read a freshly revalidated minimized payload."""
+        started_at = _now()
+        if candidate.reviewer_id != reviewer_id:
+            return None
+        with self._conn:
+            self._require_eligible_reviewer(reviewer_id)
+            started = self._conn.execute(
+                """UPDATE civic_report_rejection_draft_claims AS claim
+                   SET attempt_started_at = ?
+                   WHERE claim.report_id = ?
+                     AND claim.content_revision = ?
+                     AND claim.local_screening_id = ?
+                     AND claim.drafting_version = ?
+                     AND claim.claim_token = ?
+                     AND claim.reviewer_id = ?
+                     AND claim.attempt_started_at IS NULL
+                     AND claim.lease_until > ?
+                     AND EXISTS (
+                         SELECT 1
+                         FROM civic_report_current_reviewable AS reviewable
+                         WHERE reviewable.report_id = claim.report_id
+                           AND reviewable.content_revision = claim.content_revision
+                           AND reviewable.local_screening_id = claim.local_screening_id
+                     )
+                   RETURNING local_screening_id""",
+                (
+                    started_at,
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.local_screening_id,
+                    candidate.drafting_version,
+                    candidate.claim_token,
+                    reviewer_id,
+                    started_at,
+                ),
+            ).fetchone()
+            if started is None:
+                return None
+            row = self._conn.execute(
+                """SELECT report.category, report.scope_kind,
+                          screening.outcome, screening.reason_codes_json,
+                          ai.verdict AS ai_verdict,
+                          ai.reason_code AS ai_reason_code
+                   FROM civic_reports AS report
+                   JOIN civic_report_local_screenings AS screening
+                     ON screening.id = ?
+                    AND screening.report_id = report.id
+                    AND screening.content_revision = report.content_revision
+                   LEFT JOIN civic_report_ai_screenings AS ai
+                     ON ai.report_id = report.id
+                    AND ai.content_revision = report.content_revision
+                    AND ai.assessment_version = ?
+                   WHERE report.id = ? AND report.content_revision = ?""",
+                (
+                    candidate.local_screening_id,
+                    EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION,
+                    candidate.report_id,
+                    candidate.content_revision,
+                ),
+            ).fetchone()
+            if row is None:
+                raise InvalidReportTransition(
+                    "Gestarteter Entwurfs-Claim hat keine aktuelle Meldung."
+                )
+            observations: tuple[str, ...] = ()
+            if row["outcome"] == "external_review_candidate":
+                observation_rows = self._conn.execute(
+                    """SELECT text FROM civic_report_observations
+                       WHERE report_id = ? AND content_revision <= ?
+                       ORDER BY content_revision""",
+                    (candidate.report_id, candidate.content_revision),
+                ).fetchall()
+                observations = tuple(str(item["text"]) for item in observation_rows)
+        return RejectionDraftInput(
+            observation_texts=observations,
+            category=cast(ProblemCategory, row["category"]),
+            scope_kind=cast(ScopeKind, row["scope_kind"]),
+            local_reason_codes=tuple(
+                cast(LocalScreeningReason, reason)
+                for reason in json.loads(row["reason_codes_json"])
+            ),
+            ai_verdict=cast(ExternalAiScreeningVerdict | None, row["ai_verdict"]),
+            ai_reason_code=cast(
+                ExternalAiScreeningReason | None,
+                row["ai_reason_code"],
+            ),
+        )
+
+    def complete_rejection_draft(
+        self,
+        candidate: ClaimedRejectionDraft,
+        *,
+        suggestion: str,
+        model_identifier: str,
+    ) -> RejectionDraftSuggestion:
+        controlled_suggestion = suggestion.strip() if isinstance(suggestion, str) else ""
+        if (
+            not controlled_suggestion
+            or len(controlled_suggestion) > _MAX_REJECTION_EXPLANATION_LENGTH
+        ):
+            raise ValueError("Ungültiger Ablehnungsentwurf.")
+        controlled_model = normalize_external_ai_model_identifier(model_identifier)
+        created_at = _now()
+        with self._conn:
+            inserted = self._conn.execute(
+                """INSERT INTO civic_report_rejection_drafts (
+                       report_id, content_revision, local_screening_id,
+                       drafting_version, suggestion, model_identifier, created_at
+                   )
+                   SELECT claim.report_id, claim.content_revision,
+                          claim.local_screening_id, claim.drafting_version,
+                          ?, ?, ?
+                   FROM civic_report_rejection_draft_claims AS claim
+                   WHERE claim.report_id = ? AND claim.content_revision = ?
+                     AND claim.local_screening_id = ?
+                     AND claim.drafting_version = ? AND claim.claim_token = ?
+                     AND claim.reviewer_id = ?
+                     AND claim.attempt_started_at IS NOT NULL
+                     AND claim.attempt_started_at <= ? AND claim.lease_until > ?
+                   ON CONFLICT (report_id, content_revision, drafting_version)
+                   DO NOTHING
+                   RETURNING id""",
+                (
+                    controlled_suggestion,
+                    controlled_model,
+                    created_at,
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.local_screening_id,
+                    candidate.drafting_version,
+                    candidate.claim_token,
+                    candidate.reviewer_id,
+                    created_at,
+                    created_at,
+                ),
+            ).fetchone()
+            if inserted is None:
+                existing = self._conn.execute(
+                    """SELECT * FROM civic_report_rejection_drafts
+                       WHERE report_id = ? AND content_revision = ?
+                         AND drafting_version = ?""",
+                    (
+                        candidate.report_id,
+                        candidate.content_revision,
+                        candidate.drafting_version,
+                    ),
+                ).fetchone()
+                if existing is not None:
+                    return _rejection_draft_from_row(existing)
+                raise InvalidReportTransition(
+                    "Der Claim für den Ablehnungsentwurf ist nicht mehr gültig."
+                )
+            row = self._conn.execute(
+                "SELECT * FROM civic_report_rejection_drafts WHERE id = ?",
+                (int(inserted["id"]),),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("Gespeicherter Ablehnungsentwurf fehlt.")
+        return _rejection_draft_from_row(row)
+
+    def release_rejection_draft(self, candidate: ClaimedRejectionDraft) -> bool:
+        with self._conn:
+            deleted = self._conn.execute(
+                """DELETE FROM civic_report_rejection_draft_claims
+                   WHERE report_id = ? AND content_revision = ?
+                     AND drafting_version = ? AND claim_token = ?
+                     AND reviewer_id = ?
+                     AND NOT EXISTS (
+                         SELECT 1 FROM civic_report_rejection_drafts AS completed
+                         WHERE completed.report_id = ?
+                           AND completed.content_revision = ?
+                           AND completed.drafting_version = ?
+                     )""",
+                (
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.drafting_version,
+                    candidate.claim_token,
+                    candidate.reviewer_id,
+                    candidate.report_id,
+                    candidate.content_revision,
+                    candidate.drafting_version,
+                ),
+            )
+        return deleted.rowcount == 1
+
     def append_owned_observation(
         self,
         report_id: int,
@@ -1929,6 +2653,10 @@ class PrivateReportStore:
                    SELECT id, content_revision + 1, ?, ?, ?
                    FROM civic_reports
                    WHERE id = ? AND reporter_id = ? AND status = 'submitted'
+                     AND NOT EXISTS (
+                         SELECT 1 FROM civic_report_moderation_decisions
+                         WHERE report_id = civic_reports.id AND outcome = 'rejected'
+                     )
                    RETURNING content_revision""",
                 (text, observed_on, now, report_id, reporter_id),
             ).fetchone()
@@ -1950,20 +2678,22 @@ class PrivateReportStore:
             )
         return deleted.rowcount
 
-    def _require_eligible_reporter(self, reporter_id: int) -> None:
+    def _is_eligible_reporter(self, reporter_id: int) -> bool:
         account_table = self._conn.execute(
             """SELECT 1 FROM sqlite_master
                WHERE type = 'table' AND name = 'web_users'"""
         ).fetchone()
-        verified = None
-        if account_table is not None:
-            verified = self._conn.execute(
-                """SELECT 1 FROM web_users
-                   WHERE id = ? AND role = 'user'
-                     AND status = 'active' AND email_verified = 1""",
-                (reporter_id,),
-            ).fetchone()
-        if verified is None:
+        if account_table is None:
+            return False
+        return self._conn.execute(
+            """SELECT 1 FROM web_users
+               WHERE id = ? AND role = 'user'
+                 AND status = 'active' AND email_verified = 1""",
+            (reporter_id,),
+        ).fetchone() is not None
+
+    def _require_eligible_reporter(self, reporter_id: int) -> None:
+        if not self._is_eligible_reporter(reporter_id):
             raise ReporterNotEligible(
                 "Private Meldungen benötigen ein zugelassenes Konto."
             )
@@ -1976,6 +2706,249 @@ class PrivateReportStore:
         if owned is None:
             raise PrivateReportNotFound("Meldung nicht gefunden.")
         raise InvalidReportTransition("Dieser Meldeentwurf kann nicht mehr geändert werden.")
+
+    def list_reports_for_moderation(
+        self,
+        *,
+        reviewer_id: int,
+        limit: int,
+        offset: int,
+    ) -> ModerationReportPage:
+        """Return an oldest-first queue without owner or exact-location data."""
+        if (
+            type(limit) is not int
+            or limit < 1
+            or limit > 50
+            or type(offset) is not int
+            or offset < 0
+            or offset > _SQLITE_INTEGER_MAX
+        ):
+            raise ValueError("Ungültige Seitenauswahl.")
+        self._require_eligible_reviewer(reviewer_id)
+        total = int(
+            self._conn.execute(
+                "SELECT COUNT(*) FROM civic_report_current_reviewable"
+            ).fetchone()[0]
+        )
+        rows = self._conn.execute(
+            """SELECT report.id, report.confirmed_text, report.category,
+                      report.scope_kind, report.observed_at,
+                      local.outcome AS local_outcome,
+                      local.reason_codes_json AS local_reason_codes_json,
+                      ai.verdict AS ai_verdict,
+                      ai.reason_code AS ai_reason_code
+               FROM civic_report_current_reviewable AS reviewable
+               JOIN civic_reports AS report
+                 ON report.id = reviewable.report_id
+                AND report.content_revision = reviewable.content_revision
+               JOIN civic_report_local_screenings AS local
+                 ON local.id = reviewable.local_screening_id
+               LEFT JOIN civic_report_ai_screenings AS ai
+                 ON ai.report_id = reviewable.report_id
+                AND ai.content_revision = reviewable.content_revision
+                AND ai.assessment_version = ?
+               ORDER BY report.submitted_at ASC, report.id ASC
+               LIMIT ? OFFSET ?""",
+            (
+                EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION,
+                limit,
+                offset,
+            ),
+        ).fetchall()
+        return ModerationReportPage(
+            reports=tuple(
+                ModerationReportSummary(
+                    id=int(row["id"]),
+                    text_preview=str(row["confirmed_text"])[
+                        :_PRIVATE_REPORT_PREVIEW_LENGTH
+                    ],
+                    category=cast(ProblemCategory, row["category"]),
+                    scope_kind=cast(ScopeKind, row["scope_kind"]),
+                    observed_on=str(row["observed_at"]),
+                    local_outcome=cast(LocalScreeningOutcome, row["local_outcome"]),
+                    local_reason_codes=tuple(
+                        cast(LocalScreeningReason, reason)
+                        for reason in json.loads(row["local_reason_codes_json"])
+                    ),
+                    ai_verdict=cast(
+                        ExternalAiScreeningVerdict | None,
+                        row["ai_verdict"],
+                    ),
+                    ai_reason_code=cast(
+                        ExternalAiScreeningReason | None,
+                        row["ai_reason_code"],
+                    ),
+                )
+                for row in rows
+            ),
+            total=total,
+        )
+
+    def get_report_for_moderation(
+        self,
+        report_id: int,
+        *,
+        reviewer_id: int,
+    ) -> ModerationReport | None:
+        """Return a current pending detail through the minimized review seam."""
+        self._require_eligible_reviewer(reviewer_id)
+        if not _is_storage_id(report_id):
+            return None
+        rows = self._conn.execute(
+            """SELECT report.id, report.category, report.scope_kind,
+                      report.content_revision,
+                      local.outcome AS local_outcome,
+                      local.reason_codes_json AS local_reason_codes_json,
+                      ai.verdict AS ai_verdict, ai.reason_code AS ai_reason_code,
+                      observation.text AS observation_text,
+                      observation.observed_at AS observation_observed_at
+               FROM civic_report_current_reviewable AS reviewable
+               JOIN civic_reports AS report
+                 ON report.id = reviewable.report_id
+                AND report.content_revision = reviewable.content_revision
+               JOIN civic_report_local_screenings AS local
+                 ON local.id = reviewable.local_screening_id
+               JOIN civic_report_observations AS observation
+                 ON observation.report_id = reviewable.report_id
+                AND observation.content_revision <= reviewable.content_revision
+               LEFT JOIN civic_report_ai_screenings AS ai
+                 ON ai.report_id = reviewable.report_id
+                AND ai.content_revision = reviewable.content_revision
+                AND ai.assessment_version = ?
+               WHERE reviewable.report_id = ?
+               ORDER BY observation.content_revision""",
+            (
+                EXTERNAL_AI_SCREENING_ASSESSMENT_VERSION,
+                report_id,
+            ),
+        ).fetchall()
+        if not rows:
+            return None
+        row = rows[0]
+        return ModerationReport(
+            id=int(row["id"]),
+            category=cast(ProblemCategory, row["category"]),
+            scope_kind=cast(ScopeKind, row["scope_kind"]),
+            content_revision=int(row["content_revision"]),
+            observations=tuple(
+                ModerationObservation(
+                    text=str(observation["observation_text"]),
+                    observed_on=str(observation["observation_observed_at"]),
+                )
+                for observation in rows
+            ),
+            local_outcome=cast(LocalScreeningOutcome, row["local_outcome"]),
+            local_reason_codes=tuple(
+                cast(LocalScreeningReason, reason)
+                for reason in json.loads(row["local_reason_codes_json"])
+            ),
+            ai_verdict=cast(ExternalAiScreeningVerdict | None, row["ai_verdict"]),
+            ai_reason_code=cast(
+                ExternalAiScreeningReason | None,
+                row["ai_reason_code"],
+            ),
+        )
+
+    def decide_report(
+        self,
+        report_id: int,
+        *,
+        reviewer_id: int,
+        expected_revision: int,
+        outcome: HumanModerationOutcome,
+        rejection_explanation: str | None,
+    ) -> HumanModerationDecision:
+        """Record one human decision, while making exact retries idempotent."""
+        if not _is_storage_id(report_id):
+            raise PrivateReportNotFound("Meldung nicht gefunden.")
+        revision = _normalized_expected_revision(expected_revision)
+        if revision is None:
+            raise ValueError("Die erwartete Inhaltsrevision ist erforderlich.")
+        if outcome not in HUMAN_MODERATION_OUTCOMES:
+            raise ValueError("Unbekannte Moderationsentscheidung.")
+        explanation = (
+            rejection_explanation.strip()
+            if isinstance(rejection_explanation, str)
+            else None
+        )
+        if outcome == "approved":
+            if explanation:
+                raise ValueError("Eine Freigabe verwendet keinen Ablehnungsgrund.")
+            explanation = None
+        elif (
+            not explanation
+            or len(explanation) > _MAX_REJECTION_EXPLANATION_LENGTH
+        ):
+            raise ValueError(
+                "Eine Ablehnung benötigt eine Erklärung mit höchstens 1000 Zeichen."
+            )
+
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            self._require_eligible_reviewer(reviewer_id)
+            existing = self._conn.execute(
+                """SELECT * FROM civic_report_moderation_decisions
+                   WHERE report_id = ? AND content_revision = ?""",
+                (report_id, revision),
+            ).fetchone()
+            if existing is not None:
+                decision = _human_moderation_decision_from_row(existing)
+                if (
+                    decision.reviewer_id == reviewer_id
+                    and decision.outcome == outcome
+                    and decision.rejection_explanation == explanation
+                ):
+                    self._conn.commit()
+                    return decision
+                raise ModerationConflict(
+                    "Für diese Meldungsfassung liegt bereits eine Entscheidung vor."
+                )
+            reviewable = self._conn.execute(
+                """SELECT 1 FROM civic_report_current_reviewable
+                   WHERE report_id = ? AND content_revision = ?""",
+                (report_id, revision),
+            ).fetchone()
+            if reviewable is None:
+                raise PrivateReportNotFound("Meldung nicht gefunden.")
+            decided_at = _now()
+            inserted = self._conn.execute(
+                """INSERT INTO civic_report_moderation_decisions (
+                       report_id, content_revision, reviewer_id, outcome,
+                       rejection_explanation, decided_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)
+                   RETURNING *""",
+                (
+                    report_id,
+                    revision,
+                    reviewer_id,
+                    outcome,
+                    explanation,
+                    decided_at,
+                ),
+            ).fetchone()
+            if inserted is None:
+                raise RuntimeError("Gespeicherte Moderationsentscheidung fehlt.")
+            self._conn.commit()
+            return _human_moderation_decision_from_row(inserted)
+        except Exception:
+            if self._conn.in_transaction:
+                self._conn.rollback()
+            raise
+
+    def _require_eligible_reviewer(self, reviewer_id: int) -> None:
+        if not _is_storage_id(reviewer_id):
+            raise ReviewerNotEligible(
+                "Dieses Konto darf private Meldungen nicht moderieren."
+            )
+        eligible = self._conn.execute(
+            """SELECT 1 FROM civic_report_eligible_reviewers
+               WHERE reviewer_id = ?""",
+            (reviewer_id,),
+        ).fetchone()
+        if eligible is None:
+            raise ReviewerNotEligible(
+                "Dieses Konto darf private Meldungen nicht moderieren."
+            )
 
     def list_owned_reports(
         self,
@@ -2006,14 +2979,21 @@ class PrivateReportStore:
             ).fetchone()[0]
         )
         rows = self._conn.execute(
-            """SELECT id,
-                      CASE WHEN status = 'submitted'
-                           THEN confirmed_text ELSE draft_text END AS text_preview,
-                      category, scope_kind, observed_at, status,
-                      content_revision, submitted_at, updated_at
-               FROM civic_reports
-               WHERE reporter_id = ?
-               ORDER BY updated_at DESC, id DESC
+            """SELECT report.id,
+                      CASE WHEN report.status = 'submitted'
+                           THEN report.confirmed_text
+                           ELSE report.draft_text END AS text_preview,
+                      report.category, report.scope_kind, report.observed_at,
+                      report.status, report.content_revision,
+                      report.submitted_at, report.updated_at,
+                      decision.outcome AS moderation_outcome,
+                      decision.rejection_explanation
+               FROM civic_reports AS report
+               LEFT JOIN civic_report_moderation_decisions AS decision
+                 ON decision.report_id = report.id
+                AND decision.content_revision = report.content_revision
+               WHERE report.reporter_id = ?
+               ORDER BY report.updated_at DESC, report.id DESC
                LIMIT ? OFFSET ?""",
             (reporter_id, limit, offset),
         ).fetchall()
@@ -2031,6 +3011,11 @@ class PrivateReportStore:
                     content_revision=int(row["content_revision"]),
                     submitted_at=row["submitted_at"],
                     updated_at=str(row["updated_at"]),
+                    moderation_outcome=cast(
+                        HumanModerationOutcome | None,
+                        row["moderation_outcome"],
+                    ),
+                    rejection_explanation=row["rejection_explanation"],
                 )
                 for row in rows
             ),
@@ -2043,14 +3028,28 @@ class PrivateReportStore:
         *,
         reporter_id: int,
     ) -> PrivateReport | None:
-        if not _is_storage_id(report_id) or not _is_storage_id(reporter_id):
+        if (
+            not _is_storage_id(report_id)
+            or not _is_storage_id(reporter_id)
+            or self._conn.execute(
+                "SELECT 1 FROM web_users WHERE id = ? AND role = 'user'",
+                (reporter_id,),
+            ).fetchone() is None
+        ):
             return None
         row = self._conn.execute(
-            """SELECT id, draft_text, confirmed_text, category, scope_kind,
-                      observed_at, location_label, latitude, longitude, status,
-                      content_revision, submitted_at, created_at, updated_at
-               FROM civic_reports
-               WHERE id = ? AND reporter_id = ?""",
+            """SELECT report.id, report.draft_text, report.confirmed_text,
+                      report.category, report.scope_kind, report.observed_at,
+                      report.location_label, report.latitude, report.longitude,
+                      report.status, report.content_revision, report.submitted_at,
+                      report.created_at, report.updated_at,
+                      decision.outcome AS moderation_outcome,
+                      decision.rejection_explanation
+               FROM civic_reports AS report
+               LEFT JOIN civic_report_moderation_decisions AS decision
+                 ON decision.report_id = report.id
+                AND decision.content_revision = report.content_revision
+               WHERE report.id = ? AND report.reporter_id = ?""",
             (report_id, reporter_id),
         ).fetchone()
         if row is None:
@@ -2086,4 +3085,9 @@ class PrivateReportStore:
                 )
                 for observation in observations
             ),
+            moderation_outcome=cast(
+                HumanModerationOutcome | None,
+                row["moderation_outcome"],
+            ),
+            rejection_explanation=row["rejection_explanation"],
         )

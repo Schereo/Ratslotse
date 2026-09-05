@@ -7,6 +7,7 @@ import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
   MoreHorizontal, MessageCircle, Bookmark, ClipboardList, Euro, Bell,
+  ShieldCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -17,6 +18,7 @@ import { isNativeApp } from "@/lib/platform";
 import { HAUSHALT_FREI } from "@/lib/haushalt-frei";
 import { PROBLEME_FREI } from "@/lib/probleme-frei";
 import { isEligiblePrivateReporter } from "@/lib/problem-report-session";
+import { canModerateReports, isModerationOnly } from "@/lib/account-capabilities";
 import { Brand, BrandMark } from "@/components/brand";
 import { FeedbackButton, openFeedback } from "@/components/feedback";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
@@ -112,6 +114,7 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
 ];
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 const PRIVATE_REPORTS: Item = { href: "/meine-meldungen", label: "Meine Meldungen", icon: ClipboardList };
+const MODERATION: Item = { href: "/moderation/meldungen", label: "Moderation", icon: ShieldCheck };
 // Split 28.08.2026: Ausschuss-Abos hingen als Block unter „Meine Themen" und
 // bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
 // den Themen vorbeiscrollen. Zwei Arten, dem Rat zu folgen (ein Anliegen vs.
@@ -178,6 +181,19 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const unread = useUnreadTopicHits();
   const openFeedback = useUnreadFeedback(user?.role === "admin");
 
+  if (isModerationOnly(user)) {
+    return (
+      <nav className="flex-1 space-y-1 px-3">
+        {PROBLEME_FREI && canModerateReports(user) && (
+          <>
+            <SectionHeader>Prüfung</SectionHeader>
+            <NavItem item={MODERATION} active={isActive(MODERATION.href)} onNavigate={onNavigate} />
+          </>
+        )}
+      </nav>
+    );
+  }
+
   return (
     <nav className="flex-1 space-y-1 px-3">
       {MAIN_ITEMS.map((l) => (
@@ -197,6 +213,9 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
       <NavItem item={ABOS} active={isActive("/abos")} onNavigate={onNavigate} />
       <NavItem item={BOOKMARKS} active={isActive("/bookmarks")} onNavigate={onNavigate} />
       <NavItem item={QUIZ} active={isActive("/quiz")} onNavigate={onNavigate} />
+      {PROBLEME_FREI && canModerateReports(user) && (
+        <NavItem item={MODERATION} active={isActive(MODERATION.href)} onNavigate={onNavigate} />
+      )}
       {user?.role === "admin" && (
         <NavItem
           item={{ href: "/admin", label: "Admin", icon: Settings }}
@@ -233,6 +252,21 @@ function UserFooter({ onNavigate, showTheme = false }: { onNavigate?: () => void
     router.replace("/login");
   };
   const accountActive = pfad(pathname) === "/account";
+  if (isModerationOnly(user)) {
+    return (
+      <div className="border-t border-border p-3">
+        <p className="truncate px-2 pb-2 text-xs text-muted-foreground">{user.email}</p>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4" /> Abmelden
+        </button>
+        <RechtsLinks />
+      </div>
+    );
+  }
   return (
     <div className="border-t border-border p-3">
       <div className="flex items-center justify-between gap-2 pb-2">
@@ -305,6 +339,7 @@ function RechtsLinks({ zentriert = false }: { zentriert?: boolean }) {
 }
 
 export function DesktopSidebar() {
+  const { user } = useAuth();
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card desk:flex desk:sticky desk:top-0 desk:h-screen desk:self-start desk:overflow-y-auto">
       {/* Design 28a/R5: Hier standen zwei „Suchen" mit derselben Lupe 40 px
@@ -315,15 +350,17 @@ export function DesktopSidebar() {
           Suche. */}
       <div className="flex items-center gap-2 px-5 pb-2 pt-5">
         <Brand />
-        <button
-          type="button"
-          onClick={openCommandPalette}
-          aria-label="Befehle und Sprünge öffnen (Tastenkürzel ⌘K)"
-          title="Befehle & Sprünge — ⌘K"
-          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <Command className="h-4 w-4" />
-        </button>
+        {!isModerationOnly(user) && (
+          <button
+            type="button"
+            onClick={openCommandPalette}
+            aria-label="Befehle und Sprünge öffnen (Tastenkürzel ⌘K)"
+            title="Befehle & Sprünge — ⌘K"
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Command className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <NavLinks />
       <UserFooter showTheme />
@@ -332,6 +369,12 @@ export function DesktopSidebar() {
 }
 
 export function MobileTopbar() {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const onLogout = async () => {
+    await logout();
+    router.replace("/login");
+  };
   // Design 9a③: kein Burger mehr — die Hauptziele stehen in der Tab-Bar,
   // Sekundäres im „Mehr"-Sheet. Der Kopf behält nur Logo + Suche.
   return (
@@ -342,11 +385,13 @@ export function MobileTopbar() {
       </div>
       <button
         type="button"
-        onClick={openCommandPalette}
-        aria-label="Suchen und Befehle öffnen"
+        onClick={isModerationOnly(user) ? () => void onLogout() : openCommandPalette}
+        aria-label={isModerationOnly(user) ? "Abmelden" : "Suchen und Befehle öffnen"}
         className="flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent"
       >
-        <Search className="h-[19px] w-[19px]" />
+        {isModerationOnly(user)
+          ? <LogOut className="h-[19px] w-[19px]" />
+          : <Search className="h-[19px] w-[19px]" />}
       </button>
     </header>
   );
@@ -368,10 +413,26 @@ function BottomNavMitParams() {
 
 function BottomNavInner({ tab }: { tab: string | null }) {
   const pathname = pfad(usePathname());
+  const { user } = useAuth();
   const [mehrOffen, setMehrOffen] = useState(false);
   // Seitenwechsel (auch via Tab-Bar unterm Sheet) schließt das Sheet.
   useEffect(() => { setMehrOffen(false); }, [pathname, tab]);
   const mehrAktiv = mehrOffen || MEHR_AKTIV(pathname, tab);
+  if (isModerationOnly(user)) {
+    if (!PROBLEME_FREI || !canModerateReports(user)) return null;
+    return (
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[var(--level-huelle)] flex border-t border-border/50 bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl desk:hidden"
+        style={{ height: TABLEISTE_HOEHE }}
+        aria-label="Hauptnavigation"
+      >
+        <BottomNavItem
+          item={MODERATION}
+          active={pathname.startsWith("/moderation/")}
+        />
+      </nav>
+    );
+  }
   return (
     <>
       {mehrOffen && <MehrSheet onClose={() => setMehrOffen(false)} />}
@@ -554,6 +615,9 @@ function MehrSheet({ onClose }: { onClose: () => void }) {
           <MehrZeile href="/abos" icon={Bell} label="Ausschuss-Abos" onClose={onClose} />
           <MehrZeile href="/bookmarks" icon={Bookmark} label="Merkliste" onClose={onClose} />
           <MehrZeile href="/quiz" icon={Trophy} label="Quiz" onClose={onClose} />
+          {PROBLEME_FREI && canModerateReports(user) && (
+            <MehrZeile href={MODERATION.href} icon={MODERATION.icon} label={MODERATION.label} onClose={onClose} />
+          )}
           {user?.role === "admin" && (
             <MehrZeile href="/admin" icon={Settings} label="Admin" badge={openFeedbackUnread} primaerFarbe={false} onClose={onClose} />
           )}

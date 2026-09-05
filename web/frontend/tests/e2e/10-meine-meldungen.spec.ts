@@ -62,6 +62,8 @@ function summary(overrides: Partial<PrivateReportSummary> = {}): PrivateReportSu
     content_revision: 3,
     submitted_at: null,
     updated_at: "2026-09-04T08:05:00Z",
+    moderation_outcome: null,
+    rejection_explanation: null,
     ...overrides,
   };
 }
@@ -82,6 +84,8 @@ function privateReport(overrides: Partial<PrivateReport> = {}): PrivateReport {
     submitted_at: null,
     created_at: "2026-09-01T08:00:00Z",
     updated_at: "2026-09-04T08:05:00Z",
+    moderation_outcome: null,
+    rejection_explanation: null,
     ...overrides,
   };
 }
@@ -157,6 +161,60 @@ test.describe("Owner-bound private report history", () => {
     await page.getByRole("button", { name: /Bestätigte fiktive Beobachtung.*öffnen/i }).click();
     await expect(page.getByText("Diese Meldung ist privat eingegangen und hier schreibgeschützt.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Entwurf fortsetzen" })).toHaveCount(0);
+  });
+
+  test("shows final human outcomes without AI or reviewer data", async ({ page }) => {
+    await signedIn(page);
+    const explanation = "Diese Meldung kann so nicht weiterbearbeitet werden.";
+    await page.route("**/api/meldungen?*", (route) => route.fulfill(json({
+      reports: [
+        summary({
+          state: "submitted",
+          moderation_outcome: "rejected",
+          rejection_explanation: explanation,
+          submitted_at: "2026-09-04T08:00:00Z",
+        }),
+        summary({
+          id: 41,
+          state: "submitted",
+          moderation_outcome: "approved",
+          rejection_explanation: null,
+          submitted_at: "2026-09-03T08:00:00Z",
+        }),
+      ],
+      total: 2,
+      limit: 10,
+      offset: 0,
+    } satisfies PrivateReportList)));
+    await page.route("**/api/meldungen/42", (route) => route.fulfill(json(privateReport({
+      state: "submitted",
+      confirmed_text: "Fiktive abgelehnte Beobachtung.",
+      moderation_outcome: "rejected",
+      rejection_explanation: explanation,
+      submitted_at: "2026-09-04T08:00:00Z",
+    }))));
+    await page.route("**/api/meldungen/41", (route) => route.fulfill(json(privateReport({
+      id: 41,
+      state: "submitted",
+      confirmed_text: "Fiktive freigegebene Beobachtung.",
+      moderation_outcome: "approved",
+      rejection_explanation: null,
+      submitted_at: "2026-09-03T08:00:00Z",
+    }))));
+
+    await page.goto("/meine-meldungen");
+
+    await expect(page.getByText("Abgelehnt", { exact: true })).toBeVisible();
+    await expect(page.getByText("Von Ratslotse geprüft", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).first().click();
+    await expect(page.getByText(explanation)).toBeVisible();
+    await expect(page.getByText(/endgültig und schreibgeschützt/i)).toBeVisible();
+    await expect(page.getByRole("button", { name: /fortsetzen|erneut/i })).toHaveCount(0);
+    await expect(page.getByText(/reviewer|KI-Hinweis|Modell/i)).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Schließen" }).click();
+    await page.getByRole("button", { name: /Am fiktiven Kanal.*öffnen/i }).nth(1).click();
+    await expect(page.getByText(/nicht öffentlich.*nicht an die Stadt/i)).toBeVisible();
   });
 
   test("expands details inside the selected report instead of below later reports", async ({ page }) => {

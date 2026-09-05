@@ -14,10 +14,12 @@ sys.path.insert(0, str(_BACKEND))
 os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 os.environ.setdefault("COOKIE_SECURE", "false")
 os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
+os.environ.setdefault("RATSLOTSE_BUERGERPORTAL", "1")
 
 from fastapi import HTTPException  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from app import deps  # noqa: E402
+from app.routers import moderation as moderation_router  # noqa: E402
 from app.routers import reports as reports_router  # noqa: E402
 from app.main import app  # noqa: E402
 from app.security import create_access_token  # noqa: E402
@@ -165,6 +167,198 @@ def test_private_routes_reject_missing_ineligible_and_admin_sessions(private_api
             assert client.request(method, path, headers=headers, **kwargs).status_code == 403, path
 
 
+def test_moderator_has_only_minimized_moderation_routes(private_api, monkeypatch):
+    client, database = private_api
+    _, owner = _account(database, email="meldeperson@example.org")
+    moderator_id, moderator = _account(
+        database,
+        email="moderation@example.org",
+        role="moderator",
+    )
+    _, admin = _account(
+        database,
+        email="verwaltung@example.org",
+        role="admin",
+        email_verified=False,
+    )
+    _, ordinary = _account(database, email="weitere-person@example.org")
+    _, unverified_moderator = _account(
+        database,
+        email="unbestaetigte-moderation@example.org",
+        role="moderator",
+        email_verified=False,
+    )
+    public_before = client.get("/api/probleme").content
+    created = client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="fiktive-moderation-http"),
+        headers=owner,
+    )
+    report_id = created.json()["id"]
+    submitted = client.post(
+        f"/api/meldungen/{report_id}/absenden",
+        json={
+            "expected_revision": 0,
+            "confirmed_text": "Bestätigte fiktive Beobachtung für die Prüfung.",
+        },
+        headers=owner,
+    )
+    revision = submitted.json()["content_revision"]
+
+    assert client.get("/api/admin/users", headers=moderator).status_code == 403
+    assert client.get("/api/bookmarks", headers=moderator).status_code == 403
+    assert client.get("/api/meldungen", headers=moderator).status_code == 403
+    assert client.post(
+        "/api/meldungen/entwuerfe",
+        json=_draft(key="moderator-darf-nicht-melden"),
+        headers=moderator,
+    ).status_code == 403
+    assert client.get("/api/moderation/meldungen", headers=ordinary).status_code == 403
+    assert client.get(
+        "/api/moderation/meldungen",
+        headers=unverified_moderator,
+    ).status_code == 403
+
+    for reviewer in (moderator, admin):
+        queue = client.get(
+            "/api/moderation/meldungen?limit=20&offset=0",
+            headers=reviewer,
+        )
+        assert queue.status_code == 200
+        assert queue.json()["total"] == 1
+        assert set(queue.json()["reports"][0]) == {
+            "id",
+            "text_preview",
+            "category",
+            "scope_kind",
+            "observed_on",
+            "local_outcome",
+            "local_reason_codes",
+            "ai_verdict",
+            "ai_reason_code",
+        }
+        detail = client.get(
+            f"/api/moderation/meldungen/{report_id}",
+            headers=reviewer,
+        )
+        assert detail.status_code == 200
+        payload = detail.json()
+        assert payload["observations"][0]["text"] == (
+            "Bestätigte fiktive Beobachtung für die Prüfung."
+        )
+        assert set(payload["observations"][0]) == {"text", "observed_on"}
+        forbidden = {
+            "reporter_id",
+            "owner_id",
+            "account_id",
+            "user_id",
+            "email",
+            "location_label",
+            "latitude",
+            "longitude",
+            "model_identifier",
+            "claim_token",
+        }
+        assert forbidden.isdisjoint(payload)
+        assert "Fiktiver Kanalweg" not in detail.text
+        assert "53.143" not in detail.text
+        assert "8.214" not in detail.text
+
+    unknown = client.get(
+        "/api/moderation/meldungen/999999",
+        headers=moderator,
+    )
+    assert unknown.status_code == 404
+
+    drafting_inputs = []
+    limited_subjects = []
+
+    class RecordingLimiter:
+        def check(self, _request, *, subject):
+            limited_subjects.append(subject)
+
+    monkeypatch.setattr(
+        moderation_router,
+        "civic_report_rejection_draft_limiter",
+        RecordingLimiter(),
+    )
+
+    class FakeDraftEvaluator:
+        def evaluate(self, drafting_input):
+            from buergerportal.rejection_drafting import RejectionDraftEvaluatorResult
+
+            drafting_inputs.append(drafting_input)
+            return RejectionDraftEvaluatorResult(
+                suggestion="Fiktiver editierbarer Vorschlag.",
+                model_identifier="fiktives-modell-v1",
+            )
+
+    app.dependency_overrides[deps.get_rejection_draft_evaluator] = (
+        lambda: FakeDraftEvaluator()
+    )
+    draft = client.post(
+        f"/api/moderation/meldungen/{report_id}/ablehnungsentwurf",
+        json={"expected_revision": revision},
+        headers=moderator,
+    )
+    assert draft.status_code == 200
+    assert draft.json() == {
+        "content_revision": revision,
+        "suggestion": "Fiktiver editierbarer Vorschlag.",
+        "available": True,
+    }
+    assert len(drafting_inputs) == 1
+    assert limited_subjects == [moderator_id]
+    assert drafting_inputs[0].observation_texts == (
+        "Bestätigte fiktive Beobachtung für die Prüfung.",
+    )
+    assert "Fiktiver Kanalweg" not in repr(drafting_inputs[0])
+
+    decision = client.post(
+        f"/api/moderation/meldungen/{report_id}/entscheidung",
+        json={
+            "expected_revision": revision,
+            "outcome": "rejected",
+            "rejection_explanation": (
+                "Diese fiktive Meldung kann so nicht weiterbearbeitet werden."
+            ),
+        },
+        headers=moderator,
+    )
+    assert decision.status_code == 200
+    assert decision.json() == {
+        "report_id": report_id,
+        "content_revision": revision,
+        "outcome": "rejected",
+        "rejection_explanation": (
+            "Diese fiktive Meldung kann so nicht weiterbearbeitet werden."
+        ),
+        "decided_at": decision.json()["decided_at"],
+    }
+    no_longer_reviewable = client.get(
+        f"/api/moderation/meldungen/{report_id}",
+        headers=moderator,
+    )
+    assert no_longer_reviewable.status_code == 404
+    assert no_longer_reviewable.json() == unknown.json()
+    owner_payload = client.get(
+        f"/api/meldungen/{report_id}", headers=owner
+    ).json()
+    assert owner_payload["moderation_outcome"] == "rejected"
+    assert owner_payload["rejection_explanation"] == (
+        "Diese fiktive Meldung kann so nicht weiterbearbeitet werden."
+    )
+    _assert_no_account_identifier(owner_payload)
+    owner_summary = client.get("/api/meldungen", headers=owner).json()["reports"][0]
+    assert owner_summary["moderation_outcome"] == "rejected"
+    assert owner_summary["rejection_explanation"] == owner_payload[
+        "rejection_explanation"
+    ]
+    assert "reviewer" not in owner_payload
+    assert "ai_verdict" not in owner_payload
+    assert client.get("/api/probleme").content == public_before
+
+
 def test_private_validation_errors_do_not_echo_raw_text_or_exact_places(private_api):
     client, database = private_api
     _, owner = _account(database, email="fehlerdetails@example.org")
@@ -298,6 +492,8 @@ def test_owner_lists_only_own_private_report_summaries_with_pagination(private_a
         "content_revision",
         "submitted_at",
         "updated_at",
+        "moderation_outcome",
+        "rejection_explanation",
     }
     _assert_no_account_identifier(first.json())
     assert "location_label" not in first.text
@@ -434,6 +630,8 @@ def test_submission_schedules_background_ai_without_changing_private_response(
         "submitted_at",
         "created_at",
         "updated_at",
+        "moderation_outcome",
+        "rejection_explanation",
     }
     assert "screen" not in response.text.lower()
     assert "assessment" not in response.text.lower()
@@ -642,6 +840,66 @@ def test_private_api_does_not_change_public_problem_projections(private_api):
     assert client.get("/api/probleme").json() == before
 
 
+def test_moderation_openapi_contract_is_explicit_and_location_free():
+    schema = app.openapi()
+    operation_paths = {
+        ("get", "/api/moderation/meldungen"),
+        ("get", "/api/moderation/meldungen/{report_id}"),
+        ("post", "/api/moderation/meldungen/{report_id}/ablehnungsentwurf"),
+        ("post", "/api/moderation/meldungen/{report_id}/entscheidung"),
+    }
+    assert operation_paths <= {
+        (method, path)
+        for path, operations in schema["paths"].items()
+        for method in operations
+    }
+    moderation_schemas = {
+        name: value
+        for name, value in schema["components"]["schemas"].items()
+        if name.startswith("Moderation") or name == "RejectionDraftOut"
+    }
+    serialized = str(moderation_schemas).lower()
+    for forbidden in (
+        "reporter_id",
+        "owner_id",
+        "account_id",
+        "user_id",
+        "email",
+        "location_label",
+        "latitude",
+        "longitude",
+        "model_identifier",
+        "claim_token",
+        "submitted_at",
+        "created_at",
+    ):
+        assert forbidden not in serialized
+    assert set(moderation_schemas["ModerationReportSummaryOut"]["required"]) == {
+        "id",
+        "text_preview",
+        "category",
+        "scope_kind",
+        "observed_on",
+        "local_outcome",
+        "local_reason_codes",
+        "ai_verdict",
+        "ai_reason_code",
+    }
+    assert set(moderation_schemas["ModerationObservationOut"]["required"]) == {
+        "text",
+        "observed_on",
+    }
+    assert set(
+        moderation_schemas["ModerationDecisionOut"]["required"]
+    ) == {
+        "report_id",
+        "content_revision",
+        "outcome",
+        "rejection_explanation",
+        "decided_at",
+    }
+
+
 def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
     operation_paths = {
         ("get", "/api/meldungen"),
@@ -677,6 +935,8 @@ def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
         "content_revision",
         "submitted_at",
         "updated_at",
+        "moderation_outcome",
+        "rejection_explanation",
     }
     assert set(private_report["required"]) == {
         "id",
@@ -693,6 +953,8 @@ def test_private_openapi_contract_is_explicit_and_contains_no_owner_id():
         "submitted_at",
         "created_at",
         "updated_at",
+        "moderation_outcome",
+        "rejection_explanation",
     }
     serialized = str(
         {"detail": private_report, "list": private_report_list, "summary": private_report_summary}

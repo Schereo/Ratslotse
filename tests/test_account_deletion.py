@@ -173,6 +173,83 @@ def test_delete_web_user_really_empties_every_table(tmp_path):
     store.close()
 
 
+def test_reporter_deletion_erases_moderation_and_drafting_evidence(tmp_path):
+    from buergerportal.rejection_drafting import (
+        RejectionDraftEvaluatorResult,
+        draft_rejection_explanation,
+    )
+    from buergerportal.reports import DraftContent, PrivateReportStore
+
+    database = tmp_path / "ratslotse.sqlite"
+    accounts = Store(database)
+    owner_id = accounts.create_web_user(
+        "loeschung-meldung@example.org",
+        "x",
+        role="user",
+        status="active",
+        email_verified=True,
+    )
+    reviewer_id = accounts.create_web_user(
+        "loeschung-pruefung@example.org",
+        "x",
+        role="moderator",
+        status="active",
+        email_verified=True,
+    )
+    reports = PrivateReportStore(database)
+    report_id = reports.create_draft(
+        reporter_id=owner_id,
+        content=DraftContent(
+            text="Fiktiver Entwurf vor Kontolöschung.",
+            category="other",
+            scope_kind="citywide",
+            observed_on="2026-09-01",
+        ),
+    )
+    submitted = reports.submit_owned_draft(
+        report_id,
+        reporter_id=owner_id,
+        confirmed_text="Fiktive Beobachtung vor Kontolöschung.",
+    )
+
+    class Evaluator:
+        def evaluate(self, _drafting_input):
+            return RejectionDraftEvaluatorResult(
+                suggestion="Fiktiver Entwurf vor Kontolöschung.",
+                model_identifier="fiktives-modell-v1",
+            )
+
+    assert draft_rejection_explanation(
+        reports,
+        report_id=report_id,
+        expected_revision=submitted.content_revision,
+        reviewer_id=reviewer_id,
+        evaluator=Evaluator(),
+    ) is not None
+    reports.decide_report(
+        report_id,
+        reviewer_id=reviewer_id,
+        expected_revision=submitted.content_revision,
+        outcome="rejected",
+        rejection_explanation="Fiktive finale Erklärung vor Kontolöschung.",
+    )
+
+    accounts.delete_web_user(owner_id)
+
+    for table in (
+        "civic_reports",
+        "civic_report_observations",
+        "civic_report_local_screenings",
+        "civic_report_moderation_decisions",
+        "civic_report_rejection_draft_claims",
+        "civic_report_rejection_drafts",
+    ):
+        assert reports._conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+    assert accounts.get_web_user_by_id(reviewer_id) is not None
+    reports.close()
+    accounts.close()
+
+
 def test_feedback_roundtrip_and_unread(tmp_path):
     """Feedback ablegen, zählen, abhaken — die Grundlage des Admin-Tabs und
     des Zeichens in der Navigation."""

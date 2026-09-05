@@ -201,7 +201,7 @@ export function ProblemReportFlow() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role === "admin") {
+    if (user.role !== "user") {
       setHydrated(true);
       return;
     }
@@ -268,7 +268,7 @@ export function ProblemReportFlow() {
   }, [hydrated, loadServerReport, reportId, serverReport, submitted]);
 
   useEffect(() => {
-    if (!hydrated || !user || user.role === "admin" || !idempotencyKey || submitted) return;
+    if (!hydrated || !user || user.role !== "user" || !idempotencyKey || submitted) return;
     const savedAt = Date.now();
     saveProblemReportSession({
       version: 1,
@@ -402,13 +402,13 @@ export function ProblemReportFlow() {
     return <Spinner label="Meldeweg wird geladen…" className="min-h-[420px]" />;
   }
 
-  if (user.role === "admin") {
+  if (user.role !== "user") {
     return (
       <Card className="p-6 text-center sm:p-8">
         <ShieldCheck className="mx-auto h-10 w-10 text-primary" aria-hidden />
         <h2 className="mt-4 font-display text-xl font-bold text-foreground">Persönliche Meldungen sind Bürgerkonten vorbehalten</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Admin-Konten moderieren getrennt und können deshalb keine eigene Meldung abgeben.
+          Admin- und Moderationskonten prüfen getrennt und können deshalb keine eigene Meldung abgeben.
         </p>
         <Button asChild variant="secondary" className="mt-5"><Link href="/probleme">Zur Problemübersicht</Link></Button>
       </Card>
