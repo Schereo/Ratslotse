@@ -50,6 +50,13 @@ ANLAGEN_ZEICHEN = 40_000
 ANLAGE_EINZELN = 12_000
 #: Was die Karte trägt. Der Satz wird gesetzt, nicht gescrollt.
 MAX_ZEICHEN = 240
+#: Die Überschrift darüber. 60 Zeichen sind zwei Zeilen auf der Karte
+#: (1080 px, Inter 600) — ein amtlicher Titel hat im Mittel 90 und wurde
+#: deshalb mit „…" gekappt: „Evaluation und Fortschreibung des kommunalen
+#: Aktionsplans gegen Gewalt an Frauen* …" (Tims Befund 05.09.26). Und er
+#: sagt oft nur, WER etwas eingereicht hat: „Änderungsantrag der
+#: CDU-Fraktion vom 10.06.2026". Die Überschrift sagt, worum es geht.
+MAX_UEBERSCHRIFT = 60
 
 #: Ab welchem Anteil der Grenze ein abgeschnittener Satz noch als Text taugt.
 #: Endet der letzte ganze Satz schon nach 40 Zeichen, ist der Rest die
@@ -149,12 +156,36 @@ def _eine_zeile(roh: str | None) -> str:
     return " ".join((roh or "").split())
 
 
-def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
-    """(Kartentext, Herkunft) für einen Punkt — oder None, wenn das Modell
-    nichts Brauchbares liefert.
+def ueberschrift_pruefen(roh: object, ktx: str) -> tuple[str | None, str | None]:
+    """(Überschrift, Mangel) — die Überschrift bereinigt, oder warum nicht.
+
+    Dieselben Netze wie beim Text (keine Wertung, kein vorweggenommenes
+    Ergebnis, keine Zahl, die nicht in der Quelle steht), dazu die eigene
+    Länge. Eine Überschrift ist ein Titel: kein Punkt am Ende, keine
+    Anführungszeichen drumherum — beides schreibt das Modell gern hin.
+    """
+    text = _eine_zeile(roh if isinstance(roh, str) else "").strip(" \"„“'.:")
+    if not text:
+        return None, "leer"
+    if len(text) > MAX_UEBERSCHRIFT:
+        return None, f"zu lang ({len(text)} Zeichen, erlaubt {MAX_UEBERSCHRIFT})"
+    maengel = [m for m in kritiker.pruefe(text, ktx) if not m.startswith("zu lang")]
+    if maengel:
+        return None, "; ".join(maengel)
+    return text, None
+
+
+def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str, str | None] | None:
+    """(Kartentext, Herkunft, Überschrift) für einen Punkt — oder None,
+    wenn das Modell nichts Brauchbares liefert.
 
     None ist kein Fehler, sondern ein gültiges Ergebnis: Der Bot fällt dann
     auf die Kurzfassung zurück. Lieber keine Zeile als eine erfundene.
+
+    Die Überschrift ist die schwächere Hälfte: Fällt nur SIE durch, geht der
+    Text trotzdem raus — mit ``None`` als Überschrift bleibt es auf der Karte
+    beim amtlichen Titel, und der Nachtlauf versucht es beim nächsten Mal
+    erneut (``agenda_items_needing_social_text`` sieht die Lücke).
     """
     ktx, source = kontext(punkt, anlagen)
     system = prompts.get("social_card_text_system")
@@ -180,7 +211,8 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
             roh = roh.strip("`")
             roh = roh[roh.find("{"):]
         try:
-            text = _eine_zeile(json.loads(roh).get("text"))
+            antwort = json.loads(roh)
+            text = _eine_zeile(antwort.get("text"))
         except (json.JSONDecodeError, AttributeError):
             continue
         if not text:
@@ -191,11 +223,18 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
         if maengel:
             print(f"  verworfen ({punkt.get('item_number')}): {'; '.join(maengel)}")
             continue
-        gedeckt, reason = kritiker.pruefe_llm(text, ktx)
+        ueberschrift, mangel = ueberschrift_pruefen(antwort.get("headline"), ktx)
+        if mangel:
+            print(f"  Überschrift verworfen ({punkt.get('item_number')}): {mangel}")
+        # EIN Kritiker-Aufruf für beides: Die Überschrift trägt selten eine
+        # harte Angabe, aber wenn („400 Euro je Baum"), muss sie belegt sein
+        # wie jede im Text.
+        zu_pruefen = f"{ueberschrift}. {text}" if ueberschrift else text
+        gedeckt, reason = kritiker.pruefe_llm(zu_pruefen, ktx)
         if not gedeckt:
             print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {reason}")
             continue
-        return text, source
+        return text, source, ueberschrift
     return None
 
 
@@ -276,7 +315,8 @@ def schreibe_fehlende(store, *, limit: int | None = None, tage_voraus: int = 21,
         for punkt, result in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
             if not result:
                 continue          # kein Text ist besser als ein erfundener
-            text, source = result
-            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, source)
+            text, source, ueberschrift = result
+            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, source,
+                                   headline=ueberschrift)
             geschrieben += 1
     return len(todo), geschrieben

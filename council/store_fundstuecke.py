@@ -17,14 +17,17 @@ class FundstueckeMixin:
     """Fundstücke, Rückblicke, Social-Text — nur zum Mitvererben."""
 
     def save_social_text(self, ksinr: int, item_number: str, text: str,
-                         source: str) -> None:
-        """Kartentext eines TOP festhalten (siehe agenda_item_social)."""
+                         source: str, headline: str | None = None) -> None:
+        """Kartentext und Karten-Überschrift eines TOP festhalten (siehe
+        agenda_item_social). ``headline`` darf fehlen — dann bleibt es beim
+        amtlichen Titel, und der Nachtlauf versucht es erneut."""
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO agenda_item_social "
-                "(ksinr, item_number, text, source, created_at) VALUES (?, ?, ?, ?, ?)",
-                (ksinr, item_number, text, source, now))
+                "(ksinr, item_number, text, source, created_at, headline) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (ksinr, item_number, text, source, now, headline))
 
     def fundstueck_candidates(
         self, *, mmdd: str | None = None, exclude_ids: set[int] | None = None, limit: int = 10

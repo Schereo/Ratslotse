@@ -12620,6 +12620,13 @@
             "title": "Dringlich",
             "type": "boolean"
           },
+          "group_applicants": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Group Applicants",
+            "type": "array"
+          },
           "gruppe_nr": {
             "title": "Gruppe Nr",
             "type": "string"
@@ -12660,6 +12667,13 @@
           "session_date": {
             "title": "Session Date",
             "type": "string"
+          },
+          "social_headline": {
+            "title": "Social Headline",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "social_text": {
             "title": "Social Text",
@@ -12730,6 +12744,7 @@
           "topic_name",
           "summary",
           "social_text",
+          "social_headline",
           "dringlich",
           "wichtig",
           "wichtig_grund",
@@ -12739,7 +12754,8 @@
           "session_date",
           "gruppe_nr",
           "gruppe_titel",
-          "gruppe_stationen"
+          "gruppe_stationen",
+          "group_applicants"
         ],
         "title": "WeekPreviewItem",
         "type": "object"

@@ -204,11 +204,24 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "social_card_text_system": {
         "title": "Social-Kartentext – System",
-        "description": ("Ein bis zwei neutrale Sätze je Tagesordnungspunkt für die "
-                        "Instagram-Karte. Sieht Vorlage und Anlagen, darf nicht werten."),
+        "description": ("Überschrift und ein bis zwei neutrale Sätze je Tagesordnungspunkt "
+                        "für die Instagram-Karte. Sieht Vorlage und Anlagen, darf nicht werten."),
         "template": textwrap.dedent("""\
-            Du schreibst die Erklärzeile unter einem Tagesordnungspunkt des Oldenburger
-            Stadtrats für eine Instagram-Karte. HÖCHSTENS 200 Zeichen, ein bis zwei Sätze.
+            Du schreibst für eine Instagram-Karte zu einem Tagesordnungspunkt des
+            Oldenburger Stadtrats ZWEI Dinge: die Überschrift und die Erklärzeile darunter.
+
+            DIE ÜBERSCHRIFT (headline): HÖCHSTENS 55 Zeichen, kein Punkt am Ende. Sie
+            sagt, WORUM es geht — so, dass jemand beim Durchwischen sofort versteht, was
+            verhandelt wird. Der amtliche Titel taugt dafür oft nicht: „Änderungsantrag
+            der CDU-Fraktion vom 10.06.2026" sagt nur, wer wann etwas eingereicht hat;
+            richtig wäre „Baumschutzsatzung bis Jahresende aussetzen". Kein Absender,
+            kein Datum, keine Verfahrensart („Beschlussantrag", „Bericht") in der
+            Überschrift — dafür gibt es eigene Zeilen. Ein guter Maßstab: „Bolzplatz
+            an der Hermann-Ehlers-Schule" — konkret, kurz, versteht jeder. Nenn den
+            Ort oder die Sache, nicht die Vorlage. Ist der amtliche Titel schon so
+            (kurz, konkret, verständlich), übernimm ihn.
+
+            DIE ERKLÄRZEILE (text): HÖCHSTENS 200 Zeichen, ein bis zwei Sätze.
 
             WAS DU SCHREIBST: Das Konkreteste, was in Vorlage und Anlagen steht —
             Beträge, Flächen, Stückzahlen, Orte, Fristen, wer es beantragt hat, was sich
@@ -235,9 +248,10 @@ DEFAULTS: dict[str, dict[str, str]] = {
             - Nichts, was nicht in den Unterlagen steht. Im Zweifel weniger sagen.
 
             Ein Satz, an dem jemand die Haltung des Absenders ablesen könnte, ist
-            falsch — auch wenn er zutrifft. Der Punkt soll für sich sprechen.
+            falsch — auch wenn er zutrifft. Der Punkt soll für sich sprechen. Alle
+            Regeln gelten für Überschrift UND Erklärzeile.
 
-            Antworte ausschließlich als JSON: {"text": "…"}
+            Antworte ausschließlich als JSON: {"headline": "…", "text": "…"}
         """),
     },
     "social_card_text_user": {
@@ -246,7 +260,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "template": textwrap.dedent("""\
             {kontext}
 
-            Schreibe die Erklärzeile zu diesem Tagesordnungspunkt.
+            Schreibe Überschrift und Erklärzeile zu diesem Tagesordnungspunkt.
         """),
     },
     "social_critic_system": {

@@ -506,6 +506,15 @@ class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
         r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
         re.IGNORECASE)
 
+    #: „Änderungsantrag der CDU-Fraktion vom 10.06.2026" — der Absender als
+    #: Titel, nicht in Klammern. ``art`` und ``wer`` bleiben, das Datum geht.
+    _ANTRAG_IM_TITEL_RE = re.compile(
+        r"^\s*(?P<art>(?:Änderungs|Ergänzungs|Zusatz)?[Aa]ntrag)\s+(?:der|des|von)\s+"
+        r"(?P<wer>.+?)\s+vom\s+\d{1,2}\.\d{1,2}\.\d{2,4}\s*$")
+    #: Ein Antrag, der einen anderen Antrag ändert — er hängt unter ihm und
+    #: nennt den Gegenstand nicht selbst (s. ``wochenvorschau``).
+    _AENDERUNGSANTRAG_RE = re.compile(r"^\s*(?:Änderungs|Ergänzungs|Zusatz)antrag\b", re.IGNORECASE)
+
     #: „Ö 11.3" → Präfix „Ö", Nummer „11.3". Das Präfix ist zugleich der
     #: Öffentlichkeitsmarker (Ö/N) und gehört zur Nummer, nicht davor weg.
     _TOP_NUMMER_RE = re.compile(r"^\s*([A-Za-zÖÄÜöäü]+)\s+([\d.]+?)\.?\s*$")

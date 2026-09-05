@@ -122,8 +122,10 @@ def test_jeder_inhaltliche_punkt_bekommt_einen_text(store):
     assert [p["item_number"] for p in offen] == ["Ö 10", "Ö 11", "Ö 12"], \
         "hoch bewertet zuerst, Unbewertetes zuletzt — aber alle drei"
 
-    # Geschriebenes wird nie erneut bezahlt.
-    store.save_social_text(1, "Ö 10", "Zur Abstimmung steht …", "vorlage")
+    # Geschriebenes wird nie erneut bezahlt — sobald BEIDES da ist, Text und
+    # Überschrift (s. test_offen_ist_auch_was_noch_keine_ueberschrift_hat).
+    store.save_social_text(1, "Ö 10", "Zur Abstimmung steht …", "vorlage",
+                           headline="Bürgschaft fürs Klinikum")
     assert [p["item_number"] for p in store.agenda_items_needing_social_text()] \
         == ["Ö 11", "Ö 12"]
 
@@ -214,9 +216,65 @@ def test_der_text_wird_auf_kartenlaenge_gekappt(monkeypatch):
     monkeypatch.setattr(social_text.prompts, "get", lambda *a, **k: "system")
     monkeypatch.setattr(social_text.prompts, "render", lambda *a, **k: "user")
 
-    text, _ = social_text.text_fuer(
+    text, _, ueberschrift = social_text.text_fuer(
         {"committee": "Rat", "session_date": "2026-08-31", "title": "Ein Punkt"}, [])
     assert len(text) <= social_text.MAX_ZEICHEN
+    # Ohne Überschrift in der Antwort bleibt der Text trotzdem stehen — auf
+    # der Karte steht dann der amtliche Titel.
+    assert ueberschrift is None
+
+
+def test_ueberschrift_kommt_bereinigt_mit(monkeypatch):
+    """Die Überschrift sagt, worum es geht — der amtliche Titel sagt oft nur,
+    wer wann eingereicht hat („Änderungsantrag der CDU-Fraktion vom
+    10.06.2026", Tims Befund 05.09.26). Das Modell schreibt gern einen Punkt
+    ans Ende und Anführungszeichen drumherum; beides ist kein Titel."""
+    class _Antwort:
+        def __init__(self, inhalt):
+            self.choices = [type("C", (), {"message": type("M", (), {"content": inhalt})()})()]
+
+    monkeypatch.setattr(social_text.llm, "chat_complete", lambda **kw: _Antwort(
+        '{"headline": "„Baumschutzsatzung bis Jahresende aussetzen.", '
+        '"text": "Die CDU beantragt, die Satzung bis 31. Dezember 2026 auszusetzen."}'))
+    monkeypatch.setattr(social_text.prompts, "get", lambda *a, **k: "system")
+    monkeypatch.setattr(social_text.prompts, "render", lambda *a, **k: "user")
+    monkeypatch.setattr(social_text.kritiker, "pruefe_llm", lambda text, source: (True, ""))
+
+    punkt = {"committee": "Ausschuss für Stadtgrün, Umwelt und Klima",
+             "session_date": "2026-09-10",
+             "title": "Änderungsantrag der CDU-Fraktion vom 10.06.2026",
+             "raw_text": "Sachverhalt: Aussetzung der Baumschutzsatzung bis 31. Dezember 2026."}
+    text, _, ueberschrift = social_text.text_fuer(punkt, [])
+    assert ueberschrift == "Baumschutzsatzung bis Jahresende aussetzen"
+    assert text.startswith("Die CDU beantragt")
+
+
+def test_ueberschrift_haelt_dieselben_regeln_wie_der_text():
+    """Dieselben Netze wie beim Satz — und die eigene Länge. Fällt sie durch,
+    fällt nur SIE: Der Text bleibt, die Karte zeigt den amtlichen Titel."""
+    quelle = "Sachverhalt: 400 Euro je Baum."
+    assert social_text.ueberschrift_pruefen("400 Euro Ausgleich je Baum", quelle) \
+        == ("400 Euro Ausgleich je Baum", None)
+    # Erfundene Zahl, Wertung, vorweggenommenes Ergebnis, Länge, leer.
+    assert social_text.ueberschrift_pruefen("500 Euro je Baum", quelle)[0] is None
+    assert social_text.ueberschrift_pruefen("Wichtige Baumschutz-Reform", quelle)[0] is None
+    assert social_text.ueberschrift_pruefen("Rat beschließt neue Satzung", quelle)[0] is None
+    zu_lang, mangel = social_text.ueberschrift_pruefen("Ein Wort " * 20, quelle)
+    assert zu_lang is None and "zu lang" in mangel
+    assert social_text.ueberschrift_pruefen(None, quelle) == (None, "leer")
+
+
+def test_offen_ist_auch_was_noch_keine_ueberschrift_hat(store):
+    """Zeilen von vor 09/2026 haben einen Text, aber keine Überschrift. Der
+    Nachtlauf holt sie nach — und schreibt dabei beides neu, weil beides in
+    einem Aufruf entsteht."""
+    _sitzung(store)
+    _punkt(store, nummer="Ö 10", impact=75)
+    store.save_social_text(1, "Ö 10", "Zur Abstimmung steht …", "template")
+    assert [p["item_number"] for p in store.agenda_items_needing_social_text()] == ["Ö 10"]
+    store.save_social_text(1, "Ö 10", "Zur Abstimmung steht …", "template",
+                           headline="Bürgschaft fürs Klinikum")
+    assert store.agenda_items_needing_social_text() == []
 
 
 def test_auch_die_restliste_traegt_den_kartentext(store):
