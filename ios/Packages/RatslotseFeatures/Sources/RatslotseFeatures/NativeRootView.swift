@@ -22,6 +22,7 @@ func ratsDebugValue(_: String) -> String? { nil }
 
 public struct NativeRootView: View {
     @Bindable private var model: AppModel
+    @Namespace private var zoomNamespace
 
     public init(model: AppModel) { self.model = model }
 
@@ -61,8 +62,11 @@ public struct NativeRootView: View {
                 RatsRouteScaffold(model: model) {
                     RouteDestinationView(model: model, route: route)
                 }
+                .ratsZoomDestination(RatsZoomID.forRoute(route))
             }
         }
+        .environment(\.ratsZoomNamespace, zoomNamespace)
+        .sensoryFeedback(.success, trigger: model.actionFeedback)
         .font(RatsFont.body())
         .foregroundStyle(RatsColor.text)
         .background(RatsColor.page.ignoresSafeArea())

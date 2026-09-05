@@ -20,7 +20,7 @@ struct TodayView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: RatsSpacing.xl) {
                 HStack(alignment: .center, spacing: 14) {
-                    Lotti3DView(scene: .wave)
+                    headerLotti
                         .frame(width: 92, height: 84)
                     VStack(alignment: .leading, spacing: 7) {
                         MonoKicker(dayLabel)
@@ -31,19 +31,13 @@ struct TodayView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                 }
+                .ratsStaggered(0)
 
-                Button {
+                AskCouncilEntry {
                     model.navigation.removeAll()
                     model.selectedTab = .questions
-                } label: {
-                    HStack(spacing: 9) {
-                        RatsGlyphView(glyph: .ask, color: .white)
-                            .frame(width: 19, height: 19)
-                        Text("Frag den Rat")
-                    }
-                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(SignalButtonStyle())
+                .ratsStaggered(1)
 
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: 16) {
@@ -94,12 +88,14 @@ struct TodayView: View {
     private var primaryColumn: some View {
         if let pause, pause.active {
             CouncilPauseCard(pause: pause)
+                .ratsStaggered(2)
         }
         if let liveSession {
             LiveCouncilCard(session: liveSession, now: now) {
                 if let id = liveSession.ksinr { model.navigation.append(.sessions(ksinr: id, tops: [])) }
                 else { openSessions() }
             }
+            .ratsStaggered(2)
         }
         // Nur als Ersatz für die Wochenvorschau: Steht die Woche da, führt sie
         // den heutigen Termin schon in ihrer ersten Zeile — die Karte darüber
@@ -108,11 +104,13 @@ struct TodayView: View {
         // und wird weiter gezeigt.
         if let today, liveSession == nil, preview?.found != true {
             TodayStatusCard(today: today, openSessions: openSessions)
+                .ratsStaggered(3)
         }
         if let preview, preview.found {
             WeekPreviewCard(preview: preview) { sessionID, itemNumber in
                 model.navigation.append(.sessions(ksinr: sessionID, tops: [itemNumber]))
             }
+            .ratsStaggered(3)
         }
     }
 
@@ -120,9 +118,12 @@ struct TodayView: View {
     private var secondaryColumn: some View {
         if !latestTopicHits.isEmpty {
             LatestTopicHitsCard(hits: latestTopicHits) { model.navigation.append(.decision(id: $0)) }
+                .ratsStaggered(4)
         }
 
-        if let weekNumber {
+        // Ein Widget verdient seinen Platz nur, wenn es heute etwas sagen
+        // kann (Designdoc 3a): Eine Null ist keine Zahl der Woche.
+        if let weekNumber, weekNumber.hasContent {
             DashboardWeekNumberCard(number: weekNumber) { decisionID in
                 if let decisionID { model.navigation.append(.decision(id: decisionID)) }
                 else {
@@ -131,66 +132,105 @@ struct TodayView: View {
                     model.councilSection = .decisions
                 }
             }
+            .ratsStaggered(5)
         }
 
         if let week, week.found, let id = week.decisionID {
             Button { model.navigation.append(.decision(id: id)) } label: {
-                VStack(alignment: .leading, spacing: 9) {
-                    MonoKicker("Diese Woche im Rat")
-                    Text(week.title ?? "Aktueller Beschluss")
-                        .font(RatsFont.title(20))
-                        .multilineTextAlignment(.leading)
-                    if let outcome = week.outcome { OutcomeBadge(outcome) }
-                    if let reason = week.interestReason, !reason.isEmpty {
-                        Text(reason).font(RatsFont.body(14)).foregroundStyle(RatsColor.secondary)
+                RatsWidget("Diese Woche im Rat", accent: .marsh, glyph: .gavel, note: RatsDate.short(week.sessionDate)) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let outcome = week.outcome { OutcomeBadge(outcome) }
+                        Text(week.title ?? "Aktueller Beschluss")
+                            .font(RatsFont.body(15, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                            .multilineTextAlignment(.leading)
+                        if let reason = week.interestReason, !reason.isEmpty {
+                            Text(reason)
+                                .font(RatsFont.body(12.5))
+                                .foregroundStyle(RatsColor.secondary)
+                                .lineSpacing(2)
+                                .multilineTextAlignment(.leading)
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .ratsCard()
             }
             .buttonStyle(RatsPlainButtonStyle())
+            .ratsZoomSource(RatsZoomID.decision(id))
+            .ratsStaggered(5)
         }
 
+        // Das eine hervorgehobene Widget je Seite (Designdoc 3b3/4a): Das
+        // Fundstück steht auf der Anzeigetafel und trägt den Humor, den der
+        // Rest nicht haben darf. Der Entwurf sah es dunkel; dunkle Karten im
+        // hellen Design lehnt Tim ab (04.09.2026) — besonders ja, dunkel nein.
         if let foundPiece, foundPiece.found, let id = foundPiece.decisionID {
             Button { model.navigation.append(.decision(id: id)) } label: {
-                VStack(alignment: .leading, spacing: 10) {
-                    MonoKicker(foundPiece.kicker ?? "Fundstück")
-                    Text(foundPiece.title ?? "Aus dem Archiv")
-                        .font(RatsFont.title(20))
-                    if let story = foundPiece.story {
-                        Text(story).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText)
+                RatsWidget("Fundstück", accent: .buoy, glyph: .compass, board: true) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let kicker = foundPiece.kicker, !kicker.isEmpty {
+                            Text(kicker.uppercased())
+                                .font(RatsFont.mono(9, weight: .semibold))
+                                .tracking(0.8)
+                                .foregroundStyle(RatsColor.signalInk)
+                        }
+                        Text(foundPiece.title ?? "Aus dem Archiv")
+                            .font(RatsFont.title(16.5, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                            .multilineTextAlignment(.leading)
+                        if let story = foundPiece.story, !story.isEmpty {
+                            Text(story)
+                                .font(RatsFont.body(12.5))
+                                .foregroundStyle(RatsColor.bodyText)
+                                .lineSpacing(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                        if !foundPieceMeta.isEmpty {
+                            Text(foundPieceMeta)
+                                .font(RatsFont.body(11.5))
+                                .foregroundStyle(RatsColor.secondary)
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .ratsCard()
             }
             .buttonStyle(RatsPlainButtonStyle())
+            .ratsZoomSource(RatsZoomID.decision(id))
+            .ratsStaggered(5)
         }
 
         if !recent.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                MonoKicker("Zuletzt angesehen", trailing: "\(recent.count)")
-                ForEach(recent) { decision in
-                    Button { model.navigation.append(.decision(id: decision.id)) } label: {
-                        DecisionRow(decision: decision)
+            RatsWidget("Zuletzt angesehen", accent: .ink, glyph: .history, note: "\(recent.count)") {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(recent) { decision in
+                        Button { model.navigation.append(.decision(id: decision.id)) } label: {
+                            DecisionRow(decision: decision)
+                        }
+                        .buttonStyle(RatsPlainButtonStyle())
+                        .ratsZoomSource(RatsZoomID.decision(decision.id))
+                        .decisionContextMenu(decision, model: model)
+                        if decision.id != recent.last?.id { Divider().overlay(RatsColor.separator) }
                     }
-                    .buttonStyle(RatsPlainButtonStyle())
-                    if decision.id != recent.last?.id { Divider().overlay(RatsColor.separator) }
                 }
             }
-            .ratsCard()
+            .ratsStaggered(5)
         }
 
-        Button {
-            model.navigation.append(.quiz(area: nil))
-        } label: {
-            RatsLabel("Oldenburg-Quiz spielen", .circleCheck)
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(SecondaryButtonStyle())
+        // Kein Quiz zwischen Terminen, die heute gelten (Designdoc 3b5):
+        // Es hat seinen Platz im Mehr-Hub.
 
         if let error {
             ErrorCard(message: error) { Task { await load() } }
+        }
+    }
+
+    /// Lotti kommt in den Alltag (Designdoc „iOS Charakter", 1c): Sie winkt
+    /// zur Begrüßung — und schläft, wenn der Rat Pause macht. Jede Regung ist
+    /// an einen Zustand gebunden, nichts davon passiert zufällig.
+    @ViewBuilder
+    private var headerLotti: some View {
+        if let pause, pause.active {
+            LottiSpriteView(animation: .sleeping)
+        } else {
+            Lotti3DView(scene: .wave)
         }
     }
 
@@ -207,6 +247,10 @@ struct TodayView: View {
     }
 
     private func openSessions() { model.navigation.append(.sessions(ksinr: nil, tops: [])) }
+
+    private var foundPieceMeta: String {
+        [foundPiece?.committee, RatsDate.short(foundPiece?.sessionDate)].compactMap { $0 }.joined(separator: " · ")
+    }
 
     /// The one session running right now — at most one, because they wait for
     /// each other: council days run 16:00 general committee → 16:30
@@ -353,6 +397,11 @@ private struct DashboardWeekNumber: Codable, Sendable {
         case sessionDate = "session_date"
         case windowDays = "window_days"
     }
+
+    var hasContent: Bool {
+        if kind == "amount" { return (amountEUR ?? 0) > 0 }
+        return (count ?? 0) > 0
+    }
 }
 
 private struct LiveCouncilCard: View {
@@ -452,46 +501,88 @@ private struct LiveCouncilCard: View {
     }
 }
 
+/// Der Einstieg in „Frag den Rat" — als Composer, nicht als Knopf: Das
+/// Eingabefeld mit dem Funken in Signal-Orange ist die Bauform, die von der
+/// Fragen-Seite bekannt ist (Designsprache § 5, Composer). Der frühere
+/// vollflächige Signal-Orange-Knopf verstieß gegen § 8: Signal-Orange ist
+/// Akzent, nie Flächenfarbe.
+private struct AskCouncilEntry: View {
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MonoKicker("Frag den Rat")
+            Button(action: action) {
+                HStack(spacing: 10) {
+                    RatsIcon(.sparkles, size: 17)
+                        .foregroundStyle(RatsColor.signal)
+                        .accessibilityHidden(true)
+                    Text("Was möchtest du über den Rat wissen?")
+                        .font(RatsFont.body(15))
+                        .foregroundStyle(RatsColor.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Spacer(minLength: 6)
+                    RatsIcon(.arrowUp, size: 15)
+                        .foregroundStyle(RatsColor.primaryText)
+                        .frame(width: 38, height: 38)
+                        .background(RatsColor.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityHidden(true)
+                }
+                .padding(.leading, 14)
+                .padding(.trailing, 7)
+                .padding(.vertical, 7)
+                .background(RatsColor.card)
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(RatsColor.border))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: RatsColor.primary.opacity(0.10), radius: 14, y: 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .accessibilityLabel("Frag den Rat")
+            .accessibilityHint("Öffnet die Fragen-Seite")
+        }
+    }
+}
+
 private struct LatestTopicHitsCard: View {
     let hits: [DashboardTopicHit]
     let open: (Int) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MonoKicker("Neu zu deinen Themen", trailing: "\(hits.count)")
-            ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
-                Button { open(hit.id) } label: {
-                    HStack(alignment: .top, spacing: 11) {
-                        RatsIcon(.tag, size: 12)
-                            .foregroundStyle(RatsColor.signal)
-                            .frame(width: 30, height: 30)
-                            .background(RatsColor.signal.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(hit.topicName)
-                                .font(RatsFont.mono(9, weight: .semibold))
-                                .foregroundStyle(RatsColor.signal)
-                            Text(hit.title)
-                                .font(RatsFont.body(14, weight: .semibold))
-                                .foregroundStyle(RatsColor.text)
-                                .multilineTextAlignment(.leading)
-                                .lineLimit(3)
-                            Text([shortCommittee(hit.committee), RatsDate.short(hit.sessionDate)].compactMap { $0 }.joined(separator: " · "))
-                                .font(RatsFont.body(10))
-                                .foregroundStyle(RatsColor.secondary)
+        RatsWidget("Neu zu deinen Themen", accent: .buoy, glyph: .tag, note: "\(hits.count)") {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
+                    Button { open(hit.id) } label: {
+                        HStack(alignment: .top, spacing: 11) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(hit.topicName.uppercased())
+                                    .font(RatsFont.mono(9, weight: .semibold))
+                                    .tracking(0.7)
+                                    .foregroundStyle(RatsColor.signalInk)
+                                Text(hit.title)
+                                    .font(RatsFont.body(14, weight: .semibold))
+                                    .foregroundStyle(RatsColor.text)
+                                    .multilineTextAlignment(.leading)
+                                    .lineLimit(3)
+                                Text([shortCommittee(hit.committee), RatsDate.short(hit.sessionDate)].compactMap { $0 }.joined(separator: " · "))
+                                    .font(RatsFont.body(10.5))
+                                    .foregroundStyle(RatsColor.secondary)
+                            }
+                            Spacer(minLength: 2)
+                            RatsIcon(.chevronRight, size: 12)
+                                .foregroundStyle(RatsColor.muted)
+                                .padding(.top, 8)
                         }
-                        Spacer(minLength: 2)
-                        RatsIcon(.chevronRight, size: 12)
-                            .foregroundStyle(RatsColor.muted)
-                            .padding(.top, 8)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .ratsZoomSource(RatsZoomID.decision(hit.id))
+                    if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
                 }
-                .buttonStyle(RatsPlainButtonStyle())
-                if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .ratsCard()
     }
 }
 
@@ -499,38 +590,49 @@ private struct DashboardWeekNumberCard: View {
     let number: DashboardWeekNumber
     let open: (Int?) -> Void
 
+    /// Watt-Grün, weil die Zahl aus einem Beschluss stammt. Sie zählt beim
+    /// ersten Sichtkontakt hoch (600 ms, einmal je Erscheinen).
     var body: some View {
         Button { open(number.decisionID) } label: {
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 7) {
-                    MonoKicker("Zahl der Woche")
-                    Text(displayValue)
-                        .font(RatsFont.title(34))
-                        .foregroundStyle(RatsColor.signal)
-                        .contentTransition(.numericText())
-                    Text(description)
-                        .font(RatsFont.body(12))
-                        .foregroundStyle(RatsColor.secondary)
-                        .lineLimit(3)
-                        .multilineTextAlignment(.leading)
+            RatsWidget(
+                "Zahl der Woche",
+                accent: .marsh,
+                glyph: number.kind == "amount" ? .euro : .gavel,
+                note: "letzte \(number.windowDays) Tage"
+            ) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        RatsCountingNumber(rawValue, format: display)
+                            .font(RatsFont.title(32))
+                            .foregroundStyle(RatsColor.signal)
+                        Text(description)
+                            .font(RatsFont.body(12))
+                            .foregroundStyle(RatsColor.secondary)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 6)
+                    RatsIcon(.arrowRight, size: 15)
+                        .foregroundStyle(RatsColor.primary)
+                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: 6)
-                RatsIcon(.arrowRight, size: 15)
-                    .foregroundStyle(RatsColor.primary)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .ratsCard()
         }
         .buttonStyle(RatsPlainButtonStyle())
     }
 
-    private var displayValue: String {
-        guard number.kind == "amount", let amount = number.amountEUR else { return "\(number.count ?? 0)" }
-        if amount >= 1_000_000 {
-            return "\((amount / 1_000_000).formatted(.number.precision(.fractionLength(0...1)))) Mio. €"
+    private var rawValue: Double {
+        if number.kind == "amount", let amount = number.amountEUR { return amount }
+        return Double(number.count ?? 0)
+    }
+
+    private func display(_ value: Double) -> String {
+        guard number.kind == "amount", number.amountEUR != nil else { return "\(Int(value.rounded()))" }
+        if value >= 1_000_000 {
+            return "\((value / 1_000_000).formatted(.number.precision(.fractionLength(0...1)))) Mio. €"
         }
-        if amount >= 1_000 { return "\((amount / 1_000).formatted(.number.precision(.fractionLength(0)))) Tsd. €" }
-        return amount.formatted(.currency(code: "EUR").precision(.fractionLength(0)))
+        if value >= 1_000 { return "\((value / 1_000).formatted(.number.precision(.fractionLength(0)))) Tsd. €" }
+        return value.formatted(.currency(code: "EUR").precision(.fractionLength(0)))
     }
 
     private var description: String {
@@ -580,68 +682,71 @@ private struct WeekPreviewCard: View {
     let open: (Int, String) -> Void
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expandedSessions: Set<Int> = []
+    /// Der im Band gewählte Tag (ISO); `nil` heißt: ab heute, wie beim
+    /// Aufruf. Die Liste darunter zeigt die Sitzungen ab diesem Tag.
+    @State private var selectedDay: String?
 
+    /// Die Ratswoche als Widget mit Wochenband (Designdoc 2a): sieben Spalten,
+    /// heute gefüllt, ein Punkt nur, wo eine Sitzung liegt. Das Band ist
+    /// zugleich der Tageswähler (Tims Wunsch 05.09.2026): Ein Tipp fährt die
+    /// Markierung zum Tag, darunter stehen die Sitzungen ab diesem Tag.
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            header
+        RatsWidget("Deine Ratswoche", accent: .harbor, glyph: .calendar, note: rangeLabel) {
+            VStack(alignment: .leading, spacing: 14) {
+                WeekBand(
+                    from: preview.from,
+                    through: preview.through,
+                    sessions: preview.sessions,
+                    selected: activeDay
+                ) { day in
+                    withAnimation(reduceMotion ? nil : RatsMotion.travel) { selectedDay = day }
+                }
 
-            VStack(alignment: .leading, spacing: wideLayout ? 14 : 16) {
-                ForEach(Array(preview.sessions.enumerated()), id: \.element.id) { index, session in
-                    if wideLayout {
-                        wideSession(session, at: index)
-                    } else {
-                        compactSession(session, at: index)
+                if importantCount > 0, selectedDay == nil {
+                    WeekCountBadge(text: importantCount == 1 ? "1 wichtiger Punkt" : "\(importantCount) wichtige Punkte")
+                }
+
+                if visibleSessions.isEmpty {
+                    Text("Ab \(selectedDayLabel) steht in dieser Woche nichts mehr an.")
+                        .font(RatsFont.body(12.5))
+                        .foregroundStyle(RatsColor.secondary)
+                        .transition(.opacity)
+                } else {
+                    VStack(alignment: .leading, spacing: wideLayout ? 14 : 16) {
+                        ForEach(Array(visibleSessions.enumerated()), id: \.element.id) { index, session in
+                            if wideLayout {
+                                wideSession(session, at: index)
+                            } else {
+                                compactSession(session, at: index)
+                            }
+                        }
                     }
+                    .transition(.opacity)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .ratsCard()
+        .sensoryFeedback(.selection, trigger: selectedDay)
     }
 
     private var wideLayout: Bool { horizontalSizeClass == .regular }
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("DEINE RATSWOCHE")
-                    .font(RatsFont.mono(9, weight: .semibold))
-                    .tracking(1.3)
-                    .foregroundStyle(RatsColor.primary)
-                Text("Die Woche im Rat")
-                    .font(RatsFont.title(wideLayout ? 23 : 21))
-                Text(headerMetadata)
-                    .font(RatsFont.mono(10))
-                    .foregroundStyle(RatsColor.secondary)
+    private var activeDay: String { selectedDay ?? preview.from }
 
-                if importantCount > 0 {
-                    WeekCountBadge(text: importantCount == 1 ? "1 wichtiger Punkt" : "\(importantCount) wichtige Punkte")
-                        .padding(.top, 3)
-                }
-            }
-            Spacer(minLength: 4)
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(RatsColor.primary.opacity(0.07))
-                    .frame(width: wideLayout ? 76 : 68, height: wideLayout ? 70 : 62)
-                Lotti3DView(scene: .reading, animated: false)
-                    .frame(width: wideLayout ? 72 : 64, height: wideLayout ? 66 : 58)
-            }
-            .accessibilityHidden(true)
-        }
-        .padding(.bottom, 2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(RatsColor.separator)
-                .frame(height: 1)
-                .offset(y: 10)
-        }
+    /// Die Sitzungen ab dem gewählten Tag — die Vorschau reicht ohnehin nur
+    /// eine Woche, ein Filter „nur dieser Tag" ließe die Liste meist leer.
+    private var visibleSessions: [CouncilSession] {
+        preview.sessions.filter { $0.sessionDate.prefix(10) >= activeDay }
     }
 
-    private var headerMetadata: String {
-        let count = preview.sessions.count
-        return "\(date(preview.from)) – \(date(preview.through))  ·  \(count) \(count == 1 ? "SITZUNG" : "SITZUNGEN")"
+    private var selectedDayLabel: String {
+        guard let value = Self.isoFormatter.date(from: activeDay) else { return activeDay }
+        return value.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month(.abbreviated))
+    }
+
+    private var rangeLabel: String {
+        "\(date(preview.from)) – \(date(preview.through))"
     }
 
     private var importantCount: Int {
@@ -705,7 +810,7 @@ private struct WeekPreviewCard: View {
         }
         .padding(.bottom, 2)
         .overlay(alignment: .bottom) {
-            if session.id != preview.sessions.last?.id {
+            if session.id != visibleSessions.last?.id {
                 Rectangle().fill(RatsColor.separator).frame(height: 1).offset(y: 9)
             }
         }
@@ -748,6 +853,7 @@ private struct WeekPreviewCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(RatsPlainButtonStyle())
+        .ratsZoomSource(session.ksinr.map(RatsZoomID.session))
         .accessibilityHint("Öffnet die Tagesordnung")
     }
 
@@ -816,7 +922,9 @@ private struct WeekPreviewCard: View {
     }
 
     private func startsNewDay(at index: Int) -> Bool {
-        index == 0 || preview.sessions[index - 1].sessionDate != preview.sessions[index].sessionDate
+        let sessions = visibleSessions
+        guard sessions.indices.contains(index) else { return false }
+        return index == 0 || sessions[index - 1].sessionDate != sessions[index].sessionDate
     }
 
     private func isToday(_ iso: String) -> Bool {
@@ -882,6 +990,130 @@ private struct WeekPreviewCard: View {
     }()
 }
 
+/// Das Wochenband (Designdoc 2a): sieben Spalten, heute gefüllt, ein Punkt
+/// nur, wo eine Sitzung liegt — grau = gewesen, orange = zu deinen Themen,
+/// blau = kommt noch.
+/// Das Wochenband (Designdoc 2a): sieben Spalten, heute gefüllt, ein Punkt
+/// nur, wo eine Sitzung liegt — grau = gewesen, orange = zu deinen Themen,
+/// blau = kommt noch. Seit 05.09.2026 zugleich der Tageswähler: Der
+/// gefüllte Kreis ist die Markierung und FÄHRT zum angetippten Tag
+/// (gleitende Aktiv-Markierung, Designsprache § 7); „heute" bleibt am
+/// Wochentag in Signal-Orange erkennbar, auch wenn ein anderer Tag gewählt ist.
+private struct WeekBand: View {
+    let from: String
+    let through: String
+    let sessions: [CouncilSession]
+    let selected: String
+    let onSelect: (String) -> Void
+
+    @Namespace private var marker
+
+    private struct Day: Identifiable {
+        let id: String
+        let weekday: String
+        let number: String
+        let longName: String
+        let isToday: Bool
+        let isPast: Bool
+        let sessions: [CouncilSession]
+
+        var session: CouncilSession? {
+            sessions.first { !($0.myTopicItems ?? []).isEmpty } ?? sessions.first
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(days) { day in
+                let isSelected = day.id == selected
+                Button {
+                    onSelect(day.id)
+                } label: {
+                    VStack(spacing: 5) {
+                        Text(day.weekday)
+                            .font(RatsFont.mono(9, weight: day.isToday ? .semibold : .medium))
+                            .tracking(0.4)
+                            .foregroundStyle(day.isToday ? RatsColor.signal : RatsColor.muted)
+                        Text(day.number)
+                            .font(RatsFont.body(13, weight: isSelected ? .bold : .semibold))
+                            .foregroundStyle(isSelected ? RatsColor.primaryText : numberColor(day))
+                            .frame(width: 24, height: 24)
+                            .background {
+                                if isSelected {
+                                    Circle()
+                                        .fill(RatsColor.primary)
+                                        .matchedGeometryEffect(id: "selected-day", in: marker)
+                                }
+                            }
+                        Circle()
+                            .fill(dotColor(day))
+                            .frame(width: 5, height: 5)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+                .accessibilityLabel(accessibilityLabel(day))
+                .accessibilityHint("Zeigt die Sitzungen ab diesem Tag")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+    }
+
+    /// Die Vorschau reicht von heute bis in sieben Tagen — das sind acht
+    /// Spalten, nicht sieben. Ein Band, das den letzten Tag abschnitte,
+    /// zeigte einen Termin unten, den oben kein Punkt trägt.
+    private var days: [Day] {
+        guard let start = Self.isoFormatter.date(from: from) else { return [] }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let german = Locale(identifier: "de_DE")
+        let end = Self.isoFormatter.date(from: through) ?? start
+        let span = calendar.dateComponents([.day], from: start, to: end).day ?? 6
+        let count = min(max(span + 1, 7), 8)
+        return (0..<count).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
+            let iso = Self.isoFormatter.string(from: date)
+            return Day(
+                id: iso,
+                weekday: date.formatted(.dateTime.locale(german).weekday(.abbreviated))
+                    .replacingOccurrences(of: ".", with: "")
+                    .uppercased(),
+                number: "\(calendar.component(.day, from: date))",
+                longName: date.formatted(.dateTime.locale(german).weekday(.wide).day().month(.wide)),
+                isToday: calendar.isDate(date, inSameDayAs: today),
+                isPast: date < today,
+                sessions: sessions.filter { $0.sessionDate.prefix(10) == iso }
+            )
+        }
+    }
+
+    private func numberColor(_ day: Day) -> Color {
+        if day.session != nil { return RatsColor.secondary }
+        return day.isPast ? RatsColor.muted : RatsColor.muted.opacity(0.7)
+    }
+
+    private func dotColor(_ day: Day) -> Color {
+        guard let session = day.session else { return .clear }
+        if !(session.myTopicItems ?? []).isEmpty { return RatsColor.signal }
+        return day.isPast ? RatsColor.border : RatsColor.primary.opacity(0.55)
+    }
+
+    private func accessibilityLabel(_ day: Day) -> String {
+        let count = day.sessions.count
+        let sessions = count == 0 ? "keine Sitzung" : "\(count) \(count == 1 ? "Sitzung" : "Sitzungen")"
+        return "\(day.isToday ? "Heute, " : "")\(day.longName), \(sessions)"
+    }
+
+    private static let isoFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
 private struct WeekCountBadge: View {
     let text: String
 
@@ -897,9 +1129,12 @@ private struct WeekCountBadge: View {
     }
 }
 
-private struct WeekAgendaItemRow: View {
+/// Ein Tagesordnungspunkt mit Rang — auf der Wochenkarte und, mit anderem
+/// Kicker, in der Sitzungsliste. Dieselbe Zeile, weil es dieselben Daten sind.
+struct WeekAgendaItemRow: View {
     let item: WeekPreviewItem
     let compact: Bool
+    var featuredKicker = "Highlight der Woche"
 
     var body: some View {
         HStack(alignment: .top, spacing: 9) {
@@ -956,7 +1191,7 @@ private struct WeekAgendaItemRow: View {
 
     private var kicker: String? {
         if let topic = item.topicName, !topic.isEmpty { return "WICHTIGES THEMA · \(topic.uppercased())" }
-        if item.featured == true { return "HIGHLIGHT DER WOCHE" }
+        if item.featured == true { return featuredKicker.uppercased() }
         return nil
     }
 
@@ -978,23 +1213,26 @@ private struct TodayStatusCard: View {
 
     var body: some View {
         Button(action: openSessions) {
-            HStack(alignment: .top, spacing: 13) {
-                Circle()
-                    .fill(today.state == "heute" ? RatsColor.signal : RatsColor.muted.opacity(0.55))
-                    .frame(width: 9, height: 9)
-                    .padding(.top, 5)
-                VStack(alignment: .leading, spacing: 6) {
-                    MonoKicker(kicker)
-                    Text(headline)
-                        .font(RatsFont.body(16, weight: .semibold))
-                        .multilineTextAlignment(.leading)
-                    if let detail { Text(detail).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary) }
+            RatsWidget(kicker, accent: .harbor, glyph: today.state == "pause" ? .hourglass : .calendar) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(headline)
+                            .font(RatsFont.body(15, weight: .semibold))
+                            .foregroundStyle(RatsColor.text)
+                            .multilineTextAlignment(.leading)
+                        if let detail {
+                            Text(detail)
+                                .font(RatsFont.body(12.5))
+                                .foregroundStyle(RatsColor.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+                    Spacer(minLength: 4)
+                    RatsIcon(.chevronRight, size: 14)
+                        .foregroundStyle(RatsColor.muted)
+                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: 4)
-                RatsIcon(.chevronRight, size: 16).foregroundStyle(RatsColor.muted)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .ratsCard()
         }
         .buttonStyle(RatsPlainButtonStyle())
     }
@@ -1286,22 +1524,32 @@ private struct CouncilPauseWaves: Shape {
     }
 }
 
+/// „Fehler heißt Hinweis" (Designdoc „iOS Charakter", 5c): Lotti hebt die
+/// Hand statt eines roten Dreiecks, und ein Ausweg ist immer dabei — der
+/// Retry, oder für den Anmelde-Fall der Knopf, der bisher fehlte.
 struct ErrorCard: View {
     let message: String
+    var title = "Das hat nicht geklappt"
+    var actionTitle = "Noch einmal versuchen"
     let retry: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Das hat nicht geklappt")
-                    .font(RatsFont.body(14, weight: .semibold))
-                    .foregroundStyle(RatsColor.warning)
-                Text(message).font(RatsFont.body(13)).foregroundStyle(RatsColor.secondary)
-                Button("Noch einmal versuchen", action: retry).buttonStyle(SecondaryButtonStyle())
+        HStack(alignment: .center, spacing: 14) {
+            RatsStatePortrait(animation: .raiseHand, tint: RatsColor.signal)
+            VStack(alignment: .leading, spacing: 3) {
+                RatsStateKicker(text: "Hinweis", color: RatsColor.signalInk)
+                Text(title)
+                    .font(RatsFont.body(14, weight: .bold))
+                    .foregroundStyle(RatsColor.text)
+                Text(message)
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineSpacing(2)
+                Button(actionTitle, action: retry)
+                    .buttonStyle(SecondaryButtonStyle())
+                    .padding(.top, 6)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            LottiSpriteView(animation: .shakeHead)
-                .frame(width: 74, height: 74)
         }
         .ratsCard()
     }

@@ -528,3 +528,53 @@ def test_weitere_punkte_tragen_ihre_erklaerung_mit(tmp_path):
         assert all("wichtig_grund" in w for w in weitere)
     finally:
         store.close()
+
+
+# ---- Highlights je Sitzung für die Sitzungsliste (04.09.2026) ------------
+
+def test_sitzungs_highlights_nutzt_dieselbe_schwelle_wie_die_woche(tmp_path):
+    """Die Sitzungsliste sagte bisher nur „13 TOPs"; die Bewertung gab es
+    längst, sie lief nur für die kommenden sieben Tage (Tims Frage 04.09.).
+    Jetzt liefert der Store sie je Sitzung — gleiche Regeln, gleiche Schwelle,
+    Formalien und Personalien bleiben draußen."""
+    store = _vorschau_store(tmp_path)
+    try:
+        punkte = store.sitzungs_highlights([1])[1]
+        titel = [p["title"] for p in punkte]
+        assert any("Satzung" in t for t in titel)
+        assert not any("Beschlussfähigkeit" in t for t in titel)
+        assert not any("Berufung" in t for t in titel)
+        assert all(p["wichtig"] >= store.WICHTIG_MINDEST for p in punkte)
+        for p in punkte:
+            assert p["top"] is (p["wichtig"] >= store.TOP_MINDEST)
+            # Dieselbe Form wie die Punkte der Wochenvorschau — die Clients
+            # decodieren beide mit demselben Typ.
+            assert {"ksinr", "item_number", "title", "titel_kurz", "committee",
+                    "session_date", "topic_name", "wichtig_grund"} <= set(p)
+        # Ein Treffer zum eigenen Thema umgeht die Schwelle und ist hervorgehoben.
+        mit = store.sitzungs_highlights(
+            [1], meine={1: [{"item_number": "Ö 4", "topic_name": "Aktionswochen"}]})[1]
+        eigener = next(p for p in mit if p["item_number"] == "Ö 4")
+        assert eigener["top"] is True and eigener["topic_name"] == "Aktionswochen"
+        # Reihenfolge innerhalb der Sitzung ist die Tagesordnung, nicht der Rang.
+        assert [p["item_number"] for p in mit] == sorted(
+            (p["item_number"] for p in mit), key=store._top_sortierung)
+        # Deckel je Sitzung.
+        assert len(store.sitzungs_highlights([1], max_je_sitzung=1)[1]) == 1
+        # Terminierte Sitzungen ohne Nummer und unbekannte Nummern: nichts.
+        assert store.sitzungs_highlights([]) == {}
+        assert store.sitzungs_highlights([None, 999]) == {}
+    finally:
+        store.close()
+
+
+def test_wochenvorschau_und_highlights_bewerten_gleich(tmp_path):
+    """Beide Abnehmer teilen sich EINE Bewertung — ein Punkt, der auf der
+    Wochenkarte steht, trägt in der Sitzungsliste dieselbe Zahl."""
+    store = _vorschau_store(tmp_path)
+    try:
+        woche = {p["item_number"]: p["wichtig"] for p in store.wochenvorschau(max_punkte=99)["items"]}
+        liste = {p["item_number"]: p["wichtig"] for p in store.sitzungs_highlights([1], max_je_sitzung=99)[1]}
+        assert liste and all(liste[nr] == woche[nr] for nr in liste)
+    finally:
+        store.close()

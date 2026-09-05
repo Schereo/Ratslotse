@@ -8,6 +8,7 @@ struct TopicsView: View {
     @State private var topics: [Topic] = []
     @State private var suggestions: [TopicSuggestion] = []
     @State private var addingSuggestions: Set<String> = []
+    @State private var addedTopics = 0
     @State private var isPresentingEditor = false
     @State private var editing: Topic?
     @State private var error: String?
@@ -34,36 +35,28 @@ struct TopicsView: View {
                     .tint(RatsColor.signal)
                 }
 
+                // Vorschläge als schmale Chip-Zeile statt als Kachelfeld: Sie
+                // sind ein Angebot, nicht der Inhalt der Seite (Tims Befund
+                // 05.09.2026: „oben so groß"). Die Zahl am Chip ist die
+                // Häufigkeit im letzten Jahr; der Satz dazu steht im
+                // Accessibility-Label statt als Fußnote.
                 if !suggestions.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        MonoKicker("Gerade aktuell im Rat")
-                        Text("Mit einem Tipp übernehmen")
-                            .font(RatsFont.body(11))
-                            .foregroundStyle(RatsColor.secondary)
-                        LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: 150, maximum: 300), spacing: 8)],
-                            alignment: .leading,
-                            spacing: 8
-                        ) {
-                            ForEach(suggestions) { suggestion in
-                                TopicSuggestionButton(
-                                    suggestion: suggestion,
-                                    isWorking: addingSuggestions.contains(suggestion.name),
-                                    action: { add(suggestion) }
-                                )
+                    VStack(alignment: .leading, spacing: 8) {
+                        MonoKicker("Gerade aktuell im Rat", trailing: "Tipp übernimmt")
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 7) {
+                                ForEach(suggestions) { suggestion in
+                                    TopicSuggestionChip(
+                                        suggestion: suggestion,
+                                        isWorking: addingSuggestions.contains(suggestion.name),
+                                        action: { add(suggestion) }
+                                    )
+                                }
                             }
+                            .padding(.horizontal, 18)
                         }
-                        Text("Die Zahl zeigt, wie oft das Thema in den letzten zwölf Monaten erkannt wurde.")
-                            .font(RatsFont.body(10.5))
-                            .foregroundStyle(RatsColor.muted)
+                        .padding(.horizontal, -18)
                     }
-                    .padding(14)
-                    .background(RatsColor.primary.opacity(0.045))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .stroke(RatsColor.primary.opacity(0.12))
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                 }
 
                 if topics.isEmpty && error == nil {
@@ -103,7 +96,7 @@ struct TopicsView: View {
                         RatsLabel("Neues Thema anlegen", .plus)
                             .font(RatsFont.body(14, weight: .semibold))
                             .foregroundStyle(RatsColor.primary)
-                            .frame(maxWidth: .infinity, minHeight: 124)
+                            .frame(maxWidth: .infinity, minHeight: 56)
                             .background(RatsColor.card.opacity(0.65))
                             .overlay(
                                 RoundedRectangle(cornerRadius: RatsRadius.card)
@@ -135,6 +128,9 @@ struct TopicsView: View {
         .background(RatsColor.page)
         .navigationTitle("Meine Themen")
         .toolbarTitleDisplayMode(.inline)
+        // Ein übernommener Vorschlag bestätigt sich in der Hand — wie das
+        // System es bei einem Erfolg tut.
+        .sensoryFeedback(.success, trigger: addedTopics)
         .refreshable { await load() }
         .task {
 #if DEBUG
@@ -191,6 +187,7 @@ struct TopicsView: View {
                 )
                 topics.append(topic)
                 suggestions.removeAll { $0.name == suggestion.name }
+                addedTopics += 1
                 await model.refreshBadges()
             } catch { self.error = error.localizedDescription }
         }
@@ -229,55 +226,47 @@ private struct TopicSuggestion: Decodable, Sendable, Identifiable {
     let n: Int
 }
 
-private struct TopicSuggestionButton: View {
+/// Ein Vorschlag als Chip: Plus, Name, Häufigkeit. Eine Zeile hoch, damit
+/// die Angebote nicht über den eigenen Themen thronen.
+private struct TopicSuggestionChip: View {
     let suggestion: TopicSuggestion
     let isWorking: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 8) {
+            HStack(spacing: 6) {
                 if isWorking {
                     ProgressView()
-                        .controlSize(.small)
+                        .controlSize(.mini)
                         .tint(RatsColor.primary)
                 } else {
                     RatsIcon(.plus, size: 11)
-                        .frame(width: 22, height: 22)
-                        .background(RatsColor.primary.opacity(0.09))
-                        .clipShape(Circle())
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(suggestion.name)
-                        .font(RatsFont.body(12, weight: .semibold))
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("\(suggestion.n)× im letzten Jahr")
-                        .font(RatsFont.mono(8.5, weight: .semibold))
-                        .foregroundStyle(RatsColor.muted)
-                }
-                Spacer(minLength: 0)
+                Text(suggestion.name)
+                    .font(RatsFont.body(12.5, weight: .semibold))
+                    .lineLimit(1)
+                Text("\(suggestion.n)×")
+                    .font(RatsFont.mono(9, weight: .semibold))
+                    .foregroundStyle(RatsColor.muted)
             }
             .foregroundStyle(RatsColor.primary)
-            .padding(10)
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
+            .padding(.horizontal, 11)
+            .frame(height: 32)
             .background(RatsColor.card)
-            .overlay {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(RatsColor.primary.opacity(0.22))
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay(Capsule().stroke(RatsColor.primary.opacity(0.24)))
+            .clipShape(Capsule())
         }
         .buttonStyle(RatsPlainButtonStyle())
         .disabled(isWorking)
-        .accessibilityLabel(accessibilityText)
-    }
-
-    private var accessibilityText: String {
-        "\(suggestion.name) als Thema anlegen, \(suggestion.n) Erwähnungen im letzten Jahr"
+        .accessibilityLabel("\(suggestion.name) als Thema anlegen, \(suggestion.n) Erwähnungen im letzten Jahr")
     }
 }
 
+/// Ein Thema als Tide-Widget in Boje-Orange — dieselbe Hülle wie „Neu zu
+/// deinen Themen" auf der Startseite, damit ein Thema überall gleich
+/// aussieht. Kopfleiste: Zeichen, Name, rechts „2 neue" und das Menü;
+/// Körper: Beschreibung und die letzten Treffer.
 private struct TopicCard: View {
     let topic: Topic
     let open: (TopicHit) -> Void
@@ -285,76 +274,82 @@ private struct TopicCard: View {
     let remove: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(topic.name).font(RatsFont.title(20))
+        RatsWidget(topic.name, accent: .buoy, glyph: .tag, trailing: {
+            HStack(spacing: 6) {
                 if topic.unreadCount > 0 {
                     Text(topic.unreadCount == 1 ? "1 neuer" : "\(topic.unreadCount) neue")
-                        .font(RatsFont.body(11, weight: .semibold))
-                        .foregroundStyle(RatsColor.signal)
+                        .font(RatsFont.body(10.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.signalInk)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(RatsColor.signal.opacity(0.08))
+                        .background(RatsColor.signal.opacity(0.10))
                         .clipShape(Capsule())
+                        .fixedSize()
                 }
-                Spacer(minLength: 0)
                 Menu {
                     Button(action: edit) { RatsLabel("Bearbeiten", .pencil) }
                     Button(role: .destructive, action: remove) { RatsLabel("Löschen", .trash2) }
                 } label: {
-                    RatsIcon(.ellipsis, size: 16)
+                    RatsIcon(.ellipsis, size: 15)
                         .foregroundStyle(RatsColor.secondary)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("\(topic.name) bearbeiten oder löschen")
             }
+        }) {
+            VStack(alignment: .leading, spacing: 12) {
+                if !topic.description.isEmpty {
+                    Text(topic.description)
+                        .font(RatsFont.body(12.5))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineSpacing(2)
+                }
 
-            Text(topic.description)
-                .font(RatsFont.body(13))
-                .foregroundStyle(RatsColor.secondary)
-
-            if !topic.recentHits.isEmpty {
-                MonoKicker(
-                    "Zuletzt gefunden",
-                    trailing: "\(countLabel) · \(topic.hits6Months) in 6 Monaten"
-                )
-                VStack(spacing: 0) {
-                    ForEach(Array(topic.recentHits.prefix(3).enumerated()), id: \.element.id) { index, hit in
-                        Button { open(hit) } label: {
-                            HStack(alignment: .top, spacing: 9) {
-                                Circle()
-                                    .fill(hit.isNew ? RatsColor.signal : RatsColor.muted.opacity(0.45))
-                                    .frame(width: 7, height: 7)
-                                    .padding(.top, 6)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(hit.title)
-                                        .font(RatsFont.body(14, weight: .semibold))
-                                        .foregroundStyle(RatsColor.text)
-                                        .lineLimit(2)
-                                        .multilineTextAlignment(.leading)
-                                    Text([RatsDate.short(hit.sessionDate), hit.committee].compactMap { $0 }.joined(separator: " · "))
-                                        .font(RatsFont.mono(9))
-                                        .foregroundStyle(RatsColor.muted)
+                if !topic.recentHits.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        MonoKicker(
+                            "Zuletzt gefunden",
+                            trailing: "\(countLabel) · \(topic.hits6Months) in 6 Monaten"
+                        )
+                        VStack(spacing: 0) {
+                            ForEach(Array(topic.recentHits.prefix(3).enumerated()), id: \.element.id) { index, hit in
+                                Button { open(hit) } label: {
+                                    HStack(alignment: .top, spacing: 9) {
+                                        Circle()
+                                            .fill(hit.isNew ? RatsColor.signal : RatsColor.muted.opacity(0.45))
+                                            .frame(width: 7, height: 7)
+                                            .padding(.top, 6)
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(hit.title)
+                                                .font(RatsFont.body(13.5, weight: .semibold))
+                                                .foregroundStyle(RatsColor.text)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.leading)
+                                            Text([RatsDate.short(hit.sessionDate), hit.committee.map(Committee.short)].compactMap { $0 }.joined(separator: " · "))
+                                                .font(RatsFont.mono(9))
+                                                .foregroundStyle(RatsColor.muted)
+                                        }
+                                        Spacer(minLength: 4)
+                                        if let outcome = hit.outcome { OutcomeBadge(outcome) }
+                                    }
+                                    .padding(.vertical, 9)
+                                    .contentShape(Rectangle())
                                 }
-                                Spacer(minLength: 4)
-                                if let outcome = hit.outcome { OutcomeBadge(outcome) }
+                                .buttonStyle(RatsPlainButtonStyle())
+                                if index < min(topic.recentHits.count, 3) - 1 {
+                                    Divider().overlay(RatsColor.separator)
+                                }
                             }
-                            .padding(.vertical, 10)
-                        }
-                        .buttonStyle(RatsPlainButtonStyle())
-                        if index < min(topic.recentHits.count, 3) - 1 {
-                            Divider().overlay(RatsColor.separator)
                         }
                     }
+                } else {
+                    Text(topic.matched ? "Noch kein passender Beschluss." : "Die passenden Beschlüsse werden gerade gezählt …")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.muted)
                 }
-            } else {
-                Text(topic.matched ? "Noch kein passender Beschluss." : "Die passenden Beschlüsse werden gerade gezählt …")
-                    .font(RatsFont.body(12))
-                    .foregroundStyle(RatsColor.muted)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .ratsCard()
     }
 
     private var countLabel: String {

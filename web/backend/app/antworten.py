@@ -134,6 +134,50 @@ class MatchedAgendaItem(TypedDict):
     is_public: int
 
 
+class WeekPreviewItem(TypedDict):
+    """Ein Tagesordnungspunkt in „Diese Woche im Rat".
+
+    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
+    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
+    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
+    Deshalb stehen genau diese fünf als ``NotRequired``.
+
+    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
+    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
+    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
+    standen ohne Erklärung da.
+
+    ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
+    dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
+    ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
+    """
+    ksinr: int
+    item_number: str
+    title: str
+    titel_kurz: str
+    applicants: str | None
+    topic_name: str | None
+    summary: str | None
+    social_text: str | None
+    dringlich: bool
+    wichtig: int
+    wichtig_grund: str | None
+    template_number: str | None
+    kvonr: int | None
+    committee: str
+    session_date: str
+    #: Der Punkt, unter dem eine mehrstufige Sache gebündelt wird.
+    gruppe_nr: str
+    gruppe_titel: str | None
+    gruppe_stationen: int
+    #: Nur in ``items``, nicht in ``further_per_session``:
+    kind: NotRequired[str | None]
+    behandlung: NotRequired[str | None]
+    vorgeschichte: NotRequired[int]
+    wichtig_quelle: NotRequired[str]
+    top: NotRequired[bool]
+
+
 class SessionRow(TypedDict):
     """Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
@@ -166,6 +210,10 @@ class SessionRow(TypedDict):
     # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
     # von HEUTE — für alle anderen fehlt das Feld.
     live_until: NotRequired[str | None]
+    #: Die wichtigsten Punkte der Sitzung (``CouncilStore.sitzungs_highlights``,
+    #: dieselbe Bewertung wie ``items`` der Wochenvorschau). Fehlt, wenn kein
+    #: Punkt über der Schwelle liegt — und an Sitzungen ohne Tagesordnung.
+    highlights: NotRequired[list[WeekPreviewItem]]
 
 
 class DecisionRow(TypedDict):
@@ -639,50 +687,6 @@ class SourceCheck(TypedDict):
 # --------------------------------------------------------------------------
 # Social-Schnittstelle (Instagram-Bot, eigenes Repo)
 # --------------------------------------------------------------------------
-
-
-class WeekPreviewItem(TypedDict):
-    """Ein Tagesordnungspunkt in „Diese Woche im Rat".
-
-    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
-    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
-    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
-    Deshalb stehen genau diese fünf als ``NotRequired``.
-
-    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
-    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
-    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
-    standen ohne Erklärung da.
-
-    ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
-    dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
-    ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
-    """
-    ksinr: int
-    item_number: str
-    title: str
-    titel_kurz: str
-    applicants: str | None
-    topic_name: str | None
-    summary: str | None
-    social_text: str | None
-    dringlich: bool
-    wichtig: int
-    wichtig_grund: str | None
-    template_number: str | None
-    kvonr: int | None
-    committee: str
-    session_date: str
-    #: Der Punkt, unter dem eine mehrstufige Sache gebündelt wird.
-    gruppe_nr: str
-    gruppe_titel: str | None
-    gruppe_stationen: int
-    #: Nur in ``items``, nicht in ``further_per_session``:
-    kind: NotRequired[str | None]
-    behandlung: NotRequired[str | None]
-    vorgeschichte: NotRequired[int]
-    wichtig_quelle: NotRequired[str]
-    top: NotRequired[bool]
 
 
 class CouncilWeekPreview(TypedDict):

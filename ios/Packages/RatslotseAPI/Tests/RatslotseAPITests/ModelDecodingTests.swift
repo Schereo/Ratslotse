@@ -192,7 +192,18 @@ import Testing
         "session_date": "2026-08-31",
         "session_time": "17:00:00",
         "location": "Altes Rathaus",
-        "n_items": 14
+        "n_items": 14,
+        "highlights": [{
+          "ksinr": 88,
+          "item_number": "Ö 6",
+          "title": "Bebauungsplan 851 – Satzungsbeschluss",
+          "titel_kurz": "Bebauungsplan 851",
+          "committee": "Ausschuss für Stadtplanung und Bauen",
+          "session_date": "2026-08-31",
+          "topic_name": null,
+          "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
+          "top": true
+        }]
       }],
       "items": [{
         "ksinr": 88,
@@ -229,6 +240,10 @@ import Testing
 
     let preview = try JSONDecoder().decode(WeekPreview.self, from: Data(json.utf8))
     #expect(preview.sessions.first?.itemCount == 14)
+    // Die Highlights je Sitzung tragen dieselbe Form wie `items` — ein Typ
+    // für beide, damit die Sitzungsliste die Zeile der Wochenkarte nutzt.
+    #expect(preview.sessions.first?.highlights?.first?.shortTitle == "Bebauungsplan 851")
+    #expect(preview.sessions.first?.highlights?.first?.featured == true)
     #expect(preview.items.first?.applicant == "SPD-Fraktion")
     #expect(preview.relevantItemsPerSession?["88"] == 3)
     #expect(preview.additionalItemsPerSession?["88"]?.first?.itemNumber == "Ö 7")

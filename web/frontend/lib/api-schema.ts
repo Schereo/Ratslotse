@@ -5024,6 +5024,8 @@ export interface components {
                 committee: string;
                 /** Fetched At */
                 fetched_at?: string | null;
+                /** Highlights */
+                highlights?: components["schemas"]["WeekPreviewItem"][];
                 /** Ksinr */
                 ksinr: number | null;
                 /** Live Until */
@@ -8305,6 +8307,8 @@ export interface components {
             fetched_at?: string | null;
             /** Has Protocol */
             has_protocol: boolean;
+            /** Highlights */
+            highlights?: components["schemas"]["WeekPreviewItem"][];
             /** Ksinr */
             ksinr: number | null;
             /** Live Until */
@@ -8347,6 +8351,8 @@ export interface components {
             committee: string;
             /** Fetched At */
             fetched_at?: string | null;
+            /** Highlights */
+            highlights?: components["schemas"]["WeekPreviewItem"][];
             /** Ksinr */
             ksinr: number | null;
             /** Live Until */
@@ -14090,4 +14096,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d02d5c6caa1175b8eaefecefc3b2b9c4cc58f1fdafd3f887c541f6896507cf0c
+// vertrag-sha256: 3413a16e35a654cfc796558e076025b62f9b6ecd98715c9f10bd32afcc5d95d5

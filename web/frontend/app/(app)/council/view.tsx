@@ -23,7 +23,7 @@ import {
 } from "@/components/ui";
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
-import { shortCommittee, hasShortCommittee } from "@/lib/committees";
+import { shortCommittee, hasShortCommittee, committeeIcon } from "@/lib/committees";
 import { isLiveNow } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
@@ -855,6 +855,66 @@ function DecisionsTab({ committees }: { committees: string[] }) {
  *  weit scrollte, sah irgendwann wieder Juni und konnte nicht sagen, ob das
  *  dieses Jahr ist oder 2021. Der Trenner steht am Kopf jeder Gruppe — auch
  *  ganz oben, damit die Antwort nie erst nach dem ersten Wechsel kommt. */
+/** Derselbe In-Seiten-Link wie auf der Wochenkarte: Die Liste klappt die
+ *  Sitzung auf und hebt den Punkt hervor (`targetKsinr`/`flashTop`). */
+function topHref(ksinr: number, itemNumber: string) {
+  return `/council?tab=sessions&ksinr=${ksinr}` +
+    (itemNumber ? `&top=${encodeURIComponent(itemNumber)}` : "");
+}
+
+/** Die wichtigsten Punkte einer Sitzung in der zugeklappten Karte — vom
+ *  Server bewertet (`CouncilStore.sitzungs_highlights`, dieselbe Schwelle wie
+ *  die Wochenkarte). Ein hervorgehobener Punkt (`top`) trägt seinen Grund;
+ *  ein Treffer zum eigenen Thema den Themennamen in Signal-Orange. */
+function SessionHighlights({ punkte, ksinr }: { punkte: NonNullable<CouncilSession["highlights"]>; ksinr: number }) {
+  return (
+    <ul className="space-y-1 border-t border-border px-3 pb-3 pt-2.5">
+      {punkte.map((p) => (
+        <li key={p.item_number}>
+          <Link
+            href={topHref(ksinr, p.item_number)}
+            className={cn(
+              "flex items-start gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/60",
+              p.top && "border border-primary/[0.12] bg-primary/[0.04] hover:bg-primary/[0.07]",
+            )}
+          >
+            <span className={cn(
+              "mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full",
+              p.topic_name ? "bg-signal" : p.top ? "bg-primary" : "bg-muted-foreground/50",
+            )} />
+            <span className="min-w-0 flex-1">
+              {(p.topic_name || p.top) && (
+                <span className={cn(
+                  "mb-0.5 block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]",
+                  p.topic_name ? "text-signal" : "text-primary/80",
+                )}>
+                  {p.topic_name ? `Dein Thema · ${p.topic_name}` : p.dringlich ? "Dringlichkeitsantrag" : "Wichtiger Punkt"}
+                </span>
+              )}
+              <span className={cn("block text-[13px] leading-snug text-foreground", p.top && "font-semibold")}>
+                {p.titel_kurz || p.title}
+              </span>
+              {p.top && p.wichtig_grund && (
+                <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted-foreground">{p.wichtig_grund}</span>
+              )}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Das Lucide-Zeichen des Gremiums als kleine getönte Kachel. */
+function CommitteeGlyph({ name }: { name: string }) {
+  const Icon = committeeIcon(name);
+  return (
+    <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/[0.09] text-primary">
+      <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+    </span>
+  );
+}
+
 function YearDivider({ year }: { year: string }) {
   return (
     <div className="flex items-center gap-3 pt-2 first:pt-0">
@@ -1190,7 +1250,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     <div className="flex min-w-0 items-center gap-3">
                       <DateTile iso={s.session_date} />
                       <div className="min-w-0">
-                        <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
+                        {/* Das Zeichen des Gremiums vor dem Namen — dieselbe
+                            Tabelle wie im Onboarding und in der App, damit
+                            man die Karte erkennt, bevor man sie liest. */}
+                        <span className="flex min-w-0 items-center gap-2">
+                          <CommitteeGlyph name={s.committee} />
+                          <CommitteeName name={s.committee} className="font-display text-base font-bold text-foreground" />
+                        </span>
                         {/* „Morgen · 17:00 Uhr" statt nur der Uhrzeit — die
                             Kachel links nennt den Tag, der Kopf benennt die
                             Nähe (Tims Wunsch 12.08.). */}
@@ -1237,6 +1303,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
                     </div>
                   </button>
 
+                  {/* Die wichtigsten Punkte schon in der zugeklappten Karte —
+                      dieselbe Bewertung wie „Diese Woche im Rat", jetzt für
+                      jede Sitzung (Tims Frage 04.09.2026). Aufgeklappt zeigt
+                      die Liste ohnehin alles, bei einer Suche die Treffer. */}
+                  {!isExpanded && !query && (s.highlights?.length ?? 0) > 0 && (
+                    <SessionHighlights punkte={s.highlights!} ksinr={s.ksinr} />
+                  )}
                   {/* Fährt auf und zu, statt zu erscheinen und zu verschwinden.
                       Der Rahmen oben gehört an den inneren Kasten: Am Wrapper
                       stünde er auch im zugefahrenen Zustand als Strich unter

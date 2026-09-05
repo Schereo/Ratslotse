@@ -70,6 +70,9 @@ public final class AppModel {
     public var updateRequired = false
     public var updateNotice: String?
     public var alertMessage: String?
+    /// Zählt bestätigte Kartenaktionen (Merken aus dem Kontextmenü) — der
+    /// Auslöser für das Erfolgs-Feedback in der Hand.
+    public var actionFeedback = 0
     public var hasRecoverableResearch = false
     public var onboardingStep: Int?
     public var badgeSnapshot: BadgeSnapshot?
