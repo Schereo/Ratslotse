@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, NotRequired, TypedDict
 
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import Response, FileResponse, StreamingResponse
 
 # --------------------------------------------------------------------------
 # Bausteine, die überall vorkommen
@@ -2683,6 +2683,17 @@ class BudgetDebt(TypedDict):
     interest_expense: Any
 
 
+class CalendarSubscription(TypedDict):
+    """Die Kalender-Adresse eines Kontos (``/api/calendar/subscription``).
+
+    ``url`` ist die https-Adresse zum Kopieren, ``webcal_url`` dieselbe mit
+    dem Schema, das auf dem Telefon direkt den Abo-Dialog öffnet.
+    """
+    url: str
+    webcal_url: str
+    subscribed_committees: int
+
+
 # --------------------------------------------------------------------------
 # Antworten, die kein JSON sind
 #
@@ -2714,6 +2725,11 @@ class EventStreamResponse(StreamingResponse):
 class JpegResponse(FileResponse):
     """``FileResponse`` mit festem JPEG-Medientyp — nur fürs Schema."""
     media_type = "image/jpeg"
+
+
+class CalendarResponse(Response):
+    """``Response`` mit festem ICS-Medientyp — nur fürs Schema."""
+    media_type = "text/calendar"
 
 #: ``POST /api/council/ask`` — die KI-Frage, Token für Token.
 SSE_FRAGE: dict[int | str, dict[str, Any]] = {
@@ -2764,6 +2780,20 @@ SSE_RECHERCHE: dict[int | str, dict[str, Any]] = {
 }
 
 #: ``GET /api/council/plan-bild/{document_id}`` — die gerenderte Planzeichnung.
+CALENDAR_ICS: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Der Kalender des Kontos als ICS (RFC 5545): die Sitzungen der "
+            "abonnierten Ausschüsse und zu den eigenen Themen, je Termin die "
+            "wichtigsten Punkte und der Link zur Sitzungsseite. Für Kalender-"
+            "Apps gedacht, die die Adresse alle paar Stunden abrufen."
+        ),
+        "content": {"text/calendar": {"schema": {"type": "string"}}},
+    },
+    404: {"description": "Unbekannte oder erneuerte Kalender-Adresse."},
+}
+
+
 PLANZEICHNUNG_JPEG: dict[int | str, dict[str, Any]] = {
     200: {
         "description": (

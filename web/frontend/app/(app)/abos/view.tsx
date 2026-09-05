@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, Check } from "lucide-react";
+import { Bell, CalendarPlus, Check, Link2, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { vertrag } from "@/lib/vertrag";
 import type { CommitteeDetail } from "@/lib/types";
-import { CardListSkeleton, ErrorState, PageHeader, formatDate, toast } from "@/components/ui";
+import { Button, CardListSkeleton, ErrorState, PageHeader, formatDate, toast } from "@/components/ui";
 import { wochentagKurz } from "@/lib/utils";
 import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
 
@@ -138,6 +138,101 @@ function Kachel({ d, abonniert, onToggle, busy, laeutet }: {
   );
 }
 
+/** „Im Kalender abonnieren" — die Karte des Kalender-Abos.
+ *
+ *  Sie steht auf der Anzeigetafel (`hh-tafel`), weil sie das eine Besondere
+ *  der Seite ist: Alles andere sind Schalter, das hier ist ein Weg nach
+ *  draußen. Genau davor hatte Tim Bedenken (05.09.2026): Wer den Kalender
+ *  hat, kommt vielleicht nie wieder. Deshalb sagt der Text, was jeder Termin
+ *  mitbringt — die wichtigsten Punkte und den Link zu Tagesordnung, Vorlagen
+ *  und Ergebnis — und der Feed hält das (`kern/calendar_feed.py`).
+ *
+ *  `webcal://` öffnet auf Telefon und Mac direkt den Abo-Dialog der
+ *  Kalender-App; die https-Adresse ist zum Einfügen bei Google und Outlook.
+ *  „Neue Adresse" ist absichtlich klein und fragt nach: Sie macht jeden
+ *  bestehenden Kalender-Eintrag stumm. */
+function KalenderAboKarte({ anzahlAbos }: { anzahlAbos: number }) {
+  const qc = useQueryClient();
+  const abo = useQuery({
+    queryKey: ["calendar-subscription"],
+    queryFn: () => vertrag.get("/calendar/subscription"),
+  });
+  const rotate = useMutation({
+    mutationFn: () => vertrag.post("/calendar/subscription/rotate"),
+    onSuccess: (daten) => {
+      qc.setQueryData(["calendar-subscription"], daten);
+      toast.success("Neue Kalender-Adresse erzeugt. Bitte einmal neu abonnieren.");
+    },
+    onError: () => toast.error("Die Adresse konnte nicht erneuert werden."),
+  });
+
+  const kopieren = async () => {
+    if (!abo.data) return;
+    try {
+      await navigator.clipboard.writeText(abo.data.url);
+      toast.success("Link kopiert.");
+    } catch {
+      toast.error("Link konnte nicht kopiert werden.");
+    }
+  };
+
+  const umfang = anzahlAbos === 0
+    ? "Ohne Ausschuss-Abo landen alle Sitzungen im Kalender. Abonniere unten Gremien, dann nur deren Termine – plus jede Sitzung, die eines deiner Themen berührt."
+    : `Im Kalender: die Sitzungen ${anzahlAbos === 1 ? "deines abonnierten Gremiums" : `deiner ${anzahlAbos} abonnierten Gremien`} – plus jede Sitzung, die eines deiner Themen berührt, mit Erinnerung am Vorabend.`;
+
+  return (
+    <section className="hh-tafel mt-6 rounded-2xl border border-border bg-background p-4 text-foreground @xl:p-5"
+      aria-labelledby="kalender-abo-titel">
+      <div className="flex items-start gap-3">
+        <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-primary text-primary-foreground">
+          <CalendarPlus className="h-5 w-5" strokeWidth={2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Kalender-Abo</p>
+          <h2 id="kalender-abo-titel" className="text-[15px] font-semibold leading-snug">Im Kalender abonnieren</h2>
+          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+            Deine Sitzungen in Apple Kalender, Google oder Outlook – jeder Termin mit den wichtigsten
+            Punkten der Tagesordnung und dem Link zu Vorlagen und Ergebnis auf Ratslotse.
+          </p>
+        </div>
+      </div>
+
+      {abo.isPending && <p className="mt-4 text-[12px] text-muted-foreground">Kalender-Adresse wird geholt …</p>}
+      {abo.isError && (
+        <p className="mt-4 text-[12px] text-muted-foreground">
+          Die Adresse kam nicht durch.{" "}
+          <button type="button" className="font-medium text-primary hover:underline" onClick={() => void abo.refetch()}>Noch einmal</button>
+        </p>
+      )}
+      {abo.data && (
+        <>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <a href={abo.data.webcal_url}><CalendarPlus /> Kalender abonnieren</a>
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void kopieren()}>
+              <Link2 /> Link kopieren
+            </Button>
+          </div>
+          <p className="mt-3 text-[12px] leading-snug text-muted-foreground">{umfang}</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11.5px] text-muted-foreground">
+            <span>Aktualisiert sich alle paar Stunden von selbst.</span>
+            <button type="button" disabled={rotate.isPending}
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline disabled:opacity-50"
+              onClick={() => {
+                if (window.confirm("Neue Kalender-Adresse erzeugen? Die bisherige hört auf zu funktionieren – jeder Kalender, der sie abonniert hat, bekommt dann keine Termine mehr.")) {
+                  rotate.mutate();
+                }
+              }}>
+              <RefreshCw className={"h-3 w-3" + (rotate.isPending ? " animate-spin" : "")} aria-hidden /> Neue Adresse
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function AbosView() {
   const qc = useQueryClient();
 
@@ -222,6 +317,8 @@ export function AbosView() {
   return (
     <div className="@container">
       <PageHeader title="Ausschuss-Abos" description={HEADER_DESC} />
+
+      <KalenderAboKarte anzahlAbos={anzahlAbos} />
 
       {/* EINE Liste, nicht zwei nach Abo-Status getrennte. Getrennt sprang das
           Gremium beim Abonnieren in die obere Liste, und alles darunter

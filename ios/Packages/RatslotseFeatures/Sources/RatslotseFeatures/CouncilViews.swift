@@ -84,6 +84,7 @@ struct CouncilBrowserView: View {
     @State private var error: String?
     @State private var showsFilters = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_COUNCIL_FILTER"] == "1"
     @State private var calendarDraft: CalendarDraft?
+    @State private var showCalendarSubscription = false
 
     private let pageSize = 50
     /// Nur der erste Bildschirm läuft gestaffelt ein. Zeilen, die beim
@@ -102,6 +103,22 @@ struct CouncilBrowserView: View {
                         .foregroundStyle(RatsColor.secondary)
                 }
                 Spacer(minLength: 0)
+                // Das Kalender-Abo dort, wo man gerade auf Termine schaut —
+                // nur im Sitzungen-Abschnitt, neben Beschlüssen wäre es ein
+                // Rätsel.
+                if model.councilSection == .sessions {
+                    Button { showCalendarSubscription = true } label: {
+                        RatsGlyphView(glyph: .calendarPlus, color: RatsColor.bodyText)
+                            .frame(width: 19, height: 19)
+                            .frame(width: 40, height: 40)
+                            .background(RatsColor.card)
+                            .overlay(Circle().stroke(RatsColor.border))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityLabel("Im Kalender abonnieren")
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                }
                 NavigationLink {
                     SavedCouncilView(model: model)
                 } label: {
@@ -113,6 +130,10 @@ struct CouncilBrowserView: View {
                         .clipShape(Circle())
                 }
                 .accessibilityLabel("Merkliste")
+            }
+            .animation(.easeOut(duration: 0.18), value: model.councilSection)
+            .sheet(isPresented: $showCalendarSubscription) {
+                CalendarSubscriptionSheet(model: model)
             }
             .foregroundStyle(RatsColor.text)
             .padding(.horizontal, 18)
@@ -2931,6 +2952,7 @@ private struct SessionListView: View {
     @State private var error: String?
     @State private var isLoading = true
     @State private var calendarDraft: CalendarDraft?
+    @State private var showCalendarSubscription = false
 
     var body: some View {
         ScrollView {
@@ -2945,11 +2967,17 @@ private struct SessionListView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                     Spacer()
-                    RatsGlyphView(glyph: .calendar, color: RatsColor.primaryText)
-                        .frame(width: 20, height: 20)
-                        .frame(width: 44, height: 44)
-                        .background(RatsColor.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    // Bis 09/2026 nur Zierde; jetzt der Weg zum Kalender-Abo —
+                    // dort, wo man gerade auf Termine schaut.
+                    Button { showCalendarSubscription = true } label: {
+                        RatsGlyphView(glyph: .calendarPlus, color: RatsColor.primaryText)
+                            .frame(width: 20, height: 20)
+                            .frame(width: 44, height: 44)
+                            .background(RatsColor.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityLabel("Im Kalender abonnieren")
                 }
                 if isLoading {
                     RatsLoadingState(message: "Sitzungen werden geladen …")
@@ -2994,6 +3022,9 @@ private struct SessionListView: View {
             CalendarEditSheet(draft: draft, isPresented: Binding(
                 get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
             ))
+        }
+        .sheet(isPresented: $showCalendarSubscription) {
+            CalendarSubscriptionSheet(model: model)
         }
         .task { await loadSessions() }
     }

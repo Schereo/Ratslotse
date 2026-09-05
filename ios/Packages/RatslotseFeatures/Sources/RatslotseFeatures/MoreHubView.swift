@@ -583,6 +583,151 @@ private struct SubscriptionEnvelope: Decodable, Sendable {
     let subscriptions: [String]
 }
 
+/// „Im Kalender abonnieren" — die Karte des Kalender-Abos.
+///
+/// Sie steht auf der Anzeigetafel (`board`), weil sie das eine Besondere der
+/// Abo-Seite ist: Alles andere dort sind Schalter, das hier ist ein Weg nach
+/// draußen. Und genau davor hatte Tim Bedenken (05.09.2026): Wer den Kalender
+/// hat, kommt vielleicht nie wieder. Der Text sagt deshalb, was der Termin
+/// mitbringt — die wichtigsten Punkte und den Link zur Tagesordnung — statt
+/// nur „Sitzung, Ort, Zeit". Der Feed hält das Versprechen (`kern/calendar_feed.py`).
+///
+/// `subscriptionCount` kommt vom Elternteil, wenn es die Abos gerade selbst
+/// kennt; dann folgt der Satz unter den Knöpfen jedem Schalter sofort, statt
+/// erst dem nächsten Laden.
+struct CalendarSubscriptionCard: View {
+    let model: AppModel
+    var subscriptionCount: Int? = nil
+    @State private var subscription: CalendarSubscription?
+    @State private var error: String?
+    @State private var isRotating = false
+    @State private var askRotate = false
+    @State private var copiedPulse = 0
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        RatsWidget("Im Kalender abonnieren", accent: .harbor, glyph: .calendarPlus, board: true) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Deine Sitzungen in Apple Kalender, Google oder Outlook – jeder Termin mit den wichtigsten Punkten der Tagesordnung und dem Link zu Vorlagen und Ergebnis auf Ratslotse.")
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.bodyText)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let subscription {
+                    // EINE starke Handlung; Kopieren und Erneuern sind leise
+                    // Textknöpfe darunter. Zwei gleich schwere Knöpfe nebeneinander
+                    // brachen auf dem iPhone in zwei Zeilen um.
+                    Button {
+                        if let url = URL(string: subscription.webcalURL) { openURL(url) }
+                    } label: {
+                        RatsLabel("Kalender abonnieren", .calendarPlus)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+
+                    Text(scopeText(subscription) + " Aktualisiert sich alle paar Stunden von selbst.")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 14) {
+                        Button {
+                            UIPasteboard.general.string = subscription.url
+                            copiedPulse += 1
+                            model.actionFeedback += 1
+                        } label: {
+                            RatsLabel("Link kopieren", .copy, size: 14)
+                        }
+                        Button {
+                            askRotate = true
+                        } label: {
+                            RatsLabel("Neue Adresse", .rotateCcw, size: 14)
+                        }
+                        .disabled(isRotating)
+                    }
+                    .font(RatsFont.body(12.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .buttonStyle(RatsPlainButtonStyle())
+                } else if let error {
+                    ErrorCard(message: error) { Task { await load() } }
+                } else {
+                    RatsLoadingState(message: "Kalender-Adresse wird geholt …")
+                }
+            }
+        }
+        .sensoryFeedback(.success, trigger: copiedPulse)
+        .confirmationDialog(
+            "Neue Kalender-Adresse?",
+            isPresented: $askRotate, titleVisibility: .visible
+        ) {
+            Button("Neue Adresse erzeugen", role: .destructive) { Task { await rotate() } }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Die bisherige Adresse hört auf zu funktionieren – jeder Kalender, der sie abonniert hat, bekommt dann keine Termine mehr. Danach einmal neu abonnieren.")
+        }
+        .task { await load() }
+    }
+
+    private func scopeText(_ abo: CalendarSubscription) -> String {
+        let n = subscriptionCount ?? abo.subscribedCommittees
+        if n == 0 {
+            return "Ohne Ausschuss-Abo landen alle Sitzungen im Kalender. Abonniere unten Gremien, dann nur deren Termine – plus jede Sitzung, die eines deiner Themen berührt."
+        }
+        return "Im Kalender: die Sitzungen deiner \(n == 1 ? "abonnierten Gremiums" : "\(n) abonnierten Gremien") – plus jede Sitzung, die eines deiner Themen berührt, mit Erinnerung am Vorabend."
+    }
+
+    private func load() async {
+        do {
+            subscription = try await model.api.get("/api/calendar/subscription")
+            error = nil
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func rotate() async {
+        isRotating = true
+        defer { isRotating = false }
+        do {
+            subscription = try await model.api.sendWithoutBody("/api/calendar/subscription/rotate")
+            model.actionFeedback += 1
+        } catch { self.error = error.localizedDescription }
+    }
+}
+
+/// Die Karte als Blatt — aus der Sitzungsliste heraus, wo der Kalender
+/// gedanklich hingehört, ohne den Weg über „Mehr → Ausschuss-Abos".
+struct CalendarSubscriptionSheet: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    CalendarSubscriptionCard(model: model)
+                    Text("Welche Sitzungen drin sind, bestimmen deine Ausschuss-Abos und Themen – beides unter „Mehr“.")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                        .padding(.horizontal, 4)
+                }
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(18)
+            }
+            .background(RatsColor.page)
+            .navigationTitle("Kalender-Abo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
 struct CommitteeSubscriptionsView: View {
     let model: AppModel
     @State private var committees: [CommitteeDetail] = []
@@ -603,6 +748,8 @@ struct CommitteeSubscriptionsView: View {
                         .foregroundStyle(RatsColor.secondary)
                         .lineSpacing(2)
                 }
+
+                CalendarSubscriptionCard(model: model, subscriptionCount: isLoading ? nil : subscriptions.count)
 
                 if isLoading {
                     RatsLoadingState(message: "Gremien werden geladen …")
