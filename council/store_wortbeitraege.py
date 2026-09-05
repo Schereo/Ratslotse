@@ -84,6 +84,93 @@ class WortbeitraegeMixin(StoreBasis):
         ).fetchall()
         return [dict(r) for r in rows]
 
+    # ------------------------------------------------------------ Live-Stand
+
+    def save_live_state(self, ksinr: int, state: dict, model: str) -> None:
+        """Den Live-Stand einer laufenden Sitzung ersetzen (eine Zeile je
+        Sitzung). ``state`` trägt die Felder der Tabelle ohne ksinr/model/
+        updated_at; was fehlt, wird NULL bzw. Vorgabe."""
+        now = datetime.now().isoformat(timespec="seconds")
+        with self.transaktion():
+            self._conn.execute(
+                """INSERT INTO council_live_state
+                   (ksinr, item_number, item_title, block_start, phase, speaker,
+                    party, evidence, since, as_of, updated_at, finished, model)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(ksinr) DO UPDATE SET
+                     item_number = excluded.item_number,
+                     item_title = excluded.item_title,
+                     block_start = excluded.block_start,
+                     phase = excluded.phase,
+                     speaker = excluded.speaker,
+                     party = excluded.party,
+                     evidence = excluded.evidence,
+                     since = excluded.since,
+                     as_of = excluded.as_of,
+                     updated_at = excluded.updated_at,
+                     finished = excluded.finished,
+                     model = excluded.model""",
+                (ksinr, state.get("item_number"), state.get("item_title"),
+                 state.get("block_start"), state.get("phase") or "unklar",
+                 state.get("speaker"), state.get("party"), state.get("evidence"),
+                 state.get("since") or now, state.get("as_of") or now, now,
+                 1 if state.get("finished") else 0, model),
+            )
+
+    def add_live_events(self, ksinr: int, events: list[dict]) -> int:
+        """Die Wechsel eines Fensters anhängen (Sekunde seit Aufnahmestart)."""
+        if not events:
+            return 0
+        now = datetime.now().isoformat(timespec="seconds")
+        with self.transaktion():
+            self._conn.executemany(
+                """INSERT INTO council_live_events
+                   (ksinr, at_seconds, kind, item_number, speaker, party, evidence, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                [(ksinr, int(e.get("at_seconds") or 0), e.get("kind") or "top",
+                  e.get("item_number"), e.get("speaker"), e.get("party"),
+                  e.get("evidence"), now) for e in events],
+            )
+        return len(events)
+
+    def clear_live_state(self, ksinr: int) -> None:
+        """Vor einer neuen Aufnahme: Stand und Wechsel der Sitzung löschen —
+        ein abgebrochener Vorgängerlauf darf nicht als „gerade" stehen."""
+        with self.transaktion():
+            self._conn.execute("DELETE FROM council_live_state WHERE ksinr = ?", (ksinr,))
+            self._conn.execute("DELETE FROM council_live_events WHERE ksinr = ?", (ksinr,))
+
+    def live_states(self, ksinrs: list[int]) -> dict[int, dict]:
+        """ksinr → Live-Stand, in der Form der API (``finished`` als bool,
+        ohne ksinr/model). Sitzungen ohne Zeile fehlen im Ergebnis."""
+        ksinrs = [k for k in ksinrs if k is not None]
+        if not ksinrs:
+            return {}
+        ph = ",".join("?" * len(ksinrs))
+        rows = self._conn.execute(
+            f"SELECT * FROM council_live_state WHERE ksinr IN ({ph})", ksinrs
+        ).fetchall()
+        out: dict[int, dict] = {}
+        for r in rows:
+            d = dict(r)
+            out[d.pop("ksinr")] = {
+                "item_number": d["item_number"], "item_title": d["item_title"],
+                "block_start": d["block_start"], "phase": d["phase"],
+                "speaker": d["speaker"], "party": d["party"],
+                "since": d["since"], "as_of": d["as_of"],
+                "updated_at": d["updated_at"], "finished": bool(d["finished"]),
+            }
+        return out
+
+    def get_live_state(self, ksinr: int) -> dict | None:
+        return self.live_states([ksinr]).get(ksinr)
+
+    def live_events(self, ksinr: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT * FROM council_live_events WHERE ksinr = ? ORDER BY at_seconds, id",
+            (ksinr,)).fetchall()
+        return [dict(r) for r in rows]
+
     def wortbeitraege_von_sprecher(self, nachname: str, limit: int = 120) -> list[dict]:
         """Alle Wortbeiträge, deren Sprecher-Feld den Nachnamen trägt —
         Kandidaten für den Personen-Fragetyp (der Cross-Encoder wählt daraus

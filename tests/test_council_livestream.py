@@ -152,7 +152,7 @@ def test_record_and_transcribe_transcribes_finished_chunks(tmp_path):
          mock.patch.object(livestream, "transcribe_chunk",
                            side_effect=lambda p, attempt=0: texts[p.name]):
         segs = livestream.record_and_transcribe(tmp_path, poll_seconds=0)
-    assert [s for s, _ in segs] == [5, 610]
+    assert [s for s, _ in segs] == [5, livestream.CHUNK_SECONDS + 10]
 
 
 def test_recording_continues_after_one_empty_transcript_chunk(tmp_path, monkeypatch):
@@ -173,7 +173,7 @@ def test_recording_continues_after_one_empty_transcript_chunk(tmp_path, monkeypa
     monkeypatch.setattr(livestream.llm, "chat_complete", responses)
     monkeypatch.setattr(livestream, "start_recording", lambda *_args: _FakeProc())
     segments = livestream.record_and_transcribe(tmp_path, poll_seconds=0)
-    assert segments == [(610, "Damit schließe ich die Sitzung.")]
+    assert segments == [(livestream.CHUNK_SECONDS + 10, "Damit schließe ich die Sitzung.")]
     assert len(calls) == 4
     assert all(call["_allow_empty_response"] is True for call in calls)
 
@@ -215,7 +215,7 @@ def test_livestream_retry_uses_fresh_directory(tmp_path, monkeypatch):
 
     seen: list[Path] = []
 
-    def fake_record(run_dir: Path):
+    def fake_record(run_dir: Path, on_chunk=None):
         seen.append(run_dir)
         assert not list(run_dir.glob("chunk_*.mp3"))
         (run_dir / "chunk_000.mp3").write_bytes(b"dieser lauf")
@@ -251,3 +251,55 @@ def test_recorder_does_not_repeat_existing_livestream_results():
          mock.patch.object(record_council_livestream, "_record_fresh") as record:
         assert record_council_livestream.main() == {"sitzung_heute": 0}
     record.assert_not_called()
+
+
+# ------------------------------------------------- Haken für die Live-Verfolgung
+
+def test_on_chunk_receives_each_chunk_and_the_closing_flag(tmp_path):
+    (tmp_path / "chunk_000.mp3").write_bytes(b"a")
+    (tmp_path / "chunk_001.mp3").write_bytes(b"b")
+    texts = {"chunk_000.mp3": "[00:05] Wir kommen zu Punkt 6.1.",
+             "chunk_001.mp3": "[00:10] Damit schließe ich die Sitzung."}
+    seen = []
+    with mock.patch.object(livestream, "start_recording",
+                           return_value=_FakeProc()), \
+         mock.patch.object(livestream, "transcribe_chunk",
+                           side_effect=lambda p, attempt=0: texts[p.name]):
+        livestream.record_and_transcribe(
+            tmp_path, poll_seconds=0,
+            on_chunk=lambda idx, segs, closing: seen.append((idx, segs, closing)))
+    assert [(i, c) for i, _, c in seen] == [(0, False), (1, True)]
+    assert seen[0][1] == [(5, "Wir kommen zu Punkt 6.1.")]
+
+
+def test_on_chunk_failure_does_not_stop_the_recording(tmp_path, caplog):
+    """Der Live-Stand ist Zugabe: Ein Fehler darin verliert kein Stück."""
+    (tmp_path / "chunk_000.mp3").write_bytes(b"a")
+    (tmp_path / "chunk_001.mp3").write_bytes(b"b")
+    texts = {"chunk_000.mp3": "[00:05] Anfang.",
+             "chunk_001.mp3": "[00:10] Damit schließe ich die Sitzung."}
+
+    def kaputt(idx, segs, closing):
+        raise RuntimeError("Tracker tot")
+
+    with mock.patch.object(livestream, "start_recording",
+                           return_value=_FakeProc()), \
+         mock.patch.object(livestream, "transcribe_chunk",
+                           side_effect=lambda p, attempt=0: texts[p.name]), \
+         caplog.at_level("ERROR"):
+        segs = livestream.record_and_transcribe(tmp_path, poll_seconds=0, on_chunk=kaputt)
+    assert len(segs) == 2
+    assert "Live-Verfolgung für Stück 0 fehlgeschlagen" in caplog.text
+
+
+def test_parse_segments_spreads_unmarked_paragraphs_over_the_chunk():
+    """Ohne Marken (2 von 23 Stücken der Probe vom 31.08.) wird der Text
+    nach Zeichenanteil über das Stück verteilt — die Live-Verfolgung braucht
+    das WANN, nicht nur das WAS."""
+    text = "Erster Absatz mit zwanzig Zeichen.\n\nZweiter Absatz, ebenso lang etwa.\n\nDritter."
+    segs = livestream.parse_segments(text, chunk_offset=120, chunk_seconds=120)
+    assert len(segs) == 3
+    assert segs[0][0] == 120
+    assert 120 < segs[1][0] < segs[2][0] < 240
+    # Ohne Stücklänge bleibt es beim alten Verhalten: alles auf den Anfang.
+    assert livestream.parse_segments(text, 120) == [(120.0, text.strip())]

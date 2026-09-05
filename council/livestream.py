@@ -7,8 +7,8 @@ braucht der Weg zu den Abstimmungsergebnissen kein YouTube mehr: Die
 YouTube-Untertitel waren nur der Umweg, und YouTube blockt Rechenzentrums-
 IPs ohnehin hart (s. ``council/videos.py``).
 
-Ablauf: ffmpeg nimmt den Stream als Mono-MP3 in 10-Minuten-Stücken auf
-(Segment-Muxer). Jedes fertige Stück wird noch WÄHREND der Aufnahme
+Ablauf: ffmpeg nimmt den Stream als Mono-MP3 in kurzen Stücken auf
+(Segment-Muxer, ``CHUNK_SECONDS``). Jedes fertige Stück wird noch WÄHREND der Aufnahme
 transkribiert (Gemini nimmt Audio direkt, über den vorhandenen
 OpenRouter-Stack); meldet ein Stück die Schlussformel der Sitzungsleitung,
 stoppt die Aufnahme. Die Transkript-Segmente tragen Zeitmarken relativ zum
@@ -54,7 +54,16 @@ log = logging.getLogger(__name__)
 STREAM_URL = os.environ.get("COUNCIL_STREAM_URL",
                             "https://cdn.oeins.de/sd480/index.m3u8")
 STT_MODEL = os.environ.get("COUNCIL_STT_MODEL", "google/gemini-2.5-flash")
-CHUNK_SECONDS = 600
+#: Länge eines Audio-Stücks. Bis 09/2026 zehn Minuten — reichte für die
+#: Abstimmungsergebnisse am Abend, nicht für „welcher TOP läuft gerade":
+#: Die Live-Verfolgung (``council/livetracker.py``) sieht die Sitzung erst,
+#: wenn ein Stück fertig ist, ihr Verzug ist also mindestens die Stücklänge.
+#: Mit 30 Sekunden liegt er bei ~35 s (Stück + ~2 s Transkription + ~1,5 s
+#: Tracker) — gemessen 05.09.2026 an der Sitzung vom 31.08.: kürzere Stücke
+#: erkennen nicht schlechter, nur MEHR Sprecherwechsel (90 statt 55), und
+#: die Transkription kostet je Audio-Minute dasselbe. Der Tracker wird
+#: viermal öfter gerufen (~0,50 $ statt 0,14 $ je Sitzung).
+CHUNK_SECONDS = int(os.environ.get("COUNCIL_CHUNK_SECONDS", "30"))
 #: Längste gemessene Ratssitzung (01.06.2026) lief 5 h — mit Luft.
 MAX_HOURS = float(os.environ.get("COUNCIL_RECORD_MAX_HOURS", "6"))
 
@@ -91,7 +100,7 @@ def ffmpeg_bin() -> str | None:
 
 
 def start_recording(dest_dir: Path, max_seconds: int | None = None) -> subprocess.Popen | None:
-    """ffmpeg starten: Stream → Mono-MP3-Stücke à 10 Minuten.
+    """ffmpeg starten: Stream → Mono-MP3-Stücke à ``CHUNK_SECONDS``.
 
     Der Segment-Muxer schreibt ``chunk_000.mp3, chunk_001.mp3, …`` und
     macht jedes Stück fertig, sobald das nächste beginnt — die
@@ -193,7 +202,7 @@ def parse_segments(text: str, chunk_offset: int,
     parts = _MARK_RE.split(text)
     # split liefert [vorspann, mm, ss, text, mm, ss, text, ...]
     if len(parts) < 4:
-        return [(float(chunk_offset), text.strip())]
+        return _spread(text, chunk_offset, chunk_seconds)
     segments: list[tuple[float, str]] = []
     lead = parts[0].strip()
     if lead:
@@ -209,14 +218,38 @@ def parse_segments(text: str, chunk_offset: int,
     return segments
 
 
+def _spread(text: str, chunk_offset: int,
+            chunk_seconds: float | None) -> list[tuple[float, str]]:
+    """Text ohne Zeitmarken über das Stück verteilen — nach Zeichenanteil
+    der Absätze. Grob, aber besser als alles auf die erste Sekunde zu legen
+    (in 2 von 23 Stücken der Probe vom 31.08. fehlten die Marken ganz);
+    für die Live-Verfolgung zählt, WANN im Stück etwas gesagt wurde."""
+    paras = [p.strip() for p in re.split(r"\n+", text) if p.strip()]
+    if not chunk_seconds or len(paras) < 2:
+        return [(float(chunk_offset), text.strip())]
+    total = sum(len(p) for p in paras) or 1
+    out: list[tuple[float, str]] = []
+    pos = 0
+    for p in paras:
+        out.append((chunk_offset + chunk_seconds * pos / total, p))
+        pos += len(p)
+    return out
+
+
 def record_and_transcribe(dest_dir: Path,
                           max_seconds: int | None = None,
-                          poll_seconds: int = 20) -> list[tuple[float, str]]:
+                          poll_seconds: int = 20,
+                          on_chunk=None) -> list[tuple[float, str]]:
     """Aufnehmen + parallel transkribieren, bis die Schlussformel fällt.
 
     Gibt die Transkript-Segmente der ganzen Sitzung zurück (für
     ``videos.extract_results``). Ein Stück gilt als fertig, sobald sein
-    Nachfolger existiert — das letzte, sobald ffmpeg beendet ist."""
+    Nachfolger existiert — das letzte, sobald ffmpeg beendet ist.
+
+    ``on_chunk(idx, segments, closing)`` wird je fertigem Stück gerufen,
+    mit dessen Segmenten und ob die Schlussformel darin fiel — der Haken
+    für die Live-Verfolgung. Ein Fehler darin bricht die Aufnahme NICHT ab:
+    Der Live-Stand ist Zugabe, die Ergebnisse am Abend sind der Auftrag."""
     proc = start_recording(dest_dir, max_seconds)
     if proc is None:
         return []
@@ -235,12 +268,18 @@ def record_and_transcribe(dest_dir: Path,
                     continue
                 done.add(idx)
                 text = transcribe_chunk(path)
-                segments.extend(parse_segments(text, idx * CHUNK_SECONDS,
-                                               audio_seconds(path)))
+                chunk_segments = parse_segments(text, idx * CHUNK_SECONDS,
+                                                audio_seconds(path))
+                segments.extend(chunk_segments)
                 log.info("Stück %d transkribiert (%d Zeichen)", idx, len(text))
                 if CLOSING_RE.search(text):
                     log.info("Schlussformel im Stück %d — Aufnahme endet", idx)
                     closing = True
+                if on_chunk is not None:
+                    try:
+                        on_chunk(idx, chunk_segments, closing)
+                    except Exception:  # noqa: BLE001 — Live-Stand ist Zugabe
+                        log.exception("Live-Verfolgung für Stück %d fehlgeschlagen", idx)
             if closing and running:
                 proc.terminate()
             if not running and len(done) >= len(chunks):

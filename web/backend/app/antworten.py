@@ -178,6 +178,29 @@ class WeekPreviewItem(TypedDict):
     top: NotRequired[bool]
 
 
+class LiveState(TypedDict):
+    """Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript
+    des O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.
+
+    ``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);
+    der Client rechnet daraus „vor N Min." und sagt dazu, dass es aus der
+    Übertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist
+    gesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind
+    (Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8". Nach der
+    Schlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.
+    """
+    item_number: str | None
+    item_title: str | None
+    block_start: str | None
+    phase: str
+    speaker: str | None
+    party: str | None
+    since: str
+    as_of: str
+    updated_at: str
+    finished: bool
+
+
 class SessionRow(TypedDict):
     """Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
@@ -210,6 +233,9 @@ class SessionRow(TypedDict):
     # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
     # von HEUTE — für alle anderen fehlt das Feld.
     live_until: NotRequired[str | None]
+    #: Live-Stand aus der Übertragung — nur an Sitzungen von HEUTE, für die
+    #: der Mitschnitt-Job einen Stand geschrieben hat (das ist nur der Rat).
+    live_state: NotRequired[LiveState]
     #: Die wichtigsten Punkte der Sitzung (``CouncilStore.sitzungs_highlights``,
     #: dieselbe Bewertung wie ``items`` der Wochenvorschau). Fehlt, wenn kein
     #: Punkt über der Schwelle liegt — und an Sitzungen ohne Tagesordnung.
@@ -1550,6 +1576,9 @@ class SessionDetail(SessionRow):
     video_results: list[VideoResult]
     url: str | None
     agenda_changes: list[AgendaChange]
+    #: Live-Stand aus der Übertragung (s. ``SessionRow.live_state``) — hier
+    #: auch nach der Sitzung, solange die Zeile steht (``finished``).
+    live_state: NotRequired[LiveState]
 
 
 class ImportanceBreakdown(TypedDict):

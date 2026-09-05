@@ -318,3 +318,34 @@ import Testing
     #expect(detail.agendaItems[0].attachments.isEmpty)
     #expect(detail.agendaItems[0].isUrgent == false)
 }
+
+
+/// Der Live-Stand aus der Übertragung hängt an der heutigen Ratssitzung —
+/// in der Liste UND im Detail. Fehlt er (jede andere Sitzung), bleibt beides
+/// nil statt zu kippen.
+@Test func liveStateDecodesOnSessionAndDetail() throws {
+    let state = #"""
+    {"item_number": "9.3", "item_title": "Radweg Alexanderstraße", "block_start": null,
+     "phase": "aussprache", "speaker": "Susanne Drügemöller", "party": "Bündnis 90/Die Grünen",
+     "since": "2026-09-03T18:12:00+02:00", "as_of": "2026-09-03T18:20:00+02:00",
+     "updated_at": "2026-09-03T18:20:30+02:00", "finished": false}
+    """#
+    let session = try JSONDecoder().decode(CouncilSession.self, from: Data(#"""
+    {"ksinr": 2, "committee": "Rat", "session_date": "2026-09-03", "session_time": "18:00",
+     "live_until": "22:00", "n_items": 12, "live_state": \#(state)}
+    """#.utf8))
+    #expect(session.liveState?.itemNumber == "9.3")
+    #expect(session.liveState?.speaker == "Susanne Drügemöller")
+    #expect(session.liveState?.finished == false)
+
+    let detail = try JSONDecoder().decode(SessionDetail.self, from: Data(#"""
+    {"ksinr": 2, "committee": "Rat", "session_date": "2026-09-03",
+     "agenda_items": [], "decisions": [], "has_protocol": false, "live_state": \#(state)}
+    """#.utf8))
+    #expect(detail.liveState?.itemTitle == "Radweg Alexanderstraße")
+
+    let ohne = try JSONDecoder().decode(CouncilSession.self, from: Data(#"""
+    {"ksinr": 3, "committee": "Bauausschuss", "session_date": "2026-09-04", "n_items": 4}
+    """#.utf8))
+    #expect(ohne.liveState == nil)
+}

@@ -2633,6 +2633,9 @@
                   "null"
                 ]
               },
+              "live_state": {
+                "$ref": "#/components/schemas/LiveState"
+              },
               "live_until": {
                 "title": "Live Until",
                 "type": [
@@ -7023,6 +7026,80 @@
         "title": "LiquidityWindow",
         "type": "object"
       },
+      "LiveState": {
+        "description": "Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript\ndes O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.\n\n``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);\nder Client rechnet daraus „vor N Min.\" und sagt dazu, dass es aus der\nÜbertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist\ngesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind\n(Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8\". Nach der\nSchlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "block_start": {
+            "title": "Block Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_title": {
+            "title": "Item Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "speaker": {
+            "title": "Speaker",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "item_title",
+          "block_start",
+          "phase",
+          "speaker",
+          "party",
+          "since",
+          "as_of",
+          "updated_at",
+          "finished"
+        ],
+        "title": "LiveState",
+        "type": "object"
+      },
       "LoanCoverage": {
         "properties": {
           "from": {
@@ -10532,6 +10609,9 @@
               "null"
             ]
           },
+          "live_state": {
+            "$ref": "#/components/schemas/LiveState"
+          },
           "live_until": {
             "title": "Live Until",
             "type": [
@@ -10658,6 +10738,9 @@
               "integer",
               "null"
             ]
+          },
+          "live_state": {
+            "$ref": "#/components/schemas/LiveState"
           },
           "live_until": {
             "title": "Live Until",

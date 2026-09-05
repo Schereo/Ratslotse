@@ -650,6 +650,68 @@ public struct FollowPage: Codable, Sendable {
     public let follows: [FollowEntry]
 }
 
+/// What is happening in the council chamber RIGHT NOW — from the transcript
+/// of the O1 livestream (`council/livetracker.py`), rewritten every 30
+/// seconds while the recording job runs. Only today's council session
+/// carries one. `asOf` is the audio position the row reflects (ISO 8601 with
+/// offset); the card derives "vor N Min." from it and says where it comes
+/// from — it trails the room by under a minute.
+public struct LiveState: Codable, Sendable, Hashable {
+    /// Running item without the Ö/N prefix ("9.3"), nil before the first call.
+    public let itemNumber: String?
+    public let itemTitle: String?
+    /// First item of a block that ran through in one window ("9.4" when the
+    /// state says "9.8") — formalities are voted in seconds.
+    public let blockStart: String?
+    /// aufruf | aussprache | abstimmung | pause | unklar | ende
+    public let phase: String
+    public let speaker: String?
+    public let party: String?
+    public let since: String
+    public let asOf: String
+    public let updatedAt: String
+    /// The chair closed the public part; the row stays for the record.
+    public let finished: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case phase, speaker, party, since, finished
+        case itemNumber = "item_number"
+        case itemTitle = "item_title"
+        case blockStart = "block_start"
+        case asOf = "as_of"
+        case updatedAt = "updated_at"
+    }
+
+    public init(itemNumber: String?, itemTitle: String?, blockStart: String?, phase: String,
+                speaker: String?, party: String?, since: String, asOf: String,
+                updatedAt: String, finished: Bool) {
+        self.itemNumber = itemNumber
+        self.itemTitle = itemTitle
+        self.blockStart = blockStart
+        self.phase = phase
+        self.speaker = speaker
+        self.party = party
+        self.since = since
+        self.asOf = asOf
+        self.updatedAt = updatedAt
+        self.finished = finished
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        itemNumber = try values.decodeIfPresent(String.self, forKey: .itemNumber)
+        itemTitle = try values.decodeIfPresent(String.self, forKey: .itemTitle)
+        blockStart = try values.decodeIfPresent(String.self, forKey: .blockStart)
+        phase = try values.decodeIfPresent(String.self, forKey: .phase) ?? "unklar"
+        speaker = try values.decodeIfPresent(String.self, forKey: .speaker)
+        party = try values.decodeIfPresent(String.self, forKey: .party)
+        since = try values.decodeIfPresent(String.self, forKey: .since) ?? ""
+        asOf = try values.decodeIfPresent(String.self, forKey: .asOf) ?? ""
+        updatedAt = try values.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
+        finished = try values.decodeIfPresent(Bool.self, forKey: .finished) ?? false
+    }
+}
+
 public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     /// Terminierte Sitzungen aus dem Kalender haben noch keine `ksinr` — die
     /// bekommen sie erst mit der veröffentlichten Tagesordnung. Bis dahin
@@ -673,6 +735,9 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     /// administrative committee, 18:00 council); they wait for each other
     /// instead of meeting in parallel. Only sent for today's sessions.
     public let liveUntil: String?
+    /// Live state from the broadcast — only on today's council session while
+    /// the recording job writes it (see `LiveState`).
+    public let liveState: LiveState?
     public let location: String?
     public let itemCount: Int
     public let myTopicItems: [JSONValue]?
@@ -686,6 +751,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         case sessionDate = "session_date"
         case sessionTime = "session_time"
         case liveUntil = "live_until"
+        case liveState = "live_state"
         case itemCount = "n_items"
         case myTopicItems = "my_topic_items"
     }
@@ -697,6 +763,7 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate) ?? ""
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
         liveUntil = try values.decodeIfPresent(String.self, forKey: .liveUntil)
+        liveState = try values.decodeIfPresent(LiveState.self, forKey: .liveState)
         location = try values.decodeIfPresent(String.self, forKey: .location)
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
         myTopicItems = try values.decodeIfPresent([JSONValue].self, forKey: .myTopicItems)
@@ -819,6 +886,9 @@ public struct SessionDetail: Codable, Sendable {
     public let hasProtocol: Bool
     public let url: String?
     public let agendaChanges: [AgendaChange]?
+    /// Live state from the broadcast (see `LiveState`) — the agenda marks
+    /// the running item with it; absent for every other session.
+    public let liveState: LiveState?
 
     enum CodingKeys: String, CodingKey {
         case ksinr, committee, location, decisions, url
@@ -827,6 +897,7 @@ public struct SessionDetail: Codable, Sendable {
         case agendaItems = "agenda_items"
         case hasProtocol = "has_protocol"
         case agendaChanges = "agenda_changes"
+        case liveState = "live_state"
     }
 }
 

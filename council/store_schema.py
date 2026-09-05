@@ -255,6 +255,44 @@ CREATE TABLE IF NOT EXISTS council_video_results (
 );
 CREATE INDEX IF NOT EXISTS idx_video_results_ksinr ON council_video_results(ksinr);
 
+-- Live-Stand einer laufenden Ratssitzung (council/livetracker.py): Welcher
+-- TOP läuft gerade, wer spricht — aus dem Transkript des O1-Streams, je
+-- Stück neu geschrieben. EINE Zeile je Sitzung; ``as_of`` ist der Zeitpunkt,
+-- bis zu dem das Audio reicht (der Verzug gegenüber dem Saal ist die
+-- Differenz zur Uhr der Leserin, nicht zu ``updated_at``). Nach der
+-- Schlussformel bleibt die Zeile mit ``finished = 1`` stehen.
+CREATE TABLE IF NOT EXISTS council_live_state (
+    ksinr        INTEGER PRIMARY KEY,
+    item_number  TEXT,                       -- ohne Ö-/N-Präfix, wie council_decisions
+    item_title   TEXT,
+    block_start  TEXT,                       -- erster TOP eines Blocks („9.4–9.8"), sonst NULL
+    phase        TEXT NOT NULL,              -- aufruf|aussprache|abstimmung|pause|unklar|ende
+    speaker      TEXT,
+    party        TEXT,
+    evidence     TEXT,
+    since        TEXT NOT NULL,              -- seit wann dieser TOP läuft
+    as_of        TEXT NOT NULL,              -- Audio-Stand, den die Zeile abbildet
+    updated_at   TEXT NOT NULL,
+    finished     INTEGER NOT NULL DEFAULT 0,
+    model        TEXT NOT NULL
+);
+
+-- Die Wechsel dahinter (TOP aufgerufen, abgestimmt, Wort erteilt) mit
+-- Sekunde seit Aufnahmestart — feiner als der Stand, weil ein Block von
+-- Formalien in einer Minute mehrere TOPs durchläuft.
+CREATE TABLE IF NOT EXISTS council_live_events (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ksinr        INTEGER NOT NULL,
+    at_seconds   INTEGER NOT NULL,
+    kind         TEXT NOT NULL,              -- top|vote|speaker
+    item_number  TEXT,
+    speaker      TEXT,
+    party        TEXT,
+    evidence     TEXT,
+    created_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_live_events_ksinr ON council_live_events(ksinr, at_seconds);
+
 -- Fundstück des Tages (RL-U11): je Ausspiel-Tag EIN kuratierter Archiv-Fund
 -- mit 1-Satz-Story — vorab generiert von scripts/generate_fundstuecke.py.
 CREATE TABLE IF NOT EXISTS council_daily_finds (
