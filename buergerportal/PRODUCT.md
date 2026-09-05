@@ -245,6 +245,39 @@ shows the final outcome and rejection explanation without AI or reviewer data.
 This iteration sends no notification and creates no cluster, assignment, City
 forwarding, or public projection.
 
+## Human-confirmed assignment and public projection — Iteration 11
+
+`/moderation/projektionen` lists only current human-approved reports that still
+need a separate public assignment. The workspace is available to the same
+active admins and active, verified moderation-only accounts as report
+moderation. It shows no account identity, email, exact private location,
+coordinates, AI/provider evidence, reviewer data, or map. Reading the queue,
+opening a detail, or approving a report never changes the public view.
+
+A reviewer may explicitly select an existing real public problem. Existing
+feature examples are not selectable. For an approved citywide report, the
+reviewer may instead author a bounded public German title and neutral summary;
+the private report text is never copied automatically. The interface marks
+these fields as public and requires a final confirmation dialog. New point,
+facility, route, and area projections remain closed until a separate public
+geography/coarsening workflow exists.
+
+Only the final confirmation atomically records the immutable private assignment
+and refreshes or creates the public projection. Multiple qualifying reports
+from one account add one independent reporter. Stale revisions, ineligible
+accounts, resolved targets, conflicting retries, and concurrent confirmation
+fail closed. Reporter erasure removes the contribution and makes an unsupported
+new projection non-public; reviewer erasure keeps only an unresolvable historic
+integer on the private evidence.
+
+“Meine Meldungen” then shows `Öffentlich zugeordnet` with only the already-public
+problem title and link. It explicitly says that Ratslotse publication is no
+acceptance, assignment, processing, urgency, or resolution by the City of
+Oldenburg. Public list/detail contracts remain unchanged and expose neither
+private text nor assignment internals. No AI call, automatic matching,
+notification, City forwarding, public timeline, comment, or status transition
+is added.
+
 ## Routen
 
 | Route | Sichtbarkeit | Stand |
@@ -255,7 +288,9 @@ forwarding, or public projection.
 | `/probleme/melden` | verifiziertes Nicht-Admin-Konto | Iteration 6 |
 | `/meine-meldungen` | verifiziertes Meldekonto | Iteration 8/10 |
 | `/moderation/meldungen` | aktives Admin- oder verifiziertes Moderationskonto | Iteration 10 |
+| `/moderation/projektionen` | aktives Admin- oder verifiziertes Moderationskonto | Iteration 11 |
 
-Iteration 10 adds private human decisions but no later-observation HTTP API,
-public timeline, clustering, assignment, notification, City forwarding, or
-publication. Those remain reserved for later slices.
+Iteration 11 adds only separately confirmed assignment and minimized public
+projection. Later-observation HTTP APIs, mapped public authoring, automatic
+clustering, notifications, City forwarding, public timeline, comments and
+appeals remain reserved for later slices.

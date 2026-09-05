@@ -55,6 +55,7 @@ export default function DatenschutzPage() {
               <li><strong>„Frag den Rat"-Anfragen:</strong> die von dir eingegebenen Fragen, um eine KI-Antwort zu erzeugen.</li>
               <li><strong>Private Problemmeldungen:</strong> Entwürfe und bestätigte Beschreibungstexte, Kategorie, räumlicher Bezug, Ortsangabe, Koordinaten und Beobachtungsdatum. Die Meldungen bleiben deinem Konto zugeordnet. Bei einer Ablehnung speichern wir außerdem die endgültige Erklärung für dich.</li>
               <li><strong>Menschliche Prüfung:</strong> Die interne Moderationsentscheidung wird mit Zeitpunkt und prüfendem Konto protokolliert. Wird dieses Prüfkonto gelöscht, werden seine Kontodaten entfernt; nur eine nicht mehr zu einem bestehenden Konto auflösbare interne Prüfkennung und die Entscheidung bleiben als Nachweis bestehen.</li>
+              <li><strong>Öffentliche Problemzuordnung:</strong> Erst nach einer getrennten menschlichen Bestätigung speichern wir intern, welche freigegebene Meldungsrevision welchem öffentlichen Problem zugeordnet wurde. Öffentlich erscheinen nur ein eigenständig formulierter Titel, eine neutrale Zusammenfassung, kontrollierte Angaben und die daraus abgeleitete Zahl unterschiedlicher meldender Konten — nie Kontodaten, privater Meldungstext oder genauer privater Ort.</li>
               <li><strong>Geteilte Antworten:</strong> Wenn du ausdrücklich „Teilen" auswählst, speichern wir Frage, Antwort und die dazugehörigen Belege unter einem nicht erratbaren öffentlichen Link. Jede Person mit dem Link kann den Inhalt lesen und melden. Der Link wird mit deinem Konto gelöscht; gemeldete Links können wir vorher entfernen.</li>
               <li><strong>Server-Logs:</strong> beim Aufruf technische Daten wie IP-Adresse, Zeitpunkt und User-Agent — zur Sicherheit und Fehleranalyse.</li>
             </ul>
@@ -64,7 +65,7 @@ export default function DatenschutzPage() {
             <p>
               Bereitstellung von Konto, privaten Problemmeldungen, Themen und Benachrichtigungen zur Erfüllung des
               Nutzungsverhältnisses (Art. 6 Abs. 1 lit. b DSGVO). Der unveränderliche Nachweis menschlicher
-              Moderationsentscheidungen sowie Server-Logs und Sicherheit beruhen auf dem berechtigten Interesse am
+              Moderationsentscheidungen, ausdrücklich bestätigten Problemzuordnungen sowie Server-Logs und Sicherheit beruhen auf dem berechtigten Interesse am
               nachvollziehbaren und sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).
             </p>
           </Section>
@@ -122,6 +123,29 @@ export default function DatenschutzPage() {
               Gespeichert werden nur der bearbeitbare Entwurf mit Modell- und Versionsangabe sowie die davon
               getrennte endgültige menschliche Entscheidung. Rohe Prompts, Modellantworten, Begründungsketten und
               Anbieterfehler werden nicht als Moderationsevidenz gespeichert.
+            </p>
+          </Section>
+
+          <Section title="Menschlich bestätigte öffentliche Problemzuordnung">
+            <p>
+              Eine menschliche Freigabe veröffentlicht noch nichts. Ein aktives Prüf- oder Adminkonto muss eine
+              freigegebene Meldung in einem getrennten Schritt ausdrücklich einem bereits öffentlichen Problem
+              zuordnen oder für eine stadtweite Meldung einen neuen öffentlichen Titel und eine neutrale
+              Zusammenfassung verfassen und bestätigen. Dafür wird kein KI-Dienst aufgerufen; privater Meldungstext
+              wird nicht automatisch in die öffentliche Darstellung übernommen.
+            </p>
+            <p>
+              Die interne Zuordnung enthält Meldungsrevision, öffentliches Problem, Zeitpunkt und eine Prüfkennung.
+              Öffentlich werden daraus nur die getrennt formulierten Problemangaben sowie eine Zahl unterschiedlicher,
+              weiterhin berechtigter Meldekonten abgeleitet. Mehrere Meldungen desselben Kontos zählen für dasselbe
+              Problem einmal. Konto, E-Mail-Adresse, privater Text, genauer Ort, Koordinaten, Prüf- und KI-Evidenz
+              erscheinen nicht in der öffentlichen API oder Oberfläche.
+            </p>
+            <p>
+              Wird das Meldekonto gelöscht, werden Meldung und abhängige Zuordnung gelöscht und ihr Beitrag aus der
+              öffentlichen Zahl entfernt. Fehlt danach jede tragende Meldung, ist eine dadurch entstandene Projektion
+              nicht mehr öffentlich sichtbar. Eine Veröffentlichung durch Ratslotse ist keine Annahme, Bearbeitung,
+              Zuständigkeit oder Statusaussage der Stadt Oldenburg.
             </p>
           </Section>
 

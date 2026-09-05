@@ -54,16 +54,22 @@ beginnt kein späterer Punkt.
    durable claims, account-scoped cost limiting, strict controlled output,
    immutable revision-bound evidence, automatic background scheduling, and
    visible privacy disclosure.
-10. **Dedicated moderator role and human decisions (#1117): implemented on this
-    task branch.** Data-minimal oldest-first queue/detail views, advisory AI,
-    privacy-gated editable rejection drafts, exact-revision immutable human
-    approval/rejection, and owner-visible final outcomes without publication.
-11. Human-confirmed assignment and public projection.
+10. **Dedicated moderator role and human decisions (#1117): deployed to
+    `feature` and accepted.** Data-minimal oldest-first queue/detail views,
+    advisory AI, privacy-gated editable rejection drafts, exact-revision
+    immutable human approval/rejection, and owner-visible final outcomes without
+    publication.
+11. **Human-confirmed assignment and public projection (#1119): implemented on
+    this task branch.** A second explicit human confirmation creates immutable
+    private assignment evidence, refreshes an existing real public problem or
+    creates a manually authored citywide projection, and exposes only an
+    already-public owner link.
 12. Beta operations and hardening.
 
 ## Not part of the Bürgerportal yet
 
 Later-observation HTTP APIs, clustering, assignment, automatic publication,
 uploads, notifications, appeals, and public comments remain excluded. Iteration
-10 is complete only after deployment, guarded moderator/owner verification,
-deletion/privacy checks, and explicit acceptance on `feature.ratslotse.de`.
+11 is complete only after deployment, guarded moderator/owner/public
+verification, deletion/privacy checks, and explicit acceptance on
+`feature.ratslotse.de`.

@@ -232,6 +232,17 @@ class ModerationDecisionIn(BaseModel):
     rejection_explanation: str | None = Field(default=None, max_length=1000)
 
 
+class ExistingProjectionConfirmationIn(BaseModel):
+    expected_revision: int = Field(ge=1)
+    problem_id: int = Field(ge=1)
+
+
+class NewCitywideProjectionConfirmationIn(BaseModel):
+    expected_revision: int = Field(ge=1)
+    title: str = Field(min_length=1, max_length=120)
+    summary: str = Field(min_length=1, max_length=600)
+
+
 class StatusUpdate(BaseModel):
     status: str  # 'active' | 'pending'
 

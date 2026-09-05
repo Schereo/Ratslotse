@@ -7,7 +7,13 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ClipboardList, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { PROBLEM_KATEGORIEN, PROBLEM_SCOPE_META } from "@/lib/probleme";
+import {
+  PROBLEM_KATEGORIEN,
+  PROBLEM_SCOPE_META,
+  problemAppDetailHref,
+  problemDetailHref,
+} from "@/lib/probleme";
+import { isNativeApp } from "@/lib/platform";
 import {
   beginProblemReportContinuation,
   formatOldenburgDateTime,
@@ -37,7 +43,8 @@ const REPORT_STATE = {
   submitted: "Privat eingegangen",
 } as const satisfies Record<PrivateReportSummary["state"], string>;
 
-function reportState(report: Pick<PrivateReportSummary, "state" | "moderation_outcome">) {
+function reportState(report: Pick<PrivateReportSummary, "state" | "moderation_outcome" | "public_projection">) {
+  if (report.public_projection) return "Öffentlich zugeordnet";
   if (report.moderation_outcome === "rejected") return "Abgelehnt";
   if (report.moderation_outcome === "approved") return "Von Ratslotse geprüft";
   return REPORT_STATE[report.state];
@@ -203,7 +210,7 @@ function ReportRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge color={report.moderation_outcome === "rejected" ? "red" : report.state === "submitted" ? "green" : "blue"}>
+            <Badge color={report.moderation_outcome === "rejected" ? "red" : report.public_projection ? "blue" : report.state === "submitted" ? "green" : "blue"}>
               {reportState(report)}
             </Badge>
             <span className="text-xs text-muted-foreground">
@@ -288,7 +295,7 @@ function ReportDetail({
     <section id={detailId} className="border-t border-border p-5 sm:p-6" aria-labelledby={headingId}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Badge color={report.moderation_outcome === "rejected" ? "red" : report.state === "submitted" ? "green" : "blue"}>
+          <Badge color={report.moderation_outcome === "rejected" ? "red" : report.public_projection ? "blue" : report.state === "submitted" ? "green" : "blue"}>
             {reportState(report)}
           </Badge>
           <h2
@@ -308,6 +315,18 @@ function ReportDetail({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Beschreibung</h3>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{description}</p>
         </section>
+        {report.public_projection && (
+          <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <h3 className="text-sm font-semibold text-foreground">Datensparsam öffentlich zugeordnet</h3>
+            <p className="mt-2 text-sm leading-relaxed text-foreground">
+              Deine private Meldung trägt zum öffentlichen Problem „{report.public_projection.title}“ bei. Private Texte, dein Konto und dein genauer Ort bleiben privat.
+            </p>
+            <OwnerPublicProblemLink
+              problemId={report.public_projection.id}
+              className="mt-3"
+            />
+          </section>
+        )}
         {report.moderation_outcome === "rejected" && report.rejection_explanation && (
           <section className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
             <h3 className="text-sm font-semibold text-foreground">Warum die Meldung abgelehnt wurde</h3>
@@ -333,6 +352,10 @@ function ReportDetail({
           <p className="text-sm text-muted-foreground">
             Diese Entscheidung ist endgültig und schreibgeschützt. Antworten oder erneutes Absenden sind in diesem Schritt nicht möglich.
           </p>
+        ) : report.public_projection ? (
+          <p className="text-sm text-muted-foreground">
+            Ratslotse zeigt eine getrennt formulierte Projektion öffentlich. Das bedeutet keine Annahme, Zuordnung oder Bearbeitung durch die Stadt und keine Aussage über Dringlichkeit oder Lösung.
+          </p>
         ) : report.moderation_outcome === "approved" ? (
           <p className="text-sm text-muted-foreground">
             Ratslotse hat diese Meldung geprüft. Sie ist dadurch noch nicht öffentlich und wurde nicht an die Stadt weitergegeben.
@@ -344,6 +367,24 @@ function ReportDetail({
         )}
       </div>
     </section>
+  );
+}
+
+function OwnerPublicProblemLink({
+  problemId,
+  className,
+}: {
+  problemId: number;
+  className?: string;
+}) {
+  const [native, setNative] = useState(false);
+  useEffect(() => setNative(isNativeApp()), []);
+  return (
+    <Button asChild variant="secondary" className={className}>
+      <Link href={native ? problemAppDetailHref(problemId) : problemDetailHref(problemId)}>
+        Öffentliches Problem öffnen
+      </Link>
+    </Button>
   );
 }
 

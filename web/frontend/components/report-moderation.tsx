@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ClipboardCheck, ShieldCheck } from "lucide-react";
@@ -107,6 +108,10 @@ export function ReportModeration() {
   };
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button asChild><Link href="/moderation/meldungen" aria-current="page">Meldungen prüfen</Link></Button>
+        <Button asChild variant="secondary"><Link href="/moderation/projektionen">Öffentlich zuordnen</Link></Button>
+      </div>
       {success && (
         <p role="status" className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
           {success}

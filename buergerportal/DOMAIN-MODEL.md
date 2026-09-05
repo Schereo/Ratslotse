@@ -251,14 +251,60 @@ explanation. They omit reviewer and screening evidence. A human may override any
 AI verdict: approval means only eligibility for a later assignment/projection
 slice, while rejection is final and read-only.
 
-## Veröffentlichung bleibt geschlossen
+## Menschlich bestätigte Problemzuordnung — Iteration 11
 
-No private report enters a public projection in Iteration 10. A future
-projection requires a current immutable human approval and a separate,
-explicitly confirmed assignment/projection step. AI remains advisory and may be
-missing or overridden. `ProblemStore` remains a pure public read boundary, and
-moderation writes no public problem, assignment, cluster, City-forwarding, or
-notification data.
+Eine Projektionskandidatin ist ausschließlich eine eingereichte Meldung, deren
+exakt aktuelle Revision menschlich freigegeben ist, weiterhin einem aktiven,
+bestätigten Meldekonto gehört und noch keine aktuelle Problemzuordnung besitzt.
+Die separate Grenze `/api/moderation/projektionen` verwendet dieselbe Berechtigung
+wie die Moderation, ordnet Kandidatinnen oldest-first und behandelt unbekannte,
+veraltete, abgelehnte, gelöschte und bereits zugeordnete IDs gleich undurchsichtig.
+Ihre Detailprojektion enthält nur Beobachtungstexte und -daten sowie kontrollierte
+Kategorie und räumlichen Bezug; Identität, privater genauer Ort, Koordinaten,
+KI-/Moderations-/Claim-Evidenz und Providerdaten bleiben ausgeschlossen.
+
+`ProjectionStore` ist die einzige Schreibgrenze zwischen den Domänen. Eine
+Projektionsbestätigung bindet genau eine aktuelle freigegebene Meldungsrevision
+an genau ein echtes `civic_problems`-Ziel. Sie verlangt die erwartete Revision
+und eine eigene menschliche Bestätigung nach der Moderationsfreigabe. Das private
+`civic_report_problem_assignments` bewahrt Meldungsrevision, Problem, historische
+Prüf-ID und Zeitpunkt append-only auf. Die zugehörige Baseline erhält die bereits
+öffentliche unabhängige Meldezahl und Beobachtungsspanne eines bestehenden
+Problems. Datenbank-Views und Trigger prüfen aktuelle Freigabe, Melde- und
+Prüfberechtigung, Zielzustand und Revision; exakte Retries liefern denselben
+Nachweis, während abweichende oder konkurrierende Zuordnungen den ersten Gewinner
+nicht ersetzen. Die dedizierte, atomare und wiederholbare
+`civic_projection_schema_migrations` wird beim Start der freigeschalteten
+Bürgerportal-Umgebung vorbereitet; neuere unbekannte Versionen brechen
+geschlossen ab und bestehende öffentliche Zeilen bleiben unverändert.
+
+Bestehende Ziele kommen nur aus den realen, bereits sichtbaren
+`civic_problems`; Feature-Beispiele sind keine Ziele. Alternativ darf nur eine
+stadtweite Kandidatin atomar eine neue stadtweite Projektion erzeugen. Deren
+öffentlicher deutscher Titel und neutrale Zusammenfassung werden vom Menschen
+eigenständig formuliert und bestätigt. Kategorie kommt aus der Meldung; Ort,
+Koordinaten und Geometrie bleiben leer, Tags starten leer und der Status startet
+als `new`. Beobachtungsdaten und Zahl werden aus gültiger Evidenz abgeleitet,
+nie vom Client geliefert. Scheitert ein Teil, fehlen sowohl Projektion als auch
+Zuordnung.
+
+Die Zahl addiert zur unveränderten Baseline nur unterschiedliche weiterhin
+berechtigte Meldekonten; mehrere Meldungen derselben Person zählen für dasselbe
+Problem einmal. Neue Inhaltsrevisionen sowie Rollen-, Status- oder
+Bestätigungsänderungen lassen alte Zuordnungen unverändert, entfernen ihre
+Wirkung aber sofort aus Zahl und öffentlicher Sichtbarkeit. Die Löschung der
+meldenden Person kaskadiert durch Meldung und Zuordnung. Ohne verbleibende
+Evidenz ist eine neu erzeugte Projektion nicht mehr öffentlich. Die Löschung
+eines Prüferkontos entfernt dessen Identität, erhält aber die historische
+Ganzzahl in der unveränderlichen Zuordnung.
+
+`ProblemStore` bleibt die einzige öffentliche Lesegrenze und serialisiert keine
+Zuordnungs-, Melde-, Identitäts-, Moderations- oder KI-Daten. Owner-Listen und
+-Details ergänzen nur bereits öffentlichen Problemtitel und ID. KI formuliert
+keinen öffentlichen Text, wählt kein Ziel und löst keine Zuordnung aus. Es gibt
+weiterhin keine automatische Clusterung, neue kartierte Projektion,
+Benachrichtigung, Weitergabe an die Stadt, städtische Zuständigkeit oder
+Statusänderung.
 
 ## Geografie
 

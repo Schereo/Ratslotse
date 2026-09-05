@@ -6,7 +6,7 @@ from typing import Iterator
 from fastapi import Depends, HTTPException, Request, status
 
 from .clients import client_kind
-from .config import get_settings
+from .config import Settings, get_settings
 from .security import decode_access_token
 
 from kern.store import Store
@@ -15,6 +15,7 @@ from buergerportal.rejection_drafting import (
     OpenRouterRejectionDraftEvaluator,
     RejectionDraftEvaluator,
 )
+from buergerportal.projections import ProjectionStore
 from buergerportal.reports import PrivateReportStore
 from buergerportal.store import ProblemStore
 
@@ -42,6 +43,31 @@ def get_problem_store() -> Iterator[ProblemStore]:
 def get_private_report_store() -> Iterator[PrivateReportStore]:
     """Privates Schreibmodell in der request-spezifischen Datenbankverbindung."""
     store = PrivateReportStore(get_settings().ratslotse_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_projection_store() -> Iterator[ProjectionStore]:
+    """Feature-only human-confirmed bridge into the public projection."""
+    settings = get_settings()
+    if not settings.ratslotse_buergerportal:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
+    store = ProjectionStore(settings.ratslotse_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_owner_projection_store() -> Iterator[ProjectionStore | None]:
+    """Read owner links without provisioning projection storage outside feature."""
+    settings = get_settings()
+    if not settings.ratslotse_buergerportal:
+        yield None
+        return
+    store = ProjectionStore(settings.ratslotse_db)
     try:
         yield store
     finally:
@@ -149,6 +175,14 @@ def require_eligible_reporter(user: dict = Depends(require_active)) -> dict:
             "Dieses Konto kann keine privaten Meldungen abgeben.",
         )
     return user
+
+
+def require_buergerportal_feature(
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """Hide unreleased Bürgerportal operator entrypoints outside feature."""
+    if not settings.ratslotse_buergerportal:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nicht gefunden.")
 
 
 def require_moderation_reviewer(user: dict = Depends(get_current_user)) -> dict:
