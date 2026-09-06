@@ -291,7 +291,8 @@ def _retire(link: _Link, drain: Callable[[], None]) -> None:
 def record_and_transcribe(on_window=None, source: str | None = None,
                           max_seconds: int | None = None, pace: float | None = None,
                           people: list[dict] | None = None,
-                          window_seconds: int = WINDOW_SECONDS) -> list[tuple[float, str]]:
+                          window_seconds: int = WINDOW_SECONDS,
+                          on_segment=None, stop: threading.Event | None = None) -> list[tuple[float, str]]:
     """Stream mitschneiden und streamend transkribieren, bis die
     Schlussformel fällt — die Streaming-Fassung von
     ``livestream.record_and_transcribe``.
@@ -300,7 +301,9 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     eine Datei; ``pace`` > 0 bremst eine Datei auf das Vielfache der
     Echtzeit (nur für Messungen — ein Live-Stream liefert von selbst in
     Echtzeit). ``on_window(t_from, t_to, segments, closing)`` je
-    ``window_seconds`` und bei jedem Aufruf/jeder Worterteilung.
+    ``window_seconds`` und bei jedem Aufruf/jeder Worterteilung;
+    ``on_segment(start, end, text)`` je fertiger Äußerung, sobald sie da ist
+    (die Live-Probe im Admin-Panel); ``stop`` beendet die Aufnahme von außen.
     """
     vocab = vocabulary(people or [])
     url = open_session(vocab)  # wirft StreamUnavailable → Rückfall auf Stücke
@@ -320,18 +323,23 @@ def record_and_transcribe(on_window=None, source: str | None = None,
         nonlocal closing
         while True:
             try:
-                start, _end, text = link.queue.get_nowait()
+                start, end, text = link.queue.get_nowait()
             except queue.Empty:
                 return
             seg = (start, text)
             segments.append(seg)
+            if on_segment is not None:
+                try:
+                    on_segment(start, end, text)
+                except Exception:  # noqa: BLE001 — Zuschauer, kein Auftrag
+                    log.exception("on_segment fehlgeschlagen")
             windower.add(seg)
             if livestream.closing_at(text, start):
                 log.info("Schlussformel bei %.0f s — Aufnahme endet", start)
                 closing = True
 
     try:
-        while not closing and sent < limit:
+        while not closing and sent < limit and not (stop is not None and stop.is_set()):
             frame = proc.stdout.read(FRAME_BYTES)
             if not frame:
                 break

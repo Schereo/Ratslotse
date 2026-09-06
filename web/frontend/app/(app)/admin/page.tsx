@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
-type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
+type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen" | "live";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -60,6 +60,7 @@ export default function AdminPage() {
           ["quiz", "Quiz"],
           ["orte", "Ortskandidaten"],
           ["themen", "Themen-Dubletten"],
+          ["live", "Live-Probe"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -81,6 +82,7 @@ export default function AdminPage() {
         {tab === "quiz" && <QuizModerationTab />}
         {tab === "orte" && <PlaceCandidatesTab />}
         {tab === "themen" && <EntityAliasTab />}
+        {tab === "live" && <LiveProbeTab />}
       </div>
     </div>
   );
@@ -1730,6 +1732,132 @@ function EntityAliasTab() {
           setUndoing(null);
         }}
       />
+    </div>
+  );
+}
+
+
+/* ---------------------------------------------------------------- Live-Probe
+   Der O1-Stream als Transkript, Äußerung für Äußerung — dieselbe Strecke
+   wie in der Ratssitzung (ffmpeg → Gladia → Segment), nur ohne Sitzung.
+   Tims Wunsch 06.09.2026: vor dem ersten echten Abend sehen, was ankommt
+   und wie schnell. Server-Sent Events, kein Neuladen. */
+
+type ProbeSegment = { start: number; end: number; text: string; wall: number };
+
+function LiveProbeTab() {
+  const [seconds, setSeconds] = useState(120);
+  const [running, setRunning] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [segments, setSegments] = useState<ProbeSegment[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [segments.length]);
+
+  const stop = () => { abortRef.current?.abort(); abortRef.current = null; setRunning(false); };
+
+  const start = async () => {
+    setSegments([]); setError(null); setStatus("verbinde …"); setRunning(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    try {
+      const res = await fetch(`/api/admin/live-probe?seconds=${seconds}`, {
+        credentials: "include", signal: ctrl.signal, headers: { Accept: "text/event-stream" },
+      });
+      if (!res.ok || !res.body) {
+        let msg = `Probe nicht gestartet (${res.status}).`;
+        try { const b = await res.json(); if (typeof b?.detail === "string") msg = b.detail; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const chunks = buf.split("\n\n");
+        buf = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          const line = chunk.replace(/^data: ?/, "").trim();
+          if (!line || line.startsWith(":")) continue;
+          let msg: { type: string; [k: string]: unknown };
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "status") setStatus(msg.text as string);
+          else if (msg.type === "segment") {
+            setStatus(null);
+            setSegments((prev) => [...prev, msg as unknown as ProbeSegment]);
+          } else if (msg.type === "done") setStatus(`Fertig: ${msg.segments} Äußerungen in ${msg.seconds} s.`);
+          else if (msg.type === "error") setError(msg.message as string);
+        }
+      }
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : "Probe fehlgeschlagen.");
+    } finally {
+      setRunning(false);
+      abortRef.current = null;
+    }
+  };
+
+  const lags = segments.map((s) => s.wall - s.end);
+  const median = lags.length ? [...lags].sort((a, b) => a - b)[Math.floor(lags.length / 2)] : null;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Transkribiert den O1-Stream (was gerade läuft) über denselben Weg wie in der Ratssitzung:
+        ffmpeg → Gladia → Äußerung mit Zeitmarke. Kostet rund 0,75 $ je Stunde, deshalb höchstens
+        zehn Minuten und nur eine Probe zugleich.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          Dauer
+          <select value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} disabled={running}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+            {[60, 120, 300, 600].map((s) => <option key={s} value={s}>{s < 120 ? `${s} s` : `${s / 60} min`}</option>)}
+          </select>
+        </label>
+        {running
+          ? <Button size="sm" variant="secondary" onClick={stop}>Stopp</Button>
+          : <Button size="sm" onClick={() => void start()}>Probe starten</Button>}
+        {running && (
+          <span className="inline-flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+            <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inset-0 rounded-full bg-red-500 motion-safe:animate-ping" />
+              <span className="relative h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            läuft
+          </span>
+        )}
+        {median != null && (
+          <span className="text-xs text-muted-foreground">
+            Verzug (Median): <strong className="font-semibold text-foreground">{median.toFixed(1)} s</strong> nach Satzende
+          </span>
+        )}
+      </div>
+      {status && <p className="text-sm text-muted-foreground">{status}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {segments.length > 0 && (
+        <Card className="max-h-[60vh] overflow-y-auto p-0">
+          <ol className="divide-y divide-border">
+            {segments.map((s, i) => (
+              <li key={i} className="flex gap-3 px-4 py-2 text-sm">
+                <span className="w-14 shrink-0 font-mono text-[11px] text-muted-foreground">
+                  {Math.floor(s.start / 60)}:{String(Math.floor(s.start % 60)).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1 text-foreground">{s.text}</span>
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground" title="Sekunden nach Satzende">
+                  +{(s.wall - s.end).toFixed(1)} s
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div ref={endRef} />
+        </Card>
+      )}
     </div>
   );
 }
