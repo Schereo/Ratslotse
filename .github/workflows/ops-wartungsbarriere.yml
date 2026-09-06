@@ -18,9 +18,9 @@ on:
   workflow_dispatch:
     inputs:
       aktion:
-        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
+        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · api-start = Barriere weg + nwz-web-api starten (nach abgebrochenem Cutover) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
         type: choice
-        options: [status, aufheben, probe]
+        options: [status, aufheben, api-start, probe]
         default: status
 
 concurrency:
@@ -78,7 +78,7 @@ jobs:
           '
 
       - name: Barriere aufheben
-        if: ${{ inputs.aktion == 'aufheben' }}
+        if: ${{ inputs.aktion == 'aufheben' || inputs.aktion == 'api-start' }}
         run: |
           ssh target '
             set -eu
@@ -91,6 +91,30 @@ jobs:
             sleep 2
             curl -s -o /dev/null -w "health danach: %{http_code}\n" --max-time 5 http://127.0.0.1:8000/api/health
             curl -s -o /dev/null -w "heute danach:  %{http_code}\n" --max-time 10 http://127.0.0.1:8000/api/council/heute
+          '
+
+      # Nach einem Cutover-Abbruch steht der API-Dienst (der Deploy stoppt ihn
+      # vor der Migration und startet ihn bei einem Fehler bewusst nicht).
+      # Hier wird er mit dem Stand auf der Platte gestartet; kommt er nicht
+      # hoch, steht die Ursache im Dienstprotokoll.
+      - name: API starten
+        if: ${{ inputs.aktion == 'api-start' }}
+        run: |
+          ssh target '
+            set -u
+            cd ~/app
+            sudo -n /bin/systemctl start nwz-web-api
+            for i in $(seq 1 90); do
+              sleep 2
+              if curl -sf -o /dev/null --max-time 3 http://127.0.0.1:8000/api/health; then
+                echo "API läuft nach $((i*2)) s"; curl -s -o /dev/null -w "heute: %{http_code}\n" --max-time 10 http://127.0.0.1:8000/api/council/heute
+                exit 0
+              fi
+            done
+            echo "FEHLER: API antwortet nach 180 s nicht — Dienstprotokoll:"
+            sudo -n /bin/systemctl status nwz-web-api --no-pager -l 2>&1 | tail -40 || true
+            journalctl -u nwz-web-api -n 60 --no-pager 2>&1 | tail -60 || true
+            exit 1
           '
 
       # Generalprobe vor einer Ratssitzung: transkribiert den O1-Stream 60 s
