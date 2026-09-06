@@ -313,6 +313,16 @@ struct DistrictBoardView: View {
                 let hasSubject = project.locations.contains { $0.role == "subject" }
                 ForEach(project.locations.filter { $0.role == "subject" || !hasSubject }) { location in
                     let boundary = location.role != "subject"
+                    // Der Geltungsbereich eines Bebauungsplans (Stadt-Geodaten):
+                    // gestrichelter Rand, leichte Füllung in der Farbe des Stands.
+                    // Rechtsverbindlich = durchgezogen; in Aufstellung = gestrichelt und blasser.
+                    let inProcedure = location.plan?.status == "in_procedure"
+                    ForEach(Array((location.kind == "bplan" ? polygons(location.geometry) : []).enumerated()), id: \.offset) { _, ring in
+                        MapPolygon(coordinates: ring)
+                            .foregroundStyle(stage.color.opacity(dimmed ? 0.04 : active ? (inProcedure ? 0.14 : 0.22) : (inProcedure ? 0.08 : 0.14)))
+                            .stroke(stage.color.opacity(dimmed ? 0.2 : 0.85),
+                                    style: StrokeStyle(lineWidth: active ? 3 : 2, dash: inProcedure ? [6, 4] : []))
+                    }
                     ForEach(Array((boundary ? [] : lineStrings(location.geometry)).enumerated()), id: \.offset) { _, line in
                         MapPolyline(coordinates: line)
                             .stroke(stage.color.opacity(dimmed ? 0.18 : 0.75),
@@ -341,7 +351,10 @@ struct DistrictBoardView: View {
     private func focusSelected() {
         guard let selected else { return }
         var points = selected.locations.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-        for location in selected.locations { points += lineStrings(location.geometry).flatMap { $0 } }
+        for location in selected.locations {
+            points += lineStrings(location.geometry).flatMap { $0 }
+            if location.kind == "bplan" { points += polygons(location.geometry).flatMap { $0 } }
+        }
         guard let region = regionAround(points, minSpan: 0.012) else { return }
         withAnimation(.easeInOut(duration: 0.45)) { camera = .region(region) }
     }
@@ -603,6 +616,37 @@ private struct DistrictProjectSheet: View {
                     .foregroundStyle(RatsColor.secondary)
                 }
 
+                // Der Bebauungsplan hinter der Fläche: Nummer, Name, die drei
+                // Stationen des Verfahrens — aus den offenen Geodaten der Stadt.
+                ForEach(project.locations.filter { $0.plan != nil }) { location in
+                    if let plan = location.plan {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Bebauungsplan \(plan.nr)")
+                                .font(RatsFont.body(13, weight: .semibold))
+                                .foregroundStyle(RatsColor.text)
+                            + Text(" · \(plan.name)")
+                                .font(RatsFont.body(13))
+                                .foregroundStyle(RatsColor.secondary)
+                            Text([
+                                plan.status == "in_procedure" ? "In Aufstellung" : nil,
+                                plan.resolutionDate.flatMap { RatsDate.short($0) }.map { "Aufstellung \($0)" },
+                                plan.adoptionDate.flatMap { RatsDate.short($0) }.map { "Satzung \($0)" },
+                                plan.effectiveDate.flatMap { RatsDate.short($0) }.map { "rechtskräftig seit \($0)" },
+                            ].compactMap { $0 }.joined(separator: " · "))
+                                .font(RatsFont.body(12))
+                                .foregroundStyle(RatsColor.secondary)
+                            Text("Fläche: Geltungsbereich laut \(plan.source)")
+                                .font(RatsFont.body(11))
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RatsColor.separator, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(RatsColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 0) {
                     MonoKicker("\(project.decisions.count) \(project.decisions.count == 1 ? "Beschluss" : "Beschlüsse")")
                         .padding(.bottom, 6)
@@ -683,6 +727,32 @@ private struct DistrictProjectSheet: View {
 }
 
 // MARK: - Geometrie-Helfer
+
+/// Außenringe aus Polygon/MultiPolygon-GeoJSON — der Geltungsbereich eines
+/// Bebauungsplans. Löcher (innere Ringe) fallen weg; die Umringe der Stadt
+/// haben keine, und ein Loch würde als eigene Fläche gezeichnet.
+private func polygons(_ geometry: JSONValue?) -> [[CLLocationCoordinate2D]] {
+    guard case let .object(object)? = geometry,
+          case let .string(type)? = object["type"],
+          case let .array(coordinates)? = object["coordinates"] else { return [] }
+    func ring(_ value: JSONValue) -> [CLLocationCoordinate2D] {
+        guard case let .array(points) = value else { return [] }
+        return points.compactMap { point in
+            guard case let .array(pair) = point, pair.count >= 2,
+                  case let .number(lon) = pair[0], case let .number(lat) = pair[1] else { return nil }
+            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        }
+    }
+    func outer(_ polygon: JSONValue) -> [CLLocationCoordinate2D] {
+        guard case let .array(rings) = polygon, let first = rings.first else { return [] }
+        return ring(first)
+    }
+    switch type {
+    case "Polygon": return [outer(.array(coordinates))].filter { $0.count > 2 }
+    case "MultiPolygon": return coordinates.map(outer).filter { $0.count > 2 }
+    default: return []
+    }
+}
 
 /// LineString/MultiLineString aus dem durchgereichten GeoJSON — für die
 /// Straßenlinie auf der Karte. Alles andere (Flächen) bleibt beim Pin.

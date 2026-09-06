@@ -90,6 +90,10 @@ STEPS: list[tuple[str, str]] = [
     # damit die 50/50-Mischung frische Werte sieht.
     ("Tragweite", "rate_impact.py --limit 500"),
     ("Wichtigkeits-Score", "score_importance.py"),
+    # Bebauungsplan-Umringe der Stadt (openGEOdata, ein Aufruf, kein LLM):
+    # die Flächen, die „Mein Viertel" an Bebauungsplan-Beschlüsse hängt —
+    # auch dort, wo noch nichts gebaut ist und OSM deshalb nichts kennt.
+    ("Bebauungsplan-Umringe (Stadt)", "fetch_bplan_outlines.py"),
     # „Mein Viertel" (LLM, gecacht): Richter-Urteil je neuem verorteten
     # Beschluss und Bündelung zu Vorhaben je Ortsbereich. Nach dem Geocoding
     # und der Ortszuordnung, weil es deren Tabellen liest.

@@ -346,6 +346,62 @@ class ViertelMixin(StoreBasis):
             out.append({"slug": r["slug"], "name": r["name"], "kind": r["kind"],
                         "lat": lat, "lon": lon, "geometry": geometry,
                         "role": rollen.get(r["name"], "subject")})
+        out.extend(self._bplan_locations(stufen[0], place_name))
+        return out
+
+    #: Ab diesem Flächenanteil im Ortsbereich gehört ein Bebauungsplan auf die
+    #: Tafel. Niedriger als bei Straßen (0,5): Ein Plan wie „Fliegerhorst/
+    #: Alexanderstraße" liegt zu einem guten Teil im Nachbarbereich, und wer
+    #: den Beschluss dazu auf der Tafel sieht, soll auch die Fläche sehen.
+    BPLAN_MIN_SHARE = 0.3
+
+    def _bplan_locations(self, titles: list[str], place_name: str) -> list[dict]:
+        """Die Geltungsbereiche der Bebauungspläne, die die Beschlusstitel eines
+        Vorhabens nennen (``bplan.plannummern_im_titel``) — als Fläche auf der
+        Karte, wo OpenStreetMap noch nichts kennt, weil noch nichts gebaut ist.
+
+        Je Titel gilt der erste Schlüssel, zu dem es einen Umring gibt: die
+        Änderung vor dem Ursprungsplan. Ein Plan zählt nur, wenn er zu
+        ``BPLAN_MIN_SHARE`` in diesem Ortsbereich liegt — sonst zöge ein
+        stadtweit genannter Plan Flächen aus fremden Vierteln herein.
+        """
+        from council import bplan, geo
+        je_titel = [bplan.plannummern_im_titel(t) for t in titles]
+        alle = [k for keys in je_titel for k in keys]
+        if not alle:
+            return []
+        umringe = self.bplan_outlines_by_keys(alle)
+        out: list[dict] = []
+        gesehen: set[str] = set()
+        for keys in je_titel:
+            treffer = next((umringe[k] for k in keys if k in umringe), None)
+            if not treffer or treffer["key"] in gesehen:
+                continue
+            gesehen.add(treffer["key"])
+            try:
+                geometrie = json.loads(treffer["geojson"])
+            except (TypeError, ValueError):
+                continue
+            anteile = geo.ortsbereiche_der_geometrie(geometrie)
+            gesamt = sum(anteile.values()) or 1
+            if anteile.get(place_name, 0) / gesamt < self.BPLAN_MIN_SHARE:
+                continue
+            if treffer["lat"] is None or treffer["lon"] is None:
+                continue
+            out.append({
+                "slug": f"bplan-{treffer['key'].lower().replace(' ', '-')}",
+                "name": f"Bebauungsplan {treffer['nr']}",
+                "kind": "bplan", "lat": treffer["lat"], "lon": treffer["lon"],
+                "geometry": geometrie, "role": "subject",
+                "plan": {
+                    "nr": treffer["nr"], "name": treffer["name"], "status": treffer["status"],
+                    "resolution_date": treffer["resolution_date"],
+                    "adoption_date": treffer["adoption_date"],
+                    "effective_date": treffer["effective_date"],
+                    "note": treffer["note"],
+                    "source": bplan.QUELLE_LABEL, "source_url": bplan.QUELLE_URL,
+                },
+            })
         return out
 
     def _place_name(self, place_id: str) -> str:

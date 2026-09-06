@@ -727,6 +727,26 @@ function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen }: {
         );
       })()}
 
+      {/* Der Bebauungsplan hinter der Fläche: Nummer, Name, die drei Stationen
+          des Verfahrens — aus den offenen Geodaten der Stadt, nicht aus dem
+          Modell. Die Fläche auf der Karte ist sein Geltungsbereich. */}
+      {v.locations.filter((l) => l.plan).map((l) => (
+        <div key={l.slug} className="mt-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs">
+          <p className="font-semibold text-foreground">Bebauungsplan {l.plan!.nr} <span className="font-normal text-muted-foreground">· {l.plan!.name}</span></p>
+          <p className="mt-1 text-muted-foreground">
+            {[
+              l.plan!.status === "in_procedure" && "In Aufstellung",
+              l.plan!.resolution_date && `Aufstellung ${formatDate(l.plan!.resolution_date)}`,
+              l.plan!.adoption_date && `Satzung ${formatDate(l.plan!.adoption_date)}`,
+              l.plan!.effective_date && `rechtskräftig seit ${formatDate(l.plan!.effective_date)}`,
+            ].filter(Boolean).join(" · ")}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Fläche: Geltungsbereich laut <a href={l.plan!.source_url} target="_blank" rel="noreferrer" className="underline hover:text-foreground">{l.plan!.source}</a>
+          </p>
+        </div>
+      ))}
+
       <p className="mt-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {v.decisions.length} {v.decisions.length === 1 ? "Beschluss" : "Beschlüsse"}
       </p>

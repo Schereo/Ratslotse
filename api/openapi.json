@@ -5805,6 +5805,72 @@
         "title": "DistrictParticipation",
         "type": "object"
       },
+      "DistrictPlanInfo": {
+        "description": "Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und\ndie Stationen des Verfahrens aus den offenen Geodaten der Stadt.",
+        "properties": {
+          "adoption_date": {
+            "title": "Adoption Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effective_date": {
+            "title": "Effective Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "string"
+          },
+          "resolution_date": {
+            "title": "Resolution Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nr",
+          "name",
+          "status",
+          "resolution_date",
+          "adoption_date",
+          "effective_date",
+          "note",
+          "source",
+          "source_url"
+        ],
+        "title": "DistrictPlanInfo",
+        "type": "object"
+      },
       "DistrictProject": {
         "description": "Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).\n\n``stage`` ist einer von ``idea | planning | decided | building | done |\nrejected``, ``category`` einer von ``housing | traffic | school_childcare |\ngreen | culture_sport_social | other``. ``when`` ist Menschentext („2027“,\n„ab Kita-Jahr 2026/2027“) oder null — nie geraten.",
         "properties": {
@@ -5950,7 +6016,7 @@
         "type": "object"
       },
       "DistrictProjectLocation": {
-        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.",
+        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie,\nbei Bebauungsplänen (``kind = bplan``) der Geltungsbereich als GeoJSON.",
         "properties": {
           "geometry": {
             "title": "Geometry"
@@ -5970,6 +6036,9 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/DistrictPlanInfo"
           },
           "role": {
             "title": "Role",
