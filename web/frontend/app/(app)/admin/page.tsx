@@ -1803,7 +1803,13 @@ function LiveProbeTab() {
     }
   };
 
-  const lags = segments.map((s) => s.wall - s.end);
+  // ffmpeg liefert beim Start erst den HLS-Puffer (10–20 s Audio in zwei
+  // Sekunden), danach Echtzeit. `wall - end` wäre anfangs negativ; der
+  // größte Vorsprung des Audios vor der Uhr ist dieser Puffer, und um ihn
+  // korrigiert ist der Rest der echte Verzug der Transkription.
+  const backlog = Math.max(0, ...segments.map((s) => s.end - s.wall));
+  const lagOf = (s: ProbeSegment) => s.wall - s.end + backlog;
+  const lags = segments.map(lagOf);
   const median = lags.length ? [...lags].sort((a, b) => a - b)[Math.floor(lags.length / 2)] : null;
 
   return (
@@ -1851,7 +1857,7 @@ function LiveProbeTab() {
                 </span>
                 <span className="min-w-0 flex-1 text-foreground">{s.text}</span>
                 <span className="shrink-0 font-mono text-[11px] text-muted-foreground" title="Sekunden nach Satzende">
-                  +{(s.wall - s.end).toFixed(1)} s
+                  +{lagOf(s).toFixed(1)} s
                 </span>
               </li>
             ))}
