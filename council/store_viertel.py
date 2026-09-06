@@ -300,14 +300,29 @@ class ViertelMixin(StoreBasis):
         from council import geo
         place_name = self._place_name(place_id)
         # Die Texte des Vorhabens entscheiden, welcher Ort Gegenstand ist und
-        # welcher nur eine Abschnittsgrenze („Am Schmeel bis Brahmweg").
-        texte: list[str] = []
+        # welcher nur eine Abschnittsgrenze („Am Schmeel bis Brahmweg") — in
+        # Stufen: Titel vor Zusammenfassung vor Beschlusstext vor Vorlage vor
+        # der Fundstelle der Orts-Pipeline (s. ``ortsrollen``). Die Vorlage
+        # wird gesucht wie dort (``store_orte``): über kvonr, sonst über die
+        # Vorlagen-Nummer — am 06.09.2026 hing sie bei „Tweelbäker Tredde"
+        # nur an der Nummer, und ein Join allein über kvonr fand sie nicht.
+        stufen: list[list[str]] = [[], [], [], [], []]
         for d in self._conn.execute(
-                f"SELECT d.title, d.summary, d.official_text, t.raw_text FROM council_decisions d "
-                f"LEFT JOIN council_templates t ON t.kvonr = d.kvonr WHERE d.id IN ({ph})",
+                f"SELECT d.title, d.summary, d.official_text, COALESCE("
+                f"(SELECT v.raw_text FROM council_templates v WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1), "
+                f"(SELECT v.raw_text FROM council_templates v WHERE v.status = 'ok' "
+                f" AND v.template_number = d.template_number ORDER BY v.kvonr DESC LIMIT 1)) AS raw_text "
+                f"FROM council_decisions d WHERE d.id IN ({ph})",
                 decision_ids).fetchall():
-            texte += [d["title"] or "", d["summary"] or "", d["official_text"] or "", (d["raw_text"] or "")[:20000]]
-        rollen = ortsrollen([r["name"] for r in rows], texte)
+            for i, k in enumerate(("title", "summary", "official_text", "raw_text")):
+                if d[k]:
+                    stufen[i].append(d[k][:20000])
+        for e in self._conn.execute(
+                f"SELECT DISTINCT evidence FROM council_decision_locations WHERE decision_id IN ({ph})",
+                decision_ids).fetchall():
+            if e["evidence"]:
+                stufen[4].append(e["evidence"])
+        rollen = ortsrollen([r["name"] for r in rows], ["\n".join(t) for t in stufen])
         out = []
         for r in rows:
             geometry = None
@@ -495,38 +510,54 @@ def ortsrollen(names: list[str], texts: list[str]) -> dict[str, str]:
     """Je Ortsname ``subject`` (dort ändert sich etwas) oder ``boundary``
     (nur Abschnittsgrenze oder Bezugspunkt).
 
-    Ein Name ist Grenze, wenn JEDE seiner Fundstellen in den Texten hinter
-    einem Grenzwort steht („zwischen X und Y", „von X bis Y", „(X bis Y)",
-    „ab X", „in Höhe X") oder von „bis" gefolgt wird — und mindestens ein
-    anderer Ort des Vorhabens frei steht. Kommt ein Name in den Texten gar
-    nicht vor (Katalog-Variante, Vorlage fehlt), bleibt er Gegenstand: Lieber
-    einmal zu viel markiert als still verschwunden.
+    ``texts`` sind Stufen in absteigender Verbindlichkeit (Titel, Zusammen-
+    fassung, Beschlusstext, Vorlage, …). **Die erste Stufe, die den Namen
+    nennt, entscheidet** — und dort ist er Grenze, wenn jede Fundstelle
+    hinter einem Grenzwort steht („zwischen X und Y", „von X bis Y",
+    „(X bis Y)", „ab X", „in Höhe X") oder von „bis" gefolgt wird.
+
+    Warum Stufen und nicht ein Blob: Die Vorlage erzählt auch drumherum —
+    „die Tredde bindet Dießelweg und Brahmweg an die Straße Am Schmeel an".
+    Über alle Fundstellen gerechnet machte dieser eine Satz Am Schmeel wieder
+    zum Gegenstand, obwohl der Titel „(Am Schmeel bis Brahmweg)" die Rolle
+    längst geklärt hat (Krusenbusch, 06.09.2026). Kommt ein Name nirgends
+    vor (Katalog-Variante), bleibt er Gegenstand: Lieber einmal zu viel
+    markiert als still verschwunden.
     """
-    blob = "\n".join(t for t in texts if t)
     rollen: dict[str, str] = {}
     for name in names:
-        treffer = list(re.finditer(re.escape(name) + r"(?![a-zäöüß])", blob, re.IGNORECASE))
-        if not treffer:
-            rollen[name] = "subject"
-            continue
-        grenze = True
-        for m in treffer:
-            davor = blob[max(0, m.start() - 40):m.start()]
-            danach = blob[m.end():m.end() + 12]
-            steht_hinter_grenzwort = bool(_GRENZ_VOR_RE.search(davor))
-            gefolgt_von_bis = bool(re.match(r"\s*(?:bis|und)\s", danach, re.IGNORECASE)) and (
-                "zwischen" in davor.lower() or "(" in davor[-3:] or bool(re.search(r"\bvon\b", davor, re.IGNORECASE))
-                or re.match(r"\s*bis\s", danach, re.IGNORECASE) is not None)
-            if not (steht_hinter_grenzwort or gefolgt_von_bis):
-                grenze = False
-                break
-        rollen[name] = "boundary" if grenze else "subject"
-    if rollen and all(r == "boundary" for r in rollen.values()):
-        # Nur Grenzen — dann ist das Vorhaben die Fläche dazwischen (ein
-        # Bebauungsplan „zwischen A und B"); die Rolle bleibt, die Karte
-        # zeigt sie als hohle Punkte statt als Linien.
-        pass
+        muster = re.compile(re.escape(name) + r"(?![a-zäöüß])", re.IGNORECASE)
+        rollen[name] = "subject"
+        for blob in texts:
+            treffer = list(muster.finditer(blob or ""))
+            if not treffer:
+                continue
+            rollen[name] = "boundary" if all(_ist_grenzfund(blob, m) for m in treffer) else "subject"
+            break
     return rollen
+
+
+_BEZUGSSATZ_RE = re.compile(r"\b(?:bindet|binden|anbind|angebunden|Anbindung)", re.IGNORECASE)
+
+
+def _ist_grenzfund(blob: str, m: re.Match) -> bool:
+    davor = blob[max(0, m.start() - 40):m.start()]
+    danach = blob[m.end():m.end() + 12]
+    if _GRENZ_VOR_RE.search(davor):
+        return True
+    # „… bindet die Straßen Dießelweg und Brahmweg an die Straße Am Schmeel
+    # an": ein Satz über das Straßennetz, kein Vorhaben an diesen Straßen.
+    # Satzgrenze ist der Punkt, nicht der Zeilenumbruch — der PDF-Text der
+    # Vorlagen bricht mitten im Satz um („die Straßen\nDießelweg, …").
+    satz_anfang = max(blob.rfind(z, 0, m.start()) for z in ".!?") + 1
+    satz_ende = min((i for i in (blob.find(z, m.end()) for z in ".!?") if i >= 0), default=len(blob))
+    satz = blob[satz_anfang:satz_ende]
+    if _BEZUGSSATZ_RE.search(satz):
+        return True
+    if not re.match(r"\s*(?:bis|und)\s", danach, re.IGNORECASE):
+        return False
+    return ("zwischen" in davor.lower() or "(" in davor[-3:] or bool(re.search(r"\bvon\b", davor, re.IGNORECASE))
+            or re.match(r"\s*bis\s", danach, re.IGNORECASE) is not None)
 
 
 def _months_ago(months: int) -> str:
