@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, apiUrl, authHeaders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { AdminUserDetail, AdminGrowth, AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
@@ -1764,8 +1764,9 @@ function LiveProbeTab() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
-      const res = await fetch(`/api/admin/live-probe?seconds=${seconds}`, {
-        credentials: "include", signal: ctrl.signal, headers: { Accept: "text/event-stream" },
+      const res = await fetch(apiUrl(`/admin/live-probe?seconds=${seconds}`), {
+        credentials: "include", signal: ctrl.signal,
+        headers: { Accept: "text/event-stream", ...authHeaders() },
       });
       if (!res.ok || !res.body) {
         let msg = `Probe nicht gestartet (${res.status}).`;

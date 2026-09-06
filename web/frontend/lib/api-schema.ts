@@ -9644,10 +9644,14 @@ export interface components {
             committee: string;
             /** Dringlich */
             dringlich: boolean;
+            /** Group Applicants */
+            group_applicants: string[];
             /** Gruppe Nr */
             gruppe_nr: string;
             /** Gruppe Stationen */
             gruppe_stationen: number;
+            /** Gruppe Text */
+            gruppe_text: string | null;
             /** Gruppe Titel */
             gruppe_titel: string | null;
             /** Item Number */
@@ -9660,6 +9664,8 @@ export interface components {
             kvonr: number | null;
             /** Session Date */
             session_date: string;
+            /** Social Headline */
+            social_headline: string | null;
             /** Social Text */
             social_text: string | null;
             /** Summary */
@@ -14711,4 +14717,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 734d159a33219340e0418ba25f2e3a8ef5c650ab1fc3aed2713fee0bb316f699
+// vertrag-sha256: abd184aa592846b41c89044fe5800babf8ddbd69f6c0c066d369f1ab608c1fdc
