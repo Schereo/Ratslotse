@@ -99,7 +99,7 @@ export function Halbkreis({
               onClick={() => setAktiv(aktiv === p.slug ? null : p.slug)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-1.5 py-0.5 text-[11.5px] text-muted-foreground transition-colors duration-tipp",
-                aktiv === p.slug && "bg-primary/8 text-foreground",
+                aktiv === p.slug && "bg-primary/10 text-foreground",
               )}
             >
               <span

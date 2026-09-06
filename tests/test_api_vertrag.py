@@ -29,7 +29,7 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 # Leer seit 09/2026 — ein neuer Eintrag hier ist eine Entscheidung, kein Rest.
 OFFEN: set[tuple[str, str]] = set()
 
-# Kein JSON-Body: zwei SSE-Ströme, eine Bilddatei und der Kalender-Feed. Ihre Medientypen und
+# Kein JSON-Body: zwei SSE-Ströme, zwei Bilder und der Kalender-Feed. Ihre Medientypen und
 # Ereignis-Arten stehen als `responses=` am Dekorator (s. `antworten.py`,
 # Abschnitt „Antworten, die kein JSON sind"); der Test unten prüft, dass sie
 # dort auch wirklich ankommen.
@@ -38,14 +38,16 @@ KEIN_JSON = {
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
     ("get", "/api/calendar/{token}.ics"),
+    ("get", "/api/wahlabend/bild.png"),
 }
 
-#: Welchen Medientyp diese drei Endpunkte liefern MÜSSEN.
+#: Welchen Medientyp diese Endpunkte liefern MÜSSEN.
 KEIN_JSON_MEDIENTYP = {
     ("post", "/api/council/ask"): "text/event-stream",
     ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
     ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
     ("get", "/api/calendar/{token}.ics"): "text/calendar",
+    ("get", "/api/wahlabend/bild.png"): "image/png",
 }
 
 
@@ -112,7 +114,7 @@ def test_ausnahmeliste_ist_nicht_veraltet(endpunkte):
 
 
 def test_stroeme_und_bilder_nennen_ihren_medientyp():
-    """Die drei Nicht-JSON-Endpunkte müssen sagen, WAS sie liefern.
+    """Die Nicht-JSON-Endpunkte müssen sagen, WAS sie liefern.
 
     Ohne `responses=` erzeugt FastAPI für sie ein leeres
     `application/json`-Schema — die Doku behauptete damit ein JSON-Objekt, wo

@@ -11,24 +11,29 @@ Zwei Betriebsarten:
   Wunsch mit nur den ersten ``counted`` Wahlbezirken ausgezählt. So lässt sich
   die Seite vor dem Wahlabend mit echten Zahlen ansehen, und die Hochrechnung
   hat eine Antwort, die sie treffen muss (das Endergebnis von 2021).
+
+Dazu der **Verlauf** (``history.py``): Jedes fertige Live-Bild hinterlässt
+einen Punkt, die Generalprobe bekommt eine synthetische Reihe.
 """
 from __future__ import annotations
 
 import threading
 import time
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from ..antworten import (
     ElectionArea,
     ElectionAreaParty,
     ElectionCandidate,
+    ElectionHistoryPoint,
     ElectionMandate,
     ElectionNight,
     ElectionParty,
     ElectionTotals,
 )
-from . import votemanager
+from . import history, votemanager
 from .projection import Projection, project
 from .reference import Reference
 from .reference import load as load_reference
@@ -61,6 +66,26 @@ def _totals(row: AreaRow | None) -> ElectionTotals:
         valid_votes=row.valid_votes,
         invalid_ballots=row.invalid_ballots,
     )
+
+
+def _votes_by_party(reg: Register, city: AreaRow | None, area_rows: dict[int, AreaRow]) -> tuple[dict[str, int | None], int | None]:
+    """Stimmen je Wahlvorschlag und die gültigen Stimmen der Stadt — die
+    Grundlage aller Anteile. Die Stadtzeile ist die Quelle; solange sie noch
+    leer ist, summieren die sechs Wahlbereiche."""
+    valid_city = city.valid_votes if city and city.valid_votes is not None else None
+    if valid_city is None and area_rows:
+        s = sum(r.valid_votes or 0 for r in area_rows.values())
+        valid_city = s or None
+    votes: dict[str, int | None] = {}
+    for p in reg.parties:
+        lr = city.lists.get(p.index) if city else None
+        v = lr.total if lr and lr.total is not None else None
+        if v is None and area_rows:
+            per_area = [r.lists.get(p.index) for r in area_rows.values()]
+            if any(x is not None and x.total is not None for x in per_area):
+                v = sum(x.total or 0 for x in per_area if x)
+        votes[p.slug] = v
+    return votes, valid_city
 
 
 def _district_lists(reg: Register, area_rows: dict[int, AreaRow]) -> tuple[list[DistrictList], bool]:
@@ -170,19 +195,11 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str) -> Elec
         proj_alloc = alloc
     proj_by_list = {(dl.party, dl.district): dl for dl in proj_lists}
 
-    valid_city = city.valid_votes if city and city.valid_votes is not None else None
-    if valid_city is None and area_rows:
-        s = sum(r.valid_votes or 0 for r in area_rows.values())
-        valid_city = s or None
+    votes_by_party, valid_city = _votes_by_party(reg, city, area_rows)
 
     parties: list[ElectionParty] = []
     for p in reg.parties:
-        lr = city.lists.get(p.index) if city else None
-        votes = lr.total if lr and lr.total is not None else None
-        if votes is None and area_rows:
-            per_area = [r.lists.get(p.index) for r in area_rows.values()]
-            if any(x is not None and x.total is not None for x in per_area):
-                votes = sum(x.total or 0 for x in per_area if x)
+        votes = votes_by_party.get(p.slug)
         gain, loss = party_seat_margins(lists, reg.seats, p.slug, CAP_PARTY) if alloc else (None, None)
         parties.append(ElectionParty(
             index=p.index, slug=p.slug, short=p.short, name=p.official, kind=p.kind,
@@ -252,6 +269,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str) -> Elec
         parties=parties, areas=areas,
         mandates=_mandates(alloc, reg), projected_mandates=_mandates(proj_alloc, reg),
         notes=notes, computed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        history=[],
     )
 
 
@@ -303,6 +321,54 @@ def probe_snapshot(reg: Register, ref: Reference, counted: int | None) -> Snapsh
     return Snapshot([city], areas, districts, datetime.now(timezone.utc), None, True, None)
 
 
+# ------------------------------------------------------------------ Verlauf
+
+#: Die Generalprobe tut so, als begänne die Auszählung um 18:00 Uhr.
+PROBE_START = datetime(2026, 9, 13, 18, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+PROBE_STEP = timedelta(minutes=15)
+
+
+def summary(reg: Register, snap: Snapshot, at: str) -> ElectionHistoryPoint | None:
+    """Ein Stand in Kurzform: Anteile je Liste und die Sitzzuteilung.
+
+    ``compose`` ist dafür zu teuer — der Abstand „wie viele Stimmen bis zum
+    Sitz" ist je Kandidat*in eine Binärsuche über die ganze Zuteilung. Ein
+    Verlaufspunkt braucht davon nichts. ``None``, solange nichts ausgezählt
+    ist: Ein Nullstand ist kein Punkt."""
+    area_rows = {r.number: r for r in snap.areas if r.number is not None}
+    counted = sum(r.reports_received for r in area_rows.values())
+    if counted == 0:
+        return None
+    votes, valid_city = _votes_by_party(reg, snap.city[0] if snap.city else None, area_rows)
+    lists, _ = _district_lists(reg, area_rows)
+    alloc = allocate(lists, reg.seats)
+    shares: dict[str, float] = {}
+    for slug, v in votes.items():
+        share = _pct(v, valid_city)
+        if v and v > 0 and share is not None:
+            shares[slug] = share
+    return ElectionHistoryPoint(
+        at=at, districts_counted=counted, shares=shares,
+        seats={slug: n for slug, n in alloc.seats_by_party.items() if n > 0},
+    )
+
+
+def probe_history(reg: Register, ref: Reference, counted: int | None) -> list[ElectionHistoryPoint]:
+    """Der Verlauf der Generalprobe: Stände in Zehnerschritten bis ``counted``
+    (ohne Angabe bis zum letzten Wahlbezirk), ab 18:00 Uhr alle 15 Minuten."""
+    target = counted if counted is not None else len(ref.districts)
+    stops = list(range(10, target + 1, 10))
+    if target > 0 and (not stops or stops[-1] != target):
+        stops.append(target)
+    out: list[ElectionHistoryPoint] = []
+    for i, n in enumerate(stops):
+        at = (PROBE_START + i * PROBE_STEP).astimezone(timezone.utc).isoformat(timespec="seconds")
+        point = summary(reg, probe_snapshot(reg, ref, n), at)
+        if point is not None:
+            out.append(point)
+    return out
+
+
 # ------------------------------------------------------------------ Einstiege
 
 _lock = threading.Lock()
@@ -313,7 +379,9 @@ _probes: dict[int | None, ElectionNight] = {}
 
 def build_live() -> ElectionNight:
     snap = votemanager.fetch()
-    return compose(load_register(), load_reference(), snap, "live")
+    night = compose(load_register(), load_reference(), snap, "live")
+    night["history"] = history.record(night)
+    return night
 
 
 def _refresh() -> None:
@@ -352,6 +420,7 @@ def probe(counted: int | None) -> ElectionNight:
             return _probes[counted]
     reg, ref = load_register(), load_reference()
     result = compose(reg, ref, probe_snapshot(reg, ref, counted), "probe")
+    result["history"] = probe_history(reg, ref, counted)
     with _lock:
         _probes[counted] = result
     return result
@@ -363,4 +432,5 @@ def reset() -> None:
         _live = None
         _building = False
         _probes.clear()
+    history.reset()
     votemanager.reset_cache()

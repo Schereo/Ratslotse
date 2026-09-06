@@ -6326,6 +6326,41 @@
         "title": "ElectionCandidate",
         "type": "object"
       },
+      "ElectionHistoryPoint": {
+        "description": "Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "districts_counted": {
+            "title": "Districts Counted",
+            "type": "integer"
+          },
+          "seats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Seats",
+            "type": "object"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          }
+        },
+        "required": [
+          "at",
+          "districts_counted",
+          "shares",
+          "seats"
+        ],
+        "title": "ElectionHistoryPoint",
+        "type": "object"
+      },
       "ElectionInfo": {
         "properties": {
           "date": {
@@ -6421,6 +6456,13 @@
           "election": {
             "$ref": "#/components/schemas/ElectionInfo"
           },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionHistoryPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
           "mandates": {
             "items": {
               "$ref": "#/components/schemas/ElectionMandate"
@@ -6480,7 +6522,8 @@
           "mandates",
           "projected_mandates",
           "notes",
-          "computed_at"
+          "computed_at",
+          "history"
         ],
         "title": "ElectionNight",
         "type": "object"
@@ -21100,6 +21143,89 @@
           }
         },
         "summary": "Wahlabend",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/bild.png": {
+      "get": {
+        "description": "Der Stand als Bild zum Teilen (PNG, 1200×630) — öffentlich wie die\nSeite selbst; Messenger und soziale Netze holen es ohne Konto ab.\n\nOhne ``feld`` zeigt das Bild während der Auszählung die Hochrechnung\n(interessanter als ein Zwischenstand aus 40 Bezirken) und sonst den\nausgezählten Stand.",
+        "operationId": "wahlabend_bild_api_wahlabend_bild_png_get",
+        "parameters": [
+          {
+            "description": "„seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase",
+            "in": "query",
+            "name": "feld",
+            "required": false,
+            "schema": {
+              "description": "„seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase",
+              "pattern": "^(seats|projected_seats)$",
+              "title": "Feld",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Der Stand des Wahlabends als teilbares Bild (PNG, 1200×630 — die Größe, die Messenger und soziale Netze als Vorschau erwarten): Halbkreis der Sitze, Legende, Quelle. `?feld=projected_seats` zeigt die Hochrechnung statt des ausgezählten Standes. Eine Minute cachebar, so schnell ändern sich die Zahlen nicht."
+          },
+          "404": {
+            "description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Bild",
         "tags": [
           "wahlabend"
         ]

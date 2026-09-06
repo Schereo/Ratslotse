@@ -18,23 +18,28 @@ import { Mascot } from "@/components/mascot";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
-import { api } from "@/lib/api";
+import { Verlauf } from "@/components/wahlabend/verlauf";
+import { useFrisch, useTween } from "@/lib/use-tween";
+import { api, apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import {
   LISTE_SPEICHER,
   abfragePfad,
+  bildPfad,
   delta,
   fortschritt,
   kandidatenStatus,
   nachStimmen,
   prozent,
+  sitzgrenze,
   standText,
   uhrzeit,
   zahl,
   type StatusTon,
   type Wahlabend,
   type WahlabendBereich,
+  type WahlabendKandidat,
   type WahlabendPartei,
 } from "@/lib/wahlabend";
 
@@ -43,7 +48,7 @@ const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] te
 const TON: Record<StatusTon, string> = {
   seated: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
   shaky: "bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
-  projected: "bg-primary/8 text-primary",
+  projected: "bg-primary/10 text-primary",
   close: "bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
   open: "bg-muted text-muted-foreground",
   out: "bg-muted text-muted-foreground",
@@ -114,8 +119,11 @@ function Hinweisbild({ pose, titel, text }: { pose: "sleep" | "wave" | "confused
 
 /* ── Anzeigetafel ───────────────────────────────────────────────────────── */
 
-function Tafel({ daten, aktualisiert }: { daten: Wahlabend; aktualisiert: number }) {
+function Tafel({ daten, aktualisiert, probe, counted }: { daten: Wahlabend; aktualisiert: number; probe: string | null; counted: string | null }) {
   const p = daten.progress;
+  const beteiligung = useTween(daten.totals.turnout_pct);
+  const gueltig = useTween(daten.totals.valid_votes);
+  const bild = apiUrl(bildPfad(daten.phase === "counting" ? "projected_seats" : "seats", probe, counted));
   const anteil = fortschritt(p.districts_counted, p.districts_total);
   const stand = standText(daten.source.last_modified ? new Date(daten.source.last_modified).toISOString() : daten.source.fetched_at);
   const phase =
@@ -143,16 +151,24 @@ function Tafel({ daten, aktualisiert }: { daten: Wahlabend; aktualisiert: number
             {daten.source.ok
               ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
               : `Der Votemanager antwortet gerade nicht (${daten.source.error ?? "Fehler"}) — gezeigt wird der letzte Stand.`}
+            {daten.phase !== "before" ? (
+              <>
+                {" · "}
+                <a href={bild} target="_blank" rel="noopener noreferrer" className="font-medium text-primary">
+                  Bild zum Teilen ↗
+                </a>
+              </>
+            ) : null}
           </p>
         </div>
         <dl className="grid grid-cols-3 gap-x-6 gap-y-1 text-right">
           <div>
             <dt className={KICKER}>Wahlbeteiligung</dt>
-            <dd className="font-display text-[24px] font-bold tabular-nums">{prozent(daten.totals.turnout_pct)}</dd>
+            <dd className="font-display text-[24px] font-bold tabular-nums">{prozent(beteiligung)}</dd>
           </div>
           <div>
             <dt className={KICKER}>Gültige Stimmen</dt>
-            <dd className="font-display text-[24px] font-bold tabular-nums">{zahl(daten.totals.valid_votes)}</dd>
+            <dd className="font-display text-[24px] font-bold tabular-nums">{zahl(gueltig === null ? null : Math.round(gueltig))}</dd>
           </div>
           <div>
             <dt className={KICKER}>Sitze</dt>
@@ -183,6 +199,65 @@ function Punkt({ color, dark, className }: { color: string; dark: string; classN
   );
 }
 
+function ListenZeile({
+  p,
+  max,
+  zaehlt,
+  phase,
+  aktiv,
+  waehle,
+}: {
+  p: WahlabendPartei;
+  max: number;
+  zaehlt: boolean;
+  phase: string;
+  aktiv: boolean;
+  waehle: (slug: string) => void;
+}) {
+  const anteil = useTween(p.share_pct);
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => waehle(p.slug)}
+        aria-pressed={aktiv}
+        className={cn(
+          "grid w-full grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-x-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-tipp hover:bg-primary/5 sm:grid-cols-[minmax(0,9rem)_1fr_auto_auto]",
+          aktiv && "bg-primary/5",
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Punkt color={p.color} dark={p.color_dark} />
+          <span className="truncate text-[13px] font-semibold">{p.short}</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/10">
+            <span
+              className={cn("block h-full rounded-full transition-[width] duration-weg", aktiv ? "bg-primary" : "bg-foreground/40")}
+              style={{ width: `${zaehlt ? (100 * (anteil ?? 0)) / max : 0}%` }}
+            />
+          </span>
+          <span className="w-[4.2rem] text-right text-[13px] tabular-nums">{prozent(anteil)}</span>
+        </span>
+        <span className="hidden w-12 text-right font-mono text-[10.5px] text-signal sm:inline tabular-nums">
+          {delta(p.share_pct, p.share_2021_pct) ?? ""}
+        </span>
+        <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
+          {zaehlt ? (
+            <>
+              <strong className="font-semibold text-foreground">{p.seats ?? "–"}</strong>
+              {phase === "counting" ? <> → {p.projected_seats ?? "–"}</> : null}
+            </>
+          ) : (
+            "–"
+          )}
+          <span className="hidden sm:inline"> · 2021: {p.seats_2021 ?? 0}</span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
 function ListenTafel({ daten, liste, waehle }: { daten: Wahlabend; liste: string | null; waehle: (slug: string) => void }) {
   const sortiert = nachStimmen(daten.parties);
   const max = Math.max(1, ...daten.parties.map((p) => p.share_pct ?? 0));
@@ -195,45 +270,7 @@ function ListenTafel({ daten, liste, waehle }: { daten: Wahlabend; liste: string
       </div>
       <ol className="mt-3 rounded-2xl border border-border bg-card p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         {sortiert.map((p) => (
-          <li key={p.slug}>
-            <button
-              type="button"
-              onClick={() => waehle(p.slug)}
-              aria-pressed={liste === p.slug}
-              className={cn(
-                "grid w-full grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-x-3 rounded-lg px-2 py-1.5 text-left transition-colors duration-tipp hover:bg-primary/5 sm:grid-cols-[minmax(0,9rem)_1fr_auto_auto]",
-                liste === p.slug && "bg-primary/5",
-              )}
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <Punkt color={p.color} dark={p.color_dark} />
-                <span className="truncate text-[13px] font-semibold">{p.short}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/10">
-                  <span
-                    className={cn("block h-full rounded-full transition-[width] duration-weg", liste === p.slug ? "bg-primary" : "bg-foreground/40")}
-                    style={{ width: `${zaehlt ? (100 * (p.share_pct ?? 0)) / max : 0}%` }}
-                  />
-                </span>
-                <span className="w-[4.2rem] text-right text-[13px] tabular-nums">{prozent(p.share_pct)}</span>
-              </span>
-              <span className="hidden w-12 text-right font-mono text-[10.5px] text-signal sm:inline tabular-nums">
-                {delta(p.share_pct, p.share_2021_pct) ?? ""}
-              </span>
-              <span className="text-right text-[12.5px] tabular-nums text-muted-foreground">
-                {zaehlt ? (
-                  <>
-                    <strong className="font-semibold text-foreground">{p.seats ?? "–"}</strong>
-                    {daten.phase === "counting" ? <> → {p.projected_seats ?? "–"}</> : null}
-                  </>
-                ) : (
-                  "–"
-                )}
-                <span className="hidden sm:inline"> · 2021: {p.seats_2021 ?? 0}</span>
-              </span>
-            </button>
-          </li>
+          <ListenZeile key={p.slug} p={p} max={max} zaehlt={zaehlt} phase={daten.phase} aktiv={liste === p.slug} waehle={waehle} />
         ))}
       </ol>
       <p className="mt-2 text-[11.5px] text-muted-foreground">
@@ -360,11 +397,73 @@ function ListenWahl({ parteien, liste, waehle }: { parteien: readonly WahlabendP
 
 /* ── Wahlbereiche ───────────────────────────────────────────────────────── */
 
+/** Eine Kandidatur im Rennen: Name, Status, Stimmen — und der Balken, der
+ *  sie zur stärksten Person der Liste ins Verhältnis setzt. Die Marke ist
+ *  die Sitzgrenze (schwächster Personensitz), wo es eine gibt. */
+function KandidatZeile({
+  k,
+  max,
+  grenze,
+  rang,
+  status,
+  hochrechnung,
+}: {
+  k: WahlabendKandidat;
+  max: number;
+  grenze: number | null;
+  rang: number;
+  status: { ton: StatusTon; text: string };
+  hochrechnung: boolean;
+}) {
+  const stimmen = useTween(k.votes);
+  const breite = stimmen === null || max <= 0 ? 0 : Math.max(1.5, (100 * stimmen) / max);
+  const drin = k.elected !== null;
+  return (
+    <li className="flex items-start gap-2.5 py-2">
+      <span className="w-5 flex-none pt-0.5 font-mono text-[10.5px] text-muted-foreground tabular-nums">{k.position}</span>
+      <span className="min-w-0 flex-1">
+        <span className={cn("block truncate text-[13px]", drin ? "font-semibold" : "font-medium")}>{k.name}</span>
+        <span className="block truncate text-[11.5px] text-muted-foreground">
+          {[k.occupation, k.born ? `*${k.born}` : null].filter(Boolean).join(" · ")}
+        </span>
+        {k.votes !== null ? (
+          <span aria-hidden className="relative mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-foreground/10">
+            <span
+              className={cn("gb-balken-auf block h-full rounded-full transition-[width] duration-weg", drin ? "bg-primary" : "bg-foreground/35")}
+              style={{ width: `${breite}%`, animationDelay: `${rang * 40}ms` }}
+            />
+            {grenze !== null && max > 0 ? (
+              <span className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-signal" style={{ left: `${Math.min(100, (100 * grenze) / max)}%` }} />
+            ) : null}
+          </span>
+        ) : null}
+        <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold", TON[status.ton])}>{status.text}</span>
+      </span>
+      <span className="flex-none text-right">
+        <span className="block text-[13px] font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</span>
+        {hochrechnung && k.projected_votes !== null ? (
+          <span className="block text-[10.5px] text-muted-foreground tabular-nums">→ {zahl(k.projected_votes)}</span>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
 function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slug: string; daten: Wahlabend }) {
   const eintrag = bereich.parties.find((p) => p.slug === slug);
   const zaehlt = daten.phase !== "before" && bereich.districts_counted > 0;
+  const frisch = useFrisch(bereich.districts_counted);
+  const anteil = useTween(eintrag?.share_pct);
+  const stimmen = useTween(eintrag?.votes);
+  const max = Math.max(0, ...(eintrag?.candidates ?? []).map((k) => k.votes ?? 0));
+  const grenze = eintrag ? sitzgrenze(eintrag.candidates) : null;
   return (
-    <article className="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <article
+      className={cn(
+        "flex flex-col rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow duration-buehne",
+        frisch && "shadow-lifted ring-2 ring-primary/40",
+      )}
+    >
       <div className="flex items-baseline justify-between gap-3">
         <div>
           <p className={KICKER}>Wahlbereich {bereich.roman}</p>
@@ -379,11 +478,11 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
           <dl className="mt-3 flex items-end gap-5">
             <div>
               <dt className={KICKER}>Anteil</dt>
-              <dd className="font-display text-[22px] font-bold leading-none tabular-nums">{zaehlt ? prozent(eintrag.share_pct) : "–"}</dd>
+              <dd className="font-display text-[22px] font-bold leading-none tabular-nums">{zaehlt ? prozent(anteil) : "–"}</dd>
             </div>
             <div>
               <dt className={KICKER}>Stimmen</dt>
-              <dd className="font-display text-[22px] font-bold leading-none tabular-nums">{zaehlt ? zahl(eintrag.votes) : "–"}</dd>
+              <dd className="font-display text-[22px] font-bold leading-none tabular-nums">{zaehlt ? zahl(stimmen === null ? null : Math.round(stimmen)) : "–"}</dd>
             </div>
             <div>
               <dt className={KICKER}>Sitze{daten.phase === "counting" ? " · Hochr." : ""}</dt>
@@ -394,31 +493,22 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
             </div>
           </dl>
           <ol className="mt-4 divide-y divide-border/70 border-t border-border/70">
-            {eintrag.candidates.map((k) => {
-              const s = kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0);
-              return (
-                <li key={k.position} className="flex items-start gap-2.5 py-2">
-                  <span className="w-5 flex-none pt-0.5 font-mono text-[10.5px] text-muted-foreground tabular-nums">{k.position}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium">{k.name}</span>
-                    <span className="block truncate text-[11.5px] text-muted-foreground">
-                      {[k.occupation, k.born ? `*${k.born}` : null].filter(Boolean).join(" · ")}
-                    </span>
-                    <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold", TON[s.ton])}>{s.text}</span>
-                  </span>
-                  <span className="flex-none text-right">
-                    <span className="block text-[13px] font-semibold tabular-nums">{zahl(k.votes)}</span>
-                    {daten.phase === "counting" && k.projected_votes !== null ? (
-                      <span className="block text-[10.5px] text-muted-foreground tabular-nums">→ {zahl(k.projected_votes)}</span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
+            {eintrag.candidates.map((k, i) => (
+              <KandidatZeile
+                key={k.position}
+                k={k}
+                max={max}
+                grenze={grenze}
+                rang={i}
+                status={kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0)}
+                hochrechnung={daten.phase === "counting"}
+              />
+            ))}
           </ol>
           {zaehlt ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
               Liste {zahl(eintrag.list_votes)} · Personen {zahl(eintrag.candidate_votes)}
+              {grenze !== null ? <> · Marke: Sitzgrenze bei {zahl(grenze)}</> : null}
             </p>
           ) : null}
         </>
@@ -573,7 +663,7 @@ export function WahlabendView() {
             von 2026. Nichts davon ist ein Ergebnis vom 13. September.
           </p>
         ) : null}
-        <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} />
+        <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
             Die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden erfahrungsgemäß gegen 20 Uhr; 2021 lag das
@@ -583,6 +673,7 @@ export function WahlabendView() {
         <ListenTafel daten={daten} liste={liste} waehle={waehle} />
         <Sitzbild daten={daten} />
         <MehrheitenBlock daten={daten} />
+        <Verlauf daten={daten} liste={liste} />
         <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
         <Bereiche daten={daten} liste={liste} />
         <Mandate daten={daten} />

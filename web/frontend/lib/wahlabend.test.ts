@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abfragePfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, standText, uhrzeit, zahl } from "./wahlabend";
+import { abfragePfad, bildPfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, zahl } from "./wahlabend";
 
 describe("Formate", () => {
   it("Zahlen und Prozente auf Deutsch, Lücken als Strich", () => {
@@ -101,5 +101,17 @@ describe("Mehrheiten und Halbkreis", () => {
     expect(h.every((q) => q.x >= 0 && q.x <= 2 && q.y >= 0 && q.y <= 1 && q.r > 0)).toBe(true);
     expect(new Set(h.map((q) => q.reihe)).size).toBe(3);
     expect(halbkreis(0)).toEqual([]);
+  });
+});
+
+describe("Kandidatenrennen und Bild", () => {
+  it("Sitzgrenze ist der schwächste Personensitz, ohne Personensitz keine", () => {
+    expect(sitzgrenze([{ votes: 900, elected: "direct" }, { votes: 400, elected: "direct" }, { votes: 380, elected: null }])).toBe(400);
+    expect(sitzgrenze([{ votes: 213, elected: "list" }, { votes: 201, elected: null }])).toBeNull();
+    expect(sitzgrenze([])).toBeNull();
+  });
+  it("Bildpfad trägt Feld und Probe-Parameter", () => {
+    expect(bildPfad("seats", null, null)).toBe("/wahlabend/bild.png?feld=seats");
+    expect(bildPfad("projected_seats", "2021", "60")).toBe("/wahlabend/bild.png?feld=projected_seats&probe=2021&counted=60");
   });
 });

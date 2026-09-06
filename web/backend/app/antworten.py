@@ -2961,6 +2961,21 @@ PLANZEICHNUNG_JPEG: dict[int | str, dict[str, Any]] = {
 }
 
 
+WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Der Stand des Wahlabends als teilbares Bild (PNG, 1200×630 — die "
+            "Größe, die Messenger und soziale Netze als Vorschau erwarten): "
+            "Halbkreis der Sitze, Legende, Quelle. `?feld=projected_seats` "
+            "zeigt die Hochrechnung statt des ausgezählten Standes. Eine "
+            "Minute cachebar, so schnell ändern sich die Zahlen nicht."
+        ),
+        "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."},
+}
+
+
 # --------------------------------------------------------------------------
 # Wahlabend (Ratswahl 13.09.2026) — GET /api/wahlabend
 # --------------------------------------------------------------------------
@@ -3063,6 +3078,16 @@ class ElectionMandate(TypedDict):
     kind: str
 
 
+class ElectionHistoryPoint(TypedDict):
+    """Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze)."""
+    at: str
+    districts_counted: int
+    #: Slug -> Stimmenanteil in Prozent (nur Listen mit Stimmen).
+    shares: dict[str, float]
+    #: Slug -> Sitze nach aktuellem Stand.
+    seats: dict[str, int]
+
+
 class ElectionNight(TypedDict):
     #: "live" (Votemanager) oder "probe" (Zahlen von 2021 im Register von 2026).
     dataset: str
@@ -3080,3 +3105,5 @@ class ElectionNight(TypedDict):
     #: Menschentext: Losfälle, unbesetzte Sitze, fehlende Personenstimmen.
     notes: list[str]
     computed_at: str
+    #: Der Verlauf des Abends, ältester Punkt zuerst; leer vor der Auszählung.
+    history: list[ElectionHistoryPoint]

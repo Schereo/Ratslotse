@@ -255,6 +255,63 @@ Abgefragt wird einmal je Minute (`refetchInterval`), passend zum Cache des
 Votemanagers. Drei Zustände ohne Zahlen sind ausdrücklich gestaltet: Schalter
 aus, Abruf gescheitert, Phase `before` vor der ersten Meldung.
 
+### Halbkreis, Mehrheiten, Verlauf, Rennen
+
+Vier Bausteine kamen am 06.09.2026 nach Tims Wunsch dazu; alle rechnen mit den
+Zahlen, die der Endpunkt ohnehin liefert:
+
+- **Halbkreis der Sitze** (`components/wahlabend/halbkreis.tsx`): ein Punkt je
+  Sitz in Listenfarbe (Designsprache: Parteifarben nur als Punkte, nie als
+  Flächen), Listen in Stimmzettel-Reihenfolge von links nach rechts, die
+  Mehrheitslinie in der Mitte. Während der Auszählung stehen Stand und
+  Hochrechnung nebeneinander. Die Geometrie (`halbkreis()` in
+  `lib/wahlabend.ts`) verteilt die Plätze auf drei Reihen im Verhältnis ihres
+  Umfangs; das Bild zum Teilen (s. u.) rechnet dieselbe Geometrie in Python nach.
+- **Mehrheiten im Rat** (`mehrheiten.tsx`): Listen antippen, die Leiste zeigt
+  die Summe gegen die Marke „Mehrheit ab 27“ (`mehrheit()` = mehr als die
+  Hälfte der 52 Sitze). Darunter alle **minimalen** Mehrheitsbündnisse bis drei
+  Partner (`koalitionen()`): Gruppen, aus denen kein Partner entfallen könnte,
+  ohne die Mehrheit zu verlieren. Rein rechnerisch, ohne Aussage, wer mit wem
+  will; die 53. Stimme der Oberbürgermeisterin bzw. des Oberbürgermeisters
+  steht als Hinweis dabei.
+- **Gewinne und Verluste**: Punkte gegenüber 2021 als Balken um die Nulllinie,
+  Deltas in Signal-Orange.
+- **Der Verlauf des Abends** (`verlauf.tsx`): zwei Treppenlinien über die
+  Uhrzeit — der Anteil der gewählten Liste und die Zahl der ausgezählten
+  Wahlbezirke — mit einer gemeinsamen Ableseleiste aus dem Grafik-Baukasten.
+  Treppe (`curveStepAfter`), weil sich zwischen zwei Meldungen nichts ändert.
+  Die Punkte liefert das Feld `history` des Endpunkts.
+- **Kandidatenrennen**: In jeder Wahlbereich-Karte trägt jede Kandidatur einen
+  Balken relativ zur stärksten Person der Liste; die Marke in Signal-Orange ist
+  die Sitzgrenze — die Stimmen des schwächsten Personensitzes (`sitzgrenze()`),
+  nur wo es einen gibt. Ein Wahlbereich, der gerade neue Bezirke gemeldet hat,
+  leuchtet kurz auf; Zahlen gleiten statt zu springen (`lib/use-tween.ts`,
+  höchstens 300 ms, beim ersten Rendern sofort).
+
+## Der Verlauf (`history`)
+
+`web/backend/app/election/history.py` hält die Minutenstände des Abends: ein
+Punkt je Änderung (ausgezählte Bezirke, Anteile oder Sitze anders als zuvor),
+höchstens 1.440, als JSON-Datei unter `data/wahlabend-verlauf.json`
+(Umgebungsvariable `WAHLABEND_HISTORY_FILE`), atomar geschrieben, damit ein
+Deploy am Wahlabend den Verlauf nicht löscht. Ein unschreibbarer Pfad wird
+geloggt und stört den Endpunkt nicht. Die Generalprobe erzeugt sich eine
+synthetische Reihe (Stände bei 10, 20, … Bezirken, ab 18 Uhr im
+Viertelstundentakt) und schreibt nichts in die Datei.
+
+## Das Bild zum Teilen (`bild.png`)
+
+`GET /api/wahlabend/bild.png` liefert den Stand als PNG in 1200 × 630 — die
+Größe, die Messenger und soziale Netze als Vorschau erwarten: Kicker, Titel,
+Stand-Zeile, Halbkreis mit Mehrheitslinie, Legende, Quelle. Query wie beim
+JSON-Endpunkt (`probe`, `counted`) plus `feld` (`seats` oder
+`projected_seats`; ohne Angabe während der Auszählung die Hochrechnung, sonst
+der Stand). Gerendert mit Pillow in `election/image.py`, in doppelter Größe
+und mit LANCZOS verkleinert; Schriften aus `ios/Resources/Fonts/`, mit
+Rückfall auf die Pillow-Schrift, damit das Bild nie an einer Schrift
+scheitert. 60 Sekunden Cache je Stand. Hinter demselben Schalter wie die
+Seite; die Seite verlinkt es in der Anzeigetafel als „Bild zum Teilen“.
+
 ## Was am Wahlsonntag noch offen ist
 
 **Ob die Personenstimmen mit ausgezählt werden oder zunächst nur die Summen je

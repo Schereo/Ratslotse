@@ -22,6 +22,8 @@ os.environ.setdefault("RATSLOTSE_DB", str(Path(_TMP) / "ratslotse.sqlite"))
 os.environ.setdefault("COUNCIL_DB", str(Path(_TMP) / "council.sqlite"))
 os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
+# Der Verlauf des Wahlabends gehört im Test in den tmp-Ordner, nie nach data/.
+os.environ.setdefault("WAHLABEND_HISTORY_FILE", str(Path(_TMP) / "wahlabend-verlauf.json"))
 
 from app.election import reference, register, service, votemanager  # noqa: E402
 from app.election.projection import project  # noqa: E402

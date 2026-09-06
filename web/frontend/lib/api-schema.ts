@@ -4090,6 +4090,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/bild.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Bild
+         * @description Der Stand als Bild zum Teilen (PNG, 1200×630) — öffentlich wie die
+         *     Seite selbst; Messenger und soziale Netze holen es ohne Konto ab.
+         *
+         *     Ohne ``feld`` zeigt das Bild während der Auszählung die Hochrechnung
+         *     (interessanter als ein Zwischenstand aus 40 Bezirken) und sonst den
+         *     ausgezählten Stand.
+         */
+        get: operations["wahlabend_bild_api_wahlabend_bild_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6669,6 +6694,24 @@ export interface components {
             /** Votes To Seat */
             votes_to_seat: number | null;
         };
+        /**
+         * ElectionHistoryPoint
+         * @description Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).
+         */
+        ElectionHistoryPoint: {
+            /** At */
+            at: string;
+            /** Districts Counted */
+            districts_counted: number;
+            /** Seats */
+            seats: {
+                [key: string]: number;
+            };
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+        };
         /** ElectionInfo */
         ElectionInfo: {
             /** Date */
@@ -6704,6 +6747,8 @@ export interface components {
             /** Dataset */
             dataset: string;
             election: components["schemas"]["ElectionInfo"];
+            /** History */
+            history: components["schemas"]["ElectionHistoryPoint"][];
             /** Mandates */
             mandates: components["schemas"]["ElectionMandate"][];
             /** Notes */
@@ -14871,6 +14916,49 @@ export interface operations {
             };
         };
     };
+    wahlabend_bild_api_wahlabend_bild_png_get: {
+        parameters: {
+            query?: {
+                /** @description „seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase */
+                feld?: string | null;
+                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Der Stand des Wahlabends als teilbares Bild (PNG, 1200×630 — die Größe, die Messenger und soziale Netze als Vorschau erwarten): Halbkreis der Sitze, Legende, Quelle. `?feld=projected_seats` zeigt die Hochrechnung statt des ausgezählten Standes. Eine Minute cachebar, so schnell ändern sich die Zahlen nicht. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }
 
-// vertrag-sha256: 47cab9c73126116cfda88170844cf54e95f033dab189192a9c951b5e38837eca
+// vertrag-sha256: c5f41a05e94595130483f05685a70a0f49c1293a239a44b91e67ca0f73a9fd5c

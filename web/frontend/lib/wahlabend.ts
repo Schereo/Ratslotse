@@ -200,3 +200,21 @@ export function halbkreis(n: number, reihen = 3, innen = 0.48): HalbkreisPunkt[]
     .sort((a, b) => b.winkel - a.winkel || a.reihe - b.reihe)
     .map(({ x, y, r, reihe }) => ({ x, y, r, reihe }));
 }
+
+/* ── Kandidatenrennen und Bild ──────────────────────────────────────────── */
+
+/** Die Sitzgrenze einer Liste im Wahlbereich: die Stimmen des schwächsten
+ *  Personensitzes. Ohne Personensitz gibt es keine Grenze (null) — ein
+ *  Listensitz hängt an der Reihenfolge, nicht an einer Stimmenzahl. */
+export function sitzgrenze(kandidaten: readonly Pick<WahlabendKandidat, "votes" | "elected">[]): number | null {
+  const direkt = kandidaten.filter((k) => k.elected === "direct" && k.votes !== null).map((k) => k.votes as number);
+  return direkt.length ? Math.min(...direkt) : null;
+}
+
+/** Pfad des teilbaren Bilds (ohne `/api`, wie bei `api.get`). */
+export function bildPfad(feld: "seats" | "projected_seats", probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams({ feld });
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  return `/wahlabend/bild.png?${q.toString()}`;
+}
