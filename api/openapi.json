@@ -5569,6 +5569,453 @@
         "title": "DisplayNameIn",
         "type": "object"
       },
+      "DistrictInvestment": {
+        "description": "Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "programme_year": {
+            "title": "Programme Year",
+            "type": "integer"
+          },
+          "total_eur": {
+            "title": "Total Eur",
+            "type": "number"
+          }
+        },
+        "required": [
+          "programme_year",
+          "code",
+          "label",
+          "total_eur",
+          "location"
+        ],
+        "title": "DistrictInvestment",
+        "type": "object"
+      },
+      "DistrictNeighbour": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "count"
+        ],
+        "title": "DistrictNeighbour",
+        "type": "object"
+      },
+      "DistrictParticipation": {
+        "description": "Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.",
+        "properties": {
+          "place": {
+            "title": "Place",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_nrs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plan Nrs",
+            "type": "array"
+          },
+          "step": {
+            "title": "Step",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_from": {
+            "title": "Valid From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_until": {
+            "title": "Valid Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "place",
+          "step",
+          "valid_from",
+          "valid_until",
+          "url",
+          "plan_nrs"
+        ],
+        "title": "DistrictParticipation",
+        "type": "object"
+      },
+      "DistrictProject": {
+        "description": "Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).\n\n``stage`` ist einer von ``idea | planning | decided | building | done |\nrejected``, ``category`` einer von ``housing | traffic | school_childcare |\ngreen | culture_sport_social | other``. ``when`` ist Menschentext („2027“,\n„ab Kita-Jahr 2026/2027“) oder null — nie geraten.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "first_date": {
+            "title": "First Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectLocation"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "project_key": {
+            "title": "Project Key",
+            "type": "string"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "reported": {
+            "title": "Reported",
+            "type": "boolean"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          },
+          "when": {
+            "title": "When",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "project_key",
+          "place_id",
+          "name",
+          "what",
+          "stage",
+          "when",
+          "category",
+          "confidence",
+          "first_date",
+          "last_date",
+          "report_count",
+          "hidden",
+          "reported",
+          "decisions",
+          "locations"
+        ],
+        "title": "DistrictProject",
+        "type": "object"
+      },
+      "DistrictProjectDecision": {
+        "description": "Ein Beschluss, der zu einem Vorhaben gehört — genug für die Zeile mit Link.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "outcome",
+          "date",
+          "committee"
+        ],
+        "title": "DistrictProjectDecision",
+        "type": "object"
+      },
+      "DistrictProjectLocation": {
+        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.",
+        "properties": {
+          "geometry": {
+            "title": "Geometry"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "geometry"
+        ],
+        "title": "DistrictProjectLocation",
+        "type": "object"
+      },
+      "DistrictProjectReportOut": {
+        "properties": {
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "report_count",
+          "hidden"
+        ],
+        "title": "DistrictProjectReportOut",
+        "type": "object"
+      },
+      "DistrictProjects": {
+        "description": "``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.",
+        "properties": {
+          "investments": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictInvestment"
+            },
+            "title": "Investments",
+            "type": "array"
+          },
+          "neighbours": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictNeighbour"
+            },
+            "title": "Neighbours",
+            "type": "array"
+          },
+          "participations": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictParticipation"
+            },
+            "title": "Participations",
+            "type": "array"
+          },
+          "place": {
+            "title": "Place"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictUpcomingItem"
+            },
+            "title": "Upcoming",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "place",
+          "projects",
+          "upcoming",
+          "investments",
+          "participations",
+          "neighbours",
+          "updated_at"
+        ],
+        "title": "DistrictProjects",
+        "type": "object"
+      },
+      "DistrictProjectsOverview": {
+        "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.",
+        "properties": {
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectsOverviewEntry"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "districts",
+          "updated_at"
+        ],
+        "title": "DistrictProjectsOverview",
+        "type": "object"
+      },
+      "DistrictProjectsOverviewEntry": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "count",
+          "last_date"
+        ],
+        "title": "DistrictProjectsOverviewEntry",
+        "type": "object"
+      },
       "DistrictSuggestions": {
         "description": "Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.",
         "properties": {
@@ -5607,6 +6054,72 @@
           "months"
         ],
         "title": "DistrictSuggestions",
+        "type": "object"
+      },
+      "DistrictUpcomingItem": {
+        "description": "Ein Tagesordnungspunkt einer kommenden Sitzung, dessen Titel einen Ort des Viertels nennt.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ksinr",
+          "item_number",
+          "title",
+          "kvonr",
+          "session_date",
+          "session_time",
+          "committee",
+          "location"
+        ],
+        "title": "DistrictUpcomingItem",
         "type": "object"
       },
       "Districts": {
@@ -8686,6 +9199,20 @@
           "fields"
         ],
         "title": "PolicyFields",
+        "type": "object"
+      },
+      "ProjectReportIn": {
+        "properties": {
+          "reason": {
+            "maxLength": 300,
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "ProjectReportIn",
         "type": "object"
       },
       "PublicNumbers": {
@@ -17895,6 +18422,124 @@
         "summary": "Zahl Der Woche",
         "tags": [
           "council"
+        ]
+      }
+    },
+    "/api/districts/projects": {
+      "get": {
+        "description": "Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.",
+        "operationId": "district_projects_overview_api_districts_projects_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectsOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "District Projects Overview",
+        "tags": [
+          "districts"
+        ]
+      }
+    },
+    "/api/districts/projects/{project_id}/report": {
+      "post": {
+        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung.",
+        "operationId": "report_project_api_districts_projects__project_id__report_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report Project",
+        "tags": [
+          "districts"
+        ]
+      }
+    },
+    "/api/districts/{place_id}/projects": {
+      "get": {
+        "description": "Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im\nRat ansteht, was im Investitionsprogramm steht und wo gerade eine\nBeteiligung läuft.",
+        "operationId": "district_projects_api_districts__place_id__projects_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "title": "Place Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjects"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "District Projects",
+        "tags": [
+          "districts"
         ]
       }
     },

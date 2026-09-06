@@ -3142,6 +3142,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/districts/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Projects Overview
+         * @description Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.
+         */
+        get: operations["district_projects_overview_api_districts_projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/districts/projects/{project_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Project
+         * @description „Gehört nicht hierher": Ein Konto meldet ein Vorhaben als falsch verortet.
+         *     Ab zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim
+         *     Konto und geht mit dessen Löschung.
+         */
+        post: operations["report_project_api_districts_projects__project_id__report_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/districts/{place_id}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Projects
+         * @description Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im
+         *     Rat ansteht, was im Investitionsprogramm steht und wo gerade eine
+         *     Beteiligung läuft.
+         */
+        get: operations["district_projects_api_districts__place_id__projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/feedback": {
         parameters: {
             query?: never;
@@ -6315,6 +6379,178 @@ export interface components {
             display_name?: string | null;
         };
         /**
+         * DistrictInvestment
+         * @description Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.
+         */
+        DistrictInvestment: {
+            /** Code */
+            code: string | null;
+            /** Label */
+            label: string;
+            /** Location */
+            location: string;
+            /** Programme Year */
+            programme_year: number;
+            /** Total Eur */
+            total_eur: number;
+        };
+        /** DistrictNeighbour */
+        DistrictNeighbour: {
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+        };
+        /**
+         * DistrictParticipation
+         * @description Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.
+         */
+        DistrictParticipation: {
+            /** Place */
+            place: string | null;
+            /** Plan Nrs */
+            plan_nrs: string[];
+            /** Step */
+            step: string | null;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /**
+         * DistrictProject
+         * @description Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
+         *
+         *     ``stage`` ist einer von ``idea | planning | decided | building | done |
+         *     rejected``, ``category`` einer von ``housing | traffic | school_childcare |
+         *     green | culture_sport_social | other``. ``when`` ist Menschentext („2027“,
+         *     „ab Kita-Jahr 2026/2027“) oder null — nie geraten.
+         */
+        DistrictProject: {
+            /** Category */
+            category: string;
+            /** Confidence */
+            confidence: number;
+            /** Decisions */
+            decisions: components["schemas"]["DistrictProjectDecision"][];
+            /** First Date */
+            first_date: string | null;
+            /** Hidden */
+            hidden: boolean;
+            /** Id */
+            id: number;
+            /** Last Date */
+            last_date: string | null;
+            /** Locations */
+            locations: components["schemas"]["DistrictProjectLocation"][];
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Project Key */
+            project_key: string;
+            /** Report Count */
+            report_count: number;
+            /** Reported */
+            reported: boolean;
+            /** Stage */
+            stage: string;
+            /** What */
+            what: string;
+            /** When */
+            when: string | null;
+        };
+        /**
+         * DistrictProjectDecision
+         * @description Ein Beschluss, der zu einem Vorhaben gehört — genug für die Zeile mit Link.
+         */
+        DistrictProjectDecision: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * DistrictProjectLocation
+         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.
+         */
+        DistrictProjectLocation: {
+            /** Geometry */
+            geometry: unknown;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** DistrictProjectReportOut */
+        DistrictProjectReportOut: {
+            /** Hidden */
+            hidden: boolean;
+            /** Ok */
+            ok: boolean;
+            /** Report Count */
+            report_count: number;
+        };
+        /**
+         * DistrictProjects
+         * @description ``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.
+         */
+        DistrictProjects: {
+            /** Investments */
+            investments: components["schemas"]["DistrictInvestment"][];
+            /** Neighbours */
+            neighbours: components["schemas"]["DistrictNeighbour"][];
+            /** Participations */
+            participations: components["schemas"]["DistrictParticipation"][];
+            /** Place */
+            place: unknown;
+            /** Projects */
+            projects: components["schemas"]["DistrictProject"][];
+            /** Upcoming */
+            upcoming: components["schemas"]["DistrictUpcomingItem"][];
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /**
+         * DistrictProjectsOverview
+         * @description ``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.
+         */
+        DistrictProjectsOverview: {
+            /** Districts */
+            districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** DistrictProjectsOverviewEntry */
+        DistrictProjectsOverviewEntry: {
+            /** Count */
+            count: number;
+            /** Last Date */
+            last_date: string | null;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+        };
+        /**
          * DistrictSuggestions
          * @description Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.
          */
@@ -6329,6 +6565,30 @@ export interface components {
             place_id: string;
             /** Suggestions */
             suggestions: components["schemas"]["LocalSuggestion"][];
+        };
+        /**
+         * DistrictUpcomingItem
+         * @description Ein Tagesordnungspunkt einer kommenden Sitzung, dessen Titel einen Ort des Viertels nennt.
+         */
+        DistrictUpcomingItem: {
+            /** Committee */
+            committee: string | null;
+            /** Id */
+            id: number;
+            /** Item Number */
+            item_number: string | null;
+            /** Ksinr */
+            ksinr: number;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Location */
+            location: string;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string | null;
+            /** Title */
+            title: string;
         };
         /** Districts */
         Districts: {
@@ -7605,6 +7865,11 @@ export interface components {
         PolicyFields: {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
+        };
+        /** ProjectReportIn */
+        ProjectReportIn: {
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * PublicNumbers
@@ -12915,6 +13180,92 @@ export interface operations {
             };
         };
     };
+    district_projects_overview_api_districts_projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjectsOverview"];
+                };
+            };
+        };
+    };
+    report_project_api_districts_projects__project_id__report_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjectReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    district_projects_api_districts__place_id__projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjects"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_feedback_api_feedback_post: {
         parameters: {
             query?: never;
@@ -14288,4 +14639,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6179e2f1f62ffc307456e81738ff39bccb6ae8b3fb8f516412412bdb34e32302
+// vertrag-sha256: 69fdbee1e88a231161e7b496a4fdcb9b8f1d014394a5e3b3f64fbdfa73cf95aa

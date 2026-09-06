@@ -387,6 +387,12 @@ private struct MainTabsView: View {
             case "place-detail":
                 model.selectedTab = .council
                 model.navigation = [.place(id: "pferdemarkt")]
+            case "district":
+                model.selectedTab = .today
+                model.navigation = [.district(id: ratsDebugValue("RATSLOTSE_DEBUG_DISTRICT") ?? "eversten")]
+            case "district-chooser":
+                model.selectedTab = .today
+                model.navigation = [.district(id: nil)]
             case "decisions":
                 model.navigation.removeAll()
                 model.councilSection = .decisions
@@ -865,6 +871,9 @@ struct RouteDestinationView: View {
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
+        case .district(let id):
+            if let id { DistrictBoardView(model: model, placeID: id) }
+            else { DistrictChooserView(model: model) }
         case .quiz(let area): QuizView(model: model, area: area)
         case .analysis: CouncilInsightsView(model: model)
         case .admin: AdminView(model: model)

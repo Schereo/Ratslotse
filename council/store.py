@@ -35,6 +35,7 @@ from council.store_schema import (  # noqa: F401
 )
 from council.store_sitzungen import SitzungenMixin
 from council.store_themen import ThemenMixin
+from council.store_viertel import ViertelMixin
 from council.store_wortbeitraege import WortbeitraegeMixin
 
 
@@ -61,6 +62,9 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     # KI-Feedback (5a/I-03): Frage und Grund sind Freitext und können
     # Persönliches tragen — beim Konto-Löschen mit weg, kein Sonderfall.
     ("council_qa_feedback", "user_id"),
+    # „Gehört nicht hierher"-Meldungen zu Vorhaben (Mein Viertel): Grund ist
+    # Freitext, und wer was gemeldet hat, geht beim Konto-Löschen mit.
+    ("council_district_project_reports", "owner_id"),
 )
 
 
@@ -79,7 +83,7 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
 # Datei nicht an.
 class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PresseMixin, QuizMixin, SchemaMixin, SitzungenMixin,
-                   ThemenMixin, WortbeitraegeMixin, *_geld.MIXINS):
+                   ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):
         self._path = path
         require_database_available(path)
