@@ -111,6 +111,17 @@ def test_preflight_rejects_backup_with_same_timestamp_as_marker(tmp_path):
         verify(tmp_path, marker)
 
 
+def test_preflight_accepts_source_that_grew_after_the_backup(tmp_path):
+    """Die Quelle lebt: Schreibt der API-Dienst zwischen Backup und Prüfung
+    eine Zeile, ist das Backup trotzdem in Ordnung (06.09.2026: der vierte
+    Deploy-Anlauf blieb genau daran hängen)."""
+    marker = _setup(tmp_path, account_name="ratslotse.sqlite")
+    with sqlite3.connect(tmp_path / "data" / "council.sqlite") as connection:
+        connection.execute("INSERT INTO council_sessions (id) VALUES (99)")
+    council, _account = verify(tmp_path, marker)
+    assert council.rows >= 1
+
+
 def test_preflight_rejects_backup_with_different_row_count(tmp_path):
     marker = _setup(tmp_path, account_name="ratslotse.sqlite")
     backup = tmp_path / "data" / "backups" / "council_2026-09-03.sqlite"

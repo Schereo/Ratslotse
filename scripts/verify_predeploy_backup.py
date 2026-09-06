@@ -171,10 +171,28 @@ def _fresh_backup(source: DatabaseState, backup_dir: Path, marker: Path) -> Data
         raise PreflightError(
             f"Backup für {source.path.name} hat nicht dasselbe Schema wie die Quelle"
         )
-    if state.table_rows != source.table_rows:
+    # Die Quelle LEBT: Der API-Dienst läuft während des Backups weiter und
+    # schreibt (Sitzungen, Nutzungszähler, Job-Läufe). Ein Zeilenvergleich
+    # gegen den Stand VOR dem Backup scheiterte deshalb am 06.09.2026 an
+    # einer Tabelle, die zwischen den beiden Blicken gewachsen war — und
+    # blockierte den vierten Anlauf eines Deploys, dessen Backup in Ordnung
+    # war. Deshalb ein zweiter Blick auf die Quelle NACH dem Backup: Was
+    # sich dazwischen nicht bewegt hat, muss im Backup genau so stehen; was
+    # sich bewegt hat, muss im Backup zwischen beiden Ständen liegen.
+    source_now = inspect_database(source.path, source.required_table)
+    before = dict(source.table_rows)
+    after = dict(source_now.table_rows)
+    backup_rows = dict(state.table_rows)
+    if set(backup_rows) != set(before) or set(after) != set(before):
         raise PreflightError(
             f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest"
         )
+    for table, rows in backup_rows.items():
+        lo, hi = sorted((before[table], after[table]))
+        if not lo <= rows <= hi:
+            raise PreflightError(
+                f"Backup für {source.path.name} hat ein abweichendes Tabellenmanifest"
+            )
     return state
 
 
