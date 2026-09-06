@@ -23,7 +23,9 @@ ein Vergleich der Reste. Kein Gleitkomma, keine Rundungsfrage.
 
 Verifiziert gegen das amtliche Ergebnis der Ratswahl Oldenburg 2021: alle
 50 Mandate, einschließlich der Unterscheidung „direkt" / „Listenplatz n"
-(``tests/test_wahlabend.py``).
+(``tests/test_wahlabend.py``). Die Absätze, die 2021 nie zum Zug kamen —
+Mehrheitsklausel, Übergänge, unbesetzte Sitze, Losfälle — stehen von Hand
+nachgerechnet in ``tests/test_wahlabend_randfaelle.py``.
 """
 from __future__ import annotations
 
@@ -233,10 +235,6 @@ def with_extra_votes(
     return out
 
 
-#: Wie grob ``votes_to_seat`` das Feld vorab abtastet, bevor es halbiert.
-PROBES = 8
-
-
 def votes_to_seat(
     lists: Sequence[DistrictList], total_seats: int, party: str, district: int, position: int, cap: int
 ) -> int | None:
@@ -244,7 +242,7 @@ def votes_to_seat(
     alles andere unverändert. ``None``, wenn selbst ``cap`` nicht reicht; ``0``,
     wenn sie den Sitz schon hat.
 
-    **Mehr Stimmen sind nicht monoton, und deshalb sucht das hier zweistufig.**
+    **Mehr Stimmen sind nicht monoton — und die Halbierung setzt das voraus.**
     Personenstimmen verschieben auf Stufe 3 das Verhältnis Liste zu Personen
     (§ 36 Abs. 4). Wer den Sitz über die Liste hat (§ 36 Abs. 6), kann ihn
     dadurch verlieren: Die eigenen Stimmen machen aus dem Listensitz einen
@@ -252,12 +250,16 @@ def votes_to_seat(
     Stimmen ist er wieder da. Gemessen an zufälligen Konstellationen trifft das
     rund einen von tausend Fällen (``tests/test_wahlabend_randfaelle.py``).
 
-    Eine reine Halbierung liefe über so ein Loch hinweg und meldete eine viel
-    zu hohe Zahl. Deshalb erst ein grobes Raster über ``[1, cap]``, dann die
-    Halbierung im ERSTEN Abschnitt, in dem der Sitz trägt. Die Zusage lautet:
-    Die zurückgegebene Zahl trägt den Sitz wirklich — ``hi`` ist in jedem
-    Schritt ein geprüfter Treffer. Sie ist die kleinste Zahl im ersten
-    tragenden Abschnitt, nicht in jedem Fall beweisbar die kleinste überhaupt.
+    Die Halbierung kann über so ein Loch hinweglaufen und dann eine zu hohe
+    Zahl melden. Was sie NICHT kann, ist eine Zahl melden, die den Sitz nicht
+    trägt: Die Grenze ``hi`` wird nur auf einen Wert gesetzt, der gerade
+    geprüft wurde. Genau das hält ``found`` fest — der zurückgegebene Wert ist
+    immer ein geprüfter Treffer, nie ein bloß errechneter. Ein feineres Raster
+    davor hilft nicht verlässlich: Der tragende Abschnitt kann schmaler sein
+    als jede bezahlbare Schrittweite.
+
+    **Die Zusage ist deshalb**: „mit so vielen Stimmen hat sie den Sitz" — und
+    nicht in jedem Fall „weniger täten es nicht".
     """
 
     def carries(extra: int) -> bool:
@@ -268,20 +270,14 @@ def votes_to_seat(
         return 0
     if not carries(cap):
         return None
-    lo, hi = 1, cap
-    step = max(1, cap // PROBES)
-    for extra in range(step, cap, step):
-        if carries(extra):
-            hi = extra
-            break
-        lo = extra + 1
+    lo, hi, found = 1, cap, cap
     while lo < hi:
         mid = (lo + hi) // 2
         if carries(mid):
-            hi = mid
+            hi = found = mid
         else:
             lo = mid + 1
-    return lo
+    return found
 
 
 def party_seat_margins(
@@ -291,7 +287,7 @@ def party_seat_margins(
     auf Stufe 1 — als Listenstimmen im stärksten Wahlbereich gedacht.
     Der zweite Wert ist ``None`` ohne Sitz; der erste, wenn ``cap`` nicht reicht.
 
-    Hier halbiert die Suche ohne Raster, denn hier gilt die Monotonie: Gemessen
+    Hier trägt die Halbierung anders als in ``votes_to_seat``: Gemessen
     wird ``seats_by_party``, und das hängt nur an Stufe 1. Wachsen die Stimmen
     EINER Partei, wächst ihre Quote und die der anderen sinkt — ihre Sitzzahl
     kann dabei nicht fallen (über 200.000 Zufallsfälle geprüft, s. Tests). Die
