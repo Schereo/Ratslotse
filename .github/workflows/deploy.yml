@@ -288,10 +288,16 @@ jobs:
               exit 1
             fi
             ( cd web/backend && exec ../../.venv/bin/uvicorn app.main:app \
-                --host 127.0.0.1 --port "$vorprobe_port" --log-level warning ) &
+                --host 127.0.0.1 --port "$vorprobe_port" --log-level warning ) \
+                > data/vorprobe.log 2>&1 &
             vorprobe_pid=$!
+            # 06.09.2026: 40 s reichten dem Stand 2.2.0 auf Prod nicht — der
+            # Deploy brach ab, der API-Dienst blieb gestoppt (s. ops-
+            # wartungsbarriere.yml, api-start). Kaltstart mit großen
+            # Datenbanken braucht länger; drei Minuten, und bei einem
+            # Fehlschlag steht das Protokoll des Ersatzdienstes im Log.
             vorprobe_bereit=
-            for i in $(seq 1 40); do
+            for i in $(seq 1 180); do
               sleep 1
               if curl -sf -o /dev/null "http://127.0.0.1:$vorprobe_port/api/health"; then
                 vorprobe_bereit=1
@@ -301,7 +307,8 @@ jobs:
               kill -0 "$vorprobe_pid" 2>/dev/null || break
             done
             if [ -z "$vorprobe_bereit" ]; then
-              echo "FEHLER: Der neue Stand kam auf dem Ersatzport nicht hoch."
+              echo "FEHLER: Der neue Stand kam auf dem Ersatzport nicht hoch. Protokoll:"
+              tail -40 data/vorprobe.log 2>/dev/null || true
               exit 1
             fi
             .venv/bin/python scripts/rauchprobe.py \
