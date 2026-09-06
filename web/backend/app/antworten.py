@@ -2066,7 +2066,8 @@ class DistrictProjectLocation(TypedDict):
     lon: float
     geometry: Any
     #: ``subject`` — dort ändert sich etwas; ``boundary`` — nur Abschnittsgrenze
-    #: oder Bezugspunkt („Am Schmeel bis Brahmweg"), auf der Karte keine Linie.
+    #: („Am Schmeel bis Brahmweg"); ``context`` — eine Straße, die das Vorhaben
+    #: nur benennt („Quartier Am Schmeel"). Nur ``subject`` trägt eine Linie.
     role: str
 
 

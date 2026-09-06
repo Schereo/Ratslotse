@@ -302,14 +302,17 @@ struct DistrictBoardView: View {
             }
             ForEach(projects) { project in
                 let stage = stageOf(project)
-                let dimmed = self.stage != nil && self.stage != stage
                 let active = selected?.id == project.id
-                // Abschnittsgrenzen („Am Schmeel bis Brahmweg") sind nicht
-                // betroffen: keine Linie, kein Pin, solange das Vorhaben einen
-                // Gegenstand hat; sonst als hohle Punkte.
-                let hasSubject = project.locations.contains { $0.role != "boundary" }
-                ForEach(project.locations.filter { $0.role != "boundary" || !hasSubject }) { location in
-                    let boundary = location.role == "boundary"
+                // Blass, was der Stand-Filter ausblendet — und alles andere,
+                // sobald ein Vorhaben ausgewählt ist: Dessen Linie steht allein.
+                let dimmed = ((self.stage != nil && self.stage != stage) || selected != nil) && !active
+                // Abschnittsgrenzen („Am Schmeel bis Brahmweg") und Bezugsstraßen
+                // („Quartier Am Schmeel") sind nicht betroffen: keine Linie, kein
+                // Pin, solange das Vorhaben einen Gegenstand hat; sonst als
+                // hohle Punkte.
+                let hasSubject = project.locations.contains { $0.role == "subject" }
+                ForEach(project.locations.filter { $0.role == "subject" || !hasSubject }) { location in
+                    let boundary = location.role != "subject"
                     ForEach(Array((boundary ? [] : lineStrings(location.geometry)).enumerated()), id: \.offset) { _, line in
                         MapPolyline(coordinates: line)
                             .stroke(stage.color.opacity(dimmed ? 0.18 : 0.75),
@@ -587,11 +590,13 @@ private struct DistrictProjectSheet: View {
                 if stage != .rejected { stagePath(stage) }
 
                 if !project.locations.isEmpty {
-                    let subjects = project.locations.filter { $0.role != "boundary" }.map(\.name)
+                    let subjects = project.locations.filter { $0.role == "subject" }.map(\.name)
                     let boundaries = project.locations.filter { $0.role == "boundary" }.map(\.name)
+                    let context = project.locations.filter { $0.role == "context" }.map(\.name)
                     RatsLabel(
                         (subjects.isEmpty ? "Fläche" : subjects.joined(separator: " · "))
-                        + (boundaries.isEmpty ? "" : " · \(subjects.isEmpty ? "zwischen" : "Abschnitt"): \(boundaries.joined(separator: ", "))"),
+                        + (boundaries.isEmpty ? "" : " · \(subjects.isEmpty ? "zwischen" : "Abschnitt"): \(boundaries.joined(separator: ", "))")
+                        + (context.isEmpty ? "" : " · Umfeld: \(context.joined(separator: ", "))"),
                         .mapPin
                     )
                     .font(RatsFont.body(12))

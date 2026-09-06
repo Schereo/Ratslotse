@@ -322,7 +322,8 @@ class ViertelMixin(StoreBasis):
                 decision_ids).fetchall():
             if e["evidence"]:
                 stufen[4].append(e["evidence"])
-        rollen = ortsrollen([r["name"] for r in rows], ["\n".join(t) for t in stufen])
+        rollen = ortsrollen([r["name"] for r in rows], ["\n\n".join(t) for t in stufen],
+                            kinds={r["name"]: r["kind"] for r in rows})
         out = []
         for r in rows:
             geometry = None
@@ -506,23 +507,29 @@ _GRENZWORT = r"(?:zwischen|von|vom|ab|bis|bis\s+zur|bis\s+zum|bis\s+an|in\s+höh
 _GRENZ_VOR_RE = re.compile(_GRENZWORT + r"\s+(?:der|dem|des|die|das)?\s*$", re.IGNORECASE)
 
 
-def ortsrollen(names: list[str], texts: list[str]) -> dict[str, str]:
-    """Je Ortsname ``subject`` (dort ändert sich etwas) oder ``boundary``
-    (nur Abschnittsgrenze oder Bezugspunkt).
+def ortsrollen(names: list[str], texts: list[str], kinds: dict[str, str] | None = None) -> dict[str, str]:
+    """Je Ortsname ``subject`` (dort ändert sich etwas), ``boundary`` (nur
+    Abschnittsgrenze: „von X bis Y") oder ``context`` (eine Straße, die den
+    Ort nur benennt: „Quartier Am Schmeel", „Flächen Am Schmeel/Brahmweg").
 
     ``texts`` sind Stufen in absteigender Verbindlichkeit (Titel, Zusammen-
-    fassung, Beschlusstext, Vorlage, …). **Die erste Stufe, die den Namen
-    nennt, entscheidet** — und dort ist er Grenze, wenn jede Fundstelle
-    hinter einem Grenzwort steht („zwischen X und Y", „von X bis Y",
-    „(X bis Y)", „ab X", „in Höhe X") oder von „bis" gefolgt wird.
+    fassung, Beschlusstext, Vorlage, Fundstelle der Orts-Pipeline). **Die
+    erste Stufe, die den Namen nennt, entscheidet.** Dort ist er Grenze, wenn
+    jede Fundstelle hinter einem Grenzwort steht („zwischen X und Y", „von X
+    bis Y", „(X bis Y)", „ab X", „in Höhe X") oder in einem Satz übers
+    Straßennetz („bindet … an"). Eine **Straße** (``kinds``) ist darüber
+    hinaus nur Gegenstand, wenn ein Satz mit ihr von Bauen an der Straße
+    spricht (Ausbau, Sanierung, Kreuzung, Radweg, …) — sonst ist sie Bezug:
+    Beim Wohnquartier Krusenbusch stehen Am Schmeel, Tredde und Brahmweg in
+    jedem Titel, gebaut wird auf den Flächen dahinter. Flächen, Gebäude und
+    Plätze bleiben Gegenstand, sobald sie frei stehen.
 
     Warum Stufen und nicht ein Blob: Die Vorlage erzählt auch drumherum —
-    „die Tredde bindet Dießelweg und Brahmweg an die Straße Am Schmeel an".
-    Über alle Fundstellen gerechnet machte dieser eine Satz Am Schmeel wieder
-    zum Gegenstand, obwohl der Titel „(Am Schmeel bis Brahmweg)" die Rolle
-    längst geklärt hat (Krusenbusch, 06.09.2026). Kommt ein Name nirgends
-    vor (Katalog-Variante), bleibt er Gegenstand: Lieber einmal zu viel
-    markiert als still verschwunden.
+    über alle Fundstellen gerechnet machte ein Satz übers Straßennetz Am
+    Schmeel wieder zum Gegenstand, obwohl der Titel „(Am Schmeel bis
+    Brahmweg)" die Rolle längst geklärt hat (Krusenbusch, 06.09.2026). Kommt
+    ein Name nirgends vor (Katalog-Variante), bleibt er Gegenstand: Lieber
+    einmal zu viel markiert als still verschwunden.
     """
     rollen: dict[str, str] = {}
     for name in names:
@@ -532,12 +539,31 @@ def ortsrollen(names: list[str], texts: list[str]) -> dict[str, str]:
             treffer = list(muster.finditer(blob or ""))
             if not treffer:
                 continue
-            rollen[name] = "boundary" if all(_ist_grenzfund(blob, m) for m in treffer) else "subject"
+            if all(_ist_grenzfund(blob, m) for m in treffer):
+                rollen[name] = "boundary"
+            elif (kinds or {}).get(name) == "street" and not any(_BAUWORT_RE.search(_satz(blob, m)) for m in treffer):
+                rollen[name] = "context"
             break
     return rollen
 
 
 _BEZUGSSATZ_RE = re.compile(r"\b(?:bindet|binden|anbind|angebunden|Anbindung)", re.IGNORECASE)
+#: Woran man erkennt, dass an der Straße selbst gebaut wird.
+_BAUWORT_RE = re.compile(
+    r"ausbau|ausgebaut|sanier|umbau|umgebaut|neubau|erneuer|instandsetz|straßenbau|fahrbahn|gehweg|radweg"
+    r"|fußweg|querung|kreuzung|einmündung|verkehrsberuhig|tempo|sperrung|umleitung|beleuchtung|stellplätz"
+    r"|baumaßnahm|bauabschnitt|umgestalt|markierung|ampel|lichtsignal|haltestelle|asphalt|pflaster|parkplatz"
+    r"|straßenraum|verkehrsführung|einbahn|schulweg|zebrastreifen|fahrradstraße|straßenverkehr|verkehrssicher",
+    re.IGNORECASE)
+
+
+def _satz(blob: str, m: re.Match) -> str:
+    # Satzgrenze ist der Punkt (oder eine Leerzeile zwischen zwei Titeln),
+    # nicht der Zeilenumbruch — der PDF-Text der Vorlagen bricht mitten im
+    # Satz um („die Straßen\nDießelweg, …").
+    anfang = max(blob.rfind(z, 0, m.start()) for z in (".", "!", "?", "\n\n")) + 1
+    ende = min((i for i in (blob.find(z, m.end()) for z in (".", "!", "?", "\n\n")) if i >= 0), default=len(blob))
+    return blob[anfang:ende]
 
 
 def _ist_grenzfund(blob: str, m: re.Match) -> bool:
@@ -547,12 +573,7 @@ def _ist_grenzfund(blob: str, m: re.Match) -> bool:
         return True
     # „… bindet die Straßen Dießelweg und Brahmweg an die Straße Am Schmeel
     # an": ein Satz über das Straßennetz, kein Vorhaben an diesen Straßen.
-    # Satzgrenze ist der Punkt, nicht der Zeilenumbruch — der PDF-Text der
-    # Vorlagen bricht mitten im Satz um („die Straßen\nDießelweg, …").
-    satz_anfang = max(blob.rfind(z, 0, m.start()) for z in ".!?") + 1
-    satz_ende = min((i for i in (blob.find(z, m.end()) for z in ".!?") if i >= 0), default=len(blob))
-    satz = blob[satz_anfang:satz_ende]
-    if _BEZUGSSATZ_RE.search(satz):
+    if _BEZUGSSATZ_RE.search(_satz(blob, m)):
         return True
     if not re.match(r"\s*(?:bis|und)\s", danach, re.IGNORECASE):
         return False

@@ -102,7 +102,9 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
     for (const v of vorhaben) {
       const farbe = STAND_FARBE[v.stage] ?? STAND_FARBE.planning;
       const istAktiv = v.id === aktiv;
-      const blass = gedimmt.has(v.id) && !istAktiv;
+      // Blass, was der Stand-Filter ausblendet — und alles andere, sobald ein
+      // Vorhaben ausgewählt ist: Dessen Linie soll allein stehen.
+      const blass = (gedimmt.has(v.id) || aktiv != null) && !istAktiv;
       // Alles, was aus der Datenbank kommt, wird maskiert — auch „wann" und
       // der Stand stammen aus einer Modellantwort, nicht aus dem Code.
       const popup = `<div class="viertel-popup"><span class="stand" style="--c:${escapeHtml(farbe)}">${escapeHtml(STAND_LABEL[v.stage] ?? v.stage)}</span>${v.when ? `<span class="wann">${escapeHtml(v.when)}</span>` : ""}<b>${escapeHtml(v.name)}</b><button type="button" data-id="${Number(v.id)}">Details</button></div>`;
@@ -113,13 +115,14 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
           el?.querySelector("button")?.addEventListener("click", () => { map.closePopup(); onSelectRef.current(v.id); });
         });
       };
-      // Abschnittsgrenzen („Am Schmeel bis Brahmweg") sind nicht betroffen:
-      // Sie bekommen keine Linie und keinen Pin, solange das Vorhaben einen
-      // Gegenstand hat. Nur ohne (ein Bebauungsplan „zwischen A und B") stehen
-      // sie als hohle Punkte, damit das Vorhaben überhaupt eine Stelle hat.
-      const hatGegenstand = v.locations.some((l) => l.role !== "boundary");
+      // Abschnittsgrenzen („Am Schmeel bis Brahmweg") und Bezugsstraßen
+      // („Quartier Am Schmeel") sind nicht betroffen: keine Linie, kein Pin,
+      // solange das Vorhaben einen Gegenstand hat. Nur ohne (ein Bebauungsplan
+      // „zwischen A und B") stehen sie als hohle Punkte, damit das Vorhaben
+      // überhaupt eine Stelle hat.
+      const hatGegenstand = v.locations.some((l) => l.role === "subject");
       for (const loc of v.locations) {
-        const grenze = loc.role === "boundary";
+        const grenze = loc.role !== "subject";
         if (grenze && hatGegenstand) continue;
         const linie = grenze ? null : (loc.geometry as { type?: string } | null);
         if (linie && (linie.type === "LineString" || linie.type === "MultiLineString")) {
