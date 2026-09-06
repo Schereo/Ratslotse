@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abfragePfad, delta, fortschritt, kandidatenStatus, nachStimmen, prozent, sitzband, standText, uhrzeit, zahl } from "./wahlabend";
+import { abfragePfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, standText, uhrzeit, zahl } from "./wahlabend";
 
 describe("Formate", () => {
   it("Zahlen und Prozente auf Deutsch, Lücken als Strich", () => {
@@ -68,5 +68,38 @@ describe("Sortierung und Sitzband", () => {
     expect(abfragePfad(null, null)).toBe("/wahlabend");
     expect(abfragePfad("2021", "60")).toBe("/wahlabend?probe=2021&counted=60");
     expect(abfragePfad("2021", "x")).toBe("/wahlabend?probe=2021");
+  });
+});
+
+describe("Mehrheiten und Halbkreis", () => {
+  const p = (slug: string, seats: number | null) => ({ slug, seats });
+  it("Mehrheit ist mehr als die Hälfte", () => {
+    expect(mehrheit(52)).toBe(27);
+    expect(mehrheit(50)).toBe(26);
+    expect(mehrheit(53)).toBe(27);
+  });
+  it("nur minimale Bündnisse, nach Partnerzahl und Sitzen sortiert", () => {
+    const k = koalitionen([p("a", 17), p("b", 15), p("c", 9), p("d", 5), p("e", 3), p("f", 0), p("g", null)], 52);
+    expect(k[0]).toEqual({ slugs: ["a", "b"], seats: 32 });
+    // a+b+c hätte die Mehrheit, ist aber nicht minimal (a+b reicht) — fehlt.
+    expect(k.find((x) => x.slugs.join() === "a,b,c")).toBeUndefined();
+    expect(k).toContainEqual({ slugs: ["a", "c", "d"], seats: 31 });
+    expect(k.every((x) => x.seats >= 27 && x.slugs.length <= 3)).toBe(true);
+    const zweier = k.filter((x) => x.slugs.length === 2).map((x) => x.seats);
+    expect(zweier).toEqual([...zweier].sort((x, y) => y - x));
+  });
+  it("Alleinmehrheit steht vorn, Listen ohne Sitz fehlen", () => {
+    const k = koalitionen([p("a", 30), p("b", 22)], 52);
+    expect(k[0]).toEqual({ slugs: ["a"], seats: 30 });
+    expect(k.some((x) => x.slugs.includes("b") && x.slugs.length === 1)).toBe(false);
+  });
+  it("Halbkreis: genau n Plätze, links nach rechts, im Kasten", () => {
+    const h = halbkreis(52);
+    expect(h).toHaveLength(52);
+    expect(h[0].x).toBeLessThan(0.1);
+    expect(h[51].x).toBeGreaterThan(1.9);
+    expect(h.every((q) => q.x >= 0 && q.x <= 2 && q.y >= 0 && q.y <= 1 && q.r > 0)).toBe(true);
+    expect(new Set(h.map((q) => q.reihe)).size).toBe(3);
+    expect(halbkreis(0)).toEqual([]);
   });
 });

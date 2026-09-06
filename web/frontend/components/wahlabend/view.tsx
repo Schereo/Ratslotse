@@ -16,6 +16,8 @@ import { useQuery } from "@tanstack/react-query";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
+import { Halbkreis } from "@/components/wahlabend/halbkreis";
+import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { api } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
@@ -27,7 +29,6 @@ import {
   kandidatenStatus,
   nachStimmen,
   prozent,
-  sitzband,
   standText,
   uhrzeit,
   zahl,
@@ -242,35 +243,86 @@ function ListenTafel({ daten, liste, waehle }: { daten: Wahlabend; liste: string
   );
 }
 
-function Sitzband({ daten }: { daten: Wahlabend }) {
+function Sitzbild({ daten }: { daten: Wahlabend }) {
   if (daten.phase === "before") return null;
-  const baender: { title: string; teile: ReturnType<typeof sitzband> }[] = [
-    { title: "Stand", teile: sitzband(daten.parties, "seats") },
-  ];
-  if (daten.phase === "counting") baender.push({ title: "Hochrechnung", teile: sitzband(daten.parties, "projected_seats") });
+  const zwei = daten.phase === "counting";
   return (
-    <section className="mt-6 grid gap-3 @3xl:grid-cols-2">
-      {baender.map((b) => (
-        <div key={b.title} className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-          <p className={KICKER}>
-            {daten.election.seats} Sitze · {b.title}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-            {b.teile.map((t) => (
-              <span key={t.slug} className="flex items-center gap-1.5">
-                <span className="flex flex-wrap gap-[3px]">
-                  {Array.from({ length: t.n }, (_, i) => (
-                    <Punkt key={i} color={t.color} dark={t.color_dark} />
-                  ))}
-                </span>
-                <span className="text-[11.5px] text-muted-foreground">
-                  {t.short} <strong className="font-semibold text-foreground">{t.n}</strong>
-                </span>
-              </span>
+    <section className={cn("mt-6 grid gap-4", zwei && "@3xl:grid-cols-2")}>
+      <Halbkreis parteien={daten.parties} gesamt={daten.election.seats} feld="seats" titel="Stand" />
+      {zwei ? <Halbkreis parteien={daten.parties} gesamt={daten.election.seats} feld="projected_seats" titel="Hochrechnung" /> : null}
+    </section>
+  );
+}
+
+/** Gewinne und Verluste gegenüber 2021 in Prozentpunkten — Deltas tragen
+ *  Signal-Orange (Designsprache), Flächen bleiben neutral. */
+function GewinneVerluste({ daten }: { daten: Wahlabend }) {
+  if (daten.phase === "before") return null;
+  const zeilen = daten.parties
+    .filter((p) => p.share_pct !== null && p.share_2021_pct !== null)
+    .map((p) => ({ p, d: (p.share_pct ?? 0) - (p.share_2021_pct ?? 0) }))
+    .sort((a, b) => b.d - a.d);
+  if (!zeilen.length) return null;
+  const max = Math.max(0.5, ...zeilen.map((z) => Math.abs(z.d)));
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-[16px] font-bold tracking-tight">Gewinne und Verluste</h2>
+        <span className={KICKER}>Punkte gegenüber 2021</span>
+      </div>
+      <ol className="mt-3 space-y-1.5">
+        {zeilen.map(({ p, d }) => (
+          <li key={p.slug} className="grid grid-cols-[minmax(0,5.5rem)_1fr_3.2rem] items-center gap-2 text-[12.5px]">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Punkt color={p.color} dark={p.color_dark} />
+              <span className="truncate font-medium">{p.short}</span>
+            </span>
+            <span className="relative h-2.5">
+              <span className="absolute inset-y-0 left-1/2 w-px bg-border" />
+              <span
+                className="gb-balken-auf absolute inset-y-0 rounded-sm bg-signal/80"
+                style={
+                  d >= 0
+                    ? { left: "50%", width: `${(50 * d) / max}%` }
+                    : { right: "50%", width: `${(50 * -d) / max}%` }
+                }
+              />
+            </span>
+            <span className="text-right font-mono text-[11px] tabular-nums text-signal">{delta(p.share_pct, p.share_2021_pct)}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 text-[11px] text-muted-foreground">Listen ohne Antritt 2021 fehlen hier; sie stehen oben mit „–".</p>
+    </section>
+  );
+}
+
+function MehrheitenBlock({ daten }: { daten: Wahlabend }) {
+  const [feld, setFeld] = useState<"seats" | "projected_seats">("projected_seats");
+  if (daten.phase === "before") return null;
+  const zaehlt = daten.phase === "counting";
+  const aktiv = zaehlt ? feld : "seats";
+  return (
+    <section className="mt-6 grid items-start gap-4 @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] @container">
+      <div>
+        {zaehlt ? (
+          <div className="mb-2 inline-flex rounded-full border border-border bg-card p-0.5 text-[12px]">
+            {(["projected_seats", "seats"] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={aktiv === f}
+                onClick={() => setFeld(f)}
+                className={cn("rounded-full px-3 py-1 transition-colors duration-tipp", aktiv === f ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              >
+                {f === "seats" ? "Stand" : "Hochrechnung"}
+              </button>
             ))}
           </div>
-        </div>
-      ))}
+        ) : null}
+        <Mehrheiten parteien={daten.parties} gesamt={daten.election.seats} feld={aktiv} hochrechnung={aktiv === "projected_seats"} />
+      </div>
+      <GewinneVerluste daten={daten} />
     </section>
   );
 }
@@ -529,7 +581,8 @@ export function WahlabendView() {
           </p>
         ) : null}
         <ListenTafel daten={daten} liste={liste} waehle={waehle} />
-        <Sitzband daten={daten} />
+        <Sitzbild daten={daten} />
+        <MehrheitenBlock daten={daten} />
         <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
         <Bereiche daten={daten} liste={liste} />
         <Mandate daten={daten} />

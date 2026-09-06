@@ -130,3 +130,73 @@ export function abfragePfad(probe: string | null, counted: string | null): strin
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
 }
+
+/* ── Sitze, Mehrheiten, Halbkreis ───────────────────────────────────────── */
+
+/** Absolute Mehrheit: mehr als die Hälfte der Sitze — bei 52 also 27. */
+export function mehrheit(sitze: number): number {
+  return Math.floor(sitze / 2) + 1;
+}
+
+export type Koalition = { slugs: string[]; seats: number };
+
+/**
+ * Rechnerisch mögliche Mehrheitsbündnisse: jede Gruppe von Listen, die
+ * zusammen die Mehrheit hat und aus der KEIN Partner entfallen könnte, ohne
+ * sie zu verlieren (minimal). Nur Rechnung, keine Politik — wer mit wem
+ * kann, sagt die Liste nicht. Höchstens `maxPartner` Partner, sonst wird die
+ * Aufzählung lang und sagt nichts mehr.
+ */
+export function koalitionen(
+  parteien: readonly { slug: string; seats: number | null }[],
+  gesamt: number,
+  maxPartner = 3,
+): Koalition[] {
+  const noetig = mehrheit(gesamt);
+  const mit = parteien
+    .map((p) => ({ slug: p.slug, seats: p.seats ?? 0 }))
+    .filter((p) => p.seats > 0)
+    .sort((a, b) => b.seats - a.seats);
+  const out: Koalition[] = [];
+  const n = mit.length;
+  for (let maske = 1; maske < 1 << n; maske++) {
+    const glieder = mit.filter((_, i) => maske & (1 << i));
+    if (glieder.length > maxPartner) continue;
+    const summe = glieder.reduce((s, g) => s + g.seats, 0);
+    if (summe < noetig) continue;
+    if (!glieder.every((g) => summe - g.seats < noetig)) continue;
+    out.push({ slugs: glieder.map((g) => g.slug), seats: summe });
+  }
+  return out.sort((a, b) => a.slugs.length - b.slugs.length || b.seats - a.seats);
+}
+
+export type HalbkreisPunkt = { x: number; y: number; r: number; reihe: number };
+
+/**
+ * Die Plätze eines Halbkreis-Parlaments, links nach rechts, in einem Kasten
+ * von 2 × 1 (Mittelpunkt unten bei 1|1). Die Reihen bekommen Plätze im
+ * Verhältnis ihres Umfangs, damit die Abstände überall gleich aussehen; die
+ * Rückgabe ist nach Winkel sortiert, die Listen füllen sie der Reihe nach.
+ */
+export function halbkreis(n: number, reihen = 3, innen = 0.48): HalbkreisPunkt[] {
+  if (n <= 0) return [];
+  const radien = Array.from({ length: reihen }, (_, i) => (reihen === 1 ? 1 : innen + (i * (1 - innen)) / (reihen - 1)));
+  const summe = radien.reduce((s, r) => s + r, 0);
+  const jeReihe = radien.map((r) => Math.floor((n * r) / summe));
+  let rest = n - jeReihe.reduce((s, k) => s + k, 0);
+  for (let i = reihen - 1; rest > 0; i = (i - 1 + reihen) % reihen, rest--) jeReihe[i] += 1;
+  const lueckeReihe = reihen > 1 ? (1 - innen) / (reihen - 1) : 0.3;
+  const punkte: (HalbkreisPunkt & { winkel: number })[] = [];
+  radien.forEach((r, i) => {
+    const m = jeReihe[i];
+    const bogen = (Math.PI * r) / Math.max(m, 1);
+    const radius = Math.min(lueckeReihe, bogen) * 0.34;
+    for (let j = 0; j < m; j++) {
+      const winkel = Math.PI * (1 - (j + 0.5) / m);
+      punkte.push({ x: 1 + r * Math.cos(winkel), y: 1 - r * Math.sin(winkel), r: radius, reihe: i, winkel });
+    }
+  });
+  return punkte
+    .sort((a, b) => b.winkel - a.winkel || a.reihe - b.reihe)
+    .map(({ x, y, r, reihe }) => ({ x, y, r, reihe }));
+}
