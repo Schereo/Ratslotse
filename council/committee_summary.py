@@ -144,7 +144,7 @@ def _analyse(committee: str, session_date: str,
                 {"role": "user", "content": prompt},
             ],
             max_tokens=_budget(len(relevant)),
-            _feature="committee_summary",
+            _feature="committee_summary", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         )
         content = (resp.choices[0].message.content or "").strip()
         if content.startswith("```"):

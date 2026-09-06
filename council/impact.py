@@ -229,7 +229,7 @@ def rate_agenda_batch(items: list[dict], _tiefe: int = 0) -> list[tuple[int, int
             max_tokens=2600,
             temperature=0.1,
             extra_body=dict(REASONING_KURZ),
-            _feature="impact_rating_agenda",
+            _feature="impact_rating_agenda", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         )
         data = json.loads(resp.choices[0].message.content or "{}")
     except Exception as exc:  # noqa: BLE001
@@ -279,7 +279,7 @@ def rate_batch(decisions: list[dict], _tiefe: int = 0) -> list[tuple[int, int, s
             max_tokens=2200,
             temperature=0.1,
             extra_body=dict(REASONING_KURZ),
-            _feature="impact_rating",
+            _feature="impact_rating", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         )
         data = json.loads(resp.choices[0].message.content or "{}")
     except Exception as exc:  # noqa: BLE001

@@ -90,7 +90,7 @@ def _classify_agenda(session: CouncilSession, topics: list[dict],
     )
 
     resp = llm.chat_complete(
-        model=MODEL,
+        model=MODEL, _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         response_format={"type": "json_object"},
         # Zuordnung ist Klassifikation, keine Textproduktion: Ohne
         # temperature=0 lieferte derselbe Prompt mal drei Treffer, mal keinen
@@ -224,7 +224,7 @@ def _pruefe_am_text(session: CouncilSession, topic: dict, nums: list[str],
     try:
         answer = llm.chat_complete(
             model=MODEL, response_format={"type": "json_object"}, temperature=0,
-            max_tokens=400,
+            max_tokens=400, _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
             messages=[{"role": "user", "content": prompts.render(
                 "council_watcher_check", thema=topic.get("name", ""),
                 beschreibung=topic.get("description", ""), kandidaten="\n".join(zeilen))}],

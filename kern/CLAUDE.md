@@ -32,6 +32,13 @@ Zustell-Ausfall lautlos für immer.
   ohne Token-Floor kommt die Antwort sporadisch leer zurück
   (`finish_reason='length'`), und zwar ohne Fehler.
 - Ein Inhaltsfilter-Treffer überspringt **einen Datensatz**, nicht den Lauf.
+- **Batch-Jobs rufen mit `_geduld=True, _ersatz=llm.ersatz_fuer(MODEL)`.**
+  Die vier schnellen Anläufe des Clients (2–8 s) überleben keine
+  Rate-Limit-Welle von Minuten — OpenRouters geteilter OpenAI-Zugang meldet
+  Luna so, als 200 ohne `choices`. Mit Geduld wartet der Aufruf 30/90/180 s,
+  danach übernimmt das gemessene Ersatzmodell (`ERSATZ` in `llm.py`, Golden-
+  Set-Messung im Kommentar). **Nie in einer Web-Anfrage** — die darf nicht
+  minutenlang hängen.
 
 ## Prompts sind Code
 
