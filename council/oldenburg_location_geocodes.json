@@ -310,6 +310,32 @@
       "lon": 8.1537,
       "precision": "area",
       "source_url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/20_Controlling_und_Finanzen/200_Finanzen/Tautz_Ausarbeitung.pdf"
+    },
+    {
+      "slug": "bahnuebergang-krusenbusch-buemmerstede",
+      "lat": 53.09697,
+      "lon": 8.24134,
+      "precision": "site",
+      "source_url": "https://www.openstreetmap.org/way/53574782",
+      "line": [
+        [
+          8.24029,
+          53.09691
+        ],
+        [
+          8.24134,
+          53.09697
+        ],
+        [
+          8.2424,
+          53.09703
+        ],
+        [
+          8.2427,
+          53.09705
+        ]
+      ],
+      "note": "Bestehende Fußgängerbrücke über die Bahn am Westende von Am Schmeel; Ersatzneubau nach Vorlage 25/0566 (getfile.php?id=296235). Linie samt Rampe am Schmeel, weil das Bauwerk Krusenbusch und Bümmerstede verbindet und die Ortsbereichs-Grenze am östlichen Brückenkopf liegt — je Seite zwei Stützpunkte."
     }
   ]
 }
