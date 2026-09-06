@@ -2148,12 +2148,45 @@ class DistrictProjectsOverviewEntry(TypedDict):
     name: str
     count: int
     last_date: str | None
+    #: Vorhaben je Stand (``building``, ``decided``, …) — trägt die Wärmekarte.
+    stages: dict[str, int]
+
+
+class DistrictHighlight(TypedDict):
+    """Ein Vorhaben, das stadtweit gerade heraussticht — für die Auswahl-Seite."""
+    id: int
+    place_id: str
+    place_name: str
+    name: str
+    what: str
+    stage: str
+    when: str | None
+    category: str
+    last_date: str | None
 
 
 class DistrictProjectsOverview(TypedDict):
-    """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl."""
+    """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
+    dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen."""
     districts: list[DistrictProjectsOverviewEntry]
+    total: int
+    stages: dict[str, int]
+    highlights: list[DistrictHighlight]
     updated_at: str | None
+
+
+class DistrictLookupMatch(TypedDict):
+    """Ein Treffer der Straßen-/Stadtteilsuche: der Ort und sein Ortsbereich."""
+    name: str
+    kind: str
+    place_id: str
+    place_name: str
+    count: int
+
+
+class DistrictLookup(TypedDict):
+    """``GET /api/districts/lookup?q=`` — „Ich wohne in der …" → Ortsbereich."""
+    matches: list[DistrictLookupMatch]
 
 
 class DistrictProjectReportOut(TypedDict):

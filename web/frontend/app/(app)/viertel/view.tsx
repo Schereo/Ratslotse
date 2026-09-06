@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarDays, Check, Flag, Hammer, MapPinned, Megaphone, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Search, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -12,10 +12,11 @@ import type { Topic } from "@/lib/types";
 import { decisionHref, sitzungHref, viertelHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
-import { Badge, Button, Card, DetailSkeleton, EmptyState, PageHeader, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
+import { Badge, Button, Card, DetailSkeleton, EmptyState, Input, PageHeader, Sheet, SheetContent, SheetTitle, Spinner, toast } from "@/components/ui";
 import { ViertelKarte, STAND_FARBE } from "@/components/viertel-karte";
 import { ShareButton } from "@/components/share-button";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
+import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
 import { Mascot } from "@/components/mascot";
 import { formatEuro, OUTCOME_META } from "@/components/decision-ui";
 import type { DecisionOutcome } from "@/lib/types";
@@ -41,7 +42,6 @@ import { STAFFEL, staffelStil } from "@/components/staffel";
  *  der 31 Ortsbereiche mit der Zahl ihrer Vorhaben.
  */
 type Tafel = ApiAntwort<"/districts/{place_id}/projects">;
-type Uebersicht = ApiAntwort<"/districts/projects">;
 type Vorhaben = Tafel["projects"][number];
 
 /** Reihenfolge und Beschriftung der Stände — was gerade passiert, zuerst. */
@@ -59,11 +59,35 @@ const KATEGORIE: Record<string, string> = {
 };
 
 export default function ViertelView() {
-  const id = useSearchParams().get("id");
-  return id ? <VorhabenTafel placeId={id} /> : <ViertelAuswahl />;
+  const sp = useSearchParams();
+  const id = sp.get("id");
+  const v = Number(sp.get("v"));
+  return id ? <VorhabenTafel placeId={id} vorgewaehlt={Number.isFinite(v) && v > 0 ? v : null} /> : <ViertelAuswahl />;
 }
 
 /* -------------------------------------------------------------- Auswahl --- */
+
+/** Die Auswahl ohne gewähltes Viertel — und warum sie mehr ist als eine Karte.
+ *
+ *  Bis 06.09.2026 stand hier eine blasse Stadtkarte über einem Alphabet aus
+ *  31 Kacheln: nichts, was den Blick zog, nichts, was einen zum Handeln
+ *  brachte („langweilig … ich habe keinen Anreiz hier irgendwas zu machen",
+ *  Tim). Die Seite beantwortet jetzt drei Fragen in dieser Reihenfolge:
+ *
+ *  1. **Was ist da überhaupt?** — die Anzeigetafel: EINE Zahl für die ganze
+ *     Stadt, daneben, wie viel davon im Bau, beschlossen, in Planung ist.
+ *     Ehrliche Menge mit Zeitraum, wie es die Designsprache verlangt.
+ *  2. **Und bei mir?** — die eine Handlung, um die es geht: Straße oder
+ *     Stadtteil tippen, oder den Standort nehmen. Beides endet auf der Tafel
+ *     des eigenen Viertels. Wer angemeldet ist und seinen Stadtteil schon
+ *     gewählt hat, sieht ihn als Knopf, bevor er tippen muss.
+ *  3. **Wo ist am meisten los?** — die Karte tönt nach Zahl (Wärmekarte),
+ *     daneben die Vorhaben, die stadtweit gerade herausstechen, darunter die
+ *     Rangliste statt des Alphabets. Für den Namen, den man kennt, ist die
+ *     Suche da; die Liste bleibt für Tastatur und Screenreader.
+ */
+type Uebersicht = ApiAntwort<"/districts/projects">;
+type Treffer = ApiAntwort<"/districts/lookup">["matches"][number];
 
 function useMeineOrtsbereiche(orte: { name: string; place_id: string }[] | undefined) {
   const { user } = useAuth();
@@ -83,57 +107,288 @@ function ViertelAuswahl() {
   const meine = useMeineOrtsbereiche(orte);
   const byName = useMemo(() => new Map((orte ?? []).map((o) => [o.name, o])), [orte]);
   const mitVorhaben = useMemo(() => new Set((orte ?? []).filter((o) => o.count > 0).map((o) => o.name)), [orte]);
+  const gewichte = useMemo(() => new Map((orte ?? []).map((o) => [o.name, o.count])), [orte]);
+  // Rangliste: die meisten zuerst, bei Gleichstand alphabetisch, die leeren am Ende.
+  const rang = useMemo(() => [...(orte ?? [])].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "de")), [orte]);
 
   if (q.isLoading) return <DetailSkeleton />;
-  if (!orte) return <EmptyState title="Die Übersicht lässt sich gerade nicht laden." mascot="confused" />;
+  if (!orte || !q.data) return <EmptyState title="Die Übersicht lässt sich gerade nicht laden." mascot="confused" />;
+  const data = q.data;
+  const belegt = orte.filter((o) => o.count > 0).length;
+  const maxCount = rang[0]?.count ?? 0;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    // `@container`: Die Spalten-Varianten (`@3xl:`) messen die Breite DIESES
+    // Elements; das (app)-Layout deklariert keinen Container. Ohne die Klasse
+    // blieb die Seite auf jedem Schirm einspaltig — so stand sie bis 06.09.
+    <div className="@container mx-auto max-w-5xl">
       <PageHeader
         title="Mein Viertel"
         description="Was sich in deinem Ortsbereich in den nächsten Jahren ändert — Vorhaben aus den Beschlüssen des Stadtrats, gebündelt und gegengeprüft."
       />
-      {meine.length > 0 && (
-        <div className={cn("mt-4 flex flex-wrap gap-2", STAFFEL)} style={staffelStil(0)}>
-          {meine.map((o) => (
-            <Button key={o.place_id} asChild>
-              <Link href={viertelHref(o.place_id)}>
-                <MapPinned className="h-4 w-4" /> {o.name}
-                <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 text-xs">{byName.get(o.name)?.count ?? 0}</span>
-              </Link>
-            </Button>
-          ))}
+
+      <section
+        className={cn("hh-tafel mt-5 grid gap-6 rounded-2xl border border-border bg-background p-5 text-foreground @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] @3xl:gap-8 @3xl:p-7", STAFFEL)}
+        style={staffelStil(0)}
+        aria-labelledby="viertel-stadt-titel"
+      >
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+            Ganz Oldenburg · Beschlüsse der letzten zwei Jahre
+          </p>
+          <p id="viertel-stadt-titel" className="mt-2 font-display text-[40px] font-bold leading-none tracking-tight tabular-nums sm:text-[52px]">
+            {data.total}
+            <span className="ml-2 text-[18px] font-semibold tracking-normal text-muted-foreground sm:text-[20px]">Vorhaben</span>
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            in {belegt} von {orte.length} Ortsbereichen{data.updated_at ? ` · Stand ${formatDate(data.updated_at.slice(0, 10))}` : ""}
+          </p>
+          <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+            {(["building", "decided", "planning"] as const).map((st) => (
+              <div key={st} className="min-w-0">
+                <dt className="flex items-center gap-1.5 text-[11.5px] leading-none text-muted-foreground">
+                  <span className="h-2 w-2 rounded-full" style={{ background: STAND_FARBE[st] }} aria-hidden />
+                  {STAND[st].label}
+                </dt>
+                <dd className="mt-1.5 font-display text-[21px] font-bold leading-none tracking-tight tabular-nums sm:text-[27px]">
+                  {data.stages[st] ?? 0}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
-      )}
-      <div className={cn("mt-6 grid gap-6 @3xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]", STAFFEL)} style={staffelStil(1)}>
+
+        <div className="min-w-0 @3xl:border-l @3xl:border-border @3xl:pl-8">
+          <h2 className="font-display text-lg font-bold leading-snug sm:text-xl">Und vor deiner Haustür?</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Straße oder Stadtteil eingeben — oder den Standort nehmen. Nichts davon wird gespeichert.
+          </p>
+          {meine.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {meine.map((o) => (
+                <Button key={o.place_id} asChild>
+                  <Link href={viertelHref(o.place_id)}>
+                    <MapPinned className="h-4 w-4" /> {o.name}
+                    <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">{byName.get(o.name)?.count ?? 0}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              ))}
+            </div>
+          )}
+          <OrtSuche className="mt-3" onWaehlen={(placeId) => router.push(viertelHref(placeId))} />
+          <StandortKnopf className="mt-2" onGefunden={(name) => {
+            const o = byName.get(name);
+            if (o) router.push(viertelHref(o.place_id));
+            else toast.error("Dieser Ort liegt außerhalb der 31 Ortsbereiche.");
+          }} />
+        </div>
+      </section>
+
+      <div className={cn("mt-6 grid gap-6 @3xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]", STAFFEL)} style={staffelStil(1)}>
         <Card className="p-3">
+          <p className="px-1 pt-1 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+            Wo am meisten los ist
+          </p>
           <StadtteilKarte
             gewaehlt={new Set(meine.map((o) => o.name))}
             auswaehlbar={mitVorhaben}
+            gewichte={gewichte}
+            titel={(name) => `${name} · ${byName.get(name)?.count ?? 0} Vorhaben`}
             onWaehlen={(name) => { const o = byName.get(name); if (o) router.push(viertelHref(o.place_id)); }}
           />
+          <p className="flex items-center gap-2 px-1 pb-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex h-2 w-16 rounded-sm" aria-hidden
+              style={{ background: "linear-gradient(90deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.62))" }} />
+            wenige → viele Vorhaben · antippen öffnet das Viertel
+          </p>
         </Card>
-        <ul className="grid grid-cols-2 gap-2 self-start sm:grid-cols-3 @3xl:grid-cols-2">
-          {orte.map((o, i) => (
+
+        <section aria-labelledby="viertel-highlights-titel" className="min-w-0">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 id="viertel-highlights-titel" className="font-display text-base font-bold text-foreground">Gerade in der Stadt</h2>
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+              {data.highlights.length} von {data.total}
+            </span>
+          </div>
+          <ol className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
+            {data.highlights.map((h, i) => (
+              <li key={h.id} className={STAFFEL} style={staffelStil(i + 1)}>
+                <Link href={viertelHref(h.place_id, h.id)} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: STAND_FARBE[h.stage] ?? STAND_FARBE.planning }} aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-foreground">{h.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground/80">{h.place_name}</span>
+                      {" · "}{STAND[h.stage]?.label ?? h.stage}{h.when ? ` · ${h.when}` : ""}
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                </Link>
+              </li>
+            ))}
+            {data.highlights.length === 0 && (
+              <li className="px-4 py-6 text-center text-sm text-muted-foreground">Noch kein Vorhaben im Register.</li>
+            )}
+          </ol>
+        </section>
+      </div>
+
+      <section aria-labelledby="viertel-rang-titel" className={cn("mt-8", STAFFEL)} style={staffelStil(2)}>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 id="viertel-rang-titel" className="font-display text-base font-bold text-foreground">Alle {orte.length} Ortsbereiche</h2>
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">nach Zahl der Vorhaben</span>
+        </div>
+        <ol className="mt-2 grid grid-cols-1 gap-2 @xl:grid-cols-2 @3xl:grid-cols-3">
+          {rang.map((o, i) => (
             <li key={o.place_id} className={STAFFEL} style={staffelStil(i)}>
               <Link
                 href={viertelHref(o.place_id)}
                 className={cn(
-                  "flex items-baseline justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent",
+                  "relative flex items-baseline justify-between gap-2 overflow-hidden rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent",
                   o.count === 0 && "text-muted-foreground",
                 )}
               >
-                <span className="truncate font-medium">{o.name}</span>
-                <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{o.count}</span>
+                {/* Der Balken hinter der Zeile: Länge = Anteil am Spitzenwert. */}
+                {o.count > 0 && maxCount > 0 && (
+                  <span aria-hidden className="absolute inset-y-0 left-0 bg-primary/[0.07]" style={{ width: `${Math.max(6, (100 * o.count) / maxCount)}%` }} />
+                )}
+                <span className="relative truncate font-medium">
+                  <span className="mr-1.5 inline-block w-5 text-right font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                  {o.name}
+                </span>
+                <span className="relative shrink-0 tabular-nums text-xs text-muted-foreground">
+                  {o.stages.building ? <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: STAND_FARBE.building }} title="im Bau" /> : null}
+                  {o.count}
+                </span>
               </Link>
             </li>
           ))}
-        </ul>
-      </div>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Die Zahl nennt die Vorhaben der letzten zwei Jahre. Ortsbereiche ohne Zahl haben in dieser Zeit keinen Beschluss mit belegtem Ortsbezug.
-      </p>
+        </ol>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Die Zahl nennt die Vorhaben der letzten zwei Jahre; der orange Punkt heißt: dort wird schon gebaut. Ortsbereiche ohne Zahl haben in dieser Zeit keinen Beschluss mit belegtem Ortsbezug.
+        </p>
+      </section>
     </div>
+  );
+}
+
+/** „Ich wohne in der …": Eingabe mit Vorschlägen — Stadtteil, Straße oder
+ *  Platz, jeweils mit dem Ortsbereich dahinter. Die Vorschläge kommen vom
+ *  Server (nur Orte, die je ein Beschluss genannt hat); Enter nimmt den
+ *  markierten, Pfeile wandern, Escape schließt. Kein Konto, kein Sprachmodell. */
+function OrtSuche({ onWaehlen, className }: { onWaehlen: (placeId: string) => void; className?: string }) {
+  const [wert, setWert] = useState("");
+  const [frage, setFrage] = useState("");
+  const [offen, setOffen] = useState(false);
+  const [markiert, setMarkiert] = useState(0);
+  const listeId = "ort-suche-liste";
+  useEffect(() => {
+    const t = setTimeout(() => setFrage(wert.trim()), 180);
+    return () => clearTimeout(t);
+  }, [wert]);
+  const q = useQuery({
+    queryKey: ["viertel-lookup", frage],
+    queryFn: () => api.get<ApiAntwort<"/districts/lookup">>(`/districts/lookup?q=${encodeURIComponent(frage)}`),
+    enabled: frage.length >= 2,
+    staleTime: 5 * 60_000,
+  });
+  const treffer: Treffer[] = frage.length >= 2 ? (q.data?.matches ?? []) : [];
+  useEffect(() => { setMarkiert(0); }, [treffer.length, frage]);
+
+  function nehmen(t: Treffer) {
+    setOffen(false);
+    setWert(t.name);
+    onWaehlen(t.place_id);
+  }
+
+  return (
+    <div className={cn("relative", className)}>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+        <Input
+          value={wert}
+          onChange={(e) => { setWert(e.target.value); setOffen(true); }}
+          onFocus={() => setOffen(true)}
+          onBlur={() => setTimeout(() => setOffen(false), 120)}
+          onKeyDown={(e) => {
+            if (!treffer.length) return;
+            if (e.key === "ArrowDown") { e.preventDefault(); setMarkiert((m) => (m + 1) % treffer.length); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setMarkiert((m) => (m - 1 + treffer.length) % treffer.length); }
+            else if (e.key === "Enter") { e.preventDefault(); nehmen(treffer[markiert] ?? treffer[0]); }
+            else if (e.key === "Escape") setOffen(false);
+          }}
+          placeholder="Straße oder Stadtteil, z. B. Nadorster Straße"
+          aria-label="Straße oder Stadtteil"
+          role="combobox"
+          aria-expanded={offen && treffer.length > 0}
+          aria-controls={listeId}
+          aria-autocomplete="list"
+          autoComplete="off"
+          className="h-11 rounded-xl pl-9 pr-9"
+        />
+        {q.isFetching && <Spinner className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2" />}
+      </div>
+      {offen && frage.length >= 2 && (
+        <ul id={listeId} role="listbox" className="absolute left-0 right-0 z-20 mt-1 max-h-72 overflow-auto rounded-xl border border-border bg-card p-1 shadow-lg">
+          {treffer.map((t, i) => (
+            <li key={`${t.kind}-${t.name}-${t.place_id}`} role="option" aria-selected={i === markiert}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => nehmen(t)}
+                onMouseEnter={() => setMarkiert(i)}
+                className={cn("flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm", i === markiert ? "bg-accent text-foreground" : "text-foreground")}
+              >
+                <MapPinned className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">
+                  {t.name}
+                  {t.kind !== "district" && <span className="text-muted-foreground"> · liegt in {t.place_name}</span>}
+                </span>
+                <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{t.count} Vorhaben</span>
+              </button>
+            </li>
+          ))}
+          {!treffer.length && !q.isFetching && (
+            <li className="px-3 py-2 text-sm text-muted-foreground">
+              Nichts gefunden — nur Straßen, die ein Beschluss nennt, sind dabei. Zeig auf der Karte oder nimm den Standort.
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** „Meinen Standort nehmen": Der Browser fragt einmal nach, die Zuordnung zum
+ *  Ortsbereich läuft im Browser gegen die Umrisse (`ortsbereichFor`) — die
+ *  Koordinate verlässt das Gerät nicht. */
+function StandortKnopf({ onGefunden, className }: { onGefunden: (name: string) => void; className?: string }) {
+  const [sucht, setSucht] = useState(false);
+  const kann = typeof navigator !== "undefined" && "geolocation" in navigator;
+  if (!kann) return null;
+  function orten() {
+    setSucht(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const features = await loadOrtsbereiche();
+          const name = ortsbereichFor(pos.coords.latitude, pos.coords.longitude, features);
+          if (name) onGefunden(name);
+          else toast.error("Dein Standort liegt außerhalb Oldenburgs.");
+        } finally {
+          setSucht(false);
+        }
+      },
+      () => { setSucht(false); toast.error("Der Standort ist gerade nicht verfügbar."); },
+      { timeout: 10_000, maximumAge: 5 * 60_000 },
+    );
+  }
+  return (
+    <Button variant="secondary" size="sm" className={className} onClick={orten} disabled={sucht}>
+      {sucht ? <Spinner className="h-4 w-4" /> : <LocateFixed className="h-4 w-4" />}
+      Meinen Standort nehmen
+    </Button>
   );
 }
 
@@ -142,7 +397,7 @@ function ViertelAuswahl() {
 /** Reihenfolge der Stufenleiste: was gerade passiert, zuerst. */
 const STUFEN = ["building", "decided", "planning", "idea", "done", "rejected"] as const;
 
-function VorhabenTafel({ placeId }: { placeId: string }) {
+function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt: number | null }) {
   const { user } = useAuth();
   const q = useQuery({
     queryKey: ["viertel", placeId],
@@ -150,7 +405,9 @@ function VorhabenTafel({ placeId }: { placeId: string }) {
   });
   const [gemeldet, setGemeldet] = useState<Set<string>>(new Set());
   const [stufe, setStufe] = useState<string | null>(null);
-  const [aktiv, setAktiv] = useState<number | null>(null);
+  // Ein Highlight der Auswahl-Seite zeigt auf genau ein Vorhaben (`?v=`):
+  // Das steht dann gleich offen, statt dass man es in der Liste suchen muss.
+  const [aktiv, setAktiv] = useState<number | null>(vorgewaehlt);
   // Schreibtisch: Detail in der Seitenspalte. Telefon: Bottom-Sheet. Die
   // Grenze ist die Container-Breite des Rasters (@3xl), gemessen über
   // matchMedia auf dem Fenster — reicht, weil die Seite ohne Seitenleiste
@@ -196,7 +453,7 @@ function VorhabenTafel({ placeId }: { placeId: string }) {
   );
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="@container mx-auto max-w-5xl">
       <div className="print-hidden flex items-center justify-between gap-3">
         <Link href={viertelHref()} className="text-sm text-muted-foreground hover:text-foreground">← Alle Ortsbereiche</Link>
         <ShareButton path={viertelHref(place.id)} title={`Mein Viertel: ${place.name} — Ratslotse`} />

@@ -3142,6 +3142,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/districts/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Lookup
+         * @description „Ich wohne in der …": Straße, Platz oder Stadtteilname → Ortsbereich.
+         *
+         *     Stadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den
+         *     Beschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein
+         *     Sprachmodell, keine Speicherung der Eingabe.
+         */
+        get: operations["district_lookup_api_districts_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/districts/projects": {
         parameters: {
             query?: never;
@@ -3152,6 +3176,10 @@ export interface paths {
         /**
          * District Projects Overview
          * @description Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.
+         *
+         *     Dazu die Stadtzahlen (wie viele Vorhaben, wie viele je Stand) und die
+         *     Vorhaben, die gerade herausstechen: Die Seite ohne gewähltes Viertel soll
+         *     schon etwas zeigen, nicht nur fragen.
          */
         get: operations["district_projects_overview_api_districts_projects_get"];
         put?: never;
@@ -6379,6 +6407,30 @@ export interface components {
             display_name?: string | null;
         };
         /**
+         * DistrictHighlight
+         * @description Ein Vorhaben, das stadtweit gerade heraussticht — für die Auswahl-Seite.
+         */
+        DistrictHighlight: {
+            /** Category */
+            category: string;
+            /** Id */
+            id: number;
+            /** Last Date */
+            last_date: string | null;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Place Name */
+            place_name: string;
+            /** Stage */
+            stage: string;
+            /** What */
+            what: string;
+            /** When */
+            when: string | null;
+        };
+        /**
          * DistrictInvestment
          * @description Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.
          */
@@ -6393,6 +6445,30 @@ export interface components {
             programme_year: number;
             /** Total Eur */
             total_eur: number;
+        };
+        /**
+         * DistrictLookup
+         * @description ``GET /api/districts/lookup?q=`` — „Ich wohne in der …" → Ortsbereich.
+         */
+        DistrictLookup: {
+            /** Matches */
+            matches: components["schemas"]["DistrictLookupMatch"][];
+        };
+        /**
+         * DistrictLookupMatch
+         * @description Ein Treffer der Straßen-/Stadtteilsuche: der Ort und sein Ortsbereich.
+         */
+        DistrictLookupMatch: {
+            /** Count */
+            count: number;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Place Name */
+            place_name: string;
         };
         /** DistrictNeighbour */
         DistrictNeighbour: {
@@ -6531,11 +6607,20 @@ export interface components {
         };
         /**
          * DistrictProjectsOverview
-         * @description ``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.
+         * @description ``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
+         *     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.
          */
         DistrictProjectsOverview: {
             /** Districts */
             districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
+            /** Highlights */
+            highlights: components["schemas"]["DistrictHighlight"][];
+            /** Stages */
+            stages: {
+                [key: string]: number;
+            };
+            /** Total */
+            total: number;
             /** Updated At */
             updated_at: string | null;
         };
@@ -6549,6 +6634,10 @@ export interface components {
             name: string;
             /** Place Id */
             place_id: string;
+            /** Stages */
+            stages: {
+                [key: string]: number;
+            };
         };
         /**
          * DistrictSuggestions
@@ -13186,6 +13275,37 @@ export interface operations {
             };
         };
     };
+    district_lookup_api_districts_lookup_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictLookup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     district_projects_overview_api_districts_projects_get: {
         parameters: {
             query?: never;
@@ -14645,4 +14765,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3f2bd1a647b6e46ad94d14e81e981b044c312289c3626f978494747e5a32231e
+// vertrag-sha256: 941778350f01f7de9876dbc198a635412394257091e1785a2fce5e99e63a5b0b

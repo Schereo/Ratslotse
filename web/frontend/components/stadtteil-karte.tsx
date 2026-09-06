@@ -90,7 +90,7 @@ function projizieren(features: OrtsbereichFeature[], breite: number): { flaechen
   return { flaechen, hoehe };
 }
 
-export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: {
+export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, gewichte, titel, className }: {
   /** Namen der gewählten Ortsbereiche. Mehrere sind erlaubt: Man interessiert
    *  sich für den eigenen Stadtteil und für den, in dem gerade gebaut wird. */
   gewaehlt: Set<string>;
@@ -99,6 +99,15 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
    *  fehlendes Stück wäre erklärungsbedürftiger als ein blasses. */
   auswaehlbar: Set<string>;
   onWaehlen: (name: string) => void;
+  /** Optional: eine Zahl je Ortsbereich, die die Fläche tönt — die Karte
+   *  wird zur Wärmekarte („wo ist am meisten los?"). Ohne Gewichte bleibt
+   *  sie die Zeige-Karte des Einrichtungs-Assistenten: eine Farbe für alle
+   *  wählbaren. Die Tönung folgt der Wurzel, nicht der Zahl selbst: Bei
+   *  0 bis 14 Vorhaben wären sonst zwei Drittel der Stadt kaum von der
+   *  leeren Fläche zu unterscheiden. */
+  gewichte?: Map<string, number>;
+  /** Optional: der Tooltip-Text je Fläche (Vorgabe: nur der Name). */
+  titel?: (name: string) => string;
   className?: string;
 }) {
   const [features, setFeatures] = useState<OrtsbereichFeature[]>([]);
@@ -122,6 +131,15 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
   }, []);
 
   const { flaechen, hoehe } = useMemo(() => projizieren(features, breite), [features, breite]);
+  const maxGewicht = useMemo(() => Math.max(0, ...(gewichte ? [...gewichte.values()] : [])), [gewichte]);
+  // Deckkraft des Primärtons: 0,12 für „ein Vorhaben", 0,62 für den Spitzenwert.
+  const toenung = (name: string): string | undefined => {
+    if (!gewichte || !maxGewicht) return undefined;
+    const g = gewichte.get(name) ?? 0;
+    if (g <= 0) return undefined;
+    const a = 0.12 + 0.5 * Math.sqrt(g / maxGewicht);
+    return `hsl(var(--primary) / ${a.toFixed(2)})`;
+  };
 
   return (
     <div ref={boxRef} className={cn("relative", className)}>
@@ -139,6 +157,7 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
             const aktiv = gewaehlt.has(f.name);
             const offen = auswaehlbar.has(f.name);
             const hell = schwebt === f.name && offen;
+            const ton = !aktiv && !hell ? toenung(f.name) : undefined;
             return (
               // Bewusst NICHT fokussierbar: Chrome legt den Fokus-Ring einer
               // SVG-Fläche um deren Bounding-Box, nicht um den Umriss — beim
@@ -158,6 +177,7 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
                       // man sähe nicht, wo überhaupt etwas anklickbar ist.
                       : offen ? "fill-muted stroke-border" : "fill-muted/30 stroke-border/50",
                 )}
+                style={ton ? { fill: ton } : undefined}
                 strokeWidth={aktiv ? 2 : 1}
                 onMouseEnter={() => setSchwebt(f.name)}
                 onMouseLeave={() => setSchwebt((n) => (n === f.name ? null : n))}
@@ -166,7 +186,7 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, className }: 
                 {/* Nativer Tooltip: Der eingeblendete Name folgt erst dem
                     Hover-Zustand von React, `<title>` steht sofort — und ist
                     zugleich der zugängliche Name der Fläche. */}
-                <title>{f.name}</title>
+                <title>{titel ? titel(f.name) : f.name}</title>
               </path>
             );
           })}

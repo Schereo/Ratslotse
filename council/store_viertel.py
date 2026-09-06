@@ -323,8 +323,109 @@ class ViertelMixin(StoreBasis):
             if not tabelle_fehlt(fehler):
                 raise
             return {}
-        return {r["place_id"]: {"count": r["n"], "last_date": r["last_date"], "updated_at": r["updated_at"]}
-                for r in rows}
+        out = {r["place_id"]: {"count": r["n"], "last_date": r["last_date"], "updated_at": r["updated_at"],
+                               "stages": {}}
+               for r in rows}
+        # Die Stände je Ortsbereich tragen die Wärmekarte der Auswahl: Wo
+        # gebaut wird, ist mehr los als wo nur eine Idee steht.
+        for r in self._conn.execute(
+                "SELECT place_id, stage, COUNT(*) AS n FROM council_district_projects "
+                "WHERE confidence >= ? GROUP BY place_id, stage", (min_confidence,)):
+            out[r["place_id"]]["stages"][r["stage"]] = r["n"]
+        return out
+
+    #: Reihenfolge der Stände für die Stadt-Highlights: was gerade passiert,
+    #: zuerst. Abgelehnt und fertig sind kein Blickfang.
+    _HIGHLIGHT_ORDER = ("building", "decided", "planning", "idea")
+
+    def district_highlights(self, *, limit: int = 6,
+                            min_confidence: int = PROJECT_MIN_CONFIDENCE) -> list[dict]:
+        """Die Vorhaben, die stadtweit gerade am meisten hergeben — für die
+        Auswahl-Seite, bevor man ein Viertel gewählt hat.
+
+        Reihenfolge: im Bau vor beschlossen vor Planung, dazwischen die mit
+        Termin vor denen ohne, dann das jüngste zuerst. Und **je Ortsbereich
+        höchstens eines**, solange die Auswahl reicht: Sechs Karten aus
+        Eversten sagen nichts über die Stadt, sie sagen, dass Eversten groß ist.
+        Vorhaben, die zwei Konten als falsch verortet gemeldet haben, bleiben
+        weg — wie auf der Tafel.
+        """
+        order = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(self._HIGHLIGHT_ORDER))
+        try:
+            rows = self._conn.execute(
+                "SELECT p.id, p.project_key, p.place_id, p.name, p.what, p.stage, p.when_text, "
+                "p.category, p.last_date, (SELECT COUNT(*) FROM council_district_project_reports r "
+                "WHERE r.project_key = p.project_key) AS report_count "
+                "FROM council_district_projects p WHERE p.confidence >= ? "
+                f"AND p.stage IN ({','.join('?' * len(self._HIGHLIGHT_ORDER))}) "
+                f"ORDER BY CASE p.stage {order} ELSE 9 END, (p.when_text IS NULL), p.last_date DESC, p.id "
+                "LIMIT ?", (min_confidence, *self._HIGHLIGHT_ORDER, limit * 8)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        rows = [r for r in rows if r["report_count"] < PROJECT_HIDE_REPORTS]
+        gewaehlt: list = []
+        gesehen: set[str] = set()
+        for r in rows:
+            if r["place_id"] in gesehen:
+                continue
+            gesehen.add(r["place_id"])
+            gewaehlt.append(r)
+            if len(gewaehlt) >= limit:
+                break
+        if len(gewaehlt) < limit:
+            rest = [r for r in rows if r not in gewaehlt]
+            gewaehlt.extend(rest[: limit - len(gewaehlt)])
+        return [{
+            "id": r["id"], "place_id": r["place_id"], "place_name": self._place_name(r["place_id"]),
+            "name": r["name"], "what": r["what"], "stage": r["stage"], "when": r["when_text"],
+            "category": r["category"], "last_date": r["last_date"],
+        } for r in gewaehlt]
+
+    def district_lookup_streets(self, q: str, *, limit: int = 6) -> list[dict]:
+        """Straßen und Plätze zu einer Eingabe, mit dem Ortsbereich, in dem sie
+        liegen — die Antwort auf „Ich wohne in der …".
+
+        Nur Orte, die ein Beschluss je genannt hat (das ist der Bestand von
+        ``council_locations``), und nur mit einem Flächenanteil ab
+        ``CANDIDATE_MIN_SHARE``: Eine Straße, die durch drei Viertel läuft,
+        bekommt das, in dem ihr größtes Stück liegt. Ein Anfang gewinnt vor
+        einem Treffer mittendrin, Kürzeres vor Längerem — „Haupt" soll die
+        Hauptstraße zeigen, nicht „Hauptstraße 12–14".
+        """
+        q = (q or "").strip()
+        if len(q) < 2:
+            return []
+        like = q.replace("%", "").replace("_", "")
+        try:
+            rows = self._conn.execute(
+                "SELECT l.slug, l.name, l.kind, ld.place_id, MAX(ld.share) AS share "
+                "FROM council_locations l JOIN council_location_districts ld ON ld.location_slug = l.slug "
+                "WHERE l.kind IN ('street', 'square') AND ld.place_id IS NOT NULL AND ld.share >= ? "
+                "AND l.name LIKE ? ESCAPE '\\' "
+                "GROUP BY l.slug ORDER BY (l.name LIKE ? ESCAPE '\\') DESC, LENGTH(l.name), l.name LIMIT ?",
+                (CANDIDATE_MIN_SHARE, f"%{like}%", f"{like}%", limit * 3)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        # „Ziegelhofstr", „Ziegelhofstraße" und „Ziegelhofstr. 125-127" sind
+        # derselbe Ort; Abkürzung und Hausnummer sind nur die Schreibweise
+        # einer Vorlage. Je Schlüssel bleibt die ausgeschriebene Form ohne
+        # Nummer — sie ist die, die man selbst eintippen würde.
+        beste: dict[tuple[str, str], sqlite3.Row] = {}
+        reihenfolge: list[tuple[str, str]] = []
+        for r in rows:
+            key = (_street_key(r["name"]), r["place_id"])
+            if key not in beste:
+                beste[key] = r
+                reihenfolge.append(key)
+            elif _street_rank(r["name"]) > _street_rank(beste[key]["name"]):
+                beste[key] = r
+        return [{"slug": r["slug"], "name": r["name"], "kind": r["kind"],
+                 "place_id": r["place_id"], "place_name": self._place_name(r["place_id"])}
+                for r in (beste[k] for k in reihenfolge[:limit])]
 
     def district_projects_updated_at(self, place_id: str) -> str | None:
         try:
@@ -457,6 +558,18 @@ class ViertelMixin(StoreBasis):
                             "valid_from": b.get("valid_from"), "valid_until": b.get("valid_until"),
                             "url": b.get("url"), "plan_nrs": b.get("plan_nrs") or []})
         return out
+
+
+def _street_key(name: str) -> str:
+    """Schreibweisen einer Straße auf einen Schlüssel: Hausnummern weg,
+    „straße"/„str."/„str" gleich."""
+    base = re.sub(r"[\s.,]*\d.*$", "", name).lower().strip()
+    return re.sub(r"stra(ß|ss)e\b|str\.?\b", "str", base)
+
+
+def _street_rank(name: str) -> int:
+    """Welche Schreibweise gezeigt wird: ohne Hausnummer vor mit, ausgeschrieben vor abgekürzt."""
+    return (0 if re.search(r"\d", name) else 2) + (1 if re.search(r"stra(ß|ss)e", name, re.IGNORECASE) else 0)
 
 
 def _months_ago(months: int) -> str:
