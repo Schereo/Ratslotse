@@ -87,6 +87,9 @@ OEFFENTLICH = {
     ("get", "/api/council/heute"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/qa-beispiele"),
+    # Wahlabend: Open Data der Stadt, nachgerechnet — nichts Persönliches
+    # daran. Hinter dem Feature-Schalter `wahlabend` (404, solange er aus ist).
+    ("get", "/api/wahlabend"),
 
     # Geteilte Antworten: Der Token IST der Zugang — wer den Link hat, darf
     # lesen und melden. Ein Konto zu verlangen machte das Teilen sinnlos.

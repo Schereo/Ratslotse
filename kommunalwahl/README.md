@@ -1,8 +1,10 @@
 # Wahlprogramm-Vergleich — Ratswahl Oldenburg, 13.09.2026
 
 Alle 16 zugelassenen Wahlvorschläge, Programme im Volltext ausgewertet, entlang von 44 Thesen
-vergleichbar gemacht. Eigenständiger Datenbestand — noch **nicht** ins Ratslotse-Backend oder
--Frontend integriert. Fertige Seite: `vergleich.html` (self-contained, keine externen Ressourcen).
+vergleichbar gemacht. Der Vergleich selbst ist ein eigenständiger Datenbestand — noch **nicht**
+ins Ratslotse-Backend oder -Frontend integriert. Fertige Seite: `vergleich.html` (self-contained,
+keine externen Ressourcen). Das Kandidatenregister und die Referenz von 2021 liegen ebenfalls
+hier und werden vom Backend gelesen — s. „Wahlabend" unten.
 
 ## Ablauf
 
@@ -78,3 +80,41 @@ curl -L <partei-url> | shasum -a 256   # mit manifest.json vergleichen
 - Die Auswahl der 44 Thesen ist eine inhaltliche Entscheidung und beeinflusst die Prozentwerte.
 - Zahlen zu Wahlvorschlägen stammen aus der amtlichen Bekanntmachung, nicht aus Presseberichten —
   die wichen in zwei Punkten ab (Einzelbewerber Stille, Zuordnung Butzin).
+
+## Wahlabend
+
+Zwei Bestände in diesem Verzeichnis gehören nicht zum Programmvergleich, sondern zur Seite
+`/wahlabend`: das **Kandidatenregister zur Ratswahl 2026** und die **Referenz von 2021**. Beide
+liest das Backend direkt aus dem Repo (`web/backend/app/election/`) — es gibt dafür keine
+Datenbank und keinen Cron. Die Technik dahinter steht in der Doku unter
+[ratslotse.de/docs/wahlabend](https://ratslotse.de/docs/wahlabend/).
+
+| Pfad | Inhalt |
+|---|---|
+| `kandidaten.py` | Liest `quellen/zulassung-wahlvorschlaege.pdf` und schreibt `kandidaten.json` |
+| `kandidaten.json` | 16 Wahlvorschläge, 6 Wahlbereiche, 383 Bewerber\*innen mit Listenplatz, Name, Beruf, Jahrgang, Wohnort; dazu Termin, Sitzzahl (52) und die Quellenangabe |
+| `referenz-2021/ratswahl-2021-{stadt,wahlbereiche,wahlbezirke}.csv` | Die Open-Data-Dateien der Ratswahl 2021 (altes Spaltenschema) |
+| `referenz-2021/ratswahl-2021.json` | Amtliche Sitzverteilung 2021 (50 Sitze) und die Zuordnung 2021er Spalte → Liste 2026 |
+
+```bash
+python3 kandidaten.py            # schreibt kandidaten.json
+python3 kandidaten.py --pruefen  # vergleicht nur — was die CI prüft
+```
+
+**Die Reihenfolge der Wahlvorschläge ist die des Stimmzettels** und damit zugleich die der Spalten
+`D1 … D16` in den Open-Data-CSVs des Votemanagers. Der Index einer Liste in `kandidaten.json` ist
+also ihre Spaltennummer; eine Zuordnungstabelle braucht es nicht. `tests/test_wahlabend.py` hält
+das fest, indem es die Höchstzahl an Bewerber\*innen je Liste gegen die CSV-Köpfe prüft — und dass
+die eingecheckte `kandidaten.json` unverändert der Stand des Skripts ist.
+
+Gelesen wird das PDF über die **Koordinaten** der Textstücke, nicht über den extrahierten Text: In
+`zulassung-wahlvorschlaege.txt` stehen Name und Beruf in einer Zeile, ohne Grenze dazwischen; im
+PDF stehen sie in Spalten, deren Kanten oben in `kandidaten.py` als Konstanten liegen.
+
+Die Referenz von 2021 dient zwei Zwecken: als Vergleichswert je Liste (Sitze und Stimmenanteil) und
+als Basis der Hochrechnung — die Wahlbezirke sind 2026 genauso geschnitten und nummeriert wie 2021,
+weshalb ein noch nicht ausgezählter Bezirk mit seinem damaligen Ergebnis geschätzt werden kann.
+Listen ohne Nachfolger 2026 fallen dabei weg, neue Listen haben keine Referenz.
+
+`parteien-meta.json` wird von beiden Beständen benutzt: Die Farben je Liste stehen dort einmal, für
+die Vergleichsseite wie für den Wahlabend.
