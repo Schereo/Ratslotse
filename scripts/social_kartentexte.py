@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kartentexte für Social Media schreiben — ein Satz je Tagesordnungspunkt.
+"""Kartentexte für Social Media schreiben — Überschrift und Satz je Punkt.
 
 Der dritte Text neben Kurzfassung und Tragweite-Grund, und der einzige, der
 die **ganze Vorlage samt Anlagen** sieht. Warum das nötig ist, steht in
@@ -34,7 +34,8 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.social_text import (  # noqa: E402
-    _dringlichkeit_nachladen, _mit_anlagen, kontext, schreibe_fehlende, text_fuer,
+    _dringlichkeit_nachladen, _mit_anlagen, kontext, schreibe_fehlende, schreibe_gruppentexte,
+    text_fuer,
 )
 from council.store import CouncilStore  # noqa: E402
 from kern.alerts import run_guarded  # noqa: E402
@@ -69,6 +70,7 @@ def probe(db_path: Path, count: int, tage: int, mindest_wichtig: int) -> None:
                   f"Tragweite {punkt.get('impact')}")
             print(f"TITEL  : {(punkt['title'] or '')[:150]}")
             print(f"QUELLE : {source}, {len(ktx)} Zeichen, {len(anlagen)} Anlagen")
+            print(f"KOPF   : {result[2] if result and result[2] else '— (keine Überschrift)'}")
             print(f"TEXT   : {result[0] if result else '— (kein Text)'}")
     finally:
         store.close()
@@ -97,7 +99,16 @@ def main() -> dict:
     todo, geschrieben = process(Path(args.db), args.limit, args.tage,
                                 args.workers, args.mindest_wichtig)
     print(f"Social-Kartentexte: {geschrieben}/{todo} Punkte geschrieben", flush=True)
-    return {"Punkte geschrieben": geschrieben, "Punkte offen": max(todo - geschrieben, 0)}
+    # Danach die Gruppen: ein Thema mit mehreren Anträgen bekommt einen Text,
+    # der alle nennt (council/social_text.schreibe_gruppentexte).
+    store = CouncilStore(Path(args.db))
+    try:
+        gruppen, gruppen_geschrieben = schreibe_gruppentexte(store, tage_voraus=args.tage)
+    finally:
+        store.close()
+    print(f"Gruppentexte: {gruppen_geschrieben}/{gruppen} Gruppen geschrieben", flush=True)
+    return {"Punkte geschrieben": geschrieben, "Punkte offen": max(todo - geschrieben, 0),
+            "Gruppen geschrieben": gruppen_geschrieben}
 
 
 if __name__ == "__main__":

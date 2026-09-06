@@ -50,6 +50,13 @@ ANLAGEN_ZEICHEN = 40_000
 ANLAGE_EINZELN = 12_000
 #: Was die Karte trägt. Der Satz wird gesetzt, nicht gescrollt.
 MAX_ZEICHEN = 240
+#: Die Überschrift darüber. 60 Zeichen sind zwei Zeilen auf der Karte
+#: (1080 px, Inter 600) — ein amtlicher Titel hat im Mittel 90 und wurde
+#: deshalb mit „…" gekappt: „Evaluation und Fortschreibung des kommunalen
+#: Aktionsplans gegen Gewalt an Frauen* …" (Tims Befund 05.09.26). Und er
+#: sagt oft nur, WER etwas eingereicht hat: „Änderungsantrag der
+#: CDU-Fraktion vom 10.06.2026". Die Überschrift sagt, worum es geht.
+MAX_UEBERSCHRIFT = 60
 
 #: Ab welchem Anteil der Grenze ein abgeschnittener Satz noch als Text taugt.
 #: Endet der letzte ganze Satz schon nach 40 Zeichen, ist der Rest die
@@ -149,12 +156,65 @@ def _eine_zeile(roh: str | None) -> str:
     return " ".join((roh or "").split())
 
 
-def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
-    """(Kartentext, Herkunft) für einen Punkt — oder None, wenn das Modell
-    nichts Brauchbares liefert.
+class AnbieterFehler(RuntimeError):
+    """Der LLM-Anbieter hat nicht geantwortet — Rate-Limit, 5xx, Netz.
+
+    Kein Urteil über den Punkt, sondern über den Moment: Der Punkt bleibt
+    offen und kommt im nächsten Lauf wieder. Bis 06.09.26 riss so ein
+    Fehler den GANZEN Lauf ab — mitten in der Liste, mit einer Alarmmail je
+    Versuch (sieben an einem Vormittag, als OpenRouter das Luna-Modell
+    drosselte), und die Gruppentexte danach kamen gar nicht mehr dran.
+    """
+
+
+def _antwort(system: str, user: str, max_tokens: int = 400) -> str:
+    """Ein Modellaufruf, roh. Wirft ``AnbieterFehler`` statt der bunten
+    Ausnahmen des SDK — die Aufrufer wollen nur wissen: überspringen."""
+    try:
+        resp = llm.chat_complete(
+            model=MODEL, response_format={"type": "json_object"},
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user}],
+            max_tokens=max_tokens, _feature="social_card_text")
+    except Exception as fehler:  # noqa: BLE001 — jede Sorte Anbieterfehler, s. AnbieterFehler
+        raise AnbieterFehler(str(fehler)) from fehler
+    roh = (resp.choices[0].message.content or "").strip()
+    if roh.startswith("```"):
+        roh = roh.strip("`")
+        roh = roh[roh.find("{"):]
+    return roh
+
+
+def ueberschrift_pruefen(roh: object, ktx: str) -> tuple[str | None, str | None]:
+    """(Überschrift, Mangel) — die Überschrift bereinigt, oder warum nicht.
+
+    Dieselben Netze wie beim Text (keine Wertung, kein vorweggenommenes
+    Ergebnis, keine Zahl, die nicht in der Quelle steht), dazu die eigene
+    Länge. Eine Überschrift ist ein Titel: kein Punkt am Ende, keine
+    Anführungszeichen drumherum — beides schreibt das Modell gern hin.
+    """
+    text = _eine_zeile(roh if isinstance(roh, str) else "").strip(" \"„“'.:")
+    if not text:
+        return None, "leer"
+    if len(text) > MAX_UEBERSCHRIFT:
+        return None, f"zu lang ({len(text)} Zeichen, erlaubt {MAX_UEBERSCHRIFT})"
+    maengel = [m for m in kritiker.pruefe(text, ktx) if not m.startswith("zu lang")]
+    if maengel:
+        return None, "; ".join(maengel)
+    return text, None
+
+
+def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str, str | None] | None:
+    """(Kartentext, Herkunft, Überschrift) für einen Punkt — oder None,
+    wenn das Modell nichts Brauchbares liefert.
 
     None ist kein Fehler, sondern ein gültiges Ergebnis: Der Bot fällt dann
     auf die Kurzfassung zurück. Lieber keine Zeile als eine erfundene.
+
+    Die Überschrift ist die schwächere Hälfte: Fällt nur SIE durch, geht der
+    Text trotzdem raus — mit ``None`` als Überschrift bleibt es auf der Karte
+    beim amtlichen Titel, und der Nachtlauf versucht es beim nächsten Mal
+    erneut (``agenda_items_needing_social_text`` sieht die Lücke).
     """
     ktx, source = kontext(punkt, anlagen)
     system = prompts.get("social_card_text_system")
@@ -167,20 +227,10 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
     # „69/89 Hektar" (Ziele statt Ausweisung) und „94 Hektar" (frei
     # erfunden) heraus.
     for _versuch in range(2):
-        resp = llm.chat_complete(
-            model=MODEL,
-            response_format={"type": "json_object"},
-            messages=[{"role": "system", "content": system},
-                      {"role": "user", "content": user}],
-            max_tokens=400,
-            _feature="social_card_text",
-        )
-        roh = (resp.choices[0].message.content or "").strip()
-        if roh.startswith("```"):
-            roh = roh.strip("`")
-            roh = roh[roh.find("{"):]
+        roh = _antwort(system, user)
         try:
-            text = _eine_zeile(json.loads(roh).get("text"))
+            antwort = json.loads(roh)
+            text = _eine_zeile(antwort.get("text"))
         except (json.JSONDecodeError, AttributeError):
             continue
         if not text:
@@ -191,12 +241,93 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str] | None:
         if maengel:
             print(f"  verworfen ({punkt.get('item_number')}): {'; '.join(maengel)}")
             continue
-        gedeckt, reason = kritiker.pruefe_llm(text, ktx)
+        ueberschrift, mangel = ueberschrift_pruefen(antwort.get("headline"), ktx)
+        if mangel:
+            print(f"  Überschrift verworfen ({punkt.get('item_number')}): {mangel}")
+        # EIN Kritiker-Aufruf für beides: Die Überschrift trägt selten eine
+        # harte Angabe, aber wenn („400 Euro je Baum"), muss sie belegt sein
+        # wie jede im Text.
+        zu_pruefen = f"{ueberschrift}. {text}" if ueberschrift else text
+        gedeckt, reason = kritiker.pruefe_llm(zu_pruefen, ktx)
         if not gedeckt:
             print(f"  verworfen ({punkt.get('item_number')}): nicht gedeckt — {reason}")
             continue
-        return text, source
+        return text, source, ueberschrift
     return None
+
+
+def gruppentext_fuer(kopf: dict, mitglieder: list[tuple[dict, list[dict]]]) -> str | None:
+    """Der gemeinsame Kartentext einer Gruppe — oder None.
+
+    Eine Gruppe ist ein Thema mit mehreren Anträgen. Der Text eines
+    Mitglieds nennt nur dessen Antrag; auf der Karte stand so unter
+    „Änderungen der Baumschutzsatzung" allein, was die CDU will (Tims
+    Befund 06.09.26). Dieser Text sieht das Material ALLER Mitglieder und
+    muss jeden Antrag nennen. Dieselben Netze wie beim Einzeltext.
+    """
+    teile = [f"Thema: {kopf.get('gruppe_titel') or kopf.get('title')}",
+             f"Gremium: {kopf['committee']} am {kopf['session_date']}",
+             f"Zu diesem Thema liegen {len(mitglieder)} Tagesordnungspunkte vor."]
+    quellen = []
+    # Jedes Mitglied bekommt einen gleichen Anteil des Kontexts — sonst
+    # verdrängt die Vorlage des ersten die Anträge der anderen.
+    anteil = max((VORLAGE_ZEICHEN + ANLAGEN_ZEICHEN) // max(len(mitglieder), 1), 8_000)
+    for i, (punkt, anlagen) in enumerate(mitglieder, start=1):
+        ktx, _ = kontext(punkt, anlagen)
+        quellen.append(ktx)
+        teile.append(f"=== Punkt {i} ({punkt['item_number']}) ===\n{ktx[:anteil]}")
+    ktx_gesamt = "\n\n".join(teile)
+
+    system = prompts.get("social_group_text_system")
+    user = prompts.render("social_group_text_user", kontext=ktx_gesamt)
+    for _versuch in range(2):
+        roh = _antwort(system, user)
+        try:
+            text = _eine_zeile(json.loads(roh).get("text"))
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if not text:
+            continue
+        text = kuerzen(text)
+        maengel = kritiker.pruefe(text, ktx_gesamt)
+        if maengel:
+            print(f"  Gruppentext verworfen ({kopf.get('item_number')}): {'; '.join(maengel)}")
+            continue
+        gedeckt, reason = kritiker.pruefe_llm(text, ktx_gesamt)
+        if not gedeckt:
+            print(f"  Gruppentext verworfen ({kopf.get('item_number')}): nicht gedeckt — {reason}")
+            continue
+        return text
+    return None
+
+
+def schreibe_gruppentexte(store, *, tage_voraus: int = 21) -> tuple[int, int]:
+    """Gruppentexte für reife Gruppen schreiben. Rückgabe: (gesucht, geschrieben).
+
+    Läuft HINTER ``schreibe_fehlende``: Eine Gruppe ist reif, sobald
+    mindestens zwei Mitglieder ihren Text haben (``gruppen_ohne_text``).
+    Der Text hängt an der Überschriften-Zeile, ohne eigene Überschrift —
+    auf der Karte steht der Gruppentitel.
+    """
+    gruppen = store.gruppen_ohne_text(tage_voraus=tage_voraus)
+    geschrieben = 0
+    uebersprungen: list[str] = []
+    for kopf in gruppen:
+        material = _mit_anlagen(store, store.agenda_item_material(kopf["ksinr"], kopf["mitglieder"]))
+        for punkt, _ in material:
+            _dringlichkeit_nachladen(punkt)
+        try:
+            text = gruppentext_fuer(kopf, material)
+        except AnbieterFehler as fehler:
+            uebersprungen.append(kopf["item_number"])
+            print(f"  übersprungen ({kopf['item_number']}): Anbieter — {str(fehler)[:120]}")
+            continue
+        if not text:
+            continue
+        store.save_social_text(kopf["ksinr"], kopf["item_number"], text, "group")
+        geschrieben += 1
+    _anbieter_bilanz(len(gruppen), geschrieben, uebersprungen)
+    return len(gruppen), geschrieben
 
 
 #: Wie viele Punkte einer Sitzung höchstens auf einen Rutsch geschrieben
@@ -272,11 +403,44 @@ def schreibe_fehlende(store, *, limit: int | None = None, tage_voraus: int = 21,
     for punkt, _ in todo:
         _dringlichkeit_nachladen(punkt)
     geschrieben = 0
+    uebersprungen: list[str] = []
+
+    def _einer(pa):
+        punkt, anlagen = pa
+        try:
+            return punkt, text_fuer(punkt, anlagen), None
+        except AnbieterFehler as fehler:
+            return punkt, None, str(fehler)
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for punkt, result in pool.map(lambda pa: (pa[0], text_fuer(pa[0], pa[1])), todo):
+        for punkt, result, fehler in pool.map(_einer, todo):
+            if fehler:
+                # Der Punkt bleibt offen und kommt im nächsten Lauf wieder.
+                uebersprungen.append(punkt["item_number"])
+                print(f"  übersprungen ({punkt['item_number']}): Anbieter — {fehler[:120]}")
+                continue
             if not result:
                 continue          # kein Text ist besser als ein erfundener
-            text, source = result
-            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, source)
+            text, source, ueberschrift = result
+            store.save_social_text(punkt["ksinr"], punkt["item_number"], text, source,
+                                   headline=ueberschrift)
             geschrieben += 1
+    _anbieter_bilanz(len(todo), geschrieben, uebersprungen)
     return len(todo), geschrieben
+
+
+def _anbieter_bilanz(gesucht: int, geschrieben: int, uebersprungen: list[str]) -> None:
+    """EIN Alarm, wenn der Anbieter den ganzen Lauf verweigert hat — nicht
+    einer je Punkt, und keiner, wenn nur ein Teil hängen blieb.
+
+    Ein Lauf, der von zwanzig Punkten zwölf schreibt und acht überspringt,
+    hat gearbeitet; die acht kommen morgen. Ein Lauf, der nichts schreibt
+    und alles überspringt, soll aber auffallen — sonst fällt der Anbieter
+    aus und niemand merkt es, bis die Karten leer sind.
+    """
+    if uebersprungen:
+        print(f"  {len(uebersprungen)} von {gesucht} Punkten übersprungen (Anbieter), "
+              f"kommen im nächsten Lauf wieder", flush=True)
+    if uebersprungen and not geschrieben and len(uebersprungen) == gesucht:
+        raise AnbieterFehler(
+            f"Der Anbieter hat alle {gesucht} Punkte verweigert — nichts geschrieben.")
