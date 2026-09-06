@@ -7,19 +7,19 @@ import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
-import { DecisionOutcome, Topic } from "@/lib/types";
-import { shortCommittee } from "@/lib/committees";
+import { Topic } from "@/lib/types";
 import { useHeute } from "@/lib/use-heute";
 import { Button, Card } from "@/components/ui";
 import { Mascot } from "@/components/mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
+import { NeueTrefferKarte } from "@/components/neue-treffer-karte";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
-import { formatEuro, OutcomeDot } from "@/components/decision-ui";
+import { formatEuro } from "@/components/decision-ui";
 import { fragenHref, decisionHref, viertelHref } from "@/lib/routes";
 import { useFeature } from "@/lib/features";
 import { MapPinned } from "lucide-react";
@@ -32,18 +32,7 @@ import { cn } from "@/lib/utils";
 
 const FRAGEN_HREF = fragenHref();
 
-type TopicHit = { topic_name: string; id: number; title: string; committee: string; session_date: string };
-// Aus dem API-Vertrag statt von Hand — beide sind dort echte Unions, `found`
-// bzw. `kind` unterscheiden die Fälle.
-//
-// Einzige Abweichung: `outcome` steht im Vertrag als `string`, nicht als Union.
-// Die Spalte wird vom LLM befüllt; eine Verengung im Backend hieße, dass ein
-// unerwarteter Wert die Antwort mit 500 abbricht statt nur ein Etikett
-// unbeschriftet zu lassen. Die Oberfläche darf enger sehen als der Vertrag.
-type DieseWocheRoh = ApiAntwort<"/council/diese-woche">;
-type DieseWoche =
-  | Extract<DieseWocheRoh, { found: false }>
-  | (Omit<Extract<DieseWocheRoh, { found: true }>, "outcome"> & { outcome: DecisionOutcome | null });
+// Aus dem API-Vertrag statt von Hand — `kind` unterscheidet die Fälle.
 type ZahlDerWoche = ApiAntwort<"/council/zahl-der-woche">;
 
 /** ISO-Datum von vor n Tagen — Ziel des „Diese N ansehen"-Links (Design 28a/S5).
@@ -52,17 +41,6 @@ type ZahlDerWoche = ApiAntwort<"/council/zahl-der-woche">;
 const lastWeekIso = (days: number) =>
   new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
-function relTime(iso: string): string {
-  const days = Math.round((Date.now() - new Date(iso + "T12:00:00").getTime()) / 86400000);
-  if (days <= 0) return "heute";
-  if (days === 1) return "gestern";
-  if (days < 7) return `vor ${days} Tagen`;
-  if (days < 30) {
-    const weeks = Math.round(days / 7);
-    return weeks === 1 ? "vor 1 Woche" : `vor ${weeks} Wochen`;
-  }
-  return new Date(iso + "T12:00:00").toLocaleDateString("de-DE", { day: "numeric", month: "short" });
-}
 
 /** „Heute"-Briefing (RL-401, Design 2a/4a): Kopf mit Lotti + Signal-CTA,
  *  Pause-Banner, dann die Wochen-Karte (Design 14) und darunter zwei kurze —
@@ -81,24 +59,10 @@ export default function DashboardPage() {
   const topicsQuery = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics") });
   const topicCount = topicsQuery.data?.length ?? 0;
 
-  const hitsQuery = useQuery({
-    queryKey: ["topic-latest-hits"],
-    queryFn: () => vertrag.get("/topics/latest-hits?limit=2"),
-  });
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],
     queryFn: () => vertrag.get("/council/zahl-der-woche"),
   });
-  // RL-U15 (13a-A): Ersatz für den Treffer-Leerzustand — nur laden, wenn er
-  // gebraucht würde (Themen vorhanden, aber keine Treffer).
-  const hits = hitsQuery.data?.hits ?? [];
-  const wocheQuery = useQuery({
-    queryKey: ["diese-woche"],
-    queryFn: () => api.get<DieseWoche>("/council/diese-woche"),
-    enabled: !hitsQuery.isLoading && hits.length === 0 && topicCount > 0,
-    staleTime: 60 * 60 * 1000,
-  });
-  const woche = wocheQuery.data?.found ? wocheQuery.data : null;
   // Design 14: Die Wochen-Karte steht jetzt IMMER — sie ersetzt „Nächste
   // Sitzungen" und ist damit die vollständige Sicht auf die Woche, nicht mehr
   // ein Ersatz für einen Leerzustand.
@@ -210,64 +174,7 @@ export default function DashboardPage() {
           {/* Neu zu deinen Themen — der Rückblick auf entschiedene Beschlüsse.
               Die Vorschau auf die Woche ist seit Design 14 eine eigene Karte
               über dem Raster; diese hier trägt nur noch die Treffer. */}
-          <Card className="flex flex-col p-5">
-            <h2 className="font-display text-base font-bold text-foreground">Neu zu deinen Themen</h2>
-            <div className="mt-3 flex-1 space-y-2">
-              {hits.map((h) => (
-                <Link key={h.id} href={decisionHref(h.id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
-                  <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                    {h.topic_name}
-                  </span>
-                  <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{h.title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {shortCommittee(h.committee)} · {relTime(h.session_date)}
-                  </p>
-                </Link>
-              ))}
-              {!hitsQuery.isLoading && hits.length === 0 && topicCount > 0 && (
-                woche ? (
-                  /* RL-U15 (13a-A): der interessanteste Beschluss der Woche statt
-                     des leeren Texts — „Warum spannend" ist wörtlich der
-                     interest_reason der Bewertungs-Pipeline. */
-                  <Link href={decisionHref(woche.decision_id)} className="block rounded-lg px-2 py-2 transition-colors hover:bg-accent">
-                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <OutcomeDot outcome={woche.outcome} /> {shortCommittee(woche.committee)}
-                    </span>
-                    <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{woche.title}</p>
-                    {woche.interest_reason && (
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                        <span className="font-semibold text-signal">Warum spannend:</span> {woche.interest_reason}
-                      </p>
-                    )}
-                    <span className="mt-1.5 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                      Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
-                    </span>
-                  </Link>
-                ) : (
-                  <p className="px-2 py-2 text-sm leading-relaxed text-muted-foreground">
-                    Noch keine Treffer — sobald der Rat zu deinen Themen entscheidet, steht es hier.
-                  </p>
-                )
-              )}
-              {!topicsQuery.isLoading && topicCount === 0 && (
-                /* Leerzustand 4a: gestrichelte Lotti-Karte „Erstes Thema anlegen". */
-                <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-4 py-5 text-center">
-                  <Mascot pose="point" decorative className="h-12 w-12" />
-                  <p className="text-sm text-muted-foreground">
-                    Lege dein erstes Thema an und werde benachrichtigt, sobald der Rat dazu entscheidet.
-                  </p>
-                  <Button size="sm" asChild>
-                    <Link href="/topics">Erstes Thema anlegen</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-            {topicCount > 0 && (
-              <Link href="/topics" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                Meine Themen <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            )}
-          </Card>
+          <NeueTrefferKarte topicCount={topicCount} topicsLaden={topicsQuery.isLoading} />
 
           {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
               wenigsten Breite. */}

@@ -3919,6 +3919,15 @@ export interface paths {
          * @description Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
          *     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
          *     {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst.
+         *
+         *     Dieselbe Menge wie die Themen-Karten (``list_topics``): alle Treffer,
+         *     nach Sitzungsdatum. Bis 09/2026 nahm die Route je Thema nur die zehn
+         *     BESTBEWERTETEN Treffer und sortierte erst die nach Datum — „neu" hieß
+         *     damit „das Jüngste unter den Passendsten", und die Karte konnte einen
+         *     Beschluss verschweigen, den die Themen-Seite als jüngsten führte.
+         *
+         *     Ein Beschluss, der zu mehreren Themen passt, steht einmal da — mit dem
+         *     Thema, in dem er noch ungelesen ist, falls es eines gibt.
          */
         get: operations["latest_hits_api_topics_latest_hits_get"];
         put?: never;
@@ -9212,16 +9221,36 @@ export interface components {
             /** Verdict */
             verdict: string;
         };
-        /** TopicHit */
+        /**
+         * TopicHit
+         * @description Ein Beschluss-Treffer auf der Karte „Neu zu deinen Themen" (Heute).
+         *
+         *     Bis 09/2026 trug er nur Titel, Gremium und Datum — die Karte konnte damit
+         *     weder sagen, WAS entschieden wurde (``summary``), noch WIE (``outcome``),
+         *     noch ob man es schon kannte (``is_new``). Dieselben drei Felder trägt die
+         *     Themen-Karte seit dem 28.08.2026 (``TopicHitOut``); ``topic_id`` braucht
+         *     der Gelesen-Ruf (``POST /topics/{topic_id}/seen``).
+         */
         TopicHit: {
             /** Committee */
             committee: string;
             /** Id */
             id: number;
+            /** Is New */
+            is_new: boolean;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Session Date */
             session_date: string;
+            /** Summary */
+            summary: string | null;
             /** Title */
             title: string;
+            /** Topic Id */
+            topic_id: number;
             /** Topic Name */
             topic_name: string;
         };
@@ -9229,6 +9258,12 @@ export interface components {
         TopicHitList: {
             /** Hits */
             hits: components["schemas"]["TopicHit"][];
+            /** Topic Count */
+            topic_count: number;
+            /** Total */
+            total: number;
+            /** Unread Total */
+            unread_total: number;
         };
         /**
          * TopicHitOut
@@ -14719,4 +14754,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 075fc1b0b54f186720335c460b88e9e7b493d7b8ac15db21891dcdf068804907
+// vertrag-sha256: f102e1dd4b3a47da81ee7806292a16fda2b10adcc62a4a7f44498c3bf2ef56ad

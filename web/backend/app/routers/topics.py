@@ -44,7 +44,7 @@ from kern.store import Store
 from council.store import CouncilStore
 
 from ..antworten import (MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet, Subscriptions,
-                         TopicDecisions, TopicDescription, TopicHitList, TopicSuggestions,
+                         TopicDecisions, TopicDescription, TopicHit, TopicHitList, TopicSuggestions,
                          UnreadTopicHits)
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
@@ -905,20 +905,41 @@ def latest_hits(
 ) -> TopicHitList:
     """Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
-    {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst."""
-    pairs: list[tuple[str, int]] = []
-    for t in store.get_topics(user["id"]):
-        pairs += [(t.name, m["decision_id"]) for m in store.get_topic_decision_matches(t.id)[:10]]
-    by_id = {d["id"]: d for d in council.get_decisions_by_ids([d_id for _, d_id in pairs])}
-    rows = [
-        {"topic_name": name, "id": d["id"], "title": d["title"],
-         "committee": d["committee"], "session_date": d["session_date"]}
-        for name, d_id in pairs if (d := by_id.get(d_id))
+    {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst.
+
+    Dieselbe Menge wie die Themen-Karten (``list_topics``): alle Treffer,
+    nach Sitzungsdatum. Bis 09/2026 nahm die Route je Thema nur die zehn
+    BESTBEWERTETEN Treffer und sortierte erst die nach Datum — „neu" hieß
+    damit „das Jüngste unter den Passendsten", und die Karte konnte einen
+    Beschluss verschweigen, den die Themen-Seite als jüngsten führte.
+
+    Ein Beschluss, der zu mehreren Themen passt, steht einmal da — mit dem
+    Thema, in dem er noch ungelesen ist, falls es eines gibt.
+    """
+    owner_id = user["id"]
+    topics = store.get_topics(owner_id)
+    wanted = [(t, m["decision_id"]) for t in topics for m in store.get_topic_decision_matches(t.id)]
+    by_id = {d["id"]: d for d in council.get_decisions_by_ids([d_id for _, d_id in wanted])}
+    unseen = store.unseen_hit_ids(owner_id)
+    rows: list[TopicHit] = [
+        {"topic_id": t.id, "topic_name": t.name, "id": d["id"], "title": (d["title"] or "").strip(),
+         "committee": d["committee"], "session_date": d["session_date"],
+         "outcome": d.get("outcome"), "summary": d.get("summary") or None,
+         "is_new": d["id"] in unseen.get(t.id, set())}
+        for t, d_id in wanted if (d := by_id.get(d_id))
     ]
-    rows.sort(key=lambda r: r["session_date"] or "", reverse=True)
+    # Jüngste zuerst; bei gleichem Beschluss gewinnt die ungelesene Zeile
+    # den Doppel-Abgleich unten, damit der Punkt nicht am Thema hängt.
+    rows.sort(key=lambda r: (r["session_date"] or "", r["is_new"]), reverse=True)
     seen: set[int] = set()
     out = [r for r in rows if not (r["id"] in seen or seen.add(r["id"]))]
-    return {"hits": out[:limit]}
+    return {
+        "hits": out[:limit],
+        "topic_count": len(topics),
+        "total": len(out),
+        # Dieselbe Zählung wie die „n neue"-Abzeichen der Themen-Karten.
+        "unread_total": sum(len(ids) for ids in unseen.values()),
+    }
 
 
 @router.get("/{topic_id}/decisions")
