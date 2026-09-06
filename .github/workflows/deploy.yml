@@ -175,6 +175,13 @@ jobs:
             --exclude 'web/frontend/.next/'
             --exclude 'web/frontend/.next-dev/'
             --exclude 'web/frontend/public/docs/'
+            # Die Instagram-Karten legt der Bot per POST /api/social/media
+            # hier ab; sie entstehen NUR auf dem Server. Ohne diese Regel
+            # räumte --delete sie bei jedem Deploy weg — am 06.09.2026 lagen
+            # zwischen Digest (12:33 UTC) und Post-Termin (16:00 UTC) drei
+            # Deploys, Instagram fand unter den URLs 404-HTML und lehnte den
+            # Wochenbeitrag ab („Only photo or video can be accepted").
+            --exclude 'web/frontend/public/social/'
             --exclude 'docs-site/node_modules/'
             --exclude 'docs-site/dist/'
             --filter 'P .env'
@@ -185,6 +192,7 @@ jobs:
             --filter 'P /web/frontend/.next/'
             --filter 'P /web/frontend/.next-dev/'
             --filter 'P /web/frontend/public/docs/'
+            --filter 'P /web/frontend/public/social/'
             --filter 'P /docs-site/node_modules/'
             --filter 'P /docs-site/dist/'
           )
