@@ -13,8 +13,12 @@ Wellen passten in ihrem plastischen Look nicht zum Rest (Tims Befund
 06.09.26). Jetzt entsteht der Splash aus denselben Bausteinen wie die
 Instagram-Karten in ``ratslotse-social``: leiser Wellengrund, weiches
 Licht, Möwen als zwei Bögen, Wogen am unteren Rand — gezeichnet mit Pillow
-in den Farben der Designsprache, kein Bildgenerator. Lotti selbst bleibt
-das 3D-Render, das die App ohnehin für die Jubel-Szene trägt.
+in den Farben der Designsprache, kein Bildgenerator. Lotti selbst ist ein
+Render aus demselben Studio: die Szene ``splash`` (Hero-Ansicht, zugewandt,
+mit den gewölbten Freude-Brauen), über ``studio/marke.py`` nach
+``assets/marke/lotti-splash.png`` gelegt. Die Jubel-Szene der App war der
+erste Stand; die Helden-Pose der Karten wirkte mit ihrem „hört zu" auf dem
+Splash traurig (Tim, 06.09.26).
 
 DIE LEINWAND IST 1400 PUNKT GROSS, UND DAS IST KEIN ZUFALL. ``UILaunchScreen``
 zeigt das Bild ungeskaliert und zentriert; was über den Bildschirm
@@ -231,8 +235,9 @@ def splash(scale: int, dunkel: bool, social: Path, figur: Path) -> Image.Image:
         (760 * s, 372 * s, 16 * s),
     ])
 
-    # 4. Lotti. 270 pt hoch: Das Jubel-Render ist 866 px, bei 3× also nahezu
-    #    1:1. Die Füße stehen knapp über dem ersten Wogenkamm.
+    # 4. Lotti, 270 pt hoch — das Marken-Render trägt 1200 px, bei 3× also
+    #    ein leichtes Verkleinern. Die Füße stehen knapp über dem ersten
+    #    Wogenkamm.
     lotti = _figur(figur, 270 * s)
     bild.alpha_composite(lotti, (round(mitte - lotti.width / 2), round(492 * s)))
 
@@ -266,14 +271,18 @@ def _vorschau(bild: Image.Image, scale: int, ziel: Path, name: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--social", help="Checkout von ratslotse-social")
-    ap.add_argument("--figur", default=str(ASSETS / "Lotti3DCelebrate.imageset" / "Lotti3DCelebrate.png"),
-                    help="Lotti-Render mit Alpha (Vorgabe: die Jubel-Szene der App)")
+    ap.add_argument("--figur", help="Lotti-Render mit Alpha (Vorgabe: assets/marke/lotti-splash.png "
+                                    "aus ratslotse-social; die Jubel-Szene der App liegt unter "
+                                    "Resources/Assets.xcassets/Lotti3DCelebrate.imageset/)")
     ap.add_argument("--vorschau", help="Verzeichnis für Handy-Ausschnitte (1×)")
     ap.add_argument("--nur-vorschau", action="store_true", help="Assets nicht anfassen")
     args = ap.parse_args()
 
     social = _social_finden(args.social)
-    figur = Path(args.figur).expanduser()
+    figur = (Path(args.figur).expanduser() if args.figur
+             else social / "assets" / "marke" / "lotti-splash.png")
+    if not figur.exists():
+        sys.exit(f"Figur fehlt: {figur} — drüben `python3 studio/marke.py splash` laufen lassen")
     print(f"Bausteine aus {social}")
     print(f"Figur: {figur}")
 

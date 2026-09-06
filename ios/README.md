@@ -60,8 +60,9 @@ Hinweis anzeigen.
 Das Bild hinter `UILaunchScreen` (`Resources/Assets.xcassets/Splash.imageset/`)
 ist erzeugt, nicht gemalt: `scripts/make_splash.py` setzt es aus den
 Bausteinen von [ratslotse-social](https://github.com/Schereo/ratslotse-social)
-— Wellenmuster, weiche Sonne, Möwen, Wogen — mit dem Jubel-Render von Lotti,
-Wortmarke und Kicker. Es braucht einen Checkout des Social-Repos daneben (oder
+— Wellenmuster, weiche Sonne, Möwen, Wogen — mit Lottis Splash-Render aus
+demselben Studio (Szene `splash`, `assets/marke/lotti-splash.png`), Wortmarke
+und Kicker. Es braucht einen Checkout des Social-Repos daneben (oder
 `--social PFAD`) und die venv des Hauptprojekts (Pillow):
 
 ```bash
