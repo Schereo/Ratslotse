@@ -239,3 +239,23 @@ def test_new_tracker_clears_the_previous_run(tmp_path):
         assert store.live_events(200) == []
     finally:
         store.close()
+
+
+def test_tracker_keeps_the_speaker_while_the_debate_continues(tmp_path):
+    """15-s-Fenster tragen die Ankündigung nur jedes zweite Mal: Läuft die
+    Aussprache zum selben Punkt weiter, redet noch, wer zuletzt dran war."""
+    store = _store(tmp_path)
+    try:
+        tracker, fake = _tracker(store, [
+            '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": "Frau Drügemöller", "party": null}',
+            '{"transitions": [], "top": "9.3", "phase": "aussprache", "speaker": null, "party": null}',
+            '{"transitions": [], "top": "9.3", "phase": "abstimmung", "speaker": null, "party": null}',
+        ])
+        with mock.patch.object(livetracker.llm, "chat_complete", fake):
+            tracker.on_window(0, 15, [(2.0, "Frau Drügemöller.")], False)
+            tracker.on_window(15, 30, [(20.0, "… weiter im Text …")], False)
+            assert store.get_live_state(200)["speaker"] == "Susanne Drügemöller"
+            tracker.on_window(30, 45, [(35.0, "Wer ist dafür?")], False)
+        assert store.get_live_state(200)["speaker"] is None
+    finally:
+        store.close()

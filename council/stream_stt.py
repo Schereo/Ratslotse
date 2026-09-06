@@ -4,16 +4,25 @@ Der Weg über Audio-Stücke (``council/livestream.py``) sieht die Sitzung erst,
 wenn ein Stück fertig ist; sein Verzug ist mindestens die Stücklänge. Hier
 läuft das Audio stattdessen als PCM-Strom über einen Websocket an Gladia
 (EU-Region), und jede fertige Äußerung kommt nach wenigen Sekunden mit
-Zeitmarke zurück. Gemessen 06.09.2026 an einem 10-Minuten-Ausschnitt der
-Ratssitzung vom 31.08.: Äußerungen von im Median 4,4 s, Text pro Minute wie
-bei Gemini, Verzug im Echtzeitbetrieb wenige Sekunden (bei 5-facher
-Geschwindigkeit staut es sich — der Dienst ist für Echtzeit gebaut).
+Zeitmarke zurück. Gemessen 06.09.2026 an der Ratssitzung vom 31.08.:
+
+- Echtzeit (10-min-Ausschnitt): eine fertige Äußerung kommt im Median 5,2 s
+  nach ihrem Ende an (p90 9,2 s); Äußerungen dauern im Median 4,4 s; Text
+  je Minute wie bei Gemini. Bei 5-facher Geschwindigkeit staut es sich —
+  der Dienst ist für Echtzeit gebaut, 2-fach hält er noch.
+- Ganze Sitzung (3 h 49 min, 2-fach): 1.565 Segmente, Neuverbindung an der
+  Sitzungsgrenze ohne Verlust; die Live-Verfolgung mit 15-s-Fenstern plus
+  ausgelösten Fenstern: 1.081 Aufrufe (297 ausgelöst), 1,06 $, Sprecher in
+  896 von 969 Fenstern mit Text. Ein Aufruf oder eine Worterteilung steht
+  damit ~7 s nach dem Satz auf der Karte (Text 5 s + Tracker 1,2 s); ein
+  reguläres Fenster spätestens nach ~27 s.
 
 Was bleibt gleich: Die Segmente haben dieselbe Form wie beim Stück-Weg
 (``(Sekunden seit Aufnahmestart, Text)``), gehen also unverändert in
 ``videos.extract_results``; und die Live-Verfolgung (``council/livetracker``)
-bekommt sie in Fenstern von ``WINDOW_SECONDS`` über denselben Haken wie die
-Stücke — ``on_window(idx, segments, closing)``.
+bekommt sie in Fenstern von ``WINDOW_SECONDS`` — und sofort, wenn ein
+Punkt aufgerufen oder das Wort erteilt wird (``TRIGGER_RE``) — über
+``LiveTracker.on_window(t_from, t_to, segments, closing)``.
 
 Was anders ist:
 
@@ -39,6 +48,7 @@ import json
 import logging
 import os
 import queue
+import re
 import subprocess
 import threading
 import time
@@ -153,44 +163,74 @@ def ffmpeg_pcm(source: str) -> subprocess.Popen | None:
     return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
 
+#: Was ein Fenster SOFORT auslöst, statt auf die nächste Grenze zu warten:
+#: Die Leitung ruft einen Punkt auf oder erteilt das Wort. Genau diese
+#: Sätze sollen in Sekunden auf der Karte stehen; alles andere darf den
+#: Takt abwarten.
+TRIGGER_RE = re.compile(
+    r"Tagesordnungspunkt|\bPunkt\s+\d|\bTOP\s+\d|das Wort|\b(?:Herr|Frau)\s+[A-ZÄÖÜ]"
+    r"|Abstimmung|abstimmen|dafür|dagegen|Enthaltung|Dringlichkeitsantrag", re.I)
+#: Zwei ausgelöste Fenster liegen mindestens so weit auseinander — sonst
+#: löste jede Anrede in einer Rede einen Aufruf aus.
+TRIGGER_GAP_SECONDS = 4.0
+
+
 class Windower:
-    """Reicht die Segmente in Fenstern fester Länge an die Live-Verfolgung.
+    """Reicht die Segmente in Fenstern an die Live-Verfolgung.
 
-    Fenster ``idx`` deckt ``[idx·W, (idx+1)·W)`` Audio-Sekunden ab und wird
-    ausgeliefert, sobald das Audio ``SETTLE_SECONDS`` darüber hinaus ist —
-    so lange dauert es, bis eine Äußerung an der Grenze fertig gemeldet
-    ist. Nachzügler danach gehen mit dem nächsten Fenster mit (der Tracker
-    ordnet nach Zeitmarke, nicht nach Ankunft)."""
+    Regulär alle ``window_seconds`` Audio: Fenster ``[t_from, t_to)`` wird
+    ausgeliefert, sobald das Audio ``SETTLE_SECONDS`` über ``t_to`` hinaus
+    ist — so lange dauert es, bis eine Äußerung an der Grenze fertig
+    gemeldet ist. Dazu SOFORT, wenn ein Segment nach ``TRIGGER_RE`` einen
+    Aufruf oder eine Worterteilung trägt: Dann endet das Fenster an der
+    aktuellen Audio-Position. Nachzügler gehen mit dem nächsten Fenster
+    mit (der Tracker ordnet nach Zeitmarke, nicht nach Ankunft).
 
-    def __init__(self, on_window: Callable[[int, list[tuple[float, str]], bool], None] | None,
-                 window_seconds: int = WINDOW_SECONDS, settle: float = SETTLE_SECONDS):
+    ``on_window(t_from, t_to, segments, closing)`` — passt auf
+    ``LiveTracker.on_window``."""
+
+    def __init__(self, on_window: Callable[[float, float, list[tuple[float, str]], bool], None] | None,
+                 window_seconds: int = WINDOW_SECONDS, settle: float = SETTLE_SECONDS,
+                 trigger=TRIGGER_RE):
         self.on_window = on_window
         self.window = window_seconds
         self.settle = settle
+        self.trigger = trigger
         self.pending: list[tuple[float, str]] = []
-        self.next_idx = 0
+        self.audio = 0.0
+        self.t_from = 0.0
+        self.next_boundary = float(window_seconds)
         self.dispatched = 0
+        self.triggered = 0
 
     def add(self, segment: tuple[float, str]) -> None:
         self.pending.append(segment)
+        if (self.trigger is not None and self.trigger.search(segment[1])
+                and self.audio - self.t_from >= TRIGGER_GAP_SECONDS):
+            self.triggered += 1
+            self._dispatch(self.audio, False)
 
     def advance(self, audio_seconds: float) -> None:
-        while audio_seconds >= (self.next_idx + 1) * self.window + self.settle:
-            self._dispatch(False)
+        self.audio = audio_seconds
+        while audio_seconds >= self.next_boundary + self.settle:
+            self._dispatch(self.next_boundary, False)
 
     def close(self) -> None:
         """Alles Ausstehende als letztes Fenster mit ``closing=True``."""
-        self._dispatch(True)
+        self._dispatch(max(self.audio, self.t_from), True)
 
-    def _dispatch(self, closing: bool) -> None:
+    def _dispatch(self, t_to: float, closing: bool) -> None:
         segs, self.pending = self.pending, []
+        t_from = self.t_from
         if self.on_window is not None:
             try:
-                self.on_window(self.next_idx, segs, closing)
+                self.on_window(t_from, t_to, segs, closing)
             except Exception:  # noqa: BLE001 — Live-Stand ist Zugabe
-                log.exception("Live-Verfolgung für Fenster %d fehlgeschlagen", self.next_idx)
+                log.exception("Live-Verfolgung für Fenster %.0f–%.0f s fehlgeschlagen", t_from, t_to)
         self.dispatched += 1
-        self.next_idx += 1
+        self.t_from = t_to
+        while self.next_boundary <= t_to:
+            self.next_boundary += self.window
 
 
 class _Link:
@@ -259,7 +299,8 @@ def record_and_transcribe(on_window=None, source: str | None = None,
     ``source`` ist die HLS-Adresse (Vorgabe ``livestream.STREAM_URL``) oder
     eine Datei; ``pace`` > 0 bremst eine Datei auf das Vielfache der
     Echtzeit (nur für Messungen — ein Live-Stream liefert von selbst in
-    Echtzeit). ``on_window(idx, segments, closing)`` je ``window_seconds``.
+    Echtzeit). ``on_window(t_from, t_to, segments, closing)`` je
+    ``window_seconds`` und bei jedem Aufruf/jeder Worterteilung.
     """
     vocab = vocabulary(people or [])
     url = open_session(vocab)  # wirft StreamUnavailable → Rückfall auf Stücke
@@ -326,6 +367,6 @@ def record_and_transcribe(on_window=None, source: str | None = None,
         drain()
         windower.close()
     segments.sort(key=lambda s: s[0])
-    log.info("Streaming beendet: %.0f s Audio, %d Segmente, %d Fenster",
-             sent, len(segments), windower.dispatched)
+    log.info("Streaming beendet: %.0f s Audio, %d Segmente, %d Fenster (%d ausgelöst)",
+             sent, len(segments), windower.dispatched, windower.triggered)
     return segments

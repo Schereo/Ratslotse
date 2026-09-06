@@ -228,17 +228,23 @@ class LiveTracker:
     # ------------------------------------------------------------- Haken
 
     def on_chunk(self, idx: int, segments: list[tuple[float, str]], closing: bool) -> None:
+        """Haken für den Stück-Weg: Stück ``idx`` deckt feste Sekunden ab."""
+        self.on_window(idx * self.chunk_seconds, (idx + 1) * self.chunk_seconds, segments, closing)
+
+    def on_window(self, t_from: float, t_to: float, segments: list[tuple[float, str]],
+                  closing: bool) -> None:
+        """Haken für den Streaming-Weg (``stream_stt.Windower``): ein Fenster
+        beliebiger Länge — auch ein kurzes, wenn gerade ein Punkt aufgerufen
+        oder das Wort erteilt wurde."""
         self.segments.extend(segments)
-        t_from = idx * self.chunk_seconds
-        t_to = (idx + 1) * self.chunk_seconds
         window = [s for s in self.segments if t_from - OVERLAP_SECONDS <= s[0] < t_to]
         if not window:
             if closing:
-                self.finish(t_to)
+                self.finish(int(t_to))
             return
         res = track_window(self._agenda_text, self._roster_text, self.state,
-                           format_window(window), t_from, t_to, self.model)
-        self.apply(res, t_from, t_to, closing)
+                           format_window(window), int(t_from), int(t_to), self.model)
+        self.apply(res, int(t_from), int(t_to), closing)
 
     def apply(self, res: dict, t_from: int, t_to: int, closing: bool = False) -> dict:
         """Modellantwort in Stand + Ereignisse übersetzen und speichern."""
@@ -257,13 +263,20 @@ class LiveTracker:
             at = first["at_seconds"] if first else t_from
             self.since = self.started_at + timedelta(seconds=at)
 
+        phase = res.get("phase") if res.get("phase") in PHASES else "unklar"
         person = match_speaker(res.get("speaker"), self.people)
         if person:
             speaker, party = person["name"], party_of(person)
+        elif (phase == "aussprache" and top == self.state.get("top")
+              and self.state.get("speaker")):
+            # Kein neuer Name im Fenster, aber die Aussprache zum selben
+            # Punkt läuft weiter: Dann redet noch, wer zuletzt das Wort
+            # bekam. Bei 15-s-Fenstern fehlt die Ankündigung sonst in jedem
+            # zweiten Fenster (gemessen 06.09.: 57 % → 91 % mit Sprecher).
+            speaker, party = self.state["speaker"], self.state.get("party")
         else:
             speaker = None
             party = res.get("party") if res.get("party") == "Verwaltung" else None
-        phase = res.get("phase") if res.get("phase") in PHASES else "unklar"
         finished = bool(closing)
         if finished:
             phase = "ende"

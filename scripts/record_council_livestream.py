@@ -82,16 +82,16 @@ def _tracker(store: CouncilStore, ksinr: int, window_seconds: int) -> livetracke
 def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[tuple[float, str]], str]:
     """Streamend, wenn möglich; sonst (oder wenn die Streaming-Sitzung nicht
     zustande kommt) in Stücken. Gibt die Segmente und den gegangenen Weg."""
-    on_window = tracker.on_chunk if tracker else None
     if stream_stt.configured():
         try:
             return stream_stt.record_and_transcribe(
-                on_window=on_window, people=tracker.people if tracker else None), "gladia"
+                on_window=tracker.on_window if tracker else None,
+                people=tracker.people if tracker else None), "gladia"
         except stream_stt.StreamUnavailable as exc:
             log.warning("Streaming nicht möglich (%s) — Rückfall auf Stücke", exc)
             if tracker:
                 tracker.chunk_seconds = livestream.CHUNK_SECONDS
-    return _record_fresh(ksinr, on_chunk=on_window), "chunks"
+    return _record_fresh(ksinr, on_chunk=tracker.on_chunk if tracker else None), "chunks"
 
 
 def main() -> dict:
