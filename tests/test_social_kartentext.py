@@ -303,6 +303,41 @@ def test_gruppentext_sieht_alle_mitglieder(monkeypatch):
     assert social_text.gruppentext_fuer(kopf, mitglieder) is None
 
 
+def test_ein_anbieterfehler_kostet_den_punkt_nicht_den_lauf(store, monkeypatch):
+    """OpenRouter drosselte Luna am 06.09.26; jeder 429 riss den ganzen
+    Lauf ab, mitten in der Liste, mit einer Alarmmail je Versuch. Jetzt
+    bleibt der Punkt offen, die anderen werden geschrieben — und die
+    Gruppen danach kommen noch dran."""
+    class _Antwort:
+        def __init__(self, inhalt):
+            self.choices = [type("C", (), {"message": type("M", (), {"content": inhalt})()})()]
+
+    def _chat(**kw):
+        if "Klinikum" in kw["messages"][1]["content"]:
+            raise RuntimeError("429 openai/gpt-5.6-luna is temporarily rate-limited upstream")
+        return _Antwort('{"headline": "Kleiner Punkt", "text": "Vorgelegt wird ein Bericht."}')
+
+    monkeypatch.setattr(social_text.llm, "chat_complete", _chat)
+    monkeypatch.setattr(social_text.prompts, "get", lambda *a, **k: "system")
+    monkeypatch.setattr(social_text.prompts, "render", lambda key, **k: k.get("kontext", "user"))
+    monkeypatch.setattr(social_text.kritiker, "pruefe_llm", lambda text, source: (True, ""))
+
+    _sitzung(store)
+    _punkt(store, nummer="Ö 10", impact=75)                       # „Ausfallbürgschaft für das Klinikum"
+    _punkt(store, nummer="Ö 11", title="Ein Punkt mit wenig Tragweite", impact=10)
+
+    gesucht, geschrieben = social_text.schreibe_fehlende(store, workers=1)
+    assert (gesucht, geschrieben) == (2, 1)
+    # Der verweigerte Punkt ist weiter offen, der andere erledigt.
+    assert [p["item_number"] for p in store.agenda_items_needing_social_text()] == ["Ö 10"]
+
+    # Verweigert der Anbieter ALLES, gibt es genau einen Alarm — am Ende.
+    monkeypatch.setattr(social_text.llm, "chat_complete",
+                        lambda **kw: (_ for _ in ()).throw(RuntimeError("429")))
+    with pytest.raises(social_text.AnbieterFehler):
+        social_text.schreibe_fehlende(store, workers=1)
+
+
 def test_offen_ist_auch_was_noch_keine_ueberschrift_hat(store):
     """Zeilen von vor 09/2026 haben einen Text, aber keine Überschrift. Der
     Nachtlauf holt sie nach — und schreibt dabei beides neu, weil beides in
