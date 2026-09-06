@@ -199,8 +199,13 @@ function KalenderAboKarte({ anzahlAbos }: { anzahlAbos: number }) {
     : `Im Kalender: die Sitzungen ${anzahlAbos === 1 ? "deines abonnierten Gremiums" : `deiner ${anzahlAbos} abonnierten Gremien`} – plus jede Sitzung, die eines deiner Themen berührt, mit Erinnerung am Vorabend.`;
 
   if (!offen) {
+    // Der zugängliche Name heißt bewusst nicht „… abonnieren": Die
+    // Gremien-Knöpfe darunter heißen „<Gremium> abonnieren", und wer den
+    // ersten davon sucht (Tests, Screenreader-Sprungliste), soll nicht hier
+    // landen.
     return (
       <button type="button" onClick={() => setOffen(true)} aria-expanded={false}
+        aria-label="Kalender-Abo anzeigen"
         className="hh-tafel mt-6 flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-left text-foreground transition-colors hover:bg-accent">
         <CalendarPlus className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} aria-hidden />
         <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">Im Kalender abonnieren</span>
