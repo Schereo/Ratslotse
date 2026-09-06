@@ -18,13 +18,17 @@ import pytest
 
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
+# setdefault, nicht setzen: Läuft ein anderes Backend-Testmodul vorher, hat es
+# die App schon mit SEINEN Pfaden importiert — ein zweiter Wert hier würde den
+# Store an einer anderen Datei ansetzen als die App (gemessen 06.09.2026:
+# allein grün, in der Suite rot).
 _TMP = tempfile.mkdtemp()
-os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
-os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
-os.environ["WEB_JWT_SECRET"] = "test-secret"
-os.environ["WEB_ADMIN_EMAIL"] = "admin@example.org"
-os.environ["COOKIE_SECURE"] = "false"
-os.environ["DISABLE_RATE_LIMIT"] = "1"
+os.environ.setdefault("RATSLOTSE_DB", str(Path(_TMP) / "ratslotse.sqlite"))
+os.environ.setdefault("COUNCIL_DB", str(Path(_TMP) / "council.sqlite"))
+os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
+os.environ.setdefault("WEB_ADMIN_EMAIL", "admin@example.org")
+os.environ.setdefault("COOKIE_SECURE", "false")
+os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
