@@ -12404,6 +12404,7 @@
         "type": "object"
       },
       "TopicHit": {
+        "description": "Ein Beschluss-Treffer auf der Karte „Neu zu deinen Themen\" (Heute).\n\nBis 09/2026 trug er nur Titel, Gremium und Datum — die Karte konnte damit\nweder sagen, WAS entschieden wurde (``summary``), noch WIE (``outcome``),\nnoch ob man es schon kannte (``is_new``). Dieselben drei Felder trägt die\nThemen-Karte seit dem 28.08.2026 (``TopicHitOut``); ``topic_id`` braucht\nder Gelesen-Ruf (``POST /topics/{topic_id}/seen``).",
         "properties": {
           "committee": {
             "title": "Committee",
@@ -12413,13 +12414,42 @@
             "title": "Id",
             "type": "integer"
           },
+          "is_new": {
+            "title": "Is New",
+            "type": "boolean"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "session_date": {
             "title": "Session Date",
             "type": "string"
           },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "topic_id": {
+            "title": "Topic Id",
+            "type": "integer"
           },
           "topic_name": {
             "title": "Topic Name",
@@ -12427,11 +12457,15 @@
           }
         },
         "required": [
+          "topic_id",
           "topic_name",
           "id",
           "title",
           "committee",
-          "session_date"
+          "session_date",
+          "outcome",
+          "summary",
+          "is_new"
         ],
         "title": "TopicHit",
         "type": "object"
@@ -12444,10 +12478,25 @@
             },
             "title": "Hits",
             "type": "array"
+          },
+          "topic_count": {
+            "title": "Topic Count",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unread_total": {
+            "title": "Unread Total",
+            "type": "integer"
           }
         },
         "required": [
-          "hits"
+          "hits",
+          "topic_count",
+          "total",
+          "unread_total"
         ],
         "title": "TopicHitList",
         "type": "object"
@@ -20144,7 +20193,7 @@
     },
     "/api/topics/latest-hits": {
       "get": {
-        "description": "Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die\n„Neu zu deinen Themen\"-Karte im Heute-Briefing (RL-401). Vor der\n{topic_id}-Route registriert, damit „latest-hits\" nicht als ID parst.",
+        "description": "Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die\n„Neu zu deinen Themen\"-Karte im Heute-Briefing (RL-401). Vor der\n{topic_id}-Route registriert, damit „latest-hits\" nicht als ID parst.\n\nDieselbe Menge wie die Themen-Karten (``list_topics``): alle Treffer,\nnach Sitzungsdatum. Bis 09/2026 nahm die Route je Thema nur die zehn\nBESTBEWERTETEN Treffer und sortierte erst die nach Datum — „neu\" hieß\ndamit „das Jüngste unter den Passendsten\", und die Karte konnte einen\nBeschluss verschweigen, den die Themen-Seite als jüngsten führte.\n\nEin Beschluss, der zu mehreren Themen passt, steht einmal da — mit dem\nThema, in dem er noch ungelesen ist, falls es eines gibt.",
         "operationId": "latest_hits_api_topics_latest_hits_get",
         "parameters": [
           {
