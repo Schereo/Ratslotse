@@ -18,6 +18,18 @@ from council.scraper import CouncilSession
 class SitzungenMixin:
     """Die Sitzungs-Abfragen — nur zum Mitvererben."""
 
+
+    # Zwei Muster, die nur die Wochenvorschau braucht — deshalb hier und
+    # nicht im Kern (tests/test_store_groesse.py hält die Tür zu).
+    #: „Änderungsantrag der CDU-Fraktion vom 10.06.2026" — der Absender als
+    #: Titel, nicht in Klammern. ``art`` und ``wer`` bleiben, das Datum geht.
+    _ANTRAG_IM_TITEL_RE = re.compile(
+        r"^\s*(?P<art>(?:Änderungs|Ergänzungs|Zusatz)?[Aa]ntrag)\s+(?:der|des|von)\s+"
+        r"(?P<wer>.+?)\s+vom\s+\d{1,2}\.\d{1,2}\.\d{2,4}\s*$")
+    #: Ein Antrag, der einen anderen Antrag ändert — er hängt unter ihm und
+    #: nennt den Gegenstand nicht selbst (s. ``wochenvorschau``).
+    _AENDERUNGSANTRAG_RE = re.compile(r"^\s*(?:Änderungs|Ergänzungs|Zusatz)antrag\b", re.IGNORECASE)
+
     def _agenda_diff_schluessel_neu(self) -> None:
         """Die Eimer-Namen in `agenda_changes.diff_json` nachziehen — einmalig.
 
