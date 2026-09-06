@@ -40,7 +40,7 @@ const STAND_LABEL: Record<string, string> = {
 const VOYAGER = basemapUrl("voyager");
 const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (Geoportal)";
 
-export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, className }: {
+export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   /** Name des Ortsbereichs — die Grenze kommt aus dem statischen GeoJSON. */
   ortsbereich: string;
   vorhaben: KartenVorhaben[];
@@ -48,7 +48,12 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
   aktiv: number | null;
   /** Vorhaben, die der Stufen-Filter ausblendet — bleiben blass sichtbar. */
   gedimmt: Set<number>;
+  /** Das Vorhaben, über dem der Zeiger gerade in der LISTE steht — sein Pin
+   *  hebt sich auf der Karte, damit Liste und Karte eine Sache sind. */
+  schwebt?: number | null;
   onSelect: (id: number) => void;
+  /** Zeiger über einem Pin (bzw. weg davon) — die Liste hebt ihre Zeile. */
+  onHover?: (id: number | null) => void;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -57,6 +62,11 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
+  // Je Vorhaben seine Ebenen, damit Hover sie hebt, ohne alles neu zu zeichnen
+  // (ein Neuzeichnen bei jedem Zeigerwechsel ließe offene Popups zuklappen).
+  const ebenenRef = useRef<Map<number, { pins: import("leaflet").Marker[]; pfade: import("leaflet").Path[]; farbe: string; aktiv: boolean }>>(new Map());
 
   // Karte einmal aufbauen: Kacheln, Grenze, Ausschnitt.
   useEffect(() => {
@@ -94,11 +104,34 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ortsbereich]);
 
+  /** Ein Vorhaben heben oder senken — Pin-Klasse und Strichstärke, ohne
+   *  Neuzeichnen. Das aktive bleibt, wie es ist: Es steht ohnehin vorn. */
+  function heben(id: number, an: boolean) {
+    const e = ebenenRef.current.get(id);
+    if (!e) return;
+    for (const pin of e.pins) pin.getElement()?.classList.toggle("ist-schwebt", an);
+    if (e.aktiv) return;
+    for (const pfad of e.pfade) {
+      const basis = pfad.options.weight ?? 5;
+      pfad.setStyle({ weight: an ? basis + 2 : basis, opacity: an ? 1 : (pfad.options.opacity ?? 0.75) });
+      if (an) pfad.bringToFront();
+    }
+  }
+
+  // Zeiger in der Liste → Pin hebt sich. Der Effekt läuft, ohne die Karte
+  // neu zu zeichnen (s. ebenenRef).
+  useEffect(() => {
+    if (schwebt != null) heben(schwebt, true);
+    return () => { if (schwebt != null) heben(schwebt, false); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schwebt]);
+
   // Pins und Linien neu zeichnen, wenn Auswahl oder Filter wechseln.
   function zeichnen() {
     const L = leafletRef.current, map = mapRef.current, gruppe = layerRef.current;
     if (!L || !map || !gruppe) return;
     gruppe.clearLayers();
+    ebenenRef.current = new Map();
     let aktivBounds: ReturnType<typeof L.latLngBounds> | null = null;
     let planQuelle = false;
     for (const v of vorhaben) {
@@ -109,13 +142,19 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
       const blass = (gedimmt.has(v.id) || aktiv != null) && !istAktiv;
       // Alles, was aus der Datenbank kommt, wird maskiert — auch „wann" und
       // der Stand stammen aus einer Modellantwort, nicht aus dem Code.
-      const popup = `<div class="viertel-popup"><span class="stand" style="--c:${escapeHtml(farbe)}">${escapeHtml(STAND_LABEL[v.stage] ?? v.stage)}</span>${v.when ? `<span class="wann">${escapeHtml(v.when)}</span>` : ""}<b>${escapeHtml(v.name)}</b><button type="button" data-id="${Number(v.id)}">Details</button></div>`;
+      const hinweis = `<span class="stand" style="--c:${escapeHtml(farbe)}">${escapeHtml(STAND_LABEL[v.stage] ?? v.stage)}</span>${v.when ? `<span class="wann">${escapeHtml(v.when)}</span>` : ""}<b>${escapeHtml(v.name)}</b>`;
+      const eintrag = { pins: [] as import("leaflet").Marker[], pfade: [] as import("leaflet").Path[], farbe, aktiv: istAktiv };
+      ebenenRef.current.set(v.id, eintrag);
+      // Ein Tipp WÄHLT das Vorhaben (Detail in Seitenspalte bzw. Sheet) —
+      // bis 06.09.2026 öffnete er erst ein Popup mit einem „Details"-Knopf,
+      // zwei Tipps für eine Sache. Der Hinweis mit Name und Stand steht
+      // stattdessen beim Zeigen (Tooltip); das gewählte Vorhaben trägt sein
+      // Namensschild dauerhaft (s. u.).
       const anklicken = (layer: import("leaflet").Layer) => {
-        layer.bindPopup(popup, { closeButton: false, offset: [0, -6], className: "viertel-popup-huelle" });
-        layer.on("popupopen", (e) => {
-          const el = (e as unknown as { popup: { getElement: () => HTMLElement | undefined } }).popup.getElement();
-          el?.querySelector("button")?.addEventListener("click", () => { map.closePopup(); onSelectRef.current(v.id); });
-        });
+        if (!istAktiv) layer.bindTooltip(hinweis, { sticky: true, direction: "top", offset: [0, -8], className: "viertel-tip", opacity: 1 });
+        layer.on("click", () => onSelectRef.current(v.id));
+        layer.on("mouseover", () => { heben(v.id, true); onHoverRef.current?.(v.id); });
+        layer.on("mouseout", () => { heben(v.id, false); onHoverRef.current?.(null); });
       };
       // Abschnittsgrenzen („Am Schmeel bis Brahmweg") und Bezugsstraßen
       // („Quartier Am Schmeel") sind nicht betroffen: keine Linie, kein Pin,
@@ -123,6 +162,7 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
       // „zwischen A und B") stehen sie als hohle Punkte, damit das Vorhaben
       // überhaupt eine Stelle hat.
       const hatGegenstand = v.locations.some((l) => l.role === "subject");
+      let schildGesetzt = false;
       for (const loc of v.locations) {
         const grenze = loc.role !== "subject";
         if (grenze && hatGegenstand) continue;
@@ -143,6 +183,7 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
           });
           anklicken(layer);
           gruppe.addLayer(layer);
+          layer.eachLayer((l) => eintrag.pfade.push(l as import("leaflet").Path));
           planQuelle = true;
           if (istAktiv) aktivBounds = aktivBounds ? aktivBounds.extend(layer.getBounds()) : layer.getBounds();
         }
@@ -152,6 +193,7 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
           });
           anklicken(layer);
           gruppe.addLayer(layer);
+          layer.eachLayer((l) => eintrag.pfade.push(l as import("leaflet").Path));
           if (istAktiv) aktivBounds = aktivBounds ? aktivBounds.extend(layer.getBounds()) : layer.getBounds();
         }
         const radius = grenze ? 6 : istAktiv ? 11 : 8;
@@ -166,7 +208,16 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
         });
         anklicken(marker);
         gruppe.addLayer(marker);
+        eintrag.pins.push(marker);
         if (istAktiv) {
+          // Das gewählte Vorhaben trägt sein Namensschild, damit man auf der
+          // Karte sieht, WAS man angeklickt hat — nicht nur, dass.
+          if (!grenze && !schildGesetzt) {
+            // EIN Schild je Vorhaben — bei zwei Orten nebeneinander lagen sonst
+            // zwei gleiche Schilder übereinander.
+            marker.bindTooltip(escapeHtml(v.name), { permanent: true, direction: "top", offset: [0, -radius - 2], className: "viertel-schild" });
+            schildGesetzt = true;
+          }
           const b = L.latLngBounds([loc.lat, loc.lon], [loc.lat, loc.lon]);
           aktivBounds = aktivBounds ? aktivBounds.extend(b) : b;
         }
