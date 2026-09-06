@@ -264,15 +264,27 @@ private struct RatsRouteButtonStyle: ButtonStyle {
 
 private struct LaunchLoadingView: View {
     var body: some View {
-        ZStack {
-            RatsColor.page.ignoresSafeArea()
-            // The exact same full-screen artwork is used by UILaunchScreen.
-            // Keeping it here prevents Lotti from changing size while the
-            // session is restored. Real in-app loading states animate her.
+        // The exact same full-screen artwork is used by UILaunchScreen.
+        // Keeping it here prevents Lotti from changing size while the
+        // session is restored. Real in-app loading states animate her.
+        //
+        // The artwork is a 1400-pt canvas that overflows every screen, and
+        // the system launch screen centres it in the FULL window. As the
+        // root of a NavigationStack this view is centred in the safe area
+        // instead, 14 pt lower on an iPhone 17 (measured 06.09.2026) — a
+        // plain `.ignoresSafeArea()` on a ZStack did not change that. The
+        // GeometryReader takes the full window and places the image on its
+        // centre explicitly, so the hand-over from the launch screen is
+        // pixel-identical.
+        GeometryReader { geo in
             Image("Splash")
                 .renderingMode(.original)
                 .accessibilityHidden(true)
+                .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
+        .ignoresSafeArea()
+        .background(RatsColor.page.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
