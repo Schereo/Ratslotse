@@ -38,6 +38,7 @@ const STAND_LABEL: Record<string, string> = {
 };
 
 const VOYAGER = basemapUrl("voyager");
+const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (dl-de/zero)";
 
 export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, className }: {
   /** Name des Ortsbereichs — die Grenze kommt aus dem statischen GeoJSON. */
@@ -99,6 +100,7 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
     if (!L || !map || !gruppe) return;
     gruppe.clearLayers();
     let aktivBounds: ReturnType<typeof L.latLngBounds> | null = null;
+    let planQuelle = false;
     for (const v of vorhaben) {
       const farbe = STAND_FARBE[v.stage] ?? STAND_FARBE.planning;
       const istAktiv = v.id === aktiv;
@@ -125,6 +127,20 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
         const grenze = loc.role !== "subject";
         if (grenze && hatGegenstand) continue;
         const linie = grenze ? null : (loc.geometry as { type?: string } | null);
+        // Ein Bebauungsplan bringt seinen Geltungsbereich mit (Stadt-Geodaten,
+        // `kind = bplan`): gestrichelter Rand und leichte Füllung in der Farbe
+        // des Stands — die Fläche, auf der etwas entsteht, das OSM noch nicht
+        // kennt. Straßen-Polygone anderer Art bleiben beim Pin.
+        if (linie && loc.kind === "bplan" && (linie.type === "Polygon" || linie.type === "MultiPolygon")) {
+          const layer = L.geoJSON(linie as never, {
+            style: { color: farbe, weight: istAktiv ? 3 : 2, dashArray: "6 4", opacity: blass ? 0.2 : 0.85,
+              fillColor: farbe, fillOpacity: blass ? 0.04 : istAktiv ? 0.22 : 0.14 },
+          });
+          anklicken(layer);
+          gruppe.addLayer(layer);
+          planQuelle = true;
+          if (istAktiv) aktivBounds = aktivBounds ? aktivBounds.extend(layer.getBounds()) : layer.getBounds();
+        }
         if (linie && (linie.type === "LineString" || linie.type === "MultiLineString")) {
           const layer = L.geoJSON(linie as never, {
             style: { color: farbe, weight: istAktiv ? 7 : 5, opacity: blass ? 0.18 : 0.75, lineCap: "round" },
@@ -152,6 +168,14 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
       }
     }
     if (aktivBounds) map.flyToBounds(aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
+    // Die Stadt als Quelle nennen, sobald eine ihrer Flächen auf der Karte liegt
+    // (dl-de/zero verlangt keine Nennung; wir nennen sie trotzdem, weil die
+    // Fläche sonst wie unsere eigene Rechnung aussähe).
+    const attribution = map.attributionControl;
+    if (attribution) {
+      attribution.removeAttribution(PLAN_ATTRIBUTION);
+      if (planQuelle) attribution.addAttribution(PLAN_ATTRIBUTION);
+    }
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { zeichnen(); }, [vorhaben, aktiv, gedimmt]);

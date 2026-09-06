@@ -15,6 +15,7 @@ from kern.dbfehler import tabelle_fehlt
 from kern.maintenance import require_database_available
 from council.store_helfer import _dedup_keys, _int_or_none
 from council.store_fundstuecke import FundstueckeMixin
+from council.store_bplan import BplanMixin
 from council.store_haushalt import HaushaltMixin
 from council.store_orte import OrteMixin
 from council.store_personen import PersonenMixin
@@ -81,7 +82,7 @@ COUNCIL_USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
 # Methode `(woerter, year=None)`, die mit `_conn`, `_trifft` und `_beleg`
 # arbeitet. Der Stern ist Absicht — wer eine Facette baut, fasst diese
 # Datei nicht an.
-class CouncilStore(FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
+class CouncilStore(BplanMixin, FundstueckeMixin, HaushaltMixin, OrteMixin, PersonenMixin,
                    PresseMixin, QuizMixin, SchemaMixin, SitzungenMixin,
                    ThemenMixin, ViertelMixin, WortbeitraegeMixin, *_geld.MIXINS):
     def __init__(self, path: str | Path, ratslotse_db_path: str | Path | None = None):

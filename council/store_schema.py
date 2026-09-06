@@ -401,6 +401,28 @@ CREATE TABLE IF NOT EXISTS council_district_project_reports (
     UNIQUE (project_key, owner_id)
 );
 
+-- Umringe der rechtsverbindlichen Bebauungspläne der Stadt (openGEOdata,
+-- dl-de/zero), wöchentlich als Ganzes ersetzt (council/bplan.py). `key` ist
+-- die Vergleichsform der Plannummer (bplan.schluessel), über die ein
+-- Beschlusstitel seinen Plan findet. Datumsfelder ISO, Geometrie GeoJSON.
+CREATE TABLE IF NOT EXISTS council_bplan_outlines (
+    key             TEXT PRIMARY KEY,
+    nr              TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    art             INTEGER,
+    verfahren       INTEGER,
+    note            TEXT,
+    resolution_date TEXT,
+    adoption_date   TEXT,
+    effective_date  TEXT,
+    drawing_code    TEXT,
+    stol_id         INTEGER,
+    geojson         TEXT,
+    lat             REAL,
+    lon             REAL,
+    updated_at      TEXT NOT NULL
+);
+
 -- Auto-generated LLM recap per policy field ("Was bewegte den Rat im Bereich X?",
 -- council.recaps). One row per field, replaced when regenerated (≈ monthly via cron).
 CREATE TABLE IF NOT EXISTS council_field_recaps (
@@ -1799,6 +1821,14 @@ class SchemaMixin(StoreBasis):
             "id INTEGER PRIMARY KEY AUTOINCREMENT, project_key TEXT NOT NULL, place_id TEXT NOT NULL, "
             "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, "
             "UNIQUE (project_key, owner_id))"
+        )
+        # Bebauungsplan-Umringe der Stadt (council/bplan.py) — Spiegel der
+        # offenen Geodaten, je Wochenlauf ersetzt.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_bplan_outlines ("
+            "key TEXT PRIMARY KEY, nr TEXT NOT NULL, name TEXT NOT NULL, art INTEGER, verfahren INTEGER, "
+            "note TEXT, resolution_date TEXT, adoption_date TEXT, effective_date TEXT, drawing_code TEXT, "
+            "stol_id INTEGER, geojson TEXT, lat REAL, lon REAL, updated_at TEXT NOT NULL)"
         )
         # Redaktionelle Schicht über den automatisch extrahierten Ortsnamen.
         # Die Rohbeobachtung bleibt dabei unangetastet: Admins können einen

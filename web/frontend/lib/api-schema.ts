@@ -6536,6 +6536,29 @@ export interface components {
             valid_until: string | null;
         };
         /**
+         * DistrictPlanInfo
+         * @description Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
+         *     die Stationen des Verfahrens aus den offenen Geodaten der Stadt.
+         */
+        DistrictPlanInfo: {
+            /** Adoption Date */
+            adoption_date: string | null;
+            /** Effective Date */
+            effective_date: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Nr */
+            nr: string;
+            /** Resolution Date */
+            resolution_date: string | null;
+            /** Source */
+            source: string;
+            /** Source Url */
+            source_url: string;
+        };
+        /**
          * DistrictProject
          * @description Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
          *
@@ -6596,7 +6619,8 @@ export interface components {
         };
         /**
          * DistrictProjectLocation
-         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.
+         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie,
+         *     bei Bebauungsplänen (``kind = bplan``) der Geltungsbereich als GeoJSON.
          */
         DistrictProjectLocation: {
             /** Geometry */
@@ -6609,6 +6633,7 @@ export interface components {
             lon: number;
             /** Name */
             name: string;
+            plan?: components["schemas"]["DistrictPlanInfo"];
             /** Role */
             role: string;
             /** Slug */
@@ -14874,4 +14899,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e873e830dd106a435f80b09d1ae417aa7454598c991ead7cf028f14afa85f679
+// vertrag-sha256: 6f96db013f7ca93766b746560f748bae8ead1fb7c250d3b3da2800cc9d4eea3c

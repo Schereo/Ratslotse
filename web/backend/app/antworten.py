@@ -2074,14 +2074,30 @@ class DistrictProjectDecision(TypedDict):
     committee: str | None
 
 
+class DistrictPlanInfo(TypedDict):
+    """Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
+    die Stationen des Verfahrens aus den offenen Geodaten der Stadt."""
+    nr: str
+    name: str
+    resolution_date: str | None
+    adoption_date: str | None
+    effective_date: str | None
+    note: str | None
+    source: str
+    source_url: str
+
+
 class DistrictProjectLocation(TypedDict):
-    """Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON."""
+    """Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie,
+    bei Bebauungsplänen (``kind = bplan``) der Geltungsbereich als GeoJSON."""
     slug: str
     name: str
     kind: str
     lat: float
     lon: float
     geometry: Any
+    #: Nur bei ``kind = bplan``: der Plan dahinter.
+    plan: NotRequired[DistrictPlanInfo]
     #: ``subject`` — dort ändert sich etwas; ``boundary`` — nur Abschnittsgrenze
     #: („Am Schmeel bis Brahmweg"); ``context`` — eine Straße, die das Vorhaben
     #: nur benennt („Quartier Am Schmeel"). Nur ``subject`` trägt eine Linie.

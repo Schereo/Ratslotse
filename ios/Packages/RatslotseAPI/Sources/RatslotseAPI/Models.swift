@@ -63,8 +63,31 @@ public struct DistrictProjectDecision: Codable, Sendable, Hashable, Identifiable
     public let committee: String?
 }
 
-/// Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie
-/// als GeoJSON (LineString/MultiLineString), als `JSONValue` durchgereicht.
+/// Ein Bebauungsplan hinter einem Ort der Art `bplan`: Nummer, Name und die
+/// Stationen des Verfahrens aus den offenen Geodaten der Stadt.
+public struct DistrictPlanInfo: Codable, Sendable, Hashable {
+    public let nr: String
+    public let name: String
+    public let resolutionDate: String?
+    public let adoptionDate: String?
+    public let effectiveDate: String?
+    public let note: String?
+    public let source: String
+    public let sourceURL: String
+
+    enum CodingKeys: String, CodingKey {
+        case nr, name, note, source
+        case resolutionDate = "resolution_date"
+        case adoptionDate = "adoption_date"
+        case effectiveDate = "effective_date"
+        case sourceURL = "source_url"
+    }
+}
+
+/// Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie
+/// (LineString/MultiLineString), bei Bebauungsplänen (`kind = bplan`) der
+/// Geltungsbereich (Polygon/MultiPolygon) als GeoJSON, als `JSONValue`
+/// durchgereicht.
 public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable {
     public var id: String { slug }
     public let slug: String
@@ -76,9 +99,11 @@ public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable
     /// `subject` — dort ändert sich etwas; `boundary` — nur Abschnittsgrenze
     /// („Am Schmeel bis Brahmweg"), auf der Karte keine Linie.
     public let role: String
+    /// Nur bei `kind == "bplan"`: der Plan hinter der Fläche.
+    public let plan: DistrictPlanInfo?
 
     enum CodingKeys: String, CodingKey {
-        case slug, name, kind, geometry, role
+        case slug, name, kind, geometry, role, plan
         case latitude = "lat"
         case longitude = "lon"
     }
