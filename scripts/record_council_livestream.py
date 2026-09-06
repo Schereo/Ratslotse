@@ -10,10 +10,14 @@ Sitzungsabend auf der Seite — als vorläufiger Stand ohne Video-Sprung-Links
 (``video_id=''``); die YouTube-Fassung reicht Links und exakte Timestamps
 nach, das Protokoll ersetzt später beides.
 
-Nebenher, je fertigem Stück, die **Live-Verfolgung** (``council/livetracker``):
-Welcher TOP läuft gerade, wer spricht — in ``council_live_state``, für die
-Live-Karte in Web und App. Sie ist Zugabe: Fällt sie aus, läuft der
-Mitschnitt weiter.
+Nebenher die **Live-Verfolgung** (``council/livetracker``): Welcher TOP läuft
+gerade, wer spricht — in ``council_live_state``, für die Live-Karte in Web
+und App. Sie ist Zugabe: Fällt sie aus, läuft der Mitschnitt weiter.
+
+Zwei Wege für die Transkription: Mit ``GLADIA_API_KEY`` läuft das Audio
+streamend (``council/stream_stt.py``, Verzug wenige Sekunden, Fenster von 15 s
+für die Verfolgung); ohne Schlüssel — oder wenn die Streaming-Sitzung nicht
+zustande kommt — in Audio-Stücken (``council/livestream.py``).
 
 An Tagen ohne Ratssitzung ist der Lauf ein billiger Leerlauf (Kennzahl
 ``sitzung_heute: 0``) — die Überfällig-Ampel braucht den täglichen Takt.
@@ -37,7 +41,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import livestream, livetracker, videos  # noqa: E402
+from council import livestream, livetracker, stream_stt, videos  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -65,14 +69,29 @@ def _record_fresh(ksinr: int, on_chunk=None) -> list[tuple[float, str]]:
         return livestream.record_and_transcribe(Path(run_dir), on_chunk=on_chunk)
 
 
-def _tracker(store: CouncilStore, ksinr: int) -> livetracker.LiveTracker | None:
+def _tracker(store: CouncilStore, ksinr: int, window_seconds: int) -> livetracker.LiveTracker | None:
     """Die Live-Verfolgung anwerfen — oder ohne sie aufnehmen, wenn sie
     schon beim Aufbau scheitert (fehlende Tagesordnung, DB-Fehler)."""
     try:
-        return livetracker.LiveTracker(store, ksinr, livestream.CHUNK_SECONDS)
+        return livetracker.LiveTracker(store, ksinr, window_seconds)
     except Exception:  # noqa: BLE001 — Zugabe, s. Modulkopf
         log.exception("Live-Verfolgung für Sitzung %s nicht gestartet", ksinr)
         return None
+
+
+def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[tuple[float, str]], str]:
+    """Streamend, wenn möglich; sonst (oder wenn die Streaming-Sitzung nicht
+    zustande kommt) in Stücken. Gibt die Segmente und den gegangenen Weg."""
+    on_window = tracker.on_chunk if tracker else None
+    if stream_stt.configured():
+        try:
+            return stream_stt.record_and_transcribe(
+                on_window=on_window, people=tracker.people if tracker else None), "gladia"
+        except stream_stt.StreamUnavailable as exc:
+            log.warning("Streaming nicht möglich (%s) — Rückfall auf Stücke", exc)
+            if tracker:
+                tracker.chunk_seconds = livestream.CHUNK_SECONDS
+    return _record_fresh(ksinr, on_chunk=on_window), "chunks"
 
 
 def main() -> dict:
@@ -112,10 +131,10 @@ def main() -> dict:
         time.sleep(wait.total_seconds())
 
     t0 = time.monotonic()
-    tracker = _tracker(store, s["ksinr"])
+    window = stream_stt.WINDOW_SECONDS if stream_stt.configured() else livestream.CHUNK_SECONDS
+    tracker = _tracker(store, s["ksinr"], window)
     try:
-        segments = _record_fresh(s["ksinr"],
-                                 on_chunk=tracker.on_chunk if tracker else None)
+        segments, stats["stt"] = _record(s["ksinr"], tracker)
     finally:
         # Auch nach einem Abbruch darf die Karte nicht „gerade" sagen.
         if tracker:
@@ -134,8 +153,9 @@ def main() -> dict:
     results = videos.extract_results(segments, agenda)
     # video_id='': Ergebnis aus dem Livestream — Sprung-Links reicht die
     # YouTube-Fassung nach (deren Lauf ersetzt diese Zeilen komplett).
+    stt_label = "gladia/solaria-1" if stats["stt"] == "gladia" else livestream.STT_MODEL
     stats["ergebnisse"] = store.save_video_results(
-        s["ksinr"], "", livestream.STT_MODEL + "+" + videos.MODEL, results)
+        s["ksinr"], "", stt_label + "+" + videos.MODEL, results)
     log.info("Sitzung %s: %d vorläufige Ergebnisse aus dem Livestream",
              s["ksinr"], stats["ergebnisse"])
     return stats
