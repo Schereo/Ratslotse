@@ -579,10 +579,17 @@ def live_probe(seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
     threading.Thread(target=run, daemon=True).start()
 
     def gen():
+        # Vorspann: 2 KB Kommentar. Zwischen Browser und Backend liegen zwei
+        # Proxys (Edge-Caddy, Next-Rewrite); ein Puffer, der erst ab ein paar
+        # Kilobyte weiterreicht, hielte den 80-Byte-Statusrahmen sonst zurück,
+        # bis Minuten später die erste Äußerung kommt — Tims Befund 06.09.
+        # auf dev: „dort steht nur verbinde …". Die Frage-Antwort (/council/
+        # ask) merkt davon nichts, sie schickt sofort Token für Token.
+        yield ":" + " " * 2048 + "\n\n"
         try:
             while True:
                 try:
-                    ev = events.get(timeout=15)
+                    ev = events.get(timeout=5)
                 except queue.Empty:
                     yield ": ping\n\n"   # hält Proxy und Browser bei der Stange
                     continue
@@ -594,4 +601,5 @@ def live_probe(seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
             _LIVE_PROBE_LOCK.release()
 
     return StreamingResponse(gen(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                             headers={"Cache-Control": "no-cache, no-transform",
+                                      "X-Accel-Buffering": "no"})
