@@ -6243,3 +6243,35 @@ def test_kennzahlen_bleiben_flach(client):
         f"{sorted(krumm)} sind keine Skalare — die Chip-Zeile des Admin-Panels "
         f"zeigte dafür „[object Object]“. Entweder flach machen oder wie die "
         f"Schritte in ein eigenes Vertragsfeld heben.")
+
+
+# ---- Kalender-Abo -------------------------------------------------------------
+
+def test_calendar_subscription_feed_und_rotation(client):
+    """Adresse nur angemeldet; der Feed selbst öffentlich über das Token;
+    „Neu erzeugen" macht die alte Adresse zum 404."""
+    assert client.get("/api/calendar/subscription").status_code == 401
+    _register(client)
+    r = client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"},
+                    headers={"X-Client": "app"})
+    assert r.status_code == 200, r.text
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r = client.get("/api/calendar/subscription", headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["url"].startswith("https://ratslotse.de/api/calendar/") and body["url"].endswith(".ics")
+    assert body["webcal_url"] == "webcal://" + body["url"].split("://", 1)[1]
+    assert body["subscribed_committees"] == 0
+    pfad = body["url"].split("ratslotse.de", 1)[1]
+
+    r = client.get(pfad)
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("text/calendar")
+    assert r.text.startswith("BEGIN:VCALENDAR\r\n")
+    assert "END:VCALENDAR" in r.text
+
+    r2 = client.post("/api/calendar/subscription/rotate", headers=h)
+    assert r2.status_code == 200 and r2.json()["url"] != body["url"]
+    assert client.get(pfad).status_code == 404
+    assert client.get("/api/calendar/gibtsnicht.ics").status_code == 404
