@@ -111,15 +111,30 @@ def test_preflight_rejects_backup_with_same_timestamp_as_marker(tmp_path):
         verify(tmp_path, marker)
 
 
-def test_preflight_accepts_source_that_grew_after_the_backup(tmp_path):
+def test_preflight_accepts_source_that_grew_after_the_backup(tmp_path, monkeypatch):
     """Die Quelle lebt: Schreibt der API-Dienst zwischen Backup und Prüfung
     eine Zeile, ist das Backup trotzdem in Ordnung (06.09.2026: der vierte
     Deploy-Anlauf blieb genau daran hängen)."""
+    from scripts import verify_predeploy_backup as modul
+
     marker = _setup(tmp_path, account_name="ratslotse.sqlite")
-    with sqlite3.connect(tmp_path / "data" / "council.sqlite") as connection:
-        connection.execute("INSERT INTO council_sessions (id) VALUES (99)")
+    source = tmp_path / "data" / "council.sqlite"
+    echt = modul.inspect_database
+    gesehen = []
+
+    def mit_schreibzugriff(path, required_table):
+        state = echt(path, required_table)
+        # Nach dem ERSTEN Blick auf die Quelle (vor dem Backup) schreibt
+        # der Dienst eine Zeile — der zweite Blick sieht sie, das Backup nicht.
+        if Path(path) == source and not gesehen:
+            gesehen.append(path)
+            with sqlite3.connect(source) as connection:
+                connection.execute("INSERT INTO council_sessions (id) VALUES (99)")
+        return state
+
+    monkeypatch.setattr(modul, "inspect_database", mit_schreibzugriff)
     council, _account = verify(tmp_path, marker)
-    assert council.rows >= 1
+    assert council.rows == 3
 
 
 def test_preflight_rejects_backup_with_different_row_count(tmp_path):
