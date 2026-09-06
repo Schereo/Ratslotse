@@ -419,19 +419,24 @@ class OrteMixin(StoreBasis):
             lat, lon = point["lat"], point["lon"]
             district = geo.ortsbereich_for(lat, lon)
             primary = self.resolve_place(district)
-            updates.append((lat, lon, district, primary.id if primary else None,
-                            now, slug, lat, lon))
+            # Eine kuratierte Linie (Brücke zwischen zwei Vierteln) geht als
+            # Geometrie mit — ``rebuild_location_districts`` zählt daraus die
+            # Anteile beider Seiten, ein Punkt hätte nur eine.
+            geojson = (json.dumps({"type": "LineString", "coordinates": point["line"]}, separators=(",", ":"))
+                       if point.get("line") else None)
+            updates.append((lat, lon, geojson, district, primary.id if primary else None,
+                            now, slug, lat, lon, geojson or ""))
         if not updates:
             return 0
         with self._conn:
             before = self._conn.total_changes
             self._conn.executemany(
                 """UPDATE council_locations
-                   SET lat=?,lon=?,geojson=NULL,district=?,local_area_id=?,
+                   SET lat=?,lon=?,geojson=?,district=?,local_area_id=?,
                        geo_tried=1,updated_at=?
                    WHERE slug=? AND (
                        lat IS NULL OR lon IS NULL OR ABS(lat-?) > 0.00000001
-                       OR ABS(lon-?) > 0.00000001)""",
+                       OR ABS(lon-?) > 0.00000001 OR IFNULL(geojson,'') != ?)""",
                 updates,
             )
             changed = self._conn.total_changes - before

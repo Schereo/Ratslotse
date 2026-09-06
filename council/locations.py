@@ -57,6 +57,18 @@ def curated_location_geocodes() -> dict[str, dict]:
             raise ValueError(f"Unbekannte Geocode-Präzision: {slug}")
         if not str(row.get("source_url") or "").startswith("https://"):
             raise ValueError(f"Geocode ohne HTTPS-Quelle: {slug}")
+        # Optional eine Linie (``[[lon, lat], …]``, wie GeoJSON) für Bauwerke,
+        # die zwei Ortsbereiche verbinden — die Fußgängerbrücke über die Bahn
+        # zwischen Krusenbusch und Bümmerstede. Ein Punkt fiele auf EINE
+        # Seite, und die Karte des anderen Viertels bliebe ohne das Vorhaben.
+        # Die Stützpunkte zählen beim Ortsbereichs-Anteil (``store_orte``):
+        # je Seite mindestens zwei, sonst kommt sie dort nicht auf ihre Hälfte.
+        line = row.get("line")
+        if line is not None:
+            if (not isinstance(line, list) or len(line) < 4
+                    or not all(isinstance(pt, list) and len(pt) == 2 for pt in line)
+                    or not all(53.05 <= float(pt[1]) <= 53.24 and 8.08 <= float(pt[0]) <= 8.33 for pt in line)):
+                raise ValueError(f"Geocode-Linie unbrauchbar (mindestens vier [lon, lat] in Oldenburg): {slug}")
         out[slug] = {**row, "lat": float(lat), "lon": float(lon)}
     return out
 
