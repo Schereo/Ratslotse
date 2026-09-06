@@ -279,7 +279,7 @@ def test_lauf_ueberlebt_einen_scheiternden_ortsbereich(monkeypatch):
     30 mitreißen — auf dev starb der erste Stadtlauf nach vier von 31."""
     store = _store()
     _seed(store)
-    monkeypatch.setattr(viertel, "GEDULD_SEKUNDEN", ())  # nicht wirklich warten
+    monkeypatch.setattr(viertel.llm, "GEDULD_PAUSEN", ())  # nicht wirklich warten
     aufrufe: list[str] = []
 
     def fake(**kwargs):
@@ -305,18 +305,3 @@ def test_lauf_ueberlebt_einen_scheiternden_ortsbereich(monkeypatch):
     assert set(store.district_reviews("kreyenbrueck")) == {10, 11, 12}
     store.close()
 
-
-def test_geduld_versucht_es_wieder(monkeypatch):
-    monkeypatch.setattr(viertel, "GEDULD_SEKUNDEN", (0, 0))
-    versuche = []
-
-    def wackelig():
-        versuche.append(1)
-        if len(versuche) < 3:
-            raise RuntimeError("429")
-        return "ok"
-
-    assert viertel._mit_geduld(wackelig, was="Probe") == "ok"
-    assert len(versuche) == 3
-    with pytest.raises(RuntimeError):
-        viertel._mit_geduld(lambda: (_ for _ in ()).throw(RuntimeError("immer")), was="Probe")

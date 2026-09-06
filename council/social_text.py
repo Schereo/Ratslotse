@@ -175,7 +175,7 @@ def _antwort(system: str, user: str, max_tokens: int = 400) -> str:
             model=MODEL, response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
-            max_tokens=max_tokens, _feature="social_card_text")
+            max_tokens=max_tokens, _feature="social_card_text", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL))
     except Exception as fehler:  # noqa: BLE001 — jede Sorte Anbieterfehler, s. AnbieterFehler
         raise AnbieterFehler(str(fehler)) from fehler
     roh = (resp.choices[0].message.content or "").strip()
