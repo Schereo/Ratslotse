@@ -447,12 +447,23 @@ function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen }: {
         </ol>
       )}
 
-      {v.locations.length > 0 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          <MapPinned className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
-          {v.locations.map((l) => l.name).join(" · ")}
-        </p>
-      )}
+      {v.locations.length > 0 && (() => {
+        // Gegenstand, Abschnittsgrenzen und Bezugsstraßen getrennt:
+        // „Tweelbäker Tredde · Abschnitt: Am Schmeel, Brahmweg" bzw.
+        // „Quartier am Krusenbusch · Umfeld: Am Schmeel, Brahmweg" — weder
+        // Grenzen noch Umfeld sind betroffen.
+        const gegenstand = v.locations.filter((l) => l.role === "subject").map((l) => l.name);
+        const grenzen = v.locations.filter((l) => l.role === "boundary").map((l) => l.name);
+        const umfeld = v.locations.filter((l) => l.role === "context").map((l) => l.name);
+        return (
+          <p className="mt-3 text-xs text-muted-foreground">
+            <MapPinned className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+            {gegenstand.length > 0 ? gegenstand.join(" · ") : "Fläche"}
+            {grenzen.length > 0 && <span className="opacity-80"> · {gegenstand.length > 0 ? "Abschnitt" : "zwischen"}: {grenzen.join(", ")}</span>}
+            {umfeld.length > 0 && <span className="opacity-80"> · Umfeld: {umfeld.join(", ")}</span>}
+          </p>
+        );
+      })()}
 
       <p className="mt-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {v.decisions.length} {v.decisions.length === 1 ? "Beschluss" : "Beschlüsse"}
