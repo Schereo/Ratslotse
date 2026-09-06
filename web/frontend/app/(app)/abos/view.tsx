@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, CalendarPlus, Check, Link2, RefreshCw } from "lucide-react";
+import { Bell, CalendarPlus, Check, ChevronDown, ChevronUp, Link2, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { vertrag } from "@/lib/vertrag";
@@ -150,9 +150,27 @@ function Kachel({ d, abonniert, onToggle, busy, laeutet }: {
  *  `webcal://` öffnet auf Telefon und Mac direkt den Abo-Dialog der
  *  Kalender-App; die https-Adresse ist zum Einfügen bei Google und Outlook.
  *  „Neue Adresse" ist absichtlich klein und fragt nach: Sie macht jeden
- *  bestehenden Kalender-Eintrag stumm. */
+ *  bestehenden Kalender-Eintrag stumm.
+ *
+ *  Einmal groß, danach eine Zeile (Tim, 06.09.2026 — „nimmt immer extrem
+ *  viel Platz weg"): Beim ersten Besuch steht die Karte ganz da, ab dem
+ *  zweiten nur noch als schmaler Streifen, der sich per Klick öffnet. Gemerkt
+ *  im Browser (`localStorage`), nicht im Konto — eine Sehgewohnheit, kein
+ *  Zustand. Bis der Effekt gelaufen ist, steht der Streifen; so springt beim
+ *  Wiederbesuch nichts. */
+const LS_KALENDER_GESEHEN = "ratslotse.kalender-abo.gesehen";
+
 function KalenderAboKarte({ anzahlAbos }: { anzahlAbos: number }) {
   const qc = useQueryClient();
+  const [offen, setOffen] = useState(false);
+  useEffect(() => {
+    let gesehen = false;
+    try {
+      gesehen = localStorage.getItem(LS_KALENDER_GESEHEN) === "1";
+      localStorage.setItem(LS_KALENDER_GESEHEN, "1");
+    } catch { /* privates Fenster o. ä.: dann eben jedes Mal groß */ }
+    setOffen(!gesehen);
+  }, []);
   const abo = useQuery({
     queryKey: ["calendar-subscription"],
     queryFn: () => vertrag.get("/calendar/subscription"),
@@ -180,6 +198,18 @@ function KalenderAboKarte({ anzahlAbos }: { anzahlAbos: number }) {
     ? "Ohne Ausschuss-Abo landen alle Sitzungen im Kalender. Abonniere unten Gremien, dann nur deren Termine – plus jede Sitzung, die eines deiner Themen berührt."
     : `Im Kalender: die Sitzungen ${anzahlAbos === 1 ? "deines abonnierten Gremiums" : `deiner ${anzahlAbos} abonnierten Gremien`} – plus jede Sitzung, die eines deiner Themen berührt, mit Erinnerung am Vorabend.`;
 
+  if (!offen) {
+    return (
+      <button type="button" onClick={() => setOffen(true)} aria-expanded={false}
+        className="hh-tafel mt-6 flex w-full items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-left text-foreground transition-colors hover:bg-accent">
+        <CalendarPlus className="h-4 w-4 shrink-0 text-primary" strokeWidth={2} aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">Im Kalender abonnieren</span>
+        <span className="hidden text-[12px] text-muted-foreground @md:inline">Apple, Google, Outlook</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+    );
+  }
+
   return (
     <section className="hh-tafel mt-6 rounded-2xl border border-border bg-background p-4 text-foreground @xl:p-5"
       aria-labelledby="kalender-abo-titel">
@@ -195,6 +225,10 @@ function KalenderAboKarte({ anzahlAbos }: { anzahlAbos: number }) {
             Punkten der Tagesordnung und dem Link zu Vorlagen und Ergebnis auf Ratslotse.
           </p>
         </div>
+        <button type="button" onClick={() => setOffen(false)} aria-label="Kalender-Abo einklappen"
+          className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <ChevronUp className="h-4 w-4" aria-hidden />
+        </button>
       </div>
 
       {abo.isPending && <p className="mt-4 text-[12px] text-muted-foreground">Kalender-Adresse wird geholt …</p>}
