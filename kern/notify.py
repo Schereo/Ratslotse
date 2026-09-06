@@ -73,18 +73,61 @@ N6_WOCHE = "n6_woche"
 #: schicken — ab der dritten wird auch hier gebündelt.
 TERMINGEBUNDEN = frozenset({N5_VORABEND})
 
-#: Vorgaben aus 30a/B: drei an, drei aus. N5 und N6 sind bewusst aus — die
-#: meisten brauchen keinen Kalender, sondern das Ergebnis; und wer den
-#: Wochenüberblick will, schaltet dafür N1–N3 ab.
+#: Vorgaben für ein neues Konto ohne besondere Rolle (Tims Entscheidung
+#: 06.09.2026). Bis dahin galt 30a/B: N1–N4 an, N5/N6 aus — und auf Prod
+#: gemessen (Sept. 2026) machten die Tagesordnungs-Meldungen 41 % aller Posten
+#: aus, getrieben von Konten mit im Mittel neun Gremien-Abos, während der
+#: Wochenüberblick bei fast allen aus war. Jetzt umgekehrt: Die Tagesordnung
+#: je Gremium bekommt nur, wer sie **ausdrücklich** einschaltet; der
+#: Wochenüberblick kommt ab Werk. Ein Abo ohne Sofort-Meldung ist kein
+#: Widerspruch — das Gremium steht in der Ratswoche und im Wochenbrief.
+#:
+#: ``N1_AENDERUNG`` bleibt an: Es ist die Unter-Option von N1 und wirkt nur,
+#: wenn N1 an ist (``NOTIFY_PARENT``). Wer N1 einschaltet, soll die
+#: Änderungen mitbekommen, ohne einen zweiten Schalter suchen zu müssen.
 NOTIFY_DEFAULTS: dict[str, bool] = {
-    N1_TAGESORDNUNG: True,
+    N1_TAGESORDNUNG: False,
     N1_AENDERUNG: True,
     N2_THEMA: True,
     N3_ERGEBNIS: True,
     N4_VORGANG: True,
     N5_VORABEND: False,
+    N6_WOCHE: True,
+}
+
+#: Was ein Ratsmandat (Recht ``mandate``, siehe kern/roles.py) an den
+#: Vorgaben ändert: alles Abonnierte sofort. Wer im Rat sitzt, will die
+#: Tagesordnung jedes Gremiums, das er abonniert hat — auch bei zehn Abos.
+NOTIFY_DEFAULTS_MANDATE: dict[str, bool] = {
+    N1_TAGESORDNUNG: True,
+}
+
+#: Die Vorgaben VOR dem 06.09.2026 — für die Stempelung der Bestandskonten
+#: (``Store._notify_vorgaben_einfrieren``): Wer damals nichts angefasst hat,
+#: soll weiter genau das bekommen, was er bis dahin bekam.
+NOTIFY_DEFAULTS_BIS_2026_09: dict[str, bool] = {
+    N1_TAGESORDNUNG: True,
     N6_WOCHE: False,
 }
+
+
+def vorgaben_fuer(store, owner_id: int) -> dict[str, bool]:
+    """Die Vorgaben dieses Kontos — nach Rolle, nicht nach Rollenname.
+
+    Geprüft wird das Recht ``mandate`` (kern/roles.py), so wie überall sonst
+    gegen Rechte und nie gegen ``role == "council_member"``. Ein Store-Double
+    ohne Rollen-Abfrage bekommt die Vorgaben des Normalfalls.
+    """
+    from kern.roles import permissions_for
+
+    try:
+        rollen = store.get_web_user_roles(owner_id)
+    except AttributeError:
+        rollen = []
+    vorgaben = dict(NOTIFY_DEFAULTS)
+    if "mandate" in permissions_for(rollen):
+        vorgaben.update(NOTIFY_DEFAULTS_MANDATE)
+    return vorgaben
 
 #: Beschriftungen für die Einstellungs-Seite (30a/E) — hier, damit Backend und
 #: Oberfläche dieselbe Liste benutzen und keine Art vergessen wird.
@@ -144,9 +187,10 @@ def gewuenscht(store, owner_id: int, art: str) -> bool:
     if zustellung_aus(store, owner_id):
         return False
     prefs = store.get_notify_prefs(owner_id)
+    vorgaben = vorgaben_fuer(store, owner_id)
 
     def an(a: str) -> bool:
-        return bool(prefs.get(a, NOTIFY_DEFAULTS.get(a, True)))
+        return bool(prefs.get(a, vorgaben.get(a, True)))
 
     # Unter-Optionen hängen an ihrem Elternteil: „Änderungen an Tagesordnungen"
     # ohne „Tagesordnung in meinen Gremien" ergäbe Meldungen über Änderungen an
@@ -199,8 +243,16 @@ def ist_app_pfad(url: str) -> bool:
 
 
 def einreihen(store, owner_id: int, kind: str, title: str, html: str, url: str,
-              jetzt: datetime | None = None, push_text: str | None = None) -> int:
+              jetzt: datetime | None = None, push_text: str | None = None,
+              wichtig: bool = False) -> int:
     """Eine Benachrichtigung in die Warteschlange legen. Gibt ihre id zurück.
+
+    ``wichtig`` lässt die Meldung an der Tagesgrenze vorbei (Tims Regel
+    06.09.2026: „wenn es was Spannendes gibt, wollen wir die Leute auch
+    informieren"). Sie wird trotzdem nie in der Nachtruhe zugestellt und zählt
+    für die übrigen Meldungen des Tages mit — sie umgeht die Grenze, sie hebt
+    sie nicht auf. Wer sie setzt, hat eine **Tragweite gemessen**
+    (``CouncilStore.TOP_MINDEST``), keinen Bauch befragt.
 
     ``url`` ist Pflicht (Grenze 4): Antippen muss den Beschluss oder die
     Tagesordnung öffnen, nie nur die Startseite. Und es muss ein **App-Pfad**
@@ -225,7 +277,7 @@ def einreihen(store, owner_id: int, kind: str, title: str, html: str, url: str,
         owner_id=owner_id, kind=kind, title=title, body_html=html, url=url,
         created_at=n.isoformat(timespec="seconds"),
         deliver_after=naechstes_fenster(n).isoformat(timespec="seconds"),
-        push_text=push_text,
+        push_text=push_text, wichtig=wichtig,
     )
 
 
@@ -319,19 +371,34 @@ def _zustellen_fuer(store, owner_id: int, heute: str, jetzt_iso: str) -> int:
         return True
 
     def _topf(posten: list[dict], schon: int, name: str) -> int:
-        """Ein Kontingent abarbeiten: einzeln, solange Platz ist, Rest als Bündel."""
+        """Ein Kontingent abarbeiten: einzeln, solange Platz ist, Rest als Bündel.
+
+        Wichtiges (``wichtig``-Marke aus ``einreihen``) geht vorweg und
+        einzeln — auch wenn die Grenze schon erreicht ist. Es zählt danach
+        mit: Zwei wichtige Meldungen am Morgen heißen, dass die dritte,
+        gewöhnliche auf morgen wartet.
+        """
         if not posten:
             return 0
+        wichtige = [p for p in posten if p.get("wichtig")]
+        posten = [p for p in posten if not p.get("wichtig")]
+        n = 0
+        for p in wichtige:
+            if _abschicken([p["id"]], p["body_html"], p["title"], p["url"], False,
+                           push_text=p.get("push_text")):
+                n += 1
+                schon += 1
+        if not posten:
+            return n
         frei = TAGESGRENZE - schon
         if frei <= 0:
             logger.info("owner %s: Tagesgrenze (%s) erreicht, %d warten auf morgen",
                         owner_id, name, len(posten))
-            return 0
+            return n
         # Passt alles einzeln? Sonst nimmt die letzte freie Zustellung den Rest
         # als ein Bündel mit — „ab der dritten wird gebündelt statt gestapelt".
         einzeln = posten if len(posten) <= frei else posten[: frei - 1]
         rest = posten[len(einzeln):]
-        n = 0
         for p in einzeln:
             # Kurztext nur bei Einzelzustellung — ein Bündel baut seinen
             # eigenen Sammel-Text.

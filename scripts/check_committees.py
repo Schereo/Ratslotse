@@ -166,6 +166,15 @@ def _tragweite_der_sitzung(council_store: CouncilStore, ksinr: int) -> dict[str,
 
 #: Höchstens so viele Punkte stehen oben. Dieselbe Zahl wie auf der
 #: Wochen-Karte (``store_sitzungen``): Vier sind keine Auswahl mehr.
+def _sitzung_ist_wichtig(council_store: CouncilStore, ksinr: int) -> bool:
+    """Hat die Sitzung einen Punkt ab ``TOP_MINDEST``? Nur gemessene zählen."""
+    try:
+        werte = council_store.agenda_wichtigkeit(ksinr).values()
+    except Exception:  # noqa: BLE001 — Kür, nie Blocker
+        return False
+    return any(w >= CouncilStore.TOP_MINDEST for w in werte)
+
+
 _HERVOR_MAX = 3
 
 #: Erst ab so vielen Punkten wird überhaupt gegliedert. Bei vier Punkten gibt
@@ -466,13 +475,18 @@ def main() -> dict:
         push_neu = (_push_kurz(summary) if summary
                     else "Die Tagesordnung enthält nur Routine-Punkte." if summary == ""
                     else None)
+        # Trägt die Sitzung einen Punkt mit großer Tragweite, darf die Meldung
+        # an der Tagesgrenze vorbei (Tims Regel 06.09.2026) — dieselbe
+        # Schwelle wie „Das Wichtigste" der Wochen-Karte. Ohne Bewertung keine
+        # Ausnahme: Ein ungemessener Punkt ist nicht wichtig, nur unbekannt.
+        wichtig = _sitzung_ist_wichtig(council_store, ksinr)
         for owner_id in pending_new:
             if owner_id not in targets:
                 continue
             print(f"  {session.session_date} {session.committee} → owner {owner_id} (neu)")
             notify.einreihen(ratslotse_store, owner_id, notify.N1_TAGESORDNUNG,
                              subject, base_message + reason, sitzung_href(ksinr),
-                             push_text=push_neu)
+                             push_text=push_neu, wichtig=wichtig)
             council_store.mark_notified(ksinr, owner_id, agenda_hash)
             notifications_sent += 1
 

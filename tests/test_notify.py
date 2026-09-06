@@ -27,6 +27,22 @@ def _zeit(tag: str, stunde: int, minute: int = 0) -> datetime:
 
 
 def _konto(store: Store, email: str = "a@b.de") -> int:
+    """Ein Konto, das die Tagesordnungs-Meldung will.
+
+    Seit dem 06.09.2026 ist N1 für ein gewöhnliches Konto ab Werk AUS
+    (``kern.notify.NOTIFY_DEFAULTS``); die Grenz-Tests hier benutzen N1 aber
+    als Stellvertreter für „irgendeine Meldung". Der Schalter wird deshalb
+    ausdrücklich gesetzt — wie es eine Person täte, die die Meldung will.
+    Die Vorgaben selbst prüfen die Tests unter „Vorgaben" mit ``_frisch``.
+    """
+    owner = store.create_web_user(email=email, password_hash="x", role="user",
+                                  status="active", display_name=None)
+    store.set_notify_prefs(owner, {notify.N1_TAGESORDNUNG: True})
+    return owner
+
+
+def _frisch(store: Store, email: str = "neu@example.org") -> int:
+    """Ein Konto ohne einen einzigen gesetzten Schalter — die Vorgaben pur."""
     return store.create_web_user(email=email, password_hash="x", role="user",
                                  status="active", display_name=None)
 
@@ -237,7 +253,7 @@ def test_die_vorabend_erinnerung_kommt_trotz_erschoepfter_grenze(store, monkeypa
     Meldungen schon um 7 Uhr draußen, die Erinnerung lag ab 18 Uhr fertig da —
     und ging erst am Sitzungstag selbst raus."""
     owner = _konto(store)
-    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})   # Vorgabe ist AUS
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})   # Vorgabe ist AUS
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
@@ -255,7 +271,7 @@ def test_die_erinnerung_nimmt_keiner_anderen_meldung_den_platz(store, monkeypatc
     """Die Umkehrung: Ein eigenes Kontingent heißt auch, dass die Erinnerung
     das der übrigen Meldungen nicht anknabbert."""
     owner = _konto(store)
-    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
@@ -272,7 +288,7 @@ def test_auch_termingebundenes_wird_ab_der_dritten_gebuendelt(store, monkeypatch
     """Kein Freifahrtschein: Ein Abend mit vier Sitzungen schickt nicht vier
     Erinnerungen einzeln."""
     owner = _konto(store)
-    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})
     raus: list[str] = []
     monkeypatch.setattr("kern.delivery.deliver_message",
                         lambda o, html, email_subject, push_url="/", push_text=None: (raus.append(email_subject), ["email"])[1])
@@ -287,7 +303,7 @@ def test_zwei_erinnerungen_am_tag_sind_das_ende(store, monkeypatch):
     """Das eigene Kontingent ist eines, keine Ausnahme von allem: Die dritte
     Erinnerung eines Tages wartet auf morgen wie jede andere Meldung."""
     owner = _konto(store)
-    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})
     monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: ["email"])
     _vorabend_einreihen(store, owner, _zeit("2026-08-17", 8), "erste")
     assert notify.zustellen(store, jetzt=_zeit("2026-08-17", 8)) == 1
@@ -300,7 +316,7 @@ def test_zwei_erinnerungen_am_tag_sind_das_ende(store, monkeypatch):
 
 def test_die_kontingente_zaehlen_getrennt(store, monkeypatch):
     owner = _konto(store)
-    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})
     monkeypatch.setattr("kern.delivery.deliver_message", lambda *a, **k: ["email"])
     jetzt = _zeit("2026-08-17", 18)
     _vorabend_einreihen(store, owner, jetzt)
@@ -385,13 +401,15 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
     assert [p["kind"] for p in store.due_notifications(owner, "2999-01-01")] == ["n3_result"]
 
 
-def test_vorgaben_aus_dem_artboard():
-    """Vier an (samt der N1-Unter-Option „Änderungen"), N5/N6 bewusst aus."""
+def test_vorgaben_fuer_ein_gewoehnliches_konto():
+    """Tims Entscheidung 06.09.2026: Die Tagesordnung je Gremium bekommt nur,
+    wer sie ausdrücklich einschaltet; der Wochenüberblick kommt ab Werk. Die
+    Unter-Option „Änderungen" bleibt an — sie wirkt ohnehin nur mit N1."""
     an = {k for k, v in notify.NOTIFY_DEFAULTS.items() if v}
     aus = {k for k, v in notify.NOTIFY_DEFAULTS.items() if not v}
-    assert an == {notify.N1_TAGESORDNUNG, notify.N1_AENDERUNG, notify.N2_THEMA,
-                  notify.N3_ERGEBNIS, notify.N4_VORGANG}
-    assert aus == {notify.N5_VORABEND, notify.N6_WOCHE}
+    assert an == {notify.N1_AENDERUNG, notify.N2_THEMA, notify.N3_ERGEBNIS,
+                  notify.N4_VORGANG, notify.N6_WOCHE}
+    assert aus == {notify.N1_TAGESORDNUNG, notify.N5_VORABEND}
     # Jede Art hat eine Beschriftung — sonst fehlte sie stumm in den Einstellungen.
     assert set(notify.NOTIFY_LABELS) == set(notify.NOTIFY_DEFAULTS)
     # Und jede Unter-Option zeigt auf einen Anlass, den es gibt.
@@ -400,9 +418,93 @@ def test_vorgaben_aus_dem_artboard():
 
 
 def test_unbekannte_schalter_landen_nicht_in_der_datenbank(store):
-    owner = _konto(store)
+    owner = _frisch(store)
     store.set_notify_prefs(owner, {notify.N5_VORABEND: True, "beliebig": True})
     assert store.get_notify_prefs(owner) == {notify.N5_VORABEND: True}
+
+
+def test_ein_ratsmandat_bekommt_alle_abos_sofort(store):
+    """Wer im Rat sitzt (Recht ``mandate``), bekommt jede Tagesordnung jedes
+    abonnierten Gremiums ab Werk — der Normalfall nicht (Tim, 06.09.2026).
+    Geprüft über das Recht, nicht über den Rollennamen."""
+    normalo = _frisch(store, "n@example.org")
+    rat = _frisch(store, "r@example.org")
+    store.set_web_user_roles(rat, ["council_member"])
+    assert notify.gewuenscht(store, normalo, notify.N1_TAGESORDNUNG) is False
+    assert notify.gewuenscht(store, rat, notify.N1_TAGESORDNUNG) is True
+    # Der Wochenüberblick gilt für beide.
+    assert notify.gewuenscht(store, normalo, notify.N6_WOCHE) is True
+    assert notify.gewuenscht(store, rat, notify.N6_WOCHE) is True
+    # Ein gesetzter Schalter schlägt die Vorgabe — in beide Richtungen.
+    store.set_notify_prefs(rat, {notify.N1_TAGESORDNUNG: False})
+    assert notify.gewuenscht(store, rat, notify.N1_TAGESORDNUNG) is False
+    store.set_notify_prefs(normalo, {notify.N1_TAGESORDNUNG: True})
+    assert notify.gewuenscht(store, normalo, notify.N1_TAGESORDNUNG) is True
+    assert notify.vorgaben_fuer(store, rat)[notify.N1_TAGESORDNUNG] is True
+    assert notify.vorgaben_fuer(store, normalo)[notify.N1_TAGESORDNUNG] is False
+
+
+def test_bestandskonten_behalten_die_alten_vorgaben(tmp_path):
+    """Tims Entscheidung 06.09.2026: „Bestandskonten so lassen, wie sie sind."
+    Ein Konto, das vor dem Umbau nie einen Schalter angefasst hat, bekommt
+    die alten Vorgaben ausdrücklich in die Spalte geschrieben — es hört also
+    weder still auf, Tagesordnungen zu bekommen, noch fängt es plötzlich mit
+    dem Wochenüberblick an. Was jemand selbst gesetzt hatte, bleibt."""
+    from kern.store import Store
+
+    pfad = tmp_path / "ratslotse.sqlite"
+    erster = Store(pfad)
+    unberuehrt = _frisch(erster, "u@example.org")
+    eigen = _frisch(erster, "e@example.org")
+    erster.set_notify_prefs(eigen, {notify.N1_TAGESORDNUNG: False, notify.N6_WOCHE: True})
+    with erster._conn:      # so, als wäre der Stempel noch nie gelaufen
+        erster._conn.execute("DELETE FROM migration_marks WHERE marke = 'notify_vorgaben_2026_09'")
+    erster.close()
+
+    zweiter = Store(pfad)
+    assert zweiter.get_notify_prefs(unberuehrt) == {notify.N1_TAGESORDNUNG: True,
+                                                    notify.N6_WOCHE: False}
+    assert zweiter.get_notify_prefs(eigen) == {notify.N1_TAGESORDNUNG: False,
+                                               notify.N6_WOCHE: True}
+    assert notify.gewuenscht(zweiter, unberuehrt, notify.N1_TAGESORDNUNG) is True
+    assert notify.gewuenscht(zweiter, unberuehrt, notify.N6_WOCHE) is False
+    # Ein NEUES Konto nach dem Stempel bekommt die neuen Vorgaben.
+    neu = _frisch(zweiter, "neu2@example.org")
+    assert zweiter.get_notify_prefs(neu) == {}
+    assert notify.gewuenscht(zweiter, neu, notify.N1_TAGESORDNUNG) is False
+    assert notify.gewuenscht(zweiter, neu, notify.N6_WOCHE) is True
+    zweiter.close()
+
+
+def test_wichtiges_geht_an_der_tagesgrenze_vorbei(store, monkeypatch):
+    """Tims Regel 06.09.2026: keine harten Deckel — „wenn es was Spannendes
+    gibt, wollen wir die Leute auch informieren". Eine wichtige Meldung geht
+    einzeln raus, auch wenn die zwei des Tages verbraucht sind; sie zählt
+    danach mit, und Gewöhnliches wartet weiter."""
+    owner = _konto(store)
+    gesehen: list[str] = []
+    monkeypatch.setattr("kern.delivery.deliver_message",
+                        lambda o, html, email_subject, push_url="/", push_text=None:
+                            (gesehen.append(email_subject), ["email"])[1])
+    jetzt = _zeit("2026-08-18", 9)
+    for i in range(2):
+        notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, f"gewöhnlich {i}", "<p>x</p>",
+                         "/council", jetzt=jetzt)
+    assert notify.zustellen(store, jetzt=jetzt) == 2
+    spaeter = _zeit("2026-08-18", 11)
+    notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "noch eine", "<p>x</p>",
+                     "/council", jetzt=spaeter)
+    notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "Stadion: Tagesordnung ist da",
+                     "<p>x</p>", "/council", jetzt=spaeter, wichtig=True)
+    assert notify.zustellen(store, jetzt=spaeter) == 1
+    assert gesehen[-1] == "Stadion: Tagesordnung ist da"
+    # Die gewöhnliche wartet auf morgen …
+    assert [p["title"] for p in store.due_notifications(owner, "2999-01-01")] == ["noch eine"]
+    # … und in der Nachtruhe geht auch Wichtiges nicht raus.
+    nachts = _zeit("2026-08-18", 22)
+    notify.einreihen(store, owner, notify.N1_TAGESORDNUNG, "Rat: Tagesordnung ist da",
+                     "<p>x</p>", "/council", jetzt=nachts, wichtig=True)
+    assert notify.zustellen(store, jetzt=nachts) == 0
 
 
 # ---- N3: die Ergebnis-Meldung ----------------------------------------------
@@ -440,6 +542,70 @@ def test_ergebnis_meldung_nennt_das_sitzungsdatum(store, monkeypatch, tmp_path):
     council.close()
 
 
+def test_ein_protokoll_schub_wird_ein_brief(store, tmp_path):
+    """Tims Wunsch 06.09.2026: Kommen mehrere Protokolle in einem Lauf, gibt
+    es EINEN Brief je Person — gruppiert nach Thema, der Beschluss mit der
+    größten Tragweite führt, und ein Beschluss ab ``TOP_MINDEST`` lässt den
+    Brief an der Tagesgrenze vorbei. Jede Sitzung gilt danach als gemeldet."""
+    from council.ergebnisse import melde_ergebnisse
+    from council.scraper import AgendaItem, CouncilSession
+    from council.store import CouncilStore
+
+    owner = _konto(store)
+    stadion = store.add_topic(owner, "Stadion", "Neubau")
+    waerme = store.add_topic(owner, "Wärmeplanung", "Fernwärme")
+    store.replace_agenda_matches(owner, 4692, "h1", {stadion.id: ["Ö 6.1", "Ö 6.2"],
+                                                     waerme.id: ["Ö 8.1"]})
+    store.replace_agenda_matches(owner, 4606, "h2", {stadion.id: ["Ö 3"]})
+
+    council = CouncilStore(tmp_path / "council.sqlite")
+    council.save_session(CouncilSession(4692, "Rat", "2026-06-01", "17:00", "Rathaus",
+                                        agenda_items=[AgendaItem("Ö 6.1", "Stadionneubau"),
+                                                      AgendaItem("Ö 6.2", "Bürgschaft"),
+                                                      AgendaItem("Ö 8.1", "Wärmeplan")]))
+    council.save_session(CouncilSession(4606, "Ausschuss für Stadtplanung und Bauen", "2026-06-18",
+                                        "17:00", "Rathaus",
+                                        agenda_items=[AgendaItem("Ö 3", "Parkplätze am Stadion")]))
+    with council._conn:
+        council._insert_decision(4692, 0, "decision", None, "Ö 6.1", "Stadionneubau", "x",
+                                 "accepted", "majority", 18, 0, ["SPD"], None, None, None)
+        council._insert_decision(4692, 1, "decision", None, "Ö 6.2", "Bürgschaft", "x",
+                                 "accepted", "majority", 18, 0, ["SPD"], None, None, None)
+        council._insert_decision(4692, 2, "decision", None, "Ö 8.1", "Wärmeplan", "x",
+                                 "accepted", "majority", 5, 0, [], None, None, None)
+        council._insert_decision(4606, 0, "decision", None, "Ö 3", "Parkplätze am Stadion", "x",
+                                 "rejected", "unanimous", None, None, [], None, None, None)
+    ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
+    with council._conn:
+        council._conn.execute("UPDATE council_decisions SET amount_eur = 57339000 WHERE id = ?",
+                              (ids["Stadionneubau"],))
+    council.save_impact(ids["Stadionneubau"], 96, "")
+    council.save_impact(ids["Bürgschaft"], 95, "")
+    council.save_impact(ids["Wärmeplan"], 80, "")
+    council.save_impact(ids["Parkplätze am Stadion"], 20, "")
+
+    assert melde_ergebnisse(council, store, [4606, 4692]) == 1       # EIN Brief
+    posten = store.due_notifications(owner, "2999-01-01")
+    assert len(posten) == 1
+    p = posten[0]
+    assert p["kind"] == "n3_result"
+    assert p["title"] == "Entschieden: Stadion und Wärmeplanung — 4 Ergebnisse"
+    assert p["url"] == "/topics"
+    assert p["wichtig"] == 1                                            # 96 ≥ TOP_MINDEST
+    body = p["body_html"]
+    # Beide Protokolle im Einleitungssatz, Themen als Gruppen, Tragweite führt.
+    assert "Rat</b> vom 1. Juni" in body and "Stadtplanung und Bauen</b> vom 18. Juni" in body
+    assert body.index("Dein Thema · Stadion") < body.index("Dein Thema · Wärmeplanung")
+    assert body.index("Stadionneubau") < body.index("Bürgschaft") < body.index("Parkplätze")
+    assert "3 Beschlüsse" in body and "57,3 Mio. €" in body
+    assert "Im Rat am 1. Juni angenommen (mehrheitlich, 18 dagegen)" in body
+    assert p["push_text"].startswith("Stadion: angenommen (18 dagegen) · Wärmeplanung: angenommen")
+    assert "2 weitere aus 2 Protokollen" in p["push_text"]
+    # Beide Sitzungen gelten als gemeldet — der zweite Lauf schweigt.
+    assert melde_ergebnisse(council, store, [4606, 4692]) == 0
+    council.close()
+
+
 def test_ohne_vorherige_meldung_kein_ergebnis(store, tmp_path):
     """Wer nie etwas zu dieser Sitzung gehört hat, wird nicht nachträglich behelligt."""
     from council.ergebnisse import melde_ergebnisse
@@ -470,7 +636,7 @@ def test_vorabend_erinnert_an_die_sitzung_von_morgen(store, tmp_path):
 
     owner = _konto(store)
     thema = store.add_topic(owner, "Radwege", "Ausbau von Radwegen")
-    store.set_notify_prefs(owner, {notify.N5_VORABEND: True})   # Vorgabe ist AUS
+    store.set_notify_prefs(owner, {notify.N5_VORABEND: True, notify.N1_TAGESORDNUNG: True})   # Vorgabe ist AUS
     store.replace_agenda_matches(owner, 4652, "h1", {thema.id: ["Ö 6"]})
 
     heute = date(2026, 8, 17)
@@ -826,12 +992,12 @@ def test_abgeschaltet_reiht_gar_nichts_ein(store):
 
 
 def test_abgeschaltet_gilt_auch_gegen_die_vorgaben(store):
-    """N1–N4 sind ab Werk AN. „off" schlägt die Vorgabe, nicht umgekehrt."""
-    owner = _konto(store)
+    """N2–N4 sind ab Werk AN. „off" schlägt die Vorgabe, nicht umgekehrt."""
+    owner = _frisch(store)
     store.set_delivery_channel(owner, "off")
-    assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is False
+    assert notify.gewuenscht(store, owner, notify.N2_THEMA) is False
     store.set_delivery_channel(owner, "email")
-    assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is True
+    assert notify.gewuenscht(store, owner, notify.N2_THEMA) is True
 
 
 def test_unteroption_haengt_am_elternteil(store):
@@ -839,12 +1005,15 @@ def test_unteroption_haengt_am_elternteil(store):
     26.08.2026): Abo behalten, nur die Änderungs-Meldungen loswerden — und wer
     N1 ganz abschaltet, bekommt auch keine Änderungs-Meldungen, egal wie der
     Unter-Schalter steht."""
-    owner = _konto(store)
-    # Ab Werk: beides an.
+    owner = _konto(store)      # N1 gesetzt — ab Werk wäre es seit 09/2026 aus
+    # Mit N1 an: auch die Unter-Option an.
     assert notify.gewuenscht(store, owner, notify.N1_AENDERUNG) is True
+    # Ohne N1 (die Vorgabe eines gewöhnlichen Kontos) kommt auch keine Änderung.
+    assert notify.gewuenscht(store, _frisch(store), notify.N1_AENDERUNG) is False
 
     # Nur die Änderungs-Meldungen abschalten — die Tagesordnung kommt weiter.
-    store.set_notify_prefs(owner, {notify.N1_AENDERUNG: False})
+    # (set_notify_prefs ersetzt den ganzen Satz — N1 also mitgeben.)
+    store.set_notify_prefs(owner, {notify.N1_TAGESORDNUNG: True, notify.N1_AENDERUNG: False})
     assert notify.gewuenscht(store, owner, notify.N1_TAGESORDNUNG) is True
     assert notify.gewuenscht(store, owner, notify.N1_AENDERUNG) is False
 

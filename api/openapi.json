@@ -10449,6 +10449,7 @@
             "items": {
               "enum": [
                 "budget",
+                "mandate",
                 "admin"
               ],
               "type": "string"
@@ -12230,6 +12231,7 @@
             "items": {
               "enum": [
                 "budget",
+                "mandate",
                 "admin"
               ],
               "type": "string"

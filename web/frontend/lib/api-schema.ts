@@ -8335,7 +8335,7 @@ export interface components {
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "admin")[];
+            permissions: ("budget" | "mandate" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -9077,7 +9077,7 @@ export interface components {
             /** Id */
             id: number;
             /** Permissions */
-            permissions: ("budget" | "admin")[];
+            permissions: ("budget" | "mandate" | "admin")[];
             /**
              * Role
              * @enum {string}
@@ -14251,4 +14251,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 36dfa3753711fd402ae4dff8e229b08e714acb5830a6162feac929f2c41cc94e
+// vertrag-sha256: d9b507713cd117c85478f7aa3bb496304bd37d58f6b0830f652acda4f1c47bb6
