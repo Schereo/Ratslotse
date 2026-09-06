@@ -1776,9 +1776,14 @@ function LiveProbeTab() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
+      let bytes = 0;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        // Die ersten Bytes sind der Vorspann des Servers — ab hier steht
+        // die Leitung, auch wenn noch keine Äußerung da ist.
+        if (bytes === 0) setStatus((s) => (s === "verbinde …" ? "Leitung steht — warte auf den Server" : s));
+        bytes += value.byteLength;
         buf += decoder.decode(value, { stream: true });
         const chunks = buf.split("\n\n");
         buf = chunks.pop() ?? "";
