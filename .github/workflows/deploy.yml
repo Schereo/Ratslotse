@@ -287,7 +287,14 @@ jobs:
               echo "Die Vorprobe würde gegen einen FREMDEN Prozess laufen."
               exit 1
             fi
-            ( cd web/backend && exec ../../.venv/bin/uvicorn app.main:app \
+            # Die Barriere steht in diesem Moment noch — ohne den Bypass
+            # verweigert der Ersatzdienst jeden Datenbankzugriff, /api/health
+            # antwortet 503, und die Probe kann NIE grün werden (06.09.2026:
+            # dreimal „kam auf dem Ersatzport nicht hoch", jedes Mal blieb
+            # der API-Dienst gestoppt). Der Bypass ist genau für diesen
+            # Schritt gedacht: neuer Code gegen die migrierte Datenbank.
+            ( cd web/backend && RATSLOTSE_RELEASE_MAINTENANCE=1 \
+                exec ../../.venv/bin/uvicorn app.main:app \
                 --host 127.0.0.1 --port "$vorprobe_port" --log-level warning ) \
                 > data/vorprobe.log 2>&1 &
             vorprobe_pid=$!
