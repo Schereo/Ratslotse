@@ -218,8 +218,22 @@ def test_endpunkte_oeffentlich_und_melden():
 
     r = client.get("/api/districts/projects")
     assert r.status_code == 200
-    zeile = next(d for d in r.json()["districts"] if d["place_id"] == "kreyenbrueck")
+    uebersicht = r.json()
+    zeile = next(d for d in uebersicht["districts"] if d["place_id"] == "kreyenbrueck")
     assert zeile["count"] == 1 and zeile["name"] == "Kreyenbrück"
+    assert zeile["stages"] == {"planning": 1}
+    # Die Stadtzahlen und Highlights der Auswahl-Seite: hier ein Vorhaben, also eins.
+    assert uebersicht["total"] == 1 and uebersicht["stages"] == {"planning": 1}
+    assert [(h["place_id"], h["name"], h["when"]) for h in uebersicht["highlights"]] == [
+        ("kreyenbrueck", "Wohnungen Sandkruger Straße", "2028")]
+
+    # „Ich wohne in der …": Stadtteil (auch über den Alias) und Straße führen zum Ortsbereich.
+    assert client.get("/api/districts/lookup", params={"q": "k"}).json() == {"matches": []}
+    treffer = client.get("/api/districts/lookup", params={"q": "krey"}).json()["matches"]
+    assert treffer[0] == {"name": "Kreyenbrück", "kind": "district", "place_id": "kreyenbrueck",
+                          "place_name": "Kreyenbrück", "count": 1}
+    treffer = client.get("/api/districts/lookup", params={"q": "sandkrug"}).json()["matches"]
+    assert [(t["name"], t["place_id"], t["kind"]) for t in treffer] == [("Sandkruger Straße", "kreyenbrueck", "street")]
 
     r = client.get("/api/districts/kreyenbrueck/projects")
     assert r.status_code == 200
