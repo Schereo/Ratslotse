@@ -481,6 +481,7 @@ const FEATURE_LABELS: Record<string, string> = {
   committee_summary: "Ausschuss-Zusammenfassung",
   daily_find_story: "Fundstück des Tages",
   decision_places: "Orte eines Beschlusses",
+  district_projects: "Mein Viertel — Vorhaben",
   deep_decomposition: "Gründliche Recherche — Zerlegung",
   deep_report: "Gründliche Recherche — Bericht",
   entity_description: "Themen-Beschreibungen",

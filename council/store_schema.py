@@ -304,6 +304,59 @@ CREATE TABLE IF NOT EXISTS council_embeddings (
     vector      BLOB NOT NULL
 );
 
+-- „Mein Viertel" (council.viertel): das Urteil der zweiten Stufe je Beschluss
+-- und Ortsbereich. Gecacht über source_hash, damit ein Lauf nur Neues ans
+-- Modell schickt; relation ∈ district|citywide|elsewhere|mentioned.
+CREATE TABLE IF NOT EXISTS council_district_reviews (
+    decision_id  INTEGER NOT NULL,
+    place_id     TEXT NOT NULL,
+    relation     TEXT NOT NULL,
+    changes      INTEGER NOT NULL DEFAULT 0,
+    what         TEXT NOT NULL DEFAULT '',
+    when_text    TEXT,
+    stage        TEXT,
+    category     TEXT,
+    confidence   INTEGER NOT NULL DEFAULT 0,
+    reason       TEXT,
+    source_hash  TEXT NOT NULL,
+    model        TEXT NOT NULL,
+    updated_at   TEXT NOT NULL,
+    PRIMARY KEY (decision_id, place_id)
+);
+
+-- Vorhaben je Ortsbereich, aus den Urteilen gebündelt; je Lauf und Ortsbereich
+-- ersetzt. project_key bleibt über Läufe stabil (place_id + ältester Beschluss),
+-- daran hängen die „Gehört nicht hierher"-Meldungen.
+CREATE TABLE IF NOT EXISTS council_district_projects (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    place_id     TEXT NOT NULL,
+    project_key  TEXT NOT NULL,
+    name         TEXT NOT NULL,
+    what         TEXT NOT NULL,
+    stage        TEXT NOT NULL,
+    when_text    TEXT,
+    category     TEXT NOT NULL,
+    confidence   INTEGER NOT NULL DEFAULT 0,
+    first_date   TEXT,
+    last_date    TEXT,
+    updated_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_district_projects_place ON council_district_projects(place_id);
+CREATE TABLE IF NOT EXISTS council_district_project_decisions (
+    project_id  INTEGER NOT NULL,
+    decision_id INTEGER NOT NULL,
+    PRIMARY KEY (project_id, decision_id)
+);
+CREATE TABLE IF NOT EXISTS council_district_project_reports (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_key TEXT NOT NULL,
+    place_id    TEXT NOT NULL,
+    owner_id    INTEGER NOT NULL,
+    reason      TEXT,
+    created_at  TEXT NOT NULL,
+    UNIQUE (project_key, owner_id)
+);
+
 -- Auto-generated LLM recap per policy field ("Was bewegte den Rat im Bereich X?",
 -- council.recaps). One row per field, replaced when regenerated (≈ monthly via cron).
 CREATE TABLE IF NOT EXISTS council_field_recaps (
@@ -1665,6 +1718,37 @@ class SchemaMixin(StoreBasis):
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_decision_location_scans ("
             "decision_id INTEGER PRIMARY KEY, source_hash TEXT NOT NULL, scanned_at TEXT NOT NULL)"
+        )
+        # „Mein Viertel" (council.viertel) — vier Tabellen, alle ohne
+        # Nachbarn: Wer sie im SCHEMA ergänzt, ergänzt sie auch hier.
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_district_reviews ("
+            "decision_id INTEGER NOT NULL, place_id TEXT NOT NULL, relation TEXT NOT NULL, "
+            "changes INTEGER NOT NULL DEFAULT 0, what TEXT NOT NULL DEFAULT '', when_text TEXT, "
+            "stage TEXT, category TEXT, confidence INTEGER NOT NULL DEFAULT 0, reason TEXT, "
+            "source_hash TEXT NOT NULL, model TEXT NOT NULL, updated_at TEXT NOT NULL, "
+            "PRIMARY KEY (decision_id, place_id))"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_district_projects ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, place_id TEXT NOT NULL, project_key TEXT NOT NULL, "
+            "name TEXT NOT NULL, what TEXT NOT NULL, stage TEXT NOT NULL, when_text TEXT, "
+            "category TEXT NOT NULL, confidence INTEGER NOT NULL DEFAULT 0, first_date TEXT, "
+            "last_date TEXT, updated_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_district_projects_place "
+            "ON council_district_projects(place_id)")
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_district_project_decisions ("
+            "project_id INTEGER NOT NULL, decision_id INTEGER NOT NULL, "
+            "PRIMARY KEY (project_id, decision_id))"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_district_project_reports ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, project_key TEXT NOT NULL, place_id TEXT NOT NULL, "
+            "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, "
+            "UNIQUE (project_key, owner_id))"
         )
         # Redaktionelle Schicht über den automatisch extrahierten Ortsnamen.
         # Die Rohbeobachtung bleibt dabei unangetastet: Admins können einen

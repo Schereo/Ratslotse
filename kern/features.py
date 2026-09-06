@@ -61,7 +61,15 @@ class Feature:
 #:         fertig_wenn="Die Stadion-Fragen liefern mindestens so gute Treffer "
 #:                     "wie vorher (tests/…/eval).",
 #:     ),
-FEATURES: dict[str, Feature] = {}
+FEATURES: dict[str, Feature] = {
+    "mein-viertel": Feature(
+        key="mein-viertel",
+        description="„Mein Viertel“: Was sich in einem Ortsbereich in den nächsten "
+                    "Jahren ändert — Vorhaben aus Beschlüssen, gebündelt und geprüft.",
+        fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
+                    "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
+    ),
+}
 
 
 def aktive(roh: str | None = None) -> list[str]:

@@ -1,0 +1,429 @@
+"""„Mein Viertel": Vorhaben je Ortsbereich — Lese- und Schreibseite.
+
+Was hier liegt, ruft genau eine Ecke: der Register-Lauf (``council/viertel.py``,
+``scripts/build_district_projects.py``) und die Endpunkte unter
+``/api/districts``. Die Orts-Pipeline selbst (welcher Beschluss nennt welchen
+Ort) bleibt in ``store_orte.py`` — hier wird sie nur gelesen.
+
+**Warum ein eigenes Register und kein Filter über die Orts-Tabellen.** Die
+Orts-Pipeline sagt, dass ein Beschluss einen Ort *nennt*. Für „Was ändert sich
+in meinem Viertel" reicht das nicht: Gemessen am 05.09.2026 gehörte rund die
+Hälfte der so gefundenen Beschlüsse nicht ins Viertel (stadtweite Berichte mit
+Beispielort, das Klinikum, Gedenktitel mit Straßennamen). Die zweite Stufe
+(``council_district_reviews``) hält das Urteil je Beschluss UND Ortsbereich
+fest, die Bündelung (``council_district_projects``) macht aus Ausschuss- und
+Ratsbeschluss, Aufstellungs- und Satzungsbeschluss EIN Vorhaben mit Stand.
+"""
+from __future__ import annotations
+
+import json
+import re
+import sqlite3
+from datetime import date, datetime, timezone
+
+from council.store_basis import StoreBasis
+from kern.dbfehler import tabelle_fehlt
+
+#: Was als Vorhaben auf die Tafel darf. Darunter bleibt es im Register, aber
+#: unsichtbar — die Schwelle ist die eine Stellschraube für Tims Messlatte
+#: „nahezu 100 %": lieber ein Vorhaben zu wenig als eines aus dem falschen
+#: Viertel.
+PROJECT_MIN_CONFIDENCE = 90
+
+#: Ab so vielen Konten, die „Gehört nicht hierher" gesagt haben, verschwindet
+#: ein Vorhaben von der Tafel. Eins reicht nicht — sonst nähme ein Tippfehler
+#: allen anderen die Karte weg; zwei unabhängige Stimmen sind ein Signal.
+PROJECT_HIDE_REPORTS = 2
+
+#: Wie weit zurück Beschlüsse als Kandidaten zählen (Monate). Ein Vorhaben
+#: lebt über Jahre, aber ein Beschluss von 2019 sagt nichts über 2027 —
+#: 24 Monate war die Messgrundlage des PoC.
+CANDIDATE_MONTHS = 24
+
+#: Ab diesem Flächenanteil im Ortsbereich zählt ein Ort als „dort". Eine
+#: Straße, die zu 15 % durch das Viertel läuft, gehört in den Beschlussfilter
+#: (dort will man sie sehen), aber nicht auf die Vorhaben-Tafel.
+CANDIDATE_MIN_SHARE = 0.5
+
+#: Ortsarten, deren Name in einer Vorhaben-Bezeichnung des Investitions-
+#: programms als Ortsbezug zählt. Gebäude und Sammelbegriffe („Feuerwehr",
+#: „Stadion") trafen im PoC Vorhaben aus der ganzen Stadt.
+_INVESTMENT_LOCATION_KINDS = ("street", "square", "water")
+
+_STRICT_METHODS = ("district_list", "place_catalog")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+class ViertelMixin(StoreBasis):
+    """Die Viertel-Abfragen von :class:`council.store.CouncilStore` — nur zum Mitvererben."""
+
+    # ------------------------------------------------------------ Kandidaten
+
+    def district_candidates(self, place, *, since: str | None = None,
+                            min_share: float = CANDIDATE_MIN_SHARE) -> list[dict]:
+        """Beschlüsse, deren erkannte Orte im Ortsbereich liegen — mit allem,
+        was die zweite Stufe zum Urteilen braucht.
+
+        Je Beschluss: die Orte (mit Anteil, Quelle, Methode), ob mindestens
+        einer davon *streng* erkannt wurde (aus dem Titel, der Stadtteil-Liste
+        oder dem Katalog), welche anderen Ortsbereiche dieselben Orte berühren,
+        und der Vorlagentext, soweit er da ist.
+        """
+        if since is None:
+            since = _months_ago(CANDIDATE_MONTHS)
+        rows = self._conn.execute(
+            """
+            SELECT d.id, d.title, d.summary, d.official_text, d.outcome, d.kind, d.kvonr,
+                   se.session_date, se.committee,
+                   dl.source, dl.method, dl.evidence,
+                   l.slug AS location_slug, l.name AS location, l.kind AS location_kind, ld.share
+            FROM council_decision_locations dl
+            JOIN council_locations l ON l.slug = dl.location_slug
+            JOIN council_location_districts ld ON ld.location_slug = dl.location_slug
+            JOIN council_decisions d ON d.id = dl.decision_id
+            JOIN council_sessions se ON se.ksinr = d.ksinr
+            WHERE (ld.place_id = ? OR ld.district = ?) AND se.session_date >= ? AND ld.share >= ?
+            ORDER BY se.session_date DESC, d.id
+            """, (place.id, place.name, since, min_share)).fetchall()
+        by_id: dict[int, dict] = {}
+        for r in rows:
+            d = by_id.setdefault(r["id"], {
+                "id": r["id"], "title": r["title"], "summary": r["summary"],
+                "official_text": r["official_text"], "outcome": r["outcome"], "kind": r["kind"],
+                "kvonr": r["kvonr"], "date": r["session_date"], "committee": r["committee"],
+                "locations": [], "strict": False, "other_districts": [],
+            })
+            strict = r["source"] == "title" or r["method"] in _STRICT_METHODS
+            d["locations"].append({
+                "slug": r["location_slug"], "name": r["location"], "kind": r["location_kind"],
+                "share": round(r["share"], 2), "source": r["source"], "method": r["method"],
+                "evidence": (r["evidence"] or "")[:160], "strict": strict,
+            })
+            d["strict"] = d["strict"] or strict
+        for d in by_id.values():
+            others = self._conn.execute(
+                "SELECT DISTINCT ld.district FROM council_decision_locations dl "
+                "JOIN council_location_districts ld ON ld.location_slug = dl.location_slug "
+                "WHERE dl.decision_id = ? AND ld.district != ? AND ld.share >= ?",
+                (d["id"], place.name, min_share)).fetchall()
+            d["other_districts"] = [o[0] for o in others]
+            d["namesakes"] = self._namesakes(d["locations"], place)
+            if d["kvonr"]:
+                t = self._conn.execute(
+                    "SELECT raw_text, proposed_decision, financial_impact FROM council_templates "
+                    "WHERE kvonr = ?", (d["kvonr"],)).fetchone()
+                if t:
+                    d["template_text"] = t["raw_text"] or None
+                    d["proposed_decision"] = (t["proposed_decision"] or "")[:600] or None
+                    d["financial_impact"] = (t["financial_impact"] or "")[:300] or None
+        return list(by_id.values())
+
+    def _namesakes(self, locations: list[dict], place) -> list[dict]:
+        """ANDERE Katalog-Orte anderer Ortsbereiche, die einen dieser Namen
+        tragen oder enthalten.
+
+        Der eine Fehler des PoC: „Schießstand" steht im Katalog als Fläche in
+        Eversten (die Straße Am Schießstand), gemeint war der alte Schießstand
+        auf dem Fliegerhorst. Beide Einträge existieren — die zweite Stufe
+        muss nur wissen, dass es sie gibt.
+
+        Nicht gemeint: derselbe Ort, der zu einem kleineren Teil auch im
+        Nachbar-Ortsbereich liegt (die Sandkruger Straße läuft weiter nach
+        Bümmerstede), und Hausnummern-Varianten („Cloppenburger Straße 35").
+        """
+        out: list[dict] = []
+        eigene = {loc["slug"] for loc in locations}
+        for loc in locations:
+            name = loc["name"]
+            # Der Ortsbereich selbst (Stadtteil-Liste) hat keine Namensvettern,
+            # nur Zusammensetzungen — „Sportpark Osternburg" liegt in Tweelbäke
+            # und macht einen Beschluss über Osternburg nicht zweideutig.
+            if len(name) < 5 or loc.get("kind") == "district" or name == place.name:
+                continue
+            rows = self._conn.execute(
+                "SELECT l.slug, l.name, ld.district FROM council_locations l "
+                "JOIN council_location_districts ld ON ld.location_slug = l.slug "
+                "WHERE ld.district != ? AND ld.share >= 0.5 AND (l.name = ? OR l.name LIKE ?) "
+                "LIMIT 8", (place.name, name, f"%{name}%")).fetchall()
+            ganzes_wort = re.compile(r"(?:^|[^A-Za-zÄÖÜäöüß])" + re.escape(name) + r"(?:$|[^a-zäöüß])")
+            for r in rows:
+                if r["slug"] in eigene or not ganzes_wort.search(r["name"]):
+                    continue
+                if re.match(re.escape(name) + r"\s*\d", r["name"]):
+                    continue
+                if not any(o["name"] == r["name"] and o["district"] == r["district"] for o in out):
+                    out.append({"name": r["name"], "district": r["district"]})
+        return out
+
+    # --------------------------------------------------------------- Urteile
+
+    def district_reviews(self, place_id: str) -> dict[int, dict]:
+        """Die gespeicherten Urteile eines Ortsbereichs, je decision_id."""
+        try:
+            rows = self._conn.execute(
+                "SELECT * FROM council_district_reviews WHERE place_id = ?", (place_id,)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return {}
+        return {r["decision_id"]: dict(r) for r in rows}
+
+    def save_district_reviews(self, place_id: str, reviews: list[dict], model: str) -> int:
+        """Urteile eintragen oder ersetzen; ``source_hash`` macht den Lauf idempotent."""
+        now = _now()
+        with self._conn:
+            self._conn.executemany(
+                "INSERT INTO council_district_reviews (decision_id, place_id, relation, changes, what, "
+                "when_text, stage, category, confidence, reason, source_hash, model, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(decision_id, place_id) DO UPDATE SET relation=excluded.relation, "
+                "changes=excluded.changes, what=excluded.what, when_text=excluded.when_text, "
+                "stage=excluded.stage, category=excluded.category, confidence=excluded.confidence, "
+                "reason=excluded.reason, source_hash=excluded.source_hash, model=excluded.model, "
+                "updated_at=excluded.updated_at",
+                [(r["decision_id"], place_id, r["relation"], 1 if r.get("changes") else 0,
+                  (r.get("what") or "")[:300], r.get("when"), r.get("stage"), r.get("category"),
+                  int(r.get("confidence") or 0), (r.get("reason") or "")[:300],
+                  r["source_hash"], model, now) for r in reviews])
+        return len(reviews)
+
+    # -------------------------------------------------------------- Vorhaben
+
+    def replace_district_projects(self, place_id: str, projects: list[dict]) -> int:
+        """Die Vorhaben eines Ortsbereichs komplett ersetzen — EINE Transaktion.
+
+        ``project_key`` = ``place_id:<kleinste decision_id>`` bleibt über Läufe
+        stabil, solange der älteste Beschluss des Vorhabens derselbe bleibt.
+        Daran hängen die Meldungen; ein Vorhaben, das beim nächsten Lauf anders
+        geschnitten wird, verliert sie im schlimmsten Fall — und nicht mehr.
+        """
+        now = _now()
+        with self._conn:
+            alte = [r[0] for r in self._conn.execute(
+                "SELECT id FROM council_district_projects WHERE place_id = ?", (place_id,)).fetchall()]
+            if alte:
+                ph = ",".join("?" * len(alte))
+                self._conn.execute(
+                    f"DELETE FROM council_district_project_decisions WHERE project_id IN ({ph})", alte)
+                self._conn.execute("DELETE FROM council_district_projects WHERE place_id = ?", (place_id,))
+            for p in projects:
+                ids = sorted({int(i) for i in p.get("decision_ids") or []})
+                if not ids:
+                    continue
+                dates = self._conn.execute(
+                    f"SELECT MIN(se.session_date), MAX(se.session_date) FROM council_decisions d "
+                    f"JOIN council_sessions se ON se.ksinr = d.ksinr WHERE d.id IN ({','.join('?' * len(ids))})",
+                    ids).fetchone()
+                cur = self._conn.execute(
+                    "INSERT INTO council_district_projects (place_id, project_key, name, what, stage, "
+                    "when_text, category, confidence, first_date, last_date, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (place_id, f"{place_id}:{ids[0]}", (p.get("name") or "")[:80], (p.get("what") or "")[:600],
+                     p.get("stage") or "planning", p.get("when"), p.get("category") or "other",
+                     int(p.get("confidence") or 0), dates[0], dates[1], now))
+                self._conn.executemany(
+                    "INSERT OR IGNORE INTO council_district_project_decisions (project_id, decision_id) "
+                    "VALUES (?, ?)", [(cur.lastrowid, i) for i in ids])
+        return len(projects)
+
+    def district_projects(self, place_id: str, *, min_confidence: int = PROJECT_MIN_CONFIDENCE,
+                          include_hidden: bool = False) -> list[dict]:
+        """Die Vorhaben eines Ortsbereichs mit ihren Beschlüssen, sichtbare zuerst nach Stand."""
+        try:
+            rows = self._conn.execute(
+                "SELECT p.*, (SELECT COUNT(*) FROM council_district_project_reports r "
+                "WHERE r.project_key = p.project_key) AS report_count "
+                "FROM council_district_projects p WHERE p.place_id = ? AND p.confidence >= ? "
+                "ORDER BY p.last_date DESC, p.id", (place_id, min_confidence)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        out = []
+        for r in rows:
+            hidden = r["report_count"] >= PROJECT_HIDE_REPORTS
+            if hidden and not include_hidden:
+                continue
+            decisions = self._conn.execute(
+                "SELECT d.id, d.title, d.outcome, se.session_date AS date, se.committee "
+                "FROM council_district_project_decisions pd "
+                "JOIN council_decisions d ON d.id = pd.decision_id "
+                "JOIN council_sessions se ON se.ksinr = d.ksinr "
+                "WHERE pd.project_id = ? ORDER BY se.session_date DESC, d.id DESC", (r["id"],)).fetchall()
+            out.append({
+                "id": r["id"], "project_key": r["project_key"], "place_id": r["place_id"],
+                "name": r["name"], "what": r["what"], "stage": r["stage"], "when": r["when_text"],
+                "category": r["category"], "confidence": r["confidence"],
+                "first_date": r["first_date"], "last_date": r["last_date"],
+                "report_count": r["report_count"], "hidden": hidden,
+                "decisions": [dict(d) for d in decisions],
+            })
+        return out
+
+    def district_projects_overview(self, *, min_confidence: int = PROJECT_MIN_CONFIDENCE) -> dict[str, dict]:
+        """Je Ortsbereich: wie viele Vorhaben, wann zuletzt etwas dazukam."""
+        try:
+            rows = self._conn.execute(
+                "SELECT place_id, COUNT(*) AS n, MAX(last_date) AS last_date, MAX(updated_at) AS updated_at "
+                "FROM council_district_projects WHERE confidence >= ? GROUP BY place_id",
+                (min_confidence,)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return {}
+        return {r["place_id"]: {"count": r["n"], "last_date": r["last_date"], "updated_at": r["updated_at"]}
+                for r in rows}
+
+    def district_projects_updated_at(self, place_id: str) -> str | None:
+        try:
+            row = self._conn.execute(
+                "SELECT MAX(updated_at) FROM council_district_projects WHERE place_id = ?",
+                (place_id,)).fetchone()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        return row[0] if row else None
+
+    def save_district_project_report(self, project_key: str, place_id: str, owner_id: int,
+                                     reason: str | None) -> bool:
+        """„Gehört nicht hierher" — einmal je Konto und Vorhaben. False, wenn schon gemeldet."""
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO council_district_project_reports "
+                "(project_key, place_id, owner_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+                (project_key, place_id, owner_id, (reason or "")[:300] or None, _now()))
+        return cur.rowcount == 1
+
+    def district_project_by_id(self, project_id: int) -> dict | None:
+        try:
+            row = self._conn.execute(
+                "SELECT id, place_id, project_key, name FROM council_district_projects WHERE id = ?",
+                (project_id,)).fetchone()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return None
+        return dict(row) if row else None
+
+    def district_project_report_count(self, project_key: str) -> int:
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM council_district_project_reports WHERE project_key = ?",
+            (project_key,)).fetchone()
+        return int(row[0]) if row else 0
+
+    def district_project_reports_by(self, owner_id: int, place_id: str) -> set[str]:
+        try:
+            rows = self._conn.execute(
+                "SELECT project_key FROM council_district_project_reports WHERE owner_id = ? AND place_id = ?",
+                (owner_id, place_id)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return set()
+        return {r[0] for r in rows}
+
+    # -------------------------------------------------------- Weitere Quellen
+
+    def district_location_names(self, place, *, kinds: tuple[str, ...] | None = None,
+                                min_share: float = CANDIDATE_MIN_SHARE) -> list[str]:
+        """Die Ortsnamen des Ortsbereichs (länge-absteigend, längster Treffer gewinnt)."""
+        sql = ("SELECT DISTINCT l.name FROM council_locations l JOIN council_location_districts ld "
+               "ON ld.location_slug = l.slug WHERE (ld.place_id = ? OR ld.district = ?) AND ld.share >= ?")
+        args: list = [place.id, place.name, min_share]
+        if kinds:
+            sql += f" AND l.kind IN ({','.join('?' * len(kinds))})"
+            args += list(kinds)
+        rows = self._conn.execute(sql, args).fetchall()
+        return sorted({r[0] for r in rows if r[0] and len(r[0]) >= 6}, key=len, reverse=True)
+
+    def district_investments(self, place) -> list[dict]:
+        """Vorhaben des jüngsten Investitionsprogramms, deren Bezeichnung eine
+        Straße oder einen Platz des Ortsbereichs nennt — mit Programmjahr und Summe."""
+        try:
+            jahr = self._conn.execute(
+                "SELECT MAX(year) FROM council_investment_measures").fetchone()[0]
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        if not jahr:
+            return []
+        names = self.district_location_names(place, kinds=_INVESTMENT_LOCATION_KINDS)
+        if not names:
+            return []
+        rows = self._conn.execute(
+            "SELECT code, label, grand_total FROM council_investment_measures "
+            "WHERE year = ? AND level = 'measure' AND grand_total > 0 ORDER BY grand_total DESC",
+            (jahr,)).fetchall()
+        out = []
+        for r in rows:
+            label = r["label"] or ""
+            for name in names:
+                if re.search(re.escape(name) + r"(?![a-zäöüß])", label, re.IGNORECASE):
+                    out.append({"programme_year": jahr, "code": r["code"], "label": label,
+                                "total_eur": r["grand_total"], "location": name})
+                    break
+        return out
+
+    def district_upcoming_items(self, place, *, days: int = 60) -> list[dict]:
+        """Tagesordnungspunkte kommender Sitzungen, deren Titel einen Ort des
+        Ortsbereichs (oder ihn selbst) nennt — der Haken für „Mitreden": Da
+        wird demnächst entschieden, und Einwohner*innen dürfen fragen."""
+        from council.locations import affects_whole_city
+        today = date.today().isoformat()
+        bis = date.fromordinal(date.today().toordinal() + days).isoformat()
+        # Nur Straßen, Plätze, Flächen — ein Gebäude wie das Klinikum steht
+        # zwar im Viertel, wirkt aber stadtweit; das ist die Erfahrung der
+        # zweiten Stufe, und hier gibt es keine.
+        names = self.district_location_names(place, kinds=("street", "square", "area", "water")) + [place.name]
+        rows = self._conn.execute(
+            "SELECT a.id, a.ksinr, a.item_number, a.title, a.kvonr, se.session_date, se.session_time, "
+            "se.committee FROM council_agenda_items a JOIN council_sessions se ON se.ksinr = a.ksinr "
+            "WHERE se.session_date >= ? AND se.session_date <= ? AND a.is_public = 1 "
+            "ORDER BY se.session_date, se.session_time, a.id", (today, bis)).fetchall()
+        out = []
+        for r in rows:
+            title = r["title"] or ""
+            if affects_whole_city(title):
+                continue
+            hit = next((n for n in names if re.search(re.escape(n) + r"(?![a-zäöüß])", title, re.IGNORECASE)), None)
+            if hit:
+                out.append({"id": r["id"], "ksinr": r["ksinr"], "item_number": r["item_number"],
+                            "title": title, "kvonr": r["kvonr"], "session_date": r["session_date"],
+                            "session_time": r["session_time"], "committee": r["committee"], "location": hit})
+        return out
+
+    def district_participations(self, place) -> list[dict]:
+        """Laufende Bauleitplan-Beteiligungen (planungsbeteiligung.de) mit Ortsbezug hierher."""
+        names = self.district_location_names(place) + [place.name]
+        out = []
+        for b in self.list_beteiligungen(nur_laufende=True):
+            text = f"{b.get('title') or ''} {b.get('ort') or ''}"
+            if any(re.search(re.escape(n) + r"(?![a-zäöüß])", text, re.IGNORECASE) for n in names):
+                out.append({"title": b.get("title"), "place": b.get("ort"), "step": b.get("schritt"),
+                            "valid_from": b.get("valid_from"), "valid_until": b.get("valid_until"),
+                            "url": b.get("url"), "plan_nrs": b.get("plan_nrs") or []})
+        return out
+
+
+def _months_ago(months: int) -> str:
+    heute = date.today()
+    monat = heute.month - months
+    jahr = heute.year
+    while monat <= 0:
+        monat += 12
+        jahr -= 1
+    return date(jahr, monat, min(heute.day, 28)).isoformat()
+
+
+def project_key_ids(project: dict) -> list[int]:
+    """Hilfe für Tests und Skripte: die Beschluss-IDs eines Vorhabens, sortiert."""
+    return sorted({int(i) for i in project.get("decision_ids") or []})
+
+
+__all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "PROJECT_HIDE_REPORTS", "CANDIDATE_MONTHS",
+           "CANDIDATE_MIN_SHARE", "project_key_ids", "json"]

@@ -79,6 +79,11 @@ OEFFENTLICH = {
     ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/council/people-directory"),
     ("get", "/api/council/place/{place_id}"),
+    # „Mein Viertel": Die Übersicht (alle 31 Ortsbereiche mit Zahl) ist die
+    # Auswahl vor der Tafel — ohne Konto lesbar wie die Ortsseite. Die Tafel
+    # selbst trägt `optional_user` (persönlicher Zusatz: schon gemeldet?) und
+    # steht deshalb nicht hier.
+    ("get", "/api/districts/projects"),
     ("get", "/api/council/heute"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/qa-beispiele"),

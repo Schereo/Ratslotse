@@ -2008,6 +2008,109 @@ class PlaceDetail(TypedDict):
     place: Any
 
 
+class DistrictProjectDecision(TypedDict):
+    """Ein Beschluss, der zu einem Vorhaben gehört — genug für die Zeile mit Link."""
+    id: int
+    title: str
+    outcome: str | None
+    date: str
+    committee: str | None
+
+
+class DistrictProject(TypedDict):
+    """Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
+
+    ``stage`` ist einer von ``idea | planning | decided | building | done |
+    rejected``, ``category`` einer von ``housing | traffic | school_childcare |
+    green | culture_sport_social | other``. ``when`` ist Menschentext („2027“,
+    „ab Kita-Jahr 2026/2027“) oder null — nie geraten.
+    """
+    id: int
+    project_key: str
+    place_id: str
+    name: str
+    what: str
+    stage: str
+    when: str | None
+    category: str
+    confidence: int
+    first_date: str | None
+    last_date: str | None
+    report_count: int
+    hidden: bool
+    reported: bool
+    decisions: list[DistrictProjectDecision]
+
+
+class DistrictUpcomingItem(TypedDict):
+    """Ein Tagesordnungspunkt einer kommenden Sitzung, dessen Titel einen Ort des Viertels nennt."""
+    id: int
+    ksinr: int
+    item_number: str | None
+    title: str
+    kvonr: int | None
+    session_date: str
+    session_time: str | None
+    committee: str | None
+    location: str
+
+
+class DistrictInvestment(TypedDict):
+    """Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel."""
+    programme_year: int
+    code: str | None
+    label: str
+    total_eur: float
+    location: str
+
+
+class DistrictParticipation(TypedDict):
+    """Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel."""
+    title: str | None
+    place: str | None
+    step: str | None
+    valid_from: str | None
+    valid_until: str | None
+    url: str | None
+    plan_nrs: list[str]
+
+
+class DistrictNeighbour(TypedDict):
+    place_id: str
+    name: str
+    count: int
+
+
+class DistrictProjects(TypedDict):
+    """``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs."""
+    place: Any
+    projects: list[DistrictProject]
+    upcoming: list[DistrictUpcomingItem]
+    investments: list[DistrictInvestment]
+    participations: list[DistrictParticipation]
+    neighbours: list[DistrictNeighbour]
+    updated_at: str | None
+
+
+class DistrictProjectsOverviewEntry(TypedDict):
+    place_id: str
+    name: str
+    count: int
+    last_date: str | None
+
+
+class DistrictProjectsOverview(TypedDict):
+    """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl."""
+    districts: list[DistrictProjectsOverviewEntry]
+    updated_at: str | None
+
+
+class DistrictProjectReportOut(TypedDict):
+    ok: bool
+    report_count: int
+    hidden: bool
+
+
 class SessionList(TypedDict):
     count: int
     sessions: list[SessionRow]
