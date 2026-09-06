@@ -153,20 +153,53 @@ jobs:
           # '.env.local' braucht eine eigene Ausnahme: Der Name ist nicht '.env',
           # und ohne sie löscht --delete eine auf dem Server angelegte
           # web/frontend/.env.local beim nächsten Deploy wieder weg.
-          rsync -az --delete \
-            --exclude '.env' \
-            --exclude '.env.local' \
-            --exclude 'data/' \
-            --exclude '.venv/' \
-            --exclude '.git/' \
-            --exclude 'web/frontend/node_modules/' \
-            --exclude 'web/frontend/.next/' \
-            --exclude 'web/frontend/.next-dev/' \
-            --exclude 'web/frontend/public/docs/' \
-            --exclude 'docs-site/node_modules/' \
-            --exclude 'docs-site/dist/' \
-            -e "ssh" \
-            ./ target:~/app/
+          # 06.09.2026, Release 2.2.0: rsync brach mit Exit 23 ab — „cannot
+          # delete non-empty directory" unter web/frontend/node_modules — und
+          # der Server stand hinterher mit 8 statt ~600 Paketen und stehender
+          # Wartungsbarriere da (32 Minuten 503). Die Ausnahme schützte das
+          # Verzeichnis auf dem Empfänger also NICHT vor --delete. Deshalb
+          # jetzt ausdrücklich `protect`-Regeln für alles, was nur auf dem
+          # Server entsteht — die sind dokumentiert genau dafür da.
+          #
+          # Und Exit 23 heißt „Übertragung teilweise": Ob wirklich Dateien
+          # fehlen, sagt ein Trockenlauf danach — null ausstehende Dateien
+          # heißt, es waren nur Löschfehler, dann geht es weiter; sonst Abbruch
+          # wie bisher.
+          RSYNC_REGELN=(
+            --exclude '.env'
+            --exclude '.env.local'
+            --exclude 'data/'
+            --exclude '.venv/'
+            --exclude '.git/'
+            --exclude 'web/frontend/node_modules/'
+            --exclude 'web/frontend/.next/'
+            --exclude 'web/frontend/.next-dev/'
+            --exclude 'web/frontend/public/docs/'
+            --exclude 'docs-site/node_modules/'
+            --exclude 'docs-site/dist/'
+            --filter 'P .env'
+            --filter 'P .env.local'
+            --filter 'P /data/'
+            --filter 'P /.venv/'
+            --filter 'P /web/frontend/node_modules/'
+            --filter 'P /web/frontend/.next/'
+            --filter 'P /web/frontend/.next-dev/'
+            --filter 'P /web/frontend/public/docs/'
+            --filter 'P /docs-site/node_modules/'
+            --filter 'P /docs-site/dist/'
+          )
+          rc=0
+          rsync -az --delete "${RSYNC_REGELN[@]}" -e "ssh" ./ target:~/app/ || rc=$?
+          if [ "$rc" -eq 23 ]; then
+            ausstehend=$(rsync -azn --itemize-changes "${RSYNC_REGELN[@]}" -e "ssh" ./ target:~/app/ | grep -c '^<' || true)
+            if [ "$ausstehend" -ne 0 ]; then
+              echo "FEHLER: rsync Exit 23 und $ausstehend Datei(en) nicht übertragen."
+              exit 23
+            fi
+            echo "rsync Exit 23, aber alles übertragen (nur Löschfehler) — weiter."
+          elif [ "$rc" -ne 0 ]; then
+            exit "$rc"
+          fi
 
           # Statische Doku nach public/docs des Frontends — Next.js liefert sie
           # unter ratslotse.de/docs aus (Rewrites in next.config.mjs), die Edge
