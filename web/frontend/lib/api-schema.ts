@@ -6533,6 +6533,8 @@ export interface components {
             lon: number;
             /** Name */
             name: string;
+            /** Role */
+            role: string;
             /** Slug */
             slug: string;
         };
@@ -14752,4 +14754,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e360ca83479b00c0c20f58cd77f2a742763f7d30584fb660e1e3d69ba5524d8b
+// vertrag-sha256: f102e1dd4b3a47da81ee7806292a16fda2b10adcc62a4a7f44498c3bf2ef56ad

@@ -73,9 +73,12 @@ public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable
     public let latitude: Double
     public let longitude: Double
     public let geometry: JSONValue?
+    /// `subject` — dort ändert sich etwas; `boundary` — nur Abschnittsgrenze
+    /// („Am Schmeel bis Brahmweg"), auf der Karte keine Linie.
+    public let role: String
 
     enum CodingKeys: String, CodingKey {
-        case slug, name, kind, geometry
+        case slug, name, kind, geometry, role
         case latitude = "lat"
         case longitude = "lon"
     }
