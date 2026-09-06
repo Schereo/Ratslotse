@@ -44,7 +44,7 @@ def test_die_standardrolle_traegt_keine_rechte():
 
 
 def test_ratsmitglied_darf_den_haushalt_und_sonst_nichts_besonderes():
-    assert roles.permissions_for(["council_member"]) == frozenset({"budget"})
+    assert roles.permissions_for(["council_member"]) == frozenset({"budget", "mandate"})
     assert "admin" not in roles.permissions_for(["council_member"])
 
 

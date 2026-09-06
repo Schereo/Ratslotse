@@ -11,6 +11,8 @@ in ``weekly_enrich``); hier wird nur gelesen — plus die eine Schreibhandlung
 """
 from __future__ import annotations
 
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -74,7 +76,9 @@ def district_projects(
         if nb:
             neighbours.append({"place_id": nb.id, "name": nb.name,
                                "count": (overview.get(nb.id) or {}).get("count", 0)})
-    return {
+    # Der Store liefert lose dicts; die Form hält der Vertrag (antworten.py),
+    # geprüft von der Rauchprobe — hier nur die Zusage an den Typprüfer.
+    return cast(DistrictProjects, {
         "place": store.public_place(place),
         "projects": projects,
         "upcoming": store.district_upcoming_items(place),
@@ -82,7 +86,7 @@ def district_projects(
         "participations": store.district_participations(place),
         "neighbours": neighbours,
         "updated_at": store.district_projects_updated_at(place.id),
-    }
+    })
 
 
 @router.post("/projects/{project_id}/report", status_code=status.HTTP_201_CREATED)

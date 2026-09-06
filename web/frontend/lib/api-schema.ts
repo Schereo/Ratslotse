@@ -941,6 +941,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/calendar/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscription
+         * @description Die Kalender-Adresse dieses Kontos — beim ersten Aufruf angelegt.
+         */
+        get: operations["subscription_api_calendar_subscription_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/subscription/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate Subscription
+         * @description Neue Adresse; die alte antwortet ab sofort mit 404.
+         */
+        post: operations["rotate_subscription_api_calendar_subscription_rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/{token}.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Feed
+         * @description Der Feed — öffentlich, autorisiert über das Token in der Adresse.
+         *     Ein unbekanntes oder erneuertes Token und ein nicht aktives Konto sehen
+         *     gleich aus (404), damit die Adresse nichts über Konten verrät.
+         */
+        get: operations["feed_api_calendar__token__ics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/client-errors": {
         parameters: {
             query?: never;
@@ -5628,6 +5690,21 @@ export interface components {
             /** Totals */
             totals: unknown;
         };
+        /**
+         * CalendarSubscription
+         * @description Die Kalender-Adresse eines Kontos (``/api/calendar/subscription``).
+         *
+         *     ``url`` ist die https-Adresse zum Kopieren, ``webcal_url`` dieselbe mit
+         *     dem Schema, das auf dem Telefon direkt den Abo-Dialog öffnet.
+         */
+        CalendarSubscription: {
+            /** Subscribed Committees */
+            subscribed_committees: number;
+            /** Url */
+            url: string;
+            /** Webcal Url */
+            webcal_url: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -8523,7 +8600,7 @@ export interface components {
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "admin")[];
+            permissions: ("budget" | "mandate" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -9265,7 +9342,7 @@ export interface components {
             /** Id */
             id: number;
             /** Permissions */
-            permissions: ("budget" | "admin")[];
+            permissions: ("budget" | "mandate" | "admin")[];
             /**
              * Role
              * @enum {string}
@@ -10925,6 +11002,84 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BookmarkEntry"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscription_api_calendar_subscription_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSubscription"];
+                };
+            };
+        };
+    };
+    rotate_subscription_api_calendar_subscription_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSubscription"];
+                };
+            };
+        };
+    };
+    feed_api_calendar__token__ics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Der Kalender des Kontos als ICS (RFC 5545): die Sitzungen der abonnierten Ausschüsse und zu den eigenen Themen, je Termin die wichtigsten Punkte und der Link zur Sitzungsseite. Für Kalender-Apps gedacht, die die Adresse alle paar Stunden abrufen. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            /** @description Unbekannte oder erneuerte Kalender-Adresse. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -14447,4 +14602,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f43fd09439838032bdd5d05ba15d8476de403c843566e902b04f09c2cc27b40f
+// vertrag-sha256: 6df59df8a823cf6317a98e92c0010fabfe7d2dabb258aaba215cf2d2de001242

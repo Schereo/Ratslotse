@@ -395,12 +395,37 @@ Der Zustellkanal sagt **wo**, die Anlässe sagen **wofür**. Beides steht in
 
 | Anlass | wann | Vorgabe | Auslöser |
 |---|---|---|---|
-| `n1_tagesordnung` | Tagesordnung eines abonnierten Gremiums erscheint | an | `scripts/check_committees.py` (7 Uhr) |
+| `n1_tagesordnung` | Tagesordnung eines abonnierten Gremiums erscheint | **aus** — an mit Recht `mandate` (Ratsmitglied) | `scripts/check_committees.py` (7 Uhr) |
 | `n2_thema` | ein eigenes Thema steht auf einer Tagesordnung | an | `council/watcher.py` über `check_council.py` (8/14 Uhr) |
-| `n3_ergebnis` | zu einem gemeldeten TOP liegt das Ergebnis vor | an | `council/ergebnisse.py` am Protokoll-Import (`check_protocols.py`, 9 Uhr) |
+| `n3_result` | zu gemeldeten oder gemerkten TOPs liegen Ergebnisse vor — **ein Brief je Protokoll-Schub** | an | `council/ergebnisse.py` am Protokoll-Import (`check_protocols.py`, 9 Uhr) |
 | `n4_vorgang` | eine verfolgte Vorlage bewegt sich | an | `scripts/check_vorlage_follows.py` |
 | `n5_vorabend` | morgen tagt ein Gremium, das dich betrifft | **aus** | `scripts/abendmeldungen.py` (18 Uhr) |
-| `n6_woche` | Wochenüberblick | **aus** | dasselbe Skript, nur sonntags |
+| `n6_woche` | Wochenüberblick | an | dasselbe Skript, nur sonntags |
+
+**Vorgaben nach Nutzerart (seit 06.09.2026).** Ein gewöhnliches Konto bekommt
+die Tagesordnung je Gremium nur, wenn es den Schalter ausdrücklich
+einschaltet — ein Abo ohne Sofort-Meldung ist kein Widerspruch, das Gremium
+steht in der Ratswoche und im Wochenüberblick, der jetzt ab Werk kommt. Ein
+Konto mit Ratsmandat (Recht `mandate`, Rolle *Ratsmitglied*) bekommt alle
+abonnierten Gremien sofort. Entschieden wird über das Recht
+(`kern.notify.vorgaben_fuer`), nie über den Rollennamen. Gemessen war das
+Gegenteil im Bestand: Die Tagesordnungs-Meldungen machten 41 % aller Posten
+aus, getrieben von Konten mit im Mittel neun Abos, während der
+Wochenüberblick bei fast allen aus war.
+
+**Bestandskonten bleiben, wie sie waren.** Beim ersten Start nach dem Umbau
+schreibt `Store._notify_vorgaben_einfrieren` jedem vorhandenen Konto die
+alten Vorgaben (`n1_tagesordnung` an, `n6_woche` aus) ausdrücklich in die
+Spalte — nur für diese zwei Schalter und nur, wo noch nichts stand. Marke
+`notify_vorgaben_2026_09` in `migration_marks`.
+
+**Die Tagesgrenze ist durchlässig.** Eine Meldung mit der Marke `wichtig`
+(Spalte in `notification_queue`, gesetzt über `notify.einreihen(...,
+wichtig=True)`) geht auch dann einzeln raus, wenn die zwei des Tages
+verbraucht sind; sie zählt danach mit und wartet wie alles auf das Ende der
+Nachtruhe. Gesetzt wird sie nur mit gemessener Tragweite ab
+`CouncilStore.TOP_MINDEST` (60): bei N1, wenn die Tagesordnung so einen Punkt
+trägt, bei N3, wenn ein Beschluss des Briefs ihn erreicht.
 
 :::caution[N3 kommt spät — und das ist keine Panne]
 Beschlüsse entstehen ausschließlich aus dem **Protokoll-PDF**, und das
