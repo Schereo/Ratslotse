@@ -668,6 +668,86 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "description": "Batch zu bewertender Beschlüsse (id, Titel, Signale, Auszug).",
         "template": "Bewerte die Tragweite dieser Beschlüsse:\n\n{batch}",
     },
+    "district_review_system": {
+        "title": "Mein Viertel – Richter (System)",
+        "description": "Zweite Stufe hinter der Ortserkennung: Gehört der Beschluss WIRKLICH in diesen Ortsbereich, und ändert sich dort etwas?",
+        "template": (
+            "Du prüfst für die Bürger-App Ratslotse, ob ein Beschluss des Oldenburger Stadtrats für die "
+            "Bewohner*innen EINES bestimmten Ortsbereichs (kurz: Viertel) etwas konkret verändert.\n\n"
+            "Die Zuordnung zum Viertel stammt aus einer automatischen Ortserkennung und ist manchmal "
+            "falsch. Sei streng: Ein fremdes Vorhaben im Viertel-Feed zerstört das Vertrauen; ein "
+            "ausgelassener Treffer ist verschmerzbar. Erfinde nichts, was nicht im Text steht.\n\n"
+            "Steht bei einem Ort „namensgleich anderswo“, gibt es denselben Namen auch in einem anderen "
+            "Viertel — dann entscheide nur aus dem Text, welcher gemeint ist, und im Zweifel „anderswo“.\n\n"
+            "Bewerte je Beschluss:\n"
+            "- \"relation\":\n"
+            "  \"district\" = der Gegenstand liegt (überwiegend) in diesem Viertel und betrifft dessen "
+            "Bewohner*innen spürbar: Bau, Umbau, Abriss, Sperrung, neue oder geschlossene Einrichtung, "
+            "Straßen-/Radwegumbau, Bebauungsplan, Park, Schule, Kita, Spielplatz, Verkehrsregelung, Wohnungsbau.\n"
+            "  \"citywide\" = gilt für die ganze Stadt oder eine Institution mit stadtweiter Wirkung "
+            "(Klinikum, Verwaltung, Theater, Netzbetreiber, Buslinien-Netz, Schulbezirke insgesamt), das "
+            "Viertel ist nur Standort oder Beispiel. Auch dann, wenn der Beschluss mehrere Viertel "
+            "gleichzeitig betrifft und der Anteil dieses Viertels nicht benennbar ist.\n"
+            "  \"elsewhere\" = der konkrete Abschnitt/Ort liegt in einem anderen Viertel (z. B. eine lange "
+            "Straße, der genannte Abschnitt ist woanders) oder der Ort wurde falsch erkannt.\n"
+            "  \"mentioned\" = der Ortsname ist Namensbestandteil (Gedenkstätte, Firma, Sitzungsort, "
+            "Vereinsname), historischer Bezug oder Vergleich — vor Ort ändert sich nichts.\n"
+            "- \"changes\": true nur, wenn für Bewohner*innen etwas Sichtbares oder Praktisches passiert, "
+            "fest geplant ist oder konkret vorbereitet wird (Bericht zum Planungsstand eines Bauvorhabens "
+            "zählt). Widmungen/Einziehungen ohne spürbare Folge, Personalien, Anfragen, Jahresabschlüsse, "
+            "reine Vergaben ohne neue Wirkung, Ablehnungen ohne Folge → false.\n"
+            "- \"what\": genau ein Satz, höchstens 160 Zeichen, Alltagssprache, beginnt mit dem Gegenstand "
+            "(z. B. „Der Sandweg wird bis Juli 2027 mit neuen Leitungen und neuer Fahrbahn ausgebaut.“). "
+            "Keine Ratsfloskeln („Der Rat beschließt“), keine Vorlagen-Nummern.\n"
+            "- \"when\": Jahr oder Zeitraum als Text („2027“, „2026–2028“, „Sommer 2027“), NUR wenn der "
+            "Text es hergibt, sonst null.\n"
+            "- \"stage\": \"idea\" (Antrag, Prüfauftrag) | \"planning\" (Bericht, Aufstellungsbeschluss, "
+            "Machbarkeit) | \"decided\" | \"building\" | \"done\" | \"rejected\".\n"
+            "- \"category\": \"housing\" | \"traffic\" | \"school_childcare\" | \"green\" | "
+            "\"culture_sport_social\" | \"other\".\n"
+            "- \"confidence\": 0–100, wie sicher du bist, dass relation UND changes stimmen.\n"
+            "- \"reason\": ein knapper Halbsatz, warum.\n\n"
+            "Antworte als JSON: {{\"reviews\": [{{\"id\": …, \"relation\": …, \"changes\": …, "
+            "\"what\": …, \"when\": …, \"stage\": …, \"category\": …, \"confidence\": …, "
+            "\"reason\": …}}, …]}} — genau ein Eintrag je id."
+        ),
+    },
+    "district_review_user": {
+        "title": "Mein Viertel – Richter (Auftrag)",
+        "description": "Ortsbereich und Batch zu prüfender Beschlüsse mit erkannten Orten und Textauszügen.",
+        "template": "Viertel: {district} (Ortsbereich der Stadt Oldenburg)\n\n{batch}",
+    },
+    "district_projects_system": {
+        "title": "Mein Viertel – Vorhaben (System)",
+        "description": "Bündelt die Viertel-Treffer eines Ortsbereichs zu Vorhaben mit Stand.",
+        "template": (
+            "Du fasst für die Bürger-App Ratslotse Beschlüsse des Oldenburger Stadtrats, die alle EIN "
+            "Viertel (Ortsbereich) betreffen, zu VORHABEN zusammen.\n\n"
+            "Ein Vorhaben ist eine Sache, die sich vor Ort verändert oder verändern soll: ein Neubau, ein "
+            "Umbau, ein Bebauungsplan, eine Straßenmaßnahme, eine neue oder geänderte Einrichtung. Mehrere "
+            "Beschlüsse (Ausschuss und Rat, Aufstellungs- und Satzungsbeschluss, Bericht und Antrag) gehören "
+            "zum selben Vorhaben, wenn sie denselben Gegenstand haben. Berichte und Sachstände zählen mit: "
+            "Sie sagen, wo das Vorhaben steht.\n\n"
+            "Nicht aufnehmen: reine Formalakte (Widmung, Einziehung ohne spürbare Folge, Straßenbenennung "
+            "ohne Neubau), Jahresabschlüsse, stadtweite Themen, Personalien, Gedenken ohne bauliche Folge.\n\n"
+            "Je Vorhaben:\n"
+            "- \"name\": kurz, konkret, Alltagssprache („Neubau Grundschule Kreyenbrück“), höchstens 60 Zeichen\n"
+            "- \"what\": 1–2 Sätze, was sich für Bewohner*innen ändert; nur aus den Texten, nichts erfinden\n"
+            "- \"stage\": \"idea\" | \"planning\" | \"decided\" | \"building\" | \"done\" | \"rejected\"\n"
+            "- \"when\": Jahr oder Zeitraum als Text, NUR wenn ein Text es hergibt, sonst null\n"
+            "- \"category\": \"housing\" | \"traffic\" | \"school_childcare\" | \"green\" | "
+            "\"culture_sport_social\" | \"other\"\n"
+            "- \"decision_ids\": alle zugehörigen ids\n"
+            "- \"confidence\": 0–100, wie sicher das Vorhaben wirklich in diesem Viertel liegt und richtig "
+            "beschrieben ist\n\n"
+            "Antworte als JSON: {{\"projects\": [ … ]}}, wichtigstes zuerst."
+        ),
+    },
+    "district_projects_user": {
+        "title": "Mein Viertel – Vorhaben (Auftrag)",
+        "description": "Ortsbereich und die Viertel-Treffer der zweiten Stufe.",
+        "template": "Viertel: {district}\n\nBeschlüsse ({count}):\n\n{batch}",
+    },
     "agenda_item_importance_system": {
         "title": "Wichtigster Punkt der Woche – System",
         "description": "Bewertet Tagesordnungspunkte VOR der Sitzung (0–100) und erklärt sie in Alltagssprache.",

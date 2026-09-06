@@ -63,6 +63,10 @@ public final class AppModel {
     var councilSection: CouncilSection = .decisions
     var tabletPage: TabletPage?
     public var navigation: [AppRoute] = []
+    /// Eingeschaltete Feature-Schalter aus `/api/app-config`. Ein Schalter
+    /// sagt, ob etwas schon so weit ist — keine Rechteprüfung (kern/features.py).
+    public var features: Set<String> = []
+    public func feature(_ key: String) -> Bool { features.contains(key) }
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
     public var questionShareToken: String?
@@ -144,6 +148,7 @@ public final class AppModel {
         do {
             let config: AppConfiguration = try await api.get("/api/app-config")
             updateNotice = config.notice
+            features = Set(config.features)
             let build = Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0
             if config.minBuild > build {
                 updateRequired = true

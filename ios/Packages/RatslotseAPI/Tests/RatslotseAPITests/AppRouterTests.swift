@@ -17,6 +17,8 @@ private let router = AppRouter()
     ("https://ratslotse.de/council/person?slug=anna-muster", .person(slug: "anna-muster")),
     ("https://ratslotse.de/council/thema?slug=radverkehr", .topic(slug: "radverkehr")),
     ("https://ratslotse.de/council/ort?id=stadtteil%3Aeversten", .place(id: "stadtteil:eversten")),
+    ("https://ratslotse.de/viertel", .district(id: nil)),
+    ("https://ratslotse.de/viertel?id=kreyenbrueck", .district(id: "kreyenbrueck")),
     ("https://ratslotse.de/topics", .tab(.topics)),
     ("https://ratslotse.de/g?t=abc", .sharedAnswer(token: "abc")),
 ])

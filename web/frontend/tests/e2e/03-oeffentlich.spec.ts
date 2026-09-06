@@ -39,7 +39,7 @@ test.describe("Ohne Konto lesbar", () => {
     });
   }
 
-  // Die vier Pfade aus `lib/OEFFENTLICHE_PFADE`. Ohne Daten zeigen sie einen
+  // Die Pfade aus `lib/OEFFENTLICHE_PFADE`. Ohne Daten zeigen sie einen
   // Leer- oder Nicht-gefunden-Zustand — das ist in Ordnung. NICHT in Ordnung
   // wäre die Anmeldewand: Dann ist jeder Teilen-Knopf wertlos.
   //
@@ -50,6 +50,9 @@ test.describe("Ohne Konto lesbar", () => {
     "/council/sitzung?ksinr=1",
     "/council/thema?slug=radverkehr",
     "/council/person?slug=jemand",
+    // „Mein Viertel": Auswahl und Tafel — beide ohne Konto.
+    "/viertel",
+    "/viertel?id=kreyenbrueck",
   ]) {
     test(`${pfad} zeigt keine Anmeldewand`, async ({ page }) => {
       await page.goto(pfad);

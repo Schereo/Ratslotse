@@ -12,6 +12,8 @@ struct TodayView: View {
     @State private var upcomingSessions: [CouncilSession] = []
     @State private var latestTopicHits: [DashboardTopicHit] = []
     @State private var weekNumber: DashboardWeekNumber?
+    @State private var districts: DistrictProjectsOverview?
+    @State private var topics: [Topic] = []
     @State private var pause: CouncilPause?
     @State private var now = Date.now
     @State private var error: String?
@@ -123,6 +125,15 @@ struct TodayView: View {
 
         // Ein Widget verdient seinen Platz nur, wenn es heute etwas sagen
         // kann (Designdoc 3a): Eine Null ist keine Zahl der Woche.
+        // „Mein Viertel" (Feature-Schalter): je gewähltem Stadtteil die Zahl
+        // seiner Vorhaben und der Sprung zur Tafel; ohne Stadtteil die Auswahl.
+        if model.feature("mein-viertel"), let districts {
+            MeinViertelCard(districts: districts.districts, topics: topics) { placeID in
+                model.navigation.append(.district(id: placeID))
+            }
+            .ratsStaggered(4)
+        }
+
         if let weekNumber, weekNumber.hasContent {
             DashboardWeekNumberCard(number: weekNumber) { decisionID in
                 if let decisionID { model.navigation.append(.decision(id: decisionID)) }
@@ -297,6 +308,10 @@ struct TodayView: View {
             )
             async let numberRequest: DashboardWeekNumber? = try? await model.api.get("/api/council/zahl-der-woche")
             async let pauseRequest: CouncilPause? = try? await model.api.get("/api/council/session-break")
+            async let districtsRequest: DistrictProjectsOverview? = model.feature("mein-viertel")
+                ? try? await model.api.get("/api/districts/projects") : nil
+            async let topicsRequest: [Topic]? = model.feature("mein-viertel")
+                ? try? await model.api.get("/api/topics") : nil
             let (newToday, newWeek, newPreview, newFound) = try await (
                 todayRequest, weekRequest, previewRequest, foundRequest
             )
@@ -309,6 +324,8 @@ struct TodayView: View {
             if let hits = await hitsRequest { latestTopicHits = hits.hits }
             if let number = await numberRequest { weekNumber = number }
             if let newPause = await pauseRequest { pause = newPause }
+            if let newDistricts = await districtsRequest { districts = newDistricts }
+            if let newTopics = await topicsRequest { topics = newTopics }
         } catch {
             self.error = error.localizedDescription
         }
@@ -580,6 +597,66 @@ private struct LatestTopicHitsCard: View {
                     .buttonStyle(RatsPlainButtonStyle())
                     .ratsZoomSource(RatsZoomID.decision(hit.id))
                     if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
+                }
+            }
+        }
+    }
+}
+
+/// „Mein Viertel" auf der Startseite. Ein gewählter Stadtteil IST ein Thema
+/// (Einrichtungs-Assistent, Stadtteil-Schritt) — abgeleitet statt gemerkt, wie
+/// im Web.
+private struct MeinViertelCard: View {
+    let districts: [DistrictProjectsOverviewEntry]
+    let topics: [Topic]
+    let open: (String?) -> Void
+
+    private var mine: [DistrictProjectsOverviewEntry] {
+        districts.filter { district in topics.contains { $0.name.lowercased() == district.name.lowercased() } }
+    }
+
+    var body: some View {
+        RatsWidget("Mein Viertel", accent: .harbor, glyph: .mapPin,
+                   note: mine.isEmpty ? "Stadtteil wählen" : "was sich bei dir ändert") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(mine.isEmpty
+                     ? "Was sich in deinem Stadtteil in den nächsten Jahren ändert — wähle ihn auf der Karte."
+                     : "Was sich in deinem Stadtteil in den nächsten Jahren ändert.")
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+                if mine.isEmpty {
+                    Button { open(nil) } label: {
+                        RatsLabel("Stadtteil wählen", .arrowRight)
+                            .font(RatsFont.body(14, weight: .semibold))
+                            .foregroundStyle(RatsColor.primary)
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(mine) { district in
+                                Button { open(district.placeID) } label: {
+                                    HStack(spacing: 6) {
+                                        Text(district.name).font(RatsFont.body(14, weight: .semibold))
+                                        Text("\(district.count)")
+                                            .font(RatsFont.body(12, weight: .semibold))
+                                            .monospacedDigit()
+                                            .foregroundStyle(RatsColor.primary)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 1)
+                                            .background(RatsColor.primary.opacity(0.1))
+                                            .clipShape(Capsule())
+                                    }
+                                    .foregroundStyle(RatsColor.text)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .overlay(Capsule().stroke(RatsColor.border))
+                                }
+                                .buttonStyle(RatsPlainButtonStyle())
+                                .accessibilityLabel("\(district.name), \(district.count) Vorhaben")
+                            }
+                        }
+                    }
                 }
             }
         }

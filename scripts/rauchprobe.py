@@ -55,6 +55,7 @@ PROBEN: tuple[str, ...] = (
     "/api/council/heute",
     "/api/council/people-directory",
     "/api/council/qa-beispiele",
+    "/api/districts/projects",
 )
 
 #: Endpunkte MIT Konto. Bewusst nur die, deren Antwort für alle gleich

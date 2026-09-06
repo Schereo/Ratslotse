@@ -3,10 +3,208 @@ import Foundation
 public struct AppConfiguration: Codable, Sendable, Equatable {
     public let minBuild: Int
     public let notice: String?
+    /// Eingeschaltete Feature-Schalter (`kern/features.py`). Im Vertrag
+    /// voreingestellt leer — eine ältere App-Fassung kennt das Feld nicht und
+    /// muss es auch nicht; deshalb hier mit Vorgabe statt Pflicht.
+    public let features: [String]
 
     enum CodingKeys: String, CodingKey {
         case minBuild = "min_build"
         case notice = "note"
+        case features
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        minBuild = try container.decode(Int.self, forKey: .minBuild)
+        notice = try container.decodeIfPresent(String.self, forKey: .notice)
+        features = try container.decodeIfPresent([String].self, forKey: .features) ?? []
+    }
+
+    public init(minBuild: Int, notice: String?, features: [String] = []) {
+        self.minBuild = minBuild
+        self.notice = notice
+        self.features = features
+    }
+}
+
+// MARK: - Mein Viertel
+
+/// Ein Ortsbereich in der Übersicht von „Mein Viertel" — mit der Zahl seiner Vorhaben.
+public struct DistrictProjectsOverviewEntry: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { placeID }
+    public let placeID: String
+    public let name: String
+    public let count: Int
+    public let lastDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, count
+        case placeID = "place_id"
+        case lastDate = "last_date"
+    }
+}
+
+public struct DistrictProjectsOverview: Codable, Sendable {
+    public let districts: [DistrictProjectsOverviewEntry]
+    public let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case districts
+        case updatedAt = "updated_at"
+    }
+}
+
+public struct DistrictProjectDecision: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let title: String
+    public let outcome: String?
+    public let date: String
+    public let committee: String?
+}
+
+/// Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie
+/// als GeoJSON (LineString/MultiLineString), als `JSONValue` durchgereicht.
+public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { slug }
+    public let slug: String
+    public let name: String
+    public let kind: String
+    public let latitude: Double
+    public let longitude: Double
+    public let geometry: JSONValue?
+
+    enum CodingKeys: String, CodingKey {
+        case slug, name, kind, geometry
+        case latitude = "lat"
+        case longitude = "lon"
+    }
+}
+
+/// Ein Vorhaben auf der Tafel „Mein Viertel" (`council/viertel.py`).
+/// `stage` ∈ idea | planning | decided | building | done | rejected,
+/// `category` ∈ housing | traffic | school_childcare | green | culture_sport_social | other.
+public struct DistrictProject: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let projectKey: String
+    public let placeID: String
+    public let name: String
+    public let what: String
+    public let stage: String
+    public let when: String?
+    public let category: String
+    public let confidence: Int
+    public let firstDate: String?
+    public let lastDate: String?
+    public let reportCount: Int
+    public let hidden: Bool
+    public let reported: Bool
+    public let decisions: [DistrictProjectDecision]
+    public let locations: [DistrictProjectLocation]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations
+        case projectKey = "project_key"
+        case placeID = "place_id"
+        case firstDate = "first_date"
+        case lastDate = "last_date"
+        case reportCount = "report_count"
+    }
+}
+
+public struct DistrictUpcomingItem: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let ksinr: Int
+    public let itemNumber: String?
+    public let title: String
+    public let kvonr: Int?
+    public let sessionDate: String
+    public let sessionTime: String?
+    public let committee: String?
+    public let location: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, ksinr, title, kvonr, committee, location
+        case itemNumber = "item_number"
+        case sessionDate = "session_date"
+        case sessionTime = "session_time"
+    }
+}
+
+public struct DistrictInvestment: Codable, Sendable, Hashable {
+    public let programmeYear: Int
+    public let code: String?
+    public let label: String
+    public let totalEUR: Double
+    public let location: String
+
+    enum CodingKeys: String, CodingKey {
+        case code, label, location
+        case programmeYear = "programme_year"
+        case totalEUR = "total_eur"
+    }
+}
+
+public struct DistrictParticipation: Codable, Sendable, Hashable {
+    public let title: String?
+    public let place: String?
+    public let step: String?
+    public let validFrom: String?
+    public let validUntil: String?
+    public let url: String?
+    public let planNrs: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title, place, step, url
+        case validFrom = "valid_from"
+        case validUntil = "valid_until"
+        case planNrs = "plan_nrs"
+    }
+}
+
+public struct DistrictNeighbour: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { placeID }
+    public let placeID: String
+    public let name: String
+    public let count: Int
+
+    enum CodingKeys: String, CodingKey {
+        case name, count
+        case placeID = "place_id"
+    }
+}
+
+/// `GET /api/districts/{place_id}/projects` — die Tafel eines Ortsbereichs.
+/// `place` ist die Ortsdarstellung des Katalogs; hier reichen id und name.
+public struct DistrictProjects: Codable, Sendable {
+    public let place: DistrictPlace
+    public let projects: [DistrictProject]
+    public let upcoming: [DistrictUpcomingItem]
+    public let investments: [DistrictInvestment]
+    public let participations: [DistrictParticipation]
+    public let neighbours: [DistrictNeighbour]
+    public let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case place, projects, upcoming, investments, participations, neighbours
+        case updatedAt = "updated_at"
+    }
+}
+
+public struct DistrictPlace: Codable, Sendable, Hashable {
+    public let id: String
+    public let name: String
+    public let description: String?
+}
+
+public struct DistrictProjectReportOut: Codable, Sendable {
+    public let ok: Bool
+    public let reportCount: Int
+    public let hidden: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case ok, hidden
+        case reportCount = "report_count"
     }
 }
 

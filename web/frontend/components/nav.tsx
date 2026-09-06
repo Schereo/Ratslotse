@@ -6,12 +6,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
   CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
-  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell,
+  MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { vertrag } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
+import { useFeature } from "@/lib/features";
 import { LANDING_HREF } from "@/components/native-redirect";
 import { isNativeApp } from "@/lib/platform";
 import { darfAdmin, darfHaushalt } from "@/lib/rechte";
@@ -119,6 +120,10 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
 // Ein Anker auf eine Seite, die für diese Person ein 404 ist, wäre schlechter
 // als kein Anker — genau diese Falle steht in web/frontend/CLAUDE.md.
 const HAUSHALT: Item = { href: "/haushalt", label: "Haushalt", icon: Euro };
+// „Mein Viertel" (Feature-Schalter `mein-viertel`): Was sich im eigenen
+// Ortsbereich in den nächsten Jahren ändert. Steht neben der Liste, weil der
+// Schalter zur Laufzeit kommt — eine Modul-Konstante kennt ihn nicht.
+const VIERTEL: Item = { href: "/viertel", label: "Mein Viertel", icon: MapPinned };
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 // Split 28.08.2026: Ausschuss-Abos hingen als Block unter „Meine Themen" und
 // bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
@@ -147,7 +152,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || pathname.startsWith("/council/")
-  || ["/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -197,6 +202,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
   const unread = useUnreadTopicHits();
   const openFeedback = useUnreadFeedback(darfAdmin(user));
+  const viertel = useFeature("mein-viertel");
 
   // Der Marker muss neu messen, sobald sich das aktive Ziel ändern KANN — das
   // ist der Pfad plus der ?tab=-Wert (fünf der Punkte zeigen auf /council und
@@ -210,7 +216,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   // für den Marker gleich aus. Die Rechte nennen genau das, was die Zeilen
   // bestimmt.
   const { gruppeRef, markerRef } = useGleitMarker(
-    `${pathname}|${activeTab}|${user?.permissions?.join(",") ?? ""}`, "seitenleiste");
+    `${pathname}|${activeTab}|${user?.permissions?.join(",") ?? ""}|${viertel ? "v" : ""}`, "seitenleiste");
 
   return (
     <div ref={gruppeRef} className="gleit-gruppe relative flex-1">
@@ -224,6 +230,9 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
             onNavigate={onNavigate}
           />
         ))}
+        {viertel && (
+          <NavItem item={VIERTEL} active={isActive("/viertel")} onNavigate={onNavigate} />
+        )}
         {darfHaushalt(user) && (
           <NavItem item={HAUSHALT} active={isActive("/haushalt")} onNavigate={onNavigate} />
         )}
