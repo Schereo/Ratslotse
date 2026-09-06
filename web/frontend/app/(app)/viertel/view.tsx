@@ -127,8 +127,13 @@ function ViertelAuswahl() {
         description="Was sich in deinem Ortsbereich in den nächsten Jahren ändert — Vorhaben aus den Beschlüssen des Stadtrats, gebündelt und gegengeprüft."
       />
 
+      {/* `relative z-30`: Die Staffel-Animation macht jede Fläche zum eigenen
+          Stapelkontext, und die Karten-Kachel kommt im Baum NACH der Tafel —
+          ohne die Anhebung malte sie sich über die Suchvorschläge (Tims
+          Bild, 06.09.2026). Ein z-index am Vorschlagsfeld allein reicht nicht:
+          Er zählt nur innerhalb der Tafel. */}
       <section
-        className={cn("hh-tafel mt-5 grid gap-6 rounded-2xl border border-border bg-background p-5 text-foreground @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] @3xl:gap-8 @3xl:p-7", STAFFEL)}
+        className={cn("hh-tafel relative z-30 mt-5 grid gap-6 rounded-2xl border border-border bg-background p-5 text-foreground @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] @3xl:gap-8 @3xl:p-7", STAFFEL)}
         style={staffelStil(0)}
         aria-labelledby="viertel-stadt-titel"
       >
