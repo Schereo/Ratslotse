@@ -34,7 +34,8 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from council.social_text import (  # noqa: E402
-    _dringlichkeit_nachladen, _mit_anlagen, kontext, schreibe_fehlende, text_fuer,
+    _dringlichkeit_nachladen, _mit_anlagen, kontext, schreibe_fehlende, schreibe_gruppentexte,
+    text_fuer,
 )
 from council.store import CouncilStore  # noqa: E402
 from kern.alerts import run_guarded  # noqa: E402
@@ -98,7 +99,16 @@ def main() -> dict:
     todo, geschrieben = process(Path(args.db), args.limit, args.tage,
                                 args.workers, args.mindest_wichtig)
     print(f"Social-Kartentexte: {geschrieben}/{todo} Punkte geschrieben", flush=True)
-    return {"Punkte geschrieben": geschrieben, "Punkte offen": max(todo - geschrieben, 0)}
+    # Danach die Gruppen: ein Thema mit mehreren Anträgen bekommt einen Text,
+    # der alle nennt (council/social_text.schreibe_gruppentexte).
+    store = CouncilStore(Path(args.db))
+    try:
+        gruppen, gruppen_geschrieben = schreibe_gruppentexte(store, tage_voraus=args.tage)
+    finally:
+        store.close()
+    print(f"Gruppentexte: {gruppen_geschrieben}/{gruppen} Gruppen geschrieben", flush=True)
+    return {"Punkte geschrieben": geschrieben, "Punkte offen": max(todo - geschrieben, 0),
+            "Gruppen geschrieben": gruppen_geschrieben}
 
 
 if __name__ == "__main__":

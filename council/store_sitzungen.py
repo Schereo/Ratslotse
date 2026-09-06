@@ -243,6 +243,138 @@ class SitzungenMixin:
             return None
         return f"{praefix} {nummer.rsplit('.', 1)[0]}"
 
+    def _tagesordnung_roh(self, ksinrs: list[int]) -> list:
+        """Die öffentlichen Zeilen dieser Sitzungen samt Kurzfassung, Kartentext
+        und Vorlagenart — die Rohform von ``wochenvorschau`` und
+        ``gruppen_ohne_text``.
+
+        ``v.kind`` unterscheidet Beschluss- von Berichtsvorlage — das stärkste
+        verfügbare Signal dafür, ob überhaupt etwas entschieden werden soll.
+        Es lag bis 19.08.26 ungenutzt in der Datenbank.
+        """
+        ph = ",".join("?" * len(ksinrs))
+        return self._conn.execute(
+            f"SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, s.summary, "
+            f"       v.kind, so.text AS social_text, so.headline AS social_headline "
+            f"FROM council_agenda_items a "
+            f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
+            f"LEFT JOIN agenda_item_social so ON so.ksinr = a.ksinr AND so.item_number = a.item_number "
+            f"LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
+            f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
+            list(ksinrs)).fetchall()
+
+    def gruppen_ohne_text(self, tage_voraus: int = 21) -> list[dict]:
+        """Vorhaben-Gruppen kommender Sitzungen, die einen GEMEINSAMEN
+        Kartentext brauchen.
+
+        Eine Gruppe ist ein Thema mit mehreren Anträgen (Baumschutzsatzung:
+        BSW/SPD, dazu der Änderungsantrag der CDU). Auf der Karte stand unter
+        dem Gruppentitel bisher der Text des höchstbewerteten Mitglieds — also
+        nur die CDU, und das ist nicht akkurat (Tims Befund 06.09.26). Der
+        Gruppentext nennt alle. Er hängt an der Überschriften-Zeile selbst
+        (``agenda_item_social`` unter deren item_number, source „group").
+
+        Reif ist eine Gruppe, wenn mindestens zwei Mitglieder ihren eigenen
+        Kartentext haben und die Überschrift noch keinen — der Gruppentext
+        entsteht aus demselben Material wie die Einzeltexte.
+        """
+        sitzungen = self.sitzungen_im_fenster(tage_voraus)
+        if not sitzungen:
+            return []
+        rohe = self._tagesordnung_roh([s["ksinr"] for s in sitzungen])
+        eltern_von, kopfzeile, heading = self._ueberschriften(rohe)
+        nach_sitzung = {s["ksinr"]: s for s in sitzungen}
+        out = []
+        for r in rohe:
+            schl = (r["ksinr"], r["item_number"])
+            if schl not in heading or (r["social_text"] or "").strip():
+                continue
+            mitglieder = [m["item_number"] for m in rohe
+                          if m["ksinr"] == r["ksinr"]
+                          and eltern_von.get((m["ksinr"], m["item_number"])) == r["item_number"]
+                          and (m["ksinr"], m["item_number"]) not in kopfzeile
+                          and (m["social_text"] or "").strip()]
+            if len(mitglieder) < 2:
+                continue
+            sitz = nach_sitzung[r["ksinr"]]
+            out.append({"ksinr": r["ksinr"], "item_number": r["item_number"],
+                        "title": (r["title"] or "").strip(), "gruppe_titel": heading[schl],
+                        "committee": sitz["committee"], "session_date": sitz["session_date"],
+                        "mitglieder": mitglieder})
+        return out
+
+    def _ueberschriften(self, rohe) -> tuple[dict, set, dict]:
+        """(eltern_von, kopfzeile, heading) einer rohen Tagesordnung.
+
+        Herausgelöst aus ``wochenvorschau``, weil der Gruppentext-Lauf
+        (``gruppen_ohne_text``) dieselbe Frage stellt: Welche Zeilen sind
+        Überschriften eines Vorhabens, und was hängt darunter?
+        """
+        # Überschriften-Punkte erkennen: „Ö 11 Bauleitplanung Gewerbegebiet
+        # Brokhausen" trägt keine Vorlage, darunter hängen Ö 11.1 … Ö 11.4 als
+        # Stationen DESSELBEN Vorhabens. Ohne diese Bündelung belegen vier
+        # Stationen alle drei Plätze der Sitzung (Tims Befund 19.08.26) — und
+        # die Karte zeigt dreimal denselben Bebauungsplan.
+        eltern_von = {(r["ksinr"], r["item_number"]): self._eltern_nummer(r["item_number"])
+                      for r in rohe}
+        kinder_zahl: dict[tuple, int] = {}
+        for (ksinr, _nr), eltern in eltern_von.items():
+            if eltern:
+                kinder_zahl[(ksinr, eltern)] = kinder_zahl.get((ksinr, eltern), 0) + 1
+        # Nur ein Punkt OHNE eigene Vorlage ist eine reine Überschrift. Ein
+        # Punkt mit Vorlage, unter dem Unterpunkte hängen, ist selbst Inhalt.
+        #
+        # Und nur, wenn er ein VORHABEN benennt statt einer Rubrik: „Anträge
+        # der Fraktionen, Gruppen, Rats- und Ausschussmitglieder" trägt elf
+        # völlig verschiedene Themen unter sich; die zu einer Gruppe zu
+        # bündeln hieße, zehn davon nie zu zeigen. Beleg dafür, dass es
+        # dieselbe Sache ist: ein tragendes Wort der Überschrift steht in
+        # JEDEM Unterpunkt („Meerweg", „Brokhausen") — bei einer Rubrik in
+        # keinem.
+        #
+        # Ein ÄNDERUNGSANTRAG nennt den Gegenstand nicht — er heißt
+        # „Änderungsantrag der CDU-Fraktion vom 10.06.2026" und hängt unter
+        # dem Antrag, den er ändert. Das Ratsinformationssystem sagt mit der
+        # Einrückung schon, wozu er gehört; die Wortprobe kann er nur
+        # verlieren. Deshalb bleibt er bei der Probe außen vor und wird
+        # danach mitgebündelt: Zwei Anträge zur Baumschutzsatzung (SPD/BSW,
+        # dazu der Änderungsantrag der CDU) sind EIN Thema mit zwei
+        # Absendern, nicht zwei Themen (Tims Befund 05.09.26 — auf der Karte
+        # stand „Änderungsantrag der CDU-Fraktion vom 10.06.2026", und
+        # niemand konnte lesen, worum es ging).
+        kinder_worte: dict[tuple, list[set]] = {}
+        for r in rohe:
+            eltern = eltern_von.get((r["ksinr"], r["item_number"]))
+            if not eltern:
+                continue
+            liste = kinder_worte.setdefault((r["ksinr"], eltern), [])
+            if not self._ist_aenderungsantrag(r["title"]):
+                liste.append(self._titel_worte(r["title"]))
+        #
+        # Zwei Dinge, die auseinandergehalten werden müssen: Eine KOPFZEILE
+        # trägt selbst keinen Inhalt (weder Vorlage noch Gegenstand) und darf
+        # nie als Punkt auftauchen — das gilt für Vorhaben UND Rubriken. Nur
+        # die Vorhaben bündeln zusätzlich ihre Unterpunkte.
+        kopfzeile = {(r["ksinr"], r["item_number"]) for r in rohe
+                     if not r["template_number"] and (r["ksinr"], r["item_number"]) in kinder_worte}
+        heading = {}
+        for r in rohe:
+            schl = (r["ksinr"], r["item_number"])
+            if schl not in kopfzeile:
+                continue
+            eigene = self._titel_worte(r["title"])
+            # Ohne ein einziges Kind, das den Gegenstand nennt, gibt es
+            # nichts zu belegen — dann ist es keine Gruppe.
+            if not kinder_worte[schl]:
+                continue
+            if any(all(w in kind for kind in kinder_worte[schl]) for w in eigene):
+                # Der Gruppentitel ist der Gegenstand, nicht der Absender:
+                # „Änderungen der Baumschutzsatzung", nicht „… (Fraktionen
+                # BSW und SPD vom 28.05.2026)". Wer beantragt hat, steht in
+                # group_applicants — und dort für ALLE Absender der Gruppe.
+                heading[schl] = self._titel_zerlegen((r["title"] or "").strip())[1]
+        return eltern_von, kopfzeile, heading
+
     @classmethod
     def _titel_zerlegen(cls, title: str) -> tuple:
         """Antragsteller heraustrennen und den Titel fürs Anzeigen kürzen.
@@ -433,83 +565,15 @@ class SitzungenMixin:
                     "sessions": [], "items": []}
 
         ph = ",".join("?" * len(sitzungen))
-        # ``v.kind`` unterscheidet Beschluss- von Berichtsvorlage — das stärkste
-        # verfügbare Signal dafür, ob überhaupt etwas entschieden werden soll.
-        # Es lag bis 19.08.26 ungenutzt in der Datenbank.
-        rohe = self._conn.execute(
-            f"SELECT a.ksinr, a.item_number, a.title, a.template_number, a.kvonr, s.summary, "
-            f"       v.kind, so.text AS social_text, so.headline AS social_headline "
-            f"FROM council_agenda_items a "
-            f"LEFT JOIN agenda_item_summaries s ON s.ksinr = a.ksinr AND s.item_number = a.item_number "
-            f"LEFT JOIN agenda_item_social so ON so.ksinr = a.ksinr AND so.item_number = a.item_number "
-            f"LEFT JOIN council_templates v ON v.kvonr = a.kvonr "
-            f"WHERE a.ksinr IN ({ph}) AND a.is_public = 1 ORDER BY a.id",
-            [s["ksinr"] for s in sitzungen]).fetchall()
+        rohe = self._tagesordnung_roh([s["ksinr"] for s in sitzungen])
         nach_sitzung = {s["ksinr"]: s for s in sitzungen}
 
-        # Überschriften-Punkte erkennen: „Ö 11 Bauleitplanung Gewerbegebiet
-        # Brokhausen" trägt keine Vorlage, darunter hängen Ö 11.1 … Ö 11.4 als
-        # Stationen DESSELBEN Vorhabens. Ohne diese Bündelung belegen vier
-        # Stationen alle drei Plätze der Sitzung (Tims Befund 19.08.26) — und
-        # die Karte zeigt dreimal denselben Bebauungsplan.
-        eltern_von = {(r["ksinr"], r["item_number"]): self._eltern_nummer(r["item_number"])
-                      for r in rohe}
-        kinder_zahl: dict[tuple, int] = {}
-        for (ksinr, _nr), eltern in eltern_von.items():
-            if eltern:
-                kinder_zahl[(ksinr, eltern)] = kinder_zahl.get((ksinr, eltern), 0) + 1
-        # Nur ein Punkt OHNE eigene Vorlage ist eine reine Überschrift. Ein
-        # Punkt mit Vorlage, unter dem Unterpunkte hängen, ist selbst Inhalt.
-        #
-        # Und nur, wenn er ein VORHABEN benennt statt einer Rubrik: „Anträge
-        # der Fraktionen, Gruppen, Rats- und Ausschussmitglieder" trägt elf
-        # völlig verschiedene Themen unter sich; die zu einer Gruppe zu
-        # bündeln hieße, zehn davon nie zu zeigen. Beleg dafür, dass es
-        # dieselbe Sache ist: ein tragendes Wort der Überschrift steht in
-        # JEDEM Unterpunkt („Meerweg", „Brokhausen") — bei einer Rubrik in
-        # keinem.
-        #
-        # Ein ÄNDERUNGSANTRAG nennt den Gegenstand nicht — er heißt
-        # „Änderungsantrag der CDU-Fraktion vom 10.06.2026" und hängt unter
-        # dem Antrag, den er ändert. Das Ratsinformationssystem sagt mit der
-        # Einrückung schon, wozu er gehört; die Wortprobe kann er nur
-        # verlieren. Deshalb bleibt er bei der Probe außen vor und wird
-        # danach mitgebündelt: Zwei Anträge zur Baumschutzsatzung (SPD/BSW,
-        # dazu der Änderungsantrag der CDU) sind EIN Thema mit zwei
-        # Absendern, nicht zwei Themen (Tims Befund 05.09.26 — auf der Karte
-        # stand „Änderungsantrag der CDU-Fraktion vom 10.06.2026", und
-        # niemand konnte lesen, worum es ging).
-        kinder_worte: dict[tuple, list[set]] = {}
-        for r in rohe:
-            eltern = eltern_von.get((r["ksinr"], r["item_number"]))
-            if not eltern:
-                continue
-            liste = kinder_worte.setdefault((r["ksinr"], eltern), [])
-            if not self._ist_aenderungsantrag(r["title"]):
-                liste.append(self._titel_worte(r["title"]))
-        #
-        # Zwei Dinge, die auseinandergehalten werden müssen: Eine KOPFZEILE
-        # trägt selbst keinen Inhalt (weder Vorlage noch Gegenstand) und darf
-        # nie als Punkt auftauchen — das gilt für Vorhaben UND Rubriken. Nur
-        # die Vorhaben bündeln zusätzlich ihre Unterpunkte.
-        kopfzeile = {(r["ksinr"], r["item_number"]) for r in rohe
-                     if not r["template_number"] and (r["ksinr"], r["item_number"]) in kinder_worte}
-        heading = {}
-        for r in rohe:
-            schl = (r["ksinr"], r["item_number"])
-            if schl not in kopfzeile:
-                continue
-            eigene = self._titel_worte(r["title"])
-            # Ohne ein einziges Kind, das den Gegenstand nennt, gibt es
-            # nichts zu belegen — dann ist es keine Gruppe.
-            if not kinder_worte[schl]:
-                continue
-            if any(all(w in kind for kind in kinder_worte[schl]) for w in eigene):
-                # Der Gruppentitel ist der Gegenstand, nicht der Absender:
-                # „Änderungen der Baumschutzsatzung", nicht „… (Fraktionen
-                # BSW und SPD vom 28.05.2026)". Wer beantragt hat, steht in
-                # group_applicants — und dort für ALLE Absender der Gruppe.
-                heading[schl] = self._titel_zerlegen((r["title"] or "").strip())[1]
+        eltern_von, kopfzeile, heading = self._ueberschriften(rohe)
+
+        # Der gemeinsame Kartentext einer Gruppe hängt an ihrer Überschriften-
+        # Zeile (``gruppen_ohne_text``); jedes Mitglied trägt ihn mit.
+        gruppen_text = {(r["ksinr"], r["item_number"]): (r["social_text"] or "").strip() or None
+                        for r in rohe if (r["ksinr"], r["item_number"]) in heading}
 
         kandidaten = []
         for r in rohe:
@@ -540,6 +604,7 @@ class SitzungenMixin:
                 "committee": sitz["committee"], "session_date": sitz["session_date"],
                 "gruppe_nr": gruppe_nr,
                 "gruppe_titel": heading.get((r["ksinr"], gruppe_nr)),
+                "gruppe_text": gruppen_text.get((r["ksinr"], gruppe_nr)),
             })
 
         # Wie viele Stationen hat jede Gruppe? Die Karte sagt damit „Bauleit-
@@ -742,6 +807,7 @@ class SitzungenMixin:
                 "committee": k["committee"], "session_date": k["session_date"],
                 "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
                 "gruppe_stationen": k["gruppe_stationen"],
+                "gruppe_text": k.get("gruppe_text"),
             })
         return {
             # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
@@ -827,6 +893,40 @@ class SitzungenMixin:
                 [(ksinr, p["number"], p["summary"], agenda_hash, now)
                  for p in punkte if p.get("number") and p.get("summary")])
 
+    #: Alles, was das Kartentext-Modell über einen Punkt sehen soll — geteilt
+    #: von ``agenda_items_needing_social_text`` und ``agenda_item_material``.
+    _SOCIAL_MATERIAL_SQL = """SELECT a.ksinr, a.item_number, a.title, a.kvonr, a.template_number,
+                        cs.committee, cs.session_date,
+                        v.kind, v.office, v.proposed_decision, v.financial_impact,
+                        v.climate_impact, v.raw_text,
+                        i.impact,
+                        -- Dringlichkeitsanträge haben keine Vorlage; ihr
+                        -- ganzer Inhalt steht in dem PDF, das an der Zeile
+                        -- hängt. Der Lauf holt es über diese URL nach.
+                        (SELECT an.url FROM council_agenda_attachments an
+                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
+                          LIMIT 1) AS anlage_url,
+                        (SELECT an.raw_text FROM council_agenda_attachments an
+                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
+                            AND an.raw_text IS NOT NULL LIMIT 1) AS anlage_text
+                 FROM council_agenda_items a
+                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
+                 LEFT JOIN agenda_item_impact i
+                      ON i.ksinr = a.ksinr AND i.item_number = a.item_number
+                 LEFT JOIN council_templates v ON v.kvonr = a.kvonr
+                 LEFT JOIN agenda_item_social so
+                        ON so.ksinr = a.ksinr AND so.item_number = a.item_number"""
+
+    def agenda_item_material(self, ksinr: int, nummern: list[str]) -> list[dict]:
+        """Dieselben Spalten wie für den Nachtlauf, aber für benannte Punkte —
+        die Mitglieder einer Gruppe, deren Material der Gruppentext braucht.
+        In Tagesordnungs-Reihenfolge."""
+        if not nummern:
+            return []
+        ph = ",".join("?" * len(nummern))
+        sql = self._SOCIAL_MATERIAL_SQL + f" WHERE a.ksinr = ? AND a.item_number IN ({ph}) ORDER BY a.id"
+        return [dict(r) for r in self._conn.execute(sql, (int(ksinr), *nummern))]
+
     def agenda_items_needing_social_text(self, limit: int | None = None,
                                          tage_voraus: int = 21,
                                          mindest_wichtig: int = 0,
@@ -865,27 +965,7 @@ class SitzungenMixin:
         bis = (date.today() + timedelta(days=tage_voraus)).isoformat()
         if ksinr is not None:
             heute, bis = "0000-00-00", "9999-99-99"
-        sql = """SELECT a.ksinr, a.item_number, a.title, a.kvonr, a.template_number,
-                        cs.committee, cs.session_date,
-                        v.kind, v.office, v.proposed_decision, v.financial_impact,
-                        v.climate_impact, v.raw_text,
-                        i.impact,
-                        -- Dringlichkeitsanträge haben keine Vorlage; ihr
-                        -- ganzer Inhalt steht in dem PDF, das an der Zeile
-                        -- hängt. Der Lauf holt es über diese URL nach.
-                        (SELECT an.url FROM council_agenda_attachments an
-                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
-                          LIMIT 1) AS anlage_url,
-                        (SELECT an.raw_text FROM council_agenda_attachments an
-                          WHERE an.ksinr = a.ksinr AND an.item_number = a.item_number
-                            AND an.raw_text IS NOT NULL LIMIT 1) AS anlage_text
-                 FROM council_agenda_items a
-                 JOIN council_sessions cs ON cs.ksinr = a.ksinr
-                 LEFT JOIN agenda_item_impact i
-                      ON i.ksinr = a.ksinr AND i.item_number = a.item_number
-                 LEFT JOIN council_templates v ON v.kvonr = a.kvonr
-                 LEFT JOIN agenda_item_social so
-                        ON so.ksinr = a.ksinr AND so.item_number = a.item_number
+        sql = self._SOCIAL_MATERIAL_SQL + """
                  -- Offen ist auch, was schon einen Text, aber noch keine
                  -- Überschrift hat (Zeilen von vor 09/2026): Beides entsteht
                  -- in EINEM Aufruf, der Text wird dabei neu geschrieben.

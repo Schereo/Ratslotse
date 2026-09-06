@@ -575,6 +575,39 @@ def test_aenderungsantrag_gehoert_zum_antrag_den_er_aendert(tmp_path):
         store.close()
 
 
+def test_eine_gruppe_bekommt_einen_gemeinsamen_text(tmp_path):
+    """Unter „Änderungen der Baumschutzsatzung" stand der Text des höher
+    bewerteten Mitglieds — also nur, was die CDU will (Tims Befund
+    06.09.26). Reif für einen Gruppentext ist die Gruppe, sobald beide
+    Mitglieder ihren Text haben; der Text hängt an der Überschriften-Zeile
+    und geht mit jedem Mitglied hinaus."""
+    store = _antraege_store(tmp_path)
+    try:
+        assert store.gruppen_ohne_text() == [], "ein Mitglied ohne Text — noch nicht reif"
+        store.save_social_text(8, "Ö 8.1.1", "SPD und BSW beantragen kleinere Ersatzbäume.",
+                               "template", headline="Kleinere Ersatzbäume erlauben")
+        gruppen = store.gruppen_ohne_text()
+        assert [(g["item_number"], g["gruppe_titel"], g["mitglieder"]) for g in gruppen] \
+            == [("Ö 8.1", "Änderungen der Baumschutzsatzung", ["Ö 8.1.1", "Ö 8.1.2"])]
+        material = store.agenda_item_material(8, gruppen[0]["mitglieder"])
+        assert [m["item_number"] for m in material] == ["Ö 8.1.1", "Ö 8.1.2"]
+        assert "raw_text" in material[0]
+
+        d = store.wochenvorschau(max_punkte=99)
+        baum = next(p for p in d["items"] if p["item_number"].startswith("Ö 8.1."))
+        assert baum["gruppe_text"] is None
+        store.save_social_text(8, "Ö 8.1", "SPD und BSW wollen kleinere Ersatzbäume; "
+                               "die CDU will die Satzung aussetzen.", "group")
+        assert store.gruppen_ohne_text() == [], "geschrieben ist geschrieben"
+        d = store.wochenvorschau(max_punkte=99)
+        baum = next(p for p in d["items"] if p["item_number"].startswith("Ö 8.1."))
+        assert baum["gruppe_text"].startswith("SPD und BSW wollen")
+        flieger = next(p for p in d["items"] if p["item_number"] == "Ö 8.3")
+        assert flieger["gruppe_text"] is None
+    finally:
+        store.close()
+
+
 def test_titel_zerlegen_liest_den_absender_auch_ohne_klammer():
     assert CouncilStore._titel_zerlegen(
         "Änderungsantrag der CDU-Fraktion vom 10.06.2026 - Antrag mit Bericht der Verwaltung") \
