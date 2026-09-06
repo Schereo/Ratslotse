@@ -127,6 +127,14 @@ struct MoreHubView: View {
             rows: [
                 .action("Suche", "Beschlüsse und Vorlagen finden", .search) { open(.decisions) },
                 .action("Stadtkarte", "Was der Rat an welchen Orten bewegt", .map) { open(.map) },
+            ] + (model.feature("mein-viertel") ? [
+                .action("Mein Viertel", "Was sich in deinem Ortsbereich ändert", .mapPin) {
+                    dismiss()
+                    model.tabletPage = nil
+                    model.selectedTab = .today
+                    model.navigation = [.district(id: nil)]
+                },
+            ] : []) + [
                 .link("Analyse", "Trends, Parteien, Personen, Finanzen und Ziele", .analysis, .analysis),
             ]
         )

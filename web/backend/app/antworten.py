@@ -2017,6 +2017,16 @@ class DistrictProjectDecision(TypedDict):
     committee: str | None
 
 
+class DistrictProjectLocation(TypedDict):
+    """Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON."""
+    slug: str
+    name: str
+    kind: str
+    lat: float
+    lon: float
+    geometry: Any
+
+
 class DistrictProject(TypedDict):
     """Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
 
@@ -2040,6 +2050,7 @@ class DistrictProject(TypedDict):
     hidden: bool
     reported: bool
     decisions: list[DistrictProjectDecision]
+    locations: list[DistrictProjectLocation]
 
 
 class DistrictUpcomingItem(TypedDict):

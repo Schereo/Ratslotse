@@ -19,6 +19,8 @@ public enum AppRoute: Sendable, Hashable {
     case person(slug: String)
     case topic(slug: String)
     case place(id: String)
+    /// „Mein Viertel": ohne id die Auswahl der Ortsbereiche, mit id die Tafel.
+    case district(id: String?)
     case quiz(area: String?)
     case analysis
     case admin
@@ -75,6 +77,9 @@ public struct AppRouter: Sendable {
         case "/council/ort":
             guard let id = value("id"), !id.isEmpty else { return .tab(.council) }
             return .place(id: id)
+        case "/viertel":
+            let id = value("id")
+            return .district(id: (id?.isEmpty ?? true) ? nil : id)
         case "/council":
             if value("mode") == "fragen" {
                 return .question(prefill: value("q"), share: value("share"))
@@ -139,6 +144,9 @@ public struct AppRouter: Sendable {
             components.path = "/council/thema"; components.queryItems = [.init(name: "slug", value: slug)]
         case .place(let id):
             components.path = "/council/ort"; components.queryItems = [.init(name: "id", value: id)]
+        case .district(let id):
+            components.path = "/viertel"
+            if let id { components.queryItems = [.init(name: "id", value: id)] }
         case .quiz(let area):
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
         case .analysis:

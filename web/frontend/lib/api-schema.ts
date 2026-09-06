@@ -6369,6 +6369,8 @@ export interface components {
             id: number;
             /** Last Date */
             last_date: string | null;
+            /** Locations */
+            locations: components["schemas"]["DistrictProjectLocation"][];
             /** Name */
             name: string;
             /** Place Id */
@@ -6401,6 +6403,24 @@ export interface components {
             outcome: string | null;
             /** Title */
             title: string;
+        };
+        /**
+         * DistrictProjectLocation
+         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.
+         */
+        DistrictProjectLocation: {
+            /** Geometry */
+            geometry: unknown;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
         };
         /** DistrictProjectReportOut */
         DistrictProjectReportOut: {
@@ -14427,4 +14447,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 624ded11a6ee1c2b26891362b3d51c5ecb60d167246b14df6af9b03ff2abe01b
+// vertrag-sha256: f43fd09439838032bdd5d05ba15d8476de403c843566e902b04f09c2cc27b40f

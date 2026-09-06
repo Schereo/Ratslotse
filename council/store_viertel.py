@@ -253,6 +253,8 @@ class ViertelMixin(StoreBasis):
                 "JOIN council_decisions d ON d.id = pd.decision_id "
                 "JOIN council_sessions se ON se.ksinr = d.ksinr "
                 "WHERE pd.project_id = ? ORDER BY se.session_date DESC, d.id DESC", (r["id"],)).fetchall()
+            ids = [d["id"] for d in decisions]
+            locations = self._project_locations(ids, place_id) if ids else []
             out.append({
                 "id": r["id"], "project_key": r["project_key"], "place_id": r["place_id"],
                 "name": r["name"], "what": r["what"], "stage": r["stage"], "when": r["when_text"],
@@ -260,8 +262,44 @@ class ViertelMixin(StoreBasis):
                 "first_date": r["first_date"], "last_date": r["last_date"],
                 "report_count": r["report_count"], "hidden": hidden,
                 "decisions": [dict(d) for d in decisions],
+                "locations": locations,
             })
         return out
+
+    def _project_locations(self, decision_ids: list[int], place_id: str) -> list[dict]:
+        """Die Orte eines Vorhabens für die Karte: Punkt plus Linie, wo es eine gibt.
+
+        Nur Orte, die im Ortsbereich liegen (Anteil ≥ 0,5) und Koordinaten
+        haben. Eine Straße bekommt ihre Geometrie mit — ein Pin am
+        Bounding-Box-Mittelpunkt läge bei einer Straße um die Ecke NEBEN ihr
+        (dieselbe Falle wie in ``geo.ortsbereiche_der_geometrie``).
+        """
+        ph = ",".join("?" * len(decision_ids))
+        rows = self._conn.execute(
+            f"SELECT DISTINCT l.slug, l.name, l.kind, l.lat, l.lon, l.geojson "
+            f"FROM council_decision_locations dl JOIN council_locations l ON l.slug = dl.location_slug "
+            f"JOIN council_location_districts ld ON ld.location_slug = l.slug "
+            f"WHERE dl.decision_id IN ({ph}) AND (ld.place_id = ? OR ld.district = (SELECT name FROM ("
+            f"SELECT ? AS name))) AND ld.share >= ? AND l.lat IS NOT NULL AND l.lon IS NOT NULL "
+            f"AND l.kind != 'district' ORDER BY l.kind, l.name",
+            (*decision_ids, place_id, self._place_name(place_id), CANDIDATE_MIN_SHARE)).fetchall()
+        out = []
+        for r in rows:
+            geometry = None
+            if r["geojson"]:
+                try:
+                    g = json.loads(r["geojson"])
+                    if isinstance(g, dict) and g.get("type") in ("LineString", "MultiLineString", "Polygon", "MultiPolygon"):
+                        geometry = g
+                except ValueError:
+                    geometry = None
+            out.append({"slug": r["slug"], "name": r["name"], "kind": r["kind"],
+                        "lat": r["lat"], "lon": r["lon"], "geometry": geometry})
+        return out
+
+    def _place_name(self, place_id: str) -> str:
+        place = self.resolve_place(place_id)
+        return place.name if place else place_id
 
     def district_projects_overview(self, *, min_confidence: int = PROJECT_MIN_CONFIDENCE) -> dict[str, dict]:
         """Je Ortsbereich: wie viele Vorhaben, wann zuletzt etwas dazukam."""

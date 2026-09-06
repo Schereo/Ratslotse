@@ -5707,6 +5707,13 @@
               "null"
             ]
           },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectLocation"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -5758,7 +5765,8 @@
           "report_count",
           "hidden",
           "reported",
-          "decisions"
+          "decisions",
+          "locations"
         ],
         "title": "DistrictProject",
         "type": "object"
@@ -5801,6 +5809,44 @@
           "committee"
         ],
         "title": "DistrictProjectDecision",
+        "type": "object"
+      },
+      "DistrictProjectLocation": {
+        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.",
+        "properties": {
+          "geometry": {
+            "title": "Geometry"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "geometry"
+        ],
+        "title": "DistrictProjectLocation",
         "type": "object"
       },
       "DistrictProjectReportOut": {
