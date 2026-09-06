@@ -11,7 +11,13 @@ import logging
 from datetime import datetime
 from typing import cast
 
+import json
+import queue
+import threading
+import time
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 
 from council.store import CouncilStore
 from kern.digest_email import knopf, render_html_email
@@ -19,8 +25,10 @@ from kern.email import send_email
 from kern import roles as rollen
 from kern.store import Store
 
+from council import stream_stt
 from ..config import get_settings
-from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
+from ..antworten import (EventStreamResponse, SSE_LIVE_PROBE,
+                         AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
                          AdminPlaceCandidates, AdminQuizStats, AdminRequestFehler,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
@@ -519,3 +527,79 @@ def reopen_place_candidate(
     if not store.delete_location_review(location_slug):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Prüfung nicht gefunden.")
     return {"ok": True}
+
+
+# ------------------------------------------------------------- Live-Probe
+
+#: Nur eine Probe zugleich: Jede öffnet einen eigenen Gladia-Strom (0,75 $ je
+#: Stunde) und einen ffmpeg-Prozess.
+_LIVE_PROBE_LOCK = threading.Lock()
+LIVE_PROBE_MAX_SECONDS = 600
+
+
+@router.get("/live-probe", response_class=EventStreamResponse, responses=SSE_LIVE_PROBE)
+def live_probe(seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
+               user: dict = Depends(require_admin)) -> StreamingResponse:
+    """Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe
+    der Streaming-Transkription (``council/stream_stt``) im Admin-Panel.
+
+    Tims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des
+    aktuellen O1-Programms anzeigen". Was hier ankommt, kommt genauso in der
+    Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
+    (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
+    Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+    """
+    if not stream_stt.configured():
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            "GLADIA_API_KEY fehlt — Streaming ist auf diesem Server aus.")
+    if not _LIVE_PROBE_LOCK.acquire(blocking=False):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Es läuft schon eine Probe.")
+
+    events: queue.Queue = queue.Queue()
+    stop = threading.Event()
+    t0 = time.monotonic()
+
+    def on_segment(start: float, end: float, text: str) -> None:
+        events.put({"type": "segment", "start": round(start, 1), "end": round(end, 1),
+                    "text": text, "wall": round(time.monotonic() - t0, 1)})
+
+    def run() -> None:
+        try:
+            events.put({"type": "status", "text": "verbunden — warte auf die erste Äußerung"})
+            segs = stream_stt.record_and_transcribe(
+                on_segment=on_segment, max_seconds=seconds, people=[], stop=stop)
+            events.put({"type": "done", "segments": len(segs),
+                        "seconds": round(time.monotonic() - t0)})
+        except Exception as exc:  # noqa: BLE001 — dem Client sagen, dann Schluss
+            logger.exception("Live-Probe fehlgeschlagen")
+            events.put({"type": "error", "message": str(exc)[:200]})
+        finally:
+            events.put(None)
+
+    threading.Thread(target=run, daemon=True).start()
+
+    def gen():
+        # Vorspann: 2 KB Kommentar. Zwischen Browser und Backend liegen zwei
+        # Proxys (Edge-Caddy, Next-Rewrite); ein Puffer, der erst ab ein paar
+        # Kilobyte weiterreicht, hielte den 80-Byte-Statusrahmen sonst zurück,
+        # bis Minuten später die erste Äußerung kommt — Tims Befund 06.09.
+        # auf dev: „dort steht nur verbinde …". Die Frage-Antwort (/council/
+        # ask) merkt davon nichts, sie schickt sofort Token für Token.
+        yield ":" + " " * 2048 + "\n\n"
+        try:
+            while True:
+                try:
+                    ev = events.get(timeout=5)
+                except queue.Empty:
+                    yield ": ping\n\n"   # hält Proxy und Browser bei der Stange
+                    continue
+                if ev is None:
+                    break
+                yield "data: " + json.dumps(ev, ensure_ascii=False) + "\n\n"
+        finally:
+            stop.set()
+            _LIVE_PROBE_LOCK.release()
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache, no-transform",
+                                      "X-Accel-Buffering": "no"})

@@ -128,7 +128,9 @@ def _satz(d: dict) -> str:
     """
     wort = ERGEBNIS_WORT.get(d.get("outcome") or "", "entschieden")
     stimmen = _stimmen(d)
-    wann = f"{d.get('committee') or 'Rat'} am {_datum(d.get('session_date') or '')}"
+    # Mit Jahr: Der Brief aus dem Wochenabgleich reicht ein halbes Jahr zurück,
+    # und ein halbes Jahr reicht über den Jahreswechsel (Tim, 30.08.2026).
+    wann = f"{d.get('committee') or 'Rat'} am {datum_lang(d.get('session_date') or '')}"
     return f"Im {wann} {wort}" + (f" ({stimmen})" if stimmen else "") + "."
 
 
@@ -186,10 +188,44 @@ def _protokoll_satz(protokolle: list[tuple[str, str]]) -> str:
     return f"Neue Protokolle: {', '.join(namen[:-1])} und {namen[-1]}."
 
 
+def _push_zeile(gruppen: list[dict], n: int, protokolle: int | None) -> str:
+    """„Stadion: angenommen (18 dagegen) · Wärmeplan: angenommen · 3 weitere
+    aus 2 Protokollen" — die zwei stärksten Gruppen, der Rest als Zahl."""
+    teile = []
+    for g in gruppen:
+        if not g["beschluesse"]:
+            continue
+        lead = g["beschluesse"][0]
+        wort = ERGEBNIS_WORT.get(lead.get("outcome") or "", "entschieden")
+        stimmen = f" ({lead['no_votes']} dagegen)" if lead.get("no_votes") else ""
+        teile.append(f"{_kurz(g['name'], 30)}: {wort}{stimmen}")
+    push = " · ".join(teile[:2])
+    uebrig = n - min(2, len(teile))
+    if uebrig > 0:
+        push += f" · {uebrig} weitere"
+        if protokolle:
+            push += f" aus {protokolle} Protokoll" + ("en" if protokolle != 1 else "")
+    return push if len(push) <= 180 else push[:179] + "…"
+
+
+#: Woher ein Brief kommt — bestimmt Einleitung, Betreff und ob er an der
+#: Tagesgrenze vorbeidarf.
+ANLASS_PROTOKOLL = "protokoll"
+ANLASS_ABGLEICH = "abgleich"
+
+
 def schubbrief(gruppen: list[dict], protokolle: list[tuple[str, str]],
                ohne_beschluss: list[dict], decision_href,
-               sitzung_href_fuer=None) -> tuple[str, str, str, str, bool]:
+               sitzung_href_fuer=None, anlass: str = ANLASS_PROTOKOLL,
+               ) -> tuple[str, str, str, str, bool]:
     """EIN Brief je Person und Protokoll-Schub (Tims Wunsch 06.09.2026).
+
+    ``anlass``: ``ANLASS_PROTOKOLL`` (frische Protokolle, Einleitung nennt
+    sie, Betreff „Entschieden: …", darf bei großer Tragweite an der
+    Tagesgrenze vorbei) oder ``ANLASS_ABGLEICH`` (der wöchentliche
+    Ähnlichkeits-Abgleich: Beschlüsse, die neu über die Relevanzschwelle
+    gerutscht sind — bis zu ein halbes Jahr alt, deshalb Betreff „Neu zu …"
+    und nie ``wichtig``: Ein Treffer von vor fünf Monaten ist keine Eilpost).
 
     Vorher ging je Sitzung eine Meldung raus — bei einem Schub aus Rat und
     drei Ausschüssen also vier, die die Tagesgrenze prompt zu einem
@@ -214,36 +250,31 @@ def schubbrief(gruppen: list[dict], protokolle: list[tuple[str, str]],
 
     alle = [d for g in gruppen for d in g["beschluesse"]]
     n = len(alle)
-    wichtig = any(_tragweite(d) >= CouncilStore.TOP_MINDEST for d in alle)
+    abgleich = anlass == ANLASS_ABGLEICH
+    wichtig = (not abgleich) and any(_tragweite(d) >= CouncilStore.TOP_MINDEST for d in alle)
+    namen = [g["name"] for g in gruppen if g["beschluesse"]]
 
     # Betreff, Ziel und Push-Text.
-    if n == 1:
+    if abgleich and n:
+        # Betreff wie seit 13a-D: „Neu zu „Finanzen“ — 2 Beschlüsse"; bei
+        # mehreren Themen alle Namen, Tap-Ziel die Themen-Trefferliste.
+        themen = ", ".join(f"\u201e{_kurz(x, 40)}\u201c" for x in namen[:3])
+        if len(namen) > 3:
+            themen += f" und {len(namen) - 3} weitere"
+        betreff = f"Neu zu {themen}" + (f" \u2014 {n} Beschl\u00fcsse" if n > 1 else "")
+        ziel = "/topics"
+        push = _push_zeile(gruppen, n, None)
+    elif n == 1:
         lead = alle[0]
         wort = ERGEBNIS_WORT.get(lead.get("outcome") or "", "entschieden")
         betreff = f"{(lead.get('title') or 'Dein Thema').strip()}: {wort}"
         ziel = decision_href(lead["id"])
         push = _satz(lead)
     elif n:
-        namen = [g["name"] for g in gruppen if g["beschluesse"]]
         kopf = " und ".join(namen[:2]) + (" u. a." if len(namen) > 2 else "")
         betreff = f"Entschieden: {kopf} — {n} Ergebnisse"
         ziel = "/topics"
-        teile = []
-        for g in gruppen:
-            if not g["beschluesse"]:
-                continue
-            lead = g["beschluesse"][0]
-            wort = ERGEBNIS_WORT.get(lead.get("outcome") or "", "entschieden")
-            stimmen = f" ({lead['no_votes']} dagegen)" if lead.get("no_votes") else ""
-            teile.append(f"{_kurz(g['name'], 30)}: {wort}{stimmen}")
-        rest = n - len(teile)
-        push = " · ".join(teile[:2])
-        if rest > 0 or len(teile) > 2:
-            uebrig = n - min(2, len(teile))
-            push += f" · {uebrig} weitere aus {len(protokolle)} Protokoll" + \
-                ("en" if len(protokolle) != 1 else "")
-        if len(push) > 180:
-            push = push[:179] + "…"
+        push = _push_zeile(gruppen, n, len(protokolle))
     else:
         # Nur gemerkte Punkte ohne erkannten Beschluss.
         erster = ohne_beschluss[0]
@@ -253,9 +284,16 @@ def schubbrief(gruppen: list[dict], protokolle: list[tuple[str, str]],
         push = "Für den gemerkten Punkt wurde kein eigener Beschluss erkannt."
 
     # Der Brief.
-    teile_html = ["<p style='margin:0'>" + _protokoll_satz(protokolle)
-                  + (f" Darin {'steht eine Entscheidung' if n == 1 else f'stehen {n} Entscheidungen'} "
-                     "zu dem, was du verfolgst." if n else "") + "</p>"]
+    if abgleich:
+        einleitung = ("<p style='margin:0'>Beim wöchentlichen Abgleich "
+                      + ("ist ein Beschluss" if n == 1 else f"sind {n} Beschlüsse")
+                      + " neu zu deinen Themen aufgetaucht — aus Sitzungen der letzten "
+                      "sechs Monate.</p>")
+    else:
+        einleitung = ("<p style='margin:0'>" + _protokoll_satz(protokolle)
+                      + (f" Darin {'steht eine Entscheidung' if n == 1 else f'stehen {n} Entscheidungen'} "
+                         "zu dem, was du verfolgst." if n else "") + "</p>")
+    teile_html = [einleitung]
     for g in gruppen:
         if not g["beschluesse"]:
             continue
@@ -277,7 +315,9 @@ def schubbrief(gruppen: list[dict], protokolle: list[tuple[str, str]],
               "oder als Formalie behandelt wurde. "
             + f"<a href=\"{digest_email.absolut(link)}\" style='color:#0764a6'>Zum Punkt</a>.</div></div>"
         )
-    if n > 1:
+    if abgleich:
+        teile_html.append(digest_email.knopf("/topics", "Alle Treffer ansehen"))
+    elif n > 1:
         teile_html.append(digest_email.knopf("/topics", "Alle Ergebnisse ansehen"))
     elif n == 1:
         teile_html.append(digest_email.knopf(ziel, "Zum Beschluss"))

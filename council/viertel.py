@@ -53,7 +53,6 @@ CATEGORIES = ("housing", "traffic", "school_childcare", "green", "culture_sport_
 #: kein Vorlagentext den Ort belegt — knapp unter der Tafel-Schwelle.
 NAMESAKE_CAP = PROJECT_MIN_CONFIDENCE - 1
 
-
 def source_hash(k: dict) -> str:
     """Hash der Eingabe eines Kandidaten — ändert sich, wenn Text oder Orte sich ändern."""
     teile = [str(k.get("title")), str(k.get("summary")), str(k.get("official_text"))[:LIMITS["official_text"]],
@@ -101,7 +100,7 @@ def review_batch(place, batch: list[dict]) -> dict[int, dict]:
         messages=[{"role": "system", "content": prompts.render("district_review_system")},
                   {"role": "user", "content": user}],
         max_tokens=6000, temperature=0, extra_body=dict(REASONING),
-        _feature="district_projects",
+        _feature="district_projects", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
     )
     data = json.loads(resp.choices[0].message.content or "{}")
     valid = {k["id"] for k in batch}
@@ -211,7 +210,7 @@ def bundle_projects(place, hits: list[dict]) -> list[dict]:
         messages=[{"role": "system", "content": prompts.render("district_projects_system")},
                   {"role": "user", "content": user}],
         max_tokens=4000, temperature=0, extra_body=dict(REASONING),
-        _feature="district_projects",
+        _feature="district_projects", _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
     )
     data = json.loads(resp.choices[0].message.content or "{}")
     by_id = {k["id"]: k for k in hits}
@@ -259,14 +258,26 @@ def build_place(store, place, *, dry_run: bool = False) -> dict:
 
 
 def build_all(store, place_ids: list[str] | None = None, *, dry_run: bool = False) -> list[dict]:
-    """Alle 31 Ortsbereiche (oder die genannten), einer nach dem anderen."""
+    """Alle 31 Ortsbereiche (oder die genannten), einer nach dem anderen.
+
+    Ein Ortsbereich, der trotz Geduld scheitert, wird übersprungen und im
+    Ergebnis als ``failed`` markiert — die übrigen 30 sollen nicht mit ihm
+    sterben. Sein Register bleibt, wie es war (Urteile sind gecacht, der
+    nächste Lauf holt nur die Bündelung nach).
+    """
     out = []
     for place in store.all_places():
         if not place.is_primary:
             continue
         if place_ids and place.id not in place_ids:
             continue
-        stats = build_place(store, place, dry_run=dry_run)
+        try:
+            stats = build_place(store, place, dry_run=dry_run)
+        except Exception as exc:  # noqa: BLE001 — ein Ortsbereich, nicht der Lauf
+            print(f"  ⚠️ {place.name} übersprungen: {exc!r}", flush=True)
+            out.append({"place_id": place.id, "candidates": 0, "reviewed": 0, "hits": 0,
+                        "projects": 0, "visible": 0, "failed": True})
+            continue
         print(f"  {place.name}: {stats['candidates']} Kandidaten → {stats['hits']} im Viertel → "
               f"{stats['projects']} Vorhaben ({stats['visible']} auf der Tafel)", flush=True)
         out.append(stats)

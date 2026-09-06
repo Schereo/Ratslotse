@@ -466,7 +466,7 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
           <h1 className="mt-0.5 font-display text-2xl font-bold text-foreground">{place.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {vorhaben.length === 0
-              ? "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre."
+              ? (data.updated_at ? "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre." : "Die Tafel ist noch nicht gerechnet.")
               : `${vorhaben.length} Vorhaben aus den Beschlüssen der letzten zwei Jahre` +
                 (data.updated_at ? ` · Stand ${formatDate(data.updated_at.slice(0, 10))}` : "")}
           </p>
@@ -552,7 +552,12 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
             <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-8 text-center">
               <Mascot pose="search" decorative className="h-16 w-16" />
               <p className="max-w-md text-sm text-muted-foreground">
-                Für {place.name} hat der Rat in den letzten zwei Jahren nichts beschlossen, was sich als Vorhaben zeigen ließe. Nebenan ist mehr los:
+                {data.updated_at
+                  ? `Für ${place.name} hat der Rat in den letzten zwei Jahren nichts beschlossen, was sich als Vorhaben zeigen ließe. Nebenan ist mehr los:`
+                  /* Ohne Zeitstempel hat das Register dieses Viertel noch nie
+                     gerechnet — das ist ein Zustand des Laufs, kein Befund
+                     über den Rat, und darf nicht so klingen. */
+                  : `Die Tafel für ${place.name} ist noch nicht gerechnet — der nächste Lauf füllt sie. Nebenan:`}
               </p>
               <Nachbarn nachbarn={data.neighbours} />
             </div>

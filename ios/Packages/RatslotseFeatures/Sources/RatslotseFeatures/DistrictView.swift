@@ -233,9 +233,13 @@ struct DistrictBoardView: View {
                     }
                     if !data.upcoming.isEmpty { upcomingCard(data.upcoming).ratsStaggered(2) }
                     if projects.isEmpty {
+                        // Ohne Zeitstempel hat das Register dieses Viertel noch nie
+                        // gerechnet — ein Zustand des Laufs, kein Befund über den Rat.
                         RatsEmptyState(
-                            title: "Noch kein Vorhaben",
-                            message: "Für \(data.place.name) hat der Rat in den letzten zwei Jahren nichts beschlossen, was sich als Vorhaben zeigen ließe. Nebenan ist mehr los.",
+                            title: data.updatedAt == nil ? "Noch nicht gerechnet" : "Noch kein Vorhaben",
+                            message: data.updatedAt == nil
+                                ? "Die Tafel für \(data.place.name) ist noch nicht gerechnet — der nächste Lauf füllt sie. Nebenan ist mehr los."
+                                : "Für \(data.place.name) hat der Rat in den letzten zwei Jahren nichts beschlossen, was sich als Vorhaben zeigen ließe. Nebenan ist mehr los.",
                             symbol: .mapPin,
                             animation: .searching
                         )
@@ -279,7 +283,7 @@ struct DistrictBoardView: View {
             Text(data.place.name)
                 .font(RatsFont.title(28))
             Text(projects.isEmpty
-                 ? "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre."
+                 ? (data.updatedAt == nil ? "Die Tafel ist noch nicht gerechnet." : "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre.")
                  : "\(projects.count) Vorhaben aus den Beschlüssen der letzten zwei Jahre")
                 .font(RatsFont.body(14))
                 .foregroundStyle(RatsColor.secondary)

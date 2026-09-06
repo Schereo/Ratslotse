@@ -286,3 +286,36 @@ def test_linie_wird_auf_den_ortsbereich_beschnitten():
     assert geo.auf_ortsbereich_beschneiden(linie, "Nordmoslesfehn") is None
     flaeche = {"type": "Polygon", "coordinates": [punkte[:3] + [punkte[0]]]}
     assert geo.auf_ortsbereich_beschneiden(flaeche, "Kreyenbrück") == flaeche
+
+
+def test_lauf_ueberlebt_einen_scheiternden_ortsbereich(monkeypatch):
+    """Ein Rate-Limit in der Bündelung eines Viertels darf nicht die übrigen
+    30 mitreißen — auf dev starb der erste Stadtlauf nach vier von 31."""
+    store = _store()
+    _seed(store)
+    monkeypatch.setattr(viertel.llm, "GEDULD_PAUSEN", ())  # nicht wirklich warten
+    aufrufe: list[str] = []
+
+    def fake(**kwargs):
+        system = kwargs["messages"][0]["content"]
+        user = kwargs["messages"][1]["content"]
+        if "VORHABEN" in system:
+            aufrufe.append("bündeln")
+            if "Kreyenbrück" in user:
+                raise RuntimeError("429 temporarily rate-limited upstream")
+            return _Antwort({"projects": []})
+        aufrufe.append("richten")
+        return _Antwort({"reviews": [
+            {"id": i, "relation": "district", "changes": True, "what": "x", "stage": "decided",
+             "category": "other", "confidence": 95} for i in (10, 11, 12)]})
+
+    monkeypatch.setattr(viertel.llm, "chat_complete", fake)
+    stats = viertel.build_all(store, ["kreyenbrueck", "eversten"])
+    by_place = {s["place_id"]: s for s in stats}
+    assert by_place["kreyenbrueck"].get("failed") is True
+    assert by_place["eversten"].get("failed") is None
+    # Die Urteile von Kreyenbrück sind trotzdem im Cache — der nächste Lauf
+    # holt nur die Bündelung nach.
+    assert set(store.district_reviews("kreyenbrueck")) == {10, 11, 12}
+    store.close()
+

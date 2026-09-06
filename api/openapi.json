@@ -14350,6 +14350,55 @@
         ]
       }
     },
+    "/api/admin/live-probe": {
+      "get": {
+        "description": "Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe\nder Streaming-Transkription (``council/stream_stt``) im Admin-Panel.\n\nTims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des\naktuellen O1-Programms anzeigen\". Was hier ankommt, kommt genauso in der\nRatssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste\n(hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine\nProbe zugleich; verlässt der Browser die Seite, endet die Aufnahme.",
+        "operationId": "live_probe_api_admin_live_probe_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "seconds",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "maximum": 600,
+              "minimum": 10,
+              "title": "Seconds",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `status` — Text zum Stand (`text`), etwa „verbunden\"\n- `segment` — eine fertige Äußerung: `start`/`end` in Sekunden seit Beginn, `text`, `wall` = Sekunden seit Beginn auf der Server-Uhr (die Differenz zu `end` ist der Verzug)\n- `done` — Schluss mit `segments` (Zahl) und `seconds`\n- `error` — abgebrochen (`message`)"
+          },
+          "409": {
+            "description": "Es läuft schon eine Probe — nur eine zugleich."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Probe",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/llm-usage": {
       "get": {
         "description": "LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,\nMonatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite).",

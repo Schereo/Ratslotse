@@ -75,21 +75,6 @@ def is_council(committee: str | None) -> bool:
     return (committee or "").strip().lower() in _COUNCIL_NAMES
 
 
-def short_committee(name: str) -> str:
-    """Kurzname wie ``shortCommittee`` im Web: Präfix „Ausschuss für …" weg,
-    „und" → „&", ein einzelnes „…ausschuss" auf seinen Kern. Nie stumpf
-    abschneiden — der volle Name bleibt in der Beschreibung."""
-    s = (name or "").strip()
-    if s.lower().startswith("rat der stadt"):
-        return "Rat"
-    s = re.sub(r"^Ausschuss für (den |die |das )?", "", s)
-    s = re.sub(r"^Betriebsausschuss (Eigenbetrieb )?", "", s)
-    if re.fullmatch(r"\S+ausschuss", s, re.IGNORECASE):
-        s = re.sub(r"s?ausschuss$", "", s, flags=re.IGNORECASE)
-    s = re.sub(r"\s+und\s+", " & ", s).strip()
-    return s if len(s) >= 2 else name
-
-
 def _esc(text: str) -> str:
     """RFC 5545 §3.3.11: Backslash, Zeilenumbruch, Komma, Semikolon."""
     return (
@@ -229,8 +214,10 @@ def build_feed(*, user: dict, council, ratslotse, base_url: str, now: datetime |
 
 
 def _event(s: dict, *, base_url: str, now: datetime, today: date, decisions: int) -> list[str]:
+    # Der volle amtliche Name, kein Kurzname wie im Web: Der Feed landet bei
+    # Ratsmitgliedern zwischen ihren übrigen Terminen, und dort heißt der
+    # Ausschuss so, wie er in der Einladung heißt (Tims Entscheidung, 06.09.2026).
     committee = s.get("committee") or "Gremium"
-    short = short_committee(committee)
     day = (s.get("session_date") or "")[:10]
     start = _local(day, s.get("session_time"))
     hours = COUNCIL_HOURS if is_council(committee) else DEFAULT_HOURS
@@ -248,7 +235,7 @@ def _event(s: dict, *, base_url: str, now: datetime, today: date, decisions: int
         d = date.fromisoformat(day)
         out.append(f"DTSTART;VALUE=DATE:{d.strftime('%Y%m%d')}")
         out.append(f"DTEND;VALUE=DATE:{(d + timedelta(days=1)).strftime('%Y%m%d')}")
-    out.append("SUMMARY:" + _esc(short if not topics else f"{short} · dein Thema"))
+    out.append("SUMMARY:" + _esc(committee if not topics else f"{committee} · dein Thema"))
     if s.get("location"):
         out.append("LOCATION:" + _esc(str(s["location"])))
     out.append(f"URL:{url}")
@@ -266,7 +253,7 @@ def _event(s: dict, *, base_url: str, now: datetime, today: date, decisions: int
         out.extend([
             "BEGIN:VALARM",
             "ACTION:DISPLAY",
-            "DESCRIPTION:" + _esc(f"Morgen im {short}: " + ", ".join(names) if names else f"Morgen im {short}"),
+            "DESCRIPTION:" + _esc(f"Morgen im {committee}: " + ", ".join(names) if names else f"Morgen im {committee}"),
             f"TRIGGER;VALUE=DATE-TIME:{_stamp_utc(reminder)}",
             "END:VALARM",
         ])
@@ -316,9 +303,5 @@ def _description(s: dict, *, committee: str, url: str, base_url: str, is_past: b
     parts.append("")
     parts.append("Tagesordnung, Vorlagen und Ergebnis auf Ratslotse:")
     parts.append(url)
-    # Der Kurzname steht im Titel; der amtliche nur, wenn er sich unterscheidet.
-    if short_committee(committee) != committee:
-        parts.append(f"Amtlicher Name: {committee}. Ende der Sitzung geschätzt.")
-    else:
-        parts.append("Ende der Sitzung geschätzt.")
+    parts.append("Ende der Sitzung geschätzt.")
     return "\n".join(parts)

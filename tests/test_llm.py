@@ -219,3 +219,71 @@ def test_chat_complete_erlaubt_expliziten_leerantwort_fallback(monkeypatch):
         "messages": [],
         "extra_body": {"usage": {"include": True}},
     }]
+
+
+# --------------------------------------------------------------------------- #
+# Geduld und Ersatzmodelle (Batch-Jobs)
+# --------------------------------------------------------------------------- #
+class _Antwort:
+    def __init__(self, text="ok"):
+        self.choices = [type("C", (), {"message": type("M", (), {"content": text})()})()]
+        self.usage = type("U", (), {"prompt_tokens": 1, "completion_tokens": 1, "cost": 0.0})()
+
+
+def _stub_create(monkeypatch, plan):
+    """``plan``: Liste von Ergebnissen je Aufruf — Exception-Instanz = werfen.
+    Zeichnet die Modelle der Aufrufe auf und schaltet das Schlafen ab."""
+    aufrufe, pausen = [], []
+    def fake_create(**kwargs):
+        aufrufe.append(kwargs["model"])
+        ergebnis = plan.pop(0)
+        if isinstance(ergebnis, BaseException):
+            raise ergebnis
+        return ergebnis
+    monkeypatch.setattr(llm, "_create", fake_create)
+    monkeypatch.setattr(llm.time, "sleep", lambda s: pausen.append(s))
+    return aufrufe, pausen
+
+
+def test_ohne_geduld_bleibt_alles_wie_es_war(monkeypatch):
+    aufrufe, pausen = _stub_create(monkeypatch, [llm.EmptyResponseError("429 rate-limited")])
+    with pytest.raises(llm.EmptyResponseError):
+        llm.chat_complete(model="openai/gpt-5.6-luna", messages=[])
+    assert aufrufe == ["openai/gpt-5.6-luna"] and pausen == []
+
+
+def test_geduld_wartet_minuten_und_versucht_es_wieder(monkeypatch):
+    aufrufe, pausen = _stub_create(monkeypatch, [
+        llm.EmptyResponseError("429"), llm.EmptyResponseError("429"), _Antwort()])
+    resp = llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _geduld=True)
+    assert resp.choices[0].message.content == "ok"
+    assert aufrufe == ["openai/gpt-5.6-luna"] * 3
+    assert pausen == [30, 90]
+
+
+def test_ersatzmodell_uebernimmt_nach_der_geduld(monkeypatch):
+    aufgezeichnet = []
+    monkeypatch.setattr(llm, "_record_usage", lambda f, m, u: aufgezeichnet.append((f, m)))
+    plan = [llm.EmptyResponseError("429")] * 4 + [_Antwort("vom Ersatz")]
+    aufrufe, pausen = _stub_create(monkeypatch, plan)
+    resp = llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _geduld=True,
+                             _ersatz=["deepseek/deepseek-v4-pro"], _feature="probe")
+    assert resp.choices[0].message.content == "vom Ersatz"
+    assert aufrufe == ["openai/gpt-5.6-luna"] * 4 + ["deepseek/deepseek-v4-pro"]
+    assert pausen == [30, 90, 180]
+    # Die Kosten stehen beim Modell, das WIRKLICH geantwortet hat.
+    assert aufgezeichnet == [("probe", "deepseek/deepseek-v4-pro")]
+
+
+def test_kein_ersatz_bei_dauerhaftem_fehler(monkeypatch):
+    """Ein 400er ist kein Fall fürs Ersatzmodell — der Fehler liegt in der Anfrage."""
+    aufrufe, _ = _stub_create(monkeypatch, [ValueError("kaputte Anfrage")])
+    with pytest.raises(ValueError):
+        llm.chat_complete(model="openai/gpt-5.6-luna", messages=[], _ersatz=["deepseek/deepseek-v4-pro"])
+    assert aufrufe == ["openai/gpt-5.6-luna"]
+
+
+def test_ersatz_fuer_kennt_luna_und_sonst_nichts():
+    assert llm.ersatz_fuer("openai/gpt-5.6-luna")
+    assert llm.ersatz_fuer("google/gemini-2.5-flash") == []
+    assert llm.ersatz_fuer(None) == []

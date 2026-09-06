@@ -38,14 +38,16 @@ KEIN_JSON = {
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
     ("get", "/api/calendar/{token}.ics"),
+    ("get", "/api/admin/live-probe"),
 }
 
-#: Welchen Medientyp diese drei Endpunkte liefern MÜSSEN.
+#: Welchen Medientyp diese Endpunkte liefern MÜSSEN.
 KEIN_JSON_MEDIENTYP = {
     ("post", "/api/council/ask"): "text/event-stream",
     ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
     ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
     ("get", "/api/calendar/{token}.ics"): "text/calendar",
+    ("get", "/api/admin/live-probe"): "text/event-stream",
 }
 
 
