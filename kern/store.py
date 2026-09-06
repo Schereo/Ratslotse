@@ -112,7 +112,9 @@ CREATE TABLE IF NOT EXISTS notification_queue (
     -- down, Adresse abgelehnt), bleibt die Meldung mit sent_at IS NULL liegen
     -- und wird erneut versucht — bis MAX_VERSUCHE, damit eine dauerhaft
     -- unzustellbare Adresse die Warteschlange nicht ewig blockiert.
-    attempts      INTEGER NOT NULL DEFAULT 0
+    attempts      INTEGER NOT NULL DEFAULT 0,
+    -- 1 = darf an der Tagesgrenze vorbei (Tragweite gemessen), s. kern.notify.einreihen
+    wichtig       INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
 
@@ -1329,6 +1331,13 @@ class Store:
         if nq_cols and "push_text" not in nq_cols:
             with self._conn:
                 self._conn.execute("ALTER TABLE notification_queue ADD COLUMN push_text TEXT")
+        # Wichtig-Marke (06.09.2026): darf an der Tagesgrenze vorbei.
+        if nq_cols and "wichtig" not in nq_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE notification_queue ADD COLUMN wichtig INTEGER NOT NULL DEFAULT 0"
+                )
+        self._notify_vorgaben_einfrieren()
         # Der Fehler-Sammler kam zuerst nur mit Server-Fehlern; Herkunft und
         # Tagesverlauf sind nachgezogen. Ohne diesen Schritt scheitert das
         # Festhalten auf einer bestehenden Datei — und zwar still, weil
@@ -1375,6 +1384,56 @@ class Store:
             self._conn.execute("UPDATE council_topic_matches SET matched_at = ''")
         self._conn.execute("PRAGMA user_version = 1")
         self._conn.commit()
+
+    def _notify_vorgaben_einfrieren(self) -> None:
+        """Bestandskonten behalten die alten Benachrichtigungs-Vorgaben.
+
+        Am 06.09.2026 drehten sich zwei Vorgaben (``kern.notify``): Die
+        Tagesordnung je Gremium ist für neue Konten aus, der Wochenüberblick
+        an. Tims Entscheidung dazu: „Bestandskonten so lassen, wie sie sind."
+        Ein Konto, das nie einen Schalter angefasst hat, trägt eine leere
+        ``notify_prefs``-Spalte — und bekäme mit der neuen Vorgabe ab dem
+        Deploy still keine Tagesordnungen mehr. Deshalb schreibt dieser eine
+        Lauf jedem bestehenden Konto die **alte** Vorgabe ausdrücklich in die
+        Spalte, nur für die zwei Schalter, die sich gedreht haben, und nur wo
+        noch nichts steht. Wer selbst etwas gesetzt hatte, bleibt unberührt.
+
+        Die Marke in ``migration_marks`` merkt sich den Lauf — sonst würde
+        jeder Start neue Konten auf den alten Stand stempeln. (Nicht
+        ``PRAGMA user_version``: Die hält der Treffer-Entstempler, und wer sie
+        hochsetzt, schaltet ihn ab.) Erst lesen, dann schreiben — siehe
+        ``_marke_gesetzt``.
+        """
+        import json as _json
+
+        from kern.notify import NOTIFY_DEFAULTS_BIS_2026_09
+
+        marke = "notify_vorgaben_2026_09"
+        if self._marke_gesetzt(marke):
+            return
+        if "notify_prefs" not in self._table_cols("web_users"):
+            return
+        rows = self._conn.execute("SELECT id, notify_prefs FROM web_users").fetchall()
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            for row in rows:
+                try:
+                    prefs = _json.loads(row["notify_prefs"] or "{}")
+                except (ValueError, TypeError):
+                    prefs = {}
+                if not isinstance(prefs, dict):
+                    prefs = {}
+                neu = dict(prefs)
+                for k, v in NOTIFY_DEFAULTS_BIS_2026_09.items():
+                    neu.setdefault(k, v)
+                if neu != prefs:
+                    self._conn.execute("UPDATE web_users SET notify_prefs = ? WHERE id = ?",
+                                       (_json.dumps(neu), row["id"]))
+            self._conn.execute(
+                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
 
     def _table_cols(self, table: str) -> set[str]:
         return {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -2080,13 +2139,14 @@ class Store:
 
     def enqueue_notification(self, owner_id: int, kind: str, title: str, body_html: str,
                              url: str, created_at: str, deliver_after: str,
-                             push_text: str | None = None) -> int:
+                             push_text: str | None = None, wichtig: bool = False) -> int:
         with self._conn:
             cur = self._conn.execute(
                 "INSERT INTO notification_queue "
-                "(owner_id, kind, title, body_html, url, created_at, deliver_after, push_text) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text),
+                "(owner_id, kind, title, body_html, url, created_at, deliver_after, push_text, "
+                "wichtig) VALUES (?,?,?,?,?,?,?,?,?)",
+                (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text,
+                 1 if wichtig else 0),
             )
         return neue_id(cur)
 
@@ -2106,7 +2166,8 @@ class Store:
         """Offene, fällige Posten — älteste zuerst, damit das Bündel am Ende die
         jüngsten trägt und die wichtigste Einzelmeldung vorne bleibt."""
         return [dict(r) for r in self._conn.execute(
-            "SELECT id, kind, title, body_html, url, created_at, push_text FROM notification_queue "
+            "SELECT id, kind, title, body_html, url, created_at, push_text, wichtig "
+            "FROM notification_queue "
             "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
             "ORDER BY id",
             (owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]

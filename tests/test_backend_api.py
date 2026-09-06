@@ -6137,7 +6137,7 @@ def test_konto_schickt_seine_rechte_mit(client):
         store.close()
     me = client.get("/api/auth/me").json()
     assert me["roles"] == ["council_member"]
-    assert me["permissions"] == ["budget"]
+    assert me["permissions"] == ["budget", "mandate"]
     assert me["role"] == "council_member"
 
 
@@ -6153,7 +6153,7 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
 
     katalog = client.get("/api/admin/roles").json()
     assert {r["key"] for r in katalog} == {"user", "council_member", "admin"}
-    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget"]
+    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget", "mandate"]
 
     r = client.put(f"/api/admin/users/{ziel_id}/roles", json={"roles": ["council_member"]})
     assert r.status_code == 200 and r.json()["roles"] == ["council_member"]
