@@ -132,8 +132,9 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
 
     mod = _match_modul()
     # Reihenfolge der new_ids: Berufung zuerst — die Tragweite muss umsortieren.
-    n = mod._notify_new_matches(ratslotse, council, owner_id=owner, topic_name="Finanzen",
-                                new_ids=[ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]],
+    n = mod._notify_new_matches(ratslotse, council, owner_id=owner,
+                                themen=[("Finanzen", [ids["Berufung Mitglied"],
+                                                      ids["Haushaltssatzung 2026"]])],
                                 # Fest statt `heute`: Die Sitzung der Vorrichtung
                                 # ist auf 2026-06-01 genagelt, ein wandernder
                                 # Stichtag machte den Test irgendwann leer.
@@ -149,18 +150,23 @@ def test_notify_new_matches_leads_with_highest_impact(tmp_path):
     # dieselbe Nachricht wie aus dem Protokoll — nur die Herkunft unterscheidet
     # sich, und danach sortiert niemand seine Einstellungen.
     assert meldung["kind"] == notify.N3_ERGEBNIS
-    # Der folgenreichste Beschluss führt und ist direkt anklickbar; der Rest
-    # steht als Zähler dahinter.
+    # Der folgenreichste Beschluss führt als Karte und ist direkt anklickbar;
+    # der Rest steht als Liste darunter (seit 06.09.2026 derselbe Brief wie
+    # aus dem Protokoll-Import, council.ergebnisse.schubbrief).
     body = meldung["body_html"]
-    assert body.index("Haushaltssatzung 2026") < body.index("und 1 weitere")
+    assert body.index("Haushaltssatzung 2026") < body.index("Berufung Mitglied")
     assert f"/council/decision?id={ids['Haushaltssatzung 2026']}" in body
+    assert "Dein Thema · Finanzen" in body and "Beim wöchentlichen Abgleich" in body
     # Gremium und Sitzungsdatum stehen unter dem Titel (Tim, 30.08.2026) — das
     # Jahr gehört dazu, weil das Meldefenster über den Jahreswechsel reicht.
-    assert "Rat · 1. Juni 2026" in body
+    assert "Im Rat am 1. Juni 2026 angenommen" in body
     # Und die Push-Vorschau klebt beides nicht aneinander.
     from kern.delivery import _plain
 
-    assert "Haushaltssatzung 2026 Rat · 1. Juni 2026" in _plain(body)
+    assert "Haushaltssatzung 2026 Im Rat am 1. Juni 2026" in _plain(body, limit=2000)
+    # Ein Abgleich-Brief darf nie an der Tagesgrenze vorbei — Treffer können
+    # Monate alt sein.
+    assert meldung["wichtig"] == 0
     ratslotse.close()
     council.close()
 
@@ -177,8 +183,8 @@ def test_notify_new_matches_schweigt_wenn_abgeschaltet(tmp_path):
     ratslotse.set_delivery_channel(owner, "off")
 
     mod = _match_modul()
-    assert mod._notify_new_matches(ratslotse, council, owner_id=owner, topic_name="Finanzen",
-                                   new_ids=[ids["Haushaltssatzung 2026"]],
+    assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
+                                   themen=[("Finanzen", [ids["Haushaltssatzung 2026"]])],
                                    as_of_date="2026-01-01") == 0
     assert ratslotse.due_notifications(owner, "2999-01-01") == []
     ratslotse.close()
@@ -214,21 +220,52 @@ def test_notify_new_matches_schweigt_ueber_alte_beschluesse(tmp_path):
 
     # Nur der alte Beschluss: gar keine Meldung.
     assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
-                                   topic_name="Grundschule Krusenbusch",
-                                   new_ids=[ids["Zusätzliche Spätbetreuung"]],
+                                   themen=[("Grundschule Krusenbusch",
+                                            [ids["Zusätzliche Spätbetreuung"]])],
                                    as_of_date="2026-01-01") == 0
     assert ratslotse.due_notifications(owner, "2999-01-01") == []
 
     # Gemischt: Die Mail kommt, zählt aber nur den aktuellen Beschluss — sonst
     # verspräche das „— n Beschlüsse" im Betreff etwas, das die Liste nicht hält.
     assert mod._notify_new_matches(ratslotse, council, owner_id=owner,
-                                   topic_name="Grundschule Krusenbusch",
-                                   new_ids=[ids["Zusätzliche Spätbetreuung"],
-                                            ids["Haushaltssatzung 2026"]],
+                                   themen=[("Grundschule Krusenbusch",
+                                            [ids["Zusätzliche Spätbetreuung"],
+                                             ids["Haushaltssatzung 2026"]])],
                                    as_of_date="2026-01-01") == 1
     offen = ratslotse.due_notifications(owner, "2999-01-01")
     assert len(offen) == 1
     assert offen[0]["title"] == "Neu zu „Grundschule Krusenbusch“"   # kein „— 2 Beschlüsse"
     assert "Spätbetreuung" not in offen[0]["body_html"]
+    ratslotse.close()
+    council.close()
+
+
+def test_mehrere_themen_werden_ein_brief(tmp_path):
+    """Tims Wunsch 06.09.2026: „mach den Themen-Abgleich auch als Schubbrief".
+    Zwei Themen mit neuen Treffern → EIN Brief mit zwei Gruppen; ein Beschluss,
+    der zu beiden passt, steht nur einmal — beim ersten Thema."""
+    from kern.store import Store
+
+    council = _store(tmp_path)
+    ids = {d["title"]: d["id"] for d in council.decisions_needing_impact()}
+    council.save_impact(ids["Haushaltssatzung 2026"], 95, "")
+    ratslotse = Store(tmp_path / "ratslotse.sqlite")
+    owner = ratslotse.create_web_user(email="a@example.org", password_hash="x", role="user",
+                                      status="active", display_name="Tim")
+    mod = _match_modul()
+    assert mod._notify_new_matches(
+        ratslotse, council, owner_id=owner,
+        themen=[("Finanzen", [ids["Haushaltssatzung 2026"]]),
+                ("Personal", [ids["Berufung Mitglied"], ids["Haushaltssatzung 2026"]])],
+        as_of_date="2026-01-01") == 1
+    offen = ratslotse.due_notifications(owner, "2999-01-01")
+    assert len(offen) == 1
+    m = offen[0]
+    assert m["title"] == "Neu zu „Finanzen“, „Personal“ — 2 Beschlüsse"
+    assert m["url"] == "/topics"
+    body = m["body_html"]
+    assert body.index("Dein Thema · Finanzen") < body.index("Dein Thema · Personal")
+    assert body.count("Haushaltssatzung 2026") == 1                # nicht doppelt
+    assert m["push_text"] == "Finanzen: angenommen · Personal: angenommen"
     ratslotse.close()
     council.close()
