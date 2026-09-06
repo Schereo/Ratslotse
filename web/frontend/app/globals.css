@@ -1359,6 +1359,7 @@ lotti-figur {
 .viertel-pin > span { border-width: 2px; background: color-mix(in srgb, var(--point-color) 70%, transparent); box-shadow: 0 0 0 2px hsl(var(--card)); }
 .viertel-pin.ist-aktiv > span { box-shadow: 0 0 0 2px hsl(var(--card)), 0 0 0 5px color-mix(in srgb, var(--point-color) 45%, transparent); }
 .viertel-pin.ist-blass > span { opacity: 0.25; }
+.viertel-pin.ist-grenze > span { background: hsl(var(--card)); border-style: dashed; }
 .viertel-popup-huelle .leaflet-popup-content-wrapper { border-radius: 12px; background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.35); }
 .viertel-popup-huelle .leaflet-popup-tip { background: hsl(var(--card)); }
 .viertel-popup-huelle .leaflet-popup-content { margin: 10px 12px; font-family: inherit; }

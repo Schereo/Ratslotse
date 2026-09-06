@@ -320,3 +320,23 @@ def test_geduld_versucht_es_wieder(monkeypatch):
     assert len(versuche) == 3
     with pytest.raises(RuntimeError):
         viertel._mit_geduld(lambda: (_ for _ in ()).throw(RuntimeError("immer")), was="Probe")
+
+
+def test_abschnittsgrenzen_sind_kein_gegenstand():
+    """„Tweelbäker Tredde (Am Schmeel bis Brahmweg)" baut die Tredde aus — die
+    beiden Grenzen bleiben, wie sie sind (Tims Befund 06.09.2026)."""
+    from council.store_viertel import ortsrollen
+    rollen = ortsrollen(["Tweelbäker Tredde", "Am Schmeel", "Brahmweg", "Dießelweg"], [
+        "Tweelbäker Tredde (Am Schmeel bis Brahmweg) – Straßenausbau",
+        "Der erste Bauabschnitt umfasst den Bereich zwischen Dießelweg und Am Schmeel.",
+    ])
+    assert rollen == {"Tweelbäker Tredde": "subject", "Am Schmeel": "boundary",
+                      "Brahmweg": "boundary", "Dießelweg": "boundary"}
+    # Eine Kreuzung ist Gegenstand, beide Straßen sind betroffen.
+    assert ortsrollen(["Schützenhofstraße", "Bremer Straße"],
+                      ["Straßenbaumaßnahme Kreuzung Schützenhofstraße/Bremer Straße"]) == {
+        "Schützenhofstraße": "subject", "Bremer Straße": "subject"}
+    # Nur Grenzen: die Fläche dazwischen ist das Vorhaben — Rolle bleibt Grenze.
+    assert ortsrollen(["Rüschenweg"], ["Flächen zwischen der A 29 und dem Rüschenweg"]) == {"Rüschenweg": "boundary"}
+    # Nicht im Text (Katalog-Variante) → Gegenstand, nie still weg.
+    assert ortsrollen(["Huntemannstr"], ["Kita an der Huntemannstraße"]) == {"Huntemannstr": "subject"}

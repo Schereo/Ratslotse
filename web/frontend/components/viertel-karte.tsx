@@ -25,7 +25,7 @@ export type KartenVorhaben = {
   name: string;
   stage: string;
   when: string | null;
-  locations: { slug: string; name: string; kind: string; lat: number; lon: number; geometry: unknown }[];
+  locations: { slug: string; name: string; kind: string; lat: number; lon: number; geometry: unknown; role: string }[];
 };
 
 /** Stand → Farbe. Dieselben Töne wie die Badges der Liste, damit Pin und
@@ -113,8 +113,15 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
           el?.querySelector("button")?.addEventListener("click", () => { map.closePopup(); onSelectRef.current(v.id); });
         });
       };
+      // Abschnittsgrenzen („Am Schmeel bis Brahmweg") sind nicht betroffen:
+      // Sie bekommen keine Linie und keinen Pin, solange das Vorhaben einen
+      // Gegenstand hat. Nur ohne (ein Bebauungsplan „zwischen A und B") stehen
+      // sie als hohle Punkte, damit das Vorhaben überhaupt eine Stelle hat.
+      const hatGegenstand = v.locations.some((l) => l.role !== "boundary");
       for (const loc of v.locations) {
-        const linie = loc.geometry as { type?: string } | null;
+        const grenze = loc.role === "boundary";
+        if (grenze && hatGegenstand) continue;
+        const linie = grenze ? null : (loc.geometry as { type?: string } | null);
         if (linie && (linie.type === "LineString" || linie.type === "MultiLineString")) {
           const layer = L.geoJSON(linie as never, {
             style: { color: farbe, weight: istAktiv ? 7 : 5, opacity: blass ? 0.18 : 0.75, lineCap: "round" },
@@ -123,11 +130,11 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
           gruppe.addLayer(layer);
           if (istAktiv) aktivBounds = aktivBounds ? aktivBounds.extend(layer.getBounds()) : layer.getBounds();
         }
-        const radius = istAktiv ? 11 : 8;
+        const radius = grenze ? 6 : istAktiv ? 11 : 8;
         const marker = L.marker([loc.lat, loc.lon], {
-          title: v.name, alt: v.name,
+          title: grenze ? `${v.name} — Grenze: ${loc.name}` : v.name, alt: v.name,
           icon: L.divIcon({
-            className: cn("ratslotse-map-point viertel-pin", istAktiv && "ist-aktiv", blass && "ist-blass"),
+            className: cn("ratslotse-map-point viertel-pin", istAktiv && "ist-aktiv", blass && "ist-blass", grenze && "ist-grenze"),
             html: `<span style="--point-color:${farbe};--point-size:${radius * 2}px"></span>`,
             iconSize: [radius * 2, radius * 2], iconAnchor: [radius, radius],
           }),

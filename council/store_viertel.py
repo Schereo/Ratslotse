@@ -299,6 +299,15 @@ class ViertelMixin(StoreBasis):
             (*decision_ids, place_id, self._place_name(place_id), CANDIDATE_MIN_SHARE)).fetchall()
         from council import geo
         place_name = self._place_name(place_id)
+        # Die Texte des Vorhabens entscheiden, welcher Ort Gegenstand ist und
+        # welcher nur eine Abschnittsgrenze („Am Schmeel bis Brahmweg").
+        texte: list[str] = []
+        for d in self._conn.execute(
+                f"SELECT d.title, d.summary, d.official_text, t.raw_text FROM council_decisions d "
+                f"LEFT JOIN council_templates t ON t.kvonr = d.kvonr WHERE d.id IN ({ph})",
+                decision_ids).fetchall():
+            texte += [d["title"] or "", d["summary"] or "", d["official_text"] or "", (d["raw_text"] or "")[:20000]]
+        rollen = ortsrollen([r["name"] for r in rows], texte)
         out = []
         for r in rows:
             geometry = None
@@ -319,7 +328,8 @@ class ViertelMixin(StoreBasis):
                 elif isinstance(g, dict) and g.get("type") in ("Polygon", "MultiPolygon"):
                     geometry = g
             out.append({"slug": r["slug"], "name": r["name"], "kind": r["kind"],
-                        "lat": lat, "lon": lon, "geometry": geometry})
+                        "lat": lat, "lon": lon, "geometry": geometry,
+                        "role": rollen.get(r["name"], "subject")})
         return out
 
     def _place_name(self, place_id: str) -> str:
@@ -473,6 +483,52 @@ class ViertelMixin(StoreBasis):
         return out
 
 
+#: Wörter, die vor einem Ortsnamen sagen: Das ist eine GRENZE des Abschnitts,
+#: nicht der Ort, an dem sich etwas ändert. „Tweelbäker Tredde (Am Schmeel bis
+#: Brahmweg)" baut die Tredde aus — Am Schmeel und Brahmweg bleiben, wie sie
+#: sind (Tims Befund 06.09.2026: als Linie markiert sahen sie betroffen aus).
+_GRENZWORT = r"(?:zwischen|von|vom|ab|bis|bis\s+zur|bis\s+zum|bis\s+an|in\s+höhe|höhe|und)"
+_GRENZ_VOR_RE = re.compile(_GRENZWORT + r"\s+(?:der|dem|des|die|das)?\s*$", re.IGNORECASE)
+
+
+def ortsrollen(names: list[str], texts: list[str]) -> dict[str, str]:
+    """Je Ortsname ``subject`` (dort ändert sich etwas) oder ``boundary``
+    (nur Abschnittsgrenze oder Bezugspunkt).
+
+    Ein Name ist Grenze, wenn JEDE seiner Fundstellen in den Texten hinter
+    einem Grenzwort steht („zwischen X und Y", „von X bis Y", „(X bis Y)",
+    „ab X", „in Höhe X") oder von „bis" gefolgt wird — und mindestens ein
+    anderer Ort des Vorhabens frei steht. Kommt ein Name in den Texten gar
+    nicht vor (Katalog-Variante, Vorlage fehlt), bleibt er Gegenstand: Lieber
+    einmal zu viel markiert als still verschwunden.
+    """
+    blob = "\n".join(t for t in texts if t)
+    rollen: dict[str, str] = {}
+    for name in names:
+        treffer = list(re.finditer(re.escape(name) + r"(?![a-zäöüß])", blob, re.IGNORECASE))
+        if not treffer:
+            rollen[name] = "subject"
+            continue
+        grenze = True
+        for m in treffer:
+            davor = blob[max(0, m.start() - 40):m.start()]
+            danach = blob[m.end():m.end() + 12]
+            steht_hinter_grenzwort = bool(_GRENZ_VOR_RE.search(davor))
+            gefolgt_von_bis = bool(re.match(r"\s*(?:bis|und)\s", danach, re.IGNORECASE)) and (
+                "zwischen" in davor.lower() or "(" in davor[-3:] or bool(re.search(r"\bvon\b", davor, re.IGNORECASE))
+                or re.match(r"\s*bis\s", danach, re.IGNORECASE) is not None)
+            if not (steht_hinter_grenzwort or gefolgt_von_bis):
+                grenze = False
+                break
+        rollen[name] = "boundary" if grenze else "subject"
+    if rollen and all(r == "boundary" for r in rollen.values()):
+        # Nur Grenzen — dann ist das Vorhaben die Fläche dazwischen (ein
+        # Bebauungsplan „zwischen A und B"); die Rolle bleibt, die Karte
+        # zeigt sie als hohle Punkte statt als Linien.
+        pass
+    return rollen
+
+
 def _months_ago(months: int) -> str:
     heute = date.today()
     monat = heute.month - months
@@ -489,4 +545,4 @@ def project_key_ids(project: dict) -> list[int]:
 
 
 __all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "PROJECT_HIDE_REPORTS", "CANDIDATE_MONTHS",
-           "CANDIDATE_MIN_SHARE", "project_key_ids", "json"]
+           "CANDIDATE_MIN_SHARE", "project_key_ids", "ortsrollen", "json"]

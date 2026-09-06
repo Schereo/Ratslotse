@@ -2065,6 +2065,9 @@ class DistrictProjectLocation(TypedDict):
     lat: float
     lon: float
     geometry: Any
+    #: ``subject`` — dort ändert sich etwas; ``boundary`` — nur Abschnittsgrenze
+    #: oder Bezugspunkt („Am Schmeel bis Brahmweg"), auf der Karte keine Linie.
+    role: str
 
 
 class DistrictProject(TypedDict):

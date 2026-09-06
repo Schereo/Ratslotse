@@ -304,8 +304,13 @@ struct DistrictBoardView: View {
                 let stage = stageOf(project)
                 let dimmed = self.stage != nil && self.stage != stage
                 let active = selected?.id == project.id
-                ForEach(project.locations) { location in
-                    ForEach(Array(lineStrings(location.geometry).enumerated()), id: \.offset) { _, line in
+                // Abschnittsgrenzen („Am Schmeel bis Brahmweg") sind nicht
+                // betroffen: keine Linie, kein Pin, solange das Vorhaben einen
+                // Gegenstand hat; sonst als hohle Punkte.
+                let hasSubject = project.locations.contains { $0.role != "boundary" }
+                ForEach(project.locations.filter { $0.role != "boundary" || !hasSubject }) { location in
+                    let boundary = location.role == "boundary"
+                    ForEach(Array((boundary ? [] : lineStrings(location.geometry)).enumerated()), id: \.offset) { _, line in
                         MapPolyline(coordinates: line)
                             .stroke(stage.color.opacity(dimmed ? 0.18 : 0.75),
                                     style: StrokeStyle(lineWidth: active ? 7 : 5, lineCap: .round, lineJoin: .round))
@@ -316,7 +321,7 @@ struct DistrictBoardView: View {
                         Button {
                             selected = project
                         } label: {
-                            DistrictPin(color: stage.color, active: active, dimmed: dimmed)
+                            DistrictPin(color: stage.color, active: active, dimmed: dimmed, hollow: boundary)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(project.name), \(stage.label)")
@@ -523,6 +528,7 @@ private struct DistrictPin: View {
     let color: Color
     let active: Bool
     let dimmed: Bool
+    var hollow = false
 
     var body: some View {
         ZStack {
@@ -530,9 +536,9 @@ private struct DistrictPin: View {
                 Circle().stroke(color.opacity(0.45), lineWidth: 5).frame(width: 30, height: 30)
             }
             Circle()
-                .fill(color)
-                .frame(width: active ? 20 : 15, height: active ? 20 : 15)
-                .overlay(Circle().stroke(RatsColor.card, lineWidth: 2))
+                .fill(hollow ? RatsColor.card : color)
+                .frame(width: hollow ? 12 : active ? 20 : 15, height: hollow ? 12 : active ? 20 : 15)
+                .overlay(Circle().stroke(hollow ? color : RatsColor.card, style: StrokeStyle(lineWidth: 2, dash: hollow ? [2, 2] : [])))
                 .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
         }
         .opacity(dimmed ? 0.3 : 1)
@@ -581,9 +587,15 @@ private struct DistrictProjectSheet: View {
                 if stage != .rejected { stagePath(stage) }
 
                 if !project.locations.isEmpty {
-                    RatsLabel(project.locations.map(\.name).joined(separator: " · "), .mapPin)
-                        .font(RatsFont.body(12))
-                        .foregroundStyle(RatsColor.secondary)
+                    let subjects = project.locations.filter { $0.role != "boundary" }.map(\.name)
+                    let boundaries = project.locations.filter { $0.role == "boundary" }.map(\.name)
+                    RatsLabel(
+                        (subjects.isEmpty ? "Fläche" : subjects.joined(separator: " · "))
+                        + (boundaries.isEmpty ? "" : " · \(subjects.isEmpty ? "zwischen" : "Abschnitt"): \(boundaries.joined(separator: ", "))"),
+                        .mapPin
+                    )
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 0) {
