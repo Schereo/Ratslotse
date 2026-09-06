@@ -257,6 +257,73 @@ def auf_stadtgebiet_beschneiden(geometrie: dict | str | None) -> dict | None:
     return geometrie
 
 
+def auf_ortsbereich_beschneiden(geometrie: dict | str | None, name: str) -> dict | None:
+    """Nur die Stücke einer Linie behalten, die im Ortsbereich ``name`` liegen.
+
+    **Warum.** Auf der Tafel „Mein Viertel" bekommt eine Straße ihre Linie.
+    Die Cloppenburger Straße läuft aber vom Stadtrand bis zur Innenstadt —
+    als Linie in Kreyenbrück ragte sie über die halbe Karte (Tims Befund
+    06.09.2026), und der Pin am Mittelpunkt lag außerhalb des Viertels.
+
+    Die Linie wird an ihren Stützpunkten geschnitten: Zusammenhängende Läufe
+    von Punkten innerhalb des Polygons bleiben, alles andere fällt weg. Der
+    Schnitt sitzt damit am letzten inneren Stützpunkt statt exakt an der
+    Grenze — bei Straßen mit Stützpunkten alle paar Meter ist das nicht
+    sichtbar, und es braucht keine Geometrie-Bibliothek. ``None``, wenn kein
+    Stück im Ortsbereich liegt; Flächen und Punkte bleiben unangetastet.
+    """
+    if isinstance(geometrie, str):
+        import json
+        try:
+            geometrie = json.loads(geometrie)
+        except (ValueError, TypeError):
+            return None
+    if not isinstance(geometrie, dict):
+        return None
+    art = geometrie.get("type")
+    koord = geometrie.get("coordinates") or []
+    if art not in ("LineString", "MultiLineString"):
+        return geometrie
+
+    def laeufe(linie) -> list[list]:
+        out: list[list] = []
+        lauf: list = []
+        for p in linie:
+            if len(p) >= 2 and ortsbereich_for(p[1], p[0]) == name:
+                lauf.append(p)
+            else:
+                if len(lauf) > 1:
+                    out.append(lauf)
+                lauf = []
+        if len(lauf) > 1:
+            out.append(lauf)
+        return out
+
+    linien = [koord] if art == "LineString" else list(koord)
+    behalten = [lauf for linie in linien for lauf in laeufe(linie)]
+    if not behalten:
+        return None
+    if len(behalten) == 1:
+        return {"type": "LineString", "coordinates": behalten[0]}
+    return {"type": "MultiLineString", "coordinates": behalten}
+
+
+def linien_mittelpunkt(geometrie: dict | None) -> tuple[float, float] | None:
+    """(lat, lon) des mittleren Stützpunkts der längsten Linie — ein Punkt,
+    der AUF der Straße liegt, anders als der Bounding-Box-Mittelpunkt."""
+    if not isinstance(geometrie, dict):
+        return None
+    art = geometrie.get("type")
+    koord = geometrie.get("coordinates") or []
+    linien = [koord] if art == "LineString" else list(koord) if art == "MultiLineString" else []
+    linien = [l for l in linien if len(l) > 1]
+    if not linien:
+        return None
+    laengste = max(linien, key=len)
+    p = laengste[len(laengste) // 2]
+    return (p[1], p[0])
+
+
 def ortsbereich_der_geometrie(geometrie: dict | str | None) -> str | None:
     """Der Ortsbereich, in dem eine Geometrie überwiegend liegt — oder None.
 

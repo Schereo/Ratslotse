@@ -247,3 +247,28 @@ def test_endpunkte_oeffentlich_und_melden():
     assert r.json()["hidden"] is True and r.json()["report_count"] == PROJECT_HIDE_REPORTS
     assert client.get("/api/districts/kreyenbrueck/projects").json()["projects"] == []
     assert client.post("/api/districts/projects/424242/report", json={}, headers=kopf).status_code == 404
+
+
+def test_linie_wird_auf_den_ortsbereich_beschnitten():
+    """Die Cloppenburger Straße läuft vom Stadtrand bis zur Innenstadt; auf der
+    Tafel von Kreyenbrück bleibt nur ihr Stück im Viertel, und der Pin sitzt
+    darauf statt auf der Mitte der ganzen Straße."""
+    from council import geo
+    kreyenbrueck = geo.ortsbereich_center("Kreyenbrück")
+    innenstadt = geo.ortsbereich_center("Innenstadt")
+    assert kreyenbrueck and innenstadt
+    # Eine Linie von der Kreyenbrücker Mitte in die Innenstadt, mit Zwischenpunkten.
+    n = 40
+    punkte = [[kreyenbrueck[1] + (innenstadt[1] - kreyenbrueck[1]) * i / n,
+               kreyenbrueck[0] + (innenstadt[0] - kreyenbrueck[0]) * i / n] for i in range(n + 1)]
+    linie = {"type": "LineString", "coordinates": punkte}
+    stueck = geo.auf_ortsbereich_beschneiden(linie, "Kreyenbrück")
+    assert stueck and stueck["type"] == "LineString"
+    assert 1 < len(stueck["coordinates"]) < len(punkte)
+    assert all(geo.ortsbereich_for(p[1], p[0]) == "Kreyenbrück" for p in stueck["coordinates"])
+    mitte = geo.linien_mittelpunkt(stueck)
+    assert mitte and geo.ortsbereich_for(*mitte) == "Kreyenbrück"
+    # Nichts im Viertel → None; Flächen bleiben unangetastet.
+    assert geo.auf_ortsbereich_beschneiden(linie, "Nordmoslesfehn") is None
+    flaeche = {"type": "Polygon", "coordinates": [punkte[:3] + [punkte[0]]]}
+    assert geo.auf_ortsbereich_beschneiden(flaeche, "Kreyenbrück") == flaeche

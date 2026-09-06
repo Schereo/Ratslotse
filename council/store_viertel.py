@@ -283,18 +283,29 @@ class ViertelMixin(StoreBasis):
             f"SELECT ? AS name))) AND ld.share >= ? AND l.lat IS NOT NULL AND l.lon IS NOT NULL "
             f"AND l.kind != 'district' ORDER BY l.kind, l.name",
             (*decision_ids, place_id, self._place_name(place_id), CANDIDATE_MIN_SHARE)).fetchall()
+        from council import geo
+        place_name = self._place_name(place_id)
         out = []
         for r in rows:
             geometry = None
+            lat, lon = r["lat"], r["lon"]
             if r["geojson"]:
                 try:
                     g = json.loads(r["geojson"])
-                    if isinstance(g, dict) and g.get("type") in ("LineString", "MultiLineString", "Polygon", "MultiPolygon"):
-                        geometry = g
                 except ValueError:
-                    geometry = None
+                    g = None
+                if isinstance(g, dict) and g.get("type") in ("LineString", "MultiLineString"):
+                    # Eine lange Straße bekommt nur ihr Stück im Viertel — und
+                    # ihren Pin auf dieses Stück, nicht auf die Mitte der ganzen
+                    # Straße, die außerhalb liegen kann.
+                    geometry = geo.auf_ortsbereich_beschneiden(g, place_name)
+                    mitte = geo.linien_mittelpunkt(geometry)
+                    if mitte:
+                        lat, lon = mitte
+                elif isinstance(g, dict) and g.get("type") in ("Polygon", "MultiPolygon"):
+                    geometry = g
             out.append({"slug": r["slug"], "name": r["name"], "kind": r["kind"],
-                        "lat": r["lat"], "lon": r["lon"], "geometry": geometry})
+                        "lat": lat, "lon": lon, "geometry": geometry})
         return out
 
     def _place_name(self, place_id: str) -> str:
