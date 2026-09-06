@@ -238,6 +238,81 @@ def text_fuer(punkt: dict, anlagen: list[dict]) -> tuple[str, str, str | None] |
     return None
 
 
+def gruppentext_fuer(kopf: dict, mitglieder: list[tuple[dict, list[dict]]]) -> str | None:
+    """Der gemeinsame Kartentext einer Gruppe — oder None.
+
+    Eine Gruppe ist ein Thema mit mehreren Anträgen. Der Text eines
+    Mitglieds nennt nur dessen Antrag; auf der Karte stand so unter
+    „Änderungen der Baumschutzsatzung" allein, was die CDU will (Tims
+    Befund 06.09.26). Dieser Text sieht das Material ALLER Mitglieder und
+    muss jeden Antrag nennen. Dieselben Netze wie beim Einzeltext.
+    """
+    teile = [f"Thema: {kopf.get('gruppe_titel') or kopf.get('title')}",
+             f"Gremium: {kopf['committee']} am {kopf['session_date']}",
+             f"Zu diesem Thema liegen {len(mitglieder)} Tagesordnungspunkte vor."]
+    quellen = []
+    # Jedes Mitglied bekommt einen gleichen Anteil des Kontexts — sonst
+    # verdrängt die Vorlage des ersten die Anträge der anderen.
+    anteil = max((VORLAGE_ZEICHEN + ANLAGEN_ZEICHEN) // max(len(mitglieder), 1), 8_000)
+    for i, (punkt, anlagen) in enumerate(mitglieder, start=1):
+        ktx, _ = kontext(punkt, anlagen)
+        quellen.append(ktx)
+        teile.append(f"=== Punkt {i} ({punkt['item_number']}) ===\n{ktx[:anteil]}")
+    ktx_gesamt = "\n\n".join(teile)
+
+    system = prompts.get("social_group_text_system")
+    user = prompts.render("social_group_text_user", kontext=ktx_gesamt)
+    for _versuch in range(2):
+        resp = llm.chat_complete(
+            model=MODEL, response_format={"type": "json_object"},
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user}],
+            max_tokens=400, _feature="social_card_text")
+        roh = (resp.choices[0].message.content or "").strip()
+        if roh.startswith("```"):
+            roh = roh.strip("`")
+            roh = roh[roh.find("{"):]
+        try:
+            text = _eine_zeile(json.loads(roh).get("text"))
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if not text:
+            continue
+        text = kuerzen(text)
+        maengel = kritiker.pruefe(text, ktx_gesamt)
+        if maengel:
+            print(f"  Gruppentext verworfen ({kopf.get('item_number')}): {'; '.join(maengel)}")
+            continue
+        gedeckt, reason = kritiker.pruefe_llm(text, ktx_gesamt)
+        if not gedeckt:
+            print(f"  Gruppentext verworfen ({kopf.get('item_number')}): nicht gedeckt — {reason}")
+            continue
+        return text
+    return None
+
+
+def schreibe_gruppentexte(store, *, tage_voraus: int = 21) -> tuple[int, int]:
+    """Gruppentexte für reife Gruppen schreiben. Rückgabe: (gesucht, geschrieben).
+
+    Läuft HINTER ``schreibe_fehlende``: Eine Gruppe ist reif, sobald
+    mindestens zwei Mitglieder ihren Text haben (``gruppen_ohne_text``).
+    Der Text hängt an der Überschriften-Zeile, ohne eigene Überschrift —
+    auf der Karte steht der Gruppentitel.
+    """
+    gruppen = store.gruppen_ohne_text(tage_voraus=tage_voraus)
+    geschrieben = 0
+    for kopf in gruppen:
+        material = _mit_anlagen(store, store.agenda_item_material(kopf["ksinr"], kopf["mitglieder"]))
+        for punkt, _ in material:
+            _dringlichkeit_nachladen(punkt)
+        text = gruppentext_fuer(kopf, material)
+        if not text:
+            continue
+        store.save_social_text(kopf["ksinr"], kopf["item_number"], text, "group")
+        geschrieben += 1
+    return len(gruppen), geschrieben
+
+
 #: Wie viele Punkte einer Sitzung höchstens auf einen Rutsch geschrieben
 #: werden, wenn die Tagesordnungs-Mail sie anfordert. Der Rest kommt im
 #: nächsten Nachtlauf und steht in der Mail so lange mit der Kurzfassung da.

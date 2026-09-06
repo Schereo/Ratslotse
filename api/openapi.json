@@ -12635,6 +12635,13 @@
             "title": "Gruppe Stationen",
             "type": "integer"
           },
+          "gruppe_text": {
+            "title": "Gruppe Text",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "gruppe_titel": {
             "title": "Gruppe Titel",
             "type": [
@@ -12755,6 +12762,7 @@
           "gruppe_nr",
           "gruppe_titel",
           "gruppe_stationen",
+          "gruppe_text",
           "group_applicants"
         ],
         "title": "WeekPreviewItem",

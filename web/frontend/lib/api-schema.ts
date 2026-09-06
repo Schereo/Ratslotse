@@ -9057,6 +9057,8 @@ export interface components {
             gruppe_nr: string;
             /** Gruppe Stationen */
             gruppe_stationen: number;
+            /** Gruppe Text */
+            gruppe_text: string | null;
             /** Gruppe Titel */
             gruppe_titel: string | null;
             /** Item Number */
@@ -13795,4 +13797,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 30cbcb4e070d444a86863d66c0cba0734b0cd78b4b5e8248b0b7a9e060ed64db
+// vertrag-sha256: 3e952e4bd2226a3e014e1bef8421b3fe182675a3ac815ee5b86225d9c6db7396

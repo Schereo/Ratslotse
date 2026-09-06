@@ -220,6 +220,12 @@ DEFAULTS: dict[str, dict[str, str]] = {
             an der Hermann-Ehlers-Schule" — konkret, kurz, versteht jeder. Nenn den
             Ort oder die Sache, nicht die Vorlage. Ist der amtliche Titel schon so
             (kurz, konkret, verständlich), übernimm ihn.
+            Kürze nie das weg, was den Gegenstand eingrenzt — Betroffene, Ort,
+            Bereich: „Aktionsplan gegen Gewalt an Frauen" darf nicht zu
+            „Aktionsplan gegen Gewalt" werden. Und sag, was ANSTEHT, nicht was
+            herauskommt: „Aktionsplan gegen Gewalt an Frauen fortschreiben" oder
+            „Fortschreibung des Aktionsplans …", nicht „… wird fortgeschrieben" —
+            das klingt nach einem Beschluss, den es noch nicht gibt.
 
             DIE ERKLÄRZEILE (text): HÖCHSTENS 200 Zeichen, ein bis zwei Sätze.
 
@@ -261,6 +267,47 @@ DEFAULTS: dict[str, dict[str, str]] = {
             {kontext}
 
             Schreibe Überschrift und Erklärzeile zu diesem Tagesordnungspunkt.
+        """),
+    },
+    "social_group_text_system": {
+        "title": "Social-Gruppentext – System",
+        "description": ("Ein bis zwei neutrale Sätze für ein Thema mit MEHREREN Anträgen. "
+                        "Sieht das Material aller Mitglieder, muss jeden Antrag nennen."),
+        "template": textwrap.dedent("""\
+            Du schreibst die Erklärzeile für eine Instagram-Karte zu einem Thema des
+            Oldenburger Stadtrats, zu dem MEHRERE Tagesordnungspunkte vorliegen — meist
+            ein Antrag und ein Änderungsantrag dazu von einer anderen Fraktion.
+            HÖCHSTENS 220 Zeichen, ein bis zwei Sätze.
+
+            PFLICHT: Nenne JEDEN der Punkte — wer was will, in der Reihenfolge der
+            Tagesordnung, so knapp wie möglich: „SPD und BSW wollen kleinere
+            Ersatzbäume und 400 Euro Ausgleich je Baum; die CDU will die Satzung bis
+            Jahresende aussetzen." Ein Text, der nur einen der Anträge nennt, ist
+            falsch, auch wenn er stimmt.
+
+            Sprich, wie man mit einem Nachbarn spricht. Löse Behördendeutsch auf. Was
+            du nicht in Alltagssprache sagen kannst, lässt du weg.
+
+            WAS DU NICHT SCHREIBST — die härtesten Regeln:
+            - KEINE Bewertung, wie wichtig, gut, schlecht, riskant oder chancenreich
+              etwas ist. Verboten: „wichtig", „bedeutend", „Risiko", „Chance",
+              „umstritten", „ehrgeizig", „dringend", „erheblich", „wegweisend",
+              „zukunftsweisend". Kein Urteil über Beteiligte oder deren Absichten.
+            - KEIN Ergebnis vorwegnehmen. Die Sitzung findet erst statt: „beantragt",
+              „will", „schlägt vor" — nicht „beschließt", „wird eingeführt".
+            - Keine Aktenzeichen, keine Paragrafen ohne Erklärung, keine unerklärte
+              Abkürzung. Nichts, was nicht in den Unterlagen steht.
+
+            Antworte ausschließlich als JSON: {"text": "…"}
+        """),
+    },
+    "social_group_text_user": {
+        "title": "Social-Gruppentext – Aufgabe",
+        "description": "Das Thema samt Material aller Punkte. Platzhalter: {kontext}.",
+        "template": textwrap.dedent("""\
+            {kontext}
+
+            Schreibe die Erklärzeile zu diesem Thema — mit JEDEM der Punkte.
         """),
     },
     "social_critic_system": {

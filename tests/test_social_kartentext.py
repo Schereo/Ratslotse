@@ -264,6 +264,45 @@ def test_ueberschrift_haelt_dieselben_regeln_wie_der_text():
     assert social_text.ueberschrift_pruefen(None, quelle) == (None, "leer")
 
 
+def test_gruppentext_sieht_alle_mitglieder(monkeypatch):
+    """Der Gruppentext bekommt das Material JEDES Mitglieds — sonst könnte
+    er nur nennen, was eines will."""
+    class _Antwort:
+        def __init__(self, inhalt):
+            self.choices = [type("C", (), {"message": type("M", (), {"content": inhalt})()})()]
+
+    gesehen = {}
+
+    def _chat(**kw):
+        gesehen["user"] = kw["messages"][1]["content"]
+        return _Antwort('{"text": "SPD und BSW beantragen 400 Euro Ausgleich je Baum; '
+                        'die CDU will die Satzung bis 31. Dezember 2026 aussetzen."}')
+
+    monkeypatch.setattr(social_text.llm, "chat_complete", _chat)
+    monkeypatch.setattr(social_text.prompts, "get", lambda *a, **k: "system")
+    monkeypatch.setattr(social_text.prompts, "render", lambda key, **k: k["kontext"])
+    monkeypatch.setattr(social_text.kritiker, "pruefe_llm", lambda text, source: (True, ""))
+
+    kopf = {"item_number": "Ö 8.1", "gruppe_titel": "Änderungen der Baumschutzsatzung",
+            "committee": "Ausschuss für Stadtgrün, Umwelt und Klima", "session_date": "2026-09-10"}
+    mitglieder = [
+        ({"committee": kopf["committee"], "session_date": kopf["session_date"], "item_number": "Ö 8.1.1",
+          "title": "Änderungen der Baumschutzsatzung (Fraktionen BSW und SPD vom 28.05.2026)",
+          "raw_text": "Sachverhalt: 400 Euro Ausgleich je Baum."}, []),
+        ({"committee": kopf["committee"], "session_date": kopf["session_date"], "item_number": "Ö 8.1.2",
+          "title": "Änderungsantrag der CDU-Fraktion vom 10.06.2026",
+          "raw_text": "Sachverhalt: Aussetzung bis 31. Dezember 2026."}, []),
+    ]
+    text = social_text.gruppentext_fuer(kopf, mitglieder)
+    assert text.startswith("SPD und BSW beantragen 400 Euro")
+    assert "400 Euro" in gesehen["user"] and "31. Dezember 2026" in gesehen["user"]
+    assert "2 Tagesordnungspunkte" in gesehen["user"]
+    # Eine erfundene Zahl fällt auch hier durch.
+    monkeypatch.setattr(social_text.llm, "chat_complete",
+                        lambda **kw: _Antwort('{"text": "Die CDU will 900 Euro je Baum."}'))
+    assert social_text.gruppentext_fuer(kopf, mitglieder) is None
+
+
 def test_offen_ist_auch_was_noch_keine_ueberschrift_hat(store):
     """Zeilen von vor 09/2026 haben einen Text, aber keine Überschrift. Der
     Nachtlauf holt sie nach — und schreibt dabei beides neu, weil beides in
