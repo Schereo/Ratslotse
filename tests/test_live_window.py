@@ -162,6 +162,29 @@ def test_sessions_endpunkt_liefert_live_until(store):
     assert fenster[("Schulausschuss", morgen)] is None
 
 
+def test_sessions_und_detail_tragen_den_live_stand(store):
+    """Der Stand aus der Übertragung hängt an der heutigen Ratssitzung — in
+    der Liste und im Detail; Sitzungen ohne Zeile bekommen das Feld nicht."""
+    store.save_live_state(2, {
+        "item_number": "2", "item_title": "Neubau der Kita Bloherfelde",
+        "phase": "aussprache", "speaker": "Susanne Drügemöller",
+        "party": "Bündnis 90/Die Grünen",
+        "since": "2026-09-05T18:12:00+02:00", "as_of": "2026-09-05T18:20:00+02:00",
+    }, "test-model")
+    client = TestClient(app)
+    rows = client.get("/api/council/sessions?scope=upcoming&limit=10").json()["sessions"]
+    by = {r["committee"]: r for r in rows}
+    rat = by["Rat"]["live_state"]
+    assert rat["item_number"] == "2"
+    assert rat["speaker"] == "Susanne Drügemöller"
+    assert rat["finished"] is False
+    assert rat["block_start"] is None
+    assert "live_state" not in by["Ausschuss für Allgemeine Angelegenheiten"]
+    detail = client.get("/api/council/session/2").json()
+    assert detail["live_state"]["item_title"] == "Neubau der Kita Bloherfelde"
+    assert "live_state" not in client.get("/api/council/session/1").json()
+
+
 def test_heute_briefing_kennt_den_ganzen_tag(store):
     """Die Landing-Leiste bekommt alle Sitzungen des Tages samt Fenster —
     sonst könnte sie um 18:30 nicht auf den Rat umschalten."""

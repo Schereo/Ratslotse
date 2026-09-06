@@ -228,6 +228,12 @@ def _stamp_live_windows(rows: list[dict], store: CouncilStore) -> list[dict]:
     for r in heutige:
         start = r.get("session_time") or ""
         r["live_until"] = live_mod.window_end(r.get("committee"), start, windows.get(start))
+    # Der Live-Stand aus der Übertragung (council/livetracker.py) — nur die
+    # Ratssitzung hat einen, und nur solange der Mitschnitt-Job ihn schreibt.
+    states = store.live_states([r["ksinr"] for r in heutige if r.get("ksinr")])
+    for r in heutige:
+        if r.get("ksinr") in states:
+            r["live_state"] = states[r["ksinr"]]
     return rows
 
 
@@ -1666,6 +1672,11 @@ def session_detail(
     # „Zuletzt geändert" (Tims Wunsch 18.08.): Die Push zur Änderungsmeldung
     # sagt nur noch den Satz — die Einzelheiten stehen hier, aus der Chronik.
     session["agenda_changes"] = _agenda_aenderungen(store, ksinr)
+    # Live-Stand aus der Übertragung — die Tagesordnung hebt damit den
+    # laufenden Punkt hervor (und sagt nach der Sitzung, dass sie vorbei ist).
+    live_state = store.get_live_state(ksinr)
+    if live_state:
+        session["live_state"] = live_state
     return session
 
 

@@ -8,5 +8,9 @@ pypdf>=4.0
 # ES256 signing (cryptography); FCM v1 uses a service account (google-auth).
 # All optional — nwz.push degrades to a no-op when unconfigured/uninstalled.
 httpx[http2]>=0.27
+# Streaming-Transkription des Livestreams (council/stream_stt.py): Websocket
+# zu Gladia. uvicorn[standard] bringt das Paket auch mit — hier steht es,
+# weil der Cron-Job es braucht, nicht der Webdienst.
+websockets>=13
 cryptography>=42.0
 google-auth>=2.29

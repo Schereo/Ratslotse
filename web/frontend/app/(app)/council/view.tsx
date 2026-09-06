@@ -24,7 +24,7 @@ import {
 import { OutcomeBadge, OutcomeDot, ImportanceBadge, OUTCOME_META, voteLabel, formatEuro, normalizeParty, PartyAttendanceBadge } from "@/components/decision-ui";
 import { CommitteeName } from "@/components/committee-name";
 import { shortCommittee, hasShortCommittee, committeeIcon } from "@/lib/committees";
-import { isLiveNow } from "@/lib/live";
+import { isLiveNow, liveItemKeys, liveStateFresh } from "@/lib/live";
 import { reportBadgeEvent } from "@/components/badges";
 import { ChipPopover, DateRangeChip } from "@/components/filter-chips";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
@@ -1234,6 +1234,13 @@ function SessionsTab({ committees }: { committees: string[] }) {
               const myByItem: Record<string, string> = {};
               for (const m of s.my_topic_items ?? []) myByItem[m.item_number] ??= m.topic_name;
               const myCount = Object.keys(myByItem).length;
+              // Der Live-Stand aus der Übertragung hängt an der Liste UND am
+              // Detail — das Detail ist jünger, wenn es nachgeladen wurde.
+              // Beendet oder 20 Minuten still: nichts mehr hervorheben.
+              const liveState = d?.live_state ?? s.live_state;
+              const liveKeys = liveState && liveStateFresh(liveState) && isLiveNow(s)
+                ? liveItemKeys(liveState, (d?.agenda_items ?? []).map((it) => videoKey(it.item_number)))
+                : new Set<string>();
               return (
                 <Fragment key={s.ksinr}>
                 {trenner}
@@ -1351,6 +1358,7 @@ function SessionsTab({ committees }: { committees: string[] }) {
                                   decisionId={it.is_public ? decisionByItem[topKey(it.item_number)] : undefined}
                                   videoResult={it.is_public ? videoByItem[videoKey(it.item_number)] : undefined}
                                   myTopic={myByItem[it.item_number]}
+                                  live={liveKeys.has(videoKey(it.item_number))}
                                   domId={s.ksinr != null ? topDomId(s.ksinr, it.item_number) : undefined}
                                   flash={s.ksinr != null && flashTop === topDomId(s.ksinr, it.item_number)} />
                               ))}

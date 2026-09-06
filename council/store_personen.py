@@ -95,6 +95,42 @@ class PersonenMixin(StoreBasis):
     #: zugeordnet.
     _ANREDEN_ANZEIGE = {"herr", "frau", "ratsherr", "ratsfrau"}
 
+    def council_roster_before(self, ksinr: int) -> list[dict]:
+        """Die Anwesenheitsliste der jüngsten Ratssitzung VOR dieser — das
+        Sprecher-Verzeichnis für die Live-Verfolgung (``council/livetracker``).
+
+        Das Protokoll der laufenden Sitzung gibt es live noch nicht; der Rat
+        ist aber derselbe wie beim letzten Mal. Zurück kommen Mitglieder,
+        Vorsitz und Verwaltung (Gäste und Protokollführung reden nicht zur
+        Sache) mit ``name``, ``party``, ``role``. Ohne Vorgängerin mit
+        Liste: leer — dann rät der Tracker die Fraktion nicht, er lässt sie
+        weg."""
+        from council import live as live_mod
+
+        datum = self._conn.execute(
+            "SELECT session_date FROM council_sessions WHERE ksinr = ?", (ksinr,)
+        ).fetchone()
+        if not datum:
+            return []
+        kandidaten = self._conn.execute(
+            """SELECT s.ksinr, s.committee FROM council_sessions s
+               WHERE s.session_date < ? AND s.ksinr <> ?
+                 AND EXISTS (SELECT 1 FROM council_attendance a WHERE a.ksinr = s.ksinr)
+               ORDER BY s.session_date DESC, s.ksinr DESC""",
+            (datum[0], ksinr),
+        ).fetchall()
+        quelle = next((r["ksinr"] for r in kandidaten if live_mod.is_council(r["committee"])), None)
+        if quelle is None:
+            return []
+        rows = self._conn.execute(
+            """SELECT name, COALESCE(party, '') AS party, COALESCE(role, '') AS role
+               FROM council_attendance
+               WHERE ksinr = ? AND role IN ('member', 'chair', 'administration')
+               ORDER BY party, name""",
+            (quelle,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def get_attendance(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(
             "SELECT name, party, role, note FROM council_attendance WHERE ksinr = ? ORDER BY id", (ksinr,)

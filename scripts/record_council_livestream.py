@@ -10,11 +10,24 @@ Sitzungsabend auf der Seite — als vorläufiger Stand ohne Video-Sprung-Links
 (``video_id=''``); die YouTube-Fassung reicht Links und exakte Timestamps
 nach, das Protokoll ersetzt später beides.
 
+Nebenher die **Live-Verfolgung** (``council/livetracker``): Welcher TOP läuft
+gerade, wer spricht — in ``council_live_state``, für die Live-Karte in Web
+und App. Sie ist Zugabe: Fällt sie aus, läuft der Mitschnitt weiter.
+
+Zwei Wege für die Transkription: Mit ``GLADIA_API_KEY`` läuft das Audio
+streamend (``council/stream_stt.py``, Verzug wenige Sekunden, Fenster von 15 s
+für die Verfolgung); ohne Schlüssel — oder wenn die Streaming-Sitzung nicht
+zustande kommt — in Audio-Stücken (``council/livestream.py``).
+
 An Tagen ohne Ratssitzung ist der Lauf ein billiger Leerlauf (Kennzahl
 ``sitzung_heute: 0``) — die Überfällig-Ampel braucht den täglichen Takt.
 
 Achtung Zeitzonen: ``session_time`` ist lokale Zeit (Europe/Berlin), der
 Server läuft auf UTC.
+
+Generalprobe vor einer Sitzung (auf dem Server)::
+
+    .venv/bin/python scripts/record_council_livestream.py --probe 60
 """
 from __future__ import annotations
 
@@ -32,7 +45,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
-from council import livestream, videos  # noqa: E402
+from council import livestream, livetracker, stream_stt, videos  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -51,13 +64,38 @@ MAX_WAIT_HOURS = 5
 RECORDING_ROOT = Path(tempfile.gettempdir()) / "council-livestream"
 
 
-def _record_fresh(ksinr: int) -> list[tuple[float, str]]:
+def _record_fresh(ksinr: int, on_chunk=None) -> list[tuple[float, str]]:
     """Eine Aufnahme in einem garantiert leeren, danach gelöschten Run-Pfad."""
     RECORDING_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=f"{ksinr}-", dir=RECORDING_ROOT
     ) as run_dir:
-        return livestream.record_and_transcribe(Path(run_dir))
+        return livestream.record_and_transcribe(Path(run_dir), on_chunk=on_chunk)
+
+
+def _tracker(store: CouncilStore, ksinr: int, window_seconds: int) -> livetracker.LiveTracker | None:
+    """Die Live-Verfolgung anwerfen — oder ohne sie aufnehmen, wenn sie
+    schon beim Aufbau scheitert (fehlende Tagesordnung, DB-Fehler)."""
+    try:
+        return livetracker.LiveTracker(store, ksinr, window_seconds)
+    except Exception:  # noqa: BLE001 — Zugabe, s. Modulkopf
+        log.exception("Live-Verfolgung für Sitzung %s nicht gestartet", ksinr)
+        return None
+
+
+def _record(ksinr: int, tracker: livetracker.LiveTracker | None) -> tuple[list[tuple[float, str]], str]:
+    """Streamend, wenn möglich; sonst (oder wenn die Streaming-Sitzung nicht
+    zustande kommt) in Stücken. Gibt die Segmente und den gegangenen Weg."""
+    if stream_stt.configured():
+        try:
+            return stream_stt.record_and_transcribe(
+                on_window=tracker.on_window if tracker else None,
+                people=tracker.people if tracker else None), "gladia"
+        except stream_stt.StreamUnavailable as exc:
+            log.warning("Streaming nicht möglich (%s) — Rückfall auf Stücke", exc)
+            if tracker:
+                tracker.chunk_seconds = livestream.CHUNK_SECONDS
+    return _record_fresh(ksinr, on_chunk=tracker.on_chunk if tracker else None), "chunks"
 
 
 def main() -> dict:
@@ -97,9 +135,21 @@ def main() -> dict:
         time.sleep(wait.total_seconds())
 
     t0 = time.monotonic()
-    segments = _record_fresh(s["ksinr"])
+    window = stream_stt.WINDOW_SECONDS if stream_stt.configured() else livestream.CHUNK_SECONDS
+    tracker = _tracker(store, s["ksinr"], window)
+    try:
+        segments, stats["stt"] = _record(s["ksinr"], tracker)
+    finally:
+        # Auch nach einem Abbruch darf die Karte nicht „gerade" sagen.
+        if tracker:
+            try:
+                tracker.finish()
+            except Exception:  # noqa: BLE001
+                log.exception("Live-Stand für Sitzung %s nicht abgeschlossen", s["ksinr"])
     stats["aufnahme_min"] = int((time.monotonic() - t0) / 60)
     stats["transkript_segmente"] = len(segments)
+    if tracker:
+        stats["live_staende"] = tracker.updates
     if not segments:
         return stats
 
@@ -107,16 +157,41 @@ def main() -> dict:
     results = videos.extract_results(segments, agenda)
     # video_id='': Ergebnis aus dem Livestream — Sprung-Links reicht die
     # YouTube-Fassung nach (deren Lauf ersetzt diese Zeilen komplett).
+    stt_label = "gladia/solaria-1" if stats["stt"] == "gladia" else livestream.STT_MODEL
     stats["ergebnisse"] = store.save_video_results(
-        s["ksinr"], "", livestream.STT_MODEL + "+" + videos.MODEL, results)
+        s["ksinr"], "", stt_label + "+" + videos.MODEL, results)
     log.info("Sitzung %s: %d vorläufige Ergebnisse aus dem Livestream",
              s["ksinr"], stats["ergebnisse"])
     return stats
 
 
+def probe(seconds: int) -> dict:
+    """Generalprobe ohne Sitzung: ``seconds`` lang den O1-Stream über den
+    Streaming-Weg transkribieren und die Fenster ausgeben — auf dem Server
+    vor einer Ratssitzung, damit Schlüssel, ffmpeg und Netz VOR dem Abend
+    geprüft sind (live lässt sich nichts mehr nachbessern)."""
+    t0 = time.monotonic()
+    fenster: list[str] = []
+
+    def zeigen(a: float, b: float, segs: list[tuple[float, str]], closing: bool) -> None:
+        text = " | ".join(t[:80] for _, t in segs)
+        fenster.append(text)
+        log.info("Fenster %5.1f–%5.1f s (nach %4.1f s): %s", a, b, time.monotonic() - t0, text)
+
+    if not stream_stt.configured():
+        log.error("GLADIA_API_KEY fehlt — es liefe der Stück-Weg")
+        return {"streaming": False}
+    segs = stream_stt.record_and_transcribe(on_window=zeigen, max_seconds=seconds, people=[])
+    return {"streaming": True, "sekunden": seconds, "segmente": len(segs),
+            "zeichen": sum(len(t) for _, t in segs), "fenster": len(fenster)}
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
+    if len(sys.argv) > 2 and sys.argv[1] == "--probe":
+        print(probe(int(sys.argv[2])))
+        sys.exit(0)
     from kern.alerts import run_guarded
 
     run_guarded("record_council_livestream", main)

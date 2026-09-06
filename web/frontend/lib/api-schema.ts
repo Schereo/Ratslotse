@@ -5154,6 +5154,7 @@ export interface components {
                 highlights?: components["schemas"]["WeekPreviewItem"][];
                 /** Ksinr */
                 ksinr: number | null;
+                live_state?: components["schemas"]["LiveState"];
                 /** Live Until */
                 live_until?: string | null;
                 /** Location */
@@ -7178,6 +7179,40 @@ export interface components {
             /** Months */
             months: number;
         };
+        /**
+         * LiveState
+         * @description Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript
+         *     des O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.
+         *
+         *     ``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);
+         *     der Client rechnet daraus „vor N Min." und sagt dazu, dass es aus der
+         *     Übertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist
+         *     gesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind
+         *     (Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8". Nach der
+         *     Schlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.
+         */
+        LiveState: {
+            /** As Of */
+            as_of: string;
+            /** Block Start */
+            block_start: string | null;
+            /** Finished */
+            finished: boolean;
+            /** Item Number */
+            item_number: string | null;
+            /** Item Title */
+            item_title: string | null;
+            /** Party */
+            party: string | null;
+            /** Phase */
+            phase: string;
+            /** Since */
+            since: string;
+            /** Speaker */
+            speaker: string | null;
+            /** Updated At */
+            updated_at: string;
+        };
         /** LoanCoverage */
         LoanCoverage: {
             /** From */
@@ -8653,6 +8688,7 @@ export interface components {
             highlights?: components["schemas"]["WeekPreviewItem"][];
             /** Ksinr */
             ksinr: number | null;
+            live_state?: components["schemas"]["LiveState"];
             /** Live Until */
             live_until?: string | null;
             /** Location */
@@ -8697,6 +8733,7 @@ export interface components {
             highlights?: components["schemas"]["WeekPreviewItem"][];
             /** Ksinr */
             ksinr: number | null;
+            live_state?: components["schemas"]["LiveState"];
             /** Live Until */
             live_until?: string | null;
             /** Location */
@@ -14602,4 +14639,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6df59df8a823cf6317a98e92c0010fabfe7d2dabb258aaba215cf2d2de001242
+// vertrag-sha256: 69fdbee1e88a231161e7b496a4fdcb9b8f1d014394a5e3b3f64fbdfa73cf95aa
