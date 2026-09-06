@@ -24,6 +24,10 @@ An Tagen ohne Ratssitzung ist der Lauf ein billiger Leerlauf (Kennzahl
 
 Achtung Zeitzonen: ``session_time`` ist lokale Zeit (Europe/Berlin), der
 Server läuft auf UTC.
+
+Generalprobe vor einer Sitzung (auf dem Server)::
+
+    .venv/bin/python scripts/record_council_livestream.py --probe 60
 """
 from __future__ import annotations
 
@@ -161,9 +165,33 @@ def main() -> dict:
     return stats
 
 
+def probe(seconds: int) -> dict:
+    """Generalprobe ohne Sitzung: ``seconds`` lang den O1-Stream über den
+    Streaming-Weg transkribieren und die Fenster ausgeben — auf dem Server
+    vor einer Ratssitzung, damit Schlüssel, ffmpeg und Netz VOR dem Abend
+    geprüft sind (live lässt sich nichts mehr nachbessern)."""
+    t0 = time.monotonic()
+    fenster: list[str] = []
+
+    def zeigen(a: float, b: float, segs: list[tuple[float, str]], closing: bool) -> None:
+        text = " | ".join(t[:80] for _, t in segs)
+        fenster.append(text)
+        log.info("Fenster %5.1f–%5.1f s (nach %4.1f s): %s", a, b, time.monotonic() - t0, text)
+
+    if not stream_stt.configured():
+        log.error("GLADIA_API_KEY fehlt — es liefe der Stück-Weg")
+        return {"streaming": False}
+    segs = stream_stt.record_and_transcribe(on_window=zeigen, max_seconds=seconds, people=[])
+    return {"streaming": True, "sekunden": seconds, "segmente": len(segs),
+            "zeichen": sum(len(t) for _, t in segs), "fenster": len(fenster)}
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
+    if len(sys.argv) > 2 and sys.argv[1] == "--probe":
+        print(probe(int(sys.argv[2])))
+        sys.exit(0)
     from kern.alerts import run_guarded
 
     run_guarded("record_council_livestream", main)

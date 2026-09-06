@@ -326,7 +326,7 @@ def record_and_transcribe(on_window=None, source: str | None = None,
             seg = (start, text)
             segments.append(seg)
             windower.add(seg)
-            if livestream.CLOSING_RE.search(text):
+            if livestream.closing_at(text, start):
                 log.info("Schlussformel bei %.0f s — Aufnahme endet", start)
                 closing = True
 

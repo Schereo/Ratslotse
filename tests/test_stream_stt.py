@@ -14,6 +14,11 @@ from council import livestream, stream_stt
 from scripts import record_council_livestream
 
 
+@pytest.fixture(autouse=True)
+def _schlussformel_sofort(monkeypatch):
+    monkeypatch.setattr(livestream, "CLOSING_MIN_SECONDS", 0)
+
+
 def test_vocabulary_takes_surnames_and_parties_once():
     people = [{"name": "Christoph Baak"}, {"name": "Susanne Drügemöller"}, {"name": "Christoph Baak"}, {"name": ""}]
     vocab = stream_stt.vocabulary(people)

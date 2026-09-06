@@ -81,6 +81,20 @@ CLOSING_RE = re.compile(
     r"|beende\s+die\s+(?:öffentliche\s+)?Sitzung",
     re.I)
 
+#: Vor dieser Aufnahme-Sekunde zählt keine Schlussformel. O1 wiederholt
+#: tagsüber alte Ratssitzungen im Programm (gemessen 06.09.2026: um 13:50
+#: lief TOP 11 samt „schließe … den öffentlichen Teil"); die Aufnahme
+#: beginnt fünf Minuten vor Sitzungsbeginn — träfe sie dort auf so eine
+#: Wiederholung, endete der Mitschnitt, bevor die Sitzung anfängt. Keine
+#: echte Sitzung ist nach 20 Minuten vorbei.
+CLOSING_MIN_SECONDS = int(os.environ.get("COUNCIL_CLOSING_MIN_SECONDS", str(20 * 60)))
+
+
+def closing_at(text: str, at_seconds: float) -> bool:
+    """Schlussformel im Text — und spät genug, um echt zu sein?"""
+    return at_seconds >= CLOSING_MIN_SECONDS and bool(CLOSING_RE.search(text))
+
+
 TRANSCRIBE_PROMPT = (
     "Transkribiere diese Aufnahme einer deutschen Ratssitzung woertlich "
     "und vollstaendig. Beginne jeden Absatz mit einer Zeitmarke [mm:ss] "
@@ -272,7 +286,7 @@ def record_and_transcribe(dest_dir: Path,
                                                 audio_seconds(path))
                 segments.extend(chunk_segments)
                 log.info("Stück %d transkribiert (%d Zeichen)", idx, len(text))
-                if CLOSING_RE.search(text):
+                if closing_at(text, idx * CHUNK_SECONDS):
                     log.info("Schlussformel im Stück %d — Aufnahme endet", idx)
                     closing = True
                 if on_chunk is not None:

@@ -12,6 +12,25 @@ from council import livestream
 from scripts import record_council_livestream
 
 
+@pytest.fixture(autouse=True)
+def _schlussformel_sofort(monkeypatch):
+    """Die Sperre gegen Wiederholungen im Vorprogramm (20 min) würde in den
+    Kurzproben hier jede Schlussformel verschlucken — je Test aus, außer im
+    Test der Sperre selbst."""
+    monkeypatch.setattr(livestream, "CLOSING_MIN_SECONDS", 0)
+
+
+def test_closing_formula_is_ignored_in_the_first_twenty_minutes(monkeypatch):
+    """O1 wiederholt tagsüber alte Sitzungen — eine Schlussformel fünf
+    Minuten vor Sitzungsbeginn ist die des Vorprogramms, nicht unsere."""
+    monkeypatch.setattr(livestream, "CLOSING_MIN_SECONDS", 20 * 60)
+    satz = "Damit schließe ich den öffentlichen Teil der Sitzung."
+    assert not livestream.closing_at(satz, 55)
+    assert not livestream.closing_at(satz, 19 * 60)
+    assert livestream.closing_at(satz, 20 * 60)
+    assert not livestream.closing_at("Wir kommen zu Punkt 3.", 3 * 3600)
+
+
 # ------------------------------------------------------------- parse_segments
 
 def test_parse_segments_with_marks():
