@@ -24,7 +24,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Hashable, Iterable
+from typing import Any
+from collections.abc import Callable, Hashable, Iterable
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

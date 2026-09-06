@@ -63,6 +63,13 @@ OEFFENTLICH = {
     ("post", "/api/auth/forgot-password"),
     ("post", "/api/auth/reset-password"),
 
+    # Fehlermeldungen aus dem Browser. Ein Konto zu verlangen hieße, nur noch
+    # von Angemeldeten zu erfahren, dass die Seite kaputt ist — und der
+    # häufigste Fall ist der, in dem gerade gar nichts geht. Der Endpunkt
+    # nimmt nur vier gedeckelte Textfelder, antwortet immer 200 und ist
+    # gebremst (`client_error_limiter`).
+    ("post", "/api/client-errors"),
+
     # Öffentliche Ratsinhalte: Beschluss-, Personen- und Ortsseiten sind ohne
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).
@@ -72,6 +79,11 @@ OEFFENTLICH = {
     ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/council/people-directory"),
     ("get", "/api/council/place/{place_id}"),
+    # „Mein Viertel": Die Übersicht (alle 31 Ortsbereiche mit Zahl) ist die
+    # Auswahl vor der Tafel — ohne Konto lesbar wie die Ortsseite. Die Tafel
+    # selbst trägt `optional_user` (persönlicher Zusatz: schon gemeldet?) und
+    # steht deshalb nicht hier.
+    ("get", "/api/districts/projects"),
     ("get", "/api/council/heute"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/qa-beispiele"),
@@ -85,6 +97,12 @@ OEFFENTLICH = {
     # Netze beim Auspacken eines Links; sie haben kein Konto.
     ("get", "/api/council/preview/{kind}/{key:path}"),
     ("get", "/api/council/plan-bild/{document_id}"),
+
+    # Der Kalender-Feed: Apple Kalender, Google und Outlook rufen ihn ohne
+    # Konto ab, ein Kalender-Abo kennt keine Anmeldung. Autorisiert ist er
+    # über das Token in der Adresse (eigenes Geheimnis je Konto, erneuerbar);
+    # unbekanntes Token und gesperrtes Konto antworten gleich mit 404.
+    ("get", "/api/calendar/{token}.ics"),
 
     # Wahlprogramm-Quellen: Belege einer öffentlichen Vergleichsseite.
     ("get", "/api/kommunalwahl/source/{slug}"),

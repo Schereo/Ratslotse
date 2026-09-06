@@ -90,3 +90,10 @@ Schnittstelle ändert, prüft die App von Hand oder zieht die Fixtures nach.
 
 `CURRENT_PROJECT_VERSION` in `project.yml` erhöhen **und neu generieren**.
 Bundle-IDs kommen aus den xcconfig-Dateien, nicht aus dem Projekt.
+
+`MARKETING_VERSION` dagegen fasst niemand von Hand an: Sie zieht der
+Versionsschnitt mit (`scripts/changelog_schnitt.py x.y.z`), und
+`tests/test_app_version.py` hält sie gegen die jüngste Version im Changelog —
+in **beiden** Dateien, denn die eingecheckte `.xcodeproj` schleppt den Wert
+mit. Sie stand am 04.09.2026 auf 2.0.0, während 2.1.0 draußen war; gemerkt
+hätte es erst, wer eine Fehlermeldung zur falschen Fassung sucht.

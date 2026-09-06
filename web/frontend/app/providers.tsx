@@ -10,6 +10,7 @@ import { OnboardingFlow } from "@/components/onboarding-flow";
 import { OfflinePill } from "@/components/offline-pill";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { Toaster } from "@/components/ui";
+import { fehlerMelderAnhaengen } from "@/lib/fehler-melden";
 import { initTheme } from "@/lib/theme";
 import { initAppUrlOpen } from "@/lib/app-links";
 import { isNativeApp } from "@/lib/platform";
@@ -38,6 +39,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initTheme();
+    // Fehler, die keine React-Grenze fängt: ein `throw` außerhalb des
+    // Renderns, ein abgelehntes Versprechen ohne `catch`. Sie landeten bisher
+    // nur in der Browser-Konsole des Betroffenen — also nirgendwo.
+    fehlerMelderAnhaengen();
   }, []);
 
   // In der nativen App ist Pinch-/Auto-Zoom aus — App-UIs zoomen nicht, und

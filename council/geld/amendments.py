@@ -26,6 +26,7 @@ import sqlite3
 
 from council import geld
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 NAME = "amendments"
 
@@ -59,7 +60,7 @@ def recognize(text: str, typ: str, facets: set[str]) -> bool:
     return "antraege" in facets or bool(_EIGEN.search(text))
 
 
-class Store:
+class Store(StoreBasis):
     """Mixin für ``CouncilStore`` — die Änderungslisten eines Jahrgangs."""
 
     def amendments_context(self, terms: list[str],

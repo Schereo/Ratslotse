@@ -311,6 +311,40 @@ optionalen **Tipp** geben (vor dem Auflösen einblendbar), und Fachbegriffe in d
 Erklärung (z. B. „Vergnügungsstätte", „Bebauungsplan") unterlegt das Frontend mit
 einem Hover-Glossar.
 
+## Frag den Rat: die Fachwörter
+
+„Was ist eine Ausfallbürgschaft?" beantwortete die KI-Frage bis 09/2026 mal so
+und mal gar nicht — je nachdem, ob unter den gefundenen Beschlüssen zufällig
+einer war, der den Begriff nebenbei miterklärt (beides gemessen, dieselbe Frage,
+04.09.2026). Der Grund war keine Lücke im Modell, sondern eine im Prompt: Die
+Erklärungen lagen als Frontend-Liste vor und erreichten das Modell nie.
+
+Sie stehen jetzt in **`kern/glossar.py`** — wie die Prompts als Code, nicht als
+Datenbankinhalt. `web/frontend/lib/glossary.ts` wird daraus erzeugt
+(`python scripts/glossar_ts.py`), und `scripts/pruefe.py` hält beide
+gegeneinander; zwei handgepflegte Listen wären lautlos auseinandergelaufen.
+
+Gematcht wird deterministisch, ohne LLM: **Wortanfang plus beliebige
+Buchstaben-Endung**. Damit greifen Beugungen („Bebauungsplans"), aber keine
+Komposita, die den Begriff hinten tragen — **„Bürgschaft" trifft
+„Ausfallbürgschaft" nicht**, die ist deshalb ein eigener Eintrag. Genau daran
+hing der Ausfall.
+
+Drei Wege nutzen den Bestand:
+
+| Wo | Was daraus wird |
+|----|-----------------|
+| Antwort-Prompt (`qa._glossar_block`) | Höchstens drei Begriffe aus der Frage, als Block „Was die Fachwörter bedeuten" — ausdrücklich **keine** Beschlüsse und deshalb **nie mit `[id]`** zitiert. Der Ehrlichkeits-Vorbehalt („die Beschlüsse geben nichts her") ist für die Definition aufgehoben, für die Beschlusslage nicht |
+| „Einfacher erklären" (`qa._glossar_block_einfach`) | Bis zu fünf Begriffe, gezogen aus der **vorigen Antwort** — die Bitte selbst nennt ja keins. Der Prompt verlangt „kein Fachwort ohne Erklärung im selben Satz"; die Erklärung kommt jetzt aus dem Bestand statt aus dem Bauchgefühl |
+| Antworttext im Frontend | Jeder Begriff wird bei seiner **ersten** Nennung gepunktet unterstrichen und zeigt die Erklärung beim Überfahren oder Antippen (`markiereBegriffe`, geteilt mit dem Hover-Glossar der Haushalts-Seiten) |
+
+Die Auswahl ist gemessen, nicht geraten: Ein neuer Begriff muss in den
+Unterlagen wirklich vorkommen. Die 52 Ergänzungen vom 04.09.2026 stammen aus
+einer Auszählung über 9.059 Beschlüsse und 4.000 Vorlagen — Spitzenreiter waren
+Aufwandsspaltung (186), Teileinrichtung (178) und Leitantrag (212), Wörter, die
+außerhalb des Straßenausbaubeitragsrechts und des Sitzungssaals niemandem
+begegnen.
+
 ## Frag den Rat: welche Quelle eine Geldfrage zieht
 
 Die KI-Frage antwortet nicht nur aus Beschlüssen. Zu Geldfragen liegen

@@ -464,6 +464,8 @@ export interface AdminStats {
 
 /** Eingegangenes Nutzer-Feedback im Admin-Panel. `read_at` null = offen. */
 export type AdminFeedback = S["AdminFeedbackRow"];
+/** Eine FEHLERART im Web-Backend — nicht ein einzelnes Vorkommen. */
+export type AdminRequestFehler = S["AdminRequestFehler"];
 
 export interface AdminUserDetail {
   id: number;

@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import secrets
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
-from kern.dbfehler import tabelle_fehlt
+from collections.abc import Iterable
+from kern.dbfehler import neue_id, tabelle_fehlt
 from kern.maintenance import require_database_available
 
 
@@ -112,7 +113,9 @@ CREATE TABLE IF NOT EXISTS notification_queue (
     -- down, Adresse abgelehnt), bleibt die Meldung mit sent_at IS NULL liegen
     -- und wird erneut versucht — bis MAX_VERSUCHE, damit eine dauerhaft
     -- unzustellbare Adresse die Warteschlange nicht ewig blockiert.
-    attempts      INTEGER NOT NULL DEFAULT 0
+    attempts      INTEGER NOT NULL DEFAULT 0,
+    -- 1 = darf an der Tagesgrenze vorbei (Tragweite gemessen), s. kern.notify.einreihen
+    wichtig       INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_notify_offen ON notification_queue(owner_id, sent_at, deliver_after);
 
@@ -188,6 +191,9 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Fragen — wer sich im Browser registriert und später nur noch die App
     -- öffnet, wäre sonst nicht von einem reinen Web-Konto zu unterscheiden.
     signup_client    TEXT,
+    -- Kalender-Abo (ICS): das Geheimnis in der Abo-Adresse dieses Kontos.
+    -- Beim ersten Abruf angelegt, einzeln erneuerbar; NULL = nie abgerufen.
+    calendar_token   TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -432,6 +438,48 @@ CREATE TABLE IF NOT EXISTS job_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_job_runs_job ON job_runs(job, started_at DESC);
 
+-- Ein Eintrag je FEHLERART im Web-Backend, geschrieben vom Ausnahme-Handler
+-- (web/backend/app/main.py). Das Gegenstück zu `job_runs`: Cron-Abstürze
+-- melden sich seit je per Mail, ein 500er im Request ging bis 09/2026 ins
+-- journalctl und sonst nirgendwohin.
+--
+-- GRUPPIERT, nicht protokolliert: `fingerprint` fasst Ausnahmetyp, letzte
+-- Zeile im eigenen Code und Route zusammen (kern/fehler.py). Ein Ausfall
+-- erzeugt damit EINE Zeile mit hohem `count` statt tausend Zeilen — sonst
+-- wäre die Liste nach dem ersten Vorfall unlesbar und die Datenbank voll.
+--
+-- Was hier NICHT steht: Anfragekörper, Kopfzeilen, Cookies, roher Pfad,
+-- Variablenwerte. Die Begründung steht in kern/fehler.py.
+CREATE TABLE IF NOT EXISTS request_errors (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint TEXT NOT NULL UNIQUE,
+    exc_type    TEXT NOT NULL,
+    message     TEXT,
+    route       TEXT NOT NULL,
+    method      TEXT NOT NULL,
+    trace       TEXT,
+    first_seen  TEXT NOT NULL,           -- ISO, UTC
+    last_seen   TEXT NOT NULL,
+    count       INTEGER NOT NULL DEFAULT 1,
+    -- Woher der Fehler kam: `server` (unbehandelte Ausnahme im Backend) oder
+    -- `browser` (gemeldet vom Frontend). Beide teilen sich die Tabelle, weil
+    -- sie dieselbe Frage beantworten — „was ist kaputt?" — und dieselbe
+    -- Behandlung brauchen (gruppieren, melden, abhaken).
+    quelle      TEXT NOT NULL DEFAULT 'server',
+    -- Tagesverlauf als JSON-Objekt {"2026-09-04": 37, …}, auf 30 Tage
+    -- begrenzt. Ein eigener Ereignis-Tisch wäre genauer und würde bei einem
+    -- Ausfall in Minuten volllaufen; dies hier bleibt klein und reicht für
+    -- die einzige Frage, die man an den Verlauf stellt: seit wann, und wird
+    -- es mehr oder weniger?
+    daily       TEXT,
+    -- Abgehakt heißt „angesehen und behandelt". Taucht der Fehler danach
+    -- WIEDER auf, wird es zurückgesetzt: Ein Haken auf etwas, das weiter
+    -- passiert, wäre eine Lüge.
+    resolved_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_request_errors_last
+    ON request_errors(last_seen DESC);
+
 -- Nutzer-Feedback. Ging bisher nur per Mail raus; die Kopie hier macht es im
 -- Admin-Panel sicht- und abarbeitbar. `read_at` ist absichtlich global (nicht
 -- je Admin): Es geht um „ist das erledigt?", nicht um „habe ich das gesehen?".
@@ -625,6 +673,30 @@ TABELLEN_UMBENANNT: list[tuple[str, str]] = [
     ("migrationsmarken", "migration_marks"),
     ("vorlage_follows", "template_follows"),
 ]
+
+#: So viele Tage Verlauf werden je Fehlerart aufgehoben. Mehr zeigt keine
+#: Grafik, und jeder weitere Tag ist Text in einer Spalte.
+VERLAUF_TAGE = 30
+
+
+def _verlauf_lesen(roh: str | None) -> dict[str, int]:
+    """Den Tagesverlauf aus der Spalte holen. Kaputtes gilt als leer."""
+    try:
+        d = json.loads(roh) if roh else {}
+        return {str(k): int(v) for k, v in d.items()} if isinstance(d, dict) else {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def _verlauf_plus(roh: str | None, tag: str) -> dict[str, int]:
+    """Einen Tag hochzählen und auf die letzten Tage beschneiden."""
+    d = _verlauf_lesen(roh)
+    d[tag] = d.get(tag, 0) + 1
+    if len(d) > VERLAUF_TAGE:
+        for alt in sorted(d)[:-VERLAUF_TAGE]:
+            del d[alt]
+    return d
+
 
 class Store:
     def __init__(self, path: str | Path):
@@ -1163,6 +1235,10 @@ class Store:
                 if "notify_prefs" not in wu_cols:
                     # Design 30a: die sechs Anlass-Schalter als JSON.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
+                if "calendar_token" not in wu_cols:
+                    # Kalender-Abo (ICS): das Geheimnis in der Abo-Adresse,
+                    # beim ersten Abruf angelegt, einzeln erneuerbar.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN calendar_token TEXT")
                 if "saves_conversations" not in wu_cols:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
@@ -1263,9 +1339,35 @@ class Store:
         if nq_cols and "push_text" not in nq_cols:
             with self._conn:
                 self._conn.execute("ALTER TABLE notification_queue ADD COLUMN push_text TEXT")
+        # Wichtig-Marke (06.09.2026): darf an der Tagesgrenze vorbei.
+        if nq_cols and "wichtig" not in nq_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE notification_queue ADD COLUMN wichtig INTEGER NOT NULL DEFAULT 0"
+                )
+        self._notify_vorgaben_einfrieren()
+        # Der Fehler-Sammler kam zuerst nur mit Server-Fehlern; Herkunft und
+        # Tagesverlauf sind nachgezogen. Ohne diesen Schritt scheitert das
+        # Festhalten auf einer bestehenden Datei — und zwar still, weil
+        # `merke_request_fehler` bewusst nie wirft.
+        re_cols = self._table_cols("request_errors")
+        if re_cols:
+            with self._conn:
+                if "quelle" not in re_cols:
+                    self._conn.execute(
+                        "ALTER TABLE request_errors ADD COLUMN "
+                        "quelle TEXT NOT NULL DEFAULT 'server'")
+                if "daily" not in re_cols:
+                    self._conn.execute("ALTER TABLE request_errors ADD COLUMN daily TEXT")
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
+        )
+        # Erst hier, nach der Spalten-Migration: Im SCHEMA würde der Index auf
+        # einer gewachsenen Datenbank vor dem ALTER TABLE laufen und scheitern.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_web_users_calendar_token "
+            "ON web_users(calendar_token)"
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
@@ -1296,6 +1398,56 @@ class Store:
             self._conn.execute("UPDATE council_topic_matches SET matched_at = ''")
         self._conn.execute("PRAGMA user_version = 1")
         self._conn.commit()
+
+    def _notify_vorgaben_einfrieren(self) -> None:
+        """Bestandskonten behalten die alten Benachrichtigungs-Vorgaben.
+
+        Am 06.09.2026 drehten sich zwei Vorgaben (``kern.notify``): Die
+        Tagesordnung je Gremium ist für neue Konten aus, der Wochenüberblick
+        an. Tims Entscheidung dazu: „Bestandskonten so lassen, wie sie sind."
+        Ein Konto, das nie einen Schalter angefasst hat, trägt eine leere
+        ``notify_prefs``-Spalte — und bekäme mit der neuen Vorgabe ab dem
+        Deploy still keine Tagesordnungen mehr. Deshalb schreibt dieser eine
+        Lauf jedem bestehenden Konto die **alte** Vorgabe ausdrücklich in die
+        Spalte, nur für die zwei Schalter, die sich gedreht haben, und nur wo
+        noch nichts steht. Wer selbst etwas gesetzt hatte, bleibt unberührt.
+
+        Die Marke in ``migration_marks`` merkt sich den Lauf — sonst würde
+        jeder Start neue Konten auf den alten Stand stempeln. (Nicht
+        ``PRAGMA user_version``: Die hält der Treffer-Entstempler, und wer sie
+        hochsetzt, schaltet ihn ab.) Erst lesen, dann schreiben — siehe
+        ``_marke_gesetzt``.
+        """
+        import json as _json
+
+        from kern.notify import NOTIFY_DEFAULTS_BIS_2026_09
+
+        marke = "notify_vorgaben_2026_09"
+        if self._marke_gesetzt(marke):
+            return
+        if "notify_prefs" not in self._table_cols("web_users"):
+            return
+        rows = self._conn.execute("SELECT id, notify_prefs FROM web_users").fetchall()
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            for row in rows:
+                try:
+                    prefs = _json.loads(row["notify_prefs"] or "{}")
+                except (ValueError, TypeError):
+                    prefs = {}
+                if not isinstance(prefs, dict):
+                    prefs = {}
+                neu = dict(prefs)
+                for k, v in NOTIFY_DEFAULTS_BIS_2026_09.items():
+                    neu.setdefault(k, v)
+                if neu != prefs:
+                    self._conn.execute("UPDATE web_users SET notify_prefs = ? WHERE id = ?",
+                                       (_json.dumps(neu), row["id"]))
+            self._conn.execute(
+                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
 
     def _table_cols(self, table: str) -> set[str]:
         return {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -1437,12 +1589,13 @@ class Store:
         # gewöhnlichen Nutzer, das Admin-Panel einen Admin. Genau ein Aufrufer
         # macht das (der Apple-Weg für die konfigurierte Admin-Adresse).
         from kern import roles as _roles
+        user_id = neue_id(cur)
         if role in _roles.ROLES and role != _roles.DEFAULT_ROLE:
             with self._conn:
                 self._conn.execute(
                     "INSERT OR IGNORE INTO web_user_roles (user_id, role, granted_at) "
-                    "VALUES (?, ?, ?)", (cur.lastrowid, role, now))
-        return cur.lastrowid
+                    "VALUES (?, ?, ?)", (user_id, role, now))
+        return user_id
 
     def set_display_name(self, user_id: int, display_name: str | None) -> None:
         with self._conn:
@@ -1840,7 +1993,7 @@ class Store:
                     (owner_id, data["question"], opts, data["correct_index"],
                      data.get("district"), data["category"], data.get("explanation"),
                      *est, now))
-                return int(cur.lastrowid)
+                return neue_id(cur)
             cur = self._conn.execute(
                 "UPDATE user_quiz_questions SET question=?, options=?, correct_index=?, "
                 "district=?, category=?, explanation=?, qtype=?, answer_value=?, "
@@ -2000,15 +2153,16 @@ class Store:
 
     def enqueue_notification(self, owner_id: int, kind: str, title: str, body_html: str,
                              url: str, created_at: str, deliver_after: str,
-                             push_text: str | None = None) -> int:
+                             push_text: str | None = None, wichtig: bool = False) -> int:
         with self._conn:
             cur = self._conn.execute(
                 "INSERT INTO notification_queue "
-                "(owner_id, kind, title, body_html, url, created_at, deliver_after, push_text) "
-                "VALUES (?,?,?,?,?,?,?,?)",
-                (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text),
+                "(owner_id, kind, title, body_html, url, created_at, deliver_after, push_text, "
+                "wichtig) VALUES (?,?,?,?,?,?,?,?,?)",
+                (owner_id, kind, title, body_html, url, created_at, deliver_after, push_text,
+                 1 if wichtig else 0),
             )
-        return cur.lastrowid
+        return neue_id(cur)
 
     #: Nach so vielen erfolglosen Anläufen gilt eine Meldung als unzustellbar.
     #: Sie bleibt als Beleg in der Tabelle stehen (``sent_at`` bleibt NULL),
@@ -2026,7 +2180,8 @@ class Store:
         """Offene, fällige Posten — älteste zuerst, damit das Bündel am Ende die
         jüngsten trägt und die wichtigste Einzelmeldung vorne bleibt."""
         return [dict(r) for r in self._conn.execute(
-            "SELECT id, kind, title, body_html, url, created_at, push_text FROM notification_queue "
+            "SELECT id, kind, title, body_html, url, created_at, push_text, wichtig "
+            "FROM notification_queue "
             "WHERE owner_id = ? AND sent_at IS NULL AND attempts < ? AND deliver_after <= ? "
             "ORDER BY id",
             (owner_id, self.MAX_ZUSTELLVERSUCHE, jetzt_iso))]
@@ -2519,7 +2674,7 @@ class Store:
             cur = self._conn.execute(
                 "INSERT INTO qa_conversations (user_id, title, created, updated) VALUES (?, ?, ?, ?)",
                 (user_id, (title or "Gespräch").strip()[:120], now, now))
-            return int(cur.lastrowid)
+            return neue_id(cur)
 
     def qa_turn_speichern(self, conversation_id: int, user_id: int, question: str,
                           answer: str, quellen_json: str | None) -> bool:
@@ -2637,7 +2792,7 @@ class Store:
                 " VALUES (?, ?, ?, ?, ?)",
                 (owner_id, email, kind, message, now),
             )
-        return int(cur.lastrowid or 0)
+        return neue_id(cur)
 
     def list_feedback(self, limit: int = 100, only_unread: bool = False) -> list[dict]:
         """Neueste zuerst — so steht Unerledigtes oben."""
@@ -2687,6 +2842,76 @@ class Store:
                 )
         except Exception:  # noqa: BLE001 — Protokollierung ist Beiwerk
             pass
+
+    def merke_request_fehler(self, daten: dict) -> bool:
+        """Eine Fehlerart festhalten. Gibt True, wenn sie NEU ist.
+
+        „Neu" heißt: erstmals gesehen, oder nach einem Haken wieder aufgetaucht.
+        Nur dann wird alarmiert — sonst flutete ein Ausfall mit tausend
+        Anfragen das Postfach mit tausend Mails, und die eine wichtige ginge
+        darin unter.
+
+        Wirft nie: Ein Sammler, der die Antwort mit umbringt, ist schlimmer
+        als kein Sammler.
+        """
+        jetzt = datetime.utcnow().isoformat(timespec="seconds")
+        try:
+            with self._conn:
+                vorher = self._conn.execute(
+                    "SELECT id, resolved_at, daily FROM request_errors WHERE fingerprint = ?",
+                    (daten["fingerprint"],)).fetchone()
+                heute = jetzt[:10]
+                if vorher is None:
+                    self._conn.execute(
+                        "INSERT INTO request_errors (fingerprint, exc_type, message, "
+                        " route, method, trace, quelle, first_seen, last_seen, count, daily) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,1,?)",
+                        (daten["fingerprint"], daten["exc_type"], daten["message"],
+                         daten["route"], daten["method"], daten["trace"],
+                         daten.get("quelle", "server"), jetzt, jetzt,
+                         json.dumps({heute: 1})))
+                    return True
+                war_abgehakt = vorher["resolved_at"] is not None
+                self._conn.execute(
+                    "UPDATE request_errors SET last_seen = ?, count = count + 1, "
+                    " message = ?, trace = ?, daily = ?, resolved_at = NULL WHERE id = ?",
+                    (jetzt, daten["message"], daten["trace"],
+                     json.dumps(_verlauf_plus(vorher["daily"], heute)), vorher["id"]))
+                return war_abgehakt
+        except sqlite3.Error:
+            logger.exception("Fehler ließ sich nicht festhalten")
+            return False
+
+    def request_fehler(self, limit: int = 100, nur_offen: bool = False) -> list[dict]:
+        """Die Fehlerarten, zuletzt gesehene zuerst."""
+        where = "WHERE resolved_at IS NULL" if nur_offen else ""
+        rows = self._conn.execute(
+            f"SELECT * FROM request_errors {where} ORDER BY last_seen DESC LIMIT ?",
+            (limit,)).fetchall()
+        aus = []
+        for r in rows:
+            z = dict(r)
+            # Als Liste von Paaren statt als Objekt: Die Grafik braucht eine
+            # Reihenfolge, und ein JSON-Objekt hat keine.
+            verlauf = _verlauf_lesen(z.pop("daily", None))
+            z["daily"] = [{"tag": t, "n": n} for t, n in sorted(verlauf.items())]
+            aus.append(z)
+        return aus
+
+    def request_fehler_offen(self) -> int:
+        """Wie viele Fehlerarten sind unerledigt? Für das Abzeichen im Panel."""
+        r = self._conn.execute(
+            "SELECT COUNT(*) FROM request_errors WHERE resolved_at IS NULL").fetchone()
+        return int(r[0])
+
+    def request_fehler_abhaken(self, fehler_id: int, abgehakt: bool = True) -> bool:
+        """Einen Haken setzen oder wegnehmen."""
+        jetzt = datetime.utcnow().isoformat(timespec="seconds") if abgehakt else None
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE request_errors SET resolved_at = ? WHERE id = ?",
+                (jetzt, fehler_id))
+        return cur.rowcount > 0
 
     def job_runs(self, job: str | None = None, limit: int = 200) -> list[dict]:
         """Cron-Läufe, neueste zuerst; `stats` bereits als dict."""
@@ -2849,8 +3074,8 @@ class Store:
             # „App oder Web?" — die Nutzung der letzten 30 Tage bewusst fest,
             # nicht am Zeitraum-Umschalter: Die Frage ist „womit arbeiten die
             # Leute GERADE", nicht „womit über alle Zeit".
-            **{"clients": (aufteilung := self.client_split(30))["clients"],
-               "clients_both": aufteilung["both"]},
+            "clients": (aufteilung := self.client_split(30))["clients"],
+               "clients_both": aufteilung["both"],
             "signup_clients": [{**r, "users": 0} for r in self.signup_client_split()],
         }
 
@@ -3338,7 +3563,7 @@ class Store:
             (owner_id, chat_id, name.strip(), description.strip(), now),
         )
         self._conn.commit()
-        return TopicRow(id=cur.lastrowid, owner_id=owner_id, chat_id=chat_id,
+        return TopicRow(id=neue_id(cur), owner_id=owner_id, chat_id=chat_id,
                         name=name, description=description, created_at=now)
 
     # Alles, was an EINEM Thema hängt. Wird ein Thema gelöscht, muss das hier
@@ -3408,6 +3633,41 @@ class Store:
             (owner_id,),
         ).fetchall()
         return [r[0] for r in rows]
+
+    # ---- Kalender-Abo (ICS) -------------------------------------------------
+
+    def calendar_token(self, owner_id: int, create: bool = True) -> str | None:
+        """Das Geheimnis hinter der Kalender-Adresse eines Kontos — beim ersten
+        Abruf angelegt. Ein eigenes Token und kein Sitzungs-Token: Es steht in
+        einer Adresse, die Kalender-Apps alle paar Stunden abrufen und die man
+        auch mal weitergibt; erneuern darf es sich, ohne jemanden abzumelden."""
+        row = self._conn.execute(
+            "SELECT calendar_token FROM web_users WHERE id = ?", (owner_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        if row[0]:
+            return row[0]
+        if not create:
+            return None
+        return self.rotate_calendar_token(owner_id)
+
+    def rotate_calendar_token(self, owner_id: int) -> str:
+        """Neue Adresse; die alte ist ab sofort ungültig."""
+        token = secrets.token_urlsafe(24)
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET calendar_token = ? WHERE id = ?", (token, owner_id)
+            )
+        return token
+
+    def user_by_calendar_token(self, token: str) -> dict | None:
+        if not token:
+            return None
+        row = self._conn.execute(
+            "SELECT * FROM web_users WHERE calendar_token = ?", (token,)
+        ).fetchone()
+        return dict(row) if row else None
 
     def get_all_subscriptions(self) -> dict[int, list[str]]:
         """Return {owner_id: [committee_name]} for all owners with subscriptions."""

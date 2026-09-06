@@ -67,7 +67,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Sequence
+from collections.abc import Sequence
 
 #: Woher ein Dokument stammt. Absichtlich dieselben Werte wie
 #: ``Finanzquelle.herkunft`` in ``council/finanzquellen.py`` — dort steht, ob

@@ -128,7 +128,7 @@ export function kurzfassung(it: AgendaRowItem): string | null {
   return it.social_text || it.summary || null;
 }
 
-export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult }: {
+export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flash, ksinr, bookmarkable = true, shareable = true, videoResult, live = false }: {
   it: AgendaRowItem; query: string; outcome?: DecisionOutcome | null;
   decisionId?: number; myTopic?: string;
   ksinr?: number;
@@ -147,6 +147,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
   /** Kurz nach dem Sprung hervorgehoben — sonst sieht die Zielzeile aus wie
    *  jede andere und man sucht, was gemeint war. */
   flash?: boolean;
+  /** Läuft GERADE — aus der Live-Verfolgung der Übertragung (`lib/live`,
+   *  `liveItemKeys`). Rote Marke an der Zeile, weiche rote Tönung. */
+  live?: boolean;
 }) {
   const hit = itemMatches(it, query);
   const body = (
@@ -161,6 +164,17 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
         {it.dringlich && (
           <span className="mb-0.5 flex items-center gap-1 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-signal">
             <Flame className="h-3 w-3" aria-hidden /> Dringlichkeitsantrag
+          </span>
+        )}
+        {live && (
+          /* Dieselbe Bauform wie der LIVE-Chip an der Sitzung, nur an der
+             Zeile: Der Punkt ist gerade dran — nach dem Stand der Übertragung. */
+          <span className="mb-0.5 flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.11em] text-red-600 dark:text-red-400">
+            <span className="relative flex h-1.5 w-1.5" aria-hidden>
+              <span className="absolute inset-0 rounded-full bg-red-500 motion-safe:animate-ping" />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-red-500" />
+            </span>
+            Läuft gerade
           </span>
         )}
         <p className="text-sm text-foreground"><Highlight text={it.title} query={query} /></p>
@@ -202,7 +216,9 @@ export function AgendaRow({ it, query, outcome, decisionId, myTopic, domId, flas
       {decisionId != null && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden />}
     </>
   );
-  const tone = hit ? "bg-amber-50 dark:bg-amber-950/40" : myTopic ? "bg-signal/5" : "";
+  const tone = hit ? "bg-amber-50 dark:bg-amber-950/40"
+    : live ? "bg-red-500/[0.06] ring-1 ring-red-500/20"
+    : myTopic ? "bg-signal/5" : "";
   const layout = cn(
     "flex flex-wrap items-start gap-x-3 gap-y-1 rounded-md px-2 py-2",
     // Der Ring verschwindet nach 1,6 s von selbst; die Farbe blendet weich

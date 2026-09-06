@@ -51,19 +51,43 @@ function Term({ label, def }: { label: string; def: string }) {
   );
 }
 
-/** Rendert Text und unterlegt bekannte Fachbegriffe mit einer Hover-Erklärung. */
-export function GlossaryText({ text, className }: { text: string | null | undefined; className?: string }) {
-  if (!text) return null;
+/**
+ * Ein Stück Text mit erklärten Fachbegriffen darin — als Knotenliste, damit
+ * auch Aufrufer sie benutzen können, die den Text schon selbst zerlegt haben
+ * (der Antworttext der KI-Frage tut das: Fußnoten-Chips, Fettdruck,
+ * Personen-Badges).
+ *
+ * `gesehen` markiert nur die ERSTE Nennung eines Begriffs — dieselbe Regel wie
+ * bei den Personen-Badges. Über eine lange Antwort verteilt wäre „Bebauungsplan"
+ * fünfmal unterringelt: Das liest sich wie ein Fehler, nicht wie ein Angebot.
+ * Ohne das Set wird jede Nennung markiert (so verhalten sich die
+ * Haushalts-Seiten seit jeher).
+ */
+export function markiereBegriffe(
+  text: string, keyBase: string | number = "g", gesehen?: Set<string>,
+): ReactNode[] {
   const parts: ReactNode[] = [];
   let last = 0;
   for (const m of text.matchAll(RE)) {
     const key = CANON.get(m[1].toLowerCase());
-    if (!key) continue;
+    if (!key || gesehen?.has(key)) continue;
+    gesehen?.add(key);
     const idx = m.index ?? 0;
     if (idx > last) parts.push(text.slice(last, idx));
-    parts.push(<Term key={idx} label={m[0]} def={GLOSSARY[key]} />);
+    parts.push(<Term key={`${keyBase}-${idx}`} label={m[0]} def={GLOSSARY[key]} />);
     last = idx + m[0].length;
   }
+  if (parts.length === 0) return [text];
   parts.push(text.slice(last));
-  return <span className={className}>{parts.map((n, i) => <Fragment key={i}>{n}</Fragment>)}</span>;
+  return parts;
+}
+
+/** Rendert Text und unterlegt bekannte Fachbegriffe mit einer Hover-Erklärung. */
+export function GlossaryText({ text, className }: { text: string | null | undefined; className?: string }) {
+  if (!text) return null;
+  return (
+    <span className={className}>
+      {markiereBegriffe(text).map((n, i) => <Fragment key={i}>{n}</Fragment>)}
+    </span>
+  );
 }

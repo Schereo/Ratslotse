@@ -32,6 +32,7 @@ import sqlite3
 
 from council import geld
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 NAME = "companies"
 
@@ -149,7 +150,7 @@ def _kurz(text: str | None, grenze: int) -> str:
     return t[:t.rfind(" ", 0, grenze)] + " …"
 
 
-class Store:
+class Store(StoreBasis):
     """Store-Mixin: der Beteiligungsbericht zu einer Frage."""
 
     def companies_context(self, terms: list[str],

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 
@@ -21,8 +22,8 @@ from kern.store import Store
 from ..config import get_settings
 from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminPlaceCandidates, AdminQuizStats, AdminUnread, AdminUserDetail,
-                         AdminUserRow, Ok)
+                         AdminPlaceCandidates, AdminQuizStats, AdminRequestFehler,
+                         AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
                        RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate, WebUserOut)
@@ -124,6 +125,52 @@ def _schritt(roh: dict) -> dict:
     }
 
 
+@router.get("/errors")
+def request_fehler(
+    nur_offen: bool = False,
+    limit: int = 100,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> list[AdminRequestFehler]:
+    """Die Fehlerarten des Web-Backends, zuletzt gesehene zuerst.
+
+    Das Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in
+    ``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.
+    """
+    # `cast`, weil der Store rohe SQLite-Zeilen als `dict` liefert. Die Form
+    # hält `AdminRequestFehler` in `antworten.py` fest, und der Vertrag prüft
+    # sie gegen das Schema — hier ist nur die Zusage nachgetragen.
+    return cast("list[AdminRequestFehler]",
+                store.request_fehler(limit=min(limit, 200), nur_offen=nur_offen))
+
+
+@router.get("/errors/open-count")
+def request_fehler_offen(
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminUnread:
+    """Für das Abzeichen am Reiter — dieselbe Bauform wie beim Feedback."""
+    return {"total": store.request_fehler_offen()}
+
+
+@router.post("/errors/{fehler_id}/resolve")
+def request_fehler_abhaken(
+    fehler_id: int,
+    abgehakt: bool = True,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> Ok:
+    """Abhaken heißt „angesehen und behandelt".
+
+    Taucht die Fehlerart danach WIEDER auf, setzt der Sammler den Haken
+    zurück und meldet erneut — ein Haken auf etwas, das weiter passiert, wäre
+    eine Lüge.
+    """
+    if not store.request_fehler_abhaken(fehler_id, abgehakt):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Fehlerart nicht gefunden.")
+    return {"ok": True}
+
+
 @router.get("/jobs")
 def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> list[AdminJob]:
     """Cron-Übersicht: je Job der letzte Lauf (Status, Dauer, Kennzahlen) plus
@@ -133,7 +180,7 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
     from datetime import datetime
 
     from kern.alerts import SCHRITTE_SCHLUESSEL
-    from kern.jobs import JOBS
+    from kern.jobs import JOBS, zustand
 
     runs = store.job_runs(limit=500)
     by_job: dict[str, list[dict]] = {}
@@ -145,19 +192,9 @@ def jobs(_admin: dict = Depends(require_admin), store: Store = Depends(get_store
     for job in JOBS:
         history = by_job.get(job["key"], [])  # neueste zuerst
         last = history[0] if history else None
-        state = "unknown"
-        age_h = None
-        if last:
-            try:
-                age_h = round((now - datetime.fromisoformat(last["started_at"])).total_seconds() / 3600, 1)
-            except (ValueError, TypeError):
-                age_h = None
-            if last["status"] == "error":
-                state = "error"
-            elif age_h is not None and age_h > job["max_age_h"]:
-                state = "stale"
-            else:
-                state = "ok"
+        # Dieselbe Regel, die `scripts/check_herzschlag.py` für die Mail
+        # benutzt — zwei Fassungen liefen unweigerlich auseinander.
+        state, age_h = zustand(job, last, now)
         # Die Schritt-Liste aus den Kennzahlen herauslösen: Sie ist ein
         # eigenes, getyptes Feld, und in der Chip-Zeile des Panels stünde sie
         # sonst als „[object Object]". `last` wird dafür kopiert — die Zeile
@@ -466,10 +503,11 @@ def review_place_candidate(
             canonical_place_id=body.canonical_place_id, note=body.note,
             updated_by=admin.get("email"),
         )
-    except KeyError:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ortskandidat nicht gefunden.")
+    except KeyError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            "Ortskandidat nicht gefunden.") from exc
     except ValueError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
 
 @router.delete("/place-candidates/{location_slug}")

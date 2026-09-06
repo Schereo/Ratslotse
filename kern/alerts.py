@@ -18,7 +18,8 @@ import os
 import re
 import sys
 import traceback
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING
+from collections.abc import Callable
 
 if TYPE_CHECKING:  # nur für Typprüfer — zur Laufzeit importiert
     # `_record_run` nimmt einen `datetime` entgegen, holt ihn aber selbst nie:

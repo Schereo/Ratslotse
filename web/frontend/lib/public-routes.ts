@@ -19,6 +19,9 @@ export const OEFFENTLICHE_PFADE = [
   "/council/sitzung",
   "/council/thema",
   "/council/person",
+  // „Mein Viertel": Die Tafel eines Ortsbereichs ist der Link, den man der
+  // Nachbarin schickt — sie soll ihn ohne Konto öffnen können.
+  "/viertel",
 ] as const;
 
 /** Ist dieser Pfad ohne Konto lesbar? */

@@ -49,8 +49,13 @@ QUELLEN = ("web/frontend/app", "web/frontend/components", "web/frontend/lib",
 ENDUNGEN = {".ts", ".tsx", ".swift"}
 
 #: Dateien, die nie mitgeprüft werden.
+#: ``.test.ts`` sind die vitest-Logiktests neben ihrem Modul. Sie arbeiten mit
+#: ERFUNDENEN Nutzlasten — ``{ titel: "x" }`` prüft, dass der Wrapper einen
+#: Körper durchreicht, und behauptet nichts über ein Feld im Vertrag. Ein Fund
+#: dort wäre immer falsch. Die Browsertests (``.spec.ts``) bleiben drin: Die
+#: rufen echte Pfade auf und sollen mitgeprüft werden.
 UEBERSPRINGEN = ("node_modules", "web/frontend/lib/api-schema.ts",
-                 "web/frontend/ios", "/kommunalwahl/")
+                 "web/frontend/ios", "/kommunalwahl/", ".test.ts")
 
 #: Erlaubte Vorkommen: ``wert -> Begründung``. Ein Eintrag hier heißt: Das
 #: Wort steht in den Oberflächen, und zwar zu Recht.

@@ -22,9 +22,33 @@ import sqlite3
 from datetime import datetime
 
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
-class PersonenMixin:
+class PersonenMixin(StoreBasis):
     """Die Personen-Abfragen — nur zum Mitvererben."""
+
+    # Vertretungs- und Zeit-Notizen sind keine Ämter („Für Oberbürgermeister
+    # Krogmann", „bis TOP 8.2") — nur echte Amtsbezeichnungen zählen.
+    _ROLLEN_RE = re.compile(
+        r"(?i)^(erste[rn]?\s+)?(oberbürgermeister(in)?|stadtkämmer(er|in)|"
+        r"stadtbaur(at|ätin)|stadtr(at|ätin))$")
+
+    #: Funktionsangabe des Beteiligungsberichts, die „diese Person sitzt im
+    #: Stadtrat" behauptet — mit optionalem Klammerzusatz, wie ihn der Bericht
+    #: auch anderswo führt („1. Kreisrat (Vorsitzender)").
+    _FUNKTION_RATSMITGLIED = re.compile(r"(?i)^ratsmitglied(\s*\(.*\))?$")
+
+    #: Name des Plenar-Gremiums in den Sitzungsdaten. Es ist der Prüfstein für
+    #: ein Ratsmandat (s. list_members) — die Ausschüsse führen daneben
+    #: beratende Mitglieder, die dem Rat nicht angehören.
+    PLENUM = "Rat"
+
+    #: Wörter, die im Fraktions-Feld nur die ROLLE beschreiben („Beratendes
+    #: Mitglied", „beratend", „Verwaltung") — sie benennen keine entsendende
+    #: Organisation und taugen deshalb nicht als Herkunfts-Label.
+    _ROLLEN_LABEL = re.compile(
+        r"^(beratend\w*|beratende[sr]?\s+mitglied\w*|gast|gäste|verwaltung|"
+        r"protokoll\w*|stellv\w*|vertretung|mitglied\w*)$", re.IGNORECASE)
 
     #: Anreden, die vor einem Namen stehen dürfen, ohne ihn zu einem anderen zu
     #: machen. Ohne die Liste hielte „Ratsfrau Hufeland" einen Vornamen für
@@ -70,6 +94,42 @@ class PersonenMixin:
     #: Wortbeiträge in zehn Sprecher-Formen gekostet — sie waren keiner Person
     #: zugeordnet.
     _ANREDEN_ANZEIGE = {"herr", "frau", "ratsherr", "ratsfrau"}
+
+    def council_roster_before(self, ksinr: int) -> list[dict]:
+        """Die Anwesenheitsliste der jüngsten Ratssitzung VOR dieser — das
+        Sprecher-Verzeichnis für die Live-Verfolgung (``council/livetracker``).
+
+        Das Protokoll der laufenden Sitzung gibt es live noch nicht; der Rat
+        ist aber derselbe wie beim letzten Mal. Zurück kommen Mitglieder,
+        Vorsitz und Verwaltung (Gäste und Protokollführung reden nicht zur
+        Sache) mit ``name``, ``party``, ``role``. Ohne Vorgängerin mit
+        Liste: leer — dann rät der Tracker die Fraktion nicht, er lässt sie
+        weg."""
+        from council import live as live_mod
+
+        datum = self._conn.execute(
+            "SELECT session_date FROM council_sessions WHERE ksinr = ?", (ksinr,)
+        ).fetchone()
+        if not datum:
+            return []
+        kandidaten = self._conn.execute(
+            """SELECT s.ksinr, s.committee FROM council_sessions s
+               WHERE s.session_date < ? AND s.ksinr <> ?
+                 AND EXISTS (SELECT 1 FROM council_attendance a WHERE a.ksinr = s.ksinr)
+               ORDER BY s.session_date DESC, s.ksinr DESC""",
+            (datum[0], ksinr),
+        ).fetchall()
+        quelle = next((r["ksinr"] for r in kandidaten if live_mod.is_council(r["committee"])), None)
+        if quelle is None:
+            return []
+        rows = self._conn.execute(
+            """SELECT name, COALESCE(party, '') AS party, COALESCE(role, '') AS role
+               FROM council_attendance
+               WHERE ksinr = ? AND role IN ('member', 'chair', 'administration')
+               ORDER BY party, name""",
+            (quelle,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_attendance(self, ksinr: int) -> list[dict]:
         rows = self._conn.execute(

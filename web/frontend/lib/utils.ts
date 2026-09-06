@@ -28,8 +28,13 @@ export function formatDateTime(iso: string): string {
  *  `heute` kommt als Parameter, weil der statische Export sonst das
  *  Build-Datum einbacken würde (siehe `useHeute`).
  */
-/** Wochentag kurz („Mi.") — im Sitzungstab steht sonst nur „AUG 13", und man
- *  rechnet selbst nach, ob das ein Werktag oder ein Wochenende ist. */
+/** Wochentag kurz („Mi") — im Sitzungstab steht sonst nur „AUG 13", und man
+ *  rechnet selbst nach, ob das ein Werktag oder ein Wochenende ist.
+ *
+ *  Ob ein Punkt dahinter steht, entscheidet die Sprachdatenbank der Laufzeit,
+ *  nicht diese Funktion: Ältere CLDR-Fassungen lieferten „Mi.", ICU 78 liefert
+ *  „Mi". `utils.test.ts` prüft deshalb den Tag und die Länge, nicht die
+ *  Schreibweise. */
 export function wochentagKurz(iso: string): string {
   const tag = (iso || "").split("T")[0];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tag)) return "";

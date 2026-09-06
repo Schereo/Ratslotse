@@ -855,6 +855,17 @@ private final class FeedbackURLProtocol: URLProtocol {
     #expect(card.category == "estimation")
 }
 
+/// Die Anlagen kommen unter dem Namen, den der SERVER benutzt: `anlagen`.
+///
+/// Dieser Test stand bis 09/2026 auf `attachments` — und war damit die
+/// Bestätigung einer Vermutung, nicht eine Prüfung. Er war aus dem Swift-Modell
+/// abgeschrieben, das Modell aus der Luft: Der Endpunkt liefert das Feld seit
+/// seiner Einführung (#443) als `anlagen`, die App bekam die Anlagen also nie
+/// zu sehen, und dieser grüne Test sagte, alles sei in Ordnung. Genau der Fall,
+/// vor dem `tests/CLAUDE.md` warnt — ein Test, der die eigene Attrappe prüft.
+///
+/// Die Attrappe hier ist deshalb aus `api/openapi.json` (Schema
+/// `AgendaItemRow`) abgeschrieben, nicht aus `Models.swift`.
 @Test func nativeAgendaItemsDecodeTopAttachmentsAndLegacyPayloads() throws {
     let data = try #require(
         """
@@ -864,7 +875,7 @@ private final class FeedbackURLProtocol: URLProtocol {
           "template_number": "26/0412",
           "is_public": 1,
           "summary": "Der Ausschuss berät zwei Varianten.",
-          "attachments": [
+          "anlagen": [
             {"label": "Lageplan Querungsstelle", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310001"},
             {"label": "Verkehrsgutachten", "url": "https://buergerinfo.oldenburg.de/getfile.php?id=310002"}
           ]

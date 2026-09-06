@@ -90,6 +90,10 @@ STEPS: list[tuple[str, str]] = [
     # damit die 50/50-Mischung frische Werte sieht.
     ("Tragweite", "rate_impact.py --limit 500"),
     ("Wichtigkeits-Score", "score_importance.py"),
+    # „Mein Viertel" (LLM, gecacht): Richter-Urteil je neuem verorteten
+    # Beschluss und Bündelung zu Vorhaben je Ortsbereich. Nach dem Geocoding
+    # und der Ortszuordnung, weil es deren Tabellen liest.
+    ("Mein Viertel — Vorhaben", "build_district_projects.py"),
     # Quizfragen auffüllen (LLM) — nur Gebiete unter Ziel-Fragenzahl, ersetzt
     # ausgemusterte Fragen und deckt neue Beschluss-Themen ab.
     ("Quizfragen", "generate_quiz.py"),

@@ -143,6 +143,28 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("ruff", "ungenutzte Importe, undefinierte Namen (nur „F“)", schnell=True,
              befehl=[PY, "-m", "ruff", "check", "."],
              braucht=_modul_fehlt("ruff", DEV_INSTALL)),
+    # WOZU EIN TYPPRÜFER, WO ES 2.614 TESTS GIBT. Die Tests messen, was ein Lauf
+    # TUT; sie sagen nichts über die Wege, die kein Test nimmt. Genau dort saßen
+    # die teuren Fehler der letzten Wochen: ein `None`, das als ID weiterwandert,
+    # ein Pflichtfeld, das eine Antwortform nicht trägt (#970 — die Seite blieb
+    # leer), ein Argument, das nicht zur Signatur passt (#1065 — der Cron stürzte
+    # nachts ab). Alle drei stehen im Code, bevor irgendetwas läuft.
+    #
+    # DER GELTUNGSBEREICH IST KLEIN UND WÄCHST IN STUFEN — er steht in
+    # `pyrightconfig.json`, mitsamt der Begründung. Kurz: Über den ganzen
+    # Bestand gemessen sind es 1.309 Befunde, fast tausend davon aus EINER
+    # Ursache. Ein Lauf, der immer rot ist, wird abgeschaltet und prüft dann
+    # gar nichts. Stufe 1 ist `kern/` und der Backend-Kern; beide sind grün.
+    Pruefung("typen-py", "Python-Typen (pyright, Stufe 1)", schnell=True,
+             befehl=[PY, "-m", "pyright", "--pythonpath", PY],
+             braucht=_modul_fehlt("pyright", DEV_INSTALL)),
+    # Der Rest des Bestands steht außerhalb des harten Gates — ohne diese
+    # Prüfung wäre er ganz ungeprüft. Sie zählt die Befunde je Bereich; die
+    # Zahl darf nur sinken. Warum getrennt von `typen-py`: Sie fährt pyright
+    # über ALLES (rund 5 s statt 1,7 s) und gehört damit nicht in `--schnell`.
+    Pruefung("typen-schuld", "Typ-Schuldenstand steigt nicht (pyright, alles)",
+             befehl=[PY, "scripts/pruefe_typschulden.py"],
+             braucht=_modul_fehlt("pyright", DEV_INSTALL)),
     Pruefung("vertrag", "api/openapi.json passt zum Backend-Code", schnell=True,
              befehl=[PY, "scripts/openapi_schnitt.py", "--pruefen"],
              braucht=_modul_fehlt("fastapi", DEV_INSTALL)),
@@ -150,6 +172,11 @@ PRUEFUNGEN: list[Pruefung] = [
              funktion=_generierte_typen),
     Pruefung("changelog", "changelog.d/-Fragmente sind wohlgeformt", schnell=True,
              befehl=[PY, "scripts/changelog_schnitt.py", "--pruefen"]),
+    # Zwei Listen von Fachbegriffen wären lautlos auseinandergelaufen: Kennt
+    # nur eine Seite ein Wort, fehlt der Tooltip bzw. rät das Modell — nichts
+    # scheitert dabei.
+    Pruefung("glossar", "lib/glossary.ts passt zu kern/glossar.py", schnell=True,
+             befehl=[PY, "scripts/glossar_ts.py", "--pruefen"]),
     # Die App ist die einzige Schicht ohne erzeugte Typen: Ihre `struct`s stehen
     # von Hand da, und eine Umbenennung im Backend erreicht sie auf keinem Weg.
     Pruefung("ios", "Swift-Modelle gegen ihr Schema halten", schnell=True,
@@ -162,6 +189,14 @@ PRUEFUNGEN: list[Pruefung] = [
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
     Pruefung("tests", "die Testsuite", befehl=[PY, "-m", "pytest", "tests/", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
+    # Die Logik in `web/frontend/lib/` — die größte ungeprüfte Fläche des Repos
+    # war bis 09/2026 genau hier: 94.000 Zeilen Frontend gegen 23 Browsertests.
+    # Die prüfen Flüsse und brauchen zwei Server und zwei Minuten; für eine
+    # Funktion, die aus einer Uhrzeit ein Live-Fenster rechnet, sind sie das
+    # falsche Werkzeug. Der Fall „16:29 gegen 16:30" ist dort nicht
+    # herstellbar, hier ist er eine Zeile. Läuft in unter einer Sekunde.
+    Pruefung("vitest", "Logik-Tests des Frontends (lib/)", schnell=True, cwd=FRONTEND,
+             befehl=["npx", "vitest", "run"], braucht=_node_fehlt),
     Pruefung("tsc", "TypeScript des Frontends übersetzen", cwd=FRONTEND,
              befehl=["npx", "tsc", "--noEmit"], braucht=_node_fehlt),
     Pruefung("lint", "ESLint des Frontends (Hook-Regeln)", cwd=FRONTEND,

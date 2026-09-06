@@ -1,0 +1,39 @@
+{
+  // Statische Typprüfung. Warum es sie gibt und wie der Geltungsbereich
+  // wächst, steht in `scripts/pruefe.py` bei der Prüfung „typen-py".
+  //
+  // Der Geltungsbereich ist bewusst KLEIN und wächst in Stufen. Über den
+  // ganzen Bestand gemessen (03.09.2026) meldet pyright 1.309 Befunde —
+  // fast tausend davon aus einer einzigen Ursache (die Store-Mixins
+  // erben keine Basis, die `self._conn` kennt). Ein Lauf, der immer rot
+  // ist, prüft nichts; er wird abgeschaltet. Also erst die Stufe, die
+  // grün ist, dann die nächste.
+  //
+  // Stufe 1 (hier): `kern/` — die geteilte Infrastruktur, die alles
+  // andere benutzt — und der Backend-Kern ohne die Router.
+  "include": [
+    "kern",
+    "web/backend/app"
+  ],
+
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.venv",
+    // Stufe 2. Die Router bauen ihre Antwort-Dicts aus Store-Methoden, die
+    // `dict[str, Any]` liefern; gegen `Any` prüft niemand etwas. Sinnvoll
+    // wird das erst mit einem typisierten Store — und dann fängt es genau
+    // die Fehlerklasse, die `antworten.py` in seinen zwei Regeln
+    // beschreibt: fehlender Pflichtschlüssel (500) und stumm
+    // abgeschnittenes Feld.
+    "web/backend/app/routers"
+  ],
+
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
+
+  // Ein fehlender Stub ist kein Befund, den dieser Lauf melden soll.
+  // Ungenutzte und undefinierte Namen findet ruff, in jedem Verzeichnis.
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false
+}

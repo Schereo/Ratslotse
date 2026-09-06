@@ -393,7 +393,7 @@ def _run(job: DeepJob, ratslotse_db: str, council_db: str) -> None:
             pass
         try:
             planungen = store.geplante_beratungen_fuer(
-                [c.get("kvonr") for c in candidates[:20]])
+                [k for c in candidates[:20] if (k := c.get("kvonr"))])
         except Exception:  # noqa: BLE001
             planungen = []
         # Der Haushalts-Kontext kommt aus derselben Stelle wie bei /ask

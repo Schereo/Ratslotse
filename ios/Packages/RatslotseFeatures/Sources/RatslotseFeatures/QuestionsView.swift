@@ -975,7 +975,7 @@ private struct EmptyQuestionsView: View {
             Text("Ratslotse sucht in Beschlüssen, Vorlagen und Debatten. Die Quellen stehen direkt an der Antwort.")
                 .foregroundStyle(RatsColor.secondary)
                 .lineSpacing(3)
-            ForEach(examples, id: \.self) { example in
+            ForEach(Array(examples.enumerated()), id: \.element) { index, example in
                 Button { select(example) } label: {
                     HStack {
                         Text(example).multilineTextAlignment(.leading)
@@ -990,6 +990,7 @@ private struct EmptyQuestionsView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 11))
                 }
                 .buttonStyle(RatsPlainButtonStyle())
+                .ratsStaggered(index + 1)
             }
         }
         .padding(.top, usesCompactLayout ? 4 : 30)

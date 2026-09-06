@@ -183,7 +183,10 @@ def judge(label_a: str, label_b: str) -> Path:
         fb = b_by_id.get(fa["id"])
         if not fb:
             continue
-        getauscht = int(hashlib.sha1(fa["question"].encode()).hexdigest(), 16) % 2 == 1
+        # Deterministisches Vertauschen der beiden Seiten je Frage, damit der
+        # Judge keine Position bevorzugt — keine Sicherheitsfunktion.
+        getauscht = int(hashlib.sha1(fa["question"].encode(),
+                                     usedforsecurity=False).hexdigest(), 16) % 2 == 1
         links, rechts = (fb, fa) if getauscht else (fa, fb)
 
         def qliste(f):
@@ -206,7 +209,8 @@ def judge(label_a: str, label_b: str) -> Path:
         if raw is None:
             continue
 
-        def entblinden(value: str) -> str:
+        # `getauscht=getauscht` bindet die Runde — siehe konzernabschluss.py.
+        def entblinden(value: str, getauscht=getauscht) -> str:
             if value not in ("A", "B"):
                 return "gleich"
             ist_a_links = not getauscht

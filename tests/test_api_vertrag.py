@@ -29,7 +29,7 @@ os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 # Leer seit 09/2026 — ein neuer Eintrag hier ist eine Entscheidung, kein Rest.
 OFFEN: set[tuple[str, str]] = set()
 
-# Kein JSON-Body: zwei SSE-Ströme und eine Bilddatei. Ihre Medientypen und
+# Kein JSON-Body: zwei SSE-Ströme, eine Bilddatei und der Kalender-Feed. Ihre Medientypen und
 # Ereignis-Arten stehen als `responses=` am Dekorator (s. `antworten.py`,
 # Abschnitt „Antworten, die kein JSON sind"); der Test unten prüft, dass sie
 # dort auch wirklich ankommen.
@@ -37,6 +37,7 @@ KEIN_JSON = {
     ("post", "/api/council/ask"),
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
+    ("get", "/api/calendar/{token}.ics"),
 }
 
 #: Welchen Medientyp diese drei Endpunkte liefern MÜSSEN.
@@ -44,6 +45,7 @@ KEIN_JSON_MEDIENTYP = {
     ("post", "/api/council/ask"): "text/event-stream",
     ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
     ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
+    ("get", "/api/calendar/{token}.ics"): "text/calendar",
 }
 
 
@@ -383,7 +385,9 @@ _SPERRLISTEN = (
     ("council/embeddings.py", "_ANLAGE_META_STOPP", "beschluss"),
     ("council/fundstueck.py", "_ALLERWELT", "beschluss"),
     ("council/store.py", "_AUSBLICK_STOPP", "beschluss"),
-    ("council/store.py", "_RUBRIK_WORTE", "beschluss"),
+    # `_RUBRIK_WORTE` steht seit dem Mixin-Schnitt bei seinem einzigen
+    # Nutzer, nicht mehr in `store.py`.
+    ("council/store_sitzungen.py", "_RUBRIK_WORTE", "beschluss"),
 )
 
 

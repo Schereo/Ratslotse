@@ -33,7 +33,7 @@ def _get_model():
 # Frage sonst DREIMAL (Beschlüsse, Presse, Wortbeiträge) — gleicher Text,
 # gleicher Vektor. Bewusst winzig (die letzten 8 Queries), Batches (Chunks)
 # laufen daran vorbei.
-_single_cache: "dict[str, object]" = {}
+_single_cache: dict[str, object] = {}
 
 
 def embed(texts: list[str]):
@@ -939,7 +939,10 @@ def embed_wortbeitraege_missing(store) -> int:
         texts = [" — ".join(t for t in (w["top"], w["text"]) if t)[:2000] for w in batch]
         vecs = embed(texts)
         for w, text, vec in zip(batch, texts, vecs):
-            h = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+            # Fingerabdruck des Textes, um unveränderte Beiträge zu
+            # überspringen — keine Sicherheitsfunktion.
+            h = hashlib.sha1(text.encode("utf-8"),
+                             usedforsecurity=False).hexdigest()[:16]
             store.replace_wortbeitrag_embedding(w["id"], h, vec.tobytes())
             n += 1
     return n

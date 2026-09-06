@@ -8,3 +8,8 @@ ruff>=0.16
 # Backend tests (tests/test_backend_api.py) use FastAPI's TestClient.
 -r web/backend/requirements.txt
 httpx>=0.27
+# Statischer Typprüfer. Geltungsbereich und Begründung: `pyrightconfig.json`.
+# Anders als ruff mit fester Fassung in `constraints.txt` — warum, steht dort.
+# pyright bringt seine eigene Node-Laufzeit mit, es ist also nichts zusätzlich
+# zu installieren.
+pyright>=1.1.400

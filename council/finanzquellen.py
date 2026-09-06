@@ -67,7 +67,7 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Callable
+from collections.abc import Callable
 
 from council import (anlagenspiegel, bilanz, buergschaften, indicators, income_budget, finanzberichte,
                      herkunft, investitionsprogramm, konzernabschluss,

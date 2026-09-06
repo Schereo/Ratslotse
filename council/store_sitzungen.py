@@ -14,10 +14,126 @@ import re
 from datetime import datetime
 
 from council.scraper import CouncilSession
+from council.store_basis import StoreBasis
 
-class SitzungenMixin:
+class SitzungenMixin(StoreBasis):
     """Die Sitzungs-Abfragen — nur zum Mitvererben."""
 
+    #: Die Eimer eines Tagesordnungs-Diffs. NUR die oberste Ebene — `anlagen`
+    #: ist dort ein Eimer, INNERHALB eines Punktes aber dessen Anlagenliste,
+    #: und die heißt weiter so.
+    _DIFF_EIMER = {
+        "neu": "new", "entfernt": "removed", "verschoben": "moved",
+        "umformuliert": "reworded", "vorlage": "template", "anlagen": "attachments",
+    }
+
+    # Kommende Sitzungen kommen aus ZWEI Quellen: echten Sitzungen mit
+    # Tagesordnung und bloß terminierten aus dem Kalender. Liste und Zählung
+    # müssen dieselbe Menge meinen — deshalb steht die Bedingung genau einmal
+    # hier und wird von beiden benutzt.
+    _UPCOMING_FROM = """
+        FROM (
+            SELECT cs.ksinr, cs.committee, cs.session_date, cs.session_time, cs.location,
+                   COUNT(ci.id) AS n_items
+            FROM council_sessions cs
+            LEFT JOIN council_agenda_items ci ON ci.ksinr = cs.ksinr
+            WHERE cs.session_date >= ?
+            GROUP BY cs.ksinr
+            UNION ALL
+            SELECT NULL AS ksinr, ss.committee, ss.session_date, ss.session_time, ss.location,
+                   0 AS n_items
+            FROM council_scheduled_sessions ss
+            WHERE ss.session_date >= ?
+              AND NOT EXISTS (
+                  SELECT 1 FROM council_sessions cs2
+                  WHERE cs2.committee = ss.committee AND cs2.session_date = ss.session_date
+              )
+        )
+    """
+
+    #: Tagesordnungspunkte, die in jeder Sitzung stehen und niemanden
+    #: interessieren. Am Bestand gemessen: 20 von 53 kommenden TOPs.
+    #: „- Bericht der Verwaltung" ist ein ZUSATZ, kein Punkt: Er hängt an den
+    #: spannendsten Titeln der Woche („Ermittlungen Abfallentsorgung
+    #: Fliegerhorst (CDU-Fraktion) - Bericht der Verwaltung"). Ein auf das
+    #: Zeilenende verankertes Muster warf davon neun weg, darunter fast alle
+    #: Fraktionsanträge — deshalb greift die Formalie nur, wenn der Punkt
+    #: NICHTS ANDERES ist als diese Floskel.
+    _FORMALIE_RE = re.compile(
+        r"Beschlussf[äa]higkeit|Genehmigung der Tagesordnung|Genehmigung des Protokolls|"
+        r"Einwohnerfragestunde|^Mitteilungen|Anfragen und Anregungen|Verschiedenes|"
+        r"^\s*Bericht(?:e)? der Verwaltung\s*$|Wahl der Schriftf[üu]hrung",
+        re.IGNORECASE)
+
+    #: „(CDU-Fraktion vom 10.06.2026)", „(Fraktionen BSW und SPD)", „(FDP-Fraktion …)"
+    _ANTRAG_RE = re.compile(r"\(\s*(?:die\s+)?(?:Fraktion(?:en)?|Gruppe|Ratsherr|Ratsfrau)\b|"
+                            r"[A-ZÄÖÜ][\wÄÖÜäöüß/. ]{1,24}-Fraktion\b", re.IGNORECASE)
+
+    _PERSONALIE_RE = re.compile(
+        r"Berufung|Umbesetzung|Bestellung\s+(?:eines|einer)|"
+        r"Wahl\s+(?:des|der|eines|einer)\s+(?:stellv|Vorsitz|Schriftf)|"
+        r"beratende[sn]?\s+Mitglied", re.IGNORECASE)
+
+    #: Bindende Gegenstände: Was hier greift, wirkt über den Tag hinaus —
+    #: Satzungen, Gebühren, Haushalt, Bauleitplanung, Verträge, Grundsätze.
+    #: Genau die Rubrik „Bindungswirkung" des Tragweite-Prompts, nur als Regel.
+    _BINDEND_RE = re.compile(
+        r"Satzung|Geb[üu]hren|Beitrags|Entgelt|Haushalt|Nachtragshaushalt|"
+        r"Bebauungsplan|Fl[äa]chennutzungsplan|Bauleitplan|Grundsatzbeschluss|"
+        r"Vertrag|Vereinbarung|Konzession|Verordnung|Richtlinie", re.IGNORECASE)
+
+    #: Wo entschieden wird, wiegt schwerer als wo vorberaten wird. Der Rat und
+    #: der Verwaltungsausschuss binden die Stadt, ein Fachausschuss bereitet vor.
+    _GREMIUM_GEWICHT = ((("stadtrat", "rat der stadt"), 1.5), (("verwaltungsausschuss",), 1.0))
+
+    #: Ab hier gilt ein Punkt als Schwerpunkt der Woche und wird hervorgehoben.
+    #: Darunter zeigt die Karte ihre Zeilen ohne Hervorhebung — lieber kein
+    #: Schwerpunkt als ein behaupteter.
+    TOP_MINDEST = 60
+
+    #: Mehr als zwei Hervorhebungen entwerten sich gegenseitig.
+    TOP_MAX = 2
+
+    #: Unter diesem Wert kommt ein Punkt gar nicht auf die Karte. Skala ist die
+    #: Tragweite (0–100, s. council/impact.py): 20 ≈ Bericht zur Kenntnis,
+    #: 35 ≈ Maßnahme an einer Einrichtung. Darunter lohnt keine Zeile.
+    WICHTIG_MINDEST = 30
+
+    #: Lazy geladener Wiederkehr-Zähler (s. _wiederkehr).
+    _wiederkehr_cache: dict[str, int] | None = None
+
+    #: „(CDU-Fraktion vom 14.07.2026)" → Antragsteller „CDU-Fraktion"; der
+    #: Zusatz frisst sonst die halbe Zeile auf der Karte (im Browser gesehen).
+    _ANTRAGSTELLER_RE = re.compile(
+        r"\s*\(\s*(?:die\s+)?(?P<wer>[^)]*?)\s*(?:vom\s+\d{1,2}\.\d{1,2}\.\d{2,4})?\s*\)")
+
+    #: Verfahrens-Anhängsel am Titelende, die auf der Karte nichts erklären.
+    _TITEL_ANHANG_RE = re.compile(
+        r"\s*[-–]\s*(?:\w*[Aa]ntrag mit Bericht der Verwaltung|Bericht(?:e)? der Verwaltung|"
+        r"Beschlussantrag|Berichtsantrag|Antrag|Bericht|Beschluss|Vorlage|Kenntnisnahme)\s*$",
+        re.IGNORECASE)
+
+    #: „Ö 11.3" → Präfix „Ö", Nummer „11.3". Das Präfix ist zugleich der
+    #: Öffentlichkeitsmarker (Ö/N) und gehört zur Nummer, nicht davor weg.
+    _TOP_NUMMER_RE = re.compile(r"^\s*([A-Za-zÖÄÜöäü]+)\s+([\d.]+?)\.?\s*$")
+
+    #: Wörter, die in Tagesordnungs-Überschriften stehen, ohne einen
+    #: Gegenstand zu benennen — sie dürfen keine Gruppe begründen.
+    _RUBRIK_WORTE = frozenset({
+        "antraege", "antrag", "fraktionen", "fraktion", "gruppen", "gruppe",
+        "ratsund", "ausschussmitglieder", "mitglieder", "berichte", "bericht",
+        "anfragen", "anregungen", "mitteilungen", "verschiedenes", "verwaltung",
+        "beschluss", "beschluesse", "vorlagen", "sonstiges", "genehmigung",
+        "protokolle", "protokolls", "tagesordnung", "oeffentlicher", "teil",
+    })
+
+    #: Titel auf seinen Kern eindampfen, damit „Annahme von Zuwendungen durch
+    #: den Rat - Beschluss (ungeändert beschlossen)" und dieselbe Zeile drei
+    #: Sitzungen später als EIN Punkt zählen: Klammern raus, Zahlen zu #,
+    #: Ergebniszusatz weg.
+    _WIEDERKEHR_UNWICHTIG = re.compile(
+        r"\([^)]*\)|\b(?:ungeändert|geändert)\s+beschlossen\b|"
+        r"\s+-\s+(?:beschluss|bericht|antrag|vorlage)\b", re.IGNORECASE)
 
     # Zwei Muster, die nur die Wochenvorschau braucht — deshalb hier und
     # nicht im Kern (tests/test_store_groesse.py hält die Tür zu).
@@ -533,37 +649,23 @@ class SitzungenMixin:
             "GROUP BY cs.ksinr ORDER BY cs.session_date, cs.session_time",
             (heute.isoformat(), bis))]
 
-    def wochenvorschau(self, tage: int = 7, max_punkte: int = 5,
-                       meine: dict[int, list[dict]] | None = None) -> dict:
-        """Was steht in den nächsten Tagen im Rat an? — „Diese Woche im Rat".
+    def _bewertete_punkte(self, sitzungen: list[dict],
+                          meine: dict[int, list[dict]] | None = None) -> list[dict]:
+        """Alle inhaltlichen Tagesordnungspunkte der ``sitzungen``, bewertet
+        und nach Rang sortiert — Treffer zu eigenen Themen zuerst, dann nach
+        Tragweite.
 
-        Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit dem
-        Protokoll, und das dauert im Median 119 Tage (am Bestand gemessen).
-        Ein Wochenrückblick aus Beschlüssen wäre also ein Rückblick auf den
-        vorletzten Monat. Tagesordnungen dagegen liegen vor der Sitzung vor —
-        für die kommende Woche stehen sie heute schon da.
-
-        Ausgewählt werden inhaltliche Punkte (Formalien fliegen raus), bevorzugt
-        solche mit Kurzfassung und Vorlage, und höchstens zwei je Sitzung, damit
-        eine große Tagesordnung die Ausgabe nicht auffrisst.
-
-        ``meine`` sind die Tagesordnungs-Treffer der eigenen Themen
-        (``{ksinr: [{item_number, topic_name}]}``, kommt aus der anderen
-        Datenbank und wird deshalb hereingereicht). Wer ein Thema getroffen
-        hat, ist relevant — solche Punkte umgehen die Rang-Schwelle. Design 14
-        baut darauf auf: Sitzungen mit eigenen Treffern klappen ihre Punkte
-        auf, alle anderen bleiben eine ruhige Zeile.
+        EINE Bewertung für alle Abnehmer: die Wochenvorschau (und damit die
+        Mail und der Instagram-Bot) und die Highlights je Sitzung in der
+        Sitzungsliste (``sitzungs_highlights``). Vorher lebte das alles in
+        ``wochenvorschau`` und galt nur für die kommenden sieben Tage; eine
+        Sitzung in zwei Wochen hatte deshalb keine Highlights, obwohl ihre
+        Punkte längst bewertet waren (Tims Frage 04.09.2026).
         """
-        from datetime import date, timedelta
         from .dringlichkeit import ist_dringlichkeitsantrag
 
-        heute = date.today()
-        bis = (heute + timedelta(days=tage)).isoformat()
-        sitzungen = self.sitzungen_im_fenster(tage)
         if not sitzungen:
-            return {"found": False, "from_date": heute.isoformat(), "to_date": bis,
-                    "sessions": [], "items": []}
-
+            return []
         ph = ",".join("?" * len(sitzungen))
         rohe = self._tagesordnung_roh([s["ksinr"] for s in sitzungen])
         nach_sitzung = {s["ksinr"]: s for s in sitzungen}
@@ -691,6 +793,105 @@ class SitzungenMixin:
         # Treffer zuerst, danach nach Rang: Ein Punkt zu einem eigenen Thema ist
         # relevanter als jeder gut bewertete Fremdpunkt.
         kandidaten.sort(key=lambda p: (0 if p["topic_name"] else 1, -p["wichtig"], p["session_date"]))
+        return kandidaten
+
+    @staticmethod
+    def _punkt_export(k: dict) -> dict:
+        """Die Felder eines bewerteten Punktes, wie sie nach außen gehen.
+
+        Genau EINE Stelle dafür — die Liste ``further_per_session`` baute die
+        Punkte früher Feld für Feld neu zusammen, und zweimal fehlte dabei ein
+        Feld (Kurzfassung, Kartentext), sodass Instagram-Karten ohne Erklärung
+        standen. Wer ein Feld ergänzt, ergänzt es hier, und alle Abnehmer
+        bekommen es.
+        """
+        return {
+            "ksinr": k["ksinr"], "item_number": k["item_number"],
+            "title": k["title"], "titel_kurz": k["titel_kurz"],
+            "applicants": k["applicants"], "topic_name": k["topic_name"],
+            "summary": k["summary"], "social_text": k.get("social_text"),
+            "social_headline": k.get("social_headline"),
+            "group_applicants": k.get("group_applicants", []),
+            "dringlich": k.get("dringlich", False),
+            "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
+            "template_number": k["template_number"], "kvonr": k["kvonr"],
+            "committee": k["committee"], "session_date": k["session_date"],
+            "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
+            "gruppe_stationen": k["gruppe_stationen"],
+            "gruppe_text": k.get("gruppe_text"),
+        }
+
+    def sitzungs_highlights(self, ksinrs: list[int | None],
+                            meine: dict[int, list[dict]] | None = None,
+                            max_je_sitzung: int = 2) -> dict[int, list[dict]]:
+        """Die wichtigsten Punkte je Sitzung — für die Sitzungsliste, mit
+        derselben Bewertung und derselben Schwelle wie die Wochenvorschau
+        (``WICHTIG_MINDEST``; ein Treffer zu einem eigenen Thema umgeht sie).
+
+        Je Vorhaben (``gruppe_nr``) ein Platz, höchstens ``max_je_sitzung``
+        je Sitzung, innerhalb der Sitzung in Tagesordnungs-Reihenfolge.
+        ``top`` markiert, was hervorgehoben gehört: ein eigenes Thema oder
+        eine Tragweite ab ``TOP_MINDEST``. Sitzungen ohne einen Punkt über
+        der Schwelle fehlen im Ergebnis — die Karte sagt dann nichts, statt
+        etwas Beliebiges zu behaupten.
+        """
+        gueltig = [k for k in ksinrs if k]
+        if not gueltig:
+            return {}
+        ph = ",".join("?" * len(gueltig))
+        sitzungen = [dict(r) for r in self._conn.execute(
+            f"SELECT ksinr, committee, session_date FROM council_sessions "
+            f"WHERE ksinr IN ({ph})", gueltig)]
+        ergebnis: dict[int, list[dict]] = {}
+        gruppen: dict[int, set] = {}
+        for k in self._bewertete_punkte(sitzungen, meine):
+            if not k["topic_name"] and k["wichtig"] < self.WICHTIG_MINDEST:
+                continue
+            gesehen = gruppen.setdefault(k["ksinr"], set())
+            if k["gruppe_nr"] in gesehen:
+                continue
+            liste = ergebnis.setdefault(k["ksinr"], [])
+            if len(liste) >= max_je_sitzung:
+                continue
+            gesehen.add(k["gruppe_nr"])
+            punkt = self._punkt_export(k)
+            punkt["top"] = bool(k["topic_name"]) or k["wichtig"] >= self.TOP_MINDEST
+            liste.append(punkt)
+        for liste in ergebnis.values():
+            liste.sort(key=lambda p: self._top_sortierung(p["item_number"]))
+        return ergebnis
+
+    def wochenvorschau(self, tage: int = 7, max_punkte: int = 5,
+                       meine: dict[int, list[dict]] | None = None) -> dict:
+        """Was steht in den nächsten Tagen im Rat an? — „Diese Woche im Rat".
+
+        Bewusst nach VORN gerichtet: Beschlüsse erreichen uns erst mit dem
+        Protokoll, und das dauert im Median 119 Tage (am Bestand gemessen).
+        Ein Wochenrückblick aus Beschlüssen wäre also ein Rückblick auf den
+        vorletzten Monat. Tagesordnungen dagegen liegen vor der Sitzung vor —
+        für die kommende Woche stehen sie heute schon da.
+
+        Ausgewählt werden inhaltliche Punkte (Formalien fliegen raus), bevorzugt
+        solche mit Kurzfassung und Vorlage, und höchstens zwei je Sitzung, damit
+        eine große Tagesordnung die Ausgabe nicht auffrisst.
+
+        ``meine`` sind die Tagesordnungs-Treffer der eigenen Themen
+        (``{ksinr: [{item_number, topic_name}]}``, kommt aus der anderen
+        Datenbank und wird deshalb hereingereicht). Wer ein Thema getroffen
+        hat, ist relevant — solche Punkte umgehen die Rang-Schwelle. Design 14
+        baut darauf auf: Sitzungen mit eigenen Treffern klappen ihre Punkte
+        auf, alle anderen bleiben eine ruhige Zeile.
+        """
+        from datetime import date, timedelta
+
+        heute = date.today()
+        bis = (heute + timedelta(days=tage)).isoformat()
+        sitzungen = self.sitzungen_im_fenster(tage)
+        if not sitzungen:
+            return {"found": False, "from_date": heute.isoformat(), "to_date": bis,
+                    "sessions": [], "items": []}
+
+        kandidaten = self._bewertete_punkte(sitzungen, meine)
         gruppen_je_sitzung: dict[int, set] = {}
         punkte = []
         for p in kandidaten:
@@ -782,33 +983,7 @@ class SitzungenMixin:
                 continue
             if not (k["topic_name"] or k["wichtig"] >= self.WICHTIG_MINDEST):
                 continue
-            further_per_session.setdefault(k["ksinr"], []).append({
-                "ksinr": k["ksinr"], "item_number": k["item_number"],
-                "title": k["title"], "titel_kurz": k["titel_kurz"],
-                "applicants": k["applicants"], "topic_name": k["topic_name"],
-                # Kurzfassung UND Tragweite-Grund gehen mit. Hier stand
-                # `"summary": None`, um die Antwort klein zu halten — für die
-                # Website reichte der Titel beim Aufklappen. Der Instagram-Bot
-                # baut aus dieser Liste aber ganze Karten, und die standen
-                # dadurch grundsätzlich ohne Erklärung da (Tims Befund
-                # 19.08.26: „die zweite Seite hat keine Zusammenfassung").
-                #
-                # Und derselbe Fehler noch einmal, 30.08.26: Der neue
-                # Kartentext fehlte hier, weil diese Liste Feld für Feld
-                # gebaut wird. Der Dringlichkeitsantrag zur PAK-Belastung
-                # stand deshalb auf der Karte — und darunter nichts. Wer hier
-                # ein Feld ergänzt, muss es an BEIDEN Stellen tun.
-                "summary": k["summary"], "social_text": k.get("social_text"),
-                "social_headline": k.get("social_headline"),
-                "group_applicants": k.get("group_applicants", []),
-                "dringlich": k.get("dringlich", False),
-                "wichtig": k["wichtig"], "wichtig_grund": k.get("wichtig_grund"),
-                "template_number": k["template_number"], "kvonr": k["kvonr"],
-                "committee": k["committee"], "session_date": k["session_date"],
-                "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
-                "gruppe_stationen": k["gruppe_stationen"],
-                "gruppe_text": k.get("gruppe_text"),
-            })
+            further_per_session.setdefault(k["ksinr"], []).append(self._punkt_export(k))
         return {
             # Seit Design 14 trägt die Karte auch die Sitzungen ohne relevante
             # Punkte (sie ersetzt „Nächste Sitzungen"). Sie hat also Inhalt,
@@ -825,6 +1000,18 @@ class SitzungenMixin:
             "substantive_total": len(kandidaten),
             "substantive_per_session": {k: len(v) for k, v in themen_je_sitzung.items()},
         }
+
+    def beschluss_zahl_je_sitzung(self, ksinrs: list[int]) -> dict[int, int]:
+        """Wie viele Beschlüsse je Sitzung schon vorliegen — für den
+        Kalender-Feed, der einer vergangenen Sitzung ansieht, ob das Protokoll
+        da ist."""
+        gueltig = [k for k in ksinrs if k]
+        if not gueltig:
+            return {}
+        ph = ",".join("?" * len(gueltig))
+        return {r[0]: r[1] for r in self._conn.execute(
+            f"SELECT ksinr, COUNT(*) FROM council_decisions WHERE ksinr IN ({ph}) GROUP BY ksinr",
+            gueltig)}
 
     def count_upcoming_sessions(self) -> int:
         from datetime import date

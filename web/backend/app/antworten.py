@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, NotRequired, TypedDict
 
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import Response, FileResponse, StreamingResponse
 
 # --------------------------------------------------------------------------
 # Bausteine, die überall vorkommen
@@ -134,6 +134,84 @@ class MatchedAgendaItem(TypedDict):
     is_public: int
 
 
+class WeekPreviewItem(TypedDict):
+    """Ein Tagesordnungspunkt in „Diese Woche im Rat".
+
+    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
+    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
+    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
+    Deshalb stehen genau diese fünf als ``NotRequired``.
+
+    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
+    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
+    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
+    standen ohne Erklärung da.
+
+    ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
+    dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
+    ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
+    """
+    ksinr: int
+    item_number: str
+    title: str
+    titel_kurz: str
+    applicants: str | None
+    topic_name: str | None
+    summary: str | None
+    social_text: str | None
+    #: Die Karten-Überschrift aus ``agenda_item_social.headline`` — sagt,
+    #: worum es geht, wo der Titel nur sagt, wer wann eingereicht hat.
+    social_headline: str | None
+    dringlich: bool
+    wichtig: int
+    wichtig_grund: str | None
+    template_number: str | None
+    kvonr: int | None
+    committee: str
+    session_date: str
+    #: Der Punkt, unter dem eine mehrstufige Sache gebündelt wird.
+    gruppe_nr: str
+    gruppe_titel: str | None
+    gruppe_stationen: int
+    #: Der gemeinsame Kartentext der Gruppe — nennt ALLE Anträge, wo der
+    #: Text eines Mitglieds nur seinen eigenen nennt. Hängt an der
+    #: Überschriften-Zeile (``agenda_item_social``, source „group").
+    gruppe_text: str | None
+    #: Alle Absender der Gruppe in Tagesordnungs-Reihenfolge, jeder einmal —
+    #: am Einzelpunkt höchstens sein eigener. Die Karte schreibt daraus
+    #: „2 Anträge · Fraktionen BSW und SPD · CDU-Fraktion".
+    group_applicants: list[str]
+    #: Nur in ``items``, nicht in ``further_per_session``:
+    kind: NotRequired[str | None]
+    behandlung: NotRequired[str | None]
+    vorgeschichte: NotRequired[int]
+    wichtig_quelle: NotRequired[str]
+    top: NotRequired[bool]
+
+
+class LiveState(TypedDict):
+    """Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript
+    des O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.
+
+    ``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);
+    der Client rechnet daraus „vor N Min." und sagt dazu, dass es aus der
+    Übertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist
+    gesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind
+    (Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8". Nach der
+    Schlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.
+    """
+    item_number: str | None
+    item_title: str | None
+    block_start: str | None
+    phase: str
+    speaker: str | None
+    party: str | None
+    since: str
+    as_of: str
+    updated_at: str
+    finished: bool
+
+
 class SessionRow(TypedDict):
     """Eine Sitzung, wie ``CouncilStore.get_session`` sie liefert. Die sechs
     Felder sind die Spalten von ``council_sessions`` — ein Wächter-Test
@@ -166,6 +244,13 @@ class SessionRow(TypedDict):
     # Ende des „läuft gerade"-Fensters (``council.live``), nur an Sitzungen
     # von HEUTE — für alle anderen fehlt das Feld.
     live_until: NotRequired[str | None]
+    #: Live-Stand aus der Übertragung — nur an Sitzungen von HEUTE, für die
+    #: der Mitschnitt-Job einen Stand geschrieben hat (das ist nur der Rat).
+    live_state: NotRequired[LiveState]
+    #: Die wichtigsten Punkte der Sitzung (``CouncilStore.sitzungs_highlights``,
+    #: dieselbe Bewertung wie ``items`` der Wochenvorschau). Fehlt, wenn kein
+    #: Punkt über der Schwelle liegt — und an Sitzungen ohne Tagesordnung.
+    highlights: NotRequired[list[WeekPreviewItem]]
 
 
 class DecisionRow(TypedDict):
@@ -639,61 +724,6 @@ class SourceCheck(TypedDict):
 # --------------------------------------------------------------------------
 # Social-Schnittstelle (Instagram-Bot, eigenes Repo)
 # --------------------------------------------------------------------------
-
-
-class WeekPreviewItem(TypedDict):
-    """Ein Tagesordnungspunkt in „Diese Woche im Rat".
-
-    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
-    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
-    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
-    Deshalb stehen genau diese fünf als ``NotRequired``.
-
-    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
-    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
-    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
-    standen ohne Erklärung da.
-
-    ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
-    dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
-    ``TemplateAttachment`` ist eine Liste von Fraktionsnamen.
-    """
-    ksinr: int
-    item_number: str
-    title: str
-    titel_kurz: str
-    applicants: str | None
-    topic_name: str | None
-    summary: str | None
-    social_text: str | None
-    #: Die Karten-Überschrift aus ``agenda_item_social.headline`` — sagt,
-    #: worum es geht, wo der Titel nur sagt, wer wann eingereicht hat.
-    social_headline: str | None
-    dringlich: bool
-    wichtig: int
-    wichtig_grund: str | None
-    template_number: str | None
-    kvonr: int | None
-    committee: str
-    session_date: str
-    #: Der Punkt, unter dem eine mehrstufige Sache gebündelt wird.
-    gruppe_nr: str
-    gruppe_titel: str | None
-    gruppe_stationen: int
-    #: Der gemeinsame Kartentext der Gruppe — nennt ALLE Anträge, wo der
-    #: Text eines Mitglieds nur seinen eigenen nennt. Hängt an der
-    #: Überschriften-Zeile (``agenda_item_social``, source „group").
-    gruppe_text: str | None
-    #: Alle Absender der Gruppe in Tagesordnungs-Reihenfolge, jeder einmal —
-    #: am Einzelpunkt höchstens sein eigener. Die Karte schreibt daraus
-    #: „2 Anträge · Fraktionen BSW und SPD · CDU-Fraktion".
-    group_applicants: list[str]
-    #: Nur in ``items``, nicht in ``further_per_session``:
-    kind: NotRequired[str | None]
-    behandlung: NotRequired[str | None]
-    vorgeschichte: NotRequired[int]
-    wichtig_quelle: NotRequired[str]
-    top: NotRequired[bool]
 
 
 class CouncilWeekPreview(TypedDict):
@@ -1224,6 +1254,36 @@ class AdminJobStep(TypedDict):
     duration_s: float | None
 
 
+class AdminFehlerTag(TypedDict):
+    tag: str
+    n: int
+
+
+class AdminRequestFehler(TypedDict):
+    """Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.
+
+    Gleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);
+    ``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,
+    roher Pfad, Variablenwerte —, steht dort begründet.
+    """
+    id: int
+    exc_type: str
+    message: str | None
+    route: str
+    method: str
+    trace: str | None
+    first_seen: str
+    last_seen: str
+    count: int
+    resolved_at: str | None
+    #: ``server`` (unbehandelte Ausnahme im Backend) oder ``browser``.
+    quelle: str
+    #: Tagesverlauf, älteste zuerst — für die Grafik im Panel. Als LISTE und
+    #: nicht als Objekt: Die Grafik braucht eine Reihenfolge, ein JSON-Objekt
+    #: hat keine.
+    daily: list[AdminFehlerTag]
+
+
 class AdminJob(TypedDict):
     """``state`` ist eine geschlossene Menge — der Router rechnet sie aus, sie
     kommt nicht aus der Datenbank, deshalb ist die Verengung hier sicher.
@@ -1527,6 +1587,9 @@ class SessionDetail(SessionRow):
     video_results: list[VideoResult]
     url: str | None
     agenda_changes: list[AgendaChange]
+    #: Live-Stand aus der Übertragung (s. ``SessionRow.live_state``) — hier
+    #: auch nach der Sitzung, solange die Zeile steht (``finished``).
+    live_state: NotRequired[LiveState]
 
 
 class ImportanceBreakdown(TypedDict):
@@ -1983,6 +2046,120 @@ class PlaceDetail(TypedDict):
     decision_count: Any
     decisions: Any
     place: Any
+
+
+class DistrictProjectDecision(TypedDict):
+    """Ein Beschluss, der zu einem Vorhaben gehört — genug für die Zeile mit Link."""
+    id: int
+    title: str
+    outcome: str | None
+    date: str
+    committee: str | None
+
+
+class DistrictProjectLocation(TypedDict):
+    """Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON."""
+    slug: str
+    name: str
+    kind: str
+    lat: float
+    lon: float
+    geometry: Any
+
+
+class DistrictProject(TypedDict):
+    """Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
+
+    ``stage`` ist einer von ``idea | planning | decided | building | done |
+    rejected``, ``category`` einer von ``housing | traffic | school_childcare |
+    green | culture_sport_social | other``. ``when`` ist Menschentext („2027“,
+    „ab Kita-Jahr 2026/2027“) oder null — nie geraten.
+    """
+    id: int
+    project_key: str
+    place_id: str
+    name: str
+    what: str
+    stage: str
+    when: str | None
+    category: str
+    confidence: int
+    first_date: str | None
+    last_date: str | None
+    report_count: int
+    hidden: bool
+    reported: bool
+    decisions: list[DistrictProjectDecision]
+    locations: list[DistrictProjectLocation]
+
+
+class DistrictUpcomingItem(TypedDict):
+    """Ein Tagesordnungspunkt einer kommenden Sitzung, dessen Titel einen Ort des Viertels nennt."""
+    id: int
+    ksinr: int
+    item_number: str | None
+    title: str
+    kvonr: int | None
+    session_date: str
+    session_time: str | None
+    committee: str | None
+    location: str
+
+
+class DistrictInvestment(TypedDict):
+    """Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel."""
+    programme_year: int
+    code: str | None
+    label: str
+    total_eur: float
+    location: str
+
+
+class DistrictParticipation(TypedDict):
+    """Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel."""
+    title: str | None
+    place: str | None
+    step: str | None
+    valid_from: str | None
+    valid_until: str | None
+    url: str | None
+    plan_nrs: list[str]
+
+
+class DistrictNeighbour(TypedDict):
+    place_id: str
+    name: str
+    count: int
+
+
+class DistrictProjects(TypedDict):
+    """``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs."""
+    place: Any
+    projects: list[DistrictProject]
+    upcoming: list[DistrictUpcomingItem]
+    investments: list[DistrictInvestment]
+    participations: list[DistrictParticipation]
+    neighbours: list[DistrictNeighbour]
+    updated_at: str | None
+
+
+class DistrictProjectsOverviewEntry(TypedDict):
+    place_id: str
+    name: str
+    count: int
+    last_date: str | None
+
+
+class DistrictProjectsOverview(TypedDict):
+    """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl."""
+    districts: list[DistrictProjectsOverviewEntry]
+    updated_at: str | None
+
+
+class DistrictProjectReportOut(TypedDict):
+    ok: bool
+    report_count: int
+    hidden: bool
 
 
 class SessionList(TypedDict):
@@ -2660,6 +2837,17 @@ class BudgetDebt(TypedDict):
     interest_expense: Any
 
 
+class CalendarSubscription(TypedDict):
+    """Die Kalender-Adresse eines Kontos (``/api/calendar/subscription``).
+
+    ``url`` ist die https-Adresse zum Kopieren, ``webcal_url`` dieselbe mit
+    dem Schema, das auf dem Telefon direkt den Abo-Dialog öffnet.
+    """
+    url: str
+    webcal_url: str
+    subscribed_committees: int
+
+
 # --------------------------------------------------------------------------
 # Antworten, die kein JSON sind
 #
@@ -2691,6 +2879,11 @@ class EventStreamResponse(StreamingResponse):
 class JpegResponse(FileResponse):
     """``FileResponse`` mit festem JPEG-Medientyp — nur fürs Schema."""
     media_type = "image/jpeg"
+
+
+class CalendarResponse(Response):
+    """``Response`` mit festem ICS-Medientyp — nur fürs Schema."""
+    media_type = "text/calendar"
 
 #: ``POST /api/council/ask`` — die KI-Frage, Token für Token.
 SSE_FRAGE: dict[int | str, dict[str, Any]] = {
@@ -2741,6 +2934,20 @@ SSE_RECHERCHE: dict[int | str, dict[str, Any]] = {
 }
 
 #: ``GET /api/council/plan-bild/{document_id}`` — die gerenderte Planzeichnung.
+CALENDAR_ICS: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Der Kalender des Kontos als ICS (RFC 5545): die Sitzungen der "
+            "abonnierten Ausschüsse und zu den eigenen Themen, je Termin die "
+            "wichtigsten Punkte und der Link zur Sitzungsseite. Für Kalender-"
+            "Apps gedacht, die die Adresse alle paar Stunden abrufen."
+        ),
+        "content": {"text/calendar": {"schema": {"type": "string"}}},
+    },
+    404: {"description": "Unbekannte oder erneuerte Kalender-Adresse."},
+}
+
+
 PLANZEICHNUNG_JPEG: dict[int | str, dict[str, Any]] = {
     200: {
         "description": (

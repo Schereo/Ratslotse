@@ -80,3 +80,24 @@ def nur_lesen(pfad) -> sqlite3.Connection:
         return verbindung
     except sqlite3.Error:
         return sqlite3.connect(pfad, timeout=5)
+
+
+def neue_id(cur: sqlite3.Cursor) -> int:
+    """Die ID der Zeile, die dieser Cursor gerade eingefügt hat.
+
+    ``cur.lastrowid`` ist als ``int | None`` typisiert, und das zu Recht: Nach
+    einem ``SELECT``, nach einem ``executemany`` und nach einem ``INSERT`` in
+    eine ``WITHOUT ROWID``-Tabelle steht dort ``None``. Nach einem einzelnen
+    ``INSERT`` in eine gewöhnliche Tabelle steht dort immer eine Zahl.
+
+    Im Bestand stand deshalb an einem Dutzend Stellen ``return cur.lastrowid``
+    unter der Annotation ``-> int``. Die Annahme stimmt an jeder dieser
+    Stellen — sichtbar ist sie an keiner. Dieser Helfer schreibt sie hin und
+    prüft sie: Trifft sie einmal nicht zu, gibt es einen Fehler mit Namen
+    statt eines ``None``, das als ID weiterwandert und erst drei Tabellen
+    später als verwaister Verweis auffällt.
+    """
+    if cur.lastrowid is None:  # pragma: no cover — siehe Docstring
+        raise RuntimeError(
+            "INSERT ohne lastrowid — kein einzelnes INSERT in eine rowid-Tabelle?")
+    return cur.lastrowid

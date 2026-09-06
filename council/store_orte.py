@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime, timezone
+from council.store_basis import StoreBasis
 
 #: Ortsarten, die einen PUNKT auf der Karte rechtfertigen — im Unterschied zu
 #: Sammelbegriffen („Innenstadt") und Verwaltungsebenen.
@@ -33,12 +34,25 @@ CONCRETE_LOCATION_KINDS = {
 }
 
 
-class OrteMixin:
+class OrteMixin(StoreBasis):
     """Die Orts-Abfragen von :class:`council.store.CouncilStore`.
 
     Nur zum Mitvererben; ``self._conn`` und die Beschluss-Helfer kommen
     von dort.
     """
+
+    # Outcomes grouped into "real votes" vs "reports / no decision".
+    _VOTE_OUTCOMES = ("accepted", "rejected", "postponed")
+
+    _REPORT_OUTCOMES = ("noted", "no_decision")
+
+    #: Ab welchem Anteil der Stützpunkte ein Ortsbereich als berührt gilt.
+    #: Zehn Prozent von bis zu 60 Punkten sind ein echtes Straßenstück, keine
+    #: angeschnittene Ecke — und die zusätzliche Mindestzahl fängt sehr kurze
+    #: Geometrien ab, bei denen ein einzelner Punkt schon 10 % wäre.
+    ORTSBEREICH_ANTEIL = 0.10
+
+    ORTSBEREICH_MINDESTPUNKTE = 2
 
     def _reviewed_places(self) -> tuple:
         """Als eigene Orte freigegebene Kandidaten im Katalogformat liefern."""

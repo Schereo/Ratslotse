@@ -1,0 +1,20 @@
+{
+  // Zweite Konfiguration, NUR für den Schulden-Wächter in
+  // `tests/test_typpruefung.py`. Sie deckt den GANZEN Python-Bestand ab und
+  // nimmt nichts aus — anders als `pyrightconfig.json`, die den harten Gate
+  // beschreibt und deshalb klein ist.
+  //
+  // Warum eine eigene Datei und kein Schalter: pyright liest `pyrightconfig.json`
+  // von selbst, sobald es im Wurzelverzeichnis läuft. Eine Datei mit anderem
+  // Namen stört das nicht und wird nur gelesen, wenn `--project` sie nennt.
+  //
+  // Die Einstellungen MÜSSEN denen von `pyrightconfig.json` entsprechen, sonst
+  // zählt der Wächter etwas anderes als der Gate. `tests/test_typpruefung.py`
+  // hält das fest.
+  "include": ["kern", "council", "scripts", "eval", "web/backend/app"],
+  "exclude": ["**/__pycache__", "**/node_modules", "**/.venv"],
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false
+}

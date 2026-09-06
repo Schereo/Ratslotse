@@ -105,7 +105,7 @@ def test_abgeschnittenes_json_wird_geborgen(monkeypatch):
     assert calls["n"] == 2  # erst regulärer Retry, Bergung nur am Ende
     # Völlig unbrauchbarer Inhalt → weiterhin Fehler.
     _llm_liefert(monkeypatch, ["kein json"])
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         wb.extract_wortbeitraege("Protokoll")
 
 

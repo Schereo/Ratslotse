@@ -101,7 +101,7 @@ def test_llm_darf_ratsthema_verneinen(store, monkeypatch):
 def test_llm_beschreibung_wird_uebernommen_und_gekuerzt(store, monkeypatch):
     lang = "Sanierung und Sperrung der Hubbrücke. " * 20
     monkeypatch.setattr(topic_intel.llm, "chat_complete", lambda *a, **k: _resp(
-        '{"einordnung": "belegt", "beschreibung": "%s", "begruendung": ""}' % lang.strip()))
+        f'{{"einordnung": "belegt", "beschreibung": "{lang.strip()}", "begruendung": ""}}'))
     res = topic_intel.analyse(store, "Cäcilienbrücke")
     assert res["is_council_topic"] is True
     assert len(res["description"]) <= 240

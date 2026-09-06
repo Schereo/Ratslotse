@@ -67,9 +67,29 @@ def test_health(client):
 
 
 def test_native_app_config_contract(client):
+    """Die Antwort, die JEDE Oberfläche vor allem anderen abfragt.
+
+    `features` ist seit 09/2026 dabei und ohne gesetzte `FEATURE_FLAGS` leer —
+    die ausgelieferte App kennt das Feld nicht und darf es auch nicht müssen.
+    """
     response = client.get("/api/app-config")
     assert response.status_code == 200
-    assert response.json() == {"min_build": 0, "note": None}
+    assert response.json() == {"min_build": 0, "note": None, "features": []}
+
+
+def test_app_config_meldet_eingeschaltete_features(client, monkeypatch):
+    """Der Weg von der `.env` bis in die Antwort — der einzige, den es gibt."""
+    from kern import features as schalter
+
+    monkeypatch.setattr(
+        schalter, "FEATURES",
+        {"probe-schalter": schalter.Feature(
+            key="probe-schalter", description="Nur für diesen Test.",
+            fertig_wenn="Wenn dieser Test nicht mehr gebraucht wird.")})
+    monkeypatch.setenv("FEATURE_FLAGS", "probe-schalter,gibtesnicht")
+    daten = client.get("/api/app-config").json()
+    # Der unbekannte Name wird verworfen, nicht durchgereicht.
+    assert daten["features"] == ["probe-schalter"]
 
 
 def test_native_api_top_level_contracts(client):
@@ -524,6 +544,7 @@ def test_admin_jobs_listet_registry_auch_ohne_laeufe(client):
         "check_finanzdaten",  # neue Haushalts-Jahrgänge, alle zwei Wochen
         "check_beteiligungsbericht",  # lädt von oldenburg.de, alle vier Wochen
         "archive_statistik",  # sichert die Statistik-Quellen versioniert, täglich
+        "check_herzschlag",  # meldet Jobs, die nicht mehr laufen, täglich 6:30
     }
     job = next(j for j in b if j["key"] == "check_council")
     assert job["state"] == "unknown" and job["last"] is None and job["history"] == []
@@ -6116,7 +6137,7 @@ def test_konto_schickt_seine_rechte_mit(client):
         store.close()
     me = client.get("/api/auth/me").json()
     assert me["roles"] == ["council_member"]
-    assert me["permissions"] == ["budget"]
+    assert me["permissions"] == ["budget", "mandate"]
     assert me["role"] == "council_member"
 
 
@@ -6132,7 +6153,7 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
 
     katalog = client.get("/api/admin/roles").json()
     assert {r["key"] for r in katalog} == {"user", "council_member", "admin"}
-    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget"]
+    assert [r for r in katalog if r["key"] == "council_member"][0]["permissions"] == ["budget", "mandate"]
 
     r = client.put(f"/api/admin/users/{ziel_id}/roles", json={"roles": ["council_member"]})
     assert r.status_code == 200 and r.json()["roles"] == ["council_member"]
@@ -6222,3 +6243,35 @@ def test_kennzahlen_bleiben_flach(client):
         f"{sorted(krumm)} sind keine Skalare — die Chip-Zeile des Admin-Panels "
         f"zeigte dafür „[object Object]“. Entweder flach machen oder wie die "
         f"Schritte in ein eigenes Vertragsfeld heben.")
+
+
+# ---- Kalender-Abo -------------------------------------------------------------
+
+def test_calendar_subscription_feed_und_rotation(client):
+    """Adresse nur angemeldet; der Feed selbst öffentlich über das Token;
+    „Neu erzeugen" macht die alte Adresse zum 404."""
+    assert client.get("/api/calendar/subscription").status_code == 401
+    _register(client)
+    r = client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"},
+                    headers={"X-Client": "app"})
+    assert r.status_code == 200, r.text
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r = client.get("/api/calendar/subscription", headers=h)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["url"].startswith("https://ratslotse.de/api/calendar/") and body["url"].endswith(".ics")
+    assert body["webcal_url"] == "webcal://" + body["url"].split("://", 1)[1]
+    assert body["subscribed_committees"] == 0
+    pfad = body["url"].split("ratslotse.de", 1)[1]
+
+    r = client.get(pfad)
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"].startswith("text/calendar")
+    assert r.text.startswith("BEGIN:VCALENDAR\r\n")
+    assert "END:VCALENDAR" in r.text
+
+    r2 = client.post("/api/calendar/subscription/rotate", headers=h)
+    assert r2.status_code == 200 and r2.json()["url"] != body["url"]
+    assert client.get(pfad).status_code == 404
+    assert client.get("/api/calendar/gibtsnicht.ics").status_code == 404

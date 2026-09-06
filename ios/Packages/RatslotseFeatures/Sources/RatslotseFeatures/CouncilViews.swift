@@ -83,8 +83,14 @@ struct CouncilBrowserView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var showsFilters = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_COUNCIL_FILTER"] == "1"
+    @State private var calendarDraft: CalendarDraft?
+    @State private var showCalendarSubscription = false
 
     private let pageSize = 50
+    /// Nur der erste Bildschirm läuft gestaffelt ein. Zeilen, die beim
+    /// Scrollen nachkommen, stehen sofort — ein Versatz dort läse sich als
+    /// Nachhinken, nicht als Auftritt.
+    private let staggeredRows = 8
 
     var body: some View {
         VStack(spacing: 0) {
@@ -97,6 +103,22 @@ struct CouncilBrowserView: View {
                         .foregroundStyle(RatsColor.secondary)
                 }
                 Spacer(minLength: 0)
+                // Das Kalender-Abo dort, wo man gerade auf Termine schaut —
+                // nur im Sitzungen-Abschnitt, neben Beschlüssen wäre es ein
+                // Rätsel.
+                if model.councilSection == .sessions {
+                    Button { showCalendarSubscription = true } label: {
+                        RatsGlyphView(glyph: .calendarPlus, color: RatsColor.bodyText)
+                            .frame(width: 19, height: 19)
+                            .frame(width: 40, height: 40)
+                            .background(RatsColor.card)
+                            .overlay(Circle().stroke(RatsColor.border))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityLabel("Im Kalender abonnieren")
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                }
                 NavigationLink {
                     SavedCouncilView(model: model)
                 } label: {
@@ -109,31 +131,21 @@ struct CouncilBrowserView: View {
                 }
                 .accessibilityLabel("Merkliste")
             }
+            .animation(.easeOut(duration: 0.18), value: model.councilSection)
+            .sheet(isPresented: $showCalendarSubscription) {
+                CalendarSubscriptionSheet(model: model)
+            }
             .foregroundStyle(RatsColor.text)
             .padding(.horizontal, 18)
             .padding(.top, 16)
             .padding(.bottom, 4)
 
             if horizontalSizeClass != .regular {
-                HStack(spacing: 4) {
-                    ForEach(CouncilSection.allCases) { item in
-                        Button {
-                            withAnimation(.easeOut(duration: 0.16)) { model.councilSection = item }
-                        } label: {
-                            Text(item.rawValue)
-                                .font(RatsFont.body(12.5, weight: .semibold))
-                                .foregroundStyle(model.councilSection == item ? RatsColor.primaryText : RatsColor.bodyText)
-                                .frame(maxWidth: .infinity, minHeight: 34)
-                                .background(model.councilSection == item ? RatsColor.primary : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        }
-                        .buttonStyle(RatsPlainButtonStyle())
-                    }
-                }
-                .padding(4)
-                .background(RatsColor.separator)
-                .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(RatsColor.border))
-                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                RatsSegmentedControl(
+                    selection: $model.councilSection,
+                    options: CouncilSection.allCases,
+                    label: \.rawValue
+                )
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
@@ -270,25 +282,37 @@ struct CouncilBrowserView: View {
                             ErrorCard(message: error) { Task { await load() } }
                         }
                         if model.councilSection == .decisions {
-                        ForEach(decisions) { decision in
+                        ForEach(Array(decisions.enumerated()), id: \.element.id) { index, decision in
                             Button { model.navigation.append(.decision(id: decision.id)) } label: {
                                 DecisionRow(decision: decision).ratsCard()
                             }
                             .buttonStyle(RatsPlainButtonStyle())
+                            .ratsZoomSource(RatsZoomID.decision(decision.id))
+                            .decisionContextMenu(decision, model: model)
+                            .ratsStaggered(index, enabled: index < staggeredRows)
                         }
                         } else {
                             ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
                                 if isFirstSessionInYear(at: index) {
                                     SessionYearDivider(year: sessionYear(session.sessionDate))
                                 }
-                                if let id = session.ksinr {
-                                    Button { model.navigation.append(.sessions(ksinr: id, tops: [])) } label: {
-                                        SessionRow(session: session).ratsCard()
-                                    }
-                                    .buttonStyle(RatsPlainButtonStyle())
-                                } else {
-                                    SessionRow(session: session).ratsCard()
+                                if isFirstSessionOnDay(sessions, at: index) {
+                                    RatsDayDivider(sessionDayLabel(session.sessionDate), highlighted: isSessionToday(session.sessionDate))
+                                        .padding(.top, index == 0 ? 0 : 4)
                                 }
+                                Group {
+                                    if let id = session.ksinr {
+                                        Button { model.navigation.append(.sessions(ksinr: id, tops: [])) } label: {
+                                            SessionRow(session: session)
+                                        }
+                                        .buttonStyle(RatsPlainButtonStyle())
+                                        .ratsZoomSource(RatsZoomID.session(id))
+                                    } else {
+                                        SessionRow(session: session)
+                                    }
+                                }
+                                .sessionContextMenu(session, model: model) { requestCalendar(for: session) }
+                                .ratsStaggered(index, enabled: index < staggeredRows)
                             }
                         }
                         if total > pageSize {
@@ -315,6 +339,11 @@ struct CouncilBrowserView: View {
         .background(RatsColor.page)
         .navigationTitle("Im Rat stöbern")
         .toolbarTitleDisplayMode(.inline)
+        .sheet(item: $calendarDraft) { draft in
+            CalendarEditSheet(draft: draft, isPresented: Binding(
+                get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
+            ))
+        }
         .onChange(of: model.councilSection) { _, _ in page = 0; Task { await load() } }
         .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
         .onChange(of: model.isOffline) { wasOffline, isOffline in
@@ -454,6 +483,19 @@ struct CouncilBrowserView: View {
     private func isFirstSessionInYear(at index: Int) -> Bool {
         guard sessions.indices.contains(index) else { return false }
         return index == 0 || sessionYear(sessions[index - 1].sessionDate) != sessionYear(sessions[index].sessionDate)
+    }
+
+    /// Aus dem Kontextmenü einer Sitzungskarte in den Kalender — wie auf der
+    /// Detailseite, nur ohne den Umweg dorthin.
+    private func requestCalendar(for session: CouncilSession) {
+        let link = session.ksinr.flatMap { model.router.universalLink(for: .sessions(ksinr: $0, tops: [])) }
+        Task {
+            if let draft = await sessionCalendarDraft(for: session, link: link) {
+                calendarDraft = draft
+            } else {
+                error = calendarAccessDeniedMessage
+            }
+        }
     }
 
     private func clearFilters() {
@@ -1071,95 +1113,202 @@ private struct FilterChip: View {
     }
 }
 
-private struct SessionRow: View {
+/// Tage statt Datumskacheln: Die Liste gruppiert nach Tag („HEUTE, 4.
+/// SEPTEMBER" in Signal-Orange), und jede Sitzung ist dieselbe Hülle wie die
+/// Start-Widgets — Uhrzeit plus Gremium in der Kopfleiste, darunter Ort,
+/// Punkte zu deinen Themen und die Zahl der übrigen (Designdoc 2c).
+private func isFirstSessionOnDay(_ sessions: [CouncilSession], at index: Int) -> Bool {
+    guard sessions.indices.contains(index) else { return false }
+    return index == 0 || sessions[index - 1].sessionDate.prefix(10) != sessions[index].sessionDate.prefix(10)
+}
+
+private func isSessionToday(_ iso: String) -> Bool {
+    relativeSessionDayOffset(iso) == 0
+}
+
+private func sessionDayLabel(_ iso: String) -> String {
+    guard let date = sessionDayFormatter.date(from: String(iso.prefix(10))) else { return iso }
+    let german = Locale(identifier: "de_DE")
+    let dayAndMonth = date.formatted(.dateTime.locale(german).day().month(.wide))
+    let name: String = switch relativeSessionDayOffset(iso) {
+    case 0: "Heute"
+    case 1: "Morgen"
+    default: date.formatted(.dateTime.locale(german).weekday(.wide))
+    }
+    return "\(name), \(dayAndMonth)"
+}
+
+private func relativeSessionDayOffset(_ iso: String) -> Int? {
+    guard let date = sessionDayFormatter.date(from: String(iso.prefix(10))) else { return nil }
+    let calendar = Calendar.current
+    return calendar.dateComponents(
+        [.day],
+        from: calendar.startOfDay(for: .now),
+        to: calendar.startOfDay(for: date)
+    ).day
+}
+
+private let sessionDayFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = .current
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter
+}()
+
+struct SessionRow: View {
     let session: CouncilSession
 
     var body: some View {
-        HStack(alignment: .center, spacing: 13) {
-            SessionDateTile(date: session.sessionDate)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(shortCommittee)
-                    .font(RatsFont.body(16, weight: .bold))
-                    .foregroundStyle(RatsColor.text)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-
-                if shortCommittee != session.committee {
-                    Text(session.committee)
-                        .font(RatsFont.body(12.5))
-                        .foregroundStyle(RatsColor.secondary)
-                        .lineLimit(2)
-                }
-
-                Label {
-                    Text(scheduleMetadata)
-                } icon: {
-                    RatsIcon(.clock, size: 11.5)
-                }
-                .font(RatsFont.body(11.5, weight: .medium))
-                .foregroundStyle(RatsColor.secondary)
-                .lineLimit(1)
-
-                if let location = cleanLocation {
-                    Label {
-                        Text(location)
-                    } icon: {
-                        RatsIcon(.mapPin, size: 11.5)
+        RatsTimedWidget(
+            time: session.sessionTime.map { String($0.prefix(5)) },
+            title: committee.short,
+            // Unter dem Kurznamen steht, was das Gremium verhandelt — nicht
+            // noch einmal der Amtsname (der bleibt im Accessibility-Label).
+            subtitle: committee.explains ?? (committee.short == session.committee ? nil : session.committee),
+            accent: committee.family.accent,
+            glyph: committee.glyph,
+            // Die Ratssitzung ist der eine Anker der Liste: Im Monat gibt es
+            // genau eine, und sie ist die, um die es geht — auf der
+            // Anzeigetafel, nicht dunkel.
+            board: Committee.isCouncil(session.committee)
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                if cleanLocation != nil || itemCountLabel != nil {
+                    HStack(alignment: .center, spacing: 8) {
+                        if let cleanLocation {
+                            Label {
+                                Text(cleanLocation)
+                            } icon: {
+                                RatsIcon(.mapPin, size: 12)
+                            }
+                            .font(RatsFont.body(12))
+                            .foregroundStyle(RatsColor.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        }
+                        Spacer(minLength: 0)
+                        if let itemCountLabel {
+                            Text(itemCountLabel)
+                                .font(RatsFont.body(11.5, weight: .semibold))
+                                .foregroundStyle(RatsColor.primary)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(RatsColor.primary.opacity(0.10))
+                                .clipShape(Capsule())
+                                .fixedSize()
+                        }
                     }
-                    .font(RatsFont.body(11.5))
-                    .foregroundStyle(RatsColor.secondary)
-                    .lineLimit(1)
                 }
 
-                if let matches = session.myTopicItems, !matches.isEmpty {
-                    RatsLabel("\(matches.count) für dich", .bellRing)
-                        .font(RatsFont.body(10.5, weight: .semibold))
-                        .foregroundStyle(RatsColor.signal)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(RatsColor.signal.opacity(0.09))
-                        .clipShape(Capsule())
+                if session.ksinr == nil {
+                    Text("Noch keine Tagesordnung veröffentlicht")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                .strokeBorder(RatsColor.border, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        )
+                } else if session.itemCount == 0 {
+                    // Eine Sitzung MIT Nummer, aber ohne einen öffentlichen Punkt:
+                    // Das Ratsinfo verlinkt erst mit der Tagesordnung — steht sie
+                    // da und ist leer, tagt das Gremium nichtöffentlich.
+                    Text("Keine öffentlichen Tagesordnungspunkte")
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                } else if let highlights = session.highlights, !highlights.isEmpty {
+                    // Die wichtigsten Punkte, vom Server bewertet wie auf der
+                    // Wochenkarte — die Karte sagt, was zählt, nicht nur wie viel.
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(highlights) { item in
+                            WeekAgendaItemRow(item: item, compact: true, featuredKicker: "Wichtiger Punkt")
+                        }
+                        if remainingCount > 0 {
+                            Text("+ \(remainingCount) weitere \(remainingCount == 1 ? "Punkt" : "Punkte")")
+                                .font(RatsFont.body(11.5, weight: .semibold))
+                                .foregroundStyle(RatsColor.primary)
+                                .padding(.leading, 16)
+                        }
+                    }
+                } else if !topicMatches.isEmpty {
+                    // Rückfall für Antworten ohne `highlights`: wenigstens die
+                    // Treffer zu eigenen Themen.
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(topicMatches.prefix(2), id: \.number) { match in
+                            HStack(alignment: .top, spacing: 9) {
+                                Circle()
+                                    .fill(RatsColor.signal)
+                                    .frame(width: 7, height: 7)
+                                    .padding(.top, 5)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Zu deinem Thema · \(match.topic)".uppercased())
+                                        .font(RatsFont.mono(8.5, weight: .semibold))
+                                        .tracking(0.7)
+                                        .foregroundStyle(RatsColor.signalInk)
+                                        .lineLimit(1)
+                                    Text(match.number)
+                                        .font(RatsFont.body(13, weight: .bold))
+                                        .foregroundStyle(RatsColor.text)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RatsColor.signal.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .stroke(RatsColor.signal.opacity(0.16))
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        }
+                        if remainingCount > 0 {
+                            Text("+ \(remainingCount) weitere \(remainingCount == 1 ? "Punkt" : "Punkte")")
+                                .font(RatsFont.body(11.5, weight: .semibold))
+                                .foregroundStyle(RatsColor.primary)
+                                .padding(.leading, 16)
+                        }
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 8) {
-                Text(agendaLabel)
-                    .font(RatsFont.body(11.5, weight: .semibold))
-                    .foregroundStyle(session.ksinr == nil ? RatsColor.secondary : RatsColor.primary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(session.ksinr == nil ? RatsColor.stage : RatsColor.primary.opacity(0.10))
-                    .clipShape(Capsule())
-                    .fixedSize()
-
-                RatsIcon(session.ksinr == nil ? .calendarClock : .chevronRight, size: 13)
-                    .foregroundStyle(RatsColor.muted)
-                    .frame(width: 18, height: 18)
+                if session.ksinr != nil {
+                    HStack {
+                        Spacer(minLength: 0)
+                        RatsLabel("Tagesordnung", .chevronRight, size: 12)
+                            .labelStyle(TrailingIconLabelStyle())
+                            .font(RatsFont.body(11.5, weight: .semibold))
+                            .foregroundStyle(RatsColor.primary)
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private var shortCommittee: String {
-        session.committee
-            .replacingOccurrences(of: "Ausschuss für ", with: "")
-            .replacingOccurrences(of: "Rat der Stadt", with: "Rat")
+    private struct TopicMatch {
+        let number: String
+        let topic: String
     }
 
-    private var scheduleMetadata: String {
-        let weekday = (RatsDate.weekday(session.sessionDate) ?? "")
-            .split(separator: ",").first.map(String.init)
-        let time = session.sessionTime.map { "\($0) Uhr" }
-        return [weekday, time].compactMap { value in
-            guard let value, !value.isEmpty else { return nil }
-            return value
-        }.joined(separator: " · ")
+    private var topicMatches: [TopicMatch] {
+        var seen = Set<String>()
+        return (session.myTopicItems ?? []).compactMap { item in
+            guard let number = item.object?["item_number"]?.string, seen.insert(number).inserted else { return nil }
+            return TopicMatch(number: number, topic: item.object?["topic_name"]?.string ?? "Dein Thema")
+        }
     }
+
+    private var remainingCount: Int {
+        let shown = session.highlights?.count ?? min(topicMatches.count, 2)
+        return max(0, session.itemCount - shown)
+    }
+
+    private var committee: Committee.Entry { Committee.entry(session.committee) }
 
     private var cleanLocation: String? {
         guard let location = session.location?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -1167,53 +1316,31 @@ private struct SessionRow: View {
         return location
     }
 
-    private var agendaLabel: String {
-        guard session.ksinr != nil else { return "folgt" }
-        return "\(session.itemCount) \(session.itemCount == 1 ? "TOP" : "TOPs")"
+    private var itemCountLabel: String? {
+        guard session.ksinr != nil, session.itemCount > 0 else { return nil }
+        return "\(session.itemCount) \(session.itemCount == 1 ? "Punkt" : "Punkte")"
     }
 
     private var accessibilityLabel: String {
         [
             session.committee,
-            RatsDate.short(session.sessionDate),
-            scheduleMetadata,
+            RatsDate.weekday(session.sessionDate),
+            session.sessionTime.map { "\(String($0.prefix(5))) Uhr" },
             cleanLocation,
-            session.ksinr == nil ? "Tagesordnung folgt" : agendaLabel,
+            session.ksinr == nil ? "Tagesordnung folgt" : "\(session.itemCount) öffentliche Punkte",
+            (session.highlights ?? []).isEmpty ? nil : "Wichtig: " + (session.highlights ?? []).map { $0.shortTitle ?? $0.title }.joined(separator: "; "),
+            topicMatches.isEmpty ? nil : "\(topicMatches.count) zu deinen Themen",
         ].compactMap { $0 }.joined(separator: ", ")
     }
 }
 
-private struct SessionDateTile: View {
-    let date: String
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text(month)
-                .font(RatsFont.mono(9.5, weight: .semibold))
-                .foregroundStyle(RatsColor.secondary)
-                .textCase(.uppercase)
-            Text(day)
-                .font(RatsFont.title(21))
-                .foregroundStyle(RatsColor.text)
+/// Text zuerst, Zeichen dahinter — für „Tagesordnung ›".
+private struct TrailingIconLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 3) {
+            configuration.title
+            configuration.icon
         }
-        .frame(width: 54, height: 62)
-        .background {
-            LinearGradient(
-                colors: [RatsColor.primary.opacity(0.10), RatsColor.stage],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.18)))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .accessibilityHidden(true)
-    }
-
-    private var components: [Substring] { date.prefix(10).split(separator: "-") }
-    private var day: String { components.count == 3 ? String(Int(components[2]) ?? 0) : "–" }
-    private var month: String {
-        guard components.count == 3, let number = Int(components[1]), (1...12).contains(number) else { return "" }
-        return ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"][number - 1]
     }
 }
 
@@ -2471,7 +2598,15 @@ struct SavedCouncilView: View {
                         .ratsCard()
                     }
                 }
-                if let error { ErrorCard(message: error) { Task { await load() } } }
+                if let error {
+                    if model.user == nil {
+                        ErrorCard(message: error, title: "Anmeldung nötig", actionTitle: "Anmelden") {
+                            model.authPresentation = .login
+                        }
+                    } else {
+                        ErrorCard(message: error) { Task { await load() } }
+                    }
+                }
             }
             .frame(maxWidth: 760, alignment: .leading)
             .padding(18)
@@ -2816,6 +2951,8 @@ private struct SessionListView: View {
     @State private var sessions: [CouncilSession] = []
     @State private var error: String?
     @State private var isLoading = true
+    @State private var calendarDraft: CalendarDraft?
+    @State private var showCalendarSubscription = false
 
     var body: some View {
         ScrollView {
@@ -2830,11 +2967,17 @@ private struct SessionListView: View {
                             .foregroundStyle(RatsColor.secondary)
                     }
                     Spacer()
-                    RatsGlyphView(glyph: .calendar, color: RatsColor.primaryText)
-                        .frame(width: 20, height: 20)
-                        .frame(width: 44, height: 44)
-                        .background(RatsColor.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    // Bis 09/2026 nur Zierde; jetzt der Weg zum Kalender-Abo —
+                    // dort, wo man gerade auf Termine schaut.
+                    Button { showCalendarSubscription = true } label: {
+                        RatsGlyphView(glyph: .calendarPlus, color: RatsColor.primaryText)
+                            .frame(width: 20, height: 20)
+                            .frame(width: 44, height: 44)
+                            .background(RatsColor.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityLabel("Im Kalender abonnieren")
                 }
                 if isLoading {
                     RatsLoadingState(message: "Sitzungen werden geladen …")
@@ -2849,14 +2992,22 @@ private struct SessionListView: View {
                         if isFirstSessionInYear(at: index) {
                             SessionYearDivider(year: sessionYear(session.sessionDate))
                         }
-                        if let ksinr = session.ksinr {
-                            NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
-                                SessionRow(session: session).ratsCard()
-                            }
-                            .buttonStyle(RatsPlainButtonStyle())
-                        } else {
-                            SessionRow(session: session).ratsCard()
+                        if isFirstSessionOnDay(sessions, at: index) {
+                            RatsDayDivider(sessionDayLabel(session.sessionDate), highlighted: isSessionToday(session.sessionDate))
+                                .padding(.top, index == 0 ? 0 : 4)
                         }
+                        Group {
+                            if let ksinr = session.ksinr {
+                                NavigationLink(value: AppRoute.sessions(ksinr: ksinr, tops: [])) {
+                                    SessionRow(session: session)
+                                }
+                                .buttonStyle(RatsPlainButtonStyle())
+                                .ratsZoomSource(RatsZoomID.session(ksinr))
+                            } else {
+                                SessionRow(session: session)
+                            }
+                        }
+                        .sessionContextMenu(session, model: model) { requestCalendar(for: session) }
                     }
                 }
                 if let error { ErrorCard(message: error) { Task { await loadSessions() } } }
@@ -2867,7 +3018,26 @@ private struct SessionListView: View {
         .background(RatsColor.page)
         .navigationTitle("Sitzungen")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $calendarDraft) { draft in
+            CalendarEditSheet(draft: draft, isPresented: Binding(
+                get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
+            ))
+        }
+        .sheet(isPresented: $showCalendarSubscription) {
+            CalendarSubscriptionSheet(model: model)
+        }
         .task { await loadSessions() }
+    }
+
+    private func requestCalendar(for session: CouncilSession) {
+        let link = session.ksinr.flatMap { model.router.universalLink(for: .sessions(ksinr: $0, tops: [])) }
+        Task {
+            if let draft = await sessionCalendarDraft(for: session, link: link) {
+                calendarDraft = draft
+            } else {
+                error = calendarAccessDeniedMessage
+            }
+        }
     }
 
     private func loadSessions() async {
@@ -2905,6 +3075,7 @@ private struct SessionDetailView: View {
     @State private var error: String?
     @State private var calendarDraft: CalendarDraft?
     @State private var previewAttachment: AgendaAttachment?
+    @State private var now = Date.now
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -2938,7 +3109,22 @@ private struct SessionDetailView: View {
                         }
                         agenda(detail)
                         if let raw = detail.url, let url = URL(string: raw) {
-                            Link("Sitzung im Ratsinfosystem öffnen", destination: url)
+                            // Vorher ein nackter blauer Textlink am Seitenfuß:
+                            // Er sah nach nichts aus und stand unter der Karte
+                            // in der Luft („sieht nicht aus wie ein Button und
+                            // ist extrem ugly", Tim 04.09.2026). Als Knopf
+                            // trägt er dieselbe Form wie „In Kalender" und
+                            // „Teilen" weiter oben — und das Pfeil-Zeichen
+                            // sagt, dass es aus der App hinausgeht.
+                            Link(destination: url) {
+                                HStack(spacing: 7) {
+                                    RatsLabel("Im Ratsinfosystem öffnen", .fileText)
+                                    RatsIcon(.arrowUpRight, size: 11)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                            .padding(.top, 2)
                         }
                     } else if let error {
                         ErrorCard(message: error) { Task { await load() } }
@@ -2962,6 +3148,17 @@ private struct SessionDetailView: View {
             await load()
             await model.reportBadgeEvent("sitzung")
         }
+        .task {
+            // Solange die Übertragung einen frischen Stand liefert, holt die
+            // Tagesordnung ihn alle 20 s nach — der laufende Punkt wandert
+            // dann von selbst.
+            while !Task.isCancelled {
+                let live = detail?.liveState.map { LiveStateText.isFresh($0, now: .now) } ?? false
+                try? await Task.sleep(for: .seconds(live ? 20 : 60))
+                now = .now
+                if let state = detail?.liveState, LiveStateText.isFresh(state, now: now) { await load() }
+            }
+        }
         .sheet(item: $calendarDraft) { draft in CalendarEditSheet(draft: draft, isPresented: Binding(
             get: { calendarDraft != nil }, set: { if !$0 { calendarDraft = nil } }
         )) }
@@ -2974,6 +3171,12 @@ private struct SessionDetailView: View {
 #if DEBUG
         if ratsDebugValue("RATSLOTSE_DEBUG_SESSION_CHANGES") == "1",
            let fixture = Self.debugSessionWithChanges() {
+            detail = fixture
+            error = nil
+            return
+        }
+        if ratsDebugValue("RATSLOTSE_DEBUG_SESSION_LIVE") == "1",
+           let fixture = Self.debugSessionLive(now: now) {
             detail = fixture
             error = nil
             return
@@ -2993,8 +3196,8 @@ private struct SessionDetailView: View {
           "session_time": "17:00",
           "location": "Alte Fleiwa, Industriestraße 1d, Sitzungssaal 1/2",
           "agenda_items": [
-            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","attachments":[]},
-            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"attachments":[]}
+            {"item_number":"Ö 4","title":"Radverkehrskonzept für Oldenburg","is_public":1,"summary":"Der Ausschuss berät die nächsten Schritte für sichere Radverbindungen.","template_number":"25/0412","anlagen":[{"label":"Antrag der Fraktion (PDF)","url":"https://ratslotse.de"}]},
+            {"item_number":"Ö 7","title":"Sichere Querung an der Cloppenburger Straße","is_public":1,"summary":null,"dringlich":true,"anlagen":[]}
           ],
           "decisions": [],
           "has_protocol": false,
@@ -3017,18 +3220,68 @@ private struct SessionDetailView: View {
         """#
         return try? JSONDecoder().decode(SessionDetail.self, from: Data(raw.utf8))
     }
+
+    /// Eine laufende Ratssitzung mit Übertragungsstand: TOP 9.3 läuft, eine
+    /// Rednerin hat das Wort — für Screenshots der Hervorhebung.
+    private static func debugSessionLive(now: Date) -> SessionDetail? {
+        let iso = ISO8601DateFormatter()
+        let raw = #"""
+        {
+          "ksinr": 4702,
+          "committee": "Rat",
+          "session_date": "2099-09-07",
+          "session_time": "18:00",
+          "location": "Kulturzentrum PFL, Peterstraße 3, Vortragssaal",
+          "agenda_items": [
+            {"item_number":"Ö 9","title":"Anträge der Fraktionen","is_public":1,"anlagen":[]},
+            {"item_number":"Ö 9.1","title":"Antrag: Nachtbuslinie für Eversten und Bloherfelde","is_public":1,"summary":"Die SPD-Fraktion beantragt eine Nachtbuslinie am Wochenende.","anlagen":[]},
+            {"item_number":"Ö 9.2","title":"Antrag: Trinkwasserspender in der Innenstadt","is_public":1,"anlagen":[]},
+            {"item_number":"Ö 9.3","title":"Radverkehrskonzept: Achse Alexanderstraße","is_public":1,"summary":"Der Rat entscheidet über den ersten Bauabschnitt der Radachse zwischen Pferdemarkt und Ofenerdiek.","template_number":"26/0412","anlagen":[]},
+            {"item_number":"Ö 9.4","title":"Veränderungssperre Nr. 118 – Alexandersfeld","is_public":1,"anlagen":[]},
+            {"item_number":"Ö 10","title":"Anfragen und Anregungen","is_public":1,"anlagen":[]}
+          ],
+          "decisions": [],
+          "has_protocol": false,
+          "url": "https://ratslotse.de",
+          "live_state": {
+            "item_number": "9.3", "item_title": "Radverkehrskonzept: Achse Alexanderstraße", "block_start": null,
+            "phase": "aussprache", "speaker": "Susanne Drügemöller", "party": "Bündnis 90/Die Grünen",
+            "since": "\#(iso.string(from: now.addingTimeInterval(-9 * 60)))",
+            "as_of": "\#(iso.string(from: now.addingTimeInterval(-2 * 60)))",
+            "updated_at": "\#(iso.string(from: now.addingTimeInterval(-100)))",
+            "finished": false
+          }
+        }
+        """#
+        return try? JSONDecoder().decode(SessionDetail.self, from: Data(raw.utf8))
+    }
 #endif
 
     private func agenda(_ detail: SessionDetail) -> some View {
         let publicItems = detail.agendaItems.filter { $0.isPublic != 0 }
+        // Der Stand aus der Übertragung, solange er frisch ist: Der laufende
+        // Punkt (oder Block) bekommt die rote Marke.
+        let liveState = detail.liveState.flatMap { LiveStateText.isFresh($0, now: now) ? $0 : nil }
+        let running = LiveStateText.runningKeys(liveState, agendaKeys: publicItems.map { LiveStateText.itemKey($0.itemNumber) })
         return VStack(alignment: .leading, spacing: 0) {
             MonoKicker("Tagesordnung", trailing: "\(publicItems.count) öffentlich")
                 .padding(.bottom, 7)
+
+            if let liveState, let topLabel = LiveStateText.topLabel(liveState) {
+                // Über der Liste EINMAL, woher die Marke stammt — ehrlich
+                // mit Verzug, wie im Web (Ehrlichkeit als Designprinzip).
+                Text("Live: \(topLabel) läuft gerade — aus der Übertragung, Stand \(LiveStateText.agoText(liveState, now: now)), unter einer Minute Verzug.")
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 9)
+            }
 
             ForEach(Array(publicItems.enumerated()), id: \.element.id) { index, item in
                 SessionAgendaRow(
                     item: item,
                     isHighlighted: highlightedTops.contains(item.itemNumber),
+                    isLive: running.contains(LiveStateText.itemKey(item.itemNumber)),
                     // Teilen MIT diesem Punkt: Wer den Link öffnet, landet in
                     // der Sitzung und direkt auf dieser Zeile.
                     shareLink: model.router.universalLink(
@@ -3041,7 +3294,6 @@ private struct SessionDetailView: View {
                 if index < publicItems.count - 1 {
                     Divider()
                         .overlay(RatsColor.separator)
-                        .padding(.leading, 52)
                 }
             }
         }
@@ -3192,78 +3444,148 @@ private struct FlexibleChips: View {
 private struct SessionAgendaRow: View {
     let item: AgendaItem
     let isHighlighted: Bool
+    /// Läuft GERADE — nach dem Stand der Übertragung (`LiveStateText.runningKeys`).
+    var isLive: Bool = false
     let shareLink: URL?
     let openAttachment: (AgendaAttachment) -> Void
 
+    /// Nummer und Teilen stehen ÜBER dem Text, nicht daneben.
+    ///
+    /// Vorher war die Zeile dreispaltig: links die TOP-Nummer als gefüllte
+    /// Plakette (31 pt Mindestbreite plus Polster), rechts ein 30 pt breiter
+    /// Teilen-Knopf, dazu zweimal 12 pt Abstand — auf einem iPhone gingen so
+    /// gut 90 pt von rund 340 an zwei Elemente, die niemand liest. Titel und
+    /// Kurzfassung, also das Einzige, worum es geht, brachen dafür früher um
+    /// („für den Namen des TOPs und die Zusammenfassung relativ wenig Platz",
+    /// Tim 04.09.2026).
+    ///
+    /// Jetzt trägt eine Kopfzeile die Nummer als Mono-Kicker, dahinter die
+    /// Vorlage und ganz rechts das Teilen-Zeichen; darunter läuft der Text
+    /// über die VOLLE Breite. Das ist zugleich die Anordnung der Web-Ansicht
+    /// — dieselbe Sache soll auf beiden Geräten gleich gebaut sein.
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(item.itemNumber)
-                .font(RatsFont.mono(9, weight: .semibold))
-                .tracking(0.4)
-                .foregroundStyle(isHighlighted ? RatsColor.primaryText : RatsColor.primary)
-                .frame(minWidth: 31)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 5)
-                .background(isHighlighted ? RatsColor.primary : RatsColor.primary.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .fixedSize()
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(item.title)
-                    .font(RatsFont.body(15, weight: .semibold))
-                    .foregroundStyle(RatsColor.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let summary = item.summary, !summary.isEmpty {
-                    Text(summary)
-                        .font(RatsFont.body(13))
-                        .foregroundStyle(RatsColor.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // Die Plakette bleibt — sie kostet hier keine Textbreite mehr,
+                // und als nackte graue Ziffer war die Nummer bei 10 pt kaum
+                // noch zu lesen („kann man fast gar nicht mehr lesen", Tim).
+                Text(item.itemNumber)
+                    .font(RatsFont.mono(12, weight: .semibold))
+                    .tracking(0.3)
+                    .foregroundStyle(RatsColor.primary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(RatsColor.primary.opacity(isHighlighted ? 0.16 : 0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .fixedSize()
+                if let template = item.templateNumber, !template.isEmpty {
+                    Text("Vorlage \(template)")
+                        .font(RatsFont.mono(11))
+                        .foregroundStyle(RatsColor.muted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                if !item.attachments.isEmpty {
-                    VStack(alignment: .leading, spacing: 5) {
-                        ForEach(item.attachments) { attachment in
-                            Button { openAttachment(attachment) } label: {
-                                HStack(spacing: 6) {
-                                    RatsIcon(.paperclip, size: 10)
-                                    Text(attachment.label)
-                                        .font(RatsFont.body(11, weight: .semibold))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    RatsIcon(.arrowUpRight, size: 8)
-                                }
-                                .foregroundStyle(RatsColor.primary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(RatsPlainButtonStyle())
-                            .accessibilityLabel("Anlage öffnen: \(attachment.label)")
-                        }
+                Spacer(minLength: 8)
+                if let shareLink {
+                    ShareLink(item: shareLink) {
+                        RatsIcon(.share, size: 13)
+                            .foregroundStyle(RatsColor.muted)
+                            // 28 pt statt 30, und die Fläche ragt nach oben
+                            // aus der Kicker-Zeile heraus, statt eine eigene
+                            // Spalte aufzumachen.
+                            .frame(width: 28, height: 22)
+                            .contentShape(Rectangle())
                     }
-                    .padding(.top, 3)
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityLabel("Tagesordnungspunkt \(item.itemNumber) teilen")
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, -4)
 
-            if let shareLink {
-                ShareLink(item: shareLink) {
-                    RatsIcon(.share, size: 15)
-                        .foregroundStyle(RatsColor.secondary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Rectangle())
+            if isLive {
+                // Dieselbe Bauform wie die LIVE-Zeile der Karte, an der
+                // Zeile: Dieser Punkt ist gerade dran.
+                HStack(spacing: 6) {
+                    ZStack {
+                        Circle().fill(RatsColor.danger.opacity(0.18)).frame(width: 12, height: 12)
+                        Circle().fill(RatsColor.danger).frame(width: 6, height: 6)
+                    }
+                    .accessibilityHidden(true)
+                    Text("LÄUFT GERADE")
+                        .font(RatsFont.mono(9, weight: .semibold))
+                        .tracking(0.8)
                 }
-                .buttonStyle(RatsPlainButtonStyle())
-                .accessibilityLabel("Tagesordnungspunkt \(item.itemNumber) teilen")
+                .foregroundStyle(RatsColor.danger)
+            }
+
+            if item.isUrgent {
+                // Ein Dringlichkeitsantrag steht nicht in der ursprünglichen
+                // Tagesordnung. Ohne die Marke liest er sich wie ein
+                // gewöhnlicher Punkt — das Web sagt es seit 08/2026, die App
+                // schwieg.
+                HStack(spacing: 5) {
+                    RatsIcon(.flame, size: 12)
+                    Text("Dringlichkeitsantrag")
+                        .font(RatsFont.body(12, weight: .semibold))
+                }
+                .foregroundStyle(RatsColor.signal)
+            }
+
+            Text(item.title)
+                .font(RatsFont.body(15, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let summary = item.summary, !summary.isEmpty {
+                // „Kurzfassung" sagt, dass hier eine Maschine zusammengefasst
+                // hat — dieselbe Ehrlichkeit wie im Web.
+                Text(summary)
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !item.attachments.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(item.attachments) { attachment in
+                        Button { openAttachment(attachment) } label: {
+                            HStack(spacing: 6) {
+                                RatsIcon(.paperclip, size: 10)
+                                Text(attachment.label)
+                                    .font(RatsFont.body(11, weight: .semibold))
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                RatsIcon(.arrowUpRight, size: 8)
+                            }
+                            .foregroundStyle(RatsColor.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(RatsPlainButtonStyle())
+                        .accessibilityLabel("Anlage öffnen: \(attachment.label)")
+                    }
+                }
+                .padding(.top, 2)
             }
         }
-        .padding(.horizontal, isHighlighted ? 10 : 0)
-        .padding(.vertical, 14)
-        .background(isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
+        .padding(.horizontal, isHighlighted || isLive ? 10 : 0)
+        .padding(.vertical, 13)
+        // Läuft gerade: weiche rote Tönung mit Rand — keine dunkle Fläche im
+        // hellen Design (Tims Regel), die Marke trägt die Farbe.
+        .background(isLive ? RatsColor.danger.opacity(0.06)
+                    : isHighlighted ? RatsColor.primary.opacity(0.07) : Color.clear)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(isLive ? RatsColor.danger.opacity(0.22) : Color.clear)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 }
 
-private struct CalendarDraft: Identifiable {
+struct CalendarDraft: Identifiable {
     let id = UUID()
     let title: String
     let start: Date
@@ -3272,7 +3594,7 @@ private struct CalendarDraft: Identifiable {
     let notes: String?
 }
 
-private struct CalendarEditSheet: UIViewControllerRepresentable {
+struct CalendarEditSheet: UIViewControllerRepresentable {
     let draft: CalendarDraft
     @Binding var isPresented: Bool
 

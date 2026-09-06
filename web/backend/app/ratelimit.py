@@ -67,6 +67,15 @@ topic_describe_limiter = RateLimiter(max_calls=20, window_seconds=300)
 # Endpunkte ganz ohne eine; eine Anlege-Schleife legte damit die ganze Seite
 # lahm. Zwölf in fünf Minuten ist weit mehr, als ein Mensch je braucht.
 topic_match_limiter = RateLimiter(max_calls=12, window_seconds=300)
+# Browser-Fehlermeldungen (`/api/client-errors`). Der Endpunkt ist OFFEN —
+# ein Fehler kann jeden treffen, auch jemanden ohne Konto, und gerade der
+# Anmeldebildschirm ist eine Stelle, an der etwas kaputtgehen kann.
+#
+# Damit ist er fremde Eingabe, und die Bremse ist Pflicht: Ohne sie schriebe
+# uns eine kaputte Seite in einer Endlosschleife (oder jemand mit einer
+# Schleife von Hand) die Tabelle voll. 20 in fünf Minuten reichen für einen
+# echten Fehlerfall und für eine Seite, die mehrere Fehler auf einmal wirft.
+client_error_limiter = RateLimiter(max_calls=20, window_seconds=300)
 login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)

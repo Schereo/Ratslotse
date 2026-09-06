@@ -20,7 +20,9 @@ import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
 import { formatEuro, OutcomeDot } from "@/components/decision-ui";
-import { fragenHref, decisionHref } from "@/lib/routes";
+import { fragenHref, decisionHref, viertelHref } from "@/lib/routes";
+import { useFeature } from "@/lib/features";
+import { MapPinned } from "lucide-react";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
@@ -313,6 +315,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* „Mein Viertel" (Feature-Schalter): eine Zeile je gewähltem Stadtteil
+          mit der Zahl seiner Vorhaben — der Weg zur Tafel. Ohne gewählten
+          Stadtteil führt die Karte zur Auswahl. */}
+      <MeinViertelKarte topics={topicsQuery.data} />
+
       {/* Design 28a/S5: „Zuletzt angesehen" lag fertig im Repo, wurde aber von
           keiner Seite gerendert. Bei leerer Historie rendert die Komponente
           ohnehin nichts — sie kostet also keinen Platz, bis es etwas zu zeigen
@@ -325,6 +332,55 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+/** „Mein Viertel" auf der Startseite: je gewähltem Stadtteil (ein Stadtteil
+ *  IST ein Thema, s. Einrichtungs-Assistent) die Zahl seiner Vorhaben mit dem
+ *  Sprung zur Tafel. Hängt am Feature-Schalter `mein-viertel`; ohne ihn
+ *  rendert die Karte nichts. */
+function MeinViertelKarte({ topics }: { topics: Topic[] | undefined }) {
+  const an = useFeature("mein-viertel");
+  const uebersicht = useQuery({
+    queryKey: ["viertel-uebersicht"],
+    queryFn: () => api.get<ApiAntwort<"/districts/projects">>("/districts/projects"),
+    enabled: an,
+    staleTime: 10 * 60_000,
+  });
+  if (!an) return null;
+  const orte = uebersicht.data?.districts ?? [];
+  const meine = orte.filter((o) => (topics ?? []).some((t) => t.name.toLowerCase() === o.name.toLowerCase()));
+  return (
+    <Card className={cn("mt-6 p-5", STAFFEL)} style={staffelStil(4)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-base font-bold text-foreground">Mein Viertel</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {meine.length > 0
+              ? "Was sich in deinem Stadtteil in den nächsten Jahren ändert."
+              : "Was sich in deinem Stadtteil in den nächsten Jahren ändert — wähle ihn auf der Karte."}
+          </p>
+        </div>
+        <span className="rounded-xl bg-primary/10 p-2 text-primary"><MapPinned className="h-5 w-5" /></span>
+      </div>
+      {meine.length > 0 ? (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {meine.map((o) => (
+            <li key={o.place_id}>
+              <Link href={viertelHref(o.place_id)} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+                {o.name}
+                <span className="rounded-full bg-primary/10 px-1.5 text-xs tabular-nums text-primary">{o.count}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <Link href={viertelHref()} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+          Stadtteil wählen <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </Card>
+  );
+}
+
 
 /** RL-1104: Zahl der Woche zählt hoch — Betrag über den Roh-Euro-Wert
  *  (formatEuro formatiert jeden Zwischenstand), Anzahl direkt. */

@@ -35,6 +35,7 @@ import sqlite3
 
 from council import geld
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 NAME = "measures"
 
@@ -97,7 +98,7 @@ def recognize(text: str, typ: str, facets: set[str]) -> bool:
     return typ not in ("party", "person", "history") or "plan" in facets
 
 
-class Store:
+class Store(StoreBasis):
     """Mixin für ``CouncilStore`` — die Vorhaben zur Frage."""
 
     def measures_context(self, terms: list[str],

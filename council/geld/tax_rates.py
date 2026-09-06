@@ -36,6 +36,7 @@ import sqlite3
 
 from council import geld
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 NAME = "tax_rates"
 
@@ -87,7 +88,7 @@ def recognize(text: str, typ: str, facets: set[str]) -> bool:
     return bool(_BETRIEBE.search(text)) and ("taxes" in facets or "steuer" in text)
 
 
-class Store:
+class Store(StoreBasis):
     """Mixin für ``CouncilStore`` — Hebesätze, und auf Wunsch der Nenner."""
 
     def tax_rates_context(self, terms: list[str],

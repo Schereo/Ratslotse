@@ -92,6 +92,18 @@ public enum RatsGlyph: Sendable, Equatable {
     case landmark
     case leaf
     case lifeBuoy
+    case compass
+    case baby
+    case bus
+    case clipboardList
+    case coins
+    case drama
+    case globe
+    case graduationCap
+    case hammer
+    case heartHandshake
+    case laptop
+    case recycle
     case list
     case listFilter
     case listOrdered
@@ -233,6 +245,18 @@ public enum RatsGlyph: Sendable, Equatable {
         case .landmark: "LucideLandmark"
         case .leaf: "LucideLeaf"
         case .lifeBuoy: "LucideLifeBuoy"
+        case .compass: "LucideCompass"
+        case .baby: "LucideBaby"
+        case .bus: "LucideBus"
+        case .clipboardList: "LucideClipboardList"
+        case .coins: "LucideCoins"
+        case .drama: "LucideDrama"
+        case .globe: "LucideGlobe"
+        case .graduationCap: "LucideGraduationCap"
+        case .hammer: "LucideHammer"
+        case .heartHandshake: "LucideHeartHandshake"
+        case .laptop: "LucideLaptop"
+        case .recycle: "LucideRecycle"
         case .list: "LucideList"
         case .listFilter: "LucideListFilter"
         case .listOrdered: "LucideListOrdered"

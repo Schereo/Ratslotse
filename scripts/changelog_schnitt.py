@@ -312,6 +312,55 @@ def einsetzen(changelog: str, eintraege_je_ueberschrift: dict[str, list[str]],
     return "\n".join(_vergleichslinks(neu, version))
 
 
+# ---------------------------------------------------------------------------
+# Die Version, die in der App steht
+# ---------------------------------------------------------------------------
+# `MARKETING_VERSION` ist die Zahl, die ein Nutzer in den Einstellungen sieht
+# und in einer Fehlermeldung nennt. Sie stand am 04.09.2026 auf 2.0.0, während
+# im Changelog längst 2.1.0 als jüngste Version geführt wurde — der Schnitt
+# fasste `ios/` bis dahin nicht an, und von Hand denkt daran niemand. Eine
+# falsche Versionsangabe ist der teuerste kleine Fehler, den es gibt: Sie
+# schickt die Fehlersuche zum falschen Stand.
+#
+# Zwei Stellen, weil die `.xcodeproj` eingecheckt ist (damit man sie ohne
+# XcodeGen öffnen kann) und den Wert dabei mitschleppt.
+IOS_YML = "ios/project.yml"
+IOS_PBX = "ios/Ratslotse.xcodeproj/project.pbxproj"
+_YML_VERSION = re.compile(r"^(\s*MARKETING_VERSION:\s*)(\S+)\s*$", re.MULTILINE)
+_PBX_VERSION = re.compile(r"^(\s*MARKETING_VERSION = )([^;]+)(;)\s*$", re.MULTILINE)
+
+
+def app_version(wurzel: Path = WURZEL) -> str | None:
+    """Die Version, die die App von sich behauptet."""
+    treffer = _YML_VERSION.search((wurzel / IOS_YML).read_text(encoding="utf-8"))
+    return treffer.group(2) if treffer else None
+
+
+def app_version_setzen(version: str, wurzel: Path = WURZEL,
+                       trocken: bool = False) -> list[str]:
+    """`MARKETING_VERSION` auf die geschnittene Version ziehen.
+
+    Der Build-Zähler (`CURRENT_PROJECT_VERSION`) bleibt unangetastet: Der
+    gehört zum Upload, nicht zur Version — zwischen zwei Releases können
+    mehrere Builds liegen.
+    """
+    geaendert: list[str] = []
+    for name, muster, ersatz in (
+        (IOS_YML, _YML_VERSION, rf"\g<1>{version}"),
+        (IOS_PBX, _PBX_VERSION, rf"\g<1>{version}\g<3>"),
+    ):
+        pfad = wurzel / name
+        if not pfad.exists():
+            continue
+        alt = pfad.read_text(encoding="utf-8")
+        neu = muster.sub(ersatz, alt)
+        if neu != alt:
+            geaendert.append(name)
+            if not trocken:
+                pfad.write_text(neu, encoding="utf-8")
+    return geaendert
+
+
 def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
             trocken: bool = False, nummern=None) -> Ergebnis:
     """Den Versionsschnitt ausführen (bzw. bei ``trocken`` nur berechnen).
@@ -342,6 +391,8 @@ def schnitt(version: str, tag_iso: str | None = None, wurzel: Path = WURZEL,
     pfad.write_text(text, encoding="utf-8")
     for fragment in fragmente:
         fragment.pfad.unlink()
+    for datei in app_version_setzen(version, wurzel):
+        print(f"  App-Version nachgezogen: {datei} → {version}")
     return Ergebnis(text=text, fragmente=fragmente, ohne_nummer=ohne_nummer, geschrieben=True)
 
 

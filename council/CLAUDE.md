@@ -103,14 +103,31 @@ Methoden. Der Haushalt ist als erste Ecke heraus:
 | `council/store_fundstuecke.py` | 10 | Fundstücke, Rückblicke, Social-Text |
 | `council/geld/*.py` | 24 | je eine Facette der KI-Frage |
 | `council/store_helfer.py` | — | die paar Funktionen, die mehrere Ecken brauchen |
+| `council/store_basis.py` | — | was jedes Mixin von `CouncilStore` erwartet |
 
 Alle landen über Mixins in derselben `CouncilStore`; an den Aufrufstellen
-ändert sich nichts. `store.py` ist damit von 15.744 auf 4.786 Zeilen und von
+ändert sich nichts. `store.py` ist damit von 15.744 auf 4.343 Zeilen und von
 506 auf 161 eigene Methoden geschrumpft.
 
 `store_helfer.py` gibt es, weil ein Mixin in einer eigenen Datei nichts aus
 `store.py` importieren kann — das wäre ein Ring. Was mehrere Ecken brauchen und
 keiner gehört, wandert dorthin.
+
+**`store_basis.py`: Jedes Mixin erbt `StoreBasis`.** Ein Mixin benutzt
+`self._conn`, ohne die Verbindung je anzulegen — sie entsteht in
+`CouncilStore.__init__`. Für einen Menschen offensichtlich, für ein Werkzeug
+ein Zugriff ins Leere: **1.007 von 1.309** Befunden der Typprüfung kamen aus
+dieser einen Ursache, weshalb `council/` außerhalb der Prüfung stand.
+`StoreBasis` schreibt den gemeinsamen Nenner auf und ist **zur Laufzeit
+leer** — der ganze Körper steht unter `TYPE_CHECKING`, es entsteht kein
+Attribut und keine Methode. Wer ein neues Mixin baut, schreibt
+`class XMixin(StoreBasis):`; `tests/test_store_basis.py` hält beides fest.
+
+**Eine Konstante gehört zu ihrem Nutzer, nicht in `store.py`.** 44
+Klassenattribute standen auf `CouncilStore`, die je genau ein Mixin las — 443
+Zeilen, die niemand dort suchte. Sie stehen jetzt in ihrem Mixin (erreichbar
+bleiben sie über die Vererbung, an den Aufrufstellen ändert sich nichts).
+Derselbe Test meldet, wenn wieder eine dort landet.
 | `council/geld/*.py` | je eine Facette der KI-Frage, je eine Store-Methode |
 
 **Die Wurzeln müssen BEIDE Seiten treffen.** Der erste Haushalts-Schnitt ging

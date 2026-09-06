@@ -4,6 +4,17 @@
   "rules": {
     "react/no-unescaped-entities": "off",
     "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "warn"
+    "react-hooks/exhaustive-deps": "warn",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.name='fetch'] > Literal[value=/^\\u002fapi\\u002f/]",
+        "message": "Nacktes fetch(\"/api/…\"): In der nativen App läuft das Bundle unter capacitor://localhost, der relative Pfad zeigt dort ins Nichts. api.get/post/put/del aus lib/api.ts nehmen — oder, wo der Wrapper nicht passt (Streams), apiUrl() und authHeaders() aus demselben Modul."
+      },
+      {
+        "selector": "CallExpression[callee.name='fetch'] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\u002fapi\\u002f/]",
+        "message": "Nacktes fetch(`/api/…`): In der nativen App läuft das Bundle unter capacitor://localhost, der relative Pfad zeigt dort ins Nichts. api.get/post/put/del aus lib/api.ts nehmen — oder, wo der Wrapper nicht passt (Streams), apiUrl() und authHeaders() aus demselben Modul."
+      }
+    ]
   }
 }

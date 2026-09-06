@@ -294,7 +294,11 @@ def parse_gesamtergebnisrechnung(text: str) -> dict | None:
         if "revenues_total" not in nach_rolle or "total_result" not in nach_rolle:
             continue  # Anlagenübersicht o. Ä. — sieht am Anfang ähnlich aus.
 
-        def value(role: str) -> float | None:
+        # `nach_rolle=nach_rolle` bindet die Runde, in der die Funktion
+        # entsteht. Ohne die Bindung läse sie den Wert erst beim AUFRUF — heute
+        # noch derselbe (sie wird in derselben Runde verbraucht), nach einem
+        # Umbau womöglich der des letzten Durchlaufs.
+        def value(role: str, nach_rolle=nach_rolle) -> float | None:
             eintrag = nach_rolle.get(role)
             return eintrag["amount"] if eintrag else None
 

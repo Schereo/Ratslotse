@@ -9,7 +9,7 @@ import time
 import unicodedata
 from collections import Counter, defaultdict
 from datetime import date
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -228,6 +228,12 @@ def _stamp_live_windows(rows: list[dict], store: CouncilStore) -> list[dict]:
     for r in heutige:
         start = r.get("session_time") or ""
         r["live_until"] = live_mod.window_end(r.get("committee"), start, windows.get(start))
+    # Der Live-Stand aus der Übertragung (council/livetracker.py) — nur die
+    # Ratssitzung hat einen, und nur solange der Mitschnitt-Job ihn schreibt.
+    states = store.live_states([r["ksinr"] for r in heutige if r.get("ksinr")])
+    for r in heutige:
+        if r.get("ksinr") in states:
+            r["live_state"] = states[r["ksinr"]]
     return rows
 
 
@@ -262,10 +268,17 @@ def sessions(
     # Klassifikation für die eingeloggte Nutzer*in (eine Batch-Abfrage).
     ksinrs = [r["ksinr"] for r in rows if r.get("ksinr")]
     mine = ratslotse.agenda_matches_for_owner(user["id"], ksinrs)
+    # Die wichtigsten Punkte je Sitzung, mit derselben Bewertung wie „Diese
+    # Woche im Rat" — damit die Liste nicht nur „13 TOPs" sagt, sondern was
+    # davon zählt. Fehlt an Sitzungen ohne Punkt über der Schwelle.
+    highlights = store.sitzungs_highlights(ksinrs, meine=mine)
     for r in rows:
         matches = mine.get(r.get("ksinr") or 0)
         if matches:
             r["my_topic_items"] = matches
+        punkte = highlights.get(r.get("ksinr") or 0)
+        if punkte:
+            r["highlights"] = punkte
 
     return {"count": len(rows), "total": total, "sessions": _stamp_live_windows(rows, store)}
 
@@ -1659,6 +1672,11 @@ def session_detail(
     # „Zuletzt geändert" (Tims Wunsch 18.08.): Die Push zur Änderungsmeldung
     # sagt nur noch den Satz — die Einzelheiten stehen hier, aus der Chronik.
     session["agenda_changes"] = _agenda_aenderungen(store, ksinr)
+    # Live-Stand aus der Übertragung — die Tagesordnung hebt damit den
+    # laufenden Punkt hervor (und sagt nach der Sitzung, dass sie vorbei ist).
+    live_state = store.get_live_state(ksinr)
+    if live_state:
+        session["live_state"] = live_state
     return session
 
 
@@ -2054,8 +2072,9 @@ def partei_meinungen_endpoint(
         # „v3": seit dem Beschluss-Anker — die alten Einträge kennen nur den
         # Vektor-Kanal und sollen nicht 14 Tage weiterleben.
         alle_ids = sorted({wid for wid, _ in hits} | {r["id"] for r in anker})
-        key = "v3:" + hashlib.sha1(
-            ",".join(str(wid) for wid in alle_ids).encode()).hexdigest()
+        key = "v3:" + hashlib.sha1(  # Cache-Schlüssel, keine Sicherheitsfunktion
+            ",".join(str(wid) for wid in alle_ids).encode(),
+            usedforsecurity=False).hexdigest()
         meinungen = store.partei_meinungen_cache_get(key) if alle_ids else None
         if meinungen is None and alle_ids:
             vektor = store.wortbeitraege_by_ids([wid for wid, _ in hits])

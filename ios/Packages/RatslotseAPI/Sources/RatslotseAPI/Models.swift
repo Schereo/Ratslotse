@@ -3,10 +3,208 @@ import Foundation
 public struct AppConfiguration: Codable, Sendable, Equatable {
     public let minBuild: Int
     public let notice: String?
+    /// Eingeschaltete Feature-Schalter (`kern/features.py`). Im Vertrag
+    /// voreingestellt leer — eine ältere App-Fassung kennt das Feld nicht und
+    /// muss es auch nicht; deshalb hier mit Vorgabe statt Pflicht.
+    public let features: [String]
 
     enum CodingKeys: String, CodingKey {
         case minBuild = "min_build"
         case notice = "note"
+        case features
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        minBuild = try container.decode(Int.self, forKey: .minBuild)
+        notice = try container.decodeIfPresent(String.self, forKey: .notice)
+        features = try container.decodeIfPresent([String].self, forKey: .features) ?? []
+    }
+
+    public init(minBuild: Int, notice: String?, features: [String] = []) {
+        self.minBuild = minBuild
+        self.notice = notice
+        self.features = features
+    }
+}
+
+// MARK: - Mein Viertel
+
+/// Ein Ortsbereich in der Übersicht von „Mein Viertel" — mit der Zahl seiner Vorhaben.
+public struct DistrictProjectsOverviewEntry: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { placeID }
+    public let placeID: String
+    public let name: String
+    public let count: Int
+    public let lastDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, count
+        case placeID = "place_id"
+        case lastDate = "last_date"
+    }
+}
+
+public struct DistrictProjectsOverview: Codable, Sendable {
+    public let districts: [DistrictProjectsOverviewEntry]
+    public let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case districts
+        case updatedAt = "updated_at"
+    }
+}
+
+public struct DistrictProjectDecision: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let title: String
+    public let outcome: String?
+    public let date: String
+    public let committee: String?
+}
+
+/// Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie
+/// als GeoJSON (LineString/MultiLineString), als `JSONValue` durchgereicht.
+public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { slug }
+    public let slug: String
+    public let name: String
+    public let kind: String
+    public let latitude: Double
+    public let longitude: Double
+    public let geometry: JSONValue?
+
+    enum CodingKeys: String, CodingKey {
+        case slug, name, kind, geometry
+        case latitude = "lat"
+        case longitude = "lon"
+    }
+}
+
+/// Ein Vorhaben auf der Tafel „Mein Viertel" (`council/viertel.py`).
+/// `stage` ∈ idea | planning | decided | building | done | rejected,
+/// `category` ∈ housing | traffic | school_childcare | green | culture_sport_social | other.
+public struct DistrictProject: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let projectKey: String
+    public let placeID: String
+    public let name: String
+    public let what: String
+    public let stage: String
+    public let when: String?
+    public let category: String
+    public let confidence: Int
+    public let firstDate: String?
+    public let lastDate: String?
+    public let reportCount: Int
+    public let hidden: Bool
+    public let reported: Bool
+    public let decisions: [DistrictProjectDecision]
+    public let locations: [DistrictProjectLocation]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, what, stage, when, category, confidence, hidden, reported, decisions, locations
+        case projectKey = "project_key"
+        case placeID = "place_id"
+        case firstDate = "first_date"
+        case lastDate = "last_date"
+        case reportCount = "report_count"
+    }
+}
+
+public struct DistrictUpcomingItem: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let ksinr: Int
+    public let itemNumber: String?
+    public let title: String
+    public let kvonr: Int?
+    public let sessionDate: String
+    public let sessionTime: String?
+    public let committee: String?
+    public let location: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, ksinr, title, kvonr, committee, location
+        case itemNumber = "item_number"
+        case sessionDate = "session_date"
+        case sessionTime = "session_time"
+    }
+}
+
+public struct DistrictInvestment: Codable, Sendable, Hashable {
+    public let programmeYear: Int
+    public let code: String?
+    public let label: String
+    public let totalEUR: Double
+    public let location: String
+
+    enum CodingKeys: String, CodingKey {
+        case code, label, location
+        case programmeYear = "programme_year"
+        case totalEUR = "total_eur"
+    }
+}
+
+public struct DistrictParticipation: Codable, Sendable, Hashable {
+    public let title: String?
+    public let place: String?
+    public let step: String?
+    public let validFrom: String?
+    public let validUntil: String?
+    public let url: String?
+    public let planNrs: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title, place, step, url
+        case validFrom = "valid_from"
+        case validUntil = "valid_until"
+        case planNrs = "plan_nrs"
+    }
+}
+
+public struct DistrictNeighbour: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { placeID }
+    public let placeID: String
+    public let name: String
+    public let count: Int
+
+    enum CodingKeys: String, CodingKey {
+        case name, count
+        case placeID = "place_id"
+    }
+}
+
+/// `GET /api/districts/{place_id}/projects` — die Tafel eines Ortsbereichs.
+/// `place` ist die Ortsdarstellung des Katalogs; hier reichen id und name.
+public struct DistrictProjects: Codable, Sendable {
+    public let place: DistrictPlace
+    public let projects: [DistrictProject]
+    public let upcoming: [DistrictUpcomingItem]
+    public let investments: [DistrictInvestment]
+    public let participations: [DistrictParticipation]
+    public let neighbours: [DistrictNeighbour]
+    public let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case place, projects, upcoming, investments, participations, neighbours
+        case updatedAt = "updated_at"
+    }
+}
+
+public struct DistrictPlace: Codable, Sendable, Hashable {
+    public let id: String
+    public let name: String
+    public let description: String?
+}
+
+public struct DistrictProjectReportOut: Codable, Sendable {
+    public let ok: Bool
+    public let reportCount: Int
+    public let hidden: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case ok, hidden
+        case reportCount = "report_count"
     }
 }
 
@@ -508,6 +706,30 @@ public struct CommitteeOptions: Codable, Sendable {
     public let details: [CommitteeDetail]?
 }
 
+/// Die Kalender-Adresse eines Kontos (`/api/calendar/subscription`).
+///
+/// `webcalURL` öffnet auf dem iPhone direkt den Abo-Dialog von Apple
+/// Kalender; `url` ist dieselbe Adresse als https zum Kopieren (Google,
+/// Outlook). Das Token darin ist ein eigenes Geheimnis — „Neue Adresse"
+/// (`POST /api/calendar/subscription/rotate`) macht die alte ungültig.
+public struct CalendarSubscription: Decodable, Sendable, Equatable {
+    public let url: String
+    public let webcalURL: String
+    public let subscribedCommittees: Int
+
+    enum CodingKeys: String, CodingKey {
+        case url
+        case webcalURL = "webcal_url"
+        case subscribedCommittees = "subscribed_committees"
+    }
+
+    public init(url: String, webcalURL: String, subscribedCommittees: Int) {
+        self.url = url
+        self.webcalURL = webcalURL
+        self.subscribedCommittees = subscribedCommittees
+    }
+}
+
 public struct CommitteeDetail: Codable, Sendable, Hashable, Identifiable {
     public var id: String { name }
     public let name: String
@@ -650,6 +872,68 @@ public struct FollowPage: Codable, Sendable {
     public let follows: [FollowEntry]
 }
 
+/// What is happening in the council chamber RIGHT NOW — from the transcript
+/// of the O1 livestream (`council/livetracker.py`), rewritten every 30
+/// seconds while the recording job runs. Only today's council session
+/// carries one. `asOf` is the audio position the row reflects (ISO 8601 with
+/// offset); the card derives "vor N Min." from it and says where it comes
+/// from — it trails the room by under a minute.
+public struct LiveState: Codable, Sendable, Hashable {
+    /// Running item without the Ö/N prefix ("9.3"), nil before the first call.
+    public let itemNumber: String?
+    public let itemTitle: String?
+    /// First item of a block that ran through in one window ("9.4" when the
+    /// state says "9.8") — formalities are voted in seconds.
+    public let blockStart: String?
+    /// aufruf | aussprache | abstimmung | pause | unklar | ende
+    public let phase: String
+    public let speaker: String?
+    public let party: String?
+    public let since: String
+    public let asOf: String
+    public let updatedAt: String
+    /// The chair closed the public part; the row stays for the record.
+    public let finished: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case phase, speaker, party, since, finished
+        case itemNumber = "item_number"
+        case itemTitle = "item_title"
+        case blockStart = "block_start"
+        case asOf = "as_of"
+        case updatedAt = "updated_at"
+    }
+
+    public init(itemNumber: String?, itemTitle: String?, blockStart: String?, phase: String,
+                speaker: String?, party: String?, since: String, asOf: String,
+                updatedAt: String, finished: Bool) {
+        self.itemNumber = itemNumber
+        self.itemTitle = itemTitle
+        self.blockStart = blockStart
+        self.phase = phase
+        self.speaker = speaker
+        self.party = party
+        self.since = since
+        self.asOf = asOf
+        self.updatedAt = updatedAt
+        self.finished = finished
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        itemNumber = try values.decodeIfPresent(String.self, forKey: .itemNumber)
+        itemTitle = try values.decodeIfPresent(String.self, forKey: .itemTitle)
+        blockStart = try values.decodeIfPresent(String.self, forKey: .blockStart)
+        phase = try values.decodeIfPresent(String.self, forKey: .phase) ?? "unklar"
+        speaker = try values.decodeIfPresent(String.self, forKey: .speaker)
+        party = try values.decodeIfPresent(String.self, forKey: .party)
+        since = try values.decodeIfPresent(String.self, forKey: .since) ?? ""
+        asOf = try values.decodeIfPresent(String.self, forKey: .asOf) ?? ""
+        updatedAt = try values.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
+        finished = try values.decodeIfPresent(Bool.self, forKey: .finished) ?? false
+    }
+}
+
 public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     /// Terminierte Sitzungen aus dem Kalender haben noch keine `ksinr` — die
     /// bekommen sie erst mit der veröffentlichten Tagesordnung. Bis dahin
@@ -673,15 +957,23 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
     /// administrative committee, 18:00 council); they wait for each other
     /// instead of meeting in parallel. Only sent for today's sessions.
     public let liveUntil: String?
+    /// Live state from the broadcast — only on today's council session while
+    /// the recording job writes it (see `LiveState`).
+    public let liveState: LiveState?
     public let location: String?
     public let itemCount: Int
     public let myTopicItems: [JSONValue]?
+    /// Die wichtigsten Punkte der Sitzung — dieselbe Form wie die Punkte der
+    /// Wochenvorschau, dieselbe Bewertung auf dem Server. Fehlt, wenn kein
+    /// Punkt über der Schwelle liegt.
+    public let highlights: [WeekPreviewItem]?
 
     enum CodingKeys: String, CodingKey {
-        case ksinr, committee, location
+        case ksinr, committee, location, highlights
         case sessionDate = "session_date"
         case sessionTime = "session_time"
         case liveUntil = "live_until"
+        case liveState = "live_state"
         case itemCount = "n_items"
         case myTopicItems = "my_topic_items"
     }
@@ -693,9 +985,11 @@ public struct CouncilSession: Codable, Sendable, Hashable, Identifiable {
         sessionDate = try values.decodeIfPresent(String.self, forKey: .sessionDate) ?? ""
         sessionTime = try values.decodeIfPresent(String.self, forKey: .sessionTime)
         liveUntil = try values.decodeIfPresent(String.self, forKey: .liveUntil)
+        liveState = try values.decodeIfPresent(LiveState.self, forKey: .liveState)
         location = try values.decodeIfPresent(String.self, forKey: .location)
         itemCount = try values.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0
         myTopicItems = try values.decodeIfPresent([JSONValue].self, forKey: .myTopicItems)
+        highlights = try values.decodeIfPresent([WeekPreviewItem].self, forKey: .highlights)
     }
 }
 
@@ -725,13 +1019,23 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
     public let isPublic: Int
     public let summary: String?
     public let attachments: [AgendaAttachment]
+    /// Dringlichkeitsantrag — nachgereicht, nicht in der ursprünglichen
+    /// Tagesordnung. Das Web markiert ihn an der Zeile; die App tat es nicht.
+    public let isUrgent: Bool
 
     enum CodingKeys: String, CodingKey {
         case title, summary
         case itemNumber = "item_number"
         case templateNumber = "template_number"
         case isPublic = "is_public"
-        case attachments = "attachments"
+        // Der Server nennt das Feld `anlagen`. Die App las bis 09/2026
+        // `attachments` — ein Name, den es auf der Leitung nie gab, also
+        // immer eine leere Liste und nie eine Fehlermeldung. Genau der Fall,
+        // vor dem ios/CLAUDE.md warnt; gefunden hat ihn Tim in der App, nicht
+        // der Vertragsprüfer (er bindet nur die Typen, die an einer
+        // Aufrufstelle stehen — `AgendaItem` hängt unter `SessionDetail`).
+        case attachments = "anlagen"
+        case isUrgent = "dringlich"
     }
 
     public init(from decoder: Decoder) throws {
@@ -742,6 +1046,7 @@ public struct AgendaItem: Codable, Sendable, Hashable, Identifiable {
         isPublic = try values.decodeIfPresent(Int.self, forKey: .isPublic) ?? 1
         summary = try values.decodeIfPresent(String.self, forKey: .summary)
         attachments = try values.decodeIfPresent([AgendaAttachment].self, forKey: .attachments) ?? []
+        isUrgent = try values.decodeIfPresent(Bool.self, forKey: .isUrgent) ?? false
     }
 }
 
@@ -803,6 +1108,9 @@ public struct SessionDetail: Codable, Sendable {
     public let hasProtocol: Bool
     public let url: String?
     public let agendaChanges: [AgendaChange]?
+    /// Live state from the broadcast (see `LiveState`) — the agenda marks
+    /// the running item with it; absent for every other session.
+    public let liveState: LiveState?
 
     enum CodingKeys: String, CodingKey {
         case ksinr, committee, location, decisions, url
@@ -811,6 +1119,7 @@ public struct SessionDetail: Codable, Sendable {
         case agendaItems = "agenda_items"
         case hasProtocol = "has_protocol"
         case agendaChanges = "agenda_changes"
+        case liveState = "live_state"
     }
 }
 
@@ -879,7 +1188,7 @@ public struct WeekPreview: Codable, Sendable {
     }
 }
 
-public struct WeekPreviewItem: Codable, Sendable, Identifiable {
+public struct WeekPreviewItem: Codable, Sendable, Identifiable, Hashable {
     public var id: String { "\(sessionID):\(itemNumber)" }
     public let sessionID: Int
     public let itemNumber: String

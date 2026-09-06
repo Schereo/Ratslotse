@@ -89,4 +89,4 @@ def test_prompt_verbietet_nachkomma_millionen():
 
 
 def test_qa_einfach_rendert_mit_seinen_platzhaltern():
-    prompts.render("qa_simple", question="F", bisher="B", context="C")
+    prompts.render("qa_simple", question="F", bisher="B", glossar="G", context="C")

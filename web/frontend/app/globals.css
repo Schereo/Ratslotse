@@ -1352,3 +1352,19 @@ lotti-figur {
     animation-delay: calc(var(--staffel-i, 0) * 45ms);
   }
 }
+
+/* „Mein Viertel": Pins und Popover auf der Viertel-Karte (components/viertel-karte.tsx).
+   Der ausgewählte Pin bekommt einen Ring in seiner Farbe, gefilterte Pins
+   bleiben blass sichtbar — die Stadt soll vollständig aussehen. */
+.viertel-pin > span { border-width: 2px; background: color-mix(in srgb, var(--point-color) 70%, transparent); box-shadow: 0 0 0 2px hsl(var(--card)); }
+.viertel-pin.ist-aktiv > span { box-shadow: 0 0 0 2px hsl(var(--card)), 0 0 0 5px color-mix(in srgb, var(--point-color) 45%, transparent); }
+.viertel-pin.ist-blass > span { opacity: 0.25; }
+.viertel-popup-huelle .leaflet-popup-content-wrapper { border-radius: 12px; background: hsl(var(--card)); color: hsl(var(--foreground)); box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.35); }
+.viertel-popup-huelle .leaflet-popup-tip { background: hsl(var(--card)); }
+.viertel-popup-huelle .leaflet-popup-content { margin: 10px 12px; font-family: inherit; }
+.viertel-popup { display: grid; gap: 4px; min-width: 180px; max-width: 240px; font-size: 13px; }
+.viertel-popup .stand { justify-self: start; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.viertel-popup .wann { font-weight: 600; color: hsl(var(--signal)); font-size: 12px; }
+.viertel-popup b { font-family: var(--font-display, inherit); font-size: 14px; line-height: 1.25; }
+.viertel-popup button { justify-self: start; margin-top: 4px; font: 600 12px/1 inherit; color: hsl(var(--primary)); background: transparent; border: 1px solid hsl(var(--primary) / 0.4); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+.viertel-popup button:hover { background: hsl(var(--primary) / 0.08); }

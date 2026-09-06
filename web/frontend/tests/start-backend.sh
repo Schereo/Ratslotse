@@ -1,5 +1,10 @@
 #!/bin/sh
-# Starts the FastAPI backend on port 8001 with throwaway SQLite databases.
+# Starts the FastAPI backend with throwaway SQLite databases.
+#
+# Der Port kommt aus E2E_API_PORT (Vorgabe 8001) — dieselbe Variable, die
+# `playwright.config.ts` liest. Grund: In mehreren Worktrees gleichzeitig
+# gearbeitet, ist 8001 (wie 3000) oft schon belegt, und den fremden Prozess
+# abzuschießen träfe die Arbeit einer anderen Sitzung.
 # Called by the Playwright webServer config so it is launched by the shell
 # (not from inside Playwright's sandboxed global-setup).
 set -e
@@ -70,5 +75,5 @@ cd "$REPO_ROOT/web/backend"
 exec "$PYTHON_BIN" -m uvicorn \
   app.main:app \
   --host 127.0.0.1 \
-  --port 8001 \
+  --port "${E2E_API_PORT:-8001}" \
   --log-level warning

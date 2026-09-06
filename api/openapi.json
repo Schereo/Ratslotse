@@ -286,6 +286,24 @@
         "title": "AdminFeedbackRow",
         "type": "object"
       },
+      "AdminFehlerTag": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "tag": {
+            "title": "Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag",
+          "n"
+        ],
+        "title": "AdminFehlerTag",
+        "type": "object"
+      },
       "AdminGrowth": {
         "properties": {
           "clients": {
@@ -1011,6 +1029,87 @@
         "title": "AdminQuizStats",
         "type": "object"
       },
+      "AdminRequestFehler": {
+        "description": "Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.\n\nGleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);\n``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,\nroher Pfad, Variablenwerte —, steht dort begründet.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFehlerTag"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "exc_type": {
+            "title": "Exc Type",
+            "type": "string"
+          },
+          "first_seen": {
+            "title": "First Seen",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_seen": {
+            "title": "Last Seen",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "quelle": {
+            "title": "Quelle",
+            "type": "string"
+          },
+          "resolved_at": {
+            "title": "Resolved At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "trace": {
+            "title": "Trace",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "exc_type",
+          "message",
+          "route",
+          "method",
+          "trace",
+          "first_seen",
+          "last_seen",
+          "count",
+          "resolved_at",
+          "quelle",
+          "daily"
+        ],
+        "title": "AdminRequestFehler",
+        "type": "object"
+      },
       "AdminSeries": {
         "properties": {
           "days": {
@@ -1574,6 +1673,14 @@
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
+          "features": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
           "min_build": {
             "title": "Min Build",
             "type": "integer"
@@ -2512,12 +2619,22 @@
                   "null"
                 ]
               },
+              "highlights": {
+                "items": {
+                  "$ref": "#/components/schemas/WeekPreviewItem"
+                },
+                "title": "Highlights",
+                "type": "array"
+              },
               "ksinr": {
                 "title": "Ksinr",
                 "type": [
                   "integer",
                   "null"
                 ]
+              },
+              "live_state": {
+                "$ref": "#/components/schemas/LiveState"
               },
               "live_until": {
                 "title": "Live Until",
@@ -3810,6 +3927,30 @@
         "title": "BudgetStaffPlan",
         "type": "object"
       },
+      "CalendarSubscription": {
+        "description": "Die Kalender-Adresse eines Kontos (``/api/calendar/subscription``).\n\n``url`` ist die https-Adresse zum Kopieren, ``webcal_url`` dieselbe mit\ndem Schema, das auf dem Telefon direkt den Abo-Dialog öffnet.",
+        "properties": {
+          "subscribed_committees": {
+            "title": "Subscribed Committees",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "webcal_url": {
+            "title": "Webcal Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "webcal_url",
+          "subscribed_committees"
+        ],
+        "title": "CalendarSubscription",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -3937,6 +4078,37 @@
           "months"
         ],
         "title": "CityTopicSuggestion",
+        "type": "object"
+      },
+      "ClientErrorIn": {
+        "description": "Eine Fehlermeldung aus dem Browser.\n\nAlle Felder sind großzügig begrenzt und werden serverseitig NOCHMALS\ngekürzt und maskiert (``kern/fehler.py``): Das Schema hält die Nutzlast\nklein, die Säuberung hält Persönliches heraus. Beides ist nötig — das\nSchema allein ließe eine Adresse durch, die Säuberung allein ein Megabyte.",
+        "properties": {
+          "message": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Message",
+            "type": "string"
+          },
+          "name": {
+            "default": "Error",
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          },
+          "route": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          },
+          "stack": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Stack",
+            "type": "string"
+          }
+        },
+        "title": "ClientErrorIn",
         "type": "object"
       },
       "CommitteeDetail": {
@@ -5397,6 +5569,453 @@
         "title": "DisplayNameIn",
         "type": "object"
       },
+      "DistrictInvestment": {
+        "description": "Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "programme_year": {
+            "title": "Programme Year",
+            "type": "integer"
+          },
+          "total_eur": {
+            "title": "Total Eur",
+            "type": "number"
+          }
+        },
+        "required": [
+          "programme_year",
+          "code",
+          "label",
+          "total_eur",
+          "location"
+        ],
+        "title": "DistrictInvestment",
+        "type": "object"
+      },
+      "DistrictNeighbour": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "count"
+        ],
+        "title": "DistrictNeighbour",
+        "type": "object"
+      },
+      "DistrictParticipation": {
+        "description": "Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.",
+        "properties": {
+          "place": {
+            "title": "Place",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_nrs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plan Nrs",
+            "type": "array"
+          },
+          "step": {
+            "title": "Step",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "title": "Url",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_from": {
+            "title": "Valid From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_until": {
+            "title": "Valid Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "place",
+          "step",
+          "valid_from",
+          "valid_until",
+          "url",
+          "plan_nrs"
+        ],
+        "title": "DistrictParticipation",
+        "type": "object"
+      },
+      "DistrictProject": {
+        "description": "Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).\n\n``stage`` ist einer von ``idea | planning | decided | building | done |\nrejected``, ``category`` einer von ``housing | traffic | school_childcare |\ngreen | culture_sport_social | other``. ``when`` ist Menschentext („2027“,\n„ab Kita-Jahr 2026/2027“) oder null — nie geraten.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "integer"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectDecision"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "first_date": {
+            "title": "First Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectLocation"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "project_key": {
+            "title": "Project Key",
+            "type": "string"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          },
+          "reported": {
+            "title": "Reported",
+            "type": "boolean"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          },
+          "when": {
+            "title": "When",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "project_key",
+          "place_id",
+          "name",
+          "what",
+          "stage",
+          "when",
+          "category",
+          "confidence",
+          "first_date",
+          "last_date",
+          "report_count",
+          "hidden",
+          "reported",
+          "decisions",
+          "locations"
+        ],
+        "title": "DistrictProject",
+        "type": "object"
+      },
+      "DistrictProjectDecision": {
+        "description": "Ein Beschluss, der zu einem Vorhaben gehört — genug für die Zeile mit Link.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "outcome",
+          "date",
+          "committee"
+        ],
+        "title": "DistrictProjectDecision",
+        "type": "object"
+      },
+      "DistrictProjectLocation": {
+        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.",
+        "properties": {
+          "geometry": {
+            "title": "Geometry"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "number"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "geometry"
+        ],
+        "title": "DistrictProjectLocation",
+        "type": "object"
+      },
+      "DistrictProjectReportOut": {
+        "properties": {
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "report_count": {
+            "title": "Report Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "report_count",
+          "hidden"
+        ],
+        "title": "DistrictProjectReportOut",
+        "type": "object"
+      },
+      "DistrictProjects": {
+        "description": "``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.",
+        "properties": {
+          "investments": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictInvestment"
+            },
+            "title": "Investments",
+            "type": "array"
+          },
+          "neighbours": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictNeighbour"
+            },
+            "title": "Neighbours",
+            "type": "array"
+          },
+          "participations": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictParticipation"
+            },
+            "title": "Participations",
+            "type": "array"
+          },
+          "place": {
+            "title": "Place"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictUpcomingItem"
+            },
+            "title": "Upcoming",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "place",
+          "projects",
+          "upcoming",
+          "investments",
+          "participations",
+          "neighbours",
+          "updated_at"
+        ],
+        "title": "DistrictProjects",
+        "type": "object"
+      },
+      "DistrictProjectsOverview": {
+        "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.",
+        "properties": {
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictProjectsOverviewEntry"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "districts",
+          "updated_at"
+        ],
+        "title": "DistrictProjectsOverview",
+        "type": "object"
+      },
+      "DistrictProjectsOverviewEntry": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id",
+          "name",
+          "count",
+          "last_date"
+        ],
+        "title": "DistrictProjectsOverviewEntry",
+        "type": "object"
+      },
       "DistrictSuggestions": {
         "description": "Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.",
         "properties": {
@@ -5435,6 +6054,72 @@
           "months"
         ],
         "title": "DistrictSuggestions",
+        "type": "object"
+      },
+      "DistrictUpcomingItem": {
+        "description": "Ein Tagesordnungspunkt einer kommenden Sitzung, dessen Titel einen Ort des Viertels nennt.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "session_time": {
+            "title": "Session Time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ksinr",
+          "item_number",
+          "title",
+          "kvonr",
+          "session_date",
+          "session_time",
+          "committee",
+          "location"
+        ],
+        "title": "DistrictUpcomingItem",
         "type": "object"
       },
       "Districts": {
@@ -6876,6 +7561,80 @@
           "max"
         ],
         "title": "LiquidityWindow",
+        "type": "object"
+      },
+      "LiveState": {
+        "description": "Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript\ndes O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.\n\n``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);\nder Client rechnet daraus „vor N Min.\" und sagt dazu, dass es aus der\nÜbertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist\ngesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind\n(Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8\". Nach der\nSchlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.",
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "block_start": {
+            "title": "Block Start",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "boolean"
+          },
+          "item_number": {
+            "title": "Item Number",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "item_title": {
+            "title": "Item Title",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "speaker": {
+            "title": "Speaker",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_number",
+          "item_title",
+          "block_start",
+          "phase",
+          "speaker",
+          "party",
+          "since",
+          "as_of",
+          "updated_at",
+          "finished"
+        ],
+        "title": "LiveState",
         "type": "object"
       },
       "LoanCoverage": {
@@ -8440,6 +9199,20 @@
           "fields"
         ],
         "title": "PolicyFields",
+        "type": "object"
+      },
+      "ProjectReportIn": {
+        "properties": {
+          "reason": {
+            "maxLength": 300,
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "ProjectReportIn",
         "type": "object"
       },
       "PublicNumbers": {
@@ -10280,6 +11053,7 @@
             "items": {
               "enum": [
                 "budget",
+                "mandate",
                 "admin"
               ],
               "type": "string"
@@ -10373,12 +11147,22 @@
             "title": "Has Protocol",
             "type": "boolean"
           },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/WeekPreviewItem"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
           "ksinr": {
             "title": "Ksinr",
             "type": [
               "integer",
               "null"
             ]
+          },
+          "live_state": {
+            "$ref": "#/components/schemas/LiveState"
           },
           "live_until": {
             "title": "Live Until",
@@ -10493,12 +11277,22 @@
               "null"
             ]
           },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/WeekPreviewItem"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
           "ksinr": {
             "title": "Ksinr",
             "type": [
               "integer",
               "null"
             ]
+          },
+          "live_state": {
+            "$ref": "#/components/schemas/LiveState"
           },
           "live_until": {
             "title": "Live Until",
@@ -12047,6 +12841,7 @@
             "items": {
               "enum": [
                 "budget",
+                "mandate",
                 "admin"
               ],
               "type": "string"
@@ -13120,6 +13915,139 @@
           }
         },
         "summary": "Delete Entity Alias",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/errors": {
+      "get": {
+        "description": "Die Fehlerarten des Web-Backends, zuletzt gesehene zuerst.\n\nDas Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in\n``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.",
+        "operationId": "request_fehler_api_admin_errors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nur_offen",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Nur Offen",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminRequestFehler"
+                  },
+                  "title": "Response Request Fehler Api Admin Errors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Fehler",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/errors/open-count": {
+      "get": {
+        "description": "Für das Abzeichen am Reiter — dieselbe Bauform wie beim Feedback.",
+        "operationId": "request_fehler_offen_api_admin_errors_open_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUnread"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Request Fehler Offen",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/errors/{fehler_id}/resolve": {
+      "post": {
+        "description": "Abhaken heißt „angesehen und behandelt\".\n\nTaucht die Fehlerart danach WIEDER auf, setzt der Sammler den Haken\nzurück und meldet erneut — ein Haken auf etwas, das weiter passiert, wäre\neine Lüge.",
+        "operationId": "request_fehler_abhaken_api_admin_errors__fehler_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fehler_id",
+            "required": true,
+            "schema": {
+              "title": "Fehler Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "abgehakt",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Abgehakt",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Fehler Abhaken",
         "tags": [
           "admin"
         ]
@@ -14478,6 +15406,138 @@
         "summary": "Set Notification",
         "tags": [
           "bookmarks"
+        ]
+      }
+    },
+    "/api/calendar/subscription": {
+      "get": {
+        "description": "Die Kalender-Adresse dieses Kontos — beim ersten Aufruf angelegt.",
+        "operationId": "subscription_api_calendar_subscription_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Subscription",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/subscription/rotate": {
+      "post": {
+        "description": "Neue Adresse; die alte antwortet ab sofort mit 404.",
+        "operationId": "rotate_subscription_api_calendar_subscription_rotate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSubscription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rotate Subscription",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/{token}.ics": {
+      "get": {
+        "description": "Der Feed — öffentlich, autorisiert über das Token in der Adresse.\nEin unbekanntes oder erneuertes Token und ein nicht aktives Konto sehen\ngleich aus (404), damit die Adresse nichts über Konten verrät.",
+        "operationId": "feed_api_calendar__token__ics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Der Kalender des Kontos als ICS (RFC 5545): die Sitzungen der abonnierten Ausschüsse und zu den eigenen Themen, je Termin die wichtigsten Punkte und der Link zur Sitzungsseite. Für Kalender-Apps gedacht, die die Adresse alle paar Stunden abrufen."
+          },
+          "404": {
+            "description": "Unbekannte oder erneuerte Kalender-Adresse."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Feed",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/client-errors": {
+      "post": {
+        "description": "Ein Fehler aus dem Browser — dieselbe Tabelle wie die des Backends.\n\n**Warum offen (ohne Konto).** Ein Fehler kann jeden treffen, auch jemanden\nohne Anmeldung, und gerade der Anmeldebildschirm ist eine Stelle, an der\netwas kaputtgehen kann. Ein Sammler, der genau dort schweigt, verfehlt\nseinen Zweck.\n\n**Was das kostet und wie es begrenzt ist.** Offen heißt fremde Eingabe:\nJeder kann hierher schreiben. Dagegen stehen drei Dinge — die Bremse je\nAdresse, die Längengrenzen im Schema und die Säuberung in\n``kern/fehler.py``. Eine erfundene Meldung erzeugt eine eigene Zeile im\nPanel und vermischt sich nicht mit echten; mehr Schaden kann sie nicht\nanrichten.\n\n**Immer 200.** Wer einen Fehler meldet, hat schon einen — ein zweiter\n(weil unsere Bremse greift oder die Nutzlast krumm ist) hilft niemandem\nund erzeugte im Browser nur eine weitere Fehlermeldung, die gemeldet\nwerden will.",
+        "operationId": "melden_api_client_errors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientErrorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Melden",
+        "tags": [
+          "client-errors"
         ]
       }
     },
@@ -17386,6 +18446,124 @@
         "summary": "Zahl Der Woche",
         "tags": [
           "council"
+        ]
+      }
+    },
+    "/api/districts/projects": {
+      "get": {
+        "description": "Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.",
+        "operationId": "district_projects_overview_api_districts_projects_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectsOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "District Projects Overview",
+        "tags": [
+          "districts"
+        ]
+      }
+    },
+    "/api/districts/projects/{project_id}/report": {
+      "post": {
+        "description": "„Gehört nicht hierher\": Ein Konto meldet ein Vorhaben als falsch verortet.\nAb zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim\nKonto und geht mit dessen Löschung.",
+        "operationId": "report_project_api_districts_projects__project_id__report_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectReportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjectReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Report Project",
+        "tags": [
+          "districts"
+        ]
+      }
+    },
+    "/api/districts/{place_id}/projects": {
+      "get": {
+        "description": "Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im\nRat ansteht, was im Investitionsprogramm steht und wo gerade eine\nBeteiligung läuft.",
+        "operationId": "district_projects_api_districts__place_id__projects_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "title": "Place Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictProjects"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "District Projects",
+        "tags": [
+          "districts"
         ]
       }
     },

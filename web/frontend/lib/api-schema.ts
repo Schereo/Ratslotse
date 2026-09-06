@@ -193,6 +193,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Request Fehler
+         * @description Die Fehlerarten des Web-Backends, zuletzt gesehene zuerst.
+         *
+         *     Das Gegenstück zu ``/admin/jobs``: Cron-Abstürze standen immer schon in
+         *     ``job_runs``, ein 500er im Request ging bis 09/2026 nur ins Server-Log.
+         */
+        get: operations["request_fehler_api_admin_errors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/errors/open-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Request Fehler Offen
+         * @description Für das Abzeichen am Reiter — dieselbe Bauform wie beim Feedback.
+         */
+        get: operations["request_fehler_offen_api_admin_errors_open_count_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/errors/{fehler_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Fehler Abhaken
+         * @description Abhaken heißt „angesehen und behandelt".
+         *
+         *     Taucht die Fehlerart danach WIEDER auf, setzt der Sammler den Haken
+         *     zurück und meldet erneut — ein Haken auf etwas, das weiter passiert, wäre
+         *     eine Lüge.
+         */
+        post: operations["request_fehler_abhaken_api_admin_errors__fehler_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/feedback": {
         parameters: {
             query?: never;
@@ -868,6 +935,105 @@ export interface paths {
         /** Set Notification */
         put: operations["set_notification_api_bookmarks__bookmark_id__notification_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subscription
+         * @description Die Kalender-Adresse dieses Kontos — beim ersten Aufruf angelegt.
+         */
+        get: operations["subscription_api_calendar_subscription_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/subscription/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate Subscription
+         * @description Neue Adresse; die alte antwortet ab sofort mit 404.
+         */
+        post: operations["rotate_subscription_api_calendar_subscription_rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/{token}.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Feed
+         * @description Der Feed — öffentlich, autorisiert über das Token in der Adresse.
+         *     Ein unbekanntes oder erneuertes Token und ein nicht aktives Konto sehen
+         *     gleich aus (404), damit die Adresse nichts über Konten verrät.
+         */
+        get: operations["feed_api_calendar__token__ics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/client-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Melden
+         * @description Ein Fehler aus dem Browser — dieselbe Tabelle wie die des Backends.
+         *
+         *     **Warum offen (ohne Konto).** Ein Fehler kann jeden treffen, auch jemanden
+         *     ohne Anmeldung, und gerade der Anmeldebildschirm ist eine Stelle, an der
+         *     etwas kaputtgehen kann. Ein Sammler, der genau dort schweigt, verfehlt
+         *     seinen Zweck.
+         *
+         *     **Was das kostet und wie es begrenzt ist.** Offen heißt fremde Eingabe:
+         *     Jeder kann hierher schreiben. Dagegen stehen drei Dinge — die Bremse je
+         *     Adresse, die Längengrenzen im Schema und die Säuberung in
+         *     ``kern/fehler.py``. Eine erfundene Meldung erzeugt eine eigene Zeile im
+         *     Panel und vermischt sich nicht mit echten; mehr Schaden kann sie nicht
+         *     anrichten.
+         *
+         *     **Immer 200.** Wer einen Fehler meldet, hat schon einen — ein zweiter
+         *     (weil unsere Bremse greift oder die Nutzlast krumm ist) hilft niemandem
+         *     und erzeugte im Browser nur eine weitere Fehlermeldung, die gemeldet
+         *     werden will.
+         */
+        post: operations["melden_api_client_errors_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2976,6 +3142,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/districts/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Projects Overview
+         * @description Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.
+         */
+        get: operations["district_projects_overview_api_districts_projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/districts/projects/{project_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Project
+         * @description „Gehört nicht hierher": Ein Konto meldet ein Vorhaben als falsch verortet.
+         *     Ab zwei Meldungen verschwindet es von der Tafel; die Meldung bleibt beim
+         *     Konto und geht mit dessen Löschung.
+         */
+        post: operations["report_project_api_districts_projects__project_id__report_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/districts/{place_id}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Projects
+         * @description Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im
+         *     Rat ansteht, was im Investitionsprogramm steht und wo gerade eine
+         *     Beteiligung läuft.
+         */
+        get: operations["district_projects_api_districts__place_id__projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/feedback": {
         parameters: {
             query?: never;
@@ -3956,6 +4186,13 @@ export interface components {
             /** Read At */
             read_at: string | null;
         };
+        /** AdminFehlerTag */
+        AdminFehlerTag: {
+            /** N */
+            n: number;
+            /** Tag */
+            tag: string;
+        };
         /** AdminGrowth */
         AdminGrowth: {
             /** Clients */
@@ -4228,6 +4465,40 @@ export interface components {
             /** Weak Categories */
             weak_categories: components["schemas"]["AdminQuizArea"][];
         };
+        /**
+         * AdminRequestFehler
+         * @description Eine FEHLERART im Web-Backend, nicht ein einzelnes Vorkommen.
+         *
+         *     Gleiche Fehler fallen über ihren Fingerabdruck zusammen (``kern/fehler.py``);
+         *     ``count`` sagt, wie oft. Was hier NICHT steht — Anfragekörper, Kopfzeilen,
+         *     roher Pfad, Variablenwerte —, steht dort begründet.
+         */
+        AdminRequestFehler: {
+            /** Count */
+            count: number;
+            /** Daily */
+            daily: components["schemas"]["AdminFehlerTag"][];
+            /** Exc Type */
+            exc_type: string;
+            /** First Seen */
+            first_seen: string;
+            /** Id */
+            id: number;
+            /** Last Seen */
+            last_seen: string;
+            /** Message */
+            message: string | null;
+            /** Method */
+            method: string;
+            /** Quelle */
+            quelle: string;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Route */
+            route: string;
+            /** Trace */
+            trace: string | null;
+        };
         /** AdminSeries */
         AdminSeries: {
             /** Days */
@@ -4480,6 +4751,11 @@ export interface components {
          * @description Compatibility contract consumed before a native app starts loading data.
          */
         AppConfigOut: {
+            /**
+             * Features
+             * @default []
+             */
+            features: string[];
             /** Min Build */
             min_build: number;
             /** Note */
@@ -4874,8 +5150,11 @@ export interface components {
                 committee: string;
                 /** Fetched At */
                 fetched_at?: string | null;
+                /** Highlights */
+                highlights?: components["schemas"]["WeekPreviewItem"][];
                 /** Ksinr */
                 ksinr: number | null;
+                live_state?: components["schemas"]["LiveState"];
                 /** Live Until */
                 live_until?: string | null;
                 /** Location */
@@ -5412,6 +5691,21 @@ export interface components {
             /** Totals */
             totals: unknown;
         };
+        /**
+         * CalendarSubscription
+         * @description Die Kalender-Adresse eines Kontos (``/api/calendar/subscription``).
+         *
+         *     ``url`` ist die https-Adresse zum Kopieren, ``webcal_url`` dieselbe mit
+         *     dem Schema, das auf dem Telefon direkt den Abo-Dialog öffnet.
+         */
+        CalendarSubscription: {
+            /** Subscribed Committees */
+            subscribed_committees: number;
+            /** Url */
+            url: string;
+            /** Webcal Url */
+            webcal_url: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -5483,6 +5777,37 @@ export interface components {
             n: number;
             /** Name */
             name: string;
+        };
+        /**
+         * ClientErrorIn
+         * @description Eine Fehlermeldung aus dem Browser.
+         *
+         *     Alle Felder sind großzügig begrenzt und werden serverseitig NOCHMALS
+         *     gekürzt und maskiert (``kern/fehler.py``): Das Schema hält die Nutzlast
+         *     klein, die Säuberung hält Persönliches heraus. Beides ist nötig — das
+         *     Schema allein ließe eine Adresse durch, die Säuberung allein ein Megabyte.
+         */
+        ClientErrorIn: {
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /**
+             * Name
+             * @default Error
+             */
+            name: string;
+            /**
+             * Route
+             * @default
+             */
+            route: string;
+            /**
+             * Stack
+             * @default
+             */
+            stack: string;
         };
         /** CommitteeDetail */
         CommitteeDetail: {
@@ -6054,6 +6379,178 @@ export interface components {
             display_name?: string | null;
         };
         /**
+         * DistrictInvestment
+         * @description Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.
+         */
+        DistrictInvestment: {
+            /** Code */
+            code: string | null;
+            /** Label */
+            label: string;
+            /** Location */
+            location: string;
+            /** Programme Year */
+            programme_year: number;
+            /** Total Eur */
+            total_eur: number;
+        };
+        /** DistrictNeighbour */
+        DistrictNeighbour: {
+            /** Count */
+            count: number;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+        };
+        /**
+         * DistrictParticipation
+         * @description Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.
+         */
+        DistrictParticipation: {
+            /** Place */
+            place: string | null;
+            /** Plan Nrs */
+            plan_nrs: string[];
+            /** Step */
+            step: string | null;
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string | null;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /**
+         * DistrictProject
+         * @description Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
+         *
+         *     ``stage`` ist einer von ``idea | planning | decided | building | done |
+         *     rejected``, ``category`` einer von ``housing | traffic | school_childcare |
+         *     green | culture_sport_social | other``. ``when`` ist Menschentext („2027“,
+         *     „ab Kita-Jahr 2026/2027“) oder null — nie geraten.
+         */
+        DistrictProject: {
+            /** Category */
+            category: string;
+            /** Confidence */
+            confidence: number;
+            /** Decisions */
+            decisions: components["schemas"]["DistrictProjectDecision"][];
+            /** First Date */
+            first_date: string | null;
+            /** Hidden */
+            hidden: boolean;
+            /** Id */
+            id: number;
+            /** Last Date */
+            last_date: string | null;
+            /** Locations */
+            locations: components["schemas"]["DistrictProjectLocation"][];
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Project Key */
+            project_key: string;
+            /** Report Count */
+            report_count: number;
+            /** Reported */
+            reported: boolean;
+            /** Stage */
+            stage: string;
+            /** What */
+            what: string;
+            /** When */
+            when: string | null;
+        };
+        /**
+         * DistrictProjectDecision
+         * @description Ein Beschluss, der zu einem Vorhaben gehört — genug für die Zeile mit Link.
+         */
+        DistrictProjectDecision: {
+            /** Committee */
+            committee: string | null;
+            /** Date */
+            date: string;
+            /** Id */
+            id: number;
+            /** Outcome */
+            outcome: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * DistrictProjectLocation
+         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.
+         */
+        DistrictProjectLocation: {
+            /** Geometry */
+            geometry: unknown;
+            /** Kind */
+            kind: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /** DistrictProjectReportOut */
+        DistrictProjectReportOut: {
+            /** Hidden */
+            hidden: boolean;
+            /** Ok */
+            ok: boolean;
+            /** Report Count */
+            report_count: number;
+        };
+        /**
+         * DistrictProjects
+         * @description ``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.
+         */
+        DistrictProjects: {
+            /** Investments */
+            investments: components["schemas"]["DistrictInvestment"][];
+            /** Neighbours */
+            neighbours: components["schemas"]["DistrictNeighbour"][];
+            /** Participations */
+            participations: components["schemas"]["DistrictParticipation"][];
+            /** Place */
+            place: unknown;
+            /** Projects */
+            projects: components["schemas"]["DistrictProject"][];
+            /** Upcoming */
+            upcoming: components["schemas"]["DistrictUpcomingItem"][];
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /**
+         * DistrictProjectsOverview
+         * @description ``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.
+         */
+        DistrictProjectsOverview: {
+            /** Districts */
+            districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** DistrictProjectsOverviewEntry */
+        DistrictProjectsOverviewEntry: {
+            /** Count */
+            count: number;
+            /** Last Date */
+            last_date: string | null;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+        };
+        /**
          * DistrictSuggestions
          * @description Vorschläge aus EINEM Ortsbereich, mitsamt dem Ort, für den sie gelten.
          */
@@ -6068,6 +6565,30 @@ export interface components {
             place_id: string;
             /** Suggestions */
             suggestions: components["schemas"]["LocalSuggestion"][];
+        };
+        /**
+         * DistrictUpcomingItem
+         * @description Ein Tagesordnungspunkt einer kommenden Sitzung, dessen Titel einen Ort des Viertels nennt.
+         */
+        DistrictUpcomingItem: {
+            /** Committee */
+            committee: string | null;
+            /** Id */
+            id: number;
+            /** Item Number */
+            item_number: string | null;
+            /** Ksinr */
+            ksinr: number;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Location */
+            location: string;
+            /** Session Date */
+            session_date: string;
+            /** Session Time */
+            session_time: string | null;
+            /** Title */
+            title: string;
         };
         /** Districts */
         Districts: {
@@ -6657,6 +7178,40 @@ export interface components {
             } | null;
             /** Months */
             months: number;
+        };
+        /**
+         * LiveState
+         * @description Was in der laufenden Ratssitzung GERADE passiert — aus dem Transkript
+         *     des O1-Streams (``council/livetracker.py``), alle 30 Sekunden neu.
+         *
+         *     ``as_of`` ist der Audio-Stand, den die Zeile abbildet (ISO mit Zeitzone);
+         *     der Client rechnet daraus „vor N Min." und sagt dazu, dass es aus der
+         *     Übertragung stammt — mit unter einer Minute Verzug. ``block_start`` ist
+         *     gesetzt, wenn im letzten Fenster mehrere Punkte durchgelaufen sind
+         *     (Formalien im Block): Die Karte zeigt dann „TOP 9.4–9.8". Nach der
+         *     Schlussformel steht ``finished``; der Stand bleibt zur Ansicht stehen.
+         */
+        LiveState: {
+            /** As Of */
+            as_of: string;
+            /** Block Start */
+            block_start: string | null;
+            /** Finished */
+            finished: boolean;
+            /** Item Number */
+            item_number: string | null;
+            /** Item Title */
+            item_title: string | null;
+            /** Party */
+            party: string | null;
+            /** Phase */
+            phase: string;
+            /** Since */
+            since: string;
+            /** Speaker */
+            speaker: string | null;
+            /** Updated At */
+            updated_at: string;
         };
         /** LoanCoverage */
         LoanCoverage: {
@@ -7310,6 +7865,11 @@ export interface components {
         PolicyFields: {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
+        };
+        /** ProjectReportIn */
+        ProjectReportIn: {
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * PublicNumbers
@@ -8075,7 +8635,7 @@ export interface components {
             /** Label */
             label: string;
             /** Permissions */
-            permissions: ("budget" | "admin")[];
+            permissions: ("budget" | "mandate" | "admin")[];
         };
         /**
          * RoleUpdate
@@ -8124,8 +8684,11 @@ export interface components {
             fetched_at?: string | null;
             /** Has Protocol */
             has_protocol: boolean;
+            /** Highlights */
+            highlights?: components["schemas"]["WeekPreviewItem"][];
             /** Ksinr */
             ksinr: number | null;
+            live_state?: components["schemas"]["LiveState"];
             /** Live Until */
             live_until?: string | null;
             /** Location */
@@ -8166,8 +8729,11 @@ export interface components {
             committee: string;
             /** Fetched At */
             fetched_at?: string | null;
+            /** Highlights */
+            highlights?: components["schemas"]["WeekPreviewItem"][];
             /** Ksinr */
             ksinr: number | null;
+            live_state?: components["schemas"]["LiveState"];
             /** Live Until */
             live_until?: string | null;
             /** Location */
@@ -8813,7 +9379,7 @@ export interface components {
             /** Id */
             id: number;
             /** Permissions */
-            permissions: ("budget" | "admin")[];
+            permissions: ("budget" | "mandate" | "admin")[];
             /**
              * Role
              * @enum {string}
@@ -9379,6 +9945,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminAliasDeleted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_fehler_api_admin_errors_get: {
+        parameters: {
+            query?: {
+                nur_offen?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRequestFehler"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_fehler_offen_api_admin_errors_open_count_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUnread"];
+                };
+            };
+        };
+    };
+    request_fehler_abhaken_api_admin_errors__fehler_id__resolve_post: {
+        parameters: {
+            query?: {
+                abgehakt?: boolean;
+            };
+            header?: never;
+            path: {
+                fehler_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */
@@ -10393,6 +11044,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookmarkEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscription_api_calendar_subscription_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSubscription"];
+                };
+            };
+        };
+    };
+    rotate_subscription_api_calendar_subscription_rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSubscription"];
+                };
+            };
+        };
+    };
+    feed_api_calendar__token__ics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Der Kalender des Kontos als ICS (RFC 5545): die Sitzungen der abonnierten Ausschüsse und zu den eigenen Themen, je Termin die wichtigsten Punkte und der Link zur Sitzungsseite. Für Kalender-Apps gedacht, die die Adresse alle paar Stunden abrufen. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            /** @description Unbekannte oder erneuerte Kalender-Adresse. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    melden_api_client_errors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientErrorIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */
@@ -12424,6 +13186,92 @@ export interface operations {
             };
         };
     };
+    district_projects_overview_api_districts_projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjectsOverview"];
+                };
+            };
+        };
+    };
+    report_project_api_districts_projects__project_id__report_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjectReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    district_projects_api_districts__place_id__projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictProjects"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_feedback_api_feedback_post: {
         parameters: {
             query?: never;
@@ -13797,4 +14645,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3e952e4bd2226a3e014e1bef8421b3fe182675a3ac815ee5b86225d9c6db7396
+// vertrag-sha256: 3f2bd1a647b6e46ad94d14e81e981b044c312289c3626f978494747e5a32231e

@@ -120,7 +120,7 @@ def text_matches(entities: list[dict], decisions: list[dict],
     return out
 
 
-def _entity_centroids(ent_decs: dict[int, set[int]], vectors: dict[int, "object"]):
+def _entity_centroids(ent_decs: dict[int, set[int]], vectors: dict[int, object]):
     """Semantischer Schwerpunkt je Entität (Mittel ihrer Beschlussvektoren)."""
     import numpy as np
 
@@ -136,7 +136,7 @@ def _entity_centroids(ent_decs: dict[int, set[int]], vectors: dict[int, "object"
     return out
 
 
-def load_vectors(rows) -> dict[int, "object"]:
+def load_vectors(rows) -> dict[int, object]:
     """(decision_id, blob) → {decision_id: L2-normalisierter float32-Vektor}."""
     import numpy as np
 

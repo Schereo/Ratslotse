@@ -102,6 +102,9 @@ def test_registry_deckt_die_cron_eintraege_ab():
         # Sichert die Statistik-Quellen versioniert, täglich: Die Stadt führt
         # kein Jahrbuch-Archiv, überschriebene Ausgaben sind endgültig weg.
         "archive_statistik",
+        # Merkt, wenn ein Job aufhört zu laufen — und wenn die Platte
+        # vollläuft. Ein Job, der gar nicht startet, stürzt nicht ab.
+        "check_herzschlag",
     }
     for job in JOBS:
         assert BY_KEY[job["key"]] is job

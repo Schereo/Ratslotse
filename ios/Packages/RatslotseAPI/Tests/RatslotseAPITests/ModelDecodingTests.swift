@@ -192,7 +192,18 @@ import Testing
         "session_date": "2026-08-31",
         "session_time": "17:00:00",
         "location": "Altes Rathaus",
-        "n_items": 14
+        "n_items": 14,
+        "highlights": [{
+          "ksinr": 88,
+          "item_number": "Ö 6",
+          "title": "Bebauungsplan 851 – Satzungsbeschluss",
+          "titel_kurz": "Bebauungsplan 851",
+          "committee": "Ausschuss für Stadtplanung und Bauen",
+          "session_date": "2026-08-31",
+          "topic_name": null,
+          "wichtig_grund": "Legt langfristig fest, was gebaut werden darf.",
+          "top": true
+        }]
       }],
       "items": [{
         "ksinr": 88,
@@ -229,6 +240,10 @@ import Testing
 
     let preview = try JSONDecoder().decode(WeekPreview.self, from: Data(json.utf8))
     #expect(preview.sessions.first?.itemCount == 14)
+    // Die Highlights je Sitzung tragen dieselbe Form wie `items` — ein Typ
+    // für beide, damit die Sitzungsliste die Zeile der Wochenkarte nutzt.
+    #expect(preview.sessions.first?.highlights?.first?.shortTitle == "Bebauungsplan 851")
+    #expect(preview.sessions.first?.highlights?.first?.featured == true)
     #expect(preview.items.first?.applicant == "SPD-Fraktion")
     #expect(preview.relevantItemsPerSession?["88"] == 3)
     #expect(preview.additionalItemsPerSession?["88"]?.first?.itemNumber == "Ö 7")
@@ -252,4 +267,99 @@ import Testing
     let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
     #expect(object["conversation_id"] is NSNull)
+}
+
+/// Die Tagesordnung liest die Anlagen unter dem Namen, den der SERVER benutzt.
+///
+/// Die App las bis 09/2026 `attachments`; auf der Leitung heißt das Feld
+/// `anlagen`. `decodeIfPresent` machte daraus eine leere Liste — kein Fehler,
+/// keine Meldung, nur eine Tagesordnung ohne Anlagen. Gerade Fraktionsanträge
+/// ohne Vorlage hängen NUR dort. Genau die stille Sorte Fehler, vor der
+/// `ios/CLAUDE.md` warnt; gefunden hat ihn ein Blick in die App.
+///
+/// Die Attrappe hier trägt deshalb bewusst den Feldnamen des Vertrags
+/// (`api/openapi.json`, Schema `AgendaItemRow`) — vorher stand in der
+/// Debug-Attrappe der App derselbe falsche Name und deckte den Fehler mit zu.
+@Test func agendaItemReadsAttachmentsUnderTheNameTheServerUses() throws {
+    let json = #"""
+    {
+      "ksinr": 88, "committee": "Verkehrsausschuss", "session_date": "2026-02-01",
+      "agenda_items": [{
+        "item_number": "Ö 4", "title": "Radverkehrskonzept", "is_public": 1,
+        "template_number": "26/0400", "dringlich": false,
+        "anlagen": [{"label": "Antrag der Fraktion", "url": "https://example.org/a.pdf"}]
+      }, {
+        "item_number": "Ö 7", "title": "Sichere Querung", "is_public": 1,
+        "dringlich": true, "anlagen": []
+      }],
+      "decisions": [], "has_protocol": false
+    }
+    """#
+    let detail = try JSONDecoder().decode(SessionDetail.self, from: Data(json.utf8))
+    #expect(detail.agendaItems.count == 2)
+    #expect(detail.agendaItems[0].attachments.count == 1)
+    #expect(detail.agendaItems[0].attachments.first?.label == "Antrag der Fraktion")
+    #expect(detail.agendaItems[0].isUrgent == false)
+    // Ein Dringlichkeitsantrag steht nicht in der ursprünglichen Tagesordnung;
+    // ohne die Marke liest er sich wie ein gewöhnlicher Punkt.
+    #expect(detail.agendaItems[1].isUrgent == true)
+    #expect(detail.agendaItems[1].attachments.isEmpty)
+}
+
+/// Fehlt das Feld ganz, bleibt die Zeile stehen — eine Tagesordnung ohne
+/// Anlagen ist ein normaler Fall, kein Fehler.
+@Test func agendaItemSurvivesMissingAttachments() throws {
+    let json = #"""
+    {"ksinr": 1, "committee": "Rat", "session_date": "2026-02-01",
+     "agenda_items": [{"item_number": "Ö 1", "title": "Eröffnung", "is_public": 1}],
+     "decisions": [], "has_protocol": false}
+    """#
+    let detail = try JSONDecoder().decode(SessionDetail.self, from: Data(json.utf8))
+    #expect(detail.agendaItems[0].attachments.isEmpty)
+    #expect(detail.agendaItems[0].isUrgent == false)
+}
+
+
+/// Der Live-Stand aus der Übertragung hängt an der heutigen Ratssitzung —
+/// in der Liste UND im Detail. Fehlt er (jede andere Sitzung), bleibt beides
+/// nil statt zu kippen.
+@Test func liveStateDecodesOnSessionAndDetail() throws {
+    let state = #"""
+    {"item_number": "9.3", "item_title": "Radweg Alexanderstraße", "block_start": null,
+     "phase": "aussprache", "speaker": "Susanne Drügemöller", "party": "Bündnis 90/Die Grünen",
+     "since": "2026-09-03T18:12:00+02:00", "as_of": "2026-09-03T18:20:00+02:00",
+     "updated_at": "2026-09-03T18:20:30+02:00", "finished": false}
+    """#
+    let session = try JSONDecoder().decode(CouncilSession.self, from: Data(#"""
+    {"ksinr": 2, "committee": "Rat", "session_date": "2026-09-03", "session_time": "18:00",
+     "live_until": "22:00", "n_items": 12, "live_state": \#(state)}
+    """#.utf8))
+    #expect(session.liveState?.itemNumber == "9.3")
+    #expect(session.liveState?.speaker == "Susanne Drügemöller")
+    #expect(session.liveState?.finished == false)
+
+    let detail = try JSONDecoder().decode(SessionDetail.self, from: Data(#"""
+    {"ksinr": 2, "committee": "Rat", "session_date": "2026-09-03",
+     "agenda_items": [], "decisions": [], "has_protocol": false, "live_state": \#(state)}
+    """#.utf8))
+    #expect(detail.liveState?.itemTitle == "Radweg Alexanderstraße")
+
+    let ohne = try JSONDecoder().decode(CouncilSession.self, from: Data(#"""
+    {"ksinr": 3, "committee": "Bauausschuss", "session_date": "2026-09-04", "n_items": 4}
+    """#.utf8))
+    #expect(ohne.liveState == nil)
+}
+
+/// Das Kalender-Abo: drei Felder, zwei davon mit Unterstrich im Vertrag —
+/// genau die Stelle, an der ein handgeschriebener Schlüssel still danebenliegt.
+@Test func calendarSubscriptionDecodes() throws {
+    let json = #"""
+    {"url": "https://ratslotse.de/api/calendar/abc.ics",
+     "webcal_url": "webcal://ratslotse.de/api/calendar/abc.ics",
+     "subscribed_committees": 3}
+    """#
+    let abo = try JSONDecoder().decode(CalendarSubscription.self, from: Data(json.utf8))
+    #expect(abo.url.hasSuffix("/abc.ics"))
+    #expect(abo.webcalURL.hasPrefix("webcal://"))
+    #expect(abo.subscribedCommittees == 3)
 }

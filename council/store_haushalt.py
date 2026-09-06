@@ -24,18 +24,186 @@ Datenbank als Ganzem, nicht einer ihrer Ecken.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime
 
 from kern.dbfehler import tabelle_fehlt
+from council.store_basis import StoreBasis
 
 
-class HaushaltMixin:
+class HaushaltMixin(StoreBasis):
     """Die Haushalts-Abfragen von :class:`council.store.CouncilStore`.
 
     Nur zum Mitvererben gedacht; ``self._conn`` und die übrigen Helfer kommen
     von dort.
     """
+
+    #: Welcher Beschluss zu einem Dokument der maßgebliche ist. Der Rat zuerst
+    #: — eine Vorlage läuft durch mehrere Gremien, aber verabschiedet wird sie
+    #: dort. Innerhalb eines Gremiums die jüngste Sitzung: Ein vertagter Punkt
+    #: kommt wieder, und es gilt, was zuletzt entschieden wurde. Dieselbe
+    #: Ordnung nutzt schon `vorlage_beschluesse` (s. u. „committee LIKE 'Rat%'").
+    _BESCHLUSS_ORDNUNG = ("ORDER BY (cs.committee LIKE 'Rat%') DESC, "
+                          "cs.session_date DESC, d.id DESC")
+
+    #: Welches **Dokument** hinter einer Quelle des Haushalts-Bereichs steht —
+    #: je Schlüssel die Tabelle, ihre Jahresspalte, eine Einschränkung und die
+    #: Alt-Spalte mit der URL.
+    #:
+    #: Die Schlüssel sind die des Quellenverzeichnisses im Frontend
+    #: (``web/frontend/lib/haushalt-quellen.ts``). Das ist Absicht und der
+    #: einzige Grund, warum diese Zuordnung hier steht und nicht dort: Welche
+    #: Zeile aus welchem Dokument stammt, weiß die Datenbank — das Frontend
+    #: kennt nur den Absatz, der eine ganze Seite beschreibt. Wer einen
+    #: Schlüssel dort ergänzt, ergänzt ihn hier; wer ihn hier vergisst,
+    #: bekommt keinen kaputten Link, sondern den Rückfall auf die statische
+    #: Adresse (und das Frontend schreibt dann „im Ratsinformationssystem
+    #: suchen" statt „Dokument öffnen").
+    #:
+    #: Die Alt-Spalte ist die Rückfallebene für Bestände, die vor der
+    #: Herkunfts-Vereinheitlichung (#513) geschrieben wurden: Dort steht die
+    #: URL an der Datenzeile, aber noch keine ``herkunft_id``. Die beiden
+    #: Konzern-Tabellen haben keine — sie sind erst mit der Herkunft
+    #: entstanden (s. ``_HERKUNFT_ALTFELDER``).
+    _DOKUMENT_QUELLEN: dict[str, tuple[str, str, str | None, str | None]] = {
+        "plan":                 ("council_budget", "year", None, "source_url"),
+        # Die zwei Ebenen eines Jahresabschlusses stehen in derselben Tabelle
+        # und im selben Dokument, tragen aber verschiedene Herkünfte (eigene
+        # Abschnitte, eigene Proben). Beide Schlüssel gibt es im Verzeichnis.
+        "jahresabschluss":      ("council_income_statement", "year",
+                                 "sub_budget_no IS NULL", "source_url"),
+        "ergebnisrechnung_thh": ("council_income_statement", "year",
+                                 "sub_budget_no IS NOT NULL", "source_url"),
+        # Dritte Ebene desselben Dokuments: Abschnitt 4.1, die Kassensicht.
+        "cash_flow_statement":       ("council_cash_flow_statement", "year", None, None),
+        # Der Gesamtergebnishaushalt (Anlage 005 des Haushaltsplans) — dieselbe
+        # Postengliederung für Jahre ohne Abschluss.
+        #
+        # Der Filter auf ``kind = 'budget'`` ist hier PFLICHT und keine
+        # Verfeinerung: Ein Dokument trägt sein Planjahr UND drei
+        # Finanzplanungsjahre, dieselbe Jahreszahl kommt also in drei
+        # Haushaltsplänen vor (2026 im Plan 2024 als Vorausschau, im Plan 2025
+        # als Vorausschau, im Plan 2026 als Ansatz). Ohne den Filter stünden an
+        # einer Ansatz-Zahl bis zu drei Dokumente, und zwei davon meinen etwas
+        # anderes. Mit ihm gilt ``year == plan_budget_year``, und es bleibt genau
+        # eines.
+        "income_budget":     ("council_income_budget", "year",
+                                 "t.kind = 'budget'", None),
+        # Vierte Ebene: Abschnitt 2.1, die Bilanz. Der älteste Stichtag (2016)
+        # stammt aus der Vorjahresspalte des Abschlusses 2017 — er trägt
+        # deshalb dessen Dokument, mit eigener Fundstelle.
+        "bilanz":               ("council_balance_sheet", "year", None, None),
+        # Der einzige Schlüssel, hinter dem je Jahrgang MEHRERE Dokumente
+        # stehen: Ein Produkt-Jahrgang verteilt sich auf zwölf bis dreizehn
+        # Teilhaushalts-Anlagen (s. finanzquellen.Finanzquelle).
+        "teilhaushalt":         ("council_products", "year", None, "source_url"),
+        "pruefbericht":         ("council_audit_report_sources", "year", None, "url"),
+        "gesamtabschluss":      ("council_group_items", "year", None, None),
+        # Nur die geprüften Zeilen: Die Bezugsgröße „Gesamtbetrag des
+        # Finanzhaushaltes" steht in derselben Datei, aber an einer anderen
+        # Fundstelle und ohne Probe — ohne diesen Filter stünden je Jahrgang
+        # zwei Dokumente im Verzeichnis, wo es eines ist.
+        "investitionen":        ("council_investments", "year",
+                                 "t.level = 'sub_budget'", None),
+        # Alle Zeilen eines Jahrgangs teilen sich eine Herkunft; die
+        # `gesamt`-Zeile gibt es genau einmal und steht hier für das Dokument.
+        "investitionsprogramm": ("council_investment_measures", "year",
+                                 "t.level = 'total'", None),
+        # Ein Jahrgang, zwei Herkünfte (Teil A und Teil B im selben PDF, aber
+        # unter verschiedenen Proben). Beide zeigen auf dieselbe Datei; die
+        # Fundstelle unterscheidet sie, und `DISTINCT` fasst sie deshalb nicht
+        # zusammen — genau richtig, denn ein Beleg an einer Beamtenzahl soll
+        # „Teil A" sagen und nicht „Stellenplan".
+        "stellenplan":          ("council_staff_plan", "budget_year", None, None),
+        # Der einzige Schlüssel, dessen Jahresspalte NICHT das Datenjahr ist:
+        # Ein Bericht liefert fünf Jahrgänge, gehört aber zu genau einem
+        # Dokument — und das ist seines.
+        "indicators":           ("council_indicators", "report_year", None, None),
+        # Die drei Schichten vom 20.08.2026. Sie standen bis zum 21.08. NICHT
+        # hier, und man hat es der Seite angesehen: Unter 33 Wirtschaftsplänen
+        # aus sieben Betrieben stand eine einzige Quelle, deren Link auf die
+        # Startseite des Ratsinformationssystems führte. Der Eintrag hier ist
+        # der ganze Unterschied zwischen „kommt aus dem RIS" und „steht in
+        # diesem PDF".
+        #
+        # Wie ``teilhaushalt`` tragen alle drei je Jahrgang MEHRERE Dokumente,
+        # und das ist hier keine Eigenheit, sondern der Kern: Ein Jahrgang
+        # Wirtschaftsplan besteht aus sieben Plänen von sieben Betrieben, und
+        # jeder ist ein eigenes Papier mit eigener Vorlagennummer.
+        "wirtschaftsplan":      ("council_business_plans", "year", None, None),
+        # Nachträge tragen eine eigene Satzung und ein eigenes Dokument; der
+        # Schlüssel unterscheidet sie nicht, die Fundstelle tut es.
+        "budget_bylaw":     ("council_budget_bylaw", "year", None, None),
+        "fees":            ("council_fees", "year", None, None),
+        # Der Haushaltsvollzug trägt je Jahrgang bis zu ACHT Dokumente (vier
+        # Stichtage × zwei Haushalte), und jedes ist ein eigenes Papier mit
+        # eigener Vorlagennummer — dieselbe Lage wie beim Wirtschaftsplan.
+        # Gefiltert wird auf die Summenzeile, damit der Join nicht jede der
+        # 42 Zeilen einer Tabelle anfasst; ihre Herkunft ist dieselbe.
+        "budget_execution": ("council_budget_execution", "budget_year",
+                             "t.is_total = 1", None),
+        # Kredite und Zinsen: je Unterrichtung eine Vorlage mit eigener
+        # Herkunft — die Papierliste eines Jahrgangs sind die Berichte des
+        # Jahres. `document_url` ist die Rückfallebene der Zeile.
+        "loans":            ("council_loan_notices", "year", None, "document_url"),
+        # Der Liquiditätsstand: je Monat die Grafik, aus der der Wert zuletzt
+        # bestätigt wurde — die Papierliste eines Jahrgangs sind die Grafiken.
+        "liquidity":        ("council_liquidity", "year", None, "url"),
+        # Die Jahresabschlüsse der Eigenbetriebe: je Jahrgang bis zu vier
+        # Prüfberichte (ein Betrieb, ein Papier), jede Kennzahl zeigt auf den
+        # jüngsten Bericht, der sie nennt.
+        "enterprise_accounts": ("council_enterprise_accounts", "year", None, None),
+        # Die Änderungslisten zum Haushalt. Wie `wirtschaftsplan` stehen je
+        # Jahrgang MEHRERE Papiere dahinter (Verw. I–III und die
+        # Beschluss-Datei des AFB) — die Summen-Tabelle trägt je Dokument
+        # eine Herkunft, DISTINCT macht daraus die Papierliste des Jahrgangs.
+        "aenderungsliste":      ("council_budget_amendments_totals",
+                                 "budget_year", None, None),
+    }
+
+    #: Jahresquellen, die KEIN Dokument im Ratsinformationssystem haben und
+    #: deshalb nicht in ``_DOKUMENT_QUELLEN`` stehen — Downloads von
+    #: oldenburg.de, Open Data und die Landesstatistik. Für die Frage „welche
+    #: Jahrgänge deckt diese Quelle ab?" zählen sie genauso.
+    _WEITERE_JAHRESQUELLEN: dict[str, tuple[str, str, str | None]] = {
+        "taxes":     ("council_taxes", "year", None),
+        "tax_capacity": ("council_tax_capacity", "year", None),
+        "population":   ("council_einwohner", "year", None),
+        "schulden":    ("council_debt", "year", None),
+        "gebaut":      ("council_investments_actual", "year", None),
+        "expense_series": ("council_expense_series", "year", None),
+        "buergschaften": ("council_buergschaften", "year", None),
+        "anlagenspiegel": ("council_fixed_assets", "year", None),
+        "vermoegensgruppen": ("council_vermoegensgruppen", "year", None),
+        "integrierte_schulden": ("council_integrated_debt", "year", None),
+        "donations":     ("council_donations", "year", None),
+        "loans":         ("council_loan_notices", "year", None),
+        "liquidity":     ("council_liquidity", "year", None),
+        "enterprise_accounts": ("council_enterprise_accounts", "year", None),
+        "tax_plan":  ("council_tax_plan", "year", None),
+        "tax_rates":  ("council_tax_rates", "year", None),
+    }
+
+    #: Ein Haushaltsjahr trägt drei Sorten Vorlagen, und sie heißen nicht
+    #: einheitlich. Die Jahreszahl steht immer vorn, das Wort davor variiert
+    #: („Haushalt 2026", „Haushaltsentwurf 2024", „HH 2020").
+    _HH_TITEL = re.compile(r"^(?:Haushaltsentwurf|Haushalt|HH)\s*(\d{4})")
+
+    #: Woran ein Verwaltungsentwurf als Teilhaushalts-Bericht erkennbar ist —
+    #: er geht in den jeweiligen Fachausschuss, nicht in den Finanzausschuss.
+    _HH_TEILBERICHT = ("Teilhaushalt", "THH", "Budget", "Stiftung")
+
+    #: Die Schlussabstimmung trägt in jedem Jahrgang denselben Titel; die
+    #: Jahreszahl darin ist das HAUSHALTSJAHR, nicht das Sitzungsjahr (der
+    #: Haushalt 2023 wurde im Dezember 2022 beschlossen, der Haushalt 2026
+    #: erst im Februar 2026).
+    _STREIT_SATZUNG = re.compile(r"^Haushaltssatzung und Haushaltsplan\s+(\d{4})")
+
+    #: Der Sammelpunkt, unter dem die Debatte geführt wird. Er steht nicht in
+    #: jedem Protokoll als eigene Beschlusszeile — wo er fehlt, wird der
+    #: Oberpunkt aus der Nummer der Schlussabstimmung abgeleitet.
+    _STREIT_SAMMEL = re.compile(r"^Haushalt\s+(\d{4})\s*$")
 
     def haushalt_jahrgaenge(self) -> dict[str, list[int]]:
         """Je Quellenschlüssel die Jahrgänge, die **wirklich** im Bestand
@@ -2897,7 +3065,6 @@ class HaushaltMixin:
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
-            pass
         try:
             r = self._conn.execute(
                 "SELECT year, total FROM council_integrated_debt "
@@ -2909,7 +3076,6 @@ class HaushaltMixin:
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
-            pass
         return aus
 
     def _buergschafts_kontext(self) -> dict | None:
@@ -2940,6 +3106,5 @@ class HaushaltMixin:
         except sqlite3.OperationalError as fehler:
             if not tabelle_fehlt(fehler):
                 raise
-            pass
         return {"year": r["year"], "balance": r["balance"], "reason": r["reason"],
                 "rueckstellung": rueck, "beleg": self._beleg(r["herkunft_id"])}
