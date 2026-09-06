@@ -103,7 +103,9 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
       const farbe = STAND_FARBE[v.stage] ?? STAND_FARBE.planning;
       const istAktiv = v.id === aktiv;
       const blass = gedimmt.has(v.id) && !istAktiv;
-      const popup = `<div class="viertel-popup"><span class="stand" style="--c:${farbe}">${STAND_LABEL[v.stage] ?? v.stage}</span>${v.when ? `<span class="wann">${v.when}</span>` : ""}<b>${escapeHtml(v.name)}</b><button type="button" data-id="${v.id}">Details</button></div>`;
+      // Alles, was aus der Datenbank kommt, wird maskiert — auch „wann" und
+      // der Stand stammen aus einer Modellantwort, nicht aus dem Code.
+      const popup = `<div class="viertel-popup"><span class="stand" style="--c:${escapeHtml(farbe)}">${escapeHtml(STAND_LABEL[v.stage] ?? v.stage)}</span>${v.when ? `<span class="wann">${escapeHtml(v.when)}</span>` : ""}<b>${escapeHtml(v.name)}</b><button type="button" data-id="${Number(v.id)}">Details</button></div>`;
       const anklicken = (layer: import("leaflet").Layer) => {
         layer.bindPopup(popup, { closeButton: false, offset: [0, -6], className: "viertel-popup-huelle" });
         layer.on("popupopen", (e) => {
