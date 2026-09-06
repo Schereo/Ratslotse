@@ -21,6 +21,7 @@ from council.store import CouncilStore
 
 from ..antworten import (
     DistrictLookup,
+    DistrictLookupMatch,
     DistrictProjectReportOut,
     DistrictProjects,
     DistrictProjectsOverview,
@@ -57,8 +58,11 @@ def district_projects_overview(store: CouncilStore = Depends(get_council_store))
             stages[stage] = stages.get(stage, 0) + n
         if o.get("updated_at") and (updated is None or o["updated_at"] > updated):
             updated = o["updated_at"]
-    return {"districts": rows, "total": sum(r["count"] for r in rows), "stages": stages,
-            "highlights": store.district_highlights(), "updated_at": updated}
+    # Lose dicts aus dem Store; die Form hält der Vertrag, geprüft vom Test.
+    return cast(DistrictProjectsOverview, {
+        "districts": rows, "total": sum(r["count"] for r in rows), "stages": stages,
+        "highlights": store.district_highlights(), "updated_at": updated,
+    })
 
 
 @router.get("/lookup")
@@ -74,7 +78,7 @@ def district_lookup(q: str = Query("", max_length=80),
         return {"matches": []}
     overview = store.district_projects_overview()
     needle = q.lower()
-    matches: list[dict] = []
+    matches: list[DistrictLookupMatch] = []
     for place in sorted(_primary_places(store), key=lambda p: p.name):
         if any(n.lower().startswith(needle) for n in (place.name, *place.aliases)):
             matches.append({"name": place.name, "kind": "district", "place_id": place.id,
