@@ -7,6 +7,282 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.2.0] – 2026-09-06
+
+### Hinzugefügt
+- **Ausschüsse teilen — wahlweise mit einem bestimmten Tagesordnungspunkt.** An
+  jeder Sitzung steht jetzt ein Teilen-Knopf, und an jeder Zeile der
+  Tagesordnung noch einer: Der eine verschickt die Sitzung, der andere die
+  Sitzung samt genau diesem Punkt. Wer den Link öffnet, landet auf der Sitzung,
+  wird zu dem gemeinten Punkt gerollt und sieht ihn hervorgehoben. Der geteilte
+  Link geht auch **ohne Konto** auf. Er führt auf eine eigene Sitzungs-Seite mit
+  Tagesordnung, Kurzfassungen, Anlagen und — nach der Sitzung — den Ergebnissen;
+  die Einladung zum Konto steht am Fuß, nicht davor. Bisher sah, wer „guck mal,
+  was am Donnerstag drankommt" weitergereicht bekam, zuerst das
+  Registrierungsformular. In der iPhone- und iPad-App gibt es beides genauso:
+  Teilen im Kopf der Sitzung und an jedem Punkt. Ein geteilter Link öffnet auf
+  iOS wieder die App. (#1077)
+- **Der wöchentliche Sammel-Lauf zeigt seine 18 Schritte einzeln.** Unter seiner
+  Kachel im Admin-Panel lässt sich jetzt aufklappen, welcher Schritt gelaufen
+  ist und wie lange er gebraucht hat — mit einem Balken, an dem sofort auffällt,
+  wo die Zeit hingeht. Bisher stand dort eine einzige Zahl („18 Schritte, 0
+  fehlgeschlagen"); welcher Schritt zwei Stunden brauchte, wusste nur das
+  Server-Log, obwohl der Lauf es die ganze Zeit mitschrieb. Ein gescheiterter
+  Lauf behält seine Bilanz außerdem. Bisher wurden beim Abbruch alle Kennzahlen
+  verworfen — ausgerechnet an dem Tag, an dem ein Schritt ausfällt, stand nur
+  „fehlgeschlagen" da und man musste im Log suchen, welcher es war. (#1098)
+- **Fehler melden sich jetzt selbst.** Ging im Web etwas schief, stand das
+  bisher nur im Server-Log — wer nicht zufällig nachsah, erfuhr nie davon. Jetzt
+  landet jeder unbehandelte Fehler gruppiert im Admin-Panel unter *Fehler*, mit
+  Zähler, 30-Tage-Verlauf und Haken zum Abarbeiten; die erste Begegnung mit
+  einer neuen Fehlerart meldet sich zusätzlich per Mail. Dieselbe Liste nimmt
+  Fehler aus dem Browser auf. Gespeichert werden nur Fehlertyp, Meldung, die
+  ersten Zeilen des Stapels und der Seitenpfad — keine Suchanfrage, kein Konto,
+  kein Cookie, keine Kennung des Geräts. Adressen, Token und lange Ziffernfolgen
+  werden vorher unkenntlich gemacht. (#1105)
+- **Die KI-Frage kennt jetzt die Fachwörter.** „Was ist eine Ausfallbürgschaft?"
+  beantwortete sie bis heute mal so und mal gar nicht — je nachdem, ob zufällig
+  ein gefundener Beschluss den Begriff nebenbei miterklärte. Die Erklärungen
+  lagen zwar längst im Ratslotse, aber nur auf den Haushalts-Seiten und damit
+  außer Reichweite der Antwort. Jetzt stehen sie an einer Stelle, und die
+  Antwort bekommt sie mit: Wer nach einem Begriff fragt, bekommt zuerst die
+  Erklärung und danach, was der Rat dazu entschieden hat. Im Antworttext liegt
+  unter jedem Fachwort eine kurze Erklärung — bei der ersten Nennung gepunktet
+  unterstrichen, zum Überfahren oder Antippen. Auch „Einfacher erklären"
+  arbeitet damit, statt die Wörter selbst zu deuten. Dazu 52 neue Begriffe,
+  ausgewählt an dem, worüber man in den Unterlagen wirklich stolpert:
+  Ausfallbürgschaft, Verpflichtungsermächtigung, Aufwandsspaltung und
+  Teileinrichtung aus dem Straßenausbau, Leitantrag, Vertagung und Kenntnisnahme
+  aus dem Sitzungsalltag, dazu die Schritte eines Bebauungsplans von der
+  Auslegung bis zum Satzungsbeschluss. (#1115)
+- **Kalender-Abo: die eigenen Sitzungen in Apple Kalender, Google oder
+  Outlook.** Unter *Ausschuss-Abos* (App und Web) und über das Kalender-Zeichen
+  in der Sitzungsliste gibt es jetzt eine Abo-Adresse je Konto. Drin sind die
+  Sitzungen der abonnierten Gremien und jede Sitzung, auf deren Tagesordnung ein
+  eigenes Thema steht — die kommenden plus die letzten sechs Wochen. Jeder
+  Termin trägt die wichtigsten Punkte mit ihrem Grund, die Treffer zu den
+  eigenen Themen, Ort und geschätztes Ende und den Link zur Sitzungsseite mit
+  Tagesordnung, Vorlagen und später dem Ergebnis; Sitzungen mit einem eigenen
+  Thema bekommen eine Erinnerung am Vorabend. Der Kalender aktualisiert sich
+  alle paar Stunden von selbst, und die Adresse lässt sich jederzeit erneuern.
+  (#1123)
+- **Welcher Punkt läuft gerade im Rat — live aus der Übertragung.** Der
+  Mitschnitt-Job, der die Ratssitzung aus dem O1-Stream aufzeichnet,
+  transkribiert jetzt streamend (Gladia, EU-Region, mit den Namen der
+  Ratsmitglieder als Wortliste) und verfolgt alle 15 Sekunden — und sofort, wenn
+  die Leitung einen Punkt aufruft oder das Wort erteilt —, welcher
+  Tagesordnungspunkt gerade dran ist, in welcher Phase (Aufruf, Aussprache,
+  Abstimmung) und wer das Wort hat; ein Aufruf steht damit etwa sieben Sekunden
+  nach dem Satz auf der Karte. Ohne Streaming-Schlüssel läuft derselbe Weg in
+  30-Sekunden-Stücken. Die Live-Karte auf „Heute" zeigt in Web und App „Gerade:
+  TOP 9.3 · Titel · Name (Fraktion) spricht", die Tagesordnung hebt den
+  laufenden Punkt rot hervor — bei einem Block von Formalien als Spanne wie „TOP
+  9.4–9.8". Beides ist ehrlich beschriftet: aus der Live-Übertragung, mit unter
+  einer Minute Verzug, und mit „Stand vor N Min." aus der eigenen Uhr. Sprecher
+  und Fraktion kommen aus der Anwesenheitsliste der jüngsten Ratssitzung; wer
+  dort nicht steht, wird nicht geraten. Gemessen an der Aufzeichnung vom 31.08.:
+  jeder Punkt mit Aussprache richtig verfolgt, ein neuer Punkt im Mittel 40
+  Sekunden nach seinem Aufruf sichtbar, Name und Fraktion in 355 von 456
+  Stücken, Kosten rund 1 $ je Sitzung. (#1124)
+- **„Mein Viertel“: Was sich im eigenen Ortsbereich in den nächsten Jahren
+  ändert.** Unter /viertel und in der App steht für jeden der 31 Ortsbereiche
+  eine Karte mit einem Pin je Vorhaben — Wohnungsbau, Straßenumbau, Schulen,
+  Sportplätze —, gebündelt aus allen Beschlüssen, Berichten und Anträgen dazu
+  und mit Stand (Idee, Planung, beschlossen, im Bau). Straßen liegen als Linie
+  auf der Karte, eine Stufenleiste filtert nach Stand, ein Tipp auf Pin oder
+  Zeile öffnet das Vorhaben mit seinem Weg und seinen Beschlüssen. Ein
+  Sprachmodell prüft je Beschluss, ob er wirklich dieses Viertel betrifft; was
+  stadtweit gilt oder den Ortsnamen nur erwähnt, bleibt draußen. Dazu: was
+  demnächst im Rat dazu ansteht, welche Straßen im Investitionsprogramm stehen
+  und wo gerade eine Beteiligung läuft. Die Tafel ist ohne Konto lesbar;
+  Angemeldete können ein Vorhaben als „Gehört nicht hierher“ melden. Das
+  Register rechnet der Wochenlauf; bis Tim es freigibt, hängt der Bereich am
+  Feature-Schalter `mein-viertel`. (#1125)
+- **Vorschläge aus deinem Stadtteil sagen jetzt, warum sie dort stehen.** Unter
+  jedem Vorschlag steht in einer kurzen Zeile der Beschluss, der ihn mit dem
+  Stadtteil verbindet — bei der Kommunalen Wärmeplanung unter Kreyenbrück etwa
+  „Maßnahme Machbarkeitsstudien". Damit ist auf einen Blick klar, warum ein
+  stadtweites Vorhaben unter einem Stadtteil auftaucht, statt wie ein Fehler
+  auszusehen. (#1059)
+- **Die Instagram-Karten bekommen Überschriften, die sagen, worum es geht.** Der
+  amtliche Titel eines Tagesordnungspunkts sagt oft nur, wer wann etwas
+  eingereicht hat — „Änderungsantrag der CDU-Fraktion vom 10.06.2026" —, oder er
+  ist so lang, dass die Karte ihn mit „…" abschneiden musste. Der nächtliche
+  Kartentext-Lauf schreibt jetzt zu jedem Punkt auch eine Überschrift von
+  höchstens 60 Zeichen, die die Sache nennt („Baumschutzsatzung bis Jahresende
+  aussetzen"); dieselben Prüfungen wie beim Text gelten mit — keine Wertung,
+  kein vorweggenommenes Ergebnis, keine Zahl, die nicht in den Unterlagen steht.
+  Und ein Änderungsantrag zählt jetzt zu dem Antrag, den er ändert: Zwei Anträge
+  zur Baumschutzsatzung sind auf der Karte ein Thema mit zwei Absendern, nicht
+  zwei Zeilen, von denen eine niemandem etwas sagt. Die
+  Wochenvorschau-Schnittstelle liefert dafür `social_headline` und
+  `group_applicants`.
+
+### Geändert
+- **Die Ausschuss-Abos sehen aus wie der Einrichtungs-Assistent.** Jedes Gremium
+  steht jetzt als Kachel mit seinem Zeichen — Kelle für den Bau, Blatt fürs
+  Grün, Bus für den Verkehr —, zu zweit nebeneinander, sobald der Platz reicht.
+  Abonnierte Gremien sind an der gefüllten Scheibe und dem getönten Rahmen zu
+  erkennen. Es fällt nichts weg, im Gegenteil: Die Zahl der Beschlüsse dieses
+  Jahres stand vorher nur auf breiten Fenstern in der Zeile und war auf dem
+  Telefon gar nicht zu sehen; sie gehört jetzt fest zur Kachel. (#1069)
+- **Die iOS-App bekommt Charakter: Tide-Widgets, Wochenband, Lotti in jedem
+  Zustand.** Die Startseite besteht jetzt aus Widgets mit getönter Kopfleiste
+  und Wellenkante in der Farbe dessen, wovon sie sprechen — Hafenblau für
+  Termine, Watt-Grün für Beschlüsse, Boje-Orange für deine Themen; das Fundstück
+  steht als das eine hervorgehobene Widget je Seite auf einer getönten
+  Anzeigetafel. „Deine Ratswoche" zeigt oben ein Wochenband mit heute gefüllt
+  und einem Punkt je Sitzung; ein Tipp auf einen Tag fährt die Markierung
+  dorthin und zeigt darunter die Sitzungen ab diesem Tag. die Zahl der Woche
+  zählt beim ersten Blick hoch und verschwindet, wenn sie nichts zu sagen hat.
+  Statt des orangen Knopfs steht „Frag den Rat" als Eingabezeile wie auf der
+  Fragen-Seite. Die Sitzungsliste gruppiert nach Tag („Heute", „Morgen") und
+  trägt Uhrzeit plus Gremium in der Kopfleiste jeder Karte; Punkte zu deinen
+  Themen sind darin hervorgehoben, eine noch fehlende Tagesordnung steht
+  gestrichelt da. Leer-, Lade- und Hinweiszustände zeigen Lotti — schlafend,
+  jonglierend, mit erhobener Hand — und der Anmelde-Hinweis der Merkliste
+  bekommt den Anmelden-Knopf. Dazu die Bewegungs-Grammatik der Designsprache:
+  vier Takte, gestaffelte Auftritte (gedeckelt bei sechs Zeilen) und eine
+  gleitende Markierung im Segment-Schalter; bei reduzierter Bewegung steht
+  sofort der Endwert. Jede Sitzungskarte trägt jetzt das Zeichen ihres Gremiums
+  (dieselbe Tabelle wie im Web) in einer von vier Familienfarben — Hafenblau für
+  Rat und Verwaltung, Watt-Grün für Grün und Abfall, Ziegel für das Gebaute,
+  Pflaume für die Menschen —, darunter einen Satz, was dort verhandelt wird; die
+  Ratssitzung ist die eine hervorgehobene Karte der Liste. Und jede Sitzung
+  nennt ihre wichtigsten Punkte, in App und Web, mit derselben Bewertung wie
+  „Diese Woche im Rat“. Auf „Meine Themen“ sind die Vorschläge aus dem Rat eine
+  schmale Chip-Zeile statt eines Kachelfelds, und jedes Thema ist eine Karte in
+  Boje-Orange mit Zeichen, „2 neue“ und Menü in der Kopfleiste;
+  Segment-Schalter, Tageswähler und ein übernommener Vorschlag melden sich in
+  der Hand. Ab iOS 18 wächst eine Beschluss- oder Sitzungskarte beim Antippen zu
+  ihrer Seite auf, statt sie hereinzuschieben; langes Drücken zeigt die Karte
+  als Vorschau mit Merken und Teilen, bei Sitzungen auch „In den Kalender“.
+  (#1116)
+- **Benachrichtigungen nach Nutzerart, ein Ergebnis-Brief je Protokoll-Schub,
+  und Wichtiges darf durch.** Wer sich neu anmeldet, bekommt den Wochenüberblick
+  ab Werk und die Tagesordnung je Gremium nur, wenn er sie ausdrücklich
+  einschaltet; ein Konto mit Ratsmandat bekommt dagegen jede Tagesordnung jedes
+  abonnierten Gremiums sofort. Bestandskonten behalten genau das, was sie bisher
+  bekamen. Ergebnisse aus dem Protokoll kommen nicht mehr als eine Meldung je
+  Sitzung, sondern als ein Brief je Person und Lauf: gruppiert nach Thema und
+  gemerkten Punkten, der Beschluss mit der größten Tragweite führt jede Gruppe
+  an — mit Ergebnis, Stimmen, Betrag und Lottis Kurzfassung —, der Rest steht
+  als Liste darunter. Und die Grenze von zwei Meldungen am Tag lässt jetzt
+  durch, was groß ist: Eine Tagesordnung mit einem Punkt ab Tragweite 60 und ein
+  Ergebnis-Brief mit so einem Beschluss gehen einzeln raus, auch wenn die zwei
+  des Tages verbraucht sind. (#1126)
+- **Nach dem Bestätigen der E-Mail geht es direkt ins Einrichten.** Zwischen dem
+  Klick im Bestätigungslink und Lottis Begrüßung stand bisher noch eine eigene
+  Erfolgsseite mit „Weiter zum Dashboard" — anderthalb Sekunden lang und ohne
+  eigenen Nutzen. Sie entfällt. Der Screen, auf dem man auf die E-Mail wartet,
+  sagt jetzt sichtbar, dass er wartet, und springt von selbst weiter, sobald der
+  Link geklickt ist — auch im Tab, in dem registriert wurde. (#1066)
+- **Der Themen-Schritt des Einrichtungs-Assistenten schlägt jetzt Stadtthemen
+  vor statt Straßennamen.** Ganz oben stehen kuratierte Themen wie Radverkehr,
+  Kitas, Wohnungsbau oder der Stadion-Neubau, jedes mit der Zahl der Beschlüsse
+  aus den letzten zwölf Monaten; was der Rat kaum verhandelt, wird gar nicht
+  erst angeboten. Darunter steht ein kompakter Block mit ein bis zwei
+  Vorschlägen je gewähltem Stadtteil. Die Vorschläge von nebenan und die lange
+  stadtweite Liste sind aus dem Assistenten verschwunden. Die App bekommt die
+  Stadtthemen über dasselbe Feld der Schnittstelle mit dem nächsten Update.
+  (#1059)
+- **Der Einrichtungs-Assistent rechnet jetzt in einem Zeitraum — und fragt die
+  Benachrichtigungen wirklich.** Wer den Vorschlag „Digitale Verwaltung 7“
+  anklickte, las oben in „Deine Themen“ plötzlich „23 Beschlüsse“: unten die
+  letzten zwölf Monate, oben der ganze Bestand seit 2018. In der Einrichtung
+  steht jetzt überall dieselbe Zwölf-Monats-Zahl; die Gesamtzahl bleibt der
+  Themen-Karte vorbehalten, wo sie hingehört. Außerdem war die Frage „Soll Lotti
+  sich melden?“ bisher schon beantwortet, bevor sie gestellt wurde — die
+  Registrierung hatte E-Mail-Benachrichtigungen vorbelegt, und der Schritt
+  meldete brav, sie seien „bereits eingeschaltet“. Ein neues Konto im Browser
+  startet nun ohne Zustellweg: Es bekommt Benachrichtigungen erst, wenn man an
+  dieser Stelle zusagt. Die einmalige Erinnerung an eine liegen gebliebene
+  Einrichtung geht davon unabhängig weiterhin raus. (#1070)
+- **Ein Thema mit mehreren Anträgen bekommt auf der Instagram-Karte einen Text,
+  der alle nennt.** Unter „Änderungen der Baumschutzsatzung" stand die
+  Erklärzeile des höher bewerteten Antrags — also nur, was die CDU will, obwohl
+  BSW und SPD den Antrag gestellt hatten. Der nächtliche Kartentext-Lauf
+  schreibt für solche Gruppen jetzt einen gemeinsamen Text aus dem Material
+  aller Punkte („SPD und BSW wollen …; die CDU will …"), mit denselben Prüfungen
+  wie für jeden Einzeltext. Die Wochenvorschau-Schnittstelle liefert ihn als
+  `gruppe_text`. Und die Karten-Überschrift darf nicht mehr weglassen, was den
+  Gegenstand eingrenzt: „Aktionsplan gegen Gewalt an Frauen", nicht „Aktionsplan
+  gegen Gewalt" — und sie sagt, was ansteht, nicht was herauskommt.
+
+### Behoben
+- **Die Tagesordnung in der App zeigt wieder ihre Anlagen.** Die App las das
+  Feld unter einem Namen, den es auf der Leitung nie gab — ohne Fehlermeldung,
+  einfach als leere Liste. Gerade Fraktionsanträge ohne Vorlage hängen nur dort.
+  Dazu ist die Zeile neu geordnet: TOP-Nummer und Teilen-Zeichen stehen jetzt in
+  einer schmalen Kopfzeile, Titel und Kurzfassung laufen darunter über die volle
+  Breite. Dringlichkeitsanträge sind als solche markiert, die Vorlagennummer
+  steht dabei, und der Weg ins Ratsinfosystem ist ein Knopf statt einer blauen
+  Textzeile. (#1110)
+- **Die App nannte die falsche Version.** In den Einstellungen stand 2.0.0,
+  obwohl 2.1.0 draußen war — der Versionsschnitt zog `ios/` bisher nicht mit.
+  Tut er jetzt, und ein Wächter hält beides zusammen. (#1108)
+- **In der App kommt man wieder mit einem Wisch zurück.** Vom linken Rand nach
+  innen zu ziehen tat auf keinem Unterscreen etwas — die App zeichnet ihre
+  eigene Kopfzeile und blendet dafür die System-Leiste aus, und iOS schaltet mit
+  der Leiste auch die Geste ab. Sie ist zurück, ohne dass sich am Aussehen etwas
+  ändert. (#1111)
+- **Der Cron für die Kartentexte lief unbeobachtet — jetzt steht er im
+  Admin-Panel wie alle anderen.** Er schreibt täglich einen erklärenden Satz je
+  Tagesordnungspunkt, kostet dabei Geld, und war als einziger Job nicht in die
+  Absicherung eingehängt: kein Eintrag unter *Statistik → Cron-Jobs*, keine
+  Fehlermeldung beim Absturz. Wäre er ausgefallen, hätte es niemand bemerkt.
+  Damit sich das nicht wiederholt, prüft ein Test das jetzt am Quelltext statt
+  an einer abgeschriebenen Liste: Jedes Skript, das einen Lauf protokolliert,
+  muss entweder ein eingetragener Cron sein oder ausdrücklich als Unterschritt
+  eines anderen geführt werden. (#1095)
+- **Zwei Ausschüsse standen dauerhaft ohne Beschlüsse da.** Beim Ausschuss für
+  Wirtschaftsförderung fehlte seine einzige Sitzung des Jahres im Bestand: Der
+  Kalenderlauf las nur nach vorn, und was er in seinem Fenster einmal verpasst
+  hatte — ein ausgefallener Lauf, eine spät veröffentlichte Tagesordnung —, sah
+  er nie wieder; 14 der 79 Sitzungen des Jahres 2026 fehlten so. Er blickt jetzt
+  bei jedem Lauf drei Monate zurück und trägt nach, was fehlt. Beim Ausschuss
+  für Allgemeine Angelegenheiten wurde jedes Protokoll übersehen, weil die
+  Erkennung das Wort „öffentlich" in der Dateibeschriftung verlangte — dieser
+  Ausschuss schreibt es nicht dazu. Sechs Protokolle seit Juni kommen dadurch
+  nach, ohne dass ein nichtöffentliches oder ein fremdes Papier hereinrutscht.
+  (#1072)
+- **Ein gedrosselter LLM-Anbieter reißt den Kartentext-Lauf nicht mehr ab.** Als
+  OpenRouter das Modell am 06.09.2026 drosselte, brach der nächtliche Lauf bei
+  jedem 429 mitten in der Liste ab — sieben Alarmmails an einem Vormittag, und
+  die Gruppentexte danach kamen gar nicht mehr dran. Jetzt bleibt der eine Punkt
+  offen und kommt im nächsten Lauf wieder; die anderen werden geschrieben. Nur
+  wenn der Anbieter den ganzen Lauf verweigert, gibt es einen Alarm — einen.
+- **Die Kennzahlen der Straßen-Geokodierung stehen jetzt wirklich im
+  Admin-Panel.** Der tägliche Lauf rechnete sie zwar aus — wie oft Overpass
+  ausfiel, wie viele Straßen nur ein Teilstück tragen —, aber `check_protocols`
+  nahm sie nie entgegen; in keinem einzigen Eintrag unter *Statistik →
+  Cron-Jobs* stand je eine davon. Damit konnte ein Ausfall nur als Mail
+  auffallen, und weil eine Mail sonst nie käme, war ihre Schwelle so tief
+  gesetzt, dass eine einzelne abgewiesene Anfrage sie auslöste. Neu sichtbar:
+  wie viele Straßen aus dem Schnappschuss kamen (ohne jede Anfrage), wie viele
+  Overpass-Ausfälle es gab, wie viele Namen OpenStreetMap gar nicht führt, und
+  wie viele Straßen im Bestand keine vollständige Geometrie tragen. (#1093)
+- **Straßen holen ihre Geometrie jetzt aus dem wöchentlichen Schnappschuss,
+  statt jede neue Straße einzeln bei Overpass zu erfragen.** Der öffentliche
+  Dienst weist rund jede zweite Abfrage mit „429" oder „504" ab; die
+  Erreichbarkeitsprobe fragte aber nur ein einziges Mal und erklärte ihn danach
+  für den ganzen Lauf als ausgefallen. Ein Tag mit zwei neuen Straßen löste so
+  eine Betriebsmeldung über einen Totalausfall aus, während der Dienst lief. Der
+  wöchentliche Lauf holt ohnehin alle benannten Wege Oldenburgs in einem Aufruf
+  und lässt die Datei liegen — sie wird jetzt zuerst gefragt, und damit kommen
+  die meisten Straßen ganz ohne Netz zu ihrer vollständigen Geometrie. Wo doch
+  gefragt werden muss, wiederholen Probe und Abfrage mit wachsender Pause. Die
+  Betriebsmeldung erscheint erst ab fünf verlorenen Straßen und erklärt, dass
+  der Bestand an unvollständigen Straßen sich durch den Reparatur-Workflow nicht
+  verringert — es sind Namen, die OpenStreetMap gar nicht führt. (#1090)
+- **Lottis Einladung zur Tour kam nach der Einrichtung nicht.** Sie hörte auf
+  ein Signal, das der Einrichtungs-Assistent im Moment seines Abschlusses gibt —
+  und wer es in genau dieser Sekunde nicht hört, hörte es nie wieder. Nicht
+  gehört hat es unter anderem, wer den Assistenten in einem Browser-Tab beendet,
+  der schon länger offen ist. Jetzt hält der Assistent selbst fest, dass die
+  Einladung dran ist; Lotti fragt danach zuverlässig, notfalls beim nächsten
+  Aufruf. (#1068)
+
 ## [2.1.0] – 2026-09-03
 
 ### Hinzugefügt
@@ -6688,7 +6964,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.1.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.2.0...main
+[2.2.0]: https://github.com/Schereo/Ratslotse/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/Schereo/Ratslotse/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Schereo/Ratslotse/compare/v1.15.0...v2.0.0
 [1.15.0]: https://github.com/Schereo/Ratslotse/compare/v1.14.0...v1.15.0
