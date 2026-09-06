@@ -26,9 +26,12 @@ from dataclasses import dataclass, field
 #: geschnitten wird erst, wenn sich zwei Rollen innerhalb eines Bereichs
 #: wirklich unterscheiden — vorher ist es Verwaltung ohne Nutzen.
 #:
-#: - ``budget``: der Haushalts-Bereich (20 Seiten, 20 API-Routen)
-#: - ``admin``:  das Admin-Panel samt allem darunter
-PERMISSIONS: tuple[str, ...] = ("budget", "admin")
+#: - ``budget``:  der Haushalts-Bereich (20 Seiten, 20 API-Routen)
+#: - ``mandate``: ein Ratsmandat — Benachrichtigungen ab Werk vollständig
+#:   (jede Tagesordnung jedes abonnierten Gremiums sofort; Tims Entscheidung
+#:   06.09.2026: „Leute mit Ratsmitgliedsstatus kriegen per Default alle Abos")
+#: - ``admin``:   das Admin-Panel samt allem darunter
+PERMISSIONS: tuple[str, ...] = ("budget", "mandate", "admin")
 
 
 @dataclass(frozen=True)
@@ -61,8 +64,9 @@ ROLES: dict[str, Role] = {
     "council_member": Role(
         key="council_member",
         label="Ratsmitglied",
-        description="Zusätzlich der Haushalts-Bereich mit allen Zahlen, Belegen und Auswertungen.",
-        permissions=frozenset({"budget"}),
+        description="Zusätzlich der Haushalts-Bereich mit allen Zahlen, Belegen und Auswertungen; "
+                    "Benachrichtigungen ab Werk vollständig.",
+        permissions=frozenset({"budget", "mandate"}),
     ),
     "admin": Role(
         key="admin",

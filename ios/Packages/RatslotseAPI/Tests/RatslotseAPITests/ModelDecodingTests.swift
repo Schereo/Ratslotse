@@ -349,3 +349,17 @@ import Testing
     """#.utf8))
     #expect(ohne.liveState == nil)
 }
+
+/// Das Kalender-Abo: drei Felder, zwei davon mit Unterstrich im Vertrag —
+/// genau die Stelle, an der ein handgeschriebener Schlüssel still danebenliegt.
+@Test func calendarSubscriptionDecodes() throws {
+    let json = #"""
+    {"url": "https://ratslotse.de/api/calendar/abc.ics",
+     "webcal_url": "webcal://ratslotse.de/api/calendar/abc.ics",
+     "subscribed_committees": 3}
+    """#
+    let abo = try JSONDecoder().decode(CalendarSubscription.self, from: Data(json.utf8))
+    #expect(abo.url.hasSuffix("/abc.ics"))
+    #expect(abo.webcalURL.hasPrefix("webcal://"))
+    #expect(abo.subscribedCommittees == 3)
+}

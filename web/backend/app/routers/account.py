@@ -109,13 +109,16 @@ def get_notifications(
     wenn sich jemand über eine unabschaltbare Meldung ärgert.
     """
     from kern.notify import (NACHTRUHE_AB, NACHTRUHE_BIS, NOTIFY_DEFAULTS,
-                             NOTIFY_LABELS, NOTIFY_PARENT, TAGESGRENZE)
+                             NOTIFY_LABELS, NOTIFY_PARENT, TAGESGRENZE, vorgaben_fuer)
 
     gesetzt = store.get_notify_prefs(user["id"])
+    # Vorgaben je Konto, nicht je Deployment: Ein Ratsmandat schaltet die
+    # Tagesordnungen ab Werk an (kern.notify.vorgaben_fuer).
+    vorgaben = vorgaben_fuer(store, user["id"])
     return {
         "kinds": [
             {"key": k, "label": NOTIFY_LABELS[k][0], "hint": NOTIFY_LABELS[k][1],
-             "default": NOTIFY_DEFAULTS[k], "enabled": bool(gesetzt.get(k, NOTIFY_DEFAULTS[k])),
+             "default": vorgaben[k], "enabled": bool(gesetzt.get(k, vorgaben[k])),
              # Unter-Option: wirkt nur, solange der Eltern-Anlass an ist — die
              # Oberfläche rückt sie ein und graut sie entsprechend aus.
              "parent": NOTIFY_PARENT.get(k)}
