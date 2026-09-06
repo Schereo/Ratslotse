@@ -668,15 +668,32 @@ class MarkedHits(TypedDict):
 
 
 class TopicHit(TypedDict):
+    """Ein Beschluss-Treffer auf der Karte „Neu zu deinen Themen" (Heute).
+
+    Bis 09/2026 trug er nur Titel, Gremium und Datum — die Karte konnte damit
+    weder sagen, WAS entschieden wurde (``summary``), noch WIE (``outcome``),
+    noch ob man es schon kannte (``is_new``). Dieselben drei Felder trägt die
+    Themen-Karte seit dem 28.08.2026 (``TopicHitOut``); ``topic_id`` braucht
+    der Gelesen-Ruf (``POST /topics/{topic_id}/seen``)."""
+    topic_id: int
     topic_name: str
     id: int
     title: str
     committee: str
     session_date: str
+    outcome: Beschlussergebnis | None
+    summary: str | None
+    is_new: bool
 
 
 class TopicHitList(TypedDict):
     hits: list[TopicHit]
+    # Der ehrliche Kicker der Karte (DESIGNSPRACHE § 6: nie „viele", immer
+    # Zahl): wie viele Themen und wie viele Treffer hinter der Auswahl stehen —
+    # und wie viele davon noch nicht gesehen sind.
+    topic_count: int
+    total: int
+    unread_total: int
 
 
 class TopicDecision(TypedDict):

@@ -32,7 +32,7 @@ def test_full_location_review_manifest_is_complete_and_valid():
 
 def test_curated_location_geocodes_are_complete_valid_and_idempotent(tmp_path):
     geocodes = locations.curated_location_geocodes()
-    assert len(geocodes) == 44
+    assert len(geocodes) == 45
     assert "hafen-iprump" not in geocodes
     assert all(point["source_url"].startswith("https://") for point in geocodes.values())
 
@@ -47,6 +47,28 @@ def test_curated_location_geocodes_are_complete_valid_and_idempotent(tmp_path):
     row = store.location_by_slug("skateanlage-eversten")
     assert (row["lat"], row["lon"], row["local_area_id"]) == (
         53.1379232, 8.1719987, "eversten")
+    assert store.apply_curated_location_geocodes() == 0
+    store.close()
+
+
+def test_curated_line_reaches_both_districts(tmp_path):
+    """Die Bahnbrücke Krusenbusch–Bümmerstede: Als Punkt läge sie auf EINER
+    Seite, und „Mein Viertel" des anderen Stadtteils bliebe ohne das Vorhaben
+    (Tims Befund 06.09.2026). Als Linie bekommt sie beide Anteile."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    store._conn.execute(
+        "INSERT INTO council_locations (slug,name,kind,lat,lon,geo_tried,updated_at) "
+        "VALUES ('bahnuebergang-krusenbusch-buemmerstede','Bahnübergang Krusenbusch – Bümmerstede','other',NULL,NULL,1,'')")
+    store._conn.commit()
+    assert store.apply_curated_location_geocodes() == 1
+    geojson = store._conn.execute("SELECT geojson FROM council_locations WHERE slug=?",
+                                  ("bahnuebergang-krusenbusch-buemmerstede",)).fetchone()[0]
+    assert geojson and '"LineString"' in geojson
+    store.rebuild_location_districts()
+    anteile = {r["district"]: r["share"] for r in store._conn.execute(
+        "SELECT district, share FROM council_location_districts WHERE location_slug=?",
+        ("bahnuebergang-krusenbusch-buemmerstede",))}
+    assert anteile["Krusenbusch"] >= 0.5 and anteile["Bümmerstede"] >= 0.5, anteile
     assert store.apply_curated_location_geocodes() == 0
     store.close()
 
