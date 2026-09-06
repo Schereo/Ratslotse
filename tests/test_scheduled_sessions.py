@@ -504,6 +504,87 @@ def test_vorlagen_auszug_ueberspringt_den_briefkopf():
     assert vorlagen_kern(None) == ""
 
 
+def _antraege_store(tmp_path):
+    """Die Stadtgrün-Sitzung vom 10.09.2026, verkürzt: Unter der Rubrik
+    „Anträge der Fraktionen" hängt der Antrag von BSW und SPD zur
+    Baumschutzsatzung — und darunter, eine Ebene tiefer, der Änderungsantrag
+    der CDU dazu. Daneben ein Antrag zu etwas ganz anderem."""
+    store = CouncilStore(tmp_path / "a.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (8, 'Ausschuss für Stadtgrün, Umwelt und Klima', "
+            "date('now','+2 day'), '17:00', '', datetime('now'))")
+        punkte = [
+            ("Ö 8", "Anträge der Fraktionen, Gruppen, Rats- und Ausschussmitglieder", None, None),
+            ("Ö 8.1", "Änderungen der Baumschutzsatzung (Fraktionen BSW und SPD vom 28.05.2026)",
+             None, None),
+            ("Ö 8.1.1", "Änderungen der Baumschutzsatzung (Fraktionen BSW und SPD vom "
+                        "28.05.2026) - Beschlussantrag mit Bericht der Verwaltung", "26/0613", 201),
+            ("Ö 8.1.2", "Änderungsantrag der CDU-Fraktion vom 10.06.2026 - Antrag mit Bericht "
+                        "der Verwaltung", "26/0631", 202),
+            ("Ö 8.3", "Ermittlungen Abfallentsorgung Fliegerhorst (CDU-Fraktion vom 14.07.2026) "
+                      "- Beschlussantrag mit Bericht der Verwaltung", "26/0604", 203),
+        ]
+        store._conn.executemany(
+            "INSERT INTO council_agenda_items (ksinr, item_number, title, template_number, kvonr, is_public) "
+            "VALUES (8, ?, ?, ?, ?, 1)", punkte)
+        store._conn.executemany(
+            "INSERT INTO council_templates (kvonr, template_number, title, kind, fetched_at) "
+            "VALUES (?, ?, '', 'Beschlussvorlage', datetime('now'))",
+            [(201, "26/0613"), (202, "26/0631"), (203, "26/0604")])
+        store._conn.executemany(
+            "INSERT INTO council_deliberations (kvonr, date, committee, result, fetched_at) "
+            "VALUES (?, date('now','+2 day'), 'Ausschuss für Stadtgrün, Umwelt und Klima', "
+            "'Vorberatung', datetime('now'))", [(201,), (202,), (203,)])
+        store._conn.execute(
+            "INSERT INTO agenda_item_social (ksinr, item_number, text, source, created_at, headline) "
+            "VALUES (8, 'Ö 8.1.2', 'Die CDU beantragt, die Satzung auszusetzen.', 'template', "
+            "datetime('now'), 'Baumschutzsatzung bis Jahresende aussetzen')")
+    return store
+
+
+def test_aenderungsantrag_gehoert_zum_antrag_den_er_aendert(tmp_path):
+    """Der Änderungsantrag der CDU nennt die Baumschutzsatzung nicht — er
+    heißt „Änderungsantrag der CDU-Fraktion vom 10.06.2026" und hängt unter
+    dem Antrag von BSW und SPD. Bis 05.09.26 standen beide einzeln auf der
+    Karte, der zweite mit einer Überschrift, die niemandem etwas sagte (Tims
+    Befund). Jetzt ist es EIN Thema mit zwei Absendern."""
+    store = _antraege_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=99)
+        baum = [p for p in d["items"] if p["item_number"].startswith("Ö 8.1.")]
+        assert len(baum) == 1, "ein Thema, ein Platz"
+        assert baum[0]["gruppe_titel"] == "Änderungen der Baumschutzsatzung", \
+            "der Gruppentitel nennt die Sache, nicht den Absender"
+        assert baum[0]["gruppe_stationen"] == 2
+        assert baum[0]["group_applicants"] == ["Fraktionen BSW und SPD", "CDU-Fraktion"]
+        # Die Rubrik darüber bündelt weiterhin nicht: Der Fliegerhorst-Antrag
+        # steht für sich, mit seinem eigenen Absender.
+        flieger = next(p for p in d["items"] if p["item_number"] == "Ö 8.3")
+        assert flieger["gruppe_titel"] is None
+        assert flieger["group_applicants"] == ["CDU-Fraktion"]
+        # Der Änderungsantrag selbst trägt seinen Absender und, wo sie schon
+        # geschrieben ist, die Karten-Überschrift.
+        cdu = next(p for p in baum + sum(d["further_per_session"].values(), [])
+                   if p["item_number"] == "Ö 8.1.2")
+        assert cdu["applicants"] == "CDU-Fraktion"
+        assert cdu["titel_kurz"] == "Änderungsantrag der CDU-Fraktion"
+        assert cdu["social_headline"] == "Baumschutzsatzung bis Jahresende aussetzen"
+    finally:
+        store.close()
+
+
+def test_titel_zerlegen_liest_den_absender_auch_ohne_klammer():
+    assert CouncilStore._titel_zerlegen(
+        "Änderungsantrag der CDU-Fraktion vom 10.06.2026 - Antrag mit Bericht der Verwaltung") \
+        == ("CDU-Fraktion", "Änderungsantrag der CDU-Fraktion")
+    # Die Klammer-Form bleibt, wie sie war.
+    assert CouncilStore._titel_zerlegen(
+        "Ermittlungen Abfallentsorgung Fliegerhorst (CDU-Fraktion vom 14.07.2026) - Bericht") \
+        == ("CDU-Fraktion", "Ermittlungen Abfallentsorgung Fliegerhorst")
+
+
 def test_weitere_punkte_tragen_ihre_erklaerung_mit(tmp_path):
     """Die Restliste lieferte `summary: None` — für die Website reichte beim
     Aufklappen der Titel. Der Instagram-Bot baut daraus aber ganze Karten, und

@@ -166,6 +166,12 @@ CREATE TABLE IF NOT EXISTS agenda_item_social (
     text        TEXT NOT NULL,
     source      TEXT NOT NULL,  -- was das Modell sah: "template+attachments", "template", "title"
     created_at  TEXT NOT NULL,
+    -- Die Überschrift für die Karte (seit 09/2026): sagt, WORUM es geht, wo
+    -- der amtliche Titel nur sagt, WER wann etwas eingereicht hat
+    -- („Änderungsantrag der CDU-Fraktion vom 10.06.2026"). Entsteht im
+    -- selben Aufruf wie der Text; NULL bei Zeilen von vor der Spalte — der
+    -- Nachtlauf holt sie nach.
+    headline    TEXT,
     PRIMARY KEY(ksinr, item_number)
 );
 
@@ -1401,6 +1407,12 @@ class SchemaMixin:
         # Der Wortlaut des Plans steht daneben in `controllability_raw`.
         self._werte_umschreiben("council_products", "controllability", [
             ("niedrig", "low"), ("mittel", "medium"), ("hoch", "high")])
+
+        # agenda_item_social bekam 09/2026 die Karten-Überschrift dazu.
+        social_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(agenda_item_social)")}
+        if social_cols and "headline" not in social_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE agenda_item_social ADD COLUMN headline TEXT")
 
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(committee_notifications)").fetchall()}
         if "agenda_hash" not in cols:

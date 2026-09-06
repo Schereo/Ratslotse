@@ -666,6 +666,9 @@ class WeekPreviewItem(TypedDict):
     topic_name: str | None
     summary: str | None
     social_text: str | None
+    #: Die Karten-Überschrift aus ``agenda_item_social.headline`` — sagt,
+    #: worum es geht, wo der Titel nur sagt, wer wann eingereicht hat.
+    social_headline: str | None
     dringlich: bool
     wichtig: int
     wichtig_grund: str | None
@@ -677,6 +680,10 @@ class WeekPreviewItem(TypedDict):
     gruppe_nr: str
     gruppe_titel: str | None
     gruppe_stationen: int
+    #: Alle Absender der Gruppe in Tagesordnungs-Reihenfolge, jeder einmal —
+    #: am Einzelpunkt höchstens sein eigener. Die Karte schreibt daraus
+    #: „2 Anträge · Fraktionen BSW und SPD · CDU-Fraktion".
+    group_applicants: list[str]
     #: Nur in ``items``, nicht in ``further_per_session``:
     kind: NotRequired[str | None]
     behandlung: NotRequired[str | None]
