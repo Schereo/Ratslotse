@@ -15,10 +15,10 @@ Instagram-Karten in ``ratslotse-social``: leiser Wellengrund, weiches
 Licht, Möwen als zwei Bögen, Wogen am unteren Rand — gezeichnet mit Pillow
 in den Farben der Designsprache, kein Bildgenerator. Lotti selbst ist ein
 Render aus demselben Studio: die Szene ``splash`` (Hero-Ansicht, zugewandt,
-mit den gewölbten Freude-Brauen), über ``studio/marke.py`` nach
-``assets/marke/lotti-splash.png`` gelegt. Die Jubel-Szene der App war der
-erste Stand; die Helden-Pose der Karten wirkte mit ihrem „hört zu" auf dem
-Splash traurig (Tim, 06.09.26).
+mit den gewölbten Freude-Brauen, ihre beiden Küken davor), über
+``studio/marke.py`` nach ``assets/marke/lotti-splash.png`` gelegt. Die
+Jubel-Szene der App war der erste Stand; die Helden-Pose der Karten wirkte
+mit ihrem „hört zu" auf dem Splash traurig (Tim, 06.09.26).
 
 DIE LEINWAND IST 1400 PUNKT GROSS, UND DAS IST KEIN ZUFALL. ``UILaunchScreen``
 zeigt das Bild ungeskaliert und zentriert; was über den Bildschirm
@@ -235,11 +235,12 @@ def splash(scale: int, dunkel: bool, social: Path, figur: Path) -> Image.Image:
         (760 * s, 372 * s, 16 * s),
     ])
 
-    # 4. Lotti, 270 pt hoch — das Marken-Render trägt 1200 px, bei 3× also
-    #    ein leichtes Verkleinern. Die Füße stehen knapp über dem ersten
+    # 4. Lotti mit ihren beiden Küken, 250 pt hoch — die Gruppe ist 1,3-mal
+    #    so breit wie hoch, also gut 330 pt breit; mehr trägt der kleinste
+    #    Bildschirm (375 pt) nicht. Die Füße stehen knapp über dem ersten
     #    Wogenkamm.
-    lotti = _figur(figur, 270 * s)
-    bild.alpha_composite(lotti, (round(mitte - lotti.width / 2), round(492 * s)))
+    lotti = _figur(figur, 250 * s)
+    bild.alpha_composite(lotti, (round(mitte - lotti.width / 2), round(512 * s)))
 
     # 5. Wortmarke und Kicker — dieselben Schnitte wie in der App
     #    (RatsFont.title heavy, RatsFont.mono medium mit Laufweite).
