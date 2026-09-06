@@ -10,7 +10,6 @@ Was hier gehalten wird:
 """
 from __future__ import annotations
 
-import json
 import os
 import sys
 import tempfile
@@ -99,7 +98,8 @@ def test_normiere_uebersetzt_millisekunden_und_ohne_geometrie():
                                        "rechtsverbindlich": 1614902400000, "Satzungsbeschluss_Rat_VA": "2020-09-28T00:00:00"},
                         "geometry": None})
     assert z["key"] == "777G" and z["effective_date"] == "2021-03-05" and z["adoption_date"] == "2020-09-28"
-    assert z["geojson"] is None and z["lat"] is None
+    assert z["geojson"] is None and z["lat"] is None and z["status"] == "effective"
+    assert bplan.normiere({"properties": {"Planverfahren": "871"}, "geometry": None}, "in_procedure")["status"] == "in_procedure"
     assert bplan.normiere({"properties": {"Planverfahren": ""}}) is None
 
 
@@ -151,12 +151,34 @@ def test_vorhaben_bekommt_geltungsbereich_nur_im_eigenen_ortsbereich():
     store.close()
 
 
+class _Antwort:
+    def __init__(self, features): self._f = features
+    def raise_for_status(self): ...
+    def json(self): return {"type": "FeatureCollection", "features": self._f}
+
+
+def test_fetch_outlines_liest_beide_ebenen_seitenweise(monkeypatch):
+    """Rechtsverbindlich (Ebene 18) und in Aufstellung (19), seitenweise; ein
+    Schlüssel in beiden Ebenen bleibt rechtsverbindlich."""
+    def feature(nr): return {"properties": {"Planverfahren": nr, "Name": nr}, "geometry": _viereck(8.2, 53.1)}
+    seiten = {18: [[feature(str(n)) for n in range(1, bplan.SEITE + 1)], [feature("999")]],
+              19: [[feature("999"), feature("871")]]}
+    aufrufe: list[tuple[int, int]] = []
+
+    def get(url, params=None, timeout=None):
+        layer = int(url.rstrip("/query").rsplit("/", 1)[1])
+        aufrufe.append((layer, params["resultOffset"]))
+        return _Antwort(seiten[layer][params["resultOffset"] // bplan.SEITE])
+    monkeypatch.setattr(bplan._session, "get", get)
+    zeilen = bplan.fetch_outlines()
+    assert aufrufe == [(18, 0), (18, bplan.SEITE), (19, 0)]
+    nach_key = {z["key"]: z for z in zeilen}
+    assert len(zeilen) == bplan.SEITE + 2
+    assert nach_key["999"]["status"] == "effective" and nach_key["871"]["status"] == "in_procedure"
+
+
 def test_fetch_outlines_verweigert_halben_abzug(monkeypatch):
-    class Antwort:
-        def raise_for_status(self): ...
-        def json(self): return {"type": "FeatureCollection", "features": [
-            {"properties": {"Planverfahren": "1"}, "geometry": _viereck(8.2, 53.1)}]}
-    monkeypatch.setattr(bplan._session, "get", lambda *a, **k: Antwort())
+    monkeypatch.setattr(bplan._session, "get", lambda *a, **k: _Antwort(
+        [{"properties": {"Planverfahren": "1"}, "geometry": _viereck(8.2, 53.1)}]))
     with pytest.raises(RuntimeError):
         bplan.fetch_outlines()
-    assert json.dumps(_viereck(8.2, 53.1))  # nur, damit json nicht ungenutzt ist

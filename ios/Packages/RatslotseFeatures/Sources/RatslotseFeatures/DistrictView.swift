@@ -315,11 +315,13 @@ struct DistrictBoardView: View {
                     let boundary = location.role != "subject"
                     // Der Geltungsbereich eines Bebauungsplans (Stadt-Geodaten):
                     // gestrichelter Rand, leichte Füllung in der Farbe des Stands.
+                    // Rechtsverbindlich = durchgezogen; in Aufstellung = gestrichelt und blasser.
+                    let inProcedure = location.plan?.status == "in_procedure"
                     ForEach(Array((location.kind == "bplan" ? polygons(location.geometry) : []).enumerated()), id: \.offset) { _, ring in
                         MapPolygon(coordinates: ring)
-                            .foregroundStyle(stage.color.opacity(dimmed ? 0.04 : active ? 0.22 : 0.14))
+                            .foregroundStyle(stage.color.opacity(dimmed ? 0.04 : active ? (inProcedure ? 0.14 : 0.22) : (inProcedure ? 0.08 : 0.14)))
                             .stroke(stage.color.opacity(dimmed ? 0.2 : 0.85),
-                                    style: StrokeStyle(lineWidth: active ? 3 : 2, dash: [6, 4]))
+                                    style: StrokeStyle(lineWidth: active ? 3 : 2, dash: inProcedure ? [6, 4] : []))
                     }
                     ForEach(Array((boundary ? [] : lineStrings(location.geometry)).enumerated()), id: \.offset) { _, line in
                         MapPolyline(coordinates: line)
@@ -626,6 +628,7 @@ private struct DistrictProjectSheet: View {
                                 .font(RatsFont.body(13))
                                 .foregroundStyle(RatsColor.secondary)
                             Text([
+                                plan.status == "in_procedure" ? "In Aufstellung" : nil,
                                 plan.resolutionDate.flatMap { RatsDate.short($0) }.map { "Aufstellung \($0)" },
                                 plan.adoptionDate.flatMap { RatsDate.short($0) }.map { "Satzung \($0)" },
                                 plan.effectiveDate.flatMap { RatsDate.short($0) }.map { "rechtskräftig seit \($0)" },

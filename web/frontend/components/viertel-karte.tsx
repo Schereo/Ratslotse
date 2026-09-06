@@ -25,7 +25,7 @@ export type KartenVorhaben = {
   name: string;
   stage: string;
   when: string | null;
-  locations: { slug: string; name: string; kind: string; lat: number; lon: number; geometry: unknown; role: string }[];
+  locations: { slug: string; name: string; kind: string; lat: number; lon: number; geometry: unknown; role?: string; plan?: { status: string } }[];
 };
 
 /** Stand → Farbe. Dieselben Töne wie die Badges der Liste, damit Pin und
@@ -38,7 +38,7 @@ const STAND_LABEL: Record<string, string> = {
 };
 
 const VOYAGER = basemapUrl("voyager");
-const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (dl-de/zero)";
+const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (Geoportal)";
 
 export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, className }: {
   /** Name des Ortsbereichs — die Grenze kommt aus dem statischen GeoJSON. */
@@ -132,9 +132,14 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, onSelect, 
         // des Stands — die Fläche, auf der etwas entsteht, das OSM noch nicht
         // kennt. Straßen-Polygone anderer Art bleiben beim Pin.
         if (linie && loc.kind === "bplan" && (linie.type === "Polygon" || linie.type === "MultiPolygon")) {
+          // Rechtsverbindlich = durchgezogen; in Aufstellung = gestrichelt und
+          // blasser. Der Unterschied ist die Aussage der Fläche: das eine gilt,
+          // das andere ist ein Vorhaben der Verwaltung.
+          const inVerfahren = loc.plan?.status === "in_procedure";
           const layer = L.geoJSON(linie as never, {
-            style: { color: farbe, weight: istAktiv ? 3 : 2, dashArray: "6 4", opacity: blass ? 0.2 : 0.85,
-              fillColor: farbe, fillOpacity: blass ? 0.04 : istAktiv ? 0.22 : 0.14 },
+            style: { color: farbe, weight: istAktiv ? 3 : 2, dashArray: inVerfahren ? "6 4" : undefined,
+              opacity: blass ? 0.2 : 0.85,
+              fillColor: farbe, fillOpacity: blass ? 0.04 : istAktiv ? (inVerfahren ? 0.14 : 0.22) : (inVerfahren ? 0.08 : 0.14) },
           });
           anklicken(layer);
           gruppe.addLayer(layer);

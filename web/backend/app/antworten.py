@@ -2079,6 +2079,8 @@ class DistrictPlanInfo(TypedDict):
     die Stationen des Verfahrens aus den offenen Geodaten der Stadt."""
     nr: str
     name: str
+    #: ``effective`` (rechtsverbindlich) oder ``in_procedure`` (in Aufstellung).
+    status: str
     resolution_date: str | None
     adoption_date: str | None
     effective_date: str | None

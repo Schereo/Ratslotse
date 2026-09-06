@@ -6557,6 +6557,8 @@ export interface components {
             source: string;
             /** Source Url */
             source_url: string;
+            /** Status */
+            status: string;
         };
         /**
          * DistrictProject
@@ -14899,4 +14901,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6f96db013f7ca93766b746560f748bae8ead1fb7c250d3b3da2800cc9d4eea3c
+// vertrag-sha256: d48c8877d196ad7c0ee651d310398b34dbde170c3dc315708121d61b4acb72b9

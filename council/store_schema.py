@@ -401,14 +401,15 @@ CREATE TABLE IF NOT EXISTS council_district_project_reports (
     UNIQUE (project_key, owner_id)
 );
 
--- Umringe der rechtsverbindlichen Bebauungspläne der Stadt (openGEOdata,
--- dl-de/zero), wöchentlich als Ganzes ersetzt (council/bplan.py). `key` ist
+-- Umringe der Bebauungspläne der Stadt aus ihrem Geoportal (rechtsverbindlich
+-- UND in Aufstellung, `status`), wöchentlich als Ganzes ersetzt (council/bplan.py). `key` ist
 -- die Vergleichsform der Plannummer (bplan.schluessel), über die ein
 -- Beschlusstitel seinen Plan findet. Datumsfelder ISO, Geometrie GeoJSON.
 CREATE TABLE IF NOT EXISTS council_bplan_outlines (
     key             TEXT PRIMARY KEY,
     nr              TEXT NOT NULL,
     name            TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'effective',
     art             INTEGER,
     verfahren       INTEGER,
     note            TEXT,
@@ -1826,7 +1827,8 @@ class SchemaMixin(StoreBasis):
         # offenen Geodaten, je Wochenlauf ersetzt.
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS council_bplan_outlines ("
-            "key TEXT PRIMARY KEY, nr TEXT NOT NULL, name TEXT NOT NULL, art INTEGER, verfahren INTEGER, "
+            "key TEXT PRIMARY KEY, nr TEXT NOT NULL, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'effective', "
+            "art INTEGER, verfahren INTEGER, "
             "note TEXT, resolution_date TEXT, adoption_date TEXT, effective_date TEXT, drawing_code TEXT, "
             "stol_id INTEGER, geojson TEXT, lat REAL, lon REAL, updated_at TEXT NOT NULL)"
         )

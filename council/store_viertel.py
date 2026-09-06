@@ -394,7 +394,7 @@ class ViertelMixin(StoreBasis):
                 "kind": "bplan", "lat": treffer["lat"], "lon": treffer["lon"],
                 "geometry": geometrie, "role": "subject",
                 "plan": {
-                    "nr": treffer["nr"], "name": treffer["name"],
+                    "nr": treffer["nr"], "name": treffer["name"], "status": treffer["status"],
                     "resolution_date": treffer["resolution_date"],
                     "adoption_date": treffer["adoption_date"],
                     "effective_date": treffer["effective_date"],

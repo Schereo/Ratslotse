@@ -68,6 +68,8 @@ public struct DistrictProjectDecision: Codable, Sendable, Hashable, Identifiable
 public struct DistrictPlanInfo: Codable, Sendable, Hashable {
     public let nr: String
     public let name: String
+    /// `effective` (rechtsverbindlich) oder `in_procedure` (in Aufstellung).
+    public let status: String
     public let resolutionDate: String?
     public let adoptionDate: String?
     public let effectiveDate: String?
@@ -76,7 +78,7 @@ public struct DistrictPlanInfo: Codable, Sendable, Hashable {
     public let sourceURL: String
 
     enum CodingKeys: String, CodingKey {
-        case nr, name, note, source
+        case nr, name, status, note, source
         case resolutionDate = "resolution_date"
         case adoptionDate = "adoption_date"
         case effectiveDate = "effective_date"

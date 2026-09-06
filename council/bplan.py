@@ -4,13 +4,22 @@
 umfasst, steht als Planzeichnung im Anhang der Vorlage — ein Bild, aus dem
 sich keine Fläche für eine Karte gewinnen lässt (die Fallen stehen in der
 Notiz zur Planzeichnungs-Idee: AES-verschlüsselte PDFs, kein Renderer auf dem
-Server). Die Stadt veröffentlicht die Umringe aller **rechtsverbindlichen**
-Bebauungspläne aber selbst, als offene Geodaten (openGEOdata, Datenlizenz
-Deutschland – Zero 2.0): je Plan die Nummer („777 G"), der Name, die Daten
-von Aufstellungs- und Satzungsbeschluss, die Rechtskraft und die Fläche als
+Server). Die Stadt führt die Umringe aller Bebauungspläne aber selbst in
+ihrem Geoportal: je Plan die Nummer („777 G"), der Name, die Daten von
+Aufstellungs- und Satzungsbeschluss, die Rechtskraft und die Fläche als
 Polygon. Damit bekommt ein Vorhaben wie „Hallensichel-Ost/Entlastungsstraße"
 seine Fläche auf die Karte, obwohl die Straße noch nicht gebaut ist und
 OpenStreetMap sie deshalb nicht kennt (Tims Wunsch, 06.09.2026).
+
+**Welche Quelle, und warum diese.** Auf openGEOdata liegt ein Abzug
+„Umringe Bplan" (dl-de/zero) — zuletzt im Mai 2024 gepflegt, jüngster Plan
+von Juli 2023; alles seither Rechtskräftige fehlte dort (gemessen
+06.09.2026: 28 von 37 Vorhaben mit Plannummer ohne Fläche). Der
+**Kartendienst des Geoportals** trägt dieselben Daten live, und dazu die
+zweite Ebene, die der Abzug nie hatte: die **Pläne in Aufstellung** — genau
+der Stand „in Planung", um den es auf der Tafel meist geht. Gemessen am
+06.09.2026: 665 rechtsverbindliche Pläne (jüngster 24.07.2026) und 79 in
+Aufstellung (jüngster Aufstellungsbeschluss 31.08.2026).
 
 **Die Verknüpfung läuft über die Plannummer im Beschlusstitel.** Die
 Verwaltung schreibt sie immer hinein: „Bebauungsplan N-777 G (…) -
@@ -22,16 +31,16 @@ Vorlagen, nicht im Datensatz; „Nr." und „Nummer" fehlen dort ebenso).
 
 **Grenzen, die man kennen muss:**
 
-- Der Datensatz führt nur rechtsverbindliche Pläne. Ein Plan zwischen
-  Aufstellungs- und Satzungsbeschluss fehlt — genau der Stand „in Planung"
-  bleibt also ohne Fläche, bis die Satzung in Kraft ist. Gemessen 06.09.2026:
-  668 Pläne, 7 davon ohne Geometrie.
 - Der Umring ist der **Geltungsbereich**, nicht die Straße oder das Gebäude
   darin. Die Verkehrsflächen selbst stünden im XPlanGML — eine zweite Stufe.
 - Eine **Änderung** eines Plans hat oft einen eigenen, kleineren Umring
-  („513 Änd. 1"). Gibt es den im Datensatz, gilt er; sonst fällt die
-  Zuordnung auf den Ursprungsplan zurück, weil eine Änderung innerhalb seines
+  („513 Änd. 1"). Gibt es den, gilt er; sonst fällt die Zuordnung auf den
+  Ursprungsplan zurück, weil eine Änderung innerhalb seines
   Geltungsbereichs liegt.
+- Steht ein Plan in **beiden** Ebenen (Änderung in Aufstellung zum
+  rechtskräftigen Ursprungsplan), sind das zwei Schlüssel — kein Konflikt.
+  Denselben Schlüssel in beiden Ebenen gab es am 06.09.2026 nicht; käme er
+  vor, gewänne der rechtsverbindliche.
 """
 from __future__ import annotations
 
@@ -41,14 +50,15 @@ from datetime import datetime, timezone
 
 import requests
 
-#: Der städtische Dienst hinter dem openGEOdata-Datensatz „Umringe Bplan".
-#: EIN Aufruf holt alle Pläne (Deckel des Dienstes: 2.000 Datensätze, es
-#: sind 668) — in WGS84, als GeoJSON.
-FEATURE_URL = ("https://services5.arcgis.com/kqBnwL0FsBhsJf2P/arcgis/rest/services/"
-               "Umringe_Bplan/FeatureServer/0/query")
-FEATURE_PARAMS = {"where": "1=1", "outFields": "*", "outSR": "4326", "f": "geojson"}
-QUELLE_URL = "https://opengeodata-stadt-oldenburg-gis4ol.hub.arcgis.com/datasets/umringe-bplan"
-QUELLE_LABEL = "Stadt Oldenburg, openGEOdata (dl-de/zero 2.0)"
+#: Der Kartendienst des städtischen Geoportals (ArcGIS Server 10.7). Zwei
+#: Ebenen desselben Dienstes, gleiche Felder: 18 = rechtsverbindlich,
+#: 19 = in Aufstellung. Seitenweise (der Dienst deckelt bei 1.000), als
+#: GeoJSON in WGS84.
+MAPSERVER = "https://gisportal4ol.oldenburg.de/server/rest/services/GeoPortal/GeoPortal/MapServer"
+EBENEN = {"effective": 18, "in_procedure": 19}
+SEITE = 500
+QUELLE_URL = "https://gis4ol.oldenburg.de/Stadtplan/?esearch=9&slayer=0&exprnum=0"
+QUELLE_LABEL = "Stadt Oldenburg, Geoportal"
 
 _session = requests.Session()
 _session.headers["User-Agent"] = "Ratslotse (+https://ratslotse.de)"
@@ -181,8 +191,10 @@ def plannummern_im_titel(titel: str | None) -> list[str]:
     return out
 
 
-def normiere(feature: dict) -> dict | None:
-    """Ein Feature des Dienstes → eine Zeile für ``council_bplan_outlines``."""
+def normiere(feature: dict, status: str = "effective") -> dict | None:
+    """Ein Feature des Dienstes → eine Zeile für ``council_bplan_outlines``.
+    ``status``: ``effective`` (rechtsverbindlich) oder ``in_procedure`` (in
+    Aufstellung) — die Ebene, aus der das Feature kommt."""
     p = feature.get("properties") or {}
     nr = (p.get("Planverfahren") or "").strip()
     if not nr:
@@ -192,6 +204,7 @@ def normiere(feature: dict) -> dict | None:
     return {
         "key": schluessel(nr),
         "nr": nr,
+        "status": status,
         "name": (p.get("Name") or "").strip(),
         "art": p.get("Art"),
         "verfahren": p.get("Verfahren"),
@@ -207,17 +220,41 @@ def normiere(feature: dict) -> dict | None:
     }
 
 
+def _ebene(layer: int, timeout: int) -> list[dict]:
+    """Alle Features einer Ebene, seitenweise."""
+    out: list[dict] = []
+    offset = 0
+    while True:
+        r = _session.get(f"{MAPSERVER}/{layer}/query", params={
+            "where": "1=1", "outFields": "*", "outSR": "4326", "f": "geojson",
+            "orderByFields": "OBJECTID", "resultOffset": offset, "resultRecordCount": SEITE,
+        }, timeout=timeout)
+        r.raise_for_status()
+        daten = r.json()
+        if "error" in daten:
+            raise RuntimeError(f"Geoportal, Ebene {layer}: {daten['error']}")
+        features = daten.get("features", [])
+        out.extend(features)
+        if len(features) < SEITE:
+            return out
+        offset += SEITE
+        if offset > 20 * SEITE:
+            raise RuntimeError(f"Geoportal, Ebene {layer}: mehr als {20 * SEITE} Features — das ist kein Ende.")
+
+
 def fetch_outlines(timeout: int = 120) -> list[dict]:
-    """Alle Umringe vom städtischen Dienst holen, normiert. Wirft bei
-    Netzfehlern — der Aufrufer (Wochenlauf) entscheidet, ob der alte Bestand
-    stehen bleibt (er bleibt: ``replace_bplan_outlines`` läuft erst danach)."""
-    r = _session.get(FEATURE_URL, params=FEATURE_PARAMS, timeout=timeout)
-    r.raise_for_status()
-    daten = r.json()
-    if daten.get("exceededTransferLimit") or (daten.get("properties") or {}).get("exceededTransferLimit"):
-        raise RuntimeError("Der Dienst hat den Datensatz abgeschnitten (exceededTransferLimit).")
-    zeilen = [z for z in (normiere(f) for f in daten.get("features", [])) if z]
-    if len(zeilen) < 100:
-        # Ein leerer oder halber Datensatz darf den Bestand nicht ersetzen.
+    """Alle Umringe aus beiden Ebenen des Geoportals holen, normiert. Wirft bei
+    Netzfehlern und bei einem verdächtig kleinen Abzug — der Aufrufer
+    (Wochenlauf) lässt dann den alten Bestand stehen
+    (``replace_bplan_outlines`` läuft erst danach)."""
+    zeilen: dict[str, dict] = {}
+    # Rechtsverbindlich zuerst: Träfe derselbe Schlüssel in beiden Ebenen auf,
+    # bleibt der rechtsverbindliche stehen.
+    for status in ("effective", "in_procedure"):
+        for f in _ebene(EBENEN[status], timeout):
+            z = normiere(f, status)
+            if z and z["key"] not in zeilen:
+                zeilen[z["key"]] = z
+    if sum(1 for z in zeilen.values() if z["status"] == "effective") < 100:
         raise RuntimeError(f"Nur {len(zeilen)} Bebauungspläne geliefert — das ist kein Vollabzug.")
-    return zeilen
+    return list(zeilen.values())

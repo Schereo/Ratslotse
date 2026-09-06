@@ -735,6 +735,7 @@ function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen }: {
           <p className="font-semibold text-foreground">Bebauungsplan {l.plan!.nr} <span className="font-normal text-muted-foreground">· {l.plan!.name}</span></p>
           <p className="mt-1 text-muted-foreground">
             {[
+              l.plan!.status === "in_procedure" && "In Aufstellung",
               l.plan!.resolution_date && `Aufstellung ${formatDate(l.plan!.resolution_date)}`,
               l.plan!.adoption_date && `Satzung ${formatDate(l.plan!.adoption_date)}`,
               l.plan!.effective_date && `rechtskräftig seit ${formatDate(l.plan!.effective_date)}`,

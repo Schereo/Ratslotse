@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from council.store_basis import StoreBasis
 from kern.dbfehler import tabelle_fehlt
 
-_SPALTEN = ("key", "nr", "name", "art", "verfahren", "note", "resolution_date", "adoption_date",
+_SPALTEN = ("key", "nr", "name", "status", "art", "verfahren", "note", "resolution_date", "adoption_date",
             "effective_date", "drawing_code", "stol_id", "geojson", "lat", "lon")
 
 

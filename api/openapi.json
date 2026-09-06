@@ -5851,11 +5851,16 @@
           "source_url": {
             "title": "Source Url",
             "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
           }
         },
         "required": [
           "nr",
           "name",
+          "status",
           "resolution_date",
           "adoption_date",
           "effective_date",
