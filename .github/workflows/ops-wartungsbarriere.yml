@@ -1,4 +1,4 @@
-name: Ops – Wartungsbarriere (Prod)
+name: Ops – Wartungsbarriere & Generalprobe (Prod)
 
 # Notausgang für einen abgebrochenen Deploy. `deploy.yml` setzt VOR dem rsync
 # die Wartungsbarriere `data/.release-maintenance`; bricht der Lauf danach ab
@@ -18,9 +18,9 @@ on:
   workflow_dispatch:
     inputs:
       aktion:
-        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy)"
+        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
         type: choice
-        options: [status, aufheben]
+        options: [status, aufheben, probe]
         default: status
 
 concurrency:
@@ -91,4 +91,16 @@ jobs:
             sleep 2
             curl -s -o /dev/null -w "health danach: %{http_code}\n" --max-time 5 http://127.0.0.1:8000/api/health
             curl -s -o /dev/null -w "heute danach:  %{http_code}\n" --max-time 10 http://127.0.0.1:8000/api/council/heute
+          '
+
+      # Generalprobe vor einer Ratssitzung: transkribiert den O1-Stream 60 s
+      # über den Streaming-Weg (council/stream_stt) auf dem Server — Schlüssel,
+      # ffmpeg, Netz und Gladia in einem Lauf geprüft, ohne SSH vom Notebook.
+      - name: Generalprobe Streaming
+        if: ${{ inputs.aktion == 'probe' }}
+        run: |
+          ssh target '
+            set -eu
+            cd ~/app
+            .venv/bin/python scripts/record_council_livestream.py --probe 60
           '
