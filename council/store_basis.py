@@ -41,6 +41,8 @@ class StoreBasis:
         from contextlib import AbstractContextManager
         from pathlib import Path
 
+        from council.places import Place
+
         #: Die offene Verbindung zur Rats-Datenbank. Angelegt in
         #: ``CouncilStore.__init__``, mit ``row_factory = sqlite3.Row``.
         _conn: sqlite3.Connection
@@ -68,7 +70,7 @@ class StoreBasis:
             """Wie viele Suchbegriffe stecken in ``text``? 0 = kein Treffer."""
             ...
 
-        def resolve_place(self, value: str | None):
+        def resolve_place(self, value: str | None) -> Place | None:
             """Kanonischer Ortsbereich zu ID, Name oder Alias (``store_orte``)."""
             ...
 
