@@ -5971,6 +5971,10 @@
             "title": "Name",
             "type": "string"
           },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -5982,7 +5986,8 @@
           "kind",
           "lat",
           "lon",
-          "geometry"
+          "geometry",
+          "role"
         ],
         "title": "DistrictProjectLocation",
         "type": "object"

@@ -319,3 +319,45 @@ def test_lauf_ueberlebt_einen_scheiternden_ortsbereich(monkeypatch):
     assert set(store.district_reviews("kreyenbrueck")) == {10, 11, 12}
     store.close()
 
+
+def test_abschnittsgrenzen_sind_kein_gegenstand():
+    """„Tweelbäker Tredde (Am Schmeel bis Brahmweg)" baut die Tredde aus — die
+    beiden Grenzen bleiben, wie sie sind (Tims Befund 06.09.2026)."""
+    from council.store_viertel import ortsrollen
+    strassen = {n: "street" for n in ("Tweelbäker Tredde", "Am Schmeel", "Brahmweg", "Dießelweg", "Scharfgabenweg")}
+    rollen = ortsrollen(["Tweelbäker Tredde", "Am Schmeel", "Brahmweg", "Dießelweg", "Scharfgabenweg"], [
+        "Tweelbäker Tredde (Am Schmeel bis Brahmweg) – Straßenausbau",
+        "Die Tweelbäker Tredde soll zwischen Am Schmeel und Brahmweg ausgebaut werden.",
+        "",
+        # Die echte Vorlage erzählt das Straßennetz drumherum — das darf die
+        # Rolle aus dem Titel nicht kippen, und die Nebenstraßen darin sind
+        # kein Gegenstand.
+        "Die Tweelbäker Tredde ist eine Wohnsammelstraße und bindet unter anderem die Straßen\n"
+        "Dießelweg, Scharfgabenweg und Brahmweg an die Straße Am Schmeel an. Der Ausbau der "
+        "Tweelbäker Tredde erfolgt zwischen Am Schmeel und Brahmweg.",
+    ], kinds=strassen)
+    assert rollen == {"Tweelbäker Tredde": "subject", "Am Schmeel": "boundary", "Brahmweg": "boundary",
+                      "Dießelweg": "boundary", "Scharfgabenweg": "boundary"}
+    # Die erste Stufe entscheidet: Steht ein Name im Titel frei, macht ihn
+    # kein „zwischen" in der Vorlage zur Grenze.
+    assert ortsrollen(["Hauptstraße"], ["Sanierung der Hauptstraße", "zwischen Hauptstraße und Bahn"],
+                      kinds={"Hauptstraße": "street"}) == {"Hauptstraße": "subject"}
+    # Das Wohnquartier: Die drei Straßen stehen in jedem Titel, gebaut wird
+    # auf den Flächen dahinter — Straßen ohne Bauwort sind Bezug, die Fläche
+    # bleibt Gegenstand. Titel sind durch Leerzeilen getrennte Sätze.
+    assert ortsrollen(["Am Schmeel", "Brahmweg", "Quartier am Krusenbusch"], [
+        "Entwicklungsabsichten Quartier Am Schmeel/Krusenbusch - Bericht\n\n"
+        "Bebauungsplan 865 (Quartier am Krusenbusch) - Aufstellungsbeschluss\n\n"
+        "Geplantes Wohnquartier Krusenbusch (Am Schmeel, Tweelbäker Tredde, Brahmweg) - Bericht",
+        "Zudem ist beabsichtigt, die vorhandene Hofstelle am Brahmweg zu sanieren.",
+    ], kinds={"Am Schmeel": "street", "Brahmweg": "street", "Quartier am Krusenbusch": "area"}) == {
+        "Am Schmeel": "context", "Brahmweg": "context", "Quartier am Krusenbusch": "subject"}
+    # Eine Kreuzung ist Gegenstand, beide Straßen sind betroffen.
+    assert ortsrollen(["Schützenhofstraße", "Bremer Straße"],
+                      ["Straßenbaumaßnahme Kreuzung Schützenhofstraße/Bremer Straße"],
+                      kinds={"Schützenhofstraße": "street", "Bremer Straße": "street"}) == {
+        "Schützenhofstraße": "subject", "Bremer Straße": "subject"}
+    # Nur Grenzen: die Fläche dazwischen ist das Vorhaben — Rolle bleibt Grenze.
+    assert ortsrollen(["Rüschenweg"], ["Flächen zwischen der A 29 und dem Rüschenweg"]) == {"Rüschenweg": "boundary"}
+    # Nicht im Text (Katalog-Variante) → Gegenstand, nie still weg.
+    assert ortsrollen(["Huntemannstr"], ["Kita an der Huntemannstraße"]) == {"Huntemannstr": "subject"}
