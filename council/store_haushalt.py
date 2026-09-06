@@ -508,10 +508,18 @@ class HaushaltMixin(StoreBasis):
             wo.append("kind = ?")
             werte.append(kind)
         satz = (" WHERE " + " AND ".join(wo)) if wo else ""
+        # Der Schlüssel der Tabelle ist (plan_budget_year, year, nr); dasselbe
+        # Jahr steht in mehreren Plänen, mit derselben Art: Was der Haushalt
+        # 2025 für 2027 vorsah und was der Haushalt 2026 dafür vorsieht, sind
+        # zwei Zeilen mit gleichem (year, kind, nr). Ohne den Planjahrgang im
+        # ORDER BY entschiede SQLite die Reihenfolge dieser Zeilen nach rowid,
+        # und die wechselt mit jedem Löschen-und-Neuschreiben eines Jahrgangs.
+        # Die Liste geht so ans Frontend — deshalb ein vollständiger
+        # Schlüssel, je Plan ein zusammenhängender Block in Postenfolge.
         try:
             return [dict(r) for r in self._conn.execute(
                 "SELECT * FROM council_income_budget" + satz
-                + " ORDER BY year, kind, nr", werte)]
+                + " ORDER BY year, kind, plan_budget_year, nr", werte)]
         except sqlite3.OperationalError:
             return []
 

@@ -197,6 +197,15 @@ def _anlage(store: CouncilStore, text: str, document_id: int = 297441) -> None:
     store._conn.commit()
 
 
+def _ohne_zeitstempel(zeilen: list[dict]) -> list[dict]:
+    """Die Zeilen wie sie sind — nur ohne ``fetched_at``.
+
+    Das Feld trägt die Sekunde des Laufs; wer zwei Läufe darüber vergleicht,
+    misst die Uhr statt den Inhalt. In der CI lagen zwei Läufe desselben
+    Tests einmal in 19:20:42 und 19:20:43 — inhaltsgleich, rot."""
+    return [{k: v for k, v in z.items() if k != "fetched_at"} for z in zeilen]
+
+
 def _quelle(document_id: int = 297441) -> herkunft.Herkunft:
     return herkunft.Herkunft(
         kind="ris", probe=["income_budget_total_rows",
@@ -436,6 +445,34 @@ def test_store_haelt_ansatz_und_finanzplanung_auseinander(tmp_path):
     store.close()
 
 
+def test_reihenfolge_ist_auch_bei_zwei_plaenen_fest(tmp_path):
+    """(year, kind, nr) reicht als Sortierschlüssel nicht: 2027 steht als
+    Finanzplanung im Haushalt 2025 UND im Haushalt 2026. Ohne den Planjahrgang
+    im ORDER BY entscheidet die rowid — und die wechselt mit jedem
+    Löschen-und-Neuschreiben eines Jahrgangs. Die Liste geht ans Frontend."""
+    store = CouncilStore(tmp_path / "c.sqlite")
+    p26, p25 = eh.lies(GEH_2026)["zeilen"], eh.lies(GEH_2025)["zeilen"]
+    store.save_ergebnishaushalt(2026, p26, _quelle(297441))
+    store.save_ergebnishaushalt(2025, p25, _quelle(282812))
+
+    def folge():
+        return [(z["plan_budget_year"], z["nr"])
+                for z in store.get_ergebnishaushalt(year=2027)]
+
+    # Je Plan ein Block, darin die Posten aufsteigend (die Nummern sind
+    # nicht lückenlos — die 10 fehlt, deshalb aus den Zeilen abgeleitet).
+    def posten(zeilen):
+        return sorted(z["nr"] for z in zeilen if z["year"] == 2027)
+
+    erwartet = ([(2025, n) for n in posten(p25)]
+                + [(2026, n) for n in posten(p26)])
+    assert len(erwartet) == 46 and folge() == erwartet
+    # Den älteren Plan neu schreiben: neue rowids, dieselbe Reihenfolge.
+    store.save_ergebnishaushalt(2025, p25, _quelle(282812))
+    assert folge() == erwartet
+    store.close()
+
+
 def test_ansatz_jahre_fuehren_keine_finanzplanung(tmp_path):
     """Ein Jahr-Umschalter, der 2029 anbietet, behauptet einen Beschluss."""
     store = CouncilStore(tmp_path / "c.sqlite")
@@ -478,13 +515,16 @@ def test_ingest_liest_ein_und_tut_beim_zweiten_mal_nichts(tmp_path):
     assert not p.warnungen
 
     vorher = store.get_ergebnishaushalt()
-    # Der Cron-Weg: `nur_fehlende` sieht den Jahrgang und rührt ihn nicht an.
+    # Der Cron-Weg: `nur_fehlende` sieht den Jahrgang und rührt ihn nicht an —
+    # hier darf auch der Zeitstempel nicht wandern.
     zweit = finanzquellen.lies_ergebnishaushalte(store, p, nur_fehlende=True)
     assert zweit["neue_jahrgaenge"] == [] and zweit["planzeilen"] == 0
     assert store.get_ergebnishaushalt() == vorher
-    # Und der Weg von Hand schreibt denselben Inhalt zurück, nicht doppelt.
+    # Und der Weg von Hand schreibt denselben Inhalt zurück, nicht doppelt:
+    # gleiche Zeilen in gleicher Folge, dieselbe Herkunft. Nur `fetched_at`
+    # ist dann die Sekunde DIESES Laufs — bewusst nicht Teil des Vergleichs.
     finanzquellen.lies_ergebnishaushalte(store, p)
-    assert store.get_ergebnishaushalt() == vorher
+    assert _ohne_zeitstempel(store.get_ergebnishaushalt()) == _ohne_zeitstempel(vorher)
     store.close()
 
 
