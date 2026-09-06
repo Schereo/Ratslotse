@@ -199,3 +199,26 @@ def test_recorder_prefers_streaming_when_configured(monkeypatch):
         segs, weg = record_council_livestream._record(4702, None)
     assert (segs, weg) == ([(1.0, "y")], "gladia")
     fresh.assert_not_called()
+
+
+def test_record_and_transcribe_reports_segments_at_once_and_stops_on_signal(monkeypatch):
+    """Die Live-Probe im Admin-Panel will jede Äußerung sofort — und die
+    Aufnahme muss von außen enden, wenn der Browser die Seite verlässt."""
+    fake = _FakeWS({5.0: "Erste Äußerung.", 12.0: "Zweite Äußerung."})
+    monkeypatch.setattr(stream_stt, "open_session", lambda vocab: "wss://fake")
+    monkeypatch.setattr(stream_stt.ws_client, "connect", lambda url, **kw: fake)
+    monkeypatch.setattr(stream_stt, "ffmpeg_pcm", lambda source: _pcm(120))
+    seen = []
+    stop = threading.Event()
+
+    def on_segment(start, end, text):
+        seen.append((start, end, text))
+        if len(seen) == 2:
+            stop.set()
+
+    segs = stream_stt.record_and_transcribe(source="datei.m4a", people=[], pace=20,
+                                            on_segment=on_segment, stop=stop)
+    assert [t for _, _, t in seen] == ["Erste Äußerung.", "Zweite Äußerung."]
+    assert seen[0][:2] == (3.0, 5.0)
+    assert len(segs) == 2
+    assert fake.sent_seconds < 60          # gestoppt, lange vor dem Ende der Datei

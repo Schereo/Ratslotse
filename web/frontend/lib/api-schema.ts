@@ -345,6 +345,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/live-probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Probe
+         * @description Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe
+         *     der Streaming-Transkription (``council/stream_stt``) im Admin-Panel.
+         *
+         *     Tims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des
+         *     aktuellen O1-Programms anzeigen". Was hier ankommt, kommt genauso in der
+         *     Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
+         *     (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
+         *     Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+         */
+        get: operations["live_probe_api_admin_live_probe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/llm-usage": {
         parameters: {
             query?: never;
@@ -10148,6 +10175,51 @@ export interface operations {
             };
         };
     };
+    live_probe_api_admin_live_probe_get: {
+        parameters: {
+            query?: {
+                seconds?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:
+             *
+             *     - `status` — Text zum Stand (`text`), etwa „verbunden"
+             *     - `segment` — eine fertige Äußerung: `start`/`end` in Sekunden seit Beginn, `text`, `wall` = Sekunden seit Beginn auf der Server-Uhr (die Differenz zu `end` ist der Verzug)
+             *     - `done` — Schluss mit `segments` (Zahl) und `seconds`
+             *     - `error` — abgebrochen (`message`)
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Es läuft schon eine Probe — nur eine zugleich. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     llm_usage_api_admin_llm_usage_get: {
         parameters: {
             query?: never;
@@ -14645,4 +14717,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3f2bd1a647b6e46ad94d14e81e981b044c312289c3626f978494747e5a32231e
+// vertrag-sha256: abd184aa592846b41c89044fe5800babf8ddbd69f6c0c066d369f1ab608c1fdc

@@ -2908,6 +2908,24 @@ SSE_FRAGE: dict[int | str, dict[str, Any]] = {
     },
 }
 
+#: ``GET /api/admin/live-probe`` — der O1-Stream als Transkript, live.
+SSE_LIVE_PROBE: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
+            "`data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n"
+            "- `status` — Text zum Stand (`text`), etwa „verbunden\"\n"
+            "- `segment` — eine fertige Äußerung: `start`/`end` in Sekunden "
+            "seit Beginn, `text`, `wall` = Sekunden seit Beginn auf der "
+            "Server-Uhr (die Differenz zu `end` ist der Verzug)\n"
+            "- `done` — Schluss mit `segments` (Zahl) und `seconds`\n"
+            "- `error` — abgebrochen (`message`)"
+        ),
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+    409: {"description": "Es läuft schon eine Probe — nur eine zugleich."},
+}
+
 #: ``GET /api/council/deep-research/{job_id}/events`` — die tiefe Recherche.
 SSE_RECHERCHE: dict[int | str, dict[str, Any]] = {
     200: {
