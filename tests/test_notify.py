@@ -598,7 +598,7 @@ def test_ein_protokoll_schub_wird_ein_brief(store, tmp_path):
     assert body.index("Dein Thema · Stadion") < body.index("Dein Thema · Wärmeplanung")
     assert body.index("Stadionneubau") < body.index("Bürgschaft") < body.index("Parkplätze")
     assert "3 Beschlüsse" in body and "57,3 Mio. €" in body
-    assert "Im Rat am 1. Juni angenommen (mehrheitlich, 18 dagegen)" in body
+    assert "Im Rat am 1. Juni 2026 angenommen (mehrheitlich, 18 dagegen)" in body
     assert p["push_text"].startswith("Stadion: angenommen (18 dagegen) · Wärmeplanung: angenommen")
     assert "2 weitere aus 2 Protokollen" in p["push_text"]
     # Beide Sitzungen gelten als gemeldet — der zweite Lauf schweigt.

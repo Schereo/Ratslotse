@@ -45,7 +45,6 @@ Beschlüsse und meldete sie allen Konten.
 from __future__ import annotations
 
 import argparse
-import html
 import sys
 from pathlib import Path
 
@@ -58,18 +57,22 @@ load_dotenv(ROOT / ".env")
 from council.store import CouncilStore  # noqa: E402
 from council.topic_intel import DECKEL, SCHWELLE, treffer, vor_sechs_monaten  # noqa: E402,F401
 from kern.store import Store  # noqa: E402
-from kern import digest_email  # noqa: E402
-from council.ergebnisse import datum_lang, decision_href  # noqa: E402
+from council.ergebnisse import decision_href  # noqa: E402
 
 RATSLOTSE_DB = ROOT / "data" / "ratslotse.sqlite"
 COUNCIL_DB = ROOT / "data" / "council.sqlite"
 
 
-def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_ids: list[int],
-                        *, as_of_date: str) -> int:
-    """13a-D: EIN Push/Mail je Thema — der Titel mit der größten Tragweite
-    führt (COALESCE impact, importance — nicht der erste oder kurioseste),
-    Rest als „— und n weitere". Tap öffnet die Themen-Trefferliste.
+def _notify_new_matches(ratslotse, council, owner_id: int,
+                        themen: list[tuple[str, list[int]]], *, as_of_date: str) -> int:
+    """EIN Brief je Konto und Wochenlauf — über alle Themen mit neuen Treffern
+    (Tims Wunsch 06.09.2026: „mach den Themen-Abgleich auch als Schubbrief").
+    Vorher war es eine Meldung je Thema; bei fünf Themen fünf Mails, die die
+    Tagesgrenze zu einem strukturlosen Bündel machte. Jetzt baut
+    ``council.ergebnisse.schubbrief`` denselben Brief wie der Protokoll-Import:
+    je Thema eine Gruppe, der Beschluss mit der größten Tragweite führt
+    (COALESCE impact, importance — nicht der erste oder kurioseste), der Rest
+    als Liste. Tap öffnet die Themen-Trefferliste.
 
     Geht über die Warteschlange (``notify.einreihen``), nicht direkt über
     ``deliver_message``. Vorher tat es das — und stand damit als einziger Anlass
@@ -82,7 +85,11 @@ def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_
     Treffer hier aus dem Ähnlichkeitsabgleich stammt statt aus dem Protokoll
     einer abonnierten Sitzung, ist eine Frage der Herkunft, nicht der Bedeutung
     — für die Person ist es dieselbe Nachricht und gehört unter denselben
-    Schalter.
+    Schalter. Anders als der Protokoll-Brief darf dieser nie an der
+    Tagesgrenze vorbei: Ein Treffer kann fünf Monate alt sein.
+
+    ``themen``: ``[(themenname, [decision_id, …])]`` — je Thema die Beschlüsse,
+    die letzte Woche noch nicht in der Trefferliste standen.
 
     ``as_of_date`` (ISO-Datum) ist der Alters-Riegel: Gemeldet wird nur, was seit
     diesem Tag getagt hat. „Neu" heißt hier nämlich bloß „stand letzte Woche
@@ -101,47 +108,35 @@ def _notify_new_matches(ratslotse, council, owner_id: int, topic_name: str, new_
     die Mail, die es hier abzustellen galt.
     """
     from kern import notify
+    from council.ergebnisse import ANLASS_ABGLEICH, schubbrief
 
     if not ratslotse.get_web_user_by_id(owner_id):
         return 0                      # Konto zwischenzeitlich gelöscht
-    # get_decision liefert d.* (impact/importance/amount_eur) — die schlanke
-    # Batch-Query der QA-Zitate kennt diese Spalten nicht.
-    decisions = [d for d in (council.get_decision(i) for i in new_ids) if d]
-    # Ohne Sitzungsdatum lieber schweigen: `get_decision` verbindet mit
-    # `council_sessions`, ein leeres Feld wäre also ein kaputter Datensatz —
-    # kein Grund, jemanden zu wecken.
-    decisions = [d for d in decisions if (d.get("session_date") or "") >= as_of_date]
-    if not decisions:
+    gruppen = []
+    gesehen: set[int] = set()
+    for topic_name, new_ids in themen:
+        # get_decision liefert d.* (impact/importance/amount_eur) — die schlanke
+        # Batch-Query der QA-Zitate kennt diese Spalten nicht.
+        decisions = [d for d in (council.get_decision(i) for i in new_ids) if d]
+        # Ohne Sitzungsdatum lieber schweigen: `get_decision` verbindet mit
+        # `council_sessions`, ein leeres Feld wäre also ein kaputter Datensatz —
+        # kein Grund, jemanden zu wecken. Ein Beschluss, der zu zwei Themen
+        # passt, steht beim ersten.
+        decisions = [d for d in decisions
+                     if (d.get("session_date") or "") >= as_of_date and d["id"] not in gesehen]
+        if not decisions:
+            continue
+        gesehen.update(d["id"] for d in decisions)
+        decisions.sort(key=lambda d: (d.get("impact") if d.get("impact") is not None
+                                      else (d.get("importance") or 0)), reverse=True)
+        name = " ".join(str(topic_name or "").split())[:80] or "Dein Thema"
+        gruppen.append({"name": name, "kicker": f"Dein Thema · {name}", "beschluesse": decisions})
+    if not gruppen:
         return 0
-    decisions.sort(key=lambda d: (d.get("impact") if d.get("impact") is not None
-                                  else (d.get("importance") or 0)), reverse=True)
-    lead = decisions[0]
-    n = len(decisions)
-    kurz = " ".join(str(topic_name or "").split())[:80]
-    subject = f"Neu zu \u201e{kurz}\u201c" + (f" \u2014 {n} Beschl\u00fcsse" if n > 1 else "")
-    lead_line = html.escape((lead.get("title") or "").strip())
-    if lead.get("amount_eur"):
-        lead_line += f" ({int(lead['amount_eur']):,} \u20ac)".replace(",", ".")
-    # Der Text nannte „Meine Themen“ nur — jetzt führt ein Knopf auch dorthin,
-    # und der führende Beschluss ist direkt anklickbar.
-    #
-    # Unter dem Titel stehen Gremium und Sitzungsdatum (Tims Wunsch vom
-    # 30.08.2026). Ohne sie beantwortet die Mail ihre naheliegendste Rückfrage
-    # nicht — „wann war das?" —, und amtliche Titel führen dabei sogar in die
-    # Irre: Der Krusenbusch-Titel trug ein „vom 15.02.2023", das Datum der
-    # Elternanfrage, während die Sitzung am 07.03.2023 stattfand.
-    wann = " · ".join(t for t in ((lead.get("committee") or "").strip(),
-                                  datum_lang(lead.get("session_date") or "")) if t)
-    msg = (
-        f"<p style='margin:0'>Neu zu deinem Thema <b>{html.escape(kurz)}</b>:</p>"
-        + digest_email.liste(
-            [f"<a href=\"{digest_email.absolut(decision_href(lead["id"]))}\">{lead_line}</a>"
-             + (digest_email.meta(wann) if wann else "")]
-            + ([f"und {n - 1} weitere"] if n > 1 else [])
-        )
-        + digest_email.knopf("/topics", "Alle Treffer ansehen" if n > 1 else "Beschluss ansehen")
-    )
-    return 1 if notify.einreihen(ratslotse, owner_id, notify.N3_ERGEBNIS, subject, msg, "/topics") else 0
+    betreff, body, ziel, push, wichtig = schubbrief(
+        gruppen, [], [], decision_href, anlass=ANLASS_ABGLEICH)
+    return 1 if notify.einreihen(ratslotse, owner_id, notify.N3_ERGEBNIS, betreff, body, ziel,
+                                 push_text=push, wichtig=wichtig) else 0
 
 
 def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen: bool = False) -> dict:
@@ -174,6 +169,8 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
         notified = 0
         gedeckelte = 0
         for owner_id, topics in by_owner.items():
+            # Neue Treffer je Thema einsammeln — EIN Brief je Konto am Ende.
+            neu_je_thema: list[tuple[str, list[int]]] = []
             for t in topics:
                 # RL-U15 (13a-D): „neu" = Diff gegen den letzten Lauf. Beim
                 # allerersten Matching eines Themas wird nicht gepusht (der
@@ -205,8 +202,10 @@ def process(top_k: int = DECKEL, threshold: float = SCHWELLE, *, ohne_meldungen:
                     ratslotse.mark_topic_hits_seen(owner_id, t.id)
                 new_ids = [int(did) for did, _ in hits if int(did) not in old_ids]
                 if new_ids and old_ids and not ohne_meldungen:
-                    notified += _notify_new_matches(ratslotse, council, owner_id, t.name, new_ids,
-                                                    as_of_date=as_of_date)
+                    neu_je_thema.append((t.name, new_ids))
+            if neu_je_thema:
+                notified += _notify_new_matches(ratslotse, council, owner_id, neu_je_thema,
+                                                as_of_date=as_of_date)
         # Eingereiht ist nicht zugestellt: Ohne diesen Aufruf läge alles bis zum
         # nächsten Cron-Job (7 Uhr) still. Die Nachtruhe verschiebt ohnehin, was
         # jetzt nicht raus darf — dieser Lauf startet sonntags um 3 Uhr.
