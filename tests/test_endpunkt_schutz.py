@@ -84,6 +84,11 @@ OEFFENTLICH = {
     # selbst trägt `optional_user` (persönlicher Zusatz: schon gemeldet?) und
     # steht deshalb nicht hier.
     ("get", "/api/districts/projects"),
+    # Die Straßen-/Stadtteilsuche derselben Auswahl („Ich wohne in der …"):
+    # liest nur den Ortskatalog und die Straßen aus Beschlüssen, speichert
+    # nichts, ruft kein Modell — und muss ohne Konto gehen, sonst endet die
+    # eine Handlung der Seite an einer Anmeldewand.
+    ("get", "/api/districts/lookup"),
     ("get", "/api/council/heute"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/qa-beispiele"),
