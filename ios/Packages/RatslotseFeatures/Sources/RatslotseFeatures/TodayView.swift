@@ -10,7 +10,7 @@ struct TodayView: View {
     @State private var foundPiece: FoundPiece?
     @State private var recent: [DecisionSummary] = []
     @State private var upcomingSessions: [CouncilSession] = []
-    @State private var latestTopicHits: [DashboardTopicHit] = []
+    @State private var latestTopicHits: DashboardTopicHits?
     @State private var weekNumber: DashboardWeekNumber?
     @State private var districts: DistrictProjectsOverview?
     @State private var topics: [Topic] = []
@@ -132,10 +132,22 @@ struct TodayView: View {
         }
     }
 
+    /// Wer einen Treffer öffnet, hat genau den gelesen — dieselbe Regel wie
+    /// auf „Meine Themen" (RL-903): Punkt und „n neue" räumen sich beim
+    /// nächsten Laden weg. Fire-and-forget, der Seitenwechsel wartet nicht.
+    private func openTopicHit(_ hit: DashboardTopicHit) {
+        model.navigation.append(.decision(id: hit.id))
+        guard hit.isNew, let topicID = hit.topicID else { return }
+        struct Body: Codable, Sendable { let decision_id: Int }
+        Task {
+            try? await model.api.sendVoid("/api/topics/\(topicID)/seen", body: Body(decision_id: hit.id))
+        }
+    }
+
     @ViewBuilder
     private var secondaryColumn: some View {
-        if !latestTopicHits.isEmpty {
-            LatestTopicHitsCard(hits: latestTopicHits) { model.navigation.append(.decision(id: $0)) }
+        if let latestTopicHits, !latestTopicHits.hits.isEmpty {
+            LatestTopicHitsCard(hits: latestTopicHits, open: openTopicHit)
                 .ratsStaggered(4)
         }
 
@@ -319,8 +331,10 @@ struct TodayView: View {
                 // laufende Sitzung in der Liste.
                 query: [.init(name: "scope", value: "upcoming"), .init(name: "limit", value: "6")]
             )
+            // Drei wie im Web: Mit Ergebnis und Satz trägt jede Zeile genug,
+            // dass drei die Karte füllen, ohne sie zu strecken.
             async let hitsRequest: DashboardTopicHits? = try? await model.api.get(
-                "/api/topics/latest-hits", query: [.init(name: "limit", value: "2")]
+                "/api/topics/latest-hits", query: [.init(name: "limit", value: "3")]
             )
             async let numberRequest: DashboardWeekNumber? = try? await model.api.get("/api/council/zahl-der-woche")
             async let pauseRequest: CouncilPause? = try? await model.api.get("/api/council/session-break")
@@ -337,7 +351,7 @@ struct TodayView: View {
             foundPiece = newFound
             recent = Array(RecentDecisionStore.load().prefix(5))
             if let sessions = await sessionsRequest { upcomingSessions = sessions.sessions }
-            if let hits = await hitsRequest { latestTopicHits = hits.hits }
+            if let hits = await hitsRequest { latestTopicHits = hits }
             if let number = await numberRequest { weekNumber = number }
             if let newPause = await pauseRequest { pause = newPause }
             if let newDistricts = await districtsRequest { districts = newDistricts }
@@ -375,22 +389,33 @@ struct TodayView: View {
         if let session = try? JSONDecoder().decode(CouncilSession.self, from: Data(json.utf8)) {
             upcomingSessions = [session]
         }
-        latestTopicHits = [
-            .init(
-                topicName: "Sichere Schulwege",
-                id: 99111,
-                title: "Neue Querung an der Cloppenburger Straße",
-                committee: "Verkehrsausschuss",
-                sessionDate: localISODate(now)
-            ),
-            .init(
-                topicName: "Wohnen in Oldenburg",
-                id: 99112,
-                title: "Nördlich Eßkamp: nächster Planungsschritt",
-                committee: "Stadtplanung & Bauen",
-                sessionDate: localISODate(now)
-            ),
-        ]
+        latestTopicHits = .init(
+            hits: [
+                .init(
+                    topicID: 1,
+                    topicName: "Sichere Schulwege",
+                    id: 99111,
+                    title: "Neue Querung an der Cloppenburger Straße",
+                    committee: "Verkehrsausschuss",
+                    sessionDate: localISODate(now),
+                    outcome: "accepted",
+                    summary: "Die Verwaltung plant eine Mittelinsel mit Zebrastreifen auf Höhe der Grundschule.",
+                    isNew: true
+                ),
+                .init(
+                    topicID: 2,
+                    topicName: "Wohnen in Oldenburg",
+                    id: 99112,
+                    title: "Nördlich Eßkamp: nächster Planungsschritt",
+                    committee: "Stadtplanung & Bauen",
+                    sessionDate: localISODate(now),
+                    outcome: "noted",
+                    summary: "Der Ausschuss nimmt den Stand der Rahmenplanung zur Kenntnis.",
+                    isNew: false
+                ),
+            ],
+            topicCount: 2, total: 2, unreadTotal: 1
+        )
         weekNumber = .init(
             kind: "amount",
             amountEUR: 9_512_500,
@@ -406,19 +431,82 @@ struct TodayView: View {
 
 private struct DashboardTopicHits: Codable, Sendable {
     let hits: [DashboardTopicHit]
+    /// Der ehrliche Kicker der Karte: wie viele Themen und Treffer hinter der
+    /// Auswahl stehen — und wie viele davon ungelesen sind. Gehärtet mit 0:
+    /// Ein älterer Server kennt die Felder nicht, dann fehlt nur der Kicker.
+    let topicCount: Int
+    let total: Int
+    let unreadTotal: Int
+
+    enum CodingKeys: String, CodingKey {
+        case hits, total
+        case topicCount = "topic_count"
+        case unreadTotal = "unread_total"
+    }
+
+    init(hits: [DashboardTopicHit], topicCount: Int, total: Int, unreadTotal: Int) {
+        self.hits = hits
+        self.topicCount = topicCount
+        self.total = total
+        self.unreadTotal = unreadTotal
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        hits = try values.decode([DashboardTopicHit].self, forKey: .hits)
+        topicCount = try values.decodeIfPresent(Int.self, forKey: .topicCount) ?? 0
+        total = try values.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        unreadTotal = try values.decodeIfPresent(Int.self, forKey: .unreadTotal) ?? 0
+    }
 }
 
+/// Ein Treffer der Karte „Neu zu deinen Themen". Seit 09/2026 trägt er wie
+/// `TopicHit` Ergebnis, Satz und die Neu-Marke — gehärtet decodiert, damit
+/// die Karte gegen einen älteren Server nicht leer bleibt, sondern nur die
+/// Zeile ohne Badge zeigt. `topicID` braucht der Gelesen-Ruf.
 private struct DashboardTopicHit: Codable, Sendable, Identifiable {
+    let topicID: Int?
     let topicName: String
     let id: Int
     let title: String
     let committee: String
     let sessionDate: String
+    let outcome: String?
+    let summary: String?
+    let isNew: Bool
 
     enum CodingKeys: String, CodingKey {
-        case id, title, committee
+        case id, title, committee, outcome, summary
+        case topicID = "topic_id"
         case topicName = "topic_name"
         case sessionDate = "session_date"
+        case isNew = "is_new"
+    }
+
+    init(topicID: Int?, topicName: String, id: Int, title: String, committee: String, sessionDate: String,
+         outcome: String?, summary: String?, isNew: Bool) {
+        self.topicID = topicID
+        self.topicName = topicName
+        self.id = id
+        self.title = title
+        self.committee = committee
+        self.sessionDate = sessionDate
+        self.outcome = outcome
+        self.summary = summary
+        self.isNew = isNew
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(Int.self, forKey: .id)
+        title = try values.decode(String.self, forKey: .title)
+        committee = try values.decode(String.self, forKey: .committee)
+        sessionDate = try values.decode(String.self, forKey: .sessionDate)
+        topicName = try values.decode(String.self, forKey: .topicName)
+        topicID = try values.decodeIfPresent(Int.self, forKey: .topicID)
+        outcome = try values.decodeIfPresent(String.self, forKey: .outcome)
+        summary = try values.decodeIfPresent(String.self, forKey: .summary)
+        isNew = try values.decodeIfPresent(Bool.self, forKey: .isNew) ?? false
     }
 }
 
@@ -627,43 +715,88 @@ private struct AskCouncilEntry: View {
     }
 }
 
+/// „Neu zu deinen Themen" — seit dem 06.09.2026 dieselbe Zeile wie auf der
+/// Themen-Karte (und wie im Web): Punkt für ungelesen, Titel, der Satz aus
+/// der Zusammenfassung, Mono-Zeile Datum · Gremium · THEMA, rechts das
+/// Ergebnis. Vorher stand hier nur Thema-Kicker, Titel und Meta — kein
+/// Ergebnis, kein Satz, und nichts darüber, was daran neu ist.
 private struct LatestTopicHitsCard: View {
-    let hits: [DashboardTopicHit]
-    let open: (Int) -> Void
+    let hits: DashboardTopicHits
+    let open: (DashboardTopicHit) -> Void
 
     var body: some View {
-        RatsWidget("Neu zu deinen Themen", accent: .buoy, glyph: .tag, note: "\(hits.count)") {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
-                    Button { open(hit.id) } label: {
-                        HStack(alignment: .top, spacing: 11) {
-                            VStack(alignment: .leading, spacing: 4) {
+        // Kein `note` in der Kopfleiste: Titel, Kicker und „n neue" passen
+        // auf 402 pt nicht nebeneinander — der Titel wurde zu „Neu zu deinen
+        // T…". Die Mengen stehen deshalb wie auf der Themen-Karte als
+        // Mono-Zeile über den Treffern; die Pille bleibt oben, sie ist das Signal.
+        RatsWidget("Neu zu deinen Themen", accent: .buoy, glyph: .tag, trailing: {
+            if hits.unreadTotal > 0 {
+                Text(hits.unreadTotal == 1 ? "1 neuer" : "\(hits.unreadTotal) neue")
+                    .font(RatsFont.body(10.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.signalInk)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(RatsColor.signal.opacity(0.10))
+                    .clipShape(Capsule())
+                    .fixedSize()
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 4) {
+                MonoKicker("Zuletzt entschieden", trailing: note)
+                VStack(spacing: 0) {
+                ForEach(Array(hits.hits.enumerated()), id: \.element.id) { index, hit in
+                    Button { open(hit) } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .top, spacing: 9) {
+                                Circle()
+                                    .fill(hit.isNew ? RatsColor.signal : RatsColor.muted.opacity(0.45))
+                                    .frame(width: 7, height: 7)
+                                    .padding(.top, 6)
+                                Text(hit.title)
+                                    .font(RatsFont.body(13.5, weight: hit.isNew ? .semibold : .medium))
+                                    .foregroundStyle(RatsColor.text)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+                                Spacer(minLength: 4)
+                                if let outcome = hit.outcome { OutcomeBadge(outcome) }
+                            }
+                            // WAS entschieden wurde — der RIS-Titel sagt das nicht.
+                            if let summary = hit.summary, !summary.isEmpty {
+                                Text(summary)
+                                    .font(RatsFont.body(12.5))
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .lineSpacing(2)
+                                    .lineLimit(3)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            HStack(spacing: 0) {
+                                Text(([RatsDate.short(hit.sessionDate), Committee.short(hit.committee)]
+                                    .compactMap { $0 }.joined(separator: " · ") + " · ").uppercased())
+                                    .font(RatsFont.mono(9))
+                                    .foregroundStyle(RatsColor.muted)
                                 Text(hit.topicName.uppercased())
                                     .font(RatsFont.mono(9, weight: .semibold))
-                                    .tracking(0.7)
-                                    .foregroundStyle(RatsColor.signalInk)
-                                Text(hit.title)
-                                    .font(RatsFont.body(14, weight: .semibold))
-                                    .foregroundStyle(RatsColor.text)
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(3)
-                                Text([shortCommittee(hit.committee), RatsDate.short(hit.sessionDate)].compactMap { $0 }.joined(separator: " · "))
-                                    .font(RatsFont.body(10.5))
-                                    .foregroundStyle(RatsColor.secondary)
+                                    .foregroundStyle(RatsColor.primary)
                             }
-                            Spacer(minLength: 2)
-                            RatsIcon(.chevronRight, size: 12)
-                                .foregroundStyle(RatsColor.muted)
-                                .padding(.top, 8)
+                            .tracking(0.7)
+                            .lineLimit(1)
                         }
+                        .padding(.vertical, 9)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(RatsPlainButtonStyle())
                     .ratsZoomSource(RatsZoomID.decision(hit.id))
-                    if index < hits.count - 1 { Divider().overlay(RatsColor.separator) }
+                    if index < hits.hits.count - 1 { Divider().overlay(RatsColor.separator) }
+                }
                 }
             }
         }
+    }
+
+    /// Ehrliche Mengen: nie „viele", immer Zahl.
+    private var note: String? {
+        guard hits.total > 0 else { return nil }
+        return "\(hits.topicCount) \(hits.topicCount == 1 ? "Thema" : "Themen") · \(hits.total) Treffer"
     }
 }
 
