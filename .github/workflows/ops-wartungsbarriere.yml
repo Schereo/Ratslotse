@@ -18,9 +18,9 @@ on:
   workflow_dispatch:
     inputs:
       aktion:
-        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · api-start = Barriere weg + nwz-web-api starten (nach abgebrochenem Cutover) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
+        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy) · api-start = Barriere weg + nwz-web-api starten (nach abgebrochenem Cutover) · frontend-restart = nwz-web-frontend neu starten (alter Prozess auf neuem Build) · probe = Generalprobe der Streaming-Transkription (60 s O1-Stream)"
         type: choice
-        options: [status, aufheben, api-start, probe]
+        options: [status, aufheben, api-start, frontend-restart, probe]
         default: status
 
 concurrency:
@@ -114,6 +114,31 @@ jobs:
             echo "FEHLER: API antwortet nach 180 s nicht — Dienstprotokoll:"
             sudo -n /bin/systemctl status nwz-web-api --no-pager -l 2>&1 | tail -40 || true
             journalctl -u nwz-web-api -n 60 --no-pager 2>&1 | tail -60 || true
+            exit 1
+          '
+
+      # Bricht der Cutover NACH dem `npm run build` ab, läuft der alte
+      # Frontend-Prozess auf dem neuen Build weiter: Seine HTML-Seiten
+      # verweisen auf Chunks, die es auf der Platte nicht mehr gibt (06.09.:
+      # webpack-….js → 400). Ein Neustart bringt Prozess und Build zusammen.
+      - name: Frontend neu starten
+        if: ${{ inputs.aktion == 'frontend-restart' }}
+        run: |
+          ssh target '
+            set -u
+            cd ~/app
+            sudo -n /bin/systemctl restart nwz-web-frontend
+            for i in $(seq 1 45); do
+              sleep 2
+              if curl -sf -o /dev/null --max-time 3 http://127.0.0.1:3000/; then
+                echo "Frontend läuft nach $((i*2)) s"
+                chunk=$(curl -s --max-time 5 http://127.0.0.1:3000/ | grep -o "/_next/static/chunks/webpack-[^\"]*\.js" | head -1)
+                [ -n "$chunk" ] && curl -s -o /dev/null -w "Chunk $chunk: %{http_code}\n" --max-time 5 "http://127.0.0.1:3000$chunk"
+                exit 0
+              fi
+            done
+            echo "FEHLER: Frontend antwortet nach 90 s nicht"
+            sudo -n /bin/systemctl status nwz-web-frontend --no-pager -l 2>&1 | tail -30 || true
             exit 1
           '
 
