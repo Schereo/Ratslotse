@@ -20,6 +20,7 @@ import json
 import re
 import sqlite3
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
 
 from council.store_basis import StoreBasis
 from kern.dbfehler import tabelle_fehlt
@@ -59,6 +60,19 @@ def _now() -> str:
 
 class ViertelMixin(StoreBasis):
     """Die Viertel-Abfragen von :class:`council.store.CouncilStore` — nur zum Mitvererben."""
+
+    if TYPE_CHECKING:
+        # Zwei Nachbar-Methoden, die dieses Mixin am zusammengesetzten Store
+        # aufruft. Zur Laufzeit steht hier nichts — die Auflösung läuft wie
+        # immer über die MRO von ``CouncilStore``; für die Typprüfung leiht
+        # sich die Klasse die Signatur beim Eigentümer, damit beide nicht
+        # auseinanderlaufen. In ``StoreBasis`` gehören sie nicht: Die
+        # beschreibt den gemeinsamen Nenner, nicht die Kopplung zweier Nachbarn.
+        from council.store_orte import OrteMixin
+        from council.store_presse import PresseMixin
+
+        resolve_place = OrteMixin.resolve_place
+        list_beteiligungen = PresseMixin.list_beteiligungen
 
     # ------------------------------------------------------------ Kandidaten
 
