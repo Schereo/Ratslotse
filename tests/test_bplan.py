@@ -68,10 +68,19 @@ def test_plannummern_im_titel(titel, erwartet):
 
 @pytest.mark.parametrize("stadt, vorlage", [
     ("777 G", "N-777 G"), ("18c VhB", "Nr. 18 c VhB"), ("513 Änd. 1", "513 ÄND 1"),
-    ("117 I", "S-117 I"), ("1 VhB", "1 VHB"),
+    ("117 I", "S-117 I"), ("1 VhB", "1 VHB"), ("64 VhB", "64 VHB"),
 ])
 def test_schluessel_vergleicht_beide_schreibweisen(stadt, vorlage):
     assert bplan.schluessel(stadt) == bplan.schluessel(vorlage)
+
+
+def test_vhb_kuerzel_bleibt_getrennt():
+    # „64 VhB" aus dem Datensatz muss den Titel „Vorhabenbezogener Bebauungsplan
+    # Nr. 64" treffen — das Kürzel darf nicht an die Zahl kleben (gemessen
+    # 06.09.2026: alle 36 VhB-Pläne fanden sich sonst nicht).
+    assert bplan.schluessel("64 VhB") == "64 VHB"
+    assert bplan.plannummern_im_titel("Vorhabenbezogener Bebauungsplan Nr. 64 (Osternburger Markt)") == ["64 VHB"]
+    assert bplan.schluessel("117 III") == "117III"
 
 
 def _l_form() -> dict:

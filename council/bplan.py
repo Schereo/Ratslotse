@@ -137,8 +137,11 @@ def schluessel(nr: str | None) -> str:
     s = s.replace(".", " ")
     s = re.sub(r"\bÄNDERUNG\b", "ÄND", s)
     s = re.sub(r"\s+", " ", s).strip()
-    # „777 G" → „777G", „18 C VHB" → „18C VHB", „225 I" → „225I"
-    s = re.sub(r"^(\d+)\s+([A-Z]{1,3})(?=$|\s)", r"\1\2", s)
+    # „777 G" → „777G", „18 C VHB" → „18C VHB", „225 I" → „225I" — aber
+    # „64 VHB" bleibt „64 VHB": Das Kürzel für „vorhabenbezogen" ist kein
+    # Buchstabenzusatz der Nummer (gemessen 06.09.2026: alle 36 VhB-Pläne
+    # fanden sich sonst nicht, weil der Datensatz „64 VhB" zu „64VHB" wurde).
+    s = re.sub(r"^(\d+)\s+(?!VHB\b)([A-Z]{1,3})(?=$|\s)", r"\1\2", s)
     return s
 
 
