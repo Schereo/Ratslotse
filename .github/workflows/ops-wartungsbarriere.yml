@@ -1,0 +1,94 @@
+name: Ops – Wartungsbarriere (Prod)
+
+# Notausgang für einen abgebrochenen Deploy. `deploy.yml` setzt VOR dem rsync
+# die Wartungsbarriere `data/.release-maintenance`; bricht der Lauf danach ab
+# (06.09.2026: rsync Exit 23 beim Löschen unter node_modules), bleibt sie
+# stehen — und damit sperrt jeder Store-Aufruf: `/api/health` 503, Daten-
+# endpunkte 500, Crons blockiert. Ein neuer Deploy verweigert den Start,
+# solange die Barriere existiert („BLOCKIERT: existiert bereits"). Der
+# Weg zurück brauchte bisher SSH von einem Rechner mit dem 1Password-Agenten,
+# und genau der signierte an dem Tag nicht.
+#
+# `status` zeigt nur; `aufheben` entfernt die Barriere — NUR nach einem
+# nachweislich abgebrochenen Deploy (Actions-Lauf rot, Marker steht). Läuft
+# ein Deploy, wartet der Job dank derselben concurrency-Gruppe, bis er fertig
+# ist. Danach: `gh workflow run deploy.yml --ref main`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      aktion:
+        description: "status = nur anzeigen · aufheben = Barriere entfernen (nur nach abgebrochenem Deploy)"
+        type: choice
+        options: [status, aufheben]
+        default: status
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  wartung:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure deployment SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' \
+            'Host edge' \
+            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking no' \
+            'Host target' \
+            "  HostName ${{ secrets.VPS_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+      - name: Stand zeigen
+        run: |
+          ssh target '
+            set -u
+            cd ~/app
+            echo "== Wartungsbarriere"
+            if [ -f data/.release-maintenance ]; then
+              echo "STEHT seit $(stat -c %y data/.release-maintenance | cut -c1-19), Commit $(cut -c1-8 data/.release-maintenance)"
+            else
+              echo "keine"
+            fi
+            echo "== Stand auf der Platte"; grep -m1 "^## \[" CHANGELOG.md
+            echo "== Dienste"; systemctl is-active nwz-web-api nwz-web-frontend | tr "\n" " "; echo
+            echo "== API"; curl -s -o /dev/null -w "health %{http_code}\n" --max-time 5 http://127.0.0.1:8000/api/health
+            echo "== node_modules (rsync-Befund 06.09.)"
+            stat -c "%F %U %a" web/frontend/node_modules 2>&1
+            ls web/frontend/node_modules | wc -l
+            ls -ld web/frontend/node_modules/tsconfig-paths web/frontend/node_modules/three 2>&1 | cut -c1-80
+            find web/frontend/node_modules/tsconfig-paths -maxdepth 3 -name ".env*" 2>/dev/null | head
+            echo "== Platte"; df -h ~/app | tail -1
+          '
+
+      - name: Barriere aufheben
+        if: ${{ inputs.aktion == 'aufheben' }}
+        run: |
+          ssh target '
+            set -eu
+            cd ~/app
+            if [ ! -f data/.release-maintenance ]; then
+              echo "Keine Barriere — nichts zu tun."; exit 0
+            fi
+            echo "Entferne Barriere von Commit $(cut -c1-8 data/.release-maintenance)"
+            rm data/.release-maintenance
+            sleep 2
+            curl -s -o /dev/null -w "health danach: %{http_code}\n" --max-time 5 http://127.0.0.1:8000/api/health
+            curl -s -o /dev/null -w "heute danach:  %{http_code}\n" --max-time 10 http://127.0.0.1:8000/api/council/heute
+          '
