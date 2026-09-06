@@ -872,6 +872,18 @@ class SitzungenMixin(StoreBasis):
             "substantive_per_session": {k: len(v) for k, v in themen_je_sitzung.items()},
         }
 
+    def beschluss_zahl_je_sitzung(self, ksinrs: list[int]) -> dict[int, int]:
+        """Wie viele Beschlüsse je Sitzung schon vorliegen — für den
+        Kalender-Feed, der einer vergangenen Sitzung ansieht, ob das Protokoll
+        da ist."""
+        gueltig = [k for k in ksinrs if k]
+        if not gueltig:
+            return {}
+        ph = ",".join("?" * len(gueltig))
+        return {r[0]: r[1] for r in self._conn.execute(
+            f"SELECT ksinr, COUNT(*) FROM council_decisions WHERE ksinr IN ({ph}) GROUP BY ksinr",
+            gueltig)}
+
     def count_upcoming_sessions(self) -> int:
         from datetime import date
         today = date.today().isoformat()

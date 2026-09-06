@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import secrets
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -188,6 +189,9 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Fragen — wer sich im Browser registriert und später nur noch die App
     -- öffnet, wäre sonst nicht von einem reinen Web-Konto zu unterscheiden.
     signup_client    TEXT,
+    -- Kalender-Abo (ICS): das Geheimnis in der Abo-Adresse dieses Kontos.
+    -- Beim ersten Abruf angelegt, einzeln erneuerbar; NULL = nie abgerufen.
+    calendar_token   TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -1229,6 +1233,10 @@ class Store:
                 if "notify_prefs" not in wu_cols:
                     # Design 30a: die sechs Anlass-Schalter als JSON.
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN notify_prefs TEXT")
+                if "calendar_token" not in wu_cols:
+                    # Kalender-Abo (ICS): das Geheimnis in der Abo-Adresse,
+                    # beim ersten Abruf angelegt, einzeln erneuerbar.
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN calendar_token TEXT")
                 if "saves_conversations" not in wu_cols:
                     # 6a①②: NULL = noch nie gefragt (Erstnutzungs-Karte),
                     # 1 = Gespräche speichern, 0 = bewusst aus.
@@ -1345,6 +1353,12 @@ class Store:
         self._conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_apple_sub "
             "ON web_users(apple_sub) WHERE apple_sub IS NOT NULL"
+        )
+        # Erst hier, nach der Spalten-Migration: Im SCHEMA würde der Index auf
+        # einer gewachsenen Datenbank vor dem ALTER TABLE laufen und scheitern.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_web_users_calendar_token "
+            "ON web_users(calendar_token)"
         )
         self._conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_topics_chat ON topics(chat_id)"
@@ -3558,6 +3572,41 @@ class Store:
             (owner_id,),
         ).fetchall()
         return [r[0] for r in rows]
+
+    # ---- Kalender-Abo (ICS) -------------------------------------------------
+
+    def calendar_token(self, owner_id: int, create: bool = True) -> str | None:
+        """Das Geheimnis hinter der Kalender-Adresse eines Kontos — beim ersten
+        Abruf angelegt. Ein eigenes Token und kein Sitzungs-Token: Es steht in
+        einer Adresse, die Kalender-Apps alle paar Stunden abrufen und die man
+        auch mal weitergibt; erneuern darf es sich, ohne jemanden abzumelden."""
+        row = self._conn.execute(
+            "SELECT calendar_token FROM web_users WHERE id = ?", (owner_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        if row[0]:
+            return row[0]
+        if not create:
+            return None
+        return self.rotate_calendar_token(owner_id)
+
+    def rotate_calendar_token(self, owner_id: int) -> str:
+        """Neue Adresse; die alte ist ab sofort ungültig."""
+        token = secrets.token_urlsafe(24)
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET calendar_token = ? WHERE id = ?", (token, owner_id)
+            )
+        return token
+
+    def user_by_calendar_token(self, token: str) -> dict | None:
+        if not token:
+            return None
+        row = self._conn.execute(
+            "SELECT * FROM web_users WHERE calendar_token = ?", (token,)
+        ).fetchone()
+        return dict(row) if row else None
 
     def get_all_subscriptions(self) -> dict[int, list[str]]:
         """Return {owner_id: [committee_name]} for all owners with subscriptions."""
