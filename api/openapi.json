@@ -13997,7 +13997,7 @@
         "type": "object"
       },
       "WeekPreviewItem": {
-        "description": "Ein Tagesordnungspunkt in „Diese Woche im Rat\".\n\nZwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit\nallen Feldern) und die Einträge in ``further_per_session`` — dort baut der\nStore die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.\nDeshalb stehen genau diese fünf als ``NotRequired``.\n\nDer Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss\nes an BEIDEN Stellen tun.\" Genau das ist zweimal schiefgegangen — einmal\nfehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten\nstanden ohne Erklärung da.\n\nACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus\ndem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an\n``TemplateAttachment`` ist eine Liste von Fraktionsnamen.",
+        "description": "Ein Tagesordnungspunkt in „Diese Woche im Rat\".\n\nDrei Listen tragen diese Form: ``items``, ``further_per_session`` und die\nSitzungs-Highlights. Alle drei gehen durch ``CouncilStore._punkt_export``,\nund deshalb ist hier kein Feld mehr optional.\n\nVorher war das anders, und es hat wehgetan. ``items`` lieferte die rohen\nStore-Dicts aus, nur die andere Liste ging durch die Export-Funktion —\nzwei Wege für eine Form. Dreimal fiel dabei ein Feld heraus: die\nKurzfassung, der Kartentext (beide Male standen Instagram-Karten ohne\nErklärung da) und am 07.09.2026 ``wichtig_grund``, das an regelbewerteten\nPunkten gar nicht erst gesetzt wurde. Das Ergebnis war ein 500er auf\n``/api/council/week-preview`` und, weil die Vorprobe daran scheiterte,\n74 Minuten API-Ausfall.\n\nACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus\ndem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an\n``TemplateAttachment`` ist eine Liste von Fraktionsnamen.",
         "properties": {
           "applicants": {
             "title": "Applicants",
@@ -14164,7 +14164,12 @@
           "gruppe_titel",
           "gruppe_stationen",
           "gruppe_text",
-          "group_applicants"
+          "group_applicants",
+          "kind",
+          "behandlung",
+          "vorgeschichte",
+          "wichtig_quelle",
+          "top"
         ],
         "title": "WeekPreviewItem",
         "type": "object"
