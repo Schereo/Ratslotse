@@ -1,8 +1,9 @@
 # Stadtkarte — Umbauplan „Karte als Bühne“ (Richtung A)
 
 > **Status:** Plan, beschlossen von Tim am 07.09.2026 nach den drei
-> Bühnen-Entwürfen (Artefakt „Stadtkarte: drei Bühnen“). Noch nichts davon
-> gebaut. Jeder Schritt unten ist ein eigener PR nach `dev`, hinter dem
+> Bühnen-Entwürfen (Artefakt „Stadtkarte: drei Bühnen“); die Entscheidungen
+> in Abschnitt 5 hat Tim am selben Tag getroffen. Noch nichts davon gebaut.
+> Jeder Schritt unten ist ein eigener PR nach `dev`, hinter dem
 > Feature-Schalter `stadtkarte`, bis Schritt 5 den Umzug macht.
 
 ## 1. Ziel in einem Absatz
@@ -15,9 +16,12 @@ beantworten „wo passiert was“, nur verschieden nah. Daraus wird **eine
 Karte mit drei Zoomstufen** — Stadt → Viertel → Vorhaben — und
 **Ebenen-Chips**, die sagen, was auf der Karte liegt. Die Karte füllt die
 Seite, rechts läuft eine Tafel-Spalte mit, die mit dem Zoom ihren Inhalt
-wechselt. „Stadtkarte“ in der Navigation zeigt auf diese Karte; „Mein
-Viertel“ bleibt der persönliche Einstieg in dieselbe Karte mit
-vorgewähltem Ortsbereich. Eine Komponente, zwei Eingänge.
+wechselt. In der Navigation gibt es dafür **genau einen Eintrag: „Mein
+Viertel“** (Tim, 07.09.: „wir dürfen das Nav nicht bloaten“) — der Eintrag
+„Stadtkarte“ des Themen-Tabs fällt weg, die Karte öffnet mit dem eigenen
+Stadtteil, wenn einer gewählt ist, sonst mit der Stadt. Die Karte liegt
+**hinter der Anmeldung**, wie die Themen-Orte heute; öffentlich bleibt nur
+die Landingpage.
 
 ## 2. Was es schon gibt (und was davon bleibt)
 
@@ -45,7 +49,13 @@ vorgewähltem Ortsbereich. Eine Komponente, zwei Eingänge.
 `/viertel` und `/viertel?id=…&v=…` bleiben als **Einstiege** stehen (Mails,
 Share-Links, iOS-Deep-Links, Dashboard) und führen nach dem Umzug auf die
 neue Adresse — als **temporäre** Weiterleitung, nie permanent (permanente
-Redirects kleben im Browser, s. Notiz Haushalts-Labor). Der Kartenzustand
+Redirects kleben im Browser, s. Notiz Haushalts-Labor). **Beide verlangen
+ein Konto** (Tims Entscheidung 1): `/karte` von Anfang an, `/viertel` ab
+dem Umzug — dann fallen `/viertel` aus `OEFFENTLICHE_PFADE`, die
+`/api/districts/*`-Endpunkte auf `require_active` und die Einträge aus
+`tests/test_endpunkt_schutz.py::OEFFENTLICH` und `03-oeffentlich.spec.ts`.
+Ein geteilter Tafel-Link landet ohne Konto auf der Anmeldung mit `?weiter=`
+zurück zur Karte. Der Kartenzustand
 (Ebenen, Ausschnitt) lebt in der URL und in `sessionStorage` (wie heute
 `ratslotse:themen-karte-view`), damit „zurück“ den Ausschnitt behält.
 
@@ -80,51 +90,52 @@ Zeichner und Zähler kommen:
 | `vorhaben` | Vorhaben | Stand-Farben (`STAND_FARBE`) | `/districts/projects`, `/districts/{id}/projects` | Stadt (Wärme), Viertel (Pins) | ja |
 | `plaene` | Bebauungspläne | Stand-Farbe, durchgezogen/gestrichelt | `locations[kind=bplan]` der Tafel | Viertel | ja |
 | `sperrungen` | Sperrungen | `#b45309` | `closures` der Tafel | Viertel | ja |
-| `themen-orte` | Themen-Orte | `KIND_COLOR` (Ort, Organisation, Projekt, Beschlussort) | `/council/entities-map` | Stadt, Viertel | heute nein (Entscheidung 1) |
+| `themen-orte` | Themen-Orte | `KIND_COLOR` (Ort, Organisation, Projekt, Beschlussort) | `/council/entities-map` | Stadt, Viertel | nein (bleibt `require_active`) |
 | `beteiligungen` | Beteiligungen | Signal-Orange | `participations` + Plan-Umringe (Ebene 19 des Geoportals) | Viertel | ja |
 | `presse` | Aktuelles | — (Liste, keine Geometrie) | `press` der Tafel | Viertel (nur Tafel) | ja |
+| `wahlergebnis` | Wahlergebnis | Parteifarben nur als Dot/Tag, Fläche als Stärke der stärksten Kraft | Wahl-Dashboard des Wahl-Agenten (Kommunalwahl 13.09.2026), Wahlbezirke aus dem Ortskatalog | Stadt (Wahlbezirke), Viertel (die Bezirke des Ortsbereichs) | nein |
 
-Ein Chip trägt Farbe, Label und Zähler; aus ist er hohl. Ohne Zugriff
-(Themen-Orte ohne Konto) zeigt er ein Schloss und führt zur Anmeldung.
-Stand der Chips: URL-Parameter `ebenen`, sonst `localStorage`, Vorgabe
-`vorhaben,plaene,sperrungen`.
+Ein Chip trägt Farbe, Label und Zähler; aus ist er hohl. Weil die ganze
+Karte hinter der Anmeldung liegt, braucht kein Chip ein Schloss. Stand der
+Chips: URL-Parameter `ebenen`, sonst `localStorage`, Vorgabe
+`vorhaben,plaene,sperrungen`. „Öffentlich“ in der Tabelle sagt nur, ob der
+Endpunkt heute ohne Konto antwortet — nach dem Umzug (PR 5) verlangen alle
+eines.
 
 ## 4. Schritte — je ein PR
 
 | # | PR | Inhalt | Prüfstein |
 |---|---|---|---|
-| 1 | **Karten-Bühne** | Schalter `stadtkarte` in `kern/features.py` (`fertig_wenn`: „/karte ist die Stadtkarte in der Navigation“). Route `app/(app)/karte/` (Gate: Schalter, sonst `notFound()`). `components/stadt-karte.tsx`: **ein** Leaflet mit Stufen-Zustand; Stadt-Stufe zeichnet die Umrisse gefärbt, Klick → Viertel-Stufe (`fitBounds`); Viertel-Stufe ruft den Zeichner aus `viertel-karte.tsx` (Funktion extrahieren, Komponente bleibt für `/viertel`). `viertel/view.tsx` in Bausteine zerlegen — `/viertel` verhält sich danach **unverändert** (E2E `03-oeffentlich` grün). Tafel-Spalte + mobiles Layout. URL-Zustand `ort`, `v`. | Fliegerhorst-Tafel sieht in `/karte?ort=fliegerhorst` aus wie in `/viertel?id=fliegerhorst`; Klick auf einen Ortsbereich auf der Stadt-Stufe zoomt hinein |
+| 1 | **Karten-Bühne** | Schalter `stadtkarte` in `kern/features.py` (`fertig_wenn`: „/karte ist ‚Mein Viertel‘ in der Navigation“). Route `app/(app)/karte/` (Gate: Schalter, sonst `notFound()`; **nicht** in `OEFFENTLICHE_PFADE` — Konto Pflicht). `components/stadt-karte.tsx`: **ein** Leaflet mit Stufen-Zustand; Stadt-Stufe zeichnet die Umrisse gefärbt, Klick → Viertel-Stufe (`fitBounds`); Viertel-Stufe ruft den Zeichner aus `viertel-karte.tsx` (Funktion extrahieren, Komponente bleibt für `/viertel`). `viertel/view.tsx` in Bausteine zerlegen — `/viertel` verhält sich danach **unverändert** (E2E `03-oeffentlich` grün). Tafel-Spalte + mobiles Layout. URL-Zustand `ort`, `v`. | Fliegerhorst-Tafel sieht in `/karte?ort=fliegerhorst` aus wie in `/viertel?id=fliegerhorst`; Klick auf einen Ortsbereich auf der Stadt-Stufe zoomt hinein |
 | 2 | **Ebenen-Chips** | Registry + Chips + Legende; Vorhaben, Pläne, Sperrungen ein-/ausschaltbar mit Zähler; `ebenen` in URL/`localStorage`; Zeichner lesen die Registry. Attribution je Ebene (Geoportal-Zeile nur, wenn eine Stadt-Ebene liegt). | Sperrungen aus → Linien weg, Karte „Gesperrt und im Bau“ bleibt |
 | 3 | **Themen-Orte als Ebene** | `council-map.tsx` → Zeichner der Ebene (Cluster-Plugin nach Leaflet laden, Falle im Kopf der Datei). Art-Filter als Unter-Chips, Wahlbereichs-Schnellauswahl bleibt in der Stadt-Tafel. Top-Themen-Karten in die Stadt-Tafel unter die Highlights. Auf der Viertel-Stufe nur die Punkte im Ortsbereich (`ortsbereichFor` läuft heute schon im Client). | Themen-Tab und `/karte` zeigen dieselben Punkte für denselben Filter |
 | 4 | **Beteiligungen als Fläche** | `plan_nrs` der Beteiligungen → Umringe (`bplan_outlines_by_keys`, Ebene 19 hat die laufenden Verfahren), Chip mit Frist, Popover mit Link zur Beteiligung. Backend: `participations` bekommt `geometry`. | Bloherfelde/Osternburg-Beteiligungen liegen als Fläche |
-| 5 | **Umzug** | Navigation „Stadtkarte“ → `/karte`; Themen-Tab zeigt nur noch die Liste + Link „Auf der Karte“ (oder leitet weiter); `/viertel` → `/karte?ort=` (temporär); Dashboard-Karte, Mail-Deep-Links (`?zeig=`), Share-Links, `viertelHref()` auf die neue Adresse; Schalter raus; E2E `03-oeffentlich`, `04-council` nachziehen; Changelog. | Kein Link im Repo zeigt mehr auf `/council?tab=themen` als Karte |
+| 5 | **Umzug** | Navigation: Eintrag „Stadtkarte“ fällt weg, „Mein Viertel“ → `/karte` (mit `?ort=` des gewählten Stadtteils, wenn einer da ist); Themen-Tab zeigt nur noch die Liste + Link „Auf der Karte“; `/viertel` → `/karte?ort=` (temporär) und **hinter die Anmeldung** (`OEFFENTLICHE_PFADE`, `require_active` für `/api/districts/*`, Test-Allowlist, E2E `03-oeffentlich`); Dashboard-Karte, Mail-Deep-Links (`?zeig=`), Share-Links, `viertelHref()` auf die neue Adresse; Schalter raus; E2E `04-council` nachziehen; Changelog. | Kein Link im Repo zeigt mehr auf `/council?tab=themen` als Karte; `/viertel` ohne Konto → Anmeldung |
+| 7 | **Wahlergebnis als Ebene** | Nach der Kommunalwahl (13.09.2026), abgestimmt mit dem Wahl-Agenten: dessen Ergebnis-Daten je Wahlbezirk als Ebene — Fläche der Wahlbezirke nach stärkster Kraft (Parteifarben nur als Dot/Tag laut Designsprache, die Fläche als Tönung), Popover mit den Anteilen, Link ins Wahl-Dashboard. Auf der Viertel-Stufe die Bezirke des Ortsbereichs (`electoral_districts` im Ortskatalog). | Fliegerhorst zeigt seine Wahlbezirke mit Ergebnis |
 | 6 | **iOS** | `CityMapView`: MapKit-Karte mit Stufen (Region der Stadt ↔ Ortsbereich), Ebenen als Chips über der Karte, Tafel als Sheet mit Detents (`DistrictView` liefert die Bausteine), Themen-Orte aus `CouncilMapView` als Ebene mit Cluster. Routen `.district(id)` und `councilSection .map` zeigen auf dieselbe View. Kein `APP_MIN_BUILD`: alles additiv, die alte App läuft weiter. | Simulator: Stadt → Fliegerhorst → Vorhaben in einer View; `ios_vertrag.py --ausgeliefert` leer |
 
 Reihenfolge ist Pflicht: 1 vor 2 vor 3; 4 ist unabhängig ab 2; 5 erst,
 wenn 1–4 auf dev gegengelesen sind; 6 kann parallel zu 3–5 laufen, sobald
-der Vertrag aus 4 steht. Aufwand grob: 1 ist der größte (Zerlegung von
+der Vertrag aus 4 steht; 7 hängt am Wahl-Dashboard und kommt nach der Wahl. Aufwand grob: 1 ist der größte (Zerlegung von
 `view.tsx` + neue Bühne), 2 und 4 klein, 3 mittel, 5 mittel (viele
 Berührpunkte), 6 groß.
 
-## 5. Entscheidungen, die Tim treffen muss
+## 5. Entscheidungen (Tim, 07.09.2026)
 
-1. **`/api/council/entities-map` öffentlich machen?** Heute `require_active`
-   (mit `record_activity` für die Admin-Statistik). Die Daten sind amtliche
-   Orte und Themen — Empfehlung: öffentlich, `record_activity` nur bei
-   Konto; sonst trägt der Chip ein Schloss und die Karte ist ohne Konto
-   halb leer.
-2. **Zeitraum.** Richtung A hat bewusst keinen Zeitraum-Chip; Vorhaben sind
-   „zwei Jahre“, Themen-Orte „alle Jahre“. Bleibt das so, steht der
-   Zeitraum als Zähl-/Zeitraum-Angabe im Kicker (Designsprache: ehrliche
-   Mengen), nicht als Schalter.
-3. **Wahlbereichs-Schnellauswahl** behalten? Ja bis zur Kommunalwahl am
-   13.09.2026 (der Wahl-Agent baut ein Dashboard — abstimmen, ob die Karte
-   später eine Ebene „Wahlergebnis“ bekommt).
-4. **Mobil:** Karte 45 vh + Tafel darunter (Empfehlung, gleiche Bausteine)
-   oder Vollbild-Karte mit Sheet-Griff wie in der App.
-5. **Menü:** „Mein Viertel“ bleibt als eigener Eintrag (persönlicher
-   Einstieg, vorgewählter Stadtteil) neben „Stadtkarte“, oder nur noch
-   „Stadtkarte“ mit dem eigenen Stadtteil als erstem Knopf in der Tafel.
+1. **Hinter die Anmeldung — die ganze Karte.** `entities-map` bleibt
+   `require_active`, und die neue Karte samt `/viertel` verlangt ein Konto
+   (heute ist `/viertel` öffentlich; das ändert PR 5). Folge: Ein geteilter
+   Tafel-Link führt Nicht-Angemeldete zur Anmeldung, nicht zur Tafel — die
+   Landingpage bleibt der einzige öffentliche Einstieg.
+2. **Zeitraum:** kein Schalter (offen gelassen — Empfehlung gilt: Zeitraum
+   als ehrliche Angabe im Kicker, nicht als Chip).
+3. **Wahlergebnis als Ebene: ja** — PR 7, mit dem Wahl-Agenten nach der
+   Kommunalwahl. Die Wahlbereichs-Schnellauswahl bleibt bis dahin.
+4. **Mobil:** offen gelassen — Empfehlung gilt: Karte 45 vh, Tafel darunter,
+   Detail als Sheet.
+5. **Navigation: ein einziger Eintrag „Mein Viertel“.** „Stadtkarte“ fällt
+   aus dem Menü, „das Nav nicht bloaten“. Die Karte öffnet mit dem eigenen
+   Stadtteil, wenn einer gewählt ist, sonst mit der Stadt-Stufe.
 
 ## 6. Fallen, die schon bekannt sind
 
