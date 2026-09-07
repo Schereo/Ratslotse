@@ -413,6 +413,9 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
   // Ein Highlight der Auswahl-Seite zeigt auf genau ein Vorhaben (`?v=`):
   // Das steht dann gleich offen, statt dass man es in der Liste suchen muss.
   const [aktiv, setAktiv] = useState<number | null>(vorgewaehlt);
+  // Zeiger über einer Zeile hebt den Pin, Zeiger über einem Pin hebt die
+  // Zeile — Liste und Karte sind eine Sache, nicht zwei Ansichten.
+  const [schwebt, setSchwebt] = useState<number | null>(null);
   // Schreibtisch: Detail in der Seitenspalte. Telefon: Bottom-Sheet. Die
   // Grenze ist die Container-Breite des Rasters (@3xl), gemessen über
   // matchMedia auf dem Fenster — reicht, weil die Seite ohne Seitenleiste
@@ -486,7 +489,9 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
               vorhaben={vorhaben}
               aktiv={aktiv}
               gedimmt={gedimmt}
+              schwebt={schwebt}
               onSelect={setAktiv}
+              onHover={setSchwebt}
               className={cn(STAFFEL, "h-[280px] sm:h-[340px]")}
             />
           )}
@@ -569,7 +574,9 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
           ) : (
             <ol className={cn("mt-4 divide-y divide-border rounded-2xl border border-border bg-card", STAFFEL)} style={staffelStil(3)}>
               {sichtbar.map((v) => (
-                <VorhabenZeile key={v.id} v={v} aktiv={v.id === aktiv} onClick={() => setAktiv(v.id === aktiv ? null : v.id)} />
+                <VorhabenZeile key={v.id} v={v} aktiv={v.id === aktiv} schwebt={v.id === schwebt}
+                  onClick={() => setAktiv(v.id === aktiv ? null : v.id)}
+                  onHover={(an) => setSchwebt(an ? v.id : null)} />
               ))}
               {sichtbar.length === 0 && (
                 <li className="px-4 py-6 text-center text-sm text-muted-foreground">Kein Vorhaben in dieser Stufe.</li>
@@ -639,20 +646,27 @@ function Nachbarn({ nachbarn }: { nachbarn: Tafel["neighbours"] }) {
 }
 
 /** Eine Zeile der Liste unter der Karte — knapp: Farbpunkt, Name, Termin. */
-function VorhabenZeile({ v, aktiv, onClick }: { v: Vorhaben; aktiv: boolean; onClick: () => void }) {
+function VorhabenZeile({ v, aktiv, schwebt, onClick, onHover }: {
+  v: Vorhaben; aktiv: boolean; schwebt?: boolean; onClick: () => void; onHover?: (an: boolean) => void;
+}) {
   const stand = STAND[v.stage] ?? STAND.planning;
   return (
     <li>
       <button
         type="button"
         onClick={onClick}
+        onMouseEnter={() => onHover?.(true)}
+        onMouseLeave={() => onHover?.(false)}
+        onFocus={() => onHover?.(true)}
+        onBlur={() => onHover?.(false)}
         aria-pressed={aktiv}
         className={cn(
           "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent",
           aktiv && "bg-primary/5",
+          schwebt && !aktiv && "bg-accent",
         )}
       >
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: STAND_FARBE[v.stage] }} aria-hidden />
+        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full transition-transform", (schwebt || aktiv) && "scale-125")} style={{ background: STAND_FARBE[v.stage] }} aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">{v.name}</span>
           <span className="block truncate text-xs text-muted-foreground">
