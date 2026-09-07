@@ -1,12 +1,4 @@
 pytest>=8.0
-# Verteilt die Suite auf mehrere Prozesse (`-n auto`). Die 3.696 Tests laufen
-# seriell 85 s auf dem Entwicklungsrechner, aber 3–12 MINUTEN auf dem
-# geteilten CI-Läufer (gemessen über acht Läufe am 07.09.2026: 179 s, 187 s,
-# 193 s, 202 s, 223 s, 281 s, 385 s, 730 s). Mit vier Prozessen lokal 28 s bei
-# unverändertem Ergebnis — dieselben 3.696 bestanden, dieselben 16
-# übersprungen; die Suite trägt also keinen geteilten Zustand, der eine
-# Aufteilung verböte.
-pytest-xdist>=3.6
 responses>=0.25
 # Python-Linter, Auswahl und Begründung stehen in `ruff.toml` (nur „F").
 # Bewusst nicht auf eine Fassung festgenagelt — dieselbe Konvention wie oben.

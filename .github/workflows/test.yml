@@ -54,17 +54,23 @@ jobs:
       - name: Typ-Schuldenstand
         run: python scripts/pruefe_typschulden.py
 
-      # `-n auto`: ein Prozess je Kern (auf den GitHub-Läufern vier). Warum das
-      # geht und was es bringt, steht in `requirements-dev.txt` bei
-      # `pytest-xdist`.
+      # NICHT PARALLEL, und das ist gemessen. `pytest -n auto` (xdist) bringt
+      # den Lauf lokal von 85 s auf 28 s — macht aber
+      # `tests/test_stadtquellen.py::test_tafel_traegt_sperrungen_und_presse`
+      # rot, reproduzierbar, mit `--dist loadfile` genauso.
       #
-      # Was man dafür aufgibt: Die Testausgabe kommt nicht mehr in
-      # Datei-Reihenfolge, sondern so, wie die Prozesse fertig werden. Bei Rot
-      # steht trotzdem jeder Fehlschlag samt Datei und Zeile im Bericht — nur
-      # das Mitlesen eines laufenden Tests ist dahin. Wer einen Fehlschlag
-      # nachstellt, nimmt lokal wieder den seriellen Lauf:
+      # Der Grund liegt nicht in xdist, sondern in der Suite: Neun Testmodule
+      # verabreden ihre Datenbank über `os.environ.setdefault("COUNCIL_DB", …)`.
+      # `setdefault` heißt „nimm, was schon da ist" — hat ein anderes Modul die
+      # Variable vorher gesetzt, arbeitet die Datei auf DESSEN Datenbank.
+      # Seriell geht das gut, weil pytest die Module in fester Reihenfolge
+      # importiert; verteilt auf vier Prozesse importiert jeder eine andere
+      # Teilmenge in anderer Reihenfolge.
       #
-      #     .venv/bin/python -m pytest tests/ -q          # seriell
-      #     .venv/bin/python -m pytest tests/ -q -n auto  # wie die CI
+      # Solange das so ist, wäre die Aufteilung ein rotes Gate für einen
+      # kleinen Gewinn: Dieser Lauf ist mit ~3 Minuten nicht der kritische
+      # Pfad — auf den wartet niemand, solange die Browsertests knapp 9
+      # brauchen. Wer die Suite isoliert (Datenbank je Modul über eine
+      # Fixture statt über eine Prozessvariable), kann `-n auto` nachziehen.
       - name: Run tests
-        run: python -m pytest tests/ -q -n auto
+        run: python -m pytest tests/ -q

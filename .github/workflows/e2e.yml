@@ -134,8 +134,28 @@ jobs:
         working-directory: web/frontend
         run: npm ci --no-audit --no-fund
 
+      # Chromium ist das einzige Stück Rüstzeit, das NICHT schon zwischengelegt
+      # war: `setup-python` bringt den pip-Cache mit, `setup-node` den
+      # npm-Cache, aber der Browser wurde je Lauf neu geladen — gemessen 22 s,
+      # und seit der Aufteilung viermal je Lauf.
+      #
+      # Der Schlüssel hängt am package-lock: Playwright verlangt die Browser-
+      # Fassung, die zur Bibliotheks-Fassung gehört, und die steht dort. Damit
+      # verfällt der Cache zwar auch bei einer ganz anderen Abhängigkeit — das
+      # ist der sichere Fehler, denn er lädt nur neu, statt eine falsche
+      # Fassung zu behalten.
+      - name: Chromium aus dem Zwischenspeicher
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/frontend/package-lock.json') }}
+
       # Nur Chromium: Die Suite fährt ein Projekt (playwright.config.ts), und
       # jeder weitere Browser kostet Minuten, ohne etwas anderes zu prüfen.
+      #
+      # Läuft auch bei einem Treffer: Der Download entfällt dann, die
+      # System-Bibliotheken (`--with-deps`, apt) setzt der Schritt trotzdem —
+      # die liegen außerhalb des zwischengelegten Verzeichnisses.
       - name: Browser holen
         working-directory: web/frontend
         run: npx playwright install --with-deps chromium

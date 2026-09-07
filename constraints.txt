@@ -112,11 +112,6 @@ yt-dlp==2026.8.19
 iniconfig==2.3.0
 pluggy==1.6.0
 pytest==9.1.1
-# Verteilt die Suite auf mehrere Prozesse (`-n auto` in `test.yml`). `execnet`
-# ist der Unterbau, über den xdist mit seinen Arbeitsprozessen redet — es kommt
-# als Abhängigkeit mit und braucht deshalb dieselbe feste Fassung.
-pytest-xdist==3.8.0
-execnet==2.1.2
 # Der Typprüfer wird ANDERS behandelt als ruff, das bewusst offen bleibt: Eine
 # neue pyright-Fassung bringt regelmäßig neue Schlüsse mit und färbt damit über
 # Nacht einen PR rot, der nichts damit zu tun hat. Genau daran stirbt so eine
