@@ -20,6 +20,7 @@ import { Halbkreis } from "@/components/wahlabend/halbkreis";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { Verlauf } from "@/components/wahlabend/verlauf";
 import { useFrisch, useTween } from "@/lib/use-tween";
+import { useWahlabendZeit } from "@/components/wahlabend-hinweis";
 import { api, apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
 import { cn } from "@/lib/utils";
@@ -133,6 +134,7 @@ function Tafel({
   abfrageFehler: boolean;
 }) {
   const p = daten.progress;
+  const zeit = useWahlabendZeit();
   const beteiligung = useTween(daten.totals.turnout_pct);
   const gueltig = useTween(daten.totals.valid_votes);
   const bild = apiUrl(bildPfad(daten.phase === "counting" ? "projected_seats" : "seats", probe, counted));
@@ -149,7 +151,8 @@ function Tafel({
       <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
         <div className="min-w-0 flex-1">
           <p className={KICKER}>
-            Ratswahl Oldenburg · 13. September 2026 · {daten.dataset === "probe" ? "Generalprobe" : "Live"}
+            Ratswahl Oldenburg · 13. September 2026 ·{" "}
+            <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : zeit.kicker}</span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Wahlabend</h1>
           <p className="mt-3 text-[14px] text-foreground">
@@ -163,7 +166,9 @@ function Tafel({
             {abfrageFehler
               ? `Die letzte Abfrage ist fehlgeschlagen — gezeigt wird der Stand von ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr, nächster Versuch in einer Minute.`
               : daten.source.ok
-                ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
+                ? zeit.phase === "laeuft"
+                  ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
+                  : "Ab Sonntag 18 Uhr fragt die Seite jede Minute nach."
                 : `Der Votemanager antwortet gerade nicht (${daten.source.error ?? "Fehler"}) — gezeigt wird der letzte Stand.`}
             {daten.phase !== "before" ? (
               <>
@@ -607,14 +612,18 @@ export function WahlabendView() {
   const counted = params.get("counted");
   const schalterAn = useFeature("wahlabend");
   const config = useAppConfig();
+  const zeit = useWahlabendZeit();
+  // Bis Sonntag 18 Uhr gibt es nichts nachzufragen — der Minutentakt beginnt
+  // mit dem Wahlabend (Tims Wunsch: eine Woche Polling wäre Overkill).
+  const laeuft = zeit.phase === "laeuft";
 
   const abfrage = useQuery({
     queryKey: ["wahlabend", probe, counted],
     queryFn: () => api.get<Wahlabend>(abfragePfad(probe, counted)),
     enabled: schalterAn,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
-    staleTime: 30_000,
+    refetchInterval: laeuft ? 60_000 : false,
+    refetchOnWindowFocus: laeuft,
+    staleTime: laeuft ? 30_000 : 15 * 60_000,
   });
 
   const [liste, setListe] = useState<string | null>(null);
@@ -688,8 +697,9 @@ export function WahlabendView() {
         <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
-            Die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden erfahrungsgemäß gegen 20 Uhr; 2021 lag das
-            vorläufige Ergebnis der Ratswahl am Montagmorgen vor. Die Seite aktualisiert sich von selbst.
+            Gewählt wird am Sonntag, 13. September, die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden
+            erfahrungsgemäß gegen 20 Uhr; 2021 lag das vorläufige Ergebnis der Ratswahl am Montagmorgen vor. Die Seite
+            aktualisiert sich dann von selbst — bis dahin zeigt sie die Listen und Kandidat*innen ohne Zahlen.
           </p>
         ) : null}
         <ListenTafel daten={daten} liste={liste} waehle={waehle} />

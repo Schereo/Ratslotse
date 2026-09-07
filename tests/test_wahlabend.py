@@ -271,3 +271,12 @@ def test_endpunkt_live_vor_der_auszaehlung_und_bei_netzfehler(client, monkeypatc
     d = client.get("/api/wahlabend").json()
     assert d["source"]["ok"] is False and "ConnectionError" in d["source"]["error"]
     assert d["phase"] == "before" and len(d["areas"]) == 6
+
+
+def test_abruftakt_vor_und_am_wahlabend():
+    """Vor Sonntag 18 Uhr alle 15 Minuten, danach jede Minute."""
+    from datetime import datetime, timezone
+
+    assert votemanager.ttl_seconds(datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)) == 15 * 60
+    assert votemanager.ttl_seconds(datetime(2026, 9, 13, 15, 59, tzinfo=timezone.utc)) == 15 * 60
+    assert votemanager.ttl_seconds(datetime(2026, 9, 13, 16, 0, tzinfo=timezone.utc)) == 60

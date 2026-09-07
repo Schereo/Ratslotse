@@ -218,3 +218,35 @@ export function bildPfad(feld: "seats" | "projected_seats", probe: string | null
   if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
   return `/wahlabend/bild.png?${q.toString()}`;
 }
+
+/* ── Wann ist Wahlabend? ────────────────────────────────────────────────── */
+
+/** 13.09.2026, 18:00 Uhr in Oldenburg (MESZ = UTC+2): Die Wahllokale schließen,
+ *  ab hier „läuft" der Wahlabend. */
+export const WAHLABEND_BEGINN_UTC = Date.UTC(2026, 8, 13, 16, 0, 0);
+
+export type WahlabendZeit = {
+  phase: "vorher" | "laeuft";
+  /** Kalendertage bis zum Wahltag in deutscher Zeit; 0 am Wahltag selbst. */
+  tage: number;
+  /** Kurz, für den Mono-Kicker: „NOCH 6 TAGE", „HEUTE AB 18 UHR", „LIVE". */
+  kicker: string;
+  /** Ein Satzanfang für Überschriften: „Am Sonntag ab 18 Uhr", „Heute ab 18 Uhr". */
+  wann: string;
+};
+
+function berlinerTag(d: Date): number {
+  const t = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const [j, m, tag] = t.split("-").map(Number);
+  return Date.UTC(j, m - 1, tag);
+}
+
+/** Vor dem Wahlabend zählt die Seite herunter, danach „läuft" sie — dieselbe
+ *  Regel für Landing, Heute-Seite und die Tafel. */
+export function wahlabendZeit(jetzt: Date = new Date()): WahlabendZeit {
+  if (jetzt.getTime() >= WAHLABEND_BEGINN_UTC) return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
+  const tage = Math.max(0, Math.round((Date.UTC(2026, 8, 13) - berlinerTag(jetzt)) / 86_400_000));
+  if (tage === 0) return { phase: "vorher", tage, kicker: "Heute ab 18 Uhr", wann: "Heute ab 18 Uhr" };
+  if (tage === 1) return { phase: "vorher", tage, kicker: "Morgen ab 18 Uhr", wann: "Morgen ab 18 Uhr" };
+  return { phase: "vorher", tage, kicker: `Noch ${tage} Tage`, wann: "Am Sonntag ab 18 Uhr" };
+}

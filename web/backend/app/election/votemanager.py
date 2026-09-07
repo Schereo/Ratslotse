@@ -56,6 +56,18 @@ FILE_NAMES = {"city": "Stadt", "areas": "Wahlbereiche", "districts": "Wahlbezirk
 #: Spalten, ohne die eine Antwort keine Ergebnis-CSV ist.
 REQUIRED_COLUMNS = ("gebiet-name", "max-schnellmeldungen")
 TTL_SECONDS = 60
+#: Vor dem Wahlabend liegen die CSVs leer da; sie jede Minute zu holen, wäre
+#: Lärm beim Votemanager und bei uns. Bis Sonntag 18 Uhr reicht ein
+#: Viertelstundentakt — danach greift der Minutentakt.
+TTL_SECONDS_BEFORE = 15 * 60
+#: 13.09.2026, 18:00 Uhr in Oldenburg (MESZ = UTC+2).
+ELECTION_NIGHT_START = datetime(2026, 9, 13, 16, 0, tzinfo=timezone.utc)
+
+
+def ttl_seconds(now: datetime | None = None) -> int:
+    """Wie lange ein Abruf gilt: 60 s am Wahlabend, 15 min davor."""
+    now = now or datetime.now(timezone.utc)
+    return TTL_SECONDS if now >= ELECTION_NIGHT_START else TTL_SECONDS_BEFORE
 #: (verbinden, lesen). Drei Dateien nacheinander, jede Minute eine Runde: Ein
 #: langes Lese-Zeitlimit hielte den Request-Thread fest, während die Seite
 #: schon längst den alten Stand hätte zeigen können.
@@ -272,7 +284,7 @@ def fetch(force: bool = False) -> Snapshot:
     global _cache
     with _lock:
         now = time.monotonic()
-        if _cache and not force and now - _cache[0] < TTL_SECONDS:
+        if _cache and not force and now - _cache[0] < ttl_seconds():
             return _cache[1]
         base = base_url()
         failed: list[tuple[str, str]] = []

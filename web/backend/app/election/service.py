@@ -628,7 +628,7 @@ def live() -> ElectionNight:
     global _building
     with _cond:
         cached = _live
-        if cached and time.monotonic() - cached[0] < TTL_SECONDS:
+        if cached and time.monotonic() - cached[0] < votemanager.ttl_seconds():
             return cached[1]
         if cached:
             # Der alte Stand geht sofort raus, erneuert wird nebenher.
