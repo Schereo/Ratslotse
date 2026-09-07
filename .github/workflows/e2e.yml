@@ -35,19 +35,78 @@ on:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    # 09/2026 von 20 auf 35 angehoben. Die Suite ist von 38 auf 137 Tests
-    # gewachsen; der erste Lauf danach brauchte in der CI exakt 20 Minuten und
-    # ging damit auf die Sekunde durch. Der nächste Test hätte die Grenze
-    # gerissen — und zwar als ZEITÜBERSCHREITUNG, also mit einer Meldung, die
-    # nicht sagt, was kaputt ist. Lokal dauert derselbe Lauf 5,9 Minuten; der
-    # geteilte Läufer ist etwa dreimal langsamer.
+
+    # AUFGETEILT AUF VIER LÄUFER (09/2026). Vorher lief die Suite auf einem
+    # einzigen und brauchte 16–21 Minuten — und weil alle anderen Prüfungen
+    # eines PRs unter 10 Minuten bleiben, war das WARTEN AUF EINEN PR
+    # praktisch identisch mit dieser einen Zahl.
     #
+    # Warum die Aufteilung hier gefahrlos ist, obwohl die Tests ausdrücklich
+    # seriell laufen (`workers: 1`): Jeder Läufer startet über
+    # `tests/start-backend.sh` sein EIGENES Backend auf einer eigenen
+    # Wegwerf-Datenbank (`mktemp -d`). Die Läufer teilen also nichts. Und
+    # `--shard` verteilt ganze DATEIEN, solange `fullyParallel` aus ist — die
+    # Reihenfolge innerhalb einer Datei bleibt damit erhalten.
+    #
+    # Kein Weg über die Datei-Reihenfolge hinweg: `loginAdmin` in
+    # `helpers.ts` registriert sein Konto selbst und verträgt die 409, wenn es
+    # schon da ist. Genau deshalb darf Datei 09 auch ohne Datei 01 laufen.
+    #
+    # VIER, NICHT ACHT. Die Teile werden nach Test-ANZAHL geschnitten, nicht
+    # nach Dauer — sie werden also nicht gleich lang. Lokal gemessen
+    # (07.09.2026, ganze Suite 6,1 min):
+    #
+    #     Teil 1  39 Tests  1,2 min
+    #     Teil 2  39 Tests  2,3 min   ← der langsamste bestimmt die Wartezeit
+    #     Teil 3  38 Tests  1,8 min
+    #     Teil 4  24 Tests  1,0 min
+    #
+    # Der Gewinn ist damit 6,1 → 2,3 min, nicht 6,1 → 1,5. Mehr Teile
+    # verschieben das nur langsam weiter, weil eine DATEI die kleinste Einheit
+    # ist und jeder Läufer knapp 1 Minute Rüstzeit zahlt (venv, npm ci,
+    # Chromium). Vier ist der Punkt, an dem sich beides die Waage hält.
+    #
+    # ES KOSTET MEHR RECHENZEIT, ALS ES SPART — und das ist Absicht. In der CI
+    # gemessen brauchen die vier Teile ZUSAMMEN 22 Minuten reine Testzeit, der
+    # serielle Lauf vorher 15,4. Der Aufschlag kommt vom Next-Entwicklungs-
+    # server: Jeder Teil übersetzt die Routen, die SEINE Tests aufrufen, von
+    # vorn, und die Routen überschneiden sich zwischen den Teilen.
+    #
+    # Gekauft wird damit nicht Rechenzeit, sondern WARTEZEIT — die bestimmt der
+    # langsamste Teil, nicht die Summe. Dass das ein guter Tausch ist, liegt
+    # daran, dass dieses Repo öffentlich ist: GitHub rechnet Actions-Minuten
+    # für öffentliche Repos nicht ab. In einem privaten Repo wäre dieselbe
+    # Änderung eine Rechnung, und dann wäre die Anmeldung (s. u.) der richtige
+    # Hebel, weil sie beides senkt.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    name: Browsertests (${{ matrix.shard }}/4)
+
     # Die Grenze ist kein Ziel, sondern der Notausgang für einen hängenden
-    # Lauf. Wenn die Suite weiter wächst, ist der richtige Hebel nicht diese
-    # Zahl, sondern die Anmeldung: Fast jeder Test meldet sich neu an
-    # (`anmelden()` in den Specs, `loginAdmin` in `helpers.ts`). Eine
-    # wiederverwendete Sitzung über `storageState` spart die Runde je Test.
-    timeout-minutes: 35
+    # Lauf — sie gilt jetzt für EINEN Teil, nicht mehr für die ganze Suite.
+    # Von 35 auf 20. In der CI gemessen (07.09.2026, reine Testzeit):
+    #
+    #     Teil 1  4,6 min      Teil 3  6,7 min
+    #     Teil 2  7,6 min      Teil 4  3,2 min
+    #
+    # 20 statt 10, obwohl der langsamste Teil 7,6 Minuten braucht: Derselbe
+    # Läufer schwankt stark. Die Python-Suite, die sonst gut drei Minuten
+    # läuft, brauchte an einem Tag zwölf — ohne dass sich etwas am Code
+    # geändert hätte. Eine knapp gesetzte Grenze macht daraus eine
+    # ZEITÜBERSCHREITUNG, also einen roten PR mit einer Meldung, die nicht
+    # sagt, was kaputt ist. Der Notausgang darf großzügig sein.
+    #
+    # Der nächste Hebel, wenn die Suite weiter wächst, ist nicht diese Zahl
+    # und auch nicht die Zahl der Teile, sondern die Anmeldung: Fast jeder
+    # Test meldet sich neu an (`anmelden()` in den Specs, `loginAdmin` in
+    # `helpers.ts`), gemessen ~5 s je Test — bei ~100 angemeldeten Tests also
+    # gut die Hälfte der reinen Laufzeit. Eine wiederverwendete Sitzung über
+    # `storageState` spart diese Runde. Das ist ein Umbau der Suite, kein
+    # Schalter in dieser Datei, und deshalb hier nicht mitgemacht.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -77,22 +136,50 @@ jobs:
 
       # Nur Chromium: Die Suite fährt ein Projekt (playwright.config.ts), und
       # jeder weitere Browser kostet Minuten, ohne etwas anderes zu prüfen.
+      #
+      # HIER IST NICHTS ZU ZWISCHENSPEICHERN, und das ist gemessen, nicht
+      # vermutet. Der Schritt kostet 20 s und sieht damit wie der lohnendste
+      # Kandidat aus — die 22 s pip und 9 s npm daneben liegen ja längst im
+      # Cache (`cache: pip` / `cache: npm` oben). Ein `actions/cache` auf
+      # `~/.cache/ms-playwright` wurde am 07.09.2026 eingebaut und wieder
+      # entfernt:
+      #
+      #     Lauf 1 (Cache leer)      Browser holen 20 s
+      #     Lauf 2 (Cache-TREFFER)   Browser holen 20 s  + 3 s Wiederherstellung
+      #
+      # Der Treffer stand im Log, der Schritt wurde trotzdem keine Sekunde
+      # schneller. Die Zeit steckt nicht im Herunterladen des Browsers,
+      # sondern in `--with-deps` — das ist ein `apt-get install` der
+      # System-Bibliotheken, und die liegen außerhalb jedes zwischengelegten
+      # Verzeichnisses. Der Cache machte den Lauf also um 3 s LANGSAMER und
+      # belegte 261 MB.
+      #
+      # `--with-deps` einfach wegzulassen wäre der einzige Hebel hier. Nicht
+      # gemacht: Fehlt eine Bibliothek, startet der Browser gar nicht erst,
+      # und der Preis wäre ein rotes Gate für 20 s auf einem Lauf, der über 8
+      # Minuten braucht.
       - name: Browser holen
         working-directory: web/frontend
         run: npx playwright install --with-deps chromium
 
       - name: Browsertests
         working-directory: web/frontend
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}/4
 
       # Bei Rot: der HTML-Bericht mit Screenshot, Video und Trace jedes
       # gescheiterten Laufs. Ohne ihn steht in der CI nur „Timeout", und die
       # Suche beginnt bei null.
+      #
+      # Der Name trägt die Teilnummer: Namensgleiche Artefakte aus einer
+      # Matrix weist `upload-artifact@v4` mit einem Fehler ab (in v3 hätten
+      # sie sich gegenseitig überschrieben, was schlimmer wäre — man lädt den
+      # Bericht herunter und sucht den Fehler in den Tests eines anderen
+      # Teils).
       - name: Bericht sichern
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-bericht
+          name: playwright-bericht-${{ matrix.shard }}
           path: |
             web/frontend/playwright-report
             web/frontend/test-results
