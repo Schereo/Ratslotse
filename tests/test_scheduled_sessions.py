@@ -644,6 +644,37 @@ def test_weitere_punkte_tragen_ihre_erklaerung_mit(tmp_path):
         store.close()
 
 
+def test_wochenvorschau_punkte_tragen_wichtig_grund_auch_ohne_tragweite(tmp_path):
+    """Prod-Ausfall 07.09.2026: Eine frisch veröffentlichte Tagesordnung hatte
+    noch keine KI-Tragweite, die Punkte waren nur nach Regeln bewertet — und
+    die trugen das Feld ``wichtig_grund`` gar nicht. Der Endpunkt liefert die
+    Dicts unverändert aus, ``wichtig_grund`` ist dort Pflichtfeld: 500 auf
+    ``/api/council/week-preview``, die Rauchprobe nach dem Deploy fiel, die
+    Wartungssperre hielt die API gut siebzig Minuten gestoppt.
+
+    Geprüft wird deshalb nicht nur der Schlüssel, sondern die ganze Antwort
+    gegen den Antworttyp — so, wie FastAPI sie vor dem Ausliefern prüft."""
+    import sys
+    from pathlib import Path
+
+    from pydantic import TypeAdapter
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
+    from app.antworten import CouncilWeekPreview
+
+    store = _vorschau_store(tmp_path)
+    try:
+        assert store._conn.execute("SELECT count(*) FROM agenda_item_impact").fetchone()[0] == 0, \
+            "der Fall ist gerade: KEINE Tragweite-Bewertung liegt vor"
+        d = store.wochenvorschau(max_punkte=99)
+        assert d["items"], "ohne Punkte prüft der Test nichts"
+        assert all(p["wichtig_quelle"] == "regeln" for p in d["items"])
+        assert all("wichtig_grund" in p and p["wichtig_grund"] is None for p in d["items"])
+        TypeAdapter(CouncilWeekPreview).validate_python(d)
+    finally:
+        store.close()
+
+
 # ---- Highlights je Sitzung für die Sitzungsliste (04.09.2026) ------------
 
 def test_sitzungs_highlights_nutzt_dieselbe_schwelle_wie_die_woche(tmp_path):

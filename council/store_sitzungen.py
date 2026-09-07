@@ -622,6 +622,14 @@ class SitzungenMixin(StoreBasis):
             # LLM-Bewertung vergleichbar sind: 2.5 → 30, 5 → 60, 8 → 95.
             p["wichtig"] = min(95, round(p["rang"] * 12))
             p["wichtig_quelle"] = "regeln"
+            # Das Feld gehört zur Form, auch ohne Grund: Die Wochenvorschau
+            # liefert diese Dicts unverändert aus, und ``wichtig_grund`` ist
+            # dort Pflichtfeld (``str | None``). Bis die Tragweite-Bewertung
+            # einen Grund nachträgt, stand der Schlüssel schlicht nicht da —
+            # und jede frisch veröffentlichte Tagesordnung ließ den Endpunkt
+            # mit einem Validierungsfehler abbrechen (Prod, 07.09.2026: die
+            # Rauchprobe nach dem Deploy fiel darüber, die API blieb gestoppt).
+            p.setdefault("wichtig_grund", None)
 
     def sitzungen_im_fenster(self, tage: int = 7) -> list[dict]:
         """Jede Sitzung der kommenden ``tage`` Tage — die Grundlage der
