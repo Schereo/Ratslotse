@@ -345,6 +345,17 @@ struct CouncilBrowserView: View {
             ))
         }
         .onChange(of: model.councilSection) { _, _ in page = 0; Task { await load() } }
+        // Ein Beschlussort von der Stadtkarte (Ebene „Themen-Orte") wird zum
+        // Filter der Beschluss-Suche — wie `/council?location=…` im Web.
+        .onChange(of: model.pendingLocationFilter, initial: true) { _, filter in
+            guard let filter else { return }
+            model.pendingLocationFilter = nil
+            location = filter.slug
+            locationName = filter.name
+            query = ""
+            page = 0
+            Task { await load() }
+        }
         .onChange(of: outcome) { _, _ in page = 0; Task { await load() } }
         .onChange(of: model.isOffline) { wasOffline, isOffline in
             guard wasOffline && !isOffline else { return }
@@ -431,53 +442,20 @@ struct CouncilBrowserView: View {
         }
     }
 
+    /// Der Abschnitt „Stadtkarte": seit Schritt 6 des Plans dieselbe Karte
+    /// wie „Mein Viertel" (`CityMapView`), hier mit der Ebene „Themen-Orte"
+    /// an — das war die Karte, die man an dieser Stelle kannte.
     private var councilMapStage: some View {
-        ZStack(alignment: .top) {
-            NativeCouncilMap(points: filteredMapPoints) { point in
-                openMapPoint(point)
+        CityMapView(model: model, placeID: nil, topicsFirst: true)
+            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous)
+                    .stroke(RatsColor.border, lineWidth: 1)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            VStack(spacing: 8) {
-                councilSearchControls
-                    .padding(.horizontal, 13)
-                    .frame(height: 46)
-                    .councilMapGlassSurface(cornerRadius: 16)
-
-                HStack(spacing: 8) {
-                    if isLoading { ProgressView().controlSize(.small) }
-                    Spacer(minLength: 0)
-                    Text("\(filteredMapPoints.count) Treffer")
-                        .font(RatsFont.mono(9.5, weight: .semibold))
-                        .foregroundStyle(RatsColor.secondary)
-                        .padding(.horizontal, 10)
-                        .frame(height: 28)
-                        .councilMapGlassSurface(cornerRadius: 11)
-                }
-
-                if let error, !hasVisibleContent {
-                    ErrorCard(message: error) { Task { await load() } }
-                }
-            }
-            .padding(12)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous)
-                .stroke(RatsColor.border, lineWidth: 1)
-        }
-        .padding(.horizontal, 18)
-        // MKMapView zeichnet als UIKit-View auch unter das transparente
-        // safeAreaInset der schwebenden Phone-Navigation. Der eigene Abstand
-        // hält die komplette Karte sichtbar; auf iPad übernimmt die Sidebar.
-        .padding(.bottom, horizontalSizeClass == .regular ? 10 : 72)
-        .accessibilityHint("Nahe Punkte werden gebündelt. Tippe eine Zahl zum Heranzoomen oder einen Punkt für Details.")
-    }
-
-    private var filteredMapPoints: [CouncilMapPoint] {
-        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !needle.isEmpty else { return mapPoints }
-        return mapPoints.filter { $0.name.localizedCaseInsensitiveContains(needle) }
+            .padding(.horizontal, 18)
+            // Auch unter der schwebenden Phone-Navigation bleibt die Tafel
+            // erreichbar; auf iPad übernimmt die Sidebar.
+            .padding(.bottom, horizontalSizeClass == .regular ? 10 : 72)
     }
 
     private func isFirstSessionInYear(at index: Int) -> Bool {
@@ -657,20 +635,6 @@ struct CouncilBrowserView: View {
         return (error as? URLError)?.code == .cancelled
     }
 
-    private func openMapPoint(_ point: CouncilMapPoint) {
-        switch point.target {
-        case "ort":
-            if let placeID = point.placeID { model.navigation.append(.place(id: placeID)) }
-        case "location":
-            location = point.locationSlug ?? point.slug
-            locationName = point.name
-            query = ""
-            model.councilSection = .decisions
-            page = 0
-        default:
-            model.navigation.append(.topic(slug: point.slug))
-        }
-    }
 
     private func loadFilterOptions() async {
         if committees.isEmpty,
@@ -1684,7 +1648,7 @@ private struct DecisionActionPressStyle: ButtonStyle {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder
     func councilMapGlassSurface(cornerRadius: CGFloat) -> some View {
         if #available(iOS 26.0, *) {

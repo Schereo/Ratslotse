@@ -126,9 +126,10 @@ struct MoreHubView: View {
             subtitle: "Suchen, einordnen und vor Ort entdecken",
             rows: [
                 .action("Suche", "Beschlüsse und Vorlagen finden", .search) { open(.decisions) },
-                .action("Stadtkarte", "Was der Rat an welchen Orten bewegt", .map) { open(.map) },
+                // „Stadtkarte" stand hier bis 09/2026 — sie ist in „Mein Viertel"
+                // aufgegangen (STADTKARTE-PLAN.md, Schritt 6; das Menü nicht bloaten).
             ] + (model.feature("mein-viertel") ? [
-                .action("Mein Viertel", "Was sich in deinem Ortsbereich ändert", .mapPin) {
+                .action("Mein Viertel", "Stadt, Viertel, Vorhaben — auf einer Karte", .map) {
                     dismiss()
                     model.tabletPage = nil
                     model.selectedTab = .today

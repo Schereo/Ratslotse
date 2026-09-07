@@ -583,7 +583,10 @@ private enum MainNavigationDestination: Identifiable {
         case .questions: "Fragen"
         case .decisions: "Beschlüsse"
         case .sessions: "Sitzungen"
-        case .map: "Stadtkarte"
+        // Bis 09/2026 „Stadtkarte" — seit Schritt 6 des Karten-Plans ist der
+        // Rats-Abschnitt .map die vereinte Karte, und die heißt überall
+        // „Mein Viertel" (Tim: das Menü nicht bloaten, ein Eintrag).
+        case .map: "Mein Viertel"
         case .topics: "Themen"
         case .analysis: "Analyse"
         case .subscriptions: "Abos"
@@ -600,7 +603,7 @@ private enum MainNavigationDestination: Identifiable {
         case .questions: .ask
         case .decisions: .decisions
         case .sessions: .calendar
-        case .map: .map
+        case .map: .mapPin
         case .topics: .topics
         case .analysis: .analysis
         case .subscriptions: .subscriptions
@@ -883,9 +886,7 @@ struct RouteDestinationView: View {
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
-        case .district(let id):
-            if let id { DistrictBoardView(model: model, placeID: id) }
-            else { DistrictChooserView(model: model) }
+        case .district(let id): CityMapView(model: model, placeID: id)
         case .quiz(let area): QuizView(model: model, area: area)
         case .analysis: CouncilInsightsView(model: model)
         case .admin: AdminView(model: model)

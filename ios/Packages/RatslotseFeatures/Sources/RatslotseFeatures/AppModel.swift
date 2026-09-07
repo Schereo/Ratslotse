@@ -44,6 +44,11 @@ enum CouncilSection: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+struct LocationFilter: Equatable, Sendable {
+    let slug: String
+    let name: String
+}
+
 enum TabletPage: String, Sendable, Equatable {
     case analysis
     case subscriptions
@@ -67,6 +72,11 @@ public final class AppModel {
     /// sagt, ob etwas schon so weit ist — keine Rechteprüfung (kern/features.py).
     public var features: Set<String> = []
     public func feature(_ key: String) -> Bool { features.contains(key) }
+    /// Ein Beschlussort von der Stadtkarte (Ebene „Themen-Orte"), den die
+    /// Beschluss-Suche als Filter übernehmen soll — wie `punktHref` im Web,
+    /// das auf `/council?location=…` zeigt. Die Suche liest ihn beim Erscheinen
+    /// und setzt ihn zurück.
+    var pendingLocationFilter: LocationFilter?
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
     public var questionShareToken: String?

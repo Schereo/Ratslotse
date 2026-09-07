@@ -45,13 +45,47 @@ public struct DistrictProjectsOverviewEntry: Codable, Sendable, Hashable, Identi
     }
 }
 
+/// Ein Vorhaben, das stadtweit gerade heraussticht — für die Stadt-Stufe der Karte.
+public struct DistrictHighlight: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let placeID: String
+    public let placeName: String
+    public let name: String
+    public let what: String
+    public let stage: String
+    public let when: String?
+    public let category: String
+    public let lastDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, what, stage, when, category
+        case placeID = "place_id"
+        case placeName = "place_name"
+        case lastDate = "last_date"
+    }
+}
+
 public struct DistrictProjectsOverview: Codable, Sendable {
     public let districts: [DistrictProjectsOverviewEntry]
+    /// Stadtzahlen und Highlights (seit der Auswahl-Anzeigetafel, 09/2026) —
+    /// optional, damit ein älterer Server die Übersicht nicht leer lässt.
+    public let total: Int?
+    public let stages: [String: Int]?
+    public let highlights: [DistrictHighlight]?
     public let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case districts
+        case districts, total, stages, highlights
         case updatedAt = "updated_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        districts = try c.decode([DistrictProjectsOverviewEntry].self, forKey: .districts)
+        total = try c.decodeIfPresent(Int.self, forKey: .total)
+        stages = try c.decodeIfPresent([String: Int].self, forKey: .stages)
+        highlights = try c.decodeIfPresent([DistrictHighlight].self, forKey: .highlights)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 }
 
