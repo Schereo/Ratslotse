@@ -7,18 +7,23 @@
  * löschen ist der einzige Vorgang der App, den niemand zurücknehmen kann.
  */
 import { expect, test } from "@playwright/test";
-import { einrichtungUeberspringen, expectToast } from "./helpers";
+import { expectToast } from "./helpers";
+import { zustandsDatei } from "./konten";
 
 const PASSWORT = "password123";
-const KONTO = "nutzerin@example.org";
+
+// Angemeldet aus der abgelegten Sitzung — welche Adresse hinter „nutzerin"
+// steckt, steht in `konten.ts`.
+//
+// Diese Datei ändert den Anzeigenamen, probiert Passwortwechsel und öffnet die
+// Löschen-Rückfrage — sie darf die geteilte Identität also nicht kaputtmachen.
+// Tut sie auch nicht: Beide Passwort-Tests scheitern ABSICHTLICH (verschiedene
+// Wiederholungen, falsches aktuelles Passwort), und die Löschung wird nie
+// bestätigt. Das Abmelden am Ende betrifft nur den Browser dieses einen Tests,
+// nicht die abgelegte Datei.
+test.use({ storageState: zustandsDatei("nutzerin") });
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/login");
-  await page.locator("#email").fill(KONTO);
-  await page.locator("#password").fill(PASSWORT);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
-  await einrichtungUeberspringen(page);
   await page.goto("/account");
 });
 

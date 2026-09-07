@@ -16,9 +16,8 @@
  * `budget`), `nutzerin@example.org` trägt keine.
  */
 import { expect, test } from "@playwright/test";
-import { einrichtungUeberspringen } from "./helpers";
+import { zustandsDatei } from "./konten";
 
-const PASSWORT = "password123";
 
 /** Was `app/(app)/not-found.tsx` zeigt, wenn das Gate greift. */
 const NICHT_GEFUNDEN = /Diesen Inhalt finde ich nicht/i;
@@ -43,17 +42,8 @@ const SEITEN = [
   "/haushalt/vergleich",
 ];
 
-async function anmelden(page: import("@playwright/test").Page, email: string) {
-  await page.goto("/login");
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(PASSWORT);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
-  await einrichtungUeberspringen(page);
-}
-
 test.describe("Ohne das Recht `budget`", () => {
-  test.beforeEach(async ({ page }) => anmelden(page, "nutzerin@example.org"));
+  test.use({ storageState: zustandsDatei("nutzerin") });
 
   test("die Übersicht ist nicht da — und zwar als 404, nicht als leere Seite", async ({ page }) => {
     await page.goto("/haushalt");
@@ -78,7 +68,7 @@ test.describe("Ohne das Recht `budget`", () => {
 });
 
 test.describe("Mit dem Recht `budget`", () => {
-  test.beforeEach(async ({ page }) => anmelden(page, "ratsfrau@example.org"));
+  test.use({ storageState: zustandsDatei("ratsfrau") });
 
   test("die Navigation führt hin", async ({ page }) => {
     await page.goto("/dashboard");

@@ -2,14 +2,26 @@
  * Auth flow: register → login → me endpoint → logout.
  */
 import { test, expect } from "@playwright/test";
-import { registerAdmin, loginAdmin, ADMIN_EMAIL, ADMIN_PASSWORD } from "./helpers";
+import { loginAdmin, ADMIN_EMAIL, ADMIN_PASSWORD } from "./helpers";
 
 test.describe("Auth", () => {
-  test("register creates admin and lands on link/dashboard", async ({ page }) => {
+  // EIGENE, JEDES MAL NEUE ADRESSE — nicht ADMIN_EMAIL. Seit 09/2026 legt
+  // `auth.setup.ts` die Identitäten der Suite vor dem ersten Test an, und
+  // `admin@test.de` gehört dazu. Auf eine vorhandene Adresse antwortet die
+  // Registrierung mit 409; die Seite bliebe stehen, und der Test scheiterte
+  // als Zeitüberschreitung beim Warten auf die Weiterleitung — mit einer
+  // Meldung, die nichts über die Ursache sagt.
+  //
+  // Der Test wird dadurch nicht schwächer: Geprüft ist, dass das Formular ein
+  // NEUES Konto anlegt und danach weiterleitet. Dass diese Adresse kein Admin
+  // wird, spielt hier keine Rolle — die Admin-Vergabe hängt an
+  // `WEB_ADMIN_EMAIL` und wird an anderer Stelle geprüft.
+  test("register creates an account and lands on link/dashboard", async ({ page }) => {
+    const neu = `neu-${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.org`;
     await page.goto("/register");
     await expect(page.getByText("Ratslotse")).toBeVisible();
 
-    await page.locator("#email").fill(ADMIN_EMAIL);
+    await page.locator("#email").fill(neu);
     await page.locator("#password").fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Konto erstellen" }).click();
     await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });

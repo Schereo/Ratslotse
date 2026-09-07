@@ -10,7 +10,7 @@
  * mehr bei den Sitzungen, sondern bei der Suche.
  */
 import { test, expect } from "@playwright/test";
-import { loginAdmin } from "./helpers";
+import { zustandsDatei } from "./konten";
 
 const MOCK_SESSION = {
   ksinr: 42,
@@ -32,9 +32,9 @@ const MOCK_DETAIL = {
 };
 
 test.describe("Ratsinformationssystem", () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAdmin(page);
+  test.use({ storageState: zustandsDatei("admin") });
 
+  test.beforeEach(async ({ page }) => {
     await page.route("**/api/council/committees", (route) =>
       route.fulfill({
         status: 200,
@@ -192,10 +192,10 @@ test.describe("Ratsinformationssystem", () => {
 
 /** Die geteilte Sitzung — sie muss OHNE Konto aufgehen.
  *
- *  Bewusst ein eigener Block ohne `loginAdmin`: Genau das ist der Fall, den
- *  ein weitergereichter Link auslöst, und genau der ging vorher in der
- *  Anmeldewand unter. Steht hier eines Tages wieder ein Login-Formular, ist
- *  der Teilen-Knopf wertlos geworden, ohne dass es sonst jemand merkt.
+ *  Bewusst ein eigener Block OHNE `test.use({ storageState })`: Genau das ist
+ *  der Fall, den ein weitergereichter Link auslöst, und genau der ging vorher
+ *  in der Anmeldewand unter. Steht hier eines Tages wieder ein Login-Formular,
+ *  ist der Teilen-Knopf wertlos geworden, ohne dass es sonst jemand merkt.
  */
 test.describe("Geteilte Sitzung ohne Konto", () => {
   test.beforeEach(async ({ page }) => {

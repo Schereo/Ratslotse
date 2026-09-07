@@ -8,19 +8,12 @@
  * weil nichts kaputt aussieht.
  */
 import { expect, test } from "@playwright/test";
-import { einrichtungUeberspringen } from "./helpers";
+import { zustandsDatei } from "./konten";
 
-const PASSWORT = "password123";
-const KONTO = "nutzerin@example.org";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/login");
-  await page.locator("#email").fill(KONTO);
-  await page.locator("#password").fill(PASSWORT);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
-  await einrichtungUeberspringen(page);
-});
+// Angemeldet aus der abgelegten Sitzung statt über das Formular — welche
+// Adresse hinter „nutzerin" steckt, steht in `konten.ts`.
+test.use({ storageState: zustandsDatei("nutzerin") });
 
 test.describe("Merkliste", () => {
   test("gruppiert nach Sitzung und zeigt die Anzahl", async ({ page }) => {

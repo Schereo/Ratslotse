@@ -56,9 +56,20 @@ export default defineConfig({
   },
 
   projects: [
+    // Meldet jede Identität einmal an und legt ihre Sitzung unter
+    // `tests/e2e/.auth/` ab. Warum das die Suite etwa halbiert, steht in
+    // `tests/e2e/konten.ts`; wie es gemacht wird, in `tests/e2e/auth.setup.ts`.
+    {
+      name: "setup",
+      testMatch: /.*\.setup\.ts/,
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      // `dependencies` heißt: läuft erst, wenn „setup" grün ist. Scheitert das
+      // Anmelden, fallen die Tests nicht einzeln mit „Datei nicht gefunden"
+      // aus, sondern der Lauf sagt an EINER Stelle, dass die Sitzung fehlt.
+      dependencies: ["setup"],
     },
   ],
 
