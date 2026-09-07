@@ -428,6 +428,10 @@ class ReleaseMedia(TypedDict):
     src: str
     src_dark: str
     alt: str
+    #: Seitenverhältnis als CSS-Wert — im Browser querformatige Fenster
+    #: (``16/9``), in der App hochkante Telefon-Bildschirme (``9/16``). Die
+    #: Bühne baut ihren Rahmen daraus, statt ihn zu raten.
+    aspect: str
     poster: str | None
     poster_dark: str | None
 

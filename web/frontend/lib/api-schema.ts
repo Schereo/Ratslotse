@@ -9183,6 +9183,8 @@ export interface components {
             media: {
                 /** Alt */
                 alt: string;
+                /** Aspect */
+                aspect: string;
                 /** Kind */
                 kind: string;
                 /** Poster */
@@ -9213,6 +9215,8 @@ export interface components {
         ReleaseMedia: {
             /** Alt */
             alt: string;
+            /** Aspect */
+            aspect: string;
             /** Kind */
             kind: string;
             /** Poster */
@@ -15695,4 +15699,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e85aa95e75d2c6dcf2a6a8e8a03f4dc639e33fcdaa43c9dcd702e304c49083cc
+// vertrag-sha256: 9b3cab2e61acbb334b1701a6e870bab6bf4a69453964fa5e19c6df79e2d658d1

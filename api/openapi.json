@@ -11978,6 +11978,10 @@
                 "title": "Alt",
                 "type": "string"
               },
+              "aspect": {
+                "title": "Aspect",
+                "type": "string"
+              },
               "kind": {
                 "title": "Kind",
                 "type": "string"
@@ -12010,6 +12014,7 @@
               "src",
               "src_dark",
               "alt",
+              "aspect",
               "poster",
               "poster_dark"
             ],
@@ -12048,6 +12053,10 @@
             "title": "Alt",
             "type": "string"
           },
+          "aspect": {
+            "title": "Aspect",
+            "type": "string"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -12080,6 +12089,7 @@
           "src",
           "src_dark",
           "alt",
+          "aspect",
           "poster",
           "poster_dark"
         ],

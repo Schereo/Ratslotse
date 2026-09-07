@@ -79,6 +79,15 @@ class Media:
     src_dark: str
     #: Was zu sehen ist — für Screenreader und für den Fall, dass nichts lädt.
     alt: str
+    #: Das Seitenverhältnis als CSS-Wert (``"16/9"``, ``"9/16"``). Die Bühne
+    #: baut ihren Rahmen daraus, statt ihn zu raten: Im Browser sind die
+    #: Aufnahmen querformatige Fenster, in der App **hochkant** — ein
+    #: Telefon-Bildschirm in einem 16:9-Kasten stünde als schmaler Streifen
+    #: zwischen zwei leeren Flächen (Tims Befund 07.09.2026).
+    #:
+    #: Alle Medien einer Ausgabe teilen sich EIN Verhältnis, sonst springt der
+    #: Kasten beim Blättern (``tests/test_releases.py``).
+    aspect: str = "16/9"
     #: Nur bei ``video``: das Standbild, bis der Clip läuft. Es ist zugleich
     #: das, was bei ``prefers-reduced-motion`` STATT des Clips steht.
     poster: str | None = None
@@ -338,7 +347,7 @@ def as_dict(release: Release, client: str = "web") -> dict:
         if m is None:
             return None
         return {"kind": m.kind, "src": m.src, "src_dark": m.src_dark, "alt": m.alt,
-                "poster": m.poster, "poster_dark": m.poster_dark}
+                "aspect": m.aspect, "poster": m.poster, "poster_dark": m.poster_dark}
 
     return {
         "version": release.version,

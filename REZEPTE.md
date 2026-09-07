@@ -176,6 +176,20 @@ Die drei Dinge, die man dabei vergisst:
      auf heute ziehen und eine Zeile in `council_live_state` legen —
      **hinterher zurückdrehen**.
 
+   **Die App-Aufnahmen sind hochkant** (`aspect="9/16"`, Tims Vorgabe
+   07.09.2026): Ein Telefon-Bildschirm in einem 16:9-Kasten stünde als schmaler
+   Streifen zwischen zwei leeren Flächen. Die Bühne baut ihren Rahmen aus dem
+   Feld, alle Medien einer Ausgabe teilen sich eines.
+
+   Für einen App-Clip: `xcrun simctl io <UDID> recordVideo`, danach **erst auf
+   feste 30 fps normalisieren** (`-vf fps=30`) — die Zeitangaben der
+   Simulator-Aufnahme passen nicht zu ihren Bildern, ein Schnitt auf dem Rohfilm
+   landet daneben. Nach dem Tipp großzügig weiterlaufen lassen (25 s), die
+   Aufnahme hinkt der Eingabe deutlich hinterher. Den **Fingertipp** malt
+   hinterher ffmpeg: eine gefüllte Scheibe plus fünf wachsende Ringe an der
+   Tippstelle — iOS zeichnet keinen Zeiger auf, und ohne Markierung springt das
+   Teilen-Blatt aus dem Nichts auf.
+
    Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
    die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der
    App gar nicht gibt (2.2.0: das Glossar), bekommt `only="web"` — angekündigt

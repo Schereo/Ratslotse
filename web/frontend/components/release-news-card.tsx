@@ -156,6 +156,13 @@ function Buehne({
   const h = highlights[i];
   const n = highlights.length;
   const alleGesehen = gesehen.length >= n;
+  // Alle Medien einer Ausgabe tragen dasselbe Verhältnis (Wächter im Backend);
+  // das erste genügt also für den Rahmen. Ohne Medium bleibt es beim Querformat.
+  const rahmen = h.media?.aspect ?? "16/9";
+  const hochkant = (() => {
+    const [b, hh] = rahmen.split("/").map(Number);
+    return Number.isFinite(b) && Number.isFinite(hh) && hh > b;
+  })();
 
   const zeige = useCallback((ziel: number, fokus = false) => {
     const neu = ((ziel % n) + n) % n;
@@ -187,7 +194,15 @@ function Buehne({
           id={`${basis}-panel`}
           role="tabpanel"
           aria-labelledby={`${basis}-tab-${i}`}
-          className="relative aspect-video shrink-0 overflow-hidden rounded-xl border border-border bg-background @2xl:w-[52%]"
+          // Das Verhältnis kommt aus dem Medium (`kern/releases.py`), es wird
+          // nicht geraten: Im Browser sind die Aufnahmen querformatige
+          // Fenster, in der App hochkante Telefon-Bildschirme. Alle Medien
+          // einer Ausgabe teilen sich eines, der Kasten springt also nicht.
+          style={{ aspectRatio: rahmen }}
+          className={cn(
+            "relative shrink-0 overflow-hidden rounded-xl border border-border bg-background",
+            hochkant ? "@2xl:w-[30%]" : "@2xl:w-[52%]",
+          )}
         >
           {/* Der Wechsel blendet nur — eine Strecke gäbe es hier nicht zu
               zeigen, und `opacity` allein kostet kein Layout. */}

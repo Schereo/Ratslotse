@@ -185,6 +185,19 @@ def test_die_app_bekommt_ihre_eigenen_bilder_wenn_es_sie_gibt():
     assert releases.as_dict(voll, "ios")["highlights"][0]["media"]["src"] == "/i.webp"
 
 
+def test_alle_medien_einer_ausgabe_teilen_ein_seitenverhaeltnis():
+    """Sonst springt der Kasten der Bühne beim Blättern — genau das, was die
+    Bewegungsregeln vermeiden (DESIGNSPRACHE §7). Web und App dürfen sich
+    unterscheiden: querformatige Fenster hier, hochkante Telefone dort."""
+    for release in releases.RELEASES:
+        for client, feld in (("web", "media"), ("ios", "media_ios")):
+            formate = {getattr(h, feld).aspect
+                       for h in releases.highlights_for(release, client)
+                       if getattr(h, feld)}
+            assert len(formate) <= 1, (
+                f"{release.version} ({client}): mehrere Seitenverhältnisse {formate}.")
+
+
 def test_ein_clip_bringt_sein_standbild_mit():
     """``prefers-reduced-motion`` zeigt das Standbild STATT des Clips — ohne
     Poster bliebe die Bühne dort leer. Und beide Helligkeiten, sonst blendet
