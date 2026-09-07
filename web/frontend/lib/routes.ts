@@ -25,6 +25,12 @@ export const ortHref = (id: string) => `/council/ort?id=${encodeURIComponent(id)
  *  zeigen auf genau eines). */
 export const viertelHref = (id?: string | null, vorhaben?: number | null) =>
   id ? `/viertel?id=${encodeURIComponent(id)}${vorhaben ? `&v=${vorhaben}` : ""}` : "/viertel";
+/** Die vereinte Stadtkarte (`/karte`, STADTKARTE-PLAN.md): ohne `ort` die
+ *  Stadt-Stufe, mit `ort` das Viertel, mit `vorhaben` das Detail. Dieselbe
+ *  Form wie `viertelHref`, damit die Bausteine der Tafel nur den Erzeuger
+ *  tauschen. */
+export const karteHref = (ort?: string | null, vorhaben?: number | null) =>
+  ort ? `/karte?ort=${encodeURIComponent(ort)}${vorhaben ? `&v=${vorhaben}` : ""}` : "/karte";
 /** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "electoral_district:3"). */
 export const quizHref = (area?: string) => (area ? `/quiz?area=${encodeURIComponent(area)}` : "/quiz");
 /** Sitzungsliste, aufgeklappt bei einer bestimmten Sitzung (Design 28a/S2:
