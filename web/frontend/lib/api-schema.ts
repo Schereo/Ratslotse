@@ -3431,6 +3431,12 @@ export interface paths {
         /**
          * Get News
          * @description Die offenen Release-Karten dieses Kontos, neueste zuerst.
+         *
+         *     Die Bilder kommen **passend zum Client**: Wer auf dem iPhone liest, soll
+         *     das iPhone sehen und nicht ein Browserfenster mit Seitenleiste (Tims
+         *     Wunsch 07.09.2026). Die Auswahl fällt hier und nicht im Client — sonst
+         *     müsste jede Oberfläche zwei Felder auseinanderhalten, und eine dritte
+         *     Plattform bräuchte überall eine Änderung statt nur einen Registry-Eintrag.
          */
         get: operations["get_news_api_news_get"];
         put?: never;
@@ -15689,4 +15695,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9af70123f905a0015e5353eadd9c4868707e73c18de74039a67e5899410e3627
+// vertrag-sha256: e85aa95e75d2c6dcf2a6a8e8a03f4dc639e33fcdaa43c9dcd702e304c49083cc

@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
 from kern import news, releases
 from kern.store import Store
 
 from ..antworten import (AdminNewsList, AdminNewsRelease, AdminNewsSent,
                          NewsSeen, NewsState, TestDelivery)
+from ..clients import client_kind
 from ..config import get_settings
 from ..deps import get_store, require_active, require_admin
 from ..schemas import NewsSeenIn
@@ -29,14 +30,23 @@ admin_router = APIRouter(prefix="/api/admin/news", tags=["admin"])
 
 @router.get("")
 def get_news(
+    request: Request,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
 ) -> NewsState:
-    """Die offenen Release-Karten dieses Kontos, neueste zuerst."""
+    """Die offenen Release-Karten dieses Kontos, neueste zuerst.
+
+    Die Bilder kommen **passend zum Client**: Wer auf dem iPhone liest, soll
+    das iPhone sehen und nicht ein Browserfenster mit Seitenleiste (Tims
+    Wunsch 07.09.2026). Die Auswahl fällt hier und nicht im Client — sonst
+    müsste jede Oberfläche zwei Felder auseinanderhalten, und eine dritte
+    Plattform bräuchte überall eine Änderung statt nur einen Registry-Eintrag.
+    """
+    client = client_kind(request)
     offen, weitere = releases.pending_for(
         user.get("news_seen_version"), user.get("created_at"))
     return {
-        "releases": [releases.as_dict(r) for r in offen],  # pyright: ignore[reportReturnType]
+        "releases": [releases.as_dict(r, client) for r in offen],  # pyright: ignore[reportReturnType]
         "older_count": weitere,
         "seen_version": user.get("news_seen_version"),
     }

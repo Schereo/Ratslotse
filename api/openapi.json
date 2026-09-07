@@ -20276,7 +20276,7 @@
     },
     "/api/news": {
       "get": {
-        "description": "Die offenen Release-Karten dieses Kontos, neueste zuerst.",
+        "description": "Die offenen Release-Karten dieses Kontos, neueste zuerst.\n\nDie Bilder kommen **passend zum Client**: Wer auf dem iPhone liest, soll\ndas iPhone sehen und nicht ein Browserfenster mit Seitenleiste (Tims\nWunsch 07.09.2026). Die Auswahl fällt hier und nicht im Client — sonst\nmüsste jede Oberfläche zwei Felder auseinanderhalten, und eine dritte\nPlattform bräuchte überall eine Änderung statt nur einen Registry-Eintrag.",
         "operationId": "get_news_api_news_get",
         "responses": {
           "200": {

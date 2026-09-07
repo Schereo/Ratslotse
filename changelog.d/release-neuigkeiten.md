@@ -10,7 +10,9 @@ Neuerung eine echte Aufnahme aus der App — beim Teilen ein kurzer Clip, sonst
 ein Bild —, dazu ein Satz und der Weg dorthin. Man blättert mit den Reitern
 darunter oder mit den Pfeiltasten durch sie; die Bilder gibt es hell und
 dunkel, und wer Bewegung abgeschaltet hat, sieht statt des Clips sein
-Standbild. „Alles klar" räumt die Karte weg. Wer länger nicht da war, bekommt die verpassten
+Standbild. Der Durchgang führt: „Weiter" ist der Hauptknopf, „Alles klar"
+gibt es erst, wenn alles einmal dastand. In der App kommen die Bilder aus der
+App, sobald es sie für eine Ausgabe vollständig gibt. Wer länger nicht da war, bekommt die verpassten
 Ausgaben mit — das Jüngste ausführlich, das Ältere in einer Zeile. Wer nach
 einer Ausgabe dazugekommen ist, sieht sie nie: Für ihn ist alles neu. Die Karte
 merkt sich am Konto, was weggeklickt wurde, gilt also auf jedem Gerät. Dieselben

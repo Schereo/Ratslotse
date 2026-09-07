@@ -144,9 +144,22 @@ Die drei Dinge, die man dabei vergisst:
    Aufgenommen wird die laufende lokale App mit echten Daten (Playwright über
    das installierte Chrome, `deviceScaleFactor: 2`, Ausschnitt um das Element
    herum auf 16:9 erweitert; Bilder als WebP ≤ 1600 px, Clips als stummes
-   h264-MP4 mit Standbild). Entweder **alle** Highlights einer Ausgabe haben
-   ein Bild oder keins — sonst hat die Bühne ein Loch, und `test_releases.py`
-   meldet es.
+   h264-MP4 mit Standbild). **Zeiger und Klick müssen im Clip sichtbar sein** —
+   Playwright zeichnet den Mauszeiger nicht mit, die Aufnahme malt ihn sich per
+   `addInitScript` selbst an die echten Mausereignisse. Entweder **alle**
+   Highlights einer Ausgabe haben ein Bild oder keins — sonst hat die Bühne ein
+   Loch, und `test_releases.py` meldet es.
+
+   **Für die App dieselben Bilder aus der App** (`media_ios`, Tims Wunsch
+   07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im
+   Simulator gegen das lokale Backend
+   (`SIMCTL_CHILD_RATSLOTSE_API_BASE_URL` + `…_DEBUG_ACCESS_TOKEN`, Bundle
+   `de.ratslotse.dev`, `xcrun simctl io … screenshot`); **hell/dunkel geht dort
+   nur über Mehr → Konto → Erscheinungsbild**, `simctl ui appearance` wirkt
+   nicht. Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung,
+   bekommt die App für die ganze Ausgabe die Web-Bilder. Ein Feature, das es in
+   der App gar nicht gibt (2.2.0: das Glossar), hat dort auch kein Bild — dann
+   bleibt es bei Web.
 
 ---
 

@@ -104,15 +104,51 @@ def test_jede_genannte_mediendatei_existiert():
     fehlend = []
     for release in releases.RELEASES:
         for h in release.highlights:
-            if not h.media:
-                continue
-            for feld in ("src", "src_dark", "poster", "poster_dark"):
-                pfad = getattr(h.media, feld)
-                if pfad and not (wurzel / pfad.lstrip("/")).exists():
-                    fehlend.append(f"{release.version} · {h.title} · {feld}: {pfad}")
+            for medium in (h.media, h.media_ios):
+                if not medium:
+                    continue
+                for feld in ("src", "src_dark", "poster", "poster_dark"):
+                    pfad = getattr(medium, feld)
+                    if pfad and not (wurzel / pfad.lstrip("/")).exists():
+                        fehlend.append(f"{release.version} · {h.title} · {feld}: {pfad}")
     assert not fehlend, (
         "Diese Mediendateien fehlen unter "
         f"{releases.MEDIA_ROOT}:\n  " + "\n  ".join(fehlend))
+
+
+def test_die_app_fassung_ist_ganz_oder_gar_nicht():
+    """Tims Wunsch 07.09.2026: In der App sollen die Bilder aus der App kommen.
+
+    Fehlt einem Highlight die App-Fassung, bekommt die App für die GANZE
+    Ausgabe die Web-Bilder (``releases.media_for``) — ein Wechsel mitten in der
+    Bühne wäre schlimmer als eine durchgehend fremde Oberfläche. Der Wächter
+    meldet den halben Satz trotzdem: Er ist fast immer ein Versehen."""
+    for release in releases.RELEASES:
+        mit = [h.title for h in release.highlights if h.media_ios]
+        ohne = [h.title for h in release.highlights if not h.media_ios]
+        assert not (mit and ohne), (
+            f"{release.version}: App-Bilder für {len(mit)}, nicht für {ohne}. "
+            "Die App bekommt deshalb überall die Web-Bilder — entweder alle "
+            "aufnehmen oder keins.")
+
+
+def test_die_app_bekommt_ihre_eigenen_bilder_wenn_es_sie_gibt():
+    """Die Auswahl fällt serverseitig; ohne App-Fassung ist Web der Rückfall."""
+    web = releases.Media(kind="image", src="/w.webp", src_dark="/wd.webp", alt="web" * 8)
+    app = releases.Media(kind="image", src="/i.webp", src_dark="/id.webp", alt="app" * 8)
+    nur_web = releases.Highlight("A", "…", "/dashboard", media=web)
+    beides = releases.Highlight("B", "…", "/dashboard", media=web, media_ios=app)
+    assert releases.media_for(beides, "ios") is app
+    assert releases.media_for(beides, "app") is app       # ältere App-Stände
+    assert releases.media_for(beides, "web") is web
+    assert releases.media_for(nur_web, "ios") is web      # Rückfall
+
+    voll = releases.Release("9.9.0", "2026-01-01", "x", (beides,))
+    halb = releases.Release("9.8.0", "2026-01-01", "x", (beides, nur_web))
+    assert releases.has_native_media(voll) and not releases.has_native_media(halb)
+    # Eine halbe App-Fassung schlägt für die GANZE Ausgabe auf Web zurück.
+    assert releases.as_dict(halb, "ios")["highlights"][0]["media"]["src"] == "/w.webp"
+    assert releases.as_dict(voll, "ios")["highlights"][0]["media"]["src"] == "/i.webp"
 
 
 def test_ein_clip_bringt_sein_standbild_mit():
@@ -121,16 +157,18 @@ def test_ein_clip_bringt_sein_standbild_mit():
     ein weißes Bild in der dunklen Karte."""
     for release in releases.RELEASES:
         for h in release.highlights:
-            if h.media and h.media.kind == "video":
-                assert h.media.poster and h.media.poster_dark, (
-                    f"{release.version} · {h.title}: Clip ohne Standbild.")
+            for medium in (h.media, h.media_ios):
+                if medium and medium.kind == "video":
+                    assert medium.poster and medium.poster_dark, (
+                        f"{release.version} · {h.title}: Clip ohne Standbild.")
 
 
 def test_medien_tragen_eine_bildbeschreibung():
     for release in releases.RELEASES:
         for h in release.highlights:
-            if h.media:
-                assert len(h.media.alt) > 20, f"{release.version} · {h.title}: alt zu dünn"
+            for medium in (h.media, h.media_ios):
+                if medium:
+                    assert len(medium.alt) > 20, f"{release.version} · {h.title}: alt zu dünn"
 
 
 def test_jede_version_steht_auch_im_changelog():

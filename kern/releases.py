@@ -98,6 +98,16 @@ class Highlight:
     #: zeigt sonst eine Bühne mit einem Loch darin. Ohne Medien fällt sie auf
     #: die Listenform zurück, die auch ohne Bilder lesbar ist.
     media: Media | None = None
+    #: Dasselbe Feature, aber **aus der App aufgenommen** (Tims Wunsch
+    #: 07.09.2026). Wer auf dem iPhone liest, soll das iPhone sehen: Ein
+    #: Browserfenster mit Seitenleiste zeigt eine Oberfläche, die es dort gar
+    #: nicht gibt, und wer danach sucht, sucht vergeblich.
+    #:
+    #: Auch hier gilt alles oder nichts, und zwar **je Ausgabe**: Fehlt einem
+    #: Highlight die App-Fassung, bekommt die App für ALLE die Web-Bilder
+    #: (``media_for``). Ein Wechsel mitten in der Bühne wäre schlimmer als eine
+    #: durchgehend fremde Oberfläche.
+    media_ios: Media | None = None
 
 
 @dataclass(frozen=True)
@@ -262,8 +272,37 @@ def has_media(release: Release) -> bool:
     return all(h.media is not None for h in release.highlights)
 
 
-def as_dict(release: Release) -> dict:
-    """Die Antwortform der API — englische Feldnamen, deutsche Inhalte."""
+#: Clients, die die App-Fassung der Bilder bekommen sollen. Deckt sich mit
+#: ``web.backend.app.clients.NATIVE_CLIENTS`` — hier noch einmal, weil ``kern``
+#: nichts aus dem Backend importieren darf (s. tests/test_schichten.py).
+NATIVE_CLIENTS = frozenset({"ios", "android", "app"})
+
+
+def has_native_media(release: Release) -> bool:
+    """Ist die App-Fassung dieser Ausgabe vollständig?"""
+    return bool(release.highlights) and all(
+        h.media_ios is not None for h in release.highlights)
+
+
+def media_for(highlight: Highlight, client: str = "web") -> Media | None:
+    """Welches Bild dieser Client sehen soll.
+
+    Die Entscheidung fällt **serverseitig**, damit die Clients nicht zwei
+    Felder auseinanderhalten müssen und eine dritte Plattform später nichts
+    außer einem Registry-Feld braucht.
+    """
+    if client in NATIVE_CLIENTS and highlight.media_ios is not None:
+        return highlight.media_ios
+    return highlight.media
+
+
+def as_dict(release: Release, client: str = "web") -> dict:
+    """Die Antwortform der API — englische Feldnamen, deutsche Inhalte.
+
+    ``client`` entscheidet, welche Fassung der Bilder mitgeht (``media_for``);
+    unvollständige App-Fassungen fallen für die ganze Ausgabe auf Web zurück.
+    """
+    nativ = client in NATIVE_CLIENTS and has_native_media(release)
 
     def medium(m: Media | None) -> dict | None:
         if m is None:
@@ -276,7 +315,8 @@ def as_dict(release: Release) -> dict:
         "date": release.date,
         "title": release.title,
         "highlights": [
-            {"title": h.title, "text": h.text, "url": h.url, "media": medium(h.media)}
+            {"title": h.title, "text": h.text, "url": h.url,
+             "media": medium(h.media_ios if nativ else h.media)}
             for h in release.highlights
         ],
     }
