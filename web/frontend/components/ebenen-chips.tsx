@@ -11,9 +11,11 @@ import { EBENEN, type EbenenId } from "@/lib/karten-ebenen";
  *  (Planflächen auf der Stadt-Stufe), bleiben stehen und sagen es im Tooltip:
  *  Ein Chip, der kommt und geht, sähe aus wie ein Fehler.
  */
-export function EbenenChips({ ebenen, stufe, zaehler, onToggle, unterzeile, className }: {
+export function EbenenChips({ ebenen, stufe, zaehler, onToggle, unterzeile, verborgen, className }: {
   ebenen: ReadonlySet<EbenenId>;
   stufe: "city" | "district";
+  /** Ebenen, deren Schalter aus ist — der Chip bleibt weg, nicht hohl. */
+  verborgen?: ReadonlySet<EbenenId>;
   /** Wie viel je Ebene gerade auf der Karte liegt (fehlt = kein Zähler). */
   zaehler?: Partial<Record<EbenenId, number>>;
   onToggle: (id: EbenenId) => void;
@@ -24,7 +26,7 @@ export function EbenenChips({ ebenen, stufe, zaehler, onToggle, unterzeile, clas
   return (
     <div className={cn("flex flex-col items-start gap-1.5", className)}>
     <div className="flex flex-wrap gap-1.5" role="group" aria-label="Ebenen der Karte">
-      {EBENEN.map((e) => {
+      {EBENEN.filter((e) => !verborgen?.has(e.id)).map((e) => {
         const an = ebenen.has(e.id);
         const hier = e.stufen.includes(stufe);
         const n = zaehler?.[e.id];
