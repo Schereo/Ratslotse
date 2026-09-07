@@ -1,0 +1,48 @@
+# Veröffentlicht die Statusseite auf GitHub Pages.
+#
+# Warum NICHT auf dem eigenen Server: Eine Statusseite, die mit dem Dienst
+# stirbt, den sie beschreibt, ist keine. Sie muss dort liegen, wo der Ausfall
+# nicht hinreicht — also außerhalb des VPS. GitHub Pages ist dafür der
+# nächstliegende Ort: eigene Infrastruktur, nichts zusätzlich zu betreiben.
+#
+# Die Seite hat KEINEN Schreibpfad. Sie liest im Browser direkt die Läufe von
+# `ops-erreichbarkeit.yml` aus der öffentlichen GitHub-API. Damit gibt es
+# keine Datei, die nachgeführt werden müsste, keinen Cron, der sie schreibt,
+# und keinen Stand, der von der Wirklichkeit abweichen kann. Der Preis ist das
+# API-Limit für nicht angemeldete Aufrufe (60 pro Stunde und IP) — für eine
+# Seite, die man im Störungsfall aufruft, reicht das, und sie sagt es ehrlich,
+# wenn sie gerade nichts abrufen konnte.
+name: Statusseite veröffentlichen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "status/**"
+      - ".github/workflows/statusseite.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: statusseite
+  cancel-in-progress: true
+
+jobs:
+  veroeffentlichen:
+    if: github.repository == 'Schereo/Ratslotse'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: status
+      - id: pages
+        uses: actions/deploy-pages@v4
