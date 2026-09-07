@@ -372,3 +372,30 @@ jobs:
             # und hält jede Antwort gegen den Vertrag, der neben dem Code auf
             # demselben Server liegt. Sie braucht kein Fremdpaket.
             python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
+
+      # LAUT SCHEITERN. Jeder Fehler oberhalb lässt die Wartungsbarriere
+      # bewusst stehen und den API-Dienst gestoppt (s. die Begründung am
+      # Cutover) — das ist richtig, aber es heißt: die Seite ist AB JETZT
+      # unten, und zwar bis jemand eingreift. Am 07.09.2026 hat das 74 Minuten
+      # niemand erfahren; die Rauchprobe fiel um 14:58, gemerkt wurde es, als
+      # eine Anmeldung 500 lieferte. Ein roter Actions-Lauf ist kein Alarm —
+      # er ist ein Eintrag in einer Liste, in die man schauen muss.
+      #
+      # Die Mail geht über den SERVER, nicht über den Runner: Dort liegen
+      # RESEND_API_KEY und ALERT_EMAIL schon in der .env, es braucht also kein
+      # neues GitHub-Secret. Das Skript kommt über stdin aus dem Checkout des
+      # Runners — so wirkt es auch dann, wenn der rsync gar nicht erst lief.
+      # Scheitert auch das (kein SSH), bleibt GitHubs eigene Fehlermeldung.
+      - name: Alarm schlagen, wenn der Deploy abbricht
+        if: failure()
+        continue-on-error: true
+        run: |
+          ssh target 'cd ~/app && .venv/bin/python - --root . \
+            --betreff "Ratslotse – Deploy abgebrochen, Prod prüfen" \
+            --zustand \
+            --text "Der Prod-Deploy von Commit ${{ github.sha }} ist abgebrochen.
+
+          Lauf: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Steht die Wartungsbarriere noch, ist die Seite fuer Angemeldete unten. Zurueck kommt sie mit dem Ops-Workflow ops-wartungsbarriere.yml (Aktion api-start) oder per SSH."' \
+            < scripts/alarm.py

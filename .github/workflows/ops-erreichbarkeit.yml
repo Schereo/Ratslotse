@@ -1,0 +1,122 @@
+# Prüft von AUSSERHALB der Maschine, ob ratslotse.de antwortet.
+#
+# Die Lücke, die das schließt, stand bis heute als Absatz in
+# `scripts/check_herzschlag.py`: „Stirbt der Cron-Dienst als GANZES, stirbt
+# dieser Lauf mit. Dafür bräuchte es eine Prüfung von außerhalb der Maschine —
+# ein Anpinger auf /api/health etwa. Der ist hier bewusst nicht gebaut: Er
+# gehört nicht ins Repo, sondern auf einen zweiten Rechner."
+#
+# Der zweite Rechner ist der GitHub-Runner. Er steht nicht auf dem VPS, teilt
+# weder Platte noch Cron noch Netz mit ihm — und er kostet nichts extra.
+#
+# Am 07.09.2026 lag die API 74 Minuten still (abgebrochener Deploy, die
+# fail-closed Wartungsbarriere blieb stehen). Nichts hat es gemeldet: Ein
+# Cron-Alarm setzt einen laufenden Cron voraus, `kern/fehler.py` einen
+# laufenden Prozess, und ein roter Actions-Lauf ist kein Alarm, sondern ein
+# Eintrag in einer Liste. Gemerkt wurde es, als eine Anmeldung 500 lieferte.
+name: Ops – Erreichbarkeit (Prod)
+
+on:
+  schedule:
+    # Alle zehn Minuten. GitHub hält den Takt nur ungefähr ein und schiebt ihn
+    # unter Last auch mal um Minuten — das ist in Ordnung: Dies ist das
+    # Auffangnetz, kein Messgerät. Wer eine Zusage auf die Minute braucht,
+    # nimmt einen bezahlten Dienst.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Für den Blick auf den vorherigen Lauf: Während eines Ausfalls soll nicht
+  # alle zehn Minuten eine Mail kommen.
+  actions: read
+
+concurrency:
+  group: ops-erreichbarkeit
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    # Nicht in Forks: Dort fehlen die Secrets, und ein fremder Fork soll nicht
+    # im Zehnminutentakt gegen ratslotse.de laufen.
+    if: github.repository == 'Schereo/Ratslotse'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prod anpingen
+        id: probe
+        run: |
+          set -u
+          BASIS="https://ratslotse.de"
+          # Diese drei fasst der Reverse-Proxy, das Frontend und das Backend
+          # an — zusammen sagen sie, welche Schicht steht. /api/health ist die
+          # wichtigste: Sie ist genau der Endpunkt, den die Wartungsbarriere
+          # auf 503 zieht.
+          PFADE="/ /api/health /api/app-config"
+          # Dreimal, mit Pause. Ein einzelner Aussetzer ist Netz, kein
+          # Ausfall — und ein falscher Alarm um drei Uhr nachts kostet mehr
+          # Vertrauen, als er wert ist.
+          for versuch in 1 2 3; do
+            KAPUTT=""
+            for p in $PFADE; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASIS$p" || echo 000)
+              echo "Versuch $versuch: $p -> $code"
+              case "$code" in
+                2*|3*) ;;
+                *) KAPUTT="$KAPUTT $p:$code" ;;
+              esac
+            done
+            if [ -z "$KAPUTT" ]; then
+              echo "Alles erreichbar (Versuch $versuch)."
+              echo "ok=1" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            [ "$versuch" -lt 3 ] && sleep 20
+          done
+          echo "ok=0" >> "$GITHUB_OUTPUT"
+          echo "befund=$KAPUTT" >> "$GITHUB_OUTPUT"
+          echo "NICHT ERREICHBAR:$KAPUTT"
+          exit 1
+
+      # Nur beim ERSTEN Fehlschlag mailen. Ein Ausfall dauert selten zehn
+      # Minuten; ohne diese Bremse stünden am Ende zwölf gleiche Mails im
+      # Postfach und die dreizehnte läse niemand mehr. Dieselbe Regel wie in
+      # `kern/fehler.py`: Die erste Begegnung meldet sich, der Rest wird
+      # gezählt. Der rote Lauf bleibt jedes Mal stehen.
+      - name: Mail schlagen (nur beim ersten Fehlschlag)
+        if: failure()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+        run: |
+          set -u
+          vorher=$(gh run list --workflow ops-erreichbarkeit.yml --status completed \
+                     --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
+          echo "Vorheriger Lauf: ${vorher:-keiner}"
+          if [ "$vorher" = "failure" ]; then
+            echo "Der Ausfall lief schon beim vorherigen Lauf — keine zweite Mail."
+            exit 0
+          fi
+          if [ -z "${RESEND_API_KEY:-}" ] || [ -z "${ALERT_EMAIL:-}" ]; then
+            echo "RESEND_API_KEY/ALERT_EMAIL fehlen als Repository-Secret."
+            echo "Ohne sie bleibt nur GitHubs eigene Benachrichtigung zum roten Lauf."
+            exit 0
+          fi
+          lauf="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          text="ratslotse.de antwortet nicht. Betroffen:${{ steps.probe.outputs.befund }}
+
+          Dreimal im Abstand von 20 Sekunden geprueft, alle drei Male erfolglos.
+
+          Erster Blick: Laeuft gerade ein Deploy? Steht die Wartungsbarriere
+          (data/.release-maintenance)? Zurueck kommt die Seite mit dem
+          Ops-Workflow ops-wartungsbarriere.yml, Aktion api-start.
+
+          Lauf: $lauf"
+          jq -n --arg to "$ALERT_EMAIL" --arg text "$text" \
+            '{from:"Ratslotse <noreply@ratslotse.de>", to:[$to],
+              subject:"Ratslotse – ratslotse.de ist nicht erreichbar", text:$text}' \
+          | curl -sS -X POST https://api.resend.com/emails \
+              -H "Authorization: Bearer $RESEND_API_KEY" \
+              -H "Content-Type: application/json" \
+              --data @- -o /dev/null -w 'Resend: %{http_code}\n'
