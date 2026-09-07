@@ -193,3 +193,66 @@ def test_jede_haushalts_probe_wird_von_der_rechtepruefung_erfasst():
         f"Diese Haushalts-Proben fallen nicht unter BUDGET_PREFIX: {nicht_erfasst}")
     fremd = [p for p in MIT_KONTO if p.startswith(BUDGET_PREFIX) and "/budget" not in p]
     assert not fremd, f"BUDGET_PREFIX trifft fremde Proben: {fremd}"
+
+
+# ---- Kern und Rand (07.09.2026) -----------------------------------------
+
+def test_der_kern_zeigt_auf_echte_proben():
+    """Ein Tippfehler in KERN wäre unsichtbar und fatal: Der Pfad stünde in
+    keiner Probenliste, und damit wäre NICHTS mehr kritisch — jeder Ausfall
+    liefe als „nur am Rand" durch."""
+    from scripts.rauchprobe import KERN
+    assert KERN, "ein leerer Kern hieße: nichts blockiert mehr"
+    unbekannt = KERN - set(_alle_muster())
+    assert not unbekannt, f"stehen in keiner Probenliste: {sorted(unbekannt)}"
+
+
+def test_der_kern_traegt_die_seite_und_nicht_die_kacheln():
+    """Was im Kern steht, entscheidet, wann ein Deploy die Seite unten lässt.
+    Deshalb steht dort, was jede Ansicht braucht — und ausdrücklich NICHT der
+    Endpunkt, an dem am 07.09.2026 74 Minuten Ausfall hingen."""
+    from scripts.rauchprobe import KERN
+    for pflicht in ("/api/health", "/api/app-config"):
+        assert pflicht in KERN
+    assert "/api/council/week-preview" not in KERN, \
+        "eine einzelne Karte darf die Seite nicht mehr zu Fall bringen"
+    for kachel in ("/api/council/daily-find", "/api/council/zahl-der-woche",
+                   "/api/council/budget/liquidity"):
+        assert kachel not in KERN
+
+
+def _probe_mit_fehlern(fehlerpfade: set[str]) -> int:
+    """Die Probe einmal durchlaufen lassen, mit gesteuerten Antworten."""
+    from unittest.mock import patch
+
+    from scripts import rauchprobe
+
+    def fake_hole(basis, pfad, zeitlimit, token=None):
+        return (500, {}) if pfad in fehlerpfade else (200, {})
+
+    with patch.object(rauchprobe, "hole", fake_hole), \
+         patch.object(rauchprobe, "token_bauen", return_value=(None, "Test")), \
+         patch.object(rauchprobe.Vertrag, "antwortschema", return_value=None):
+        return rauchprobe.main(["--basis", "http://127.0.0.1:1"])
+
+
+def test_alles_gruen_ist_null():
+    assert _probe_mit_fehlern(set()) == 0
+
+
+def test_kern_kaputt_blockiert_weiterhin():
+    """Wenn health rot ist, hat eine Migration die Daten unter dem Code
+    weggezogen. Dann ist Ausliefern schlimmer als nicht ausliefern."""
+    assert _probe_mit_fehlern({"/api/health"}) == 1
+
+
+def test_nur_rand_kaputt_laesst_den_deploy_durch():
+    """Der Fall vom 07.09.2026. Früher brach der Deploy hier ab und die
+    Wartungsbarriere blieb stehen — 74 Minuten für eine einzelne Kachel,
+    die in der laufenden Fassung genauso kaputt war."""
+    assert _probe_mit_fehlern({"/api/council/qa-beispiele"}) == 2
+
+
+def test_kern_schlaegt_rand():
+    """Ist beides rot, zählt der Kern: abbrechen."""
+    assert _probe_mit_fehlern({"/api/health", "/api/council/qa-beispiele"}) == 1

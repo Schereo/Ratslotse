@@ -42,6 +42,8 @@ jobs:
     if: github.repository == 'Schereo/Ratslotse'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Prod anpingen
         id: probe
         run: |
@@ -67,55 +69,108 @@ jobs:
             done
             if [ -z "$KAPUTT" ]; then
               echo "Alles erreichbar (Versuch $versuch)."
-              echo "ok=1" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             [ "$versuch" -lt 3 ] && sleep 20
           done
-          echo "ok=0" >> "$GITHUB_OUTPUT"
           echo "befund=$KAPUTT" >> "$GITHUB_OUTPUT"
           echo "NICHT ERREICHBAR:$KAPUTT"
           exit 1
 
-      # Nur beim ERSTEN Fehlschlag mailen. Ein Ausfall dauert selten zehn
+      # Nur beim ERSTEN Fehlschlag melden. Ein Ausfall dauert selten zehn
       # Minuten; ohne diese Bremse stünden am Ende zwölf gleiche Mails im
       # Postfach und die dreizehnte läse niemand mehr. Dieselbe Regel wie in
       # `kern/fehler.py`: Die erste Begegnung meldet sich, der Rest wird
       # gezählt. Der rote Lauf bleibt jedes Mal stehen.
-      - name: Mail schlagen (nur beim ersten Fehlschlag)
+      - name: Erster Fehlschlag?
+        id: erster
         if: failure()
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         run: |
           set -u
           vorher=$(gh run list --workflow ops-erreichbarkeit.yml --status completed \
                      --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
           echo "Vorheriger Lauf: ${vorher:-keiner}"
           if [ "$vorher" = "failure" ]; then
-            echo "Der Ausfall lief schon beim vorherigen Lauf — keine zweite Mail."
-            exit 0
+            echo "melden=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "melden=1" >> "$GITHUB_OUTPUT"
           fi
-          if [ -z "${RESEND_API_KEY:-}" ] || [ -z "${ALERT_EMAIL:-}" ]; then
-            echo "RESEND_API_KEY/ALERT_EMAIL fehlen als Repository-Secret."
-            echo "Ohne sie bleibt nur GitHubs eigene Benachrichtigung zum roten Lauf."
-            exit 0
-          fi
-          lauf="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          text="ratslotse.de antwortet nicht. Betroffen:${{ steps.probe.outputs.befund }}
+
+      # WEG 1 — die Mail über den SERVER. Dort liegen RESEND_API_KEY und
+      # ALERT_EMAIL längst in der .env; es braucht also kein neues Secret,
+      # nur den Deploy-Schlüssel, den dieses Repo ohnehin hat.
+      #
+      # Das deckt den häufigsten Fall vollständig ab, und es ist genau der von
+      # heute: Die Maschine läuft, nur die API nicht (Barriere steht, Dienst
+      # gestoppt, Build kaputt). Bleibt die Maschine als Ganzes stumm, greift
+      # Weg 2.
+      - name: Alarm über den Server
+        id: ueber_server
+        if: failure() && steps.erster.outputs.melden == '1'
+        continue-on-error: true
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' \
+            'Host edge' \
+            "  HostName ${{ secrets.VPS_PROXY_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  StrictHostKeyChecking no' \
+            'Host target' \
+            "  HostName ${{ secrets.VPS_HOST }}" \
+            "  User ${{ secrets.VPS_USER }}" \
+            "  Port ${{ secrets.VPS_SSH_PORT }}" \
+            '  IdentityFile ~/.ssh/id_ed25519' \
+            '  ProxyJump edge' \
+            '  StrictHostKeyChecking no' \
+            > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+          ssh -o ConnectTimeout=20 target 'cd ~/app && .venv/bin/python - --root . \
+            --betreff "Ratslotse – ratslotse.de ist nicht erreichbar" \
+            --zustand \
+            --text "Der Anpinger von ausserhalb erreicht ratslotse.de nicht. Betroffen:${{ steps.probe.outputs.befund }}
 
           Dreimal im Abstand von 20 Sekunden geprueft, alle drei Male erfolglos.
 
-          Erster Blick: Laeuft gerade ein Deploy? Steht die Wartungsbarriere
-          (data/.release-maintenance)? Zurueck kommt die Seite mit dem
-          Ops-Workflow ops-wartungsbarriere.yml, Aktion api-start.
+          Lauf: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"' \
+            < scripts/alarm.py
+
+      # WEG 2 — der Notausgang, wenn die MASCHINE nicht antwortet. Dann ist der
+      # Weg über den Server versperrt, und es braucht einen Absender außerhalb.
+      # Dafür (und nur dafür) sind die beiden optionalen Repository-Secrets da.
+      # Fehlen sie, bleibt GitHubs eigene Benachrichtigung zum roten Lauf.
+      - name: Alarm am Server vorbei
+        if: failure() && steps.erster.outputs.melden == '1' && steps.ueber_server.outcome != 'success'
+        continue-on-error: true
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+        run: |
+          set -u
+          if [ -z "${RESEND_API_KEY:-}" ] || [ -z "${ALERT_EMAIL:-}" ]; then
+            echo "Der Server war nicht erreichbar, und die optionalen Secrets"
+            echo "RESEND_API_KEY/ALERT_EMAIL fehlen im Repository."
+            echo "Es bleibt GitHubs eigene Benachrichtigung zum roten Lauf."
+            exit 0
+          fi
+          lauf="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          text="ratslotse.de antwortet nicht, UND der Server ist per SSH nicht erreichbar.
+          Das deutet auf die Maschine oder das Netz, nicht auf die Anwendung.
+
+          Betroffen:${{ steps.probe.outputs.befund }}
 
           Lauf: $lauf"
           jq -n --arg to "$ALERT_EMAIL" --arg text "$text" \
             '{from:"Ratslotse <noreply@ratslotse.de>", to:[$to],
-              subject:"Ratslotse – ratslotse.de ist nicht erreichbar", text:$text}' \
+              subject:"Ratslotse – Server nicht erreichbar", text:$text}' \
           | curl -sS -X POST https://api.resend.com/emails \
               -H "Authorization: Bearer $RESEND_API_KEY" \
               -H "Content-Type: application/json" \
