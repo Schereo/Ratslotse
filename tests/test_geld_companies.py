@@ -3,6 +3,7 @@
 Drei Messungen, wie für jede Modul-Facette (council/geld/): welche Fragen sie
 zieht, was die Store-Methode liefert, wie groß ihr Baustein an echten Zahlen
 wird."""
+import os
 import sqlite3
 from pathlib import Path
 
@@ -12,11 +13,17 @@ from council import qa
 from council.geld import companies
 from council.store import CouncilStore
 
-#: Der dev-Bestand als Kopie — nur die Größenmessung braucht ihn.
-ECHTE_DB = Path(
-    "/private/tmp/claude-501/-Users-tim-Documents-kommunalwahl-scraper--claude-"
-    "worktrees-haushaltsseite-review-763d8c/1759b603-5a3e-439a-95af-ccd796425871/"
-    "scratchpad/data/council.sqlite")
+#: Die echte Datenbank für die Größen-Messung, gefunden wie in den
+#: Messläufen: ``RATSLOTSE_MESS_DB``, sonst ``data/council.sqlite`` — der
+#: lokale Abzug aus ``scripts/lokale_daten.py hol`` + ``setz``. Gibt es ihn
+#: nicht (CI), entfällt der Test, und das ist richtig so: Er misst Größe an
+#: echten Zahlen, und die kann ein Fixture nicht ersetzen.
+#: EIGENE Variable, nicht ``COUNCIL_DB`` — die setzen Backend-Testmodule beim
+#: Import auf eine leere Wegwerf-Datenbank. Läuft dieser Test danach, zeigte
+#: ``COUNCIL_DB`` auf deren leere Datei: ``exists()`` wahr, der Baustein leer,
+#: der Test rot (Begründung in ``test_geld_expense_series.py``).
+ECHTE_DB = Path(os.environ.get("RATSLOTSE_MESS_DB")
+                or Path(__file__).resolve().parents[1] / "data" / "council.sqlite")
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ Baustein muss sagen, dass die Gebenden NICHT im Bestand stehen. Die Tabelle
 führt keine Namensspalte (``council/store.py`` über ``council_donations``),
 und ohne den Satz füllt ein Sprachmodell die Lücke mit Plausiblem.
 """
+import os
 from pathlib import Path
 
 import pytest
@@ -13,10 +14,17 @@ from council import qa
 from council.geld import donations
 from council.store import CouncilStore
 
-ECHTE_DB = Path(
-    "/private/tmp/claude-501/-Users-tim-Documents-kommunalwahl-scraper--"
-    "claude-worktrees-haushaltsseite-review-763d8c/"
-    "1759b603-5a3e-439a-95af-ccd796425871/scratchpad/data/council.sqlite")
+#: Die echte Datenbank für die Größen-Messung, gefunden wie in den
+#: Messläufen: ``RATSLOTSE_MESS_DB``, sonst ``data/council.sqlite`` — der
+#: lokale Abzug aus ``scripts/lokale_daten.py hol`` + ``setz``. Gibt es ihn
+#: nicht (CI), entfällt der Test, und das ist richtig so: Er misst Größe an
+#: echten Zahlen, und die kann ein Fixture nicht ersetzen.
+#: EIGENE Variable, nicht ``COUNCIL_DB`` — die setzen Backend-Testmodule beim
+#: Import auf eine leere Wegwerf-Datenbank. Läuft dieser Test danach, zeigte
+#: ``COUNCIL_DB`` auf deren leere Datei: ``exists()`` wahr, der Baustein leer,
+#: der Test rot (Begründung in ``test_geld_expense_series.py``).
+ECHTE_DB = Path(os.environ.get("RATSLOTSE_MESS_DB")
+                or Path(__file__).resolve().parents[1] / "data" / "council.sqlite")
 
 
 # --- 1. Erkennung ---------------------------------------------------------
