@@ -132,19 +132,48 @@ function Medium({ media, aktiv }: { media: NonNullable<Highlight["media"]>; akti
   );
 }
 
-/** Die Bühne: links das Bild, rechts der Satz — darunter die Reiter. */
-function Buehne({ highlights }: { highlights: Highlight[] }) {
+/** Die Bühne: das Bild, der Satz — und ein geführter Durchgang.
+ *
+ *  **Warum geführt** (Tims Befund 07.09.2026): In der ersten Fassung stand
+ *  „Alles klar" gleichberechtigt neben den Reitern. Man klickte es sofort, und
+ *  drei von vier Neuerungen hatte nie jemand gesehen — die Karte hatte ihren
+ *  einzigen Zweck damit verfehlt. Jetzt ist **„Weiter" der Hauptknopf**, und
+ *  erst auf der letzten Station wird daraus „Alles klar". Vier Klicks für vier
+ *  Neuerungen; wer springen will, nimmt die Reiter.
+ *
+ *  Die Reiter sind nummeriert und haken sich ab. Nummer, Haken und der Zähler
+ *  („2 von 4") sagen zusammen, dass hier etwas zum Durchgehen steht — bloße
+ *  Pillen taten das nicht.
+ */
+function Buehne({
+  highlights, aufKlar, klarLaeuft,
+}: { highlights: Highlight[]; aufKlar: () => void; klarLaeuft: boolean }) {
   const [i, setI] = useState(0);
+  // Die erste Station hat man mit dem Aufschlagen der Karte gesehen.
+  const [gesehen, setGesehen] = useState<number[]>([0]);
   const basis = useId();
   const reiter = useRef<(HTMLButtonElement | null)[]>([]);
   const h = highlights[i];
+  const n = highlights.length;
+  const alleGesehen = gesehen.length >= n;
 
-  const springe = useCallback((ziel: number) => {
-    const n = highlights.length;
+  const zeige = useCallback((ziel: number, fokus = false) => {
     const neu = ((ziel % n) + n) % n;
     setI(neu);
-    reiter.current[neu]?.focus();
-  }, [highlights.length]);
+    setGesehen((alt) => (alt.includes(neu) ? alt : [...alt, neu]));
+    if (fokus) reiter.current[neu]?.focus();
+  }, [n]);
+
+  /** „Weiter" springt zur nächsten Station, die noch NICHT abgehakt ist —
+   *  wer zwischendurch über die Reiter gesprungen ist, bekommt dadurch trotzdem
+   *  jede Neuerung einmal zu sehen, statt am Ende in einer Schleife zu landen. */
+  const weiter = useCallback(() => {
+    for (let s = 1; s <= n; s += 1) {
+      const kandidat = (i + s) % n;
+      if (!gesehen.includes(kandidat)) return zeige(kandidat);
+    }
+    zeige(i + 1);
+  }, [gesehen, i, n, zeige]);
 
   return (
     <div className="mt-3">
@@ -168,22 +197,43 @@ function Buehne({ highlights }: { highlights: Highlight[] }) {
         </div>
 
         <div className="min-w-0 flex-1">
+          {/* Der Zähler sagt vor dem ersten Klick, dass es mehr als das eine
+              gibt — das tat die Karte vorher nirgends. */}
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {i + 1} von {n}
+          </p>
           <div key={i} className="animate-in fade-in-0 duration-fluss ease-out-strong">
-            <h3 className="font-display text-[15px] font-bold leading-snug text-foreground">
+            <h3 className="mt-1 font-display text-[15px] font-bold leading-snug text-foreground">
               {h.title}
             </h3>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{h.text}</p>
           </div>
-          <Button variant="secondary" size="sm" asChild className="mt-3">
-            <Link href={h.url}>
-              Ansehen <ArrowRight className="!size-3.5" />
-            </Link>
-          </Button>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {/* Der Hauptknopf führt durch die Ausgabe und wird erst am Ende
+                zum Wegräumen. */}
+            {alleGesehen ? (
+              <Button size="sm" onClick={aufKlar} disabled={klarLaeuft}>
+                <Check className="!size-3.5" />
+                Alles klar
+              </Button>
+            ) : (
+              <Button size="sm" onClick={weiter}>
+                Weiter <ArrowRight className="!size-3.5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={h.url}>
+                Ansehen <ArrowRight className="!size-3.5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Die Reiter tragen die Titel, nicht bloß Punkte: Man soll vorher
-          wissen, wohin man blättert.
+      {/* Die Reiter tragen Nummer und Titel, nicht bloß Punkte: Man soll
+          vorher wissen, wohin man blättert, und hinterher sehen, was man schon
+          hatte.
           Schmal scrollt die Leiste seitwärts (dieselbe Bauform wie im
           Admin-Panel, und der halb sichtbare nächste Reiter sagt, dass es
           weitergeht); breit bricht sie um. Ein abgeschnittener Reiter auf
@@ -194,35 +244,51 @@ function Buehne({ highlights }: { highlights: Highlight[] }) {
         aria-label="Neuerungen dieser Ausgabe"
         className="scrollbar-none -mx-1 mt-4 flex flex-nowrap gap-1.5 overflow-x-auto px-1 [-webkit-overflow-scrolling:touch] @2xl:flex-wrap @2xl:overflow-x-visible"
         onKeyDown={(e) => {
-          if (e.key === "ArrowRight") { e.preventDefault(); springe(i + 1); }
-          if (e.key === "ArrowLeft") { e.preventDefault(); springe(i - 1); }
+          if (e.key === "ArrowRight") { e.preventDefault(); zeige(i + 1, true); }
+          if (e.key === "ArrowLeft") { e.preventDefault(); zeige(i - 1, true); }
         }}
       >
-        {highlights.map((k, n) => (
-          <button
-            key={k.url + k.title}
-            ref={(el) => { reiter.current[n] = el; }}
-            type="button"
-            role="tab"
-            id={`${basis}-tab-${n}`}
-            aria-selected={n === i}
-            aria-controls={`${basis}-panel`}
-            tabIndex={n === i ? 0 : -1}
-            onClick={() => setI(n)}
-            className={cn(
-              "shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors duration-tipp",
-              n === i
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border bg-card text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {k.title}
-          </button>
-        ))}
+        {highlights.map((k, m) => {
+          const aktiv = m === i;
+          const fertig = gesehen.includes(m) && !aktiv;
+          return (
+            <button
+              key={k.url + k.title}
+              ref={(el) => { reiter.current[m] = el; }}
+              type="button"
+              role="tab"
+              id={`${basis}-tab-${m}`}
+              aria-selected={aktiv}
+              aria-controls={`${basis}-panel`}
+              tabIndex={aktiv ? 0 : -1}
+              onClick={() => zeige(m)}
+              className={cn(
+                "group inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors duration-tipp",
+                aktiv
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold tabular-nums",
+                  aktiv ? "bg-primary text-primary-foreground"
+                        : fertig ? "bg-primary/15 text-primary"
+                                 : "bg-muted text-muted-foreground",
+                )}
+              >
+                {fertig ? <Check className="h-2.5 w-2.5" /> : m + 1}
+              </span>
+              {k.title}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 /** Ohne Medien: dieselben Sätze als Liste — lesbar, nur eben still. */
 function Liste({ highlights }: { highlights: Highlight[] }) {
@@ -291,7 +357,13 @@ export function ReleaseNewsCard() {
         </h2>
 
         {mitBuehne(neuestes)
-          ? <Buehne highlights={neuestes.highlights} />
+          ? (
+            <Buehne
+              highlights={neuestes.highlights}
+              aufKlar={() => wegklicken.mutate(neuestes.version)}
+              klarLaeuft={wegklicken.isPending}
+            />
+          )
           : <Liste highlights={neuestes.highlights} />}
 
         {aeltere.length > 0 && (
@@ -312,14 +384,19 @@ export function ReleaseNewsCard() {
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Button
-            size="sm"
-            onClick={() => wegklicken.mutate(neuestes.version)}
-            disabled={wegklicken.isPending}
-          >
-            <Check className="!size-3.5" />
-            Alles klar
-          </Button>
+          {/* Mit Bühne trägt DEREN Hauptknopf das Wegräumen — er wird erst am
+              Ende dazu. Zwei „Alles klar" nebeneinander wären genau der
+              Schnellausstieg, der die Karte wirkungslos gemacht hat. */}
+          {!mitBuehne(neuestes) && (
+            <Button
+              size="sm"
+              onClick={() => wegklicken.mutate(neuestes.version)}
+              disabled={wegklicken.isPending}
+            >
+              <Check className="!size-3.5" />
+              Alles klar
+            </Button>
+          )}
           {/* „dieser Version" stimmt nur, wenn es wirklich eine ist — bei
               mehreren stünde dort ein falsches Versprechen. */}
           <Link href="/changelog" className="text-[13px] text-muted-foreground underline hover:text-foreground">
