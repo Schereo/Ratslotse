@@ -330,7 +330,18 @@ export function StandortKnopf({ onGefunden, className }: { onGefunden: (name: st
           setSucht(false);
         }
       },
-      () => { setSucht(false); toast.error("Der Standort ist gerade nicht verfügbar."); },
+      (fehler) => {
+        setSucht(false);
+        // Der Grund gehört in den Satz: „nicht verfügbar" hieß bis 09/2026
+        // auch dann, wenn der Browser die Ortung gar nicht erst fragte
+        // (verweigert — oder, wie auf dev gemessen, per Permissions-Policy
+        // der Seite selbst gesperrt).
+        toast.error(fehler.code === fehler.PERMISSION_DENIED
+          ? "Der Browser gibt den Standort nicht frei — erlaube die Ortung für ratslotse.de oder wähle den Ortsbereich unten."
+          : fehler.code === fehler.TIMEOUT
+            ? "Die Ortung dauert zu lange — probiere es noch einmal oder wähle den Ortsbereich unten."
+            : "Der Standort ist gerade nicht verfügbar — wähle den Ortsbereich unten.");
+      },
       { timeout: 10_000, maximumAge: 5 * 60_000 },
     );
   }

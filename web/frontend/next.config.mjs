@@ -87,7 +87,12 @@ const BASE_HEADERS = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // `geolocation=(self)`: Die Stadtkarte fragt den Standort („Meinen Standort
+  // nehmen"), und zwar nur die eigene Seite. Bis 09/2026 stand hier `()` —
+  // der Browser fragte gar nicht erst, der Knopf meldete nur „nicht
+  // verfügbar" (Tims Befund 07.09.2026, auf dev gemessen). Kamera und
+  // Mikrofon bleiben zu.
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
