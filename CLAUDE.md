@@ -1,11 +1,11 @@
 # Ratslotse
 
-Macht die Arbeit des **Oldenburger Stadtrats** durchsuchbar, vergleichbar und
-verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)) mit
-Web-Push- und E-Mail-Benachrichtigungen. Aus dem amtlichen Ratsinformationssystem,
-per LLM aufbereitet.
+Ratslotse erschließt öffentliche Ratsinformationen aus Oldenburg: als
+[Webanwendung](https://ratslotse.de) und native iOS-App, mit Recherche,
+Quellenverweisen und Benachrichtigungen per E-Mail oder App-Push.
 
-> Diese Datei ist die Kurz-Orientierung für Contributor*innen und Coding-Agents.
+> Diese Datei enthält die technischen Projektregeln für Mitwirkende und Coding-Agents.
+> Für den Einstieg: [CONTRIBUTING.md](CONTRIBUTING.md).
 > Ausführliche Technik-Doku: [ratslotse.de/docs](https://ratslotse.de/docs)
 > (Quelle in `docs-site/`).
 
@@ -22,7 +22,8 @@ per LLM aufbereitet.
 | `docs-site/` | Astro-Starlight-Technik-Doku |
 | `changelog.d/` | Changelog-Fragmente: je PR eine Datei, beim Versionsschnitt eingesammelt (s. u. „Changelog-Pflicht") |
 | `eval/` | Eval-Harness für die LLM-Qualität |
-| `kommunalwahl/` | Wahlprogramm-Vergleich zur Ratswahl 13.09.2026: Programme, Auswertungen, Thesen-Positionen, fertige Vergleichsseite. Eigenständiger Datenbestand, **noch nicht** ins Backend/Frontend integriert — Einstieg: `kommunalwahl/README.md`, Schnittstelle: `kommunalwahl/data.json` |
+| `kommunalwahl/` | Eigenständiger Wahlprogramm-Vergleich sowie Kandidatenregister und Referenzdaten für den integrierten Wahlabend; Einstieg: `kommunalwahl/README.md` |
+| `docs/archiv/` | Historische Planungen; keine aktuellen Arbeitsanweisungen |
 
 ## Woher „nwz" noch stammt
 
@@ -63,12 +64,14 @@ python scripts/dev.py status
 python scripts/dev.py stop      # hält den EIGENEN an, nie einen fremden
 
 # Frontend (Next.js)
-cd web/frontend && npm install && npm run dev      # :3000, /api/* → Backend
+cd web/frontend && npm ci
+# Beispiel für Backend-Port 8600; den Port aus scripts/dev.py start verwenden:
+BACKEND_URL=http://127.0.0.1:8600 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8600 npm run dev
 
-# Technik-Doku (Astro Starlight, Node ≥ 22)
-cd docs-site && npm install && npm run dev
+# Technik-Doku (separates Terminal im Repo-Root, Node ≥ 22)
+npm --prefix docs-site ci && npm --prefix docs-site run dev
 
-# Tests
+# Tests (Repo-Root)
 .venv/bin/pip install -r requirements-dev.txt -c constraints.txt
 .venv/bin/python -m pytest tests/ -q
 ```
@@ -132,7 +135,7 @@ weshalb sich session-eigene Konfigs in fremde PRs geschmuggelt haben.
 
 ```bash
 python scripts/pruefe.py            # alles, was auch die CI prüft
-python scripts/pruefe.py --schnell  # die fünf Prüfungen unter ~4 s
+python scripts/pruefe.py --schnell  # kurze Auswahl für die Prüfung vor dem Push
 ```
 
 Nicht dabei sind die **Browsertests** — sie brauchen zwei laufende Server und
@@ -151,7 +154,7 @@ einer anderen Sitzung; stattdessen freie Ports nehmen:
 E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test
 ```
 
-Was die 119 Browsertests abdecken und warum ein Lauf gegen eine **leere**
+Was die Browsertests abdecken und warum ein Lauf gegen eine **leere**
 Ratsdatenbank dazugehört, steht in
 [`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md).
 
@@ -439,7 +442,12 @@ fertige Arbeit geht wie immer per PR nach `dev`.
 Instanz, und der Ausfall sähe aus wie ein Fehler im gebauten Code. Preis: ein
 Dev-Deploy wartet ggf. auf einen Feature-Build.
 
-## `.env` (nur auf dem Server, nicht im Repo)
+## Konfiguration über `.env`
+
+Lokale Entwicklung und Server verwenden getrennte `.env`-Dateien. Sie werden
+nicht eingecheckt. Die folgenden Werte sind eine Auswahl; weitere Optionen
+stehen in den jeweiligen Konfigurationsmodulen und der
+[Betriebsdokumentation](https://ratslotse.de/docs/betrieb/).
 
 ```
 OPENROUTER_API_KEY=...
@@ -606,7 +614,7 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
 - **„Ähnliche Beschlüsse"** (`scripts/embed_decisions.py`): berechnet semantische
   Nachbarn per **fastembed** (ONNX, kein torch) — bewusst **nicht** in
   `requirements.txt`, damit Deploy + Web-Service unberührt bleiben.
-- **Zustellung**: Nutzer wählen pro Konto `email` / `push` / `both` / `off`
+- **Zustellung**: Nutzer*innen wählen pro Konto `email` / `push` / `both` / `off`
   (`web_users.delivery_channel`). E-Mail über Resend (`kern/email.py`), Push über
   APNs/FCM (`kern/push.py`); ohne `RESEND_API_KEY` wird E-Mail still übersprungen.
   `off` greift in `kern.notify.gewuenscht()`, also **vor** der Warteschlange —

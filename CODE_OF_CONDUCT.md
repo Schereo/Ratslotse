@@ -1,65 +1,34 @@
-# Contributor Covenant Code of Conduct
+# Verhaltenskodex
 
-## Our Pledge
+Ratslotse soll ein Projekt sein, an dem Menschen respektvoll zusammenarbeiten
+können — unabhängig von Herkunft, Alter, Behinderung, Geschlecht, Identität,
+Religion, sexueller Orientierung oder Erfahrung.
 
-We as members, contributors, and leaders pledge to make participation in our
-community a harassment-free experience for everyone, regardless of age, body
-size, visible or invisible disability, ethnicity, sex characteristics, gender
-identity and expression, level of experience, education, socio-economic status,
-nationality, personal appearance, race, caste, color, religion, or sexual
-identity and orientation.
+## Umgang miteinander
 
-We pledge to act and interact in ways that contribute to an open, welcoming,
-diverse, inclusive, and healthy community.
+- Kritisiere Aussagen und Änderungen sachlich. Persönliche Angriffe, Drohungen,
+  diskriminierende Äußerungen und Belästigung haben hier keinen Platz.
+- Höre anderen zu, frage bei Unklarheiten nach und nimm Korrekturen ernst.
+- Respektiere persönliche Grenzen. Veröffentliche keine privaten Informationen
+  anderer Menschen ohne deren Zustimmung.
+- Begründe inhaltliche und politische Kritik mit nachvollziehbaren Argumenten.
+  Das Projekt beschäftigt sich mit Politik; unterschiedliche Positionen gehören dazu.
 
-## Our Standards
+## Geltungsbereich und Meldungen
 
-Examples of behavior that contributes to a positive environment for our
-community include:
+Diese Regeln gelten in Issues, Pull Requests und anderen Projektbereichen sowie
+bei öffentlichen Auftritten im Namen des Projekts.
 
-- Demonstrating empathy and kindness toward other people
-- Being respectful of differing opinions, viewpoints, and experiences
-- Giving and gracefully accepting constructive feedback
-- Accepting responsibility and apologizing to those affected by our mistakes,
-  and learning from the experience
-- Focusing on what is best not just for us as individuals, but for the overall
-  community
+Verstöße kannst du vertraulich über die Kontaktadresse im
+[Impressum](https://ratslotse.de/impressum) melden. Beschreibe den Vorfall und
+verlinke relevante Beiträge, soweit das ohne Veröffentlichung privater Daten
+möglich ist. GitHub bietet keine allgemeinen privaten Direktnachrichten;
+Sicherheitsmeldungen sind für technische Schwachstellen vorgesehen.
 
-Examples of unacceptable behavior include:
+Die Projektverantwortlichen prüfen Meldungen vertraulich und hören die
+Beteiligten an. Je nach Schwere und Wiederholung können sie eine Verwarnung
+aussprechen, Beiträge entfernen oder Personen vorübergehend beziehungsweise
+dauerhaft von der Mitarbeit ausschließen.
 
-- The use of sexualized language or imagery, and sexual attention or advances of
-  any kind
-- Trolling, insulting or derogatory comments, and personal or political attacks
-- Public or private harassment
-- Publishing others' private information, such as a physical or email address,
-  without their explicit permission
-- Other conduct which could reasonably be considered inappropriate in a
-  professional setting
-
-## Enforcement Responsibilities
-
-Community leaders are responsible for clarifying and enforcing our standards of
-acceptable behavior and will take appropriate and fair corrective action in
-response to any behavior that they deem inappropriate, threatening, offensive,
-or harmful.
-
-## Scope
-
-This Code of Conduct applies within all community spaces, and also applies when
-an individual is officially representing the community in public spaces.
-
-## Enforcement
-
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the maintainers through a private message on GitHub or a
-[private security advisory](https://github.com/Schereo/Ratslotse/security/advisories/new).
-All complaints will be reviewed and investigated promptly and fairly.
-
-## Attribution
-
-This Code of Conduct is adapted from the [Contributor Covenant][homepage],
-version 2.1, available at
-[https://www.contributor-covenant.org/version/2/1/code_of_conduct.html][v2.1].
-
-[homepage]: https://www.contributor-covenant.org
-[v2.1]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+Dieser Kodex orientiert sich am
+[Contributor Covenant 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).

@@ -1,67 +1,121 @@
-# Contributing to Ratslotse
+# Zu Ratslotse beitragen
 
-Danke, dass du zu Ratslotse beitragen möchtest! Das Projekt macht die Arbeit des
-Oldenburger Stadtrats durchsuchbar und verständlich — Beiträge, die das besser,
-zugänglicher oder korrekter machen, sind willkommen.
+Du kannst mit Code, Dokumentation, verständlicheren Texten und Fehlerberichten
+helfen. Besprich größere Änderungen vorab in einem Issue, damit Ziel und Umfang
+klar sind. Kleine Korrekturen können direkt als Pull Request kommen.
 
-## Erste Schritte
+## Lokal einrichten
 
-1. **Issue zuerst.** Für alles außer Tippfehlern/Kleinstfixes bitte erst ein Issue
-   öffnen (Bug oder Feature), damit wir Ansatz und Scope abstimmen können.
-2. **Fork & Branch.** Branch von `main`, sprechender Name (`feat/…`, `fix/…`, `docs/…`).
-3. **Lokal entwickeln** — siehe [CLAUDE.md](CLAUDE.md) → „Lokale Entwicklung"
-   (Backend, Frontend, Doku, Tests).
-
-## Vor dem Pull Request
-
-**Ein Befehl prüft alles, was auch die CI prüft:**
+Du brauchst Git, Python 3.12 und Node.js ab Version 22. Für die native App gelten
+zusätzlich die Voraussetzungen in der [iOS-Anleitung](ios/README.md).
+Die folgenden Befehle beginnen im Root deines geklonten Repositorys.
 
 ```bash
-python scripts/pruefe.py
-```
-
-Er fährt Adressen-Lint, ruff, den API-Vertrag, die generierten Frontend-Typen,
-die Changelog-Fragmente, die Testsuite, den TypeScript-Übersetzer und die
-beiden Grafik-Proben. `--schnell` beschränkt ihn auf die fünf Prüfungen unter
-vier Sekunden, `--liste` zählt sie auf. Fehlt ein Werkzeug, sagt er, welches.
-
-**Einmal je Checkout einschalten**, dann läuft `--schnell` vor jedem Push und
-der Adressen-Lint vor jedem Commit:
-
-```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt -r web/backend/requirements.txt \
+  -r requirements-dev.txt -c constraints.txt
+npm --prefix web/frontend ci
 git config core.hooksPath .githooks
 ```
 
-Was der Befehl nicht abdeckt und je nach Änderung dazugehört:
+Starte das Backend im Root:
 
-- **Frontend baut:** `cd web/frontend && npm run build` (der Übersetzer allein
-  sieht den Bundler nicht).
-- **Doku baut** (falls `docs-site/` betroffen): `cd docs-site && npm run build`.
-- **Changelog-Fragment** (falls die Änderung Nutzer\*innen betrifft): eine Datei
-  `changelog.d/<slug>.md` mit `kategorie: hinzugefuegt | geaendert | behoben` im
-  Frontmatter und dem Eintrag darunter — ohne PR-Nummer, die trägt der
-  Versionsschnitt nach. Nicht in `CHANGELOG.md` schreiben: Dort kollidiert jeder
-  parallele PR.
-- **Regeln der Schicht, in der du arbeitest:** neben dieser Datei liegt in
-  jedem größeren Verzeichnis eine eigene `CLAUDE.md` (`council/`, `kern/`,
-  `scripts/`, `web/backend/`, `web/frontend/`, `ios/`, `tests/`).
-- **Keine Secrets/Infra** im Diff (Keys, echte Server-IPs/Hosts, personenbezogene
-  Daten). Konfiguration gehört in `.env` / GitHub-Secrets, nicht ins Repo.
+```bash
+.venv/bin/python scripts/dev.py start
+```
 
-## Pull Request
+Der Starter wählt einen freien Port und gibt den passenden Frontend-Befehl aus.
+Führe diesen in einem zweiten Terminal unter `web/frontend/` aus und setze
+zusätzlich `BACKEND_URL` auf dieselbe Backend-Adresse. Beispiel für Port 8600:
 
-- Klein und fokussiert halten; ein Thema pro PR.
-- Beschreibe **was** und **warum**; verlinke das Issue.
-- CI muss grün sein, bevor gemergt wird — **niemals einen roten Lauf mergen.**
-- Deployt wird nur über einen gemergten PR nach `main` (siehe CLAUDE.md).
+```bash
+cd web/frontend
+BACKEND_URL=http://127.0.0.1:8600 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8600 npm run dev
+```
 
-## Stil
+Verwende den tatsächlich ausgegebenen Port. Mit
+`.venv/bin/python scripts/dev.py status` und `stop` kannst du den eigenen
+Backend-Prozess prüfen und beenden.
 
-- Halte dich an den umgebenden Code (Namensgebung, Kommentar-Dichte, Idiome).
-- Deutschsprachige UI-Texte und nutzerseitige Doku; Code/Kommentare gern gemischt,
-  wie im jeweiligen Modul üblich.
+Lokale Daten liegen unter `data/` und werden nicht eingecheckt. Eine frische
+Installation enthält keine Ratsdaten. Hinweise zu Beispieldaten und optionalen
+Zugangsdaten stehen unter [Lokale Entwicklung](CLAUDE.md#lokale-entwicklung).
+KI-Antworten, E-Mail und Push benötigen die jeweiligen Dienstzugänge.
 
-## Lizenz
+## Den richtigen Branch wählen
 
-Mit deinem Beitrag stimmst du zu, dass er unter der **AGPL-3.0** (siehe
-[LICENSE](LICENSE)) veröffentlicht wird.
+| Änderung | Ausgangspunkt und PR-Ziel | Merge |
+| --- | --- | --- |
+| Neue Funktion | `dev` | Squash |
+| Fehlerbehebung oder Korrektur der veröffentlichten Dokumentation | `main` | Squash; anschließend `main` nach `dev` übernehmen |
+| Release | `dev` → `main` | Merge-Commit |
+
+Verwende für jeden Auftrag einen eigenen Branch. Nimm keine fremden Änderungen
+in deinen Commit auf. `feature` ist eine zusätzliche Vorschauumgebung; fertige
+Funktionen gehen regulär per PR nach `dev`.
+
+Ein gemergter PR nach `main` löst den produktiven Deploy aus. Pushes auf `dev`
+und `feature` aktualisieren die jeweilige Vorschau. Details stehen in den
+[Projektregeln](CLAUDE.md#deployment--branch-modell).
+
+## Änderungen prüfen
+
+```bash
+.venv/bin/python scripts/pruefe.py
+```
+
+Der Prüflauf bündelt unter anderem Python- und Frontend-Tests, Linter,
+Typprüfungen, den API-Vertrag und Changelog-Prüfungen. `--liste` zeigt die
+aktuelle Auswahl, `--schnell` führt eine kürzere Auswahl aus. Fehlende Werkzeuge
+werden als übersprungen gemeldet; das ersetzt keine erfolgreiche Prüfung.
+
+Je nach Änderung kommen hinzu:
+
+- Frontend-Build: `npm --prefix web/frontend run build`.
+- Browsertests: in `web/frontend/` mit `npx playwright test`; bei belegten Ports
+  beispielsweise `E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test`.
+- Dokumentation: `npm --prefix docs-site ci` und
+  `npm --prefix docs-site run build`.
+- iOS: die Tests und Builds aus [ios/README.md](ios/README.md).
+
+Die Hooks führen vor Commits den Adressen-Lint und vor Pushes die schnelle
+Prüfauswahl aus. Alle verpflichtenden CI-Prüfungen müssen am aktuellen
+PR-Stand erfolgreich sein, bevor gemergt wird.
+
+## Den Pull Request vorbereiten
+
+Beschreibe das Problem, die Änderung und die durchgeführten Prüfungen.
+Verlinke ein zugehöriges Issue, falls vorhanden. Für Änderungen am Verhalten
+der Anwendung gehört ein Fragment unter `changelog.d/<slug>.md` dazu:
+
+```markdown
+---
+kategorie: behoben
+---
+
+**Kurze Beschreibung der Änderung.** Erkläre, was sich für Nutzer*innen ändert.
+```
+
+Mögliche Kategorien sind `hinzugefuegt`, `geaendert` und `behoben`. Keine
+Überschriften oder PR-Nummern im Fragment; die Nummer ergänzt der Versionsschnitt.
+Reine Dokumentations- und Repositorypflege braucht keinen Produkteintrag.
+
+## Sprache und Projektregeln
+
+Schreibe UI-Texte und Dokumentation auf Deutsch: konkret, verständlich und ohne
+unnötige Werbesprache. Verwende Fachbegriffe dort, wo sie etwas erklären, und
+beschreibe Einschränkungen ebenso klar wie Funktionen. Halte dich im Code an
+die Konventionen des jeweiligen Moduls.
+
+Die [Projektregeln](CLAUDE.md) und die `CLAUDE.md` im betroffenen Unterverzeichnis
+enthalten die technischen Vorgaben. Die [Entwicklungsrezepte](REZEPTE.md)
+helfen, die relevanten Dateien zu finden.
+
+Zugangsdaten, private Serveradressen und personenbezogene Testdaten gehören
+nicht ins Repository. Nutze für Beispieladressen `example.org`.
+
+## Zusammenarbeit und Lizenz
+
+Es gilt der [Verhaltenskodex](CODE_OF_CONDUCT.md). Sicherheitslücken werden über
+den [vertraulichen Meldeweg](SECURITY.md) gemeldet. Beiträge werden unter der
+[AGPL-3.0](LICENSE) veröffentlicht.

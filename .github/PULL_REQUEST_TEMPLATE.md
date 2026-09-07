@@ -1,22 +1,18 @@
-<!-- Danke für den Beitrag! Bitte kurz ausfüllen. -->
+## Änderung
 
-## Was & warum
+<!-- Welches Problem wird gelöst? Was ändert sich? Falls vorhanden: Issue verlinken. -->
 
-<!-- Was ändert dieser PR, und warum? Verlinke das zugehörige Issue (#123). -->
+## Prüfung
 
-## Art der Änderung
-
-- [ ] Bugfix
-- [ ] Feature
-- [ ] Doku
-- [ ] Refactoring / Aufräumen
-- [ ] Sonstiges
+<!-- Welche Prüfungen wurden durchgeführt und mit welchem Ergebnis?
+     Bei ausgelassenen Prüfungen bitte den Grund nennen. -->
 
 ## Checkliste
 
-- [ ] `pytest tests/ -q` grün
-- [ ] Backend-Import ok (`import app.main`, `import nwz, council, scripts.check_council`, Python 3.12)
-- [ ] Frontend baut (`npm run build`), falls betroffen
-- [ ] Doku aktualisiert / Doku baut, falls betroffen
-- [ ] Keine Secrets, echten Server-IPs/Hosts oder personenbezogenen Daten im Diff
-- [ ] CI ist grün (wird **nicht** rot gemergt)
+- [ ] Passender Zielbranch: `dev` für Funktionen, `main` für Fehlerbehebungen und veröffentlichte Doku
+- [ ] Relevante Prüfungen aus `scripts/pruefe.py` durchgeführt
+- [ ] Zusätzliche Builds, Browser- oder iOS-Tests durchgeführt, soweit betroffen
+- [ ] Dokumentation angepasst und Changelog-Fragment ergänzt, soweit erforderlich
+- [ ] Keine Zugangsdaten oder personenbezogenen Daten im Diff
+
+<!-- Erst mergen, wenn die CI am aktuellen PR-Stand erfolgreich ist und keine Konflikte bestehen. -->
