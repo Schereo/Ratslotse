@@ -67,10 +67,13 @@ def test_nur_grosse_releases_bekommen_eine_karte():
 
 def test_hoechstens_vier_highlights():
     zu_viel = [(r.version, len(r.highlights)) for r in releases.RELEASES
-               if not 1 <= len(r.highlights) <= releases.MAX_HIGHLIGHTS]
+               if not 1 <= len(r.highlights) <= releases.MAX_HIGHLIGHTS + 2]
     assert not zu_viel, (
         f"Ein Eintrag hat 1 bis {releases.MAX_HIGHLIGHTS} Highlights: {zu_viel}. "
-        "Mehr liest niemand auf einer Karte — streiche das schwächste.")
+        "Mehr liest niemand auf einer Karte — streiche das schwächste. "
+        "Der Deckel liegt hier etwas höher, weil `only` Highlights auf eine "
+        "Oberfläche beschränken kann; die harte Grenze JE Oberfläche prüft "
+        "test_jede_oberflaeche_bekommt_wenigstens_ein_highlight.")
 
 
 def test_jedes_highlight_zeigt_in_die_app():
@@ -116,6 +119,36 @@ def test_jede_genannte_mediendatei_existiert():
         f"{releases.MEDIA_ROOT}:\n  " + "\n  ".join(fehlend))
 
 
+def test_jede_oberflaeche_bekommt_wenigstens_ein_highlight():
+    """Ein Highlight kann auf eine Oberfläche beschränkt sein (``only``) —
+    2.2.0 hat das Glossar nur im Browser. Eine Ausgabe, die für die App gar
+    nichts übrig lässt, hätte dort eine leere Bühne."""
+    for release in releases.RELEASES:
+        for client in ("web", "ios"):
+            sichtbar = releases.highlights_for(release, client)
+            assert sichtbar, f"{release.version}: für {client} bleibt nichts übrig."
+            assert len(sichtbar) <= releases.MAX_HIGHLIGHTS, (
+                f"{release.version}: {len(sichtbar)} Highlights für {client}.")
+
+
+def test_only_kennt_nur_zwei_werte():
+    erlaubt = {None, releases.NUR_WEB, releases.NUR_NATIVE}
+    falsch = [(r.version, h.title, h.only) for r in releases.RELEASES
+              for h in r.highlights if h.only not in erlaubt]
+    assert not falsch, (
+        f"`only` ist None, '{releases.NUR_WEB}' oder '{releases.NUR_NATIVE}': {falsch}")
+
+
+def test_ein_nur_web_highlight_erscheint_in_der_app_nicht():
+    web = releases.Media(kind="image", src="/w.webp", src_dark="/wd.webp", alt="web" * 8)
+    beide = releases.Highlight("Überall", "…", "/dashboard", media=web)
+    nur_web = releases.Highlight("Nur Browser", "…", "/fragen", media=web,
+                                 only=releases.NUR_WEB)
+    rel = releases.Release("9.7.0", "2026-01-01", "x", (beide, nur_web))
+    assert [h["title"] for h in releases.as_dict(rel, "web")["highlights"]] == ["Überall", "Nur Browser"]
+    assert [h["title"] for h in releases.as_dict(rel, "ios")["highlights"]] == ["Überall"]
+
+
 def test_die_app_fassung_ist_ganz_oder_gar_nicht():
     """Tims Wunsch 07.09.2026: In der App sollen die Bilder aus der App kommen.
 
@@ -124,8 +157,9 @@ def test_die_app_fassung_ist_ganz_oder_gar_nicht():
     Bühne wäre schlimmer als eine durchgehend fremde Oberfläche. Der Wächter
     meldet den halben Satz trotzdem: Er ist fast immer ein Versehen."""
     for release in releases.RELEASES:
-        mit = [h.title for h in release.highlights if h.media_ios]
-        ohne = [h.title for h in release.highlights if not h.media_ios]
+        sichtbar = releases.highlights_for(release, "ios")
+        mit = [h.title for h in sichtbar if h.media_ios]
+        ohne = [h.title for h in sichtbar if not h.media_ios]
         assert not (mit and ohne), (
             f"{release.version}: App-Bilder für {len(mit)}, nicht für {ohne}. "
             "Die App bekommt deshalb überall die Web-Bilder — entweder alle "

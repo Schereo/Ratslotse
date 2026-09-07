@@ -53,6 +53,10 @@ CARD_LIMIT = 3
 #: die Bremse gegen „nehmen wir alles mit".
 MAX_HIGHLIGHTS = 4
 
+#: Werte von ``Highlight.only`` — für welche Oberfläche ein Highlight gilt.
+NUR_WEB = "web"
+NUR_NATIVE = "native"
+
 
 @dataclass(frozen=True)
 class Media:
@@ -108,6 +112,15 @@ class Highlight:
     #: (``media_for``). Ein Wechsel mitten in der Bühne wäre schlimmer als eine
     #: durchgehend fremde Oberfläche.
     media_ios: Media | None = None
+    #: Für welche Oberfläche dieses Highlight überhaupt gilt: ``None``
+    #: (überall), ``"web"`` oder ``"native"``.
+    #:
+    #: Features unterscheiden sich wirklich zwischen Web und App — 2.2.0 hat
+    #: das Glossar nur im Browser, und die App-Fassungen der iOS-Ausgabe haben
+    #: umgekehrt kein Gegenstück im Web. Ein Highlight anzukündigen, das man
+    #: auf dem eigenen Gerät nicht finden kann, ist schlimmer als eines
+    #: weniger (Tims Entscheidung 07.09.2026).
+    only: str | None = None
 
 
 @dataclass(frozen=True)
@@ -175,6 +188,10 @@ RELEASES: tuple[Release, ...] = (
                     alt="Im Text ist „Messbetrag“ gepunktet unterstrichen; "
                         "darunter steht die Erklärung des Begriffs.",
                 ),
+                # Nur im Browser: Im ganzen ``ios/``-Baum kommt „glossar" nicht
+                # vor. Ein Feature anzukündigen, das man auf dem eigenen Gerät
+                # nicht finden kann, ist schlimmer als eines weniger.
+                only=NUR_WEB,
             ),
             Highlight(
                 title="Live: welcher Punkt gerade dran ist",
@@ -278,10 +295,23 @@ def has_media(release: Release) -> bool:
 NATIVE_CLIENTS = frozenset({"ios", "android", "app"})
 
 
+def highlights_for(release: Release, client: str = "web") -> tuple[Highlight, ...]:
+    """Die Highlights, die auf DIESER Oberfläche etwas zu suchen haben."""
+    nativ = client in NATIVE_CLIENTS
+    return tuple(
+        h for h in release.highlights
+        if h.only is None or h.only == (NUR_NATIVE if nativ else NUR_WEB)
+    )
+
+
 def has_native_media(release: Release) -> bool:
-    """Ist die App-Fassung dieser Ausgabe vollständig?"""
-    return bool(release.highlights) and all(
-        h.media_ios is not None for h in release.highlights)
+    """Ist die App-Fassung dieser Ausgabe vollständig?
+
+    Gemessen an den Highlights, die die App überhaupt zeigt — ein rein
+    webseitiges braucht dort kein Bild, weil es dort gar nicht erscheint.
+    """
+    sichtbar = highlights_for(release, "ios")
+    return bool(sichtbar) and all(h.media_ios is not None for h in sichtbar)
 
 
 def media_for(highlight: Highlight, client: str = "web") -> Media | None:
@@ -317,6 +347,6 @@ def as_dict(release: Release, client: str = "web") -> dict:
         "highlights": [
             {"title": h.title, "text": h.text, "url": h.url,
              "media": medium(h.media_ios if nativ else h.media)}
-            for h in release.highlights
+            for h in highlights_for(release, client)
         ],
     }

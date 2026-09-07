@@ -152,14 +152,34 @@ Die drei Dinge, die man dabei vergisst:
 
    **Für die App dieselben Bilder aus der App** (`media_ios`, Tims Wunsch
    07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im
-   Simulator gegen das lokale Backend
-   (`SIMCTL_CHILD_RATSLOTSE_API_BASE_URL` + `…_DEBUG_ACCESS_TOKEN`, Bundle
-   `de.ratslotse.dev`, `xcrun simctl io … screenshot`); **hell/dunkel geht dort
-   nur über Mehr → Konto → Erscheinungsbild**, `simctl ui appearance` wirkt
-   nicht. Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung,
-   bekommt die App für die ganze Ausgabe die Web-Bilder. Ein Feature, das es in
-   der App gar nicht gibt (2.2.0: das Glossar), hat dort auch kein Bild — dann
-   bleibt es bei Web.
+   Simulator gegen das lokale Backend:
+
+   ```bash
+   xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
+     -destination 'platform=iOS Simulator,id=<UDID>' -derivedDataPath <scratch> build
+   xcrun simctl install <UDID> <scratch>/Build/Products/Debug-iphonesimulator/Ratslotse.app
+   SIMCTL_CHILD_RATSLOTSE_API_BASE_URL=http://127.0.0.1:<port> \
+   SIMCTL_CHILD_RATSLOTSE_DEBUG_ACCESS_TOKEN=<Token> \
+     xcrun simctl launch <UDID> de.ratslotse.dev
+   xcrun simctl io <UDID> screenshot bild.png
+   ```
+
+   Vier Dinge, die dabei Zeit kosten:
+
+   * `RATSLOTSE_DEBUG_ROUTE` ist ein **Deep-Link**, kein App-Screen: `/abos`
+     landet im Web-View. Native Screens werden getippt.
+   * **Hell/dunkel geht nur über Mehr → Konto → Erscheinungsbild**,
+     `simctl ui appearance` wirkt auf die App nicht.
+   * Ein Start aus Safari lässt „◀ Safari" in der Statusleiste stehen; vor der
+     Aufnahme Safari beenden und `simctl status_bar … override` setzen.
+   * Für die Live-Karte braucht es eine laufende Sitzung: `council_sessions`
+     auf heute ziehen und eine Zeile in `council_live_state` legen —
+     **hinterher zurückdrehen**.
+
+   Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
+   die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der
+   App gar nicht gibt (2.2.0: das Glossar), bekommt `only="web"` — angekündigt
+   wird nur, was man auf dem eigenen Gerät auch findet.
 
 ---
 
