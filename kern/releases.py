@@ -55,6 +55,33 @@ MAX_HIGHLIGHTS = 4
 
 
 @dataclass(frozen=True)
+class Media:
+    """Das Bild oder der Clip zu einem Highlight.
+
+    **Zwei Fassungen, hell und dunkel.** Eine Aufnahme der Oberfläche ist
+    immer in der Helligkeit gefangen, in der sie entstand; ein weißes Bild in
+    der dunklen Karte blendet. Die Karte tauscht sie über die ``dark:``-Regel,
+    ohne JavaScript.
+
+    Die Dateien liegen unter ``web/frontend/public/neuigkeiten/<version>/``
+    und wandern damit auch in den statischen Export der App.
+    ``tests/test_releases.py`` prüft, dass jede genannte Datei existiert —
+    ein Tippfehler im Pfad wäre sonst ein leeres Feld auf der Karte.
+    """
+
+    #: ``image`` (WebP) oder ``video`` (MP4, stumm, in Schleife).
+    kind: str
+    src: str
+    src_dark: str
+    #: Was zu sehen ist — für Screenreader und für den Fall, dass nichts lädt.
+    alt: str
+    #: Nur bei ``video``: das Standbild, bis der Clip läuft. Es ist zugleich
+    #: das, was bei ``prefers-reduced-motion`` STATT des Clips steht.
+    poster: str | None = None
+    poster_dark: str | None = None
+
+
+@dataclass(frozen=True)
 class Highlight:
     """Ein Feature in einem Satz, mit einem Ort, an dem man es sieht."""
 
@@ -66,6 +93,11 @@ class Highlight:
     #: steht in der nativen App — eine externe Adresse ließe den Tipp dort
     #: wortlos ins Leere laufen (dieselbe Regel wie ``kern/notify.py``).
     url: str
+    #: Das Bild oder der Clip. **Entweder alle Highlights einer Ausgabe haben
+    #: eins oder keines** (``tests/test_releases.py`` hält das): Die Karte
+    #: zeigt sonst eine Bühne mit einem Loch darin. Ohne Medien fällt sie auf
+    #: die Listenform zurück, die auch ohne Bilder lesbar ist.
+    media: Media | None = None
 
 
 @dataclass(frozen=True)
@@ -99,6 +131,14 @@ RELEASES: tuple[Release, ...] = (
                      "jetzt ein Teilen-Knopf. Wer den Link bekommt, liest die "
                      "Sitzung ohne Konto und landet direkt bei dem gemeinten Punkt.",
                 url="/council?tab=sessions",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/teilen.mp4", src_dark="/neuigkeiten/2.2.0/teilen-dunkel.mp4",
+                    poster="/neuigkeiten/2.2.0/teilen.webp", poster_dark="/neuigkeiten/2.2.0/teilen-dunkel.webp",
+                    alt="Eine aufgeklappte Tagesordnung; an jeder Zeile ein "
+                        "Teilen-Knopf. Einer wird angetippt, es erscheint "
+                        "„Link kopiert“.",
+                ),
             ),
             Highlight(
                 title="Deine Sitzungen im Kalender",
@@ -106,6 +146,12 @@ RELEASES: tuple[Release, ...] = (
                      "Kalender, Google oder Outlook mit — einmal abonniert, danach "
                      "aktualisiert sich alles von selbst.",
                 url="/abos",
+                media=Media(
+                    kind="image",
+                    src="/neuigkeiten/2.2.0/kalender.webp", src_dark="/neuigkeiten/2.2.0/kalender-dunkel.webp",
+                    alt="Die Karte „Im Kalender abonnieren“ mit den Knöpfen "
+                        "„Kalender abonnieren“ und „Link kopieren“.",
+                ),
             ),
             Highlight(
                 title="Der Rat erklärt seine Fachwörter",
@@ -113,6 +159,12 @@ RELEASES: tuple[Release, ...] = (
                      "jetzt zuverlässig, und im Antworttext liegt unter jedem "
                      "Fachwort eine kurze Erklärung zum Antippen.",
                 url="/fragen",
+                media=Media(
+                    kind="image",
+                    src="/neuigkeiten/2.2.0/glossar.webp", src_dark="/neuigkeiten/2.2.0/glossar-dunkel.webp",
+                    alt="Im Text ist „Messbetrag“ gepunktet unterstrichen; "
+                        "darunter steht die Erklärung des Begriffs.",
+                ),
             ),
             Highlight(
                 title="Live: welcher Punkt gerade dran ist",
@@ -120,6 +172,12 @@ RELEASES: tuple[Release, ...] = (
                      "Tagesordnungspunkt gerade läuft und wer spricht — aus der "
                      "Übertragung mitgelesen.",
                 url="/dashboard",
+                media=Media(
+                    kind="image",
+                    src="/neuigkeiten/2.2.0/live.webp", src_dark="/neuigkeiten/2.2.0/live-dunkel.webp",
+                    alt="Die Live-Karte: „Der Stadtrat tagt gerade“, dazu "
+                        "der laufende Tagesordnungspunkt und wer spricht.",
+                ),
             ),
         ),
     ),
@@ -194,13 +252,31 @@ def pending_for(seen_version: str | None,
     return offen[:CARD_LIMIT], max(0, len(offen) - CARD_LIMIT)
 
 
+#: Wo die Medien im Repo liegen — von hier aus prüft der Wächter, ob eine
+#: genannte Datei wirklich existiert, und von hier aus liefert Next.js sie aus.
+MEDIA_ROOT = "web/frontend/public"
+
+
+def has_media(release: Release) -> bool:
+    """Trägt diese Ausgabe Bilder? (Alle oder keines, s. ``Highlight.media``.)"""
+    return all(h.media is not None for h in release.highlights)
+
+
 def as_dict(release: Release) -> dict:
     """Die Antwortform der API — englische Feldnamen, deutsche Inhalte."""
+
+    def medium(m: Media | None) -> dict | None:
+        if m is None:
+            return None
+        return {"kind": m.kind, "src": m.src, "src_dark": m.src_dark, "alt": m.alt,
+                "poster": m.poster, "poster_dark": m.poster_dark}
+
     return {
         "version": release.version,
         "date": release.date,
         "title": release.title,
         "highlights": [
-            {"title": h.title, "text": h.text, "url": h.url} for h in release.highlights
+            {"title": h.title, "text": h.text, "url": h.url, "media": medium(h.media)}
+            for h in release.highlights
         ],
     }

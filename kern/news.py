@@ -65,12 +65,27 @@ def body_html(release: Release) -> str:
         "Das Wichtigste in Kürze:</p>"
     ]
     for h in release.highlights:
+        # Dasselbe Bild wie auf der Karte, nur eben still: Ein Clip liefe in
+        # keinem Postfach, sein Standbild schon. Immer die HELLE Fassung —
+        # Mail-Programme schalten Bilder nicht nach Helligkeit um, und ein
+        # dunkles Bild in einer hellen Mail wäre der häufigere Irrtum.
+        bild = ""
+        if h.media:
+            quelle = h.media.poster if h.media.kind == "video" else h.media.src
+            if quelle:
+                bild = (
+                    f"<div style='margin-top:10px'><img src='{digest_email.absolut(quelle)}' "
+                    f"alt='{html.escape(h.media.alt, quote=True)}' width='552' "
+                    "style='display:block;width:100%;max-width:552px;height:auto;"
+                    "border-radius:12px;border:1px solid #e2e8f0'></div>"
+                )
         teile.append(
             "<div style='margin-top:18px'>"
             f"<div style='font-size:15px;font-weight:700;line-height:1.35'>"
             f"{html.escape(h.title)}</div>"
             f"<div style='margin-top:4px;font-size:15px;line-height:1.55'>"
             f"{html.escape(h.text)}</div>"
+            f"{bild}"
             f"{digest_email.nebenlink(digest_email.absolut(h.url), 'Ansehen')}"
             "</div>"
         )

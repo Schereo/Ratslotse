@@ -5,8 +5,12 @@ kategorie: hinzugefuegt
 **„Neu bei Ratslotse": Was eine neue Version bringt, steht jetzt auf der
 Übersicht.** Ratslotse liefert laufend aus — wer alle paar Wochen vorbeikommt,
 merkte von einem neuen Feature bisher nichts. Nach einer größeren Ausgabe steht
-jetzt eine Karte auf „Heute": drei bis vier Sätze, jeder mit einem Weg dorthin,
-und „Alles klar" räumt sie weg. Wer länger nicht da war, bekommt die verpassten
+jetzt eine Karte auf „Heute", und sie erzählt nicht, sondern zeigt: zu jeder
+Neuerung eine echte Aufnahme aus der App — beim Teilen ein kurzer Clip, sonst
+ein Bild —, dazu ein Satz und der Weg dorthin. Man blättert mit den Reitern
+darunter oder mit den Pfeiltasten durch sie; die Bilder gibt es hell und
+dunkel, und wer Bewegung abgeschaltet hat, sieht statt des Clips sein
+Standbild. „Alles klar" räumt die Karte weg. Wer länger nicht da war, bekommt die verpassten
 Ausgaben mit — das Jüngste ausführlich, das Ältere in einer Zeile. Wer nach
 einer Ausgabe dazugekommen ist, sieht sie nie: Für ihn ist alles neu. Die Karte
 merkt sich am Konto, was weggeklickt wurde, gilt also auf jedem Gerät. Dieselben

@@ -138,6 +138,16 @@ Die drei Dinge, die man dabei vergisst:
    Changelog. Verschickt wird später von Hand im Admin-Panel unter
    *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
 
+   **Dazu je Highlight ein Bild** (oder ein kurzer Clip) nach
+   `web/frontend/public/neuigkeiten/<version>/`, hell **und** dunkel, alle im
+   **16:9-Rahmen** — die Bühne blättert sonst durch verschieden hohe Kästen.
+   Aufgenommen wird die laufende lokale App mit echten Daten (Playwright über
+   das installierte Chrome, `deviceScaleFactor: 2`, Ausschnitt um das Element
+   herum auf 16:9 erweitert; Bilder als WebP ≤ 1600 px, Clips als stummes
+   h264-MP4 mit Standbild). Entweder **alle** Highlights einer Ausgabe haben
+   ein Bild oder keins — sonst hat die Bühne ein Loch, und `test_releases.py`
+   meldet es.
+
 ---
 
 ## Einen Fehler nachsehen, den ein Nutzer gemeldet hat

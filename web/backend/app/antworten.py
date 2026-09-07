@@ -416,12 +416,31 @@ class SetupState(TypedDict):
 # --------------------------------------------------------------------------
 
 
+class ReleaseMedia(TypedDict):
+    """Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+
+    Zwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit
+    gefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte
+    blendet. ``poster`` steht nur bei ``kind == "video"`` und ist zugleich das,
+    was bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+    """
+    kind: str
+    src: str
+    src_dark: str
+    alt: str
+    poster: str | None
+    poster_dark: str | None
+
+
 class ReleaseHighlight(TypedDict):
     """Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht."""
     title: str
     text: str
     #: App-Pfad, kein externer Link — die native App zeigt dieselbe Karte.
     url: str
+    #: ``None``, solange eine Ausgabe ohne Bilder auskommt — dann zeigt die
+    #: Karte die Listenform statt der Bühne.
+    media: ReleaseMedia | None
 
 
 class ReleaseNews(TypedDict):

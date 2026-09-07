@@ -11971,6 +11971,54 @@
       "ReleaseHighlight": {
         "description": "Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.",
         "properties": {
+          "media": {
+            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nZwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit\ngefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte\nblendet. ``poster`` steht nur bei ``kind == \"video\"`` und ist zugleich das,\nwas bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+            "properties": {
+              "alt": {
+                "title": "Alt",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "poster": {
+                "title": "Poster",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "poster_dark": {
+                "title": "Poster Dark",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "src": {
+                "title": "Src",
+                "type": "string"
+              },
+              "src_dark": {
+                "title": "Src Dark",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "src",
+              "src_dark",
+              "alt",
+              "poster",
+              "poster_dark"
+            ],
+            "title": "ReleaseMedia",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "text": {
             "title": "Text",
             "type": "string"
@@ -11987,9 +12035,55 @@
         "required": [
           "title",
           "text",
-          "url"
+          "url",
+          "media"
         ],
         "title": "ReleaseHighlight",
+        "type": "object"
+      },
+      "ReleaseMedia": {
+        "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nZwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit\ngefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte\nblendet. ``poster`` steht nur bei ``kind == \"video\"`` und ist zugleich das,\nwas bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+        "properties": {
+          "alt": {
+            "title": "Alt",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "poster": {
+            "title": "Poster",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "poster_dark": {
+            "title": "Poster Dark",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "src": {
+            "title": "Src",
+            "type": "string"
+          },
+          "src_dark": {
+            "title": "Src Dark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "src",
+          "src_dark",
+          "alt",
+          "poster",
+          "poster_dark"
+        ],
+        "title": "ReleaseMedia",
         "type": "object"
       },
       "ReleaseNews": {

@@ -83,6 +83,56 @@ def test_jedes_highlight_zeigt_in_die_app():
             assert notify.ist_app_pfad(h.url), f"{release.version}: {h.url!r}"
 
 
+def test_bilder_gibt_es_ganz_oder_gar_nicht():
+    """Eine Bühne mit einem Loch darin ist schlechter als eine Liste.
+
+    Deshalb die Entweder-oder-Regel: Hat EIN Highlight ein Bild, brauchen alle
+    eins — sonst fällt die Karte auf die Listenform zurück
+    (``components/release-news-card.tsx``)."""
+    for release in releases.RELEASES:
+        mit = [h.title for h in release.highlights if h.media]
+        ohne = [h.title for h in release.highlights if not h.media]
+        assert not (mit and ohne), (
+            f"{release.version}: {len(mit)} Highlight(s) mit Bild, {len(ohne)} ohne. "
+            f"Ohne Bild: {ohne}. Entweder alle bebildern oder keins.")
+
+
+def test_jede_genannte_mediendatei_existiert():
+    """Ein Tippfehler im Pfad wäre sonst ein leeres Feld auf der Karte — und
+    zwar erst auf Prod, weil lokal niemand die Karte aufschlägt."""
+    wurzel = WURZEL / releases.MEDIA_ROOT
+    fehlend = []
+    for release in releases.RELEASES:
+        for h in release.highlights:
+            if not h.media:
+                continue
+            for feld in ("src", "src_dark", "poster", "poster_dark"):
+                pfad = getattr(h.media, feld)
+                if pfad and not (wurzel / pfad.lstrip("/")).exists():
+                    fehlend.append(f"{release.version} · {h.title} · {feld}: {pfad}")
+    assert not fehlend, (
+        "Diese Mediendateien fehlen unter "
+        f"{releases.MEDIA_ROOT}:\n  " + "\n  ".join(fehlend))
+
+
+def test_ein_clip_bringt_sein_standbild_mit():
+    """``prefers-reduced-motion`` zeigt das Standbild STATT des Clips — ohne
+    Poster bliebe die Bühne dort leer. Und beide Helligkeiten, sonst blendet
+    ein weißes Bild in der dunklen Karte."""
+    for release in releases.RELEASES:
+        for h in release.highlights:
+            if h.media and h.media.kind == "video":
+                assert h.media.poster and h.media.poster_dark, (
+                    f"{release.version} · {h.title}: Clip ohne Standbild.")
+
+
+def test_medien_tragen_eine_bildbeschreibung():
+    for release in releases.RELEASES:
+        for h in release.highlights:
+            if h.media:
+                assert len(h.media.alt) > 20, f"{release.version} · {h.title}: alt zu dünn"
+
+
 def test_jede_version_steht_auch_im_changelog():
     """Die Karte ist die Kurzfassung eines Abschnitts, nicht seine Konkurrenz.
     Fehlt der Abschnitt, ist entweder die Version falsch getippt oder der

@@ -572,9 +572,11 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   Schnitt; `changelog_schnitt.py x.y.0 --highlights` schlägt einen Entwurf aus
   den Fragmenten vor. **Nur die großen Sachen** — höchstens vier, jede mit
   einem Ziel in der App, Patch-Versionen gar keine (`tests/test_releases.py`
-  hält das). Verschickt wird von Hand im Admin-Panel unter *Neuigkeiten*, ein
-  paar Tage nach dem Deploy: Ausliefern und Ankündigen sind zwei
-  Entscheidungen.
+  hält das). Jedes Highlight bringt eine **echte Aufnahme** aus der App mit
+  (`web/frontend/public/neuigkeiten/<version>/`, hell und dunkel, 16:9) — die
+  Karte ist eine Bühne zum Blättern, keine Stichpunktliste. Verschickt wird von
+  Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:
+  Ausliefern und Ankündigen sind zwei Entscheidungen.
 
   Der zweite Befehl war bis 09/2026 Handarbeit und fiel deshalb dreimal aus:
   v1.14.0, v1.15.0 und v2.0.0 lagen als Tags bei GitHub, ohne dass ein Release

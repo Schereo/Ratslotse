@@ -9165,12 +9165,58 @@ export interface components {
          * @description Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.
          */
         ReleaseHighlight: {
+            /**
+             * ReleaseMedia
+             * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+             *
+             *     Zwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit
+             *     gefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte
+             *     blendet. ``poster`` steht nur bei ``kind == "video"`` und ist zugleich das,
+             *     was bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+             */
+            media: {
+                /** Alt */
+                alt: string;
+                /** Kind */
+                kind: string;
+                /** Poster */
+                poster: string | null;
+                /** Poster Dark */
+                poster_dark: string | null;
+                /** Src */
+                src: string;
+                /** Src Dark */
+                src_dark: string;
+            } | null;
             /** Text */
             text: string;
             /** Title */
             title: string;
             /** Url */
             url: string;
+        };
+        /**
+         * ReleaseMedia
+         * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+         *
+         *     Zwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit
+         *     gefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte
+         *     blendet. ``poster`` steht nur bei ``kind == "video"`` und ist zugleich das,
+         *     was bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+         */
+        ReleaseMedia: {
+            /** Alt */
+            alt: string;
+            /** Kind */
+            kind: string;
+            /** Poster */
+            poster: string | null;
+            /** Poster Dark */
+            poster_dark: string | null;
+            /** Src */
+            src: string;
+            /** Src Dark */
+            src_dark: string;
         };
         /** ReleaseNews */
         ReleaseNews: {
@@ -15643,4 +15689,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 412f43fc5fcf0699f40488c6465d5d4a6b3972ab7a0bd4b532b3bc996338e571
+// vertrag-sha256: 9af70123f905a0015e5353eadd9c4868707e73c18de74039a67e5899410e3627
