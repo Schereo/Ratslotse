@@ -33,6 +33,11 @@ def _aus_dem_code() -> set[str]:
             # Nur echte Bezeichner: `kern/llm.py` erklärt den Parameter im
             # Docstring als `_feature="…"`, und das ist kein Feature.
             aus |= set(re.findall(r'_feature\s*=\s*"([a-z_0-9]+)"', pfad.read_text()))
+    # Die Annotatoren des Städte-Speichers bauen ihren Schlüssel aus dem
+    # Registry-Eintrag (`Annotator.feature`) — ein Regex über die Aufrufstelle
+    # sähe dort nur `ann.feature`.
+    from council.cities.annotators import ANNOTATORS
+    aus |= {a.feature for a in ANNOTATORS.values()}
     return aus
 
 

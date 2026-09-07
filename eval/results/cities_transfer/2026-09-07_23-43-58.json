@@ -1,0 +1,59 @@
+{
+  "suite": "cities_transfer",
+  "model": "deepseek/deepseek-v4-flash",
+  "prompt_version": "2",
+  "routing": "frei",
+  "n_cases": 45,
+  "n_answered": 44,
+  "usable_accuracy": 84.1,
+  "transfer_accuracy": 81.8,
+  "field_accuracy": 86.4,
+  "competence_accuracy": 79.5,
+  "cost_usd": 0.0126,
+  "seconds": 254,
+  "cost_per_1000": 0.286,
+  "mistakes": [
+    {
+      "case": "Rassistische Gewalt in Braunschweig - Geeignete Maßnahmen und Handlung",
+      "erwartet": "one_off",
+      "bekommen": "adaptable",
+      "instrument": "Tagesordnungspunkt zu rassistischer Gewalt"
+    },
+    {
+      "case": "Quartiersbezogenes Verkehrs- und Mobilitätskonzept Medienstadt Babelsb",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Quartiersverkehrskonzept erstellen"
+    },
+    {
+      "case": "Einheitliches Anmeldeverfahren für mehr Chancengerechtigkeit!",
+      "erwartet": "jurisdiction",
+      "bekommen": "adaptable",
+      "instrument": "Zentrales Anmeldeverfahren für weiterführende Schulen"
+    },
+    {
+      "case": "Nachträgliche Aufnahme des Treffens mit Saskia Ludwig in die Terminber",
+      "erwartet": "one_off",
+      "bekommen": "adaptable",
+      "instrument": "Dokumentationspflicht für Termine der Verwaltungsspitze"
+    },
+    {
+      "case": "Maßnahmen für ein stabiles und nachhaltiges Bildungs- und Betreuungsan",
+      "erwartet": "adaptable",
+      "bekommen": "local",
+      "instrument": "Schließung von Kindertageseinrichtungen zur Stabilisierung"
+    },
+    {
+      "case": "Errichtung Haus der Musik BraunschweigAntrag zur Vorlage 25-26962",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Kulturprojekt auf Kernangebote reduzieren"
+    },
+    {
+      "case": "Grundsatzbeschluss zur Zukunft der Abfallwirtschaft und Straßenreinigu",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Abfallwirtschaft als Eigenbetrieb"
+    }
+  ]
+}

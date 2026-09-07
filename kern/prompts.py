@@ -26,7 +26,91 @@ import textwrap
 # die Kurzerklärung für Menschen, die hier lesen; `template` ist das, was das
 # Modell nach .format() bekommt.
 
+#: Die Einordnung fremder Ratsvorlagen. Steht als Konstante über ``DEFAULTS``,
+#: weil sie mit 60 Zeilen jedes Wörterbuch unlesbar machen würde.
+PROMPT_CITIES_CLASSIFY = """Du ordnest Vorlagen aus Stadträten anderer deutscher Städte ein. Ziel ist eine
+Ideensammlung für die Stadt OLDENBURG (Oldb): kreisfreie Stadt in Niedersachsen,
+~172.000 Einwohner, Universitätsstadt, Kommunalrecht NKomVG. Oldenburg hat KEINE
+Ortsräte oder Bezirksvertretungen und ist kreisfrei (keine Landkreis-Ebene über sich).
+Gebäudewirtschaft, Abfallwirtschaft und Bäder sind Eigenbetriebe; Stadtwerke (EWE-Anteil),
+Klinikum, VWG (Verkehr) und GSG (Wohnen) sind Beteiligungen.
+
+Für JEDEN Eintrag lieferst du:
+
+- "field": GENAU EIN Schlüssel aus dieser Liste:
+{fields}
+
+- "instrument": Der übertragbare KERN in 2 bis 6 Wörtern, ohne Ortsnamen, ohne
+  Straßennamen, ohne Eigennamen. Nicht der Titel, sondern das Werkzeug dahinter.
+  Beispiele: "Hitzeaktionsplan aufstellen", "Solaranlagen auf Schuldächern",
+  "Querungshilfe an Schulwegen", "Zweckentfremdungssatzung erlassen",
+  "Vereinsbeiträge für Kinder bezuschussen". Bei reinen Personal-, Ehrungs- oder
+  Formalvorgängen: null.
+
+- "transfer": Wie übertragbar ist das auf Oldenburg? GENAU EIN Schlüssel:
+  - "local": An einen konkreten Ort, ein Grundstück, ein Gebäude, EINEN Verein,
+    EIN Quartier oder eine Person gebunden; ohne dieses Einzelne sinnlos
+    (Straßenbenennung, Grünpflege in Straße X, Bebauungsplan Nr. 42, Ehrung einer
+    Person, Zuschuss an den Verein Y, Rahmenplan für das Quartier Z, Umbau des
+    Gebäudes W). Ein allgemein klingendes Instrument im Titel ändert daran nichts,
+    wenn der Beschluss selbst nur diesen einen Fall regelt.
+  - "one_off": Einmalig, reaktiv ODER laufendes Pflichtgeschäft. Dazu gehören
+    ausdrücklich: Haushaltssatzung und Haushaltsvollzug, über- und außerplanmäßige
+    Mittel, Änderungsanträge zu einem konkreten Haushalt, Gebührenkalkulationen und
+    jährliche Gebührenanpassungen, Jahresabschlüsse, Wirtschaftspläne, Bestellung von
+    Abschlussprüfern, Stellenplan, Entschädigungen und Auslagenersatz, Dienstreisen,
+    Feststellung von Wahl- oder Abstimmungsergebnissen, Aufnahme eines Punktes auf die
+    Tagesordnung, Resolutionen zu Tagesereignissen. Solche Vorgänge gibt es in JEDER
+    Stadt — genau deshalb sind sie keine Idee, die man sich abschauen könnte.
+  - "jurisdiction": Setzt etwas voraus, das Oldenburg nicht hat, nicht darf oder
+    gar nicht erst besitzt (z. B. eine Umweltzone, eine U-Bahn, einen Hafen):
+    Landesrecht eines anderen Bundeslandes (NRW, Brandenburg, Sachsen-Anhalt),
+    Bezirksvertretungen/Ortsräte/Ortschaftsräte, Stadtstaat, Landkreis-Aufgaben,
+    Großstadt-Sonderlagen (U-Bahn, Hafen, Flughafen), Landeshauptstadt-Aufgaben.
+  - "adaptable": Ein Instrument — Satzung, Förderrichtlinie, Programm, Konzept,
+    Prüfauftrag, Beteiligungsformat, Organisationsmaßnahme, Standard —, das in
+    Oldenburg mit Anpassung genauso ginge.
+  - "direct": Wie "adaptable", aber die Rechtsgrundlage gilt in Niedersachsen
+    ebenso (NKomVG, NBauO, NZwEWG, NSchG …) oder es ist ein Beitritt, eine
+    Berichtspflicht oder ein bundesweit gleiches Förderprogramm.
+  Wichtig: Ein Ortsname IM TITEL macht eine Sache noch nicht "local" — entscheidend
+  ist, ob das INSTRUMENT ohne diesen Ort noch Sinn ergibt.
+
+- "competence": Wer müsste das in Oldenburg tun? GENAU EIN Schlüssel:
+  "council" (Ratsbeschluss nötig), "administration" (Verwaltung, kein Beschluss nötig),
+  "utility" (Eigenbetrieb: Gebäude, Abfall, Bäder), "holding" (Beteiligung: Stadtwerke,
+  Klinikum, VWG, GSG), "state" (Land oder Bund, Stadt kann nur auffordern).
+
+- "originator": Antragstellende Fraktion/Gruppe, wörtlich wie im Text ("SPD-Fraktion",
+  "Gruppe FDP/UWG", "Fraktion Die Linke"); bei Verwaltungsvorlagen null.
+
+- "summary": EIN neutraler Satz, höchstens 160 Zeichen: was gefordert oder
+  vorgeschlagen wird.
+
+Antworte mit NUR JSON: {{"results": [{{"id": "<id>", "field": "...", "instrument": "..." ,
+"transfer": "...", "competence": "...", "originator": "...", "summary": "..."}}]}}
+
+Regeln: Gib für JEDE vorgelegte id genau ein Ergebnis mit exakt derselben id zurück.
+Erfinde nichts. Wenn der Text zu dünn ist, richte dich nach dem Titel."""
+
+
 DEFAULTS: dict[str, dict[str, str]] = {
+    # --- Städte-Speicher (council/cities): fremde Ratsvorlagen einordnen ------
+    "cities_classify_system": {
+        "title": "Fremde Ratsvorlage einordnen",
+        "description":
+            "Themenfeld, Instrument, Übertragbarkeit auf Oldenburg, Zuständigkeit und "
+            "Antragsteller — ein Aufruf je Batch. Platzhalter: {fields} (die Themenfelder "
+            "aus council/topics.py). ZWEITE Fassung: Sie zählt laufende Pflichtgeschäfte "
+            "namentlich auf. Gemessen an 45 handeingeordneten Vorlagen hob genau das die "
+            "entscheidende Trefferquote von 73 auf 98 Prozent — bei gleichem Modell.",
+        "template": PROMPT_CITIES_CLASSIFY,
+    },
+    "cities_classify_user": {
+        "title": "Fremde Ratsvorlagen — die Einträge",
+        "description": "Der Batch. Platzhalter: {items}.",
+        "template": "EINTRÄGE:\n{items}",
+    },
     "deep_decomposition": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",
         "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {question}.",

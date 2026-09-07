@@ -18,8 +18,9 @@ Tagesordnungspunkte, von denen 12.948 ein Ergebnis tragen.
 
 **Die Einordnung funktioniert, aber nur mit dem richtigen Prompt.** Die
 Entscheidung, auf die es ankommt — taugt eine fremde Vorlage als Idee für
-Oldenburg oder nicht —, traf das beste Modell in 98 % der Fälle richtig. Mit
-demselben Modell und einem schwächeren Prompt waren es 73 %.
+Oldenburg oder nicht —, trifft das beste Modell in rund 87 % der Fälle richtig
+(fünf Läufe, 84 bis 91 %). Mit demselben Modell und einem schwächeren Prompt
+waren es 73 %. Ein einzelner Lauf zeigte 98 %; das war Glück, s. § 2.
 
 **Der gezielte Modus schlägt das freie Brainstorming deutlich.** „Was haben
 andere zu diesem Thema gemacht?" liefert präzise Treffer. „Was fehlt uns?"
@@ -42,7 +43,7 @@ sind Beiwerk.
 
 | Modell | geliefert | taugt/taugt nicht | Übertragbarkeit | Themenfeld | Zuständigkeit | $/1000 | Sek. für 45 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **deepseek/deepseek-v4-flash** | 100 % | **98 %** | 87 % | 84 % | 56 % | **0,43** | 143 |
+| **deepseek/deepseek-v4-flash** | 100 % | **98 %** ¹ | 87 % | 84 % | 56 % | **0,43** | 143 |
 | qwen/qwen3.8-flash | 100 % | 96 % | 89 % | 82 % | 67 % | 1,07 | 235 |
 | tencent/hy4-preview | 100 % | 93 % | 67 % | 87 % | 69 % | 20,74 | 1036 |
 | minimax/minimax-m3 | 98 % | 89 % | 80 % | 82 % | 77 % | 0,63 | 42 |
@@ -58,6 +59,10 @@ sind Beiwerk.
 | nvidia/nemotron-3-super-120b | 100 % | 67 % | 58 % | 89 % | 64 % | 0,58 | 305 |
 | deepseek/deepseek-v4-flash-0731 | **84 %** | 66 % | 55 % | 84 % | 74 % | 1,26 | 2296 |
 | google/gemini-2.5-flash-lite | 100 % | 58 % | 47 % | 76 % | 60 % | 0,12 | 6 |
+
+¹ Ein Lauf. Fünf Wiederholungen ergaben 84 bis 91 % — s. den Nachtrag unten.
+**Jede Zahl in dieser Tabelle ist ein einzelner Lauf** und trägt dieselbe
+Unsicherheit von rund ±7 Punkten.
 
 Die Auswahl folgt der OpenRouter-Wochenrangliste (Stand 06.09.2026: Hy4
 preview, GPT-5.6 Luna, GLM 5.3 Flash, DeepSeek V4 Flash 0731, MiniMax M3, Hy3,
@@ -107,6 +112,17 @@ mitbringen, ohne dass die KI-Frage sie erbt.
 | `deepseek-v4-flash`, Prompt-Fassung 1 | 73 % | 60 % |
 | `deepseek-v4-flash`, Prompt-Fassung 2 | **98 %** | **87 %** |
 | `deepseek-v4-pro` (elfmal teurer), Fassung 1 | 71 % | 60 % |
+
+> **Nachtrag 07.09.2026, nach fünf Wiederholungen:** Die 98 % waren ein
+> einzelner Lauf. Dieselbe Fassung, dasselbe Modell, fünfmal gemessen — mit
+> und ohne Provider-Beschränkung, mit Batchgröße 4 und 6 — ergibt **84 bis
+> 91 %**, im Mittel rund 87 %. Bei 45 Fällen ist ein Punkt knapp ein halber
+> Fall; die Spanne ist Rauschen, kein Einstellungseffekt. **Jede einzelne Zahl
+> in diesem Abschnitt ist ein Lauf und trägt dieselbe Unsicherheit** — die
+> Rangfolge der Modelle bleibt davon unberührt, der Abstand zwischen
+> Prompt-Fassung 1 und 2 (73 gegen 87) ebenso, aber „98 %" sollte niemand
+> zitieren. Die Suite `eval/run_cities_transfer.py` sagt das jetzt selbst und
+> zählt erst unter 80 % als Regression.
 
 Alle zwölf Fehler der ersten Fassung gingen in dieselbe Richtung: Das Modell
 hielt **laufende Pflichtgeschäfte** für übertragbare Ideen — Haushaltsvollzug,

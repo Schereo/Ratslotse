@@ -36,6 +36,11 @@ logger = logging.getLogger("check_cities")
 #: Nachlauf nach einer Panne mehr aufholen kann, ohne dass jemand Code ändert.
 RUECKSCHAU_TAGE = int(os.environ.get("CITIES_SINCE_DAYS", "60"))
 
+#: Wie viele Vorlagen ein Lauf höchstens einordnen lässt. Ein Rückstau wird
+#: über mehrere Wochen abgebaut, statt dass ein einzelner Sonntag teuer wird.
+#: Gemessen: 0,31 $ je 1.000 Vorlagen.
+ANNOTATE_MAX = int(os.environ.get("CITIES_ANNOTATE_MAX", "3000"))
+
 
 def main() -> dict:
     from datetime import date, timedelta
@@ -69,6 +74,19 @@ def main() -> dict:
                 zaehler["errors"] += 1
                 gruende[f"error_{spec.id}"] = f"{type(e).__name__}: {e}"
                 logger.warning("%s: %s", spec.id, e)
+
+        # Einordnen läuft über ALLE Städte zusammen — der Deckel gilt für den
+        # Lauf, nicht je Stadt, sonst bekäme die erste Stadt alles.
+        try:
+            for schluessel, ergebnis in pipeline.annotate(
+                    main_store, limit=ANNOTATE_MAX).items():
+                zaehler["annotated"] = zaehler.get("annotated", 0) + ergebnis["annotated"]
+                zaehler["annotate_errors"] = (zaehler.get("annotate_errors", 0)
+                                              + ergebnis["errors"])
+                gruende[f"cost_{schluessel}"] = f"${ergebnis['cost_usd']:.4f}"
+        except Exception as e:  # noqa: BLE001
+            zaehler["errors"] += 1
+            gruende["error_annotate"] = f"{type(e).__name__}: {e}"
 
         nachher = {z["id"]: z["papers"] for z in main_store.stats()}
         zaehler["papers_new"] = sum(nachher.get(k, 0) - vorher.get(k, 0) for k in nachher)

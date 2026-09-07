@@ -92,6 +92,14 @@ def benutzte_schluessel() -> dict[str, list[str]]:
                     key = _erster_string(node.args[0])
                     if key is not None:
                         merken(key, pfad, node.lineno)
+            # Registry-Einträge: `prompt_system="…"` / `prompt_user="…"`
+            # (council/cities/annotators.py). Sie sind echte Aufrufstellen —
+            # nur eine Ebene entfernt, weil der Aufruf erst zur Laufzeit
+            # daraus gebaut wird.
+            if isinstance(node, ast.keyword) and node.arg in ("prompt_system", "prompt_user"):
+                key = _erster_string(node.value)
+                if key is not None:
+                    merken(key, pfad, node.value.lineno)
             # prompts.DEFAULTS["…"]
             if (isinstance(node, ast.Subscript) and isinstance(node.value, ast.Attribute)
                     and node.value.attr == "DEFAULTS"):
