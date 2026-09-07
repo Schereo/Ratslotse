@@ -1,81 +1,75 @@
-# Ratslotse Web
+# Webanwendung
 
-Web-Frontend: Ratsinformationssystem, Themen-Verwaltung und Admin (Prompts &
-Nutzer). Teilt sich die SQLite-Datenbanken und die Python-Logik mit den Cron-Skripten.
+Ratslotse verbindet ein Next.js-Frontend mit einem FastAPI-Backend. Backend und
+Betriebsskripte verwenden dieselben Python-Pakete und SQLite-Datenbanken.
 
-```
-Browser
-   │  HTTPS
- Caddy (Edge-VM)  ── terminiert TLS, reverse_proxy ──▶  app-server:3000
-   │
- Next.js (next start :3000)
-   ├── /*      → Frontend-Seiten
-   └── /api/*  → FastAPI (uvicorn, 127.0.0.1:8000)  ── nwz.sqlite / council.sqlite
+## Aufbau
+
+```text
+Browser → Caddy (HTTPS) → Next.js
+                           └── /api/* → FastAPI → ratslotse.sqlite / council.sqlite
 ```
 
-In Produktion terminiert **Caddy auf der Edge-VM** (`edge-vm`) TLS und proxyt
-auf `app-server:3000`; Next.js reicht `/api/*` selbst ans Backend weiter, das damit
-auf Loopback bleibt (nicht öffentlich). Lokal/Dev läuft alles ohne Caddy über
-denselben Same-Origin-`/api`-Proxy von Next.
+- `frontend/`: Next.js mit App Router und Tailwind; API-Zugriffe über `lib/api.ts`.
+- `backend/`: FastAPI; nutzt `kern/` und `council/` aus dem Repository-Root.
+- `../api/openapi.json`: versionierter Schnittstellenvertrag. Daraus werden die
+  Frontend-Typen erzeugt.
 
-- **Backend** (`web/backend/`): FastAPI. Importiert die bestehenden Pakete
-  `nwz` und `council` (Stores, `kern.prompts`). Keine eigene
-  Datenhaltung außer der Tabelle `web_users` in `nwz.sqlite`.
-- **Frontend** (`web/frontend/`): Next.js (App Router) + Tailwind. Spricht das
-  Backend über einen Same-Origin-`/api`-Proxy an (siehe `next.config.mjs`).
+Next.js leitet API-Anfragen an das Backend weiter. Die native iOS-App spricht
+mit der API direkt; für ihre Streaming-Anfragen gelten die Hinweise in der
+[iOS-Anleitung](../ios/README.md#streaming-und-produktiver-proxy).
 
-## Auth & Aktivierung
+## Lokal entwickeln
 
-- Registrierung/Login per E-Mail + Passwort. Sessions als HS256-JWT in einem
-  httpOnly+Secure-Cookie. Passwörter werden mit `scrypt` (stdlib) gehasht.
-- **Adminrechte vergibt die Registrierung nicht.** Jedes neue Konto startet als
-  `user` — auch die Adresse aus `WEB_ADMIN_EMAIL` und auch das allererste Konto.
-  Sonst bekäme Adminrechte, wer die konfigurierte Adresse als Erstes ins
-  Formular tippt, ohne je Zugriff auf dieses Postfach nachzuweisen.
-  `WEB_ADMIN_EMAIL` wird zum Admin, **sobald sie ihre E-Mail bestätigt hat** —
-  und nur, solange es im Deployment noch gar keinen Admin gibt (ein bewusst
-  degradiertes oder gesperrtes Konto holt sich die Rechte so nicht zurück).
-  Ohne `RESEND_API_KEY` gibt es keinen Bestätigungslink: dann nach der
-  Registrierung einmalig auf dem Server
-  `.venv/bin/python scripts/grant_admin.py <adresse>` (befördert nur ein
-  **bestehendes** Konto, ist idempotent). Auf beides weist das Backend im Log
-  hin — bei der Registrierung und bei jedem Start.
-- **Aktivierung durch E-Mail-Bestätigung:** Neue Konten starten als `pending`
-  und werden mit dem Klick auf den Bestätigungslink (24 h gültig) automatisch
-  aktiv — keine manuelle Freischaltung. Admins bekommen eine FYI-Mail und können
-  Konten unter Admin → Web-Nutzer*innen jederzeit sperren/entsperren.
-  (Ohne konfigurierten `RESEND_API_KEY` — z. B. lokal — sind neue Konten sofort
-  aktiv, weil kein Link verschickt werden kann.)
+Die vollständige Einrichtung steht im [Beitragsleitfaden](../CONTRIBUTING.md#lokal-einrichten).
+Nach der Installation startest du das Backend vom Repository-Root aus:
 
-Onboarding-Reihenfolge: registrieren → E-Mail bestätigen → voller Zugriff.
-
-## Lokale Entwicklung
-
-Backend:
 ```bash
-cd web/backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000   # liest ../../.env
+.venv/bin/python scripts/dev.py start
 ```
 
-Frontend:
-```bash
-cd web/frontend
-npm install
-BACKEND_URL=http://localhost:8000 npm run dev   # http://localhost:3000
-```
+Der Starter gibt den Frontend-Befehl mit dem gewählten Backend-Port aus.
+Führe ihn in einem zweiten Terminal unter `web/frontend/` aus. Setze zusätzlich
+`BACKEND_URL` auf dieselbe Adresse, damit auch der Next.js-Proxy und seine
+Streaming-Routen das richtige Backend erreichen.
 
-## Environment-Variablen (in der bestehenden `.env`)
+Eigene Backend-Prozesse lassen sich mit `scripts/dev.py status` und
+`scripts/dev.py stop` verwalten. Belegte Ports anderer Arbeitskopien bleiben
+unangetastet.
 
-| Variable | Zweck | Default |
-|----------|-------|---------|
-| `WEB_JWT_SECRET` | Signiergeheimnis für Session-Tokens — **unbedingt setzen** | `dev-insecure-change-me` |
-| `WEB_ADMIN_EMAIL` | Diese E-Mail wird Admin, sobald sie registriert **und bestätigt** ist (nur solange es keinen Admin gibt); ohne Mail-Versand: `scripts/grant_admin.py` | – |
-| `COOKIE_SECURE` | Secure-Flag fürs Session-Cookie. `true` für HTTPS/localhost; nur für Plain-HTTP-Dev auf `false` setzen | `true` |
-| `CORS_ORIGINS` | Erlaubte Origins (kommagetrennt). In Prod auf die echte Domain setzen (z. B. `https://ratslotse.de`); same-origin braucht streng genommen kein CORS | `http://localhost:3000` |
+## Konten und Berechtigungen
 
-Die DB-Pfade (`NWZ_DB`, `COUNCIL_DB`) zeigen standardmäßig auf `data/` im
-Repo-Root — dieselben Dateien wie die Cron-Skripte.
+Die Anmeldung unterstützt E-Mail und Passwort sowie Sign in with Apple.
+Web-Sitzungen verwenden ein HttpOnly-Cookie; die native App verwendet ein
+Bearer-Token. Rollen und Rechte stehen zentral in `kern/roles.py`.
+
+Die Registrierung selbst vergibt keine Adminrechte. Die bestätigte Adresse aus
+`WEB_ADMIN_EMAIL` erhält sie nur, wenn noch kein Admin existiert. Ohne
+E-Mail-Versand kann ein vorhandenes Konto über `scripts/grant_admin.py`
+berechtigt werden. Neue Konten werden bei eingerichtetem Mailversand durch
+E-Mail-Bestätigung aktiviert; ohne Mailversand entfällt dieser Schritt.
+
+Prompts liegen in `kern/prompts.py`. Der Adminbereich verwaltet unter anderem
+Konten, Rollen und Betriebsinformationen; Prompts werden im Code geändert.
+
+## Konfiguration
+
+Die lokale `.env` im Repository-Root und `web/frontend/.env.local` werden nicht
+eingecheckt. Für den Server wird die Konfiguration getrennt gepflegt.
+
+| Variable | Zweck |
+| --- | --- |
+| `WEB_JWT_SECRET` | Signiergeheimnis für Sitzungen; auf dem Server einen eigenen zufälligen Wert verwenden |
+| `WEB_ADMIN_EMAIL` | Adresse für die erstmalige Admin-Einrichtung |
+| `COOKIE_SECURE` | Cookie nur über HTTPS senden; für lokale HTTP-Entwicklung gegebenenfalls `false` |
+| `CORS_ORIGINS` | Erlaubte Browser-Origins |
+| `RATSLOTSE_DB`, `COUNCIL_DB` | Pfade zu den Datenbanken; standardmäßig unter `data/` |
+| `RATSLOTSE_SQLITE` | Datenbankpfad des Kosten-Trackings; bei abweichendem Kontenpfad ebenfalls setzen |
+| `BACKEND_URL` | Backend-Ziel des Next.js-Proxys und seiner Streaming-Routen |
+| `NEXT_PUBLIC_API_BASE` | API-Basis für direkte Client-Zugriffe; der Starter nennt den passenden Wert |
+
+Weitere Einstellungen stehen in `backend/app/config.py` und in der
+[Betriebsdokumentation](https://ratslotse.de/docs/betrieb/).
 
 ## Deployment auf app-server (einmalige Einrichtung)
 

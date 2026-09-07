@@ -1,3 +1,10 @@
+> **Historische Planungsunterlage.** Am 07.09.2026 aus dem Repository-Root
+> ins Archiv verschoben. Der folgende Text dokumentiert den damaligen Stand
+> und ist keine aktuelle Funktions-, Release- oder Betriebsanleitung.
+> Pfadangaben im ursprünglichen Text beziehen sich auf den Repository-Root.
+> Aktuelle Einstiege: [Projektregeln](../../CLAUDE.md),
+> [iOS-App](../../ios/README.md) und [Dokumentation](https://ratslotse.de/docs/).
+
 # Ratslotse nativ — Umbauplan Capacitor → SwiftUI
 
 > **Status:** Als native 2.0-Ausgabe am 29.08.2026 implementiert und lokal

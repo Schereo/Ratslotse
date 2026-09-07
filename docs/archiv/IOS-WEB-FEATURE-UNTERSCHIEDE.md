@@ -1,3 +1,10 @@
+> **Historische Planungsunterlage.** Am 07.09.2026 aus dem Repository-Root
+> ins Archiv verschoben. Der folgende Text dokumentiert den damaligen Stand
+> und ist keine aktuelle Funktions-, Release- oder Betriebsanleitung.
+> Pfadangaben im ursprünglichen Text beziehen sich auf den Repository-Root.
+> Aktuelle Einstiege: [Projektregeln](../../CLAUDE.md),
+> [iOS-App](../../ios/README.md) und [Dokumentation](https://ratslotse.de/docs/).
+
 # Feature-Unterschiede: native iOS-App und Website
 
 Stand: 01.09.2026 — Onboarding jetzt auf beiden Plattformen (vorher nur nativ).
