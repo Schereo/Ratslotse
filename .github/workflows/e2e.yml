@@ -65,6 +65,19 @@ jobs:
     # verschieben das nur langsam weiter, weil eine DATEI die kleinste Einheit
     # ist und jeder Läufer knapp 1 Minute Rüstzeit zahlt (venv, npm ci,
     # Chromium). Vier ist der Punkt, an dem sich beides die Waage hält.
+    #
+    # ES KOSTET MEHR RECHENZEIT, ALS ES SPART — und das ist Absicht. In der CI
+    # gemessen brauchen die vier Teile ZUSAMMEN 22 Minuten reine Testzeit, der
+    # serielle Lauf vorher 15,4. Der Aufschlag kommt vom Next-Entwicklungs-
+    # server: Jeder Teil übersetzt die Routen, die SEINE Tests aufrufen, von
+    # vorn, und die Routen überschneiden sich zwischen den Teilen.
+    #
+    # Gekauft wird damit nicht Rechenzeit, sondern WARTEZEIT — die bestimmt der
+    # langsamste Teil, nicht die Summe. Dass das ein guter Tausch ist, liegt
+    # daran, dass dieses Repo öffentlich ist: GitHub rechnet Actions-Minuten
+    # für öffentliche Repos nicht ab. In einem privaten Repo wäre dieselbe
+    # Änderung eine Rechnung, und dann wäre die Anmeldung (s. u.) der richtige
+    # Hebel, weil sie beides senkt.
     strategy:
       fail-fast: false
       matrix:
@@ -74,7 +87,17 @@ jobs:
 
     # Die Grenze ist kein Ziel, sondern der Notausgang für einen hängenden
     # Lauf — sie gilt jetzt für EINEN Teil, nicht mehr für die ganze Suite.
-    # Von 35 auf 15: Ein Viertel der Suite braucht in der CI knapp 4 Minuten.
+    # Von 35 auf 20. In der CI gemessen (07.09.2026, reine Testzeit):
+    #
+    #     Teil 1  4,6 min      Teil 3  6,7 min
+    #     Teil 2  7,6 min      Teil 4  3,2 min
+    #
+    # 20 statt 10, obwohl der langsamste Teil 7,6 Minuten braucht: Derselbe
+    # Läufer schwankt stark. Die Python-Suite, die sonst gut drei Minuten
+    # läuft, brauchte an einem Tag zwölf — ohne dass sich etwas am Code
+    # geändert hätte. Eine knapp gesetzte Grenze macht daraus eine
+    # ZEITÜBERSCHREITUNG, also einen roten PR mit einer Meldung, die nicht
+    # sagt, was kaputt ist. Der Notausgang darf großzügig sein.
     #
     # Der nächste Hebel, wenn die Suite weiter wächst, ist nicht diese Zahl
     # und auch nicht die Zahl der Teile, sondern die Anmeldung: Fast jeder
@@ -83,7 +106,7 @@ jobs:
     # gut die Hälfte der reinen Laufzeit. Eine wiederverwendete Sitzung über
     # `storageState` spart diese Runde. Das ist ein Umbau der Suite, kein
     # Schalter in dieser Datei, und deshalb hier nicht mitgemacht.
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
