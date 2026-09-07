@@ -111,6 +111,38 @@ def test_erreichbarkeit_prueft_von_aussen_und_regelmaessig():
     assert "for versuch in" in probe
 
 
+def test_deploy_bricht_nur_am_kern_ab():
+    """Die Vorprobe war alles-oder-nichts, und das hat am 07.09.2026 die Seite
+    gekostet: Eine einzelne Kachel war rot, der Deploy brach ab, die Barriere
+    blieb stehen. Jetzt unterscheidet er — Rückgabewert 1 blockiert, 2 läuft
+    weiter und meldet."""
+    schritte = _workflow("deploy.yml")["jobs"]["deploy"]["steps"]
+    neustart = next(s for s in schritte
+                    if s.get("name") == "Restart services and rebuild web")
+    lauf = str(neustart["with"]["script"])
+    assert "probe_rc" in lauf, "der Rückgabewert wird ausgewertet"
+    assert 'probe_rc" = "2"' in lauf, "der Rand-Fall wird eigens behandelt"
+    assert "rand_rot" in lauf
+    assert "scripts/alarm.py" in lauf, "ein durchgelassener Randbefund MUSS melden"
+
+
+def test_erreichbarkeit_meldet_zuerst_ueber_den_server():
+    """Der Server trägt RESEND_API_KEY und ALERT_EMAIL längst in seiner .env.
+    Der Weg über ihn braucht deshalb kein neues Repository-Secret — nur den
+    Deploy-Schlüssel, den es ohnehin gibt. Die Secrets sind der Notausgang für
+    den Fall, dass die MASCHINE stumm ist."""
+    schritte = _workflow("ops-erreichbarkeit.yml")["jobs"]["probe"]["steps"]
+    namen = [s.get("name", "") for s in schritte]
+    assert namen.index("Alarm über den Server") < namen.index("Alarm am Server vorbei")
+    ueber = next(s for s in schritte if s.get("name") == "Alarm über den Server")
+    assert "scripts/alarm.py" in str(ueber["run"])
+    vorbei = next(s for s in schritte if s.get("name") == "Alarm am Server vorbei")
+    # Der Notausgang greift nur, wenn der Weg über den Server NICHT ging.
+    assert "steps.ueber_server.outcome != 'success'" in vorbei["if"]
+    # Und er scheitert nicht, wenn die optionalen Secrets fehlen.
+    assert "bleibt GitHubs eigene Benachrichtigung" in str(vorbei["run"])
+
+
 @pytest.mark.parametrize("datei", ["deploy.yml", "ops-erreichbarkeit.yml"])
 def test_workflows_sind_wohlgeformt(datei):
     assert _workflow(datei)["jobs"]
