@@ -120,6 +120,33 @@ MIT_KONTO: tuple[str, ...] = (
     "/api/council/budget/staff-plan",
 )
 
+#: Der KERN: Was kaputt sein muss, damit ein Ausliefern schlimmer ist als
+#: gar nicht ausliefern.
+#:
+#: Warum diese Unterscheidung überhaupt. Die Probe war alles-oder-nichts, und
+#: das hat am 07.09.2026 die Seite gekostet: `/api/council/week-preview`
+#: lieferte 500 (ein Pflichtfeld fehlte, sobald eine frisch veröffentlichte
+#: Tagesordnung noch keine Tragweite-Bewertung hatte). Die Vorprobe brach ab,
+#: die fail-closed Wartungsbarriere blieb stehen, und die API war 74 Minuten
+#: gestoppt — wegen EINER Karte, deren Fehler die laufende Fassung genauso
+#: hatte. Eine kaputte Karte ist besser als eine tote Seite.
+#:
+#: Im Kern steht deshalb nur, was die Seite trägt: die beiden Konfigurations-
+#: endpunkte und die Listen, aus denen jede Ansicht schöpft. Alles andere ist
+#: eine einzelne Kachel; ihr Ausfall ist ein Alarm, kein Grund, die Tür
+#: zuzulassen. Bricht der Kern, ist der Abbruch weiterhin richtig: Dann hat
+#: eine Migration die Daten unter dem Code weggezogen.
+KERN: frozenset[str] = frozenset({
+    "/api/health",
+    "/api/app-config",
+    "/api/council/public-stats",
+    "/api/council/heute",
+    "/api/council/decisions",
+    "/api/council/sessions",
+    "/api/council/committees",
+})
+
+
 #: Präfix der Routen, die das Recht `budget` verlangen.
 #:
 #: Als PRÄFIX und nicht als Liste: Eine neue Haushalts-Route soll hier nicht
@@ -406,10 +433,17 @@ def main(argv: list[str] | None = None) -> int:
     vertrag = Vertrag(json.loads(VERTRAG.read_text()))
     antworten: dict[str, Any] = {}
     schlecht = 0
+    schlecht_kern = 0
     token, woher = token_bauen(WURZEL, args.konto)
 
+    def melde(muster: str) -> None:
+        """Eine gescheiterte Probe zählen — und merken, ob sie im Kern lag."""
+        nonlocal schlecht, schlecht_kern
+        schlecht += 1
+        if muster in KERN:
+            schlecht_kern += 1
+
     def lauf(paare, mit_token=None):
-        nonlocal schlecht
         for muster, pfad in paare:
             erwartet = erwarteter_kode(pfad) if mit_token else 200
             kode, daten = hole(args.basis, pfad, args.zeitlimit, mit_token)
@@ -422,13 +456,13 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  ✗ {pfad}  HTTP {kode}, erwartet {erwartet} "
                           f"(das Probe-Konto hat das Recht nicht — die Route "
                           f"müsste es abweisen)")
-                    schlecht += 1
+                    melde(muster)
                 continue
             if kode != 200:
                 grund = {0: f"nicht erreichbar ({daten})",
                          -1: "Antwort ist kein JSON"}.get(kode, f"HTTP {kode}")
                 print(f"  ✗ {pfad}  {grund}")
-                schlecht += 1
+                melde(muster)
                 continue
             antworten[muster] = daten
             schema = vertrag.antwortschema(muster)
@@ -442,7 +476,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"      {f}")
                 if len(fehler) > 8:
                     print(f"      … und {len(fehler) - 8} weitere")
-                schlecht += 1
+                melde(muster)
             else:
                 print(f"  ✓ {pfad}")
 
@@ -470,8 +504,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nmit Konto: übersprungen — {woher}")
 
     if schlecht:
-        print(f"\n{schlecht} Probe(n) gescheitert.")
-        return 1
+        rand = schlecht - schlecht_kern
+        print(f"\n{schlecht} Probe(n) gescheitert "
+              f"({schlecht_kern} im Kern, {rand} am Rand).")
+        if schlecht_kern:
+            print("Im KERN — ein Ausliefern wäre schlimmer als nicht ausliefern.")
+            return 1
+        print("Nur am Rand: einzelne Kacheln, nicht die Seite. Der Deploy darf "
+              "weiter, es gehört aber gemeldet.")
+        return 2
     gesperrt = sum(1 for pfad in MIT_KONTO if token and erwarteter_kode(pfad) != 200)
     if gesperrt:
         print(f"\n{len(antworten)} Probe(n) in Ordnung, {gesperrt} Sperre(n) geprüft "

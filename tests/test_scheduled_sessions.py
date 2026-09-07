@@ -165,7 +165,12 @@ def test_wochenvorschau_waehlt_nach_wichtigkeit(tmp_path):
         assert not any("Beschlussfähigkeit" in t for t in title)
         assert not any("Genehmigung des Protokolls" in t for t in title)
 
-        rang = {p["title"][:12]: p["rang"] for p in d["items"]}
+        # `rang` ist eine INTERNE Kennzahl und geht seit dem 07.09.2026 nicht
+        # mehr nach außen: `items` läuft jetzt durch `_punkt_export`, und der
+        # liefert genau den Schlüsselsatz des Vertrags. Für die Rangfolge
+        # fragt der Test deshalb den Bewertungspfad selbst.
+        roh = store._bewertete_punkte(store.sitzungen_im_fenster(), None)
+        rang = {p["title"][:12]: p["rang"] for p in roh}
         # Die Satzungsänderung (Entscheidung, bindend) schlägt den
         # Fraktionsantrag zu einem bekannten Thema — genau andersherum als
         # bis zum 15.08.2026. Damals sammelte ein Bericht über Nebensignale
@@ -643,6 +648,86 @@ def test_weitere_punkte_tragen_ihre_erklaerung_mit(tmp_path):
     finally:
         store.close()
 
+
+def test_wochenvorschau_punkte_tragen_wichtig_grund_auch_ohne_tragweite(tmp_path):
+    """Prod-Ausfall 07.09.2026: Eine frisch veröffentlichte Tagesordnung hatte
+    noch keine KI-Tragweite, die Punkte waren nur nach Regeln bewertet — und
+    die trugen das Feld ``wichtig_grund`` gar nicht. Der Endpunkt liefert die
+    Dicts unverändert aus, ``wichtig_grund`` ist dort Pflichtfeld: 500 auf
+    ``/api/council/week-preview``, die Rauchprobe nach dem Deploy fiel, die
+    Wartungssperre hielt die API gut siebzig Minuten gestoppt.
+
+    Geprüft wird deshalb nicht nur der Schlüssel, sondern die ganze Antwort
+    gegen den Antworttyp — so, wie FastAPI sie vor dem Ausliefern prüft."""
+    import sys
+    from pathlib import Path
+
+    from pydantic import TypeAdapter
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
+    from app.antworten import CouncilWeekPreview
+
+    store = _vorschau_store(tmp_path)
+    try:
+        assert store._conn.execute("SELECT count(*) FROM agenda_item_impact").fetchone()[0] == 0, \
+            "der Fall ist gerade: KEINE Tragweite-Bewertung liegt vor"
+        d = store.wochenvorschau(max_punkte=99)
+        assert d["items"], "ohne Punkte prüft der Test nichts"
+        assert all(p["wichtig_quelle"] == "regeln" for p in d["items"])
+        assert all("wichtig_grund" in p and p["wichtig_grund"] is None for p in d["items"])
+        TypeAdapter(CouncilWeekPreview).validate_python(d)
+    finally:
+        store.close()
+
+
+def test_alle_punktlisten_tragen_denselben_schluesselsatz(tmp_path):
+    """Die Fehlerklasse hinter dem Ausfall vom 07.09.2026, als Wächter.
+
+    Drei Listen tragen dieselbe Form: `items`, `further_per_session` und die
+    Sitzungs-Highlights. Solange `items` die ROHEN Store-Dicts auslieferte und
+    nur die anderen durch `_punkt_export` gingen, konnte ein Feld an einem Weg
+    fehlen und am anderen da sein — und das fiel erst im Request auf. Genau so
+    kam der 500er auf /api/council/week-preview zustande.
+
+    Der Test vergleicht die Schlüsselsätze, nicht die Werte: Wer künftig ein
+    Feld nur an einer Stelle ergänzt, wird hier rot."""
+    store = _vorschau_store(tmp_path)
+    try:
+        d = store.wochenvorschau(max_punkte=1)
+        assert d["items"], "ohne Punkte prüft der Test nichts"
+        weitere = [w for liste in d["further_per_session"].values() for w in liste]
+        assert weitere, "ohne Restliste prüft der Test nur die Hälfte"
+        highlights = [h for liste in store.sitzungs_highlights([1]).values() for h in liste]
+        assert highlights
+
+        satz = set(d["items"][0])
+        for name, punkte in (("further_per_session", weitere),
+                             ("sitzungs_highlights", highlights)):
+            for punkt in punkte:
+                assert set(punkt) == satz, (
+                    f"{name} trägt einen anderen Schlüsselsatz: "
+                    f"fehlt {sorted(satz - set(punkt))}, "
+                    f"zusätzlich {sorted(set(punkt) - satz)}")
+    finally:
+        store.close()
+
+
+def test_der_schluesselsatz_ist_der_des_vertrags(tmp_path):
+    """Und er ist nicht irgendeiner, sondern genau der, den das Backend
+    zusagt — sonst fällt ein Feld beim Ausliefern still wieder heraus."""
+    import sys
+    from pathlib import Path as _P
+    from typing import get_type_hints
+
+    sys.path.insert(0, str(_P(__file__).resolve().parents[1] / "web" / "backend"))
+    from app.antworten import WeekPreviewItem
+
+    store = _vorschau_store(tmp_path)
+    try:
+        punkt = store.wochenvorschau(max_punkte=99)["items"][0]
+    finally:
+        store.close()
+    assert set(punkt) == set(get_type_hints(WeekPreviewItem))
 
 # ---- Highlights je Sitzung für die Sitzungsliste (04.09.2026) ------------
 
