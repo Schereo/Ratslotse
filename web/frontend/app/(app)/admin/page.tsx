@@ -479,6 +479,8 @@ type LlmUsage = {
  *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
+  cities_classify: "Fremde Ratsvorlage einordnen",
+  eval_cities_transfer: "Prüfstand: Einordnung fremder Vorlagen",
   attachment_ocr: "Anlagen-Texterkennung",
   committee_summary: "Ausschuss-Zusammenfassung",
   daily_find_story: "Fundstück des Tages",

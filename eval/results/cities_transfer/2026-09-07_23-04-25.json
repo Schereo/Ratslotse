@@ -1,0 +1,46 @@
+{
+  "suite": "cities_transfer",
+  "model": "deepseek/deepseek-v4-flash",
+  "prompt_version": "2",
+  "n_cases": 45,
+  "n_answered": 45,
+  "usable_accuracy": 88.9,
+  "transfer_accuracy": 75.6,
+  "field_accuracy": 84.4,
+  "competence_accuracy": 77.8,
+  "cost_usd": 0.0039,
+  "seconds": 616,
+  "cost_per_1000": 0.087,
+  "mistakes": [
+    {
+      "case": "Quartiersbezogenes Verkehrs- und Mobilitätskonzept Medienstadt Babelsb",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Quartiersbezogenes Verkehrskonzept autoarm"
+    },
+    {
+      "case": "Einheitliches Anmeldeverfahren für mehr Chancengerechtigkeit!",
+      "erwartet": "jurisdiction",
+      "bekommen": "adaptable",
+      "instrument": "Einheitliches Online-Anmeldeverfahren für Schulplätze"
+    },
+    {
+      "case": "Maßnahmen für ein stabiles und nachhaltiges Bildungs- und Betreuungsan",
+      "erwartet": "adaptable",
+      "bekommen": "local",
+      "instrument": "Kita-Stabilisierungsmaßnahmen umsetzen"
+    },
+    {
+      "case": "Grundsatzbeschluss zur Zukunft der Abfallwirtschaft und Straßenreinigu",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Abfallwirtschaft in Eigenbetrieb überführen"
+    },
+    {
+      "case": "Weitere Grundschulbesuche",
+      "erwartet": "adaptable",
+      "bekommen": "local",
+      "instrument": "null"
+    }
+  ]
+}

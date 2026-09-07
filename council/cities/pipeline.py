@@ -173,6 +173,20 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
         raw.close()
 
 
+# ---------------------------------------------------------------- annotate
+
+def annotate(main: CitiesStore, body_id: str | None = None,
+             limit: int | None = None) -> dict:
+    """Jeden aktiven Annotator über das laufen lassen, was ihm fehlt."""
+    from council.cities import annotate as annotate_modul
+    from council.cities.annotators import active_annotators
+
+    zahlen: dict[str, dict] = {}
+    for ann in active_annotators("paper"):
+        zahlen[f"{ann.key}/{ann.version}"] = annotate_modul.run(main, ann, body_id, limit)
+    return zahlen
+
+
 # --------------------------------------------------------------------- run
 
 def run(spec: BodySpec, main: CitiesStore, raw_dir: str | Path, files_dir: str | Path,
