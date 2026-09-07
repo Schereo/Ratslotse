@@ -9,18 +9,14 @@ eigenen CSV-Kopien gerechnet, sonst prüfte die Rechnung sich selbst.
 """
 from __future__ import annotations
 
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
-_TMP = tempfile.mkdtemp()
-os.environ.setdefault("RATSLOTSE_DB", str(Path(_TMP) / "ratslotse.sqlite"))
-os.environ.setdefault("COUNCIL_DB", str(Path(_TMP) / "council.sqlite"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
-os.environ.setdefault("WAHLABEND_HISTORY_FILE", str(Path(_TMP) / "verlauf.json"))
+# Wegwerf-Datenbanken und die übrigen Testwerte kommen aus
+# `tests/conftest.py` — dort EINMAL je Prozess gesetzt, damit sie nicht an
+# der Import-Reihenfolge der Module hängen (siehe die Begründung dort).
 
 from app.election import reference, register, service  # noqa: E402
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,17 +17,9 @@ import pytest
 
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
-# setdefault, nicht setzen: Läuft ein anderes Backend-Testmodul vorher, hat es
-# die App schon mit SEINEN Pfaden importiert — ein zweiter Wert hier würde den
-# Store an einer anderen Datei ansetzen als die App (gemessen 06.09.2026:
-# allein grün, in der Suite rot).
-_TMP = tempfile.mkdtemp()
-os.environ.setdefault("RATSLOTSE_DB", str(Path(_TMP) / "ratslotse.sqlite"))
-os.environ.setdefault("COUNCIL_DB", str(Path(_TMP) / "council.sqlite"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
-os.environ.setdefault("WEB_ADMIN_EMAIL", "admin@example.org")
-os.environ.setdefault("COOKIE_SECURE", "false")
-os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
+# Wegwerf-Datenbanken und die übrigen Testwerte kommen aus
+# `tests/conftest.py` — dort EINMAL je Prozess gesetzt, damit sie nicht an
+# der Import-Reihenfolge der Module hängen (siehe die Begründung dort).
 
 from fastapi.testclient import TestClient  # noqa: E402
 

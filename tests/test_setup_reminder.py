@@ -7,9 +7,7 @@ dass sie NICHT geht, wenn sie nicht soll.
 """
 from __future__ import annotations
 
-import os
 import sys
-import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -21,10 +19,14 @@ from kern.store import Store  # noqa: E402
 
 
 @pytest.fixture
-def store():
-    path = Path(tempfile.mkdtemp()) / "ratslotse.sqlite"
-    os.environ["RATSLOTSE_DB"] = str(path)
-    return Store(str(path))
+def store(tmp_path):
+    """Eine eigene Datenbank je Test — über den Pfad, NICHT über die Umgebung.
+
+    ``RATSLOTSE_DB`` gehört seit 09/2026 der ``conftest.py`` und wird einmal je
+    Prozess gesetzt; wer sie hier ohne Rücknahme überschriebe, verstellte sie
+    für jeden folgenden Test desselben Prozesses (unter ``pytest -n auto`` also
+    für eine zufällige Teilmenge der Suite)."""
+    return Store(str(tmp_path / "ratslotse.sqlite"))
 
 
 def _user(store: Store, email: str = "a@test.de") -> int:

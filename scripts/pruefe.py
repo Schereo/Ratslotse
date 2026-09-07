@@ -187,8 +187,14 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("strom", "Ereignis-Strom gegen die beiden Client-Parser", schnell=True,
              befehl=[PY, "-m", "pytest", "tests/test_sse_vertrag.py", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
-    Pruefung("tests", "die Testsuite", befehl=[PY, "-m", "pytest", "tests/", "-q"],
-             braucht=_modul_fehlt("pytest", DEV_INSTALL)),
+    # `-n auto` verteilt den Lauf auf alle Kerne (pytest-xdist): auf einem
+    # Zehnkerner aus 1:42 gemacht 0:35, auf dem Vierkern-Runner der CI aus
+    # 4:39 gemacht 2:15. Möglich ist das
+    # erst, seit kein Testmodul mehr über eine Prozessvariable mit einem
+    # anderen spricht — die Wegwerf-Datenbanken setzt `tests/conftest.py`
+    # einmal je Prozess, die Begründung steht dort.
+    Pruefung("tests", "die Testsuite", befehl=[PY, "-m", "pytest", "tests/", "-q", "-n", "auto"],
+             braucht=_modul_fehlt("xdist", DEV_INSTALL)),
     # Die Logik in `web/frontend/lib/` — die größte ungeprüfte Fläche des Repos
     # war bis 09/2026 genau hier: 94.000 Zeilen Frontend gegen 23 Browsertests.
     # Die prüfen Flüsse und brauchen zwei Server und zwei Minuten; für eine

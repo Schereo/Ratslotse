@@ -109,9 +109,16 @@ yt-dlp==2026.8.19
 # Nur für die Tests, deshalb nicht in `pip freeze` von Prod: Diese Fassungen
 # stammen aus einer frischen Umgebung, in der die komplette Suite am
 # 02.09.2026 grün lief (2961 Tests).
+execnet==2.1.2
 iniconfig==2.3.0
 pluggy==1.6.0
 pytest==9.1.1
+# Verteilt den Testlauf auf alle Kerne (`pytest -n auto`, s. `.github/workflows/
+# test.yml`). `execnet` darüber ist sein Unterbau — hier festgenagelt, obwohl
+# niemand es anfordert, weil es der Kanal zwischen den Arbeitsprozessen ist:
+# Eine neue Fassung, die anders serialisiert, färbt den Lauf rot, ohne dass
+# jemand etwas geändert hätte.
+pytest-xdist==3.8.0
 # Der Typprüfer wird ANDERS behandelt als ruff, das bewusst offen bleibt: Eine
 # neue pyright-Fassung bringt regelmäßig neue Schlüsse mit und färbt damit über
 # Nacht einen PR rot, der nichts damit zu tun hat. Genau daran stirbt so eine

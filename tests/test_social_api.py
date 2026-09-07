@@ -2,23 +2,18 @@
 from __future__ import annotations
 
 import io
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
 
-# Wie in test_backend_api.py: Backend importierbar machen und auf
-# Wegwerf-Datenbanken zeigen, BEVOR die App importiert wird.
+# Wie in test_backend_api.py: Backend importierbar machen, BEVOR die App
+# importiert wird.
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
-_TMP = tempfile.mkdtemp()
-os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
-os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
-os.environ["WEB_JWT_SECRET"] = "test-secret"
-os.environ["COOKIE_SECURE"] = "false"
-os.environ["DISABLE_RATE_LIMIT"] = "1"
+# Wegwerf-Datenbanken und die übrigen Testwerte kommen aus
+# `tests/conftest.py` — dort EINMAL je Prozess gesetzt, damit sie nicht an
+# der Import-Reihenfolge der Module hängen (siehe die Begründung dort).
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.config import get_settings  # noqa: E402

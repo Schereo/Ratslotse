@@ -11,7 +11,6 @@ Schlüssel nimmt die Funktion den dokumentierten „kein_mailversand"-Zweig — 
 sie eben NUR erreicht, wenn sie vorher nicht abstürzt.
 """
 import importlib.util
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -22,9 +21,12 @@ from kern.store import Store
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _load(db_path: Path):
-    """remind_setup.py als Modul laden (es liegt in scripts/, ist kein Paket)."""
-    os.environ["RATSLOTSE_DB"] = str(db_path)
+def _load():
+    """remind_setup.py als Modul laden (es liegt in scripts/, ist kein Paket).
+
+    Es liest ``RATSLOTSE_DB`` beim Import — gesetzt hat sie die ``db``-Fixture,
+    per ``monkeypatch`` und damit zurücknehmbar. Hier noch einmal hart
+    zuzuweisen, hieße sie für den Rest des Prozesses zu verstellen."""
     spec = importlib.util.spec_from_file_location(
         "remind_setup_under_test", ROOT / "scripts" / "remind_setup.py")
     mod = importlib.util.module_from_spec(spec)
@@ -43,7 +45,7 @@ def db(tmp_path, monkeypatch):
 
 def test_main_laeuft_ohne_kandidaten_durch(db):
     """Der Lauf darf nicht abstürzen — genau das tat er vorher."""
-    mod = _load(db)
+    mod = _load()
     result = mod.main()
     assert isinstance(result, dict)
     assert result["kandidaten"] == 0 and result["gesendet"] == 0
@@ -61,7 +63,7 @@ def test_main_findet_offene_einrichtung(db):
             "setup_started_at=?, setup_done_at=NULL, setup_reminded_at=NULL "
             "WHERE email='offen@test.de'", (alt,))
 
-    mod = _load(db)
+    mod = _load()
     result = mod.main()
     assert result["kandidaten"] == 1
     assert result["gesendet"] == 0
