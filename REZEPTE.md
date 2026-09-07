@@ -126,10 +126,17 @@ ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet".
 
 Der einzige Ablauf, der von Hand geht und **nicht** gesquasht wird. Er steht
 vollständig in [`CLAUDE.md`](CLAUDE.md) unter „Deployment & Branch-Modell".
-Die zwei Dinge, die man dabei vergisst:
+Die drei Dinge, die man dabei vergisst:
 
 1. `python3 scripts/ios_vertrag.py --ausgeliefert` — bricht die App im Store?
 2. Nach einem Fix auf `main`: zurück nach `dev` mergen.
+3. **Bei einer Minor-Version: die Karte „Neu bei Ratslotse"** — ein `Release(…)`
+   in [`kern/releases.py`](kern/releases.py), in denselben Commit wie der
+   Versionsschnitt. Entwurf aus den Fragmenten:
+   `scripts/changelog_schnitt.py x.y.0 --highlights`. Höchstens vier Highlights,
+   jedes mit einem Ziel in der App, **nur große Features** — Fixes stehen im
+   Changelog. Verschickt wird später von Hand im Admin-Panel unter
+   *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
 
 ---
 

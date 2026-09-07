@@ -412,6 +412,80 @@ class SetupState(TypedDict):
 
 
 # --------------------------------------------------------------------------
+# „Neu bei Ratslotse" (kern/releases.py)
+# --------------------------------------------------------------------------
+
+
+class ReleaseHighlight(TypedDict):
+    """Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht."""
+    title: str
+    text: str
+    #: App-Pfad, kein externer Link — die native App zeigt dieselbe Karte.
+    url: str
+
+
+class ReleaseNews(TypedDict):
+    version: str
+    date: str
+    title: str
+    highlights: list[ReleaseHighlight]
+
+
+class NewsState(TypedDict):
+    """Was dieses Konto noch nicht gesehen hat.
+
+    ``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases
+    verpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf
+    ``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die
+    Entscheidung fällt serverseitig, damit Web und App dieselbe Antwort
+    bekommen (dieselbe Regel wie ``SetupState.pending``).
+    """
+    releases: list[ReleaseNews]
+    older_count: int
+    #: Die Hochwassermarke des Kontos — was es zuletzt weggeklickt hat.
+    seen_version: str | None
+
+
+class NewsSeen(TypedDict):
+    """Die Marke, die nach dem Wegklicken gilt. Sie steigt nur."""
+    seen_version: str | None
+
+
+class AdminNewsRelease(TypedDict):
+    """Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands."""
+    version: str
+    date: str
+    title: str
+    highlights: list[ReleaseHighlight]
+    #: Wie viele Konten die Ankündigung JETZT bekämen.
+    open_recipients: int
+    #: Wie viele sie schon bekommen haben.
+    sent_recipients: int
+
+
+class AdminNewsList(TypedDict):
+    releases: list[AdminNewsRelease]
+
+
+class AdminNewsSent(TypedDict):
+    """Bilanz eines Versands.
+
+    ``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den
+    Anlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein
+    ist eine Antwort und keine offene Aufgabe.
+
+    Die **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht
+    gezählt: Zweihundert Mails über die Resend-API dauern länger als eine
+    HTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt
+    ohnehin erst der Morgen-Cron mit.
+    """
+    version: str
+    recipients: int
+    queued: int
+    skipped: int
+
+
+# --------------------------------------------------------------------------
 # Lotsen-Abzeichen (RL-U12)
 # --------------------------------------------------------------------------
 

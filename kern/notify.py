@@ -57,6 +57,10 @@ N3_ERGEBNIS = "n3_result"
 N4_VORGANG = "n4_vorgang"
 N5_VORABEND = "n5_vorabend"
 N6_WOCHE = "n6_woche"
+#: „Neu bei Ratslotse" — die Highlights eines Releases (``kern/releases.py``).
+#: Der einzige Anlass, der nicht aus dem Rat kommt, sondern von uns; deshalb
+#: geht er auch nur von Hand raus (Admin-Panel), nie aus einem Cron.
+N7_NEWS = "n7_news"
 
 #: Anlässe, die an einen Termin gebunden sind: Kommen sie einen Tag später, sind
 #: sie nicht verspätet, sondern wertlos — die Sitzung hat dann stattgefunden.
@@ -93,6 +97,10 @@ NOTIFY_DEFAULTS: dict[str, bool] = {
     N4_VORGANG: True,
     N5_VORABEND: False,
     N6_WOCHE: True,
+    # Ein paar Mal im Jahr, und es ist die einzige Gelegenheit, von einem
+    # neuen Feature zu erfahren, ohne selbst nachzusehen. Ab Werk an; wer sie
+    # nicht will, hat hier den Schalter (Tims Entscheidung 07.09.2026).
+    N7_NEWS: True,
 }
 
 #: Was ein Ratsmandat (Recht ``mandate``, siehe kern/roles.py) an den
@@ -146,6 +154,8 @@ NOTIFY_LABELS: dict[str, tuple[str, str]] = {
                   "18 Uhr, wenn morgen etwas ansteht"),
     N6_WOCHE: ("Wochenüberblick",
                "Sonntag 18 Uhr, alles in einer Nachricht"),
+    N7_NEWS: ("Neu bei Ratslotse",
+              "Was eine neue Version bringt — ein paar Mal im Jahr"),
 }
 
 

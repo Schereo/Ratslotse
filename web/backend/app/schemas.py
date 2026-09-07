@@ -361,6 +361,17 @@ class SupportIn(BaseModel):
 
 
 # ---- onboarding ----
+class NewsSeenIn(BaseModel):
+    """Welche Release-Karte weggeklickt wurde (``kern/releases.py``).
+
+    Die Version kommt vom Client, weil er die GEZEIGTE meldet und nicht die
+    neueste — sonst erledigte ein Wisch ein Release mit, das zwischen Laden
+    und Klick erschienen ist. Unbekannte Werte lässt der Store unberührt; hier
+    steht nur der Deckel gegen Datenmüll in der Spalte.
+    """
+    version: str = Field(min_length=1, max_length=20)
+
+
 class OnboardingUpdate(BaseModel):
     """Fortschritts-Patch: erledigte Schritte (Whitelist im Router) und/oder
     das „Kurs abgeschlossen"-Flag."""

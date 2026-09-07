@@ -393,6 +393,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin News
+         * @description Alle Einträge der Registry samt Stand ihres Versands.
+         *
+         *     Die beiden Zahlen je Eintrag beantworten die Frage vor dem Drücken: Wie
+         *     viele bekämen die Ankündigung jetzt, und wie viele haben sie schon. Sie
+         *     entstehen aus **einer** Abfrage über alle Konten, nicht aus einer je
+         *     Release — die Registry wächst mit jedem Release, die Kontenzahl auch.
+         */
+        get: operations["admin_news_api_admin_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/news/{version}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin News Send
+         * @description Die Ankündigung an alle offenen Empfänger einreihen.
+         *
+         *     Eingereiht wird sofort (nur Datenbank), **zugestellt im Hintergrund**:
+         *     Zweihundert Mails über die Resend-API dauern länger, als eine HTTP-Anfrage
+         *     warten darf. Der Hintergrund-Lauf öffnet einen eigenen Store — die
+         *     Abhängigkeit aus dem Request ist zu diesem Zeitpunkt längst geschlossen.
+         */
+        post: operations["admin_news_send_api_admin_news__version__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/news/{version}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin News Test
+         * @description Die Ankündigung einmal an das eigene Konto — vor dem echten Versand.
+         *
+         *     Bewusst **nicht** über die Warteschlange: Eine Probe soll sofort ankommen
+         *     und darf nicht an der eigenen Nachtruhe oder Tagesgrenze hängen bleiben.
+         *     Sie ändert deshalb auch keine Marke — sie zählt nicht als Versand.
+         */
+        post: operations["admin_news_test_api_admin_news__version__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/place-candidates": {
         parameters: {
             query?: never;
@@ -3347,6 +3421,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get News
+         * @description Die offenen Release-Karten dieses Kontos, neueste zuerst.
+         */
+        get: operations["get_news_api_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/news/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Seen
+         * @description Die Karte ist weggeklickt — die Hochwassermarke nachziehen.
+         *
+         *     Der Client meldet die Version, die er GEZEIGT hat. Käme zwischen Laden und
+         *     Wegklicken ein Deploy, würde „die neueste laut Server" ein Release
+         *     miterledigen, das nie jemand gesehen hat.
+         */
+        post: operations["mark_seen_api_news_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding": {
         parameters: {
             query?: never;
@@ -4452,6 +4570,52 @@ export interface components {
             models: string[];
             /** Prompt Tokens */
             prompt_tokens: number;
+        };
+        /** AdminNewsList */
+        AdminNewsList: {
+            /** Releases */
+            releases: components["schemas"]["AdminNewsRelease"][];
+        };
+        /**
+         * AdminNewsRelease
+         * @description Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands.
+         */
+        AdminNewsRelease: {
+            /** Date */
+            date: string;
+            /** Highlights */
+            highlights: components["schemas"]["ReleaseHighlight"][];
+            /** Open Recipients */
+            open_recipients: number;
+            /** Sent Recipients */
+            sent_recipients: number;
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * AdminNewsSent
+         * @description Bilanz eines Versands.
+         *
+         *     ``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den
+         *     Anlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein
+         *     ist eine Antwort und keine offene Aufgabe.
+         *
+         *     Die **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht
+         *     gezählt: Zweihundert Mails über die Resend-API dauern länger als eine
+         *     HTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt
+         *     ohnehin erst der Morgen-Cron mit.
+         */
+        AdminNewsSent: {
+            /** Queued */
+            queued: number;
+            /** Recipients */
+            recipients: number;
+            /** Skipped */
+            skipped: number;
+            /** Version */
+            version: string;
         };
         /**
          * AdminPlaceCandidate
@@ -7884,6 +8048,45 @@ export interface components {
             place_reason: string | null;
         };
         /**
+         * NewsSeen
+         * @description Die Marke, die nach dem Wegklicken gilt. Sie steigt nur.
+         */
+        NewsSeen: {
+            /** Seen Version */
+            seen_version: string | null;
+        };
+        /**
+         * NewsSeenIn
+         * @description Welche Release-Karte weggeklickt wurde (``kern/releases.py``).
+         *
+         *     Die Version kommt vom Client, weil er die GEZEIGTE meldet und nicht die
+         *     neueste — sonst erledigte ein Wisch ein Release mit, das zwischen Laden
+         *     und Klick erschienen ist. Unbekannte Werte lässt der Store unberührt; hier
+         *     steht nur der Deckel gegen Datenmüll in der Spalte.
+         */
+        NewsSeenIn: {
+            /** Version */
+            version: string;
+        };
+        /**
+         * NewsState
+         * @description Was dieses Konto noch nicht gesehen hat.
+         *
+         *     ``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases
+         *     verpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf
+         *     ``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die
+         *     Entscheidung fällt serverseitig, damit Web und App dieselbe Antwort
+         *     bekommen (dieselbe Regel wie ``SetupState.pending``).
+         */
+        NewsState: {
+            /** Older Count */
+            older_count: number;
+            /** Releases */
+            releases: components["schemas"]["ReleaseNews"][];
+            /** Seen Version */
+            seen_version: string | null;
+        };
+        /**
          * NotifyKind
          * @description Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
          *     pflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option
@@ -8956,6 +9159,29 @@ export interface components {
             score: number;
             /** Slug */
             slug: string;
+        };
+        /**
+         * ReleaseHighlight
+         * @description Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.
+         */
+        ReleaseHighlight: {
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** ReleaseNews */
+        ReleaseNews: {
+            /** Date */
+            date: string;
+            /** Highlights */
+            highlights: components["schemas"]["ReleaseHighlight"][];
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
         };
         /** ResearchCurrent */
         ResearchCurrent: {
@@ -10693,6 +10919,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminLlmUsage"];
+                };
+            };
+        };
+    };
+    admin_news_api_admin_news_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsList"];
+                };
+            };
+        };
+    };
+    admin_news_send_api_admin_news__version__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsSent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_news_test_api_admin_news__version__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestDelivery"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -13949,6 +14257,59 @@ export interface operations {
             };
         };
     };
+    get_news_api_news_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsState"];
+                };
+            };
+        };
+    };
+    mark_seen_api_news_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsSeenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsSeen"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_onboarding_api_onboarding_get: {
         parameters: {
             query?: never;
@@ -15282,4 +15643,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a469ef5da9c1808dd23dcd9d7f80192ad6eeb2d5e673a0504feae06c9acebd79
+// vertrag-sha256: 412f43fc5fcf0699f40488c6465d5d4a6b3972ab7a0bd4b532b3bc996338e571
