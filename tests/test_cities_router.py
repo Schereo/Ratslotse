@@ -1,0 +1,139 @@
+"""Der Endpunkt „Anderswo beschlossen".
+
+Der wichtigste Fall ist der **leere**: Solange ``check_cities`` nicht gelaufen
+ist — auf einem frischen Checkout, in der CI, bei den Browsertests — gibt es
+keine Städte-Datenbank. Der Endpunkt muss dann mit 200 und einer leeren Liste
+antworten, damit die Beschluss-Seite den Block ausblendet statt einen Fehler
+zu zeigen.
+"""
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from council.cities.index import EMBED_MODEL
+from council.cities.model import Batch, Body, Paper
+from council.cities.store import CitiesStore
+from council.store import CouncilStore
+from web.backend.app.deps import get_cities_store, get_council_store
+from web.backend.app.main import app
+
+
+@pytest.fixture()
+def rats_db(tmp_path):
+    """Ein Beschluss mit Vorlage (kvonr) und einer ohne."""
+    store = CouncilStore(tmp_path / "council.sqlite")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO council_sessions (ksinr, committee, session_date, session_time, "
+            "location, fetched_at) VALUES (99, 'Rat', '2026-06-01', '16:00', 'Rathaus', '2026-06-02')")
+        store._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, title, "
+            "  outcome, kvonr) VALUES (1, 99, 1, 'decision', '5', 'Kommunale Wärmeplanung', "
+            "  'accepted', 4711)")
+        store._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, title, outcome) "
+            "VALUES (2, 99, 2, 'decision', '6', 'Wahl der Schriftführung', 'accepted')")
+    yield store
+    store.close()
+
+
+@pytest.fixture()
+def cities_db(tmp_path):
+    store = CitiesStore(tmp_path / "cities.sqlite")
+    store.upsert_body(Body("osnabrueck", "Osnabrück", "NI", "allris4"))
+    store.upsert_batch(Batch(papers=[
+        Paper("oldenburg:paper:4711", "oldenburg", "Kommunale Wärmeplanung"),
+        Paper("os:p:1", "osnabrueck", "Kommunale Wärmeplanung", reference="VO/2026/1",
+              date="2026-05-01", paper_type_raw="Beschlussvorlage", kind="proposal",
+              web="https://example.org/vo/1"),
+    ]))
+    store.put_annotation("paper", "os:p:1", "classify", "2",
+                         {"summary": "Der Wärmeplan wird beschlossen.",
+                          "instrument": "Kommunale Wärmeplanung beschließen",
+                          "transfer": "direct", "originator": "SPD-Fraktion"}, "h")
+    store.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                            [("paper", "os:p:1", 0.86)])
+    yield store
+    store.close()
+
+
+@pytest.fixture()
+def client(rats_db, cities_db):
+    app.dependency_overrides[get_council_store] = lambda: rats_db
+    app.dependency_overrides[get_cities_store] = lambda: cities_db
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def test_liefert_die_fremde_vorlage_mit_allem_was_die_karte_braucht(client):
+    antwort = client.get("/api/council/decision/1/elsewhere")
+    assert antwort.status_code == 200
+    daten = antwort.json()
+    assert daten["decision_id"] == 1
+    assert daten["bodies"] == ["Osnabrück"]
+    (eintrag,) = daten["items"]
+    assert eintrag["body_name"] == "Osnabrück"
+    assert eintrag["name"] == "Kommunale Wärmeplanung"
+    assert eintrag["web"] == "https://example.org/vo/1"
+    assert eintrag["score"] == 0.86
+    assert eintrag["summary"].startswith("Der Wärmeplan")
+    assert eintrag["transfer"] == "direct"
+    assert eintrag["originator"] == "SPD-Fraktion"
+    # Ohne Sitzung dahinter gibt es kein Ergebnis — „none", nicht null.
+    assert eintrag["outcome"] == "none"
+
+
+def test_beschluss_ohne_vorlage_bekommt_eine_leere_liste(client):
+    """Wahlen und Verfahrensfragen hängen an keiner Vorlage — für sie gibt es
+    anderswo auch nichts zu holen."""
+    daten = client.get("/api/council/decision/2/elsewhere").json()
+    assert daten == {"decision_id": 2, "items": [], "bodies": []}
+
+
+def test_unbekannter_beschluss_ist_ein_404(client):
+    assert client.get("/api/council/decision/999/elsewhere").status_code == 404
+
+
+def test_ohne_staedte_datenbank_antwortet_er_trotzdem(rats_db, tmp_path):
+    """Der Normalzustand vor dem ersten Cron-Lauf — und in jeder CI."""
+    leer = CitiesStore(tmp_path / "leer.sqlite")
+    app.dependency_overrides[get_council_store] = lambda: rats_db
+    app.dependency_overrides[get_cities_store] = lambda: leer
+    try:
+        antwort = TestClient(app).get("/api/council/decision/1/elsewhere")
+        assert antwort.status_code == 200
+        assert antwort.json()["items"] == []
+    finally:
+        app.dependency_overrides.clear()
+        leer.close()
+
+
+def test_der_endpunkt_ist_oeffentlich(client):
+    """Wie die Beschluss-Seite selbst — ohne Anmeldung lesbar."""
+    antwort = client.get("/api/council/decision/1/elsewhere")
+    assert antwort.status_code == 200
+
+
+def test_formalvorgaenge_fliegen_raus(client, cities_db):
+    """Ein Vorgang, den die Einordnung selbst als `one_off` führt, teilt mit
+    dem Beschluss nur das Vokabular. Gemessen am Klimakonzept-Beschluss stand
+    „Bestellung der Schriftführung für den Ausschuss für Umweltschutz" so als
+    sechster Treffer in der Liste."""
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("os:p:2", "osnabrueck", "Bestellung der Schriftführung für den "
+              "Ausschuss für Umwelt und Klima", web="https://example.org/vo/2")]))
+    cities_db.put_annotation("paper", "os:p:2", "classify", "2",
+                             {"summary": "Schriftführung wird bestellt.",
+                              "transfer": "one_off"}, "h2")
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:1", 0.86), ("paper", "os:p:2", 0.74)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1"]
+
+
+def test_ohne_ergebnis_bleibt_das_feld_none(client, cities_db):
+    """Die meisten fremden Vorlagen tragen keine Beratungsstation mit Ergebnis.
+    Der Block zeigt dann keine Ergebnis-Marke statt einer leeren."""
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert all(i["outcome"] == "none" for i in daten["items"])

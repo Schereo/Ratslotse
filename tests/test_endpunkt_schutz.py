@@ -77,6 +77,11 @@ OEFFENTLICH = {
     ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/council/people-directory"),
     ("get", "/api/council/place/{place_id}"),
+    # „Anderswo beschlossen" steht auf derselben Seite wie der Beschluss
+    # selbst und zeigt ausschließlich Vorlagen aus den öffentlichen
+    # Ratsinformationssystemen anderer Städte — nichts Persönliches, nichts
+    # Kontobezogenes. Hinter dem Schalter `andere-staedte`.
+    ("get", "/api/council/decision/{decision_id}/elsewhere"),
     # „Mein Viertel" (/api/districts/projects, /lookup) stand hier bis 09/2026.
     # Seit dem Umzug auf die vereinte Stadtkarte liegt alles davon hinter der
     # Anmeldung (STADTKARTE-PLAN.md, Schritt 5).

@@ -1227,6 +1227,35 @@ class AdminClientShare(TypedDict):
     users: int
 
 
+class ElsewhereItem(TypedDict):
+    """Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt."""
+    body_id: str
+    body_name: str
+    paper_id: str
+    name: str
+    reference: str | None
+    date: str | None
+    kind: str
+    paper_type_raw: str | None
+    web: str | None
+    #: Kanonisches Ergebnis; ``none``, wenn die Stadt keins ausweist — bei rund
+    #: der Hälfte der Tagesordnungspunkte der Normalfall, kein Fehler.
+    outcome: str
+    outcome_raw: str | None
+    score: float
+    summary: str | None
+    instrument: str | None
+    transfer: str | None
+    originator: str | None
+
+
+class ElsewhereResponse(TypedDict):
+    decision_id: int
+    items: list[ElsewhereItem]
+    #: Die Städte, aus denen Treffer stammen — für die Zeile „aus X und Y".
+    bodies: list[str]
+
+
 class CityStats(TypedDict):
     """Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik)."""
     id: str

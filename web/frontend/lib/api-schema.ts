@@ -2264,6 +2264,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/decision/{decision_id}/elsewhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Decision Elsewhere
+         * @description Was andere Städte zu derselben Sache beantragt oder beschlossen haben.
+         *
+         *     **Öffentlich**, wie die Beschluss-Seite selbst.
+         *
+         *     Die Brücke ist die Vorlage: Ein Oldenburger Beschluss hängt an einer
+         *     ``kvonr``, und die ist im Städte-Speicher das Papier
+         *     ``oldenburg:paper:<kvonr>``. Beschlüsse ohne Vorlage — Wahlen,
+         *     Verfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo
+         *     auch nichts zu holen.
+         *
+         *     Eine leere Liste ist der Normalzustand, solange ``check_cities`` noch
+         *     nicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der
+         *     Block blendet sich aus, statt einen Fehler zu zeigen.
+         */
+        get: operations["decision_elsewhere_api_council_decision__decision_id__elsewhere_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/decisions": {
         parameters: {
             query?: never;
@@ -7106,6 +7138,53 @@ export interface components {
             valid_votes: number | null;
             /** Voters */
             voters: number | null;
+        };
+        /**
+         * ElsewhereItem
+         * @description Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt.
+         */
+        ElsewhereItem: {
+            /** Body Id */
+            body_id: string;
+            /** Body Name */
+            body_name: string;
+            /** Date */
+            date: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Originator */
+            originator: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Outcome Raw */
+            outcome_raw: string | null;
+            /** Paper Id */
+            paper_id: string;
+            /** Paper Type Raw */
+            paper_type_raw: string | null;
+            /** Reference */
+            reference: string | null;
+            /** Score */
+            score: number;
+            /** Summary */
+            summary: string | null;
+            /** Transfer */
+            transfer: string | null;
+            /** Web */
+            web: string | null;
+        };
+        /** ElsewhereResponse */
+        ElsewhereResponse: {
+            /** Bodies */
+            bodies: string[];
+            /** Decision Id */
+            decision_id: number;
+            /** Items */
+            items: components["schemas"]["ElsewhereItem"][];
         };
         /**
          * EmergingTag
@@ -12576,6 +12655,37 @@ export interface operations {
             };
         };
     };
+    decision_elsewhere_api_council_decision__decision_id__elsewhere_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElsewhereResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     decisions_api_council_decisions_get: {
         parameters: {
             query?: {
@@ -15358,4 +15468,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: bfaad1921c94f1cc205bfd3c4ecfe3767e336447c87fe6cce46094e747cc649b
+// vertrag-sha256: 2229a1e6a54a6bf54c9a579f5700b3ceaa08c83d952e271add6449b99b3f03a3
