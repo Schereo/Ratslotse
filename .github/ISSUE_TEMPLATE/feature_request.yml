@@ -1,12 +1,12 @@
-name: 💡 Feature vorschlagen
+name: Verbesserung vorschlagen
 description: Eine Idee oder Verbesserung
 labels: [enhancement]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem / Motivation
-      description: Welches Problem löst das Feature? Für wen?
+      label: Anlass
+      description: Was möchtest du mit Ratslotse machen, und was fehlt dir dafür?
     validations:
       required: true
   - type: textarea

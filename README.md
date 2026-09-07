@@ -1,102 +1,87 @@
 # Ratslotse
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Tests](https://github.com/Schereo/Ratslotse/actions/workflows/test.yml/badge.svg)](https://github.com/Schereo/Ratslotse/actions/workflows/test.yml)
-[![Live: ratslotse.de](https://img.shields.io/badge/live-ratslotse.de-0764a6)](https://ratslotse.de)
+**Was entscheidet die Stadt — und was bedeutet das für dich?**
 
-Macht die Arbeit des **Oldenburger Stadtrats** durchsuchbar, vergleichbar und
-verständlich — über ein Web-Frontend ([ratslotse.de](https://ratslotse.de)),
-vollautomatisch und personalisiert.
+Ratslotse macht die Kommunalpolitik in Oldenburg zugänglich. Die Anwendung
+erschließt Tagesordnungen, Vorlagen und Beschlüsse aus dem öffentlichen
+Ratsinformationssystem. Du kannst Themen verfolgen, Entscheidungen nachlesen
+und Fragen stellen, ohne dich durch einzelne Protokolle arbeiten zu müssen.
 
----
+[Anwendung öffnen](https://ratslotse.de) ·
+[Dokumentation](https://ratslotse.de/docs/) ·
+[Neuigkeiten](https://ratslotse.de/changelog)
 
-## Features
+[![Tests](https://github.com/Schereo/Ratslotse/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Schereo/Ratslotse/actions/workflows/test.yml)
+[![Lizenz: AGPL-3.0](https://img.shields.io/badge/Lizenz-AGPL--3.0-blue.svg)](LICENSE)
 
-### 🏛️ Stadtrat-Alerts
-Ratslotse überwacht automatisch alle kommenden Stadtratssitzungen. Wenn eines deiner
-Themen auf der Tagesordnung steht, bekommst du vorab eine Benachrichtigung mit den
-relevanten Tagesordnungspunkten.
+## Was du mit Ratslotse machen kannst
 
-### 🔔 Ausschuss-Benachrichtigungen
-Abonniere einzelne Ausschüsse (Bauausschuss, Verkehrsausschuss, …). Sobald eine
-neue Tagesordnung veröffentlicht wird, bekommst du eine KI-generierte
-Zusammenfassung der wichtigsten Punkte. Ändert sich die Tagesordnung nachträglich,
-wirst du erneut benachrichtigt.
+- **Beschlüsse recherchieren.** Suche nach Stichworten und Themen, filtere
+  Ergebnisse und lies die zugehörigen Vorlagen und Protokolle nach.
+- **Fragen zur Ratsarbeit stellen.** Lotti, die KI in Ratslotse, beantwortet Fragen
+  anhand der verfügbaren Ratsunterlagen und verweist auf ihre Quellen.
+  Für ausführlichere Fragen gibt es eine gründliche Recherche.
+- **Sitzungen verfolgen.** Sieh nach, was im Rat und seinen Ausschüssen ansteht,
+  öffne Tagesordnungen und verfolge unterstützte Ratssitzungen live.
+- **Bei deinen Themen auf dem Laufenden bleiben.** Abonniere Gremien und Themen
+  oder merke dir einzelne Vorlagen. Benachrichtigungen kommen per E-Mail oder
+  als Push-Mitteilung in der App.
+- **Zusammenhänge erkunden.** Personen- und Fraktionsprofile, Themenübersichten
+  und die Stadtkarte helfen, Entscheidungen einzuordnen. Im Quiz kannst du
+  dein Wissen über Oldenburg ausprobieren.
 
-### 🗳️ Beschlüsse durchsuchen & verstehen
-Volltextsuche über alle Beschlüsse, Filter nach Fraktion, Themenfeld und
-Geldbeträgen, KI-Fragen in normaler Sprache mit Quellen, Themen-Seiten mit Karten
-und Analysen (Parteien, Personen, Finanzen, Trends). Zu jedem Beschluss ein
-Suchlink zu NWZonline für Presseberichte.
+Ratslotse gibt es als Website und als native SwiftUI-App für iPhone und iPad.
+Der Haushaltsbereich im Web ist für Konten mit entsprechender Berechtigung
+verfügbar. Ein Android-Gerüst liegt im Repository, ist aber noch nicht
+veröffentlicht.
 
-### 🔖 Deine Themen
-Lege Themen an (z. B. *„Radwege"*, *„Stadtentwicklung"*). Ratslotse meldet sich, sobald
-der Rat dazu etwas beschließt — per Web-Push oder E-Mail.
+## Daten und Quellen
 
----
+Grundlage sind die öffentlich zugänglichen Informationen der Stadt Oldenburg.
+Ratslotse ist ein unabhängiges Projekt und kein offizielles Angebot der Stadt.
+KI hilft beim Aufbereiten, Suchen und Erklären. Ihre Antworten können Fehler
+enthalten; für den genauen Wortlaut führt der Weg deshalb immer zur Quelle.
+Fehlende oder noch nicht veröffentlichte Protokolle begrenzen die Auswertung.
 
-## Cron-Jobs
+## Am Projekt mitarbeiten
 
-| Zeit | Script | Aufgabe |
-|------|--------|---------|
-| 03:00 täglich | `backup_db.py` | SQLite-Backup (7 Tages- + 4 Wochenstände je DB ≈ ein Monat) |
-| 07:00 täglich | `check_committees.py` | Ausschuss-Tagesordnungen prüfen, Abonnenten benachrichtigen |
-| 08:00 + 14:00 täglich | `check_council.py` | Stadtratssitzungen auf Themen-Matches prüfen |
-| 09:00 täglich | `check_protocols.py` | Neue Sitzungsprotokolle parsen + Beschlüsse klassifizieren |
-| 11:00 täglich | `remind_setup.py` | Eine Service-Mail an Konten mit angefangener, seit 48 h offener Einrichtung |
-| 18:00 täglich | `abendmeldungen.py` | Vorabend-Erinnerung; sonntags zusätzlich der Wochenüberblick |
-| 03:00 sonntags | `weekly_enrich.py` | Schwerere LLM-/Embedding-Backfills nachziehen (Themen, Karten) |
+Fehler, unverständliche Texte und Ideen kannst du über die
+[Issues](https://github.com/Schereo/Ratslotse/issues) melden. Für Code- und
+Dokumentationsbeiträge erklärt der [Beitragsleitfaden](CONTRIBUTING.md) die
+lokale Einrichtung, Prüfungen und den Weg zum Pull Request.
 
-> Vollständige Cron-/systemd-Einrichtung: siehe [CLAUDE.md](CLAUDE.md). Beim
-> Synchronisieren der Zeitpläne ist die laufende `crontab -l` auf dem Server
-> maßgeblich.
+| Einstieg | Inhalt |
+| --- | --- |
+| [Webanwendung](web/README.md) | Backend, Frontend und lokale Entwicklung |
+| [iOS-App](ios/README.md) | SwiftUI-Projekt, Tests und Builds |
+| [Technische Dokumentation](https://ratslotse.de/docs/) | Architektur, Datenverarbeitung und Betrieb |
+| [Entwicklungsrezepte](REZEPTE.md) | Wiederkehrende Änderungen mit den zugehörigen Dateien |
+| [Projektregeln](CLAUDE.md) | Arbeitsablauf und technische Vorgaben; auch über `AGENTS.md` erreichbar |
+| [Änderungsverlauf](CHANGELOG.md) | Veröffentlichte Änderungen |
 
----
+### Aufbau des Repositorys
 
-## Konfiguration
+| Verzeichnis | Inhalt |
+| --- | --- |
+| `council/` | Ratsdaten abrufen, verarbeiten und durchsuchen |
+| `kern/` | Gemeinsame Datenhaltung, KI-Anbindung und Benachrichtigungen |
+| `web/` | FastAPI-Backend und Next.js-Frontend |
+| `ios/` | Native App für iPhone und iPad |
+| `api/` | OpenAPI-Vertrag für die Schnittstelle |
+| `scripts/` | Entwicklung, Datenpflege und Betrieb |
+| `tests/`, `eval/` | Automatisierte Tests und Auswertung der KI-Qualität |
+| `kommunalwahl/` | Wahlprogramme, Kandidatenregister und Daten für den Wahlabend |
+| `docs-site/` | Quellen der technischen Dokumentation |
+| `docs/archiv/` | Historische Planungsunterlagen |
 
-Alle Credentials in `~/app/.env` auf dem Server:
+Der technische Kern besteht aus Python, SQLite mit FTS5, FastAPI und Next.js.
+Sprachmodelle werden über OpenRouter angebunden; die iOS-App nutzt SwiftUI.
 
-```env
-OPENROUTER_API_KEY=...
-RESEND_API_KEY=...   # E-Mail-Versand (Resend), sending-only Key
-```
+## Sicherheit und Zusammenarbeit
 
-Die vollständige Variablenliste (Web-Frontend, E-Mail-Zustellung, LLM-Modelle)
-steht in [CLAUDE.md](CLAUDE.md). Die `.env` liegt **nur auf dem Server**, nicht
-im Repo.
-
----
-
-## Web-Frontend
-
-Das Web-Frontend unter
-**[ratslotse.de](https://ratslotse.de)** (FastAPI + Next.js) ist das Herzstück: Themen verwalten,
-Stadtratsbeschlüsse nach Themenfeldern erkunden, KI-Fragen stellen, Analysen und
-Karten. Setup und Architektur: [web/README.md](web/README.md).
-
----
-
-## Technische Details
-
-Technik-Doku unter **[ratslotse.de/docs](https://ratslotse.de/docs)** (Quelle in
-`docs-site/`): Architektur, KI-Pipeline und ADRs.
-
-**Stack:** Python 3.12 · SQLite (FTS5) · OpenRouter (LLM-Routing, DSGVO-konform) ·
-FastAPI + Next.js · SwiftUI (iOS) · Capacitor (Android) · systemd · Caddy ·
-GitHub Actions
-
----
-
-## Mitmachen
-
-Beiträge sind willkommen! Bitte lies [CONTRIBUTING.md](CONTRIBUTING.md) und den
-[Code of Conduct](CODE_OF_CONDUCT.md). Für Sicherheitsprobleme siehe
-[SECURITY.md](SECURITY.md).
-
-Lokale Entwicklung (Backend, Frontend, Doku, Tests): siehe [CLAUDE.md](CLAUDE.md).
+Sicherheitslücken bitte [vertraulich melden](SECURITY.md).
+Für die Zusammenarbeit gilt unser [Verhaltenskodex](CODE_OF_CONDUCT.md).
 
 ## Lizenz
 
-[GNU AGPL-3.0](LICENSE) © Ratslotse. Wer den Code betreibt — auch als
-Web-Service — muss seine Änderungen unter derselben Lizenz offenlegen.
+Der Quellcode steht unter der [GNU AGPL-3.0](LICENSE).

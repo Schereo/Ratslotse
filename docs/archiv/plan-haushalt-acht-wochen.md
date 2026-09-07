@@ -1,3 +1,10 @@
+> **Historische Planungsunterlage.** Am 07.09.2026 aus dem Repository-Root
+> ins Archiv verschoben. Der folgende Text dokumentiert den damaligen Stand
+> und ist keine aktuelle Funktions-, Release- oder Betriebsanleitung.
+> Pfadangaben im ursprünglichen Text beziehen sich auf den Repository-Root.
+> Aktuelle Einstiege: [Projektregeln](../../CLAUDE.md),
+> [iOS-App](../../ios/README.md) und [Dokumentation](https://ratslotse.de/docs/).
+
 # Haushalt, Runde 3 — vier Zwei-Wochen-Pläne (A–D)
 
 *Stand 17.08.2026, nach Abschluss der Quellen-Recherche (dokumentiert in

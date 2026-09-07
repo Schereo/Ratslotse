@@ -1,4 +1,4 @@
-name: 🐛 Bug melden
+name: Fehler melden
 description: Etwas funktioniert nicht wie erwartet
 labels: [bug]
 body:
@@ -24,9 +24,10 @@ body:
     attributes:
       label: Bereich
       options:
-        - Web-Frontend
+        - Website
         - Backend/API
-        - Mobile-App (iOS/Android)
+        - iOS-App
+        - Ratsdaten / Quellen
         - Benachrichtigungen (Push/E-Mail)
         - Deployment/CI
         - Doku
@@ -41,4 +42,5 @@ body:
   - type: textarea
     id: extra
     attributes:
-      label: Screenshots / Logs (optional)
+      label: Screenshots oder Fehlermeldungen (optional)
+      description: Bitte Zugangsdaten, E-Mail-Adressen und andere private Angaben vor dem Hochladen entfernen.
