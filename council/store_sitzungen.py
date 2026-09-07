@@ -807,11 +807,25 @@ class SitzungenMixin(StoreBasis):
     def _punkt_export(k: dict) -> dict:
         """Die Felder eines bewerteten Punktes, wie sie nach außen gehen.
 
-        Genau EINE Stelle dafür — die Liste ``further_per_session`` baute die
-        Punkte früher Feld für Feld neu zusammen, und zweimal fehlte dabei ein
-        Feld (Kurzfassung, Kartentext), sodass Instagram-Karten ohne Erklärung
-        standen. Wer ein Feld ergänzt, ergänzt es hier, und alle Abnehmer
-        bekommen es.
+        Genau EINE Stelle dafür — und seit dem 07.09.2026 stimmt dieser Satz
+        auch. Vorher ging nur ``further_per_session`` hier durch, während
+        ``items`` die ROHEN Store-Dicts auslieferte. Zwei Wege für dieselbe
+        Form heißt: Ein Feld, das nur der eine setzt, fällt erst im Request
+        auf. Genau so kam es: ``wichtig_grund`` fehlte an regelbewerteten
+        Punkten, ``/api/council/week-preview`` brach mit einem
+        Validierungsfehler ab, und weil die Vorprobe daran scheiterte, blieb
+        die Wartungsbarriere stehen — 74 Minuten API-Ausfall.
+
+        Deshalb liefert diese Funktion den VOLLSTÄNDIGEN Schlüsselsatz, auch
+        die fünf, die früher nur an ``items`` hingen: ``kind``,
+        ``behandlung``, ``vorgeschichte``, ``wichtig_quelle``, ``top``. Sie
+        sind an jedem bewerteten Punkt vorhanden; nur ``top`` wird erst bei
+        der Auswahl gesetzt und ist sonst schlicht falsch. Damit tragen beide
+        Listen dieselben Schlüssel, und ``WeekPreviewItem`` braucht kein
+        ``NotRequired`` mehr — ein fehlendes Feld ist jetzt ein Typfehler
+        statt eines 500ers.
+
+        Wer ein Feld ergänzt, ergänzt es hier, und alle Abnehmer bekommen es.
         """
         return {
             "ksinr": k["ksinr"], "item_number": k["item_number"],
@@ -827,6 +841,14 @@ class SitzungenMixin(StoreBasis):
             "gruppe_nr": k["gruppe_nr"], "gruppe_titel": k["gruppe_titel"],
             "gruppe_stationen": k["gruppe_stationen"],
             "gruppe_text": k.get("gruppe_text"),
+            # Die fünf, die früher nur an `items` hingen. `top` trägt die
+            # Auswahl ein; ein Punkt, den niemand ausgewählt hat, ist nicht
+            # hervorgehoben — `False` ist hier die Aussage, nicht der Notnagel.
+            "kind": k.get("kind"),
+            "behandlung": k.get("behandlung"),
+            "vorgeschichte": k.get("vorgeschichte", 0),
+            "wichtig_quelle": k.get("wichtig_quelle", "regeln"),
+            "top": bool(k.get("top", False)),
         }
 
     def sitzungs_highlights(self, ksinrs: list[int | None],
@@ -862,9 +884,8 @@ class SitzungenMixin(StoreBasis):
             if len(liste) >= max_je_sitzung:
                 continue
             gesehen.add(k["gruppe_nr"])
-            punkt = self._punkt_export(k)
-            punkt["top"] = bool(k["topic_name"]) or k["wichtig"] >= self.TOP_MINDEST
-            liste.append(punkt)
+            k["top"] = bool(k["topic_name"]) or k["wichtig"] >= self.TOP_MINDEST
+            liste.append(self._punkt_export(k))
         for liste in ergebnis.values():
             liste.sort(key=lambda p: self._top_sortierung(p["item_number"]))
         return ergebnis
@@ -1000,7 +1021,9 @@ class SitzungenMixin(StoreBasis):
             "found": bool(sitzungen),
             "from_date": heute.isoformat(), "to_date": bis,
             "sessions": sitzungen,
-            "items": punkte,
+            # Über `_punkt_export`, nicht roh: siehe dessen Docstring. Der
+            # eine Weg, der hier abkürzte, hat am 07.09.2026 die Seite gekostet.
+            "items": [self._punkt_export(p) for p in punkte],
             "relevant_per_session": relevant,
             "further_per_session": further_per_session,
             "matches_per_session": matches_per_session,

@@ -10078,15 +10078,18 @@ export interface components {
          * WeekPreviewItem
          * @description Ein Tagesordnungspunkt in „Diese Woche im Rat".
          *
-         *     Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
-         *     allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
-         *     Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
-         *     Deshalb stehen genau diese fünf als ``NotRequired``.
+         *     Drei Listen tragen diese Form: ``items``, ``further_per_session`` und die
+         *     Sitzungs-Highlights. Alle drei gehen durch ``CouncilStore._punkt_export``,
+         *     und deshalb ist hier kein Feld mehr optional.
          *
-         *     Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
-         *     es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
-         *     fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
-         *     standen ohne Erklärung da.
+         *     Vorher war das anders, und es hat wehgetan. ``items`` lieferte die rohen
+         *     Store-Dicts aus, nur die andere Liste ging durch die Export-Funktion —
+         *     zwei Wege für eine Form. Dreimal fiel dabei ein Feld heraus: die
+         *     Kurzfassung, der Kartentext (beide Male standen Instagram-Karten ohne
+         *     Erklärung da) und am 07.09.2026 ``wichtig_grund``, das an regelbewerteten
+         *     Punkten gar nicht erst gesetzt wurde. Das Ergebnis war ein 500er auf
+         *     ``/api/council/week-preview`` und, weil die Vorprobe daran scheiterte,
+         *     74 Minuten API-Ausfall.
          *
          *     ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
          *     dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
@@ -10096,7 +10099,7 @@ export interface components {
             /** Applicants */
             applicants: string | null;
             /** Behandlung */
-            behandlung?: string | null;
+            behandlung: string | null;
             /** Committee */
             committee: string;
             /** Dringlich */
@@ -10114,7 +10117,7 @@ export interface components {
             /** Item Number */
             item_number: string;
             /** Kind */
-            kind?: string | null;
+            kind: string | null;
             /** Ksinr */
             ksinr: number;
             /** Kvonr */
@@ -10134,17 +10137,17 @@ export interface components {
             /** Title */
             title: string;
             /** Top */
-            top?: boolean;
+            top: boolean;
             /** Topic Name */
             topic_name: string | null;
             /** Vorgeschichte */
-            vorgeschichte?: number;
+            vorgeschichte: number;
             /** Wichtig */
             wichtig: number;
             /** Wichtig Grund */
             wichtig_grund: string | null;
             /** Wichtig Quelle */
-            wichtig_quelle?: string;
+            wichtig_quelle: string;
         };
     };
     responses: never;
@@ -15282,4 +15285,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a469ef5da9c1808dd23dcd9d7f80192ad6eeb2d5e673a0504feae06c9acebd79
+// vertrag-sha256: 9d5a3045f4b187562cbecf7759e4802973c4f604cadf31995a15d5fd634f4130
