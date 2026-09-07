@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { ViertelZeichner, escapeHtml, type KartenBeteiligung, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
 import { ThemenOrteZeichner } from "@/components/themen-orte-zeichner";
 import type { EbenenId } from "@/lib/karten-ebenen";
+import { prozent, toenungNachStaerke, type WahlFlaeche } from "@/lib/wahl-flaechen";
 import type { EntityMapPoint } from "@/lib/types";
 
 /** Die vereinte Stadtkarte — EINE Leaflet-Karte mit zwei Stufen
@@ -36,7 +37,7 @@ const VOYAGER = basemapUrl("voyager");
 const PRIMAER = "#0a63a8";
 const STADT_MITTE: [number, number] = [53.1435, 8.2146];
 
-export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, wahl, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   stufe: KartenStufe;
   /** Die eingeschalteten Ebenen (`lib/karten-ebenen.ts`). Ohne die Vorhaben-
    *  Ebene bleibt die Stadt-Stufe eine flache Umrisskarte. */
@@ -48,6 +49,10 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   /** Der Ortsbereich, über dem der Zeiger in der Rangliste steht. */
   schwebtOrt?: string | null;
   onOrt: (name: string) => void;
+  /** Die Ebene „Wahlergebnis": je Ortsbereich die Fläche seines Wahlbereichs
+   *  (lib/wahl-flaechen.ts) — die Stadt-Stufe tönt danach und sagt im Hinweis,
+   *  wer vorn liegt. Fehlt sie oder ist die Ebene aus, färbt die Zahl der Vorhaben. */
+  wahl?: ReadonlyMap<string, WahlFlaeche>;
   vorhaben: KartenVorhaben[];
   sperrungen?: KartenSperrung[];
   beteiligungen?: KartenBeteiligung[];
@@ -73,8 +78,8 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   const rueckrufe = useRef({ onSelect, onHover, onOrt, onThemenOrt });
   rueckrufe.current = { onSelect, onHover, onOrt, onThemenOrt };
   // Der jüngste Zustand für die Effekte, die nach dem Laden nachziehen.
-  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, aktiv, gedimmt });
-  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, aktiv, gedimmt };
+  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, aktiv, gedimmt });
+  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, aktiv, gedimmt };
 
   // Karte einmal aufbauen.
   useEffect(() => {
@@ -121,8 +126,33 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Tönung einer Fläche nach Zahl — dieselbe Wurzel-Skala wie die SVG-Karte. */
+  /** Die Wahl-Fläche eines Ortsbereichs, wenn die Ebene an ist und Daten da sind. */
+  function wahlVon(name: string): WahlFlaeche | undefined {
+    const { ebenen, wahl } = standRef.current;
+    return ebenen.has("wahlergebnis") ? wahl?.get(name) : undefined;
+  }
+
+  /** Der Hinweis beim Zeigen: Vorhaben — und mit der Wahl-Ebene, wer im
+   *  Wahlbereich vorn liegt (Parteifarbe nur als Punkt, Designsprache). */
+  function hinweisHtml(name: string): string {
+    const n = standRef.current.orte.get(name) ?? 0;
+    const w = wahlVon(name);
+    let html = `<b>${escapeHtml(name)}</b><span class="wann">${n} Vorhaben</span>`;
+    if (w) {
+      const listen = w.listen.slice(0, 3).map((l) =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px"><span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:${l.color}"></span>${escapeHtml(l.short)} ${escapeHtml(prozent(l.share))}</span>`).join("");
+      html += `<span class="wann" style="display:block;margin-top:5px">Wahlbereich ${escapeHtml(w.roman)} · ${w.counted > 0 ? `${w.counted} von ${w.total} Bezirken` : "noch nichts ausgezählt"}</span>`
+        + (w.counted > 0 ? `<span style="display:block;margin-top:2px">${listen}</span>` : "");
+    }
+    return html;
+  }
+
+  /** Tönung einer Fläche: mit der Wahl-Ebene nach Stärke der stärksten
+   *  Liste im Wahlbereich, sonst nach Zahl der Vorhaben — dieselbe
+   *  Wurzel-Skala wie die SVG-Karte. */
   function toenung(name: string): number {
+    const w = wahlVon(name);
+    if (w) return toenungNachStaerke(w.staerke);
     if (!standRef.current.ebenen.has("vorhaben")) return 0.04;
     const o = standRef.current.orte;
     const max = Math.max(0, ...o.values());
@@ -153,8 +183,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
         style: (f) => stadtStil((f as OrtsbereichFeature).properties.name, false),
         onEachFeature: (f, layer) => {
           const name = (f as OrtsbereichFeature).properties.name;
-          const n = standRef.current.orte.get(name) ?? 0;
-          layer.bindTooltip(`<b>${escapeHtml(name)}</b><span class="wann">${n} Vorhaben</span>`, { sticky: true, direction: "top", offset: [0, -6], className: "viertel-tip", opacity: 1 });
+          layer.bindTooltip(hinweisHtml(name), { sticky: true, direction: "top", offset: [0, -6], className: "viertel-tip", opacity: 1 });
           layer.on("mouseover", () => (layer as Path).setStyle(stadtStil(name, true)));
           layer.on("mouseout", () => (layer as Path).setStyle(stadtStil(name, false)));
           layer.on("click", () => rueckrufe.current.onOrt(name));
@@ -201,15 +230,18 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   const stufeSchluessel = stufe.art === "district" ? `district:${stufe.name}` : "city";
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { stufeSetzen(); viertelZeichnen(); }, [stufeSchluessel]);
-  // Tönung oder eigene Stadtteile neu → Stadt-Flächen nachfärben.
+  // Tönung, eigene Stadtteile oder Wahl-Ebene neu → Stadt-Flächen nachfärben
+  // und den Hinweis neu setzen (er nennt die Zahlen der Ebene).
   useEffect(() => {
     if (standRef.current.stufe.art !== "city") return;
     stadtRef.current?.eachLayer((layer) => {
       const f = (layer as unknown as { feature?: OrtsbereichFeature }).feature;
-      if (f) (layer as Path).setStyle(stadtStil(f.properties.name, false));
+      if (!f) return;
+      (layer as Path).setStyle(stadtStil(f.properties.name, false));
+      (layer as Path).setTooltipContent(hinweisHtml(f.properties.name));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orte, gewaehlt, ebenen]);
+  }, [orte, gewaehlt, ebenen, wahl]);
   // Vorhaben, Auswahl, Filter, Ebenen → Viertel neu zeichnen.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { viertelZeichnen(); }, [vorhaben, sperrungen, beteiligungen, aktiv, gedimmt, ebenen]);

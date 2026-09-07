@@ -25,7 +25,7 @@ describe("ebenenAusUrl / ebenenZuUrl", () => {
   it("hält die Adresse sauber, solange die Vorgabe gilt", () => {
     expect(m.ebenenZuUrl(new Set(m.VORGABE))).toBeNull();
     // Alle vier ist NICHT die Vorgabe: Die Themen-Orte kommen dazu, also in die Adresse.
-    expect(m.ebenenZuUrl(new Set(m.ALLE_EBENEN))).toBe("vorhaben,plaene,sperrungen,mitreden,themen-orte");
+    expect(m.ebenenZuUrl(new Set(m.ALLE_EBENEN))).toBe("vorhaben,plaene,sperrungen,mitreden,themen-orte,wahlergebnis");
     expect(m.ebenenZuUrl(new Set(["sperrungen", "vorhaben"]))).toBe("vorhaben,sperrungen");
     expect(m.ebenenZuUrl(new Set())).toBe("");
   });
@@ -51,7 +51,7 @@ describe("ebenenStart", () => {
 
 describe("ebeneUmschalten", () => {
   it("schaltet um, ohne das Original anzufassen", () => {
-    const a = new Set<"vorhaben" | "plaene" | "sperrungen" | "mitreden" | "themen-orte">(["vorhaben"]);
+    const a = new Set<"vorhaben" | "plaene" | "sperrungen" | "mitreden" | "themen-orte" | "wahlergebnis">(["vorhaben"]);
     const b = m.ebeneUmschalten(a, "plaene");
     expect([...b]).toEqual(["vorhaben", "plaene"]);
     expect([...m.ebeneUmschalten(b, "vorhaben")]).toEqual(["plaene"]);

@@ -4,8 +4,9 @@
 > Bühnen-Entwürfen (Artefakt „Stadtkarte: drei Bühnen“); die Entscheidungen
 > in Abschnitt 5 hat Tim am selben Tag getroffen. Noch nichts davon gebaut.
 > Jeder Schritt unten ist ein eigener PR nach `dev`, hinter dem
-> Stand 07.09.2026: Schritte 1–6 gebaut — /karte ist „Mein Viertel“ (Web und
-> App), der Schalter `stadtkarte` ist weg (`mein-viertel` bleibt). Offen: 7 (Wahl).
+> Stand 07.09.2026: alle sieben Schritte gebaut — /karte ist „Mein Viertel“ (Web
+> und App), der Schalter `stadtkarte` ist weg (`mein-viertel` bleibt), das
+> Wahlergebnis liegt als Ebene (Web; Schalter `wahlabend`, füllt sich am 13.09.).
 
 ## 1. Ziel in einem Absatz
 

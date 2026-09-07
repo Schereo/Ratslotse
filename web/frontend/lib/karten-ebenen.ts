@@ -17,7 +17,7 @@
 // Spätere Ebenen (Themen-Orte, Beteiligungen, Wahlergebnis) sind je ein
 // Eintrag hier — die Chips, die Adresse und der Speicher kennen sie dann.
 
-export type EbenenId = "vorhaben" | "plaene" | "sperrungen" | "mitreden" | "themen-orte";
+export type EbenenId = "vorhaben" | "plaene" | "sperrungen" | "mitreden" | "themen-orte" | "wahlergebnis";
 
 export type Ebene = {
   id: EbenenId;
@@ -30,6 +30,8 @@ export type Ebene = {
   stufen: ("city" | "district")[];
   /** Woher die Daten kommen — steht im Tooltip des Chips. */
   quelle: string;
+  /** Nur mit diesem Feature-Schalter — sonst bleibt der Chip weg (der Endpunkt antwortet ohne ihn 404). */
+  schalter?: string;
 };
 
 export const EBENEN: readonly Ebene[] = [
@@ -46,6 +48,14 @@ export const EBENEN: readonly Ebene[] = [
   // über ALLE Jahre. In der Vorgabe aus — sie sind das andere Vokabular
   // (Themen statt Vorhaben) und lägen sonst über den Pins des Viertels.
   { id: "themen-orte", label: "Themen-Orte", farbe: "#7c3aed", stufen: ["city", "district"], quelle: "Orte und Themen aus allen Beschlüssen, nach Zahl gewichtet" },
+  // Das Wahlergebnis der Ratswahl (13.09.2026) je Wahlbereich, aus dem
+  // Wahlabend-Dashboard (Schritt 7 des Plans). Die Fläche ist eine TÖNUNG
+  // nach Stärke der stärksten Liste, nie eine Parteifarbe — die steht nur als
+  // Punkt im Hinweis und in der Tafel (Designsprache). Flächen sind die
+  // Ortsbereiche, gruppiert über ihren Wahlbereich aus dem Ortskatalog: Die
+  // Stadt schneidet Wahlbezirke, keine Ortsbereiche — das ist ungefähr.
+  { id: "wahlergebnis", label: "Wahlergebnis", farbe: "#475569", stufen: ["city", "district"], schalter: "wahlabend",
+    quelle: "Ratswahl 13.09.2026, Open Data der Stadt (Votemanager) je Wahlbereich — Flächen über die Ortsbereiche, ungefähr" },
 ] as const;
 
 export const ALLE_EBENEN: readonly EbenenId[] = EBENEN.map((e) => e.id);
