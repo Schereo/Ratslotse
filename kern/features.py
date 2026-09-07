@@ -69,6 +69,15 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
                     "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
     ),
+    "wahlabend": Feature(
+        key="wahlabend",
+        description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "
+                    "Sitze je Liste und Wahlbereich, wer nach NKWG gerade drin wäre "
+                    "— aus den Open-Data-CSVs des Votemanagers der Stadt.",
+        fertig_wenn="Das amtliche Endergebnis steht (Wahlausschuss, voraussichtlich "
+                    "in der Woche nach dem 13.09.2026); danach ist die Seite ein "
+                    "Rückblick und braucht keinen Schalter mehr.",
+    ),
 }
 
 

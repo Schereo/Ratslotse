@@ -2959,3 +2959,151 @@ PLANZEICHNUNG_JPEG: dict[int | str, dict[str, Any]] = {
     },
     404: {"description": "Zu dieser Anlage gibt es kein gerendertes Bild."},
 }
+
+
+WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Der Stand des Wahlabends als teilbares Bild (PNG, 1200×630 — die "
+            "Größe, die Messenger und soziale Netze als Vorschau erwarten): "
+            "Halbkreis der Sitze, Legende, Quelle. `?feld=projected_seats` "
+            "zeigt die Hochrechnung statt des ausgezählten Standes. Eine "
+            "Minute cachebar, so schnell ändern sich die Zahlen nicht."
+        ),
+        "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."},
+}
+
+
+# --------------------------------------------------------------------------
+# Wahlabend (Ratswahl 13.09.2026) — GET /api/wahlabend
+# --------------------------------------------------------------------------
+
+
+class ElectionInfo(TypedDict):
+    date: str
+    seats: int
+    title: str
+    presentation_url: str
+
+
+class ElectionSource(TypedDict):
+    """Woher die Zahlen kommen und ob der Abruf gerade klappt. ``fetched_at``
+    ist unser Abruf, ``last_modified`` der Stand der CSV beim Votemanager."""
+    fetched_at: str | None
+    last_modified: str | None
+    ok: bool
+    error: str | None
+
+
+class ElectionProgress(TypedDict):
+    districts_total: int
+    districts_counted: int
+
+
+class ElectionTotals(TypedDict):
+    eligible: int | None
+    voters: int | None
+    turnout_pct: float | None
+    valid_votes: int | None
+    invalid_ballots: int | None
+
+
+class ElectionCandidate(TypedDict):
+    position: int
+    name: str
+    occupation: str | None
+    born: int | None
+    #: Personenstimmen; ``None``, solange sie nicht ausgezählt sind.
+    votes: int | None
+    #: "direct" | "list" | "transfer" — oder ``None``: kein Sitz.
+    elected: str | None
+    projected_votes: int | None
+    projected_elected: str | None
+    #: Wie viele Personenstimmen bis zum Sitz fehlen: 0 = drin, ``None`` =
+    #: außer Reichweite oder nicht berechenbar.
+    votes_to_seat: int | None
+
+
+class ElectionAreaParty(TypedDict):
+    slug: str
+    votes: int | None
+    list_votes: int | None
+    candidate_votes: int | None
+    share_pct: float | None
+    seats: int | None
+    projected_seats: int | None
+    candidates: list[ElectionCandidate]
+
+
+class ElectionArea(TypedDict):
+    number: int
+    roman: str
+    name: str
+    districts_total: int
+    districts_counted: int
+    totals: ElectionTotals
+    parties: list[ElectionAreaParty]
+
+
+class ElectionParty(TypedDict):
+    index: int
+    slug: str
+    short: str
+    name: str
+    kind: str
+    color: str
+    color_dark: str
+    candidates_total: int
+    votes: int | None
+    share_pct: float | None
+    seats: int | None
+    projected_seats: int | None
+    seats_2021: int | None
+    share_2021_pct: float | None
+    #: Stufe 1 (stadtweit): Stimmen bis zum nächsten Sitz bzw. bis zum
+    #: Verlust eines Sitzes. ``None`` = nicht erreichbar / kein Sitz.
+    votes_to_next_seat: int | None
+    votes_to_lose_seat: int | None
+
+
+class ElectionMandate(TypedDict):
+    slug: str
+    area: int
+    position: int | None
+    name: str | None
+    votes: int | None
+    #: "direct" | "list" | "transfer" | "unknown" (Personenstimmen fehlen).
+    kind: str
+
+
+class ElectionHistoryPoint(TypedDict):
+    """Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze)."""
+    at: str
+    districts_counted: int
+    #: Slug -> Stimmenanteil in Prozent (nur Listen mit Stimmen).
+    shares: dict[str, float]
+    #: Slug -> Sitze nach aktuellem Stand.
+    seats: dict[str, int]
+
+
+class ElectionNight(TypedDict):
+    #: "live" (Votemanager) oder "probe" (Zahlen von 2021 im Register von 2026).
+    dataset: str
+    #: "before" (nichts ausgezählt) | "counting" | "complete".
+    phase: str
+    person_votes_available: bool
+    election: ElectionInfo
+    source: ElectionSource
+    progress: ElectionProgress
+    totals: ElectionTotals
+    parties: list[ElectionParty]
+    areas: list[ElectionArea]
+    mandates: list[ElectionMandate]
+    projected_mandates: list[ElectionMandate]
+    #: Menschentext: Losfälle, unbesetzte Sitze, fehlende Personenstimmen.
+    notes: list[str]
+    computed_at: str
+    #: Der Verlauf des Abends, ältester Punkt zuerst; leer vor der Auszählung.
+    history: list[ElectionHistoryPoint]

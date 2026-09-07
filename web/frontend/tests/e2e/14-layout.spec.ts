@@ -26,7 +26,11 @@ const SEITEN = [
 ];
 
 /** Öffentliche Seiten — auch sie werden auf dem Handy gelesen. */
-const OFFEN = ["/", "/login", "/register", "/hilfe", "/impressum", "/datenschutz"];
+const OFFEN = ["/", "/login", "/register", "/hilfe", "/impressum", "/datenschutz",
+  // Der Wahlabend ohne Feature-Schalter: nur der Hinweis, aber mit eigenem
+  // Kopf — und der ist auf dem Handy die enge Stelle. Die Tafel mit Zahlen
+  // prüft `15-wahlabend.spec.ts`, dort mit gemockter Antwort.
+  "/wahlabend"];
 
 async function anmelden(page: Page) {
   await page.goto("/login");

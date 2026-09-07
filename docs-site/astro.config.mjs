@@ -44,6 +44,7 @@ export default defineConfig({
 						{ slug: 'beschluesse' },
 						{ slug: 'haushalt' },
 						{ slug: 'haushalt-quellen-recherche' },
+						{ slug: 'wahlabend' },
 						{ slug: 'app-und-konten' },
 					],
 				},

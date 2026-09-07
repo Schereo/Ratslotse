@@ -11,3 +11,6 @@ python-multipart>=0.0.9
 # Cosine math for semantic Q&A retrieval. (fastembed is intentionally NOT here —
 # it's installed manually on prod; /ask falls back to keyword search without it.)
 numpy>=1.26
+# Das teilbare Bild des Wahlabends (GET /api/wahlabend/bild.png) wird mit
+# Pillow gezeichnet; `app/election/image.py` importiert es beim Start.
+pillow>=11
