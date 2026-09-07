@@ -326,8 +326,27 @@ jobs:
               tail -40 data/vorprobe.log 2>/dev/null || true
               exit 1
             fi
+            # Rückgabewert 1 = eine KERN-Probe ist rot (health, app-config,
+            # die tragenden Listen): Ausliefern wäre schlimmer als nicht
+            # ausliefern, der Abbruch bleibt. Rückgabewert 2 = nur Rand-Proben
+            # sind rot, also einzelne Kacheln. Dann fährt der Deploy weiter und
+            # meldet — denn genau hier ist am 07.09.2026 die Seite gestorben:
+            # `/api/council/week-preview` war 500, die Vorprobe brach ab, die
+            # Barriere blieb stehen, 74 Minuten API-Ausfall. Dieselbe Kachel war
+            # in der LAUFENDEN Fassung genauso kaputt — blockiert wurde also
+            # gegen nichts.
+            set +e
             .venv/bin/python scripts/rauchprobe.py \
               --basis "http://127.0.0.1:$vorprobe_port"
+            probe_rc=$?
+            set -e
+            rand_rot=0
+            if [ "$probe_rc" = "2" ]; then
+              rand_rot=1
+              echo "WARNUNG: Rand-Proben rot. Der Deploy läuft weiter, der Alarm folgt nach dem Start."
+            elif [ "$probe_rc" != "0" ]; then
+              exit "$probe_rc"
+            fi
             kill "$vorprobe_pid" 2>/dev/null || true
             wait "$vorprobe_pid" 2>/dev/null || true
             vorprobe_pid=""
@@ -371,7 +390,29 @@ jobs:
             # echten Aufruf. Die Rauchprobe ruft die Endpunkte ohne Konto auf
             # und hält jede Antwort gegen den Vertrag, der neben dem Code auf
             # demselben Server liegt. Sie braucht kein Fremdpaket.
+            set +e
             python3 ~/app/scripts/rauchprobe.py --basis http://127.0.0.1:8000
+            probe_rc=$?
+            set -e
+            if [ "$probe_rc" = "2" ]; then
+              rand_rot=1
+            elif [ "$probe_rc" != "0" ]; then
+              exit "$probe_rc"
+            fi
+
+            # Der Deploy ist durch, die Seite läuft — aber etwas ist kaputt.
+            # Ohne diese Mail bliebe es bei einer Zeile im Actions-Protokoll,
+            # und die liest niemand, wenn der Lauf grün ist.
+            if [ "$rand_rot" = "1" ]; then
+              .venv/bin/python scripts/alarm.py --root . \
+                --betreff "Ratslotse – Deploy durch, aber etwas ist kaputt" \
+                --text "Der Deploy von ${{ github.sha }} ist durchgelaufen und die Seite laeuft. Einzelne Endpunkte ausserhalb des Kerns haben die Rauchprobe aber nicht bestanden.
+
+            Welche, steht im Lauf: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Frueher haette das den Deploy abgebrochen und die Seite unten gelassen. Jetzt bleibt sie oben, und das hier ist der Alarm." \
+                || echo "Alarm-Mail fehlgeschlagen (der Deploy bleibt gruen)."
+            fi
 
       # LAUT SCHEITERN. Jeder Fehler oberhalb lässt die Wartungsbarriere
       # bewusst stehen und den API-Dienst gestoppt (s. die Begründung am
