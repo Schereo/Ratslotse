@@ -4138,6 +4138,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wahlabend */
+        get: operations["wahlabend_api_wahlabend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/bild.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Bild
+         * @description Der Stand als Bild zum Teilen (PNG, 1200×630) — öffentlich wie die
+         *     Seite selbst; Messenger und soziale Netze holen es ohne Konto ab.
+         *
+         *     Ohne ``feld`` zeigt das Bild während der Auszählung die Hochrechnung
+         *     (interessanter als ein Zwischenstand aus 40 Bezirken) und sonst den
+         *     ausgezählten Stand.
+         */
+        get: operations["wahlabend_bild_api_wahlabend_bild_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6802,6 +6844,203 @@ export interface components {
             catalog: components["schemas"]["PlaceCatalogHead"];
             /** Districts */
             districts: unknown;
+        };
+        /** ElectionArea */
+        ElectionArea: {
+            /** Districts Counted */
+            districts_counted: number;
+            /** Districts Total */
+            districts_total: number;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionAreaParty"][];
+            /** Roman */
+            roman: string;
+            totals: components["schemas"]["ElectionTotals"];
+        };
+        /** ElectionAreaParty */
+        ElectionAreaParty: {
+            /** Candidate Votes */
+            candidate_votes: number | null;
+            /** Candidates */
+            candidates: components["schemas"]["ElectionCandidate"][];
+            /** List Votes */
+            list_votes: number | null;
+            /** Projected Seats */
+            projected_seats: number | null;
+            /** Seats */
+            seats: number | null;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /** ElectionCandidate */
+        ElectionCandidate: {
+            /** Born */
+            born: number | null;
+            /** Elected */
+            elected: string | null;
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Position */
+            position: number;
+            /** Projected Elected */
+            projected_elected: string | null;
+            /** Projected Votes */
+            projected_votes: number | null;
+            /** Votes */
+            votes: number | null;
+            /** Votes To Seat */
+            votes_to_seat: number | null;
+        };
+        /**
+         * ElectionHistoryPoint
+         * @description Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).
+         */
+        ElectionHistoryPoint: {
+            /** At */
+            at: string;
+            /** Districts Counted */
+            districts_counted: number;
+            /** Seats */
+            seats: {
+                [key: string]: number;
+            };
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+        };
+        /** ElectionInfo */
+        ElectionInfo: {
+            /** Date */
+            date: string;
+            /** Presentation Url */
+            presentation_url: string;
+            /** Seats */
+            seats: number;
+            /** Title */
+            title: string;
+        };
+        /** ElectionMandate */
+        ElectionMandate: {
+            /** Area */
+            area: number;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string | null;
+            /** Position */
+            position: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /** ElectionNight */
+        ElectionNight: {
+            /** Areas */
+            areas: components["schemas"]["ElectionArea"][];
+            /** Computed At */
+            computed_at: string;
+            /** Dataset */
+            dataset: string;
+            election: components["schemas"]["ElectionInfo"];
+            /** History */
+            history: components["schemas"]["ElectionHistoryPoint"][];
+            /** Mandates */
+            mandates: components["schemas"]["ElectionMandate"][];
+            /** Notes */
+            notes: string[];
+            /** Parties */
+            parties: components["schemas"]["ElectionParty"][];
+            /** Person Votes Available */
+            person_votes_available: boolean;
+            /** Phase */
+            phase: string;
+            progress: components["schemas"]["ElectionProgress"];
+            /** Projected Mandates */
+            projected_mandates: components["schemas"]["ElectionMandate"][];
+            source: components["schemas"]["ElectionSource"];
+            totals: components["schemas"]["ElectionTotals"];
+        };
+        /** ElectionParty */
+        ElectionParty: {
+            /** Candidates Total */
+            candidates_total: number;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Index */
+            index: number;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Projected Seats */
+            projected_seats: number | null;
+            /** Seats */
+            seats: number | null;
+            /** Seats 2021 */
+            seats_2021: number | null;
+            /** Share 2021 Pct */
+            share_2021_pct: number | null;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+            /** Votes To Lose Seat */
+            votes_to_lose_seat: number | null;
+            /** Votes To Next Seat */
+            votes_to_next_seat: number | null;
+        };
+        /** ElectionProgress */
+        ElectionProgress: {
+            /** Districts Counted */
+            districts_counted: number;
+            /** Districts Total */
+            districts_total: number;
+        };
+        /**
+         * ElectionSource
+         * @description Woher die Zahlen kommen und ob der Abruf gerade klappt. ``fetched_at``
+         *     ist unser Abruf, ``last_modified`` der Stand der CSV beim Votemanager.
+         */
+        ElectionSource: {
+            /** Error */
+            error: string | null;
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Last Modified */
+            last_modified: string | null;
+            /** Ok */
+            ok: boolean;
+        };
+        /** ElectionTotals */
+        ElectionTotals: {
+            /** Eligible */
+            eligible: number | null;
+            /** Invalid Ballots */
+            invalid_ballots: number | null;
+            /** Turnout Pct */
+            turnout_pct: number | null;
+            /** Valid Votes */
+            valid_votes: number | null;
+            /** Voters */
+            voters: number | null;
         };
         /**
          * EmergingTag
@@ -14952,6 +15191,83 @@ export interface operations {
             };
         };
     };
+    wahlabend_api_wahlabend_get: {
+        parameters: {
+            query?: {
+                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionNight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wahlabend_bild_api_wahlabend_bild_png_get: {
+        parameters: {
+            query?: {
+                /** @description „seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase */
+                feld?: string | null;
+                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Der Stand des Wahlabends als teilbares Bild (PNG, 1200×630 — die Größe, die Messenger und soziale Netze als Vorschau erwarten): Halbkreis der Sitze, Legende, Quelle. `?feld=projected_seats` zeigt die Hochrechnung statt des ausgezählten Standes. Eine Minute cachebar, so schnell ändern sich die Zahlen nicht. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }
 
-// vertrag-sha256: 7e36d9af87253b535ca794c8c938f8e5723dd31511292d593b9a33067dee4871
+// vertrag-sha256: 65f178aef126f0b1ee286a4b6b3e5e0e6b499518123a6be2882da02c2d3e1b0d

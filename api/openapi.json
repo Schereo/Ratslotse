@@ -6508,6 +6508,612 @@
         "title": "Districts",
         "type": "object"
       },
+      "ElectionArea": {
+        "properties": {
+          "districts_counted": {
+            "title": "Districts Counted",
+            "type": "integer"
+          },
+          "districts_total": {
+            "title": "Districts Total",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionAreaParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "roman": {
+            "title": "Roman",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ElectionTotals"
+          }
+        },
+        "required": [
+          "number",
+          "roman",
+          "name",
+          "districts_total",
+          "districts_counted",
+          "totals",
+          "parties"
+        ],
+        "title": "ElectionArea",
+        "type": "object"
+      },
+      "ElectionAreaParty": {
+        "properties": {
+          "candidate_votes": {
+            "title": "Candidate Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "list_votes": {
+            "title": "List Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "projected_seats": {
+            "title": "Projected Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "votes",
+          "list_votes",
+          "candidate_votes",
+          "share_pct",
+          "seats",
+          "projected_seats",
+          "candidates"
+        ],
+        "title": "ElectionAreaParty",
+        "type": "object"
+      },
+      "ElectionCandidate": {
+        "properties": {
+          "born": {
+            "title": "Born",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "title": "Occupation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "projected_elected": {
+            "title": "Projected Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projected_votes": {
+            "title": "Projected Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_to_seat": {
+            "title": "Votes To Seat",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "position",
+          "name",
+          "occupation",
+          "born",
+          "votes",
+          "elected",
+          "projected_votes",
+          "projected_elected",
+          "votes_to_seat"
+        ],
+        "title": "ElectionCandidate",
+        "type": "object"
+      },
+      "ElectionHistoryPoint": {
+        "description": "Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "districts_counted": {
+            "title": "Districts Counted",
+            "type": "integer"
+          },
+          "seats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Seats",
+            "type": "object"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          }
+        },
+        "required": [
+          "at",
+          "districts_counted",
+          "shares",
+          "seats"
+        ],
+        "title": "ElectionHistoryPoint",
+        "type": "object"
+      },
+      "ElectionInfo": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "presentation_url": {
+            "title": "Presentation Url",
+            "type": "string"
+          },
+          "seats": {
+            "title": "Seats",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "seats",
+          "title",
+          "presentation_url"
+        ],
+        "title": "ElectionInfo",
+        "type": "object"
+      },
+      "ElectionMandate": {
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "position": {
+            "title": "Position",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "area",
+          "position",
+          "name",
+          "votes",
+          "kind"
+        ],
+        "title": "ElectionMandate",
+        "type": "object"
+      },
+      "ElectionNight": {
+        "properties": {
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionArea"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "computed_at": {
+            "title": "Computed At",
+            "type": "string"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionHistoryPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "mandates": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMandate"
+            },
+            "title": "Mandates",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "person_votes_available": {
+            "title": "Person Votes Available",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ElectionProgress"
+          },
+          "projected_mandates": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionMandate"
+            },
+            "title": "Projected Mandates",
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ElectionSource"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ElectionTotals"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "person_votes_available",
+          "election",
+          "source",
+          "progress",
+          "totals",
+          "parties",
+          "areas",
+          "mandates",
+          "projected_mandates",
+          "notes",
+          "computed_at",
+          "history"
+        ],
+        "title": "ElectionNight",
+        "type": "object"
+      },
+      "ElectionParty": {
+        "properties": {
+          "candidates_total": {
+            "title": "Candidates Total",
+            "type": "integer"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "projected_seats": {
+            "title": "Projected Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "seats_2021": {
+            "title": "Seats 2021",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "share_2021_pct": {
+            "title": "Share 2021 Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_to_lose_seat": {
+            "title": "Votes To Lose Seat",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_to_next_seat": {
+            "title": "Votes To Next Seat",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "index",
+          "slug",
+          "short",
+          "name",
+          "kind",
+          "color",
+          "color_dark",
+          "candidates_total",
+          "votes",
+          "share_pct",
+          "seats",
+          "projected_seats",
+          "seats_2021",
+          "share_2021_pct",
+          "votes_to_next_seat",
+          "votes_to_lose_seat"
+        ],
+        "title": "ElectionParty",
+        "type": "object"
+      },
+      "ElectionProgress": {
+        "properties": {
+          "districts_counted": {
+            "title": "Districts Counted",
+            "type": "integer"
+          },
+          "districts_total": {
+            "title": "Districts Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "districts_total",
+          "districts_counted"
+        ],
+        "title": "ElectionProgress",
+        "type": "object"
+      },
+      "ElectionSource": {
+        "description": "Woher die Zahlen kommen und ob der Abruf gerade klappt. ``fetched_at``\nist unser Abruf, ``last_modified`` der Stand der CSV beim Votemanager.",
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_modified": {
+            "title": "Last Modified",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "fetched_at",
+          "last_modified",
+          "ok",
+          "error"
+        ],
+        "title": "ElectionSource",
+        "type": "object"
+      },
+      "ElectionTotals": {
+        "properties": {
+          "eligible": {
+            "title": "Eligible",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "invalid_ballots": {
+            "title": "Invalid Ballots",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "turnout_pct": {
+            "title": "Turnout Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voters": {
+            "title": "Voters",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "eligible",
+          "voters",
+          "turnout_pct",
+          "valid_votes",
+          "invalid_ballots"
+        ],
+        "title": "ElectionTotals",
+        "type": "object"
+      },
       "EmergingTag": {
         "description": "Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft\nvorkam (mindestens zweimal), ohne Verfahrens-Vokabular.",
         "properties": {
@@ -20989,6 +21595,152 @@
         "summary": "Mark Seen",
         "tags": [
           "topics"
+        ]
+      }
+    },
+    "/api/wahlabend": {
+      "get": {
+        "operationId": "wahlabend_api_wahlabend_get",
+        "parameters": [
+          {
+            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/bild.png": {
+      "get": {
+        "description": "Der Stand als Bild zum Teilen (PNG, 1200×630) — öffentlich wie die\nSeite selbst; Messenger und soziale Netze holen es ohne Konto ab.\n\nOhne ``feld`` zeigt das Bild während der Auszählung die Hochrechnung\n(interessanter als ein Zwischenstand aus 40 Bezirken) und sonst den\nausgezählten Stand.",
+        "operationId": "wahlabend_bild_api_wahlabend_bild_png_get",
+        "parameters": [
+          {
+            "description": "„seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase",
+            "in": "query",
+            "name": "feld",
+            "required": false,
+            "schema": {
+              "description": "„seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase",
+              "pattern": "^(seats|projected_seats)$",
+              "title": "Feld",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Der Stand des Wahlabends als teilbares Bild (PNG, 1200×630 — die Größe, die Messenger und soziale Netze als Vorschau erwarten): Halbkreis der Sitze, Legende, Quelle. `?feld=projected_seats` zeigt die Hochrechnung statt des ausgezählten Standes. Eine Minute cachebar, so schnell ändern sich die Zahlen nicht."
+          },
+          "404": {
+            "description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Bild",
+        "tags": [
+          "wahlabend"
         ]
       }
     }

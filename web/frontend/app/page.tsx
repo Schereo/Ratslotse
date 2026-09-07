@@ -12,6 +12,7 @@ import { LiveStats } from "@/components/live-stats";
 import { HeuteLeiste } from "@/components/heute-leiste";
 import { LottiHero } from "@/components/lotti-hero";
 import { KommunalwahlBanner } from "@/components/kommunalwahl-banner";
+import { WahlabendBanner } from "@/components/wahlabend-hinweis";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Reveal } from "@/components/reveal";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* Am Wahlabend (Schalter `wahlabend`): der Weg zu den Zahlen. */}
+        <WahlabendBanner />
 
         {/* Befristet bis zur Ratswahl am 13.09.: der Weg zum Wahl-Check —
             nimmt sich nach dem Wahltag selbst aus der Seite. */}

@@ -19,6 +19,7 @@ import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
+import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
 import { formatEuro } from "@/components/decision-ui";
 import { fragenHref, decisionHref, viertelHref } from "@/lib/routes";
 import { useFeature } from "@/lib/features";
@@ -118,6 +119,8 @@ export default function DashboardPage() {
         className={cn("mt-6", STAFFEL)}
         style={staffelStil(1)}
         hinweise={[
+          // Am Wahlabend das Dringendste — der Schalter `wahlabend` entscheidet.
+          { key: "wahlabend", label: "Wahlabend", node: <WahlabendHinweis /> },
           { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
           { key: "erste-schritte", label: "Erste Schritte", node: <FirstStepsBar /> },

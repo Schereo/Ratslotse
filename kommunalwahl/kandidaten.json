@@ -1,0 +1,3048 @@
+{
+ "source": {
+  "title": "Bekanntmachung über die zugelassenen Wahlvorschläge, Wahlausschuss der Stadt Oldenburg, Sitzung vom 23. Juli 2026",
+  "url": "https://www.oldenburg.de/fileadmin/oldenburg/Benutzer/Dateien/22_Rechtsamt/Bekanntmachungen/20260724-Zulassung_Wahlvorschlaege.pdf",
+  "file": "quellen/zulassung-wahlvorschlaege.pdf",
+  "note": "Reihenfolge der Wahlvorschläge = Stimmzettel = Spalten D1…D16 der Votemanager-CSVs."
+ },
+ "election": {
+  "date": "2026-09-13",
+  "seats": 52,
+  "title": "Wahl des Rates der Stadt Oldenburg (Oldb)"
+ },
+ "areas": [
+  {
+   "number": 1,
+   "roman": "I",
+   "name": "Stadtmitte Nord"
+  },
+  {
+   "number": 2,
+   "roman": "II",
+   "name": "Stadtmitte Süd"
+  },
+  {
+   "number": 3,
+   "roman": "III",
+   "name": "Nordwest"
+  },
+  {
+   "number": 4,
+   "roman": "IV",
+   "name": "Nordost"
+  },
+  {
+   "number": 5,
+   "roman": "V",
+   "name": "Süd"
+  },
+  {
+   "number": 6,
+   "roman": "VI",
+   "name": "Südwest"
+  }
+ ],
+ "lists": [
+  {
+   "index": 1,
+   "slug": "gruene",
+   "short": "Grüne",
+   "official": "BÜNDNIS 90/DIE GRÜNEN (GRÜNE)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Menge, Susanne",
+      "occupation": "Studienrätin",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Neemann, Hermann",
+      "occupation": "Steuerberater",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Kruse, Ingrid",
+      "occupation": "Kauffrau",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "van Ellen, Thorsten",
+      "occupation": "Informatiker",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Rosenboom, Jana",
+      "occupation": "Leitung Jugendaustausch",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Palma, Lucas",
+      "occupation": "Richter",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Krämer, Anna Sarah",
+      "occupation": "Klimaschutzmanagerin",
+      "born": 1995,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Dr. Hinrichs, Joachim",
+      "occupation": "Chemiker",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Nzume, Lena",
+      "occupation": "Soziologin",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Beerheide, Nicolai",
+      "occupation": "Abteilungsleiter",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Klingenberg, Beate",
+      "occupation": "Bibliothekarin",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Engelbarts, Thies",
+      "occupation": "Informationstechniker",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Enders, Regina",
+      "occupation": "Gerontologin",
+      "born": 1956,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Rohde, Oliver",
+      "occupation": "Kinderarzt",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Schilling, Rita",
+      "occupation": "Rentnerin",
+      "born": 1953,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Giesen, Nils",
+      "occupation": "Unternehmensberater",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Dahnken, Holly Melanie",
+      "occupation": "Studentin",
+      "born": 2006,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Loga, Michael",
+      "occupation": "Geschäftsführer Altenpflege",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Schlieker, Pia",
+      "occupation": "Umweltplanerin",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Bako, Dara",
+      "occupation": "Politikwissenschaftler",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Schierholz, Svenja",
+      "occupation": "Steuerberaterin",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Dr. Gockel, Julia",
+      "occupation": "Biologin",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Meyer, Corinna",
+      "occupation": "Polizeioberkommissarin",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Todeskino, Dieter",
+      "occupation": "Biologe",
+      "born": 1955,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Lüpkes, Julie",
+      "occupation": "Wissenschaftliche Mitarbeiterin",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Niederstein, Maik",
+      "occupation": "Student",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Heinemann-Schiller, Almut",
+      "occupation": "Rentnerin",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Haberzettl, Jörn",
+      "occupation": "Lehrer",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Jandrich, Annabelle",
+      "occupation": "Angestellte",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Bernhardt, Kurt",
+      "occupation": "Sozialwissenschaftler",
+      "born": 1959,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Niehaus, Sophia",
+      "occupation": "Studentin",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Tummescheit, Mario",
+      "occupation": "Industriekaufmann",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Schober-Stockmann, Jutta",
+      "occupation": "Kaufmännische Angestellte",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Droste, David",
+      "occupation": "Ingenieur",
+      "born": 1988,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Saed, Gule",
+      "occupation": "Bankkauffrau",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Schumann, Wilfried",
+      "occupation": "Diplom-Psychologe",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Bode, Bärbel",
+      "occupation": "Diplom-Psychologin",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Bleckmann, Heinrich-Friedrich",
+      "occupation": "Pensionär",
+      "born": 1952,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Drügemöller, Ruth",
+      "occupation": "Rentnerin",
+      "born": 1956,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Saed, Nujdar",
+      "occupation": "Konstrukteur",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Hangen, Tomma",
+      "occupation": "Sprechwissenschaftlerin",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Kuhnert, Carlo",
+      "occupation": "Hausverwalter",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Oltmann, Heide",
+      "occupation": "Verwaltungsbeamtin",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Ebbeke Harms, Tim",
+      "occupation": "Zollbeamter",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Reith, Alexandra",
+      "occupation": "Erziehungswissenschaftlerin",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Ciesla, Heiko",
+      "occupation": "Geschäftsführer",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Berends, Sina",
+      "occupation": "Umweltwissenschaftlerin",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Dr. Giesers, Benjamin",
+      "occupation": "Physiker",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Müller, Berit",
+      "occupation": "Nachhaltigkeitskoordinatorin",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Heusinger von Waldegge, Tim",
+      "occupation": "Wissenschaftler",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Tinneberg, Theresa",
+      "occupation": "Studentin",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Wilhelm, Tim",
+      "occupation": "Produktmanager",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Bunjes, Christine",
+      "occupation": "Supervisorin",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Klein, Detlev",
+      "occupation": "Wirtschaftswissenschaftler",
+      "born": 1969,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Küpker, Claudia",
+      "occupation": "Verwaltungsbeamtin",
+      "born": 1969,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Laesecke, Marvin",
+      "occupation": "Student",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 2,
+   "slug": "spd",
+   "short": "SPD",
+   "official": "Sozialdemokratische Partei Deutschlands (SPD)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Ellberg, Bernhard",
+      "occupation": "Regierungsdirektor a.D.",
+      "born": 1954,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Tulan, Güzel",
+      "occupation": "Bundesbeamtin",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Pust, Rafael",
+      "occupation": "Förderschullehrer",
+      "born": 1985,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Grahl, Malin",
+      "occupation": "Studentin",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Hollwege, Kai",
+      "occupation": "Lehrer",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Wittig-Aßmus, Helga",
+      "occupation": "Rentnerin",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Zobel, Frank-Joachim",
+      "occupation": "Speditionskaufmann",
+      "born": 1973,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Kirchmayr, Sabine",
+      "occupation": "Rentnerin",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Hähnel, Dieter",
+      "occupation": "Zusteller i.R.",
+      "born": 1949,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Jakob, Melanie",
+      "occupation": "Verwaltungsfachangestellte",
+      "born": 1975,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Pauling, Hans Thomas",
+      "occupation": "Rechtsanwalt",
+      "born": 1951,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Schlepper, Carsten",
+      "occupation": "Rentner",
+      "born": 1958,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Prange, Ulf",
+      "occupation": "Rechtsanwalt",
+      "born": 1975,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Unruh, Bettina",
+      "occupation": "Geschäftsführerin",
+      "born": 1964,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Heitmann, Raphael",
+      "occupation": "Bürokraft",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Wiegand, Gabriela",
+      "occupation": "Rentnerin",
+      "born": 1953,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Diehl, Malte",
+      "occupation": "Informatiker",
+      "born": 1982,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Bourehil, Miriam",
+      "occupation": "Studentin",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Dr. Kulbarsch, Henning",
+      "occupation": "Historiker",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Szczygiel, Veronika",
+      "occupation": "Studentin/Pflegefachkraft",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Völker, Tim Christopher",
+      "occupation": "Referent",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Grebener, Svenja",
+      "occupation": "wissenschaftliche Mitarbeiterin",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Kirchner, Jannik",
+      "occupation": "Selbstständig",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Paterson, David",
+      "occupation": "Selbstständig",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Behrens, Paul",
+      "occupation": "Sozialreferent",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Eilers-Dörfler, Germaid",
+      "occupation": "Rentnerin",
+      "born": 1953,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Rastetter, Joris",
+      "occupation": "Schüler",
+      "born": 2007,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Eilts, Marion",
+      "occupation": "Personalsachbearbeiterin",
+      "born": 1969,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Borgmann, Birte",
+      "occupation": "Angestellte",
+      "born": 1984,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Niebisch, Dieter",
+      "occupation": "Rentner",
+      "born": 1952,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Nienaber, Bärbel",
+      "occupation": "Pensionärin",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Weiß, Eike-Gunnar",
+      "occupation": "Bürokraft",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Behrens, Tanja",
+      "occupation": "Verwaltungsangestellte",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Borgmann, Sven",
+      "occupation": "Diplom-Ökonom",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Dr. Sattler, Herm-Dieter",
+      "occupation": "Arzt",
+      "born": 1959,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Stobbe, Annica Jasmin",
+      "occupation": "Studentin",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Piechotta, Nicole",
+      "occupation": "Sozialwissenschaftlerin",
+      "born": 1987,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Dr. Witkowski, Mareike",
+      "occupation": "Historikerin",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Schröder, Tom",
+      "occupation": "Referent",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Klein, Thomas Johannes",
+      "occupation": "Diplom-Ingenieur i.R.",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Klinkebiel, Sara",
+      "occupation": "Referentin",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Hadtstein, Jannis",
+      "occupation": "Medizinstudent/Krankenpfleger",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Rohwer, Heike",
+      "occupation": "Lehrerin",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Felgendreher, Iwo",
+      "occupation": "Student",
+      "born": 2003,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Bittmann, Lena",
+      "occupation": "Praxismanagerin",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Dr. Mohr, Karsten",
+      "occupation": "Rentner",
+      "born": 1959,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Pfaff, Kristina",
+      "occupation": "Arbeitsvermittlung",
+      "born": 1990,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Hellmann, Theis",
+      "occupation": "Bürokraft",
+      "born": 1985,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Oeljeschläger, Claudia",
+      "occupation": "Altenpflegerin",
+      "born": 1964,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Latko, Pascal",
+      "occupation": "Projektleiter Erneuerbare Energien",
+      "born": 1987,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Gottschalk, Stefan",
+      "occupation": "Student/studentischer Mitarbeiter",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Majcher, Ana",
+      "occupation": "Assistenz der Institutsleitung",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Goretzki, Peter",
+      "occupation": "Rentner",
+      "born": 1956,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Addicks, Doris",
+      "occupation": "Verwaltungsbeamtin Dt. Rentenversicherung",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Shamo, Alan",
+      "occupation": "Lehrer",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Münchenhagen, Karen",
+      "occupation": "Pädagogin",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Schröder, Henning",
+      "occupation": "Assessor iuris/Rechtsassessor",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Freymuth, Jens",
+      "occupation": "Prokurist",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Rump, Ursula",
+      "occupation": "Diplom-Verwaltungswirtin",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Weinert, Wolfgang",
+      "occupation": "Rentner",
+      "born": 1948,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Dr. Fortmann, Florian",
+      "occupation": "Informatiker",
+      "born": 1981,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Schmeichel, Marianne",
+      "occupation": "Rentnerin",
+      "born": 1952,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Dr. Werner, Karl-Michael",
+      "occupation": "Wissenschaftler",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Möhlenbrock-Woch, Yvonne",
+      "occupation": "Erzieherin",
+      "born": 1975,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Stamereilers, Klaus",
+      "occupation": "Kommunalverwaltungsbeamter",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Hartmann-Bischoff, Monika",
+      "occupation": "Rentnerin/Coachin",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Verkaik, Nicolaas Cornelis",
+      "occupation": "Selbstständiger Unternehmensberater",
+      "born": 1988,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Bauer, Ute",
+      "occupation": "kaufmännische Angestellte",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Bischoff, Arne",
+      "occupation": "Gewerksschaftssekretär",
+      "born": 1988,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Hussein, Rezgar",
+      "occupation": "Bauleiter/Student",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Naase, Marian Robert",
+      "occupation": "Konrektor",
+      "born": 1984,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Sahm, Christoph",
+      "occupation": "Softwareentwickler",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 3,
+   "slug": "cdu",
+   "short": "CDU",
+   "official": "Christlich Demokratische Union Deutschlands in Niedersachsen (CDU)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Klaukien, Olaf",
+      "occupation": "Verwaltungsjurist",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Hustede, Florian",
+      "occupation": "IT-Berater",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "van Döllen-Mokros, Rita",
+      "occupation": "Selbstständige Architektin",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Munderloh, Rainer",
+      "occupation": "Rechtsanwalt",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Habermann, Frohe Angela",
+      "occupation": "Rentnerin",
+      "born": 1938,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Dr. Haunhorst, Eberhard",
+      "occupation": "Tierarzt",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Seppel, Wolfgang",
+      "occupation": "Rechtsanwalt/Notar",
+      "born": 1978,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Truhöl, Paul Elias",
+      "occupation": "Student",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Balkow, Ralph",
+      "occupation": "Kaufmann",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Braa, Michael",
+      "occupation": "Diplom-Kaufmann",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "van Döllen, Marcel",
+      "occupation": "Selbstständiger Handelsvertreter",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Trumpf-Müller, Frederike Auguste",
+      "occupation": "Einzelhandel/Studentin",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Baak, Christoph",
+      "occupation": "Freiberufler",
+      "born": 1966,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Freitag, Ann-Katrin",
+      "occupation": "Diplom-Betriebswirtin",
+      "born": 1982,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Wehrmeyer, Ole",
+      "occupation": "Softwareentwickler",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Schilling, Michael",
+      "occupation": "Trainer",
+      "born": 1995,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Goodfellow , Astrid",
+      "occupation": "Schülerin",
+      "born": 2008,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Deitermann, Dennis",
+      "occupation": "Rechtsreferent",
+      "born": 1982,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Hoting, Lars",
+      "occupation": "Fachinformatiker",
+      "born": 1973,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Meyer-Baak, Christina",
+      "occupation": "Grundschullehrerin",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Rohde, Florian Clemens",
+      "occupation": "Marineoffizier/Psychologe",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Dr. Niewerth, Martin",
+      "occupation": "Rechtsanwalt/Notar",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Howad, Niklas",
+      "occupation": "IT-Projektmanager",
+      "born": 1990,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Kaszanics, Daniel",
+      "occupation": "IT-Unternehmer",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Theilsiefje, Thomas",
+      "occupation": "Bäckermeister",
+      "born": 1958,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Eickhoff, Annika",
+      "occupation": "Lehrerin",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Stalhut, Dirk",
+      "occupation": "Lehrer",
+      "born": 1990,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Tschigor, Torsten",
+      "occupation": "Kommunalbeamter",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Lüken, Sarah",
+      "occupation": "Lehrerin",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Grond, Holger",
+      "occupation": "Geschäftsführer Sozialverband VdK",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Stalhut, Henrike",
+      "occupation": "Lehrerin",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Brandt, Niklas",
+      "occupation": "Student",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Hinrichs, Cedric",
+      "occupation": "IT Service-Manager",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Menke, Stefan",
+      "occupation": "Elektrotechnikermeister",
+      "born": 1987,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Faurie, Christoph",
+      "occupation": "IT-Projektleiter",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Gutzeit, Jan",
+      "occupation": "Politikwissenschaftler",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Mokros, Uwe Hermann",
+      "occupation": "Oberbauleiter",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Stuhr, Björn",
+      "occupation": "Wirtschaftsingenieur",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Sante, Ingrid",
+      "occupation": "kaufmännische Angestellte",
+      "born": 1948,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Fiedler, Lothar Holger",
+      "occupation": "Rechtsanwalt",
+      "born": 1967,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Tillmann, Tobias",
+      "occupation": "Soldat a.D.",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Bürmann, Thomas",
+      "occupation": "Netzwerkadministrator",
+      "born": 1969,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Woltmann, Barbara",
+      "occupation": "Juristin",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Meerbothe, Mats",
+      "occupation": "Projektleiter",
+      "born": 1987,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Freitag, Tobias",
+      "occupation": "Sicherheitsingenieur",
+      "born": 1982,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Heese-Witt, Daniel",
+      "occupation": "Agraringenieur",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Rüdebusch, Marc",
+      "occupation": "Verwaltungsjurist",
+      "born": 1976,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Sasso, Enrico",
+      "occupation": "Fachinformatiker",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Boshoven, Dirk",
+      "occupation": "Wirtschaftsprüfer/Steuerberater",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Wiese, Niclas",
+      "occupation": "Anlagenmechaniker SHK",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Dr. Siebler, Björn",
+      "occupation": "Polizeibeamter",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Pohlgeers, Josef",
+      "occupation": "Diplom-Physiker",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Averbeck, Petra",
+      "occupation": "Verwaltungsjuristin",
+      "born": 1959,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Heß, Hans-Georg",
+      "occupation": "Selbstständiger Augenoptikermeister",
+      "born": 1955,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Niebur, Anja",
+      "occupation": "Altenpflegerin",
+      "born": 1967,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Wehage, Andreas",
+      "occupation": "Rechtsanwalt/Notar",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Möhle, Liselotte",
+      "occupation": "Diplom-Pädagogin",
+      "born": 1955,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Heß, Jan-Dieter",
+      "occupation": "Augenoptikermeister",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Röbke, Anke",
+      "occupation": "Rechtsanwältin",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Ingendahl, Jasmin",
+      "occupation": "Fachbereichsleiterin",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Möhle, Frank",
+      "occupation": "Diplom-Informatiker",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Meinecke, Rick",
+      "occupation": "Schausteller",
+      "born": 1967,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Hörtemöller, Ralf",
+      "occupation": "Angestellter",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 4,
+   "slug": "linke",
+   "short": "Linke",
+   "official": "Die Linke (Die Linke)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Mazidi, Mousa",
+      "occupation": "Sozialarbeiter",
+      "born": 1958,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Brauer, Anna",
+      "occupation": "Mediengestalterin",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Schuckardt, Evelyn",
+      "occupation": "Rentnerin",
+      "born": 1950,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Witt, Konstantin",
+      "occupation": "Sachbearbeiter",
+      "born": 2006,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Kalus , Jakob",
+      "occupation": "Ökologe",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Maasch, Kaatje",
+      "occupation": "Schülerin",
+      "born": 2006,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Moritz, Julian",
+      "occupation": "Student",
+      "born": 2006,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "große Osterhues, Siri",
+      "occupation": "Studentin",
+      "born": 2007,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Brix, Arne",
+      "occupation": "Gewerkschaftssekretär",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Boldt, Heike",
+      "occupation": "Gewerkschaftssekretärin",
+      "born": 1981,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Borchert, Oliver",
+      "occupation": "Rechtsanwalt",
+      "born": 1978,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Do, Jelena",
+      "occupation": "Kauffrau",
+      "born": 1981,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Conens, Max",
+      "occupation": "Uhrmacher",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Dierks, Saskia",
+      "occupation": "Erzieherin",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Kleinschmidt, Axel",
+      "occupation": "Rentner",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Strick, Anne-Katrin",
+      "occupation": "Sozialpädagogin",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Haseloh, Steven",
+      "occupation": "Student",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Schmidt, Serena",
+      "occupation": "Futtermittelprüferin",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Ostern, Margareta",
+      "occupation": "Pädagogin",
+      "born": 1958,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Grünjes, Lukas",
+      "occupation": "Elektriker",
+      "born": 1995,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Nanz, Andrea",
+      "occupation": "Rentnerin",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Brandt, Michel",
+      "occupation": "Schauspieler",
+      "born": 1990,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Naaf, Christian",
+      "occupation": "arbeitssuchend",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Teschner, Felix",
+      "occupation": "Student",
+      "born": 2005,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 9,
+      "name": "Leuckert, Henning",
+      "occupation": "Dualer Student",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 10,
+      "name": "Naujoks, Paul",
+      "occupation": "Gewerkschaftssekretär",
+      "born": 1985,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 11,
+      "name": "Schachtschneider, Ulrich",
+      "occupation": "Energieberater",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 12,
+      "name": "Janßen, Michel",
+      "occupation": "Student",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Rodowski, Sebastian",
+      "occupation": "Ausbildung zum Postboten",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Dannemann-Janßen, Esther",
+      "occupation": "Erzieherin",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Rüegg, Denise",
+      "occupation": "Postbotin",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Klöpper, Manfred",
+      "occupation": "Rentner",
+      "born": 1946,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Krüger, Arwen",
+      "occupation": "Versandsmitarbeiterin",
+      "born": 2003,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Teschner, Mattis",
+      "occupation": "Dualer Student",
+      "born": 2005,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Nicolae-Vladu, Anda",
+      "occupation": "Migrationsberaterin",
+      "born": 1983,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Klinger, Antje Magdalena",
+      "occupation": "Diplom Psychologin",
+      "born": 1962,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Rahimy, Javed",
+      "occupation": "Krankenpfleger",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Mendel, Neele",
+      "occupation": "Sozialpädagogische Assistentin",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Galuska, Jan",
+      "occupation": "Arzt",
+      "born": 1995,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Jelschen, Hendrik",
+      "occupation": "Student",
+      "born": 1999,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Düman, Leylan",
+      "occupation": "Studentin",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Schulte, Jacqueline",
+      "occupation": "Bauingenieurin",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Reil, André",
+      "occupation": "Inklusionshelfer",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Brandt, Katja",
+      "occupation": "Verwaltungsangestellte",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Struthoff, Lieven",
+      "occupation": "Student",
+      "born": 2005,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Behrends, Mathis",
+      "occupation": "Student",
+      "born": 2004,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 5,
+   "slug": "fdp",
+   "short": "FDP",
+   "official": "Freie Demokratische Partei Landesverband Niedersachsen e.V. (FDP)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Blümel, Laura Petra",
+      "occupation": "Schülerin",
+      "born": 2006,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Dr. Pöpken, Jörg",
+      "occupation": "Arzt",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Wybrands, Martin",
+      "occupation": "Karriereberater der Bundeswehr",
+      "born": 1981,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Dr. Reuter, Sigrid",
+      "occupation": "Ärztin",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Keese, Hans-Jürgen",
+      "occupation": "Kapitän auf Großer Fahrt",
+      "born": 1948,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Kügel, Ivo",
+      "occupation": "Rentner",
+      "born": 1947,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Dittrich, René",
+      "occupation": "Konstruktionsberater Luftfahrt",
+      "born": 1987,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Anguelov, Yannic",
+      "occupation": "Berater",
+      "born": 1995,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Dr. Hennefründ, Jörg",
+      "occupation": "Arzt",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Wilms, Horst",
+      "occupation": "Personaldirektor i.R.",
+      "born": 1945,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Dr. Dr. Zielke, Roland",
+      "occupation": "Universitätsprofessor a.D.",
+      "born": 1946,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Dr. Biernoth, Christian",
+      "occupation": "Rechtsanwalt",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 7,
+      "name": "Woytschekowsky-Altrath, Lars",
+      "occupation": "Selbstständiger Speditionskaufmann",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 8,
+      "name": "Hinrichs, Henning",
+      "occupation": "Zahntechniker",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Becker, Henk",
+      "occupation": "Student",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Mirkes, Joachim",
+      "occupation": "Versicherungsfachmann",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Dr. Schönberg, Christian",
+      "occupation": "Informatikdozent",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Makus, Stefan",
+      "occupation": "Kaufmann für Versicherungen und Finanzen",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Dr. Büsselmann, Gero",
+      "occupation": "Biologe",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Dr. Reinermann, Jürgen",
+      "occupation": "Geschäftsführer a.D.",
+      "born": 1956,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Schrell, Matthias",
+      "occupation": "Geschäftsführer",
+      "born": 1972,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Scheruhn, Karl",
+      "occupation": "Bauingenieur",
+      "born": 1972,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Christoph, Joern",
+      "occupation": "Management im Mittelstand",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 6,
+      "name": "Zischke, Michael",
+      "occupation": "Berufssoldat",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Fröhlich, Sebastian",
+      "occupation": "Selbstständiger Kaufmann",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Hullmann, Rolf",
+      "occupation": "Diplom-Ingenieur Maschinenbau",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Sanders, Edo",
+      "occupation": "Rentner",
+      "born": 1953,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Cramer, Werner",
+      "occupation": "Diplom-Finanzwirt",
+      "born": 1952,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Dr. von Wedel, Wedigo",
+      "occupation": "Chemieingenieur",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Pfeiffer, Daniela",
+      "occupation": "Selbstständige Mediatorin",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Schole , Harald",
+      "occupation": "Verwaltungsjurist",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Janssen, Thomas",
+      "occupation": "Studiendirektor",
+      "born": 1985,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Schnitker, Konrad",
+      "occupation": "Automobilkaufmann",
+      "born": 2005,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 5,
+      "name": "Dr. Martens, Jürgen",
+      "occupation": "Universitätsprofessor",
+      "born": 1948,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 6,
+   "slug": "afd",
+   "short": "AfD",
+   "official": "Alternative für Deutschland - Niedersachsen (AfD Niedersachsen)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Peusch, Eberhard",
+      "occupation": "Rentner",
+      "born": 1956,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Volk, Alexander Llewellyn Sylvester",
+      "occupation": "Unternehmer",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Bruns, Elke",
+      "occupation": "Konditorin",
+      "born": 1976,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Rettkowski, Alf Hans",
+      "occupation": "Übersetzer",
+      "born": 1967,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Wolf, Felix",
+      "occupation": "Projektleiter",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Esbensen, Carina Anneliese Klara",
+      "occupation": "Pflegeassistentin",
+      "born": 2007,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Paul, Andreas Michael",
+      "occupation": "Berufsoffizier",
+      "born": 1978,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Gast, Gennadi",
+      "occupation": "Lagerist",
+      "born": 1966,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Ziegeldorf, Jutta Annette",
+      "occupation": "Rentnerin",
+      "born": 1953,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Bernhardt, Lidia",
+      "occupation": "Kauffrau",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Poddubny, Ivan",
+      "occupation": "Lagerist",
+      "born": 2003,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Pawlikowski, Adrian",
+      "occupation": "Gebäudereiniger",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Tanski, Miriam Alexandra",
+      "occupation": "Mediengestalterin",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 7,
+   "slug": "volt",
+   "short": "Volt",
+   "official": "Volt Deutschland Landesverband Niedersachsen (Volt)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Schilling, Daniel",
+      "occupation": "Förderschullehrer",
+      "born": 1981,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Gerding, Anne Gesa",
+      "occupation": "Neuropsychologin",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Erhard, Laura Annemarie",
+      "occupation": "Umweltwissenschaftlerin",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Lück, Tim",
+      "occupation": "IT-Kundenmanager",
+      "born": 1976,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Dembski-Minßen, Neele",
+      "occupation": "Heilerziehungspflegerin",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Freese, Kai",
+      "occupation": "Berufsschullehrer",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Priesmeier, Kai",
+      "occupation": "Polizist",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Maischner, Michael",
+      "occupation": "Ärztlicher Psychotherapeut",
+      "born": 1958,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Hänsch, Madita",
+      "occupation": "Talent Managerin",
+      "born": 1995,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Sigl, Tim",
+      "occupation": "Cyber-Sicherheitsingenieur",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Jurack, Anne",
+      "occupation": "Biologin",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Heinze, Julius",
+      "occupation": "Lehrer",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Rottmann, René",
+      "occupation": "Betriebswirt",
+      "born": 1989,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 8,
+   "slug": "piraten",
+   "short": "Piraten",
+   "official": "Piratenpartei Niedersachsen (PIRATEN)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Wittfoot, Nicole",
+      "occupation": "Unternehmerin",
+      "born": 1966,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Görcke, Clemens",
+      "occupation": "SAP-Basis Administrator",
+      "born": 1992,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Pyhel, Stefan",
+      "occupation": "Augenoptiker",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Ritter, Justin",
+      "occupation": "IT-Sicherheitsbeauftragter",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Padovan, Neele",
+      "occupation": "Tiermedizinische Fachangestellte",
+      "born": 2001,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Pensler, Michael",
+      "occupation": "Diplom-Informatiker",
+      "born": 1972,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Koopmann, Niklas",
+      "occupation": "Software-Architekt",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Jansen, Daniela",
+      "occupation": "Pflegefachkraft",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Harms, Colin",
+      "occupation": "Auszubildender Einzelhandelskaufmann",
+      "born": 2004,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Chapman, Norman",
+      "occupation": "Kommunikationselektroniker",
+      "born": 1964,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Lubitz, Holger",
+      "occupation": "Diplom-Informatiker",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Busse, Christian",
+      "occupation": "Pflegefachkraft",
+      "born": 1985,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Köhler, Jan",
+      "occupation": "Fahrradmechatroniker",
+      "born": 1984,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 9,
+   "slug": "bsw",
+   "short": "BSW",
+   "official": "Bündnis Sahra Wagenknecht - Vernunft und Gerechtigkeit - Landesverband Niedersachsen (BSW Niedersachsen)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Meyburg, Anette",
+      "occupation": "Medizinische Technologin im Labor",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Adler, Hans-Henning",
+      "occupation": "Rechtsanwalt",
+      "born": 1949,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Krull, Gerrit",
+      "occupation": "Sozialwissenschaftler",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Schumann, Steffen",
+      "occupation": "Student",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Wieser, Kerstin",
+      "occupation": "Finanzbeamtin",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Dr. Onken, Holger",
+      "occupation": "Politikwissenschaftler",
+      "born": 1971,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Cordes, Helmut",
+      "occupation": "Programmierer",
+      "born": 1967,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Reinmold, Heinz",
+      "occupation": "Rentner",
+      "born": 1949,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 10,
+   "slug": "dava",
+   "short": "DAVA",
+   "official": "DAVA - Niedersachsen",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Alsaleh , Hammoud",
+      "occupation": "Pädagoge",
+      "born": 1981,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Yenilmez, Ali",
+      "occupation": "Lackierer",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Görgülü, Murat",
+      "occupation": "Anlagenmechaniker",
+      "born": 2003,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Castur, Yakup",
+      "occupation": "Mediendesigner",
+      "born": 1975,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 11,
+   "slug": "stille",
+   "short": "M. Stille",
+   "official": "Einzelvorschlag Stille",
+   "kind": "einzelbewerber",
+   "areas": {
+    "4": [
+     {
+      "position": 1,
+      "name": "Stille, Michael",
+      "occupation": "Privatier",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 12,
+   "slug": "partei",
+   "short": "Die PARTEI",
+   "official": "Partei für Arbeit, Rechtsstaat, Tierschutz, Elitenförderung und basisdemokratische Initiative – Landesverband",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Braun, Claudia",
+      "occupation": "Lehrerin",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Remmers, Niklas",
+      "occupation": "Lehrer",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Piejede, Ines",
+      "occupation": "examinierte Pflegefachfrau",
+      "born": 1977,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Schoel, Holger",
+      "occupation": "Pädagoge",
+      "born": 1985,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Degener, Maximilian",
+      "occupation": "Osteopath",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Umbach, Stefan Markus",
+      "occupation": "Philosoph",
+      "born": 1986,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 13,
+   "slug": "pgm",
+   "short": "PGM",
+   "official": "Partei für Gerechtigkeit und Menschlichkeit, Landesverband Niedersachsen (PGM NDS)",
+   "kind": "partei",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Cleeves, Susan",
+      "occupation": "Umweltplanerin",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Schwarzlose, Norgand",
+      "occupation": "Mitarbeiter Kundenservice",
+      "born": 1980,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Jirsa, Nico",
+      "occupation": "Student",
+      "born": 2001,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Simon, Felix",
+      "occupation": "Notarfachangestellter",
+      "born": 1994,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Lemper, Domenik",
+      "occupation": "Küsteningenieur",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Graff, Lukas",
+      "occupation": "Student",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Barger, Sven",
+      "occupation": "Student",
+      "born": 2000,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 14,
+   "slug": "buergerbuendnis",
+   "short": "Bürger Bündnis",
+   "official": "Bürger Bündnis Oldenburg (BB - OL)",
+   "kind": "waehlergruppe",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Voss, Ubbo",
+      "occupation": "Selbstständig",
+      "born": 1954,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Wilkens, Nastassja",
+      "occupation": "Angestellte",
+      "born": 1987,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Proske, Florentine",
+      "occupation": "Schülerin",
+      "born": 2006,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Hammerschmidt, Frank",
+      "occupation": "Kriminalhauptkommissar a.D.",
+      "born": 1957,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Tydecks, Thomas",
+      "occupation": "Architekt",
+      "born": 1966,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Sander, Andreas",
+      "occupation": "Selbstständiger Makler",
+      "born": 1964,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Scholz, Claudia",
+      "occupation": "Diplom-Kauffrau",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Frankenberg, Thorsten",
+      "occupation": "Studienrat",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Cording, Olaf",
+      "occupation": "Versicherungsmakler",
+      "born": 1969,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Balvert, Olaf",
+      "occupation": "Soldat",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Drijenčić, Mladen",
+      "occupation": "A-Lizenz-Trainer Basketball",
+      "born": 1965,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Proske, Peter",
+      "occupation": "Außendienst",
+      "born": 1972,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Solling-Strieben, Claudia",
+      "occupation": "Angestellte",
+      "born": 1961,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Klaus, Calvin",
+      "occupation": "Vertrieb",
+      "born": 2003,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Wilkens, Holger Martin",
+      "occupation": "Betriebswirt",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Voss-Jaeger, Birgitt",
+      "occupation": "Diplom-Ingenieurin",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Braße, Jasmina",
+      "occupation": "Altenpflegerin",
+      "born": 1997,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 15,
+   "slug": "echt-oldenburg",
+   "short": "Echt Oldenburg",
+   "official": "Echt Oldenburg",
+   "kind": "waehlergruppe",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Ludwig, Klaus",
+      "occupation": "Stabsbootsmann a.D.",
+      "born": 1958,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Seibel, Sonja",
+      "occupation": "Reinigungskraft",
+      "born": 1982,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Nespethal, Thomas",
+      "occupation": "Rettungsassistent",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Neumann, Liane",
+      "occupation": "Gesundheits-und Krankenpflegerin",
+      "born": 1968,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Seibel, Stephan",
+      "occupation": "Notfallsanitäter",
+      "born": 1978,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Butzin, Ralf",
+      "occupation": "Wirtschaftsökonom",
+      "born": 1970,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  },
+  {
+   "index": 16,
+   "slug": "fuer-oldenburg",
+   "short": "Für Oldenburg",
+   "official": "Wählergemeinschaft Für Oldenburg (WFO)",
+   "kind": "waehlergruppe",
+   "areas": {
+    "1": [
+     {
+      "position": 1,
+      "name": "Krause, Ursel",
+      "occupation": "Verwaltungsangestellte",
+      "born": 1966,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Schmidt, Thea",
+      "occupation": "Rentnerin",
+      "born": 1935,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Krause, Luca",
+      "occupation": "Auszubildender",
+      "born": 2007,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Höpner, Peter",
+      "occupation": "Haustechniker",
+      "born": 1960,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "2": [
+     {
+      "position": 1,
+      "name": "Kruse, Holger Ulrich",
+      "occupation": "Hotelier",
+      "born": 1963,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Killian, Heike",
+      "occupation": "Rentnerin",
+      "born": 1943,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Engelberts, Jannik",
+      "occupation": "Soldat",
+      "born": 1998,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Just, Johanna",
+      "occupation": "Einzelhandelskauffrau",
+      "born": 1988,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "3": [
+     {
+      "position": 1,
+      "name": "Norrenbrock, Franz",
+      "occupation": "Polizeibeamter i.R.",
+      "born": 1952,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Hartmann, Dominique",
+      "occupation": "Kaufmännische Mitarbeiterin",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Dreyer, Klaus-Dieter",
+      "occupation": "Selbstständig",
+      "born": 1959,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Kreuzwieser, Heinrich",
+      "occupation": "Rentner",
+      "born": 1952,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "4": [
+     {
+      "position": 1,
+      "name": "Maerz, Laura",
+      "occupation": "Gebietsleitung",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Rüdiger, Ralf",
+      "occupation": "Diplom-Betriebswirt",
+      "born": 1972,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Baumann, Weronika Justyna",
+      "occupation": "Bäckereifachverkäuferin",
+      "born": 1983,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Schneider, Harald",
+      "occupation": "Einzelhandelskaufmann",
+      "born": 1974,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "5": [
+     {
+      "position": 1,
+      "name": "Aytan, Sarah",
+      "occupation": "Empfangsmitarbeiterin",
+      "born": 1993,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Hoekstra, Stefan",
+      "occupation": "Restaurator im Handwerk",
+      "born": 1979,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Schneider, Dieter",
+      "occupation": "Rentner",
+      "born": 1942,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Haak, Philipp",
+      "occupation": "Personaldienstleistungskaufmann",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     }
+    ],
+    "6": [
+     {
+      "position": 1,
+      "name": "Meyer, Ingrid",
+      "occupation": "Rentnerin",
+      "born": 1945,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 2,
+      "name": "Kruse, Sophie-Marie",
+      "occupation": "Studentin",
+      "born": 2002,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 3,
+      "name": "Weigelt, Maike",
+      "occupation": "Fleischereifachverkäuferin",
+      "born": 1996,
+      "place": "Oldenburg (Oldb)"
+     },
+     {
+      "position": 4,
+      "name": "Hartmann, Michele",
+      "occupation": "Pflegeassistentin",
+      "born": 1991,
+      "place": "Oldenburg (Oldb)"
+     }
+    ]
+   }
+  }
+ ]
+}
