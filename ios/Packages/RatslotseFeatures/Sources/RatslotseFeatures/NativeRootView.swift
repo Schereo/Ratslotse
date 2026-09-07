@@ -883,9 +883,7 @@ struct RouteDestinationView: View {
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
-        case .district(let id):
-            if let id { DistrictBoardView(model: model, placeID: id) }
-            else { DistrictChooserView(model: model) }
+        case .district(let id): CityMapView(model: model, placeID: id)
         case .quiz(let area): QuizView(model: model, area: area)
         case .analysis: CouncilInsightsView(model: model)
         case .admin: AdminView(model: model)

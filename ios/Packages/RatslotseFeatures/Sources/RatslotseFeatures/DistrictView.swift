@@ -5,14 +5,15 @@ import SwiftUI
 
 // „Mein Viertel": Was sich in einem Ortsbereich in den nächsten Jahren ändert.
 //
-// Die Karte ist die Bühne (Tims Entscheidung 06.09.2026): oben das Viertel
-// als Umriss auf MapKit, ein Pin je Vorhaben in seiner Stand-Farbe, Straßen
-// als Linie. Darunter die Stufenleiste als Filter und eine knappe Liste. Ein
-// Pin oder eine Zeile öffnet das Vorhaben als Sheet mit zwei Rasten — kein
-// Seitwärts-Blättern unter einer Karte, das wären zwei Gesten in einer Fläche.
+// Seit dem Umzug auf die vereinte Stadtkarte (STADTKARTE-PLAN.md, Schritt 6)
+// liegt hier nur noch die TAFEL: die Auswahl der Stadt-Stufe
+// (`DistrictChooserPanel`) und die Tafel eines Viertels (`DistrictBoardPanel`)
+// — Stufenleiste, Liste, Karten, das Detail-Sheet. Die Karte selbst ist
+// `CityMapView`; sie und die Tafel teilen sich `DistrictBoardState`. Ein Pin
+// oder eine Zeile öffnet das Vorhaben als Sheet mit zwei Rasten.
 //
 // Gerechnet wird alles im Backend (`council/viertel.py`); die Web-Seite
-// `/viertel` zeigt dieselben Daten. Wer hier ein Feld ergänzt, zieht
+// `/karte` zeigt dieselben Daten. Wer hier ein Feld ergänzt, zieht
 // `Models.swift` nach und lässt `scripts/ios_vertrag.py` laufen.
 
 // MARK: - Stand und Kategorie
@@ -46,11 +47,11 @@ enum DistrictStage: String, CaseIterable {
     static let path: [DistrictStage] = [.idea, .planning, .decided, .building, .done]
 }
 
-private func stageOf(_ project: DistrictProject) -> DistrictStage {
+func stageOf(_ project: DistrictProject) -> DistrictStage {
     DistrictStage(rawValue: project.stage) ?? .planning
 }
 
-private func categoryLabel(_ raw: String) -> String {
+func categoryLabel(_ raw: String) -> String {
     switch raw {
     case "housing": "Wohnen & Bauen"
     case "traffic": "Verkehr"
@@ -72,7 +73,7 @@ private func outcomeLabel(_ raw: String?) -> String? {
     }
 }
 
-private func sortedProjects(_ projects: [DistrictProject]) -> [DistrictProject] {
+func sortedProjects(_ projects: [DistrictProject]) -> [DistrictProject] {
     projects.sorted { a, b in
         let ra = DistrictStage.allCases.firstIndex(of: stageOf(a)) ?? 9
         let rb = DistrictStage.allCases.firstIndex(of: stageOf(b)) ?? 9
@@ -81,79 +82,143 @@ private func sortedProjects(_ projects: [DistrictProject]) -> [DistrictProject] 
     }
 }
 
-// MARK: - Auswahl
+// MARK: - Auswahl (Stadt-Stufe)
 
-struct DistrictChooserView: View {
+/// Die Tafel der Stadt-Stufe: Stadtzahl, die eigenen Stadtteile, was gerade
+/// heraussticht, alle Ortsbereiche nach Zahl. Die Daten hält die Karte —
+/// sie färbt damit die Flächen.
+struct DistrictChooserPanel: View {
     let model: AppModel
-    @State private var overview: DistrictProjectsOverview?
-    @State private var topics: [Topic] = []
-    @State private var error: String?
+    let overview: DistrictProjectsOverview?
+    let topics: [Topic]
+    let error: String?
+    let retry: () -> Void
+    let open: (String) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RatsSpacing.lg) {
-                VStack(alignment: .leading, spacing: 6) {
-                    MonoKicker("Mein Viertel")
-                    Text("Was sich bei dir ändert")
-                        .font(RatsFont.title(28))
-                    Text("Vorhaben aus den Beschlüssen des Stadtrats, je Ortsbereich gebündelt und gegengeprüft.")
-                        .font(RatsFont.body(14))
-                        .foregroundStyle(RatsColor.secondary)
-                }
-                .ratsStaggered(0)
-
-                if let error {
-                    ErrorCard(message: error) { Task { await load() } }
-                } else if let overview {
-                    let mine = overview.districts.filter { district in
-                        topics.contains { $0.name.lowercased() == district.name.lowercased() }
-                    }
-                    if !mine.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            MonoKicker("Deine Stadtteile")
-                            ForEach(mine) { district in
-                                DistrictRow(district: district, highlighted: true) {
-                                    model.navigation.append(.district(id: district.placeID))
-                                }
-                            }
-                        }
-                        .ratsStaggered(1)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        MonoKicker("Alle Ortsbereiche")
-                        ForEach(Array(overview.districts.enumerated()), id: \.element.id) { index, district in
-                            DistrictRow(district: district, highlighted: false) {
-                                model.navigation.append(.district(id: district.placeID))
-                            }
-                            .ratsStaggered(min(index + 2, 5))
-                        }
-                    }
-                    Text("Die Zahl nennt die Vorhaben der letzten zwei Jahre.")
-                        .font(RatsFont.body(12))
-                        .foregroundStyle(RatsColor.muted)
-                } else {
-                    RatsLoadingState(message: "Ortsbereiche werden geladen …")
-                }
+        VStack(alignment: .leading, spacing: RatsSpacing.lg) {
+            VStack(alignment: .leading, spacing: 6) {
+                MonoKicker("Mein Viertel")
+                Text("Was sich bei dir ändert")
+                    .font(RatsFont.title(26))
+                Text("Vorhaben aus den Beschlüssen des Stadtrats, je Ortsbereich gebündelt und gegengeprüft — tippe eine Fläche auf der Karte oder wähle unten.")
+                    .font(RatsFont.body(14))
+                    .foregroundStyle(RatsColor.secondary)
             }
-            .frame(maxWidth: 680, alignment: .leading)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 20)
+            .ratsStaggered(0)
+
+            if let error {
+                ErrorCard(message: error, retry: retry)
+            } else if let overview {
+                if let total = overview.total, total > 0 {
+                    cityNumbers(total: total, stages: overview.stages ?? [:], districts: overview.districts)
+                        .ratsStaggered(1)
+                }
+                let mine = overview.districts.filter { district in
+                    topics.contains { $0.name.lowercased() == district.name.lowercased() }
+                }
+                if !mine.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        MonoKicker("Deine Stadtteile")
+                        ForEach(mine) { district in
+                            DistrictRow(district: district, highlighted: true) { open(district.placeID) }
+                        }
+                    }
+                    .ratsStaggered(1)
+                }
+                if let highlights = overview.highlights, !highlights.isEmpty {
+                    highlightsCard(highlights).ratsStaggered(2)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    MonoKicker("Alle Ortsbereiche")
+                    ForEach(Array(overview.districts.sorted { $0.count > $1.count || ($0.count == $1.count && $0.name < $1.name) }.enumerated()), id: \.element.id) { index, district in
+                        DistrictRow(district: district, highlighted: false) { open(district.placeID) }
+                            .ratsStaggered(min(index + 2, 5))
+                    }
+                }
+                Text("Die Zahl nennt die Vorhaben der letzten zwei Jahre.")
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.muted)
+            } else {
+                RatsLoadingState(message: "Ortsbereiche werden geladen …")
+            }
         }
-        .background(RatsColor.page)
-        .navigationTitle("Mein Viertel")
-        .toolbarTitleDisplayMode(.inline)
-        .task { await load() }
     }
 
-    private func load() async {
-        error = nil
-        do {
-            async let overviewRequest: DistrictProjectsOverview = model.api.get("/api/districts/projects")
-            async let topicsRequest: [Topic]? = try? await model.api.get("/api/topics")
-            overview = try await overviewRequest
-            topics = await topicsRequest ?? []
-        } catch {
-            self.error = "Die Übersicht lässt sich gerade nicht laden."
+    /// Die Stadtzahl mit den drei Ständen — der Blickfang der Anzeigetafel.
+    private func cityNumbers(total: Int, stages: [String: Int], districts: [DistrictProjectsOverviewEntry]) -> some View {
+        let occupied = districts.filter { $0.count > 0 }.count
+        return VStack(alignment: .leading, spacing: 10) {
+            MonoKicker("Ganz Oldenburg · Beschlüsse der letzten zwei Jahre")
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("\(total)")
+                    .font(RatsFont.title(34))
+                    .monospacedDigit()
+                Text("Vorhaben")
+                    .font(RatsFont.body(16, weight: .semibold))
+                    .foregroundStyle(RatsColor.secondary)
+            }
+            Text("in \(occupied) von \(districts.count) Ortsbereichen")
+                .font(RatsFont.body(13))
+                .foregroundStyle(RatsColor.secondary)
+            HStack(spacing: 14) {
+                ForEach([DistrictStage.building, .decided, .planning], id: \.self) { stage in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 5) {
+                            Circle().fill(stage.color).frame(width: 7, height: 7)
+                            Text(stage.label).font(RatsFont.body(11)).foregroundStyle(RatsColor.secondary)
+                        }
+                        Text("\(stages[stage.rawValue] ?? 0)")
+                            .font(RatsFont.body(18, weight: .bold))
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RatsColor.board)
+        .overlay(RoundedRectangle(cornerRadius: RatsRadius.panel, style: .continuous).stroke(RatsColor.boardBorder))
+        .clipShape(RoundedRectangle(cornerRadius: RatsRadius.panel, style: .continuous))
+    }
+
+    /// „Gerade in der Stadt": die Vorhaben, die stadtweit herausstechen — ein
+    /// Tipp öffnet das Viertel mit genau diesem Vorhaben.
+    private func highlightsCard(_ items: [DistrictHighlight]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MonoKicker("Gerade in der Stadt", trailing: "\(items.count) Vorhaben")
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    let stage = DistrictStage(rawValue: item.stage) ?? .planning
+                    Button { open(item.placeID) } label: {
+                        HStack(spacing: 12) {
+                            Circle().fill(stage.color).frame(width: 10, height: 10)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(RatsFont.body(14, weight: .semibold))
+                                    .foregroundStyle(RatsColor.text)
+                                    .lineLimit(1)
+                                Text([item.placeName, stage.label, item.when].compactMap { $0 }.joined(separator: " · "))
+                                    .font(RatsFont.body(12))
+                                    .foregroundStyle(RatsColor.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            RatsIcon(.chevronRight, size: 14).foregroundStyle(RatsColor.muted)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    if index < items.count - 1 {
+                        Divider().overlay(RatsColor.separator).padding(.leading, 36)
+                    }
+                }
+            }
+            .background(RatsColor.card)
+            .overlay(RoundedRectangle(cornerRadius: RatsRadius.panel, style: .continuous).stroke(RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.panel, style: .continuous))
         }
     }
 }
@@ -195,96 +260,74 @@ private struct DistrictRow: View {
     }
 }
 
-// MARK: - Tafel
+// MARK: - Tafel (Viertel-Stufe)
 
-struct DistrictBoardView: View {
+/// Die Tafel eines Viertels — alles außer der Karte: Kopf, Stufenleiste,
+/// Liste, die Karten der Stadt-Quellen, Nachbarn. Den Zustand (Daten, Filter,
+/// Auswahl) hält `DistrictBoardState`, den die Karte teilt.
+struct DistrictBoardPanel: View {
     let model: AppModel
-    let placeID: String
-    @State private var data: DistrictProjects?
-    @State private var error: String?
-    @State private var stage: DistrictStage?
-    @State private var selected: DistrictProject?
-    @State private var reported: Set<String> = []
-    @State private var camera: MapCameraPosition = .automatic
-    @State private var outline: [CLLocationCoordinate2D] = []
+    @Bindable var board: DistrictBoardState
 
-    private var projects: [DistrictProject] { sortedProjects(data?.projects ?? []) }
-    private var visible: [DistrictProject] {
-        guard let stage else { return projects }
-        return projects.filter { stageOf($0) == stage }
-    }
+    private var projects: [DistrictProject] { board.projects }
+    private var visible: [DistrictProject] { board.visible }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: RatsSpacing.lg) {
-                if let error {
-                    ErrorCard(message: error) { Task { await load() } }
-                } else if let data {
-                    header(data)
-                    if !projects.isEmpty {
-                        map
-                            .frame(height: 300)
-                            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.panel, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: RatsRadius.panel, style: .continuous)
-                                .stroke(RatsColor.border))
-                            .ratsStaggered(1)
-                        stageBar
-                            .ratsStaggered(2)
-                    }
-                    if !data.upcoming.isEmpty { upcomingCard(data.upcoming).ratsStaggered(2) }
-                    if projects.isEmpty {
-                        // Ohne Zeitstempel hat das Register dieses Viertel noch nie
-                        // gerechnet — ein Zustand des Laufs, kein Befund über den Rat.
-                        RatsEmptyState(
-                            title: data.updatedAt == nil ? "Noch nicht gerechnet" : "Noch kein Vorhaben",
-                            message: data.updatedAt == nil
-                                ? "Die Tafel für \(data.place.name) ist noch nicht gerechnet — der nächste Lauf füllt sie. Nebenan ist mehr los."
-                                : "Für \(data.place.name) hat der Rat in den letzten zwei Jahren nichts beschlossen, was sich als Vorhaben zeigen ließe. Nebenan ist mehr los.",
-                            symbol: .mapPin,
-                            animation: .searching
-                        )
-                    } else {
-                        projectList.ratsStaggered(3)
-                    }
-                    if !data.closures.isEmpty { closuresCard(data.closures).ratsStaggered(3) }
-                    if !data.participations.isEmpty { participationsCard(data.participations).ratsStaggered(3) }
-                    if !data.investments.isEmpty { investmentsCard(data.investments).ratsStaggered(4) }
-                    if !data.press.isEmpty { pressCard(data.press).ratsStaggered(4) }
-                    if !data.neighbours.isEmpty { neighbours(data.neighbours).ratsStaggered(5) }
-                    Text("Ein Sprachmodell prüft je Beschluss, ob er wirklich dieses Viertel betrifft, und fasst zusammengehörige Beschlüsse zu einem Vorhaben zusammen. Termine stehen nur, wenn ein Beschluss sie nennt.")
-                        .font(RatsFont.body(12))
-                        .foregroundStyle(RatsColor.muted)
-                } else {
-                    RatsLoadingState(message: "Vorhaben werden geladen …")
+        VStack(alignment: .leading, spacing: RatsSpacing.lg) {
+            if let error = board.error {
+                ErrorCard(message: error) { Task { await board.load() } }
+            } else if let data = board.data {
+                header(data)
+                if !projects.isEmpty {
+                    stageBar
+                        .ratsStaggered(1)
                 }
+                if !data.upcoming.isEmpty { upcomingCard(data.upcoming).ratsStaggered(2) }
+                if projects.isEmpty {
+                    // Ohne Zeitstempel hat das Register dieses Viertel noch nie
+                    // gerechnet — ein Zustand des Laufs, kein Befund über den Rat.
+                    RatsEmptyState(
+                        title: data.updatedAt == nil ? "Noch nicht gerechnet" : "Noch kein Vorhaben",
+                        message: data.updatedAt == nil
+                            ? "Die Tafel für \(data.place.name) ist noch nicht gerechnet — der nächste Lauf füllt sie. Nebenan ist mehr los."
+                            : "Für \(data.place.name) hat der Rat in den letzten zwei Jahren nichts beschlossen, was sich als Vorhaben zeigen ließe. Nebenan ist mehr los.",
+                        symbol: .mapPin,
+                        animation: .searching
+                    )
+                } else {
+                    projectList.ratsStaggered(3)
+                }
+                if !data.closures.isEmpty { closuresCard(data.closures).ratsStaggered(3) }
+                if !data.participations.isEmpty { participationsCard(data.participations).ratsStaggered(3) }
+                if !data.investments.isEmpty { investmentsCard(data.investments).ratsStaggered(4) }
+                if !data.press.isEmpty { pressCard(data.press).ratsStaggered(4) }
+                if !data.neighbours.isEmpty { neighbours(data.neighbours).ratsStaggered(5) }
+                Text("Ein Sprachmodell prüft je Beschluss, ob er wirklich dieses Viertel betrifft, und fasst zusammengehörige Beschlüsse zu einem Vorhaben zusammen. Termine stehen nur, wenn ein Beschluss sie nennt.")
+                    .font(RatsFont.body(12))
+                    .foregroundStyle(RatsColor.muted)
+            } else {
+                RatsLoadingState(message: "Vorhaben werden geladen …")
             }
-            .frame(maxWidth: 760, alignment: .leading)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 20)
         }
-        .background(RatsColor.page)
-        .navigationTitle(data?.place.name ?? "Mein Viertel")
-        .toolbarTitleDisplayMode(.inline)
-        .task(id: placeID) { await load() }
-        .sheet(item: $selected) { project in
+        .sheet(item: $board.selected) { project in
             DistrictProjectSheet(
                 model: model,
                 project: project,
-                reported: reported.contains(project.projectKey) || project.reported,
-                report: { await report(project) }
+                reported: board.reported.contains(project.projectKey) || project.reported,
+                report: { await board.report(project) }
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .presentationBackground(RatsColor.page)
         }
-        .sensoryFeedback(.selection, trigger: selected?.id)
+        .sensoryFeedback(.selection, trigger: board.selected?.id)
     }
 
     private func header(_ data: DistrictProjects) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             MonoKicker("Mein Viertel")
             Text(data.place.name)
-                .font(RatsFont.title(28))
+                .font(RatsFont.title(26))
             Text(projects.isEmpty
                  ? (data.updatedAt == nil ? "Die Tafel ist noch nicht gerechnet." : "Noch kein Vorhaben aus den Beschlüssen der letzten zwei Jahre.")
                  : "\(projects.count) Vorhaben aus den Beschlüssen der letzten zwei Jahre")
@@ -294,122 +337,6 @@ struct DistrictBoardView: View {
         .ratsStaggered(0)
     }
 
-    // MARK: Karte
-
-    private var map: some View {
-        // In Teil-Bauer zerlegt: Der Swift-Compiler der CI schaffte den einen
-        // großen Map-Body nicht mehr („unable to type-check this expression in
-        // reasonable time", #1153) — lokal mit Xcode 26.6 ging es noch.
-        Map(position: $camera, interactionModes: [.pan, .zoom]) {
-            if outline.count > 2 {
-                MapPolygon(coordinates: outline)
-                    .foregroundStyle(RatsColor.primary.opacity(0.06))
-                    .stroke(RatsColor.primary.opacity(0.8), lineWidth: 2)
-            }
-            closureLayers
-            participationLayers
-            ForEach(projects) { project in
-                projectLayers(project)
-            }
-        }
-        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
-        .mapControlVisibility(.hidden)
-        .onChange(of: selected?.id) { _, _ in focusSelected() }
-    }
-
-    /// Sperrungen der Stadt: gestrichelt in Warnfarbe, blass, sobald ein
-    /// Vorhaben gewählt ist — dann steht dessen Linie allein.
-    @MapContentBuilder
-    private var closureLayers: some MapContent {
-        let dimmed = selected != nil
-        ForEach(data?.closures ?? []) { closure in
-            ForEach(Array(lineStrings(closure.geometry).enumerated()), id: \.offset) { _, line in
-                MapPolyline(coordinates: line)
-                    .stroke(closureColor.opacity(dimmed ? 0.3 : 0.9),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6]))
-            }
-        }
-    }
-
-    /// Laufende Beteiligungen: der Geltungsbereich des Plans, punktiert in
-    /// Signal-Orange — blass, sobald ein Vorhaben gewählt ist.
-    @MapContentBuilder
-    private var participationLayers: some MapContent {
-        let dimmed = selected != nil
-        ForEach(data?.participations ?? []) { item in
-            ForEach(Array(polygons(item.geometry).enumerated()), id: \.offset) { _, ring in
-                MapPolygon(coordinates: ring)
-                    .foregroundStyle(RatsColor.signal.opacity(dimmed ? 0.03 : 0.1))
-                    .stroke(RatsColor.signal.opacity(dimmed ? 0.3 : 0.95),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [2, 7]))
-            }
-        }
-    }
-
-    /// Alles, was ein Vorhaben auf der Karte hat: Planflächen, Straßenlinien,
-    /// Pins. Abschnittsgrenzen („Am Schmeel bis Brahmweg") und Bezugsstraßen
-    /// („Quartier Am Schmeel") sind nicht betroffen: keine Linie, kein Pin,
-    /// solange das Vorhaben einen Gegenstand hat; sonst als hohle Punkte.
-    @MapContentBuilder
-    private func projectLayers(_ project: DistrictProject) -> some MapContent {
-        let stage = stageOf(project)
-        let active = selected?.id == project.id
-        // Blass, was der Stand-Filter ausblendet — und alles andere, sobald
-        // ein Vorhaben ausgewählt ist: Dessen Linie steht allein.
-        let dimmed = ((self.stage != nil && self.stage != stage) || selected != nil) && !active
-        let hasSubject = project.locations.contains { $0.role == "subject" }
-        ForEach(project.locations.filter { $0.role == "subject" || !hasSubject }) { location in
-            locationLayers(location, project: project, stage: stage, active: active, dimmed: dimmed)
-        }
-    }
-
-    @MapContentBuilder
-    private func locationLayers(_ location: DistrictProjectLocation, project: DistrictProject,
-                                stage: DistrictStage, active: Bool, dimmed: Bool) -> some MapContent {
-        let boundary = location.role != "subject"
-        // Der Geltungsbereich eines Bebauungsplans (Stadt-Geodaten):
-        // rechtsverbindlich = durchgezogen; in Aufstellung = gestrichelt und blasser.
-        let inProcedure = location.plan?.status == "in_procedure"
-        let fill: Double = dimmed ? 0.04 : (active ? (inProcedure ? 0.14 : 0.22) : (inProcedure ? 0.08 : 0.14))
-        let dash: [CGFloat] = inProcedure ? [6, 4] : []
-        let rings: [[CLLocationCoordinate2D]] = location.kind == "bplan" ? polygons(location.geometry) : []
-        ForEach(Array(rings.enumerated()), id: \.offset) { _, ring in
-            MapPolygon(coordinates: ring)
-                .foregroundStyle(stage.color.opacity(fill))
-                .stroke(stage.color.opacity(dimmed ? 0.2 : 0.85),
-                        style: StrokeStyle(lineWidth: active ? 3 : 2, dash: dash))
-        }
-        let lines: [[CLLocationCoordinate2D]] = boundary ? [] : lineStrings(location.geometry)
-        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-            MapPolyline(coordinates: line)
-                .stroke(stage.color.opacity(dimmed ? 0.18 : 0.75),
-                        style: StrokeStyle(lineWidth: active ? 7 : 5, lineCap: .round, lineJoin: .round))
-        }
-        Annotation(project.name, coordinate: CLLocationCoordinate2D(
-            latitude: location.latitude, longitude: location.longitude
-        ), anchor: .center) {
-            Button {
-                selected = project
-            } label: {
-                DistrictPin(color: stage.color, active: active, dimmed: dimmed, hollow: boundary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(project.name), \(stage.label)")
-        }
-        .annotationTitles(.hidden)
-    }
-
-    private func focusSelected() {
-        guard let selected else { return }
-        var points = selected.locations.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-        for location in selected.locations {
-            points += lineStrings(location.geometry).flatMap { $0 }
-            if location.kind == "bplan" { points += polygons(location.geometry).flatMap { $0 } }
-        }
-        guard let region = regionAround(points, minSpan: 0.012) else { return }
-        withAnimation(.easeInOut(duration: 0.45)) { camera = .region(region) }
-    }
-
     // MARK: Stufen
 
     private var stageBar: some View {
@@ -417,9 +344,9 @@ struct DistrictBoardView: View {
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(DistrictStage.allCases.filter { counts[$0] != nil }, id: \.self) { candidate in
-                    let on = stage == candidate
+                    let on = board.stage == candidate
                     Button {
-                        withAnimation(RatsMotion.flow) { stage = on ? nil : candidate }
+                        withAnimation(RatsMotion.flow) { board.stage = on ? nil : candidate }
                     } label: {
                         HStack(spacing: 6) {
                             Circle().fill(candidate.color).frame(width: 8, height: 8)
@@ -441,7 +368,7 @@ struct DistrictBoardView: View {
                 }
             }
         }
-        .sensoryFeedback(.selection, trigger: stage)
+        .sensoryFeedback(.selection, trigger: board.stage)
     }
 
     // MARK: Liste
@@ -450,7 +377,8 @@ struct DistrictBoardView: View {
         VStack(spacing: 0) {
             ForEach(Array(visible.enumerated()), id: \.element.id) { index, project in
                 let stage = stageOf(project)
-                Button { selected = project } label: {
+                let active = board.selected?.id == project.id
+                Button { board.selected = project } label: {
                     HStack(spacing: 12) {
                         Circle().fill(stage.color).frame(width: 10, height: 10)
                         VStack(alignment: .leading, spacing: 2) {
@@ -469,6 +397,7 @@ struct DistrictBoardView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
+                    .background(active ? RatsColor.board : Color.clear)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(RatsPlainButtonStyle())
@@ -635,40 +564,11 @@ struct DistrictBoardView: View {
         }
     }
 
-    // MARK: Laden
-
-    private func load() async {
-        error = nil
-        do {
-            let loaded: DistrictProjects = try await model.api.get("/api/districts/\(placeID)/projects")
-            data = loaded
-            outline = districtOutline(named: loaded.place.name)
-            let points = outline.isEmpty
-                ? loaded.projects.flatMap { $0.locations.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) } }
-                : outline
-            if let region = regionAround(points, minSpan: 0.02) { camera = .region(region) }
-        } catch {
-            self.error = "Die Tafel lässt sich gerade nicht laden."
-        }
-    }
-
-    private func report(_ project: DistrictProject) async {
-        do {
-            let out: DistrictProjectReportOut = try await model.api.send(
-                "/api/districts/projects/\(project.id)/report", body: ["reason": nil as String?]
-            )
-            reported.insert(project.projectKey)
-            model.actionFeedback += 1
-            if out.hidden { model.alertMessage = "Danke — das Vorhaben ist jetzt ausgeblendet." }
-        } catch {
-            model.alertMessage = "Die Meldung ist gerade nicht durchgegangen."
-        }
-    }
 }
 
 // MARK: - Pin
 
-private struct DistrictPin: View {
+struct DistrictPin: View {
     let color: Color
     let active: Bool
     let dimmed: Bool
@@ -851,97 +751,6 @@ private struct DistrictProjectSheet: View {
             }
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-// MARK: - Geometrie-Helfer
-
-/// Außenringe aus Polygon/MultiPolygon-GeoJSON — der Geltungsbereich eines
-/// Bebauungsplans. Löcher (innere Ringe) fallen weg; die Umringe der Stadt
-/// haben keine, und ein Loch würde als eigene Fläche gezeichnet.
-private func polygons(_ geometry: JSONValue?) -> [[CLLocationCoordinate2D]] {
-    guard case let .object(object)? = geometry,
-          case let .string(type)? = object["type"],
-          case let .array(coordinates)? = object["coordinates"] else { return [] }
-    func ring(_ value: JSONValue) -> [CLLocationCoordinate2D] {
-        guard case let .array(points) = value else { return [] }
-        return points.compactMap { point in
-            guard case let .array(pair) = point, pair.count >= 2,
-                  case let .number(lon) = pair[0], case let .number(lat) = pair[1] else { return nil }
-            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        }
-    }
-    func outer(_ polygon: JSONValue) -> [CLLocationCoordinate2D] {
-        guard case let .array(rings) = polygon, let first = rings.first else { return [] }
-        return ring(first)
-    }
-    switch type {
-    case "Polygon": return [outer(.array(coordinates))].filter { $0.count > 2 }
-    case "MultiPolygon": return coordinates.map(outer).filter { $0.count > 2 }
-    default: return []
-    }
-}
-
-/// LineString/MultiLineString aus dem durchgereichten GeoJSON — für die
-/// Straßenlinie auf der Karte. Alles andere (Flächen) bleibt beim Pin.
-private func lineStrings(_ geometry: JSONValue?) -> [[CLLocationCoordinate2D]] {
-    guard case let .object(object)? = geometry,
-          case let .string(type)? = object["type"],
-          case let .array(coordinates)? = object["coordinates"] else { return [] }
-    func line(_ value: JSONValue) -> [CLLocationCoordinate2D] {
-        guard case let .array(points) = value else { return [] }
-        return points.compactMap { point in
-            guard case let .array(pair) = point, pair.count >= 2,
-                  case let .number(lon) = pair[0], case let .number(lat) = pair[1] else { return nil }
-            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        }
-    }
-    switch type {
-    case "LineString": return [line(.array(coordinates))].filter { $0.count > 1 }
-    case "MultiLineString": return coordinates.map(line).filter { $0.count > 1 }
-    default: return []
-    }
-}
-
-private func regionAround(_ points: [CLLocationCoordinate2D], minSpan: Double) -> MKCoordinateRegion? {
-    guard let first = points.first else { return nil }
-    var minLat = first.latitude, maxLat = first.latitude, minLon = first.longitude, maxLon = first.longitude
-    for p in points {
-        minLat = min(minLat, p.latitude); maxLat = max(maxLat, p.latitude)
-        minLon = min(minLon, p.longitude); maxLon = max(maxLon, p.longitude)
-    }
-    let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
-    let span = MKCoordinateSpan(
-        latitudeDelta: max(minSpan, (maxLat - minLat) * 1.35),
-        longitudeDelta: max(minSpan * 1.5, (maxLon - minLon) * 1.35)
-    )
-    return MKCoordinateRegion(center: center, span: span)
-}
-
-/// Der Umriss des Ortsbereichs aus dem gebündelten GeoJSON (31 Flächen).
-private func districtOutline(named name: String) -> [CLLocationCoordinate2D] {
-    guard let url = Bundle.main.url(forResource: "stadtteile-oldenburg", withExtension: "json"),
-          let data = try? Data(contentsOf: url),
-          let objects = try? MKGeoJSONDecoder().decode(data) else { return [] }
-    for case let feature as MKGeoJSONFeature in objects {
-        guard let properties = feature.properties,
-              let json = try? JSONSerialization.jsonObject(with: properties) as? [String: Any],
-              json["name"] as? String == name else { continue }
-        for geometry in feature.geometry {
-            if let polygon = geometry as? MKPolygon { return polygon.coordinates }
-            if let multi = geometry as? MKMultiPolygon, let largest = multi.polygons.max(by: { $0.pointCount < $1.pointCount }) {
-                return largest.coordinates
-            }
-        }
-    }
-    return []
-}
-
-private extension MKPolygon {
-    var coordinates: [CLLocationCoordinate2D] {
-        var out = [CLLocationCoordinate2D](repeating: kCLLocationCoordinate2DInvalid, count: pointCount)
-        getCoordinates(&out, range: NSRange(location: 0, length: pointCount))
-        return out
     }
 }
 
