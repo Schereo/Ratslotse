@@ -99,11 +99,30 @@ export class ViertelZeichner {
     for (const pin of e.pins) pin.getElement()?.classList.toggle("ist-schwebt", an);
     if (e.aktiv) return;
     for (const pfad of e.pfade) {
-      const basis = pfad.options.weight ?? 5;
-      pfad.setStyle({ weight: an ? basis + 2 : basis, opacity: an ? 1 : (pfad.options.opacity ?? 0.75) });
-      if (an) pfad.bringToFront();
+      if (an) {
+        // Die Ruhe-Werte EINMAL merken, bevor gehoben wird: Leaflets
+        // `setStyle` schreibt in `options` — wer die Basis von dort liest,
+        // liest beim zweiten Zeigen schon die gehobene Stärke, und die Linie
+        // wird mit jedem Hover dicker (Tims Befund 07.09.2026). Das Senken
+        // stellt die gemerkten Werte wieder her, auch die Deckkraft einer
+        // blassen Linie.
+        if (!this.ruhe.has(pfad)) this.ruhe.set(pfad, { weight: pfad.options.weight, opacity: pfad.options.opacity });
+        const ruhe = this.ruhe.get(pfad)!;
+        pfad.setStyle({ weight: (ruhe.weight ?? 5) + 2, opacity: 1 });
+        pfad.bringToFront();
+      } else {
+        const ruhe = this.ruhe.get(pfad);
+        if (!ruhe) continue;
+        pfad.setStyle({ weight: ruhe.weight ?? 5, opacity: ruhe.opacity ?? 0.75 });
+        this.ruhe.delete(pfad);
+      }
     }
   }
+
+  /** Strichstärke und Deckkraft eines Pfads vor dem Heben — je gehobenem Pfad,
+   *  bis er gesenkt ist. Neu gezeichnete Pfade sind neue Objekte, alte Einträge
+   *  fallen mit ihnen weg. */
+  private ruhe = new WeakMap<Path, { weight?: number; opacity?: number }>();
 
   /** Grenzen des aktiven Vorhabens nach dem letzten Zeichnen — die Karte
    *  fährt dorthin (wer das will). */
