@@ -14,6 +14,10 @@ import os
 import re
 import time
 import unicodedata
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:      # zur Laufzeit bleibt numpy lazy (Web-Dienst importiert das Modul)
+    import numpy as np
 
 # Multilingual (incl. German), 384-dim, ~220 MB — good German similarity, light.
 MODEL = os.environ.get("COUNCIL_EMBED_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -36,7 +40,7 @@ def _get_model():
 _single_cache: dict[str, object] = {}
 
 
-def embed(texts: list[str]):
+def embed(texts: list[str]) -> np.ndarray:
     """Return L2-normalised embeddings (N, dim) as a float32 numpy array, so that a
     dot product equals cosine similarity."""
     import numpy as np

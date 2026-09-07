@@ -381,6 +381,26 @@ class CitiesStore:
         row = self._conn.execute(sql, args).fetchone()
         return row["text"] if row else None
 
+    def files_with_text(self, body_id: str | None = None,
+                        limit: int | None = None) -> list[dict]:
+        """Dateien, für die irgendein Extraktor Text geliefert hat."""
+        sql = ("SELECT DISTINCT f.* FROM files f JOIN texts t ON t.file_id = f.id "
+               "WHERE length(t.text) > 0")
+        args: list[Any] = []
+        if body_id:
+            sql += " AND f.body_id=?"; args.append(body_id)
+        sql += " ORDER BY f.id"
+        if limit:
+            sql += " LIMIT ?"; args.append(limit)
+        return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def text_for_file_any(self, file_id: str) -> str | None:
+        """Der längste vorliegende Text zu einer Datei, egal von welchem Extraktor."""
+        row = self._conn.execute(
+            "SELECT text FROM texts WHERE file_id=? AND length(text) > 0 "
+            "ORDER BY length(text) DESC LIMIT 1", (file_id,)).fetchone()
+        return row["text"] if row else None
+
     def files_without_text(self, extractor: str, version: str,
                            body_id: str | None = None,
                            limit: int | None = None) -> list[dict]:

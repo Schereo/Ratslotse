@@ -88,6 +88,14 @@ def main() -> dict:
             zaehler["errors"] += 1
             gruende["error_annotate"] = f"{type(e).__name__}: {e}"
 
+        # Zuletzt der Index: Er baut auf Text UND Einordnung auf.
+        try:
+            for name, wert in pipeline.index_all(main_store).items():
+                zaehler[f"index_{name}"] = wert
+        except Exception as e:  # noqa: BLE001
+            zaehler["errors"] += 1
+            gruende["error_index"] = f"{type(e).__name__}: {e}"
+
         nachher = {z["id"]: z["papers"] for z in main_store.stats()}
         zaehler["papers_new"] = sum(nachher.get(k, 0) - vorher.get(k, 0) for k in nachher)
         zaehler["papers_total"] = sum(nachher.values())
