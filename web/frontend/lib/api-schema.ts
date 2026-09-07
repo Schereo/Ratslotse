@@ -143,6 +143,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Stats
+         * @description Was im Städte-Speicher liegt, je Stadt.
+         *
+         *     Die Liste ist leer, solange noch nichts geerntet wurde — das ist kein
+         *     Fehler, sondern der Zustand vor dem ersten Lauf von ``check_cities``.
+         */
+        get: operations["cities_stats_api_admin_cities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/entity-aliases": {
         parameters: {
             query?: never;
@@ -5866,6 +5889,36 @@ export interface components {
             target: string;
         };
         /**
+         * CityStats
+         * @description Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik).
+         */
+        CityStats: {
+            /** Agenda Items */
+            agenda_items: number;
+            /** Agenda Items With Outcome */
+            agenda_items_with_outcome: number;
+            /** Annotations */
+            annotations: number;
+            /** Id */
+            id: string;
+            /** Last Fetched */
+            last_fetched: string | null;
+            /** License */
+            license: string | null;
+            /** Meetings */
+            meetings: number;
+            /** Name */
+            name: string;
+            /** Papers */
+            papers: number;
+            /** Papers With Text */
+            papers_with_text: number;
+            /** Ris Vendor */
+            ris_vendor: string;
+            /** State */
+            state: string;
+        };
+        /**
          * CityTopicSuggestion
          * @description Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
          *     Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
@@ -10357,6 +10410,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestDelivery"];
+                };
+            };
+        };
+    };
+    cities_stats_api_admin_cities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityStats"][];
                 };
             };
         };
@@ -15285,4 +15358,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9d5a3045f4b187562cbecf7759e4802973c4f604cadf31995a15d5fd634f4130
+// vertrag-sha256: bfaad1921c94f1cc205bfd3c4ecfe3767e336447c87fe6cce46094e747cc649b

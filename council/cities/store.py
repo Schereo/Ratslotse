@@ -602,8 +602,9 @@ class CitiesStore:
         rows = self._conn.execute(
             "SELECT b.id, b.name, b.state, b.ris_vendor, b.license, b.last_fetched, "
             "  (SELECT COUNT(*) FROM papers p WHERE p.body_id=b.id) AS papers, "
-            "  (SELECT COUNT(*) FROM papers p JOIN files f ON f.paper_id=p.id "
-            "     JOIN texts t ON t.file_id=f.id WHERE p.body_id=b.id) AS papers_with_text, "
+            "  (SELECT COUNT(DISTINCT p.id) FROM papers p JOIN files f ON f.paper_id=p.id "
+            "     JOIN texts t ON t.file_id=f.id WHERE p.body_id=b.id AND length(t.text) > 0) "
+            "   AS papers_with_text, "
             "  (SELECT COUNT(*) FROM meetings m WHERE m.body_id=b.id) AS meetings, "
             "  (SELECT COUNT(*) FROM agenda_items a JOIN meetings m ON m.id=a.meeting_id "
             "     WHERE m.body_id=b.id) AS agenda_items, "

@@ -68,6 +68,16 @@ JOBS: list[dict] = [
         "max_age_h": 30,
     },
     {
+        "key": "check_cities",
+        "label": "Andere Städte",
+        "description": "Vorlagen, Sitzungen und Ergebnisse der Vergleichsstädte über OParl — "
+                       "plus Oldenburg aus der eigenen Rats-Datenbank.",
+        "schedule": "sonntags 3 Uhr",
+        # Großzügig: Der Lauf ist wöchentlich, und ein einzelner ausgefallener
+        # Sonntag ist kein Alarm — erst zwei hintereinander.
+        "max_age_h": 8 * 24,
+    },
+    {
         "key": "social_kartentexte",
         "label": "Kartentexte (Tagesordnung)",
         "description": "Ein erklärender Satz je inhaltlichem Tagesordnungspunkt der nächsten drei Wochen — der einzige Text, der die ganze Vorlage samt Anlagen liest. Kostet LLM, schreibt nie zweimal dasselbe.",

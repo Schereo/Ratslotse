@@ -4038,6 +4038,81 @@
         "title": "CityMapPoint",
         "type": "object"
       },
+      "CityStats": {
+        "description": "Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik).",
+        "properties": {
+          "agenda_items": {
+            "title": "Agenda Items",
+            "type": "integer"
+          },
+          "agenda_items_with_outcome": {
+            "title": "Agenda Items With Outcome",
+            "type": "integer"
+          },
+          "annotations": {
+            "title": "Annotations",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_fetched": {
+            "title": "Last Fetched",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "license": {
+            "title": "License",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "meetings": {
+            "title": "Meetings",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "papers": {
+            "title": "Papers",
+            "type": "integer"
+          },
+          "papers_with_text": {
+            "title": "Papers With Text",
+            "type": "integer"
+          },
+          "ris_vendor": {
+            "title": "Ris Vendor",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "state",
+          "ris_vendor",
+          "license",
+          "last_fetched",
+          "papers",
+          "papers_with_text",
+          "meetings",
+          "agenda_items",
+          "agenda_items_with_outcome",
+          "annotations"
+        ],
+        "title": "CityStats",
+        "type": "object"
+      },
       "CityTopicSuggestion": {
         "description": "Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,\nWohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die\nEntitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.",
         "properties": {
@@ -14878,6 +14953,32 @@
         "summary": "Test Notification",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/admin/cities": {
+      "get": {
+        "description": "Was im Städte-Speicher liegt, je Stadt.\n\nDie Liste ist leer, solange noch nichts geerntet wurde — das ist kein\nFehler, sondern der Zustand vor dem ersten Lauf von ``check_cities``.",
+        "operationId": "cities_stats_api_admin_cities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CityStats"
+                  },
+                  "title": "Response Cities Stats Api Admin Cities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cities Stats",
+        "tags": [
+          "admin"
         ]
       }
     },

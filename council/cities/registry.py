@@ -31,6 +31,12 @@ class BodySpec:
     #: Nur aktive Städte holt der Cron. Die übrigen sind gemessen erreichbar
     #: und warten darauf, dass jemand sie einschaltet.
     active: bool = True
+    #: Holt der Lauf die PDF-Bytes? Aus für Quellen, deren Text schon
+    #: vorliegt — Oldenburgs Vorlagentexte stehen längst in der
+    #: Rats-Datenbank, sie ein zweites Mal herunterzuladen belastet nur
+    #: unser eigenes Ratsinformationssystem (gemessen: 706 Abrufe,
+    #: zwölf Minuten, für nichts).
+    fetch_files: bool = True
     notes: str = ""
 
 
@@ -40,7 +46,7 @@ BODIES: dict[str, BodySpec] = {
     #     nicht haben?" sind dieselbe Rechnung mit vertauschten Rollen).
     "oldenburg": BodySpec(
         "oldenburg", "Oldenburg (Oldb)", "NI", "oldenburg", None,
-        since="2018-01-01",
+        since="2018-01-01", fetch_files=False,
         notes="Kein OParl (SessionNet ohne Modul). Der Adapter liest council.sqlite."),
 
     # --- Ring 1: gleiches Kommunalverfassungsrecht (NKomVG)
