@@ -1,0 +1,117 @@
+"""Wächter für den Städte-Speicher — die Architektur, als Test.
+
+Drei Regeln, deren Bruch die Flexibilität kostet, für die der Speicher gebaut
+ist. Sie stehen hier und nicht in einer Prosa-Zeile, weil eine Prosa-Zeile
+niemanden aufhält (``tests/CLAUDE.md``).
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+from council.cities import registry
+from council.cities.store import CitiesStore
+
+CITIES_DIR = Path(__file__).resolve().parents[1] / "council" / "cities"
+
+#: Die Spalten der normalisierten Schicht. **Diese Liste ist der Wächter:**
+#: Eine neue Spalte in einer dieser Tabellen ist fast immer eine Annotation am
+#: falschen Ort. Wer wirklich eine braucht, trägt sie hier ein und begründet
+#: es im Pull Request.
+SCHICHT_1_SPALTEN: dict[str, set[str]] = {
+    "bodies": {"id", "name", "state", "ris_vendor", "oparl_url", "license",
+               "population", "first_fetched", "last_fetched"},
+    "organizations": {"id", "body_id", "name", "kind_raw", "kind"},
+    "meetings": {"id", "body_id", "organization_id", "name", "start", "end",
+                 "state_raw", "cancelled"},
+    "agenda_items": {"id", "meeting_id", "number", "position", "name", "public",
+                     "result_raw", "outcome", "resolution_text"},
+    "papers": {"id", "body_id", "reference", "name", "date", "paper_type_raw",
+               "kind", "originator_org_id", "under_direction_of_id", "web"},
+    "files": {"id", "body_id", "paper_id", "agenda_item_id", "meeting_id", "role",
+              "name", "mime", "size", "access_url", "sha256"},
+    "consultations": {"id", "paper_id", "meeting_id", "agenda_item_id",
+                      "organization_id", "role_raw", "authoritative"},
+}
+
+#: Wörter, an denen man eine Meinung erkennt. Keins davon gehört als
+#: Spaltenname in Schicht 1.
+MEINUNGS_WOERTER = ("field", "topic", "thema", "summary", "zusammenfassung",
+                    "instrument", "transfer", "score", "rating", "importance",
+                    "interest", "impact", "competence", "sentiment", "label")
+
+
+@pytest.fixture()
+def store(tmp_path):
+    s = CitiesStore(tmp_path / "cities.sqlite")
+    yield s
+    s.close()
+
+
+def test_schicht_1_traegt_keine_meinung(store):
+    """Was ein Modell sagt, gehört in ``annotations`` — nicht als Spalte."""
+    for tabelle, erlaubt in SCHICHT_1_SPALTEN.items():
+        ist = {r[1] for r in store._conn.execute(f"PRAGMA table_info({tabelle})")}
+        neu = ist - erlaubt
+        assert not neu, (
+            f"Neue Spalte(n) {sorted(neu)} in {tabelle}. Gehört das in die Tabelle "
+            f"`annotations` (Schicht 3)? Wenn nicht: Liste in "
+            f"tests/test_cities_guards.py ergänzen und im Pull Request begründen.")
+        fehlt = erlaubt - ist
+        assert not fehlt, (
+            f"Spalte(n) {sorted(fehlt)} fehlen in {tabelle} — Liste veraltet oder "
+            f"Migration vergessen.")
+        verdaechtig = [s for s in ist for w in MEINUNGS_WOERTER if w in s.lower()]
+        assert not verdaechtig, (
+            f"Spalte(n) {verdaechtig} in {tabelle} klingen nach einer Bewertung. "
+            f"Bewertungen gehören in `annotations`.")
+
+
+def test_kein_person_objekt(store):
+    """Ratsmitglieder anderer Städte gehören nicht in unsere Datenbank.
+
+    Für die Frage „welche Fraktion" reicht die Organisation; dieselbe Linie
+    zieht ``council/stammdaten.py`` für Oldenburg (pe0051 trägt Privatadresse
+    und Telefon).
+    """
+    tabellen = {r[0] for r in store._conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'")}
+    assert not [t for t in tabellen if "person" in t.lower() or "member" in t.lower()]
+
+    for pfad in CITIES_DIR.rglob("*.py"):
+        quelle = pfad.read_text(encoding="utf-8")
+        # Kommentare und Docstrings dürfen das Wort erklären; Code nicht.
+        ohne_kommentare = re.sub(r"#.*", "", quelle)
+        ohne_kommentare = re.sub(r'""".*?"""', "", ohne_kommentare, flags=re.S)
+        treffer = re.findall(r"originatorPerson|oparl:Person|\bpersons?\b", ohne_kommentare, re.I)
+        assert not treffer, (
+            f"{pfad.name} greift auf Personen zu ({set(treffer)}). "
+            f"Der Städte-Speicher speichert keine Personen — siehe docs/vorschlag-staedte-speicher.md § 7.")
+
+
+def test_registry_ist_vollstaendig():
+    for body in registry.BODIES.values():
+        assert body.dialect in registry.DIALECTS, f"{body.id}: unbekannter Dialekt {body.dialect}"
+        if body.dialect != "oldenburg":
+            assert body.system_url, f"{body.id}: aktive Stadt ohne Endpunkt"
+            assert body.system_url.startswith("https://"), f"{body.id}: Endpunkt ohne TLS"
+        assert re.fullmatch(r"[a-z0-9_-]+", body.id), f"{body.id}: Slug mit Sonderzeichen"
+        assert body.id == body.id.lower()
+        assert len(body.state) == 2, f"{body.id}: Bundesland-Kürzel erwartet"
+    assert "oldenburg" in registry.BODIES, "Oldenburg gehört als Stadt Nummer null in den Speicher"
+    assert registry.BODIES["oldenburg"].active, "Ohne Oldenburg ist kein Vergleich symmetrisch"
+    ids = [b.id for b in registry.active_bodies()]
+    assert len(ids) == len(set(ids))
+
+
+def test_rohablage_wird_nicht_veraendert():
+    """Schicht 0 ist append-only — kein UPDATE, kein DELETE auf ``raw_*``."""
+    for pfad in CITIES_DIR.rglob("*.py"):
+        quelle = pfad.read_text(encoding="utf-8")
+        treffer = re.findall(r"(?:UPDATE|DELETE\s+FROM)\s+raw_\w+", quelle, re.I)
+        assert not treffer, (
+            f"{pfad.name} verändert die Rohablage ({treffer}). Sie ist append-only: "
+            f"Ein geändertes Objekt bekommt eine neue Zeile, damit die Geschichte "
+            f"eines Vorgangs erhalten bleibt.")

@@ -11,6 +11,7 @@ from .security import decode_access_token
 
 from kern import roles as rollen
 from kern.store import Store
+from council.cities.store import CitiesStore
 from council.store import CouncilStore
 
 
@@ -26,6 +27,18 @@ def get_store() -> Iterator[Store]:
 def get_council_store() -> Iterator[CouncilStore]:
     settings = get_settings()
     store = CouncilStore(settings.council_db)
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def get_cities_store() -> Iterator[CitiesStore]:
+    """Der Städte-Speicher. Legt die Datei leer an, wenn es sie nicht gibt —
+    ein Endpunkt, der ihn liest, antwortet dann mit leeren Listen statt mit
+    einem Fehler."""
+    settings = get_settings()
+    store = CitiesStore(settings.cities_db)
     try:
         yield store
     finally:
