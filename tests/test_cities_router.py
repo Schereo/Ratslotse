@@ -137,3 +137,32 @@ def test_ohne_ergebnis_bleibt_das_feld_none(client, cities_db):
     Der Block zeigt dann keine Ergebnis-Marke statt einer leeren."""
     daten = client.get("/api/council/decision/1/elsewhere").json()
     assert all(i["outcome"] == "none" for i in daten["items"])
+
+
+def test_zufallsnahe_treffer_werden_nicht_gezeigt(client, cities_db):
+    """Der Median der Ähnlichkeit zweier BELIEBIGER Verwaltungstexte liegt bei
+    0,70. Darunter ist ein Treffer nicht besser als Zufall — er sieht nur so
+    aus, weil er auf einer Liste steht. Gemessen: „Verschwiegenheitspflicht
+    kommunaler Aufsichtsräte" stand bei 0,570 unter dem Klimakonzept."""
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("os:p:3", "osnabrueck", "Verschwiegenheitspflicht kommunaler Aufsichtsräte")]))
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:1", 0.86), ("paper", "os:p:3", 0.57)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1"]
+
+
+def test_dieselbe_sache_zweimal_kostet_nur_einen_platz(client, cities_db):
+    """Magdeburg führt „Projekt Nachtengel" als Antrag UND als Vorlage. Zwei
+    Zeilen mit demselben Titel sagen nicht mehr als eine."""
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("os:p:4", "osnabrueck", "Kommunale Wärmeplanung", date="2026-04-01"),
+        Paper("bs:p:1", "braunschweig", "Kommunale Wärmeplanung", date="2026-03-01")]))
+    cities_db.upsert_body(Body("braunschweig", "Braunschweig", "NI", "allris4"))
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:1", 0.86), ("paper", "os:p:4", 0.84),
+                                 ("paper", "bs:p:1", 0.82)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    # Osnabrück nur einmal — Braunschweig bleibt, es ist eine andere Stadt.
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1", "bs:p:1"]
+    assert daten["bodies"] == ["Braunschweig", "Osnabrück"]

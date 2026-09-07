@@ -74,6 +74,22 @@ router = APIRouter(prefix="/api/council", tags=["council"])
 #: eine Handvoll liest niemand, und die Nähe fällt danach spürbar ab.
 ELSEWHERE_LIMIT = 6
 
+#: Unter dieser Nähe wird nichts mehr gezeigt. Die Zahl ist nicht geraten: Der
+#: Median der Ähnlichkeit ZWEIER BELIEBIGER deutscher Verwaltungstexte liegt
+#: bei 0,70 (`council/cities/index.py`). Ein Treffer darunter ist damit nicht
+#: besser als Zufall — er sieht nur so aus, weil er auf einer Liste steht.
+#:
+#: Der Index schreibt seine Kanten weiterhin ab 0,55; die Schwelle hier gilt
+#: nur fürs Anzeigen, damit eine spätere Auswertung den vollen Bestand behält.
+#:
+#: Gemessen am Bestand: Beim Klimakonzept (9286) stand sonst
+#: „Verschwiegenheitspflicht kommunaler Aufsichtsräte" bei 0,570 in der Liste,
+#: und „Sozial gerechte Bodennutzung" (9253) bekam sechs Münsteraner Vorlagen
+#: zwischen 0,63 und 0,66, von denen keine mit der Sache zu tun hat. Der Preis
+#: ist ein gelegentlich verlorener guter Treffer knapp darunter — ein leerer
+#: Block ist ehrlicher als ein voller aus Zufallstreffern.
+ELSEWHERE_MIN_SCORE = 0.70
+
 #: Der Haushalts-Bereich ist Ratsmitgliedern (und Admins) vorbehalten — 20
 #: Routen unter ``/budget…``, eine Dependency für alle. Wer eine neue anlegt,
 #: nimmt DIESE hier und nicht ``require_active``; ``tests/test_rollen.py``
@@ -1823,11 +1839,20 @@ def decision_elsewhere(
                                limit=ELSEWHERE_LIMIT + 4)
 
     items: list[ElsewhereItem] = []
+    gesehen: set[tuple[str, str]] = set()
     for t in treffer:
         if len(items) >= ELSEWHERE_LIMIT:
             break
-        if not t.get("body_id"):
+        if not t.get("body_id") or float(t["score"]) < ELSEWHERE_MIN_SCORE:
             continue
+        # Dieselbe Sache zweimal aus derselben Stadt kostet nur einen Platz:
+        # Magdeburg führt „Projekt Nachtengel" als Antrag UND als Vorlage.
+        # Verschiedene Titel bleiben (Osnabrücks Antrag und der
+        # Änderungsantrag dazu sind zwei Nachrichten, keine Dublette).
+        schluessel = (t["body_id"], (t.get("name") or "").strip().casefold())
+        if schluessel in gesehen:
+            continue
+        gesehen.add(schluessel)
         annotation = (cities.annotation("paper", t["b_id"], ann.key, ann.version) or {}).get("payload", {})
         # Formalvorgänge fliegen raus — die Einordnung sagt selbst, dass sie
         # nirgendwohin übertragbar sind. Gemessen am Klimakonzept-Beschluss
