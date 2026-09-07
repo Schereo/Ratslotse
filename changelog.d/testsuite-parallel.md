@@ -2,9 +2,9 @@
 kategorie: geaendert
 ---
 
-**Die Testsuite läuft parallel.** Der Lauf in der CI verteilt sich mit
-`pytest -n auto` auf alle Kerne und braucht statt knapp drei Minuten rund
-eine; lokal fällt er von 1:42 auf 0:35. Möglich wurde das, indem die
+**Die Testsuite läuft parallel.** Der Lauf verteilt sich mit `pytest -n auto`
+auf alle Kerne: In der CI fällt der Testschritt von 4:39 auf 2:15, auf einem
+Zehnkerner von 1:42 auf 0:35. Möglich wurde das, indem die
 Wegwerf-Datenbanken der Backend-Tests nicht mehr von jedem Testmodul einzeln
 über eine Prozessvariable verabredet werden, sondern einmal je Prozess in
 `tests/conftest.py`. Vorher entschied die Import-Reihenfolge, welche Datei

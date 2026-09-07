@@ -2,7 +2,7 @@ pytest>=8.0
 # Verteilt den Lauf auf alle Kerne: `pytest tests/ -n auto`. Voraussetzung ist,
 # dass kein Testmodul mit einem anderen über eine Prozessvariable spricht — die
 # Wegwerf-Datenbanken setzt deshalb `tests/conftest.py` einmal je Prozess (die
-# Begründung steht dort). In der CI spart das rund zwei Drittel der Laufzeit.
+# Begründung steht dort). In der CI halbiert das den Testschritt (4:39 -> 2:15).
 pytest-xdist>=3.8
 responses>=0.25
 # Python-Linter, Auswahl und Begründung stehen in `ruff.toml` (nur „F").

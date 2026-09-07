@@ -55,7 +55,9 @@ jobs:
         run: python scripts/pruefe_typschulden.py
 
       # `-n auto` verteilt den Lauf über pytest-xdist auf alle Kerne des
-      # Runners: aus knapp drei Minuten wird rund eine (lokal 1:42 -> 0:35).
+      # Runners. Gemessen an diesem Schritt: 4:39 seriell, 2:15 parallel —
+      # der Runner hat vier Kerne, mehr als die Hälfte ist damit nicht drin
+      # (auf einem Zehnkerner sind es lokal 1:42 -> 0:35).
       #
       # Bis #1156 stand hier das Gegenteil, und der Grund lag nicht in xdist,
       # sondern in der Suite: Sechzehn Testmodule verabredeten ihre

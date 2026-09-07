@@ -187,8 +187,9 @@ PRUEFUNGEN: list[Pruefung] = [
     Pruefung("strom", "Ereignis-Strom gegen die beiden Client-Parser", schnell=True,
              befehl=[PY, "-m", "pytest", "tests/test_sse_vertrag.py", "-q"],
              braucht=_modul_fehlt("pytest", DEV_INSTALL)),
-    # `-n auto` verteilt den Lauf auf alle Kerne (pytest-xdist): lokal aus
-    # 1:42 gemacht 0:35, in der CI aus knapp drei Minuten eine. Möglich ist das
+    # `-n auto` verteilt den Lauf auf alle Kerne (pytest-xdist): auf einem
+    # Zehnkerner aus 1:42 gemacht 0:35, auf dem Vierkern-Runner der CI aus
+    # 4:39 gemacht 2:15. Möglich ist das
     # erst, seit kein Testmodul mehr über eine Prozessvariable mit einem
     # anderen spricht — die Wegwerf-Datenbanken setzt `tests/conftest.py`
     # einmal je Prozess, die Begründung steht dort.
