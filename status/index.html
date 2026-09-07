@@ -18,6 +18,11 @@
   --schlecht-flaeche:#fef2f2; --schlecht-rahmen:#fecaca; --schlecht:#b91c1c;
   --warn-flaeche:#fffbeb; --warn-rahmen:#fde68a; --warn:#92400e;
   --schatten:0 1px 2px rgba(0,0,0,.04);
+  /* Bewegung: vier Takte, vier Kurven — dieselben wie in der App
+     (DESIGNSPRACHE.md §7, app/globals.css). Hier gebraucht wird der
+     kürzeste: „Zustand unter dem Finger". */
+  --takt-tipp:120ms; --takt-fluss:180ms;
+  --ease-out-strong:cubic-bezier(0.23,1,0.32,1);
 }
 @media (prefers-color-scheme:dark){
   :root{
@@ -68,14 +73,55 @@ h1{font-family:"Bricolage Grotesque",Inter,sans-serif; font-weight:700;
    Zeitachse endet. Und gedeckelt, damit zwei Messungen nicht als zwei
    Riesenflächen dastehen — sie sollen wie zwei Striche aussehen. */
 .streifen{display:flex; justify-content:flex-end; gap:3px; align-items:flex-end;
-          height:44px; margin:14px 0 8px}
-.balken{flex:1 1 0; min-width:0; max-width:12px; border-radius:3px;
-        background:var(--trenner); height:100%}
+          height:44px; margin:14px 0 8px; padding-top:6px;
+          /* Auf dem Telefon liegt der Streifen mitten im Scrollweg. `pan-y`
+             sagt dem Browser, dass er senkrechtes Wischen behalten darf —
+             sonst klebt der Finger an der Ablesung statt zu scrollen. */
+          touch-action:pan-y}
+.balken{
+  flex:1 1 0; min-width:0; max-width:12px; border-radius:3px;
+  background:var(--trenner); height:100%; cursor:default;
+  /* Nur transform und opacity — alles andere ruckelt auf dem Telefon. */
+  transition:transform var(--takt-tipp) var(--ease-out-strong),
+             opacity var(--takt-tipp) var(--ease-out-strong);
+}
 .balken.gut{background:color-mix(in srgb,var(--gut) 55%,transparent)}
 .balken.schlecht{background:var(--schlecht)}
-.streifen-fuss{display:flex; justify-content:space-between;
+/* Der Zeigefinger hebt EINEN Balken heraus und nimmt den anderen Gewicht.
+   Das erklärt einen Zusammenhang — „von diesem hier ist gerade die Rede" —
+   und ist damit keine Zierde.
+
+   Gesteuert über eine Klasse und NICHT über `:hover`: Auf dem Telefon gibt es
+   kein `:hover`, dort bliebe das Abdunkeln sonst aus und die Berührung hätte
+   eine andere Wirkung als der Mauszeiger. Eine Grammatik, zwei Eingabearten. */
+.streifen.liest .balken{opacity:.4}
+.streifen .balken.wach{opacity:1; transform:translateY(-5px) scaleX(1.4)}
+
+/* Die Ableseleiste. Ohne Zeigefinger die Zeitachse, mit ihm die eine
+   Messung — an derselben Stelle, damit nichts springt und nichts überdeckt
+   wird. Feste Höhe, weil sonst die Karte beim Hovern zuckt. */
+.streifen-fuss{position:relative; height:15px;
                font-family:"IBM Plex Mono",ui-monospace,monospace;
                font-size:10px; color:var(--muted); letter-spacing:.04em}
+.achse,.ablesung{position:absolute; inset:0; display:flex; align-items:center;
+                 transition:opacity var(--takt-tipp) var(--ease-out-strong)}
+.achse{justify-content:space-between}
+.ablesung{justify-content:center; gap:7px; opacity:0; pointer-events:none}
+.streifen-fuss.liest .achse{opacity:0}
+.streifen-fuss.liest .ablesung{opacity:1}
+.ablesung .wann{color:var(--text); font-weight:500}
+.ablesung .urteil{display:inline-flex; align-items:center; gap:5px;
+                  font-family:Inter,system-ui,sans-serif; font-size:11px;
+                  font-weight:600; letter-spacing:0}
+.ablesung .urteil::before{content:""; width:7px; height:7px; border-radius:9999px}
+.ablesung .urteil.gut{color:var(--gut)}
+.ablesung .urteil.gut::before{background:var(--gut)}
+.ablesung .urteil.schlecht{color:var(--schlecht)}
+.ablesung .urteil.schlecht::before{background:var(--schlecht)}
+@media (prefers-reduced-motion:reduce){
+  .balken,.achse,.ablesung{transition:none}
+  .streifen .balken.wach{transform:none}
+}
 h3{font-family:"Bricolage Grotesque",Inter,sans-serif; font-weight:600;
    font-size:15px; margin:0 0 10px}
 .liste{list-style:none; margin:0; padding:0}
@@ -107,9 +153,15 @@ a:hover{text-decoration:underline}
       <span class="pille warn" id="quote">–</span>
     </div>
     <div class="streifen" id="streifen"></div>
-    <div class="streifen-fuss">
-      <span id="von">früher</span>
-      <span id="bis">jetzt</span>
+    <div class="streifen-fuss" id="fuss">
+      <div class="achse">
+        <span id="von">früher</span>
+        <span id="bis">jetzt</span>
+      </div>
+      <div class="ablesung">
+        <span class="wann" id="ablesung-wann"></span>
+        <span class="urteil" id="ablesung-urteil"></span>
+      </div>
     </div>
   </div>
 
@@ -139,6 +191,11 @@ const ANZAHL = 60;
 const el = (id) => document.getElementById(id);
 const zeit = (iso) => new Date(iso).toLocaleString("de-DE",
   {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+// Für die Ableseleiste ausgeschrieben: Wochentag und Datum stehen dabei, weil
+// „18:43" allein nicht sagt, ob es heute war.
+const zeitLang = (iso) => new Date(iso).toLocaleString("de-DE",
+  {weekday:"short", day:"2-digit", month:"2-digit", year:"numeric",
+   hour:"2-digit", minute:"2-digit"}) + " Uhr";
 
 function setze(lage, unterzeile, art) {
   el("lage").textContent = lage;
@@ -187,14 +244,62 @@ async function laden() {
   streifen.innerHTML = "";
   [...laeufe].reverse().forEach(r => {
     const b = document.createElement("div");
-    b.className = "balken " + (r.conclusion === "success" ? "gut" : "schlecht");
-    b.title = zeit(r.updated_at) + " — "
-            + (r.conclusion === "success" ? "erreichbar" : "nicht erreichbar");
+    const gut = r.conclusion === "success";
+    b.className = "balken " + (gut ? "gut" : "schlecht");
+    // `aria-label` statt `title`: Der native Tooltip käme sonst mit Verzögerung
+    // ZUSÄTZLICH zur Ableseleiste. Vorgelesen wird es weiterhin.
+    b.setAttribute("aria-label", zeitLang(r.updated_at) + ", "
+      + (gut ? "erreichbar" : "nicht erreichbar"));
+    b.dataset.wann = zeitLang(r.updated_at);
+    b.dataset.gut = gut ? "1" : "";
     streifen.appendChild(b);
   });
   el("von").textContent = zeit(laeufe[laeufe.length - 1].updated_at);
   el("bis").textContent = zeit(neueste.updated_at);
 }
+
+// Ablesen. Über Delegation am Streifen, damit es jedes Neuladen der Daten
+// überlebt — die Balken werden dabei neu gebaut.
+const streifenEl = el("streifen");
+const fuss = el("fuss");
+
+function ablesen(balken) {
+  if (!balken || !balken.dataset.wann) return;
+  streifenEl.querySelectorAll(".balken.wach").forEach(b => b.classList.remove("wach"));
+  balken.classList.add("wach");
+  streifenEl.classList.add("liest");
+  el("ablesung-wann").textContent = balken.dataset.wann;
+  const urteil = el("ablesung-urteil");
+  const gut = !!balken.dataset.gut;
+  urteil.textContent = gut ? "erreichbar" : "nicht erreichbar";
+  urteil.className = "urteil " + (gut ? "gut" : "schlecht");
+  fuss.classList.add("liest");
+}
+
+function loslassen() {
+  streifenEl.querySelectorAll(".balken.wach").forEach(b => b.classList.remove("wach"));
+  streifenEl.classList.remove("liest");
+  fuss.classList.remove("liest");
+}
+
+function zeigen(e) {
+  const b = e.target.closest(".balken");
+  if (b) ablesen(b); else loslassen();
+}
+// Beides: `pointermove` ist der Normalfall, `mousemove` fängt Umgebungen ab,
+// die keine Pointer-Ereignisse schicken (manche Automatisierung tut das nicht).
+// Doppelt ausgelöst schadet nichts, `ablesen` setzt nur denselben Zustand.
+streifenEl.addEventListener("pointermove", zeigen);
+streifenEl.addEventListener("mousemove", zeigen);
+streifenEl.addEventListener("pointerleave", loslassen);
+streifenEl.addEventListener("mouseleave", loslassen);
+// Auf dem Telefon gibt es keinen Zeigefinger, der schwebt: Dort hält die
+// Berührung die Ablesung, bis der Finger weg ist. KEIN preventDefault —
+// sonst bliebe das Wischen an der Karte hängen statt zu scrollen; wer scrollt,
+// löst `pointercancel` aus und die Ablesung geht von selbst wieder zu.
+streifenEl.addEventListener("pointerdown", zeigen);
+streifenEl.addEventListener("pointerup", loslassen);
+streifenEl.addEventListener("pointercancel", loslassen);
 
 laden();
 setInterval(laden, 60000);
