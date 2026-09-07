@@ -110,7 +110,7 @@ def test_jede_genannte_mediendatei_existiert():
             for medium in (h.media, h.media_ios):
                 if not medium:
                     continue
-                for feld in ("src", "src_dark", "poster", "poster_dark"):
+                for feld in ("src", "poster"):
                     pfad = getattr(medium, feld)
                     if pfad and not (wurzel / pfad.lstrip("/")).exists():
                         fehlend.append(f"{release.version} · {h.title} · {feld}: {pfad}")
@@ -140,7 +140,7 @@ def test_only_kennt_nur_zwei_werte():
 
 
 def test_ein_nur_web_highlight_erscheint_in_der_app_nicht():
-    web = releases.Media(kind="image", src="/w.webp", src_dark="/wd.webp", alt="web" * 8)
+    web = releases.Media(kind="image", src="/w.webp", alt="web" * 8)
     beide = releases.Highlight("Überall", "…", "/dashboard", media=web)
     nur_web = releases.Highlight("Nur Browser", "…", "/fragen", media=web,
                                  only=releases.NUR_WEB)
@@ -168,8 +168,8 @@ def test_die_app_fassung_ist_ganz_oder_gar_nicht():
 
 def test_die_app_bekommt_ihre_eigenen_bilder_wenn_es_sie_gibt():
     """Die Auswahl fällt serverseitig; ohne App-Fassung ist Web der Rückfall."""
-    web = releases.Media(kind="image", src="/w.webp", src_dark="/wd.webp", alt="web" * 8)
-    app = releases.Media(kind="image", src="/i.webp", src_dark="/id.webp", alt="app" * 8)
+    web = releases.Media(kind="image", src="/w.webp", alt="web" * 8)
+    app = releases.Media(kind="image", src="/i.webp", alt="app" * 8)
     nur_web = releases.Highlight("A", "…", "/dashboard", media=web)
     beides = releases.Highlight("B", "…", "/dashboard", media=web, media_ios=app)
     assert releases.media_for(beides, "ios") is app
@@ -200,13 +200,12 @@ def test_alle_medien_einer_ausgabe_teilen_ein_seitenverhaeltnis():
 
 def test_ein_clip_bringt_sein_standbild_mit():
     """``prefers-reduced-motion`` zeigt das Standbild STATT des Clips — ohne
-    Poster bliebe die Bühne dort leer. Und beide Helligkeiten, sonst blendet
-    ein weißes Bild in der dunklen Karte."""
+    Poster bliebe die Bühne dort leer."""
     for release in releases.RELEASES:
         for h in release.highlights:
             for medium in (h.media, h.media_ios):
                 if medium and medium.kind == "video":
-                    assert medium.poster and medium.poster_dark, (
+                    assert medium.poster, (
                         f"{release.version} · {h.title}: Clip ohne Standbild.")
 
 

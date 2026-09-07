@@ -96,39 +96,25 @@ function Medium({ media, aktiv }: { media: NonNullable<Highlight["media"]>; akti
 
   if (media.kind === "video" && !ruhig) {
     return (
-      <>
-        {/* `key` am aktiven Index: Beim Wechsel startet der Clip von vorn,
-            statt in der Mitte weiterzulaufen. */}
-        <video
-          key={aktiv ? "an" : "aus"}
-          className={cn(gemeinsam, "dark:hidden")}
-          poster={media.poster ?? undefined}
-          src={media.src}
-          autoPlay muted loop playsInline preload="metadata"
-          aria-label={media.alt}
-        />
-        <video
-          className={cn(gemeinsam, "hidden dark:block")}
-          poster={media.poster_dark ?? undefined}
-          src={media.src_dark}
-          autoPlay muted loop playsInline preload="metadata"
-          aria-label={media.alt}
-        />
-      </>
+      // `key` am aktiven Index: Beim Wechsel startet der Clip von vorn, statt
+      // in der Mitte weiterzulaufen.
+      <video
+        key={aktiv ? "an" : "aus"}
+        className={gemeinsam}
+        poster={media.poster ?? undefined}
+        src={media.src}
+        autoPlay muted loop playsInline preload="metadata"
+        aria-label={media.alt}
+      />
     );
   }
   // Bild — und bei abgeschalteter Bewegung auch das Standbild des Clips.
-  const hell = media.kind === "video" ? (media.poster ?? media.src) : media.src;
-  const dunkel = media.kind === "video" ? (media.poster_dark ?? media.src_dark) : media.src_dark;
+  const quelle = media.kind === "video" ? (media.poster ?? media.src) : media.src;
   return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- die Maße stehen
-          erst zur Laufzeit fest (Registry), und `next/image` bringt für vier
-          statische Dateien im Export nichts. */}
-      <img src={hell} alt={media.alt} className={cn(gemeinsam, "dark:hidden")} loading="lazy" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={dunkel} alt="" aria-hidden className={cn(gemeinsam, "hidden dark:block")} loading="lazy" />
-    </>
+    // eslint-disable-next-line @next/next/no-img-element -- die Maße stehen
+    // erst zur Laufzeit fest (Registry), und `next/image` bringt für vier
+    // statische Dateien im Export nichts.
+    <img src={quelle} alt={media.alt} className={gemeinsam} loading="lazy" />
   );
 }
 

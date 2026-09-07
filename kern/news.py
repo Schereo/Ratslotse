@@ -66,9 +66,7 @@ def body_html(release: Release) -> str:
     ]
     for h in release.highlights:
         # Dasselbe Bild wie auf der Karte, nur eben still: Ein Clip liefe in
-        # keinem Postfach, sein Standbild schon. Immer die HELLE Fassung —
-        # Mail-Programme schalten Bilder nicht nach Helligkeit um, und ein
-        # dunkles Bild in einer hellen Mail wäre der häufigere Irrtum.
+        # keinem Postfach, sein Standbild schon.
         bild = ""
         if h.media:
             quelle = h.media.poster if h.media.kind == "video" else h.media.src

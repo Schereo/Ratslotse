@@ -424,21 +424,20 @@ class SetupState(TypedDict):
 class ReleaseMedia(TypedDict):
     """Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
 
-    Zwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit
-    gefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte
-    blendet. ``poster`` steht nur bei ``kind == "video"`` und ist zugleich das,
-    was bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+    Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+    den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+    einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+    nur bei ``kind == "video"`` und ist zugleich das, was bei
+    ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
     """
     kind: str
     src: str
-    src_dark: str
     alt: str
     #: Seitenverhältnis als CSS-Wert — im Browser querformatige Fenster
     #: (``16/9``), in der App hochkante Telefon-Bildschirme (``9/16``). Die
     #: Bühne baut ihren Rahmen daraus, statt ihn zu raten.
     aspect: str
     poster: str | None
-    poster_dark: str | None
 
 
 class ReleaseHighlight(TypedDict):

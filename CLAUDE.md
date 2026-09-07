@@ -573,7 +573,8 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   den Fragmenten vor. **Nur die großen Sachen** — höchstens vier, jede mit
   einem Ziel in der App, Patch-Versionen gar keine (`tests/test_releases.py`
   hält das). Jedes Highlight bringt eine **echte Aufnahme** aus der App mit
-  (`web/frontend/public/neuigkeiten/<version>/`, hell und dunkel, 16:9) — die
+  (`web/frontend/public/neuigkeiten/<version>/`, immer hell; im Browser
+  16:9, in der App das ganze Telefon) — die
   Karte ist eine Bühne zum Blättern, keine Stichpunktliste. Verschickt wird von
   Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:
   Ausliefern und Ankündigen sind zwei Entscheidungen.

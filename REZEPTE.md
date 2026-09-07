@@ -139,8 +139,10 @@ Die drei Dinge, die man dabei vergisst:
    *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
 
    **Dazu je Highlight ein Bild** (oder ein kurzer Clip) nach
-   `web/frontend/public/neuigkeiten/<version>/`, hell **und** dunkel, alle im
-   **16:9-Rahmen** — die Bühne blättert sonst durch verschieden hohe Kästen.
+   `web/frontend/public/neuigkeiten/<version>/`, **immer in der hellen
+   Fassung** (Tims Entscheidung 07.09.2026 — eine zweite für den Dunkelmodus
+   wäre doppelte Arbeit je Ausgabe, und ein Bild in einem gerahmten Kasten
+   liest sich ohnehin als Abbildung), alle im **16:9-Rahmen** — die Bühne blättert sonst durch verschieden hohe Kästen.
    Aufgenommen wird die laufende lokale App mit echten Daten (Playwright über
    das installierte Chrome, `deviceScaleFactor: 2`, Ausschnitt um das Element
    herum auf 16:9 erweitert; Bilder als WebP ≤ 1600 px, Clips als stummes
@@ -152,7 +154,9 @@ Die drei Dinge, die man dabei vergisst:
 
    **Für die App dieselben Bilder aus der App** (`media_ios`, Tims Wunsch
    07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im
-   Simulator gegen das lokale Backend:
+   Simulator gegen das lokale Backend, **ganzes Telefon, nichts
+   beschnitten** — ein zurechtgeschnittener Bildschirm sieht nicht mehr nach
+   iPhone aus:
 
    ```bash
    xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
@@ -168,7 +172,7 @@ Die drei Dinge, die man dabei vergisst:
 
    * `RATSLOTSE_DEBUG_ROUTE` ist ein **Deep-Link**, kein App-Screen: `/abos`
      landet im Web-View. Native Screens werden getippt.
-   * **Hell/dunkel geht nur über Mehr → Konto → Erscheinungsbild**,
+   * **Auf Hell stellen geht nur über Mehr → Konto → Erscheinungsbild**,
      `simctl ui appearance` wirkt auf die App nicht.
    * Ein Start aus Safari lässt „◀ Safari" in der Statusleiste stehen; vor der
      Aufnahme Safari beenden und `simctl status_bar … override` setzen.
@@ -176,10 +180,17 @@ Die drei Dinge, die man dabei vergisst:
      auf heute ziehen und eine Zeile in `council_live_state` legen —
      **hinterher zurückdrehen**.
 
-   **Die App-Aufnahmen sind hochkant** (`aspect="9/16"`, Tims Vorgabe
-   07.09.2026): Ein Telefon-Bildschirm in einem 16:9-Kasten stünde als schmaler
-   Streifen zwischen zwei leeren Flächen. Die Bühne baut ihren Rahmen aus dem
-   Feld, alle Medien einer Ausgabe teilen sich eines.
+   **Die App-Aufnahmen sind hochkant und ungeschnitten** (`aspect` =
+   Bildschirmmaß, Tims Vorgabe 07.09.2026): Ein Telefon-Bildschirm in einem
+   16:9-Kasten stünde als schmaler Streifen zwischen zwei leeren Flächen, und
+   ein oben und unten beschnittener sieht nicht mehr nach iPhone aus. Die Bühne
+   baut ihren Rahmen aus dem Feld, alle Medien einer Ausgabe teilen sich eines.
+
+   **Was der Simulator NICHT kann:** Im Teilen-Blatt steht dort nur
+   „Erinnerungen" — kein Messenger meldet sich als Ziel an (Messages ist
+   installiert, bietet im Simulator aber keine Teilen-Erweiterung). Wer den
+   Weg „an jemanden schicken" zeigen will, filmt diese Sekunden auf einem
+   echten iPhone.
 
    Für einen App-Clip: `xcrun simctl io <UDID> recordVideo`, danach **erst auf
    feste 30 fps normalisieren** (`-vf fps=30`) — die Zeitangaben der

@@ -9175,10 +9175,11 @@ export interface components {
              * ReleaseMedia
              * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
              *
-             *     Zwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit
-             *     gefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte
-             *     blendet. ``poster`` steht nur bei ``kind == "video"`` und ist zugleich das,
-             *     was bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+             *     Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+             *     den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+             *     einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+             *     nur bei ``kind == "video"`` und ist zugleich das, was bei
+             *     ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
              */
             media: {
                 /** Alt */
@@ -9189,12 +9190,8 @@ export interface components {
                 kind: string;
                 /** Poster */
                 poster: string | null;
-                /** Poster Dark */
-                poster_dark: string | null;
                 /** Src */
                 src: string;
-                /** Src Dark */
-                src_dark: string;
             } | null;
             /** Text */
             text: string;
@@ -9207,10 +9204,11 @@ export interface components {
          * ReleaseMedia
          * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
          *
-         *     Zwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit
-         *     gefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte
-         *     blendet. ``poster`` steht nur bei ``kind == "video"`` und ist zugleich das,
-         *     was bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+         *     Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+         *     den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+         *     einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+         *     nur bei ``kind == "video"`` und ist zugleich das, was bei
+         *     ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
          */
         ReleaseMedia: {
             /** Alt */
@@ -9221,12 +9219,8 @@ export interface components {
             kind: string;
             /** Poster */
             poster: string | null;
-            /** Poster Dark */
-            poster_dark: string | null;
             /** Src */
             src: string;
-            /** Src Dark */
-            src_dark: string;
         };
         /** ReleaseNews */
         ReleaseNews: {
@@ -15702,4 +15696,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 80d6a580092e6658fbac384767cb24844442419a4f5032879447407f9a5ba563
+// vertrag-sha256: 97f835d1de8fa17c172d732986fdd47c204503b90f059fb26e5d069aaf6f5d22

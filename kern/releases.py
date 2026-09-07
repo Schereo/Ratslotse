@@ -62,10 +62,12 @@ NUR_NATIVE = "native"
 class Media:
     """Das Bild oder der Clip zu einem Highlight.
 
-    **Zwei Fassungen, hell und dunkel.** Eine Aufnahme der Oberfläche ist
-    immer in der Helligkeit gefangen, in der sie entstand; ein weißes Bild in
-    der dunklen Karte blendet. Die Karte tauscht sie über die ``dark:``-Regel,
-    ohne JavaScript.
+    **Immer in der hellen Fassung aufgenommen** (Tims Entscheidung
+    07.09.2026). Vorher gab es jede Aufnahme zweimal, hell und dunkel, und die
+    Karte tauschte sie über die ``dark:``-Regel. Das war doppelte Arbeit bei
+    jeder Ausgabe und doppelte Ablage für einen Unterschied, den ein Bild in
+    einem gerahmten Kasten ohnehin verträgt: Es liest sich als Abbildung, nicht
+    als Loch in der Oberfläche.
 
     Die Dateien liegen unter ``web/frontend/public/neuigkeiten/<version>/``
     und wandern damit auch in den statischen Export der App.
@@ -76,7 +78,6 @@ class Media:
     #: ``image`` (WebP) oder ``video`` (MP4, stumm, in Schleife).
     kind: str
     src: str
-    src_dark: str
     #: Was zu sehen ist — für Screenreader und für den Fall, dass nichts lädt.
     alt: str
     #: Das Seitenverhältnis als CSS-Wert (``"16/9"``, ``"9/16"``). Die Bühne
@@ -91,7 +92,6 @@ class Media:
     #: Nur bei ``video``: das Standbild, bis der Clip läuft. Es ist zugleich
     #: das, was bei ``prefers-reduced-motion`` STATT des Clips steht.
     poster: str | None = None
-    poster_dark: str | None = None
 
 
 @dataclass(frozen=True)
@@ -165,11 +165,18 @@ RELEASES: tuple[Release, ...] = (
                 url="/council?tab=sessions",
                 media=Media(
                     kind="video",
-                    src="/neuigkeiten/2.2.0/teilen.mp4", src_dark="/neuigkeiten/2.2.0/teilen-dunkel.mp4",
-                    poster="/neuigkeiten/2.2.0/teilen.webp", poster_dark="/neuigkeiten/2.2.0/teilen-dunkel.webp",
+                    src="/neuigkeiten/2.2.0/teilen.mp4",
+                    poster="/neuigkeiten/2.2.0/teilen.webp",
                     alt="Eine aufgeklappte Tagesordnung; an jeder Zeile ein "
                         "Teilen-Knopf. Einer wird angetippt, es erscheint "
                         "„Link kopiert“.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/teilen-ios.mp4", poster="/neuigkeiten/2.2.0/teilen-ios.webp",
+                    alt="Dieselbe Tagesordnung auf dem iPhone: ein Tipp auf das "
+                        "Teilen-Zeichen an einem Punkt öffnet das Teilen-Blatt "
+                        "von iOS.",
                 ),
             ),
             Highlight(
@@ -180,9 +187,15 @@ RELEASES: tuple[Release, ...] = (
                 url="/abos",
                 media=Media(
                     kind="image",
-                    src="/neuigkeiten/2.2.0/kalender.webp", src_dark="/neuigkeiten/2.2.0/kalender-dunkel.webp",
+                    src="/neuigkeiten/2.2.0/kalender.webp",
                     alt="Die Karte „Im Kalender abonnieren“ mit den Knöpfen "
                         "„Kalender abonnieren“ und „Link kopieren“.",
+                ),
+                media_ios=Media(
+                    kind="image", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/kalender-ios.webp",
+                    alt="Der Bildschirm „Ausschuss-Abos“ auf dem iPhone mit der "
+                        "aufgeklappten Karte „Im Kalender abonnieren“.",
                 ),
             ),
             Highlight(
@@ -193,7 +206,7 @@ RELEASES: tuple[Release, ...] = (
                 url="/fragen",
                 media=Media(
                     kind="image",
-                    src="/neuigkeiten/2.2.0/glossar.webp", src_dark="/neuigkeiten/2.2.0/glossar-dunkel.webp",
+                    src="/neuigkeiten/2.2.0/glossar.webp",
                     alt="Im Text ist „Messbetrag“ gepunktet unterstrichen; "
                         "darunter steht die Erklärung des Begriffs.",
                 ),
@@ -210,9 +223,15 @@ RELEASES: tuple[Release, ...] = (
                 url="/dashboard",
                 media=Media(
                     kind="image",
-                    src="/neuigkeiten/2.2.0/live.webp", src_dark="/neuigkeiten/2.2.0/live-dunkel.webp",
+                    src="/neuigkeiten/2.2.0/live.webp",
                     alt="Die Live-Karte: „Der Stadtrat tagt gerade“, dazu "
                         "der laufende Tagesordnungspunkt und wer spricht.",
+                ),
+                media_ios=Media(
+                    kind="image", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/live-ios.webp",
+                    alt="Die Startseite der App mit der Live-Karte: „Der "
+                        "Stadtrat tagt gerade“ samt laufendem Punkt.",
                 ),
             ),
         ),
@@ -346,8 +365,8 @@ def as_dict(release: Release, client: str = "web") -> dict:
     def medium(m: Media | None) -> dict | None:
         if m is None:
             return None
-        return {"kind": m.kind, "src": m.src, "src_dark": m.src_dark, "alt": m.alt,
-                "aspect": m.aspect, "poster": m.poster, "poster_dark": m.poster_dark}
+        return {"kind": m.kind, "src": m.src, "alt": m.alt,
+                "aspect": m.aspect, "poster": m.poster}
 
     return {
         "version": release.version,

@@ -11972,7 +11972,7 @@
         "description": "Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.",
         "properties": {
           "media": {
-            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nZwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit\ngefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte\nblendet. ``poster`` steht nur bei ``kind == \"video\"`` und ist zugleich das,\nwas bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
             "properties": {
               "alt": {
                 "title": "Alt",
@@ -11993,30 +11993,17 @@
                   "null"
                 ]
               },
-              "poster_dark": {
-                "title": "Poster Dark",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
               "src": {
                 "title": "Src",
-                "type": "string"
-              },
-              "src_dark": {
-                "title": "Src Dark",
                 "type": "string"
               }
             },
             "required": [
               "kind",
               "src",
-              "src_dark",
               "alt",
               "aspect",
-              "poster",
-              "poster_dark"
+              "poster"
             ],
             "title": "ReleaseMedia",
             "type": [
@@ -12047,7 +12034,7 @@
         "type": "object"
       },
       "ReleaseMedia": {
-        "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nZwei Fassungen, weil eine Aufnahme der Oberfläche immer in der Helligkeit\ngefangen ist, in der sie entstand — ein weißes Bild in der dunklen Karte\nblendet. ``poster`` steht nur bei ``kind == \"video\"`` und ist zugleich das,\nwas bei ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+        "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
         "properties": {
           "alt": {
             "title": "Alt",
@@ -12068,30 +12055,17 @@
               "null"
             ]
           },
-          "poster_dark": {
-            "title": "Poster Dark",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "src": {
             "title": "Src",
-            "type": "string"
-          },
-          "src_dark": {
-            "title": "Src Dark",
             "type": "string"
           }
         },
         "required": [
           "kind",
           "src",
-          "src_dark",
           "alt",
           "aspect",
-          "poster",
-          "poster_dark"
+          "poster"
         ],
         "title": "ReleaseMedia",
         "type": "object"
