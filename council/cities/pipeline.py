@@ -67,7 +67,7 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             zahlen["papers"] += 1
         logger.info("%s: %s Vorlagen", spec.id, zahlen["papers"])
 
-        if with_files:
+        if with_files and spec.fetch_files:
             # Die Dateiliste steht erst nach dem Normalisieren fest; für die
             # Ernte reicht, was in den Rohobjekten steht.
             batch = adapter.normalize(spec.id, raw)
@@ -143,10 +143,19 @@ def extract(main: CitiesStore, files_dir: str | Path, body_id: str | None = None
 
 
 def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> int:
-    """Texte übernehmen, die die Schnittstelle selbst mitliefert (more! rubin)."""
-    if spec.dialect != "rubin":
+    """Texte übernehmen, die schon vorliegen — statt dieselben PDFs erneut zu holen.
+
+    Zwei Fälle: **more! rubin** liefert den Volltext im Dateiobjekt mit, und
+    für **Oldenburg** steht er längst geparst in der Rats-Datenbank.
+    """
+    if spec.dialect == "rubin":
+        from council.cities.adapters.rubin import OPARL_TEXT, RubinAdapter
+        adapter, extraktor = RubinAdapter(), OPARL_TEXT
+    elif spec.dialect == "oldenburg":
+        from council.cities.adapters.oldenburg import EXTRACTOR, OldenburgAdapter
+        adapter, extraktor = OldenburgAdapter(), EXTRACTOR
+    else:
         return 0
-    from council.cities.adapters.rubin import OPARL_TEXT, RubinAdapter
 
     pfad = raw_path_for(raw_dir, spec.id)
     if not pfad.exists():
@@ -154,9 +163,11 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
     raw = CitiesStore(pfad)
     try:
         n = 0
-        for file_id, text in RubinAdapter().inline_texts(raw, spec.id):
-            main.put_text(file_id, OPARL_TEXT, "1", text, None, "ok" if text else "empty")
-            n += 1
+        with main.transaction():
+            for file_id, text in adapter.inline_texts(raw, spec.id):
+                main.put_text(file_id, extraktor, "1", text, None,
+                              "ok" if len(text) > 200 else ("thin" if text else "empty"))
+                n += 1
         return n
     finally:
         raw.close()

@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Wöchentlich: Ratsdokumente der Vergleichsstädte holen — und Oldenburg dazu.
+
+Crontab (Server): ``0 3 * * 0  …/scripts/check_cities.py``
+
+**Warum 60 Tage Rückschau und nicht „seit dem letzten Lauf".** Ergebnisse und
+Beschlussausfertigungen werden Wochen nach der Sitzung nachgetragen; wer nur
+nach vorne schaut, bekommt sie nie. Die Rohablage dedupliziert unveränderte
+Objekte ohnehin, ein zweiter Blick kostet also nur Abrufe, keine Zeilen.
+
+**Oldenburg läuft ohne Zeitfenster und ohne Netz** — der Adapter liest die
+Rats-Datenbank, die der tägliche Protokoll-Cron ohnehin füllt.
+"""
+from __future__ import annotations
+
+import logging
+import os
+import sys
+import time
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+load_dotenv(ROOT / ".env")
+
+from council.cities import default_paths, pipeline  # noqa: E402
+from council.cities.registry import active_bodies  # noqa: E402
+from council.cities.store import CitiesStore  # noqa: E402
+from kern.alerts import run_guarded  # noqa: E402
+
+logger = logging.getLogger("check_cities")
+
+#: Wie weit ein Lauf zurückschaut. Über die Umgebung verstellbar, damit ein
+#: Nachlauf nach einer Panne mehr aufholen kann, ohne dass jemand Code ändert.
+RUECKSCHAU_TAGE = int(os.environ.get("CITIES_SINCE_DAYS", "60"))
+
+
+def main() -> dict:
+    from datetime import date, timedelta
+
+    db, files_dir, raw_dir = default_paths()
+    seit = (date.today() - timedelta(days=RUECKSCHAU_TAGE)).isoformat()
+    # Zahlen und Fehlertexte getrennt: So bleibt der Zähler-Teil ein
+    # sauberes dict[str, int], und die Klartext-Gründe kommen erst am Ende dazu.
+    zaehler = {"bodies": 0, "papers_new": 0, "files_fetched": 0, "files_failed": 0,
+               "texts_new": 0, "errors": 0, "papers_total": 0}
+    gruende: dict[str, str] = {}
+    t0 = time.time()
+
+    main_store = CitiesStore(db)
+    try:
+        vorher = {z["id"]: z["papers"] for z in main_store.stats()}
+        for spec in active_bodies():
+            # Oldenburg kennt kein Zeitfenster: Der Adapter liest ohnehin nur,
+            # was die Rats-Datenbank hergibt, und das ist billig.
+            fenster = None if spec.dialect == "oldenburg" else seit
+            try:
+                ernte = pipeline.fetch(spec, raw_dir, files_dir, fenster)
+                pipeline.normalize(spec, raw_dir, main_store)
+                pipeline.extract_inline(main_store, spec, raw_dir)
+                text = pipeline.extract(main_store, files_dir, spec.id)
+                zaehler["bodies"] += 1
+                zaehler["files_fetched"] += ernte.get("files_fetched", 0)
+                zaehler["files_failed"] += ernte.get("files_failed", 0)
+                zaehler["texts_new"] += text.get("ok", 0) + text.get("thin", 0)
+            except Exception as e:  # noqa: BLE001 — eine Stadt kippt nicht den Lauf
+                zaehler["errors"] += 1
+                gruende[f"error_{spec.id}"] = f"{type(e).__name__}: {e}"
+                logger.warning("%s: %s", spec.id, e)
+
+        nachher = {z["id"]: z["papers"] for z in main_store.stats()}
+        zaehler["papers_new"] = sum(nachher.get(k, 0) - vorher.get(k, 0) for k in nachher)
+        zaehler["papers_total"] = sum(nachher.values())
+    finally:
+        main_store.close()
+
+    zahlen: dict[str, object] = dict(zaehler)
+    zahlen.update(gruende)
+    zahlen["seconds"] = round(time.time() - t0)
+    return zahlen
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    run_guarded("check_cities", main)

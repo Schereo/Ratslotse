@@ -1227,6 +1227,22 @@ class AdminClientShare(TypedDict):
     users: int
 
 
+class CityStats(TypedDict):
+    """Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik)."""
+    id: str
+    name: str
+    state: str
+    ris_vendor: str
+    license: str | None
+    last_fetched: str | None
+    papers: int
+    papers_with_text: int
+    meetings: int
+    agenda_items: int
+    agenda_items_with_outcome: int
+    annotations: int
+
+
 class AdminGrowth(TypedDict):
     users: AdminSeries
     topics: AdminSeries
