@@ -463,6 +463,114 @@ public struct TopicHit: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss
+/// passt — der Block „Anderswo beschlossen".
+///
+/// Alles außer der Kennung ist optional: Die Ratsinformationssysteme der
+/// Städte füllen unterschiedlich viel aus. Münster etwa liefert über OParl
+/// keine Ansichtsseite, also bleibt `web` leer und die Zeile bekommt keinen
+/// Link. Ein nicht-optionales Feld hier hieße: `JSONDecoder` wirft, und der
+/// ganze Abschnitt bleibt leer statt unvollständig.
+public struct ElsewhereItem: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let bodyID: String
+    public let bodyName: String
+    public let paperID: String
+    public let name: String
+    public let reference: String?
+    public let date: String?
+    public let kind: String
+    public let paperTypeRaw: String?
+    public let web: String?
+    /// Kanonisches Ergebnis; `none`, wenn die Stadt keins ausweist — bei rund
+    /// der Hälfte der Tagesordnungspunkte der Normalfall, kein Fehler.
+    public let outcome: String
+    public let outcomeRaw: String?
+    public let score: Double
+    public let summary: String?
+    public let instrument: String?
+    public let transfer: String?
+    public let originator: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, kind, web, outcome, score, summary, instrument, transfer, originator
+        case date, reference
+        case bodyID = "body_id"
+        case bodyName = "body_name"
+        case paperID = "paper_id"
+        case paperTypeRaw = "paper_type_raw"
+        case outcomeRaw = "outcome_raw"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        paperID = try values.decode(String.self, forKey: .paperID)
+        bodyID = try values.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        bodyName = try values.decodeIfPresent(String.self, forKey: .bodyName) ?? bodyID
+        name = try values.decodeIfPresent(String.self, forKey: .name) ?? "Vorlage"
+        reference = try values.decodeIfPresent(String.self, forKey: .reference)
+        date = try values.decodeIfPresent(String.self, forKey: .date)
+        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        paperTypeRaw = try values.decodeIfPresent(String.self, forKey: .paperTypeRaw)
+        web = try values.decodeIfPresent(String.self, forKey: .web)
+        outcome = try values.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
+        outcomeRaw = try values.decodeIfPresent(String.self, forKey: .outcomeRaw)
+        score = try values.decodeIfPresent(Double.self, forKey: .score) ?? 0
+        summary = try values.decodeIfPresent(String.self, forKey: .summary)
+        instrument = try values.decodeIfPresent(String.self, forKey: .instrument)
+        transfer = try values.decodeIfPresent(String.self, forKey: .transfer)
+        originator = try values.decodeIfPresent(String.self, forKey: .originator)
+    }
+
+    public init(bodyID: String, bodyName: String, paperID: String, name: String,
+                reference: String? = nil, date: String? = nil, kind: String = "other",
+                paperTypeRaw: String? = nil, web: String? = nil, outcome: String = "none",
+                outcomeRaw: String? = nil, score: Double = 0, summary: String? = nil,
+                instrument: String? = nil, transfer: String? = nil, originator: String? = nil) {
+        self.bodyID = bodyID
+        self.bodyName = bodyName
+        self.paperID = paperID
+        self.name = name
+        self.reference = reference
+        self.date = date
+        self.kind = kind
+        self.paperTypeRaw = paperTypeRaw
+        self.web = web
+        self.outcome = outcome
+        self.outcomeRaw = outcomeRaw
+        self.score = score
+        self.summary = summary
+        self.instrument = instrument
+        self.transfer = transfer
+        self.originator = originator
+    }
+}
+
+public struct ElsewhereResponse: Codable, Sendable {
+    public let decisionID: Int
+    public let items: [ElsewhereItem]
+    /// Die Städte, aus denen Treffer stammen — für die Zeile „aus X und Y".
+    public let bodies: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case items, bodies
+        case decisionID = "decision_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        decisionID = try values.decodeIfPresent(Int.self, forKey: .decisionID) ?? 0
+        items = try values.decodeIfPresent([ElsewhereItem].self, forKey: .items) ?? []
+        bodies = try values.decodeIfPresent([String].self, forKey: .bodies) ?? []
+    }
+
+    public init(decisionID: Int, items: [ElsewhereItem], bodies: [String]) {
+        self.decisionID = decisionID
+        self.items = items
+        self.bodies = bodies
+    }
+}
+
 public struct DecisionSummary: Codable, Sendable, Hashable, Identifiable {
     public let id: Int
     public let title: String
