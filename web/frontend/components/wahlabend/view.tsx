@@ -206,6 +206,23 @@ function Tafel({
   );
 }
 
+/** Der Hinweis mit festem Platz (Designsprache: nicht wegklickbar, nicht
+ *  aufdringlich): Was zählt, ist die amtliche Präsentation der Stadt — und
+ *  unsere Rechnung kann Fehler haben. */
+function Vorbehalt({ daten }: { daten: Wahlabend }) {
+  return (
+    <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+      <strong className="font-semibold text-foreground">Maßgeblich ist die amtliche Ergebnispräsentation der Stadt.</strong> Die
+      Zahlen hier stammen aus deren Open-Data-Dateien; Sitze, Abstände und Hochrechnung rechnen wir selbst nach dem
+      Kommunalwahlgesetz. Diese Rechnung kann Fehler haben — dann sind auch unsere Zahlen falsch. Im Zweifel gilt, was die
+      Stadt zeigt:{" "}
+      <a href={daten.election.presentation_url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary">
+        zur amtlichen Ergebnispräsentation ↗
+      </a>
+    </p>
+  );
+}
+
 /* ── Listen stadtweit ───────────────────────────────────────────────────── */
 
 function Punkt({ color, dark, className }: { color: string; dark: string; className?: string }) {
@@ -695,6 +712,7 @@ export function WahlabendView() {
           </p>
         ) : null}
         <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
+        <Vorbehalt daten={daten} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
             Gewählt wird am Sonntag, 13. September, die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden

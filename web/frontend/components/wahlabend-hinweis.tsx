@@ -55,7 +55,8 @@ export function WahlabendBanner() {
           <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
             Auszählungsstand, Sitze je Liste und Wahlbereich, und wer nach dem Kommunalwahlgesetz gerade im Rat
             wäre — aus den Open-Data-Zahlen der Stadt, jede Minute neu. Öffentlich, ohne Konto.
-            {laeuft ? "" : " Die Seite steht schon, die Zahlen kommen ab Sonntag 18 Uhr."}
+            {laeuft ? "" : " Die Seite steht schon, die Zahlen kommen ab Sonntag 18 Uhr."} Eigene Rechnung, kein amtliches
+            Ergebnis.
           </p>
         </div>
         <span className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform duration-fluss ease-out-strong sm:ml-auto [@media(hover:hover)]:group-hover:-translate-y-0.5">
