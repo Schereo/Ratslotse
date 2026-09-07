@@ -296,67 +296,90 @@ struct DistrictBoardView: View {
     // MARK: Karte
 
     private var map: some View {
+        // In Teil-Bauer zerlegt: Der Swift-Compiler der CI schaffte den einen
+        // großen Map-Body nicht mehr („unable to type-check this expression in
+        // reasonable time", #1153) — lokal mit Xcode 26.6 ging es noch.
         Map(position: $camera, interactionModes: [.pan, .zoom]) {
             if outline.count > 2 {
                 MapPolygon(coordinates: outline)
                     .foregroundStyle(RatsColor.primary.opacity(0.06))
                     .stroke(RatsColor.primary.opacity(0.8), lineWidth: 2)
             }
-            // Sperrungen der Stadt: gestrichelt in Warnfarbe, blass, sobald ein
-            // Vorhaben gewählt ist — dann steht dessen Linie allein.
-            ForEach(data?.closures ?? []) { closure in
-                ForEach(Array(lineStrings(closure.geometry).enumerated()), id: \.offset) { _, line in
-                    MapPolyline(coordinates: line)
-                        .stroke(closureColor.opacity(selected == nil ? 0.9 : 0.3),
-                                style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6]))
-                }
-            }
+            closureLayers
             ForEach(projects) { project in
-                let stage = stageOf(project)
-                let active = selected?.id == project.id
-                // Blass, was der Stand-Filter ausblendet — und alles andere,
-                // sobald ein Vorhaben ausgewählt ist: Dessen Linie steht allein.
-                let dimmed = ((self.stage != nil && self.stage != stage) || selected != nil) && !active
-                // Abschnittsgrenzen („Am Schmeel bis Brahmweg") und Bezugsstraßen
-                // („Quartier Am Schmeel") sind nicht betroffen: keine Linie, kein
-                // Pin, solange das Vorhaben einen Gegenstand hat; sonst als
-                // hohle Punkte.
-                let hasSubject = project.locations.contains { $0.role == "subject" }
-                ForEach(project.locations.filter { $0.role == "subject" || !hasSubject }) { location in
-                    let boundary = location.role != "subject"
-                    // Der Geltungsbereich eines Bebauungsplans (Stadt-Geodaten):
-                    // gestrichelter Rand, leichte Füllung in der Farbe des Stands.
-                    // Rechtsverbindlich = durchgezogen; in Aufstellung = gestrichelt und blasser.
-                    let inProcedure = location.plan?.status == "in_procedure"
-                    ForEach(Array((location.kind == "bplan" ? polygons(location.geometry) : []).enumerated()), id: \.offset) { _, ring in
-                        MapPolygon(coordinates: ring)
-                            .foregroundStyle(stage.color.opacity(dimmed ? 0.04 : active ? (inProcedure ? 0.14 : 0.22) : (inProcedure ? 0.08 : 0.14)))
-                            .stroke(stage.color.opacity(dimmed ? 0.2 : 0.85),
-                                    style: StrokeStyle(lineWidth: active ? 3 : 2, dash: inProcedure ? [6, 4] : []))
-                    }
-                    ForEach(Array((boundary ? [] : lineStrings(location.geometry)).enumerated()), id: \.offset) { _, line in
-                        MapPolyline(coordinates: line)
-                            .stroke(stage.color.opacity(dimmed ? 0.18 : 0.75),
-                                    style: StrokeStyle(lineWidth: active ? 7 : 5, lineCap: .round, lineJoin: .round))
-                    }
-                    Annotation(project.name, coordinate: CLLocationCoordinate2D(
-                        latitude: location.latitude, longitude: location.longitude
-                    ), anchor: .center) {
-                        Button {
-                            selected = project
-                        } label: {
-                            DistrictPin(color: stage.color, active: active, dimmed: dimmed, hollow: boundary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(project.name), \(stage.label)")
-                    }
-                    .annotationTitles(.hidden)
-                }
+                projectLayers(project)
             }
         }
         .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .mapControlVisibility(.hidden)
         .onChange(of: selected?.id) { _, _ in focusSelected() }
+    }
+
+    /// Sperrungen der Stadt: gestrichelt in Warnfarbe, blass, sobald ein
+    /// Vorhaben gewählt ist — dann steht dessen Linie allein.
+    @MapContentBuilder
+    private var closureLayers: some MapContent {
+        let dimmed = selected != nil
+        ForEach(data?.closures ?? []) { closure in
+            ForEach(Array(lineStrings(closure.geometry).enumerated()), id: \.offset) { _, line in
+                MapPolyline(coordinates: line)
+                    .stroke(closureColor.opacity(dimmed ? 0.3 : 0.9),
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6]))
+            }
+        }
+    }
+
+    /// Alles, was ein Vorhaben auf der Karte hat: Planflächen, Straßenlinien,
+    /// Pins. Abschnittsgrenzen („Am Schmeel bis Brahmweg") und Bezugsstraßen
+    /// („Quartier Am Schmeel") sind nicht betroffen: keine Linie, kein Pin,
+    /// solange das Vorhaben einen Gegenstand hat; sonst als hohle Punkte.
+    @MapContentBuilder
+    private func projectLayers(_ project: DistrictProject) -> some MapContent {
+        let stage = stageOf(project)
+        let active = selected?.id == project.id
+        // Blass, was der Stand-Filter ausblendet — und alles andere, sobald
+        // ein Vorhaben ausgewählt ist: Dessen Linie steht allein.
+        let dimmed = ((self.stage != nil && self.stage != stage) || selected != nil) && !active
+        let hasSubject = project.locations.contains { $0.role == "subject" }
+        ForEach(project.locations.filter { $0.role == "subject" || !hasSubject }) { location in
+            locationLayers(location, project: project, stage: stage, active: active, dimmed: dimmed)
+        }
+    }
+
+    @MapContentBuilder
+    private func locationLayers(_ location: DistrictProjectLocation, project: DistrictProject,
+                                stage: DistrictStage, active: Bool, dimmed: Bool) -> some MapContent {
+        let boundary = location.role != "subject"
+        // Der Geltungsbereich eines Bebauungsplans (Stadt-Geodaten):
+        // rechtsverbindlich = durchgezogen; in Aufstellung = gestrichelt und blasser.
+        let inProcedure = location.plan?.status == "in_procedure"
+        let fill: Double = dimmed ? 0.04 : (active ? (inProcedure ? 0.14 : 0.22) : (inProcedure ? 0.08 : 0.14))
+        let dash: [CGFloat] = inProcedure ? [6, 4] : []
+        let rings: [[CLLocationCoordinate2D]] = location.kind == "bplan" ? polygons(location.geometry) : []
+        ForEach(Array(rings.enumerated()), id: \.offset) { _, ring in
+            MapPolygon(coordinates: ring)
+                .foregroundStyle(stage.color.opacity(fill))
+                .stroke(stage.color.opacity(dimmed ? 0.2 : 0.85),
+                        style: StrokeStyle(lineWidth: active ? 3 : 2, dash: dash))
+        }
+        let lines: [[CLLocationCoordinate2D]] = boundary ? [] : lineStrings(location.geometry)
+        ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+            MapPolyline(coordinates: line)
+                .stroke(stage.color.opacity(dimmed ? 0.18 : 0.75),
+                        style: StrokeStyle(lineWidth: active ? 7 : 5, lineCap: .round, lineJoin: .round))
+        }
+        Annotation(project.name, coordinate: CLLocationCoordinate2D(
+            latitude: location.latitude, longitude: location.longitude
+        ), anchor: .center) {
+            Button {
+                selected = project
+            } label: {
+                DistrictPin(color: stage.color, active: active, dimmed: dimmed, hollow: boundary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(project.name), \(stage.label)")
+        }
+        .annotationTitles(.hidden)
     }
 
     private func focusSelected() {
