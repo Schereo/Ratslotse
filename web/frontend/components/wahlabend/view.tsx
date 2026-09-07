@@ -119,7 +119,19 @@ function Hinweisbild({ pose, titel, text }: { pose: "sleep" | "wave" | "confused
 
 /* ── Anzeigetafel ───────────────────────────────────────────────────────── */
 
-function Tafel({ daten, aktualisiert, probe, counted }: { daten: Wahlabend; aktualisiert: number; probe: string | null; counted: string | null }) {
+function Tafel({
+  daten,
+  aktualisiert,
+  probe,
+  counted,
+  abfrageFehler,
+}: {
+  daten: Wahlabend;
+  aktualisiert: number;
+  probe: string | null;
+  counted: string | null;
+  abfrageFehler: boolean;
+}) {
   const p = daten.progress;
   const beteiligung = useTween(daten.totals.turnout_pct);
   const gueltig = useTween(daten.totals.valid_votes);
@@ -148,9 +160,11 @@ function Tafel({ daten, aktualisiert, probe, counted }: { daten: Wahlabend; aktu
             <div className="h-full rounded-full bg-primary transition-[width] duration-weg" style={{ width: `${anteil}%` }} />
           </div>
           <p className="mt-2 text-[11.5px] text-muted-foreground">
-            {daten.source.ok
-              ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
-              : `Der Votemanager antwortet gerade nicht (${daten.source.error ?? "Fehler"}) — gezeigt wird der letzte Stand.`}
+            {abfrageFehler
+              ? `Die letzte Abfrage ist fehlgeschlagen — gezeigt wird der Stand von ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr, nächster Versuch in einer Minute.`
+              : daten.source.ok
+                ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
+                : `Der Votemanager antwortet gerade nicht (${daten.source.error ?? "Fehler"}) — gezeigt wird der letzte Stand.`}
             {daten.phase !== "before" ? (
               <>
                 {" · "}
@@ -636,7 +650,15 @@ export function WahlabendView() {
   let inhalt: React.ReactNode;
   if (config.isLoading) {
     inhalt = null;
-  } else if (!schalterAn) {
+  } else if (config.isError && !daten) {
+    inhalt = (
+      <Hinweisbild
+        pose="confused"
+        titel="Gerade keine Verbindung"
+        text="Ratslotse antwortet nicht. Die Seite versucht es gleich von selbst noch einmal — oder lade sie neu."
+      />
+    );
+  } else if (!schalterAn && !daten) {
     inhalt = (
       <Hinweisbild
         pose="sleep"
@@ -644,7 +666,7 @@ export function WahlabendView() {
         text="Am 13. September 2026 ab 18 Uhr zeigt diese Seite den Auszählungsstand der Ratswahl Oldenburg — live, nachgerechnet, je Wahlbereich."
       />
     );
-  } else if (abfrage.isError) {
+  } else if (abfrage.isError && !daten) {
     inhalt = (
       <Hinweisbild
         pose="confused"
@@ -663,7 +685,7 @@ export function WahlabendView() {
             von 2026. Nichts davon ist ein Ergebnis vom 13. September.
           </p>
         ) : null}
-        <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} />
+        <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
             Die Wahllokale schließen um 18 Uhr. Die ersten Wahlbezirke melden erfahrungsgemäß gegen 20 Uhr; 2021 lag das

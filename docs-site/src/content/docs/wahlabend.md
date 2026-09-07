@@ -84,6 +84,31 @@ bleibt der **letzte gute Stand** stehen und bekommt einen Fehlervermerk:
 bleiben die alten. Gab es noch nie einen guten Stand, ist die Antwort leer,
 aber wohlgeformt — Phase `before`, sechs Wahlbereiche, keine Sitze.
 
+### Was der Abruf abfängt
+
+Seit der Belastungsprobe vom 07.09.2026 hat jede der drei Dateien ihr eigenes
+Gedächtnis: Scheitert eine (Netzfehler, 500, HTML-Fehlerseite mit Status 200,
+leerer Body, Kopfzeile ohne `gebiet-name` oder ohne eine einzige `D<n>_`-Spalte),
+bleibt für sie die letzte gute Fassung stehen, die anderen werden frisch
+übernommen; `source.ok` wird `false`, `source.error` nennt Datei und Grund.
+Zeitlimits: 5 s Verbindung, 10 s Lesen je Datei. Als vierte, optionale Datei
+liest `crosscheck.py` die Ergebnistabelle der Stadt-Ebene (JSON) und prüft die
+**Reihenfolge der Listen** gegen das Register — eine Abweichung steht als
+Warnung in `notes` („Spalte D7 heißt beim Votemanager ‚PIRATEN‘, im Register
+‚Volt‘“). Dazu netzfrei die Kopfzeile: Kandidatenspalten je Liste gegen die
+Listenlängen des Registers. Notausgang ohne Deploy: `WAHLABEND_COLUMNS`
+(Slugs in Spaltenreihenfolge, `.env`, Neustart).
+
+Der Dienst selbst wirft nie: volles Bild → Bild ohne Hochrechnung und Abstände
+→ letzter guter Stand mit Vermerk → leeres Bild mit Fehlertext. Jede Stufe
+steht in `notes` und im Log. Gleichzeitige erste Aufrufe warten auf EINEN
+Aufbau (`threading.Condition`), statt alle zu rechnen. Ein Fuzz-Test
+(`tests/test_wahlabend_robust.py`, 2.000 Zufallsstände) und ein falscher
+Votemanager im Test (`tests/test_wahlabend_live.py`, echter HTTP-Server mit
+500ern, HTML, leeren Dateien, Zeitüberschreitung, vertauschten Spalten) halten
+das fest; `tests/test_wahlabend_zahlen.py` prüft Anteile, Wahlbeteiligung und
+Summen gegen die amtliche Präsentation 2021.
+
 ## Das Kandidatenregister
 
 Die CSVs kennen nur Spaltennummern und Listenplätze, keine Namen. Die stehen in
@@ -381,6 +406,34 @@ voraussichtlich in der Woche nach dem 13.09.2026), ist die Seite ein Rückblick
 und braucht den Schalter nicht mehr — er kann aus der `.env` und samt seinem
 Registry-Eintrag aus dem Code. Genau das steht als `fertig_wenn` in
 `kern/features.py`.
+
+### Checkliste für den 13.09.2026
+
+Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
+
+1. **Samstag:** auf `dev` oder `feature` `FEATURE_FLAGS=wahlabend` setzen, Dienst
+   neu starten, `/wahlabend` öffnen: Phase `before`, `source.ok` true, kein
+   Eintrag in `notes`. Dann die Generalprobe
+   `/wahlabend?probe=2021&counted=60&liste=volt` und das Bild
+   `/api/wahlabend/bild.png?probe=2021&counted=60` ansehen.
+2. **Sonntag vor 18 Uhr auf Prod:** Schalter setzen, `systemctl restart
+   nwz-web-api`, danach `curl -s https://ratslotse.de/api/wahlabend | head -c 400`
+   — `"phase": "before"`, `"ok": true`. Die Seite zeigt „Noch nichts
+   ausgezählt“, Landing und Heute tragen die Einstiege.
+3. **Ab der ersten Meldung:** `notes` lesen. Steht dort eine Warnung zur
+   Spaltenreihenfolge (die Prüfung gegen das JSON des Votemanagers, s. o.),
+   greift der Notausgang `WAHLABEND_COLUMNS` (Slugs in Spaltenreihenfolge in
+   der `.env`, Neustart) — die Kandidatenlisten hängen am Slug und bleiben
+   richtig. Steht dort „Personenstimmen liegen noch nicht vor“, ist das kein
+   Fehler: Sitze ja, Namen erst mit den Personenstimmen.
+4. **Wenn der Votemanager wegbleibt:** Die Seite zeigt den letzten Stand mit
+   Vermerk; `source.error` nennt die Datei. Ändert die Stadt Pfade, hilft
+   `WAHLABEND_VOTEMANAGER_URL` (Basis bis vor `/daten/…`). Läuft nichts mehr,
+   `journalctl -u nwz-web-api -n 200` — jede ausgefallene Stufe steht dort mit
+   Traceback, im Fehler-Panel des Admin-Bereichs ebenfalls.
+5. **Nach dem amtlichen Endergebnis:** Schalter raus, Einstiege verschwinden,
+   `/wahlabend` zeigt den Hinweis; `data/wahlabend-verlauf.json` bleibt als
+   Protokoll des Abends liegen.
 
 ## Dateien
 

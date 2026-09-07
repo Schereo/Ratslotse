@@ -14,13 +14,26 @@ Zwei Betriebsarten:
 
 Dazu der **Verlauf** (``history.py``): Jedes fertige Live-Bild hinterlässt
 einen Punkt, die Generalprobe bekommt eine synthetische Reihe.
+
+**Der Abend darf an nichts sterben.** Was der Votemanager meldet, steht nicht
+in unserer Hand: eine leere Spalte, eine Bezirksdatei, die der
+Wahlbereichsdatei vorausläuft, eine Liste, die es im Register nicht gibt.
+``live()`` wirft deshalb NIE — es fällt in Stufen zurück (volles Bild →
+Bild ohne Hochrechnung und Abstände → letzter guter Stand mit Vermerk →
+leeres Bild mit Fehlertext), und jede Stufe sagt in ``notes``, dass sie
+gegriffen hat. Ein 500er am Wahlabend wäre die einzige Antwort, die niemand
+gebrauchen kann.
 """
 from __future__ import annotations
 
+import logging
+import math
 import threading
 import time
 from collections.abc import Iterable
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from ..antworten import (
@@ -31,6 +44,7 @@ from ..antworten import (
     ElectionMandate,
     ElectionNight,
     ElectionParty,
+    ElectionSource,
     ElectionTotals,
 )
 from . import history, votemanager
@@ -46,14 +60,47 @@ from .votemanager import AreaRow, ListRow, Snapshot
 CAP_PARTY = 80_000
 CAP_CANDIDATE = 30_000
 TTL_SECONDS = votemanager.TTL_SECONDS
+#: So lange wartet ein Aufruf auf das erste Bild, statt es selbst zu bauen.
+BUILD_WAIT_SECONDS = 30.0
+
+#: Die Vermerke der Rückfallstufen. Sie stehen in ``notes`` — Menschentext,
+#: kein neues Feld: Der Vertrag bleibt, wie er ist, und beide Clients zeigen
+#: die Hinweise schon.
+NOTE_REDUCED = "Hochrechnung und Abstände sind gerade ausgesetzt — die ausgezählten Zahlen stimmen."
+NOTE_STALE = "Der Abruf klemmt gerade — angezeigt wird der letzte gelungene Stand."
+NOTE_EMPTY = "Der Stand ist im Moment nicht abrufbar; die Seite versucht es weiter."
+
+_log = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------ Bausteine
 
 def _pct(part: int | None, whole: int | None) -> float | None:
-    if part is None or not whole:
+    """Ein Anteil in Prozent — oder ``None``, wenn die Zahlen keinen ergeben.
+
+    Am Wahlabend kommt, was gemeldet wird: eine leere Spalte, eine negative
+    Zahl (Tippfehler in einer Schnellmeldung), eine Teilsumme, die größer ist
+    als die Summe, in die sie gehört (zwei Dateien, zwei Stände). „−4 %" oder
+    „380 %" sähen aus wie ein Ergebnis; ``None`` heißt „unbekannt", und genau
+    das zeigen beide Clients dann auch an."""
+    if part is None or not whole or part < 0 or whole < 0:
         return None
-    return round(100 * part / whole, 2)
+    try:
+        value = round(100 * part / whole, 2)
+    except (OverflowError, ZeroDivisionError):
+        return None
+    return value if 0 <= value <= 100 else None
+
+
+def _round(value: float) -> int | None:
+    """``round``, ohne daran zu sterben. Aus einer verunglückten Meldung kann
+    in der Hochrechnung ``inf`` oder ``nan`` werden — ``round`` wirft darauf."""
+    if not math.isfinite(value):
+        return None
+    try:
+        return round(value)
+    except (OverflowError, ValueError):
+        return None
 
 
 def _totals(row: AreaRow | None) -> ElectionTotals:
@@ -105,14 +152,28 @@ def _district_lists(reg: Register, area_rows: dict[int, AreaRow]) -> tuple[list[
             if p.kind == "einzelbewerber":
                 lists.append(DistrictList(p.slug, a.number, total, 0, {1: total} if counted else None, 1))
                 continue
-            has_persons = lr is not None and (lr.list_votes is not None or lr.candidates is not None)
+            # Personenstimmen gelten erst als da, wenn die KANDIDATENSPALTEN
+            # gefüllt sind. Listenstimmen allein reichen nicht: Alle
+            # Bewerber*innen stünden dann bei 0, und die Sitze gingen nach
+            # § 36 Abs. 6 der Reihe nach an die Liste — das sähe aus wie ein
+            # Ergebnis und wäre keins. Fehlen umgekehrt nur die Listenstimmen,
+            # ergeben sie sich aus Gesamt − Σ Personen.
+            has_persons = lr is not None and lr.candidates is not None
             cands: dict[int, int] | None = None
             list_votes: int | None = None
+            n_candidates = len(cands_reg)
             if has_persons and lr is not None:
                 persons = True
                 cands = {c.position: (lr.candidates or {}).get(c.position, 0) for c in cands_reg}
+                # Spalten, die das Register nicht kennt, zählen trotzdem mit —
+                # sonst fehlten ihre Stimmen in der Personensumme und die
+                # Aufteilung Liste/Personen (§ 36 Abs. 4) kippte still.
+                for k, v in (lr.candidates or {}).items():
+                    if k not in cands:
+                        cands[k] = v
+                n_candidates = max(n_candidates, max(cands, default=0))
                 list_votes = lr.list_votes if lr.list_votes is not None else max(total - sum(cands.values()), 0)
-            lists.append(DistrictList(p.slug, a.number, total, list_votes, cands, len(cands_reg)))
+            lists.append(DistrictList(p.slug, a.number, total, list_votes, cands, n_candidates))
     return lists, persons
 
 
@@ -126,11 +187,14 @@ def _scaled(lists: Iterable[DistrictList], projection: Projection, reg: Register
         if pl is None:
             out.append(dl)
             continue
-        total = round(pl.projected)
+        total = _round(pl.projected)
+        if total is None:  # keine Zahl herausgekommen: lieber der gezählte Stand
+            out.append(dl)
+            continue
         if pl.counted > 0 and dl.candidates is not None and dl.list_votes is not None:
             f = pl.factor
-            cands = {k: round(v * f) for k, v in dl.candidates.items()}
-            out.append(DistrictList(dl.party, dl.district, total, round(dl.list_votes * f), cands, dl.n_candidates))
+            cands = {k: _round(v * f) or 0 for k, v in dl.candidates.items()}
+            out.append(DistrictList(dl.party, dl.district, total, _round(dl.list_votes * f) or 0, cands, dl.n_candidates))
         else:
             out.append(DistrictList(dl.party, dl.district, total, None, None, dl.n_candidates))
     return out
@@ -145,7 +209,7 @@ def _mandates(alloc: Allocation | None, reg: Register) -> list[ElectionMandate]:
         name = None
         if party and m.position is not None:
             c = next((c for c in party.candidates(m.district) if c.position == m.position), None)
-            name = c.name if c else None
+            name = c.name if c else f"Listenplatz {m.position} (nicht im Register)"
         out.append(ElectionMandate(slug=m.party, area=m.district, position=m.position, name=name, votes=m.votes, kind=m.kind))
     order = {p.slug: i for i, p in enumerate(reg.parties)}
     out.sort(key=lambda m: (order.get(m["slug"], 99), m["area"], m["position"] or 0))
@@ -161,36 +225,103 @@ def _kind(alloc: Allocation | None, slug: str, area: int, position: int) -> str 
     return None
 
 
+def _fill_areas(reg: Register, area_rows: dict[int, AreaRow], districts: list[AreaRow],
+                notes: list[str]) -> dict[int, AreaRow]:
+    """Wahlbereiche aus ihren Bezirken summieren, solange die
+    Wahlbereichsdatei nachhinkt.
+
+    Die drei CSVs entstehen beim Votemanager nacheinander; zwischen zwei
+    Abrufen kann die Bezirksdatei voraus sein. Ohne diesen Schritt stünde ein
+    Wahlbereich minutenlang auf null, obwohl seine Zahlen längst da sind — und
+    das sähe nach einem Wahlbereich aus, in dem niemand gewählt hat."""
+    by_area: dict[int, list[AreaRow]] = {}
+    for row in districts:
+        n = votemanager.district_number(row.name, None)
+        a = votemanager.area_of_district(n) if n is not None else None
+        if a is not None:
+            by_area.setdefault(a, []).append(row)
+    out = dict(area_rows)
+    for area in reg.areas:
+        row = out.get(area.number)
+        if row is not None and row.valid_votes is not None:
+            continue
+        mine = by_area.get(area.number, [])
+        if not any(d.counted for d in mine):
+            continue
+        agg = _aggregate(row.name if row else f"{area.roman} - {area.name}", area.number, mine)
+        if row is not None and row.reports_expected > agg.reports_expected:
+            # Wie viele Bezirke es GIBT, weiß die Wahlbereichsdatei besser als
+            # eine Bezirksdatei, die noch nicht alle Zeilen trägt.
+            agg = replace(agg, reports_expected=row.reports_expected)
+        out[area.number] = agg
+        notes.append(f"Wahlbereich {area.roman} aus den Bezirken summiert — die Wahlbereichsdatei hinkt nach.")
+    return out
+
+
+def _fill_city(city: AreaRow | None, area_rows: dict[int, AreaRow], notes: list[str]) -> AreaRow | None:
+    """Dasselbe eine Ebene höher. Die Stimmen je Liste holt sich
+    ``_votes_by_party`` ohnehin aus den Wahlbereichen; hier geht es um
+    Wahlberechtigte, Wähler*innen und die gültigen Stimmen der Stadt."""
+    if city is not None and city.valid_votes is not None:
+        return city
+    if not any(r.counted for r in area_rows.values()):
+        return city
+    agg = _aggregate(city.name if city else "Stadt Oldenburg", None, list(area_rows.values()))
+    if city is not None and city.reports_expected > agg.reports_expected:
+        agg = replace(agg, reports_expected=city.reports_expected)
+    notes.append("Die Stadtzeile ist noch leer — die Summen stammen aus den Wahlbereichen.")
+    return agg
+
+
 # ------------------------------------------------------------------ Zusammensetzen
 
-def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str) -> ElectionNight:
-    area_rows = {r.number: r for r in snap.areas if r.number is not None}
-    city = snap.city[0] if snap.city else None
-    expected = sum(r.reports_expected for r in area_rows.values()) or len(snap.districts)
-    received = sum(r.reports_received for r in area_rows.values())
-    phase = "before" if received == 0 else ("complete" if received >= expected else "counting")
-    notes: list[str] = []
+def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
+            margins: bool = True, projection: bool = True) -> ElectionNight:
+    """Ein Stand als fertige Antwort.
 
+    ``margins=False`` lässt die Abstände weg (``votes_to_seat``,
+    ``party_seat_margins`` — je eine Binärsuche über die ganze Zuteilung),
+    ``projection=False`` die Hochrechnung. Beides zusammen ist die abgespeckte
+    Stufe aus ``build_live``: lieber die ausgezählten Zahlen ohne Zugaben als
+    gar keine Antwort."""
+    notes: list[str] = []
+    area_rows = _fill_areas(reg, {r.number: r for r in snap.areas if r.number is not None},
+                            snap.districts, notes)
+    city = _fill_city(snap.city[0] if snap.city else None, area_rows, notes)
+    # Negative Meldungszahlen gibt es nicht; eine gäbe „complete" bei leerem Stand.
+    expected = max(sum(r.reports_expected for r in area_rows.values()) or len(snap.districts), 0)
+    received = max(sum(r.reports_received for r in area_rows.values()), 0)
+    phase = "before" if received == 0 else ("complete" if received >= expected else "counting")
+
+    # Warnungen des Abrufs (Spaltenreihenfolge, Kopfzeile) gehören sichtbar auf die Seite.
+    notes += [w for w in getattr(snap, "warnings", []) if w not in notes]
     lists, persons = _district_lists(reg, area_rows)
-    alloc = allocate(lists, reg.seats) if phase != "before" else None
+    # Ohne eine einzige Stimme gibt es keine Zuteilung: Hare/Niemeyer verteilt
+    # dann NICHTS, und „0 Sitze für alle" sähe aus wie ein Ergebnis. Der Fall
+    # ist echt — eine Schnellmeldung ist gezählt, die Stimmspalten sind leer.
+    has_votes = any(dl.total > 0 for dl in lists)
+    alloc = allocate(lists, reg.seats) if phase != "before" and has_votes else None
     if alloc:
         notes += alloc.ties
         if alloc.vacant:
             notes.append(f"{alloc.vacant} Sitz(e) bleiben unbesetzt (§ 36 Abs. 7 NKWG).")
-    if phase != "before" and not persons:
+    if phase != "before" and not has_votes:
+        notes.append("Es sind Wahlbezirke ausgezählt, aber noch keine Stimmen gemeldet — die Sitze folgen.")
+    elif phase != "before" and not persons:
         notes.append("Die Personenstimmen liegen noch nicht vor — Sitze je Liste und Wahlbereich ja, Namen noch nicht.")
 
-    projection: Projection | None = None
+    proj: Projection | None = None
     proj_alloc: Allocation | None = None
     proj_lists: list[DistrictList] = lists
-    if phase == "counting":
+    if phase == "counting" and alloc and projection:
         ref_districts = [ref.remap(r, reg) for r in ref.districts]
-        projection = project(area_rows, snap.districts, ref_districts, [p.index for p in reg.parties])
-        if projection is not None:
-            proj_lists = _scaled(lists, projection, reg)
-            proj_alloc = allocate(proj_lists, reg.seats)
-            if projection.unmatched:
-                notes.append(f"{len(projection.unmatched)} ausgezählte Wahlbezirke haben kein Gegenstück von 2021.")
+        proj = project(area_rows, snap.districts, ref_districts, [p.index for p in reg.parties])
+        if proj is not None:
+            scaled = _scaled(lists, proj, reg)
+            if any(dl.total > 0 for dl in scaled):
+                proj_lists, proj_alloc = scaled, allocate(scaled, reg.seats)
+            if proj.unmatched:
+                notes.append(f"{len(proj.unmatched)} ausgezählte Wahlbezirke haben kein Gegenstück von 2021.")
     elif phase == "complete":
         proj_alloc = alloc
     proj_by_list = {(dl.party, dl.district): dl for dl in proj_lists}
@@ -200,7 +331,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str) -> Elec
     parties: list[ElectionParty] = []
     for p in reg.parties:
         votes = votes_by_party.get(p.slug)
-        gain, loss = party_seat_margins(lists, reg.seats, p.slug, CAP_PARTY) if alloc else (None, None)
+        gain, loss = party_seat_margins(lists, reg.seats, p.slug, CAP_PARTY) if alloc and margins else (None, None)
         parties.append(ElectionParty(
             index=p.index, slug=p.slug, short=p.short, name=p.official, kind=p.kind,
             color=p.color, color_dark=p.color_dark, candidates_total=p.candidates_total,
@@ -232,7 +363,7 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str) -> Elec
                 if dl_proj and dl_proj.candidates is not None:
                     pv = dl_proj.candidates.get(c.position)
                 vts = None
-                if alloc and persons and v is not None:
+                if alloc and margins and persons and v is not None:
                     vts = votes_to_seat(lists, reg.seats, p.slug, a.number, c.position, CAP_CANDIDATE)
                 cands.append(ElectionCandidate(
                     position=c.position, name=c.name, occupation=c.occupation, born=c.born,
@@ -240,6 +371,21 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str) -> Elec
                     projected_votes=pv, projected_elected=_kind(proj_alloc, p.slug, a.number, c.position),
                     votes_to_seat=vts,
                 ))
+            # Listenplätze, die nur die CSV kennt: als namenlose Zeile zeigen und
+            # melden — das Register stimmt dann nicht mehr mit dem Stimmzettel.
+            bekannt = {c.position for c in cands_reg}
+            csv_cands: dict[int, int] = dict(lr.candidates) if lr and lr.candidates else {}
+            for k in sorted(k for k in csv_cands if k not in bekannt):
+                v = csv_cands.get(k)
+                cands.append(ElectionCandidate(
+                    position=k, name=f"Listenplatz {k} (nicht im Register)", occupation=None, born=None,
+                    votes=v, elected=_kind(alloc, p.slug, a.number, k),
+                    projected_votes=None, projected_elected=_kind(proj_alloc, p.slug, a.number, k),
+                    votes_to_seat=None,
+                ))
+                hinweis = f"{p.short} in Wahlbereich {a.roman}: Die CSV trägt Listenplatz {k}, das Register nicht — Register prüfen."
+                if hinweis not in notes:
+                    notes.append(hinweis)
             area_parties.append(ElectionAreaParty(
                 slug=p.slug,
                 votes=lr.total if lr else None,
@@ -370,67 +516,167 @@ def probe_history(reg: Register, ref: Reference, counted: int | None) -> list[El
 
 
 # ------------------------------------------------------------------ Einstiege
+#
+# Vier Stufen, von oben nach unten, und keine wirft:
+#
+#   (a) das volle Bild — Zahlen, Hochrechnung, Abstände
+#   (b) dasselbe ohne Hochrechnung und ohne Abstände (``compose`` abgespeckt)
+#   (c) der letzte gute Stand, mit ``source.error`` und einem Vermerk in ``notes``
+#   (d) ein Bild der Phase „before" mit ``source.ok=False`` und dem Fehlertext
+#
+# Gebaut wird immer nur EINMAL gleichzeitig: ``_cond`` lässt genau einen bauen,
+# alle anderen warten auf dessen Ergebnis (``BUILD_WAIT_SECONDS``). Ohne das
+# bauen beim ersten Aufruf — Cache leer, Schalter frisch umgelegt, viele
+# Zuschauer — alle gleichzeitig dasselbe.
 
-_lock = threading.Lock()
+#: Sperre UND Wartezimmer. Sie schützt ``_live``, ``_building``, ``_probes``.
+_cond = threading.Condition()
 _live: tuple[float, ElectionNight] | None = None
 _building = False
+#: Woran der letzte Versuch gescheitert ist — für Stufe (d).
+_last_error: str | None = None
 _probes: dict[int | None, ElectionNight] = {}
 
 
 def build_live() -> ElectionNight:
+    """Stufe (a), und wenn dabei etwas bricht, Stufe (b)."""
     snap = votemanager.fetch()
-    night = compose(load_register(), load_reference(), snap, "live")
-    night["history"] = history.record(night)
+    reg, ref = load_register(), load_reference()
+    try:
+        night = compose(reg, ref, snap, "live")
+    except Exception:
+        _log.exception("Wahlabend: das volle Bild ist gescheitert — es geht abgespeckt weiter.")
+        night = compose(reg, ref, snap, "live", margins=False, projection=False)
+        night["notes"].append(NOTE_REDUCED)
+    try:
+        night["history"] = history.record(night)
+    except Exception:
+        # Der Verlauf ist Zugabe; er darf den Abend nicht mitnehmen.
+        _log.exception("Wahlabend: der Verlauf ließ sich nicht fortschreiben.")
+        night["history"] = []
     return night
 
 
+def _bare(error: str) -> ElectionNight:
+    """Die letzte Reißleine: eine gültige Antwort, auch wenn nicht einmal das
+    Register lesbar ist. Leere Listen sind wenig — ein 500er wäre weniger."""
+    return ElectionNight(
+        dataset="live", phase="before", person_votes_available=False,
+        election={"date": "2026-09-13", "seats": 52,
+                  "title": "Wahl des Rates der Stadt Oldenburg (Oldb)",
+                  "presentation_url": votemanager.presentation_url()},
+        source={"fetched_at": None, "last_modified": None, "ok": False, "error": error},
+        progress={"districts_total": 0, "districts_counted": 0},
+        totals=_totals(None), parties=[], areas=[], mandates=[], projected_mandates=[],
+        notes=[NOTE_EMPTY], computed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        history=[],
+    )
+
+
+def _empty(error: str) -> ElectionNight:
+    """Stufe (d): das Bild vor der Auszählung, mit dem Fehler im Kopf. Listen,
+    Namen und Farben stehen im Register — die Seite kann also zeigen, wer
+    antritt, und dazusagen, dass die Zahlen gerade nicht kommen."""
+    snap = Snapshot([], [], [], datetime.now(timezone.utc), None, False, error)
+    try:
+        night = compose(load_register(), load_reference(), snap, "live", margins=False, projection=False)
+    except Exception:
+        _log.exception("Wahlabend: auch das leere Bild ist gescheitert.")
+        return _bare(error)
+    night["notes"].append(NOTE_EMPTY)
+    return night
+
+
+def _stale(night: ElectionNight, error: str | None) -> ElectionNight:
+    """Stufe (c): derselbe Stand, aber mit Vermerk. Ohne ihn sähe ein
+    eingefrorener Stand aus wie einer, der sich nur nicht mehr ändert."""
+    out = cast(ElectionNight, dict(night))
+    out["source"] = ElectionSource(
+        fetched_at=night["source"]["fetched_at"], last_modified=night["source"]["last_modified"],
+        ok=False, error=error,
+    )
+    out["notes"] = [n for n in night["notes"] if n != NOTE_STALE] + [NOTE_STALE]
+    return out
+
+
 def _refresh() -> None:
-    global _live, _building
+    """Erneuern — und niemals sterben, ohne dass der Cache es vermerkt."""
+    global _live, _building, _last_error
+    result: ElectionNight | None = None
+    error: str | None = None
     try:
         result = build_live()
-        with _lock:
-            _live = (time.monotonic(), result)
-    finally:
-        with _lock:
-            _building = False
+    except Exception as exc:
+        _log.exception("Wahlabend: der Stand ließ sich nicht erneuern.")
+        error = f"{type(exc).__name__}: {exc}"[:200]
+    with _cond:
+        if result is not None:
+            _live, _last_error = (time.monotonic(), result), None
+        else:
+            _last_error = error
+            if _live is not None:
+                _live = (time.monotonic(), _stale(_live[1], error))
+        _building = False
+        _cond.notify_all()
 
 
 def live() -> ElectionNight:
-    """Das aktuelle Bild; nach Ablauf wird im Hintergrund erneuert."""
-    global _live, _building
-    with _lock:
+    """Das aktuelle Bild; nach Ablauf wird im Hintergrund erneuert.
+
+    Wirft nicht. Was hier nicht zu bauen ist, wird zum letzten guten Stand mit
+    Vermerk — und wenn es keinen gibt, zu einem leeren Bild mit Fehlertext."""
+    global _building
+    with _cond:
         cached = _live
         if cached and time.monotonic() - cached[0] < TTL_SECONDS:
             return cached[1]
-        if cached and not _building:
-            _building = True
-            threading.Thread(target=_refresh, name="wahlabend-refresh", daemon=True).start()
         if cached:
+            # Der alte Stand geht sofort raus, erneuert wird nebenher.
+            if not _building:
+                _building = True
+                try:
+                    threading.Thread(target=_refresh, name="wahlabend-refresh", daemon=True).start()
+                except RuntimeError:
+                    _building = False
+                    _log.exception("Wahlabend: kein Thread fürs Erneuern zu bekommen.")
             return cached[1]
+        if _building:
+            # Es gibt noch nichts, und jemand baut schon: warten ist billiger,
+            # als dasselbe ein zweites Mal zu bauen.
+            deadline = time.monotonic() + BUILD_WAIT_SECONDS
+            while _building and _live is None:
+                if not _cond.wait(timeout=max(0.0, deadline - time.monotonic())):
+                    break
+            if _live is not None:
+                return _live[1]
+            return _empty(_last_error or "Der erste Abruf dauert zu lange.")
         _building = True
-    _refresh()
-    with _lock:
-        assert _live is not None
-        return _live[1]
+    _refresh()  # außerhalb der Sperre: alle anderen warten derweil
+    with _cond:
+        if _live is not None:
+            return _live[1]
+        return _empty(_last_error or "Der Stand ist gerade nicht abrufbar.")
 
 
 def probe(counted: int | None) -> ElectionNight:
-    with _lock:
+    with _cond:
         if counted in _probes:
             return _probes[counted]
     reg, ref = load_register(), load_reference()
     result = compose(reg, ref, probe_snapshot(reg, ref, counted), "probe")
     result["history"] = probe_history(reg, ref, counted)
-    with _lock:
+    with _cond:
         _probes[counted] = result
     return result
 
 
 def reset() -> None:
-    global _live, _building
-    with _lock:
+    global _live, _building, _last_error
+    with _cond:
         _live = None
         _building = False
+        _last_error = None
         _probes.clear()
+        _cond.notify_all()
     history.reset()
     votemanager.reset_cache()

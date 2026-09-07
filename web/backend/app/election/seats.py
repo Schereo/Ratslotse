@@ -178,6 +178,15 @@ def allocate(lists: Sequence[DistrictList], total_seats: int) -> Allocation:
             if person_seats > len(with_votes):  # § 36 Abs. 5 Satz 5
                 list_seats += person_seats - len(with_votes)
                 person_seats = len(with_votes)
+            if person_seats + list_seats < s:
+                # Weder Listen- noch Personenstimmen, aber Sitze: Hare/Niemeyer
+                # hat nichts zu verteilen und gäbe null zurück. Der Fall ist
+                # keine Rechenfrage, sondern eine widersprüchliche Meldung
+                # (Gesamtspalte gefüllt, Listen- und Personenspalten auf 0 oder
+                # negativ). Die Sitze verschwinden deshalb nicht, sie gehen den
+                # Weg des § 36 Abs. 6: nach Listenreihenfolge — und was dort
+                # niemand aufnimmt, wandert weiter (§ 37 Abs. 5, sonst Abs. 7).
+                list_seats = s - person_seats
             elected: set[int] = set()
             ranked = sorted(with_votes.items(), key=lambda kv: (-kv[1], kv[0]))
             if person_seats and len(ranked) > person_seats and ranked[person_seats - 1][1] == ranked[person_seats][1]:

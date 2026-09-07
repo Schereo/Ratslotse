@@ -13,13 +13,26 @@ Ein Einzelwahlvorschlag hat nur ``D<n>_4``. Davor: ``A`` Wahlberechtigte,
 Stimmen, und ``max-schnellmeldungen`` / ``anz-schnellmeldungen`` als
 Auszählungsstand des Gebiets. **Leer heißt „liegt noch nicht vor"**, nicht null.
 
-Der Abruf hält ein Ergebnis 60 s (so lange cacht auch der Votemanager) und
-behält bei einem Netzfehler den letzten guten Stand — mit Fehlervermerk.
+Der Abruf hält ein Ergebnis 60 s (so lange cacht auch der Votemanager).
+
+**Jede Datei hat ihr eigenes Gedächtnis.** Vorher hing der ganze Abruf an der
+schwächsten der drei: Ein Aussetzer bei den Wahlbezirken ließ auch die frisch
+gemeldeten Wahlbereiche liegen, und die Seite stand still, obwohl zwei Drittel
+der Daten da waren. Jetzt wird jede Datei einzeln geholt; scheitert eine, gilt
+für SIE der letzte gute Stand, die anderen ziehen weiter. ``Snapshot.ok`` ist
+dann ``False`` und ``Snapshot.error`` nennt die Datei beim Namen.
+
+**Status 200 heißt nicht, dass es die Datei ist.** Ein Reverse-Proxy antwortet
+im Zweifel mit einer HTML-Wartungsseite, ein halb geschriebener Export mit
+nichts. Beides parst ``csv`` klaglos zu null Zeilen — und null Zeilen sehen
+aus wie „noch nicht ausgezählt". Deshalb prüft ``_header_of`` die Antwort,
+bevor sie den letzten guten Stand ersetzt.
 """
 from __future__ import annotations
 
 import csv
 import io
+import logging
 import os
 import re
 import threading
@@ -29,6 +42,8 @@ from datetime import datetime, timezone
 
 import requests
 
+from . import crosscheck
+
 DEFAULT_BASE = "https://votemanager.kdo.de/20260913/03403000"
 PRESENTATION_PATH = "/praesentation/"
 FILES = {
@@ -36,9 +51,18 @@ FILES = {
     "areas": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbereiche.csv",
     "districts": "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbezirk.csv",
 }
+#: Anzeigename je Datei — ein Fehlertext muss sagen, WELCHE Datei klemmt.
+FILE_NAMES = {"city": "Stadt", "areas": "Wahlbereiche", "districts": "Wahlbezirke"}
+#: Spalten, ohne die eine Antwort keine Ergebnis-CSV ist.
+REQUIRED_COLUMNS = ("gebiet-name", "max-schnellmeldungen")
 TTL_SECONDS = 60
-TIMEOUT = (5, 20)
+#: (verbinden, lesen). Drei Dateien nacheinander, jede Minute eine Runde: Ein
+#: langes Lese-Zeitlimit hielte den Request-Thread fest, während die Seite
+#: schon längst den alten Stand hätte zeigen können.
+TIMEOUT = (5, 10)
 UA = "Ratslotse-Wahlabend/1.0 (+https://ratslotse.de/wahlabend)"
+
+_log = logging.getLogger("ratslotse.web.wahlabend")
 
 
 def base_url() -> str:
@@ -174,46 +198,127 @@ class Snapshot:
     districts: list[AreaRow]
     fetched_at: datetime
     last_modified: str | None
+    #: Sind ALLE drei Dateien frisch? Eine aus dem Gedächtnis genügt für ``False``.
     ok: bool
+    #: Welche Datei mit welchem Fehler — ``None``, wenn alles frisch ist.
     error: str | None
+    #: Hinweise der Spaltenprobe (``crosscheck``). Sie ändern ``ok`` NICHT: Ob
+    #: die Spalten stimmen, ist eine andere Frage als ob die Zahlen da sind.
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class _Fetched:
+    """Der letzte gute Stand EINER Datei."""
+
+    rows: list[AreaRow]
+    header: list[str]
+    last_modified: str | None
+    at: datetime
 
 
 _lock = threading.Lock()
 _cache: tuple[float, Snapshot] | None = None
+#: Datei -> letzter guter Stand. Überlebt den Ablauf des Minuten-Caches.
+_good: dict[str, _Fetched] = {}
 
 
 def _get(session: requests.Session, url: str) -> tuple[str, str | None]:
-    resp = session.get(url, timeout=TIMEOUT, headers={"User-Agent": UA})
+    resp = session.get(url, timeout=TIMEOUT)
     resp.raise_for_status()
     resp.encoding = "utf-8"
     return resp.text, resp.headers.get("Last-Modified")
 
 
+def _header_of(text: str) -> list[str]:
+    """Die Kopfzeile — und die Prüfung, dass die Antwort überhaupt eine ist.
+
+    Wirft ``ValueError``, wenn die Antwort leer ist, nach HTML aussieht, die
+    Gebietsspalten fehlen oder plötzlich keine einzige ``D<n>_``-Spalte mehr
+    da ist. Jeder dieser Fälle käme sonst mit Status 200 durch und ersetzte
+    einen guten Stand durch nichts.
+    """
+    stripped = text.lstrip("﻿").lstrip()
+    if not stripped:
+        raise ValueError("leere Antwort")
+    if stripped.startswith("<"):
+        raise ValueError("HTML statt CSV")
+    header = [h.strip() for h in stripped.splitlines()[0].split(";")]
+    missing = [c for c in REQUIRED_COLUMNS if c not in header]
+    if missing:
+        raise ValueError("Kopfzeile ohne " + "/".join(missing))
+    if not any(re.match(r"D\d+_", h) for h in header):
+        raise ValueError("Kopfzeile ohne D<n>-Spalten")
+    return header
+
+
+def _crosscheck(session: requests.Session, base: str, snap: Snapshot) -> list[str]:
+    """Die vierte, OPTIONALE Datei. Ein Fehler hier ändert ``ok`` nicht."""
+    try:
+        header = _good["areas"].header if "areas" in _good else None
+        counted = any(r.reports_received > 0 for r in snap.areas) or any(r.reports_received > 0 for r in snap.city)
+        return crosscheck.run(session, base, header, counted=counted)
+    except Exception:  # eine Zugabe darf den Abend nicht umbringen
+        _log.exception("Wahlabend: Spaltenprobe fehlgeschlagen")
+        return []
+
+
 def fetch(force: bool = False) -> Snapshot:
-    """Die drei CSVs, höchstens einmal je Minute vom Server."""
+    """Die drei CSVs, höchstens einmal je Minute vom Server.
+
+    Jede für sich: Was frisch kommt, wird übernommen; was scheitert, bleibt
+    beim letzten guten Stand. Erst danach die Spaltenprobe.
+    """
     global _cache
     with _lock:
         now = time.monotonic()
         if _cache and not force and now - _cache[0] < TTL_SECONDS:
             return _cache[1]
-        previous = _cache[1] if _cache else None
-        try:
-            with requests.Session() as s:
-                city, lm = _get(s, base_url() + FILES["city"])
-                areas, _ = _get(s, base_url() + FILES["areas"])
-                districts, _ = _get(s, base_url() + FILES["districts"])
-            snap = Snapshot(parse(city), parse(areas), parse(districts), datetime.now(timezone.utc), lm, True, None)
-        except (requests.RequestException, ValueError) as exc:
-            if previous is None:
-                snap = Snapshot([], [], [], datetime.now(timezone.utc), None, False, f"{type(exc).__name__}: {exc}"[:200])
-            else:
-                snap = Snapshot(previous.city, previous.areas, previous.districts, previous.fetched_at,
-                                previous.last_modified, False, f"{type(exc).__name__}: {exc}"[:200])
+        base = base_url()
+        failed: list[tuple[str, str]] = []
+        with requests.Session() as session:
+            session.headers.update({"User-Agent": UA})
+            for key, path in FILES.items():
+                try:
+                    text, last_modified = _get(session, base + path)
+                    header = _header_of(text)
+                    _good[key] = _Fetched(parse(text), header, last_modified, datetime.now(timezone.utc))
+                except (requests.RequestException, ValueError) as exc:
+                    failed.append((key, f"{type(exc).__name__}: {exc}"[:160]))
+            # Der Fehlertext sagt beides: welche Datei, und ob für sie noch ein
+            # alter Stand da ist. „Wahlbereiche klemmen" heißt einmal „die
+            # Zahlen sind eine Minute alt" und einmal „es gibt keine".
+            errors = [f"{FILE_NAMES[k]}: {msg} ({'alter Stand' if k in _good else 'keine Daten'})"
+                      for k, msg in failed]
+            city, areas, districts = (_good.get(k) for k in ("city", "areas", "districts"))
+            known = [f for f in (city, areas, districts) if f is not None]
+            snap = Snapshot(
+                city=city.rows if city else [],
+                areas=areas.rows if areas else [],
+                districts=districts.rows if districts else [],
+                fetched_at=max((f.at for f in known), default=datetime.now(timezone.utc)),
+                last_modified=city.last_modified if city else None,
+                ok=not errors,
+                error="; ".join(errors)[:400] or None,
+            )
+            if errors:
+                _log.warning("Wahlabend: Abruf unvollständig — %s", snap.error)
+            snap.warnings = _crosscheck(session, base, snap)
         _cache = (now, snap)
         return snap
 
 
 def reset_cache() -> None:
+    """Den Minuten-Cache verwerfen. Das Gedächtnis je Datei bleibt — genau das
+    ist beim nächsten Abruf der Rückfall."""
     global _cache
     with _lock:
         _cache = None
+
+
+def reset_memory() -> None:
+    """Alles vergessen, auch den letzten guten Stand je Datei (für Tests)."""
+    global _cache
+    with _lock:
+        _cache = None
+        _good.clear()
