@@ -376,7 +376,13 @@ Schalter aus [`kern/features.py`](kern/features.py):
 
 ```bash
 FEATURE_FLAGS=neue-suche      # in der .env, dann Dienst neu starten
+FEATURE_FLAGS=*               # alle — so steht es auf dev
 ```
+
+**Auf dev sind alle Schalter an** (`FEATURE_FLAGS=*`, Tims Entscheidung
+07.09.2026): Was gemergt ist, ist dort sichtbar, ohne dass jeder PR einen
+Eintrag in der `.env` der VM nachzieht. Der Schalter regelt damit nur noch,
+was auf **Prod** schon zu sehen ist — dort bleibt die Liste explizit.
 
 Im Frontend `useFeature("neue-suche")` aus `lib/features.ts`. Die Liste kommt
 über `/api/app-config` — **bewusst nicht** über `NEXT_PUBLIC_…`: Das wird zur
@@ -460,7 +466,7 @@ APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
-FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py)
+FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py); `*` = alle (dev)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)
 APPLE_TEAM_ID=…                       # Pflicht für Apple-Token-Widerruf bei Kontolöschung
