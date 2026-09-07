@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ratslotse — Status</title>
+<meta name="description" content="Läuft ratslotse.de? Die Antwort kommt von einem Rechner außerhalb des Servers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --seite:hsl(204 45% 97.5%); --karte:#fff; --buehne:hsl(205 42% 96.5%);
+  --rahmen:hsl(208 32% 89%); --trenner:hsl(206 40% 94%);
+  --text:hsl(212 55% 11%); --sekundaer:hsl(209 18% 42%); --muted:hsl(209 18% 55%);
+  --primaer:hsl(205 92% 34%);
+  --gut-flaeche:#dcfce7; --gut:#15803d;
+  --schlecht-flaeche:#fef2f2; --schlecht-rahmen:#fecaca; --schlecht:#b91c1c;
+  --warn-flaeche:#fffbeb; --warn-rahmen:#fde68a; --warn:#92400e;
+  --schatten:0 1px 2px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --seite:hsl(213 50% 7%); --karte:hsl(212 42% 11%); --buehne:hsl(212 40% 9%);
+    --rahmen:hsl(211 36% 17%); --trenner:hsl(211 36% 15%);
+    --text:hsl(204 40% 96%); --sekundaer:hsl(208 22% 65%); --muted:hsl(208 20% 55%);
+    --primaer:hsl(202 90% 60%);
+    --gut-flaeche:hsl(142 40% 14%); --gut:hsl(142 60% 62%);
+    --schlecht-flaeche:hsl(0 40% 15%); --schlecht-rahmen:hsl(0 35% 26%); --schlecht:hsl(0 75% 72%);
+    --warn-flaeche:hsl(38 40% 14%); --warn-rahmen:hsl(38 35% 26%); --warn:hsl(38 80% 68%);
+    --schatten:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--seite); color:var(--text);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.huelle{max-width:720px; margin:0 auto; padding:40px 20px 56px}
+.kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10px; font-weight:500;
+  text-transform:uppercase; letter-spacing:.10em; color:var(--muted); margin:0 0 6px;
+}
+h1{font-family:"Bricolage Grotesque",Inter,sans-serif; font-weight:700;
+   font-size:26px; line-height:1.2; margin:0 0 4px; letter-spacing:-.01em}
+.kopf-zeile{color:var(--sekundaer); font-size:13.5px; margin:0 0 24px}
+.karte{
+  background:var(--karte); border:1px solid var(--rahmen); border-radius:14px;
+  padding:18px; box-shadow:var(--schatten); margin-bottom:14px;
+}
+.zustand{display:flex; align-items:center; gap:12px}
+.punkt{width:12px; height:12px; border-radius:9999px; flex:none;
+       background:var(--muted); box-shadow:0 0 0 4px color-mix(in srgb,var(--muted) 18%,transparent)}
+.punkt.gut{background:var(--gut); box-shadow:0 0 0 4px color-mix(in srgb,var(--gut) 18%,transparent)}
+.punkt.schlecht{background:var(--schlecht); box-shadow:0 0 0 4px color-mix(in srgb,var(--schlecht) 18%,transparent)}
+.zustand h2{font-family:"Bricolage Grotesque",Inter,sans-serif; font-weight:600;
+            font-size:19px; margin:0; line-height:1.3}
+.zustand p{margin:2px 0 0; color:var(--sekundaer); font-size:13.5px}
+.pille{
+  display:inline-block; border-radius:9999px; padding:4px 11px; font-size:12px;
+  font-weight:600; border:1px solid transparent; margin-left:auto; flex:none;
+}
+.pille.gut{background:var(--gut-flaeche); color:var(--gut)}
+.pille.schlecht{background:var(--schlecht-flaeche); color:var(--schlecht); border-color:var(--schlecht-rahmen)}
+.pille.warn{background:var(--warn-flaeche); color:var(--warn); border-color:var(--warn-rahmen)}
+/* Rechtsbündig: Der neueste Balken steht am rechten Rand, dort, wo auch die
+   Zeitachse endet. Und gedeckelt, damit zwei Messungen nicht als zwei
+   Riesenflächen dastehen — sie sollen wie zwei Striche aussehen. */
+.streifen{display:flex; justify-content:flex-end; gap:3px; align-items:flex-end;
+          height:44px; margin:14px 0 8px}
+.balken{flex:1 1 0; min-width:0; max-width:12px; border-radius:3px;
+        background:var(--trenner); height:100%}
+.balken.gut{background:color-mix(in srgb,var(--gut) 55%,transparent)}
+.balken.schlecht{background:var(--schlecht)}
+.streifen-fuss{display:flex; justify-content:space-between;
+               font-family:"IBM Plex Mono",ui-monospace,monospace;
+               font-size:10px; color:var(--muted); letter-spacing:.04em}
+h3{font-family:"Bricolage Grotesque",Inter,sans-serif; font-weight:600;
+   font-size:15px; margin:0 0 10px}
+.liste{list-style:none; margin:0; padding:0}
+.liste li{display:flex; gap:10px; align-items:baseline; padding:7px 0;
+          border-top:1px solid var(--trenner); font-size:13.5px}
+.liste li:first-child{border-top:0; padding-top:0}
+.liste code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12.5px;
+            color:var(--text); background:var(--buehne); border-radius:4px; padding:1px 6px}
+.liste span{color:var(--sekundaer)}
+.hinweis{color:var(--sekundaer); font-size:13px; margin:10px 0 0}
+footer{margin-top:22px; color:var(--muted); font-size:12.5px; text-align:center}
+a{color:var(--primaer); text-decoration:none; font-weight:500}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="huelle">
+  <p class="kicker">Ratslotse</p>
+  <h1>Läuft ratslotse.de?</h1>
+  <p class="kopf-zeile">Diese Seite liegt bewusst nicht auf dem Server, den sie überwacht.</p>
+
+  <div class="karte">
+    <div class="zustand">
+      <span class="punkt" id="punkt"></span>
+      <div>
+        <h2 id="lage">Wird geprüft …</h2>
+        <p id="unterzeile">Der letzte Probelauf wird geladen.</p>
+      </div>
+      <span class="pille warn" id="quote">–</span>
+    </div>
+    <div class="streifen" id="streifen"></div>
+    <div class="streifen-fuss">
+      <span id="von">früher</span>
+      <span id="bis">jetzt</span>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Was geprüft wird</h3>
+    <ul class="liste">
+      <li><code>/</code> <span>die Startseite, also der Reverse-Proxy und das Frontend</span></li>
+      <li><code>/api/health</code> <span>das Backend. Genau dieser Endpunkt antwortet 503, solange eine Release-Wartung läuft</span></li>
+      <li><code>/api/app-config</code> <span>was die App vor allem anderen abfragt</span></li>
+    </ul>
+    <p class="hinweis">Alle zehn Minuten von einem GitHub-Runner aus, also von außerhalb
+      des Servers. Erst wenn dreimal hintereinander im Abstand von zwanzig Sekunden nichts
+      zurückkommt, gilt das als Störung. Ein einzelner Aussetzer ist Netz, kein Ausfall.</p>
+  </div>
+
+  <footer>
+    Die Werte kommen direkt aus den Probeläufen bei GitHub, ungefiltert.<br>
+    <a href="https://ratslotse.de">ratslotse.de</a>
+  </footer>
+</div>
+
+<script>
+const REPO = "Schereo/Ratslotse";
+const WORKFLOW = "ops-erreichbarkeit.yml";
+const ANZAHL = 60;
+
+const el = (id) => document.getElementById(id);
+const zeit = (iso) => new Date(iso).toLocaleString("de-DE",
+  {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+
+function setze(lage, unterzeile, art) {
+  el("lage").textContent = lage;
+  el("unterzeile").textContent = unterzeile;
+  el("punkt").className = "punkt" + (art ? " " + art : "");
+}
+
+async function laden() {
+  const url = `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/runs`
+            + `?per_page=${ANZAHL}&status=completed`;
+  let daten;
+  try {
+    const antwort = await fetch(url, {headers: {Accept: "application/vnd.github+json"}});
+    if (!antwort.ok) throw new Error("HTTP " + antwort.status);
+    daten = await antwort.json();
+  } catch (e) {
+    setze("Unbekannt", "Die Probeläufe waren gerade nicht abrufbar. Das sagt nichts über ratslotse.de aus.", "");
+    el("quote").textContent = "–";
+    return;
+  }
+
+  // Neueste zuerst — für den Streifen drehen wir auf Zeitachse.
+  const laeufe = (daten.workflow_runs || []).filter(r => r.conclusion);
+  if (!laeufe.length) {
+    setze("Noch keine Messung", "Der Anpinger hat noch nicht gelaufen.", "");
+    el("quote").textContent = "–";
+    return;
+  }
+
+  const neueste = laeufe[0];
+  const gut = neueste.conclusion === "success";
+  setze(
+    gut ? "Alles läuft" : "Störung",
+    (gut ? "Zuletzt geprüft " : "Seit ") + zeit(neueste.updated_at)
+      + (gut ? "" : " nicht erreichbar."),
+    gut ? "gut" : "schlecht"
+  );
+
+  const treffer = laeufe.filter(r => r.conclusion === "success").length;
+  const quote = Math.round(treffer / laeufe.length * 1000) / 10;
+  const pille = el("quote");
+  pille.textContent = quote.toFixed(1).replace(".", ",") + " %";
+  pille.className = "pille " + (quote === 100 ? "gut" : quote >= 95 ? "warn" : "schlecht");
+
+  const streifen = el("streifen");
+  streifen.innerHTML = "";
+  [...laeufe].reverse().forEach(r => {
+    const b = document.createElement("div");
+    b.className = "balken " + (r.conclusion === "success" ? "gut" : "schlecht");
+    b.title = zeit(r.updated_at) + " — "
+            + (r.conclusion === "success" ? "erreichbar" : "nicht erreichbar");
+    streifen.appendChild(b);
+  });
+  el("von").textContent = zeit(laeufe[laeufe.length - 1].updated_at);
+  el("bis").textContent = zeit(neueste.updated_at);
+}
+
+laden();
+setInterval(laden, 60000);
+</script>
+</body>
+</html>
