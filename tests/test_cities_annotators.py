@@ -99,6 +99,19 @@ def test_parse_json_kommt_mit_allen_formen_klar(antwort, erwartet):
     assert len(annotate.parse_json(antwort)["results"]) == erwartet
 
 
+def test_parse_json_gibt_immer_ein_objekt_zurueck():
+    """Eine Liste an der Wurzel ist gültiges JSON — der Aufrufer greift gleich
+    danach mit `.get` zu und stürbe an einer Stelle, die nichts mehr über die
+    Ursache weiß. Steckt ein Objekt im Text, wird es geborgen; sonst fliegt
+    ein ValueError mit dem Anfang der Antwort darin."""
+    assert annotate.parse_json('[{"results": []}]') == {"results": []}
+    assert annotate.parse_json('[1,2] danach {"results": []}') == {"results": []}
+    with pytest.raises(ValueError, match="unlesbar"):
+        annotate.parse_json('[1, 2, 3]')
+    with pytest.raises(ValueError, match="unlesbar"):
+        annotate.parse_json('"nur ein String"')
+
+
 def test_parse_json_nennt_die_leere_antwort_beim_namen():
     """Sie kommt mit Status 200 und ist der häufigste Fehler bei
     Reasoning-Modellen mit zu knappem Budget."""
@@ -192,6 +205,35 @@ def test_ausgelassene_werden_einzeln_nachgereicht(store, monkeypatch):
     stand = annotate.run(store, get("classify"), workers=1)
     assert stand["annotated"] == 3
     assert ("p2",) in gesehen, "der Nachlauf muss den Ausgelassenen einzeln fragen"
+
+
+def test_ergebnisse_die_keine_objekte_sind_kippen_den_lauf_nicht(store, monkeypatch):
+    """Gemessen am Bestandslauf: Ein Batch kam als Liste von STRINGS zurück.
+    Der Zugriff warf im Arbeitsthread, `pool.map` reichte das weiter — und
+    riss den Lauf nach 520 von 619 Batches um."""
+    def antwort(**kw):
+        text = kw["messages"][1]["content"]
+        ids = [i for i in ("p0", "p1", "p2") if f"id {i}\n" in text]
+        if len(ids) > 1:            # der große Batch antwortet Unsinn
+            inhalt = json.dumps({"results": ["p0", "p1", "p2"]})
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=inhalt))],
+                usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5, cost=0.0))
+        return _antwort(ids)        # einzeln nachgereicht klappt es
+
+    monkeypatch.setattr(annotate.llm, "chat_complete", antwort)
+    stand = annotate.run(store, get("classify"), workers=1)
+    assert stand["annotated"] == 3, "der Nachlauf muss alle drei nachreichen"
+
+
+def test_results_als_objekt_statt_liste_wirft_nicht(store, monkeypatch):
+    """Dieselbe Klasse Fehler eine Ebene höher."""
+    inhalt = json.dumps({"results": {"id": "p0"}})
+    monkeypatch.setattr(annotate.llm, "chat_complete", lambda **kw: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=inhalt))],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5, cost=0.0)))
+    stand = annotate.run(store, get("classify"), workers=1)
+    assert stand["annotated"] == 0
 
 
 def test_kaputter_batch_kippt_den_lauf_nicht(store, monkeypatch):
