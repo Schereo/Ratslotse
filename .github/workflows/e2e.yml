@@ -134,28 +134,30 @@ jobs:
         working-directory: web/frontend
         run: npm ci --no-audit --no-fund
 
-      # Chromium ist das einzige Stück Rüstzeit, das NICHT schon zwischengelegt
-      # war: `setup-python` bringt den pip-Cache mit, `setup-node` den
-      # npm-Cache, aber der Browser wurde je Lauf neu geladen — gemessen 22 s,
-      # und seit der Aufteilung viermal je Lauf.
-      #
-      # Der Schlüssel hängt am package-lock: Playwright verlangt die Browser-
-      # Fassung, die zur Bibliotheks-Fassung gehört, und die steht dort. Damit
-      # verfällt der Cache zwar auch bei einer ganz anderen Abhängigkeit — das
-      # ist der sichere Fehler, denn er lädt nur neu, statt eine falsche
-      # Fassung zu behalten.
-      - name: Chromium aus dem Zwischenspeicher
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/frontend/package-lock.json') }}
-
       # Nur Chromium: Die Suite fährt ein Projekt (playwright.config.ts), und
       # jeder weitere Browser kostet Minuten, ohne etwas anderes zu prüfen.
       #
-      # Läuft auch bei einem Treffer: Der Download entfällt dann, die
-      # System-Bibliotheken (`--with-deps`, apt) setzt der Schritt trotzdem —
-      # die liegen außerhalb des zwischengelegten Verzeichnisses.
+      # HIER IST NICHTS ZU ZWISCHENSPEICHERN, und das ist gemessen, nicht
+      # vermutet. Der Schritt kostet 20 s und sieht damit wie der lohnendste
+      # Kandidat aus — die 22 s pip und 9 s npm daneben liegen ja längst im
+      # Cache (`cache: pip` / `cache: npm` oben). Ein `actions/cache` auf
+      # `~/.cache/ms-playwright` wurde am 07.09.2026 eingebaut und wieder
+      # entfernt:
+      #
+      #     Lauf 1 (Cache leer)      Browser holen 20 s
+      #     Lauf 2 (Cache-TREFFER)   Browser holen 20 s  + 3 s Wiederherstellung
+      #
+      # Der Treffer stand im Log, der Schritt wurde trotzdem keine Sekunde
+      # schneller. Die Zeit steckt nicht im Herunterladen des Browsers,
+      # sondern in `--with-deps` — das ist ein `apt-get install` der
+      # System-Bibliotheken, und die liegen außerhalb jedes zwischengelegten
+      # Verzeichnisses. Der Cache machte den Lauf also um 3 s LANGSAMER und
+      # belegte 261 MB.
+      #
+      # `--with-deps` einfach wegzulassen wäre der einzige Hebel hier. Nicht
+      # gemacht: Fehlt eine Bibliothek, startet der Browser gar nicht erst,
+      # und der Preis wäre ein rotes Gate für 20 s auf einem Lauf, der über 8
+      # Minuten braucht.
       - name: Browser holen
         working-directory: web/frontend
         run: npx playwright install --with-deps chromium
