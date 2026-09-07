@@ -23,7 +23,7 @@ import logging
 import re
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import ValidationError
@@ -50,29 +50,37 @@ def field_list() -> str:
 
 
 def parse_json(content: str) -> dict:
-    """Modellantwort zu einem dict — auch wenn sie nicht sauber ankommt."""
+    """Modellantwort zu einem dict — auch wenn sie nicht sauber ankommt.
+
+    Gibt **immer** ein Objekt zurück oder wirft. Eine Liste an der Wurzel ist
+    gültiges JSON und wäre bis hierher durchgerutscht; der Aufrufer greift
+    danach mit ``.get`` zu und stürbe an einer Stelle, die nichts mehr über
+    die Ursache weiß.
+    """
     text = (content or "").strip()
     if not text:
         raise ValueError("leere Antwort (meist: Token-Budget beim Denken verbraucht)")
-    try:
-        return json.loads(text)
-    except ValueError:
-        pass
+    for kandidat in _kandidaten(text):
+        try:
+            daten = json.loads(kandidat)
+        except ValueError:
+            continue
+        if isinstance(daten, dict):
+            return daten
+    raise ValueError(f"unlesbare Antwort: {text[:120]!r}")
+
+
+def _kandidaten(text: str) -> Iterator[str]:
+    """Der Text selbst, ohne Zaun, und der erste geschweifte Block darin."""
+    yield text
     if text.startswith("```"):
         ohne = text.strip("`").strip()
         if ohne[:4].lower() == "json":
             ohne = ohne[4:].strip()
-        try:
-            return json.loads(ohne)
-        except ValueError:
-            pass
+        yield ohne
     treffer = re.search(r"\{.*\}", text, re.S)
     if treffer:
-        try:
-            return json.loads(treffer.group(0))
-        except ValueError:
-            pass
-    raise ValueError(f"unlesbare Antwort: {text[:120]!r}")
+        yield treffer.group(0)
 
 
 def source_hash(paper: dict, text: str | None, ann: Annotator) -> str:
@@ -158,7 +166,14 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
                 stand["cost_usd"] += kosten
 
         fertig: list[tuple[str, dict, float]] = []
-        for eintrag in daten.get("results", []):
+        ergebnisse = daten.get("results")
+        for eintrag in ergebnisse if isinstance(ergebnisse, list) else []:
+            # Gemessen am Bestandslauf: Ein Batch kam als Liste von Strings
+            # zurück statt als Liste von Objekten. Der Zugriff warf im
+            # Arbeitsthread, `pool.map` reichte das weiter — und riss den
+            # ganzen Lauf um, nach 520 von 619 Batches.
+            if not isinstance(eintrag, dict):
+                continue
             kennung = str(eintrag.get("id", ""))
             if kennung not in erwartet:
                 continue      # halluzinierte id — verwerfen
