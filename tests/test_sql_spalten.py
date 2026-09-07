@@ -56,6 +56,11 @@ AUSNAHMEN = {
     # und muss dafür die alte lesen. Es ist eine Migration, nur heißt sie
     # nicht so — deshalb greift die Regel oben hier nicht.
     ("council/store_schema.py", "bild"),
+    # Einmal-Werkzeug: liest den Probelauf-Bestand aus
+    # ~/.cache/ratslotse/phase0/peers.sqlite — eine FREMDE Datenbank mit
+    # eigenem Schema, die hier niemand anlegt.
+    ("scripts/cities_import_phase0.py", "papers"),
+    ("scripts/cities_import_phase0.py", "agenda"),
 }
 
 

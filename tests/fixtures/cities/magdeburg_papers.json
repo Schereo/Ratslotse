@@ -1,0 +1,357 @@
+[
+ {
+  "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249544",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://ratsinfo.magdeburg.de/oparl/bodies/0001",
+  "name": "Neue Neustadt sauber und lebenswert – Sofortmaßnahmen gegen Vermüllung und für mehr Lebensqualität",
+  "reference": "A0147/26",
+  "date": "2026-09-01",
+  "paperType": "Antrag",
+  "auxiliaryFile": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/files/748832",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Antrag",
+    "fileName": "00748832.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-05",
+    "accessUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/a/00748832.pdf",
+    "downloadUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/00748832.pdf",
+    "created": "2026-08-03T12:43:40+02:00",
+    "modified": "2026-08-07T08:57:45+02:00"
+   }
+  ],
+  "consultation": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236975",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249544",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/40"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T10:41:43+02:00",
+    "modified": "2026-09-01T10:42:05+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236976",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249544",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1152"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T10:42:00+02:00",
+    "modified": "2026-09-01T10:42:00+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236977",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249544",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/3"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T10:42:21+02:00",
+    "modified": "2026-09-01T10:42:21+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236585",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249544",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/528988",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-07T08:58:06+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236585",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249544",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529799",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-28T10:36:40+02:00",
+    "modified": "2026-09-03T12:57:08+02:00"
+   }
+  ],
+  "created": "2026-08-03T12:42:54+02:00",
+  "modified": "2026-09-02T11:21:12+02:00"
+ },
+ {
+  "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249577",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://ratsinfo.magdeburg.de/oparl/bodies/0001",
+  "name": "Platz der Deutschen Einheit",
+  "reference": "A0148/26",
+  "date": "2026-09-01",
+  "paperType": "Antrag",
+  "auxiliaryFile": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/files/749437",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Antrag",
+    "fileName": "00749437.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-13",
+    "accessUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/a/00749437.pdf",
+    "downloadUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/00749437.pdf",
+    "created": "2026-08-13T12:44:04+02:00",
+    "modified": "2026-08-13T15:01:09+02:00"
+   }
+  ],
+  "consultation": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236991",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249577",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/14"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T11:40:14+02:00",
+    "modified": "2026-09-01T11:40:14+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236992",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249577",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1152"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T11:40:26+02:00",
+    "modified": "2026-09-01T11:40:26+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236993",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249577",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/3"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T11:40:46+02:00",
+    "modified": "2026-09-01T11:40:51+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236703",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249577",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529281",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-13T15:01:00+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236703",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249577",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529809",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-28T10:42:59+02:00",
+    "modified": "2026-09-03T12:57:09+02:00"
+   }
+  ],
+  "created": "2026-08-11T07:33:06+02:00",
+  "modified": "2026-09-01T11:40:59+02:00"
+ },
+ {
+  "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249579",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://ratsinfo.magdeburg.de/oparl/bodies/0001",
+  "name": "Befriste Öffnungszeiten Hegelspielplatz",
+  "reference": "A0150/26",
+  "date": "2026-09-01",
+  "paperType": "Antrag",
+  "auxiliaryFile": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/files/749483",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "A0150/26 Antrag",
+    "fileName": "00749483.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-14",
+    "accessUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/a/00749483.pdf",
+    "downloadUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/00749483.pdf",
+    "created": "2026-08-14T07:51:02+02:00",
+    "modified": "2026-08-14T09:51:25+02:00"
+   }
+  ],
+  "consultation": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237006",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249579",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1152"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T12:31:40+02:00",
+    "modified": "2026-09-01T12:31:40+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237007",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249579",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/11"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T12:31:55+02:00",
+    "modified": "2026-09-01T12:31:55+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236720",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249579",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529298",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-14T09:51:43+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236720",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249579",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529817",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-28T10:47:46+02:00",
+    "modified": "2026-09-03T12:57:09+02:00"
+   }
+  ],
+  "created": "2026-08-11T07:35:33+02:00",
+  "modified": "2026-09-03T09:52:52+02:00"
+ },
+ {
+  "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://ratsinfo.magdeburg.de/oparl/bodies/0001",
+  "name": "Datenerhebung und Konsequenzen gemäß §4 Grünanlagensatzung",
+  "reference": "A0151/26",
+  "date": "2026-09-01",
+  "paperType": "Antrag",
+  "auxiliaryFile": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/files/749484",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "A0151/26 Antrag",
+    "fileName": "00749484.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-14",
+    "accessUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/a/00749484.pdf",
+    "downloadUrl": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/downloadfiles/00749484.pdf",
+    "created": "2026-08-14T07:53:39+02:00",
+    "modified": "2026-08-14T09:50:32+02:00"
+   }
+  ],
+  "consultation": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237008",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1152"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T14:23:52+02:00",
+    "modified": "2026-09-01T14:23:52+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237009",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/94"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T14:24:10+02:00",
+    "modified": "2026-09-01T14:24:10+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237010",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/11"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T14:24:23+02:00",
+    "modified": "2026-09-01T14:24:23+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237011",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/16"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T14:24:35+02:00",
+    "modified": "2026-09-01T14:24:35+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/237012",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/4"
+    ],
+    "role": "Beratung",
+    "created": "2026-09-01T14:25:08+02:00",
+    "modified": "2026-09-01T14:25:08+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236721",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529297",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-14T09:50:56+02:00",
+    "modified": "2026-08-28T11:24:43+02:00"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/consultations/236721",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249580",
+    "agendaItem": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/agendaitems/529819",
+    "meeting": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+    "organization": [
+     "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+    ],
+    "role": "Beschlussfassung",
+    "created": "2026-08-28T10:48:28+02:00",
+    "modified": "2026-09-03T12:57:09+02:00"
+   }
+  ],
+  "created": "2026-08-11T07:36:22+02:00",
+  "modified": "2026-09-04T11:14:06+02:00"
+ }
+]

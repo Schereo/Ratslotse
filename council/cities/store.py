@@ -314,6 +314,14 @@ class CitiesStore:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def file_shas(self, body_id: str | None = None) -> list[tuple[str, str]]:
+        """``(file_id, sha256)`` für alles, dessen Bytes schon geholt sind."""
+        sql = "SELECT id, sha256 FROM files WHERE sha256 IS NOT NULL"
+        args: list[Any] = []
+        if body_id:
+            sql += " AND body_id=?"; args.append(body_id)
+        return [(r["id"], r["sha256"]) for r in self._conn.execute(sql, args)]
+
     def set_file_sha(self, file_id: str, sha256: str) -> None:
         with self._write() as conn:
             conn.execute("UPDATE files SET sha256=? WHERE id=?", (sha256, file_id))
