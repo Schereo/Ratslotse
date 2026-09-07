@@ -23,7 +23,9 @@ describe("ebenenAusUrl / ebenenZuUrl", () => {
     expect(m.ebenenAusUrl(null)).toBeNull();
   });
   it("hält die Adresse sauber, solange die Vorgabe gilt", () => {
-    expect(m.ebenenZuUrl(new Set(m.ALLE_EBENEN))).toBeNull();
+    expect(m.ebenenZuUrl(new Set(m.VORGABE))).toBeNull();
+    // Alle vier ist NICHT die Vorgabe: Die Themen-Orte kommen dazu, also in die Adresse.
+    expect(m.ebenenZuUrl(new Set(m.ALLE_EBENEN))).toBe("vorhaben,plaene,sperrungen,themen-orte");
     expect(m.ebenenZuUrl(new Set(["sperrungen", "vorhaben"]))).toBe("vorhaben,sperrungen");
     expect(m.ebenenZuUrl(new Set())).toBe("");
   });
@@ -31,7 +33,7 @@ describe("ebenenAusUrl / ebenenZuUrl", () => {
 
 describe("ebenenStart", () => {
   it("Adresse vor Speicher vor Vorgabe", () => {
-    expect([...m.ebenenStart(null)]).toEqual([...m.ALLE_EBENEN]);
+    expect([...m.ebenenStart(null)]).toEqual([...m.VORGABE]);
     m.ebenenMerken(new Set(["vorhaben"]));
     expect([...m.ebenenStart(null)]).toEqual(["vorhaben"]);
     expect([...m.ebenenStart("plaene")]).toEqual(["plaene"]);
@@ -40,16 +42,16 @@ describe("ebenenStart", () => {
   });
   it("überlebt einen gesperrten Speicher und kaputtes JSON", () => {
     speicher.setItem("karte.ebenen", "{nicht json");
-    expect([...m.ebenenStart(null)]).toEqual([...m.ALLE_EBENEN]);
+    expect([...m.ebenenStart(null)]).toEqual([...m.VORGABE]);
     speicher.kaputt(true);
     expect(() => m.ebenenMerken(new Set(["plaene"]))).not.toThrow();
-    expect([...m.ebenenStart(null)]).toEqual([...m.ALLE_EBENEN]);
+    expect([...m.ebenenStart(null)]).toEqual([...m.VORGABE]);
   });
 });
 
 describe("ebeneUmschalten", () => {
   it("schaltet um, ohne das Original anzufassen", () => {
-    const a = new Set<"vorhaben" | "plaene" | "sperrungen">(["vorhaben"]);
+    const a = new Set<"vorhaben" | "plaene" | "sperrungen" | "themen-orte">(["vorhaben"]);
     const b = m.ebeneUmschalten(a, "plaene");
     expect([...b]).toEqual(["vorhaben", "plaene"]);
     expect([...m.ebeneUmschalten(b, "vorhaben")]).toEqual(["plaene"]);

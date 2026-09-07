@@ -17,7 +17,7 @@
 // Spätere Ebenen (Themen-Orte, Beteiligungen, Wahlergebnis) sind je ein
 // Eintrag hier — die Chips, die Adresse und der Speicher kennen sie dann.
 
-export type EbenenId = "vorhaben" | "plaene" | "sperrungen";
+export type EbenenId = "vorhaben" | "plaene" | "sperrungen" | "themen-orte";
 
 export type Ebene = {
   id: EbenenId;
@@ -36,10 +36,16 @@ export const EBENEN: readonly Ebene[] = [
   { id: "vorhaben", label: "Vorhaben", farbe: "#0a63a8", stufen: ["city", "district"], quelle: "aus den Beschlüssen des Rats, letzte zwei Jahre" },
   { id: "plaene", label: "Bebauungspläne", farbe: "#15803d", gestrichelt: true, stufen: ["district"], quelle: "Geltungsbereiche, Stadt Oldenburg (Geoportal)" },
   { id: "sperrungen", label: "Sperrungen", farbe: "#b45309", stufen: ["district"], quelle: "Verkehrsbehörde, Stadt Oldenburg (Geoportal), täglich" },
+  // Die Punkte der alten Themen-Karte: verortete Themen und Beschlussorte
+  // über ALLE Jahre. In der Vorgabe aus — sie sind das andere Vokabular
+  // (Themen statt Vorhaben) und lägen sonst über den Pins des Viertels.
+  { id: "themen-orte", label: "Themen-Orte", farbe: "#7c3aed", stufen: ["city", "district"], quelle: "Orte und Themen aus allen Beschlüssen, nach Zahl gewichtet" },
 ] as const;
 
 export const ALLE_EBENEN: readonly EbenenId[] = EBENEN.map((e) => e.id);
-export const VORGABE: ReadonlySet<EbenenId> = new Set(ALLE_EBENEN);
+/** Was ohne Adresse und Speicher an ist: die Ebenen des Viertels. Die
+ *  Themen-Orte schaltet man dazu. */
+export const VORGABE: ReadonlySet<EbenenId> = new Set<EbenenId>(["vorhaben", "plaene", "sperrungen"]);
 
 const SCHLUESSEL = "karte.ebenen";
 
@@ -57,7 +63,7 @@ export function ebenenAusUrl(param: string | null): Set<EbenenId> | null {
 /** Set → Parameter-Wert; `null`, wenn die Vorgabe gilt (dann bleibt die
  *  Adresse sauber). Die Reihenfolge ist die der Registry, nicht die des Klicks. */
 export function ebenenZuUrl(ebenen: ReadonlySet<EbenenId>): string | null {
-  if (ebenen.size === VORGABE.size && ALLE_EBENEN.every((e) => ebenen.has(e))) return null;
+  if (ebenen.size === VORGABE.size && [...VORGABE].every((e) => ebenen.has(e))) return null;
   return ALLE_EBENEN.filter((e) => ebenen.has(e)).join(",");
 }
 
