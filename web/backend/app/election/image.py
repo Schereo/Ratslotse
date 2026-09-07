@@ -374,5 +374,5 @@ def _legend(sheet: _Sheet, data: ElectionNight, field: SeatField) -> None:
 def _footer(sheet: _Sheet) -> None:
     font = sheet.font(INTER, 13, 400)
     text = ("ratslotse.de/wahlabend · Quelle: Open Data des Votemanagers der Stadt Oldenburg"
-            " · Sitze nach NKWG nachgerechnet, kein amtliches Ergebnis")
+            " · Sitze von uns nach NKWG gerechnet, Fehler möglich — maßgeblich ist die amtliche Präsentation")
     sheet.text(MARGIN, 590, text, font, MUTED)

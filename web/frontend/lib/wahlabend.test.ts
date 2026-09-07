@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abfragePfad, bildPfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, zahl } from "./wahlabend";
+import { abfragePfad, bildPfad, delta, fortschritt, halbkreis, kandidatenStatus, koalitionen, mehrheit, nachStimmen, prozent, sitzband, sitzgrenze, standText, uhrzeit, wahlabendZeit, zahl } from "./wahlabend";
 
 describe("Formate", () => {
   it("Zahlen und Prozente auf Deutsch, Lücken als Strich", () => {
@@ -113,5 +113,17 @@ describe("Kandidatenrennen und Bild", () => {
   it("Bildpfad trägt Feld und Probe-Parameter", () => {
     expect(bildPfad("seats", null, null)).toBe("/wahlabend/bild.png?feld=seats");
     expect(bildPfad("projected_seats", "2021", "60")).toBe("/wahlabend/bild.png?feld=projected_seats&probe=2021&counted=60");
+  });
+});
+
+describe("Wann ist Wahlabend", () => {
+  it("zählt in deutscher Zeit herunter und kippt um 18 Uhr auf „läuft“", () => {
+    expect(wahlabendZeit(new Date("2026-09-07T06:00:00Z"))).toMatchObject({ phase: "vorher", tage: 6, kicker: "Noch 6 Tage", wann: "Am Sonntag ab 18 Uhr" });
+    expect(wahlabendZeit(new Date("2026-09-12T21:30:00Z"))).toMatchObject({ phase: "vorher", tage: 1, kicker: "Morgen ab 18 Uhr" });
+    // 12.09. 23:30 MESZ ist noch der Samstag — in UTC schon der 12., in Berlin ebenfalls.
+    expect(wahlabendZeit(new Date("2026-09-12T22:30:00Z"))).toMatchObject({ phase: "vorher", tage: 0, kicker: "Heute ab 18 Uhr" });
+    expect(wahlabendZeit(new Date("2026-09-13T15:59:00Z")).phase).toBe("vorher");
+    expect(wahlabendZeit(new Date("2026-09-13T16:00:00Z"))).toMatchObject({ phase: "laeuft", kicker: "Live" });
+    expect(wahlabendZeit(new Date("2026-09-20T12:00:00Z")).phase).toBe("laeuft");
   });
 });
