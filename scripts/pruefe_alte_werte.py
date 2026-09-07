@@ -79,7 +79,8 @@ ERLAUBT = {
     "vorlage": "Zielart des Beleg-Apparats (dokument|datensatz|vorlage|ris|webseite)",
     "gruppe": "Suchwort der Beschluss-Seite, kein gespeicherter Wert",
     "anlage": "Anker-Präfix der Anlagen-Blöcke",
-    "liste": "Absatzart des Antwort-Renderers (kopf|unterkopf|liste|text)",
+    "liste": "Absatzart des Antwort-Renderers (kopf|unterkopf|liste|text); dazu der "
+             "URL-Parameter ?liste= der Wahlabend-Seite — Adressen bleiben deutsch",
     "leicht": "Quiz-Schwierigkeit — im Backend noch deutsch",
     "unveraendert": "Quellen-Check der Kommunalwahl mit eigenem Vokabular",
     "entwurf": "nur noch in einem Doku-Kommentar in haushalt.ts",
@@ -157,7 +158,7 @@ ERLAUBT_ZEILE = {
     "leicht": re.compile(r'DIFF_LABEL|difficulty'),
     "unveraendert": re.compile(r'kommunalwahl|Status'),
     "stadtteil": re.compile(r'stadtteil:|/preview|"stadtteil"\s*[,:]'),
-    "liste": re.compile(r'kopf|unterkopf|art ===|as const'),
+    "liste": re.compile(r'kopf|unterkopf|art ===|as const|\("liste"'),
     "anlage": re.compile(r'ankerPrefix'),
     "gruppe": re.compile(r'factionWords|term|gruppe:\s*string'),
     "unbekannt": re.compile(r'\|\|'),

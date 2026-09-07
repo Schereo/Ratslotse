@@ -204,20 +204,73 @@ public struct DistrictNeighbour: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+/// Eine laufende Sperrung der Stadt (Geoportal) im Viertel — Linie als
+/// GeoJSON (LineString/MultiLineString), Kontext, kein Vorhaben.
+public struct DistrictClosure: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let street: String
+    public let reason: String?
+    public let kind: Int?
+    public let kindLabel: String?
+    public let validFrom: String?
+    public let validUntil: String?
+    public let description: String?
+    public let geometry: JSONValue?
+    public let latitude: Double?
+    public let longitude: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, street, reason, kind, description, geometry
+        case kindLabel = "kind_label"
+        case validFrom = "valid_from"
+        case validUntil = "valid_until"
+        case latitude = "lat"
+        case longitude = "lon"
+    }
+}
+
+/// Eine Pressemitteilung der Stadt mit Bezug auf das Viertel.
+public struct DistrictPressItem: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let title: String
+    public let date: String?
+    public let url: String
+    public let teaser: String
+    public let evidence: String?
+    public let via: String?
+}
+
 /// `GET /api/districts/{place_id}/projects` — die Tafel eines Ortsbereichs.
 /// `place` ist die Ortsdarstellung des Katalogs; hier reichen id und name.
+/// `closures` und `press` sind optional dekodiert: Die App im Store wurde
+/// gegen einen Server ohne die beiden Felder gebaut (s. ios/CLAUDE.md).
 public struct DistrictProjects: Codable, Sendable {
     public let place: DistrictPlace
     public let projects: [DistrictProject]
     public let upcoming: [DistrictUpcomingItem]
     public let investments: [DistrictInvestment]
     public let participations: [DistrictParticipation]
+    public let closures: [DistrictClosure]
+    public let press: [DistrictPressItem]
     public let neighbours: [DistrictNeighbour]
     public let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case place, projects, upcoming, investments, participations, neighbours
+        case place, projects, upcoming, investments, participations, closures, press, neighbours
         case updatedAt = "updated_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        place = try c.decode(DistrictPlace.self, forKey: .place)
+        projects = try c.decode([DistrictProject].self, forKey: .projects)
+        upcoming = try c.decode([DistrictUpcomingItem].self, forKey: .upcoming)
+        investments = try c.decode([DistrictInvestment].self, forKey: .investments)
+        participations = try c.decode([DistrictParticipation].self, forKey: .participations)
+        closures = try c.decodeIfPresent([DistrictClosure].self, forKey: .closures) ?? []
+        press = try c.decodeIfPresent([DistrictPressItem].self, forKey: .press) ?? []
+        neighbours = try c.decode([DistrictNeighbour].self, forKey: .neighbours)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 }
 

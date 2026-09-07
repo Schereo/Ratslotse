@@ -1,0 +1,418 @@
+{
+ "quelle": {
+  "titel": "Stadtratswahl 12.09.2021, Stadt Oldenburg (Oldb) — Open Data des Votemanagers",
+  "url": "https://votemanager.kdo.de/20210912/03403000/praesentation/opendata.html",
+  "abgerufen": "2026-09-06",
+  "hinweis": "Amtliches Endergebnis (Stand der Präsentation 16.09.2021). Die Sitzverteilung stammt aus der Ergebnispräsentation (Komponente „Sitzverteilung“)."
+ },
+ "sitze_gesamt": 50,
+ "parteien": [
+  {
+   "index": 1,
+   "label": "SPD",
+   "slug": "spd"
+  },
+  {
+   "index": 2,
+   "label": "CDU",
+   "slug": "cdu"
+  },
+  {
+   "index": 3,
+   "label": "GRÜNE",
+   "slug": "gruene"
+  },
+  {
+   "index": 4,
+   "label": "DIE LINKE.",
+   "slug": "linke"
+  },
+  {
+   "index": 5,
+   "label": "FDP",
+   "slug": "fdp"
+  },
+  {
+   "index": 6,
+   "label": "AfD",
+   "slug": "afd"
+  },
+  {
+   "index": 7,
+   "label": "WFO",
+   "slug": "fuer-oldenburg"
+  },
+  {
+   "index": 8,
+   "label": "PIRATEN",
+   "slug": "piraten"
+  },
+  {
+   "index": 9,
+   "label": "dieBasis LV Niedersachsen",
+   "slug": null
+  },
+  {
+   "index": 10,
+   "label": "Hilbert Schoe, Einzelwahlvorschlag Schoe",
+   "slug": null
+  },
+  {
+   "index": 11,
+   "label": "Volt",
+   "slug": "volt"
+  }
+ ],
+ "sitzverteilung": [
+  {
+   "party": "SPD",
+   "name": "Ellberg, Bernhard",
+   "district": 1,
+   "kind": "direkt",
+   "votes": 1868
+  },
+  {
+   "party": "SPD",
+   "name": "Finke, Vally",
+   "district": 1,
+   "kind": "Listenplatz 2",
+   "votes": 690
+  },
+  {
+   "party": "SPD",
+   "name": "Prange, Ulf",
+   "district": 2,
+   "kind": "direkt",
+   "votes": 2299
+  },
+  {
+   "party": "SPD",
+   "name": "Unruh, Bettina",
+   "district": 2,
+   "kind": "Listenplatz 2",
+   "votes": 797
+  },
+  {
+   "party": "SPD",
+   "name": "Eilers-Dörfler, Germaid",
+   "district": 3,
+   "kind": "direkt",
+   "votes": 1494
+  },
+  {
+   "party": "SPD",
+   "name": "Behrens, Paul",
+   "district": 3,
+   "kind": "Listenplatz 2",
+   "votes": 779
+  },
+  {
+   "party": "SPD",
+   "name": "Piechotta, Nicole",
+   "district": 4,
+   "kind": "direkt",
+   "votes": 2047
+  },
+  {
+   "party": "SPD",
+   "name": "Conty, Margrit",
+   "district": 4,
+   "kind": "direkt",
+   "votes": 1236
+  },
+  {
+   "party": "SPD",
+   "name": "Klein, Thomas",
+   "district": 4,
+   "kind": "Listenplatz 2",
+   "votes": 760
+  },
+  {
+   "party": "SPD",
+   "name": "Schröder, Tom",
+   "district": 4,
+   "kind": "Listenplatz 4",
+   "votes": 516
+  },
+  {
+   "party": "SPD",
+   "name": "Freymuth, Jens",
+   "district": 5,
+   "kind": "direkt",
+   "votes": 1464
+  },
+  {
+   "party": "SPD",
+   "name": "Schnell, Milena Katharina",
+   "district": 5,
+   "kind": "Listenplatz 2",
+   "votes": 607
+  },
+  {
+   "party": "SPD",
+   "name": "Meerbothe, Renke",
+   "district": 5,
+   "kind": "Listenplatz 3",
+   "votes": 674
+  },
+  {
+   "party": "SPD",
+   "name": "Naber, Hanna",
+   "district": 6,
+   "kind": "direkt",
+   "votes": 1556
+  },
+  {
+   "party": "SPD",
+   "name": "Bernhardt, Christina",
+   "district": 6,
+   "kind": "Listenplatz 2",
+   "votes": 613
+  },
+  {
+   "party": "CDU",
+   "name": "Klaukien, Olaf",
+   "district": 1,
+   "kind": "direkt",
+   "votes": 772
+  },
+  {
+   "party": "CDU",
+   "name": "Baak, Christoph",
+   "district": 2,
+   "kind": "direkt",
+   "votes": 1284
+  },
+  {
+   "party": "CDU",
+   "name": "Eickhoff, Annika",
+   "district": 3,
+   "kind": "Listenplatz 1",
+   "votes": 783
+  },
+  {
+   "party": "CDU",
+   "name": "Dr. Niewerth-Baumann, Esther",
+   "district": 4,
+   "kind": "direkt",
+   "votes": 2429
+  },
+  {
+   "party": "CDU",
+   "name": "Klein-Hennig, Hendrik",
+   "district": 4,
+   "kind": "Listenplatz 2",
+   "votes": 659
+  },
+  {
+   "party": "CDU",
+   "name": "Raschke, Klaus",
+   "district": 5,
+   "kind": "direkt",
+   "votes": 967
+  },
+  {
+   "party": "CDU",
+   "name": "Woltmann, Barbara",
+   "district": 5,
+   "kind": "Listenplatz 2",
+   "votes": 658
+  },
+  {
+   "party": "CDU",
+   "name": "Averbeck, Petra",
+   "district": 6,
+   "kind": "direkt",
+   "votes": 1505
+  },
+  {
+   "party": "CDU",
+   "name": "Heß, Hans-Georg",
+   "district": 6,
+   "kind": "Listenplatz 2",
+   "votes": 969
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Kruse, Ingrid",
+   "district": 1,
+   "kind": "direkt",
+   "votes": 1252
+  },
+  {
+   "party": "GRÜNE",
+   "name": "van Ellen, Thorsten",
+   "district": 1,
+   "kind": "Listenplatz 2",
+   "votes": 732
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Hufeland, Andrea",
+   "district": 1,
+   "kind": "Listenplatz 3",
+   "votes": 881
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Rohde, Gabriel Oliver",
+   "district": 2,
+   "kind": "direkt",
+   "votes": 1043
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Schilling, Rita",
+   "district": 2,
+   "kind": "Listenplatz 1",
+   "votes": 1000
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Harms, Tim",
+   "district": 2,
+   "kind": "Listenplatz 3",
+   "votes": 363
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Wolff, Christine Berta",
+   "district": 3,
+   "kind": "direkt",
+   "votes": 1228
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Wenzel, Michael",
+   "district": 3,
+   "kind": "Listenplatz 2",
+   "votes": 602
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Niederstein, Maik",
+   "district": 3,
+   "kind": "Listenplatz 3",
+   "votes": 448
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Dr. Alhamwi, Alaa",
+   "district": 4,
+   "kind": "direkt",
+   "votes": 828
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Schober-Stockmann, Jutta",
+   "district": 4,
+   "kind": "Listenplatz 1",
+   "votes": 801
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Drügemöller, Ruth Regina",
+   "district": 5,
+   "kind": "direkt",
+   "votes": 853
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Beerheide, Nicolai",
+   "district": 5,
+   "kind": "Listenplatz 2",
+   "votes": 344
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Chahine, Rima",
+   "district": 6,
+   "kind": "direkt",
+   "votes": 1010
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Rohe, Sebastian",
+   "district": 6,
+   "kind": "Listenplatz 2",
+   "votes": 996
+  },
+  {
+   "party": "GRÜNE",
+   "name": "Küpker, Claudia Petra",
+   "district": 6,
+   "kind": "Listenplatz 3",
+   "votes": 468
+  },
+  {
+   "party": "DIE LINKE.",
+   "name": "Höpken, Jonas-Christopher",
+   "district": 1,
+   "kind": "Listenplatz 1",
+   "votes": 683
+  },
+  {
+   "party": "DIE LINKE.",
+   "name": "Mohamed Ali, Samira",
+   "district": 2,
+   "kind": "direkt",
+   "votes": 891
+  },
+  {
+   "party": "DIE LINKE.",
+   "name": "Dr. Onken, Holger",
+   "district": 3,
+   "kind": "Listenplatz 1",
+   "votes": 395
+  },
+  {
+   "party": "DIE LINKE.",
+   "name": "Homann, Christel",
+   "district": 6,
+   "kind": "Listenplatz 1",
+   "votes": 174
+  },
+  {
+   "party": "FDP",
+   "name": "Dr. Ratjen-Damerau, Christiane",
+   "district": 2,
+   "kind": "Listenplatz 1",
+   "votes": 413
+  },
+  {
+   "party": "FDP",
+   "name": "Schulz, Benno Sönke",
+   "district": 4,
+   "kind": "Listenplatz 1",
+   "votes": 287
+  },
+  {
+   "party": "FDP",
+   "name": "Pfeiffer, Daniela",
+   "district": 6,
+   "kind": "Listenplatz 1",
+   "votes": 236
+  },
+  {
+   "party": "AfD",
+   "name": "Bernhardt, Lidia",
+   "district": 5,
+   "kind": "Listenplatz 1",
+   "votes": 637
+  },
+  {
+   "party": "PIRATEN",
+   "name": "Sander, Andreas",
+   "district": 2,
+   "kind": "direkt",
+   "votes": 224
+  },
+  {
+   "party": "Volt",
+   "name": "Lükermann, Jens",
+   "district": 1,
+   "kind": "Listenplatz 1",
+   "votes": 213
+  }
+ ]
+}
