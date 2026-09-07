@@ -54,5 +54,15 @@ jobs:
       - name: Typ-Schuldenstand
         run: python scripts/pruefe_typschulden.py
 
+      # `-n auto` verteilt den Lauf über pytest-xdist auf alle Kerne des
+      # Runners: aus knapp drei Minuten wird rund eine. Bis 09/2026 ging das
+      # nicht, und der Grund war keine Eigenschaft der Tests selbst, sondern
+      # eine Verabredung über eine Prozessvariable: Jedes Backend-Testmodul
+      # setzte seine Wegwerf-Datenbank per `os.environ.setdefault("COUNCIL_DB",
+      # …)` beim Import. Welche Datei galt, hing damit an der
+      # Import-Reihenfolge — seriell fest, auf vier Prozesse verteilt je Worker
+      # eine andere. `tests/conftest.py` setzt die Pfade jetzt einmal je
+      # Prozess; wer die Variablen wieder in einem Testmodul setzt, macht den
+      # Lauf hier sporadisch rot.
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -n auto

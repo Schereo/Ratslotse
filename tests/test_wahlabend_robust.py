@@ -25,11 +25,9 @@ Zufallszahlengenerator ihn wieder trifft.
 """
 from __future__ import annotations
 
-import os
 import random
 import re
 import sys
-import tempfile
 import threading
 import time
 from dataclasses import replace
@@ -40,13 +38,9 @@ import pytest
 
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
-_TMP = tempfile.mkdtemp()
-os.environ.setdefault("RATSLOTSE_DB", str(Path(_TMP) / "ratslotse.sqlite"))
-os.environ.setdefault("COUNCIL_DB", str(Path(_TMP) / "council.sqlite"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
-os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
-# Kein Test schreibt in data/ — der Verlauf des Wahlabends auch nicht.
-os.environ.setdefault("WAHLABEND_HISTORY_FILE", str(Path(_TMP) / "wahlabend-verlauf.json"))
+# Wegwerf-Datenbanken und die übrigen Testwerte kommen aus
+# `tests/conftest.py` — dort EINMAL je Prozess gesetzt, damit sie nicht an
+# der Import-Reihenfolge der Module hängen (siehe die Begründung dort).
 
 from app.election import reference, register, service, votemanager  # noqa: E402
 from app.election.votemanager import AreaRow, ListRow, Snapshot  # noqa: E402

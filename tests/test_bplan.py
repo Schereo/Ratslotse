@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -22,13 +21,9 @@ _BACKEND = _ROOT / "web" / "backend"
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_BACKEND))
 
-_TMP = tempfile.mkdtemp()
-os.environ.setdefault("RATSLOTSE_DB", str(Path(_TMP) / "ratslotse.sqlite"))
-os.environ.setdefault("COUNCIL_DB", str(Path(_TMP) / "council.sqlite"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
-os.environ.setdefault("WEB_ADMIN_EMAIL", "admin@example.org")
-os.environ.setdefault("COOKIE_SECURE", "false")
-os.environ.setdefault("DISABLE_RATE_LIMIT", "1")
+# Wegwerf-Datenbanken und die übrigen Testwerte kommen aus
+# `tests/conftest.py` — dort EINMAL je Prozess gesetzt, damit sie nicht an
+# der Import-Reihenfolge der Module hängen (siehe die Begründung dort).
 
 from council import bplan, geo  # noqa: E402
 from council.store import CouncilStore  # noqa: E402
