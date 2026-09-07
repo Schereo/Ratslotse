@@ -3,6 +3,9 @@
 import { useEffect, useRef } from "react";
 import type { GeoJSON as GeoJSONLayer, LayerGroup, Map as LeafletMap, Path } from "leaflet";
 import "leaflet/dist/leaflet.css";
+// Das Cluster-Plugin bringt Übergänge für seine Marker mit; das Aussehen der
+// Bündel steht in globals.css (.ratslotse-map-cluster).
+import "leaflet.markercluster/dist/MarkerCluster.css";
 import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
 import { basemapUrl } from "@/lib/basemap";
 import { cn } from "@/lib/utils";

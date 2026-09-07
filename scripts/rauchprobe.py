@@ -55,7 +55,6 @@ PROBEN: tuple[str, ...] = (
     "/api/council/heute",
     "/api/council/people-directory",
     "/api/council/qa-beispiele",
-    "/api/districts/projects",
 )
 
 #: Endpunkte MIT Konto. Bewusst nur die, deren Antwort für alle gleich
@@ -74,6 +73,8 @@ MIT_KONTO: tuple[str, ...] = (
     "/api/council/places",
     "/api/council/entities",
     "/api/council/entities-map",
+    # „Mein Viertel": seit dem Umzug auf die Stadtkarte mit Konto (Schritt 5)
+    "/api/districts/projects",
     "/api/council/members",
     "/api/council/finance",
     "/api/council/goals",

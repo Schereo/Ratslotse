@@ -241,6 +241,7 @@ ERLAUBT_STELLE = {
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
     ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",
     ("view.tsx", "ort"): "URL-Parameter `?ort=` der Stadtkarte (/karte) — Website-Adressen bleiben deutsch, wie /viertel?id=",
+    ("AppRoute.swift", "ort"): "derselbe URL-Parameter `?ort=` von /karte, gelesen und gebaut von der App",
     ("council-map.tsx", "ort"): "`target` der Kartenpunkte (ort|location) — eigenes Vokabular",
     ("share-metadata.ts", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
     ("types.ts", "ort"): "`target` der Kartenpunkte (thema|ort|location) — eigenes Vokabular",

@@ -78,8 +78,13 @@ public struct AppRouter: Sendable {
             guard let id = value("id"), !id.isEmpty else { return .tab(.council) }
             return .place(id: id)
         case "/viertel":
+            // Die alte Adresse der Tafel — steht in Mails und Push und leitet
+            // im Web auf /karte?ort= weiter (STADTKARTE-PLAN.md, Schritt 5).
             let id = value("id")
             return .district(id: (id?.isEmpty ?? true) ? nil : id)
+        case "/karte":
+            let ort = value("ort")
+            return .district(id: (ort?.isEmpty ?? true) ? nil : ort)
         case "/council":
             if value("mode") == "fragen" {
                 return .question(prefill: value("q"), share: value("share"))
@@ -145,8 +150,9 @@ public struct AppRouter: Sendable {
         case .place(let id):
             components.path = "/council/ort"; components.queryItems = [.init(name: "id", value: id)]
         case .district(let id):
-            components.path = "/viertel"
-            if let id { components.queryItems = [.init(name: "id", value: id)] }
+            // Geteilt wird die neue Adresse; /viertel bleibt nur als Einstieg.
+            components.path = "/karte"
+            if let id { components.queryItems = [.init(name: "ort", value: id)] }
         case .quiz(let area):
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
         case .analysis:

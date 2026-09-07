@@ -84,10 +84,10 @@ const STEPS: TourStep[] = [
     text: "Wer beantragt was, wie oft ist der Rat sich einig, wohin fließt das Geld — die Analyse rechnet es aus den Beschlüssen aus.",
   },
   {
-    id: "karte", route: "/council?tab=themen", pose: "search",
+    id: "karte", route: "/karte", pose: "search",
     marks: ["karten"],
     title: "Die Stadtkarte",
-    text: "Beschlüsse an ihrem Ort: Klick dich durch Quartiere und Straßen und sieh, was der Rat dort entschieden hat.",
+    text: "Beschlüsse an ihrem Ort: Von der Stadt ins Viertel bis zum Vorhaben — Pläne, Sperrungen und Themen als Ebenen auf einer Karte.",
   },
   {
     // Ohne Route: Der Anker steht in Sidebar bzw. Tab-Bar, also auf jeder

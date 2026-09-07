@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 const FEATURES = [
   { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; Ratslotse findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/fragen", wide: true, hero: true },
   { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen.", href: "/council" },
-  { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte verständlich beschrieben — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/council?tab=themen" },
+  { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte verständlich beschrieben — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/karte" },
   { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", href: "/council?tab=analysis", wide: true },
   { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten.", href: "/docs" },
   { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", href: "/topics", wide: true },

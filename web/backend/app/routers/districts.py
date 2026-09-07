@@ -26,7 +26,7 @@ from ..antworten import (
     DistrictProjects,
     DistrictProjectsOverview,
 )
-from ..deps import get_council_store, optional_user, require_active
+from ..deps import get_council_store, require_active
 
 router = APIRouter(prefix="/api/districts", tags=["districts"])
 
@@ -39,8 +39,15 @@ def _primary_places(store: CouncilStore) -> list:
     return [p for p in store.all_places() if p.is_primary]
 
 
+# Seit dem Umzug auf die vereinte Stadtkarte (STADTKARTE-PLAN.md, Schritt 5)
+# verlangen alle drei Lese-Endpunkte ein Konto — wie die Karte selbst (Tims
+# Entscheidung 07.09.2026: öffentlich bleibt nur die Landingpage). Vorher waren
+# Übersicht und Suche offen, damit ein geteilter Tafel-Link ohne Konto ging.
 @router.get("/projects")
-def district_projects_overview(store: CouncilStore = Depends(get_council_store)) -> DistrictProjectsOverview:
+def district_projects_overview(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> DistrictProjectsOverview:
     """Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.
 
     Dazu die Stadtzahlen (wie viele Vorhaben, wie viele je Stand) und die
@@ -67,6 +74,7 @@ def district_projects_overview(store: CouncilStore = Depends(get_council_store))
 
 @router.get("/lookup")
 def district_lookup(q: str = Query("", max_length=80),
+                    _user: dict = Depends(require_active),
                     store: CouncilStore = Depends(get_council_store)) -> DistrictLookup:
     """„Ich wohne in der …": Straße, Platz oder Stadtteilname → Ortsbereich.
 
@@ -94,7 +102,7 @@ def district_lookup(q: str = Query("", max_length=80),
 @router.get("/{place_id}/projects")
 def district_projects(
     place_id: str,
-    user: dict | None = Depends(optional_user),
+    user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> DistrictProjects:
     """Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im

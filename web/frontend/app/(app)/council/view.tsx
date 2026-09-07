@@ -1427,7 +1427,7 @@ function FragenBruecke() {
 const TAB_META: Record<Tab, { title: string; description: string }> = {
   decisions: { title: "Suche", description: "Beschlüsse des Stadtrats durchsuchen — nach Stichwort, Ausschuss, Ergebnis und Zeitraum." },
   sessions: { title: "Sitzungen", description: "Sitzungen und Tagesordnungen von Rat und Ausschüssen." },
-  themen: { title: "Themen", description: "Was den Rat wo beschäftigt — auf der Stadtkarte und als Liste." },
+  themen: { title: "Themen", description: "Was den Rat beschäftigt — als Liste; verortet liegt es auf der Stadtkarte unter „Mein Viertel“." },
   analysis: { title: "Analyse", description: "Parteien, Personen, Finanzen, Trends und Ziele im Überblick." },
 };
 
@@ -1474,7 +1474,7 @@ function CouncilInner() {
     <div>
       {/* Design 9a: Die mobile Ansichtsleiste (28a/S3) ist wieder weg — ihre
           Ziele stecken jetzt in der Tab-Bar (Sitzungen) bzw. im „Mehr"-Sheet
-          (Stadtkarte, Analyse). Drei Nav-Ebenen übereinander (Burger → Pills →
+          (Mein Viertel, Analyse). Drei Nav-Ebenen übereinander (Burger → Pills →
           Suchen/Fragen) waren der Kern von Tims Mobil-Befund. */}
       <PageHeader
         title={meta.title}

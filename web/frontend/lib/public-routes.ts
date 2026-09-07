@@ -19,9 +19,10 @@ export const OEFFENTLICHE_PFADE = [
   "/council/sitzung",
   "/council/thema",
   "/council/person",
-  // „Mein Viertel": Die Tafel eines Ortsbereichs ist der Link, den man der
-  // Nachbarin schickt — sie soll ihn ohne Konto öffnen können.
-  "/viertel",
+  // „Mein Viertel" (/viertel, /karte) stand hier bis 09/2026. Seit dem Umzug
+  // auf die vereinte Karte liegt es hinter der Anmeldung (Tims Entscheidung
+  // 07.09.2026, STADTKARTE-PLAN.md): Ein geteilter Tafel-Link führt zur
+  // Anmeldung und mit `?weiter=` zurück zur Karte.
 ] as const;
 
 /** Ist dieser Pfad ohne Konto lesbar? */

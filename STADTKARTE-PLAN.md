@@ -4,7 +4,8 @@
 > Bühnen-Entwürfen (Artefakt „Stadtkarte: drei Bühnen“); die Entscheidungen
 > in Abschnitt 5 hat Tim am selben Tag getroffen. Noch nichts davon gebaut.
 > Jeder Schritt unten ist ein eigener PR nach `dev`, hinter dem
-> Feature-Schalter `stadtkarte`, bis Schritt 5 den Umzug macht.
+> Stand 07.09.2026: Schritte 1–5 gebaut — /karte ist „Mein Viertel“, der
+> Schalter `stadtkarte` ist weg (`mein-viertel` bleibt). Offen: 6 (iOS) und 7 (Wahl).
 
 ## 1. Ziel in einem Absatz
 
