@@ -21,12 +21,12 @@ NAME = expense_series.NAME
 #: gibt es sie nicht — dort entfällt der Test, und das ist richtig so: Er misst
 #: Zeichen an echten Zahlen, und die kann ein Fixture nicht ersetzen. Gemessen
 #: wurde am dev-Stand vom 02.09.2026.
-#: EIGENE Variable, nicht ``COUNCIL_DB`` — die setzen drei Backend-Testmodule
-#: beim Import auf eine leere Wegwerf-Datenbank. Läuft dieser Test im selben
-#: xdist-Arbeiter NACH einem von ihnen, zeigte ``COUNCIL_DB`` auf deren leere
-#: Datei: ``exists()`` wahr, der Baustein leer, der Test rot — je nach
-#: Verteilung der Module, also mal grün, mal rot (06.09.2026 an #1142, dessen
-#: fünf neue Client-Tests die Verteilung verschoben hatten).
+#: EIGENE Variable, nicht ``COUNCIL_DB``: Die zeigt auf die leere
+#: Wegwerf-Datenbank, die ``tests/conftest.py`` je Prozess anlegt —
+#: ``exists()`` wäre wahr, der Baustein leer und der Test rot. Gefunden am
+#: 06.09.2026 an #1142, als drei Backend-Testmodule die Variable noch selbst
+#: setzten und der Befund deshalb an der xdist-Verteilung hing: mal grün, mal
+#: rot. Seit 09/2026 gehört sie der conftest, der Grund bleibt derselbe.
 DEV_DB = Path(os.environ.get("RATSLOTSE_MESS_DB")
               or Path(__file__).resolve().parents[1] / "data" / "council.sqlite")
 

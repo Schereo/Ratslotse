@@ -60,8 +60,34 @@ hol && setz` holt die Ratsdaten von dev, `python scripts/saat_konten.py` legt
 erfundene Konten dazu. Beides steht in der Wurzel-`CLAUDE.md`.
 
 Ein Test, der eine echte Datenbank braucht, hängt an einer **eigenen**
-Umgebungsvariable, nicht an `COUNCIL_DB` — die setzen drei Testmodule beim
-Import selbst, eine Bedingung darauf übersprang nie und riss den Lauf um.
+Umgebungsvariable (`RATSLOTSE_MESS_DB`), nicht an `COUNCIL_DB` — die zeigt im
+Testlauf immer auf eine leere Wegwerf-Datei, eine Bedingung darauf übersprang
+nie und riss den Lauf um. `test_testpfade.py` hält das fest.
+
+## Die Suite läuft parallel — kein Modul redet über den Prozess
+
+Der Lauf fährt `pytest -n auto` (in der CI und in `scripts/pruefe.py`); jeder
+xdist-Arbeiter ist ein eigener Prozess und importiert eine **andere** Teilmenge
+der Module in anderer Reihenfolge. Alles, was zwei Testmodule über eine
+Prozessvariable verabreden, wird damit zum Zufall.
+
+Bis 09/2026 taten sie genau das: Jedes Backend-Testmodul setzte beim Import
+`os.environ.setdefault("COUNCIL_DB", …)` auf ein eigenes tempfile-Verzeichnis.
+`setdefault` heißt „nimm, was schon da ist" — seriell entschied die feste
+Import-Reihenfolge, parallel entschied der Zufall, und ein Modul schrieb seine
+Zeilen in eine andere Datei, als die App las.
+
+Deshalb setzt **`conftest.py`** diese Werte, einmal je Prozess:
+`RATSLOTSE_DB`, `COUNCIL_DB`, `WAHLABEND_HISTORY_FILE`, `WEB_JWT_SECRET`,
+`WEB_ADMIN_EMAIL`, `COOKIE_SECURE`, `DISABLE_RATE_LIMIT`. Ein Testmodul setzt
+sie nicht mehr — `test_testpfade.py` meldet jede neue Zuweisung.
+
+Braucht ein Test einen anderen Wert, nimmt er `monkeypatch.setenv` (wird nach
+dem Test zurückgenommen). Braucht er eine eigene Datenbank, legt er sie unter
+`tmp_path` an und hängt sie über `app.dependency_overrides` ein — nicht über
+die Umgebung: `web/backend/app/main.py` ruft `get_settings()` schon beim
+Import, und `get_settings` ist `lru_cache`. Wer die Variable danach umsetzt,
+ändert nur seine eigene Sicht, nicht die der App.
 
 ## Kein Test gegen die eigene Fixture
 

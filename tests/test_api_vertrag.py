@@ -14,14 +14,12 @@ Ort, an dem eine bewusste Ausnahme sichtbar würde, und der Test darunter
 meldet einen Eintrag, der nicht mehr nötig ist. Wer einen NEUEN Endpunkt ohne
 Form baut, wird rot.
 """
-import os
 import sys
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 
 
 # Nutzlasten, die direkt aus einer breiten Store-Abfrage kommen und in

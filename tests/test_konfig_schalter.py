@@ -17,14 +17,12 @@ Felder, die die Anwendung wirklich kennt.
 from __future__ import annotations
 
 import ast
-import os
 import re
 import sys
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 
 
 def _bekannte_schalter() -> set[str]:

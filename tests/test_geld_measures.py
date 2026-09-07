@@ -21,9 +21,9 @@ NAME = measures.NAME
 #: Zeichen an echten Zahlen, und die kann ein Fixture nicht ersetzen. Gemessen
 #: wurde am dev-Stand vom 02.09.2026.
 #: EIGENE Variable, nicht ``COUNCIL_DB`` — warum, steht in
-#: ``test_geld_expense_series.py``: Backend-Testmodule setzen ``COUNCIL_DB``
-#: auf eine leere Wegwerf-Datei, und je nach xdist-Verteilung zeigte der Test
-#: dann dorthin (06.09.2026 an #1142, zweiter Lauf: diese drei Dateien).
+#: ``test_geld_expense_series.py``: ``COUNCIL_DB`` zeigt in jedem Testlauf auf
+#: eine leere Wegwerf-Datei, ``exists()`` wäre also wahr und der Bestand leer
+#: (06.09.2026 an #1142 gemessen, zweiter Lauf: diese drei Dateien).
 DEV_DB = Path(os.environ.get("RATSLOTSE_MESS_DB")
               or Path(__file__).resolve().parents[1] / "data" / "council.sqlite")
 
