@@ -225,14 +225,17 @@ function Buehne() {
   const stufe: KartenStufe = ortName ? { art: "district", name: ortName } : { art: "city" };
   const place = tafel.data?.place as { id: string; name: string } | undefined;
 
-  const detail = z.ausgewaehlt && (
+  // Der Schließen-Knopf des Details gehört in die Seitenspalte, NICHT ins
+  // Sheet: Das bringt sein eigenes X mit, und beide standen übereinander
+  // (Tims Befund 07.09.2026).
+  const detail = (schliessenSichtbar: "immer" | "nie") => z.ausgewaehlt && (
     <VorhabenDetail
       v={z.ausgewaehlt}
       angemeldet={!!user}
       gemeldet={z.gemeldet.has(z.ausgewaehlt.project_key) || z.ausgewaehlt.reported}
       onMelden={() => z.ausgewaehlt && z.melden(z.ausgewaehlt)}
       onSchliessen={() => z.setAktiv(null)}
-      schliessenSichtbar="immer"
+      schliessenSichtbar={schliessenSichtbar}
     />
   );
 
@@ -341,7 +344,7 @@ function Buehne() {
             <button type="button" onClick={() => z.setAktiv(null)} className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> {place.name}
             </button>
-            {detail}
+            {detail("immer")}
           </div>
         ) : (
           <ViertelTafel data={tafel.data} place={place} z={z} wahl={wahlImViertel} />
@@ -353,7 +356,7 @@ function Buehne() {
           <SheetContent side="bottom" className="px-5 pt-4">
             <SheetTitle className="sr-only">{z.ausgewaehlt?.name ?? "Vorhaben"}</SheetTitle>
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-border" aria-hidden />
-            {detail}
+            {detail("nie")}
           </SheetContent>
         </Sheet>
       )}

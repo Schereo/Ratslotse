@@ -577,9 +577,10 @@ export function VorhabenListe({ sichtbar, aktiv, schwebt, onAktiv, onSchwebt, cl
 
 export function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen, schliessenSichtbar }: {
   v: Vorhaben; angemeldet: boolean; gemeldet: boolean; onMelden: () => void; onSchliessen: () => void;
-  /** Der Schließen-Knopf: auf `/viertel` nur in der Seitenspalte (`@3xl`),
-   *  auf der Karte immer — dort ist das Detail nie ein Sheet mit Griff. */
-  schliessenSichtbar?: "immer" | "breit";
+  /** Der Schließen-Knopf: `immer` in einer Seitenspalte, `breit` nur ab
+   *  `@3xl`, `nie` im Bottom-Sheet — das bringt sein eigenes X mit, und zwei
+   *  Kreuze übereinander sind ein Fehler (Tims Befund 07.09.2026). */
+  schliessenSichtbar?: "immer" | "breit" | "nie";
 }) {
   const stand = STAND[v.stage] ?? STAND.planning;
   const erreicht = WEG.indexOf(v.stage as (typeof WEG)[number]);
@@ -591,9 +592,11 @@ export function VorhabenDetail({ v, angemeldet, gemeldet, onMelden, onSchliessen
           {v.when && <span className="font-semibold text-signal">{v.when}</span>}
           <span>{KATEGORIE[v.category] ?? KATEGORIE.other}</span>
         </div>
-        <button type="button" onClick={onSchliessen} className={cn("rounded-md p-1 text-muted-foreground hover:text-foreground", schliessenSichtbar === "immer" ? "block" : "hidden @3xl:block")} aria-label="Detail schließen">
-          <X className="h-4 w-4" />
-        </button>
+        {schliessenSichtbar !== "nie" && (
+          <button type="button" onClick={onSchliessen} className={cn("rounded-md p-1 text-muted-foreground hover:text-foreground", schliessenSichtbar === "immer" ? "block" : "hidden @3xl:block")} aria-label="Detail schließen">
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <h3 className="mt-2 font-display text-xl font-bold leading-snug text-foreground">{v.name}</h3>
       <p className="mt-2 text-sm leading-relaxed text-foreground/90">{v.what}</p>
