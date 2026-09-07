@@ -54,5 +54,23 @@ jobs:
       - name: Typ-Schuldenstand
         run: python scripts/pruefe_typschulden.py
 
+      # NICHT PARALLEL, und das ist gemessen. `pytest -n auto` (xdist) bringt
+      # den Lauf lokal von 85 s auf 28 s — macht aber
+      # `tests/test_stadtquellen.py::test_tafel_traegt_sperrungen_und_presse`
+      # rot, reproduzierbar, mit `--dist loadfile` genauso.
+      #
+      # Der Grund liegt nicht in xdist, sondern in der Suite: Neun Testmodule
+      # verabreden ihre Datenbank über `os.environ.setdefault("COUNCIL_DB", …)`.
+      # `setdefault` heißt „nimm, was schon da ist" — hat ein anderes Modul die
+      # Variable vorher gesetzt, arbeitet die Datei auf DESSEN Datenbank.
+      # Seriell geht das gut, weil pytest die Module in fester Reihenfolge
+      # importiert; verteilt auf vier Prozesse importiert jeder eine andere
+      # Teilmenge in anderer Reihenfolge.
+      #
+      # Solange das so ist, wäre die Aufteilung ein rotes Gate für einen
+      # kleinen Gewinn: Dieser Lauf ist mit ~3 Minuten nicht der kritische
+      # Pfad — auf den wartet niemand, solange die Browsertests knapp 9
+      # brauchen. Wer die Suite isoliert (Datenbank je Modul über eine
+      # Fixture statt über eine Prozessvariable), kann `-n auto` nachziehen.
       - name: Run tests
         run: python -m pytest tests/ -q
