@@ -137,15 +137,18 @@ class MatchedAgendaItem(TypedDict):
 class WeekPreviewItem(TypedDict):
     """Ein Tagesordnungspunkt in „Diese Woche im Rat".
 
-    Zwei Listen tragen diese Form: ``items`` (die hervorgehobenen Punkte, mit
-    allen Feldern) und die Einträge in ``further_per_session`` — dort baut der
-    Store die Punkte Feld für Feld neu zusammen und lässt fünf davon weg.
-    Deshalb stehen genau diese fünf als ``NotRequired``.
+    Drei Listen tragen diese Form: ``items``, ``further_per_session`` und die
+    Sitzungs-Highlights. Alle drei gehen durch ``CouncilStore._punkt_export``,
+    und deshalb ist hier kein Feld mehr optional.
 
-    Der Store warnt an dieser Stelle selbst: „Wer hier ein Feld ergänzt, muss
-    es an BEIDEN Stellen tun." Genau das ist zweimal schiefgegangen — einmal
-    fehlte die Kurzfassung, einmal der Kartentext, und die Instagram-Karten
-    standen ohne Erklärung da.
+    Vorher war das anders, und es hat wehgetan. ``items`` lieferte die rohen
+    Store-Dicts aus, nur die andere Liste ging durch die Export-Funktion —
+    zwei Wege für eine Form. Dreimal fiel dabei ein Feld heraus: die
+    Kurzfassung, der Kartentext (beide Male standen Instagram-Karten ohne
+    Erklärung da) und am 07.09.2026 ``wichtig_grund``, das an regelbewerteten
+    Punkten gar nicht erst gesetzt wurde. Das Ergebnis war ein 500er auf
+    ``/api/council/week-preview`` und, weil die Vorprobe daran scheiterte,
+    74 Minuten API-Ausfall.
 
     ACHTUNG, Namensfalle: ``applicants`` ist hier EINE Zeichenkette (der aus
     dem Titel herausgetrennte Antragsteller). Das gleichnamige Feld an
@@ -181,12 +184,14 @@ class WeekPreviewItem(TypedDict):
     #: am Einzelpunkt höchstens sein eigener. Die Karte schreibt daraus
     #: „2 Anträge · Fraktionen BSW und SPD · CDU-Fraktion".
     group_applicants: list[str]
-    #: Nur in ``items``, nicht in ``further_per_session``:
-    kind: NotRequired[str | None]
-    behandlung: NotRequired[str | None]
-    vorgeschichte: NotRequired[int]
-    wichtig_quelle: NotRequired[str]
-    top: NotRequired[bool]
+    #: Diese fünf hingen bis 07.09.2026 nur an ``items``. Seit beide Listen
+    #: durch ``CouncilStore._punkt_export`` gehen, trägt sie jeder Punkt —
+    #: und ein vergessenes Feld ist ein Typfehler statt eines 500ers.
+    kind: str | None
+    behandlung: str | None
+    vorgeschichte: int
+    wichtig_quelle: str
+    top: bool
 
 
 class LiveState(TypedDict):
