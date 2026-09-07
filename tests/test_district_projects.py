@@ -197,7 +197,7 @@ def _register(client, email="tester@example.org"):
     return r.json()["access_token"]
 
 
-def test_endpunkte_oeffentlich_und_melden():
+def test_endpunkte_mit_konto_und_melden():
     store = _store()
     _seed(store)
     store.replace_district_projects("kreyenbrueck", [
@@ -206,6 +206,12 @@ def test_endpunkte_oeffentlich_und_melden():
     ])
     store.close()
     client = TestClient(app)
+    # Seit dem Umzug auf die Stadtkarte (Schritt 5) verlangen alle drei
+    # Lese-Endpunkte ein Konto — ohne eins: 401, nicht 200 mit leerer Liste.
+    assert client.get("/api/districts/projects").status_code == 401
+    assert client.get("/api/districts/lookup", params={"q": "krey"}).status_code == 401
+    assert client.get("/api/districts/kreyenbrueck/projects").status_code == 401
+    client.headers["Authorization"] = f"Bearer {_register(client, 'leserin@example.org')}"
 
     r = client.get("/api/districts/projects")
     assert r.status_code == 200
@@ -260,7 +266,8 @@ def test_endpunkte_oeffentlich_und_melden():
     assert client.get("/api/districts/nirgendwo/projects").status_code == 404
 
     pid = tafel["projects"][0]["id"]
-    assert client.post(f"/api/districts/projects/{pid}/report", json={}).status_code == 401
+    # Ohne Konto: 401 — ein frischer Client, der Lese-Client oben trägt ja schon eins.
+    assert TestClient(app).post(f"/api/districts/projects/{pid}/report", json={}).status_code == 401
 
     kopf = {"Authorization": f"Bearer {_register(client)}"}
     r = client.post(f"/api/districts/projects/{pid}/report", json={"reason": "liegt in Bümmerstede"}, headers=kopf)

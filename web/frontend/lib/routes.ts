@@ -19,18 +19,14 @@ export const fragenHref = (opts?: { q?: string; share?: string }) => {
 export const personHref = (slug: string) => `/council/person?slug=${encodeURIComponent(slug)}`;
 export const themaHref = (slug: string) => `/council/thema?slug=${encodeURIComponent(slug)}`;
 export const ortHref = (id: string) => `/council/ort?id=${encodeURIComponent(id)}`;
-/** „Mein Viertel": die Vorhaben-Tafel eines Ortsbereichs; ohne id die Auswahl. */
-/** „Mein Viertel": ohne `id` die Auswahl, mit `id` die Tafel eines Ortsbereichs;
- *  `vorhaben` öffnet dort gleich ein Vorhaben (die Stadt-Highlights der Auswahl
- *  zeigen auf genau eines). */
-export const viertelHref = (id?: string | null, vorhaben?: number | null) =>
-  id ? `/viertel?id=${encodeURIComponent(id)}${vorhaben ? `&v=${vorhaben}` : ""}` : "/viertel";
 /** Die vereinte Stadtkarte (`/karte`, STADTKARTE-PLAN.md): ohne `ort` die
- *  Stadt-Stufe, mit `ort` das Viertel, mit `vorhaben` das Detail. Dieselbe
- *  Form wie `viertelHref`, damit die Bausteine der Tafel nur den Erzeuger
- *  tauschen. */
+ *  Stadt-Stufe, mit `ort` das Viertel, mit `vorhaben` das Detail. */
 export const karteHref = (ort?: string | null, vorhaben?: number | null) =>
   ort ? `/karte?ort=${encodeURIComponent(ort)}${vorhaben ? `&v=${vorhaben}` : ""}` : "/karte";
+/** „Mein Viertel" — seit dem Umzug (Schritt 5) dieselbe Adresse wie die Karte.
+ *  Der Name bleibt, weil die Tafel-Bausteine und die Startseite ihn kennen;
+ *  `/viertel` selbst leitet nur noch weiter. */
+export const viertelHref = karteHref;
 /** Quiz-Start, optional mit vorgewähltem Gebiet (z. B. "electoral_district:3"). */
 export const quizHref = (area?: string) => (area ? `/quiz?area=${encodeURIComponent(area)}` : "/quiz");
 /** Sitzungsliste, aufgeklappt bei einer bestimmten Sitzung (Design 28a/S2:

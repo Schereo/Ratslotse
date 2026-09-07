@@ -315,7 +315,7 @@ function FirstStepsBar() {
     { id: "frag", title: "Stell dem Rat eine Frage", href: FRAGEN_HREF },
     { id: "beschluesse", title: "Beschlüsse durchstöbern", href: "/council" },
     { id: "analyse", title: "Die Analyse erkunden", href: "/council?tab=analysis" },
-    { id: "karten", title: "Die Stadtkarte entdecken", href: "/council?tab=themen" },
+    { id: "karten", title: "Die Stadtkarte entdecken", href: "/karte" },
     // „Erstes Thema anlegen" stand hier früher als fünfter Punkt. Er war der
     // einzige, den die Tour nicht abhaken konnte (er verlangt ein echtes
     // Thema) — die Leiste blieb deshalb nach jeder Tour unvollständig stehen.

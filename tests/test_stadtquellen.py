@@ -84,6 +84,20 @@ def test_sperrungen_werden_fortgeschrieben_und_je_viertel_gelesen():
     store.close()
 
 
+def _konto(client: TestClient, email: str = "leserin@example.org") -> str:
+    """Ein aktives Konto samt Bearer-Token — wie in test_district_projects.py."""
+    r = client.post("/api/auth/register", json={"email": email, "password": "password123"})
+    assert r.status_code == 201, r.text
+    from kern.store import Store
+    s = Store(os.environ["RATSLOTSE_DB"])
+    with s._conn:
+        s._conn.execute("UPDATE web_users SET status = 'active' WHERE email = ?", (email,))
+    s.close()
+    r = client.post("/api/auth/login", json={"email": email, "password": "password123"}, headers={"X-Client": "app"})
+    assert r.status_code == 200, r.text
+    return r.json()["access_token"]
+
+
 def _seed_presse(store: CouncilStore) -> None:
     c = store._conn
     with c:
@@ -141,7 +155,10 @@ def test_tafel_traegt_sperrungen_und_presse():
     presse_orte.verorte(store, store.press_without_places())
     store.save_road_closures([sperrungen.normiere(_feature(1, "Sandkruger Straße", "Kreyenbrück"))])
     store.close()
-    tafel = TestClient(app).get("/api/districts/kreyenbrueck/projects").json()
+    client = TestClient(app)
+    # Die Tafel verlangt seit dem Umzug auf die Stadtkarte ein Konto (Schritt 5).
+    client.headers["Authorization"] = f"Bearer {_konto(client)}"
+    tafel = client.get("/api/districts/kreyenbrueck/projects").json()
     assert [c["street"] for c in tafel["closures"]] == ["Sandkruger Straße"]
     assert tafel["closures"][0]["kind_label"] == "Vollsperrung"
     assert [p["title"][:9] for p in tafel["press"]] == ["Sandkruge"]

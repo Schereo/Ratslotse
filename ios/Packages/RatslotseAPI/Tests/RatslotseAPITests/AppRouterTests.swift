@@ -19,6 +19,9 @@ private let router = AppRouter()
     ("https://ratslotse.de/council/ort?id=stadtteil%3Aeversten", .place(id: "stadtteil:eversten")),
     ("https://ratslotse.de/viertel", .district(id: nil)),
     ("https://ratslotse.de/viertel?id=kreyenbrueck", .district(id: "kreyenbrueck")),
+    // Die vereinte Stadtkarte (Schritt 5): dieselbe Ansicht, neue Adresse.
+    ("https://ratslotse.de/karte", .district(id: nil)),
+    ("https://ratslotse.de/karte?ort=kreyenbrueck&v=94", .district(id: "kreyenbrueck")),
     ("https://ratslotse.de/topics", .tab(.topics)),
     ("https://ratslotse.de/g?t=abc", .sharedAnswer(token: "abc")),
 ])

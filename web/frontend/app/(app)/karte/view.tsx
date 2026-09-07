@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { notFound, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { featureAktiv, useAppConfig } from "@/lib/features";
 import { karteHref } from "@/lib/routes";
@@ -45,18 +45,20 @@ import {
  *  Der Ortsbereich steht als `push` in der Geschichte (zurück = Stadt), das
  *  Vorhaben als `replace` (zurück springt nicht durch jeden Pin).
  *
- *  Hinter dem Schalter `stadtkarte` (Tims Entscheidung 07.09.2026: die Karte
- *  liegt hinter der Anmeldung; öffentlich bleibt nur die Landingpage — das
- *  regelt das App-Layout, `/karte` steht nicht in `OEFFENTLICHE_PFADE`).
+ *  Hinter dem Schalter `mein-viertel` — die Karte IST „Mein Viertel" (Schritt 5
+ *  des Plans: der Menüpunkt führt hierher, `/viertel` leitet weiter). Tims
+ *  Entscheidung 07.09.2026: die Karte liegt hinter der Anmeldung; öffentlich
+ *  bleibt nur die Landingpage — das regelt das App-Layout, `/karte` steht
+ *  nicht in `OEFFENTLICHE_PFADE`.
  *
- *  Schritt 1 des Plans: noch keine Ebenen-Chips (Schritt 2), keine
- *  Themen-Orte (3), keine Navigation hierher (5).
+ *  `?orte=Name,Name` (V-05, aus der Mini-Karte einer KI-Antwort): schaltet die
+ *  Ebene „Themen-Orte" ein und zeigt nur diese Orte, mit abwählbarem Chip.
  */
 export default function KarteView() {
   const cfg = useAppConfig();
   // `undefined` heißt „noch nicht geladen" und wäre AUS — ein notFound() in
   // diesem Moment träfe jeden beim ersten Aufruf. Deshalb erst nach Antwort.
-  if (cfg.isSuccess && !featureAktiv(cfg.data, "stadtkarte")) notFound();
+  if (cfg.isSuccess && !featureAktiv(cfg.data, "mein-viertel")) notFound();
   if (!cfg.isSuccess) return <DetailSkeleton />;
   return <Buehne />;
 }
@@ -85,7 +87,24 @@ function Buehne() {
   // Ein Wechsel schreibt beides — die Adresse, damit ein geteilter Link zeigt,
   // was man sah, und den Speicher, damit es beim nächsten Mal so bleibt.
   const ebenenParam = sp.get("ebenen");
-  const [ebenen, setEbenen] = useState<Set<EbenenId>>(() => ebenenStart(ebenenParam));
+  // Die Orte aus einer KI-Antwort (V-05): Namen, komma-getrennt. Mit ihnen
+  // ist die Ebene „Themen-Orte" an, egal was Adresse oder Speicher sagen —
+  // sonst führte der Link auf eine Karte ohne die versprochenen Punkte.
+  const orteParam = sp.get("orte");
+  const orteFilter = useMemo(() => {
+    const namen = (orteParam ?? "").split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
+    return namen.length ? new Set(namen) : null;
+  }, [orteParam]);
+  const [ebenen, setEbenen] = useState<Set<EbenenId>>(() => {
+    const start = ebenenStart(ebenenParam);
+    return orteParam ? new Set<EbenenId>([...start, "themen-orte"]) : start;
+  });
+  function orteWeg() {
+    const p = new URLSearchParams(sp.toString());
+    p.delete("orte");
+    const q = p.toString();
+    router.replace(`${window.location.pathname}${q ? `?${q}` : ""}`, { scroll: false });
+  }
   function ebeneWechseln(id: EbenenId) {
     const neu = ebeneUmschalten(ebenen, id);
     setEbenen(neu);
@@ -103,10 +122,11 @@ function Buehne() {
   useEffect(() => {
     const basis = karteHref(ort, ort ? z.aktiv : null);
     const e = ebenenZuUrl(ebenen);
-    const ziel = e == null ? basis : `${basis}${basis.includes("?") ? "&" : "?"}ebenen=${e}`;
+    const teile = [e == null ? null : `ebenen=${e}`, orteParam ? `orte=${encodeURIComponent(orteParam)}` : null].filter(Boolean);
+    const ziel = teile.length ? `${basis}${basis.includes("?") ? "&" : "?"}${teile.join("&")}` : basis;
     if (window.location.pathname + window.location.search !== ziel) router.replace(ziel, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [z.aktiv, ebenen]);
+  }, [z.aktiv, ebenen, orteParam]);
 
   // Die Ebene „Themen-Orte" (Schritt 3): die Punkte der alten Themen-Karte,
   // geladen erst, wenn die Ebene an ist (der Endpunkt verlangt ein Konto —
@@ -133,12 +153,12 @@ function Buehne() {
   }, [themenAn, umrisse.length]);
   const themenOrte = useMemo(() => {
     if (!themenAn) return [];
-    const alle = themenQ.data?.entities ?? [];
+    const alle = (themenQ.data?.entities ?? []).filter((p) => !orteFilter || orteFilter.has(p.name.toLowerCase()));
     const nachArt = alle.filter((p) => !art || (art === "location" ? istBeschlussort(p) : p.kind === art && !istBeschlussort(p)));
     if (!ortName) return nachArt;
     if (!umrisse.length) return [];
     return nachArt.filter((p) => ortsbereichFor(p.lat, p.lon, umrisse) === ortName);
-  }, [themenAn, themenQ.data, art, ortName, umrisse]);
+  }, [themenAn, themenQ.data, art, ortName, umrisse, orteFilter]);
   const artZaehler = useMemo(() => {
     const alle = themenQ.data?.entities ?? [];
     const imBereich = ortName && umrisse.length ? alle.filter((p) => ortsbereichFor(p.lat, p.lon, umrisse) === ortName) : alle;
@@ -220,7 +240,19 @@ function Buehne() {
               ...(themenAn ? { "themen-orte": themenOrte.length } : {}),
             }}
           onToggle={ebeneWechseln}
-          unterzeile={themenAn && <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />}
+          unterzeile={themenAn && (
+            <div className="flex flex-col gap-1">
+              {orteFilter && (
+                <button type="button" onClick={orteWeg}
+                  className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm backdrop-blur transition-colors hover:bg-primary/15"
+                  aria-label="Ortsfilter aus der Frage entfernen">
+                  Orte aus deiner Frage · {themenOrte.length === 1 ? "1 Ort" : `${themenOrte.length} Orte`}
+                  <X className="h-3 w-3" aria-hidden />
+                </button>
+              )}
+              <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />
+            </div>
+          )}
           className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
         />
         {/* Brotkrumen: wo bin ich, und wie komme ich eine Stufe hoch. */}
@@ -328,7 +360,7 @@ function ThemenAktiv({ themen }: { themen: Entity[] }) {
     <section aria-labelledby="karte-themen-titel">
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="karte-themen-titel" className="font-display text-base font-bold text-foreground">Themen, die gerade laufen</h2>
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">12 Monate · alle Jahre auf der Karte</span>
+        <Link href="/council?tab=themen" className="shrink-0 text-xs font-medium text-primary hover:underline">Alle Themen als Liste →</Link>
       </div>
       <ol className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
         {top.map((e) => {

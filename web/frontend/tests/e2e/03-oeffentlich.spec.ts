@@ -50,9 +50,6 @@ test.describe("Ohne Konto lesbar", () => {
     "/council/sitzung?ksinr=1",
     "/council/thema?slug=radverkehr",
     "/council/person?slug=jemand",
-    // „Mein Viertel": Auswahl und Tafel — beide ohne Konto.
-    "/viertel",
-    "/viertel?id=kreyenbrueck",
   ]) {
     test(`${pfad} zeigt keine Anmeldewand`, async ({ page }) => {
       await page.goto(pfad);
@@ -79,7 +76,10 @@ test.describe("Ohne Konto NICHT lesbar", () => {
   // Die Frontend-Hälfte einer Grenze, die das Backend eigenständig durchsetzt
   // (`optional_user` in deps.py). Fiele sie, sähe man kurz eine leere Seite
   // statt der Anmeldung — und niemand merkt, dass etwas offen steht.
-  for (const pfad of ["/dashboard", "/topics", "/bookmarks", "/account", "/abos"]) {
+  // „Mein Viertel" (/karte, und /viertel als alter Einstieg) war bis 09/2026
+  // öffentlich; seit dem Umzug auf die vereinte Stadtkarte liegt es hinter
+  // der Anmeldung (STADTKARTE-PLAN.md, Schritt 5).
+  for (const pfad of ["/dashboard", "/topics", "/bookmarks", "/account", "/abos", "/karte", "/viertel?id=kreyenbrueck"]) {
     test(`${pfad} schickt zur Anmeldung`, async ({ page }) => {
       await page.goto(pfad);
       await page.waitForURL(/\/login/, { timeout: 15_000 });

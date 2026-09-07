@@ -2370,10 +2370,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   {ortsPins.length === 1 ? "1 Ort" : `${ortsPins.length} Orte`} aus den zitierten Beschlüssen
                 </p>
                 {/* V-05: Nicht mehr nur „irgendwohin zur Karte" — der Link nimmt
-                    GENAU die gezeigten Orte mit, die große Karte filtert danach
-                    und sagt es mit einem abwählbaren Chip. */}
+                    GENAU die gezeigten Orte mit, die Stadtkarte (Ebene
+                    „Themen-Orte") filtert danach und sagt es mit einem
+                    abwählbaren Chip. */}
                 <Link
-                  href={`/council?tab=themen&orte=${encodeURIComponent(
+                  href={`/karte?orte=${encodeURIComponent(
                     ortsPins.map((p) => p.name).filter(Boolean).join(","))}`}
                   className="shrink-0 text-[11px] font-medium text-primary hover:underline">
                   Auf der Stadtkarte öffnen →

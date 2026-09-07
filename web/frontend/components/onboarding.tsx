@@ -81,10 +81,12 @@ export function useOnboarding() {
 /** Seitenbesuch → Kurs-Schritt. „thema" fehlt bewusst: das erste Thema gilt
  *  erst als erledigt, wenn wirklich eins angelegt wurde (topics > 0). */
 function stepForLocation(pathname: string, sp: URLSearchParams): StepId | null {
+  // Die Stadtkarte wohnt seit 09/2026 unter /karte („Mein Viertel"), nicht
+  // mehr im Themen-Tab — der Kurs-Schritt „karten" zählt dort.
+  if (pfad(pathname) === "/karte") return "karten";
   if (pfad(pathname) !== "/council") return null;
   const tab = sp.get("tab") ?? "decisions";
   if (tab === "analysis") return "analyse";
-  if (tab === "themen") return "karten";
   if (tab === "decisions" || tab === "ask") return sp.get("mode") === "fragen" ? "frag" : "beschluesse";
   return null;
 }

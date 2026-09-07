@@ -12,7 +12,7 @@ import { decisionHref, sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { cn, formatDate } from "@/lib/utils";
 import { Badge, Button, Card, Input, Spinner, toast } from "@/components/ui";
-import { STAND_FARBE } from "@/components/viertel-karte";
+import { STAND_FARBE } from "@/components/viertel-zeichner";
 import { loadOrtsbereiche, ortsbereichFor } from "@/lib/districts";
 import { formatEuro, OUTCOME_META } from "@/components/decision-ui";
 import { STAFFEL, staffelStil } from "@/components/staffel";
@@ -59,8 +59,8 @@ export const WEG = ["idea", "planning", "decided", "building", "done"] as const;
 
 /* ------------------------------------------------------------- Daten --- */
 
-export function useUebersicht() {
-  return useQuery({ queryKey: ["viertel-uebersicht"], queryFn: () => api.get<Uebersicht>("/districts/projects") });
+export function useUebersicht(enabled = true) {
+  return useQuery({ queryKey: ["viertel-uebersicht"], queryFn: () => api.get<Uebersicht>("/districts/projects"), enabled });
 }
 
 export function useTafel(placeId: string | null) {
