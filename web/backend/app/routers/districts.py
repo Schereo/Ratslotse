@@ -98,8 +98,9 @@ def district_projects(
     store: CouncilStore = Depends(get_council_store),
 ) -> DistrictProjects:
     """Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im
-    Rat ansteht, was im Investitionsprogramm steht und wo gerade eine
-    Beteiligung läuft."""
+    Rat ansteht, was im Investitionsprogramm steht, wo gerade eine
+    Beteiligung läuft, was die Stadt gesperrt hat und was sie zum Viertel
+    mitgeteilt hat."""
     place = store.resolve_place(place_id)
     if not place or not place.is_primary:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ortsbereich nicht gefunden.")
@@ -123,6 +124,8 @@ def district_projects(
         "upcoming": store.district_upcoming_items(place),
         "investments": store.district_investments(place),
         "participations": store.district_participations(place),
+        "closures": store.district_road_closures(place.id),
+        "press": store.district_press(place.id),
         "neighbours": neighbours,
         "updated_at": store.district_projects_updated_at(place.id),
     })

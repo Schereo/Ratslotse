@@ -40,10 +40,20 @@ const STAND_LABEL: Record<string, string> = {
 const VOYAGER = basemapUrl("voyager");
 const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (Geoportal)";
 
-export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+/** Eine laufende Sperrung der Stadt — Linie in Warnfarbe, nicht wählbar. */
+export type KartenSperrung = {
+  id: number; street: string; reason: string | null; kind_label: string | null;
+  valid_until: string | null; geometry: unknown; lat: number | null; lon: number | null;
+};
+const SPERRUNG_FARBE = "#b45309";
+
+export function ViertelKarte({ ortsbereich, vorhaben, sperrungen, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   /** Name des Ortsbereichs — die Grenze kommt aus dem statischen GeoJSON. */
   ortsbereich: string;
   vorhaben: KartenVorhaben[];
+  /** Laufende Sperrungen der Stadt im Viertel — Linien in Warnfarbe mit
+   *  Hinweis, aber ohne Auswahl: Sie sind Kontext, kein Vorhaben. */
+  sperrungen?: KartenSperrung[];
   /** Das ausgewählte Vorhaben (Pin wird groß, Karte fährt hin). */
   aktiv: number | null;
   /** Vorhaben, die der Stufen-Filter ausblendet — bleiben blass sichtbar. */
@@ -223,6 +233,21 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, schwebt, o
         }
       }
     }
+    // Sperrungen der Stadt: gestrichelte Linie in Warnfarbe, darunter zur
+    // Lesbarkeit ein heller Saum; ein Hinweis beim Zeigen. Blass, sobald ein
+    // Vorhaben gewählt ist — dann steht dessen Linie allein.
+    for (const sp of sperrungen ?? []) {
+      const g = sp.geometry as { type?: string } | null;
+      if (!g || (g.type !== "LineString" && g.type !== "MultiLineString")) continue;
+      const blass = aktiv != null;
+      const saum = L.geoJSON(g as never, { style: { color: "#fff", weight: 7, opacity: blass ? 0.3 : 0.9, lineCap: "round" }, interactive: false });
+      const linie = L.geoJSON(g as never, { style: { color: SPERRUNG_FARBE, weight: 4, opacity: blass ? 0.3 : 0.9, dashArray: "8 6", lineCap: "round" } });
+      const bis = sp.valid_until ? ` · bis ${escapeHtml(new Date(sp.valid_until).toLocaleDateString("de-DE"))}` : "";
+      linie.bindTooltip(`<span class="stand" style="--c:${SPERRUNG_FARBE}">${escapeHtml(sp.kind_label ?? "Sperrung")}</span><b>${escapeHtml(sp.street)}</b><span class="wann">${escapeHtml(sp.reason ?? "")}${bis}</span>`,
+        { sticky: true, direction: "top", offset: [0, -8], className: "viertel-tip", opacity: 1 });
+      gruppe.addLayer(saum);
+      gruppe.addLayer(linie);
+    }
     if (aktivBounds) map.flyToBounds(aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
     // Die Stadt als Quelle nennen, sobald eine ihrer Flächen auf der Karte liegt
     // (dl-de/zero verlangt keine Nennung; wir nennen sie trotzdem, weil die
@@ -234,7 +259,7 @@ export function ViertelKarte({ ortsbereich, vorhaben, aktiv, gedimmt, schwebt, o
     }
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { zeichnen(); }, [vorhaben, aktiv, gedimmt]);
+  useEffect(() => { zeichnen(); }, [vorhaben, sperrungen, aktiv, gedimmt]);
 
   return (
     <div className={cn("relative overflow-hidden rounded-2xl border border-border bg-muted", className)}>
