@@ -4,23 +4,18 @@ from __future__ import annotations
 import json
 import os
 import sys
-import tempfile
 from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-# Make the backend importable and point it at throwaway databases BEFORE import.
+# Make the backend importable BEFORE the app is imported.
 _BACKEND = Path(__file__).resolve().parents[1] / "web" / "backend"
 sys.path.insert(0, str(_BACKEND))
-_TMP = tempfile.mkdtemp()
-os.environ["RATSLOTSE_DB"] = str(Path(_TMP) / "ratslotse.sqlite")
-os.environ["COUNCIL_DB"] = str(Path(_TMP) / "council.sqlite")
-os.environ["WEB_JWT_SECRET"] = "test-secret"
-os.environ["WEB_ADMIN_EMAIL"] = "admin@test.de"
-os.environ["COOKIE_SECURE"] = "false"  # TestClient uses http://testserver
-os.environ["DISABLE_RATE_LIMIT"] = "1"  # avoid state bleeding across tests
+# Wegwerf-Datenbanken und die übrigen Testwerte kommen aus
+# `tests/conftest.py` — dort EINMAL je Prozess gesetzt, damit sie nicht an
+# der Import-Reihenfolge der Module hängen (siehe die Begründung dort).
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402

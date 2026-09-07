@@ -18,14 +18,12 @@ Endpunkt gesehen hat; findet er weniger, wird er rot statt grün.
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web" / "backend"))
-os.environ.setdefault("WEB_JWT_SECRET", "test-secret")
 
 #: Abhängigkeiten, die einen Endpunkt als geschützt ausweisen.
 #:

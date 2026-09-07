@@ -17,11 +17,17 @@ from council.store import CouncilStore
 NAME = expense_series.NAME
 
 #: Die echte Datenbank für die Zeichen-Messung, gefunden wie in den
-#: Ingest-Skripten: ``COUNCIL_DB``, sonst ``data/council.sqlite``. In der CI
+#: Messläufen: ``RATSLOTSE_MESS_DB``, sonst ``data/council.sqlite``. In der CI
 #: gibt es sie nicht — dort entfällt der Test, und das ist richtig so: Er misst
 #: Zeichen an echten Zahlen, und die kann ein Fixture nicht ersetzen. Gemessen
 #: wurde am dev-Stand vom 02.09.2026.
-DEV_DB = Path(os.environ.get("COUNCIL_DB")
+#: EIGENE Variable, nicht ``COUNCIL_DB``: Die zeigt auf die leere
+#: Wegwerf-Datenbank, die ``tests/conftest.py`` je Prozess anlegt —
+#: ``exists()`` wäre wahr, der Baustein leer und der Test rot. Gefunden am
+#: 06.09.2026 an #1142, als drei Backend-Testmodule die Variable noch selbst
+#: setzten und der Befund deshalb an der xdist-Verteilung hing: mal grün, mal
+#: rot. Seit 09/2026 gehört sie der conftest, der Grund bleibt derselbe.
+DEV_DB = Path(os.environ.get("RATSLOTSE_MESS_DB")
               or Path(__file__).resolve().parents[1] / "data" / "council.sqlite")
 
 
