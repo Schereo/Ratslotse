@@ -13,7 +13,8 @@ from __future__ import annotations
 import pytest
 
 from council.cities.model import (
-    Batch, FileRole, OrgKind, Outcome, PaperKind, file_role, org_kind, outcome, paper_kind,
+    Batch, FileRole, OrgKind, Outcome, PaperKind, display_originator, file_role, org_kind,
+    outcome, paper_kind,
 )
 
 
@@ -135,3 +136,39 @@ def test_batch_counts_und_extend():
     a.extend(b)
     assert a.counts()["papers"] == 2
     assert a.counts()["meetings"] == 0
+
+
+@pytest.mark.parametrize("roh,erwartet", [
+    # Der Normalfall: eine Organisation, unverändert durch.
+    ("CDU-Fraktion", "CDU-Fraktion"),
+    ("Gruppe Grüne/SPD/Volt", "Gruppe Grüne/SPD/Volt"),
+    ("Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt", "Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt"),
+    ("Verwaltung", "Verwaltung"),
+    # Person plus Fraktion: die Fraktion bleibt, der Mensch geht.
+    ("Stadtverordneter Woelki, Fraktion Die Linke", "Fraktion Die Linke"),
+    ("Fraktion AfD, Stadtverordneter Chaled-Uwe Said", "Fraktion AfD"),
+    # Sechs Nachnamen und eine Fraktion. „Kogge" trägt kein Kennzeichen und
+    # fliegt deshalb mit raus — Nachnamen ohne Kennzeichen sind sonst nicht
+    # von Organisationen zu unterscheiden.
+    ("Stadtverordnete Kapp, Kogge, Zeller, Heigl, Raschke, Böttcher und Fraktion DIE aNDERE",
+     "Fraktion DIE aNDERE"),
+    # Nur ein Mensch: dann lieber gar keine Angabe.
+    ("Ratsmitglied Alexander Garder", None),
+    ("Ratsmitglied Mierke", None),
+    # Gremien, die ein Personenwort ENTHALTEN, bleiben: nach
+    # „Stadtverordneten" folgt „v", da ist keine Wortgrenze.
+    ("Büro der Stadtverordnetenversammlung für die Fraktionen",
+     "Büro der Stadtverordnetenversammlung für die Fraktionen"),
+    ("Frauenbeirat", "Frauenbeirat"),
+    (None, None),
+    ("", None),
+    ("   ", None),
+])
+def test_display_originator(roh, erwartet):
+    """Organisation ja, Person nein.
+
+    Gemessen am Bestand: 26 von 269 Urheber-Werten nannten Ratsmitglieder
+    anderer Städte mit Namen. Nach dieser Regel bleibt von 1.860 Angaben keine
+    einzige mit einem Personen-Wort übrig.
+    """
+    assert display_originator(roh) == erwartet

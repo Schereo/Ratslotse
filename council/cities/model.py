@@ -351,3 +351,50 @@ def file_role(name: str | None, oparl_key: str) -> FileRole:
             return FileRole.MAIN
         return FileRole.AUXILIARY
     return FileRole.OTHER
+
+
+# --------------------------------------------------------------- Urheber
+
+#: Wörter, die eine PERSON ankündigen. Die Wortgrenze ist wichtig:
+#: „Stadtverordnetenversammlung" ist ein Gremium und darf nicht anschlagen
+#: (nach „Stadtverordneten" folgt „v", also keine Grenze), „Frauenbeirat"
+#: ebenso wenig.
+_PERSON_RE = re.compile(
+    r"(?:stadtverordnete[rn]?|bezirksverordnete[rn]?|ratsmitglied(?:er)?|"
+    r"ratsherr|ratsfrau|abgeordnete[rn]?|herr|frau)\b", re.I)
+
+#: Wörter, an denen eine ORGANISATION zu erkennen ist. Parteikürzel gehören
+#: dazu, weil „Fraktion" nicht immer dabeisteht.
+_ORG_RE = re.compile(
+    r"(?:fraktion|gruppe|partei|verwaltung|ausschuss|beirat|verein|initiative|"
+    r"stadtverordnetenversammlung|rat der stadt|büro|cdu|spd|afd|fdp|linke|"
+    r"grüne|gruene|volt|bsw|piraten|freie wähler|die andere)", re.I)
+
+#: Woran die Aufzählung zerfällt: Komma, „und", „&", „/", Semikolon.
+_TRENNER_RE = re.compile(r"\s*(?:,|;|/|&|\bund\b)\s*", re.I)
+
+
+def display_originator(raw: str | None) -> str | None:
+    """Der Urheber, so wie er angezeigt werden darf — eine ORGANISATION.
+
+    Die Einordnung soll eine Organisation liefern, nicht eine Person; das
+    Modell hält sich nicht immer daran. Gemessen am Bestand: 26 von 269
+    Urheber-Werten nannten Menschen mit Namen, etwa „Stadtverordnete Kapp,
+    Kogge, Zeller, Heigl, Raschke, Böttcher und Fraktion DIE aNDERE".
+
+    Das sind Ratsmitglieder anderer Städte. Ihre Namen stehen zwar in
+    öffentlichen Unterlagen, aber sie hier auf eine Oldenburger Beschlussseite
+    zu heben, ist etwas anderes als sie dort zu belassen — und die eigene
+    Regel des Speichers ist eindeutig: Organisation, keine Person.
+
+    Steckt **irgendwo** ein Personen-Wort drin, bleiben nur die Glieder der
+    Aufzählung übrig, die eine Organisation nennen. Ein bloßer Nachname ohne
+    Kennzeichen („Kogge") trägt keins und fliegt damit mit raus. Bleibt nichts
+    übrig, gibt es keinen Urheber — lieber keine Angabe als eine falsche.
+    """
+    text = (raw or "").strip()
+    if not text or not _PERSON_RE.search(text):
+        return text or None
+    teile = [t.strip() for t in _TRENNER_RE.split(text) if t.strip()]
+    behalten = [t for t in teile if _ORG_RE.search(t) and not _PERSON_RE.search(t)]
+    return ", ".join(behalten) or None

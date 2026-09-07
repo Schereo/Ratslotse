@@ -1824,6 +1824,7 @@ def decision_elsewhere(
 
     from council.cities.annotators import get as get_annotator
     from council.cities.index import EMBED_MODEL
+    from council.cities.model import display_originator
     from council.cities.registry import BODIES
 
     ann = get_annotator("classify")
@@ -1878,7 +1879,8 @@ def decision_elsewhere(
             "summary": annotation.get("summary"),
             "instrument": annotation.get("instrument"),
             "transfer": annotation.get("transfer"),
-            "originator": annotation.get("originator"),
+            # Organisation, keine Person — die Regel steht in `model.py`.
+            "originator": display_originator(annotation.get("originator")),
         })
     return {
         "decision_id": decision_id,

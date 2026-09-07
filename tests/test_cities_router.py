@@ -166,3 +166,16 @@ def test_dieselbe_sache_zweimal_kostet_nur_einen_platz(client, cities_db):
     # Osnabrück nur einmal — Braunschweig bleibt, es ist eine andere Stadt.
     assert [i["paper_id"] for i in daten["items"]] == ["os:p:1", "bs:p:1"]
     assert daten["bodies"] == ["Braunschweig", "Osnabrück"]
+
+
+def test_der_endpunkt_nennt_keine_ratsmitglieder_beim_namen(client, cities_db):
+    """Die Einordnung soll eine Organisation liefern; das Modell hält sich
+    nicht immer daran. Namen von Ratsmitgliedern anderer Städte auf eine
+    Oldenburger Beschlussseite zu heben, ist etwas anderes, als sie in deren
+    Ratsinformationssystem zu belassen."""
+    cities_db.put_annotation(
+        "paper", "os:p:1", "classify", "2",
+        {"summary": "Der Wärmeplan wird beschlossen.", "transfer": "direct",
+         "originator": "Stadtverordnete Kapp, Kogge und Fraktion DIE aNDERE"}, "h")
+    (eintrag,) = client.get("/api/council/decision/1/elsewhere").json()["items"]
+    assert eintrag["originator"] == "Fraktion DIE aNDERE"
