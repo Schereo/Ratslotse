@@ -72,13 +72,19 @@ export class ThemenOrteZeichner {
       const radius = Math.min(12, 4 + Math.sqrt(p.n));
       const hover = `${p.name} · ${p.n} ${p.n === 1 ? "Beschluss" : "Beschlüsse"}`;
       const marker = L.marker([p.lat, p.lon], {
-        title: hover, alt: hover,
         icon: L.divIcon({
           className: "ratslotse-map-point",
           html: `<span style="--point-color:${color};--point-size:${radius * 2}px"></span>`,
           iconSize: [radius * 2, radius * 2], iconAnchor: [radius, radius],
         }),
-      }).addTo(gruppe);
+      });
+      // Kein `title` — sonst stünde der native Browser-Hinweis als zweiter
+      // Kasten unter dem gestalteten (s. `zeigeHover`). Der Name kommt als
+      // `aria-label` ans Element, sobald es da ist: Im Bündel gibt es keins,
+      // nach dem Aufklappen schon.
+      marker.on("add", () => marker.getElement()?.setAttribute("aria-label", hover));
+      marker.addTo(gruppe);
+      marker.getElement()?.setAttribute("aria-label", hover);
       marker.on("click", () => this.onOpen(p));
       this.eintraege.push({ marker, label: p.name, hover, n: p.n, radius, dir: undefined });
     }

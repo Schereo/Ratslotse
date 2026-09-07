@@ -1371,6 +1371,25 @@ lotti-figur {
    ohne Knopf, weil der Tipp selbst wählt. */
 .viertel-tip { font-family: inherit; color: hsl(var(--foreground)); background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 10px; padding: 8px 10px; box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.35); max-width: 240px; white-space: normal; }
 .viertel-tip::before { display: none; }
+/* Leaflets eigenes `.leaflet-tooltip` setzt `white-space: nowrap` und wird NACH
+   globals.css geladen — bei gleicher Spezifität (eine Klasse) gewann bisher
+   nowrap: Die Überschrift lief aus der Karte heraus, statt umzubrechen (Tims
+   Befund 07.09.2026). Zwei Klassen stechen die eine.
+
+   `width: max-content` ist dabei Pflicht, nicht Geschmack: Ein Tooltip liegt
+   absolut in einer Leaflet-Ebene der Breite 0. Ohne Breitenangabe fällt er
+   deshalb auf seine MINIMALE Breite zusammen, sobald er umbrechen darf — mit
+   `nowrap` war das die ganze Zeile, mit Umbruch das längste Wort (gemessen:
+   43 px, 19 Zeilen). Mit `max-content` ist er so breit wie sein Text, höchstens
+   aber `max-width`. `break-word` (nicht `anywhere`) trennt ein Kompositum, das
+   allein schon zu breit ist, ohne die Mindestbreite mitzunehmen. */
+.leaflet-container .viertel-tip,
+.leaflet-container .viertel-schild {
+  white-space: normal;
+  width: max-content;
+  max-width: min(240px, 70vw);
+  overflow-wrap: break-word;
+}
 .viertel-tip .stand { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); margin-right: 6px; }
 .viertel-tip .wann { font-weight: 600; color: hsl(var(--signal)); font-size: 12px; }
 .viertel-tip b { display: block; margin-top: 4px; font-family: var(--font-display, inherit); font-size: 13px; line-height: 1.25; }
