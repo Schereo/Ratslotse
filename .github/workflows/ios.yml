@@ -34,17 +34,33 @@ jobs:
       - name: API package tests
         working-directory: ios/Packages/RatslotseAPI
         run: swift test
+      # EINMAL bauen, dann testen. Bis 09/2026 standen hier ein `build` auf
+      # `generic/platform=iOS Simulator` und danach ein `test` auf ein
+      # konkretes Gerät — zwei verschiedene Ziele, also zwei vollständige
+      # Übersetzungen derselben App. Gemessen: 112 s + 180 s.
+      #
+      # `build-for-testing` / `test-without-building` auf DEMSELBEN Ziel baut
+      # einmal und testet ohne Neubau. Die Trennung in zwei Schritte bleibt
+      # damit erhalten, und sie ist der Grund, warum es sie gibt: Ein
+      # Übersetzungsfehler steht im ersten Schritt, ein gescheiterter Test im
+      # zweiten — vermischt sagt ein rotes „test" nicht, welches von beidem
+      # kaputt ist.
+      - name: Simulator wählen
+        run: |
+          DEVICE_ID="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.isAvailable == true and (.name | startswith("iPhone")))] | first | .udid // empty')"
+          test -n "$DEVICE_ID"
+          echo "DEVICE_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+
       - name: Build native app
         working-directory: ios
         run: >-
           xcodebuild -project Ratslotse.xcodeproj -scheme Ratslotse
-          -configuration Debug -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO build
+          -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE_ID"
+          CODE_SIGNING_ALLOWED=NO build-for-testing
+
       - name: Test native app
         working-directory: ios
-        run: |
-          DEVICE_ID="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.isAvailable == true and (.name | startswith("iPhone")))] | first | .udid // empty')"
-          test -n "$DEVICE_ID"
-          xcodebuild -project Ratslotse.xcodeproj -scheme Ratslotse \
-            -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE_ID" \
-            CODE_SIGNING_ALLOWED=NO test
+        run: >-
+          xcodebuild -project Ratslotse.xcodeproj -scheme Ratslotse
+          -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE_ID"
+          CODE_SIGNING_ALLOWED=NO test-without-building

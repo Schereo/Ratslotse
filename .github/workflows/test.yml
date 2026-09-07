@@ -55,14 +55,20 @@ jobs:
         run: python scripts/pruefe_typschulden.py
 
       # `-n auto` verteilt den Lauf über pytest-xdist auf alle Kerne des
-      # Runners: aus knapp drei Minuten wird rund eine. Bis 09/2026 ging das
-      # nicht, und der Grund war keine Eigenschaft der Tests selbst, sondern
-      # eine Verabredung über eine Prozessvariable: Jedes Backend-Testmodul
-      # setzte seine Wegwerf-Datenbank per `os.environ.setdefault("COUNCIL_DB",
-      # …)` beim Import. Welche Datei galt, hing damit an der
-      # Import-Reihenfolge — seriell fest, auf vier Prozesse verteilt je Worker
-      # eine andere. `tests/conftest.py` setzt die Pfade jetzt einmal je
-      # Prozess; wer die Variablen wieder in einem Testmodul setzt, macht den
-      # Lauf hier sporadisch rot.
+      # Runners: aus knapp drei Minuten wird rund eine (lokal 1:42 -> 0:35).
+      #
+      # Bis #1156 stand hier das Gegenteil, und der Grund lag nicht in xdist,
+      # sondern in der Suite: Sechzehn Testmodule verabredeten ihre
+      # Wegwerf-Datenbank über `os.environ.setdefault("COUNCIL_DB", …)` beim
+      # Import. `setdefault` heißt „nimm, was schon da ist" — welche Datei galt,
+      # hing damit an der Import-Reihenfolge. Seriell war die fest; auf vier
+      # Prozesse verteilt importiert jeder Worker eine andere Teilmenge in
+      # anderer Reihenfolge, und ein Modul schrieb seine Zeilen in eine andere
+      # Datei, als die App las (`test_stadtquellen.py::
+      # test_tafel_traegt_sperrungen_und_presse`, reproduzierbar).
+      #
+      # `tests/conftest.py` setzt die Pfade jetzt einmal je Prozess, und
+      # `tests/test_testpfade.py` hält das fest: Wer die Variablen wieder in
+      # einem Testmodul setzt, macht diesen Lauf sporadisch rot.
       - name: Run tests
         run: python -m pytest tests/ -q -n auto

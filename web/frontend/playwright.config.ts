@@ -21,7 +21,20 @@ export default defineConfig({
   // blockieren. Lokal bleibt es bei null: Wer hier grün sieht, soll es auch
   // beim ersten Anlauf gewesen sein.
   retries: process.env.CI ? 1 : 0,
-  workers: 1, // serial so the shared backend DB stays consistent
+  // Seriell, damit die geteilte Backend-Datenbank konsistent bleibt: Alle
+  // Tests eines Laufs reden mit EINEM uvicorn auf EINER SQLite-Datei.
+  //
+  // Parallel wird trotzdem gearbeitet, nur eine Ebene höher: Die CI fährt
+  // vier Läufer mit `--shard=i/4` (`e2e.yml`), und jeder startet über
+  // `tests/start-backend.sh` sein eigenes Backend auf einer eigenen
+  // Wegwerf-Datenbank. Die Aufteilung ist deshalb sicher, ohne dass ein
+  // einziger Test isoliert werden müsste.
+  //
+  // Dass sie ganze DATEIEN verteilt und keine einzelnen Tests, hängt an
+  // `fullyParallel` — das steht hier bewusst nicht auf `true`. Damit ist eine
+  // Datei EINE Gruppe, und die Reihenfolge innerhalb einer Datei bleibt, wie
+  // sie ist. Wer `fullyParallel: true` setzt, zerreißt genau das.
+  workers: 1,
 
   use: {
     baseURL: `http://localhost:${PORT}`,
@@ -29,7 +42,14 @@ export default defineConfig({
     // (dialogs use a 200ms fade-in/zoom-in that otherwise renders semi-transparent).
     reducedMotion: "reduce",
     // Full-page screenshot after every test so you can see the UI without a headed browser.
-    screenshot: "on",
+    //
+    // NUR LOKAL. In der CI wird der Bericht ausschließlich bei Rot gesichert
+    // (`if: failure()` in `e2e.yml`) — die Aufnahmen eines grünen Laufs sieht
+    // dort also niemand, sie kosten aber je Test eine Vollseiten-Aufnahme.
+    // Gemessen über 140 Tests: gut eine Minute für Bilder, die weggeworfen
+    // werden. Bei Rot nimmt `only-on-failure` weiterhin auf, der Bericht
+    // verliert also nichts, was der Fehlersuche dient.
+    screenshot: process.env.CI ? "only-on-failure" : "on",
     // Keep video + trace only on failures — useful for debugging.
     video: "retain-on-failure",
     trace: "retain-on-failure",
