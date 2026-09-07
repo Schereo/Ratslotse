@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decisionHref, fragenHref, ortHref, personHref, quizHref,
-  sessionHref, sitzungHref, themaHref,
-} from "./routes";
+  sessionHref, sitzungHref, themaHref, karteHref } from "./routes";
 
 // Die Adressbauer sind winzig und deshalb leicht zu übersehen — sie sind aber
 // die Stelle, an der ein Deep-Link aus einer Mail oder einer Push-Nachricht
@@ -95,5 +94,14 @@ describe("sessionHref und sitzungHref führen bewusst woanders hin", () => {
   it("verschiedene Pfade", () => {
     expect(sessionHref(9).split("?")[0]).toBe("/council");
     expect(sitzungHref(9).split("?")[0]).toBe("/council/sitzung");
+  });
+});
+
+describe("karteHref", () => {
+  it("baut Stadt, Viertel und Vorhaben in derselben Form wie viertelHref", () => {
+    expect(karteHref()).toBe("/karte");
+    expect(karteHref("fliegerhorst")).toBe("/karte?ort=fliegerhorst");
+    expect(karteHref("fliegerhorst", 94)).toBe("/karte?ort=fliegerhorst&v=94");
+    expect(karteHref("drielaker-moor", null)).toBe("/karte?ort=drielaker-moor");
   });
 });

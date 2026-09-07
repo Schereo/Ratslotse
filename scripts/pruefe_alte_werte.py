@@ -240,6 +240,7 @@ ERLAUBT_STELLE = {
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
     ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",
+    ("view.tsx", "ort"): "URL-Parameter `?ort=` der Stadtkarte (/karte) — Website-Adressen bleiben deutsch, wie /viertel?id=",
     ("council-map.tsx", "ort"): "`target` der Kartenpunkte (ort|location) — eigenes Vokabular",
     ("share-metadata.ts", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
     ("types.ts", "ort"): "`target` der Kartenpunkte (thema|ort|location) — eigenes Vokabular",

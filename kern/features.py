@@ -69,6 +69,15 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
                     "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
     ),
+    "stadtkarte": Feature(
+        key="stadtkarte",
+        description="Die vereinte Stadtkarte unter /karte: eine Karte mit drei "
+                    "Zoomstufen (Stadt → Viertel → Vorhaben) und Tafel-Spalte — "
+                    "der Umbau nach STADTKARTE-PLAN.md, Richtung A.",
+        fertig_wenn="/karte ist „Mein Viertel“ in der Navigation, /viertel leitet "
+                    "dorthin weiter und der Themen-Tab hat keine eigene Karte mehr "
+                    "(Schritt 5 des Plans).",
+    ),
     "wahlabend": Feature(
         key="wahlabend",
         description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "
