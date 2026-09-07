@@ -246,7 +246,9 @@ struct DistrictBoardView: View {
                     } else {
                         projectList.ratsStaggered(3)
                     }
+                    if !data.closures.isEmpty { closuresCard(data.closures).ratsStaggered(3) }
                     if !data.investments.isEmpty { investmentsCard(data.investments).ratsStaggered(4) }
+                    if !data.press.isEmpty { pressCard(data.press).ratsStaggered(4) }
                     if !data.neighbours.isEmpty { neighbours(data.neighbours).ratsStaggered(5) }
                     Text("Ein Sprachmodell prüft je Beschluss, ob er wirklich dieses Viertel betrifft, und fasst zusammengehörige Beschlüsse zu einem Vorhaben zusammen. Termine stehen nur, wenn ein Beschluss sie nennt.")
                         .font(RatsFont.body(12))
@@ -299,6 +301,15 @@ struct DistrictBoardView: View {
                 MapPolygon(coordinates: outline)
                     .foregroundStyle(RatsColor.primary.opacity(0.06))
                     .stroke(RatsColor.primary.opacity(0.8), lineWidth: 2)
+            }
+            // Sperrungen der Stadt: gestrichelt in Warnfarbe, blass, sobald ein
+            // Vorhaben gewählt ist — dann steht dessen Linie allein.
+            ForEach(data?.closures ?? []) { closure in
+                ForEach(Array(lineStrings(closure.geometry).enumerated()), id: \.offset) { _, line in
+                    MapPolyline(coordinates: line)
+                        .stroke(closureColor.opacity(selected == nil ? 0.9 : 0.3),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6]))
+                }
             }
             ForEach(projects) { project in
                 let stage = stageOf(project)
@@ -458,6 +469,58 @@ struct DistrictBoardView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(RatsPlainButtonStyle())
+                }
+            }
+        }
+    }
+
+    private var closureColor: Color { Color(red: 0.71, green: 0.33, blue: 0.04) }
+
+    private func closuresCard(_ items: [DistrictClosure]) -> some View {
+        RatsWidget("Gesperrt und im Bau", accent: .buoy, glyph: .triangleAlert, note: "Stand der Verkehrsbehörde") {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(items) { item in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(item.street).font(RatsFont.body(14, weight: .semibold)).foregroundStyle(RatsColor.text)
+                            if let label = item.kindLabel {
+                                Text(label).font(RatsFont.body(11, weight: .semibold))
+                                    .foregroundStyle(closureColor)
+                                    .padding(.horizontal, 7).padding(.vertical, 2)
+                                    .background(closureColor.opacity(0.12), in: Capsule())
+                            }
+                        }
+                        Text([item.reason,
+                              item.validUntil.flatMap { RatsDate.short($0) }.map { "bis \($0)" }
+                              ?? item.validFrom.flatMap { RatsDate.short($0) }.map { "seit \($0)" }]
+                            .compactMap { $0 }.joined(separator: " · "))
+                            .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func pressCard(_ items: [DistrictPressItem]) -> some View {
+        RatsWidget("Aktuelles von der Stadt", accent: .marsh, glyph: .newspaper, note: "Pressemitteilungen · 4 Monate") {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(items) { item in
+                    if let url = URL(string: item.url) {
+                        Link(destination: url) {
+                            HStack(alignment: .top, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.title).font(RatsFont.body(14, weight: .semibold))
+                                        .foregroundStyle(RatsColor.text).multilineTextAlignment(.leading)
+                                    Text([item.date.flatMap { RatsDate.short($0) }, item.evidence, "oldenburg.de"]
+                                        .compactMap { $0 }.joined(separator: " · "))
+                                        .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                                }
+                                Spacer(minLength: 6)
+                                RatsIcon(.externalLink, size: 13).foregroundStyle(RatsColor.muted).padding(.top, 3)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                 }
             }
         }

@@ -2171,6 +2171,34 @@ class DistrictNeighbour(TypedDict):
     count: int
 
 
+class DistrictClosure(TypedDict):
+    """Eine laufende Sperrung der Stadt (Geoportal, Ebene „Aktuelle Sperrungen") im Viertel."""
+    id: int
+    street: str
+    reason: str | None
+    kind: int | None
+    kind_label: str | None
+    valid_from: str | None
+    valid_until: str | None
+    description: str | None
+    #: LineString/MultiLineString als GeoJSON — die Linie auf der Karte.
+    geometry: Any
+    lat: float | None
+    lon: float | None
+
+
+class DistrictPressItem(TypedDict):
+    """Eine Pressemitteilung der Stadt mit Bezug auf das Viertel (council/presse_orte.py)."""
+    id: int
+    title: str
+    date: str | None
+    url: str
+    teaser: str
+    #: Der Ortsname, über den die Mitteilung hierher gehört.
+    evidence: str | None
+    via: str | None
+
+
 class DistrictProjects(TypedDict):
     """``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs."""
     place: Any
@@ -2178,6 +2206,8 @@ class DistrictProjects(TypedDict):
     upcoming: list[DistrictUpcomingItem]
     investments: list[DistrictInvestment]
     participations: list[DistrictParticipation]
+    closures: list[DistrictClosure]
+    press: list[DistrictPressItem]
     neighbours: list[DistrictNeighbour]
     updated_at: str | None
 

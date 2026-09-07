@@ -401,6 +401,38 @@ CREATE TABLE IF NOT EXISTS council_district_project_reports (
     UNIQUE (project_key, owner_id)
 );
 
+-- Aktuelle Sperrungen der Stadt (Geoportal, council/sperrungen.py), täglich
+-- fortgeschrieben; `places` = [{place_id, share}] der berührten Ortsbereiche.
+CREATE TABLE IF NOT EXISTS council_road_closures (
+    objectid     INTEGER PRIMARY KEY,
+    street       TEXT NOT NULL,
+    reason       TEXT,
+    kind         INTEGER,
+    kind_label   TEXT,
+    valid_from   TEXT,
+    valid_until  TEXT,
+    description  TEXT,
+    geojson      TEXT,
+    lat          REAL,
+    lon          REAL,
+    places       TEXT NOT NULL DEFAULT '[]',
+    status       TEXT NOT NULL DEFAULT 'laufend',
+    ended_at     TEXT,
+    fetched_at   TEXT NOT NULL
+);
+
+-- Ortsbereiche je Pressemitteilung (council/presse_orte.py). Eine Zeile mit
+-- place_id NULL heißt: geprüft, nichts gefunden.
+CREATE TABLE IF NOT EXISTS council_press_places (
+    press_id    INTEGER NOT NULL,
+    place_id    TEXT,
+    via         TEXT,
+    evidence    TEXT,
+    checked_at  TEXT NOT NULL,
+    UNIQUE (press_id, place_id)
+);
+CREATE INDEX IF NOT EXISTS idx_press_places_place ON council_press_places(place_id);
+
 -- Umringe der Bebauungspläne der Stadt aus ihrem Geoportal (rechtsverbindlich
 -- UND in Aufstellung, `status`), wöchentlich als Ganzes ersetzt (council/bplan.py). `key` ist
 -- die Vergleichsform der Plannummer (bplan.schluessel), über die ein
@@ -1823,6 +1855,22 @@ class SchemaMixin(StoreBasis):
             "owner_id INTEGER NOT NULL, reason TEXT, created_at TEXT NOT NULL, "
             "UNIQUE (project_key, owner_id))"
         )
+        # Stadt-Quellen je Viertel: Sperrungen (council/sperrungen.py) und die
+        # Ortsbereiche der Pressemitteilungen (council/presse_orte.py).
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_road_closures ("
+            "objectid INTEGER PRIMARY KEY, street TEXT NOT NULL, reason TEXT, kind INTEGER, kind_label TEXT, "
+            "valid_from TEXT, valid_until TEXT, description TEXT, geojson TEXT, lat REAL, lon REAL, "
+            "places TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'laufend', ended_at TEXT, "
+            "fetched_at TEXT NOT NULL)"
+        )
+        self._conn.execute(
+            "CREATE TABLE IF NOT EXISTS council_press_places ("
+            "press_id INTEGER NOT NULL, place_id TEXT, via TEXT, evidence TEXT, checked_at TEXT NOT NULL, "
+            "UNIQUE (press_id, place_id))"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_press_places_place ON council_press_places(place_id)")
         # Bebauungsplan-Umringe der Stadt (council/bplan.py) — Spiegel der
         # offenen Geodaten, je Wochenlauf ersetzt.
         self._conn.execute(

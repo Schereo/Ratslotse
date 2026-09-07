@@ -3249,8 +3249,9 @@ export interface paths {
         /**
          * District Projects
          * @description Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im
-         *     Rat ansteht, was im Investitionsprogramm steht und wo gerade eine
-         *     Beteiligung läuft.
+         *     Rat ansteht, was im Investitionsprogramm steht, wo gerade eine
+         *     Beteiligung läuft, was die Stadt gesperrt hat und was sie zum Viertel
+         *     mitgeteilt hat.
          */
         get: operations["district_projects_api_districts__place_id__projects_get"];
         put?: never;
@@ -6443,6 +6444,34 @@ export interface components {
             display_name?: string | null;
         };
         /**
+         * DistrictClosure
+         * @description Eine laufende Sperrung der Stadt (Geoportal, Ebene „Aktuelle Sperrungen") im Viertel.
+         */
+        DistrictClosure: {
+            /** Description */
+            description: string | null;
+            /** Geometry */
+            geometry: unknown;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: number | null;
+            /** Kind Label */
+            kind_label: string | null;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /** Reason */
+            reason: string | null;
+            /** Street */
+            street: string;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /**
          * DistrictHighlight
          * @description Ein Vorhaben, das stadtweit gerade heraussticht — für die Auswahl-Seite.
          */
@@ -6561,6 +6590,26 @@ export interface components {
             status: string;
         };
         /**
+         * DistrictPressItem
+         * @description Eine Pressemitteilung der Stadt mit Bezug auf das Viertel (council/presse_orte.py).
+         */
+        DistrictPressItem: {
+            /** Date */
+            date: string | null;
+            /** Evidence */
+            evidence: string | null;
+            /** Id */
+            id: number;
+            /** Teaser */
+            teaser: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Via */
+            via: string | null;
+        };
+        /**
          * DistrictProject
          * @description Ein Vorhaben auf der Tafel „Mein Viertel“ (``council/viertel.py``).
          *
@@ -6655,6 +6704,8 @@ export interface components {
          * @description ``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.
          */
         DistrictProjects: {
+            /** Closures */
+            closures: components["schemas"]["DistrictClosure"][];
             /** Investments */
             investments: components["schemas"]["DistrictInvestment"][];
             /** Neighbours */
@@ -6663,6 +6714,8 @@ export interface components {
             participations: components["schemas"]["DistrictParticipation"][];
             /** Place */
             place: unknown;
+            /** Press */
+            press: components["schemas"]["DistrictPressItem"][];
             /** Projects */
             projects: components["schemas"]["DistrictProject"][];
             /** Upcoming */
@@ -14901,4 +14954,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d48c8877d196ad7c0ee651d310398b34dbde170c3dc315708121d61b4acb72b9
+// vertrag-sha256: 7e36d9af87253b535ca794c8c938f8e5723dd31511292d593b9a33067dee4871

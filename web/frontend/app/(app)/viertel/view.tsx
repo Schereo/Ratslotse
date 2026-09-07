@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CalendarDays, Check, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Search, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ExternalLink, Flag, Hammer, LocateFixed, MapPinned, Megaphone, Newspaper, Search, TrafficCone, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { ApiAntwort } from "@/lib/vertrag";
@@ -487,6 +487,7 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
             <ViertelKarte
               ortsbereich={place.name}
               vorhaben={vorhaben}
+              sperrungen={data.closures}
               aktiv={aktiv}
               gedimmt={gedimmt}
               schwebt={schwebt}
@@ -558,6 +559,31 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
             </Card>
           )}
 
+          {/* Sperrungen der Stadt (Geoportal): Kontext zum Viertel, kein
+              Vorhaben — deshalb eine eigene Karte in Warnfarbe und auf der
+              Karte gestrichelt, nicht wählbar. */}
+          {data.closures.length > 0 && (
+            <Card className={cn("mt-4 border-amber-700/25 bg-amber-50/60 p-4 dark:bg-amber-950/20", STAFFEL)} style={staffelStil(2)}>
+              <h2 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+                <TrafficCone className="h-4 w-4 text-amber-700" /> Gesperrt und im Bau
+              </h2>
+              <ul className="mt-2 divide-y divide-amber-700/15 text-sm">
+                {data.closures.map((c) => (
+                  <li key={c.id} className="py-2">
+                    <p className="font-medium text-foreground">
+                      {c.street}
+                      {c.kind_label && <span className="ml-2 rounded-full bg-amber-700/10 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300">{c.kind_label}</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.reason}{c.valid_until ? ` · bis ${formatDate(c.valid_until)}` : c.valid_from ? ` · seit ${formatDate(c.valid_from)}` : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-muted-foreground">Stand der Verkehrsbehörde, Stadt Oldenburg (Geoportal). Kleine Tagesbaustellen stehen dort nicht.</p>
+            </Card>
+          )}
+
           {vorhaben.length === 0 ? (
             <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-4 py-8 text-center">
               <Mascot pose="search" decorative className="h-16 w-16" />
@@ -599,6 +625,35 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
                 ))}
               </ul>
             </Card>
+          )}
+
+          {/* Aktuelles von der Stadt (Designsprache: Presse-Block — extern,
+              nie wie Beschlüsse gestylt): die Pressemitteilungen, die diesen
+              Ortsbereich nennen, regelbasiert verortet (council/presse_orte.py). */}
+          {data.press.length > 0 && (
+            <section className={cn("mt-5", STAFFEL)} style={staffelStil(3)} aria-labelledby="viertel-presse-titel">
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 id="viertel-presse-titel" className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+                  <Newspaper className="h-4 w-4 text-primary" /> Aktuelles von der Stadt
+                </h2>
+                <span className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Pressemitteilungen · letzte 4 Monate</span>
+              </div>
+              <ul className="mt-2 divide-y divide-dashed divide-border rounded-2xl border border-dashed border-border bg-card">
+                {data.press.map((p) => (
+                  <li key={p.id}>
+                    <a href={p.url} target="_blank" rel="noreferrer" className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-foreground group-hover:underline">{p.title}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {p.date ? formatDate(p.date) : ""}{p.evidence ? ` · ${p.evidence}` : ""} · oldenburg.de
+                        </span>
+                      </span>
+                      <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           {vorhaben.length > 0 && data.neighbours.length > 0 && (
