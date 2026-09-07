@@ -644,15 +644,37 @@ class ViertelMixin(StoreBasis):
         return out
 
     def district_participations(self, place) -> list[dict]:
-        """Laufende Bauleitplan-Beteiligungen (planungsbeteiligung.de) mit Ortsbezug hierher."""
+        """Laufende Bauleitplan-Beteiligungen (planungsbeteiligung.de) mit Ortsbezug
+        hierher — und, wo das Geoportal den Plan kennt, mit seinem Geltungs-
+        bereich als Fläche (``geometry``), damit „Mitreden" auf der Karte einen
+        Ort hat. Eine Beteiligung läuft meist zu einem Plan in Aufstellung;
+        genau die trägt die Ebene 19 des Geoportals (``council/bplan.py``).
+        Fehlt der Umring, bleibt die Beteiligung ohne Fläche — sie steht dann
+        nur in der Tafel."""
+        from council import bplan
         names = self.district_location_names(place) + [place.name]
         out = []
         for b in self.list_beteiligungen(nur_laufende=True):
             text = f"{b.get('title') or ''} {b.get('ort') or ''}"
-            if any(re.search(re.escape(n) + r"(?![a-zäöüß])", text, re.IGNORECASE) for n in names):
-                out.append({"title": b.get("title"), "place": b.get("ort"), "step": b.get("schritt"),
-                            "valid_from": b.get("valid_from"), "valid_until": b.get("valid_until"),
-                            "url": b.get("url"), "plan_nrs": b.get("plan_nrs") or []})
+            if not any(re.search(re.escape(n) + r"(?![a-zäöüß])", text, re.IGNORECASE) for n in names):
+                continue
+            zeile = {"title": b.get("title"), "place": b.get("ort"), "step": b.get("schritt"),
+                     "valid_from": b.get("valid_from"), "valid_until": b.get("valid_until"),
+                     "url": b.get("url"), "plan_nrs": b.get("plan_nrs") or [],
+                     "geometry": None, "lat": None, "lon": None, "plan_nr": None, "plan_status": None}
+            # Die Plannummer aus dem Titel der Beteiligung — dieselbe Lesart wie
+            # bei den Beschlüssen (Änderung vor Ursprungsplan, VhB erkannt).
+            keys = bplan.plannummern_im_titel(b.get("title"))
+            umringe = self.bplan_outlines_by_keys(keys) if keys else {}
+            treffer = next((umringe[k] for k in keys if k in umringe), None)
+            if treffer:
+                try:
+                    zeile["geometry"] = json.loads(treffer["geojson"])
+                except (TypeError, ValueError):
+                    zeile["geometry"] = None
+                zeile.update({"lat": treffer["lat"], "lon": treffer["lon"],
+                              "plan_nr": treffer["nr"], "plan_status": treffer["status"]})
+            out.append(zeile)
         return out
 
 

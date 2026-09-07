@@ -195,6 +195,7 @@ function Buehne() {
           onOrt={(name) => { const o = byName.get(name); if (o) zumOrt(o.place_id); }}
           vorhaben={z.vorhaben}
           sperrungen={tafel.data?.closures}
+          beteiligungen={tafel.data?.participations}
           themenOrte={themenOrte}
           onThemenOrt={(p) => router.push(punktHref(p))}
           aktiv={z.aktiv}
@@ -215,6 +216,7 @@ function Buehne() {
               vorhaben: z.vorhaben.length,
               plaene: z.vorhaben.reduce((n, v) => n + v.locations.filter((l) => l.kind === "bplan").length, 0),
               sperrungen: tafel.data?.closures.length ?? 0,
+              mitreden: tafel.data?.participations.filter((b) => b.geometry).length ?? 0,
               ...(themenAn ? { "themen-orte": themenOrte.length } : {}),
             }}
           onToggle={ebeneWechseln}

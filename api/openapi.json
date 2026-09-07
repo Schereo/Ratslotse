@@ -5828,10 +5828,34 @@
         "type": "object"
       },
       "DistrictParticipation": {
-        "description": "Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.",
+        "description": "Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug\nins Viertel — und dem Geltungsbereich des Plans als Fläche, wo das Geoportal\nihn kennt.",
         "properties": {
+          "geometry": {
+            "title": "Geometry"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "title": "Lon",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "place": {
             "title": "Place",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_nr": {
+            "title": "Plan Nr",
             "type": [
               "string",
               "null"
@@ -5843,6 +5867,13 @@
             },
             "title": "Plan Nrs",
             "type": "array"
+          },
+          "plan_status": {
+            "title": "Plan Status",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "step": {
             "title": "Step",
@@ -5887,7 +5918,12 @@
           "valid_from",
           "valid_until",
           "url",
-          "plan_nrs"
+          "plan_nrs",
+          "geometry",
+          "lat",
+          "lon",
+          "plan_nr",
+          "plan_status"
         ],
         "title": "DistrictParticipation",
         "type": "object"

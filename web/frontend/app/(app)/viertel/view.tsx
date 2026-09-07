@@ -189,6 +189,7 @@ function VorhabenTafel({ placeId, vorgewaehlt }: { placeId: string; vorgewaehlt:
               ortsbereich={place.name}
               vorhaben={vorhaben}
               sperrungen={data.closures}
+              beteiligungen={data.participations}
               aktiv={z.aktiv}
               gedimmt={z.gedimmt}
               schwebt={z.schwebt}

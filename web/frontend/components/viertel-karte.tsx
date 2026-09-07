@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
 import { basemapUrl } from "@/lib/basemap";
 import { cn } from "@/lib/utils";
-import { ViertelZeichner, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
+import { ViertelZeichner, type KartenBeteiligung, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
 
 export { STAND_FARBE, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
 
@@ -27,13 +27,15 @@ export { STAND_FARBE, type KartenSperrung, type KartenVorhaben } from "@/compone
  */
 const VOYAGER = basemapUrl("voyager");
 
-export function ViertelKarte({ ortsbereich, vorhaben, sperrungen, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function ViertelKarte({ ortsbereich, vorhaben, sperrungen, beteiligungen, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   /** Name des Ortsbereichs — die Grenze kommt aus dem statischen GeoJSON. */
   ortsbereich: string;
   vorhaben: KartenVorhaben[];
   /** Laufende Sperrungen der Stadt im Viertel — Linien in Warnfarbe mit
    *  Hinweis, aber ohne Auswahl: Sie sind Kontext, kein Vorhaben. */
   sperrungen?: KartenSperrung[];
+  /** Laufende Beteiligungen mit Fläche — der Geltungsbereich des Plans, ein Tipp öffnet sie. */
+  beteiligungen?: KartenBeteiligung[];
   /** Das ausgewählte Vorhaben (Pin wird groß, Karte fährt hin). */
   aktiv: number | null;
   /** Vorhaben, die der Stufen-Filter ausblendet — bleiben blass sichtbar. */
@@ -99,11 +101,11 @@ export function ViertelKarte({ ortsbereich, vorhaben, sperrungen, aktiv, gedimmt
   function zeichnen() {
     const z = zeichnerRef.current, map = mapRef.current;
     if (!z || !map) return;
-    z.zeichnen({ vorhaben, sperrungen, aktiv, gedimmt });
+    z.zeichnen({ vorhaben, sperrungen, beteiligungen, aktiv, gedimmt });
     if (z.aktivBounds) map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { zeichnen(); }, [vorhaben, sperrungen, aktiv, gedimmt]);
+  useEffect(() => { zeichnen(); }, [vorhaben, sperrungen, beteiligungen, aktiv, gedimmt]);
 
   return (
     <div className={cn("relative overflow-hidden rounded-2xl border border-border bg-muted", className)}>

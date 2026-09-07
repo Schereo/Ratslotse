@@ -2155,7 +2155,9 @@ class DistrictInvestment(TypedDict):
 
 
 class DistrictParticipation(TypedDict):
-    """Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel."""
+    """Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug
+    ins Viertel — und dem Geltungsbereich des Plans als Fläche, wo das Geoportal
+    ihn kennt."""
     title: str | None
     place: str | None
     step: str | None
@@ -2163,6 +2165,14 @@ class DistrictParticipation(TypedDict):
     valid_until: str | None
     url: str | None
     plan_nrs: list[str]
+    #: Polygon/MultiPolygon als GeoJSON — oder ``None``, wenn der Plan (noch)
+    #: keinen Umring im Geoportal hat.
+    geometry: Any
+    lat: float | None
+    lon: float | None
+    plan_nr: str | None
+    #: ``effective`` oder ``in_procedure`` (s. ``DistrictPlanInfo``).
+    plan_status: str | None
 
 
 class DistrictNeighbour(TypedDict):
