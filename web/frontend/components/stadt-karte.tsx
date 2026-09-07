@@ -7,7 +7,9 @@ import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
 import { basemapUrl } from "@/lib/basemap";
 import { cn } from "@/lib/utils";
 import { ViertelZeichner, escapeHtml, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
+import { ThemenOrteZeichner } from "@/components/themen-orte-zeichner";
 import type { EbenenId } from "@/lib/karten-ebenen";
+import type { EntityMapPoint } from "@/lib/types";
 
 /** Die vereinte Stadtkarte — EINE Leaflet-Karte mit zwei Stufen
  *  (`STADTKARTE-PLAN.md`, Richtung A „Karte als Bühne").
@@ -31,7 +33,7 @@ const VOYAGER = basemapUrl("voyager");
 const PRIMAER = "#0a63a8";
 const STADT_MITTE: [number, number] = [53.1435, 8.2146];
 
-export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, themenOrte, onThemenOrt, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   stufe: KartenStufe;
   /** Die eingeschalteten Ebenen (`lib/karten-ebenen.ts`). Ohne die Vorhaben-
    *  Ebene bleibt die Stadt-Stufe eine flache Umrisskarte. */
@@ -45,6 +47,9 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   onOrt: (name: string) => void;
   vorhaben: KartenVorhaben[];
   sperrungen?: KartenSperrung[];
+  /** Die Ebene „Themen-Orte": schon gefiltert (Art, Ortsbereich) — leer, wenn aus. */
+  themenOrte?: EntityMapPoint[];
+  onThemenOrt?: (p: EntityMapPoint) => void;
   aktiv: number | null;
   gedimmt: Set<number>;
   schwebt?: number | null;
@@ -59,18 +64,22 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   const stadtRef = useRef<GeoJSONLayer | null>(null);
   const grenzeRef = useRef<LayerGroup | null>(null);
   const zeichnerRef = useRef<ViertelZeichner | null>(null);
+  const themenRef = useRef<ThemenOrteZeichner | null>(null);
   const bereitRef = useRef(false);
-  const rueckrufe = useRef({ onSelect, onHover, onOrt });
-  rueckrufe.current = { onSelect, onHover, onOrt };
+  const rueckrufe = useRef({ onSelect, onHover, onOrt, onThemenOrt });
+  rueckrufe.current = { onSelect, onHover, onOrt, onThemenOrt };
   // Der jüngste Zustand für die Effekte, die nach dem Laden nachziehen.
-  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, aktiv, gedimmt });
-  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, aktiv, gedimmt };
+  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, themenOrte, aktiv, gedimmt });
+  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, themenOrte, aktiv, gedimmt };
 
   // Karte einmal aufbauen.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const L = (await import("leaflet")).default;
+      // Das Cluster-Plugin erweitert Leaflet zur Laufzeit um markerClusterGroup.
+      // Erst nach Leaflet selbst laden, damit beide dasselbe Browser-Singleton nutzen.
+      await import("leaflet.markercluster");
       if (cancelled || !ref.current || !ref.current.isConnected) return;
       delete (ref.current as HTMLDivElement & { _leaflet_id?: number })._leaflet_id;
       leafletRef.current = L;
@@ -88,13 +97,17 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
         onSelect: (id) => rueckrufe.current.onSelect(id),
         onHover: (id) => rueckrufe.current.onHover?.(id),
       });
+      themenRef.current = new ThemenOrteZeichner(L, map, (p) => rueckrufe.current.onThemenOrt?.(p));
       bereitRef.current = true;
       stufeSetzen(true);
       viertelZeichnen();
+      themenZeichnen();
     })();
     return () => {
       cancelled = true;
       bereitRef.current = false;
+      themenRef.current?.entfernen();
+      themenRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
       stadtRef.current = null;
@@ -171,6 +184,14 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
       ebenen: { vorhaben: ebenen.has("vorhaben"), plaene: ebenen.has("plaene"), sperrungen: ebenen.has("sperrungen") } });
     if (z.aktivBounds) map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
   }
+
+  function themenZeichnen() {
+    if (!bereitRef.current) return;
+    themenRef.current?.zeichnen(standRef.current.themenOrte ?? []);
+  }
+  // Themen-Orte (schon gefiltert) → Ebene neu zeichnen.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { themenZeichnen(); }, [themenOrte]);
 
   // Stufe oder Ortsbereich gewechselt → Karte umbauen.
   const stufeSchluessel = stufe.art === "district" ? `district:${stufe.name}` : "city";

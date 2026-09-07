@@ -11,6 +11,14 @@ import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, to
 import { StadtKarte, type KartenStufe } from "@/components/stadt-karte";
 import { EbenenChips } from "@/components/ebenen-chips";
 import { ebeneUmschalten, ebenenMerken, ebenenStart, ebenenZuUrl, type EbenenId } from "@/lib/karten-ebenen";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { api } from "@/lib/api";
+import { themaHref } from "@/lib/routes";
+import type { Entity, EntityMapPoint } from "@/lib/types";
+import { loadOrtsbereiche, ortsbereichFor, type OrtsbereichFeature } from "@/lib/districts";
+import { KIND_COLOR, istBeschlussort, punktHref } from "@/components/council-map";
+import { ENTITY_KIND } from "@/components/council-entities";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
 import { ShareButton } from "@/components/share-button";
 import { Mascot } from "@/components/mascot";
@@ -100,6 +108,48 @@ function Buehne() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [z.aktiv, ebenen]);
 
+  // Die Ebene „Themen-Orte" (Schritt 3): die Punkte der alten Themen-Karte,
+  // geladen erst, wenn die Ebene an ist (der Endpunkt verlangt ein Konto —
+  // die Karte auch, also passt das). Auf der Viertel-Stufe nur die Punkte
+  // im Ortsbereich, zugeordnet im Browser über die Umrisse.
+  const themenAn = ebenen.has("themen-orte");
+  const themenQ = useQuery({
+    queryKey: ["entities-map"],
+    queryFn: () => api.get<{ entities: EntityMapPoint[] }>("/council/entities-map"),
+    enabled: themenAn,
+    staleTime: 10 * 60_000,
+  });
+  const entitiesQ = useQuery({
+    queryKey: ["entities-liste"],
+    queryFn: () => api.get<{ entities: Entity[] }>("/council/entities"),
+    enabled: themenAn && !ort,
+    staleTime: 10 * 60_000,
+  });
+  const [art, setArt] = useState<ThemenArt>("");
+  const [umrisse, setUmrisse] = useState<OrtsbereichFeature[]>([]);
+  useEffect(() => {
+    if (!themenAn || umrisse.length) return;
+    void loadOrtsbereiche().then(setUmrisse).catch(() => {});
+  }, [themenAn, umrisse.length]);
+  const themenOrte = useMemo(() => {
+    if (!themenAn) return [];
+    const alle = themenQ.data?.entities ?? [];
+    const nachArt = alle.filter((p) => !art || (art === "location" ? istBeschlussort(p) : p.kind === art && !istBeschlussort(p)));
+    if (!ortName) return nachArt;
+    if (!umrisse.length) return [];
+    return nachArt.filter((p) => ortsbereichFor(p.lat, p.lon, umrisse) === ortName);
+  }, [themenAn, themenQ.data, art, ortName, umrisse]);
+  const artZaehler = useMemo(() => {
+    const alle = themenQ.data?.entities ?? [];
+    const imBereich = ortName && umrisse.length ? alle.filter((p) => ortsbereichFor(p.lat, p.lon, umrisse) === ortName) : alle;
+    const z: Record<string, number> = {};
+    for (const p of imBereich) {
+      const k = istBeschlussort(p) ? "location" : p.kind;
+      z[k] = (z[k] ?? 0) + 1;
+    }
+    return z;
+  }, [themenQ.data, ortName, umrisse]);
+
   // Schreibtisch: Tafel-Spalte neben der Karte. Telefon: Karte oben, Tafel
   // darunter, Detail als Sheet — die Grenze wie auf /viertel.
   const [breit, setBreit] = useState(false);
@@ -145,6 +195,8 @@ function Buehne() {
           onOrt={(name) => { const o = byName.get(name); if (o) zumOrt(o.place_id); }}
           vorhaben={z.vorhaben}
           sperrungen={tafel.data?.closures}
+          themenOrte={themenOrte}
+          onThemenOrt={(p) => router.push(punktHref(p))}
           aktiv={z.aktiv}
           gedimmt={z.gedimmt}
           schwebt={z.schwebt}
@@ -158,13 +210,15 @@ function Buehne() {
           ebenen={ebenen}
           stufe={stufe.art}
           zaehler={stufe.art === "city"
-            ? { vorhaben: daten.total }
+            ? { vorhaben: daten.total, ...(themenAn ? { "themen-orte": themenOrte.length } : {}) }
             : {
               vorhaben: z.vorhaben.length,
               plaene: z.vorhaben.reduce((n, v) => n + v.locations.filter((l) => l.kind === "bplan").length, 0),
               sperrungen: tafel.data?.closures.length ?? 0,
+              ...(themenAn ? { "themen-orte": themenOrte.length } : {}),
             }}
           onToggle={ebeneWechseln}
+          unterzeile={themenAn && <ThemenArtChips art={art} zaehler={artZaehler} onArt={setArt} />}
           className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
         />
         {/* Brotkrumen: wo bin ich, und wie komme ich eine Stufe hoch. */}
@@ -197,7 +251,8 @@ function Buehne() {
 
       <aside className="min-w-0 border-t border-border bg-card desk:w-[420px] desk:shrink-0 desk:overflow-y-auto desk:border-l desk:border-t-0" aria-label={ortName ? `Tafel ${ortName}` : "Tafel Oldenburg"}>
         {stufe.art === "city" ? (
-          <StadtTafel daten={daten} orte={orte} meine={meine} byName={byName} onOrt={zumOrt} onHoverOrt={setSchwebtOrt} />
+          <StadtTafel daten={daten} orte={orte} meine={meine} byName={byName} onOrt={zumOrt} onHoverOrt={setSchwebtOrt}
+            themen={themenAn ? entitiesQ.data?.entities : undefined} />
         ) : tafel.isLoading ? (
           <div className="p-5"><DetailSkeleton /></div>
         ) : !tafel.data || !place ? (
@@ -231,13 +286,76 @@ function Buehne() {
 
 /** Die Tafel-Spalte auf der Stadt-Stufe: Stadtzahl, die eine Handlung,
  *  Highlights, Rangliste — die heutige Auswahl, nur in einer Spalte. */
-function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt }: {
+/** Die Arten der Themen-Orte als Unter-Chips: Ort, Organisation, Projekt —
+ *  und die konkreten Beschlussorte (Straßen, Plätze, Gebäude aus der
+ *  Orts-Pipeline) in ihrer eigenen Farbe. */
+type ThemenArt = "" | "place" | "organisation" | "project" | "location";
+const THEMEN_ARTEN: { id: ThemenArt; label: string; farbe: string }[] = [
+  ...(Object.keys(ENTITY_KIND) as ("place" | "organisation" | "project")[]).map((k) => ({ id: k, label: ENTITY_KIND[k].plural, farbe: KIND_COLOR[k] })),
+  { id: "location", label: "Beschlussorte", farbe: KIND_COLOR.beschlussort },
+];
+
+function ThemenArtChips({ art, zaehler, onArt }: { art: ThemenArt; zaehler: Record<string, number>; onArt: (a: ThemenArt) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Art der Themen-Orte">
+      {THEMEN_ARTEN.map((a) => {
+        const an = art === a.id;
+        return (
+          <button key={a.id} type="button" aria-pressed={an} onClick={() => onArt(an ? "" : a.id)}
+            className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium shadow-sm backdrop-blur transition-colors",
+              an ? "border-current bg-card/95 text-foreground" : "border-border/70 bg-card/70 text-muted-foreground hover:text-foreground")}>
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: a.farbe }} />
+            {a.label}
+            {zaehler[a.id] != null && <span className="font-mono text-[10px] tabular-nums opacity-70">{zaehler[a.id]}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** „Gerade aktiv" — die Themen mit den meisten Beschlüssen in zwölf Monaten,
+ *  aus dem Themen-Tab in die Stadt-Tafel gewandert (Schritt 3). */
+function ThemenAktiv({ themen }: { themen: Entity[] }) {
+  const top = [...themen]
+    .filter((e) => (e.n_recent ?? 0) > 0)
+    .sort((a, b) => (b.n_recent ?? 0) - (a.n_recent ?? 0) || (b.last_date ?? "").localeCompare(a.last_date ?? "") || b.n - a.n)
+    .slice(0, 6);
+  if (!top.length) return null;
+  return (
+    <section aria-labelledby="karte-themen-titel">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 id="karte-themen-titel" className="font-display text-base font-bold text-foreground">Themen, die gerade laufen</h2>
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">12 Monate · alle Jahre auf der Karte</span>
+      </div>
+      <ol className="mt-2 divide-y divide-border rounded-2xl border border-border bg-card">
+        {top.map((e) => {
+          const k = ENTITY_KIND[e.kind] ?? ENTITY_KIND.project;
+          return (
+            <li key={e.slug}>
+              <Link href={themaHref(e.slug)} className="group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent">
+                <k.Icon className="h-4 w-4 shrink-0" style={{ color: KIND_COLOR[e.kind] ?? KIND_COLOR.projekt }} aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{e.name}</span>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground" title="Beschlüsse in zwölf Monaten">{e.n_recent}</span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt, themen }: {
   daten: ReturnType<typeof useUebersicht>["data"] & object;
   orte: NonNullable<ReturnType<typeof useUebersicht>["data"]>["districts"];
   meine: { name: string; place_id: string }[];
   byName: Map<string, { place_id: string; count: number }>;
   onOrt: (placeId: string) => void;
   onHoverOrt: (name: string | null) => void;
+  /** Die Themen-Liste, wenn die Ebene an ist — sonst bleibt der Block weg. */
+  themen?: Entity[];
 }) {
   return (
     <div className="flex flex-col gap-5 p-5">
@@ -257,6 +375,7 @@ function StadtTafel({ daten, orte, meine, byName, onOrt, onHoverOrt }: {
       <div className={STAFFEL} style={staffelStil(1)}>
         <Highlights data={daten} ortHref={karteHref} kompakt />
       </div>
+      {themen && <div className={STAFFEL} style={staffelStil(2)}><ThemenAktiv themen={themen} /></div>}
       <div className={STAFFEL} style={staffelStil(2)}>
         <Rangliste orte={orte} ortHref={karteHref} spalten="grid-cols-1" onHover={onHoverOrt} />
       </div>
