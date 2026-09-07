@@ -187,6 +187,18 @@ def annotate(main: CitiesStore, body_id: str | None = None,
     return zahlen
 
 
+# ------------------------------------------------------------------- index
+
+def index_all(main: CitiesStore, body_id: str | None = None) -> dict:
+    """Chunks, Embeddings, Volltext und Nachbarschaften.
+
+    Braucht fastembed — deshalb lazy importiert und nur vom Cron und von
+    Ops-Skripten gerufen, nie vom Web-Dienst.
+    """
+    from council.cities import index as index_modul
+    return index_modul.run(main, body_id)
+
+
 # --------------------------------------------------------------------- run
 
 def run(spec: BodySpec, main: CitiesStore, raw_dir: str | Path, files_dir: str | Path,
