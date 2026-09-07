@@ -187,7 +187,12 @@ function Buehne({
           style={{ aspectRatio: rahmen }}
           className={cn(
             "relative shrink-0 overflow-hidden rounded-xl border border-border bg-background",
-            hochkant ? "@2xl:w-[30%]" : "@2xl:w-[52%]",
+            // Querformat nimmt sich die Breite, Hochformat die HÖHE: Ein
+            // Telefon-Bildschirm über die halbe Kartenbreite wäre 700 px hoch
+            // und ließe rechts neben dem Satz ein leeres Feld — genau der
+            // halb leere Kasten, den die Designsprache verbietet.
+            hochkant ? "h-[300px] w-auto self-center @2xl:h-[420px] @2xl:self-auto"
+                     : "@2xl:w-[52%]",
           )}
         >
           {/* Der Wechsel blendet nur — eine Strecke gäbe es hier nicht zu
