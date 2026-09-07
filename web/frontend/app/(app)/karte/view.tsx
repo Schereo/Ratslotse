@@ -249,6 +249,7 @@ function Buehne() {
           gewaehlt={new Set(meine.map((o) => o.name))}
           schwebtOrt={schwebtOrt}
           onOrt={(name) => { const o = byName.get(name); if (o) zumOrt(o.place_id); }}
+          onStadt={zurStadt}
           vorhaben={z.vorhaben}
           sperrungen={tafel.data?.closures}
           beteiligungen={tafel.data?.participations}
@@ -304,7 +305,10 @@ function Buehne() {
               <button type="button" onClick={zurStadt} className="ml-1 font-semibold text-primary hover:underline">Stadt zeigen</button>
             </>
           ) : (
-            <span className="font-bold">Oldenburg · 31 Ortsbereiche</span>
+            <>
+              <span className="font-bold">Oldenburg · 31 Ortsbereiche</span>
+              <span className="hidden text-muted-foreground sm:inline">· hineinzoomen öffnet ein Viertel</span>
+            </>
           )}
         </nav>
         {/* Mini-Stadtkarte unten rechts: wo das Viertel in der Stadt liegt —
