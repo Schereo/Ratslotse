@@ -4,7 +4,7 @@
  * deliverable, viewable in the HTML report.
  */
 import { test, expect } from "@playwright/test";
-import { loginAdmin } from "./helpers";
+import { zustandsDatei } from "./konten";
 
 const BAU = { ksinr: 42, committee: "Bauausschuss", session_date: "2026-08-20", session_time: "17:00", location: "Rathaus", n_items: 9 };
 const RAT = { ksinr: 43, committee: "Rat", session_date: "2026-08-31", session_time: "18:00", location: "Weser-Ems-Hallen", n_items: 15 };
@@ -78,8 +78,12 @@ for (const vp of VIEWPORTS) {
   test.describe(`Visual smoke — ${vp.name}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
-    // Mock the authenticated endpoints for pages that need auth
-    for (const pg of PAGES) {
+    // Baut EINEN Test. Warum als Funktion und nicht als Schleife über alle
+    // PAGES: Die angemeldeten Seiten brauchen `test.use({ storageState })`,
+    // und das gilt je BLOCK, nicht je Test. Die beiden Gruppen stehen deshalb
+    // unten in zwei Blöcken — derselbe Körper, einmal ohne und einmal mit
+    // Sitzung.
+    const pruefe = (pg: (typeof PAGES)[number]) => {
       test(`${pg.name} renders without error`, async ({ page }) => {
         // Mock slow/unavailable APIs so page at least paints
         await page.route("**/api/council/sessions**", (r) =>
@@ -102,9 +106,6 @@ for (const vp of VIEWPORTS) {
           }),
         );
 
-        if (pg.auth) {
-          await loginAdmin(page);
-        }
         await page.goto(pg.path, { waitUntil: "networkidle" });
         // Just assert the page doesn't show a fatal error
         await expect(page.locator("body")).not.toContainText("Application error");
@@ -134,6 +135,13 @@ for (const vp of VIEWPORTS) {
           await expect(page.getByText("1 gemerkter Eintrag")).toBeVisible();
         }
       });
-    }
+    };
+
+    for (const pg of PAGES.filter((p) => !p.auth)) pruefe(pg);
+
+    test.describe("angemeldet", () => {
+      test.use({ storageState: zustandsDatei("admin") });
+      for (const pg of PAGES.filter((p) => p.auth)) pruefe(pg);
+    });
   });
 }

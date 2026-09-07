@@ -11,11 +11,14 @@
  * mehr einzeln auf, sondern starten eine geführte Tour.
  */
 import { test, expect } from "@playwright/test";
-import { loginAdmin } from "./helpers";
+import { zustandsDatei } from "./konten";
 
 test.describe("Dashboard", () => {
+  // Angemeldet aus der abgelegten Sitzung statt über das Formular — s.
+  // `konten.ts`.
+  test.use({ storageState: zustandsDatei("admin") });
+
   test.beforeEach(async ({ page }) => {
-    await loginAdmin(page);
     await page.goto("/dashboard");
   });
 

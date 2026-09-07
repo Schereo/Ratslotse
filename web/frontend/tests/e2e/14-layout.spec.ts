@@ -15,9 +15,8 @@
  *    sein Behälter, wird abgeschnitten oder überlappt den Nachbarn.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { einrichtungUeberspringen } from "./helpers";
+import { zustandsDatei } from "./konten";
 
-const PASSWORT = "password123";
 
 /** Die Seiten, die ein gewöhnliches Konto erreicht. */
 const SEITEN = [
@@ -31,15 +30,6 @@ const OFFEN = ["/", "/login", "/register", "/hilfe", "/impressum", "/datenschutz
   // Kopf — und der ist auf dem Handy die enge Stelle. Die Tafel mit Zahlen
   // prüft `15-wahlabend.spec.ts`, dort mit gemockter Antwort.
   "/wahlabend"];
-
-async function anmelden(page: Page) {
-  await page.goto("/login");
-  await page.locator("#email").fill("nutzerin@example.org");
-  await page.locator("#password").fill(PASSWORT);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
-  await einrichtungUeberspringen(page);
-}
 
 /** Um wie viel ist die Seite breiter als das Fenster? 0 = gar nicht. */
 async function ueberbreite(page: Page): Promise<number> {
@@ -91,15 +81,21 @@ test.describe("Handy (390px): keine Seite scrollt seitwärts", () => {
     });
   }
 
-  for (const pfad of SEITEN) {
-    test(`${pfad} bleibt in der Breite (angemeldet)`, async ({ page }) => {
-      await anmelden(page);
-      await page.goto(pfad, { waitUntil: "networkidle" });
-      const zuviel = await ueberbreite(page);
-      expect(zuviel, `${pfad} ist ${zuviel}px zu breit. Schuldige:\n  `
-        + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
-    });
-  }
+  // Eigener Block, weil `test.use({ storageState })` je BLOCK gilt: Darüber
+  // stehen die Seiten, die OHNE Konto aufgehen müssen. Das `viewport` von
+  // oben erbt dieser Block mit.
+  test.describe("angemeldet", () => {
+    test.use({ storageState: zustandsDatei("nutzerin") });
+
+    for (const pfad of SEITEN) {
+      test(`${pfad} bleibt in der Breite (angemeldet)`, async ({ page }) => {
+        await page.goto(pfad, { waitUntil: "networkidle" });
+        const zuviel = await ueberbreite(page);
+        expect(zuviel, `${pfad} ist ${zuviel}px zu breit. Schuldige:\n  `
+          + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
+      });
+    }
+  });
 });
 
 test.describe("Schmalstes übliches Gerät (320px)", () => {
@@ -107,15 +103,23 @@ test.describe("Schmalstes übliches Gerät (320px)", () => {
   // scrollt auch auf jedem größeren Gerät bei größerer Schrift.
   test.use({ viewport: { width: 320, height: 568 } });
 
-  for (const pfad of ["/login", "/dashboard"]) {
-    test(`${pfad} bleibt in der Breite`, async ({ page }) => {
-      if (pfad === "/dashboard") await anmelden(page);
-      await page.goto(pfad, { waitUntil: "networkidle" });
+  test("/login bleibt in der Breite", async ({ page }) => {
+    await page.goto("/login", { waitUntil: "networkidle" });
+    const zuviel = await ueberbreite(page);
+    expect(zuviel, `/login ist ${zuviel}px zu breit. Schuldige:\n  `
+      + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
+  });
+
+  test.describe("angemeldet", () => {
+    test.use({ storageState: zustandsDatei("nutzerin") });
+
+    test("/dashboard bleibt in der Breite", async ({ page }) => {
+      await page.goto("/dashboard", { waitUntil: "networkidle" });
       const zuviel = await ueberbreite(page);
-      expect(zuviel, `${pfad} ist ${zuviel}px zu breit. Schuldige:\n  `
+      expect(zuviel, `/dashboard ist ${zuviel}px zu breit. Schuldige:\n  `
         + (await ueberstehende(page)).join("\n  ")).toBeLessThanOrEqual(1);
     });
-  }
+  });
 
   // BEKANNTER BEFUND, absichtlich als erwarteter Fehlschlag festgehalten.
   //

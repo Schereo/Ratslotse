@@ -8,21 +8,10 @@
  * Ratsdatenbank leer, und genau so sieht auch eine frische Umgebung aus.
  */
 import { expect, test } from "@playwright/test";
-import { einrichtungUeberspringen } from "./helpers";
-
-const PASSWORT = "password123";
-
-async function anmelden(page: import("@playwright/test").Page, email: string) {
-  await page.goto("/login");
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(PASSWORT);
-  await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
-  await einrichtungUeberspringen(page);
-}
+import { zustandsDatei } from "./konten";
 
 test.describe("Quiz", () => {
-  test.beforeEach(async ({ page }) => anmelden(page, "nutzerin@example.org"));
+  test.use({ storageState: zustandsDatei("nutzerin") });
 
   test("die Seite geht auf und erklärt sich, auch ohne Fragen", async ({ page }) => {
     const fehler: string[] = [];
@@ -55,36 +44,48 @@ test.describe("Quiz", () => {
 });
 
 test.describe("Admin-Panel — die Grenze", () => {
-  test("ein gewöhnliches Konto kommt nicht hinein", async ({ page }) => {
-    await anmelden(page, "nutzerin@example.org");
-    await page.goto("/admin");
-    // Kein Admin-Inhalt. Was genau kommt (404 oder Weiterleitung), ist der
-    // Oberfläche überlassen — NICHT überlassen ist, dass Verwaltungsdaten
-    // sichtbar werden.
-    await expect(page.getByRole("heading", { name: "Admin" })).toHaveCount(0);
-    await expect(page.getByText("Web-Nutzer*innen")).toHaveCount(0);
+  // Je Identität ein eigener Block: `test.use` gilt für einen ganzen Block,
+  // nicht für einen einzelnen Test. Vorher meldete sich jeder Test hier selbst
+  // an — genau die Runde, die `konten.ts` einspart.
+
+  test.describe("ein gewöhnliches Konto", () => {
+    test.use({ storageState: zustandsDatei("nutzerin") });
+
+    test("kommt nicht hinein", async ({ page }) => {
+      await page.goto("/admin");
+      // Kein Admin-Inhalt. Was genau kommt (404 oder Weiterleitung), ist der
+      // Oberfläche überlassen — NICHT überlassen ist, dass Verwaltungsdaten
+      // sichtbar werden.
+      await expect(page.getByRole("heading", { name: "Admin" })).toHaveCount(0);
+      await expect(page.getByText("Web-Nutzer*innen")).toHaveCount(0);
+    });
+
+    test("sieht den Admin-Zugang auch nicht in der Navigation", async ({ page }) => {
+      await page.goto("/dashboard");
+      await expect(page.getByRole("link", { name: /^Admin$/ })).toHaveCount(0);
+    });
   });
 
-  test("ein Ratsmitglied ohne Adminrecht ebenfalls nicht", async ({ page }) => {
+  test.describe("ein Ratsmitglied ohne Adminrecht", () => {
     // Wichtig, weil `budget` und `admin` zwei verschiedene Rechte sind: Wer
     // den Haushalt sehen darf, darf noch lange keine Konten verwalten.
-    await anmelden(page, "ratsfrau@example.org");
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Admin" })).toHaveCount(0);
+    test.use({ storageState: zustandsDatei("ratsfrau") });
+
+    test("kommt ebenfalls nicht hinein", async ({ page }) => {
+      await page.goto("/admin");
+      await expect(page.getByRole("heading", { name: "Admin" })).toHaveCount(0);
+    });
   });
 
-  test("das Adminkonto kommt hinein", async ({ page }) => {
-    await anmelden(page, "chef@example.org");
-    const fehler: string[] = [];
-    page.on("pageerror", (e) => fehler.push(e.message));
-    await page.goto("/admin");
-    await expect(page.getByRole("heading", { name: "Admin" }).first()).toBeVisible({ timeout: 15_000 });
-    expect(fehler).toEqual([]);
-  });
+  test.describe("das Adminkonto", () => {
+    test.use({ storageState: zustandsDatei("chef") });
 
-  test("die Navigation zeigt den Admin-Zugang nur Admins", async ({ page }) => {
-    await anmelden(page, "nutzerin@example.org");
-    await page.goto("/dashboard");
-    await expect(page.getByRole("link", { name: /^Admin$/ })).toHaveCount(0);
+    test("kommt hinein", async ({ page }) => {
+      const fehler: string[] = [];
+      page.on("pageerror", (e) => fehler.push(e.message));
+      await page.goto("/admin");
+      await expect(page.getByRole("heading", { name: "Admin" }).first()).toBeVisible({ timeout: 15_000 });
+      expect(fehler).toEqual([]);
+    });
   });
 });

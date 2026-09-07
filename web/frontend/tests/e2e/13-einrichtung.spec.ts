@@ -1,7 +1,7 @@
 /**
  * Der Einrichtungs-Assistent — den bisher JEDER Test übersprungen hat.
  *
- * `einrichtungUeberspringen()` in `helpers.ts` schaltet ihn über den Server
+ * `auth.setup.ts` hakt ihn für die Identitäten der Suite über den Server
  * ab, damit ein Test, der etwas anderes prüft, nicht an vier Schritten hängt.
  * Genau deshalb hat ihn nie einer angesehen: Er ist das Erste, was ein neues
  * Konto sieht, und die einzige Stelle, an der jemand seine Gremien und

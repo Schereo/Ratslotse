@@ -29,3 +29,8 @@ ios/
 
 # Technik-Doku: baut docs-site/, kopiert der Deploy nach public/docs (nie committen)
 /public/docs/
+
+# Die angemeldeten Sitzungen der Browser-Suite (tests/e2e/auth.setup.ts).
+# Je Lauf neu geschrieben und an eine Wegwerf-Datenbank gebunden — ein Cookie
+# von gestern zeigt auf ein Konto, das es nicht mehr gibt.
+tests/e2e/.auth/

@@ -2,7 +2,7 @@
  * Topics & Subscriptions: add/delete topic, confirm dialog, empty state.
  */
 import { test, expect } from "@playwright/test";
-import { loginAdmin } from "./helpers";
+import { zustandsDatei } from "./konten";
 
 function mockUser(page: import("@playwright/test").Page) {
   return page.route("**/api/auth/me", (route) =>
@@ -18,9 +18,7 @@ function mockUser(page: import("@playwright/test").Page) {
 }
 
 test.describe("Topics", () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAdmin(page);
-  });
+  test.use({ storageState: zustandsDatei("admin") });
 
   test("shows empty state with CTA when no topics", async ({ page }) => {
     await page.route("**/api/topics", (route) =>
