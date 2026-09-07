@@ -212,7 +212,6 @@ export class ViertelZeichner {
         const radius = grenze ? 6 : istAktiv ? 11 : 8;
         const klassen = ["ratslotse-map-point", "viertel-pin", istAktiv && "ist-aktiv", blass && "ist-blass", grenze && "ist-grenze"].filter(Boolean).join(" ");
         const marker = L.marker([loc.lat, loc.lon], {
-          title: grenze ? `${v.name} — Grenze: ${loc.name}` : v.name, alt: v.name,
           icon: L.divIcon({
             className: klassen,
             html: `<span style="--point-color:${farbe};--point-size:${radius * 2}px"></span>`,
@@ -220,8 +219,19 @@ export class ViertelZeichner {
           }),
           zIndexOffset: istAktiv ? 1000 : 0,
         });
+        // KEIN `title`: Der Pin trägt schon den gestalteten Hinweis (s.
+        // `anklicken`), und der native Browser-Hinweis stand als zweiter,
+        // dunkler Kasten darunter (Tims Befund 07.09.2026). Der Name muss
+        // trotzdem dran — Leaflet macht aus dem Pin ein `role="button"` mit
+        // `tabindex`, und ein Knopf ohne Namen ist für die Sprachausgabe
+        // stumm. `alt` hilft nicht: Das setzt Leaflet als JS-Eigenschaft, und
+        // an einem `div` ist sie wirkungslos (im DOM nachgesehen).
+        const name = grenze ? `${v.name} — Grenze: ${loc.name}` : v.name;
+        const benennen = () => marker.getElement()?.setAttribute("aria-label", name);
+        marker.on("add", benennen);
         anklicken(marker);
         gruppe.addLayer(marker);
+        benennen();
         eintrag.pins.push(marker);
         if (istAktiv) {
           // Das gewählte Vorhaben trägt sein Namensschild — EIN Schild je
