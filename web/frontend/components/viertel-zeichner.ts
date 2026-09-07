@@ -39,7 +39,13 @@ export const STAND_LABEL: Record<string, string> = {
   building: "Im Bau", decided: "Beschlossen", planning: "In Planung", idea: "Idee", done: "Fertig", rejected: "Abgelehnt",
 };
 export const SPERRUNG_FARBE = "#b45309";
+/** Quellenzeile der Stadt-Ebenen — nur, was gerade wirklich auf der Karte
+ *  liegt, wird genannt. (Die Ebenen selbst stehen in `lib/karten-ebenen.ts`.) */
 export const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (Geoportal)";
+export const SPERRUNG_ATTRIBUTION = "Sperrungen: Stadt Oldenburg (Geoportal)";
+
+/** Welche Ebenen der Zeichner malt. Fehlt das Feld, gilt: alles. */
+export type ZeichnerEbenen = { vorhaben?: boolean; plaene?: boolean; sperrungen?: boolean };
 
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
@@ -57,6 +63,7 @@ export type ZeichnerStand = {
   sperrungen?: KartenSperrung[];
   aktiv: number | null;
   gedimmt: Set<number>;
+  ebenen?: ZeichnerEbenen;
 };
 
 export class ViertelZeichner {
@@ -96,16 +103,24 @@ export class ViertelZeichner {
     this.ebenen = new Map();
     this.aktivBounds = null;
     this.map.attributionControl?.removeAttribution(PLAN_ATTRIBUTION);
+    this.map.attributionControl?.removeAttribution(SPERRUNG_ATTRIBUTION);
   }
 
-  /** Alles neu zeichnen. Gibt zurück, ob eine Planfläche der Stadt liegt
-   *  (für die Quellenzeile). */
-  zeichnen({ vorhaben, sperrungen, aktiv, gedimmt }: ZeichnerStand): boolean {
+  /** Alles neu zeichnen — je nach `ebenen` nur einen Teil. Gibt zurück, ob
+   *  eine Planfläche der Stadt liegt (für die Quellenzeile). */
+  zeichnen({ vorhaben, sperrungen, aktiv, gedimmt, ebenen }: ZeichnerStand): boolean {
     const { L, gruppe } = this;
     this.leeren();
+    const zeigeVorhaben = ebenen?.vorhaben ?? true;
+    const zeigePlaene = ebenen?.plaene ?? true;
+    const zeigeSperrungen = ebenen?.sperrungen ?? true;
     let aktivBounds: ReturnType<typeof L.latLngBounds> | null = null;
     let planQuelle = false;
+    // Ohne die Vorhaben-Ebene bleiben Pins und Linien weg — die Planflächen
+    // hängen aber an den Vorhaben und dürfen allein stehen (ein Plan ohne
+    // Pin ist immer noch eine Fläche, die etwas sagt).
     for (const v of vorhaben) {
+      if (!zeigeVorhaben && !zeigePlaene) break;
       const farbe = STAND_FARBE[v.stage] ?? STAND_FARBE.planning;
       const istAktiv = v.id === aktiv;
       // Blass, was der Stand-Filter ausblendet — und alles andere, sobald ein
@@ -140,7 +155,7 @@ export class ViertelZeichner {
         // `kind = bplan`): rechtsverbindlich durchgezogen, in Aufstellung
         // gestrichelt und blasser — die Fläche, auf der etwas entsteht, das
         // OSM noch nicht kennt.
-        if (linie && loc.kind === "bplan" && (linie.type === "Polygon" || linie.type === "MultiPolygon")) {
+        if (zeigePlaene && linie && loc.kind === "bplan" && (linie.type === "Polygon" || linie.type === "MultiPolygon")) {
           const inVerfahren = loc.plan?.status === "in_procedure";
           const layer = L.geoJSON(linie as never, {
             style: { color: farbe, weight: istAktiv ? 3 : 2, dashArray: inVerfahren ? "6 4" : undefined,
@@ -153,6 +168,7 @@ export class ViertelZeichner {
           planQuelle = true;
           if (istAktiv) aktivBounds = aktivBounds ? aktivBounds.extend(layer.getBounds()) : layer.getBounds();
         }
+        if (!zeigeVorhaben) continue;
         if (linie && (linie.type === "LineString" || linie.type === "MultiLineString")) {
           const layer = L.geoJSON(linie as never, {
             style: { color: farbe, weight: istAktiv ? 7 : 5, opacity: blass ? 0.18 : 0.75, lineCap: "round" },
@@ -191,9 +207,11 @@ export class ViertelZeichner {
     // Sperrungen der Stadt: gestrichelte Linie in Warnfarbe, darunter zur
     // Lesbarkeit ein heller Saum; ein Hinweis beim Zeigen. Blass, sobald ein
     // Vorhaben gewählt ist — dann steht dessen Linie allein.
-    for (const sp of sperrungen ?? []) {
+    let sperrQuelle = false;
+    for (const sp of zeigeSperrungen ? sperrungen ?? [] : []) {
       const g = sp.geometry as { type?: string } | null;
       if (!g || (g.type !== "LineString" && g.type !== "MultiLineString")) continue;
+      sperrQuelle = true;
       const blass = aktiv != null;
       const saum = L.geoJSON(g as never, { style: { color: "#fff", weight: 7, opacity: blass ? 0.3 : 0.9, lineCap: "round" }, interactive: false });
       const linie = L.geoJSON(g as never, { style: { color: SPERRUNG_FARBE, weight: 4, opacity: blass ? 0.3 : 0.9, dashArray: "8 6", lineCap: "round" } });
@@ -204,8 +222,9 @@ export class ViertelZeichner {
       gruppe.addLayer(linie);
     }
     this.aktivBounds = aktivBounds;
-    // Die Stadt als Quelle nennen, sobald eine ihrer Flächen auf der Karte liegt.
+    // Die Stadt als Quelle nennen, sobald eine ihrer Ebenen auf der Karte liegt.
     if (planQuelle) this.map.attributionControl?.addAttribution(PLAN_ATTRIBUTION);
+    if (sperrQuelle) this.map.attributionControl?.addAttribution(SPERRUNG_ATTRIBUTION);
     return planQuelle;
   }
 }

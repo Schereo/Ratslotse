@@ -7,6 +7,7 @@ import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
 import { basemapUrl } from "@/lib/basemap";
 import { cn } from "@/lib/utils";
 import { ViertelZeichner, escapeHtml, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
+import type { EbenenId } from "@/lib/karten-ebenen";
 
 /** Die vereinte Stadtkarte — EINE Leaflet-Karte mit zwei Stufen
  *  (`STADTKARTE-PLAN.md`, Richtung A „Karte als Bühne").
@@ -24,14 +25,17 @@ import { ViertelZeichner, escapeHtml, type KartenSperrung, type KartenVorhaben }
  *  Seiten. Zwei Leaflet-Karten auf einer Seite gehen ohnehin nicht gut
  *  (`_leaflet_id`, StrictMode-Doppelmount — s. `council-map.tsx`).
  */
-export type KartenStufe = { art: "stadt" } | { art: "viertel"; name: string };
+export type KartenStufe = { art: "city" } | { art: "district"; name: string };
 
 const VOYAGER = basemapUrl("voyager");
 const PRIMAER = "#0a63a8";
 const STADT_MITTE: [number, number] = [53.1435, 8.2146];
 
-export function StadtKarte({ stufe, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   stufe: KartenStufe;
+  /** Die eingeschalteten Ebenen (`lib/karten-ebenen.ts`). Ohne die Vorhaben-
+   *  Ebene bleibt die Stadt-Stufe eine flache Umrisskarte. */
+  ebenen: ReadonlySet<EbenenId>;
   /** Zahl der Vorhaben je Ortsbereich (Name → Zahl) — die Tönung der Stadt-Stufe. */
   orte: Map<string, number>;
   /** Die eigenen Stadtteile: auf der Stadt-Stufe mit kräftigem Rand. */
@@ -59,8 +63,8 @@ export function StadtKarte({ stufe, orte, gewaehlt, schwebtOrt, onOrt, vorhaben,
   const rueckrufe = useRef({ onSelect, onHover, onOrt });
   rueckrufe.current = { onSelect, onHover, onOrt };
   // Der jüngste Zustand für die Effekte, die nach dem Laden nachziehen.
-  const standRef = useRef({ stufe, orte, gewaehlt, vorhaben, sperrungen, aktiv, gedimmt });
-  standRef.current = { stufe, orte, gewaehlt, vorhaben, sperrungen, aktiv, gedimmt };
+  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, aktiv, gedimmt });
+  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, aktiv, gedimmt };
 
   // Karte einmal aufbauen.
   useEffect(() => {
@@ -102,6 +106,7 @@ export function StadtKarte({ stufe, orte, gewaehlt, schwebtOrt, onOrt, vorhaben,
 
   /** Tönung einer Fläche nach Zahl — dieselbe Wurzel-Skala wie die SVG-Karte. */
   function toenung(name: string): number {
+    if (!standRef.current.ebenen.has("vorhaben")) return 0.04;
     const o = standRef.current.orte;
     const max = Math.max(0, ...o.values());
     const n = o.get(name) ?? 0;
@@ -125,7 +130,7 @@ export function StadtKarte({ stufe, orte, gewaehlt, schwebtOrt, onOrt, vorhaben,
     stadtRef.current?.remove();
     stadtRef.current = null;
     grenzeRef.current?.clearLayers();
-    if (stufe.art === "stadt") {
+    if (stufe.art === "city") {
       zeichnerRef.current?.leeren();
       const stadt = L.geoJSON({ type: "FeatureCollection", features } as never, {
         style: (f) => stadtStil((f as OrtsbereichFeature).properties.name, false),
@@ -160,28 +165,29 @@ export function StadtKarte({ stufe, orte, gewaehlt, schwebtOrt, onOrt, vorhaben,
   function viertelZeichnen() {
     const z = zeichnerRef.current, map = mapRef.current;
     if (!z || !map || !bereitRef.current) return;
-    const { stufe, vorhaben, sperrungen, aktiv, gedimmt } = standRef.current;
-    if (stufe.art !== "viertel") { z.leeren(); return; }
-    z.zeichnen({ vorhaben, sperrungen, aktiv, gedimmt });
+    const { stufe, ebenen, vorhaben, sperrungen, aktiv, gedimmt } = standRef.current;
+    if (stufe.art !== "district") { z.leeren(); return; }
+    z.zeichnen({ vorhaben, sperrungen, aktiv, gedimmt,
+      ebenen: { vorhaben: ebenen.has("vorhaben"), plaene: ebenen.has("plaene"), sperrungen: ebenen.has("sperrungen") } });
     if (z.aktivBounds) map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
   }
 
   // Stufe oder Ortsbereich gewechselt → Karte umbauen.
-  const stufeSchluessel = stufe.art === "viertel" ? `viertel:${stufe.name}` : "stadt";
+  const stufeSchluessel = stufe.art === "district" ? `district:${stufe.name}` : "city";
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { stufeSetzen(); viertelZeichnen(); }, [stufeSchluessel]);
   // Tönung oder eigene Stadtteile neu → Stadt-Flächen nachfärben.
   useEffect(() => {
-    if (standRef.current.stufe.art !== "stadt") return;
+    if (standRef.current.stufe.art !== "city") return;
     stadtRef.current?.eachLayer((layer) => {
       const f = (layer as unknown as { feature?: OrtsbereichFeature }).feature;
       if (f) (layer as Path).setStyle(stadtStil(f.properties.name, false));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orte, gewaehlt]);
-  // Vorhaben, Auswahl, Filter → Viertel neu zeichnen.
+  }, [orte, gewaehlt, ebenen]);
+  // Vorhaben, Auswahl, Filter, Ebenen → Viertel neu zeichnen.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { viertelZeichnen(); }, [vorhaben, sperrungen, aktiv, gedimmt]);
+  useEffect(() => { viertelZeichnen(); }, [vorhaben, sperrungen, aktiv, gedimmt, ebenen]);
   // Zeiger in der Liste → Pin hebt sich.
   useEffect(() => {
     if (schwebt != null) zeichnerRef.current?.heben(schwebt, true);
@@ -199,7 +205,7 @@ export function StadtKarte({ stufe, orte, gewaehlt, schwebtOrt, onOrt, vorhaben,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schwebtOrt]);
 
-  const label = stufe.art === "viertel" ? `Karte von ${stufe.name} mit den Vorhaben` : "Karte von Oldenburg mit den Vorhaben je Ortsbereich";
+  const label = stufe.art === "district" ? `Karte von ${stufe.name} mit den Vorhaben` : "Karte von Oldenburg mit den Vorhaben je Ortsbereich";
   return (
     <div className={cn("relative overflow-hidden bg-muted", className)}>
       <div ref={ref} className="h-full w-full" aria-label={label} role="region" />

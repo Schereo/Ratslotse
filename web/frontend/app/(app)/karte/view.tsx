@@ -9,6 +9,8 @@ import { karteHref } from "@/lib/routes";
 import { cn, formatDate } from "@/lib/utils";
 import { Button, DetailSkeleton, EmptyState, Sheet, SheetContent, SheetTitle, toast } from "@/components/ui";
 import { StadtKarte, type KartenStufe } from "@/components/stadt-karte";
+import { EbenenChips } from "@/components/ebenen-chips";
+import { ebeneUmschalten, ebenenMerken, ebenenStart, ebenenZuUrl, type EbenenId } from "@/lib/karten-ebenen";
 import { StadtteilKarte } from "@/components/stadtteil-karte";
 import { ShareButton } from "@/components/share-button";
 import { Mascot } from "@/components/mascot";
@@ -71,18 +73,32 @@ function Buehne() {
   const z = useTafelZustand(tafel.data, vorgewaehlt);
   const [schwebtOrt, setSchwebtOrt] = useState<string | null>(null);
 
+  // Die Ebenen: Adresse vor Speicher vor Vorgabe (lib/karten-ebenen.ts).
+  // Ein Wechsel schreibt beides — die Adresse, damit ein geteilter Link zeigt,
+  // was man sah, und den Speicher, damit es beim nächsten Mal so bleibt.
+  const ebenenParam = sp.get("ebenen");
+  const [ebenen, setEbenen] = useState<Set<EbenenId>>(() => ebenenStart(ebenenParam));
+  function ebeneWechseln(id: EbenenId) {
+    const neu = ebeneUmschalten(ebenen, id);
+    setEbenen(neu);
+    ebenenMerken(neu);
+  }
+
   // Ein neues Vorhaben in der Adresse (Highlight, geteilter Link) → auswählen.
   useEffect(() => {
     z.setAktiv(vorgewaehlt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vorgewaehlt, ort]);
-  // Auswahl → Adresse (replace: zurück soll nicht durch jeden Pin springen).
+  // Auswahl und Ebenen → Adresse (replace: zurück soll nicht durch jeden Pin
+  // und jeden Chip springen). Die Vorgabe der Ebenen bleibt aus der Adresse
+  // heraus — sie soll sauber sein, solange nichts Besonderes gilt.
   useEffect(() => {
-    if (!ort) return;
-    const ziel = karteHref(ort, z.aktiv);
+    const basis = karteHref(ort, ort ? z.aktiv : null);
+    const e = ebenenZuUrl(ebenen);
+    const ziel = e == null ? basis : `${basis}${basis.includes("?") ? "&" : "?"}ebenen=${e}`;
     if (window.location.pathname + window.location.search !== ziel) router.replace(ziel, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [z.aktiv]);
+  }, [z.aktiv, ebenen]);
 
   // Schreibtisch: Tafel-Spalte neben der Karte. Telefon: Karte oben, Tafel
   // darunter, Detail als Sheet — die Grenze wie auf /viertel.
@@ -100,7 +116,7 @@ function Buehne() {
   if (uebersicht.isLoading) return <DetailSkeleton />;
   if (!orte || !uebersicht.data) return <EmptyState title="Die Karte lässt sich gerade nicht laden." mascot="confused" />;
   const daten = uebersicht.data;
-  const stufe: KartenStufe = ortName ? { art: "viertel", name: ortName } : { art: "stadt" };
+  const stufe: KartenStufe = ortName ? { art: "district", name: ortName } : { art: "city" };
   const place = tafel.data?.place as { id: string; name: string } | undefined;
 
   const detail = z.ausgewaehlt && (
@@ -122,6 +138,7 @@ function Buehne() {
       <div className="relative h-[45dvh] min-h-[280px] desk:h-auto desk:min-h-0 desk:flex-1">
         <StadtKarte
           stufe={stufe}
+          ebenen={ebenen}
           orte={gewichte}
           gewaehlt={new Set(meine.map((o) => o.name))}
           schwebtOrt={schwebtOrt}
@@ -134,6 +151,21 @@ function Buehne() {
           onSelect={z.setAktiv}
           onHover={z.setSchwebt}
           className="h-full w-full"
+        />
+        {/* Ebenen-Chips oben links AUF der Karte — zugleich die Legende. Die
+            Zähler sagen, was gerade auf dieser Stufe liegt. */}
+        <EbenenChips
+          ebenen={ebenen}
+          stufe={stufe.art}
+          zaehler={stufe.art === "city"
+            ? { vorhaben: daten.total }
+            : {
+              vorhaben: z.vorhaben.length,
+              plaene: z.vorhaben.reduce((n, v) => n + v.locations.filter((l) => l.kind === "bplan").length, 0),
+              sperrungen: tafel.data?.closures.length ?? 0,
+            }}
+          onToggle={ebeneWechseln}
+          className="absolute left-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]"
         />
         {/* Brotkrumen: wo bin ich, und wie komme ich eine Stufe hoch. */}
         <nav aria-label="Stufe" className="absolute bottom-4 left-4 z-[500] flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 text-[12.5px] font-medium shadow-lg backdrop-blur">
@@ -164,7 +196,7 @@ function Buehne() {
       </div>
 
       <aside className="min-w-0 border-t border-border bg-card desk:w-[420px] desk:shrink-0 desk:overflow-y-auto desk:border-l desk:border-t-0" aria-label={ortName ? `Tafel ${ortName}` : "Tafel Oldenburg"}>
-        {stufe.art === "stadt" ? (
+        {stufe.art === "city" ? (
           <StadtTafel daten={daten} orte={orte} meine={meine} byName={byName} onOrt={zumOrt} onHoverOrt={setSchwebtOrt} />
         ) : tafel.isLoading ? (
           <div className="p-5"><DetailSkeleton /></div>
