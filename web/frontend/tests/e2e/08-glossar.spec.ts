@@ -9,17 +9,7 @@
  * durchgehend gepunktet.
  */
 import { test, expect } from "@playwright/test";
-import {
-  ADMIN_EMAIL, ADMIN_PASSWORD, einrichtungUeberspringen, gespraecheNichtMerken, loginAdmin,
-} from "./helpers";
-
-async function anmelden(page: import("@playwright/test").Page) {
-  await page.goto("/register");
-  await page.locator("#email").fill(ADMIN_EMAIL);
-  await page.locator("#password").fill(ADMIN_PASSWORD);
-  await page.getByRole("button", { name: "Konto erstellen" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 8_000 }).catch(() => loginAdmin(page));
-}
+import { zustandsDatei } from "./konten";
 
 // „Ausfallbürgschaft" ist der Anlass: Genau diese Frage hat die KI-Frage am
 // 04.09.2026 zweimal verschieden beantwortet. „Bebauungsplan" steht zweimal
@@ -36,13 +26,15 @@ const SSE_ANTWORT = [
 ].join("");
 
 test.describe("Glossar im Antworttext", () => {
+  // Angemeldet aus der abgelegten Sitzung. Sie bringt den abgehakten
+  // Einrichtungs-Assistenten UND die beantwortete Frage „Gespräche merken?"
+  // schon mit — beides ist Zustand am Konto, s. `konten.ts`.
+  test.use({ storageState: zustandsDatei("admin") });
+
   test("erklärt Fachbegriffe bei der ersten Nennung", async ({ page }) => {
-    await anmelden(page);
     await page.route("**/api/council/ask", (route) =>
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_ANTWORT }),
     );
-    await gespraecheNichtMerken(page);
-    await einrichtungUeberspringen(page);
     await page.goto("/fragen");
     await page.getByPlaceholder(/Deine Frage/).fill("Was ist eine Ausfallbürgschaft?");
     await page.keyboard.press("Enter");

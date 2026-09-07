@@ -6,17 +6,7 @@
  * sich nicht mehr korrigieren, beide Knöpfe waren danach dauerhaft disabled.
  */
 import { test, expect } from "@playwright/test";
-import { ADMIN_EMAIL, ADMIN_PASSWORD, loginAdmin, gespraecheNichtMerken } from "./helpers";
-
-/** Anmelden, egal ob das Konto schon existiert: Läuft die ganze Suite, hat
- *  01-auth es angelegt; läuft nur diese Datei, legt sie es selbst an. */
-async function anmelden(page: import("@playwright/test").Page) {
-  await page.goto("/register");
-  await page.locator("#email").fill(ADMIN_EMAIL);
-  await page.locator("#password").fill(ADMIN_PASSWORD);
-  await page.getByRole("button", { name: "Konto erstellen" }).click();
-  await page.waitForURL(/\/(link|dashboard)/, { timeout: 8_000 }).catch(() => loginAdmin(page));
-}
+import { zustandsDatei } from "./konten";
 
 /** Der /ask-Endpoint spricht SSE — hier die kürzeste Runde, die eine
  *  vollständige Antwort mit Aktionszeile erzeugt. */
@@ -28,8 +18,12 @@ const SSE_ANTWORT = [
 ].join("");
 
 test.describe("Daumen-Feedback", () => {
+  // Angemeldet aus der abgelegten Sitzung. Sie bringt den abgehakten
+  // Einrichtungs-Assistenten UND die beantwortete Frage „Gespräche merken?"
+  // schon mit — beides ist Zustand am Konto, s. `konten.ts`.
+  test.use({ storageState: zustandsDatei("admin") });
+
   test("Daumen runter lässt sich in Daumen hoch ändern", async ({ page }) => {
-    await anmelden(page);
 
     await page.route("**/api/council/ask", (route) =>
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_ANTWORT }),
@@ -40,8 +34,6 @@ test.describe("Daumen-Feedback", () => {
       gesendet.push(JSON.parse(route.request().postData() ?? "{}").rating);
       await route.fulfill({ status: 201, contentType: "application/json", body: '{"ok":true}' });
     });
-
-    await gespraecheNichtMerken(page);
     await page.goto("/fragen");
     // Der Platzhalter heißt „Deine Frage …" — „Frag den Rat" steht heute auf
     // dem Knopf des Dashboards, nicht im Eingabefeld.
