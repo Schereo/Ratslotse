@@ -85,6 +85,7 @@ def aktive(roh: str | None = None) -> list[str]:
     """Die eingeschalteten Schalter, aus ``FEATURE_FLAGS``.
 
     Kommagetrennt, Leerraum egal: ``FEATURE_FLAGS=haushalt-labor, neue-suche``.
+    ``FEATURE_FLAGS=*`` heißt: alle — die Vorgabe für dev.
     Ein Name, den ``FEATURES`` nicht kennt, wird **verworfen** und nicht
     durchgereicht — sonst schaltete ein Tippfehler in der ``.env`` etwas frei,
     das es nicht gibt, und niemand sähe den Unterschied zu „ist eben aus".
@@ -94,6 +95,12 @@ def aktive(roh: str | None = None) -> list[str]:
     """
     wert = os.environ.get("FEATURE_FLAGS", "") if roh is None else roh
     gewuenscht = {t.strip() for t in wert.split(",") if t.strip()}
+    # ``*`` schaltet ALLE Schalter an — für dev, wo jedes Feature sichtbar
+    # sein soll, sobald es gemergt ist (Tim, 07.09.2026), statt dass jeder PR
+    # einen Eintrag in der ``.env`` der VM nachzieht. Auf Prod bleibt die
+    # Liste explizit; ein ``*`` dort wäre eine Entscheidung, kein Versehen.
+    if "*" in gewuenscht:
+        return list(FEATURES)
     return [k for k in FEATURES if k in gewuenscht]
 
 
