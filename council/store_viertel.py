@@ -62,17 +62,27 @@ class ViertelMixin(StoreBasis):
     """Die Viertel-Abfragen von :class:`council.store.CouncilStore` — nur zum Mitvererben."""
 
     if TYPE_CHECKING:
-        # Zwei Nachbar-Methoden, die dieses Mixin am zusammengesetzten Store
+        # Die Nachbar-Methoden, die dieses Mixin am zusammengesetzten Store
         # aufruft. Zur Laufzeit steht hier nichts — die Auflösung läuft wie
         # immer über die MRO von ``CouncilStore``; für die Typprüfung leiht
         # sich die Klasse die Signatur beim Eigentümer, damit beide nicht
         # auseinanderlaufen. In ``StoreBasis`` gehören sie nicht: Die
         # beschreibt den gemeinsamen Nenner, nicht die Kopplung zweier Nachbarn.
+        #
+        # WER HIER FEHLT, FÄLLT NICHT AUF. Ein nicht eingetragener Nachbar
+        # kostet einen Befund je AUFRUFSTELLE, nicht je Methode — und die
+        # Sperrklinke in `scripts/pruefe_typschulden.py` meldet nur eine Zahl.
+        # `bplan_outlines_by_keys` stand deshalb erst mit der zweiten
+        # Aufrufstelle (#1163) über der Schranke, obwohl schon die erste einen
+        # Befund erzeugt hatte. Wer hier eine Nachbar-Methode aufruft, trägt
+        # sie mit ein.
+        from council.store_bplan import BplanMixin
         from council.store_orte import OrteMixin
         from council.store_presse import PresseMixin
 
         resolve_place = OrteMixin.resolve_place
         list_beteiligungen = PresseMixin.list_beteiligungen
+        bplan_outlines_by_keys = BplanMixin.bplan_outlines_by_keys
 
     # ------------------------------------------------------------ Kandidaten
 
