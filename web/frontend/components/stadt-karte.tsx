@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 // Das Cluster-Plugin bringt Übergänge für seine Marker mit; das Aussehen der
 // Bündel steht in globals.css (.ratslotse-map-cluster).
 import "leaflet.markercluster/dist/MarkerCluster.css";
-import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
+import { loadOrtsbereiche, ortsbereichFor, type OrtsbereichFeature } from "@/lib/districts";
 import { basemapUrl } from "@/lib/basemap";
 import { cn } from "@/lib/utils";
 import { ViertelZeichner, escapeHtml, type KartenBeteiligung, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
@@ -37,7 +37,7 @@ const VOYAGER = basemapUrl("voyager");
 const PRIMAER = "#0a63a8";
 const STADT_MITTE: [number, number] = [53.1435, 8.2146];
 
-export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, wahl, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, onStadt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, wahl, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   stufe: KartenStufe;
   /** Die eingeschalteten Ebenen (`lib/karten-ebenen.ts`). Ohne die Vorhaben-
    *  Ebene bleibt die Stadt-Stufe eine flache Umrisskarte. */
@@ -49,6 +49,9 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   /** Der Ortsbereich, über dem der Zeiger in der Rangliste steht. */
   schwebtOrt?: string | null;
   onOrt: (name: string) => void;
+  /** Zurück auf die Stadt-Stufe — die Karte ruft es, wenn jemand aus dem
+   *  Viertel herauszoomt (Tims Wunsch 07.09.2026: Zoom wechselt die Stufe). */
+  onStadt?: () => void;
   /** Die Ebene „Wahlergebnis": je Ortsbereich die Fläche seines Wahlbereichs
    *  (lib/wahl-flaechen.ts) — die Stadt-Stufe tönt danach und sagt im Hinweis,
    *  wer vorn liegt. Fehlt sie oder ist die Ebene aus, färbt die Zahl der Vorhaben. */
@@ -75,8 +78,24 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   const zeichnerRef = useRef<ViertelZeichner | null>(null);
   const themenRef = useRef<ThemenOrteZeichner | null>(null);
   const bereitRef = useRef(false);
-  const rueckrufe = useRef({ onSelect, onHover, onOrt, onThemenOrt });
-  rueckrufe.current = { onSelect, onHover, onOrt, onThemenOrt };
+  // Zoom wechselt die Stufe (Tim, 07.09.2026): Wer auf der Stadt-Stufe zwei
+  // Stufen über die Stadtansicht hinein zoomt, landet im Ortsbereich unter der
+  // Kartenmitte; wer im Viertel anderthalb Stufen unter den Einstiegs-Zoom
+  // fällt, ist wieder in der Stadt. Die eigenen Flüge (fitBounds, flyTo)
+  // zählen nicht — sonst würde der Einstieg ins Viertel gleich wieder
+  // herausführen. Der Zoom des Einstiegs je Stufe ist der Maßstab, nicht eine
+  // feste Zahl: Osternburg passt bei 13, ein kleines Viertel erst bei 15.
+  const stufenZoomRef = useRef<{ stadt: number | null; viertel: number | null }>({ stadt: null, viertel: null });
+  const eigenerFlugRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Vor jedem eigenen Flug: Die nächste Zoom-Änderung ist unsere, nicht die der Nutzerin. */
+  function eigenerFlug() {
+    if (eigenerFlugRef.current) clearTimeout(eigenerFlugRef.current);
+    // Falls der Flug gar nichts bewegt (kein zoomend/moveend), darf die
+    // Sperre nicht hängen bleiben — sonst schluckte sie den nächsten echten Zoom.
+    eigenerFlugRef.current = setTimeout(() => { eigenerFlugRef.current = null; }, 1500);
+  }
+  const rueckrufe = useRef({ onSelect, onHover, onOrt, onStadt, onThemenOrt });
+  rueckrufe.current = { onSelect, onHover, onOrt, onStadt, onThemenOrt };
   // Der jüngste Zustand für die Effekte, die nach dem Laden nachziehen.
   const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, aktiv, gedimmt });
   standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, wahl, aktiv, gedimmt };
@@ -107,6 +126,22 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
         onHover: (id) => rueckrufe.current.onHover?.(id),
       });
       themenRef.current = new ThemenOrteZeichner(L, map, (p) => rueckrufe.current.onThemenOrt?.(p));
+      map.on("zoomend", () => {
+        if (eigenerFlugRef.current) return;
+        const zoom = map.getZoom();
+        const { stufe } = standRef.current;
+        const { stadt, viertel } = stufenZoomRef.current;
+        if (stufe.art === "city" && stadt != null && zoom >= stadt + 2) {
+          const mitte = map.getCenter();
+          const name = ortsbereichFor(mitte.lat, mitte.lng, featuresRef.current);
+          if (name) rueckrufe.current.onOrt(name);
+        } else if (stufe.art === "district" && viertel != null && zoom <= viertel - 1.5) {
+          rueckrufe.current.onStadt?.();
+        }
+      });
+      map.on("moveend", () => {
+        if (eigenerFlugRef.current) { clearTimeout(eigenerFlugRef.current); eigenerFlugRef.current = null; }
+      });
       bereitRef.current = true;
       stufeSetzen(true);
       viertelZeichnen();
@@ -191,8 +226,10 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
       }).addTo(map);
       stadtRef.current = stadt;
       if (features.length) {
+        eigenerFlug();
         if (sofort) map.fitBounds(stadt.getBounds(), { padding: [8, 8] });
         else map.flyToBounds(stadt.getBounds(), { padding: [8, 8], duration: 0.6 });
+        stufenZoomRef.current.stadt = map.getBoundsZoom(stadt.getBounds(), false, L.point(8, 8));
       }
     } else {
       const grenze = features.find((f) => f.properties.name === stufe.name);
@@ -202,8 +239,10 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
           interactive: false,
         });
         grenzeRef.current?.addLayer(layer);
+        eigenerFlug();
         if (sofort) map.fitBounds(layer.getBounds(), { padding: [16, 16] });
         else map.flyToBounds(layer.getBounds(), { padding: [16, 16], duration: 0.7 });
+        stufenZoomRef.current.viertel = map.getBoundsZoom(layer.getBounds(), false, L.point(16, 16));
       }
     }
   }
@@ -215,7 +254,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
     if (stufe.art !== "district") { z.leeren(); return; }
     z.zeichnen({ vorhaben, sperrungen, beteiligungen, aktiv, gedimmt,
       ebenen: { vorhaben: ebenen.has("vorhaben"), plaene: ebenen.has("plaene"), sperrungen: ebenen.has("sperrungen"), beteiligungen: ebenen.has("mitreden") } });
-    if (z.aktivBounds) map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
+    if (z.aktivBounds) { eigenerFlug(); map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 }); }
   }
 
   function themenZeichnen() {
