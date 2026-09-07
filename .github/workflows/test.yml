@@ -54,5 +54,17 @@ jobs:
       - name: Typ-Schuldenstand
         run: python scripts/pruefe_typschulden.py
 
+      # `-n auto`: ein Prozess je Kern (auf den GitHub-Läufern vier). Warum das
+      # geht und was es bringt, steht in `requirements-dev.txt` bei
+      # `pytest-xdist`.
+      #
+      # Was man dafür aufgibt: Die Testausgabe kommt nicht mehr in
+      # Datei-Reihenfolge, sondern so, wie die Prozesse fertig werden. Bei Rot
+      # steht trotzdem jeder Fehlschlag samt Datei und Zeile im Bericht — nur
+      # das Mitlesen eines laufenden Tests ist dahin. Wer einen Fehlschlag
+      # nachstellt, nimmt lokal wieder den seriellen Lauf:
+      #
+      #     .venv/bin/python -m pytest tests/ -q          # seriell
+      #     .venv/bin/python -m pytest tests/ -q -n auto  # wie die CI
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -n auto

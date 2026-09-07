@@ -159,7 +159,27 @@ Zeichen.
 npx playwright test                       # alles
 npx playwright test tests/e2e/09-konto    # eine Datei
 E2E_PORT=3010 E2E_API_PORT=8012 npx playwright test   # auf freien Ports
+npx playwright test --shard=2/4           # nur das, was Teil 2 der CI fährt
 ```
+
+**In der CI läuft die Suite auf vier Läufern** (`--shard=i/4`, s. `e2e.yml`).
+Jeder bringt sein eigenes Backend auf einer eigenen Wegwerf-Datenbank mit, die
+Teile teilen also nichts. Lokal nachstellen lässt sich ein einzelner Teil mit
+der Zeile oben.
+
+**Was lokal NICHT geht: die vier Teile gleichzeitig starten.** Verschiedene
+Ports reichen dafür nicht — alle `next dev` eines Worktrees schreiben in
+**dasselbe `.next-dev/`** und zerlegen sich gegenseitig den Webpack-Cache:
+
+```
+[webpack.cache.PackFileCacheStrategy] Caching failed for pack:
+  ENOENT: no such file or directory, rename '….next-dev/cache/webpack/0.pack.gz_'
+```
+
+Das Ergebnis sieht aus wie ein echter Befund und ist keiner: 21 Fehlschläge
+über die vier Teile, dieselbe Suite seriell 140/140 grün, jeder Teil einzeln
+grün (gemessen 07.09.2026). Wer die Teile wirklich parallel messen will,
+braucht je einen eigenen Worktree — oder lässt es und misst sie nacheinander.
 
 **Die Ports sind einstellbar, und das braucht man wirklich.** Dieses Repo wird
 in mehreren `git worktree`s gleichzeitig bearbeitet, und dort läuft fast immer

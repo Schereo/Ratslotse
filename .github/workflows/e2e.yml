@@ -35,19 +35,55 @@ on:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    # 09/2026 von 20 auf 35 angehoben. Die Suite ist von 38 auf 137 Tests
-    # gewachsen; der erste Lauf danach brauchte in der CI exakt 20 Minuten und
-    # ging damit auf die Sekunde durch. Der nächste Test hätte die Grenze
-    # gerissen — und zwar als ZEITÜBERSCHREITUNG, also mit einer Meldung, die
-    # nicht sagt, was kaputt ist. Lokal dauert derselbe Lauf 5,9 Minuten; der
-    # geteilte Läufer ist etwa dreimal langsamer.
+
+    # AUFGETEILT AUF VIER LÄUFER (09/2026). Vorher lief die Suite auf einem
+    # einzigen und brauchte 16–21 Minuten — und weil alle anderen Prüfungen
+    # eines PRs unter 10 Minuten bleiben, war das WARTEN AUF EINEN PR
+    # praktisch identisch mit dieser einen Zahl.
     #
+    # Warum die Aufteilung hier gefahrlos ist, obwohl die Tests ausdrücklich
+    # seriell laufen (`workers: 1`): Jeder Läufer startet über
+    # `tests/start-backend.sh` sein EIGENES Backend auf einer eigenen
+    # Wegwerf-Datenbank (`mktemp -d`). Die Läufer teilen also nichts. Und
+    # `--shard` verteilt ganze DATEIEN, solange `fullyParallel` aus ist — die
+    # Reihenfolge innerhalb einer Datei bleibt damit erhalten.
+    #
+    # Kein Weg über die Datei-Reihenfolge hinweg: `loginAdmin` in
+    # `helpers.ts` registriert sein Konto selbst und verträgt die 409, wenn es
+    # schon da ist. Genau deshalb darf Datei 09 auch ohne Datei 01 laufen.
+    #
+    # VIER, NICHT ACHT. Die Teile werden nach Test-ANZAHL geschnitten, nicht
+    # nach Dauer — sie werden also nicht gleich lang. Lokal gemessen
+    # (07.09.2026, ganze Suite 6,1 min):
+    #
+    #     Teil 1  39 Tests  1,2 min
+    #     Teil 2  39 Tests  2,3 min   ← der langsamste bestimmt die Wartezeit
+    #     Teil 3  38 Tests  1,8 min
+    #     Teil 4  24 Tests  1,0 min
+    #
+    # Der Gewinn ist damit 6,1 → 2,3 min, nicht 6,1 → 1,5. Mehr Teile
+    # verschieben das nur langsam weiter, weil eine DATEI die kleinste Einheit
+    # ist und jeder Läufer knapp 1 Minute Rüstzeit zahlt (venv, npm ci,
+    # Chromium). Vier ist der Punkt, an dem sich beides die Waage hält.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    name: Browsertests (${{ matrix.shard }}/4)
+
     # Die Grenze ist kein Ziel, sondern der Notausgang für einen hängenden
-    # Lauf. Wenn die Suite weiter wächst, ist der richtige Hebel nicht diese
-    # Zahl, sondern die Anmeldung: Fast jeder Test meldet sich neu an
-    # (`anmelden()` in den Specs, `loginAdmin` in `helpers.ts`). Eine
-    # wiederverwendete Sitzung über `storageState` spart die Runde je Test.
-    timeout-minutes: 35
+    # Lauf — sie gilt jetzt für EINEN Teil, nicht mehr für die ganze Suite.
+    # Von 35 auf 15: Ein Viertel der Suite braucht in der CI knapp 4 Minuten.
+    #
+    # Der nächste Hebel, wenn die Suite weiter wächst, ist nicht diese Zahl
+    # und auch nicht die Zahl der Teile, sondern die Anmeldung: Fast jeder
+    # Test meldet sich neu an (`anmelden()` in den Specs, `loginAdmin` in
+    # `helpers.ts`), gemessen ~5 s je Test — bei ~100 angemeldeten Tests also
+    # gut die Hälfte der reinen Laufzeit. Eine wiederverwendete Sitzung über
+    # `storageState` spart diese Runde. Das ist ein Umbau der Suite, kein
+    # Schalter in dieser Datei, und deshalb hier nicht mitgemacht.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -83,16 +119,22 @@ jobs:
 
       - name: Browsertests
         working-directory: web/frontend
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}/4
 
       # Bei Rot: der HTML-Bericht mit Screenshot, Video und Trace jedes
       # gescheiterten Laufs. Ohne ihn steht in der CI nur „Timeout", und die
       # Suche beginnt bei null.
+      #
+      # Der Name trägt die Teilnummer: Namensgleiche Artefakte aus einer
+      # Matrix weist `upload-artifact@v4` mit einem Fehler ab (in v3 hätten
+      # sie sich gegenseitig überschrieben, was schlimmer wäre — man lädt den
+      # Bericht herunter und sucht den Fehler in den Tests eines anderen
+      # Teils).
       - name: Bericht sichern
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-bericht
+          name: playwright-bericht-${{ matrix.shard }}
           path: |
             web/frontend/playwright-report
             web/frontend/test-results
