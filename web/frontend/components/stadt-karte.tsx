@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
 import { basemapUrl } from "@/lib/basemap";
 import { cn } from "@/lib/utils";
-import { ViertelZeichner, escapeHtml, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
+import { ViertelZeichner, escapeHtml, type KartenBeteiligung, type KartenSperrung, type KartenVorhaben } from "@/components/viertel-zeichner";
 import { ThemenOrteZeichner } from "@/components/themen-orte-zeichner";
 import type { EbenenId } from "@/lib/karten-ebenen";
 import type { EntityMapPoint } from "@/lib/types";
@@ -33,7 +33,7 @@ const VOYAGER = basemapUrl("voyager");
 const PRIMAER = "#0a63a8";
 const STADT_MITTE: [number, number] = [53.1435, 8.2146];
 
-export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, themenOrte, onThemenOrt, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
+export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, vorhaben, sperrungen, beteiligungen, themenOrte, onThemenOrt, aktiv, gedimmt, schwebt, onSelect, onHover, className }: {
   stufe: KartenStufe;
   /** Die eingeschalteten Ebenen (`lib/karten-ebenen.ts`). Ohne die Vorhaben-
    *  Ebene bleibt die Stadt-Stufe eine flache Umrisskarte. */
@@ -47,6 +47,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   onOrt: (name: string) => void;
   vorhaben: KartenVorhaben[];
   sperrungen?: KartenSperrung[];
+  beteiligungen?: KartenBeteiligung[];
   /** Die Ebene „Themen-Orte": schon gefiltert (Art, Ortsbereich) — leer, wenn aus. */
   themenOrte?: EntityMapPoint[];
   onThemenOrt?: (p: EntityMapPoint) => void;
@@ -69,8 +70,8 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   const rueckrufe = useRef({ onSelect, onHover, onOrt, onThemenOrt });
   rueckrufe.current = { onSelect, onHover, onOrt, onThemenOrt };
   // Der jüngste Zustand für die Effekte, die nach dem Laden nachziehen.
-  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, themenOrte, aktiv, gedimmt });
-  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, themenOrte, aktiv, gedimmt };
+  const standRef = useRef({ stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, aktiv, gedimmt });
+  standRef.current = { stufe, ebenen, orte, gewaehlt, vorhaben, sperrungen, beteiligungen, themenOrte, aktiv, gedimmt };
 
   // Karte einmal aufbauen.
   useEffect(() => {
@@ -178,10 +179,10 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   function viertelZeichnen() {
     const z = zeichnerRef.current, map = mapRef.current;
     if (!z || !map || !bereitRef.current) return;
-    const { stufe, ebenen, vorhaben, sperrungen, aktiv, gedimmt } = standRef.current;
+    const { stufe, ebenen, vorhaben, sperrungen, beteiligungen, aktiv, gedimmt } = standRef.current;
     if (stufe.art !== "district") { z.leeren(); return; }
-    z.zeichnen({ vorhaben, sperrungen, aktiv, gedimmt,
-      ebenen: { vorhaben: ebenen.has("vorhaben"), plaene: ebenen.has("plaene"), sperrungen: ebenen.has("sperrungen") } });
+    z.zeichnen({ vorhaben, sperrungen, beteiligungen, aktiv, gedimmt,
+      ebenen: { vorhaben: ebenen.has("vorhaben"), plaene: ebenen.has("plaene"), sperrungen: ebenen.has("sperrungen"), beteiligungen: ebenen.has("mitreden") } });
     if (z.aktivBounds) map.flyToBounds(z.aktivBounds.pad(0.6), { maxZoom: 16, duration: 0.5 });
   }
 
@@ -208,7 +209,7 @@ export function StadtKarte({ stufe, ebenen, orte, gewaehlt, schwebtOrt, onOrt, v
   }, [orte, gewaehlt, ebenen]);
   // Vorhaben, Auswahl, Filter, Ebenen → Viertel neu zeichnen.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { viertelZeichnen(); }, [vorhaben, sperrungen, aktiv, gedimmt, ebenen]);
+  useEffect(() => { viertelZeichnen(); }, [vorhaben, sperrungen, beteiligungen, aktiv, gedimmt, ebenen]);
   // Zeiger in der Liste → Pin hebt sich.
   useEffect(() => {
     if (schwebt != null) zeichnerRef.current?.heben(schwebt, true);

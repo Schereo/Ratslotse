@@ -410,6 +410,7 @@ export function BeteiligungKarte({ items, className, style }: { items: Tafel["pa
           <li key={i}>
             <a href={b.url ?? "#"} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">{b.title}</a>
             <span className="text-muted-foreground"> — {b.step}{b.valid_until ? `, bis ${formatDate(b.valid_until)}` : ""}</span>
+            {b.geometry ? <span className="ml-1 text-xs text-muted-foreground">· Fläche auf der Karte</span> : null}
           </li>
         ))}
       </ul>

@@ -234,6 +234,29 @@ def test_endpunkte_oeffentlich_und_melden():
     assert tafel["projects"][0]["decisions"][0]["id"] == 10
     assert tafel["projects"][0]["reported"] is False
     assert len(tafel["neighbours"]) == 3
+    # Eine laufende Beteiligung zum Plan bekommt den Umring als Fläche (Schritt 4
+    # des Stadtkarte-Plans): Plannummer aus dem Beteiligungs-Titel, Umring aus dem
+    # Geoportal-Spiegel. Ohne Umring bleibt sie ohne Fläche, aber in der Tafel.
+    from council import bplan
+    from council import geo as _geo
+    store = _store()
+    lat, lon = _geo.ortsbereich_center("Kreyenbrück")
+    store.replace_bplan_outlines([bplan.normiere({"properties": {"Planverfahren": "81"}, "geometry": {
+        "type": "Polygon", "coordinates": [[[lon - 0.002, lat - 0.002], [lon + 0.002, lat - 0.002],
+                                            [lon + 0.002, lat + 0.002], [lon - 0.002, lat + 0.002], [lon - 0.002, lat - 0.002]]]}},
+        "in_procedure")])
+    store.save_beteiligungen([
+        {"title": "Bebauungsplan 81 (Sandkruger Straße)", "ort": "Kreyenbrück", "schritt": "Frühzeitige Beteiligung",
+         "valid_from": "2026-09-01", "valid_until": "2026-09-30", "url": "https://example.org/b/81", "plan_nrs": ["bp-81"]},
+        {"title": "Bebauungsplan 999 (Sandkruger Straße)", "ort": "Kreyenbrück", "schritt": "Auslegung",
+         "valid_from": None, "valid_until": None, "url": "https://example.org/b/999", "plan_nrs": ["bp-999"]},
+    ])
+    store.close()
+    bet = {b["title"]: b for b in client.get("/api/districts/kreyenbrueck/projects").json()["participations"]}
+    assert bet["Bebauungsplan 81 (Sandkruger Straße)"]["geometry"]["type"] == "Polygon"
+    assert bet["Bebauungsplan 81 (Sandkruger Straße)"]["plan_nr"] == "81"
+    assert bet["Bebauungsplan 81 (Sandkruger Straße)"]["plan_status"] == "in_procedure"
+    assert bet["Bebauungsplan 999 (Sandkruger Straße)"]["geometry"] is None
     assert client.get("/api/districts/nirgendwo/projects").status_code == 404
 
     pid = tafel["projects"][0]["id"]

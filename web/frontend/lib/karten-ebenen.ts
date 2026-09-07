@@ -17,7 +17,7 @@
 // Spätere Ebenen (Themen-Orte, Beteiligungen, Wahlergebnis) sind je ein
 // Eintrag hier — die Chips, die Adresse und der Speicher kennen sie dann.
 
-export type EbenenId = "vorhaben" | "plaene" | "sperrungen" | "themen-orte";
+export type EbenenId = "vorhaben" | "plaene" | "sperrungen" | "mitreden" | "themen-orte";
 
 export type Ebene = {
   id: EbenenId;
@@ -36,6 +36,12 @@ export const EBENEN: readonly Ebene[] = [
   { id: "vorhaben", label: "Vorhaben", farbe: "#0a63a8", stufen: ["city", "district"], quelle: "aus den Beschlüssen des Rats, letzte zwei Jahre" },
   { id: "plaene", label: "Bebauungspläne", farbe: "#15803d", gestrichelt: true, stufen: ["district"], quelle: "Geltungsbereiche, Stadt Oldenburg (Geoportal)" },
   { id: "sperrungen", label: "Sperrungen", farbe: "#b45309", stufen: ["district"], quelle: "Verkehrsbehörde, Stadt Oldenburg (Geoportal), täglich" },
+  // Laufende Bauleitplan-Beteiligungen (planungsbeteiligung.de) als Fläche
+  // des Plans, wo das Geoportal ihn kennt — „Mitreden" mit Frist, wie die
+  // Karte der Tafel heißt. Signal-Orange als Punkt/Rand, nie als Fläche.
+  // (Nicht „beteiligungen": das Wort ist ein umbenannter Haushalts-Wert,
+  // und der Werte-Wächter meldet das Literal.)
+  { id: "mitreden", label: "Mitreden", farbe: "#e8590c", gestrichelt: true, stufen: ["district"], quelle: "planungsbeteiligung.de, Fläche aus dem Geoportal" },
   // Die Punkte der alten Themen-Karte: verortete Themen und Beschlussorte
   // über ALLE Jahre. In der Vorgabe aus — sie sind das andere Vokabular
   // (Themen statt Vorhaben) und lägen sonst über den Pins des Viertels.
@@ -45,7 +51,7 @@ export const EBENEN: readonly Ebene[] = [
 export const ALLE_EBENEN: readonly EbenenId[] = EBENEN.map((e) => e.id);
 /** Was ohne Adresse und Speicher an ist: die Ebenen des Viertels. Die
  *  Themen-Orte schaltet man dazu. */
-export const VORGABE: ReadonlySet<EbenenId> = new Set<EbenenId>(["vorhaben", "plaene", "sperrungen"]);
+export const VORGABE: ReadonlySet<EbenenId> = new Set<EbenenId>(["vorhaben", "plaene", "sperrungen", "mitreden"]);
 
 const SCHLUESSEL = "karte.ebenen";
 

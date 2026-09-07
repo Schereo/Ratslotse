@@ -247,6 +247,7 @@ struct DistrictBoardView: View {
                         projectList.ratsStaggered(3)
                     }
                     if !data.closures.isEmpty { closuresCard(data.closures).ratsStaggered(3) }
+                    if !data.participations.isEmpty { participationsCard(data.participations).ratsStaggered(3) }
                     if !data.investments.isEmpty { investmentsCard(data.investments).ratsStaggered(4) }
                     if !data.press.isEmpty { pressCard(data.press).ratsStaggered(4) }
                     if !data.neighbours.isEmpty { neighbours(data.neighbours).ratsStaggered(5) }
@@ -306,6 +307,7 @@ struct DistrictBoardView: View {
                     .stroke(RatsColor.primary.opacity(0.8), lineWidth: 2)
             }
             closureLayers
+            participationLayers
             ForEach(projects) { project in
                 projectLayers(project)
             }
@@ -325,6 +327,21 @@ struct DistrictBoardView: View {
                 MapPolyline(coordinates: line)
                     .stroke(closureColor.opacity(dimmed ? 0.3 : 0.9),
                             style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [8, 6]))
+            }
+        }
+    }
+
+    /// Laufende Beteiligungen: der Geltungsbereich des Plans, punktiert in
+    /// Signal-Orange — blass, sobald ein Vorhaben gewählt ist.
+    @MapContentBuilder
+    private var participationLayers: some MapContent {
+        let dimmed = selected != nil
+        ForEach(data?.participations ?? []) { item in
+            ForEach(Array(polygons(item.geometry).enumerated()), id: \.offset) { _, ring in
+                MapPolygon(coordinates: ring)
+                    .foregroundStyle(RatsColor.signal.opacity(dimmed ? 0.03 : 0.1))
+                    .stroke(RatsColor.signal.opacity(dimmed ? 0.3 : 0.95),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [2, 7]))
             }
         }
     }
@@ -518,6 +535,31 @@ struct DistrictBoardView: View {
                               ?? item.validFrom.flatMap { RatsDate.short($0) }.map { "seit \($0)" }]
                             .compactMap { $0 }.joined(separator: " · "))
                             .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    /// „Mitreden — Beteiligung läuft": die laufenden Bauleitplan-Beteiligungen
+    /// der Stadt mit Schritt und Frist; ein Tipp öffnet sie bei der Stadt.
+    private func participationsCard(_ items: [DistrictParticipation]) -> some View {
+        RatsWidget("Mitreden — Beteiligung läuft", accent: .buoy, glyph: .messageSquareQuote, note: "planungsbeteiligung.de") {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(items) { item in
+                    let inner = VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title ?? "Beteiligung").font(RatsFont.body(14, weight: .semibold))
+                            .foregroundStyle(RatsColor.text).multilineTextAlignment(.leading)
+                        Text([item.step, item.validUntil.flatMap { RatsDate.short($0) }.map { "bis \($0)" },
+                              item.geometry != nil ? "Fläche auf der Karte" : nil]
+                            .compactMap { $0 }.joined(separator: " · "))
+                            .font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if let url = item.url.flatMap(URL.init(string:)) {
+                        Link(destination: url) { inner }
+                    } else {
+                        inner
                     }
                 }
             }

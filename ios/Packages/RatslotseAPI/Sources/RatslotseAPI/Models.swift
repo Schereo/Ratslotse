@@ -175,7 +175,8 @@ public struct DistrictInvestment: Codable, Sendable, Hashable {
     }
 }
 
-public struct DistrictParticipation: Codable, Sendable, Hashable {
+public struct DistrictParticipation: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { (url ?? "") + (title ?? "") + (step ?? "") }
     public let title: String?
     public let place: String?
     public let step: String?
@@ -183,12 +184,24 @@ public struct DistrictParticipation: Codable, Sendable, Hashable {
     public let validUntil: String?
     public let url: String?
     public let planNrs: [String]
+    /// Geltungsbereich des Plans (Polygon/MultiPolygon als GeoJSON) — nil,
+    /// wenn das Geoportal den Plan (noch) nicht kennt. Optional dekodiert:
+    /// ältere Server liefern das Feld nicht.
+    public let geometry: JSONValue?
+    public let latitude: Double?
+    public let longitude: Double?
+    public let planNr: String?
+    public let planStatus: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, place, step, url
+        case title, place, step, url, geometry
         case validFrom = "valid_from"
         case validUntil = "valid_until"
         case planNrs = "plan_nrs"
+        case latitude = "lat"
+        case longitude = "lon"
+        case planNr = "plan_nr"
+        case planStatus = "plan_status"
     }
 }
 

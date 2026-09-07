@@ -6588,13 +6588,25 @@ export interface components {
         };
         /**
          * DistrictParticipation
-         * @description Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.
+         * @description Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug
+         *     ins Viertel — und dem Geltungsbereich des Plans als Fläche, wo das Geoportal
+         *     ihn kennt.
          */
         DistrictParticipation: {
+            /** Geometry */
+            geometry: unknown;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
             /** Place */
             place: string | null;
+            /** Plan Nr */
+            plan_nr: string | null;
             /** Plan Nrs */
             plan_nrs: string[];
+            /** Plan Status */
+            plan_status: string | null;
             /** Step */
             step: string | null;
             /** Title */
@@ -15270,4 +15282,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 65f178aef126f0b1ee286a4b6b3e5e0e6b499518123a6be2882da02c2d3e1b0d
+// vertrag-sha256: a469ef5da9c1808dd23dcd9d7f80192ad6eeb2d5e673a0504feae06c9acebd79

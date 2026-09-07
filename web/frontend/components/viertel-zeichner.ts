@@ -39,13 +39,23 @@ export const STAND_LABEL: Record<string, string> = {
   building: "Im Bau", decided: "Beschlossen", planning: "In Planung", idea: "Idee", done: "Fertig", rejected: "Abgelehnt",
 };
 export const SPERRUNG_FARBE = "#b45309";
+export const BETEILIGUNG_FARBE = "#e8590c";
+/** Leaflet-Ebene der Beteiligungen, über den übrigen Überlagerungen (400), unter den Pins (600). */
+const MITREDEN_PANE = "mitreden";
+
+/** Eine laufende Beteiligung mit Fläche — der Geltungsbereich des Plans;
+ *  ein Tipp öffnet die Beteiligung bei der Stadt. */
+export type KartenBeteiligung = {
+  title: string | null; step: string | null; valid_until: string | null; url: string | null;
+  geometry: unknown; plan_nr: string | null;
+};
 /** Quellenzeile der Stadt-Ebenen — nur, was gerade wirklich auf der Karte
  *  liegt, wird genannt. (Die Ebenen selbst stehen in `lib/karten-ebenen.ts`.) */
 export const PLAN_ATTRIBUTION = "Bebauungspläne: Stadt Oldenburg (Geoportal)";
 export const SPERRUNG_ATTRIBUTION = "Sperrungen: Stadt Oldenburg (Geoportal)";
 
 /** Welche Ebenen der Zeichner malt. Fehlt das Feld, gilt: alles. */
-export type ZeichnerEbenen = { vorhaben?: boolean; plaene?: boolean; sperrungen?: boolean };
+export type ZeichnerEbenen = { vorhaben?: boolean; plaene?: boolean; sperrungen?: boolean; beteiligungen?: boolean };
 
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c));
@@ -61,6 +71,7 @@ export type ZeichnerRueckrufe = {
 export type ZeichnerStand = {
   vorhaben: KartenVorhaben[];
   sperrungen?: KartenSperrung[];
+  beteiligungen?: KartenBeteiligung[];
   aktiv: number | null;
   gedimmt: Set<number>;
   ebenen?: ZeichnerEbenen;
@@ -108,12 +119,13 @@ export class ViertelZeichner {
 
   /** Alles neu zeichnen — je nach `ebenen` nur einen Teil. Gibt zurück, ob
    *  eine Planfläche der Stadt liegt (für die Quellenzeile). */
-  zeichnen({ vorhaben, sperrungen, aktiv, gedimmt, ebenen }: ZeichnerStand): boolean {
+  zeichnen({ vorhaben, sperrungen, beteiligungen, aktiv, gedimmt, ebenen }: ZeichnerStand): boolean {
     const { L, gruppe } = this;
     this.leeren();
     const zeigeVorhaben = ebenen?.vorhaben ?? true;
     const zeigePlaene = ebenen?.plaene ?? true;
     const zeigeSperrungen = ebenen?.sperrungen ?? true;
+    const zeigeBeteiligungen = ebenen?.beteiligungen ?? true;
     let aktivBounds: ReturnType<typeof L.latLngBounds> | null = null;
     let planQuelle = false;
     // Ohne die Vorhaben-Ebene bleiben Pins und Linien weg — die Planflächen
@@ -220,6 +232,38 @@ export class ViertelZeichner {
         { sticky: true, direction: "top", offset: [0, -8], className: "viertel-tip", opacity: 1 });
       gruppe.addLayer(saum);
       gruppe.addLayer(linie);
+    }
+    // Beteiligungen: der Geltungsbereich des Plans, punktiert in Signal-Orange
+    // mit leichter Füllung, darunter der Plan der Stadt. Ein Tipp öffnet die
+    // Beteiligung bei der Stadt — das ist die Handlung, um die es hier geht.
+    // Sie liegen in einer eigenen Ebene ÜBER den Vorhaben-Flächen: Das
+    // Zeigen auf ein Vorhaben holt dessen Pfad nach vorn (`heben`) und
+    // ließe die Beteiligung sonst dauerhaft darunter verschwinden — der
+    // Geltungsbereich ist meist derselbe Umriss wie der Plan des Vorhabens.
+    if (zeigeBeteiligungen && beteiligungen?.length && !this.map.getPane(MITREDEN_PANE)) {
+      this.map.createPane(MITREDEN_PANE).style.zIndex = "450";
+    }
+    for (const b of zeigeBeteiligungen ? beteiligungen ?? [] : []) {
+      const g = b.geometry as { type?: string } | null;
+      if (!g || (g.type !== "Polygon" && g.type !== "MultiPolygon")) continue;
+      const blass = aktiv != null;
+      // Ein weißer Saum unter der Punktlinie, wie bei den Sperrungen: Der
+      // Geltungsbereich liegt meist genau auf dem Umriss des Plans (grün,
+      // zwei Pixel) — ohne Saum gehen die Punkte darin unter (Donnerschwee,
+      // Plan 831 gemessen).
+      const saum = L.geoJSON(g as never, { pane: MITREDEN_PANE, style: { color: "#fff", weight: 7, opacity: blass ? 0.3 : 0.9, lineCap: "round", fill: false }, interactive: false });
+      gruppe.addLayer(saum);
+      const layer = L.geoJSON(g as never, {
+        pane: MITREDEN_PANE,
+        style: { color: BETEILIGUNG_FARBE, weight: 4, dashArray: "1 8", lineCap: "round", opacity: blass ? 0.3 : 0.95,
+          fillColor: BETEILIGUNG_FARBE, fillOpacity: blass ? 0.03 : 0.1 },
+      });
+      const bis = b.valid_until ? `bis ${escapeHtml(new Date(b.valid_until).toLocaleDateString("de-DE"))}` : "";
+      layer.bindTooltip(`<span class="stand" style="--c:${BETEILIGUNG_FARBE}">Mitreden</span>${bis ? `<span class="wann">${bis}</span>` : ""}<b>${escapeHtml(b.title ?? "Beteiligung")}</b>${b.step ? `<span class="wann" style="color:inherit;font-weight:400">${escapeHtml(b.step)}</span>` : ""}`,
+        { sticky: true, direction: "top", offset: [0, -8], className: "viertel-tip", opacity: 1 });
+      if (b.url) layer.on("click", () => window.open(b.url ?? "", "_blank", "noopener"));
+      gruppe.addLayer(layer);
+      planQuelle = true;
     }
     this.aktivBounds = aktivBounds;
     // Die Stadt als Quelle nennen, sobald eine ihrer Ebenen auf der Karte liegt.
