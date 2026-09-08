@@ -31,8 +31,8 @@ from ..config import get_settings
 from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminKohorten, AdminPlaceCandidates, AdminQuizStats,
-                         AdminRequestFehler, AdminSeitenaufrufe,
+                         AdminEreignisse, AdminKohorten, AdminPlaceCandidates,
+                         AdminQuizStats, AdminRequestFehler, AdminSeitenaufrufe,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_cities_store, get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
@@ -141,6 +141,22 @@ def stats_page_views(
     # sie gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
     # importiert nichts aus `app` (tests/test_schichten.py).
     return cast("AdminSeitenaufrufe", store.seitenaufrufe(max(1, min(days, 365))))
+
+
+@router.get("/stats/events")
+def stats_events(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminEreignisse:
+    """Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.
+
+    „Fragen aus einem Vorschlag" und „Antworten ohne Quelle" sind die zwei
+    Zahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen
+    messbar waren.
+    """
+    # `cast`: Der Store baut ein `dict`, die Form hält `antworten.py` fest.
+    return cast("AdminEreignisse", store.ereignisse(max(1, min(days, 365))))
 
 
 @router.get("/quiz/stats")

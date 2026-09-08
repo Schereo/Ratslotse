@@ -739,7 +739,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     .slice(-4)
     .map((t) => ({ question: t.question.slice(0, 300), answer: t.answer.slice(0, 600) }));
 
-  const ask = async (question: string) => {
+  /** `ausVorschlag`: kam die Frage aus einem Chip oder aus dem Eingabefeld?
+   *  Nur der Client weiß das sicher — der Server müsste den Text gegen die
+   *  Chip-Vorlagen halten und läge falsch, sobald jemand dieselbe Frage
+   *  selbst tippt. Die Antwort darauf entscheidet, ob gute Vorschläge das
+   *  Produkt tragen oder ob niemand ins Feld tippt. */
+  const ask = async (question: string, ausVorschlag = false) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
@@ -779,7 +784,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
-                               previous_answer: vorherigeAntwort }),
+                               previous_answer: vorherigeAntwort,
+                               from_suggestion: ausVorschlag }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -1197,7 +1203,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
    *  vorliegenden Antwort („Einfacher erklären", „Ausführlicher"), der erneute
    *  Versuch nach einem Fehler und „stattdessen schnell fragen" — die meinen
    *  jeweils genau einen Weg. */
-  const frageStellen = (text: string) => void (rechercheModus ? askDeep(text) : ask(text));
+  /** Ein Klick auf einen Vorschlag — im Unterschied zum Tippen ins Feld. */
+  const frageStellen = (text: string) => void (rechercheModus ? askDeep(text) : ask(text, true));
 
   const neuesGespraech = () => {
     abortRef.current?.abort();
@@ -1965,11 +1972,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               {/* 5a/I-09: feste Register — dieselbe Antwort, andere Flughöhe. */}
               {!loading && letzter && !letzter.fehler && letzter.answer && (
                 <>
-                  <button type="button" onClick={() => void ask("Erkläre das bitte einfacher, ohne Fachbegriffe.")}
+                  <button type="button" onClick={() => void ask("Erkläre das bitte einfacher, ohne Fachbegriffe.", true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     Einfacher erklären
                   </button>
-                  <button type="button" onClick={() => void ask("Bitte ausführlicher — was gehört noch zum Bild?")}
+                  <button type="button" onClick={() => void ask("Bitte ausführlicher — was gehört noch zum Bild?", true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     Ausführlicher
                   </button>

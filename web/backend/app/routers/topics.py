@@ -46,6 +46,7 @@ from council.store import CouncilStore
 from ..antworten import (MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet, Subscriptions,
                          TopicDecisions, TopicDescription, TopicHit, TopicHitList, TopicSuggestions,
                          UnreadTopicHits)
+from ..clients import client_kind
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
@@ -805,6 +806,10 @@ def add_topic(
     topic_match_limiter.check(request)
     t = store.add_topic(user["id"], body.name, body.description)
     count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
+    # Der Haken, an dem alles Weitere hängt: Ohne ein Thema (oder ein Gremium)
+    # hat das Produkt keinen Anlass, sich je wieder zu melden. Deshalb ist das
+    # Anlegen ein eigenes Ereignis und nicht nur eine Zeile in `topics`.
+    store.record_activity(user["id"], "topic_created", client_kind(request))
     return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at,
                     decision_count=count, decision_count_capped=gedeckelt, matched=abgeglichen)
 
