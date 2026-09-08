@@ -8,10 +8,12 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
      0. Regex-Ernte            ernte_backfill.py           — Amt, Finanz-/Klima-Check, Beschlussvorschlag über den Bestand (kein LLM)
      1. Entitäten (NER)        extract_entities.py         — rebuilds council_entities
      2. Beschreibungen         describe_entities.py        — fills missing descriptions (slug-keyed meta survives the rebuild)
-     2b. Vagheits-Urteile      warm_topic_vagueness.py     — beurteilt neue Vorschlags-Kandidaten vorab (sonst im Web-Request)
+    2b. Vagheits-Urteile       warm_topic_vagueness.py     — beurteilt neue Vorschlags-Kandidaten vorab (sonst im Web-Request)
      3. Geocoding              geocode_entities.py         — geocodes new place entities
-    3b. Straßen-Geometrie     strassen_snapshot.py        — alle benannten Wege in EINEM Overpass-Aufruf, dann lokal abgleichen
+    3b. Straßen-Geometrie      strassen_snapshot.py        — alle benannten Wege in EINEM Overpass-Aufruf, dann lokal abgleichen
      4. Embeddings/Ähnliche    embed_decisions.py          — re-embeds for "Ähnliche Beschlüsse"
+    4b. Anlagen-Texte          backfill_anlagen_texte.py   — lädt Volltexte neuer Anlagen nach (Netz + pypdf, kein LLM)
+    4c. Anlagen-Embeddings     embed_anlagen.py            — Chunk-Vektoren der Anlagen für die Gründliche Recherche
      5. Verwandte Themen       build_entity_relations.py   — "Hängt zusammen mit…" je Entität
      6. Themen ↔ Beschlüsse    match_topics_decisions.py   — matcht Nutzer-Themen gegen Beschlüsse
      7. Themenfeld-Rückblicke  generate_field_recaps.py    — LLM-Kurzrückblick je Politikfeld (≈ monatlich)
@@ -19,13 +21,22 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
      9. Personen-Stammdaten    backfill_stammdaten.py      — Mandate/Ausschuss-Besetzungen aus dem Ratsinfo
     10. Tragweite              rate_impact.py              — 500er-Tranche, VOR dem Wichtigkeits-Score
     11. Wichtigkeits-Score     score_importance.py         — mischt Tragweite + Gesprächswert (kein LLM)
+   11b. Mein Viertel           build_district_projects.py  — bündelt verortete Beschlüsse zu Vorhaben je Ortsbereich
     12. Quizfragen             generate_quiz.py            — füllt Gebiete unter Ziel-Fragenzahl auf
     13. Interessantheit        rate_interest.py            — 500er-Tranche, speist das Fundstück
     14. Fundstücke             generate_fundstuecke.py     — 21 Tage Vorlauf, idempotent
 
-Diese Liste MUSS zu STEPS unten passen. Sie stand zuletzt auf sieben Einträgen mit
-einer Lücke in der Nummerierung (1,2,3,5,5b,6,7), während STEPS längst vierzehn hatte —
-wer danach die Laufzeit oder die LLM-Kosten abschätzte, lag um die Hälfte daneben.
+Diese Liste MUSS zu STEPS unten passen — und seit 09/2026 hält das
+``tests/test_weekly_enrich_liste.py`` fest, statt es nur zu verlangen. Der Satz stand
+hier von Anfang an, gehalten hat ihn nichts, und dreimal ist die Liste weggelaufen:
+zuerst auf sieben Einträge mit einer Lücke in der Nummerierung (1,2,3,5,5b,6,7),
+während STEPS längst vierzehn hatte; danach fehlten die drei Schritte
+``backfill_anlagen_texte``, ``embed_anlagen`` und ``build_district_projects``
+(08.09.2026 gemessen: 17 gelistete gegen 20 tatsächliche). Wer danach die Laufzeit
+oder die LLM-Kosten abschätzte, lag jedes Mal daneben.
+
+Ein Schritt, der zwischen zwei bestehende gehört, bekommt eine Unternummer (2b, 4c)
+— so bleiben die gewachsenen Nummern in Kommentaren und Tickets gültig.
 
 Each step runs independently — a failure in one does NOT stop the others. Steps 2–3
 are idempotent (only-missing); 1, 4, 5 are full rebuilds (cheap enough weekly).

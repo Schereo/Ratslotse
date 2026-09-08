@@ -455,6 +455,28 @@ class SetupUpdate(BaseModel):
     done: bool = False
 
 
+class PageViewIn(BaseModel):
+    """Ein Seitenaufruf, gemeldet vom Browser.
+
+    Absichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,
+    Kennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in
+    ``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine
+    Positivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie
+    geschickt.
+    """
+    #: Pfad OHNE Query. Wird serverseitig auf ein bekanntes Muster abgebildet.
+    route: str = Field(default="/", max_length=200)
+    #: web | ios | android | app — alles andere wird zu ``web``.
+    client: str = Field(default="web", max_length=20)
+    #: Erster Aufruf in diesem Browser-Tab? Zählt gegen ``sessions``.
+    first: bool = False
+    #: War jemand angemeldet? Kommt vom Client, damit der Server für die
+    #: Zählung **kein Konto auflösen muss** — die Meldung geht bewusst ohne
+    #: Cookie raus. Ein Client, der hier lügt, verschiebt eine grobe Statistik
+    #: und sonst nichts; dafür berührt die Zählung nie eine Kontokennung.
+    logged_in: bool = False
+
+
 class ClientErrorIn(BaseModel):
     """Eine Fehlermeldung aus dem Browser.
 

@@ -87,6 +87,12 @@ qa_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # (und mit ihr Backups + Off-Site-Mirror) per Skript um Gigabytes aufblähen.
 # 20 pro 10 Minuten deckt jedes ehrliche Gespräch, auch mit Grund-Nachträgen.
 qa_feedback_limiter = RateLimiter(max_calls=20, window_seconds=600)
+# Seitenaufrufe: offen und häufig — jeder Routenwechsel meldet einen. 120 in
+# zehn Minuten deckt auch hektisches Stöbern (alle fünf Sekunden eine Seite);
+# darüber ist es kein Mensch mehr. Die Tabelle ist ohnehin durch die
+# Positivliste in kern/seitenaufrufe.py gedeckelt — die Bremse schützt die
+# Schreiblast, nicht den Inhalt.
+page_view_limiter = RateLimiter(max_calls=120, window_seconds=600)
 partei_meinungen_limiter = RateLimiter(max_calls=15, window_seconds=600)
 qa_share_limiter = RateLimiter(max_calls=10, window_seconds=600)
 # Öffentliche Share-Links brauchen nach App-Store-Richtlinie 1.2 einen

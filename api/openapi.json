@@ -1355,6 +1355,123 @@
         "title": "AdminRequestFehler",
         "type": "object"
       },
+      "AdminSeite": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "route",
+          "n",
+          "sessions"
+        ],
+        "title": "AdminSeite",
+        "type": "object"
+      },
+      "AdminSeitenClient": {
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client",
+          "n"
+        ],
+        "title": "AdminSeitenClient",
+        "type": "object"
+      },
+      "AdminSeitenTag": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "n",
+          "sessions"
+        ],
+        "title": "AdminSeitenTag",
+        "type": "object"
+      },
+      "AdminSeitenaufrufe": {
+        "description": "Anonyme Seitenaufrufe. Keine Zahl hier lässt sich einer Person zuordnen.\n\n``sessions`` ist der erste Aufruf je Browser-Tab und damit so nah an\n„Besuche\", wie man ohne Wiedererkennung kommt — bewusst nicht „Besucher\".",
+        "properties": {
+          "anonymous": {
+            "title": "Anonymous",
+            "type": "integer"
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSeitenClient"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSeite"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSeitenTag"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "total",
+          "sessions",
+          "anonymous",
+          "series",
+          "pages",
+          "clients"
+        ],
+        "title": "AdminSeitenaufrufe",
+        "type": "object"
+      },
       "AdminSeries": {
         "properties": {
           "days": {
@@ -10288,6 +10405,35 @@
         "title": "OnboardingUpdate",
         "type": "object"
       },
+      "PageViewIn": {
+        "description": "Ein Seitenaufruf, gemeldet vom Browser.\n\nAbsichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,\nKennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in\n``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine\nPositivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie\ngeschickt.",
+        "properties": {
+          "client": {
+            "default": "web",
+            "maxLength": 20,
+            "title": "Client",
+            "type": "string"
+          },
+          "first": {
+            "default": false,
+            "title": "First",
+            "type": "boolean"
+          },
+          "logged_in": {
+            "default": false,
+            "title": "Logged In",
+            "type": "boolean"
+          },
+          "route": {
+            "default": "/",
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "title": "PageViewIn",
+        "type": "object"
+      },
       "PartyFilter": {
         "properties": {
           "parties": {
@@ -16865,6 +17011,50 @@
         ]
       }
     },
+    "/api/admin/stats/page-views": {
+      "get": {
+        "description": "Anonyme Seitenaufrufe — die Nutzung, die vorher unsichtbar war.\n\nZeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die\nAufteilung nach Client. Nichts davon ist einer Person zuzuordnen.",
+        "operationId": "stats_page_views_api_admin_stats_page_views_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSeitenaufrufe"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Page Views",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/users": {
       "get": {
         "description": "Nutzer-Liste mit Aktivitätssignalen (Design 20a): Themen-/Abo-/Quiz-/\nKI-Frage-Zahl + letzter Aktivitätstag je Konto.",
@@ -21445,6 +21635,48 @@
         "summary": "Set Setup",
         "tags": [
           "onboarding"
+        ]
+      }
+    },
+    "/api/page-views": {
+      "post": {
+        "description": "Einen Seitenaufruf zählen — anonym, aggregiert, ohne Kennung.\n\n**Warum offen (ohne Konto).** Genau die Nutzung ohne Anmeldung war bisher\nunsichtbar: Startseite, geteilte Beschlüsse, Changelog. Ein Zähler, der\nerst nach dem Anmelden anspringt, beantwortet die Frage nicht, für die er\ngebaut ist.\n\n**Was gespeichert wird.** Tag, Seitenmuster aus der Positivliste, Client\nund das Ja/Nein „war jemand angemeldet\". Kein Konto, keine Kennung, keine\nQuery, kein Referrer, keine IP — ``kern/seitenaufrufe.py`` begründet jedes\nFeld einzeln, ``tests/test_seitenaufrufe.py`` hält die Liste fest.\n\n**Ohne Cookie, ohne Kontoauflösung.** Ob jemand angemeldet war, sagt der\nClient selbst (``logged_in``); der Server schaut dafür in kein Token und\nin keine Kontotabelle. Das ist strenger als ``optional_user`` und macht\nden Endpunkt zugleich billiger. Ein Client, der lügt, verschiebt eine\ngrobe Statistik — Rechte hängen an keiner dieser Zahlen.\n\n**Immer 200.** Ein Zähler, der einem Browser einen Fehler zurückgibt,\nerzeugt eine Fehlermeldung über eine Zählung — das hilft niemandem.",
+        "operationId": "seitenaufruf_api_page_views_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageViewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Seitenaufruf",
+        "tags": [
+          "page-views"
         ]
       }
     },

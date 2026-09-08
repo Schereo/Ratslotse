@@ -193,7 +193,7 @@ def test_kennzahlen_ueberleben_einen_fehlschlag(tmp_path, monkeypatch):
     wenn sie gebraucht wird.
 
     ``run_guarded`` schrieb bei jeder Exception ``stats = None``. Ein
-    ``weekly_enrich``, das einen von 18 Schritten verliert, hinterließ damit
+    ``weekly_enrich``, das einen seiner Schritte verliert, hinterließ damit
     „error" und einen Traceback — welcher Schritt es war, stand nur im Log auf
     dem Server. ``JobFehler`` trägt die Kennzahlen mit.
     """
@@ -231,7 +231,7 @@ def test_gewoehnlicher_absturz_bleibt_ohne_kennzahlen(tmp_path, monkeypatch):
 
 
 def test_weekly_enrich_protokolliert_jeden_schritt(monkeypatch):
-    """Die Schritt-Bilanz entsteht im Lauf selbst — 16 der 18 Schritte rufen
+    """Die Schritt-Bilanz entsteht im Lauf selbst — 18 der 20 Schritte rufen
     kein ``run_guarded`` und haben deshalb keine eigene ``job_runs``-Zeile."""
     import subprocess
 

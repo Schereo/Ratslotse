@@ -68,6 +68,16 @@ OEFFENTLICH = {
     # gebremst (`client_error_limiter`).
     ("post", "/api/client-errors"),
 
+    # Seitenaufrufe. Der ganze Zweck ist die Nutzung OHNE Anmeldung: Startseite,
+    # geteilte Beschlüsse, Changelog. Ein Zähler, der erst nach dem Anmelden
+    # anspringt, beantwortet die Frage nicht, für die er gebaut ist. Der
+    # Endpunkt nimmt vier gedeckelte Felder, bildet den Pfad auf eine
+    # Positivliste ab (`kern/seitenaufrufe.py`), speichert nur Summen ohne
+    # jede Kennung, antwortet immer 200 und ist gebremst (`page_view_limiter`).
+    # Bewusst NICHT `optional_user`: Der Server soll für die Zählung gar kein
+    # Konto auflösen — der Anmeldestatus kommt als Ja/Nein vom Client.
+    ("post", "/api/page-views"),
+
     # Öffentliche Ratsinhalte: Beschluss-, Personen- und Ortsseiten sind ohne
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).
