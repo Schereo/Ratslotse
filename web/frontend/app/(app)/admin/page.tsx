@@ -482,7 +482,9 @@ type LlmUsage = {
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
   cities_classify: "Fremde Ratsvorlage einordnen",
+  cities_fit: "Hat Oldenburg das schon?",
   eval_cities_transfer: "Prüfstand: Einordnung fremder Vorlagen",
+  eval_cities_fit: "Prüfstand: Hat Oldenburg das schon?",
   attachment_ocr: "Anlagen-Texterkennung",
   committee_summary: "Ausschuss-Zusammenfassung",
   daily_find_story: "Fundstück des Tages",

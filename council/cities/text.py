@@ -34,10 +34,29 @@ _NOISE = re.compile(
 
 
 def clean(text: str) -> str:
+    text = _entkoppelte_ersatzzeichen(text)
     text = _NOISE.sub("", text)
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def _entkoppelte_ersatzzeichen(text: str) -> str:
+    """Einzelne Surrogate wegwerfen — sie sind kein UTF-8 und sprengen alles.
+
+    Python lässt ein einzelnes ``\ud800``–``\udfff`` im ``str`` zu, aber
+    ``encode("utf-8")`` wirft darauf ``UnicodeEncodeError``. Aus einem PDF
+    kommt so etwas, wenn eine Schrift eine kaputte Zuordnungstabelle hat.
+
+    Gemessen: Beim Backfill der Osnabrücker Historie (08.09.2026) steckte in
+    genau EINEM Dokument ein ``\uda00``. Der Fehler entstand beim PDF-Lesen,
+    schlug aber erst beim Schreiben in die Datenbank zu — und riss die ganze
+    Stadt mit, nach 2.864 schon geernteten Vorlagen. Deshalb hier, an der
+    Quelle: Was nicht durch UTF-8 geht, kommt gar nicht erst in den Text.
+    """
+    if not any("\ud800" <= z <= "\udfff" for z in text):
+        return text
+    return "".join(z for z in text if not ("\ud800" <= z <= "\udfff"))
 
 
 def extract(pdf_bytes: bytes) -> tuple[str, int | None, str]:

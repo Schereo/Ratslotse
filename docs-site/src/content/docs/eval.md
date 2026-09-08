@@ -61,6 +61,32 @@ messen, sondern die Qualität einer **Bewertung**:
 |--------|-------|-----------|
 | `scripts/eval_ai.py` | Klassifikations-Qualität gegen ein Gold-Set | Regressionsguard vor Prompt-Änderungen |
 | `scripts/eval_impact.py` | Tragweite-Score gegen `scripts/golden_impact.json` | Rangkorrelation + Band-Trefferquote; unterschritten → kein Rollout |
+| `eval/run_cities_transfer.py` | Einordnung fremder Ratsvorlagen (`cities_classify`) | „taugt/taugt nicht" unter 80 % → Regression |
+| `eval/run_cities_fit.py` | Urteil über Oldenburg (`cities_fit`) | Beleg-Disziplin unter 100 % → Regression |
+
+### Warum der Städtevergleich zwei Prüfstände hat
+
+`cities_classify` gibt einer fremden Vorlage ein Etikett und braucht dafür nur
+sie selbst. `cities_fit` beantwortet dagegen zwei Fragen über **Oldenburg** —
+„hat die Stadt das schon?" und „lohnt ein Antrag?" — und bekommt dafür Belege
+aus dem eigenen Bestand mit: die nächsten Oldenburger Vorlagen, Treffer der
+Volltextsuche und den Themenfeld-Rückblick.
+
+Das macht ein drittes Maß nötig, und es ist das wichtigste: die
+**Beleg-Disziplin**. Jede Kennung, die das Modell nennt, muss ihm vorgelegen
+haben, und eine Behauptung über Oldenburg braucht mindestens eine. Ein Urteil,
+das sich auf einen erfundenen Beleg beruft, ist nicht ungenau, sondern falsch —
+deshalb als einziges Maß mit Schwelle 100 %. Im Betrieb verwirft
+`council/cities/fit.py` solche Antworten und zählt sie.
+
+Beide Prüfstände tragen ihre Fälle **samt Belegen** bei sich und brauchen keine
+Datenbank. Das ist keine Bequemlichkeit: Oldenburgs Bestand wächst, und ein
+Maßstab, der sich unter der Hand ändert, misst nichts.
+
+**Eine Falle, in die ich selbst getappt bin:** Die ersten durchgerechneten
+Beispiele im `fit`-Prompt waren Fälle aus dem Prüfstand. Die Trefferquote stieg
+prompt — und maß ab da sich selbst. Die Beispiele sind jetzt erfunden, aber
+typisch; keiner davon steht in `cases_cities_fit.json`.
 
 `eval_impact.py` ist der erste Schritt des Ops-Workflows für die Tragweite: Nur
 wenn das Gate hält, startet der Voll-Backfill. Siehe

@@ -220,3 +220,22 @@ def test_kein_papier_traegt_eine_person(store):
             assert not hasattr(p, "originator_person")
         for o in batch.organizations:
             assert "originatorPerson" not in o.name
+
+
+def test_einzelne_ersatzzeichen_fliegen_aus_dem_text():
+    """Python lässt ein einzelnes Surrogat im `str` zu, `encode("utf-8")`
+    wirft darauf. Aus einem PDF kommt so etwas, wenn eine Schrift eine kaputte
+    Zuordnungstabelle hat.
+
+    Gemessen: Beim Backfill der Osnabrücker Historie (08.09.2026) steckte in
+    genau EINEM Dokument ein \\uda00. Der Fehler entstand beim PDF-Lesen,
+    schlug aber erst beim Schreiben zu — und riss die ganze Stadt mit, nach
+    2.864 schon geernteten Vorlagen.
+    """
+    from council.cities.text import clean
+
+    sauber = clean("Vorlage \ud800 Nr. \uda00 5")
+    assert "\ud800" not in sauber and "\uda00" not in sauber
+    assert sauber.encode("utf-8")  # das ist der Punkt: es geht durch
+    # Ohne Surrogate bleibt der Text unangetastet.
+    assert clean("Ganz normaler Text") == "Ganz normaler Text"
