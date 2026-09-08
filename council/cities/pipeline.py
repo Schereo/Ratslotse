@@ -176,15 +176,54 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
 # ---------------------------------------------------------------- annotate
 
 def annotate(main: CitiesStore, body_id: str | None = None,
-             limit: int | None = None) -> dict:
-    """Jeden aktiven Annotator über das laufen lassen, was ihm fehlt."""
+             limit: int | None = None, nach_index: bool = False) -> dict:
+    """Die Annotatoren laufen lassen, die an dieser Stelle dran sind.
+
+    **Zwei Stellen, nicht eine.** ``classify`` gibt einer fremden Vorlage ihr
+    Etikett und braucht dafür nur sie selbst — es läuft vor dem Index.
+    ``fit`` urteilt über Oldenburg und braucht die Nachbarschaften als Belege;
+    es läuft danach. Ein Annotator sagt über ``needs_index`` selbst, wohin er
+    gehört, statt dass der Cron eine Liste pflegt, die auseinanderläuft.
+    """
     from council.cities import annotate as annotate_modul
     from council.cities.annotators import active_annotators
 
     zahlen: dict[str, dict] = {}
     for ann in active_annotators("paper"):
-        zahlen[f"{ann.key}/{ann.version}"] = annotate_modul.run(main, ann, body_id, limit)
+        if ann.needs_index != nach_index:
+            continue
+        if ann.key == "fit":
+            zahlen[f"{ann.key}/{ann.version}"] = _fit(main, ann, body_id, limit)
+        else:
+            zahlen[f"{ann.key}/{ann.version}"] = annotate_modul.run(
+                main, ann, body_id, limit)
     return zahlen
+
+
+def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None) -> dict:
+    """``fit`` braucht die Rats-Datenbank für die Belege — als einziger.
+
+    Sie wird hier geöffnet und wieder geschlossen, nicht durchgereicht: Der
+    Rest der Pipeline hat mit ihr nichts zu tun, und eine Verbindung, die
+    durch fünf Stufen wandert, wird irgendwann von der falschen benutzt.
+    """
+    import os
+
+    from council.cities import ROOT
+    from council.cities import fit as fit_modul
+    from council.cities.index import EMBED_MODEL
+    from council.store import CouncilStore
+
+    pfad = Path(os.environ.get("COUNCIL_DB") or ROOT / "data" / "council.sqlite")
+    if not pfad.exists():
+        logger.warning("fit übersprungen: %s gibt es nicht", pfad)
+        return {"annotated": 0, "errors": 0, "skipped_no_council_db": 1,
+                "cost_usd": 0.0, "seconds": 0}
+    rats = CouncilStore(pfad)
+    try:
+        return fit_modul.run(main, rats, ann, EMBED_MODEL, body_id, limit)
+    finally:
+        rats.close()
 
 
 # ------------------------------------------------------------------- index

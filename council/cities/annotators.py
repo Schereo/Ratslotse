@@ -19,7 +19,7 @@ import os
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from council.topics import POLICY_FIELDS
 
@@ -32,6 +32,15 @@ TRANSFER_VALUES = ("local", "one_off", "jurisdiction", "adaptable", "direct")
 USABLE = ("adaptable", "direct")
 #: Wer müsste das in Oldenburg tun?
 COMPETENCE_VALUES = ("council", "administration", "utility", "holding", "state")
+
+#: Hat Oldenburg GENAU dieses Instrument schon? Drei Stufen, weil zwei zu grob
+#: sind: „teilweise" ist der häufigste ehrliche Befund — ein Antrag ohne
+#: Beschluss, ein Prüfauftrag, ein kleinerer Zuschnitt.
+FIT_STATUS = ("present", "partial", "missing")
+#: Lohnt ein Antrag im Oldenburger Rat? Eine EIGENE Frage, nicht die Umkehrung
+#: des Status: Auch bei „partial" kann gerade der Unterschied die Idee sein.
+FIT_WORTH = ("yes", "maybe", "no")
+CONFIDENCE_VALUES = ("high", "medium", "low")
 
 
 class PaperClassification(BaseModel):
@@ -55,6 +64,53 @@ class PaperClassification(BaseModel):
     @property
     def usable(self) -> bool:
         return self.transfer in USABLE
+
+
+class OldenburgFit(BaseModel):
+    """Was ein Modell über die Eignung einer fremden Vorlage für Oldenburg sagt.
+
+    **Ohne Beleg kein Urteil.** ``evidence`` trägt die Kennungen der Belege, auf
+    die sich der Befund stützt — und ``council/cities/annotate.py`` prüft, dass
+    jede davon dem Modell auch vorgelegen hat. Ein erfundener Beleg macht den
+    ganzen Eintrag ungültig; er wird verworfen und gezählt. Das ist die Regel
+    aus Schicht 1 („trägt keine Meinung") eine Ebene weiter: Eine Meinung darf
+    gespeichert werden, aber nur mit ihrer Grundlage daneben.
+    """
+    status: Literal[FIT_STATUS]  # type: ignore[valid-type]
+    #: Kennungen aus der vorgelegten Beleg-Liste, höchstens drei. Leer nur bei
+    #: ``missing`` — dort IST die Leere die Aussage.
+    evidence: list[str] = Field(default_factory=list, max_length=3)
+    reason: str = Field(default="", max_length=300)
+    worth: Literal[FIT_WORTH]  # type: ignore[valid-type]
+    why_worth: str = Field(default="", max_length=300)
+    #: Was dagegen spricht — Zuständigkeit, fehlende Struktur, schon gescheitert.
+    obstacles: str | None = Field(default=None, max_length=200)
+    confidence: Literal[CONFIDENCE_VALUES]  # type: ignore[valid-type]
+
+    @field_validator("reason", "why_worth", "obstacles", mode="before")
+    @classmethod
+    def _kuerzen(cls, wert, info: ValidationInfo):
+        """Freitext wird gekürzt, nicht verworfen.
+
+        Die Längen oben sind Anzeige-Grenzen, keine Zusagen: `reason` und
+        `why_worth` stehen als ein Satz auf einer Karte. Ein Modell, das einen
+        Satz zwanzig Zeichen zu lang schreibt, hat deshalb nicht falsch
+        geurteilt — im Bestandslauf über 300 Vorlagen gingen so zwei
+        vollständig richtige Urteile verloren, beide an `obstacles`.
+
+        Die BEHAUPTUNGEN — `status`, `worth`, `evidence` — bleiben streng.
+        Dort ist ein unerwarteter Wert kein Formfehler, sondern ein Urteil,
+        das niemand einordnen kann.
+        """
+        grenzen = {"reason": 300, "why_worth": 300, "obstacles": 200}
+        if isinstance(wert, str):
+            return wert.strip()[:grenzen[info.field_name or "reason"]]
+        return wert
+
+    @property
+    def braucht_beleg(self) -> bool:
+        """``present`` und ``partial`` sind Behauptungen über Oldenburg."""
+        return self.status in ("present", "partial")
 
 
 @dataclass(frozen=True)
@@ -82,6 +138,10 @@ class Annotator:
     #: Beschränkung kostete messbar: ``gpt-5.6-luna`` lieferte mit ihr 53 %
     #: der Ergebnisse, ohne sie 100 % bei doppelter Geschwindigkeit.
     routing_free: bool = True
+    #: Braucht der Annotator die Nachbarschaften? Dann läuft er NACH dem Index,
+    #: nicht davor — sonst urteilt er über eine Stadt, deren nächste Verwandte
+    #: er noch gar nicht kennt.
+    needs_index: bool = False
     #: Woran man erkennt, dass die Fassung reif ist — wie ``fertig_wenn`` bei
     #: den Feature-Schaltern.
     gut_wenn: str = ""
@@ -106,6 +166,24 @@ ANNOTATORS: dict[str, Annotator] = {
         gut_wenn="eval/run_cities_transfer.py bleibt bei „taugt/taugt nicht“ über "
                  "80 % — darunter ist es eine Regression, darüber Rauschen "
                  "(gemessen: fünf Läufe zwischen 84 und 91 %).",
+    ),
+    "fit": Annotator(
+        key="fit", version="1", applies_to=("paper",),
+        prompt_system="cities_fit_system", prompt_user="cities_fit_user",
+        model=os.environ.get("CITIES_FIT_MODEL", "deepseek/deepseek-v4-flash"),
+        payload=OldenburgFit,
+        # Ein Aufruf je Vorlage: Jede hat ihre eigenen Belege, ein Batch
+        # teilte sie sich und das Modell verwechselte, welcher zu welcher gehört.
+        batch_size=1, input_chars=3500, max_tokens=4000, needs_index=True,
+        gut_wenn="eval/run_cities_fit.py hält fünf Schranken. Zwei sind harte "
+                 "Zusagen und stehen bei NULL: erfundene Beleg-Kennungen und "
+                 "falsche „vorhanden“ (Oldenburg habe etwas, das fehlt — in "
+                 "sieben Läufen nie vorgekommen). Drei sind "
+                 "Regressions-Schranken, zehn Punkte unter dem gemessenen Stand: "
+                 "Status über 55 % (gemessen 64 %), „lohnt sich“ über 50 % "
+                 "(gemessen 59 %), Beleg-Disziplin über 95 %. Die drei Klassen "
+                 "sind auch unter Menschen strittig; was zählt, ist dass das "
+                 "Modell nie behauptet, Oldenburg habe etwas, das fehlt.",
     ),
 }
 

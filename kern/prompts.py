@@ -28,6 +28,117 @@ import textwrap
 
 #: Die Einordnung fremder Ratsvorlagen. Steht als Konstante über ``DEFAULTS``,
 #: weil sie mit 60 Zeilen jedes Wörterbuch unlesbar machen würde.
+PROMPT_CITIES_FIT = """Du prüfst, ob die Stadt Oldenburg (Oldb) sich mit einer Sache schon
+befasst hat — und ob es sich lohnt, sie dort zu beantragen.
+
+Du bekommst EINE Vorlage aus dem Rat einer anderen Stadt und BELEGE aus Oldenburg:
+die inhaltlich nächsten Oldenburger Vorlagen, Treffer der Volltextsuche und einen
+Rückblick auf das Themenfeld. Jeder Beleg trägt eine KENNUNG.
+
+{steckbrief}
+
+Antworte NUR mit diesem JSON:
+{{"status": "present" | "partial" | "missing",
+  "evidence": ["<Kennung>", …],
+  "reason": "<ein Satz, max. 300 Zeichen>",
+  "worth": "yes" | "maybe" | "no",
+  "why_worth": "<ein Satz, max. 300 Zeichen>",
+  "obstacles": "<was dagegen spricht, max. 200 Zeichen>" | null,
+  "confidence": "high" | "medium" | "low"}}
+
+STATUS — hat Oldenburg GENAU DIESES Instrument schon?
+- "present": Oldenburg hat genau dieses Instrument beschlossen oder eingeführt.
+- "partial": Ein Beleg deckt einen TEIL dieses Instruments ab oder eine frühere
+  Stufe davon — anderer Zuschnitt, kleinerer Umfang, nur für einen Teilbereich,
+  nur ein Antrag ohne Beschluss, nur ein Prüfauftrag, nur ein Bericht.
+- "missing": Kein Beleg deckt auch nur einen Teil ab. Dass ein Beleg dasselbe
+  THEMENFELD betrifft, genügt dafür nicht.
+
+Sei streng: Ein Beleg, der nur dasselbe THEMENFELD berührt, ist NICHT "present".
+Wärmeplanung und Wärmenetz-Ausbau sind zwei Sachen; ein Radverkehrskonzept belegt
+keine Fahrradstraße.
+
+Aber miss am Instrument, WIE DIE FREMDE VORLAGE ES VERLANGT — nicht an einer
+Maximalfassung davon:
+- Verlangt sie eine PRÜFUNG oder einen BERICHT und Oldenburg hat geprüft oder
+  berichtet, ist das "present". Nicht "partial", weil ein Beschluss fehlt, den
+  niemand verlangt hat.
+- Verlangt sie einen BESCHLUSS und Oldenburg hat erst geprüft, ist es "partial".
+- Der ANLASS muss nicht derselbe sein. Hat Oldenburg seine Geschäftsordnung
+  schon einmal wegen einer Gesetzesänderung angepasst, ist das Instrument
+  „Geschäftsordnung anpassen" vorhanden — auch wenn es eine andere Änderung war.
+- Ein ÄLTERER Beleg zählt. Was Oldenburg 2019 eingeführt hat, hat es.
+
+EVIDENCE — die Kennungen, auf die sich dein Status stützt, höchstens drei.
+Eine Kennung ist die Zeichenkette am Anfang einer Beleg-Zeile, etwa
+"oldenburg:paper:28119" oder "recap:verkehr" — NICHT die Position in der Liste
+und nicht der Titel. Nenne nur Kennungen, die wirklich dastehen; erfinde keine.
+Bei "present" und "partial" ist mindestens eine Pflicht, und mindestens eine
+davon muss eine "oldenburg:paper:"-Kennung sein: Der Rückblick sagt, was die
+Stadt beschäftigt, nicht ob sie dieses Instrument hat. Bei "missing" bleibt die
+Liste leer.
+
+WORTH — lohnt ein Antrag im Oldenburger Rat? Das ist eine EIGENE Frage, nicht
+die Umkehrung des Status.
+- "yes": Ein konkretes Instrument, das Oldenburg so nicht hat und das in seine
+  Zuständigkeit fällt. Auch bei Status "partial" möglich, wenn gerade der
+  Unterschied die Idee ist (Oldenburg hat den Plan, die andere Stadt hat die
+  Umsetzung mit Fristen und Geld).
+- "maybe": Oldenburg hat etwas Ähnliches, der Zugewinn wäre klein; oder die
+  Sache hängt an einer Voraussetzung, die erst zu klären wäre; oder Oldenburg hat
+  sie schon einmal abgelehnt.
+- "no": Oldenburg hat genau das bereits; oder es ist nicht kommunale
+  Zuständigkeit; oder es setzt etwas voraus, das Oldenburg nicht hat.
+
+OBSTACLES — was dagegen spricht, in einem Halbsatz: Zuständigkeit (Land, Bund,
+Versorger, Landkreis), fehlende Struktur, andere Größenordnung, schon einmal
+abgelehnt. Nichts dagegen: null.
+
+CONFIDENCE — "high" nur, wenn die Belege die Frage wirklich beantworten. Wenige
+oder unspezifische Belege heißen "low"; das ist ein brauchbares Ergebnis, keine
+Schwäche.
+
+DURCHGERECHNETE BEISPIELE — an diesen Fällen ist die Grenze zu erkennen. Sie
+sind erfunden, aber typisch; keiner davon steht im Prüfstand, damit der Maßstab
+nicht sich selbst misst.
+
+1. Vorlage: „Solarpflicht für private Neubauten einführen".
+   Beleg: Oldenburg, „Photovoltaik auf städtischen Dächern — Beschluss".
+   → status "partial". Ein TEIL der Sache ist geregelt (die eigenen Gebäude),
+     der andere nicht (private Neubauten). Nicht "missing": Der Beleg deckt
+     einen Teil ab.
+   → worth "yes". Der ungedeckte Teil ist die Idee.
+
+2. Vorlage: „Bewohnerparkzone im Bahnhofsviertel einrichten".
+   Beleg: Oldenburg, „Parkraumkonzept Innenstadt — Beschluss".
+   → status "partial". Das Konzept ist die FRÜHERE STUFE desselben Weges; die
+     Zone ist der Vollzug daraus. Nicht "missing", nur weil die Zone fehlt.
+
+3. Vorlage: „Sondernutzungssatzung an die neue Rechtslage anpassen".
+   Beleg: Oldenburg, „Änderung der Sondernutzungssatzung — Beschluss".
+   → status "present". Das Instrument ist vorhanden, auch wenn der ANLASS ein
+     anderer war.
+   → worth "no". Oldenburg tut das ohnehin, wenn es nötig wird.
+
+4. Vorlage: „Einführung einer Übernachtungssteuer prüfen".
+   Beleg: Oldenburg, „Übernachtungssteuer — Bericht der Verwaltung".
+   → status "present". Verlangt ist eine PRÜFUNG, und die liegt vor. Nicht
+     "partial", nur weil kein Beschluss folgte — den verlangt niemand.
+
+5. Vorlage: „Bewerbung als Kulturhauptstadt vorbereiten".
+   Belege: Oldenburg, „Grobkonzept Neues Stadtmuseum"; „Sanierung Sporthalle".
+   → status "missing". Die Belege sind aus demselben Themenfeld und haben mit
+     der Sache trotzdem nichts zu tun. Hohe Ähnlichkeit ist kein Beleg.
+
+6. Vorlage: „Fahrpreise im Nahverkehr senken".
+   Kein passender Beleg.
+   → status "missing", worth "no": Die Tarife setzt der Verkehrsverbund mit der
+     VWG, nicht der Rat. obstacles: „Tarifhoheit liegt beim Verbund."
+
+WORTH hängt NICHT am Status. Ein "present" kann "maybe" sein (Oldenburgs
+Fassung ist schmaler), ein "missing" kann "no" sein (nicht zuständig)."""
+
+
 PROMPT_CITIES_CLASSIFY = """Du ordnest Vorlagen aus Stadträten anderer deutscher Städte ein. Ziel ist eine
 Ideensammlung für die Stadt OLDENBURG (Oldb): kreisfreie Stadt in Niedersachsen,
 ~172.000 Einwohner, Universitätsstadt, Kommunalrecht NKomVG. Oldenburg hat KEINE
@@ -110,6 +221,24 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Fremde Ratsvorlagen — die Einträge",
         "description": "Der Batch. Platzhalter: {items}.",
         "template": "EINTRÄGE:\n{items}",
+    },
+    "cities_fit_system": {
+        "title": "Fremde Vorlage: Hat Oldenburg das schon, und lohnt es sich?",
+        "description":
+            "Das Urteil des Annotators `fit`. Platzhalter: {steckbrief} (der "
+            "Oldenburg-Steckbrief aus council/cities/evidence.py). Ein Aufruf je "
+            "Vorlage, weil jede ihre eigenen Belege hat. Aufgebaut auf dem "
+            "Gegenprobe-Prompt aus dem Probelauf, der über 54 Cluster 29-mal "
+            "„fehlt“, 13-mal „teilweise“ und 11-mal „vorhanden“ traf — und dabei "
+            "den Oldenburger Wärmeplan und die Bewohnerparkzone Haarenesch "
+            "richtig als vorhanden erkannte.",
+        "template": PROMPT_CITIES_FIT,
+    },
+    "cities_fit_user": {
+        "title": "Fremde Vorlage und die Belege aus Oldenburg",
+        "description": "Platzhalter: {paper} (die fremde Vorlage), {evidence} "
+                       "(die nummerierten Belege mit ihren Kennungen).",
+        "template": "FREMDE VORLAGE:\n{paper}\n\nBELEGE AUS OLDENBURG:\n{evidence}",
     },
     "deep_decomposition": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",

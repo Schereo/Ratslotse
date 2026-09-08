@@ -1,0 +1,128 @@
+{
+  "suite": "cities_fit",
+  "model": "deepseek/deepseek-v4-flash",
+  "prompt_version": "1",
+  "n_cases": 40,
+  "runs": 1,
+  "status_accuracy": 65.0,
+  "status_range": [
+    65.0,
+    65.0
+  ],
+  "worth_accuracy": 55.0,
+  "worth_range": [
+    55.0,
+    55.0
+  ],
+  "evidence_discipline": 97.5,
+  "false_present": 0,
+  "missed_present": 3,
+  "evidence_invented": 0,
+  "cost_usd": 0.0257,
+  "cost_per_1000": 0.64,
+  "seconds": 754,
+  "confusion": {
+    "missing→missing": 16,
+    "missing→partial": 1,
+    "partial→missing": 7,
+    "partial→partial": 4,
+    "present→missing": 3,
+    "present→partial": 3,
+    "present→present": 6
+  },
+  "mistakes": [
+    {
+      "case": "Förderung freier Kulturträger – Verlängerung der Zuschussvereinbarunge",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Kein Beleg zeigt, dass Oldenburg Zuschussvereinbarungen mit freien Kulturträgern über drei"
+    },
+    {
+      "case": "Geschäftsführungen der Energie & Wasser GmbH (EWP) und Stadtwerke GmbH",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Kein Beleg zeigt eine Prüfung von Entlastung und Boni bei Beteiligungen; Oldenburg hat rou"
+    },
+    {
+      "case": "Keine Streichung der behördenunabhängigen Asylverfahrensberatung und k",
+      "erwartet": "missing",
+      "bekommen": "partial",
+      "grund": "Oldenburg hat eine Resolution gegen Kürzungen bei Integrationskursen beschlossen, aber nic"
+    },
+    {
+      "case": "Online-Meldung von Hinweisen zu Zweckentfremdungen",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Oldenburg hat bislang nur Berichte und einen abgesetzten Entwurf zur Zweckentfremdungssatz"
+    },
+    {
+      "case": "Situation und Einsatz von Lernbegleiter:innen an Osnabrücker Schulen –",
+      "erwartet": "present",
+      "bekommen": "missing",
+      "grund": "Kein Oldenburger Beleg bezieht sich auf ein Pool-Modell für Lernbegleiter; die vorhandenen"
+    },
+    {
+      "case": "Stand der Umsetzung des Ratsbeschlusses „Lokaler Aktionsplan gegen Rec",
+      "erwartet": "present",
+      "bekommen": "missing",
+      "grund": "Oldenburg hat Koordinierungsstelle und Fonds gegen Rechtsextremismus, aber keinen Ratsbesc"
+    },
+    {
+      "case": "Angebote der offenen Kinder- und Jugendarbeit - Anfrage der Gruppe Grü",
+      "erwartet": "present",
+      "bekommen": "missing",
+      "grund": "Kein Beleg belegt eine Bestandserhebung der offenen Jugendarbeit nach Stadtteilen, wie in "
+    },
+    {
+      "case": "Überarbeitung der Satzung über die Pflege des Sports und des Badewesen",
+      "erwartet": "present",
+      "bekommen": "partial",
+      "grund": "Oldenburg hat die Sportförderrichtlinien wiederholt überarbeitet (zuletzt zum 01.01.2026),"
+    },
+    {
+      "case": "Wirkung von Haushaltskennzahlen",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Die Belege zeigen Haushaltsvollzugsberichte und einen auf Klimawirkung begrenzten Klimahau"
+    },
+    {
+      "case": "Richtlinie der Stadt Braunschweig über die Gewährung von Zuwendungen z",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Keiner der Oldenburger Belege beschreibt einen Härtefallfonds für Schulmittagessen, wie Br"
+    },
+    {
+      "case": "Klimaneutrale Verwaltung: Treibhausgasbilanzen und CO2-Zielpfadanalyse",
+      "erwartet": "present",
+      "bekommen": "partial",
+      "grund": "Oldenburg erstellt gesamtstädtische Energie- und Treibhausgasbilanzen sowie CO2-Szenarien,"
+    },
+    {
+      "case": "Umsetzung der kommunalen Wärmeplanung für Wärmepumpen in Individualver",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Kein Beleg für ein spezifisches Wärmepumpen-Monitoring und Beratungsprogramm; der Wärmepla"
+    },
+    {
+      "case": "1. Fortschreibung Bericht zum Zeitplan der aus dem Brandschutzbedarfsp",
+      "erwartet": "partial",
+      "bekommen": "missing",
+      "grund": "Oldenburg hat den Brandschutzbedarfsplan beschlossen, aber keinen fortgeschriebenen Zeitpl"
+    },
+    {
+      "case": "Verkehrs- und Straßenbaumaßnahmenprogramm 2026-2027 des Amtes für Mobi",
+      "erwartet": "present",
+      "bekommen": "partial",
+      "grund": "Oldenburg hat Arbeitsprogramme für Straßen- und Radwegebau und eine priorisierte NGVFG-Dri"
+    }
+  ],
+  "evidence_violations": [
+    {
+      "case": "Keine Streichung der behördenunabhängigen Asylverfahrensbera",
+      "art": "nur Rückblick",
+      "kennungen": [
+        "recap:migration_integration"
+      ]
+    }
+  ]
+}
