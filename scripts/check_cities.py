@@ -96,6 +96,16 @@ def main() -> dict:
             zaehler["errors"] += 1
             gruende["error_index"] = f"{type(e).__name__}: {e}"
 
+        # Ideen-Cluster über Stadtgrenzen: Sie brauchen die Einordnung (sie
+        # sagt, was eine Idee ist) und liefern die Zahl, die kein Einzelurteil
+        # liefern kann — in wie vielen Städten dieselbe Sache vorkommt.
+        try:
+            for name, wert in pipeline.cluster_all(main_store).items():
+                zaehler[f"cluster_{name}"] = wert
+        except Exception as e:  # noqa: BLE001
+            zaehler["errors"] += 1
+            gruende["error_cluster"] = f"{type(e).__name__}: {e}"
+
         # Zuletzt, was den Index BRAUCHT: `fit` urteilt über Oldenburg und
         # belegt das mit den nächsten Oldenburger Vorlagen — die entstehen
         # eine Zeile weiter oben. Vorher gefragt, urteilte es ins Leere.
