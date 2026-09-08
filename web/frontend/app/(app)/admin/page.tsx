@@ -25,6 +25,7 @@ type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLau
 type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
+type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
@@ -509,6 +510,92 @@ function SeitenaufrufeSection() {
   );
 }
 
+/** Welche Handlungen wie oft vorkommen — und die zwei Anteile dahinter.
+ *
+ *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt. Das ist der
+ *  Unterschied zwischen „hundert Fragen" und „hundert Fragen von einer
+ *  Person"; ohne diese zweite Spalte hätte man die Prod-Zahlen vom 08.09.
+ *  glatt falsch gelesen.
+ */
+function EreignisSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "events"],
+    queryFn: () => api.get<AdminEreignisse>("/admin/stats/events?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Ereignisse kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const spitze = Math.max(1, ...data.events.filter((e) => e.key !== "session").map((e) => e.n));
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Was gemacht wird</h3>
+        <span className="text-[11.5px] text-muted-foreground">letzte {data.days} Tage</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="p-3.5">
+          <StatKicker>Fragen aus einem Vorschlag</StatKicker>
+          <p className="mt-1.5 font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+            {data.chip_share == null ? "–" : `${Math.round(data.chip_share * 100)} %`}
+          </p>
+          <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+            {data.chip_share == null
+              ? "noch keine Fragen im Zeitraum"
+              : "Der Rest wurde ins Feld getippt."}
+          </p>
+        </Card>
+        <Card className="p-3.5">
+          <StatKicker>Antworten ohne Quelle</StatKicker>
+          <p className={cn(
+            "mt-1.5 font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums",
+            data.empty_share != null && data.empty_share > 0.1 ? "text-amber-600 dark:text-amber-500" : "text-foreground",
+          )}>
+            {data.empty_share == null ? "–" : `${Math.round(data.empty_share * 100)} %`}
+          </p>
+          <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+            {data.empty_share == null ? "noch keine Fragen im Zeitraum" : "Jede davon ist eine Sackgasse."}
+          </p>
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <div className="flex flex-col gap-1.5">
+          {data.events.map((e) => (
+            <div key={e.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[15rem_minmax(0,1fr)_auto]">
+              <span className="truncate text-[13px] text-foreground">{e.label}</span>
+              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block">
+                <div
+                  className={cn("h-full rounded-full", e.n === 0 ? "bg-transparent" : "bg-primary")}
+                  style={{ width: e.key === "session" ? "100%" : `${Math.min(100, Math.round((e.n / spitze) * 100))}%` }}
+                />
+              </div>
+              <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums">
+                <span className={cn("font-semibold", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>
+                  {e.n.toLocaleString("de-DE")}
+                </span>
+                <span className="text-muted-foreground"> · {e.users} {e.users === 1 ? "Konto" : "Konten"}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
+          Die zweite Zahl ist die der Konten. Eine große Zahl aus einem einzigen Konto
+          ist etwas anderes als dieselbe Zahl aus zwanzig.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
 function StatsTab() {
   const [range, setRange] = useState("90d");
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -593,6 +680,8 @@ function StatsTab() {
       <KohortenSection />
 
       <SeitenaufrufeSection />
+
+      <EreignisSection />
 
       <JobsSection />
     </div>

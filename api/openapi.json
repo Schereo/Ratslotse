@@ -197,6 +197,71 @@
         "title": "AdminEntityAlias",
         "type": "object"
       },
+      "AdminEreignis": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "n",
+          "users"
+        ],
+        "title": "AdminEreignis",
+        "type": "object"
+      },
+      "AdminEreignisse": {
+        "properties": {
+          "chip_share": {
+            "title": "Chip Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "empty_share": {
+            "title": "Empty Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AdminEreignis"
+            },
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "events",
+          "chip_share",
+          "empty_share"
+        ],
+        "title": "AdminEreignisse",
+        "type": "object"
+      },
       "AdminFeedbackList": {
         "properties": {
           "items": {
@@ -2096,6 +2161,11 @@
               "integer",
               "null"
             ]
+          },
+          "from_suggestion": {
+            "default": false,
+            "title": "From Suggestion",
+            "type": "boolean"
           },
           "history": {
             "items": {
@@ -16949,6 +17019,50 @@
           }
         },
         "summary": "Stats Cohorts",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/events": {
+      "get": {
+        "description": "Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.\n\n„Fragen aus einem Vorschlag\" und „Antworten ohne Quelle\" sind die zwei\nZahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen\nmessbar waren.",
+        "operationId": "stats_events_api_admin_stats_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminEreignisse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Events",
         "tags": [
           "admin"
         ]

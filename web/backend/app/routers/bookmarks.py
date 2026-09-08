@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from council import bookmarks as bookmark_logic
@@ -11,6 +11,7 @@ from council.store import CouncilStore
 from kern.store import Store
 
 from ..antworten import BookmarkEntry, BookmarkList
+from ..clients import client_kind
 from ..deps import get_council_store, get_store, require_active
 
 router = APIRouter(prefix="/api/bookmarks", tags=["bookmarks"])
@@ -83,6 +84,7 @@ def list_bookmarks(user: dict = Depends(require_active),
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_bookmark(payload: BookmarkIn,
+                    request: Request,
                     user: dict = Depends(require_active),
                     ratslotse: Store = Depends(get_store),
                     council: CouncilStore = Depends(get_council_store)) -> BookmarkEntry:
@@ -153,6 +155,12 @@ def create_bookmark(payload: BookmarkIn,
             subtitle=_subtitle(session, decision.get("item_number")),
         )
 
+    # Erst hier, nach dem erfolgreichen Anlegen. Vor der Prüfung gezählt,
+    # tickte der Zähler auch bei einem 404 auf einen erfundenen Beschluss —
+    # gemessen, nicht vermutet. Am 08.09.2026 stammten alle 18 Lesezeichen aus
+    # einem einzigen (dem eigenen) Konto; ob das an der Funktion liegt oder
+    # daran, dass sie niemand findet, lässt sich ohne Zähler nicht fragen.
+    ratslotse.record_activity(owner_id, "bookmark", client_kind(request))
     return bookmark_logic.enrich_bookmark(row, council)
 
 

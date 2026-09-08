@@ -60,6 +60,7 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          SSE_FRAGE, SSE_RECHERCHE,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
+from ..clients import client_kind
 from ..deps import (get_cities_store, get_council_store, get_store, optional_user, require_active,
                     require_permission)
 from ..ratelimit import (
@@ -2903,6 +2904,7 @@ def list_follows(
 @router.post("/template/{kvonr}/follow", status_code=status.HTTP_201_CREATED)
 def follow_vorlage(
     kvonr: int,
+    request: Request,
     user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
     ratslotse: Store = Depends(get_store),
@@ -2916,6 +2918,7 @@ def follow_vorlage(
         template_number=v.get("template_number") or "", title=v.get("title") or "",
         stations=_stations_signature(store.get_beratungen(kvonr)),
     )
+    ratslotse.record_activity(user["id"], "template_follow", client_kind(request))
     return {"kvonr": kvonr, "following": True}
 
 
@@ -3244,6 +3247,13 @@ class AskBody(BaseModel):
     # tatsächlich um eine einfachere Fassung bittet; alte App-Versionen senden
     # das Feld nicht und bekommen die einfache Fassung aus den Beschlüssen.
     previous_answer: str = Field(default="", max_length=8000)
+    # Kam die Frage aus einem Vorschlags-Chip oder wurde sie getippt? Der
+    # Client weiß es genau; der Server könnte es nur raten, indem er den Text
+    # gegen die Chip-Vorlagen hält — und läge falsch, sobald jemand dieselbe
+    # Frage selbst tippt. Gemessen am 08.09.2026 kam ein Viertel aller Fragen
+    # wörtlich aus einem Chip; ob das an guten Vorschlägen liegt oder daran,
+    # dass niemand ins Feld tippt, ist die Frage dahinter.
+    from_suggestion: bool = False
 
 
 # Q&A sizing: show up to QA_TOP_K reranked decisions as sources, feed the most
@@ -3477,6 +3487,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         # der faire, stabile Schlüssel für das Kosten-Limit.
         qa_limiter.check(request, subject=user["id"])
     ratslotse.record_activity(user["id"], "ai_question")  # Admin-Statistik (20a)
+    # ZUSÄTZLICH, nicht statt: `ai_question` bleibt die Gesamtzahl, sonst
+    # verlören alle bestehenden Auswertungen die Chip-Fragen.
+    if body.from_suggestion:
+        ratslotse.record_activity(user["id"], "ai_question_chip", client_kind(request))
     q = body.question.strip()
     if len(q) < 4:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Bitte eine etwas längere Frage stellen.")
@@ -3911,6 +3925,10 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 conversation_id = _turn_speichern(ratslotse, user, body, q_suche, leer_text, [], [],
                                                debatten_rows=debatten_rows,
                                                sitzungen=sitzungen)
+                # Eine Antwort ohne eine einzige Quelle. Am 08.09.2026 endeten
+                # 9 % aller Antworten so — gemessen an den gespeicherten
+                # Gesprächen, also nur an einem Teil. Dieser Zähler misst alle.
+                ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
                 yield _sse({"type": "done", "cited": [], "conversation_id": conversation_id})
                 return
             # Task 32: Themengröße deterministisch — viele Treffer über eine
@@ -4093,6 +4111,8 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                                            planungen=planungen,
                                            grafik=grafik,
                                            sitzungen=sitzungen)
+            if not cited:
+                ratslotse.record_activity(user["id"], "ai_answer_empty", client_kind(request))
             yield _sse({"type": "done", "cited": cited, "timings": zeiten,
                         "conversation_id": conversation_id})
         except Exception:  # noqa: BLE001 — surface a terminal error to the client
