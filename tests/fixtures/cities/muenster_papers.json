@@ -1,0 +1,327 @@
+[
+ {
+  "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056580",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://oparl.stadt-muenster.de/bodies/0001",
+  "name": "Auftrag zur Prüfung des Jahresabschlusses und des Lageberichts zum 31.12.2026",
+  "reference": "V/0462/2026",
+  "date": "2026-08-20",
+  "paperType": "Vorlagen",
+  "auxiliaryFile": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588556",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Beschlussvorlage",
+    "fileName": "00588556.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-28",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588556.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588556.pdf",
+    "created": "2026-08-28T11:14:47+02:00",
+    "modified": "2026-08-28T11:18:51+02:00"
+   }
+  ],
+  "underDirectionOf": [
+   "https://oparl.stadt-muenster.de/bodies/0001/organizations/at/100018"
+  ],
+  "consultation": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/91604",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056580",
+    "agendaItem": "https://oparl.stadt-muenster.de/bodies/0001/agendaitems/287885",
+    "meeting": "https://oparl.stadt-muenster.de/bodies/0001/meetings/14530",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/482"
+    ],
+    "role": "Entscheidung",
+    "created": "2026-08-26T16:27:54+02:00",
+    "modified": "2026-09-02T10:52:39+02:00"
+   }
+  ],
+  "created": "2026-08-19T16:44:53+02:00",
+  "modified": "2026-08-28T11:18:50+02:00"
+ },
+ {
+  "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056581",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://oparl.stadt-muenster.de/bodies/0001",
+  "name": "Jahresabschluss der citeq 2025 - Entlastung der Betriebsleitung",
+  "reference": "V/0463/2026",
+  "date": "2026-08-20",
+  "paperType": "Vorlagen",
+  "auxiliaryFile": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588557",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Beschlussvorlage",
+    "fileName": "00588557.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-28",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588557.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588557.pdf",
+    "created": "2026-08-28T11:19:20+02:00",
+    "modified": "2026-08-28T11:20:50+02:00"
+   }
+  ],
+  "underDirectionOf": [
+   "https://oparl.stadt-muenster.de/bodies/0001/organizations/at/100018"
+  ],
+  "consultation": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/91605",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056581",
+    "agendaItem": "https://oparl.stadt-muenster.de/bodies/0001/agendaitems/287886",
+    "meeting": "https://oparl.stadt-muenster.de/bodies/0001/meetings/14530",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/482"
+    ],
+    "role": "Entscheidung",
+    "created": "2026-08-26T16:27:54+02:00",
+    "modified": "2026-09-02T10:52:39+02:00"
+   }
+  ],
+  "created": "2026-08-19T16:50:31+02:00",
+  "modified": "2026-08-28T11:20:50+02:00"
+ },
+ {
+  "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056582",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://oparl.stadt-muenster.de/bodies/0001",
+  "name": "Interkommunale Zusammenarbeit - Abschluss einer Öffentlich-rechtlichen Vereinbarung (ÖrV)  mit der Stadt Bergkamen",
+  "reference": "V/0464/2026",
+  "date": "2026-08-20",
+  "paperType": "Vorlagen",
+  "auxiliaryFile": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588318",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 1_2026-04-10_OErV_Stadt Bergkamen",
+    "fileName": "00588318.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-20",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588318.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588318.pdf",
+    "created": "2026-08-20T13:20:22+02:00",
+    "modified": "2026-09-03T14:20:39+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588713",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Beschlussvorlage",
+    "fileName": "00588713.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-09-03",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588713.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588713.pdf",
+    "created": "2026-09-03T14:05:24+02:00",
+    "modified": "2026-09-03T14:20:39+02:00"
+   }
+  ],
+  "underDirectionOf": [
+   "https://oparl.stadt-muenster.de/bodies/0001/organizations/at/100018"
+  ],
+  "consultation": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/91608",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056582",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/150"
+    ],
+    "role": "Vorberatung",
+    "created": "2026-08-20T11:48:34+02:00",
+    "modified": "2026-08-20T11:48:34+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/91609",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056582",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/258"
+    ],
+    "role": "Entscheidung",
+    "created": "2026-08-20T11:48:57+02:00",
+    "modified": "2026-08-20T11:48:57+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/91606",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056582",
+    "agendaItem": "https://oparl.stadt-muenster.de/bodies/0001/agendaitems/287887",
+    "meeting": "https://oparl.stadt-muenster.de/bodies/0001/meetings/14530",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/482"
+    ],
+    "role": "Vorberatung",
+    "created": "2026-08-26T16:27:54+02:00",
+    "modified": "2026-09-02T10:52:39+02:00"
+   }
+  ],
+  "created": "2026-08-20T11:47:13+02:00",
+  "modified": "2026-09-04T12:47:19+02:00"
+ },
+ {
+  "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056056",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://oparl.stadt-muenster.de/bodies/0001",
+  "name": "Kindertagesbetreuungsbericht 2025 / 2026",
+  "reference": "V/0150/2026",
+  "date": "2026-08-13",
+  "paperType": "Vorlagen",
+  "auxiliaryFile": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/587949",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 4.1 Jugendhilfeplanung bis 2026",
+    "fileName": "00587949.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-06",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00587949.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00587949.pdf",
+    "created": "2026-08-06T15:40:23+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/587950",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 4.2 Jugendhilfeplanung ab 2027",
+    "fileName": "00587950.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-06",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00587950.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00587950.pdf",
+    "created": "2026-08-06T15:40:51+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/587959",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 3 Eckdaten zur Förderung von Kindern in Kindertagespflege",
+    "fileName": "00587959.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-06",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00587959.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00587959.pdf",
+    "created": "2026-08-06T15:59:26+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588096",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 1.2 Tagesbetreuungssituation zum Kindergartenjahr 2026 - 2027",
+    "fileName": "00588096.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-13",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588096.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588096.pdf",
+    "created": "2026-08-13T11:50:41+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588304",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 1.1 Tagesbetreuungssituation zum Kindergartenjahr 2025 - 2026",
+    "fileName": "00588304.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-20",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588304.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588304.pdf",
+    "created": "2026-08-20T11:49:28+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588305",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Berichtsvorlage",
+    "fileName": "00588305.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-20",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588305.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588305.pdf",
+    "created": "2026-08-20T11:51:51+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588316",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 2_Entwicklung der Kindertagesbetreuungssituation von 2021 bis 2026",
+    "fileName": "00588316.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-20",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588316.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588316.pdf",
+    "created": "2026-08-20T12:51:15+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/files/588317",
+    "type": "https://schema.oparl.org/1.1/File",
+    "name": "Anlage 5 Betriebliche Kitabetreuung",
+    "fileName": "00588317.pdf",
+    "mimeType": "application/pdf",
+    "date": "2026-08-20",
+    "accessUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/a/00588317.pdf",
+    "downloadUrl": "https://oparl.stadt-muenster.de/bodies/0001/downloadfiles/00588317.pdf",
+    "created": "2026-08-20T12:59:29+02:00",
+    "modified": "2026-08-20T15:56:32+02:00"
+   }
+  ],
+  "underDirectionOf": [
+   "https://oparl.stadt-muenster.de/bodies/0001/organizations/at/100285"
+  ],
+  "consultation": [
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/90515",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056056",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/150"
+    ],
+    "role": "Bericht",
+    "created": "2026-02-24T09:43:27+01:00",
+    "modified": "2026-02-24T09:43:27+01:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/90516",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056056",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/258"
+    ],
+    "role": "Bericht",
+    "created": "2026-02-24T09:43:58+01:00",
+    "modified": "2026-02-24T09:43:58+01:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/90509",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056056",
+    "agendaItem": "https://oparl.stadt-muenster.de/bodies/0001/agendaitems/287356",
+    "meeting": "https://oparl.stadt-muenster.de/bodies/0001/meetings/14504",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/93"
+    ],
+    "role": "Bericht",
+    "created": "2026-08-17T13:19:14+02:00",
+    "modified": "2026-09-01T08:44:42+02:00"
+   },
+   {
+    "id": "https://oparl.stadt-muenster.de/bodies/0001/consultations/90508",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "paper": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056056",
+    "agendaItem": "https://oparl.stadt-muenster.de/bodies/0001/agendaitems/287360",
+    "meeting": "https://oparl.stadt-muenster.de/bodies/0001/meetings/14503",
+    "organization": [
+     "https://oparl.stadt-muenster.de/bodies/0001/organizations/gr/92"
+    ],
+    "role": "Bericht",
+    "created": "2026-08-17T13:25:19+02:00",
+    "modified": "2026-09-04T09:14:12+02:00"
+   }
+  ],
+  "created": "2026-02-24T09:27:31+01:00",
+  "modified": "2026-08-25T10:51:31+02:00"
+ }
+]

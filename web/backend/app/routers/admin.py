@@ -19,6 +19,7 @@ import time
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
+from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
@@ -27,12 +28,12 @@ from kern.store import Store
 
 from council import stream_stt
 from ..config import get_settings
-from ..antworten import (EventStreamResponse, SSE_LIVE_PROBE,
+from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
                          AdminPlaceCandidates, AdminQuizStats, AdminRequestFehler,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
-from ..deps import get_council_store, get_store, require_admin
+from ..deps import get_cities_store, get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
                        RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate, WebUserOut)
 
@@ -88,6 +89,19 @@ def stats_growth(
     data = store.admin_growth(days)
     data["council"] = council.admin_stats()
     return data
+
+
+@router.get("/cities")
+def cities_stats(
+    _admin: dict = Depends(require_admin),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> list[CityStats]:
+    """Was im Städte-Speicher liegt, je Stadt.
+
+    Die Liste ist leer, solange noch nichts geerntet wurde — das ist kein
+    Fehler, sondern der Zustand vor dem ersten Lauf von ``check_cities``.
+    """
+    return cities.stats()
 
 
 @router.get("/quiz/stats")

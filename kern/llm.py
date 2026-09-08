@@ -59,6 +59,12 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
     "openai/gpt-4o-mini": {},
     "deepseek/deepseek-v4-pro": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
     "deepseek/deepseek-v4-flash": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
+    # Die datierte Fassung fehlte hier bis 09/2026 — und ohne den Boden
+    # verbraucht sie ihr Budget beim Denken und antwortet LEER (Status 200,
+    # finish_reason='length'). Gemessen am Städte-Prüfstand: 84 % Lieferquote
+    # statt 100 %, bei 38 statt 2 Minuten. Wer ein neues DeepSeek-Modell
+    # benutzt, trägt es hier ein.
+    "deepseek/deepseek-v4-flash-0731": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
     **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in (
         "openai/gpt-5.6-luna", "openai/gpt-5.6-luna-pro",
         "openai/gpt-5.6-sol", "openai/gpt-5.6-sol-pro",

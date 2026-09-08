@@ -9,6 +9,7 @@ wie beim Einrichtungs-Assistenten, ``Store.get_setup``).
 from __future__ import annotations
 
 import logging
+from typing import cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
@@ -102,12 +103,16 @@ def admin_news(
         offen = [k for k in infrage
                  if not erledigt(k.get("news_sent_version"))
                  and not erledigt(k.get("news_seen_version"))]
-        zeilen.append({
-            **releases.as_dict(release),  # pyright: ignore[reportGeneralTypeIssues]
+        # `as_dict` kommt aus `kern` und gibt ein schlichtes ``dict`` zurück —
+        # die Antwortform kennt es nicht (kern darf nichts aus dem Backend
+        # importieren, s. tests/test_schichten.py). Der Cast sagt das aus,
+        # statt eine Regel stumm zu schalten.
+        zeilen.append(cast(AdminNewsRelease, {
+            **releases.as_dict(release),
             "open_recipients": len(offen),
             "sent_recipients": sum(
                 1 for k in infrage if erledigt(k.get("news_sent_version"))),
-        })
+        }))
     return {"releases": zeilen}
 
 
