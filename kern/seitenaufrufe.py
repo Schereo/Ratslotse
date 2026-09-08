@@ -96,10 +96,9 @@ ROUTEN: frozenset[str] = frozenset({
 COUNCIL_TABS: frozenset[str] = frozenset({"decisions", "sessions", "themen", "analysis"})
 
 #: Die beiden Seiten mit einem dynamischen Segment.
-_DYNAMISCH = (
-    re.compile(r"^/kommunalwahl/liste/[^/]+$"), f"/kommunalwahl/liste/{PLATZHALTER}",
-), (
-    re.compile(r"^/kommunalwahl/thema/[^/]+$"), f"/kommunalwahl/thema/{PLATZHALTER}",
+_DYNAMISCH: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^/kommunalwahl/liste/[^/]+$"), f"/kommunalwahl/liste/{PLATZHALTER}"),
+    (re.compile(r"^/kommunalwahl/thema/[^/]+$"), f"/kommunalwahl/thema/{PLATZHALTER}"),
 )
 
 #: Erlaubte Clients — alles andere wird zu ``web``, wie in ``app/clients.py``.
