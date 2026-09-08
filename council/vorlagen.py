@@ -47,10 +47,43 @@ _NOISE_RE = re.compile(
 # außerdem oft der ANGEHÄNGTE Anlagentext, der mit dem Sachverhalt nichts mehr
 # zu tun hat. Die Unterschrift setzt das PDF-Textlayer gesperrt
 # („D r . S v e n U h r h a n") — als Fließtext gelesen reiner Buchstabensalat.
-# Der „Auswirkungen"-Block bleibt bewusst drin: die Regex-Ernte
-# (``financial_impact``/``climate_impact``) ist erst für einen Bruchteil der
-# Vorlagen gefüllt, ein Schnitt dort verlöre die Angabe ersatzlos.
 _ANLAGEN_RE = re.compile(r"^Anlagen?\s*:?\s*$")
+#: Der „Auswirkungen"-Block — auf der Beschluss-Seite stehen seine beiden
+#: Hälften schon als eigene Karten („Was kostet das?", „Klima-Check"). Bis
+#: #1211 blieb er trotzdem im Auszug, weil die Regex-Ernte ihn nur für 64 von
+#: 5079 Vorlagen gefüllt hatte — ein Schnitt hätte die Angabe damals ersatzlos
+#: verloren. Der Schnitt hängt deshalb bis heute nicht am Vorhandensein der
+#: ÜBERSCHRIFT, sondern am ``ohne_auswirkungen``-Schalter, den der Aufrufer nur
+#: setzt, wenn die Karten den Block wirklich zeigen (s. ``excerpt``).
+_AUSWIRKUNGEN_RE = re.compile(r"^(?:Finanzielle\s+)?Auswirkungen\s*:?\s*$")
+#: Woran der Block endet. „Klimarelevante Auswirkungen:" führt die alte Form
+#: als EIGENEN Abschnitt, und den erntet niemand — er beendet den Finanzblock
+#: also, statt mit ihm zu verschwinden.
+_AUSWIRKUNGEN_ENDE_RE = re.compile(
+    r"^(?:Finanzielle|Klimarelevante)?\s*Auswirkungen\s*:?\s*$")
+#: Karten gibt es nur für „a) Finanzen" und „b) Klima". Viele Vorlagen führen
+#: darunter noch „c) Weitere" und „d) Abwägung und Bewertung der Verwaltung" —
+#: 696 davon mit echtem Inhalt, den sonst nichts auf der Seite zeigt. Der
+#: Schnitt endet deshalb HIER und nicht am Ende des Blocks. Trifft das Muster
+#: versehentlich einen Listenpunkt im Klima-Text, bleibt nur etwas mehr stehen
+#: als nötig — der Fehler zeigt in die harmlose Richtung.
+#: „Abwägung und Bewertung der Verwaltung:" führen manche Vorlagen als „d)",
+#: andere ohne Buchstaben — die zweite Form fiel sonst unter den Schnitt.
+_AUSWIRKUNGEN_REST_RE = re.compile(r"^[c-z]\)|^Abwägung\s+und\s+Bewertung")
+#: Der Briefschluss. In der ALTEN Form steht der Block ganz am Ende des
+#: Anschreibens — ohne diese Marke lief der Schnitt bis ans Textende und
+#: verschluckte Unterschrift samt angehängtem Anlagentext gleich mit. Das wäre
+#: zwar meist Verwaltungs-Schwanz, aber es ist nicht der Block, um den es hier
+#: geht: Der Schnitt soll das Doppelte entfernen, nicht nebenbei aufräumen.
+_SCHLUSSZEILE_RE = re.compile(
+    r"^(?:In\s+Vertretung|Im\s+Auftrage?|gez\.)\b|^(?:\S\s){4,}\S\s*$")
+#: Die beiden Unterpunkte. Je eine Karte, also je einzeln geschnitten: Erntet
+#: die Regex nur eine der beiden Hälften (etwa weil „a) Finanzen:" einen
+#: Doppelpunkt trägt oder der Text auf derselben Zeile weiterläuft), darf die
+#: ANDERE nicht mit verschwinden — sie steht dann auf keiner Karte.
+#: Das doppelte „a) a) Finanzen" gibt es im Bestand wirklich.
+_A_FINANZEN_RE = re.compile(r"^a\)\s*(?:a\)\s*)?Finanzen")
+_B_KLIMA_RE = re.compile(r"^b\)\s*(?:b\)\s*)?Klima")
 #: Mindest-Substanz vor dem Anlagen-Schnitt: In einigen Vorlagen steht die
 #: Überschrift schon im Kopf, und ein leerer Auszug wäre schlimmer als ein
 #: langer.
@@ -222,12 +255,118 @@ def _entzeilen(lines: list[str]) -> list[str]:
     return out
 
 
-def excerpt(raw_text: str, chars: int | None = 400) -> str:
+def _kern(text: str) -> str:
+    """Nur Buchstaben und Ziffern — Vergleichsform für „steht das schon auf der
+    Karte?". Muss die PDF-Silbentrennung überstehen: Der Kartentext trägt
+    „Verwaltungs- aufwand" (``ernte`` klebt Zeilen bloß aneinander), der Auszug
+    heilt daraus „Verwaltungsaufwand" (``_entzeilen``). Als Fließtext sind das
+    zwei verschiedene Zeichenketten, als Kern derselbe.
+
+    ``isalnum`` statt einer Zeichenklasse: Ein handgeschriebener Bereich wie
+    ``a-zà-öø-ÿ`` lässt ausgerechnet das ß draußen (U+00DF liegt davor) — aus
+    „Veräußerung" würde „veräuerung"."""
+    return "".join(c for c in text.lower() if c.isalnum())
+
+
+def _deckt_ab(karte: str | None, zeilen: list[str]) -> bool:
+    """Trägt die Karte den ganzen Block — oder nur seinen Anfang?
+
+    ``ernte`` kappt ``financial_impact`` bei 800 Zeichen (``climate_impact``
+    bei 2500), und zwar an der Satzgrenze und damit OHNE Auslassungszeichen:
+    Der gekappte Wert sieht aus wie ein vollständiger. Über den Bestand
+    gemessen sind 142 Finanz- und 3 Klima-Angaben so gekappt, im Schnitt um
+    knapp 500 Zeichen. Würde der Auszug den Block trotzdem hergeben, wären
+    diese 500 Zeichen auf der ganzen Seite nirgends mehr zu lesen. Deshalb
+    weicht der Schnitt hier zurück und lässt den Block stehen."""
+    if not karte:
+        return False
+    return _kern(" ".join(zeilen)) in _kern(karte)
+
+
+def _schneide_auswirkungen(body: list[str], karte_finanzen: str | None,
+                           karte_klima: str | None) -> list[str]:
+    """Den „Auswirkungen"-Block herausnehmen — HERAUSNEHMEN, nicht abschneiden,
+    und nur die Hälfte, die ihre Karte nachweislich vollständig trägt.
+
+    Bei 137 der 4760 Vorlagen mit diesem Block folgt dahinter noch ein
+    Sachabschnitt, fast immer die „Begründung". Ein Schnitt bis zum Textende
+    (wie beim Anlagen-Schwanz) verlöre sie — der Block endet deshalb am
+    nächsten Header, und was danach kommt, bleibt stehen.
+
+    Je Hälfte einzeln entschieden, weil die Ernte regelmäßig nur eine der
+    beiden trifft: „a) Finanzen:" mit Doppelpunkt oder mit Text auf derselben
+    Zeile geht ihr durch, „b) Klima" darunter nicht. Ein gemeinsamer Schnitt
+    nähme dann auch die Hälfte mit, die auf keiner Karte steht.
+    """
+    gelesen = 0
+    kopf = None
+    for i, ln in enumerate(body):
+        if gelesen >= _MIN_BODY_CHARS and _AUSWIRKUNGEN_RE.match(ln):
+            kopf = i
+            break
+        gelesen += len(ln) + 1
+    if kopf is None:
+        return body
+    ende = next((j for j in range(kopf + 1, len(body))
+                 if _SECTION_RE.match(body[j]) or _ANLAGEN_RE.match(body[j])
+                 or _AUSWIRKUNGEN_ENDE_RE.match(body[j])
+                 or _AUSWIRKUNGEN_REST_RE.match(body[j])
+                 or _SCHLUSSZEILE_RE.match(body[j])), len(body))
+    # Alte Form (bis 2021): Die Überschrift „Finanzielle Auswirkungen:" IST der
+    # Finanzblock, Unterpunkte gibt es dort nicht.
+    if "Finanzielle" in body[kopf]:
+        if _deckt_ab(karte_finanzen, body[kopf + 1:ende]):
+            return body[:kopf] + body[ende:]
+        return body
+
+    fa = next((j for j in range(kopf + 1, ende) if _A_FINANZEN_RE.match(body[j])), None)
+    fb = next((j for j in range(kopf + 1, ende) if _B_KLIMA_RE.match(body[j])), None)
+    weg: set[int] = set()
+    if fa is not None:
+        bis = fb if fb is not None and fb > fa else ende
+        # Ohne die Überschrift selbst vergleichen — auf der Karte steht sie nicht.
+        rumpf = [_A_FINANZEN_RE.sub("", body[fa], count=1), *body[fa + 1:bis]]
+        if _deckt_ab(karte_finanzen, rumpf):
+            weg |= set(range(fa, bis))
+    if fb is not None:
+        rumpf = [_B_KLIMA_RE.sub("", body[fb], count=1), *body[fb + 1:ende]]
+        if _deckt_ab(karte_klima, rumpf):
+            weg |= set(range(fb, ende))
+    if not weg:
+        return body
+    # Die Überschrift „Auswirkungen:" nur mitnehmen, wenn darunter nichts
+    # stehen bleibt — sonst leitet sie ins Leere.
+    if all(j in weg for j in range(kopf + 1, ende)):
+        weg.add(kopf)
+    return [ln for j, ln in enumerate(body) if j not in weg]
+
+
+def excerpt(raw_text: str, chars: int | None = 400, *,
+            karte_finanzen: str | None = None,
+            karte_klima: str | None = None) -> str:
     """A readable excerpt of a Vorlage text: starts at the first substantive
     section (Sachverhalt/Begründung/…) when one is found, drops per-page
     boilerplate lines and the administrative tail (Anlagen list, signature),
     collapses whitespace. ``chars=None`` keeps the whole text — the Beschluss
-    page shows it complete. Empty string when there is no text."""
+    page shows it complete. Empty string when there is no text.
+
+    ``karte_finanzen``/``karte_klima`` sind die beiden Karten der Beschluss-
+    Seite („Was kostet das?", „Klima-Check"). Wer sie mitgibt, sagt damit:
+    Nimm aus dem Auszug heraus, was hier schon steht — aber nur, was hier
+    WIRKLICH steht. Übergeben wird der Text und nicht bloß ein Ja/Nein, weil
+    beides sonst nicht zu entscheiden wäre: ob die Karte den Block ganz trägt
+    oder nur seinen Anfang (s. ``_deckt_ab``), und ob sie überhaupt zu diesem
+    Rohtext gehört — eine noch nicht nachgetragene Spalte passt dann eben
+    nicht, und der Block bleibt stehen, statt ersatzlos zu verschwinden.
+    **Der Vorgabewert ist ``False``, und das ist keine Bequemlichkeit.** Diese
+    Funktion bedient zwei Fälle: die Beschluss-Seite, wo der Block als eigene
+    Karte daneben steht und im Auszug doppelt wäre — und das Chunking für
+    Einbettungen, Volltextsuche und KI-Frage (``council/embeddings.py``), wo
+    er der einzige Ort ist, an dem „was kostet das" überhaupt auffindbar
+    steht. Ihn dort mit herauszuschneiden hieße, eine Frage nach den Kosten
+    unbeantwortbar zu machen. Nur der Aufrufer weiß, in welchem der beiden
+    Fälle er ist — und die Seite setzt den Schalter genau dann, wenn die
+    Karten den Block wirklich tragen."""
     if not raw_text:
         return ""
     lines = [ln.strip() for ln in raw_text.splitlines()]
@@ -242,6 +381,8 @@ def excerpt(raw_text: str, chars: int | None = 400) -> str:
             body = body[:i]
             break
         gelesen += len(ln) + 1
+    if karte_finanzen or karte_klima:
+        body = _schneide_auswirkungen(body, karte_finanzen, karte_klima)
     text = "\n".join(_entzeilen(body))
     text = re.sub(r"[ \t]+", " ", text).strip()
     text = _SIGNATURE_RE.sub("", text).rstrip()
