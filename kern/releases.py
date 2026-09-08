@@ -176,7 +176,8 @@ RELEASES: tuple[Release, ...] = (
                     src="/neuigkeiten/2.2.0/teilen-ios.mp4", poster="/neuigkeiten/2.2.0/teilen-ios.webp",
                     alt="Dieselbe Tagesordnung auf dem iPhone: ein Tipp auf das "
                         "Teilen-Zeichen an einem Punkt öffnet das Teilen-Blatt "
-                        "von iOS.",
+                        "von iOS, ein Tipp auf „Erinnerungen“ legt den Link "
+                        "dort als neue Erinnerung ab.",
                 ),
             ),
             Highlight(

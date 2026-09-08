@@ -195,11 +195,34 @@ Die drei Dinge, die man dabei vergisst:
    Für einen App-Clip: `xcrun simctl io <UDID> recordVideo`, danach **erst auf
    feste 30 fps normalisieren** (`-vf fps=30`) — die Zeitangaben der
    Simulator-Aufnahme passen nicht zu ihren Bildern, ein Schnitt auf dem Rohfilm
-   landet daneben. Nach dem Tipp großzügig weiterlaufen lassen (25 s), die
-   Aufnahme hinkt der Eingabe deutlich hinterher. Den **Fingertipp** malt
-   hinterher ffmpeg: eine gefüllte Scheibe plus fünf wachsende Ringe an der
-   Tippstelle — iOS zeichnet keinen Zeiger auf, und ohne Markierung springt das
-   Teilen-Blatt aus dem Nichts auf.
+   landet daneben. Und: Die Aufnahme schreibt praktisch **nur bei
+   Bildwechseln** — ein stehendes Teilen-Blatt landet nicht im Film, egal wie
+   lange man wartet. Der Halt am Ende entsteht deshalb im Schnitt
+   (`tpad=stop_mode=clone`). Ein Tipp direkt nach einem Wisch wird
+   verschluckt; dazwischen warten.
+
+   **Zoom und Fingertipp macht danach ein Skript, keine Aufnahme-App:**
+
+   ```bash
+   .venv/bin/python scripts/highlight_clip.py roh.mp4 fertig.mp4 --beat 5.4:1068:690
+   ```
+
+   `--beat SEKUNDE:X:Y` ist der Klick — Zeit und Ort kennt das Skript, das die
+   Aufnahme gesteuert hat, es muss nichts geraten werden. Der Zoom fährt kurz
+   vor dem Klick hinein, hält kurz und fährt heraus; die Pointe (Toast,
+   Teilen-Blatt) liegt außerhalb des Ausschnitts und wird beim Zurückfahren
+   sichtbar, deshalb `--hold` klein halten (0,5–0,6 s). Für Telefon-Clips
+   `--zoom 1.5`, für Browser 1,6 — mehr schneidet die Zeile ab, um die es
+   geht. Der Tipp wird als Scheibe mit Ringen ins gezoomte Bild gezeichnet.
+
+   **Ein Teilen-Clip braucht ein Ziel.** Im Simulator gibt es keinen
+   Messenger, und auf einem echten iPhone stünden im Teilen-Blatt die eigenen
+   Kontakte — beides scheidet aus. Was geht: die **Erinnerungen**-App. Ihre
+   Teilen-Erweiterung ist im Simulator dabei, öffnet sichtbar eine andere App
+   und zeigt den Ratslotse-Link als neue Erinnerung; ein Tipp auf den Haken
+   führt zurück. Vier Beats also (Blättern, Teilen, „Erinnerungen“, Haken),
+   jeden als eigene Aufnahme, dann zusammenschneiden — die Nähte liegen auf
+   identischen Standbildern und fallen nicht auf.
 
    Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
    die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der
