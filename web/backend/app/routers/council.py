@@ -8,7 +8,7 @@ import re
 import time
 import unicodedata
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, timedelta
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -142,12 +142,17 @@ def committees(_user: dict = Depends(require_active), store: CouncilStore = Depe
     naechste = store.naechste_sitzung_je_gremium()
     seit_jahresbeginn = date(date.today().year, 1, 1).isoformat()
     beschluesse = store.beschlusszahl_je_gremium(seit_jahresbeginn)
+    # Zwölf Monate zurück, nicht seit Jahresbeginn: Im Januar wäre die Zahl
+    # sonst null und die Auskunft „kostet dich nichts" schlicht falsch.
+    vor_zwoelf = (date.today() - timedelta(days=365)).isoformat()
+    sitzungen = store.sitzungszahl_je_gremium(vor_zwoelf)
     details = [
         {
             "name": name,
             "next_date": naechste.get(name, {}).get("session_date"),
             "next_time": naechste.get(name, {}).get("session_time"),
             "decisions_year": beschluesse.get(name, 0),
+            "sessions_year": sitzungen.get(name, 0),
         }
         for name in names
     ]

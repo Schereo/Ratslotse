@@ -4665,13 +4665,18 @@
               "string",
               "null"
             ]
+          },
+          "sessions_year": {
+            "title": "Sessions Year",
+            "type": "integer"
           }
         },
         "required": [
           "name",
           "next_date",
           "next_time",
-          "decisions_year"
+          "decisions_year",
+          "sessions_year"
         ],
         "title": "CommitteeDetail",
         "type": "object"
