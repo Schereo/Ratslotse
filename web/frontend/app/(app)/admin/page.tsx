@@ -24,6 +24,7 @@ type JobLauf = {
 type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLauf | null };
 type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
+type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
@@ -223,6 +224,173 @@ function fetchAge(hours: number): string {
   return `${Math.round(hours / 24)} Tagen`;
 }
 
+/** Der Trichter je Registrierungswoche — wo neue Konten abreißen.
+ *
+ *  Die eine Regel, die diese Ansicht trägt: **erreicht IMMER gegen erreichbar**.
+ *  Ein Konto von gestern kann „kam binnen 30 Tagen wieder" noch nicht geschafft
+ *  haben; zeigte man nur die erreichte Zahl, läse sich jede frische Woche als
+ *  Totalausfall. Stufen, für die noch niemand alt genug ist, stehen deshalb als
+ *  „noch offen" da und nicht als 0.
+ */
+function KohortenSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "cohorts"],
+    queryFn: () => api.get<AdminKohorten>("/admin/stats/cohorts?weeks=8"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Der Trichter kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const k = data.kennzahlen;
+  const start = data.total.find((s) => s.key === "registriert")?.n ?? 0;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Neue Konten: was daraus wird</h3>
+        <span className="text-[11.5px] text-muted-foreground">
+          letzte {data.weeks} Wochen ·{" "}
+          {data.excluded === 1
+            ? "ein Betreiber-/Testkonto nicht gezählt"
+            : `${data.excluded} Betreiber-/Testkonten nicht gezählt`}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KennzahlCard label="Haken-Quote" hint="Thema oder Gremium am 1. Tag" wert={k.haken_quote} anteil />
+        <KennzahlCard label="Kam wieder" hint="binnen 7 Tagen" wert={k.tag7} anteil />
+        <KennzahlCard label="Ohne Quelle" hint="Antworten der letzten 90 Tage" wert={k.sackgassen_quote} anteil invers />
+        <KennzahlCard label="Fragen je Konto" hint="Median, aktive Konten, 7 Tage" wert={k.fragen_median} />
+      </div>
+
+      <Card className="p-4">
+        <StatKicker>Trichter</StatKicker>
+        <div className="mt-3.5 flex flex-col gap-1.5">
+          {data.total.map((stufe) => (
+            <TrichterZeile key={stufe.key} stufe={stufe} start={start} />
+          ))}
+        </div>
+        {/* Die Legende ist nicht Zierrat: Balken und Farbe beantworten zwei
+            verschiedene Fragen, und ohne diesen Satz läse man die Farbe als
+            Aussage über die Balkenlänge. */}
+        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
+          Balkenlänge: Anteil an allen Anmeldungen. Farbe: Anteil derer, die die Stufe
+          überhaupt schon erreichen konnten.
+        </p>
+      </Card>
+
+      {data.cohorts.length > 0 && (
+        <Card className="p-4">
+          <StatKicker>Je Registrierungswoche</StatKicker>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <th className="pb-2 pr-3 font-medium">Woche ab</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Neu</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Haken</th>
+                  <th className="pb-2 pr-3 text-right font-medium">2. Tag</th>
+                  <th className="pb-2 pr-3 text-right font-medium">7 Tage</th>
+                  <th className="pb-2 text-right font-medium">30 Tage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...data.cohorts].reverse().map((kohorte) => (
+                  <tr key={kohorte.week} className="border-b border-border/60 last:border-0">
+                    <td className="py-2 pr-3 text-foreground">{formatDate(kohorte.week)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-foreground">{kohorte.n}</td>
+                    {(["haken", "tag2", "tag7", "tag30"] as const).map((key) => {
+                      const st = kohorte.stages.find((x) => x.key === key);
+                      return (
+                        <td key={key} className="py-2 pr-3 text-right tabular-nums last:pr-0">
+                          {!st || st.eligible === 0 ? (
+                            <span className="text-muted-foreground/60" title="Noch keine dieser Anmeldungen ist alt genug">
+                              –
+                            </span>
+                          ) : (
+                            <span className="text-foreground">
+                              {st.n}
+                              <span className="text-muted-foreground"> / {st.eligible}</span>
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2.5 text-[11.5px] text-muted-foreground">
+            „–" heißt: noch nicht messbar. Ein Konto von gestern kann „30 Tage" weder geschafft noch verfehlt haben.
+          </p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/** Eine Stufe als Balken: erreicht gegen erreichbar, Breite gegen den Start. */
+function TrichterZeile({ stufe, start }: { stufe: AdminKohorten["total"][number]; start: number }) {
+  const offen = stufe.eligible === 0;
+  const breite = start > 0 ? Math.round((stufe.n / start) * 100) : 0;
+  // Ampel nach Anteil DER ERREICHBAREN — nicht gegen den Start: Eine Stufe,
+  // die 4 von 4 möglichen Konten hält, ist grün, auch wenn nur 4 von 11
+  // überhaupt so weit sind.
+  const anteil = offen ? null : stufe.n / stufe.eligible;
+  const ton = anteil == null ? "bg-muted" : anteil >= 0.6 ? "bg-green-500" : anteil >= 0.3 ? "bg-amber-500" : "bg-red-500";
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[13rem_minmax(0,1fr)_auto]">
+      <span className="truncate text-[13px] text-foreground">{stufe.label}</span>
+      <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block">
+        <div className={cn("h-full rounded-full transition-[width]", ton)} style={{ width: `${breite}%` }} />
+      </div>
+      <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums">
+        {offen ? (
+          <span className="text-muted-foreground/70">noch offen</span>
+        ) : (
+          <>
+            <span className="font-semibold text-foreground">{stufe.n}</span>
+            <span className="text-muted-foreground"> von {stufe.eligible}</span>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** Eine der vier Kennzahlen. `null` heißt „keine Aussage", nicht „0 %". */
+function KennzahlCard({ label, hint, wert, anteil, invers }: {
+  label: string; hint: string; wert: number | null; anteil?: boolean; invers?: boolean;
+}) {
+  const text = wert == null
+    ? "–"
+    : anteil ? `${Math.round(wert * 100)} %` : wert.toLocaleString("de-DE");
+  // Bei „Ohne Quelle" ist klein gut — deshalb die umgekehrte Ampel.
+  const gut = wert == null ? null : invers ? wert <= 0.1 : wert >= 0.5;
+  return (
+    <Card className="p-3.5">
+      <StatKicker>{label}</StatKicker>
+      <p className={cn(
+        "mt-1.5 font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums",
+        gut == null ? "text-muted-foreground" : gut ? "text-foreground" : "text-amber-600 dark:text-amber-500",
+      )}>
+        {text}
+      </p>
+      <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+        {wert == null ? "noch keine Grundlage" : hint}
+      </p>
+    </Card>
+  );
+}
+
 function StatsTab() {
   const [range, setRange] = useState("90d");
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -303,6 +471,8 @@ function StatsTab() {
           </div>
         </Card>
       </div>
+
+      <KohortenSection />
 
       <JobsSection />
     </div>

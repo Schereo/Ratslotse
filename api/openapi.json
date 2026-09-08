@@ -496,6 +496,164 @@
         "title": "AdminJobStep",
         "type": "object"
       },
+      "AdminKennzahlen": {
+        "description": "Die vier Zahlen, an denen sich Maßnahmen messen lassen sollen.\n\nAlle ``None``, solange die Grundgesamtheit leer ist — eine Quote aus null\nKonten ist keine 0 %, sondern keine Aussage.",
+        "properties": {
+          "fragen_median": {
+            "title": "Fragen Median",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "haken_quote": {
+            "title": "Haken Quote",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sackgassen_quote": {
+            "title": "Sackgassen Quote",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tag2": {
+            "title": "Tag2",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tag30": {
+            "title": "Tag30",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tag7": {
+            "title": "Tag7",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "haken_quote",
+          "tag2",
+          "tag7",
+          "tag30",
+          "sackgassen_quote",
+          "fragen_median"
+        ],
+        "title": "AdminKennzahlen",
+        "type": "object"
+      },
+      "AdminKohorte": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminKohortenStufe"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "week": {
+            "title": "Week",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week",
+          "n",
+          "stages"
+        ],
+        "title": "AdminKohorte",
+        "type": "object"
+      },
+      "AdminKohorten": {
+        "properties": {
+          "cohorts": {
+            "items": {
+              "$ref": "#/components/schemas/AdminKohorte"
+            },
+            "title": "Cohorts",
+            "type": "array"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "integer"
+          },
+          "kennzahlen": {
+            "$ref": "#/components/schemas/AdminKennzahlen"
+          },
+          "total": {
+            "items": {
+              "$ref": "#/components/schemas/AdminKohortenStufe"
+            },
+            "title": "Total",
+            "type": "array"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weeks",
+          "excluded",
+          "cohorts",
+          "total",
+          "kennzahlen"
+        ],
+        "title": "AdminKohorten",
+        "type": "object"
+      },
+      "AdminKohortenStufe": {
+        "description": "Eine Stufe des Trichters.\n\n``n`` ist die Zahl der Konten, die diese Stufe erreicht haben; ``eligible``\ndie Zahl derer, die sie überhaupt schon erreichen KONNTEN. Bei den\nzeitlichen Stufen („noch da nach 30 Tagen\") sind das zwei verschiedene\nZahlen, und wer sie verwechselt, liest jede frische Kohorte als Totalausfall.",
+        "properties": {
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "n",
+          "eligible",
+          "window_days"
+        ],
+        "title": "AdminKohortenStufe",
+        "type": "object"
+      },
       "AdminLimits": {
         "properties": {
           "deep_limit": {
@@ -16601,6 +16759,50 @@
           }
         },
         "summary": "List Roles",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/cohorts": {
+      "get": {
+        "description": "Der Trichter je Registrierungswoche — wer bleibt, und wo es abreißt.\n\nBetreiber- und Testkonten fallen heraus; welche das sind, entscheidet die\nAdminrolle plus ``STATS_EXCLUDE_DOMAINS``. Ohne diesen Schnitt zeigte die\nStatistik zum großen Teil das eigene Klicken.",
+        "operationId": "stats_cohorts_api_admin_stats_cohorts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminKohorten"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Cohorts",
         "tags": [
           "admin"
         ]

@@ -1454,6 +1454,54 @@ class AdminGrowth(TypedDict):
     signup_clients: list[AdminClientShare]
 
 
+class AdminKohortenStufe(TypedDict):
+    """Eine Stufe des Trichters.
+
+    ``n`` ist die Zahl der Konten, die diese Stufe erreicht haben; ``eligible``
+    die Zahl derer, die sie überhaupt schon erreichen KONNTEN. Bei den
+    zeitlichen Stufen („noch da nach 30 Tagen") sind das zwei verschiedene
+    Zahlen, und wer sie verwechselt, liest jede frische Kohorte als Totalausfall.
+    """
+    key: str
+    label: str
+    n: int
+    eligible: int
+    #: Tage, die vergehen müssen, damit die Stufe erreichbar ist — oder ``None``.
+    window_days: int | None
+
+
+class AdminKohorte(TypedDict):
+    #: Montag der Registrierungswoche (ISO-Datum).
+    week: str
+    n: int
+    stages: list[AdminKohortenStufe]
+
+
+class AdminKennzahlen(TypedDict):
+    """Die vier Zahlen, an denen sich Maßnahmen messen lassen sollen.
+
+    Alle ``None``, solange die Grundgesamtheit leer ist — eine Quote aus null
+    Konten ist keine 0 %, sondern keine Aussage.
+    """
+    haken_quote: float | None
+    tag2: float | None
+    tag7: float | None
+    tag30: float | None
+    #: Anteil Antworten ohne Quelle; heute nur aus gespeicherten Gesprächen.
+    sackgassen_quote: float | None
+    #: Median der Fragen je aktivem Konto, letzte 7 Tage.
+    fragen_median: float | None
+
+
+class AdminKohorten(TypedDict):
+    weeks: int
+    #: Wie viele Konten als Betreiber-/Testkonten aus der Statistik fielen.
+    excluded: int
+    cohorts: list[AdminKohorte]
+    total: list[AdminKohortenStufe]
+    kennzahlen: AdminKennzahlen
+
+
 class AdminQuizArea(TypedDict):
     area_type: str
     area_key: str

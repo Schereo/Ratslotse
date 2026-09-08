@@ -3128,6 +3128,224 @@ class Store:
             out.append({"day": end.isoformat(), "n": n})
         return out
 
+    # ---- Kohorten-Trichter (Plan „Sehen und Zurückholen", Teil A) ----
+    #: Die Stufen des Trichters, in der Reihenfolge, in der man sie durchläuft.
+    #: `fenster` (Tage) heißt: Die Stufe braucht Zeit, um erreicht zu werden —
+    #: ein Konto von gestern KANN „Tag 30" noch nicht geschafft haben. Solche
+    #: Stufen weisen deshalb neben der erreichten Zahl aus, wie viele Konten
+    #: überhaupt schon so alt sind (``eligible``). Ohne diese Unterscheidung
+    #: liest sich jede frische Woche als Totalausfall, und genau das war die
+    #: Fehllesart in der ersten Auswertung („0 von 9 heute noch aktiv" —
+    #: bei Konten, die drei Tage alt waren).
+    KOHORTEN_STUFEN: tuple[tuple[str, str, int | None], ...] = (
+        ("registriert", "registriert", None),
+        ("bestaetigt", "E-Mail bestätigt", None),
+        ("setup_begonnen", "Einrichtung begonnen", None),
+        ("setup_fertig", "Einrichtung fertig", None),
+        ("haken", "Thema oder Gremium (24 h)", 1),
+        ("frage", "erste Frage gestellt", None),
+        # „Kam wieder", nicht „ist noch da": gezählt wird, wer im Fenster an
+        # IRGENDEINEM weiteren Tag aktiv war. Das ist die Frage, die sich bei
+        # zweistelligen Kontozahlen überhaupt beantworten lässt — echtes
+        # Verbleiben („war an Tag 30 aktiv") träfe fast nie jemanden und sagte
+        # nichts. Die Stufen sind dadurch sauber ineinander enthalten.
+        ("tag2", "kam wieder (2. Tag)", 2),
+        ("tag7", "kam wieder (7 Tage)", 7),
+        ("tag30", "kam wieder (30 Tage)", 30),
+    )
+
+    def _stats_ausschluss(self, domains: Iterable[str] = ()) -> set[int]:
+        """Konten, die in der Nutzungsstatistik nichts verloren haben.
+
+        Betreiber- und Testkonten sind in einem Bestand dieser Größe nicht
+        Rauschen, sondern die Mehrheit: Am 08.09.2026 stammten 15.209 von
+        23.888 Zugriffen aus EINEM Konto — dem des Betreibers. Eine Statistik,
+        die das mitzählt, misst das eigene Klicken.
+
+        Ausgeschlossen wird, wer das Recht ``admin`` hat (Betreiber und
+        Entwickler*innen) oder dessen Adresse auf einer der genannten Domänen
+        liegt (``STATS_EXCLUDE_DOMAINS``, kommagetrennt).
+
+        **Gegen das Recht, nicht gegen „hat überhaupt eine Rolle".** Die erste
+        Fassung warf jedes Konto mit einer Rollenzeile hinaus und traf damit
+        die Ratsmitglieder mit — also ausgerechnet die aufmerksamsten echten
+        Nutzer*innen. Am Prod-Bestand gemessen (08.09.2026) waren das fünf von
+        fünfzehn ausgeschlossenen Konten. Dieselbe Regel wie überall sonst:
+        geprüft wird ein RECHT, nie ein Rollenname (``kern/roles.py``).
+        """
+        from kern import roles as rollen
+
+        endungen = tuple(
+            "@" + d.strip().lstrip("@").lower() for d in domains if d and d.strip())
+        raus: set[int] = set()
+        for r in self._conn.execute("SELECT id, email, role FROM web_users").fetchall():
+            mail = (r["email"] or "").lower()
+            if endungen and mail.endswith(endungen):
+                raus.add(r["id"])
+            # `web_users.role` ist nur ein abgeleitetes Schaufenster — für
+            # Konten aus der Zeit vor `web_user_roles` aber das einzige Signal.
+            elif "admin" in rollen.permissions_for([r["role"]]):
+                raus.add(r["id"])
+        rollen_je_konto = self.web_user_roles_map()
+        for uid, ihre in rollen_je_konto.items():
+            if "admin" in rollen.permissions_for(ihre):
+                raus.add(uid)
+        return raus
+
+    def admin_kohorten(self, wochen: int = 8, ausschluss_domains: Iterable[str] = ()) -> dict:
+        """Der Trichter je Registrierungswoche — und die vier Kennzahlen.
+
+        Beantwortet die Frage, an der die Auswertung vom 08.09.2026 hängen
+        blieb: Von den Leuten, die sich anmelden, wie viele richten etwas ein,
+        und wie viele kommen wieder? Die Zahlen dafür lagen längst in den
+        Tabellen; es fehlte nur die Auswertung.
+
+        Alles ohne Betreiber- und Testkonten (``_stats_ausschluss``). Wie viele
+        das waren, steht als ``excluded`` in der Antwort — eine Statistik, die
+        stillschweigend Zeilen wegwirft, ist selbst eine Falle.
+        """
+        from datetime import date
+
+        heute = date.today()
+        raus = self._stats_ausschluss(ausschluss_domains)
+
+        # Ein Query je Tabelle statt eines Unterausdrucks je Konto: Der Bestand
+        # ist klein, die Zahl der Konten wächst aber, und das hier bleibt so
+        # linear wie es aussieht.
+        konten = [dict(r) for r in self._conn.execute(
+            "SELECT id, created_at, email_verified, setup_started_at, setup_done_at "
+            "FROM web_users WHERE created_at IS NOT NULL ORDER BY created_at").fetchall()
+            if r["id"] not in raus]
+
+        erste_aktivitaet: dict[int, list[str]] = {}
+        for r in self._conn.execute(
+                "SELECT owner_id, day FROM user_activity ORDER BY day").fetchall():
+            erste_aktivitaet.setdefault(r["owner_id"], []).append(r["day"])
+        frage_gestellt = {r["owner_id"] for r in self._conn.execute(
+            "SELECT DISTINCT owner_id FROM user_activity WHERE feature = 'ai_question'").fetchall()}
+        haken_am: dict[int, str] = {}
+        for sql in ("SELECT owner_id, MIN(created_at) a FROM topics GROUP BY owner_id",
+                    "SELECT owner_id, MIN(created_at) a FROM committee_subscriptions GROUP BY owner_id"):
+            for r in self._conn.execute(sql).fetchall():
+                frueher = haken_am.get(r["owner_id"])
+                if r["a"] and (frueher is None or r["a"] < frueher):
+                    haken_am[r["owner_id"]] = r["a"]
+
+        def montag(tag: date) -> date:
+            return tag - timedelta(days=tag.weekday())
+
+        eimer: dict[str, list[dict]] = {}
+        grenze = montag(heute) - timedelta(days=7 * (max(1, wochen) - 1))
+        for k in konten:
+            reg = date.fromisoformat(k["created_at"][:10])
+            if reg < grenze:
+                continue
+            eimer.setdefault(montag(reg).isoformat(), []).append(k)
+
+        def stufen_fuer(gruppe: list[dict]) -> list[dict]:
+            out: list[dict] = []
+            for key, label, fenster in self.KOHORTEN_STUFEN:
+                erreicht = 0
+                moeglich = 0
+                for k in gruppe:
+                    reg = date.fromisoformat(k["created_at"][:10])
+                    reif = fenster is None or (heute - reg).days >= fenster
+                    if reif:
+                        moeglich += 1
+                    if not reif:
+                        continue
+                    if key == "registriert":
+                        erreicht += 1
+                    elif key == "bestaetigt":
+                        erreicht += 1 if k["email_verified"] else 0
+                    elif key == "setup_begonnen":
+                        erreicht += 1 if k["setup_started_at"] else 0
+                    elif key == "setup_fertig":
+                        erreicht += 1 if k["setup_done_at"] else 0
+                    elif key == "haken":
+                        a = haken_am.get(k["id"])
+                        erreicht += 1 if a and a[:10] <= (reg + timedelta(days=1)).isoformat() else 0
+                    elif key == "frage":
+                        erreicht += 1 if k["id"] in frage_gestellt else 0
+                    else:  # tagN — ein WEITERER Tag, der Anmeldetag zählt nicht
+                        tage = erste_aktivitaet.get(k["id"], [])
+                        bis = (reg + timedelta(days=fenster or 0)).isoformat()
+                        erreicht += 1 if any(
+                            reg.isoformat() < t <= bis for t in tage) else 0
+                out.append({"key": key, "label": label, "n": erreicht,
+                            "eligible": moeglich, "window_days": fenster})
+            return out
+
+        kohorten = [{"week": woche, "n": len(gruppe), "stages": stufen_fuer(gruppe)}
+                    for woche, gruppe in sorted(eimer.items())]
+        alle = [k for g in eimer.values() for k in g]
+        gesamt = stufen_fuer(alle)
+
+        def quote(key: str) -> float | None:
+            s = next((x for x in gesamt if x["key"] == key), None)
+            return round(s["n"] / s["eligible"], 3) if s and s["eligible"] else None
+
+        return {
+            "weeks": wochen,
+            "excluded": len(raus),
+            "cohorts": kohorten,
+            "total": gesamt,
+            "kennzahlen": {
+                "haken_quote": quote("haken"),
+                "tag2": quote("tag2"),
+                "tag7": quote("tag7"),
+                "tag30": quote("tag30"),
+                "sackgassen_quote": self.sackgassen_quote(),
+                "fragen_median": self.fragen_median_je_konto(),
+            },
+        }
+
+    def sackgassen_quote(self, tage: int = 90) -> float | None:
+        """Anteil der Antworten, die keine einzige Quelle nennen.
+
+        Gerechnet auf den GESPEICHERTEN Gesprächen — das ist die einzige
+        Quelle, die es heute gibt, und sie deckt nur Konten mit eingeschaltetem
+        Speichern ab (am 08.09.2026: 124 von 169 Fragen). Der vollständige
+        Zähler kommt mit ``ai_answer_empty`` in ``user_activity``; bis dahin ist
+        diese Zahl eine Untergrenze der Wahrheit, keine Schätzung.
+        """
+        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).date().isoformat()
+        rows = self._conn.execute(
+            "SELECT sources FROM qa_conversation_turns WHERE created >= ?", (seit,)).fetchall()
+        if not rows:
+            return None
+        leer = 0
+        for r in rows:
+            try:
+                zitiert = (json.loads(r["sources"] or "{}") or {}).get("cited")
+            except (ValueError, TypeError):
+                zitiert = None
+            if not zitiert:
+                leer += 1
+        return round(leer / len(rows), 3)
+
+    def fragen_median_je_konto(self, tage: int = 7) -> float | None:
+        """Median der Fragen je Konto, das im Zeitraum überhaupt aktiv war.
+
+        Der Median und nicht der Mittelwert: Ein einzelnes Konto mit 108 Fragen
+        (das des Betreibers) verschöbe jeden Mittelwert so weit, dass er über
+        niemanden mehr etwas sagt.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=tage - 1)).isoformat()
+        aktiv = {r["owner_id"] for r in self._conn.execute(
+            "SELECT DISTINCT owner_id FROM user_activity WHERE day >= ?", (seit,)).fetchall()}
+        if not aktiv:
+            return None
+        fragen = {r["owner_id"]: r["c"] for r in self._conn.execute(
+            "SELECT owner_id, SUM(count) c FROM user_activity "
+            "WHERE day >= ? AND feature = 'ai_question' GROUP BY owner_id", (seit,)).fetchall()}
+        werte = sorted(fragen.get(o, 0) for o in aktiv)
+        mitte = len(werte) // 2
+        if len(werte) % 2:
+            return float(werte[mitte])
+        return round((werte[mitte - 1] + werte[mitte]) / 2, 1)
+
     def admin_growth(self, days: int | None = 90) -> dict:
         """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für
         registrierte Konten und angelegte Themen + Δ im Zeitraum + WAU. Jede
