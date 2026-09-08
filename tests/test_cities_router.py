@@ -168,14 +168,29 @@ def test_dieselbe_sache_zweimal_kostet_nur_einen_platz(client, cities_db):
     assert daten["bodies"] == ["Braunschweig", "Osnabrück"]
 
 
-def test_der_endpunkt_nennt_keine_ratsmitglieder_beim_namen(client, cities_db):
-    """Die Einordnung soll eine Organisation liefern; das Modell hält sich
-    nicht immer daran. Namen von Ratsmitgliedern anderer Städte auf eine
-    Oldenburger Beschlussseite zu heben, ist etwas anderes, als sie in deren
-    Ratsinformationssystem zu belassen."""
+def test_ratsmitglieder_stehen_mit_namen_da(client, cities_db):
+    """Wer einen Antrag stellt, tut das als Mandatsträgerin in einem
+    öffentlichen Verfahren — der Name gehört zur Sache (Tim, 08.09.2026)."""
     cities_db.put_annotation(
         "paper", "os:p:1", "classify", "2",
         {"summary": "Der Wärmeplan wird beschlossen.", "transfer": "direct",
          "originator": "Stadtverordnete Kapp, Kogge und Fraktion DIE aNDERE"}, "h")
     (eintrag,) = client.get("/api/council/decision/1/elsewhere").json()["items"]
-    assert eintrag["originator"] == "Fraktion DIE aNDERE"
+    assert eintrag["originator"] == "Stadtverordnete Kapp, Kogge und Fraktion DIE aNDERE"
+
+
+def test_bei_einer_eingabe_bleibt_der_urheber_weg(client, cities_db):
+    """Einwohneranträge kommen von Privatpersonen. Deren Namen stehen im
+    Ratsinformationssystem der jeweiligen Stadt — sie von dort auf eine
+    Oldenburger Beschlussseite zu heben, ist etwas anderes."""
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("os:p:9", "osnabrueck", "Einwohnerantrag Wärmenetz", kind="petition",
+              paper_type_raw="Einwohnerantrag", web="https://example.org/vo/9")]))
+    cities_db.put_annotation("paper", "os:p:9", "classify", "2",
+                             {"summary": "Ein Wärmenetz wird gefordert.",
+                              "transfer": "adaptable", "originator": "Anna Beispiel"}, "h9")
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:9", 0.84)])
+    (eintrag,) = client.get("/api/council/decision/1/elsewhere").json()["items"]
+    assert eintrag["paper_id"] == "os:p:9"
+    assert eintrag["originator"] is None

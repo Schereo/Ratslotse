@@ -355,46 +355,33 @@ def file_role(name: str | None, oparl_key: str) -> FileRole:
 
 # --------------------------------------------------------------- Urheber
 
-#: Wörter, die eine PERSON ankündigen. Die Wortgrenze ist wichtig:
-#: „Stadtverordnetenversammlung" ist ein Gremium und darf nicht anschlagen
-#: (nach „Stadtverordneten" folgt „v", also keine Grenze), „Frauenbeirat"
-#: ebenso wenig.
-_PERSON_RE = re.compile(
-    r"(?:stadtverordnete[rn]?|bezirksverordnete[rn]?|ratsmitglied(?:er)?|"
-    r"ratsherr|ratsfrau|abgeordnete[rn]?|herr|frau)\b", re.I)
-
-#: Wörter, an denen eine ORGANISATION zu erkennen ist. Parteikürzel gehören
-#: dazu, weil „Fraktion" nicht immer dabeisteht.
-_ORG_RE = re.compile(
-    r"(?:fraktion|gruppe|partei|verwaltung|ausschuss|beirat|verein|initiative|"
-    r"stadtverordnetenversammlung|rat der stadt|büro|cdu|spd|afd|fdp|linke|"
-    r"grüne|gruene|volt|bsw|piraten|freie wähler|die andere)", re.I)
-
-#: Woran die Aufzählung zerfällt: Komma, „und", „&", „/", Semikolon.
-_TRENNER_RE = re.compile(r"\s*(?:,|;|/|&|\bund\b)\s*", re.I)
+#: Modelle schreiben gelegentlich das WORT „null" statt eines leeren Feldes.
+_LEERE_WERTE = {"null", "none", "nil", "-", "–", "k.a.", "keine angabe", "unbekannt"}
 
 
-def display_originator(raw: str | None) -> str | None:
-    """Der Urheber, so wie er angezeigt werden darf — eine ORGANISATION.
+def display_originator(raw: str | None, kind: str | None = None) -> str | None:
+    """Der Urheber, so wie er angezeigt werden darf.
 
-    Die Einordnung soll eine Organisation liefern, nicht eine Person; das
-    Modell hält sich nicht immer daran. Gemessen am Bestand: 26 von 269
-    Urheber-Werten nannten Menschen mit Namen, etwa „Stadtverordnete Kapp,
-    Kogge, Zeller, Heigl, Raschke, Böttcher und Fraktion DIE aNDERE".
+    **Namen von Ratsmitgliedern bleiben stehen** (Tims Entscheidung
+    08.09.2026). Wer einen Antrag stellt oder eine Anfrage einreicht, tut das
+    als Mandatsträgerin in einem öffentlichen Verfahren; der Name gehört zur
+    Sache. Gemessen am Bestand stehen alle 1.860 Urheber-Angaben an Anträgen,
+    Anfragen, Änderungsanträgen, Antworten, Berichten, Vorlagen und
+    Mitteilungen — also durchweg an Papieren aus Rat und Verwaltung.
 
-    Das sind Ratsmitglieder anderer Städte. Ihre Namen stehen zwar in
-    öffentlichen Unterlagen, aber sie hier auf eine Oldenburger Beschlussseite
-    zu heben, ist etwas anderes als sie dort zu belassen — und die eigene
-    Regel des Speichers ist eindeutig: Organisation, keine Person.
+    **Bei einer Eingabe ist es umgekehrt.** Einwohneranträge, Bürgeranträge
+    und Anregungen nach § 24 GO NRW kommen von Privatpersonen. Deren Namen
+    stehen zwar im Ratsinformationssystem der jeweiligen Stadt, aber sie von
+    dort auf eine Oldenburger Beschlussseite zu heben, ist etwas anderes, als
+    sie dort zu belassen. Für ``PaperKind.PETITION`` gibt es deshalb keinen
+    Urheber — die Sache zählt, nicht wer sie eingereicht hat.
 
-    Steckt **irgendwo** ein Personen-Wort drin, bleiben nur die Glieder der
-    Aufzählung übrig, die eine Organisation nennen. Ein bloßer Nachname ohne
-    Kennzeichen („Kogge") trägt keins und fliegt damit mit raus. Bleibt nichts
-    übrig, gibt es keinen Urheber — lieber keine Angabe als eine falsche.
+    Der Bestand enthält heute **keine** Eingabe; die Regel greift für den Tag,
+    an dem eine Stadt dazukommt, die welche veröffentlicht.
     """
     text = (raw or "").strip()
-    if not text or not _PERSON_RE.search(text):
-        return text or None
-    teile = [t.strip() for t in _TRENNER_RE.split(text) if t.strip()]
-    behalten = [t for t in teile if _ORG_RE.search(t) and not _PERSON_RE.search(t)]
-    return ", ".join(behalten) or None
+    if not text or text.casefold() in _LEERE_WERTE:
+        return None
+    if (kind or "") == PaperKind.PETITION.value:
+        return None
+    return text

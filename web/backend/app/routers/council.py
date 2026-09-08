@@ -1879,8 +1879,9 @@ def decision_elsewhere(
             "summary": annotation.get("summary"),
             "instrument": annotation.get("instrument"),
             "transfer": annotation.get("transfer"),
-            # Organisation, keine Person — die Regel steht in `model.py`.
-            "originator": display_originator(annotation.get("originator")),
+            # Namen von Ratsmitgliedern bleiben, Eingaben von Privatleuten
+            # nicht — die Regel steht in `council/cities/model.py`.
+            "originator": display_originator(annotation.get("originator"), t.get("kind")),
         })
     return {
         "decision_id": decision_id,

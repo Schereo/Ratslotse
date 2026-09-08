@@ -138,37 +138,38 @@ def test_batch_counts_und_extend():
     assert a.counts()["meetings"] == 0
 
 
-@pytest.mark.parametrize("roh,erwartet", [
-    # Der Normalfall: eine Organisation, unverändert durch.
-    ("CDU-Fraktion", "CDU-Fraktion"),
-    ("Gruppe Grüne/SPD/Volt", "Gruppe Grüne/SPD/Volt"),
-    ("Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt", "Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt"),
-    ("Verwaltung", "Verwaltung"),
-    # Person plus Fraktion: die Fraktion bleibt, der Mensch geht.
-    ("Stadtverordneter Woelki, Fraktion Die Linke", "Fraktion Die Linke"),
-    ("Fraktion AfD, Stadtverordneter Chaled-Uwe Said", "Fraktion AfD"),
-    # Sechs Nachnamen und eine Fraktion. „Kogge" trägt kein Kennzeichen und
-    # fliegt deshalb mit raus — Nachnamen ohne Kennzeichen sind sonst nicht
-    # von Organisationen zu unterscheiden.
-    ("Stadtverordnete Kapp, Kogge, Zeller, Heigl, Raschke, Böttcher und Fraktion DIE aNDERE",
-     "Fraktion DIE aNDERE"),
-    # Nur ein Mensch: dann lieber gar keine Angabe.
-    ("Ratsmitglied Alexander Garder", None),
-    ("Ratsmitglied Mierke", None),
-    # Gremien, die ein Personenwort ENTHALTEN, bleiben: nach
-    # „Stadtverordneten" folgt „v", da ist keine Wortgrenze.
-    ("Büro der Stadtverordnetenversammlung für die Fraktionen",
-     "Büro der Stadtverordnetenversammlung für die Fraktionen"),
-    ("Frauenbeirat", "Frauenbeirat"),
-    (None, None),
-    ("", None),
-    ("   ", None),
+@pytest.mark.parametrize("roh,art,erwartet", [
+    # Fraktionen und Verwaltung — der Normalfall, unverändert durch.
+    ("CDU-Fraktion", "motion", "CDU-Fraktion"),
+    ("Gruppe Grüne/SPD/Volt", "inquiry", "Gruppe Grüne/SPD/Volt"),
+    ("Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt", "amendment",
+     "Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt"),
+    # Ratsmitglieder mit Namen bleiben stehen (Tim, 08.09.2026): Wer einen
+    # Antrag stellt, tut das als Mandatsträgerin in einem öffentlichen
+    # Verfahren, der Name gehört zur Sache.
+    ("Ratsmitglied Alexander Garder", "motion", "Ratsmitglied Alexander Garder"),
+    ("Stadtverordneter Woelki, Fraktion Die Linke", "inquiry",
+     "Stadtverordneter Woelki, Fraktion Die Linke"),
+    ("Dr. Rainer Buchwald", "motion", "Dr. Rainer Buchwald"),
+    ("Jonas Wolf, Emma Volkers", "inquiry", "Jonas Wolf, Emma Volkers"),
+    # Eine EINGABE kommt von einer Privatperson. Dort zählt die Sache, nicht
+    # wer sie eingereicht hat.
+    ("Anna Beispiel", "petition", None),
+    ("Ratsmitglied Alexander Garder", "petition", None),
+    # Das Wort „null" statt eines leeren Feldes schreiben Modelle gelegentlich.
+    ("null", "motion", None),
+    ("k.A.", "motion", None),
+    (None, "motion", None),
+    ("", "motion", None),
+    ("   ", None, None),
 ])
-def test_display_originator(roh, erwartet):
-    """Organisation ja, Person nein.
+def test_display_originator(roh, art, erwartet):
+    """Ratsmitglieder ja, Eingaben von Privatleuten nein.
 
-    Gemessen am Bestand: 26 von 269 Urheber-Werten nannten Ratsmitglieder
-    anderer Städte mit Namen. Nach dieser Regel bleibt von 1.860 Angaben keine
-    einzige mit einem Personen-Wort übrig.
+    Gemessen am Bestand: Alle 1.860 Urheber-Angaben stehen an Anträgen,
+    Anfragen, Änderungsanträgen, Antworten, Berichten, Vorlagen und
+    Mitteilungen — durchweg Papiere aus Rat und Verwaltung. Eine Eingabe gibt
+    es dort heute nicht; die Regel greift für den Tag, an dem eine Stadt
+    dazukommt, die welche veröffentlicht.
     """
-    assert display_originator(roh) == erwartet
+    assert display_originator(roh, art) == erwartet
