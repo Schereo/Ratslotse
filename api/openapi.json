@@ -4569,6 +4569,66 @@
         "title": "CityStats",
         "type": "object"
       },
+      "CityTopicMatch": {
+        "description": "Das kuratierte Stadtthema zu einer Frage — oder nichts.\n\n``match`` ist ``None``, wenn keins passt, und das ist der Normalfall: An\nden fünfzehn echten Fragen vom 08.09.2026 traf es bei vieren. Die\nOberfläche zeigt dann ihren eigenen Weg (vorbefülltes Themen-Formular),\nnicht etwa eine leere Kachel.",
+        "properties": {
+          "already": {
+            "title": "Already",
+            "type": "boolean"
+          },
+          "match": {
+            "description": "Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,\nWohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die\nEntitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.",
+            "properties": {
+              "context": {
+                "title": "Context",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "title": "Description",
+                "type": "string"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "months": {
+                "title": "Months",
+                "type": "integer"
+              },
+              "n": {
+                "title": "N",
+                "type": "integer"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "n",
+              "context",
+              "key",
+              "months"
+            ],
+            "title": "CityTopicSuggestion",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "match",
+          "already"
+        ],
+        "title": "CityTopicMatch",
+        "type": "object"
+      },
       "CityTopicSuggestion": {
         "description": "Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,\nWohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die\nEntitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.",
         "properties": {
@@ -23171,6 +23231,51 @@
           }
         },
         "summary": "Latest Hits",
+        "tags": [
+          "topics"
+        ]
+      }
+    },
+    "/api/topics/match": {
+      "get": {
+        "description": "Passt eine FRAGE zu einem kuratierten Stadtthema?\n\nDie Brücke von „ich habe etwas gefragt\" zu „das Produkt meldet sich bei\nmir\". Wer nach dem Radverkehr fragt, bekommt das fertige Thema\n*Radverkehr* mit einer am Bestand kalibrierten Beschreibung — statt eines\nFormulars, in das er eine Frage tippt, die als Thema nicht funktioniert.\n\n**Deterministisch und ohne Modell:** ein Satz Muster aus\n``council.city_topics`` gegen den Fragetext. Der Endpunkt darf deshalb bei\njeder Antwort gefragt werden; er kostet eine Regex und eine Kontoabfrage.\n\n``n`` und ``months`` fehlen hier bewusst — die Zahl der Beschlüsse\nberechnet ``/topics/suggestions`` mit einem Scan über den Bestand, und\ndafür ist dies der falsche Ort. Wer den Vorschlag annimmt, sieht die Zahl\nunmittelbar danach an seinem angelegten Thema.",
+        "operationId": "topic_match_api_topics_match_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 300,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityTopicMatch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Topic Match",
         "tags": [
           "topics"
         ]

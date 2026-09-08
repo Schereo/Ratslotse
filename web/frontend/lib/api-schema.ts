@@ -4372,6 +4372,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/topics/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Topic Match
+         * @description Passt eine FRAGE zu einem kuratierten Stadtthema?
+         *
+         *     Die Brücke von „ich habe etwas gefragt" zu „das Produkt meldet sich bei
+         *     mir". Wer nach dem Radverkehr fragt, bekommt das fertige Thema
+         *     *Radverkehr* mit einer am Bestand kalibrierten Beschreibung — statt eines
+         *     Formulars, in das er eine Frage tippt, die als Thema nicht funktioniert.
+         *
+         *     **Deterministisch und ohne Modell:** ein Satz Muster aus
+         *     ``council.city_topics`` gegen den Fragetext. Der Endpunkt darf deshalb bei
+         *     jeder Antwort gefragt werden; er kostet eine Regex und eine Kontoabfrage.
+         *
+         *     ``n`` und ``months`` fehlen hier bewusst — die Zahl der Beschlüsse
+         *     berechnet ``/topics/suggestions`` mit einem Scan über den Bestand, und
+         *     dafür ist dies der falsche Ort. Wer den Vorschlag annimmt, sieht die Zahl
+         *     unmittelbar danach an seinem angelegten Thema.
+         */
+        get: operations["topic_match_api_topics_match_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics/overview-seen": {
         parameters: {
             query?: never;
@@ -6499,6 +6533,39 @@ export interface components {
             ris_vendor: string;
             /** State */
             state: string;
+        };
+        /**
+         * CityTopicMatch
+         * @description Das kuratierte Stadtthema zu einer Frage — oder nichts.
+         *
+         *     ``match`` ist ``None``, wenn keins passt, und das ist der Normalfall: An
+         *     den fünfzehn echten Fragen vom 08.09.2026 traf es bei vieren. Die
+         *     Oberfläche zeigt dann ihren eigenen Weg (vorbefülltes Themen-Formular),
+         *     nicht etwa eine leere Kachel.
+         */
+        CityTopicMatch: {
+            /** Already */
+            already: boolean;
+            /**
+             * CityTopicSuggestion
+             * @description Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
+             *     Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
+             *     Entitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.
+             */
+            match: {
+                /** Context */
+                context: string | null;
+                /** Description */
+                description: string;
+                /** Key */
+                key: string;
+                /** Months */
+                months: number;
+                /** N */
+                n: number;
+                /** Name */
+                name: string;
+            } | null;
         };
         /**
          * CityTopicSuggestion
@@ -16371,6 +16438,37 @@ export interface operations {
             };
         };
     };
+    topic_match_api_topics_match_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityTopicMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     uebersicht_gesehen_api_topics_overview_seen_post: {
         parameters: {
             query?: never;
@@ -16659,4 +16757,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c7253c15a45f3e87ed07cdb52dccdabaad8eab98113ddaf7fe6a8fa81759fb44
+// vertrag-sha256: a40cfd7da7b77914513862732e73bc3bcaf75a321432c786c24c0723a06cb1d7

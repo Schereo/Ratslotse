@@ -43,9 +43,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from kern.store import Store
 from council.store import CouncilStore
 
-from ..antworten import (MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet, Subscriptions,
-                         TopicDecisions, TopicDescription, TopicHit, TopicHitList, TopicSuggestions,
-                         UnreadTopicHits)
+from ..antworten import (CityTopicMatch, MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet,
+                         Subscriptions, TopicDecisions, TopicDescription, TopicHit, TopicHitList,
+                         TopicSuggestions, UnreadTopicHits)
 from ..clients import client_kind
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
@@ -643,6 +643,41 @@ def _ohne_eigenen_ortsbereich(council: CouncilStore, kandidaten: list[dict], pla
     eigener = place.name.casefold()
     return [k for k in kandidaten
             if eigener not in zugehoerig.get(k.get("slug") or "", set())]
+
+
+@router.get("/match")
+def topic_match(
+    q: Annotated[str, Query(max_length=300)] = "",
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> CityTopicMatch:
+    """Passt eine FRAGE zu einem kuratierten Stadtthema?
+
+    Die Brücke von „ich habe etwas gefragt" zu „das Produkt meldet sich bei
+    mir". Wer nach dem Radverkehr fragt, bekommt das fertige Thema
+    *Radverkehr* mit einer am Bestand kalibrierten Beschreibung — statt eines
+    Formulars, in das er eine Frage tippt, die als Thema nicht funktioniert.
+
+    **Deterministisch und ohne Modell:** ein Satz Muster aus
+    ``council.city_topics`` gegen den Fragetext. Der Endpunkt darf deshalb bei
+    jeder Antwort gefragt werden; er kostet eine Regex und eine Kontoabfrage.
+
+    ``n`` und ``months`` fehlen hier bewusst — die Zahl der Beschlüsse
+    berechnet ``/topics/suggestions`` mit einem Scan über den Bestand, und
+    dafür ist dies der falsche Ort. Wer den Vorschlag annimmt, sieht die Zahl
+    unmittelbar danach an seinem angelegten Thema.
+    """
+    from council.city_topics import match_question
+
+    t = match_question(q)
+    if t is None:
+        return {"match": None, "already": False}
+    vorhanden = any(vorhandenes.name == t.name for vorhandenes in store.get_topics(user["id"]))
+    return {
+        "match": {"key": t.key, "name": t.name, "description": t.description,
+                  "context": t.context, "n": 0, "months": 0},
+        "already": vorhanden,
+    }
 
 
 @router.get("/suggestions")

@@ -730,6 +730,20 @@ class CityTopicSuggestion(TopicSuggestion):
     months: int
 
 
+class CityTopicMatch(TypedDict):
+    """Das kuratierte Stadtthema zu einer Frage — oder nichts.
+
+    ``match`` ist ``None``, wenn keins passt, und das ist der Normalfall: An
+    den fünfzehn echten Fragen vom 08.09.2026 traf es bei vieren. Die
+    Oberfläche zeigt dann ihren eigenen Weg (vorbefülltes Themen-Formular),
+    nicht etwa eine leere Kachel.
+    """
+    match: CityTopicSuggestion | None
+    #: Hat das Konto dieses Thema schon? Dann ist der Vorschlag erledigt, und
+    #: die Oberfläche sagt das, statt ein Duplikat anzubieten.
+    already: bool
+
+
 class TopicSuggestions(TypedDict):
     #: Kuratierte Stadtthemen mit Substanz, die aktivsten zuerst. Anders als
     #: die übrigen Listen NICHT um die eigenen Themen bereinigt: Die Liste ist
