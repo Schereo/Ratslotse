@@ -343,6 +343,55 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 
 ---
 
+## Städte-Speicher: der einmalige Backfill
+
+`data/cities.sqlite` (Ratsdokumente der Vergleichsstädte, `council/cities`)
+entsteht **nicht** allein aus dem Wochen-Cron. `check_cities.py` schaut je
+Stadt 60 Tage zurück — das hält den Bestand aktuell, baut ihn aber nie auf.
+Der Aufbau ist ein einmaliger Lauf je Stadt:
+
+```bash
+# Oldenburg: kein Netz, Minuten — der Adapter liest council.sqlite
+python scripts/cities_backfill.py --run --body oldenburg
+# Die fünf mit OParl: je Stadt Stunden, ein Abruf je Sekunde je Host
+for stadt in osnabrueck braunschweig muenster potsdam magdeburg; do
+  python scripts/cities_backfill.py --run --body "$stadt" --since 2023-01-01
+done
+```
+
+Danach einordnen und indizieren (beides über `check_cities.py` oder von Hand
+über `council.cities.pipeline`). Die Einordnung kostet rund 0,31 $ je 1.000
+Vorlagen; `CITIES_ANNOTATE_MAX` deckelt sie je Lauf, damit ein Rückstand über
+mehrere Wochen abgebaut wird statt an einem Sonntag teuer zu werden.
+
+**Reihenfolge beachten:** erst ernten, dann einordnen, dann indizieren — der
+Index baut auf Text *und* Einordnung auf, und die Nachbarschaften entstehen
+zuletzt über alle Städte zusammen.
+
+**Platz:** Der Speicher wächst mit der Historie; drei Jahre über fünf Städte
+plus Oldenburg seit 2018 sind rund 600 MB. `check_herzschlag.py` schaut auf
+den freien Platz, aber vor dem ersten Lauf lohnt ein Blick.
+
+**Nie zwei Läufe auf dieselbe Datei.** `--parallel` erntet mehrere Städte
+gleichzeitig in getrennte Rohdateien; das ist erlaubt. Zwei Prozesse, die
+beide in `cities.sqlite` schreiben, sind es nicht — SQLite quittiert das mit
+`database is locked`, und im Probelauf starb der unterlegene Thread still.
+
+**Kennzahlen des Wochenlaufs:** `papers_total` und `papers_oldenburg` stehen
+im Admin-Panel unter *Statistik → Cron-Jobs*. Oldenburg eigens, weil es die
+Stadt ist, gegen die alles verglichen wird: Fällt die Zahl, fehlt dem
+Vergleich die eine Seite — und zwar still, weil die anderen Städte
+weiterlaufen.
+
+**Lokal zum Arbeiten:** `python scripts/lokale_daten.py hol --mit-staedten`
+und `setz --mit-staedten` nehmen den Speicher vom Server mit. Ohne den
+Schalter bleibt alles wie bisher; 600 MB will nicht jede*r auf dem Notebook.
+Eine Abspeckung wie bei der Rats-Datenbank braucht es nicht — es stehen
+ausschließlich öffentliche Ratsdokumente anderer Städte darin, keine Konten,
+keine Personendaten.
+
+---
+
 ## Backups
 
 `scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken

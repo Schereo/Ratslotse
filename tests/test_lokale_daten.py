@@ -108,3 +108,37 @@ def test_nur_lesen_kommt_an_eine_wal_datenbank(tmp_path):
             verbindung.close()
     finally:
         auf.close()
+
+
+def test_der_staedte_speicher_kommt_nur_auf_zuruf():
+    """Er ist rund 600 MB groß und für die Arbeit an einer Oberfläche ohne
+    Belang. Wer ihn ohne Schalter mitzöge, zwänge ihn allen auf."""
+    quelle = SKRIPT.read_text()
+    assert "--mit-staedten" in quelle, "der Schalter fehlt"
+    baum = ast.parse(quelle)
+    # `hol` und `setz` selbst dürfen den Städte-Speicher nicht anfassen —
+    # dafür gibt es die beiden eigenen Funktionen.
+    for k in ast.walk(baum):
+        if isinstance(k, ast.FunctionDef) and k.name in ("hol", "setz"):
+            namen = {n.id for n in ast.walk(k) if isinstance(n, ast.Name)}
+            assert "STAEDTE_ABZUG" not in namen, (
+                f"`{k.name}` fasst den Städte-Speicher an — er gehört in "
+                f"`{k.name}_staedte`, das nur mit --mit-staedten läuft.")
+
+
+def test_der_staedte_speicher_wird_nicht_abgespeckt():
+    """Anders als die Rats-Datenbank: In ihm stehen ausschließlich
+    öffentliche Ratsdokumente anderer Städte — keine Konten, keine
+    Personendaten. Eine Abspeckung wäre eine zweite Wahrheit neben der
+    Löschliste, die niemand pflegt."""
+    quelle = SKRIPT.read_text()
+    baum = ast.parse(quelle)
+    for k in ast.walk(baum):
+        if isinstance(k, ast.FunctionDef) and k.name == "hol_staedte":
+            quelltext = ast.get_source_segment(quelle, k) or ""
+            assert "scp" in quelltext, "hol_staedte lädt die Datei unverändert"
+            assert "DROP" not in quelltext.upper(), (
+                "hol_staedte speckt ab — dann bräuchte es eine gepflegte Liste")
+            break
+    else:
+        raise AssertionError("hol_staedte fehlt")

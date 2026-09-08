@@ -99,6 +99,11 @@ def main() -> dict:
         nachher = {z["id"]: z["papers"] for z in main_store.stats()}
         zaehler["papers_new"] = sum(nachher.get(k, 0) - vorher.get(k, 0) for k in nachher)
         zaehler["papers_total"] = sum(nachher.values())
+        # Oldenburg eigens: Es ist die Stadt, gegen die alles verglichen wird,
+        # und der Adapter liest ohne Zeitfenster aus der Rats-Datenbank. Fällt
+        # die Zahl (Bestand 09/2026: 5.945), fehlt dem Vergleich die eine
+        # Seite — und zwar still, weil die anderen Städte weiterlaufen.
+        zaehler["papers_oldenburg"] = nachher.get("oldenburg", 0)
     finally:
         main_store.close()
 
