@@ -1848,6 +1848,39 @@ class Store:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def accounts_without_hook(self, older_than_hours: int = 48, limit: int = 200) -> list[dict]:
+        """Bestätigte Konten, die WEDER ein Thema NOCH ein Gremium haben.
+
+        Die Lücke, die ``setups_to_remind`` offen lässt. Jene Abfrage verlangt
+        ein **begonnenes** Setup (``setup_step >= 1``) — und genau daran ging
+        die Gruppe vorbei, um die es hier geht: Am 08.09.2026 hatten sieben von
+        neun neuen Konten den Assistenten nie angefangen, fünf standen am Ende
+        ohne jeden Haken da. Für die gab es keinen einzigen Anlass, sich je
+        wieder bei ihnen zu melden — auch keine Erinnerung.
+
+        **Gezählt wird der Haken, nicht der Schritt.** Wer Themen oder Abos
+        hat, bekommt nichts, egal wie weit der Assistent kam; wer keine hat,
+        bekommt die Mail, auch wenn er formal „fertig" ist. Das ist der
+        Unterschied zwischen „hat aufgehört zu klicken" und „hat nichts,
+        worüber wir ihn informieren könnten".
+
+        Dieselbe Zurückhaltung wie bei der Setup-Erinnerung, und dieselbe
+        Marke: ``setup_reminded_at``. Wer schon eine bekommen hat, bekommt
+        keine zweite — die beiden Anlässe teilen sich das eine Mal.
+        """
+        cutoff = (datetime.utcnow() - timedelta(hours=older_than_hours)).isoformat(timespec="seconds")
+        rows = self._conn.execute(
+            "SELECT id, email, display_name, setup_step, created_at FROM web_users u "
+            "WHERE u.created_at <= ? "
+            "  AND u.setup_reminded_at IS NULL "
+            "  AND u.status = 'active' AND u.email_verified = 1 "
+            "  AND NOT EXISTS (SELECT 1 FROM topics t WHERE t.owner_id = u.id) "
+            "  AND NOT EXISTS (SELECT 1 FROM committee_subscriptions s WHERE s.owner_id = u.id) "
+            "ORDER BY u.created_at LIMIT ?",
+            (cutoff, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def mark_setup_reminded(self, user_id: int) -> None:
         with self._conn:
             self._conn.execute(
