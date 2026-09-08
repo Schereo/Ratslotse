@@ -82,6 +82,12 @@ OEFFENTLICH = {
     # Ratsinformationssystemen anderer Städte — nichts Persönliches, nichts
     # Kontobezogenes. Hinter dem Schalter `andere-staedte`.
     ("get", "/api/council/decision/{decision_id}/elsewhere"),
+    # „Ideen aus anderen Städten": dieselbe Begründung eine Ebene weiter.
+    # Was hier steht, sind Ratsdokumente anderer Kommunen und ein Urteil
+    # darüber, ob Oldenburg dasselbe schon hat — nichts Persönliches,
+    # nichts Kontobezogenes. Hinter dem Schalter `ideen-anderswo`.
+    ("get", "/api/council/cities/ideas"),
+    ("get", "/api/council/cities/ideas/fields"),
     # „Mein Viertel" (/api/districts/projects, /lookup) stand hier bis 09/2026.
     # Seit dem Umzug auf die vereinte Stadtkarte liegt alles davon hinter der
     # Anmeldung (STADTKARTE-PLAN.md, Schritt 5).

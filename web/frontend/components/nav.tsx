@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
-  CalendarDays, BarChart3, Trophy, Sparkles, Command,
+  CalendarDays, BarChart3, Trophy, Sparkles, Command, Lightbulb,
   MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -589,6 +589,7 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
   const { user, logout } = useAuth();
   const openFeedbackUnread = useUnreadFeedback(darfAdmin(user));
   const viertel = useFeature("mein-viertel");
+  const ideen = useFeature("ideen-anderswo");
   const viertelZiel = useViertelZiel(viertel && !!user);
   // Hintergrund einfrieren, solange das Sheet offen ist.
   useEffect(() => {
@@ -660,6 +661,10 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
           {viertel && <MehrZeile href={viertelZiel} icon={MapPinned} label="Mein Viertel" onClose={onClose} />}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
+          {/* Kein Platz in der Tab-Leiste (Tim: „wir dürfen das Nav nicht
+              bloaten") — die Ideen stehen hier, direkt hinter der Analyse, weil
+              sie dieselbe Frage aus der anderen Richtung stellen. */}
+          {ideen && <MehrZeile href="/council/ideen" icon={Lightbulb} label="Ideen anderswo" onClose={onClose} />}
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
               die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom

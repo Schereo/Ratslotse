@@ -48,6 +48,7 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          ConversationsDeleted, CouncilMembers, CouncilRecess, CouncilWeekPreview,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
+                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
                          PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
@@ -89,6 +90,13 @@ ELSEWHERE_LIMIT = 6
 #: ist ein gelegentlich verlorener guter Treffer knapp darunter — ein leerer
 #: Block ist ehrlicher als ein voller aus Zufallstreffern.
 ELSEWHERE_MIN_SCORE = 0.70
+
+#: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat, und was sich
+#: lohnen könnte. „vorhanden“ und „lohnt nicht“ sind über die Filter
+#: erreichbar — sie gehören zur Antwort, nur nicht in die erste Ansicht.
+IDEEN_STATUS_VORGABE = ("missing", "partial")
+IDEEN_WORTH_VORGABE = ("yes", "maybe")
+IDEEN_PRO_SEITE = 30
 
 #: Der Haushalts-Bereich ist Ratsmitgliedern (und Admins) vorbehalten — 20
 #: Routen unter ``/budget…``, eine Dependency für alle. Wer eine neue anlegt,
@@ -1793,6 +1801,111 @@ def decisions(
         if s:
             r["subvote_summary"] = s
     return {"total": total, "decisions": rows}
+
+
+@router.get("/cities/ideas/fields")
+def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaFields:
+    """Je Themenfeld, wie viele Ideen dort liegen — die Übersicht.
+
+    **Öffentlich**, wie die Beschluss-Seiten: Es stehen ausschließlich
+    Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+    dasselbe schon hat.
+    """
+    felder: list[IdeaFieldSummary] = [
+        {"field": r["field"], "total": int(r["total"] or 0),
+         "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),
+         "present": int(r["present"] or 0), "worth_yes": int(r["worth_yes"] or 0)}
+        for r in cities.idea_fields()]
+    return {"fields": felder}
+
+
+@router.get("/cities/ideas")
+def cities_ideas(
+    field: str,
+    status: str = ",".join(IDEEN_STATUS_VORGABE),
+    worth: str = ",".join(IDEEN_WORTH_VORGABE),
+    body: str | None = None,
+    page: int = 1,
+    per_page: int = IDEEN_PRO_SEITE,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> IdeasResponse:
+    """Was andere Städte haben und Oldenburg fehlt — je Themenfeld.
+
+    **Ein Feld ist Pflicht.** Eine Liste über alle zwölf Felder wäre ein
+    Fließband ohne Anfang; die Übersicht (``/cities/ideas/fields``) ist der
+    Einstieg, und von dort geht es in ein Feld.
+
+    Filtern, Sortieren und Zählen macht die Abfrage (``CitiesStore.ideas``),
+    nicht das Frontend — sonst blätterte die App durch alles, um zu zählen.
+
+    **Die Belege werden hier aufgelöst.** Das Urteil nennt Kennungen wie
+    ``oldenburg:paper:28119``; die Karte soll auf die Beschluss-Seite führen.
+    Die Übersetzung braucht die Rats-Datenbank und gehört deshalb hierher,
+    nicht in den Städte-Speicher.
+    """
+    zeilen, gesamt, zaehler = cities.ideas(
+        field,
+        status=tuple(x for x in status.split(",") if x),
+        worth=tuple(x for x in worth.split(",") if x),
+        body_id=body,
+        limit=max(1, min(per_page, 100)),
+        offset=max(0, (page - 1) * per_page))
+
+    from council.cities.model import display_originator
+    from council.cities.registry import BODIES
+
+    items: list[Idea] = []
+    for r in zeilen:
+        klasse = json.loads(r["classify_json"] or "{}")
+        urteil = json.loads(r["fit_json"] or "{}")
+        items.append({
+            "paper_id": r["id"], "body_id": r["body_id"],
+            "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
+                          else (r["body_name"] or r["body_id"])),
+            "name": r["name"] or "", "date": r.get("date"),
+            "kind": r.get("kind") or "other", "web": r.get("web"),
+            "outcome": (cities.outcome_for_paper(r["id"]) or {}).get("outcome") or "none",
+            "field": klasse.get("field"), "instrument": klasse.get("instrument"),
+            "summary": klasse.get("summary"), "transfer": klasse.get("transfer") or "",
+            "competence": klasse.get("competence"),
+            "originator": display_originator(klasse.get("originator"), r.get("kind")),
+            "status": urteil.get("status") or "", "reason": urteil.get("reason") or "",
+            "worth": urteil.get("worth") or "", "why_worth": urteil.get("why_worth") or "",
+            "obstacles": urteil.get("obstacles"),
+            "confidence": urteil.get("confidence") or "",
+            "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
+        })
+    return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
+            "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
+
+
+def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence]:
+    """``oldenburg:paper:28119`` → der Beschluss dahinter, wenn es einen gibt.
+
+    Anträge aus Anlagen (``…:att:…``) und der Themenfeld-Rückblick tragen
+    keine Vorlagen-Id; sie fallen hier weg. Auf der Karte stünde sonst eine
+    Zeile ohne Titel und ohne Ziel.
+    """
+    from council.cities.evidence import kvonr_aus
+
+    aus: list[IdeaEvidence] = []
+    for kennung in kennungen[:3]:
+        kvonr = kvonr_aus(str(kennung))
+        if kvonr is None:
+            continue
+        vorlage = store.get_vorlage(kvonr)
+        stationen = store.neueste_stationen_fuer([kvonr], [])
+        jung = max(stationen, key=lambda s: s.get("session_date") or "", default=None)
+        beschluss = store.get_decision(jung["id"]) if jung else None
+        aus.append({
+            "decision_id": beschluss["id"] if beschluss else None,
+            "kvonr": kvonr,
+            "title": (beschluss or {}).get("title") or (vorlage or {}).get("title") or "",
+            "date": (beschluss or {}).get("session_date"),
+            "outcome": (beschluss or {}).get("outcome"),
+        })
+    return [b for b in aus if b["title"]]
 
 
 @router.get("/decision/{decision_id}/elsewhere")

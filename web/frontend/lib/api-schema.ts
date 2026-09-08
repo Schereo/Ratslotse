@@ -2184,6 +2184,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Ideas
+         * @description Was andere Städte haben und Oldenburg fehlt — je Themenfeld.
+         *
+         *     **Ein Feld ist Pflicht.** Eine Liste über alle zwölf Felder wäre ein
+         *     Fließband ohne Anfang; die Übersicht (``/cities/ideas/fields``) ist der
+         *     Einstieg, und von dort geht es in ein Feld.
+         *
+         *     Filtern, Sortieren und Zählen macht die Abfrage (``CitiesStore.ideas``),
+         *     nicht das Frontend — sonst blätterte die App durch alles, um zu zählen.
+         *
+         *     **Die Belege werden hier aufgelöst.** Das Urteil nennt Kennungen wie
+         *     ``oldenburg:paper:28119``; die Karte soll auf die Beschluss-Seite führen.
+         *     Die Übersetzung braucht die Rats-Datenbank und gehört deshalb hierher,
+         *     nicht in den Städte-Speicher.
+         */
+        get: operations["cities_ideas_api_council_cities_ideas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/ideas/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Idea Fields
+         * @description Je Themenfeld, wie viele Ideen dort liegen — die Übersicht.
+         *
+         *     **Öffentlich**, wie die Beschluss-Seiten: Es stehen ausschließlich
+         *     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+         *     dasselbe schon hat.
+         */
+        get: operations["cities_idea_fields_api_council_cities_ideas_fields_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/committees": {
         parameters: {
             query?: never;
@@ -7801,6 +7857,110 @@ export interface components {
             highest_id: number;
         };
         /**
+         * Idea
+         * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+         */
+        Idea: {
+            /** Body Id */
+            body_id: string;
+            /** Body Name */
+            body_name: string;
+            /** Competence */
+            competence: string | null;
+            /** Confidence */
+            confidence: string;
+            /** Date */
+            date: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["IdeaEvidence"][];
+            /** Field */
+            field: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Obstacles */
+            obstacles: string | null;
+            /** Originator */
+            originator: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Paper Id */
+            paper_id: string;
+            /** Reason */
+            reason: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
+            /** Transfer */
+            transfer: string;
+            /** Web */
+            web: string | null;
+            /** Why Worth */
+            why_worth: string;
+            /** Worth */
+            worth: string;
+        };
+        /**
+         * IdeaEvidence
+         * @description Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
+         */
+        IdeaEvidence: {
+            /** Date */
+            date: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * IdeaFieldSummary
+         * @description Ein Themenfeld auf der Übersicht.
+         */
+        IdeaFieldSummary: {
+            /** Field */
+            field: string;
+            /** Missing */
+            missing: number;
+            /** Partial */
+            partial: number;
+            /** Present */
+            present: number;
+            /** Total */
+            total: number;
+            /** Worth Yes */
+            worth_yes: number;
+        };
+        /** IdeaFields */
+        IdeaFields: {
+            /** Fields */
+            fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /** IdeasResponse */
+        IdeasResponse: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Field */
+            field: string;
+            /** Items */
+            items: components["schemas"]["Idea"][];
+            /** Page */
+            page: number;
+            /** Per Page */
+            per_page: number;
+            /** Total */
+            total: number;
+        };
+        /**
          * ImportanceBreakdown
          * @description Warum ein Beschluss als wichtig gilt (``council.importance``).
          *
@@ -12766,6 +12926,62 @@ export interface operations {
             };
         };
     };
+    cities_ideas_api_council_cities_ideas_get: {
+        parameters: {
+            query: {
+                field: string;
+                status?: string;
+                worth?: string;
+                body?: string | null;
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeasResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_idea_fields_api_council_cities_ideas_fields_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaFields"];
+                };
+            };
+        };
+    };
     committees_api_council_committees_get: {
         parameters: {
             query?: never;
@@ -15886,4 +16102,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: bdd2c54923e18e1161b4cf23000debce283a21e06418496b6509dc7f65a9e6f9
+// vertrag-sha256: 3490159ac8700c47364d3d1e33973372851abfcd24d1721fd1b8a93d9ef612e6

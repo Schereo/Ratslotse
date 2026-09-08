@@ -77,6 +77,15 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Der Block lag vier Wochen auf dev, und mindestens zwei Nutzer*innen "
                     "mit Mandat haben die Treffer als brauchbar bestätigt.",
     ),
+    "ideen-anderswo": Feature(
+        key="ideen-anderswo",
+        description="„Ideen aus anderen Städten“: je Themenfeld, was andere Räte "
+                    "beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
+                    "und dem Weg zum Original (council/cities, Annotator `fit`).",
+        fertig_wenn="Tim hat zwei Themenfelder durchgesehen und die Urteile für "
+                    "tragfähig erklärt. Bis dahin ist die Seite auf dev sichtbar "
+                    "und auf Prod nicht.",
+    ),
     "wahlabend": Feature(
         key="wahlabend",
         description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "

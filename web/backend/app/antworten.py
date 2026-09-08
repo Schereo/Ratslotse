@@ -1345,6 +1345,68 @@ class ElsewhereItem(TypedDict):
     originator: str | None
 
 
+class IdeaEvidence(TypedDict):
+    """Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin."""
+    #: Die Beschluss-Id, wenn ein Beschluss dahintersteht. Dann verlinkt die
+    #: Karte intern; sonst bleibt der Beleg eine Zeile ohne Ziel.
+    decision_id: int | None
+    kvonr: int | None
+    title: str
+    date: str | None
+    outcome: str | None
+
+
+class Idea(TypedDict):
+    """Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat."""
+    paper_id: str
+    body_id: str
+    body_name: str
+    name: str
+    date: str | None
+    kind: str
+    web: str | None
+    outcome: str
+    field: str | None
+    instrument: str | None
+    summary: str | None
+    transfer: str
+    competence: str | None
+    originator: str | None
+    #: Das Urteil aus `council/cities/fit.py`.
+    status: str
+    reason: str
+    worth: str
+    why_worth: str
+    obstacles: str | None
+    confidence: str
+    evidence: list[IdeaEvidence]
+
+
+class IdeasResponse(TypedDict):
+    field: str
+    total: int
+    page: int
+    per_page: int
+    #: Je Status die Zahl der Ideen im Feld — für die Filter-Chips, damit die
+    #: Zahl nicht erst durch Blättern sichtbar wird.
+    counts: dict[str, int]
+    items: list[Idea]
+
+
+class IdeaFieldSummary(TypedDict):
+    """Ein Themenfeld auf der Übersicht."""
+    field: str
+    total: int
+    missing: int
+    partial: int
+    present: int
+    worth_yes: int
+
+
+class IdeaFields(TypedDict):
+    fields: list[IdeaFieldSummary]
+
+
 class ElsewhereResponse(TypedDict):
     decision_id: int
     items: list[ElsewhereItem]
