@@ -1961,7 +1961,7 @@ private struct DecisionTemplateStory: View {
                 Text(title).font(RatsFont.body(16, weight: .semibold))
             }
             if let excerpt = template.excerpt, !excerpt.isEmpty {
-                Text(excerpt).font(RatsFont.body(14)).foregroundStyle(RatsColor.bodyText).lineSpacing(4)
+                DecisionTemplateExcerpt(text: excerpt)
             }
             if let department = template.department {
                 RatsLabel(department, .building2)
@@ -1976,6 +1976,41 @@ private struct DecisionTemplateStory: View {
             }
         }
         .ratsCard()
+    }
+}
+
+/// Der Sachverhalt kommt seit 09/2026 ungekürzt vom Server — manche laufen über
+/// zehntausend Zeichen. Deshalb erst fünf Zeilen, der Rest auf Tippen (dieselbe
+/// Grammatik wie im Web).
+private struct DecisionTemplateExcerpt: View {
+    let text: String
+    @State private var isExpanded = false
+
+    private var isLong: Bool { text.count > 420 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(text)
+                .font(RatsFont.body(14))
+                .foregroundStyle(RatsColor.bodyText)
+                .lineSpacing(4)
+                .lineLimit(isExpanded || !isLong ? nil : 5)
+            if isLong {
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { isExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(isExpanded ? "Weniger anzeigen" : "Mehr anzeigen")
+                            .font(RatsFont.body(12.5, weight: .semibold))
+                        RatsIcon(.chevronDown, size: 11)
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    }
+                    .foregroundStyle(RatsColor.primary)
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
