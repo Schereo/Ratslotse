@@ -31,9 +31,20 @@ import textwrap
 PROMPT_CITIES_FIT = """Du prüfst, ob die Stadt Oldenburg (Oldb) sich mit einer Sache schon
 befasst hat — und ob es sich lohnt, sie dort zu beantragen.
 
-Du bekommst EINE Vorlage aus dem Rat einer anderen Stadt und BELEGE aus Oldenburg:
-die inhaltlich nächsten Oldenburger Vorlagen, Treffer der Volltextsuche und einen
-Rückblick auf das Themenfeld. Jeder Beleg trägt eine KENNUNG.
+Du bekommst EINE Vorlage aus dem Rat einer anderen Stadt und BELEGE aus Oldenburg.
+Jeder Beleg trägt eine KENNUNG und in Klammern seine ART:
+- "Beschluss": ein Beschluss des Oldenburger Rates, mit Abstimmungsergebnis.
+  Der stärkste Beleg — hier steht, was tatsächlich entschieden wurde.
+- "Vorlage": eine Oldenburger Ratsvorlage. Ob sie beschlossen wurde, steht
+  hier NICHT — eine Vorlage allein belegt eine Befassung, keinen Beschluss.
+- "Fundstelle in einer Vorlage": ein Textabschnitt aus einem größeren Dokument.
+  Vorsicht: Der Rest des Dokuments kann von etwas ganz anderem handeln.
+- "Rückblick aufs Themenfeld": was Oldenburg in dem Feld gerade beschäftigt.
+  KONTEXT, kein Beleg — er kann ein Urteil begleiten, nie tragen.
+
+Steht bei einem Beleg "von N Suchwegen gefunden", haben mehrere unabhängige
+Suchen dasselbe Papier gefunden. Das ist ein starkes Zeichen, dass es wirklich
+um dieselbe Sache geht.
 
 {steckbrief}
 
@@ -221,6 +232,29 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Fremde Ratsvorlagen — die Einträge",
         "description": "Der Batch. Platzhalter: {items}.",
         "template": "EINTRÄGE:\n{items}",
+    },
+    "cities_evidence_terms": {
+        "title": "Städtevergleich – Suchbegriffe für die Belege",
+        "description":
+            "Übersetzt eine fremde Idee in die Wörter, unter denen Oldenburg "
+            "dieselbe Sache führen würde. Platzhalter: {instrument}, {summary}, "
+            "{title}. Läuft je Vorlage einmal beim Sammeln der Belege — nicht im "
+            "Request, sondern im Wochen-Cron.",
+        "template": (
+            "Eine andere Stadt hat diese Sache beschlossen oder beantragt. Nenne "
+            "4–7 deutsche Suchbegriffe, unter denen die Stadt OLDENBURG dieselbe "
+            "Sache in ihren Ratsvorlagen führen würde.\n\n"
+            "Nimm das Verwaltungsdeutsch, nicht die Alltagssprache: Wer nach "
+            "„Außengastronomie“ sucht, findet in Oldenburg „Sondernutzungssatzung“; "
+            "wer „Lernbegleiter“ sucht, findet „Schulbegleitung“. Substantive und "
+            "nahe Synonyme, KEINE Ortsnamen, keine Floskeln wie „Antrag“, "
+            "„Beschluss“, „Verwaltung“. Nur die Begriffe, durch Leerzeichen "
+            "getrennt.\n\n"
+            "INSTRUMENT: {instrument}\n"
+            "WORUM ES GEHT: {summary}\n"
+            "TITEL: {title}\n"
+            "SUCHBEGRIFFE:"
+        ),
     },
     "cities_fit_system": {
         "title": "Fremde Vorlage: Hat Oldenburg das schon, und lohnt es sich?",

@@ -174,7 +174,11 @@ ANNOTATORS: dict[str, Annotator] = {
         payload=OldenburgFit,
         # Ein Aufruf je Vorlage: Jede hat ihre eigenen Belege, ein Batch
         # teilte sie sich und das Modell verwechselte, welcher zu welcher gehört.
-        batch_size=1, input_chars=3500, max_tokens=4000, needs_index=True,
+        # 6.000 statt 4.000 seit dem Ausbau auf vier Beleg-Arme: Zwölf Belege
+        # statt acht heißen mehr abzuwägen, und ein zu knappes Budget liefert
+        # keine Fehlermeldung, sondern eine ABGESCHNITTENE Antwort mit Status
+        # 200 — im Prüfstand als „unlesbare Antwort“ sichtbar geworden.
+        batch_size=1, input_chars=3500, max_tokens=6000, needs_index=True,
         gut_wenn="eval/run_cities_fit.py hält fünf Schranken. Zwei sind harte "
                  "Zusagen und stehen bei NULL: erfundene Beleg-Kennungen und "
                  "falsche „vorhanden“ (Oldenburg habe etwas, das fehlt — in "

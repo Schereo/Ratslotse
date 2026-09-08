@@ -64,6 +64,7 @@ machen es trotzdem brauchbar:
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 import statistics
 import sys
@@ -160,7 +161,14 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
         # Beleg-Disziplin: Nur Kennungen, die dem Modell vorlagen — und eine
         # Behauptung über Oldenburg braucht mindestens eine.
         erlaubt = {b["id"] for b in f["evidence"]}
-        tragend = {b["id"] for b in f["evidence"] if b["kind"] in ("neighbor", "fts")}
+        # Die tragenden Arten kommen aus dem BETRIEB, nicht aus einer zweiten
+        # Liste hier. Als sie hier fest standen, kannte der Prüfstand nach dem
+        # Ausbau auf vier Arme nur noch zwei davon — und meldete ein Urteil,
+        # das einen Oldenburger BESCHLUSS zitierte, als „nur auf den Rückblick
+        # gestützt". Zwei Fassungen derselben Regel laufen unweigerlich
+        # auseinander; das ist dieselbe Lehre wie bei `jobs.zustand`.
+        tragend = {b["id"] for b in f["evidence"]
+                   if b["kind"] in fit_modul.TRAGENDE_ARTEN}
         genannt = [str(x) for x in (got.get("evidence") or [])]
         erfunden = [k for k in genannt if k not in erlaubt]
         if erfunden:
@@ -211,15 +219,75 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
     }
 
 
+def belege_neu_schreiben() -> int:
+    """Die eingebetteten Belege aus dem heutigen Bestand neu schreiben.
+
+    Das Golden Set trägt seine Belege bei sich, damit der Eval ohne Datenbank
+    läuft. Ändert sich die Belegsuche, sind sie veraltet — und der Eval misst
+    dann einen Stand, den es nicht mehr gibt.
+
+    **Was erwartet wurde, bleibt stehen.** ``expected`` und ``judgment`` sind
+    Handarbeit; sie werden hier nie angefasst. Fällt ein erwarteter Beleg aus
+    der neuen Liste heraus, wird das GEMELDET, nicht repariert — genau das ist
+    die Messung, um die es geht.
+    """
+    import council.cities.evidence as ev
+    from council.cities import default_paths
+    from council.cities.index import EMBED_MODEL
+    from council.cities.store import CitiesStore
+    from council.store import CouncilStore
+
+    db, _f, _r = default_paths()
+    main_store = CitiesStore(db)
+    rats = CouncilStore(WURZEL / "data" / "council.sqlite")
+    try:
+        faelle = lade_faelle()
+        matrix = main_store.chunk_matrix(EMBED_MODEL, "oldenburg")
+        einordnung = main_store.annotations_for("classify", "2")
+        fehlt: list[str] = []
+        ohne_papier = 0
+        for f in faelle:
+            papier = main_store.paper(f["id"])
+            if not papier:
+                ohne_papier += 1
+                continue
+            klasse = einordnung.get(f["id"]) or {
+                "instrument": f.get("instrument"), "field": f.get("field")}
+            belege = ev.evidence_for(main_store, rats, papier, klasse, EMBED_MODEL,
+                                     chunk_matrix=matrix)
+            f["evidence"] = [asdict(b) for b in belege]
+            offen = set(f["expected"]["evidence"]) - {b.id for b in belege}
+            if offen:
+                fehlt.append(f"{f['name'][:60]}: {', '.join(sorted(offen))}")
+    finally:
+        main_store.close()
+        rats.close()
+
+    CASES.write_text(json.dumps(faelle, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"{len(faelle)} Fälle geschrieben ({ohne_papier} ohne Papier im Bestand).")
+    if fehlt:
+        print(f"\n{len(fehlt)} erwartete Belege stehen NICHT mehr in der Liste:")
+        for zeile in fehlt:
+            print(f"  - {zeile}")
+        print("\nDas ist die Messung, nicht ein Fehler des Schreibens.")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", help="Modell (Vorgabe: das des aktiven Annotators)")
     p.add_argument("--runs", type=int, default=1,
                    help="wie oft messen (bei 40 Fällen ist ein Fall 2,5 Punkte)")
+    p.add_argument("--belege-neu", action="store_true",
+                   help="die eingebetteten Belege aus dem Bestand neu schreiben "
+                        "(braucht data/cities.sqlite und data/council.sqlite)")
     p.add_argument("--save", action="store_true", help="Ergebnis als Baseline ablegen")
     p.add_argument("--compare", action="store_true", help="gegen die letzte Baseline")
     a = p.parse_args()
+
+    if a.belege_neu:
+        return belege_neu_schreiben()
 
     ann = get_annotator("fit")
     model = a.model or ann.model

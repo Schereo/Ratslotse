@@ -45,6 +45,21 @@ def rats(tmp_path):
     store.close()
 
 
+@pytest.fixture(autouse=True)
+def feste_suchbegriffe(monkeypatch):
+    """Die Belegsuche fragt ein Modell nach Oldenburger Suchwörtern.
+
+    In diesen Tests geht es um die Logik von `fit`, nicht um die Wortwahl
+    eines Modells — und ein echter Aufruf würde jede Zählung von
+    Modellaufrufen verfälschen. Deshalb fest: die tragenden Wörter des
+    Instruments, also genau der Rückfall, den `search_terms` selbst nimmt,
+    wenn der Aufruf scheitert.
+    """
+    from council.cities import evidence as ev
+    monkeypatch.setattr(ev, "search_terms",
+                        lambda klasse, papier: ev._woerter(klasse.get("instrument") or ""))
+
+
 @pytest.fixture()
 def cities(tmp_path):
     s = CitiesStore(tmp_path / "cities.sqlite")
@@ -154,11 +169,11 @@ def test_volltextsuche_geht_von_streng_nach_nachsichtig(cities):
     cities.fts_upsert("oldenburg:paper:901", "oldenburg", "Wärmenetz-Ausbau",
                       None, "Das Wärmenetz ausbauen und einführen", None)
     # Beide teilen „einführen"; nur eines teilt auch das spezifische Wort.
-    treffer = [t["paper_id"] for t in fts_treffer(cities, "Wärmenetz einführen", 5)]
+    treffer = [t["paper_id"] for t in fts_treffer(cities, ["Wärmenetz", "einführen"], 5)]
     assert treffer == ["oldenburg:paper:901"]
     # Findet die strenge Stufe nichts, wird gelockert statt aufgegeben.
-    assert fts_treffer(cities, "Frühwarnsystem Bevölkerung", 5)
-    assert fts_treffer(cities, "", 5) == []
+    assert fts_treffer(cities, ["Frühwarnsystem", "Bevölkerung"], 5)
+    assert fts_treffer(cities, [], 5) == []
 
 
 # ------------------------------------------------------------ Beleg-Disziplin
@@ -335,3 +350,72 @@ def test_die_behauptungen_bleiben_streng():
         with _pytest.raises(_VE):
             OldenburgFit(**{"status": "missing", "worth": "no",
                             "confidence": "low", **kaputt})
+
+
+# ------------------------------------------------------- Die vier Beleg-Arme
+
+def test_belege_kommen_aus_vier_quellen(cities, rats):
+    """Nachbar, Textabschnitt, Volltext, Beschluss — plus der Rückblick.
+
+    Jeder Arm findet etwas, das die anderen verfehlen: der Nachbar das
+    inhaltlich Verwandte, der Chunk die Sache auf Seite elf einer großen
+    Vorlage, der Volltext das wörtlich Gleiche, der Beschluss das Ergebnis
+    der Abstimmung — das einzige, was der Städte-Speicher für Oldenburg gar
+    nicht trägt.
+    """
+    from council.cities.evidence import evidence_for
+    klasse = cities.annotations_for("classify", "2")["os:p:1"]
+    belege = evidence_for(cities, rats, cities.paper("os:p:1"), klasse, MODELL)
+    arten = {b.kind for b in belege}
+    assert "neighbor" in arten, "der nächste Nachbar fehlt"
+    assert "recap" in arten, "der Themenfeld-Rückblick fehlt"
+    assert all(b.id for b in belege), "ein Beleg ohne Kennung ist nicht zitierbar"
+    assert len({b.id for b in belege}) == len(belege), "Belege müssen eindeutig sein"
+
+
+def test_beschluss_belege_tragen_ihre_eigene_kennung(rats):
+    """`oldenburg:decision:<id>` — ein anderer Raum als `oldenburg:paper:<kvonr>`.
+
+    Ein Beschluss ist nicht die Vorlage: Er trägt Ergebnis, Gremium und Datum
+    der Sitzung, in der abgestimmt wurde. `kvonr_aus` darf ihn deshalb nicht
+    für eine Vorlage halten.
+    """
+    from council.cities.evidence import _aus_beschluss, kvonr_aus
+    assert kvonr_aus("oldenburg:decision:1") is None
+    beleg = _aus_beschluss(rats, "oldenburg:decision:1", None)
+    assert beleg.kind == "decision"
+    assert beleg.title == "Kommunale Wärmeplanung"
+    assert beleg.outcome == "accepted", "das Ergebnis ist der Punkt an dieser Quelle"
+    assert "Wärmeplan" in beleg.text
+
+
+def test_beschluss_beleg_traegt_ein_urteil(rats):
+    """Ein Beschluss ist der STÄRKSTE Beleg — er muss tragend sein."""
+    assert "decision" in fit_modul.TRAGENDE_ARTEN
+    assert "chunk" in fit_modul.TRAGENDE_ARTEN
+    assert "recap" not in fit_modul.TRAGENDE_ARTEN
+
+
+def test_suchbegriffe_fallen_auf_die_instrumentwoerter_zurueck(monkeypatch):
+    """Scheitert das Modell, bleibt der Stand vor diesem Ausbau — nicht nichts."""
+    from council.cities import evidence as ev
+    monkeypatch.undo()   # die autouse-Fixture aushebeln, hier geht es um `search_terms`
+
+    def kaputt(**kw):
+        raise RuntimeError("Provider weg")
+
+    monkeypatch.setattr(ev.llm, "chat_complete", kaputt)
+    begriffe = ev.search_terms({"instrument": "Qualitätshandbuch für ASD einführen"},
+                               {"name": "Titel"})
+    assert "Qualitätshandbuch" in begriffe
+    assert ev.search_terms({}, {}) == [], "ohne Instrument gibt es nichts zu suchen"
+
+
+def test_rrf_belohnt_was_zwei_arme_finden():
+    """Der Kern der Fusion: Vier Arme liefern unvergleichbare Werte, aber jeder
+    liefert eine Rangfolge. Ein Papier, das zwei Arme finden, gehört nach oben —
+    und das ist genau das Papier, das ein Mensch als Beleg genommen hätte."""
+    from council.cities.evidence import _rrf
+    punkte = _rrf([["a", "b", "c"], ["c", "d"], ["e"]])
+    assert max(punkte, key=lambda k: punkte[k]) == "c", \
+        "c steht in zwei Listen und schlägt das a, das nur in einer vorn steht"
