@@ -715,6 +715,105 @@ def finde_ort(question: str, store=None) -> dict | None:
             "description": place.description}
 
 
+#: So viele Alternativ-Fragen höchstens. Drei sind eine Auswahl, sechs sind
+#: eine zweite Suche — und wer gerade „nichts gefunden" gelesen hat, will
+#: keine zweite Suche, sondern einen Ausweg.
+ALTERNATIVEN = 3
+
+#: So viele Volltext-Treffer je Stichwort werden angesehen. Größer heißt nur
+#: langsamer: Was der Titel-Filter darunter durchlässt, steht ohnehin vorn.
+ANKER_POOL = 60
+
+#: Wörter, die in der FRAGE stehen, aber nichts über ihren Gegenstand sagen.
+#: Ohne sie gewönne das Gerüst der Frage gegen ihren Inhalt: Zu „erzähl mir
+#: was über das Thema Giftmüll am Fliegerhorst" schlug die erste Fassung
+#: Vorträge über strukturellen Rassismus vor, weil „Thema" häufiger war als
+#: „Fliegerhorst". Ergänzt `_STOP`, das für die Suche gedacht ist und solche
+#: Gerüstwörter durchlässt.
+_GERUEST = {
+    "thema", "themen", "stand", "sachstand", "frage", "fragen", "auskunft",
+    "information", "informationen", "ergebnis", "ergebnisse", "vortrag",
+    "bericht", "berichte", "sitzung", "sitzungen", "aktuell", "aktuelle",
+    "aktuellen", "geplante", "geplanten", "letzte", "letzten",
+}
+
+
+def alternativ_fragen(store, frage: str, limit: int = ALTERNATIVEN) -> list[str]:
+    """Ausweg-Fragen, wenn die Suche zu einer Frage gar nichts fand.
+
+    **Warum es das gibt.** Am 09.08.2026 fragte jemand zweimal nach „Giftmüll
+    am Fliegerhorst" und bekam zweimal „keine Informationen" — zweimal Daumen
+    runter, einmal mit dem Grund „Falschinfo". Die Person hatte recht: Die
+    Unterlagen sagen „Sondermüll" und „Schießanlage". Sie musste sich die
+    Antwort erkämpfen („Da muss was zu sein …"), und das ist die teuerste
+    Stelle im ganzen Datenbestand.
+
+    **Wie der Ausweg gefunden wird.** Nicht mit einer zweiten, lockereren
+    Vektorsuche — die hat gerade nichts gefunden. Sondern mit dem Stichwort,
+    das die Person RICHTIG hatte: Von den Substantiven der Frage trägt meist
+    eines (hier „Fliegerhorst"), die anderen nicht. Angeboten werden dessen
+    Beschlüsse als fertige Fragen. Der Umweg über den Titel ist Absicht — er
+    nennt das Wort, nach dem die Unterlagen sortiert sind, und beantwortet
+    nebenbei „wie hättest du das nennen sollen".
+
+    **Der Anker muss im TITEL stehen.** Das ist die ganze Relevanzprüfung, und
+    sie ersetzt jede Häufigkeitsgrenze. Ohne sie schlug der Ausweg vor, was
+    der Volltext irgendwo streift: „Wie ist das Wetter morgen?" ergab
+    Grünstreifen, Sportförderung und einen Abfall-Lernpfad. Mit ihr bleibt von
+    derselben Frage genau eine Zeile übrig, und die handelt wirklich von
+    Extremwetterlagen. Teilwort-Suche ist dabei Absicht: „Leerstand" soll
+    „Wohnungsleerstand" treffen.
+
+    Eine Häufigkeitsgrenze hatte ich zuerst — sie warf ausgerechnet den Fall
+    hinaus, für den das hier gebaut ist: „Fliegerhorst" steht in über
+    zweihundert Volltexten und ist trotzdem der richtige Anker.
+
+    Nur Volltextsuche, kein Modell. Leere Liste, wenn nichts trägt: Ein
+    Vorschlag, der auch danebenliegt, ist schlechter als keiner.
+    """
+    from council.ergebnisse import _kurz  # lokal: qa wird früh importiert
+
+    begriffe = [b for b in extract_keywords(frage)
+                if len(b) >= 5 and b not in _GERUEST]
+    if not begriffe:
+        return []
+
+    beste: tuple[tuple[int, int], list[dict]] | None = None
+    for begriff in begriffe[:6]:
+        try:
+            treffer = store.search_decisions_fts(begriff, limit=ANKER_POOL)
+        except Exception:  # noqa: BLE001 — ein Ausweg darf nie die Antwort brechen
+            continue
+        if not treffer:
+            continue
+        try:
+            zeilen = [z for z in store.get_decisions_by_ids([t[0] for t in treffer])
+                      if begriff in (z.get("title") or "").lower()]
+        except Exception:  # noqa: BLE001 — dito
+            continue
+        if not zeilen:
+            continue
+        # Das SELTENERE Wort gewinnt: Es unterscheidet die Frage von allen
+        # anderen. Bei Gleichstand das mit mehr Titel-Treffern.
+        rang = (len(treffer), -len(zeilen))
+        if beste is None or rang < beste[0]:
+            beste = (rang, zeilen)
+
+    if beste is None:
+        return []
+    fragen: list[str] = []
+    for z in beste[1]:
+        kurz = _kurz(z.get("title") or "", grenze=54)
+        if len(kurz) < 8:
+            continue
+        satz = f'Was wurde zu „{kurz}“ entschieden?'
+        if satz not in fragen:
+            fragen.append(satz)
+        if len(fragen) >= limit:
+            break
+    return fragen
+
+
 def anker_ids_fuer(store, question: str) -> list[int]:
     """Bequemer Einzeiler für alle Aufrufer (Router, Deep-Research, Evals):
     erkannte Entitäten → deren Beschluss-ids, neueste zuerst. Leer bei

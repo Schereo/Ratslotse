@@ -3928,6 +3928,19 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     leer_text = ("Dazu habe ich keine passenden Beschlüsse gefunden — "
                                  "aber Wortbeiträge aus den Ratsdebatten, siehe Belege.")
                 yield _sse({"type": "token", "text": leer_text})
+                # Ein Ausweg statt einer Sackgasse. Der Server weiß in diesem
+                # Moment mehr, als die Antwort sagt: Ein Wort der Frage trägt
+                # meist, auch wenn die Frage als ganze nichts fand. Verschickt
+                # wird das über das VORHANDENE `suggestions`-Ereignis — beide
+                # Clients rendern es bereits, der Strom-Vertrag bleibt
+                # unangetastet, und „stell lieber diese Frage" ist genau die
+                # Bedeutung, die dort schon steht.
+                try:
+                    ausweg = qa.alternativ_fragen(store, q)
+                except Exception:  # noqa: BLE001 — ein Ausweg darf nie die Antwort brechen
+                    ausweg = []
+                if ausweg:
+                    yield _sse({"type": "suggestions", "questions": ausweg})
                 # Auch der Kein-Treffer-Turn gehört ins gespeicherte Gespräch —
                 # sonst klafft im Transkript eine Lücke (Review-Befund B4).
                 conversation_id = _turn_speichern(ratslotse, user, body, q_suche, leer_text, [], [],
