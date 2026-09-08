@@ -1,0 +1,120 @@
+[
+ {
+  "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467",
+  "type": "https://schema.oparl.org/1.1/Meeting",
+  "name": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1",
+  "start": "2026-08-27",
+  "organization": [
+   "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+  ],
+  "agendaItem": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.23",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.23",
+    "name": "Neue Neustadt sauber und lebenswert – Sofortmaßnahmen gegen Vermüllung und für mehr Lebensqualität",
+    "public": true,
+    "result": "vertagt"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.32",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.32",
+    "name": "Platz der Deutschen Einheit",
+    "public": true,
+    "result": "vertagt"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.39",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.39",
+    "name": "Befriste Öffnungszeiten Hegelspielplatz",
+    "public": true,
+    "result": "vertagt"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-7.40",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.40",
+    "name": "Datenerhebung und Konsequenzen gemäß §4 Grünanlagensatzung",
+    "public": true,
+    "result": "vertagt"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "",
+    "name": "CDU/FDP-Stadtratsfraktion",
+    "public": true,
+    "result": null
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124467#top-",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "",
+    "name": "Fraktion AfD",
+    "public": true,
+    "result": null
+   }
+  ]
+ },
+ {
+  "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468",
+  "type": "https://schema.oparl.org/1.1/Meeting",
+  "name": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1",
+  "start": "2026-08-31",
+  "organization": [
+   "https://ratsinfo.magdeburg.de/oparl/bodies/0001/organizations/gr/1"
+  ],
+  "agendaItem": [
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.23",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.23",
+    "name": "Neue Neustadt sauber und lebenswert – Sofortmaßnahmen gegen Vermüllung und für mehr Lebensqualität",
+    "public": true,
+    "result": "in die Ausschüsse verwiesen"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.32",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.32",
+    "name": "Platz der Deutschen Einheit",
+    "public": true,
+    "result": "in die Ausschüsse verwiesen"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.39",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.39",
+    "name": "Befriste Öffnungszeiten Hegelspielplatz",
+    "public": true,
+    "result": "in die Ausschüsse verwiesen"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-7.40",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "7.40",
+    "name": "Datenerhebung und Konsequenzen gemäß §4 Grünanlagensatzung",
+    "public": true,
+    "result": "in die Ausschüsse verwiesen"
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "",
+    "name": "Fraktion AfD",
+    "public": true,
+    "result": null
+   },
+   {
+    "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/meetings/124468#top-",
+    "type": "https://schema.oparl.org/1.1/AgendaItem",
+    "number": "",
+    "name": "Fraktion Gartenpartei",
+    "public": true,
+    "result": null
+   }
+  ]
+ }
+]

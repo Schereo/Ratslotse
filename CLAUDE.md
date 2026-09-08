@@ -257,6 +257,7 @@ automatisch mitgelesen, sobald dort gearbeitet wird:
 | Datei | Worum es geht |
 |---|---|
 | [`council/CLAUDE.md`](council/CLAUDE.md) | Scraper, Parser, Stores: Schema **und** Migration, Register mitpflegen |
+| [`council/cities/CLAUDE.md`](council/cities/CLAUDE.md) | Städte-Speicher: ein Adapter je Ratsinformationssystem, Plausibilitätsprüfung nach jeder Ernte |
 | [`kern/CLAUDE.md`](kern/CLAUDE.md) | Benachrichtigungen nur über `notify.einreihen`, LLM-Aufrufe, Cron-Takte |
 | [`web/backend/CLAUDE.md`](web/backend/CLAUDE.md) | Neue Endpunkte: Antwortform in `antworten.py`, Vertrag neu schneiden |
 | [`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md) | Nur über `lib/api.ts` ans Backend, Typen aus `lib/vertrag.ts`, Designsprache |

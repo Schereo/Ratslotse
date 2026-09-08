@@ -75,39 +75,6 @@ Nicht kommunal: Schulrecht und Lehrpersonal, Polizei, Justiz, Steuerrecht, Sozia
 
 Das Stadtgebiet gliedert sich in 31 statistische Bezirke und Stadtteile. Oldenburg ist Universitätsstadt (Carl von Ossietzky Universität, Jade Hochschule) und hat einen für deutsche Städte hohen Radverkehrsanteil."""
 
-#: Was ein Modell über Oldenburg wissen muss, um „lohnt ein Antrag?" zu
-#: beantworten. Ohne das hält es jede fremde Idee für übertragbar — und
-#: schlägt Dinge vor, die dem Land, dem Landkreis oder einem Versorger
-#: gehören.
-#:
-#: **Jede Zeile ist aus dem Bestand abgeleitet, nicht aus dem Gedächtnis:**
-#: die Ausschüsse aus ``council_sessions`` (nach Sitzungszahl), die
-#: Fraktionen aus ``council_decisions.factions``, die Eigenbetriebe und
-#: Beteiligungen aus den Vorlagentiteln, die Zahl der Ortsbereiche aus
-#: ``council_location_districts``. Die beiden Zeilen zu Rechtsrahmen und
-#: Größe sind allgemein bekannt und von Tim gegengelesen (08.09.2026).
-#:
-#: **Wer ihn ändert, ändert jedes Urteil.** Der Steckbrief geht in den
-#: System-Prompt von ``fit``; eine neue Zeile heißt neuer ``source_hash``
-#: heißt: Der nächste Lauf urteilt alles neu. Das ist so gewollt, kostet aber
-#: den vollen Preis (rund 5 $ über den Bestand).
-OLDENBURG_STECKBRIEF = """Oldenburg (Oldb) ist eine kreisfreie Stadt in Niedersachsen mit rund 170.000 Einwohnern.
-
-Rechtsrahmen: Niedersächsisches Kommunalverfassungsgesetz (NKomVG). Als kreisfreie Stadt nimmt sie auch die Aufgaben eines Landkreises wahr — anders als kreisangehörige Städte.
-
-Der Rat tagt neben dem Verwaltungsausschuss in diesen Fachausschüssen: Finanzen und Beteiligungen, Stadtplanung und Bauen, Verkehr, Stadtgrün/Umwelt/Klima, Sport, Kultur, Soziales, Schule, Jugendhilfe, Integration und Migration, Wirtschaftsförderung/Digitalisierung/internationale Zusammenarbeit, Bahnangelegenheiten. Dazu die Betriebsausschüsse für den Eigenbetrieb Gebäudewirtschaft und Hochbau und für den Abfallwirtschaftsbetrieb.
-
-Fraktionen und Gruppen im Rat (nach Zahl der eingebrachten Anträge): Bündnis 90/Die Grünen, SPD, CDU, BSW, FDP bzw. FDP/Volt, Gruppe DIE LINKE./Piratenpartei, Fossil Free, Für Oldenburg, WFO-LKR.
-
-Eigenbetriebe der Stadt: Gebäudewirtschaft und Hochbau, Hafen, Abfallwirtschaftsbetrieb.
-
-Nicht die Stadt selbst, sondern eigene Gesellschaften oder Dritte: Stadtwerke Oldenburg und EWE (Energie), Oldenburgisch-Ostfriesischer Wasserverband OOWV (Wasser), VWG (Nahverkehr), GSG Oldenburg (Wohnungsbau), Klinikum Oldenburg (Krankenhaus), Ems-Halle und Stadion Oldenburg GmbH (Sportstätten), Oldenburg Marketing und Tourismus GmbH. Der Rat kann diese Gesellschaften über seine Vertreter in Aufsichtsräten steuern, aber nicht unmittelbar beschließen, was dort geschieht.
-
-Nicht kommunal: Schulrecht und Lehrpersonal, Polizei, Justiz, Steuerrecht, Sozialgesetzgebung, Fernstraßen und Schiene — das sind Land oder Bund. Die Stadt kann dazu Resolutionen fassen und sich an Land und Bund wenden, aber nichts anordnen.
-
-Das Stadtgebiet gliedert sich in 31 statistische Bezirke und Stadtteile. Oldenburg ist Universitätsstadt (Carl von Ossietzky Universität, Jade Hochschule) und hat einen für deutsche Städte hohen Radverkehrsanteil."""
-
-
 @dataclass(frozen=True)
 class Evidence:
     """Ein Beleg aus Oldenburg, so wie er ins Modell geht und zurückkommt.

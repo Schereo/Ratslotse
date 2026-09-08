@@ -112,6 +112,24 @@ def main() -> dict:
             zaehler["errors"] += 1
             gruende["error_fit"] = f"{type(e).__name__}: {e}"
 
+        # Zuletzt: Ist der Bestand je Stadt überhaupt plausibel? Am 08.09.2026
+        # lagen vier Ernte-Fehler gleichzeitig darin, und keiner hat sich
+        # gemeldet — kein Absturz, kein roter Test, keine auffällige Zahl
+        # (council/cities/pruefung.py zählt sie auf). Ein Befund hier ist der
+        # einzige Weg, auf dem so etwas künftig von selbst auffällt.
+        try:
+            from council.cities import pruefung
+            from council.cities.index import EMBED_MODEL
+
+            befunde = pruefung.pruefe(main_store, EMBED_MODEL)
+            zaehler["implausibel"] = len(befunde)
+            for b in befunde:
+                logger.warning("unplausibel: %s", b)
+                gruende[f"pruefung_{b.body_id}_{b.regel}"] = f"{b.wert:.2f}"
+        except Exception as e:  # noqa: BLE001 — eine Prüfung kippt den Lauf nicht
+            zaehler["errors"] += 1
+            gruende["error_pruefung"] = f"{type(e).__name__}: {e}"
+
         nachher = {z["id"]: z["papers"] for z in main_store.stats()}
         zaehler["papers_new"] = sum(nachher.get(k, 0) - vorher.get(k, 0) for k in nachher)
         zaehler["papers_total"] = sum(nachher.values())

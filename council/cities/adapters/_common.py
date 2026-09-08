@@ -6,6 +6,7 @@ sie mit eingecheckten Rohobjekten statt mit einem Server.
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import replace
 from typing import Any
@@ -16,6 +17,8 @@ from council.cities.model import (
 )
 from council.cities.oparl import as_list
 from council.cities.store import CitiesStore
+
+logger = logging.getLogger("council.cities.normalize")
 
 #: ALLRIS setzt ``created``/``modified`` bei jedem Objekt auf diesen Wert.
 #: Als Datum ist er wertlos — wer ihn für echt hält, sortiert den ganzen
@@ -216,14 +219,109 @@ def papers_from(raw: CitiesStore, body_id: str, url_fix=None
     return papers, files, consultations
 
 
+def eindeutige_beratungen(consultations: list[Consultation]) -> int:
+    """Mehrfach vergebene Beratungs-Kennungen auseinanderziehen.
+
+    OParl sagt, eine ``Consultation``-Kennung bezeichne eine Beratung. Magdeburg
+    hält sich nicht daran: Dieselbe Kennung steht dort an bis zu **sechs**
+    Stationen derselben Vorlage, jede mit eigener Sitzung und eigenem Ergebnis.
+    Da die Schreibseite auf der Kennung aufsetzt, überschrieben sie sich
+    gegenseitig — von 2.004 geernteten Beratungen kamen 1.429 an, und welche
+    der sechs Stationen gewann, entschied die Reihenfolge im JSON.
+
+    Betroffene Kennungen bekommen deshalb ihre Sitzung angehängt. Das ist
+    **stabil über Läufe** (die Sitzung ändert sich nicht) und rührt alles
+    nicht an, was sich an die Spezifikation hält: Bei den vier anderen Städten
+    ist die Zahl 0.
+
+    Gibt zurück, wie viele Kennungen umgeschrieben wurden — steigt die Zahl
+    bei einer Stadt, die vorher 0 hatte, hat ihr System sich geändert.
+    """
+    gezaehlt: dict[str, int] = {}
+    for c in consultations:
+        gezaehlt[c.id] = gezaehlt.get(c.id, 0) + 1
+    mehrfach = {k for k, n in gezaehlt.items() if n > 1}
+    if not mehrfach:
+        return 0
+    geaendert = 0
+    for i, c in enumerate(consultations):
+        if c.id not in mehrfach:
+            continue
+        unterscheidung = c.meeting_id or c.agenda_item_id
+        if not unterscheidung:
+            continue
+        consultations[i] = replace(c, id=f"{c.id}#{unterscheidung}")
+        geaendert += 1
+    return geaendert
+
+
 def normalize_common(body_id: str, raw: CitiesStore, url_fix=None) -> Batch:
     """Rohablage → Batch. Der Teil, der bei allen Dialekten gleich ist."""
     meetings, items, m_files = meetings_from(raw, body_id, url_fix)
     papers, p_files, consultations = papers_from(raw, body_id, url_fix)
+    getrennt = eindeutige_beratungen(consultations)
+    if getrennt:
+        logger.info("%s: %s mehrfach vergebene Beratungs-Kennungen getrennt",
+                    body_id, getrennt)
     return Batch(
         organizations=organizations_from(raw, body_id),
         meetings=meetings, agenda_items=items,
         papers=papers, files=m_files + p_files, consultations=consultations)
+
+
+def link_within_meeting(batch: Batch) -> int:
+    """Beratungen an ihren Tagesordnungspunkt binden, wenn die Kennung ins Leere zeigt.
+
+    **Magdeburgs Schnittstelle führt zwei Kennungsräume für denselben Punkt.**
+    Die Sitzung listet ihn als ``…/meetings/123890#top-4.1``, die
+    Beratungsfolge eines Papiers nennt ihn ``…/agendaitems/480969``. Beide
+    kommen vom selben Server, und keine Kennung des einen Raums taucht im
+    anderen auf (gemessen: 0 von 307 Sitzungen nennen je eine
+    ``agendaitems``-Kennung). Über die Kennung sind sie nicht zu verbinden —
+    und ohne Verbindung hatte kein Magdeburger Papier je ein Ergebnis, obwohl
+    5.982 Tagesordnungspunkte eines tragen.
+
+    Was die Beratung aber **immer** mitliefert, ist die Sitzung. Innerhalb
+    einer Sitzung ist der Titel eindeutig genug: Der Punkt heißt wie die
+    Vorlage oder nennt ihre Nummer. Das ist derselbe Notnagel wie
+    ``link_by_title``, nur auf eine Handvoll Kandidaten statt auf den ganzen
+    Bestand angewandt — deshalb läuft er zuerst und ist der genauere.
+
+    **Bei Uneinigkeit wird nichts gebunden.** Eine Vorlage steht oft mehrfach
+    in derselben Sitzung (der Punkt 8.7 und sein Änderungsantrag 8.7.1).
+    Tragen alle Kandidaten dasselbe Ergebnis, ist die Wahl folgenlos und
+    fällt auf die kürzeste Nummer — den Hauptpunkt. Tragen sie verschiedene,
+    wäre jede Wahl geraten; dann bleibt die Beratung ohne Punkt.
+
+    Gemessen an Magdeburg (08.09.2026): 1.230 von 2.004 Beratungen gebunden,
+    588 wegen Uneinigkeit übersprungen, 186 ohne Kandidaten — **696 von 700
+    Papieren** bekommen so ihr Ergebnis.
+    """
+    bekannte = {a.id for a in batch.agenda_items}
+    je_sitzung: dict[str, list[AgendaItem]] = {}
+    for a in batch.agenda_items:
+        je_sitzung.setdefault(a.meeting_id, []).append(a)
+    titel_von: dict[str, Paper] = {p.id: p for p in batch.papers}
+
+    ergaenzt = 0
+    for i, c in enumerate(batch.consultations):
+        if not c.meeting_id or (c.agenda_item_id and c.agenda_item_id in bekannte):
+            continue
+        p = titel_von.get(c.paper_id)
+        if not p:
+            continue
+        nummer = (p.reference or "").strip()
+        kandidaten = [a for a in je_sitzung.get(c.meeting_id, [])
+                      if normalize_title(a.name) == normalize_title(p.name)
+                      or (nummer and nummer in (a.name or ""))]
+        mit_ergebnis = [a for a in kandidaten if a.outcome != "none"]
+        wahl = mit_ergebnis or kandidaten
+        if not wahl or len({a.outcome for a in wahl}) > 1:
+            continue
+        ziel = sorted(wahl, key=lambda a: (len(a.number or ""), a.number or ""))[0]
+        batch.consultations[i] = replace(c, agenda_item_id=ziel.id)
+        ergaenzt += 1
+    return ergaenzt
 
 
 def link_by_title(batch: Batch) -> int:

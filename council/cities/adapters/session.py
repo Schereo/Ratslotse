@@ -21,7 +21,8 @@ import logging
 import re
 from collections.abc import Iterator
 
-from council.cities.adapters._common import link_by_title, normalize_common
+from council.cities.adapters._common import (
+    link_by_title, link_within_meeting, normalize_common)
 from council.cities.model import Batch
 from council.cities.oparl import OParlClient, as_list
 from council.cities.registry import BodySpec
@@ -147,10 +148,17 @@ class SessionAdapter:
             fix = url_fix_for({"id": obj.get("body") or obj.get("id") or ""})
             break
         batch = normalize_common(body_id, raw, url_fix=fix)
-        # Münsters Beratungsfolge nennt den Tagesordnungspunkt, Magdeburgs
-        # nicht — derselbe Notnagel wie bei ALLRIS. Er überspringt alles,
-        # was schon verbunden ist, und kostet deshalb nichts, wo er nicht
-        # gebraucht wird.
+        # Zuerst innerhalb der Sitzung, die die Beratung selbst nennt: Das ist
+        # die engste Menge und damit der genaueste Abgleich. Magdeburg braucht
+        # ihn zwingend — seine Beratungen nennen Tagesordnungspunkte aus einem
+        # zweiten Kennungsraum, den die Sitzungen nicht kennen.
+        in_sitzung = link_within_meeting(batch)
+        if in_sitzung:
+            logger.info("%s: %s Beratungen innerhalb ihrer Sitzung gebunden",
+                        body_id, in_sitzung)
+        # Danach der grobe Abgleich für alles, was noch gar keinen Punkt hat —
+        # derselbe Notnagel wie bei ALLRIS. Er überspringt, was schon
+        # verbunden ist, und kostet deshalb nichts, wo er nicht gebraucht wird.
         ergaenzt = link_by_title(batch)
         if ergaenzt:
             logger.info("%s: %s Papier-Ergebnisse über den Titel verbunden", body_id, ergaenzt)

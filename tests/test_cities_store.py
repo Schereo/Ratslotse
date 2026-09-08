@@ -268,3 +268,29 @@ def test_transaction_klammert_und_verschachtelt_sich_weg(store):
         store.put_annotation("paper", "os:p:1", "classify", "2", {"x": 1}, "h")
     assert store.paper_count() == 1
     assert store.annotation("paper", "os:p:1", "classify", "2") is not None
+
+
+def test_stats_zeigen_den_rueckstand(store):
+    """Was fehlt, muss zählbar sein — sonst wächst es still.
+
+    Am 08.09.2026 waren 19 % des Bestands eingeordnet, und niemand hätte es
+    gemerkt: Der Wochen-Cron deckelt bei 3.000 Vorlagen je Lauf, und keine
+    Kennzahl nannte den Rückstand.
+    """
+    store.upsert_body(Body("osnabrueck", "Osnabrück", "NI", "allris4"))
+    batch = beispiel_batch()
+    batch.papers.append(Paper("os:p:2", "osnabrueck", "Zweites Papier"))
+    store.upsert_batch(batch)
+    store.put_annotation("paper", "os:p:1", "classify", "2", {"field": "verkehr"}, "h1")
+    store.put_object_embedding("paper", "os:p:1", "modell-a", "h1", b"\x00" * 8)
+
+    z = {r["id"]: r for r in store.stats("modell-a")}["osnabrueck"]
+    assert z["papers"] == 2
+    assert z["papers_unclassified"] == 1, "os:p:2 hat keine Einordnung"
+    assert z["papers_unembedded"] == 1, "os:p:2 hat keinen Vektor"
+    assert z["papers_with_outcome"] == 1, "os:p:1 hängt an einem TOP mit Ergebnis"
+
+    # Ein ANDERES Modell heißt: alles unbelegt. Die Schwelle 0,70 und die
+    # Nachbarschaften sind modellspezifisch — die Zahl muss es auch sein.
+    andere = {r["id"]: r for r in store.stats("modell-b")}["osnabrueck"]
+    assert andere["papers_unembedded"] == 2
