@@ -455,6 +455,140 @@ class CitiesStore:
             (annotator, version, object_kind))
         return {r["object_id"]: json.loads(r["payload"]) for r in rows}
 
+    # ------------------------------------------------------- Ideen-Abfrage
+
+    #: Die Fassungen, aus denen die Ideen-Seite liest. Sie stehen hier und
+    #: nicht am Aufrufer, weil die Abfrage sie im SQL braucht — und weil ein
+    #: Wechsel der Fassung genau hier auffallen soll.
+    IDEEN_CLASSIFY = ("classify", "2")
+    IDEEN_FIT = ("fit", "1")
+
+    # ---- Die drei Abfragen der Ideen-Seite ------------------------------
+    #
+    # Sie stehen als GANZE, STATISCHE Anweisungen da — mit dreifach
+    # wiederholtem FROM, kein zusammengesetztes SQL, kein ``{}``, kein
+    # ``%s``. Das ist Absicht, und die Wiederholung ist ihr Preis:
+    #
+    # ``tests/test_sql_spalten.py`` hält jedes SQL-Literal gegen das Schema.
+    # Ein Bruchstück wie ``"SELECT COUNT(*) "`` erkennt er als unvollständig
+    # und lässt es durch; ``"SELECT json_extract(f.payload, …)"`` dagegen ist
+    # für SQLite ein gültiger SELECT ohne FROM — und meldet sich als „no such
+    # column". Und alles mit Platzhaltern im Text überspringt er ganz. Beide
+    # Auswege hätten den Wächter genau dort blind gemacht, wo die neueste
+    # Abfrage steht.
+    #
+    # Leere Filter drücken sich als leere Zeichenkette aus: ``''`` heißt
+    # „alle". Sonst steht dort eine Liste in Kommas (``,missing,partial,``),
+    # und ``instr`` prüft die Zugehörigkeit. Das geht, weil beide Vokabulare
+    # geschlossen und kurz sind (``FIT_STATUS``, ``FIT_WORTH``).
+
+    _IDEEN_ZAEHLEN = (
+        "SELECT COUNT(*) "
+        "FROM papers p "
+        "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+        "  AND f.annotator=? AND f.version=? "
+        "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+        "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN bodies b ON b.id = p.body_id "
+        "WHERE json_extract(c.payload, '$.field') = ? "
+        "  AND p.body_id != 'oldenburg' "
+        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
+        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
+        "  AND (? = '' OR p.body_id = ?)")
+
+    _IDEEN_JE_STATUS = (
+        "SELECT json_extract(f.payload, '$.status') AS status, COUNT(*) AS n "
+        "FROM papers p "
+        "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+        "  AND f.annotator=? AND f.version=? "
+        "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+        "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN bodies b ON b.id = p.body_id "
+        "WHERE json_extract(c.payload, '$.field') = ? "
+        "  AND p.body_id != 'oldenburg' "
+        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
+        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
+        "  AND (? = '' OR p.body_id = ?)"
+        " GROUP BY 1")
+
+    #: Die Reihenfolge beantwortet „was soll ich lesen": erst was sich lohnt,
+    #: dann was fehlt, dann worauf sich das Modell verlässt, zuletzt das
+    #: Neueste. Sie steht im SQL, damit Blättern und Zählen dieselbe sehen.
+    _IDEEN_ZEILEN = (
+        "SELECT p.*, c.payload AS classify_json, f.payload AS fit_json, "
+        "       b.name AS body_name "
+        "FROM papers p "
+        "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+        "  AND f.annotator=? AND f.version=? "
+        "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+        "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN bodies b ON b.id = p.body_id "
+        "WHERE json_extract(c.payload, '$.field') = ? "
+        "  AND p.body_id != 'oldenburg' "
+        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
+        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
+        "  AND (? = '' OR p.body_id = ?)"
+        " ORDER BY CASE json_extract(f.payload, '$.worth') "
+        "            WHEN 'yes' THEN 0 WHEN 'maybe' THEN 1 ELSE 2 END, "
+        "          CASE json_extract(f.payload, '$.status') "
+        "            WHEN 'missing' THEN 0 WHEN 'partial' THEN 1 ELSE 2 END, "
+        "          CASE json_extract(f.payload, '$.confidence') "
+        "            WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, "
+        "          COALESCE(p.date, '') DESC, p.id LIMIT ? OFFSET ?")
+
+    def _ideen_args(self, field: str, status: Sequence[str], worth: Sequence[str],
+                    body_id: str | None) -> list[Any]:
+        """Die Platzhalter der Ideen-Abfragen, in ihrer Reihenfolge."""
+        c_ann, c_ver = self.IDEEN_CLASSIFY
+        f_ann, f_ver = self.IDEEN_FIT
+        st = "," + ",".join(status) + "," if status else ""
+        wo = "," + ",".join(worth) + "," if worth else ""
+        bo = body_id or ""
+        return [f_ann, f_ver, c_ann, c_ver, field, st, st, wo, wo, bo, bo]
+
+    def ideas(self, field: str, status: Sequence[str] = (), worth: Sequence[str] = (),
+              body_id: str | None = None, limit: int = 30,
+              offset: int = 0) -> tuple[list[dict], int, dict[str, int]]:
+        """``(zeilen, gesamt, zahl je status)`` für ein Themenfeld.
+
+        **Alles im SQL, nichts in Python.** Die naheliegende Fassung wäre
+        ``annotations_for`` zweimal aufzurufen und in Python zu filtern — das
+        lädt bei 9.000 Papieren und 1.300 Urteilen den halben Speicher in
+        jeden Request. Filtern, Sortieren und Zählen gehören ins Backend
+        (Wurzel-``CLAUDE.md``), und hier heißt Backend: in die Abfrage.
+        """
+        args = self._ideen_args(field, status, worth, body_id)
+        gesamt = int(self._conn.execute(self._IDEEN_ZAEHLEN, args).fetchone()[0])
+        zaehler = {r["status"]: r["n"]
+                   for r in self._conn.execute(self._IDEEN_JE_STATUS, args)}
+        rows = self._conn.execute(self._IDEEN_ZEILEN, args + [limit, offset])
+        return [dict(r) for r in rows], gesamt, zaehler
+
+    def idea_fields(self) -> list[dict]:
+        """Je Themenfeld die Zahlen für die Übersicht.
+
+        Eine Abfrage statt zwölf: Die Seite zeigt alle Felder nebeneinander,
+        und zwölf Rundreisen für zwölf Kacheln wären genau die Sorte
+        Frontend-Logik, die nicht ins Frontend gehört.
+        """
+        c_ann, c_ver = self.IDEEN_CLASSIFY
+        f_ann, f_ver = self.IDEEN_FIT
+        rows = self._conn.execute(
+            "SELECT json_extract(c.payload, '$.field') AS field, COUNT(*) AS total, "
+            "  SUM(json_extract(f.payload,'$.status')='missing') AS missing, "
+            "  SUM(json_extract(f.payload,'$.status')='partial') AS partial, "
+            "  SUM(json_extract(f.payload,'$.status')='present') AS present, "
+            "  SUM(json_extract(f.payload,'$.worth')='yes') AS worth_yes "
+            "FROM papers p "
+            "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+            "  AND f.annotator=? AND f.version=? "
+            "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+            "  AND c.annotator=? AND c.version=? "
+            "WHERE p.body_id != 'oldenburg' AND field IS NOT NULL "
+            "GROUP BY 1 ORDER BY worth_yes DESC, total DESC",
+            (f_ann, f_ver, c_ann, c_ver))
+        return [dict(r) for r in rows]
+
     def annotations_missing(self, object_kind: str, annotator: str, version: str,
                             body_id: str | None = None, limit: int | None = None,
                             source_hashes: dict[str, str] | None = None) -> list[dict]:

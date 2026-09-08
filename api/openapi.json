@@ -8493,6 +8493,292 @@
         "title": "HighestDecisionId",
         "type": "object"
       },
+      "Idea": {
+        "description": "Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "body_name": {
+            "title": "Body Name",
+            "type": "string"
+          },
+          "competence": {
+            "title": "Competence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "field": {
+            "title": "Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "obstacles": {
+            "title": "Obstacles",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "originator": {
+            "title": "Originator",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transfer": {
+            "title": "Transfer",
+            "type": "string"
+          },
+          "web": {
+            "title": "Web",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "why_worth": {
+            "title": "Why Worth",
+            "type": "string"
+          },
+          "worth": {
+            "title": "Worth",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "body_id",
+          "body_name",
+          "name",
+          "date",
+          "kind",
+          "web",
+          "outcome",
+          "field",
+          "instrument",
+          "summary",
+          "transfer",
+          "competence",
+          "originator",
+          "status",
+          "reason",
+          "worth",
+          "why_worth",
+          "obstacles",
+          "confidence",
+          "evidence"
+        ],
+        "title": "Idea",
+        "type": "object"
+      },
+      "IdeaEvidence": {
+        "description": "Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "kvonr",
+          "title",
+          "date",
+          "outcome"
+        ],
+        "title": "IdeaEvidence",
+        "type": "object"
+      },
+      "IdeaFieldSummary": {
+        "description": "Ein Themenfeld auf der Übersicht.",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "missing": {
+            "title": "Missing",
+            "type": "integer"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "integer"
+          },
+          "present": {
+            "title": "Present",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "worth_yes": {
+            "title": "Worth Yes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "total",
+          "missing",
+          "partial",
+          "present",
+          "worth_yes"
+        ],
+        "title": "IdeaFieldSummary",
+        "type": "object"
+      },
+      "IdeaFields": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaFieldSummary"
+            },
+            "title": "Fields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "title": "IdeaFields",
+        "type": "object"
+      },
+      "IdeasResponse": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Idea"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "total",
+          "page",
+          "per_page",
+          "counts",
+          "items"
+        ],
+        "title": "IdeasResponse",
+        "type": "object"
+      },
       "ImportanceBreakdown": {
         "description": "Warum ein Beschluss als wichtig gilt (``council.importance``).\n\n``base_score`` ist die reine Heuristik, ``score`` der angezeigte Wert.\nLiegt eine LLM-Tragweite vor, mischt der Router beide 50/50 und legt\n``impact`` dazu — sonst fehlen die letzten beiden Felder.",
         "properties": {
@@ -18030,6 +18316,123 @@
           }
         },
         "summary": "Haushalt Stellenplan",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/ideas": {
+      "get": {
+        "description": "Was andere Städte haben und Oldenburg fehlt — je Themenfeld.\n\n**Ein Feld ist Pflicht.** Eine Liste über alle zwölf Felder wäre ein\nFließband ohne Anfang; die Übersicht (``/cities/ideas/fields``) ist der\nEinstieg, und von dort geht es in ein Feld.\n\nFiltern, Sortieren und Zählen macht die Abfrage (``CitiesStore.ideas``),\nnicht das Frontend — sonst blätterte die App durch alles, um zu zählen.\n\n**Die Belege werden hier aufgelöst.** Das Urteil nennt Kennungen wie\n``oldenburg:paper:28119``; die Karte soll auf die Beschluss-Seite führen.\nDie Übersetzung braucht die Rats-Datenbank und gehört deshalb hierher,\nnicht in den Städte-Speicher.",
+        "operationId": "cities_ideas_api_council_cities_ideas_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "title": "Field",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "missing,partial",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "worth",
+            "required": false,
+            "schema": {
+              "default": "yes,maybe",
+              "title": "Worth",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "title": "Body",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Per Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeasResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Ideas",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/ideas/fields": {
+      "get": {
+        "description": "Je Themenfeld, wie viele Ideen dort liegen — die Übersicht.\n\n**Öffentlich**, wie die Beschluss-Seiten: Es stehen ausschließlich\nRatsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg\ndasselbe schon hat.",
+        "operationId": "cities_idea_fields_api_council_cities_ideas_fields_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaFields"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cities Idea Fields",
         "tags": [
           "council"
         ]
