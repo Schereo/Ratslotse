@@ -1860,7 +1860,11 @@ def decision_detail(
                 "template_number": v.get("template_number"), "title": v.get("title"),
                 "kind": v.get("kind"), "document_url": v.get("document_url"),
                 "n_pages": v.get("n_pages"),
-                "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", 2600) or None,
+                # Ungekürzt: Der Auszug IST der Bericht — bei gut der Hälfte
+                # aller Vorlagen brach er nach 2600 Zeichen mitten im Satz ab,
+                # auch hinter „Mehr anzeigen". Gekappt wird in der Anzeige
+                # (Web: line-clamp, App: lineLimit), nicht in den Daten.
+                "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", None) or None,
                 # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.
                 "office": v.get("office"),
                 "climate_impact": v.get("climate_impact"),
