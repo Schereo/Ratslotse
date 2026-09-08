@@ -655,6 +655,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/dead-ends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Dead Ends
+         * @description Fragen, auf die es keine belegte Antwort gab.
+         *
+         *     Die Liste beantwortet, was eine Quote nicht kann: *woran* es scheitert.
+         *     Der bekannteste Fall stand am 09.08.2026 im Bestand — jemand fragte
+         *     zweimal nach „Giftmüll am Fliegerhorst" und bekam „keine Informationen",
+         *     weil die Unterlagen „Sondermüll" und „Schießanlage" sagen. Ein Blick in
+         *     diese Liste hätte das an dem Tag gezeigt, an dem es passierte.
+         */
+        get: operations["stats_dead_ends_api_admin_stats_dead_ends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/events": {
         parameters: {
             query?: never;
@@ -5115,6 +5141,22 @@ export interface components {
             route: string;
             /** Trace */
             trace: string | null;
+        };
+        /**
+         * AdminSackgasse
+         * @description Eine Frage, die keine Quelle gefunden hat.
+         *
+         *     Ohne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?" ist
+         *     beides ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein
+         *     Leseprotokoll.
+         */
+        AdminSackgasse: {
+            /** Answer */
+            answer: string;
+            /** Created */
+            created: string;
+            /** Question */
+            question: string;
         };
         /** AdminSeite */
         AdminSeite: {
@@ -11946,6 +11988,37 @@ export interface operations {
             };
         };
     };
+    stats_dead_ends_api_admin_stats_dead_ends_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSackgasse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_events_api_admin_stats_events_get: {
         parameters: {
             query?: {
@@ -16580,4 +16653,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a23bb3e84dde1ba1d39794c95b0aaef5d3f9ca621fff5e4d95f51a6ad17fa70a
+// vertrag-sha256: 38a15a1f141d43464e34f93c7071d6a52e34214cd5cf9a819c46c1fe19385c55

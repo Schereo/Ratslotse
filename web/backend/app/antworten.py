@@ -1554,6 +1554,18 @@ class AdminEreignisse(TypedDict):
     empty_share: float | None
 
 
+class AdminSackgasse(TypedDict):
+    """Eine Frage, die keine Quelle gefunden hat.
+
+    Ohne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?" ist
+    beides ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein
+    Leseprotokoll.
+    """
+    question: str
+    answer: str
+    created: str
+
+
 class AdminQuizArea(TypedDict):
     area_type: str
     area_key: str
