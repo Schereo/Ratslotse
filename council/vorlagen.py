@@ -42,6 +42,26 @@ _FALLBACK_SECTION_RE = re.compile(r"^Beschlussvorschlag(?::|\s*$)")
 _NOISE_RE = re.compile(
     r"^(Seite:?\s*\d+\s*/\s*\d+.*|Ausdruck vom:.*|Vorlagen?-?\s*Nr\.?:.*|\s*-\s*\d+\s*-\s*)$"
 )
+# Der Verwaltungs-Schwanz am Ende jeder Vorlage. Die Anlagen-Liste steht auf der
+# Beschluss-Seite schon als „Dokumente & Anlagen"; hinter der Überschrift folgt
+# außerdem oft der ANGEHÄNGTE Anlagentext, der mit dem Sachverhalt nichts mehr
+# zu tun hat. Die Unterschrift setzt das PDF-Textlayer gesperrt
+# („D r . S v e n U h r h a n") — als Fließtext gelesen reiner Buchstabensalat.
+# Der „Auswirkungen"-Block bleibt bewusst drin: die Regex-Ernte
+# (``financial_impact``/``climate_impact``) ist erst für einen Bruchteil der
+# Vorlagen gefüllt, ein Schnitt dort verlöre die Angabe ersatzlos.
+_ANLAGEN_RE = re.compile(r"^Anlagen?\s*:?\s*$")
+#: Mindest-Substanz vor dem Anlagen-Schnitt: In einigen Vorlagen steht die
+#: Überschrift schon im Kopf, und ein leerer Auszug wäre schlimmer als ein
+#: langer.
+_MIN_BODY_CHARS = 300
+# „In Vertretung" nur mit gesperrtem Namen dahinter — „Im Auftrag der
+# Unfallforschung der Versicherer …" ist ein Satzanfang, keine Unterschrift.
+_SIGNATURE_RE = re.compile(
+    r"\s*(?:In\s+Vertretung|Im\s+Auftrage?|gez\.)\s+(?:\S\s){2,}\S\s*$"
+)
+#: Der gesperrte Name allein — manche Vorlagen unterschreiben ohne Formel.
+_SPACED_NAME_RE = re.compile(r"\s(?:\S\s){5,}\S\s*$")
 
 
 def parse_vorlage_page(html: str) -> dict | None:
@@ -202,10 +222,12 @@ def _entzeilen(lines: list[str]) -> list[str]:
     return out
 
 
-def excerpt(raw_text: str, chars: int = 400) -> str:
+def excerpt(raw_text: str, chars: int | None = 400) -> str:
     """A readable excerpt of a Vorlage text: starts at the first substantive
     section (Sachverhalt/Begründung/…) when one is found, drops per-page
-    boilerplate lines, collapses whitespace. Empty string when there is no text."""
+    boilerplate lines and the administrative tail (Anlagen list, signature),
+    collapses whitespace. ``chars=None`` keeps the whole text — the Beschluss
+    page shows it complete. Empty string when there is no text."""
     if not raw_text:
         return ""
     lines = [ln.strip() for ln in raw_text.splitlines()]
@@ -213,9 +235,18 @@ def excerpt(raw_text: str, chars: int = 400) -> str:
     start = next((i for i, ln in enumerate(kept) if _SECTION_RE.match(ln)), None)
     if start is None:
         start = next((i for i, ln in enumerate(kept) if _FALLBACK_SECTION_RE.match(ln)), 0)
-    text = "\n".join(_entzeilen(kept[start:]))
+    body = kept[start:]
+    gelesen = 0
+    for i, ln in enumerate(body):
+        if gelesen >= _MIN_BODY_CHARS and _ANLAGEN_RE.match(ln):
+            body = body[:i]
+            break
+        gelesen += len(ln) + 1
+    text = "\n".join(_entzeilen(body))
     text = re.sub(r"[ \t]+", " ", text).strip()
-    if len(text) > chars:
+    text = _SIGNATURE_RE.sub("", text).rstrip()
+    text = _SPACED_NAME_RE.sub("", text).rstrip()
+    if chars is not None and len(text) > chars:
         # Cut at a word boundary so the ellipsis doesn't split a word.
         cut = text[:chars].rsplit(" ", 1)[0]
         text = cut + " …"

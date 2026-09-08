@@ -81,6 +81,45 @@ def test_excerpt_fallback_and_word_boundary():
     assert vorlagen.excerpt("", 100) == ""
 
 
+def test_excerpt_ohne_grenze_bricht_nicht_ab():
+    # Der Grund für die Änderung: Auf der Beschluss-Seite stand hinter
+    # „Mehr anzeigen" trotzdem eine Ellipse — der Router kappte bei 2600
+    # Zeichen, und das traf gut die Hälfte aller Vorlagen.
+    lang = "Sachverhalt:\n" + "Wort " * 2000
+    voll = vorlagen.excerpt(lang, None)
+    assert not voll.endswith("…") and len(voll) > 5000
+    assert vorlagen.excerpt(lang, 100).endswith("…")
+
+
+def test_excerpt_schneidet_anlagen_und_unterschrift_ab():
+    raw = (
+        "Sachverhalt:\n"
+        + "Die Verwaltung berichtet ausführlich über den Sachstand. " * 8
+        + "\nFinanzielle Auswirkungen:\n"
+        "Keine. In Vertretung D r . S v e n U h r h a n\n"
+        "Anlagen:\n"
+        "Antrag der SPD-Fraktion vom 02.12.2019\n"
+    )
+    out = vorlagen.excerpt(raw, None)
+    assert "Sachstand" in out
+    # Die Kostenangabe bleibt — sie steht sonst nirgends auf der Seite.
+    assert "Finanzielle Auswirkungen" in out
+    # Gesperrte Unterschrift und Anlagen-Liste sind Verwaltungs-Schwanz.
+    assert "U h r h a n" not in out and "In Vertretung" not in out
+    assert "SPD-Fraktion" not in out
+    assert out.rstrip().endswith("Keine.")
+
+
+def test_excerpt_haelt_anlagen_im_kopf_und_satzanfang_aus():
+    # „Anlagen:" vor jeder Substanz (Kopfblock mancher Berichtsvorlagen) darf
+    # den Auszug nicht leeren …
+    kopf = "Bericht\nAnlagen:\nBericht:\n" + "Ein Vorhabenträger plant etwas. " * 20
+    assert len(vorlagen.excerpt(kopf, None)) > 300
+    # … und „Im Auftrag" ohne gesperrten Namen ist ein Satz, keine Unterschrift.
+    satz = "Sachverhalt:\nIm Auftrag der Unfallforschung wurde ein Gutachten erstellt."
+    assert vorlagen.excerpt(satz, None).endswith("Gutachten erstellt.")
+
+
 @pytest.fixture
 def store(tmp_path):
     s = CouncilStore(tmp_path / "council.sqlite")
