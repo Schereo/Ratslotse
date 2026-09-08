@@ -190,7 +190,11 @@ ERLAUBT_ZEILE = {
     "abgesetzt": re.compile(r'e\.includes|\.test\(|contains\('),
     # `alt` ist im Frontend fast immer das Bild-Attribut.
     "alt": re.compile(r'alt:\s*(hover|"|\{|`)|alt='),
-    "sonstiges": re.compile(r'sonstiges:\s*(Tag|")'),
+    # `sonstiges: "Sonstiges"` im Web, `"sonstiges": "Sonstiges"` in Swift —
+    # dieselbe Zuordnungstabelle in zwei Sprachen. Vor 09/2026 kannte der
+    # Ausdruck nur die erste Schreibweise, und die App-Seite schlug an, obwohl
+    # sie dasselbe tat.
+    "sonstiges": re.compile(r'"?sonstiges"?:\s*(Tag|")'),
     "wahlbereich": re.compile(r'^\s*\*|//'),
     # `gesamt`, `posten`, `beides`, `stadt`, `entfernt`, `geaendert`, `neu`
     # und `thema` sind daneben ganz gewoehnliche Woerter. Erlaubt sind sie

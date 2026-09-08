@@ -463,6 +463,171 @@ public struct TopicHit: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
+public struct IdeaEvidence: Codable, Sendable, Hashable, Identifiable {
+    public var id: Int { kvonr ?? decisionID ?? title.hashValue }
+    /// Die Beschluss-Id, wenn ein Beschluss dahintersteht. Dann führt die
+    /// Zeile auf seine Seite; sonst bleibt sie eine Zeile ohne Ziel.
+    public let decisionID: Int?
+    public let kvonr: Int?
+    public let title: String
+    public let date: String?
+    public let outcome: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title, date, outcome, kvonr
+        case decisionID = "decision_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        decisionID = try v.decodeIfPresent(Int.self, forKey: .decisionID)
+        kvonr = try v.decodeIfPresent(Int.self, forKey: .kvonr)
+        title = try v.decodeIfPresent(String.self, forKey: .title) ?? ""
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+        outcome = try v.decodeIfPresent(String.self, forKey: .outcome)
+    }
+
+    public init(decisionID: Int? = nil, kvonr: Int? = nil, title: String,
+                date: String? = nil, outcome: String? = nil) {
+        self.decisionID = decisionID
+        self.kvonr = kvonr
+        self.title = title
+        self.date = date
+        self.outcome = outcome
+    }
+}
+
+/// Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+///
+/// Alles außer der Kennung ist optional oder hat eine Vorgabe — dieselbe
+/// Lehre wie bei ``ElsewhereItem``: Die Ratsinformationssysteme füllen sehr
+/// unterschiedlich viel aus, und ein nicht-optionales Feld hieße,
+/// `JSONDecoder` wirft und die ganze Liste bleibt leer statt unvollständig.
+public struct Idea: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let paperID: String
+    public let bodyID: String
+    public let bodyName: String
+    public let name: String
+    public let date: String?
+    public let kind: String
+    public let web: String?
+    public let outcome: String
+    public let field: String?
+    public let instrument: String?
+    public let summary: String?
+    public let transfer: String
+    public let competence: String?
+    public let originator: String?
+    /// Das Urteil aus `council/cities/fit.py`.
+    public let status: String
+    public let reason: String
+    public let worth: String
+    public let whyWorth: String
+    public let obstacles: String?
+    public let confidence: String
+    public let evidence: [IdeaEvidence]
+
+    enum CodingKeys: String, CodingKey {
+        case name, date, kind, web, outcome, field, instrument, summary
+        case transfer, competence, originator, status, reason, worth
+        case obstacles, confidence, evidence
+        case paperID = "paper_id"
+        case bodyID = "body_id"
+        case bodyName = "body_name"
+        case whyWorth = "why_worth"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        paperID = try v.decode(String.self, forKey: .paperID)
+        bodyID = try v.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        bodyName = try v.decodeIfPresent(String.self, forKey: .bodyName) ?? bodyID
+        name = try v.decodeIfPresent(String.self, forKey: .name) ?? "Vorlage"
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+        kind = try v.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        web = try v.decodeIfPresent(String.self, forKey: .web)
+        outcome = try v.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
+        field = try v.decodeIfPresent(String.self, forKey: .field)
+        instrument = try v.decodeIfPresent(String.self, forKey: .instrument)
+        summary = try v.decodeIfPresent(String.self, forKey: .summary)
+        transfer = try v.decodeIfPresent(String.self, forKey: .transfer) ?? ""
+        competence = try v.decodeIfPresent(String.self, forKey: .competence)
+        originator = try v.decodeIfPresent(String.self, forKey: .originator)
+        status = try v.decodeIfPresent(String.self, forKey: .status) ?? ""
+        reason = try v.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        worth = try v.decodeIfPresent(String.self, forKey: .worth) ?? ""
+        whyWorth = try v.decodeIfPresent(String.self, forKey: .whyWorth) ?? ""
+        obstacles = try v.decodeIfPresent(String.self, forKey: .obstacles)
+        confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
+        evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []
+    }
+}
+
+public struct IdeasResponse: Codable, Sendable {
+    public let field: String
+    public let total: Int
+    public let page: Int
+    public let perPage: Int
+    /// Je Status die Zahl der Ideen im Feld.
+    public let counts: [String: Int]
+    public let items: [Idea]
+
+    enum CodingKeys: String, CodingKey {
+        case field, total, page, counts, items
+        case perPage = "per_page"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        field = try v.decodeIfPresent(String.self, forKey: .field) ?? ""
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        page = try v.decodeIfPresent(Int.self, forKey: .page) ?? 1
+        perPage = try v.decodeIfPresent(Int.self, forKey: .perPage) ?? 30
+        counts = try v.decodeIfPresent([String: Int].self, forKey: .counts) ?? [:]
+        items = try v.decodeIfPresent([Idea].self, forKey: .items) ?? []
+    }
+}
+
+/// Ein Themenfeld auf der Übersicht.
+public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { field }
+    public let field: String
+    public let total: Int
+    public let missing: Int
+    public let partial: Int
+    public let present: Int
+    public let worthYes: Int
+
+    enum CodingKeys: String, CodingKey {
+        case field, total, missing, partial, present
+        case worthYes = "worth_yes"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        field = try v.decodeIfPresent(String.self, forKey: .field) ?? ""
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        missing = try v.decodeIfPresent(Int.self, forKey: .missing) ?? 0
+        partial = try v.decodeIfPresent(Int.self, forKey: .partial) ?? 0
+        present = try v.decodeIfPresent(Int.self, forKey: .present) ?? 0
+        worthYes = try v.decodeIfPresent(Int.self, forKey: .worthYes) ?? 0
+    }
+}
+
+public struct IdeaFields: Codable, Sendable {
+    public let fields: [IdeaFieldSummary]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        fields = try v.decodeIfPresent([IdeaFieldSummary].self, forKey: .fields) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case fields }
+}
+
+
 /// Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss
 /// passt — der Block „Anderswo beschlossen".
 ///
