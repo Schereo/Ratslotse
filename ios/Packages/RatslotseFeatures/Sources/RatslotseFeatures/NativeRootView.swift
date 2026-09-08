@@ -888,6 +888,7 @@ struct RouteDestinationView: View {
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
         case .district(let id): CityMapView(model: model, placeID: id)
         case .quiz(let area): QuizView(model: model, area: area)
+        case .subscriptions: CommitteeSubscriptionsView(model: model)
         case .analysis: CouncilInsightsView(model: model)
         case .admin: AdminView(model: model)
         case .sharedAnswer(let token): SharedAnswerView(model: model, token: token)

@@ -22,6 +22,9 @@ public enum AppRoute: Sendable, Hashable {
     /// „Mein Viertel": ohne id die Auswahl der Ortsbereiche, mit id die Tafel.
     case district(id: String?)
     case quiz(area: String?)
+    /// Die Ausschuss-Abos samt Kalender-Abo — Ziel der Karte „Neu bei
+    /// Ratslotse" und der Abo-Meldungen (`/abos`).
+    case subscriptions
     case analysis
     case admin
     case web(URL)
@@ -56,6 +59,7 @@ public struct AppRouter: Sendable {
             return prefill == nil && share == nil ? .tab(.questions) : .question(prefill: prefill, share: share)
         case "/g": return .sharedAnswer(token: value("t"))
         case "/topics": return .tab(.topics)
+        case "/abos": return .subscriptions
         case "/quiz": return .quiz(area: value("area"))
         case "/council/sitzung":
             // Die eigenständige, ohne Konto lesbare Sitzungs-Seite — Ziel der
@@ -155,6 +159,7 @@ public struct AppRouter: Sendable {
             if let id { components.queryItems = [.init(name: "ort", value: id)] }
         case .quiz(let area):
             components.path = "/quiz"; components.queryItems = [.init(name: "area", value: area)]
+        case .subscriptions: components.path = "/abos"
         case .analysis:
             components.path = "/council"; components.queryItems = [.init(name: "tab", value: "analysis")]
         case .admin: return nil

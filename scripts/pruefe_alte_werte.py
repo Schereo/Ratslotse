@@ -239,6 +239,7 @@ ERLAUBT_STELLE = {
     ("ProfileAndQuizViews.swift", "rat"): "`art` des Personen-Profils, im Backend deutsch",
     ("ProfileAndQuizViews.swift", "beratend"): "`art` des Personen-Profils, im Backend deutsch",
     ("RatslotseAppTests.swift", "thema"): "`qtype` der Beleg-Prüfung, im Backend deutsch",
+    ("ModelDecodingTests.swift", "alt"): "Feldname `alt` der Bildbeschreibung (ReleaseMedia, wie das HTML-Attribut), kein Wert",
     ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
     ("haushalt-indicators.ts", "einwohner"): "Kennzahl-Schlüssel der Stadt (`council_indicators`) bleiben deutsch wie `steuerquote`; umbenannt wurde nur der Einwohner-Indikator des Städtevergleichs",
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
