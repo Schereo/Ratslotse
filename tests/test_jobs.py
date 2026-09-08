@@ -231,7 +231,7 @@ def test_gewoehnlicher_absturz_bleibt_ohne_kennzahlen(tmp_path, monkeypatch):
 
 
 def test_weekly_enrich_protokolliert_jeden_schritt(monkeypatch):
-    """Die Schritt-Bilanz entsteht im Lauf selbst — 18 der 20 Schritte rufen
+    """Die Schritt-Bilanz entsteht im Lauf selbst — 19 der 21 Schritte rufen
     kein ``run_guarded`` und haben deshalb keine eigene ``job_runs``-Zeile."""
     import subprocess
 
