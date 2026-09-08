@@ -17,7 +17,12 @@ Was entsteht:
 * ``nutzerin@example.org`` als normales Konto mit Themen und deren echten
   Treffern aus dem Abzug — bewusst OHNE Zusatzrolle, damit man die Sicht
   eines gewöhnlichen Kontos auch wirklich sehen kann;
-* alle drei bestätigt und aktiv, Passwort ``password123``.
+* alle drei bestätigt und aktiv, Passwort ``password123``;
+* dazu **zwölf stille Konten über acht Wochen verteilt**, mit
+  unterschiedlichem Fortschritt (manche haben eingerichtet, manche kamen
+  wieder, die meisten nicht). Ohne sie zeigt der Kohorten-Trichter im
+  Admin-Panel lokal eine einzige Woche mit drei Konten — also genau nicht
+  das, wofür er gebaut ist.
 
 ``admin@test.de`` legt die Saat ABSICHTLICH nicht an: Diese Adresse
 registrieren die Browsertests selbst (``tests/e2e/helpers.ts``), und ein
@@ -110,9 +115,72 @@ def saat(db: Path, council_db: Path | None) -> dict:
             finally:
                 rat.close()
         bericht["treffer"] = treffer
+        bericht["kohorte"] = _kohorte(store)
     finally:
         store.close()
     return bericht
+
+
+#: Die stillen Konten für den Kohorten-Trichter: (Tage seit Anmeldung,
+#: Einrichtung begonnen, Einrichtung fertig, Haken am ersten Tag, Tage, an
+#: denen das Konto wiederkam). Bewusst ein durchwachsenes Bild — ein Trichter,
+#: in dem alle alles schaffen, prüft nichts.
+KOHORTE: tuple[tuple[int, bool, bool, bool, tuple[int, ...]], ...] = (
+    (52, True, True, True, (1, 3, 9, 30)),   # der treue Fall
+    (45, True, True, True, (2, 6)),
+    (38, False, False, False, ()),           # angemeldet und nie wieder
+    (31, True, False, True, (1,)),           # Einrichtung abgebrochen
+    (24, True, True, True, (1, 4, 12)),
+    (23, False, False, False, ()),
+    (17, True, True, False, (5,)),           # Haken erst später als 24 h
+    (16, False, False, False, ()),
+    (10, True, True, True, (1, 2)),
+    (9, False, False, False, ()),
+    (3, True, True, True, (1,)),             # zu jung für „7 Tage"
+    (1, False, False, False, ()),            # zu jung für alles
+)
+
+
+def _kohorte(store) -> int:
+    """Stille Konten mit Vorgeschichte — Datum, Fortschritt, Wiederkehr.
+
+    Über den Store ginge das nicht: ``create_web_user`` setzt ``created_at``
+    auf jetzt, und genau das Datum ist hier der Punkt. Deshalb ausnahmsweise
+    direkt in die Tabellen — es ist ein Saat-Skript, kein Anwendungscode.
+    """
+    from datetime import date, timedelta
+
+    heute = date.today()
+    pw = _hash(PASSWORT)
+    angelegt = 0
+    with store._conn:
+        for i, (alter, begonnen, fertig, haken, wieder) in enumerate(KOHORTE):
+            reg = heute - timedelta(days=alter)
+            store._conn.execute(
+                "INSERT INTO web_users (email, password_hash, role, status, created_at,"
+                " email_verified, setup_started_at, setup_done_at, display_name,"
+                " signup_client, delivery_channel)"
+                " VALUES (?, ?, 'user', 'active', ?, 1, ?, ?, ?, 'web', 'email')",
+                (f"stille{i}@example.org", pw, reg.isoformat() + "T10:00:00",
+                 reg.isoformat() + "T10:05:00" if begonnen else None,
+                 reg.isoformat() + "T10:09:00" if fertig else None,
+                 f"Konto {i + 1}"))
+            uid = store._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            angelegt += 1
+            if haken:
+                store._conn.execute(
+                    "INSERT INTO committee_subscriptions (owner_id, committee_name, created_at)"
+                    " VALUES (?, 'Rat', ?)", (uid, reg.isoformat() + "T10:08:00"))
+            for tag in (0, *wieder):
+                store._conn.execute(
+                    "INSERT INTO user_activity (owner_id, day, feature, client, count)"
+                    " VALUES (?, ?, 'session', 'web', 4)",
+                    (uid, (reg + timedelta(days=tag)).isoformat()))
+            if wieder:
+                store._conn.execute(
+                    "INSERT INTO user_activity (owner_id, day, feature, client, count)"
+                    " VALUES (?, ?, 'ai_question', 'web', 2)", (uid, reg.isoformat()))
+    return angelegt
 
 
 def main() -> int:
@@ -139,7 +207,8 @@ def main() -> int:
     print(f"✓ {args.db}")
     print(f"  chef@example.org (Admin), ratsfrau@example.org (Ratsmitglied → Haushalt) "
           f"und nutzerin@example.org — Passwort {PASSWORT}")
-    print(f"  {bericht['themen']} Themen, {bericht['treffer']} Treffer")
+    print(f"  {bericht['themen']} Themen, {bericht['treffer']} Treffer, "
+          f"{bericht['kohorte']} stille Konten über acht Wochen")
     return 0
 
 
