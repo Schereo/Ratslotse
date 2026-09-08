@@ -558,7 +558,7 @@ public final class AppModel {
     private func tab(for route: AppRoute) -> AppTab {
         switch route {
         case .decision, .sessions, .person, .topic, .place: .council
-        case .quiz: .today
+        case .quiz, .subscriptions: .today
         case .analysis: .council
         case .admin: .account
         default: selectedTab

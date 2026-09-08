@@ -88,6 +88,13 @@ public actor APIClient {
 
     public func hasAccessToken() -> Bool { accessToken != nil }
 
+    /// Die volle Adresse eines Pfads, den der Server relativ nennt — Medien
+    /// wie `/neuigkeiten/2.2.0/teilen-ios.mp4`. Auf Prod ist das dieselbe
+    /// Adresse wie die der Website, lokal die des Backends.
+    nonisolated public func url(forPath path: String) -> URL {
+        baseURL.appending(path: path.hasPrefix("/") ? String(path.dropFirst()) : path)
+    }
+
     public func get<Response: Decodable & Sendable>(
         _ path: String,
         query: [URLQueryItem] = [],

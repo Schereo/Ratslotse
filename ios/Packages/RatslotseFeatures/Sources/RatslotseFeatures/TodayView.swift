@@ -15,6 +15,7 @@ struct TodayView: View {
     @State private var districts: DistrictProjectsOverview?
     @State private var topics: [Topic] = []
     @State private var pause: CouncilPause?
+    @State private var news: NewsState?
     @State private var now = Date.now
     @State private var error: String?
 
@@ -115,6 +116,13 @@ struct TodayView: View {
             }
             .ratsStaggered(2)
         }
+        // Was die neue Ausgabe gebracht hat — an derselben Stelle wie im Web
+        // (Hinweis-Slot: nach Pause und Live, vor dem Tag). Ob sie erscheint,
+        // sagt der Server (`GET /api/news`); „Alles klar" räumt sie weg.
+        if let news, let newest = news.releases.first {
+            ReleaseNewsCard(model: model, state: news, newest: newest) { markNewsSeen(newest.version) }
+                .ratsStaggered(3)
+        }
         // Nur als Ersatz für die Wochenvorschau: Steht die Woche da, führt sie
         // den heutigen Termin schon in ihrer ersten Zeile — die Karte darüber
         // sagte dasselbe ein zweites Mal (Tims Befund 01.09.2026). Ohne
@@ -129,6 +137,29 @@ struct TodayView: View {
                 model.navigation.append(.sessions(ksinr: sessionID, tops: [itemNumber]))
             }
             .ratsStaggered(3)
+        }
+    }
+
+    /// „Alles klar" auf der Karte „Neu bei Ratslotse": optimistisch weg — die
+    /// Karte soll beim Tipp verschwinden, nicht nach der Antwort. Schlägt der
+    /// Ruf fehl, kommt sie beim nächsten Laden zurück. Gemeldet wird die
+    /// Version, die die Karte GEZEIGT hat; die Marke am Konto gilt auf jedem
+    /// Gerät (dieselbe Regel wie im Web).
+    private func markNewsSeen(_ version: String) {
+        news = nil
+        struct Body: Codable, Sendable { let version: String }
+        Task { try? await model.api.sendVoid("/api/news/seen", body: Body(version: version)) }
+    }
+
+    /// Die Karte „Neu bei Ratslotse" — für dieses Konto entscheidet der Server.
+    private func loadNews() async -> NewsState? {
+        do {
+            let state: NewsState = try await model.api.get("/api/news")
+            return state
+        } catch {
+            // Eine Ausgabe erscheint ein paar Mal im Jahr — schlägt der Ruf
+            // fehl, fehlt heute die Karte, sonst nichts.
+            return nil
         }
     }
 
@@ -338,6 +369,7 @@ struct TodayView: View {
             )
             async let numberRequest: DashboardWeekNumber? = try? await model.api.get("/api/council/zahl-der-woche")
             async let pauseRequest: CouncilPause? = try? await model.api.get("/api/council/session-break")
+            async let newsRequest: NewsState? = loadNews()
             async let districtsRequest: DistrictProjectsOverview? = model.feature("mein-viertel")
                 ? try? await model.api.get("/api/districts/projects") : nil
             async let topicsRequest: [Topic]? = model.feature("mein-viertel")
@@ -354,6 +386,7 @@ struct TodayView: View {
             if let hits = await hitsRequest { latestTopicHits = hits }
             if let number = await numberRequest { weekNumber = number }
             if let newPause = await pauseRequest { pause = newPause }
+            if let newNews = await newsRequest { news = newNews }
             if let newDistricts = await districtsRequest { districts = newDistricts }
             if let newTopics = await topicsRequest { topics = newTopics }
         } catch {

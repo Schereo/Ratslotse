@@ -456,3 +456,33 @@ import Testing
     #expect(felder.fields.first?.worthYes == 35)
     #expect(felder.fields.first?.id == "verkehr")
 }
+
+/// Die Karte „Neu bei Ratslotse": Bühne (mit Aufnahme) und Liste (ohne) in
+/// derselben Antwort, dazu die Marke, die der Server für dieses Konto führt.
+@Test func newsStateDecodesStageAndListForms() throws {
+    let json = #"""
+    {
+      "releases": [{
+        "version": "2.2.0", "date": "2026-09-07", "title": "Das Teilen-Update",
+        "highlights": [
+          {"title": "Sitzungen teilen", "text": "An jeder Zeile ein Teilen-Knopf.", "url": "/council?tab=sessions",
+           "media": {"kind": "video", "src": "/neuigkeiten/2.2.0/teilen-ios.mp4", "alt": "Das Teilen-Blatt",
+                     "aspect": "1206/2622", "poster": "/neuigkeiten/2.2.0/teilen-ios.webp"}},
+          {"title": "Live", "text": "Welcher Punkt gerade dran ist.", "url": "/dashboard", "media": null}
+        ]
+      }],
+      "older_count": 1,
+      "seen_version": null
+    }
+    """#
+    let state = try JSONDecoder().decode(NewsState.self, from: Data(json.utf8))
+    let release = try #require(state.releases.first)
+    #expect(release.title == "Das Teilen-Update")
+    #expect(state.olderCount == 1)
+    #expect(state.seenVersion == nil)
+    let media = try #require(release.highlights.first?.media)
+    #expect(media.isVideo)
+    #expect(media.aspectRatio.map { $0 < 1 } == true)
+    #expect(media.poster == "/neuigkeiten/2.2.0/teilen-ios.webp")
+    #expect(release.highlights.last?.media == nil)
+}

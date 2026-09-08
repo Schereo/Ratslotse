@@ -1786,3 +1786,133 @@ public struct DeepResearchRequest: Encodable, Sendable {
         try values.encode(conversationID, forKey: .conversationID)
     }
 }
+
+// MARK: - Neu bei Ratslotse
+
+/// Was `GET /api/news` liefert: die Ausgaben, die dieses Konto noch nicht
+/// gesehen hat (neueste zuerst), und wie viele ältere darüber hinaus liegen.
+/// **Wer die Karte sieht, entscheidet der Server** — dieselbe Regel wie beim
+/// Einrichtungs-Assistenten: Web und App bekommen dieselbe Antwort, statt die
+/// Bedingung je Client nachzubauen. Die Medien darin sind bereits die der App
+/// (der Client meldet sich mit `X-Client: ios`).
+public struct NewsState: Codable, Sendable {
+    public let releases: [ReleaseNews]
+    public let olderCount: Int
+    public let seenVersion: String?
+
+    enum CodingKeys: String, CodingKey {
+        case releases
+        case olderCount = "older_count"
+        case seenVersion = "seen_version"
+    }
+
+    public init(releases: [ReleaseNews], olderCount: Int, seenVersion: String?) {
+        self.releases = releases
+        self.olderCount = olderCount
+        self.seenVersion = seenVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        releases = try values.decode([ReleaseNews].self, forKey: .releases)
+        olderCount = try values.decodeIfPresent(Int.self, forKey: .olderCount) ?? 0
+        seenVersion = try values.decodeIfPresent(String.self, forKey: .seenVersion)
+    }
+}
+
+/// Eine Ausgabe der Karte: Version, Name („Das Teilen-Update") und ihre
+/// Highlights, kuratiert in `kern/releases.py`.
+public struct ReleaseNews: Codable, Sendable {
+    public let version: String
+    public let date: String
+    public let title: String
+    public let highlights: [ReleaseHighlight]
+
+    public init(version: String, date: String, title: String, highlights: [ReleaseHighlight]) {
+        self.version = version
+        self.date = date
+        self.title = title
+        self.highlights = highlights
+    }
+}
+
+extension ReleaseNews: Identifiable {
+    public var id: String { version }
+}
+
+/// Ein Highlight: Titel, Satz, Ziel in der App — und die Aufnahme dazu. Ohne
+/// Aufnahme (`media` null) fällt die Karte auf die Listenform zurück; die
+/// Registry verlangt je Ausgabe alle oder keines.
+public struct ReleaseHighlight: Codable, Sendable {
+    public let title: String
+    public let text: String
+    public let url: String
+    public let media: ReleaseMedia?
+
+    enum CodingKeys: String, CodingKey {
+        case title, text, url, media
+    }
+
+    public init(title: String, text: String, url: String, media: ReleaseMedia?) {
+        self.title = title
+        self.text = text
+        self.url = url
+        self.media = media
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        title = try values.decode(String.self, forKey: .title)
+        text = try values.decode(String.self, forKey: .text)
+        url = try values.decode(String.self, forKey: .url)
+        media = try values.decodeIfPresent(ReleaseMedia.self, forKey: .media)
+    }
+}
+
+extension ReleaseHighlight: Identifiable {
+    public var id: String { url + "#" + title }
+}
+
+/// Bild oder Clip eines Highlights. `src` und `poster` sind Pfade auf dem
+/// Server (`/neuigkeiten/<version>/…`), `aspect` ein CSS-Verhältnis wie
+/// „16/9" oder „1206/2622" — im Browser querformatige Fenster, in der App das
+/// ganze Telefon. Alle Medien einer Ausgabe teilen sich eines.
+public struct ReleaseMedia: Codable, Sendable, Equatable {
+    public let kind: String
+    public let src: String
+    public let alt: String
+    public let aspect: String
+    public let poster: String?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, src, alt, aspect, poster
+    }
+
+    public init(kind: String, src: String, alt: String, aspect: String, poster: String?) {
+        self.kind = kind
+        self.src = src
+        self.alt = alt
+        self.aspect = aspect
+        self.poster = poster
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try values.decode(String.self, forKey: .kind)
+        src = try values.decode(String.self, forKey: .src)
+        alt = try values.decode(String.self, forKey: .alt)
+        aspect = try values.decodeIfPresent(String.self, forKey: .aspect) ?? "16/9"
+        poster = try values.decodeIfPresent(String.self, forKey: .poster)
+    }
+}
+
+extension ReleaseMedia {
+    public var isVideo: Bool { kind == "video" }
+
+    /// Breite durch Höhe aus „16/9"; nil, wenn der Wert unlesbar ist.
+    public var aspectRatio: Double? {
+        let parts = aspect.split(separator: "/").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count == 2, parts[1] > 0 else { return nil }
+        return parts[0] / parts[1]
+    }
+}
