@@ -5,6 +5,7 @@ The daily protocol cron classifies, extracts € amounts, assesses goals and reb
 the FTS index. But the *LLM/embedding* enrichments behind the Themen pages, maps,
 press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, in order:
 
+     0. Regex-Ernte            ernte_backfill.py           — Amt, Finanz-/Klima-Check, Beschlussvorschlag über den Bestand (kein LLM)
      1. Entitäten (NER)        extract_entities.py         — rebuilds council_entities
      2. Beschreibungen         describe_entities.py        — fills missing descriptions (slug-keyed meta survives the rebuild)
      2b. Vagheits-Urteile      warm_topic_vagueness.py     — beurteilt neue Vorschlags-Kandidaten vorab (sonst im Web-Request)
@@ -50,6 +51,14 @@ load_dotenv(ROOT / ".env")  # für die Alert-Mail (RESEND_API_KEY, ALERT_EMAIL)
 from kern.alerts import SCHRITTE_SCHLUESSEL, JobFehler  # noqa: E402
 
 STEPS: list[tuple[str, str]] = [
+    # Zuerst und ohne LLM: die Regex-Ernte über den Bestand. Sie steht hier,
+    # weil sie sonst gar nicht mehr läuft — als reines Einmal-Skript hatte sie
+    # den Bestand nie erreicht (08.09.2026 gemessen: `federfuehrendes_amt`
+    # trifft 5069 von 5079 Vorlagen, gespeichert waren 95). Jede spätere
+    # Verbesserung an den Regexen in `council/ernte.py` wirkt erst durch
+    # diesen Schritt auf die schon gespeicherten Vorlagen. Kostet nichts
+    # (~5 s, kein Netz) und schreibt nur, was sich wirklich ändert.
+    ("Regex-Ernte", "ernte_backfill.py"),
     ("Entitäten (NER)", "extract_entities.py"),
     ("Beschreibungen", "describe_entities.py"),
     # Vagheits-Urteile der Vorschlags-Kandidaten VORRECHNEN (LLM, nur fehlende):
@@ -112,7 +121,7 @@ def main() -> list[dict]:
     hier nur die Namen der Fehlschläge, und in der Cron-Übersicht stand
     entsprechend eine einzige Zahl („16 Schritte, 0 fehlgeschlagen"). Welcher
     Schritt zwei Stunden brauchte und welcher stumm nichts tat, sah man nur im
-    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 16 der 18
+    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 18 der 20
     Schritte rufen kein ``run_guarded``, schreiben also auch keine eigene
     ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
 

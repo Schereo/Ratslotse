@@ -10,14 +10,25 @@ from __future__ import annotations
 import difflib
 import re
 
+# Grußformel und gesperrte Unterschrift („J ü r g e n  K r o g m a n n") am
+# Fuß der Vorlage. Vor allem die Vorlagen bis 2021 enden nicht an einer
+# Überschrift, sondern hier — ohne diese Marker zog der Finanz-Block die
+# halbe Unterschriftszeile mit und war damit keine Floskel mehr, sodass
+# „keine" als echte Kostenangabe durchging. Die Trennzeichen sind
+# [^\S\n]+ statt eines festen Leerzeichens: die PDF-Extraktion liefert
+# „Im  Auftrag" mit zwei Leerzeichen.
+_SCHLUSS = (r"(?:In[^\S\n]+Vertretung|Im[^\S\n]+Auftrag|"
+            r"(?:[A-Za-zÄÖÜäöüß.][^\S\n]+){4,}[A-Za-zÄÖÜäöüß.])")
+
 # Abschnitts-Überschriften, an denen ein Block sicher endet. Die Wort-
 # Alternativen verlangen Doppelpunkt oder Zeilenende dahinter: Ein echter
 # Header steht allein auf seiner Zeile („Sachverhalt:", „Anlagen") — ohne den
 # Lookahead schnitt schon „…Photovoltaik-\nAnlagen spart CO2…" den Block ab
 # (Review-Befund E3: PDF-Umbruch vor großgeschriebenem Substantiv).
-_ENDE = (r"(?:[a-c]\)\s|Seite:\s*\d|"
+_ENDE = (r"(?:[a-c]\)\s|Seite:\s*\d|" + _SCHLUSS + r"(?=[^\S\n]*\n|[^\S\n]*$)|"
          r"(?:Beschlussvorschlag|Sachverhalt|Begründung|Beratungsfolge|"
-         r"Finanzielle Auswirkungen|Auswirkungen|Anlagen?)(?=\s*:|[^\S\n]*\n|[^\S\n]*$))")
+         r"Finanzielle[^\S\n]+Auswirkungen|Klimarelevante[^\S\n]+Auswirkungen|"
+         r"Auswirkungen|Anlagen?)(?=\s*:|[^\S\n]*\n|[^\S\n]*$))")
 
 _FLOSKELN = {"keine", "keine.", "-", "–", "./.", "entfällt", "entfällt.", "nein",
              "keine unmittelbaren"}
@@ -45,8 +56,20 @@ def _saeubern(text: str, max_len: int = 800) -> str | None:
 
 # Getrennt gesucht (nicht als ein Block): manche Vorlagen führen nur einen der
 # beiden Punkte, die Reihenfolge ist aber stabil a) → b).
-_FINANZ_RE = re.compile(r"\ba\)\s*Finanzen\s*\n(?P<t>.*?)(?=\n\s*b\)\s*Klima|\n\s*" + _ENDE + r"|\Z)",
-                        re.DOTALL)
+#
+# Zwei Kopfzeilen-Formate, und sie schließen einander aus (gemessen über 5079
+# Vorlagen: 1949-mal „a) Finanzen", 2797-mal „Finanzielle Auswirkungen:", kein
+# einziges Mal beide). Die Form mit „a)" ist ab 2022 Standard; davor stand der
+# Punkt als eigene Überschrift. Ohne die alte Form blieb die Karte „Was kostet
+# das?" auf gut der Hälfte des Bestands leer.
+#
+# re.MULTILINE nur wegen des „^" der alten Form. Es färbt auf das „$" in _ENDE
+# ab — dort steht aber neben jedem „[^\S\n]*$" schon ein „[^\S\n]*\n", beide
+# Zweige meinen dasselbe Zeilenende. _KLIMA_RE bleibt deshalb ohne das Flag.
+_FINANZ_RE = re.compile(
+    r"(?:\ba\)[^\S\n]*Finanzen|^[^\S\n]*Finanzielle[^\S\n]+Auswirkungen[^\S\n]*:?)"
+    r"[^\S\n]*\n(?P<t>.*?)(?=\n\s*b\)\s*Klima|\n\s*" + _ENDE + r"|\Z)",
+    re.DOTALL | re.MULTILINE)
 _KLIMA_RE = re.compile(r"\bb\)\s*Klima\s*\n(?P<t>.*?)(?=\n\s*" + _ENDE + r"|\Z)",
                        re.DOTALL)
 # Der Klima-Block beginnt fast immer mit dem Prüfvermerk — der ist die Kerninfo.
