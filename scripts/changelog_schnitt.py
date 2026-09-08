@@ -519,7 +519,7 @@ def highlight_entwurf(version: str, wurzel: Path = WURZEL) -> str:
         "    Release(",
         f'        version="{version}",',
         f'        date="{date.today().isoformat()}",',
-        '        title="…",   # ein Halbsatz über die ganze Ausgabe',
+        '        title="Das …-Update",   # ein Name nach dem Hauptfeature, keine Aufzählung',
         "        highlights=(",
     ]
     for fragment in fragmente:

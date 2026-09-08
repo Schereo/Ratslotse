@@ -50,6 +50,10 @@ def test_der_bestand_ist_wohlgeformt():
         assert releases.VERSION.match(release.version), release.version
         assert re.match(r"^\d{4}-\d{2}-\d{2}$", release.date), release.version
         assert release.title.strip()
+        # Ein Name, kein Halbsatz: „Das Teilen-Update“ — die Version ist
+        # nach ihrem Hauptfeature benannt (Tims Wunsch 08.09.2026), und der
+        # Name muss auf dem Telefon in eine Zeile passen.
+        assert len(release.title) <= 40, f"{release.version}: Titel ist ein Halbsatz, kein Name"
         for h in release.highlights:
             assert h.title.strip() and h.text.strip()
             assert len(h.title) <= 60, f"{release.version}: Titel zu lang für die Karte"

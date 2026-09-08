@@ -155,7 +155,7 @@ RELEASES: tuple[Release, ...] = (
     Release(
         version="2.2.0",
         date="2026-09-06",
-        title="Teilen, Kalender-Abo und ein Rat, der Fachwörter erklärt",
+        title="Das Teilen-Update",
         highlights=(
             Highlight(
                 title="Sitzungen teilen — auch einzelne Punkte",
@@ -176,7 +176,8 @@ RELEASES: tuple[Release, ...] = (
                     src="/neuigkeiten/2.2.0/teilen-ios.mp4", poster="/neuigkeiten/2.2.0/teilen-ios.webp",
                     alt="Dieselbe Tagesordnung auf dem iPhone: ein Tipp auf das "
                         "Teilen-Zeichen an einem Punkt öffnet das Teilen-Blatt "
-                        "von iOS.",
+                        "von iOS, ein Tipp auf „Erinnerungen“ legt den Link "
+                        "dort als neue Erinnerung ab.",
                 ),
             ),
             Highlight(
@@ -186,16 +187,20 @@ RELEASES: tuple[Release, ...] = (
                      "aktualisiert sich alles von selbst.",
                 url="/abos",
                 media=Media(
-                    kind="image",
-                    src="/neuigkeiten/2.2.0/kalender.webp",
-                    alt="Die Karte „Im Kalender abonnieren“ mit den Knöpfen "
-                        "„Kalender abonnieren“ und „Link kopieren“.",
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/kalender.mp4",
+                    poster="/neuigkeiten/2.2.0/kalender.webp",
+                    alt="Die Seite „Ausschuss-Abos“: Ein Klick auf „Im Kalender "
+                        "abonnieren“ klappt die Karte auf, ein Klick auf "
+                        "„Link kopieren“ zeigt „Link kopiert“.",
                 ),
                 media_ios=Media(
-                    kind="image", aspect="1206/2622",
-                    src="/neuigkeiten/2.2.0/kalender-ios.webp",
-                    alt="Der Bildschirm „Ausschuss-Abos“ auf dem iPhone mit der "
-                        "aufgeklappten Karte „Im Kalender abonnieren“.",
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/kalender-ios.mp4", poster="/neuigkeiten/2.2.0/kalender-ios.webp",
+                    alt="Der Bildschirm „Ausschuss-Abos“ auf dem iPhone: Ein Tipp "
+                        "klappt „Im Kalender abonnieren“ auf, ein Tipp auf "
+                        "„Kalender abonnieren“ öffnet die Kalender-App mit dem "
+                        "Abo-Dialog.",
                 ),
             ),
             Highlight(
@@ -205,10 +210,12 @@ RELEASES: tuple[Release, ...] = (
                      "Fachwort eine kurze Erklärung zum Antippen.",
                 url="/fragen",
                 media=Media(
-                    kind="image",
-                    src="/neuigkeiten/2.2.0/glossar.webp",
-                    alt="Im Text ist „Messbetrag“ gepunktet unterstrichen; "
-                        "darunter steht die Erklärung des Begriffs.",
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/glossar.mp4",
+                    poster="/neuigkeiten/2.2.0/glossar.webp",
+                    alt="Die KI-Frage „Was ist eine Veränderungssperre?“ wird "
+                        "beantwortet; im Antworttext ist der Begriff gepunktet "
+                        "unterstrichen, beim Überfahren erscheint die Erklärung.",
                 ),
                 # Nur im Browser: Im ganzen ``ios/``-Baum kommt „glossar" nicht
                 # vor. Ein Feature anzukündigen, das man auf dem eigenen Gerät
@@ -222,16 +229,19 @@ RELEASES: tuple[Release, ...] = (
                      "Übertragung mitgelesen.",
                 url="/dashboard",
                 media=Media(
-                    kind="image",
-                    src="/neuigkeiten/2.2.0/live.webp",
-                    alt="Die Live-Karte: „Der Stadtrat tagt gerade“, dazu "
-                        "der laufende Tagesordnungspunkt und wer spricht.",
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/live.mp4",
+                    poster="/neuigkeiten/2.2.0/live.webp",
+                    alt="Die Live-Karte „Der Stadtrat tagt gerade“ mit dem "
+                        "laufenden Punkt; ein Klick auf „Tagesordnung“ öffnet "
+                        "die Sitzung, der Punkt trägt „Läuft gerade“.",
                 ),
                 media_ios=Media(
-                    kind="image", aspect="1206/2622",
-                    src="/neuigkeiten/2.2.0/live-ios.webp",
-                    alt="Die Startseite der App mit der Live-Karte: „Der "
-                        "Stadtrat tagt gerade“ samt laufendem Punkt.",
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/live-ios.mp4", poster="/neuigkeiten/2.2.0/live-ios.webp",
+                    alt="Die Startseite der App mit der Live-Karte „Der Stadtrat "
+                        "tagt gerade“; ein Tipp auf „Tagesordnung“ öffnet die "
+                        "Sitzung, der laufende Punkt trägt „Läuft gerade“.",
                 ),
             ),
         ),
