@@ -903,6 +903,67 @@ class CitiesStore:
         sql += " ORDER BY n.score DESC LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def replace_idea_clusters(self, model: str, version: str,
+                              zeilen: list[tuple[str, str, int, str, float]]) -> int:
+        """Die Cluster einer Fassung ersetzen — alles oder nichts.
+
+        Halbe Cluster wären schlimmer als keine: Eine Auswertung, die „in vier
+        Städten" sagt, weil die fünfte gerade beim Schreiben verloren ging,
+        führt in die Irre. Deshalb Löschen und Schreiben in EINER Transaktion.
+        """
+        with self._write() as conn:
+            conn.execute("DELETE FROM idea_clusters WHERE model=? AND version=?",
+                         (model, version))
+            conn.executemany(
+                "INSERT INTO idea_clusters (model, version, cluster_id, paper_id, score) "
+                "VALUES (?,?,?,?,?)", zeilen)
+        return len(zeilen)
+
+    def cluster_of(self, paper_id: str, model: str, version: str = "1") -> list[dict]:
+        """Alle Mitglieder des Clusters, in dem dieses Papier liegt.
+
+        Mit Stadt, Titel, Datum, Art und ERGEBNIS — das Ergebnis ist der Grund
+        für die Abfrage: „Wie ging dieselbe Idee anderswo aus?" lässt sich ohne
+        es nicht beantworten. Leer, wenn das Papier in keinem Cluster ist, und
+        das ist der Normalfall.
+
+        Ganze statische Anweisung, kein zusammengesetztes SQL — sonst prüft
+        ``tests/test_sql_spalten.py`` sie nicht (s. die Ideen-Abfragen oben).
+        """
+        rows = self._conn.execute(
+            "SELECT p.id, p.body_id, p.name, p.date, p.kind, p.web, "
+            "       b.name AS body_name, k.score, k.cluster_id, "
+            "       c.payload AS classify_json "
+            "FROM idea_clusters k "
+            "JOIN idea_clusters eigen ON eigen.model = k.model "
+            "  AND eigen.version = k.version AND eigen.cluster_id = k.cluster_id "
+            "  AND eigen.paper_id = ? "
+            "JOIN papers p ON p.id = k.paper_id "
+            "LEFT JOIN bodies b ON b.id = p.body_id "
+            "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+            "  AND c.annotator='classify' AND c.version='2' "
+            "WHERE k.model = ? AND k.version = ? "
+            "ORDER BY k.score DESC, p.date DESC",
+            (paper_id, model, version))
+        return [dict(r) for r in rows]
+
+    def cluster_stats(self, model: str, version: str = "1") -> list[dict]:
+        """Je Cluster: Mitglieder, Städte, und ob Oldenburg dabei ist.
+
+        Die letzte Spalte ist die eigentliche Frage: Ein Cluster OHNE
+        Oldenburger Mitglied ist eine Idee, die mehrere Städte haben und
+        Oldenburg nicht — und das ist die Liste, um die es geht.
+        """
+        rows = self._conn.execute(
+            "SELECT k.cluster_id, COUNT(*) AS members, "
+            "       COUNT(DISTINCT p.body_id) AS cities, "
+            "       MAX(CASE WHEN p.body_id='oldenburg' THEN 1 ELSE 0 END) AS has_oldenburg "
+            "FROM idea_clusters k JOIN papers p ON p.id = k.paper_id "
+            "WHERE k.model = ? AND k.version = ? "
+            "GROUP BY k.cluster_id ORDER BY cities DESC, members DESC",
+            (model, version))
+        return [dict(r) for r in rows]
+
     def fts_upsert(self, paper_id: str, body_id: str, name: str, reference: str | None,
                    text: str | None, summary: str | None) -> None:
         with self._write() as conn:

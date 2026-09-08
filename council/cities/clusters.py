@@ -1,0 +1,229 @@
+"""Dieselbe Idee in mehreren Städten — als Menge, nicht als Kantenpaar.
+
+**Warum das der stärkste Befund ist, den der Speicher hergeben kann.** Ein
+einzelnes „Osnabrück hat X beschlossen, Oldenburg nicht" ist eine Beobachtung.
+„Vier von sechs Städten haben X, Oldenburg nicht" ist ein Argument — und es
+filtert Lokalkolorit von selbst weg: Eine Initiative, die nur in
+Sachsen-Anhalt existiert, findet keine zweite Stadt.
+
+**Warum die Instrument-Texte dafür nicht reichen.** Sie sind Freitext, und
+Freitext trifft sich nicht: Von 1.461 verschiedenen Instrument-Texten im
+Bestand waren am 08.09.2026 **fünf** wortgleich in zwei Städten.
+„Zweckentfremdungssatzung erlassen" steht siebenmal so da — und „Satzung gegen
+Zweckentfremdung von Wohnraum" daneben, ungezählt. Es braucht also einen
+Vektor, keinen Vergleich.
+
+**Warum nicht der Papier-Vektor.** Der trägt den ganzen Text: Ortsnamen,
+Datum, Antragsteller, Verwaltungsprosa. Für „ist das dieselbe Idee?" ist all
+das Rauschen. Eingebettet wird deshalb nur, was die Einordnung als die IDEE
+bezeichnet hat — Instrument plus Zusammenfassung, sonst nichts.
+
+**Warum Oldenburg mitgeclustert wird.** Ein Cluster mit einem Oldenburger
+Mitglied ist „hat Oldenburg das schon?" **strukturell** beantwortet — nicht
+als Meinung eines Modells, sondern als Nachbarschaft im selben Raum. Das ist
+der zweite, unabhängige Kanal zu ``fit``, und die beiden müssen übereinstimmen.
+"""
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+from council.cities.annotators import USABLE
+from council.cities.index import EMBED_MODEL
+from council.cities.store import CitiesStore, text_hash
+
+if TYPE_CHECKING:
+    import numpy as np
+
+logger = logging.getLogger("council.cities.clusters")
+
+#: Die Fassung der Cluster-Rechnung. Wie bei den Annotatoren: Eine zweite
+#: Fassung liegt neben der ersten, bis die Messung entschieden hat.
+CLUSTER_VERSION = "1"
+
+#: Objektart im Vektor-Speicher. Ein IDEEN-Vektor ist etwas anderes als der
+#: Vektor des Papiers, das sie trägt — deshalb ein eigener ``object_kind``
+#: und keine zweite Tabelle.
+IDEA_KIND = "idea"
+
+#: Ab welcher Nähe zwei Ideen dieselbe sind. **Gemessen**, nicht geschätzt
+#: (``scripts/cities_cluster_bericht.py --schwelle 0.74 0.78 0.82 0.86 0.90``,
+#: 09.09.2026 über 5.187 Ideen):
+#:
+#: | Schwelle | Cluster | größter | ≥ 2 Städte | ohne Oldenburg |
+#: |---|---:|---:|---:|---:|
+#: | 0,74 | 367 | **2.607** | 108 | 46 |
+#: | 0,78 | 546 | **1.247** | 157 | 56 |
+#: | 0,82 | 606 | 190 | 163 | 60 |
+#: | **0,86** | **536** | **18** | **108** | **31** |
+#: | 0,90 | 335 | 12 | 37 | 9 |
+#:
+#: **Der größte Cluster ist der Präzisionstest.** Single linkage kettet: Unter
+#: 0,82 wächst alles zu einem Klumpen zusammen — 2.607 „Ideen" in einer Menge
+#: sind keine Idee mehr. Bei 0,86 ist der größte 18 Papiere groß und heißt
+#: „Sportförderrichtlinien anpassen"; bei 0,90 zerfallen die Ketten, die
+#: gerade das Interessante sind (die Verpackungssteuer läuft über fünf Städte
+#: mit fünf verschiedenen Formulierungen).
+#:
+#: Höher als die 0,70 der Papier-Nachbarschaft, weil die Texte kürzer und
+#: gleichförmiger sind: Zwei ganze Vorlagen erreichen 0,86 fast nie, zwei
+#: Instrument-Sätze schon.
+IDEA_THRESHOLD = 0.86
+
+#: Kleiner als das ist kein Cluster, sondern ein Papier. Sie werden gar nicht
+#: erst gespeichert — sonst stünden 5.000 Einzelmengen in der Tabelle und
+#: jede Auswertung müsste sie wieder wegfiltern.
+MIN_MITGLIEDER = 2
+
+
+def idea_text(classification: dict) -> str:
+    """Die Idee als Text — Instrument und Zusammenfassung, sonst nichts.
+
+    Kein Titel, keine Stadt, kein Datum: Genau die trennen zwei Städte, die
+    dasselbe tun.
+    """
+    instrument = (classification.get("instrument") or "").strip()
+    if not instrument:
+        return ""
+    zusammenfassung = (classification.get("summary") or "").strip()
+    return f"{instrument}. {zusammenfassung}".strip()
+
+
+def embed_ideas(main: CitiesStore, model: str = EMBED_MODEL,
+                batch: int = 256) -> int:
+    """Ein Vektor je übertragbarer Idee — Oldenburg eingeschlossen.
+
+    Übersprungen wird, was schon einen Vektor mit demselben Quell-Hash hat:
+    Ändert die Einordnung ihr Instrument, wird neu gerechnet, sonst nicht.
+    """
+    from council.cities.index import _embed
+
+    einordnung = main.annotations_for("classify", "2")
+    bekannt = main.object_embedding_hashes(model, IDEA_KIND)
+    offen: list[tuple[str, str, str]] = []
+    for p in main.papers():
+        klasse = einordnung.get(p["id"]) or {}
+        if klasse.get("transfer") not in USABLE:
+            continue
+        text = idea_text(klasse)
+        if not text:
+            continue
+        h = text_hash(text)
+        if bekannt.get(p["id"]) == h:
+            continue
+        offen.append((p["id"], text, h))
+
+    if not offen:
+        return 0
+    logger.info("%s Ideen einzubetten", len(offen))
+    n = 0
+    for start in range(0, len(offen), batch):
+        block = offen[start:start + batch]
+        vektoren = _embed([t for _id, t, _h in block])
+        with main.transaction():
+            for i, (kennung, _text, h) in enumerate(block):
+                main.put_object_embedding(IDEA_KIND, kennung, model, h,
+                                          vektoren[i].tobytes())
+        n += len(block)
+    return n
+
+
+def _gruppen(naehe: np.ndarray, schwelle: float) -> list[list[int]]:
+    """Zusammenhangskomponenten über der Schwelle — Union-Find.
+
+    **Bewusst single linkage, nicht average.** Eine Idee wandert manchmal über
+    eine Kette: Osnabrücks „Mehrwegsystem erproben" liegt nah an Münsters
+    „Mehrwegpfand einführen", das nah an Potsdams „Verpackungssteuer prüfen"
+    liegt — die beiden Enden aber nicht aneinander. Average linkage zerschnitte
+    diese Kette; genau sie ist aber die Idee, die durch die Republik läuft.
+
+    Der Preis ist bekannt und wird gemessen: Bei zu niedriger Schwelle wächst
+    alles zu einem Riesencluster zusammen. Deshalb steht in
+    ``scripts/cities_cluster_bericht.py`` die Größe des größten Clusters als
+    Kennzahl neben der Trefferquote.
+    """
+    n = naehe.shape[0]
+    eltern = list(range(n))
+
+    def wurzel(x: int) -> int:
+        while eltern[x] != x:
+            eltern[x] = eltern[eltern[x]]
+            x = eltern[x]
+        return x
+
+    import numpy as np_
+
+    for i in range(n):
+        # Nur die obere Dreiecksmatrix: (i,j) und (j,i) sind dieselbe Kante.
+        nachbarn = np_.nonzero(naehe[i, i + 1:] >= schwelle)[0]
+        for versatz in nachbarn:
+            j = i + 1 + int(versatz)
+            wi, wj = wurzel(i), wurzel(j)
+            if wi != wj:
+                eltern[wj] = wi
+
+    gruppen: dict[int, list[int]] = {}
+    for i in range(n):
+        gruppen.setdefault(wurzel(i), []).append(i)
+    return [g for g in gruppen.values() if len(g) >= MIN_MITGLIEDER]
+
+
+def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
+                   threshold: float = IDEA_THRESHOLD,
+                   version: str = CLUSTER_VERSION) -> dict:
+    """Ideen zu Clustern zusammenfassen und die Fassung ersetzen.
+
+    Der Wert je Zeile ist die Nähe zum Cluster-Mittel — damit eine Oberfläche
+    das typischste Mitglied zuerst zeigen kann und nicht das zufällig erste.
+    """
+    import numpy as np
+
+    kennungen, hashes, roh = main.object_embeddings(model, IDEA_KIND)
+    if len(kennungen) < MIN_MITGLIEDER:
+        return {"ideas": len(kennungen), "clusters": 0, "members": 0}
+    matrix = np.frombuffer(roh, dtype=np.float32).reshape(len(kennungen), -1)
+    logger.info("%s Ideen, %s Dimensionen — Nähe rechnen", *matrix.shape)
+    naehe = matrix @ matrix.T
+
+    gruppen = _gruppen(naehe, threshold)
+    logger.info("%s Cluster mit mindestens %s Mitgliedern", len(gruppen), MIN_MITGLIEDER)
+
+    zeilen: list[tuple[str, str, int, str, float]] = []
+    for cluster_id, gruppe in enumerate(sorted(gruppen, key=len, reverse=True), 1):
+        mitte = matrix[gruppe].mean(axis=0)
+        norm = float(np.linalg.norm(mitte)) or 1.0
+        for i in gruppe:
+            zeilen.append((model, version, cluster_id, kennungen[i],
+                           float(matrix[i] @ mitte / norm)))
+    main.replace_idea_clusters(model, version, zeilen)
+    groesse = max((len(g) for g in gruppen), default=0)
+    return {"ideas": len(kennungen), "clusters": len(gruppen),
+            "members": len(zeilen), "largest": groesse}
+
+
+def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
+    """Beide Schritte — für den Wochen-Cron und den Backfill."""
+    eingebettet = embed_ideas(main, model)
+    zahlen = build_clusters(main, model)
+    zahlen["embedded"] = eingebettet
+    return zahlen
+
+
+# ---------------------------------------------------------------------------
+# Was hier ABSICHTLICH fehlt
+# ---------------------------------------------------------------------------
+#
+# **Kein Modell benennt die Cluster.** Der Plan sah dafür einen Annotator
+# `cluster_label` vor. Beim Bauen zeigte sich, dass die Bezeichnung längst da
+# ist: Das Instrument des typischsten Mitglieds — jenes mit der größten Nähe
+# zum Cluster-Mittel — ist der Name, den die Daten selbst vergeben.
+# „Verpackungssteuersatzung einführen" über fünf Städte, „Tempo-30-Zonen an
+# Schulwegen" über drei: Beides sind Zeilen aus der Einordnung, kein zweites
+# Modell nötig.
+#
+# Was ein Modell besser könnte: Ein Cluster, dessen Mitglieder die Sache sehr
+# verschieden nennen, bekäme einen Namen, den keine der Städte so schreibt.
+# Das ist ein echter, aber kleiner Gewinn — und er kostet einen Prompt, ein
+# Golden Set und einen `annotations_missing`-Zweig für `object_kind='cluster'`.
+# Lesen sich die Namen im Betrieb schlecht, ist das der Ort, an dem es
+# nachzuholen ist.

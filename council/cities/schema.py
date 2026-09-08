@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -238,6 +238,16 @@ CREATE TABLE IF NOT EXISTS stages (
 );
 CREATE INDEX IF NOT EXISTS idx_stages_stage ON stages(stage, version, status);
 
+CREATE TABLE IF NOT EXISTS idea_clusters (
+    model       TEXT NOT NULL,
+    version     TEXT NOT NULL,
+    cluster_id  INTEGER NOT NULL,
+    paper_id    TEXT NOT NULL REFERENCES papers(id),
+    score       REAL NOT NULL,
+    PRIMARY KEY (model, version, paper_id)
+);
+CREATE INDEX IF NOT EXISTS idx_idea_clusters ON idea_clusters(model, version, cluster_id);
+
 CREATE TABLE IF NOT EXISTS meta (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
@@ -249,6 +259,27 @@ CREATE TABLE IF NOT EXISTS meta (
 #: muss ein zweites Mal folgenlos bleiben (``CREATE … IF NOT EXISTS``,
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
-#: **Absichtlich leer.** Die Mechanik steht bereit; der erste Eintrag kommt mit
-#: der ersten Änderung an einer Tabelle, die schon auf einem Server liegt.
-MIGRATIONS: list[tuple[int, str]] = []
+MIGRATIONS: list[tuple[int, str]] = [
+    # 2 — Ideen-Cluster über Stadtgrenzen (09.09.2026).
+    #
+    # Ein Papier gehört in höchstens EINEN Cluster je (Modell, Fassung); das
+    # steht im Primärschlüssel, damit eine zweite Fassung neben der ersten
+    # liegen kann, ohne dass jemand aufräumen muss.
+    #
+    # Warum überhaupt eine Tabelle und nicht `neighbors`: Eine Nachbarschaft
+    # ist paarweise und gerichtet, ein Cluster ist eine Menge. Aus Kanten die
+    # Menge jedes Mal neu zu rechnen hieße, die Gruppierung im Request zu
+    # machen — und die Gruppierung ist der teure Teil.
+    (2, """
+    CREATE TABLE IF NOT EXISTS idea_clusters (
+        model       TEXT NOT NULL,
+        version     TEXT NOT NULL,
+        cluster_id  INTEGER NOT NULL,
+        paper_id    TEXT NOT NULL REFERENCES papers(id),
+        score       REAL NOT NULL,
+        PRIMARY KEY (model, version, paper_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_idea_clusters
+        ON idea_clusters(model, version, cluster_id);
+    """),
+]

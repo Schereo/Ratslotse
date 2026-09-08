@@ -228,6 +228,17 @@ def _fit(main: CitiesStore, ann, body_id: str | None, limit: int | None) -> dict
 
 # ------------------------------------------------------------------- index
 
+def cluster_all(main: CitiesStore) -> dict:
+    """Ideen einbetten und zu Clustern zusammenfassen.
+
+    Läuft NACH der Einordnung (sie sagt, was eine Idee ist) und braucht
+    fastembed — deshalb lazy importiert wie der Index. Über ALLE Städte
+    zusammen, denn ein Cluster über Stadtgrenzen ist der ganze Zweck.
+    """
+    from council.cities import clusters as cluster_modul
+    return cluster_modul.run(main)
+
+
 def index_all(main: CitiesStore, body_id: str | None = None) -> dict:
     """Chunks, Embeddings, Volltext und Nachbarschaften.
 

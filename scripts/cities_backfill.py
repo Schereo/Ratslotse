@@ -115,7 +115,7 @@ def main() -> int:
     p.add_argument("--run", action="store_true", help="wirklich ernten (sonst nur Bericht)")
     p.add_argument("--body", action="append", help="nur diese Stadt (mehrfach möglich)")
     p.add_argument("--stage", action="append",
-                   choices=("fetch", "normalize", "extract", "annotate", "index"),
+                   choices=("fetch", "normalize", "extract", "annotate", "index", "cluster"),
                    help="nur diese Stufe (mehrfach möglich). `annotate` und `index` "
                         "sind NICHT in der Vorgabe: Sie kosten Geld bzw. Stunden CPU "
                         "und laufen sonst im Wochen-Cron mit Deckel.")
@@ -202,6 +202,10 @@ def main() -> int:
             zahlen = pipeline.index_all(main_store)
             ergebnisse.setdefault("(alle)", {})["index"] = zahlen
             print(f"  Index: {zahlen}", flush=True)
+        if "cluster" in stages:
+            zahlen = pipeline.cluster_all(main_store)
+            ergebnisse.setdefault("(alle)", {})["cluster"] = zahlen
+            print(f"  Cluster: {zahlen}", flush=True)
 
         print(f"\nFertig in {time.time() - t0:.0f}s.\n")
         bericht(main_store, specs)
