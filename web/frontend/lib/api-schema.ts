@@ -6561,6 +6561,8 @@ export interface components {
             next_date: string | null;
             /** Next Time */
             next_time: string | null;
+            /** Sessions Year */
+            sessions_year: number;
         };
         /** Committees */
         Committees: {
@@ -16657,4 +16659,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 64f171752e386a106dfe837b78ce085a4e404187e443cec16d6804021f84a8a3
+// vertrag-sha256: c7253c15a45f3e87ed07cdb52dccdabaad8eab98113ddaf7fe6a8fa81759fb44

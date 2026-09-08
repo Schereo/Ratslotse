@@ -2367,6 +2367,11 @@ class CommitteeDetail(TypedDict):
     next_date: str | None
     next_time: str | None
     decisions_year: int
+    #: Sitzungen der letzten zwölf Monate — die MENGE, die ein Abo kostet:
+    #: je Sitzung eine Tagesordnungs-Meldung. Wer abonniert, soll das vorher
+    #: wissen können; am 08.09.2026 hatten vier Konten binnen fünfzehn
+    #: Sekunden alle sechzehn Ausschüsse abonniert.
+    sessions_year: int
 
 
 class Committees(TypedDict):

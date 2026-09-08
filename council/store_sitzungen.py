@@ -1517,6 +1517,28 @@ class SitzungenMixin(StoreBasis):
         ).fetchone()
         return row is not None
 
+    def sitzungszahl_je_gremium(self, date_from: str) -> dict[str, int]:
+        """Sitzungen je Gremium ab ``date_from`` — die Menge, die ein Abo kostet.
+
+        Ein Abo schickt je Sitzung eine Tagesordnungs-Meldung. Wer abonniert,
+        soll das vorher wissen können: Am 08.09.2026 hatten vier Konten binnen
+        fünfzehn Sekunden ALLE sechzehn Ausschüsse abonniert — ein Klick, kein
+        Abwägen. Zwei davon bekamen daraufhin rund zwanzig Mails und waren nie
+        wieder da.
+
+        Gezählt werden vergangene Sitzungen, nicht geplante: Sie sind das
+        einzige, was wirklich stattgefunden hat, und damit die ehrlichere
+        Vorhersage. Eine Abfrage mit ``GROUP BY`` für alle Gremien; Gremien
+        ohne Sitzung fehlen im dict (der Aufrufer setzt 0).
+        """
+        rows = self._conn.execute(
+            "SELECT committee, COUNT(*) n FROM council_sessions "
+            "WHERE session_date >= ? AND session_date <= date('now') "
+            "GROUP BY committee",
+            (date_from,),
+        ).fetchall()
+        return {r[0]: r[1] for r in rows if r[0]}
+
     def beschlusszahl_je_gremium(self, date_from: str) -> dict[str, int]:
         """Beschlüsse je Gremium ab ``date_from`` (ISO-Datum) — für die
         Ausschuss-Abos, die je Gremium „x Beschlüsse in diesem Jahr" zeigen.
