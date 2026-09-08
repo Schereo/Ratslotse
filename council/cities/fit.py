@@ -47,7 +47,7 @@ WORKERS = 4
 #: gehört nicht dazu: Er sagt, was die Stadt gerade beschäftigt, nicht ob sie
 #: dieses eine Instrument hat. Ein Papier, für das es nur ihn gibt, wird
 #: übersprungen.
-TRAGENDE_ARTEN = ("neighbor", "fts")
+TRAGENDE_ARTEN = ("neighbor", "chunk", "fts", "decision")
 
 
 def candidates_for(main: CitiesStore, body_id: str | None = None) -> list[dict]:
@@ -152,13 +152,19 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     # Belege zuerst, für alle: Sie gehen in den source_hash ein, und ohne den
     # wüssten wir nicht, was offen ist.
     logger.info("fit: Belege für %s Vorlagen sammeln", len(kandidaten))
+    # Die Chunk-Matrix EINMAL: 34.000 Vektoren je Vorlage neu zu lesen wäre
+    # der teuerste Teil des ganzen Laufs, und sie ändert sich dabei nicht.
+    matrix = main.chunk_matrix(model, "oldenburg")
+    logger.info("fit: %s Oldenburger Textabschnitte im Speicher", len(matrix[0]))
     belege_je: dict[str, list[Evidence]] = {}
     hashes: dict[str, str] = {}
-    for p in kandidaten:
+    for n, p in enumerate(kandidaten, 1):
         klasse = einordnung.get(p["id"]) or {}
-        belege = evidence_for(main, rats, p, klasse, model)
+        belege = evidence_for(main, rats, p, klasse, model, chunk_matrix=matrix)
         belege_je[p["id"]] = belege
         hashes[p["id"]] = source_hash(p, klasse, belege, ann)
+        if n % 200 == 0:
+            logger.info("  Belege %s/%s", n, len(kandidaten))
 
     offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
                                      source_hashes=hashes)

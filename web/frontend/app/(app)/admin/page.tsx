@@ -483,6 +483,7 @@ type LlmUsage = {
 const FEATURE_LABELS: Record<string, string> = {
   cities_classify: "Fremde Ratsvorlage einordnen",
   cities_fit: "Hat Oldenburg das schon?",
+  cities_evidence_terms: "Städtevergleich: Oldenburger Suchwörter",
   eval_cities_transfer: "Prüfstand: Einordnung fremder Vorlagen",
   eval_cities_fit: "Prüfstand: Hat Oldenburg das schon?",
   attachment_ocr: "Anlagen-Texterkennung",

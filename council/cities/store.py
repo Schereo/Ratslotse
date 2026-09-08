@@ -797,6 +797,36 @@ class CitiesStore:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def chunk_matrix(self, model: str, body_id: str) -> tuple[list[str], list[int], bytes]:
+        """Alle Chunk-Vektoren einer Stadt am Stück — Papier, Chunk, Rohbytes.
+
+        **Warum am Stück und nicht je Anfrage.** Der Beleg-Lauf fragt zehntausend
+        Mal nach den nächsten Chunks; jedes Mal einzeln zu lesen hieße, dieselben
+        34.000 Vektoren zehntausendmal von der Platte zu holen. Der Aufrufer hält
+        die Matrix, so wie ``council.embeddings._matrix`` es für die KI-Frage tut.
+
+        Ein Chunk gehört einer Datei, eine Datei einem Papier — der Beleg ist
+        aber immer das Papier. Deshalb kommt die Papier-Kennung schon hier mit
+        heraus und nicht erst nach einem zweiten Rundgang.
+        """
+        rows = self._conn.execute(
+            "SELECT f.paper_id, e.chunk_idx, e.vector FROM chunk_embeddings e "
+            "JOIN files f ON f.id = e.file_id "
+            "JOIN papers p ON p.id = f.paper_id "
+            "WHERE e.model = ? AND p.body_id = ? "
+            "ORDER BY f.paper_id, e.chunk_idx", (model, body_id)).fetchall()
+        papiere = [r["paper_id"] for r in rows]
+        indizes = [r["chunk_idx"] for r in rows]
+        return papiere, indizes, b"".join(r["vector"] for r in rows)
+
+    def chunk_text(self, paper_id: str, chunk_idx: int) -> str | None:
+        """Der Wortlaut eines Chunks — für den Beleg, der ihn zitiert."""
+        row = self._conn.execute(
+            "SELECT c.chunk_text FROM chunks c JOIN files f ON f.id = c.file_id "
+            "WHERE f.paper_id = ? AND c.chunk_idx = ? LIMIT 1",
+            (paper_id, chunk_idx)).fetchone()
+        return row["chunk_text"] if row else None
+
     def put_chunk_embeddings(self, rows: Sequence[tuple[str, int, str, str, bytes]]) -> None:
         with self._write() as conn:
             conn.executemany(
