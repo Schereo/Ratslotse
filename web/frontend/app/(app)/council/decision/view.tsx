@@ -18,6 +18,7 @@ import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { useZurueck } from "@/lib/zurueck";
 import { Mascot } from "@/components/mascot";
+import { Elsewhere } from "@/components/elsewhere";
 import { cn } from "@/lib/utils";
 import { useFetch } from "@/lib/use-fetch";
 import { useAuth } from "@/lib/auth";
@@ -763,6 +764,8 @@ function DecisionDetailInner() {
               </div>
             </Section>
           )}
+
+          <Elsewhere decisionId={d.id} />
 
           {data.similar.length > 0 && (
             <Section title={`Ähnliche Beschlüsse (${data.similar.length})`}>

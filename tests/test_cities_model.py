@@ -13,7 +13,8 @@ from __future__ import annotations
 import pytest
 
 from council.cities.model import (
-    Batch, FileRole, OrgKind, Outcome, PaperKind, file_role, org_kind, outcome, paper_kind,
+    Batch, FileRole, OrgKind, Outcome, PaperKind, display_originator, file_role, org_kind,
+    outcome, paper_kind,
 )
 
 
@@ -135,3 +136,40 @@ def test_batch_counts_und_extend():
     a.extend(b)
     assert a.counts()["papers"] == 2
     assert a.counts()["meetings"] == 0
+
+
+@pytest.mark.parametrize("roh,art,erwartet", [
+    # Fraktionen und Verwaltung — der Normalfall, unverändert durch.
+    ("CDU-Fraktion", "motion", "CDU-Fraktion"),
+    ("Gruppe Grüne/SPD/Volt", "inquiry", "Gruppe Grüne/SPD/Volt"),
+    ("Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt", "amendment",
+     "Fraktion BÜNDNIS 90/DIE GRÜNEN & Volt"),
+    # Ratsmitglieder mit Namen bleiben stehen (Tim, 08.09.2026): Wer einen
+    # Antrag stellt, tut das als Mandatsträgerin in einem öffentlichen
+    # Verfahren, der Name gehört zur Sache.
+    ("Ratsmitglied Alexander Garder", "motion", "Ratsmitglied Alexander Garder"),
+    ("Stadtverordneter Woelki, Fraktion Die Linke", "inquiry",
+     "Stadtverordneter Woelki, Fraktion Die Linke"),
+    ("Dr. Rainer Buchwald", "motion", "Dr. Rainer Buchwald"),
+    ("Jonas Wolf, Emma Volkers", "inquiry", "Jonas Wolf, Emma Volkers"),
+    # Eine EINGABE kommt von einer Privatperson. Dort zählt die Sache, nicht
+    # wer sie eingereicht hat.
+    ("Anna Beispiel", "petition", None),
+    ("Ratsmitglied Alexander Garder", "petition", None),
+    # Das Wort „null" statt eines leeren Feldes schreiben Modelle gelegentlich.
+    ("null", "motion", None),
+    ("k.A.", "motion", None),
+    (None, "motion", None),
+    ("", "motion", None),
+    ("   ", None, None),
+])
+def test_display_originator(roh, art, erwartet):
+    """Ratsmitglieder ja, Eingaben von Privatleuten nein.
+
+    Gemessen am Bestand: Alle 1.860 Urheber-Angaben stehen an Anträgen,
+    Anfragen, Änderungsanträgen, Antworten, Berichten, Vorlagen und
+    Mitteilungen — durchweg Papiere aus Rat und Verwaltung. Eine Eingabe gibt
+    es dort heute nicht; die Regel greift für den Tag, an dem eine Stadt
+    dazukommt, die welche veröffentlicht.
+    """
+    assert display_originator(roh, art) == erwartet

@@ -351,3 +351,37 @@ def file_role(name: str | None, oparl_key: str) -> FileRole:
             return FileRole.MAIN
         return FileRole.AUXILIARY
     return FileRole.OTHER
+
+
+# --------------------------------------------------------------- Urheber
+
+#: Modelle schreiben gelegentlich das WORT „null" statt eines leeren Feldes.
+_LEERE_WERTE = {"null", "none", "nil", "-", "–", "k.a.", "keine angabe", "unbekannt"}
+
+
+def display_originator(raw: str | None, kind: str | None = None) -> str | None:
+    """Der Urheber, so wie er angezeigt werden darf.
+
+    **Namen von Ratsmitgliedern bleiben stehen** (Tims Entscheidung
+    08.09.2026). Wer einen Antrag stellt oder eine Anfrage einreicht, tut das
+    als Mandatsträgerin in einem öffentlichen Verfahren; der Name gehört zur
+    Sache. Gemessen am Bestand stehen alle 1.860 Urheber-Angaben an Anträgen,
+    Anfragen, Änderungsanträgen, Antworten, Berichten, Vorlagen und
+    Mitteilungen — also durchweg an Papieren aus Rat und Verwaltung.
+
+    **Bei einer Eingabe ist es umgekehrt.** Einwohneranträge, Bürgeranträge
+    und Anregungen nach § 24 GO NRW kommen von Privatpersonen. Deren Namen
+    stehen zwar im Ratsinformationssystem der jeweiligen Stadt, aber sie von
+    dort auf eine Oldenburger Beschlussseite zu heben, ist etwas anderes, als
+    sie dort zu belassen. Für ``PaperKind.PETITION`` gibt es deshalb keinen
+    Urheber — die Sache zählt, nicht wer sie eingereicht hat.
+
+    Der Bestand enthält heute **keine** Eingabe; die Regel greift für den Tag,
+    an dem eine Stadt dazukommt, die welche veröffentlicht.
+    """
+    text = (raw or "").strip()
+    if not text or text.casefold() in _LEERE_WERTE:
+        return None
+    if (kind or "") == PaperKind.PETITION.value:
+        return None
+    return text

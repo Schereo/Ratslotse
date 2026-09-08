@@ -55,7 +55,12 @@ class CitiesStore:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.path), timeout=60)
+        # check_same_thread=False wie in `council/store.py`: FastAPI führt die
+        # sync-Dependency und den Endpunkt in (potenziell verschiedenen)
+        # Threadpool-Threads aus — die Verbindung wandert also zwischen
+        # Threads. Sicher, weil jede Anfrage ihre eigene Store-Instanz
+        # bekommt; EINE Verbindung wird nie parallel benutzt.
+        self._conn = sqlite3.connect(str(self.path), timeout=60, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=60000")

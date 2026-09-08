@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
+from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from council.topics import POLICY_FIELDS
 from council.goals import GOALS
@@ -46,7 +47,8 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          ConversationDetail, ConversationList, ConversationSetting,
                          ConversationsDeleted, CouncilMembers, CouncilRecess, CouncilWeekPreview,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
-                         EntitiesMap, EntityDetail, EventStreamResponse, Finances, GoalDetail,
+                         ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
+                         EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
                          PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
                          PlaceDetail, PLANZEICHNUNG_JPEG, PolicyFieldRecaps, PolicyFields,
@@ -56,7 +58,7 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          SSE_FRAGE, SSE_RECHERCHE,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
-from ..deps import (get_council_store, get_store, optional_user, require_active,
+from ..deps import (get_cities_store, get_council_store, get_store, optional_user, require_active,
                     require_permission)
 from ..ratelimit import (
     partei_meinungen_limiter,
@@ -67,6 +69,26 @@ from ..ratelimit import (
 )
 
 router = APIRouter(prefix="/api/council", tags=["council"])
+
+#: So viele fremde Vorlagen zeigt „Anderswo beschlossen" höchstens. Mehr als
+#: eine Handvoll liest niemand, und die Nähe fällt danach spürbar ab.
+ELSEWHERE_LIMIT = 6
+
+#: Unter dieser Nähe wird nichts mehr gezeigt. Die Zahl ist nicht geraten: Der
+#: Median der Ähnlichkeit ZWEIER BELIEBIGER deutscher Verwaltungstexte liegt
+#: bei 0,70 (`council/cities/index.py`). Ein Treffer darunter ist damit nicht
+#: besser als Zufall — er sieht nur so aus, weil er auf einer Liste steht.
+#:
+#: Der Index schreibt seine Kanten weiterhin ab 0,55; die Schwelle hier gilt
+#: nur fürs Anzeigen, damit eine spätere Auswertung den vollen Bestand behält.
+#:
+#: Gemessen am Bestand: Beim Klimakonzept (9286) stand sonst
+#: „Verschwiegenheitspflicht kommunaler Aufsichtsräte" bei 0,570 in der Liste,
+#: und „Sozial gerechte Bodennutzung" (9253) bekam sechs Münsteraner Vorlagen
+#: zwischen 0,63 und 0,66, von denen keine mit der Sache zu tun hat. Der Preis
+#: ist ein gelegentlich verlorener guter Treffer knapp darunter — ein leerer
+#: Block ist ehrlicher als ein voller aus Zufallstreffern.
+ELSEWHERE_MIN_SCORE = 0.70
 
 #: Der Haushalts-Bereich ist Ratsmitgliedern (und Admins) vorbehalten — 20
 #: Routen unter ``/budget…``, eine Dependency für alle. Wer eine neue anlegt,
@@ -1771,6 +1793,101 @@ def decisions(
         if s:
             r["subvote_summary"] = s
     return {"total": total, "decisions": rows}
+
+
+@router.get("/decision/{decision_id}/elsewhere")
+def decision_elsewhere(
+    decision_id: int,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> ElsewhereResponse:
+    """Was andere Städte zu derselben Sache beantragt oder beschlossen haben.
+
+    **Öffentlich**, wie die Beschluss-Seite selbst.
+
+    Die Brücke ist die Vorlage: Ein Oldenburger Beschluss hängt an einer
+    ``kvonr``, und die ist im Städte-Speicher das Papier
+    ``oldenburg:paper:<kvonr>``. Beschlüsse ohne Vorlage — Wahlen,
+    Verfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo
+    auch nichts zu holen.
+
+    Eine leere Liste ist der Normalzustand, solange ``check_cities`` noch
+    nicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der
+    Block blendet sich aus, statt einen Fehler zu zeigen.
+    """
+    beschluss = store.get_decision(decision_id)
+    if not beschluss:
+        raise HTTPException(status_code=404, detail="Beschluss nicht gefunden")
+    kvonr = beschluss.get("kvonr")
+    if not kvonr:
+        return {"decision_id": decision_id, "items": [], "bodies": []}
+
+    from council.cities.annotators import get as get_annotator
+    from council.cities.index import EMBED_MODEL
+    from council.cities.model import display_originator
+    from council.cities.registry import BODIES
+
+    ann = get_annotator("classify")
+    # Der Anzeigename kommt aus unserer Registry, nicht aus dem Bestand: Dort
+    # steht, was die jeweilige Schnittstelle über sich selbst sagt, und das
+    # ist „Stadt Osnabrück" neben „Braunschweig" und „Münster". Für eine
+    # Aufzählung im Fließtext braucht es eine Form.
+    namen = {b["id"]: (BODIES[b["id"]].name if b["id"] in BODIES else b["name"])
+             for b in cities.bodies()}
+    # Mehr holen als angezeigt wird: Der `one_off`-Filter unten nimmt welche
+    # heraus, und der Index legt ohnehin nur acht Kanten je Papier an.
+    treffer = cities.neighbors("paper", f"oldenburg:paper:{kvonr}", EMBED_MODEL,
+                               limit=ELSEWHERE_LIMIT + 4)
+
+    items: list[ElsewhereItem] = []
+    gesehen: set[tuple[str, str]] = set()
+    for t in treffer:
+        if len(items) >= ELSEWHERE_LIMIT:
+            break
+        if not t.get("body_id") or float(t["score"]) < ELSEWHERE_MIN_SCORE:
+            continue
+        # Dieselbe Sache zweimal aus derselben Stadt kostet nur einen Platz:
+        # Magdeburg führt „Projekt Nachtengel" als Antrag UND als Vorlage.
+        # Verschiedene Titel bleiben (Osnabrücks Antrag und der
+        # Änderungsantrag dazu sind zwei Nachrichten, keine Dublette).
+        schluessel = (t["body_id"], (t.get("name") or "").strip().casefold())
+        if schluessel in gesehen:
+            continue
+        gesehen.add(schluessel)
+        annotation = (cities.annotation("paper", t["b_id"], ann.key, ann.version) or {}).get("payload", {})
+        # Formalvorgänge fliegen raus — die Einordnung sagt selbst, dass sie
+        # nirgendwohin übertragbar sind. Gemessen am Klimakonzept-Beschluss
+        # stand sonst „Bestellung der Schriftführung für den Ausschuss für
+        # Umweltschutz" als sechster Treffer in der Liste: Sie teilt das
+        # Vokabular, aber keine Idee.
+        if annotation.get("transfer") == "one_off":
+            continue
+        ergebnis = cities.outcome_for_paper(t["b_id"]) or {}
+        items.append({
+            "body_id": t["body_id"],
+            "body_name": namen.get(t["body_id"], t["body_id"]),
+            "paper_id": t["b_id"],
+            "name": t.get("name") or "",
+            "reference": t.get("reference"),
+            "date": t.get("date"),
+            "kind": t.get("kind") or "other",
+            "paper_type_raw": t.get("paper_type_raw"),
+            "web": t.get("web"),
+            "outcome": ergebnis.get("outcome") or "none",
+            "outcome_raw": ergebnis.get("result_raw"),
+            "score": round(float(t["score"]), 3),
+            "summary": annotation.get("summary"),
+            "instrument": annotation.get("instrument"),
+            "transfer": annotation.get("transfer"),
+            # Namen von Ratsmitgliedern bleiben, Eingaben von Privatleuten
+            # nicht — die Regel steht in `council/cities/model.py`.
+            "originator": display_originator(annotation.get("originator"), t.get("kind")),
+        })
+    return {
+        "decision_id": decision_id,
+        "items": items,
+        "bodies": sorted({i["body_name"] for i in items}),
+    }
 
 
 @router.get("/decision/{decision_id}")
