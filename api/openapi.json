@@ -8735,6 +8735,33 @@
         "title": "IdeaFields",
         "type": "object"
       },
+      "IdeaSearchResponse": {
+        "description": "Freie Suche über die Vorlagen anderer Städte.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Idea"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "total",
+          "items"
+        ],
+        "title": "IdeaSearchResponse",
+        "type": "object"
+      },
       "IdeasResponse": {
         "properties": {
           "counts": {
@@ -18433,6 +18460,71 @@
           }
         },
         "summary": "Cities Idea Fields",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/search": {
+      "get": {
+        "description": "„Was haben andere Städte zu …?\" — frei durchsuchbar.\n\n**Zwei Hälften, keine Vektor-Suche über die Anfrage.** Die bräuchte\n``fastembed`` im Web-Dienst, und das ist es bewusst nicht. Stattdessen\nVolltext plus die schon berechneten Nachbarschaften der besten Treffer;\ndie Einzelheiten stehen an ``CitiesStore.search_ideas``.\n\nÖffentlich wie die Ideen-Liste, und hinter demselben Schalter.",
+        "operationId": "cities_search_api_council_cities_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "title": "Body",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Search",
         "tags": [
           "council"
         ]

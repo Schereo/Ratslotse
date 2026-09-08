@@ -2240,6 +2240,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Search
+         * @description „Was haben andere Städte zu …?" — frei durchsuchbar.
+         *
+         *     **Zwei Hälften, keine Vektor-Suche über die Anfrage.** Die bräuchte
+         *     ``fastembed`` im Web-Dienst, und das ist es bewusst nicht. Stattdessen
+         *     Volltext plus die schon berechneten Nachbarschaften der besten Treffer;
+         *     die Einzelheiten stehen an ``CitiesStore.search_ideas``.
+         *
+         *     Öffentlich wie die Ideen-Liste, und hinter demselben Schalter.
+         */
+        get: operations["cities_search_api_council_cities_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/committees": {
         parameters: {
             query?: never;
@@ -7943,6 +7970,18 @@ export interface components {
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
         };
+        /**
+         * IdeaSearchResponse
+         * @description Freie Suche über die Vorlagen anderer Städte.
+         */
+        IdeaSearchResponse: {
+            /** Items */
+            items: components["schemas"]["Idea"][];
+            /** Query */
+            query: string;
+            /** Total */
+            total: number;
+        };
         /** IdeasResponse */
         IdeasResponse: {
             /** Counts */
@@ -12982,6 +13021,39 @@ export interface operations {
             };
         };
     };
+    cities_search_api_council_cities_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                body?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     committees_api_council_committees_get: {
         parameters: {
             query?: never;
@@ -16102,4 +16174,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3490159ac8700c47364d3d1e33973372851abfcd24d1721fd1b8a93d9ef612e6
+// vertrag-sha256: 353b8dc7e14df7fba5a4641bb1719e427ef412022e37eb5bd9a3386a68f9c073

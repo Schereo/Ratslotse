@@ -590,6 +590,23 @@ public struct IdeasResponse: Codable, Sendable {
     }
 }
 
+/// Die freie Suche über die Vorlagen anderer Städte.
+public struct IdeaSearchResponse: Codable, Sendable {
+    public let query: String
+    public let total: Int
+    public let items: [Idea]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        query = try v.decodeIfPresent(String.self, forKey: .query) ?? ""
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        items = try v.decodeIfPresent([Idea].self, forKey: .items) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case query, total, items }
+}
+
+
 /// Ein Themenfeld auf der Übersicht.
 public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
     public var id: String { field }

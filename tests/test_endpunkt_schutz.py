@@ -88,6 +88,7 @@ OEFFENTLICH = {
     # nichts Kontobezogenes. Hinter dem Schalter `ideen-anderswo`.
     ("get", "/api/council/cities/ideas"),
     ("get", "/api/council/cities/ideas/fields"),
+    ("get", "/api/council/cities/search"),
     # „Mein Viertel" (/api/districts/projects, /lookup) stand hier bis 09/2026.
     # Seit dem Umzug auf die vereinte Stadtkarte liegt alles davon hinter der
     # Anmeldung (STADTKARTE-PLAN.md, Schritt 5).

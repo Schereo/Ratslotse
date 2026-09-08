@@ -30,6 +30,39 @@ from council.cities.schema import MIGRATIONS, SCHEMA, SCHEMA_VERSION
 #: niemand je wiederfindet.
 OBJECT_KINDS = ("paper", "agenda_item", "meeting", "organization", "body")
 
+#: Die Verschmelzung der beiden Such-Hälften (Reciprocal Rank Fusion).
+#: ``RRF_K`` dämpft die Spitze — ohne ihn entschiede der erste Treffer allein.
+#: 60 ist der übliche Wert und hier nicht gemessen; die Gewichte dagegen
+#: sagen, was zählt: Wer die Wörter wirklich schreibt, steht vorn, die
+#: Nachbarschaft ergänzt.
+RRF_K = 60
+FTS_GEWICHT = 1.0
+NB_GEWICHT = 0.6
+
+
+def _such_stufen(query: str) -> list[str]:
+    """Die Anfrage als FTS5-Ausdrücke, von streng nach nachsichtig.
+
+    Dieselbe Überlegung wie bei den Belegen (``council/cities/evidence.py``):
+    Erst alle Wörter zusammen, dann das lose ODER. Ein roher Satz mit
+    Bindestrichen oder Klammern ist für FTS5 Syntax und wirft.
+    """
+    roh = [w.strip('"„“()[],.;:?!').strip() for w in
+           (query or "").replace("-", " ").replace("/", " ").split()]
+    # Kurze Wörter fliegen raus — außer sie sind Großbuchstaben oder Zahlen.
+    # In diesem Feld tragen genau die die Bedeutung: „Grundsteuer C" ist
+    # etwas anderes als „Grundsteuer B", „B 51" eine bestimmte Straße,
+    # „Tempo 30" eine bestimmte Regel. Gemessen: Ohne diese Ausnahme fand
+    # „Grundsteuer C" die Kleingarten-Vorlage zur Grundsteuer B zuerst.
+    woerter = [w for w in roh
+               if len(w) > 2 or (w and (w.isupper() or w.isdigit()))][:8]
+    if not woerter:
+        return []
+    stufen = [" AND ".join(f'"{w}"' for w in woerter)]
+    if len(woerter) > 1:
+        stufen.append(" OR ".join(f'"{w}"' for w in woerter))
+    return stufen
+
 
 def now() -> str:
     return datetime.utcnow().isoformat(timespec="seconds")
@@ -563,6 +596,113 @@ class CitiesStore:
                    for r in self._conn.execute(self._IDEEN_JE_STATUS, args)}
         rows = self._conn.execute(self._IDEEN_ZEILEN, args + [limit, offset])
         return [dict(r) for r in rows], gesamt, zaehler
+
+    #: Die Volltextsuche über fremde Vorlagen, samt Urteil wo vorhanden.
+    #: Wieder als GANZE Anweisung, aus demselben Grund wie oben.
+    _SUCHE = (
+        "SELECT p.*, b.name AS body_name, c.payload AS classify_json, "
+        # Spaltengewichte statt nacktem bm25: paper_id und body_id zählen gar
+        # nicht, der TITEL zehnfach, die Zusammenfassung vierfach, das
+        # Aktenzeichen dreifach, der Volltext einfach.
+        #
+        # Gemessen: Ohne Gewichte stand unter „Hitzeaktionsplan" die
+        # Osnabrücker „Kommunale Wärmeplanung" auf Platz eins — ein langes
+        # Dokument, das das Wort im Fließtext streift —, und Braunschweigs
+        # „Konzept zur Hitzeaktionsplanung" gar nicht in den ersten drei.
+        "       f.payload AS fit_json, "
+        "       bm25(papers_fts, 0.0, 0.0, 10.0, 3.0, 1.0, 4.0) AS rang "
+        "FROM papers_fts x "
+        "JOIN papers p ON p.id = x.paper_id "
+        "LEFT JOIN bodies b ON b.id = p.body_id "
+        "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+        "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+        "  AND f.annotator=? AND f.version=? "
+        "WHERE papers_fts MATCH ? AND p.body_id != 'oldenburg' "
+        "  AND (? = '' OR p.body_id = ?) "
+        "ORDER BY rang LIMIT ?")
+
+    #: Ein Papier samt Urteil, für die zweite Hälfte der Suche.
+    _EIN_PAPIER = (
+        "SELECT p.*, b.name AS body_name, c.payload AS classify_json, "
+        "       f.payload AS fit_json, 0.0 AS rang "
+        "FROM papers p "
+        "LEFT JOIN bodies b ON b.id = p.body_id "
+        "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+        "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+        "  AND f.annotator=? AND f.version=? "
+        "WHERE p.id = ?")
+
+    def search_ideas(self, query: str, model: str, body_id: str | None = None,
+                     limit: int = 30, nachbarn_je: int = 4) -> list[dict]:
+        """Freie Suche über fremde Vorlagen — Volltext plus Nachbarschaft.
+
+        **Warum keine Vektor-Suche über die Anfrage.** Sie bräuchte
+        ``fastembed`` im Web-Dienst, und das ist es bewusst nicht (Wurzel-
+        ``CLAUDE.md``): Der Deploy und der laufende Dienst sollen von einem
+        220-MB-Modell unberührt bleiben. Die KI-Frage fällt aus demselben
+        Grund auf Stichwortsuche zurück, wenn es fehlt.
+
+        **Was stattdessen die zweite Hälfte macht.** Die Nachbarschaften sind
+        schon gerechnet und liegen in der Datenbank. Zu den besten
+        Volltexttreffern kommen deshalb deren nächste Verwandte aus ANDEREN
+        Städten dazu. Das fängt genau den Fall, den der Probelauf als Schwäche
+        reiner Stichwortsuche gemessen hat: Wer „Hitzeschutz" tippt, findet
+        über den Text nur, was so heißt — über die Nachbarschaft aber auch den
+        „Hitzeaktionsplan".
+
+        Verschmolzen wird nach umgekehrtem Rang (RRF): Ein Treffer, der auf
+        beiden Wegen auftaucht, steigt; die Gewichte stehen als Konstanten da,
+        damit man sie messen kann statt sie zu raten.
+        """
+        c_ann, c_ver = self.IDEEN_CLASSIFY
+        f_ann, f_ver = self.IDEEN_FIT
+        vorne = [c_ann, c_ver, f_ann, f_ver]
+        bo = body_id or ""
+
+        volltext: list[dict] = []
+        for anfrage in _such_stufen(query):
+            try:
+                volltext = [dict(r) for r in self._conn.execute(
+                    self._SUCHE, vorne + [anfrage, bo, bo, limit * 2])]
+            except sqlite3.OperationalError:
+                continue          # kaputte FTS-Syntax ist kein Serverfehler
+            if volltext:
+                break
+
+        punkte: dict[str, float] = {}
+        zeilen: dict[str, dict] = {}
+        for rang, r in enumerate(volltext, 1):
+            punkte[r["id"]] = punkte.get(r["id"], 0.0) + FTS_GEWICHT / (RRF_K + rang)
+            zeilen[r["id"]] = r
+
+        # Zweite Hälfte: die Nachbarn der besten Volltexttreffer.
+        #
+        # Je Papier zählt der BESTE Nachbarschafts-Beitrag, nicht die Summe.
+        # Gemessen: Addiert man sie, sammelt ein Papier, das Nachbar mehrerer
+        # Ausgangstreffer ist, mehr Punkte als ein echter Volltexttreffer —
+        # unter „Hitzeaktionsplan" stand so die Osnabrücker „Kommunale
+        # Wärmeplanung" auf Platz eins, ohne das Wort überhaupt zu enthalten.
+        nachbar_punkte: dict[str, float] = {}
+        for r in volltext[:3]:
+            for rang, n in enumerate(self.neighbors("paper", r["id"], model,
+                                                    limit=nachbarn_je), 1):
+                if not n.get("body_id") or n["body_id"] == "oldenburg":
+                    continue
+                wert = NB_GEWICHT / (RRF_K + rang)
+                if wert > nachbar_punkte.get(n["b_id"], 0.0):
+                    nachbar_punkte[n["b_id"]] = wert
+                if n["b_id"] not in zeilen:
+                    zeile = self._conn.execute(self._EIN_PAPIER, vorne + [n["b_id"]]).fetchone()
+                    if zeile:
+                        zeilen[n["b_id"]] = dict(zeile)
+        for kennung, wert in nachbar_punkte.items():
+            punkte[kennung] = punkte.get(kennung, 0.0) + wert
+
+        beste = sorted((i for i in punkte if i in zeilen),
+                       key=lambda i: -punkte[i])[:limit]
+        return [dict(zeilen[i], score=round(punkte[i], 5)) for i in beste]
 
     def idea_fields(self) -> list[dict]:
         """Je Themenfeld die Zahlen für die Übersicht.
