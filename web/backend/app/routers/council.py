@@ -1898,6 +1898,7 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict) -> Idea:
 
     klasse = json.loads(r.get("classify_json") or "{}")
     urteil = json.loads(r.get("fit_json") or "{}")
+    aufwand = json.loads(r.get("effort_json") or "{}")
     return {
         "paper_id": r["id"], "body_id": r["body_id"],
         "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
@@ -1914,6 +1915,8 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict) -> Idea:
         "obstacles": urteil.get("obstacles"),
         "confidence": urteil.get("confidence") or "",
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
+        "effort": aufwand.get("effort") or "",
+        "addressee": aufwand.get("addressee"),
     }
 
 

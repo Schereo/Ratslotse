@@ -258,3 +258,36 @@ def test_antwort_ausserhalb_der_form_wird_verworfen(store, monkeypatch):
                         lambda **kw: _antwort(["p0"], field="voelkerrecht"))
     annotate.run(store, get("classify"), workers=1)
     assert store.annotation("paper", "p0", "classify", "2") is None
+
+
+def test_die_aufwandsklasse_laeuft_nach_der_einordnung():
+    """`only_usable` heißt: Der Annotator BRAUCHT die Einordnung.
+
+    Beide laufen im selben Durchgang (`needs_index=False`), und welcher zuerst
+    drankommt, entscheidet die Reihenfolge in der Registry. Steht `effort` vor
+    `classify`, sieht es im ersten Lauf einer neuen Stadt gar keine Kandidaten
+    und schweigt — ohne Fehler, ohne Zeile im Log, einfach nichts. Deshalb
+    steht die Reihenfolge hier als Zusage.
+    """
+    from council.cities.annotators import ANNOTATORS
+
+    reihenfolge = list(ANNOTATORS)
+    for key, ann in ANNOTATORS.items():
+        if not ann.only_usable:
+            continue
+        assert reihenfolge.index("classify") < reihenfolge.index(key), (
+            f"{key} braucht die Einordnung und muss NACH classify stehen")
+
+
+def test_nur_uebertragbares_kostet_ein_viertel():
+    """Die Aufwandsklasse fragt nur, wo die Frage Sinn ergibt.
+
+    An einem Bebauungsplan stellt sich „was würde das den Rat kosten?" nicht —
+    er ist nicht übertragbar, und das ist richtig so. Der Filter spart drei
+    Viertel der Kosten (1.511 übertragbare von 24.591 Papieren, 08.09.2026).
+    """
+    from council.cities.annotators import get
+
+    assert get("effort").only_usable is True
+    assert get("classify").only_usable is False, \
+        "die Einordnung entscheidet ERST, was übertragbar ist"

@@ -8654,6 +8654,13 @@
       "Idea": {
         "description": "Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.",
         "properties": {
+          "addressee": {
+            "title": "Addressee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "body_id": {
             "title": "Body Id",
             "type": "string"
@@ -8679,6 +8686,10 @@
               "string",
               "null"
             ]
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
           },
           "evidence": {
             "items": {
@@ -8787,7 +8798,9 @@
           "why_worth",
           "obstacles",
           "confidence",
-          "evidence"
+          "evidence",
+          "effort",
+          "addressee"
         ],
         "title": "Idea",
         "type": "object"

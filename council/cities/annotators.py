@@ -43,6 +43,53 @@ FIT_WORTH = ("yes", "maybe", "no")
 CONFIDENCE_VALUES = ("high", "medium", "low")
 
 
+#: Was es kostet, diese Idee in Oldenburg zu verfolgen — von der Frage bis zum
+#: Haushaltsposten. **Das ist keine Verfeinerung der Übertragbarkeit, sondern
+#: eine andere Frage:** „Eine Anfrage zu Fußwegbreiten stellen" und „ein
+#: Darlehensprogramm für Genossenschaften einführen" standen bisher
+#: gleichberechtigt auf einer Liste, obwohl ein Ratsmitglied sie sofort
+#: unterscheidet. 31 % der übertragbaren Vorlagen sind Anfragen oder deren
+#: Antworten (gemessen 08.09.2026).
+EFFORT_VALUES = ("inquiry", "review", "resolution", "decision", "budget")
+
+
+class IdeaEffort(BaseModel):
+    """Was diese Idee den Oldenburger Rat kosten würde.
+
+    Die fünf Stufen sind nach STEIGENDEM Aufwand geordnet, und die Grenze
+    zwischen ihnen ist die Art des Ratsbeschlusses, nicht seine Größe:
+
+    - ``inquiry``: eine Anfrage an die Verwaltung. Kostet eine Sitzung
+      Aufmerksamkeit und sonst nichts.
+    - ``review``: ein Prüfauftrag — „die Verwaltung möge prüfen und berichten".
+      Kostet Verwaltungsarbeit, bindet den Rat aber zu nichts.
+    - ``resolution``: eine Resolution an Land oder Bund. Kostet nichts und
+      bewirkt unmittelbar auch nichts; die Zuständigkeit liegt woanders.
+    - ``decision``: ein Beschluss mit unmittelbarer Wirkung — Satzung,
+      Richtlinie, Konzept, Programm — ohne nennenswerten Haushaltsposten.
+    - ``budget``: ein Beschluss, der Geld bindet: Förderprogramm, Stelle, Bau.
+    """
+
+    effort: Literal[EFFORT_VALUES]  # type: ignore[valid-type]
+    #: Wer es in Oldenburg TUN müsste, wenn nicht die Stadt selbst — „Eigenbetrieb
+    #: Gebäudewirtschaft", „VWG", „Großleitstelle Oldenburger Land". ``None``,
+    #: wenn die Stadt es selbst entscheidet.
+    #:
+    #: Das ist die Frage, an der im Golden Set die meisten „lohnt sich"-Urteile
+    #: hängen: Hausverbote in Bussen sind Sache der VWG, nicht des Rates.
+    addressee: str | None = Field(default=None, max_length=60)
+
+    @field_validator("addressee", mode="before")
+    @classmethod
+    def _kurz_genug(cls, v: object) -> object:
+        """Zu langen Freitext kürzen statt den ganzen Eintrag zu verwerfen.
+
+        Dieselbe Lehre wie bei ``OldenburgFit``: Ein um zwanzig Zeichen zu
+        langer Adressat macht ein richtiges Urteil nicht falsch.
+        """
+        return v[:60] if isinstance(v, str) else v
+
+
 class PaperClassification(BaseModel):
     """Was ein Modell über eine fremde Vorlage sagt.
 
@@ -142,6 +189,10 @@ class Annotator:
     #: nicht davor — sonst urteilt er über eine Stadt, deren nächste Verwandte
     #: er noch gar nicht kennt.
     needs_index: bool = False
+    #: Nur Vorlagen, die die Einordnung als übertragbar führt? Für Fragen, die
+    #: sich an einem Bebauungsplan gar nicht stellen. Spart hier drei Viertel
+    #: der Kosten: 1.511 übertragbare von 24.591 Papieren.
+    only_usable: bool = False
     #: Woran man erkennt, dass die Fassung reif ist — wie ``fertig_wenn`` bei
     #: den Feature-Schaltern.
     gut_wenn: str = ""
@@ -188,6 +239,20 @@ ANNOTATORS: dict[str, Annotator] = {
                  "(gemessen 59 %), Beleg-Disziplin über 95 %. Die drei Klassen "
                  "sind auch unter Menschen strittig; was zählt, ist dass das "
                  "Modell nie behauptet, Oldenburg habe etwas, das fehlt.",
+    ),
+    "effort": Annotator(
+        key="effort", version="1", applies_to=("paper",),
+        prompt_system="cities_effort_system", prompt_user="cities_effort_user",
+        model=os.environ.get("CITIES_EFFORT_MODEL", "deepseek/deepseek-v4-flash"),
+        payload=IdeaEffort,
+        # Kleiner Batch und wenig Text: Die Frage hängt am Titel und an der
+        # Vorlagenart, nicht am Volltext. 1.500 Zeichen reichen, und acht
+        # Einträge je Aufruf halten die Antwort kurz genug, dass keiner
+        # ausgelassen wird.
+        batch_size=8, input_chars=1500, max_tokens=4000, only_usable=True,
+        gut_wenn="eval/run_cities_effort.py bleibt über 80 % über fünf Klassen. "
+                 "Die Kanten sind schärfer als bei `transfer` — eine Anfrage ist "
+                 "keine Satzung —, deshalb liegt die Schranke höher.",
     ),
 }
 
