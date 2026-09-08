@@ -631,6 +631,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/cohorts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Cohorts
+         * @description Der Trichter je Registrierungswoche — wer bleibt, und wo es abreißt.
+         *
+         *     Betreiber- und Testkonten fallen heraus; welche das sind, entscheidet die
+         *     Adminrolle plus ``STATS_EXCLUDE_DOMAINS``. Ohne diesen Schnitt zeigte die
+         *     Statistik zum großen Teil das eigene Klicken.
+         */
+        get: operations["stats_cohorts_api_admin_stats_cohorts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/growth": {
         parameters: {
             query?: never;
@@ -4708,6 +4732,69 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "error";
+        };
+        /**
+         * AdminKennzahlen
+         * @description Die vier Zahlen, an denen sich Maßnahmen messen lassen sollen.
+         *
+         *     Alle ``None``, solange die Grundgesamtheit leer ist — eine Quote aus null
+         *     Konten ist keine 0 %, sondern keine Aussage.
+         */
+        AdminKennzahlen: {
+            /** Fragen Median */
+            fragen_median: number | null;
+            /** Haken Quote */
+            haken_quote: number | null;
+            /** Sackgassen Quote */
+            sackgassen_quote: number | null;
+            /** Tag2 */
+            tag2: number | null;
+            /** Tag30 */
+            tag30: number | null;
+            /** Tag7 */
+            tag7: number | null;
+        };
+        /** AdminKohorte */
+        AdminKohorte: {
+            /** N */
+            n: number;
+            /** Stages */
+            stages: components["schemas"]["AdminKohortenStufe"][];
+            /** Week */
+            week: string;
+        };
+        /** AdminKohorten */
+        AdminKohorten: {
+            /** Cohorts */
+            cohorts: components["schemas"]["AdminKohorte"][];
+            /** Excluded */
+            excluded: number;
+            kennzahlen: components["schemas"]["AdminKennzahlen"];
+            /** Total */
+            total: components["schemas"]["AdminKohortenStufe"][];
+            /** Weeks */
+            weeks: number;
+        };
+        /**
+         * AdminKohortenStufe
+         * @description Eine Stufe des Trichters.
+         *
+         *     ``n`` ist die Zahl der Konten, die diese Stufe erreicht haben; ``eligible``
+         *     die Zahl derer, die sie überhaupt schon erreichen KONNTEN. Bei den
+         *     zeitlichen Stufen („noch da nach 30 Tagen") sind das zwei verschiedene
+         *     Zahlen, und wer sie verwechselt, liest jede frische Kohorte als Totalausfall.
+         */
+        AdminKohortenStufe: {
+            /** Eligible */
+            eligible: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** N */
+            n: number;
+            /** Window Days */
+            window_days: number | null;
         };
         /** AdminLimits */
         AdminLimits: {
@@ -11777,6 +11864,37 @@ export interface operations {
             };
         };
     };
+    stats_cohorts_api_admin_stats_cohorts_get: {
+        parameters: {
+            query?: {
+                weeks?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminKohorten"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_growth_api_admin_stats_growth_get: {
         parameters: {
             query?: {
@@ -16380,4 +16498,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8382df1de37720ae404c7ba773320e02e82565938414f75d9122a016517cc8b6
+// vertrag-sha256: 8c4c1aa8960524f900401b2192371b0a05fbbb9cf893a61c803f0ad35bd3d636
