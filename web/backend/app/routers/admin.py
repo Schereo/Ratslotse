@@ -117,7 +117,11 @@ def stats_cohorts(
     Statistik zum großen Teil das eigene Klicken.
     """
     domains = [d for d in (get_settings().stats_exclude_domains or "").split(",") if d.strip()]
-    return store.admin_kohorten(max(1, min(weeks, 26)), domains)
+    # `cast` wie bei den Fehlern: Der Store baut ein `dict`, die Form hält
+    # `AdminKohorten` in `antworten.py` fest, und der Vertragstest prüft sie
+    # gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
+    # importiert nichts aus `app` (tests/test_schichten.py).
+    return cast("AdminKohorten", store.admin_kohorten(max(1, min(weeks, 26)), domains))
 
 
 @router.get("/quiz/stats")
