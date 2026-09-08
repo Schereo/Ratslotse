@@ -377,6 +377,22 @@ gleichzeitig in getrennte Rohdateien; das ist erlaubt. Zwei Prozesse, die
 beide in `cities.sqlite` schreiben, sind es nicht — SQLite quittiert das mit
 `database is locked`, und im Probelauf starb der unterlegene Thread still.
 
+**Ein anderes Einbettungs-Modell probieren.** Der Speicher hält Vektoren und
+Nachbarschaften je Modell getrennt, ein neues liegt also neben dem alten und
+löscht nichts:
+
+```bash
+python scripts/cities_modellvergleich.py --einbetten --modell <name>
+python scripts/cities_modellvergleich.py --modell <name>
+```
+
+Gemessen am 08.09.2026 über 16.585 Papiere: Das größere
+`paraphrase-multilingual-mpnet-base-v2` (768 Dimensionen) fand **weniger** von
+dem, was ein Mensch als richtigen Beleg bezeichnet hat (12 von 23 gegen 19 von
+23), und drängte fast alle Kanten ins obere Band — 20.523 über 0,85, wo das
+heutige Modell 233 hat. Die Schwellen der Anzeige sind auf dieses Band geeicht;
+wer das Modell wechselt, misst sie neu.
+
 **Kennzahlen des Wochenlaufs:** `papers_total` und `papers_oldenburg` stehen
 im Admin-Panel unter *Statistik → Cron-Jobs*. Oldenburg eigens, weil es die
 Stadt ist, gegen die alles verglichen wird: Fällt die Zahl, fehlt dem

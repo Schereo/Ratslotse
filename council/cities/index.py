@@ -48,6 +48,14 @@ MIN_CHUNK_CHARS = 200
 #: (Probelauf, gemessen) — die Schwelle trennt also nicht Themen, sondern nur
 #: offensichtlich Unverwandtes ab. Was wirklich zusammengehört, entscheidet die
 #: Reihenfolge, nicht die Schwelle.
+#:
+#: **Die Zahl gilt für DIESES Modell.** Ein anderes verschiebt die ganze
+#: Skala, ohne mehr zu finden: ``paraphrase-multilingual-mpnet-base-v2``
+#: (768 Dimensionen) legte am selben Bestand 20.523 von 47.372 Kanten über
+#: 0,85, wo das heutige Modell 233 hat (gemessen 08.09.2026,
+#: ``scripts/cities_modellvergleich.py``). Wer das Modell wechselt, misst die
+#: Schwellen neu — hier UND in der Anzeige
+#: (``ELSEWHERE_MIN_SCORE``, ``evidence.MIN_NEIGHBOR_SCORE``).
 NEIGHBOR_MIN_SCORE = 0.55
 NEIGHBOR_TOP_K = 8
 
