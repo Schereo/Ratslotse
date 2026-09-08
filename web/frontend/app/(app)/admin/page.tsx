@@ -25,6 +25,7 @@ type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLau
 type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
+type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
@@ -391,6 +392,123 @@ function KennzahlCard({ label, hint, wert, anteil, invers }: {
   );
 }
 
+/** Anonyme Seitenaufrufe — die Nutzung, die vorher gar nicht sichtbar war.
+ *
+ *  Die Ansicht sagt bewusst „Aufrufe" und „Besuche", nie „Besucher": Ohne
+ *  Wiedererkennung gibt es keine eindeutigen Personen, und eine Zahl, die so
+ *  tut, wäre gelogen. Ein „Besuch" ist der erste Aufruf in einem Browser-Tab.
+ */
+function SeitenaufrufeSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "page-views"],
+    queryFn: () => api.get<AdminSeitenaufrufe>("/admin/stats/page-views?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Seitenaufrufe kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  if (data.total === 0) {
+    return (
+      <div className="space-y-3 pt-2">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Seitenaufrufe</h3>
+        <Card className="p-4">
+          <p className="text-[13px] text-muted-foreground">
+            Noch nichts gezählt. Die Zählung läuft ab dem Deploy dieser Version — vorher
+            aufgerufene Seiten lassen sich nicht nachtragen.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const anteilAnonym = Math.round((data.anonymous / data.total) * 100);
+  const spitze = data.pages[0]?.n ?? 1;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Seitenaufrufe</h3>
+        <span className="text-[11.5px] text-muted-foreground">
+          letzte {data.days} Tage · anonym, ohne Kennung
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="p-4">
+          <div className="flex items-baseline justify-between">
+            <StatKicker>Aufrufe je Tag</StatKicker>
+            <span className="text-[11.5px] text-muted-foreground">
+              {data.total.toLocaleString("de-DE")} gesamt · {data.sessions.toLocaleString("de-DE")} Besuche
+            </span>
+          </div>
+          <MiniBars
+            values={data.series.length ? data.series.map((d) => d.n) : [0]}
+            days={data.series.map((d) => d.day)}
+            height={70}
+            className="mt-3.5"
+          />
+          <p className="mt-2.5 text-[11.5px] leading-snug text-muted-foreground">
+            Ein „Besuch" ist der erste Aufruf in einem Browser-Tab. Wiedererkennung gibt es
+            nicht — deshalb steht hier nirgends eine Zahl von Besucher*innen.
+          </p>
+        </Card>
+        <Card className="p-4">
+          <StatKicker>Ohne Anmeldung</StatKicker>
+          <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+            {anteilAnonym} %
+          </p>
+          <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+            {data.anonymous.toLocaleString("de-DE")} von {data.total.toLocaleString("de-DE")} Aufrufen.
+            Genau diese Gruppe war vorher unsichtbar.
+          </p>
+          {data.clients.length > 0 && (
+            <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+              {data.clients.map((c) => (
+                <div key={c.client} className="flex items-baseline justify-between">
+                  <span className="text-[13px] text-foreground">{clientLabel(c.client)}</span>
+                  <span className="text-[13px] tabular-nums text-muted-foreground">
+                    {c.n.toLocaleString("de-DE")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <StatKicker>Meistgesehene Seiten</StatKicker>
+        <div className="mt-3.5 flex flex-col gap-1.5">
+          {data.pages.map((seite) => (
+            <div key={seite.route} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[14rem_minmax(0,1fr)_auto]">
+              <span className="truncate font-mono text-[12.5px] text-foreground">{seite.route}</span>
+              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${Math.max(2, Math.round((seite.n / spitze) * 100))}%` }}
+                />
+              </div>
+              <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums text-foreground">
+                {seite.n.toLocaleString("de-DE")}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
+          Detailseiten tragen ihre Kennung in der Query, und die wird nicht gemeldet —
+          „/council/decision" heißt also „irgendein Beschluss", nie welcher.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
 function StatsTab() {
   const [range, setRange] = useState("90d");
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -473,6 +591,8 @@ function StatsTab() {
       </div>
 
       <KohortenSection />
+
+      <SeitenaufrufeSection />
 
       <JobsSection />
     </div>

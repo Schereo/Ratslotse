@@ -31,7 +31,8 @@ from ..config import get_settings
 from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminKohorten, AdminPlaceCandidates, AdminQuizStats, AdminRequestFehler,
+                         AdminKohorten, AdminPlaceCandidates, AdminQuizStats,
+                         AdminRequestFehler, AdminSeitenaufrufe,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_cities_store, get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
@@ -122,6 +123,20 @@ def stats_cohorts(
     # gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
     # importiert nichts aus `app` (tests/test_schichten.py).
     return cast("AdminKohorten", store.admin_kohorten(max(1, min(weeks, 26)), domains))
+
+
+@router.get("/stats/page-views")
+def stats_page_views(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminSeitenaufrufe:
+    """Anonyme Seitenaufrufe — die Nutzung, die vorher unsichtbar war.
+
+    Zeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die
+    Aufteilung nach Client. Nichts davon ist einer Person zuzuordnen.
+    """
+    return store.seitenaufrufe(max(1, min(days, 365)))
 
 
 @router.get("/quiz/stats")
