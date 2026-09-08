@@ -495,6 +495,10 @@ class CitiesStore:
     #: Wechsel der Fassung genau hier auffallen soll.
     IDEEN_CLASSIFY = ("classify", "2")
     IDEEN_FIT = ("fit", "1")
+    #: Die Aufwandsklasse hängt als LEFT JOIN dran, nicht als JOIN: Sie ist
+    #: jünger als die Urteile, und eine Idee ohne sie soll sichtbar bleiben,
+    #: statt aus der Liste zu fallen, bis der Cron nachgezogen hat.
+    IDEEN_EFFORT = ("effort", "1")
 
     # ---- Die drei Abfragen der Ideen-Seite ------------------------------
     #
@@ -522,11 +526,14 @@ class CitiesStore:
         "  AND f.annotator=? AND f.version=? "
         "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
         "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN annotations e ON e.object_kind='paper' AND e.object_id=p.id "
+        "  AND e.annotator=? AND e.version=? "
         "LEFT JOIN bodies b ON b.id = p.body_id "
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
+        "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?)")
 
     _IDEEN_JE_STATUS = (
@@ -536,11 +543,14 @@ class CitiesStore:
         "  AND f.annotator=? AND f.version=? "
         "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
         "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN annotations e ON e.object_kind='paper' AND e.object_id=p.id "
+        "  AND e.annotator=? AND e.version=? "
         "LEFT JOIN bodies b ON b.id = p.body_id "
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
+        "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?)"
         " GROUP BY 1")
 
@@ -549,17 +559,20 @@ class CitiesStore:
     #: Neueste. Sie steht im SQL, damit Blättern und Zählen dieselbe sehen.
     _IDEEN_ZEILEN = (
         "SELECT p.*, c.payload AS classify_json, f.payload AS fit_json, "
-        "       b.name AS body_name "
+        "       e.payload AS effort_json, b.name AS body_name "
         "FROM papers p "
         "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
         "  AND f.annotator=? AND f.version=? "
         "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
         "  AND c.annotator=? AND c.version=? "
+        "LEFT JOIN annotations e ON e.object_kind='paper' AND e.object_id=p.id "
+        "  AND e.annotator=? AND e.version=? "
         "LEFT JOIN bodies b ON b.id = p.body_id "
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
+        "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?)"
         " ORDER BY CASE json_extract(f.payload, '$.worth') "
         "            WHEN 'yes' THEN 0 WHEN 'maybe' THEN 1 ELSE 2 END, "
@@ -570,18 +583,27 @@ class CitiesStore:
         "          COALESCE(p.date, '') DESC, p.id LIMIT ? OFFSET ?")
 
     def _ideen_args(self, field: str, status: Sequence[str], worth: Sequence[str],
-                    body_id: str | None) -> list[Any]:
-        """Die Platzhalter der Ideen-Abfragen, in ihrer Reihenfolge."""
+                    body_id: str | None, effort: Sequence[str] = ()) -> list[Any]:
+        """Die Platzhalter der Ideen-Abfragen, in ihrer Reihenfolge.
+
+        **Alle drei Anweisungen haben dieselbe Reihenfolge**, und diese
+        Funktion ist der einzige Ort, an dem sie steht. Wer eine Anweisung um
+        einen Filter ergänzt, ergänzt alle drei — sonst zählt die eine anders,
+        als die andere liest, und das Blättern springt.
+        """
         c_ann, c_ver = self.IDEEN_CLASSIFY
         f_ann, f_ver = self.IDEEN_FIT
+        e_ann, e_ver = self.IDEEN_EFFORT
         st = "," + ",".join(status) + "," if status else ""
         wo = "," + ",".join(worth) + "," if worth else ""
+        ef = "," + ",".join(effort) + "," if effort else ""
         bo = body_id or ""
-        return [f_ann, f_ver, c_ann, c_ver, field, st, st, wo, wo, bo, bo]
+        return [f_ann, f_ver, c_ann, c_ver, e_ann, e_ver,
+                field, st, st, wo, wo, ef, ef, bo, bo]
 
     def ideas(self, field: str, status: Sequence[str] = (), worth: Sequence[str] = (),
-              body_id: str | None = None, limit: int = 30,
-              offset: int = 0) -> tuple[list[dict], int, dict[str, int]]:
+              body_id: str | None = None, limit: int = 30, offset: int = 0,
+              effort: Sequence[str] = ()) -> tuple[list[dict], int, dict[str, int]]:
         """``(zeilen, gesamt, zahl je status)`` für ein Themenfeld.
 
         **Alles im SQL, nichts in Python.** Die naheliegende Fassung wäre
@@ -590,7 +612,7 @@ class CitiesStore:
         jeden Request. Filtern, Sortieren und Zählen gehören ins Backend
         (Wurzel-``CLAUDE.md``), und hier heißt Backend: in die Abfrage.
         """
-        args = self._ideen_args(field, status, worth, body_id)
+        args = self._ideen_args(field, status, worth, body_id, effort)
         gesamt = int(self._conn.execute(self._IDEEN_ZAEHLEN, args).fetchone()[0])
         zaehler = {r["status"]: r["n"]
                    for r in self._conn.execute(self._IDEEN_JE_STATUS, args)}

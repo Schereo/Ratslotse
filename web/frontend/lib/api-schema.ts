@@ -8178,6 +8178,8 @@ export interface components {
          * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
          */
         Idea: {
+            /** Addressee */
+            addressee: string | null;
             /** Body Id */
             body_id: string;
             /** Body Name */
@@ -8188,6 +8190,8 @@ export interface components {
             confidence: string;
             /** Date */
             date: string | null;
+            /** Effort */
+            effort: string;
             /** Evidence */
             evidence: components["schemas"]["IdeaEvidence"][];
             /** Field */
@@ -16653,4 +16657,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 38a15a1f141d43464e34f93c7071d6a52e34214cd5cf9a819c46c1fe19385c55
+// vertrag-sha256: 64f171752e386a106dfe837b78ce085a4e404187e443cec16d6804021f84a8a3

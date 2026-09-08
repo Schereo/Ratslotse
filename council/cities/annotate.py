@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import ValidationError
 
-from council.cities.annotators import Annotator
+from council.cities.annotators import USABLE, Annotator
 from council.cities.store import CitiesStore
 from council.topics import POLICY_FIELDS
 from kern import llm, prompts
@@ -117,6 +117,14 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
         limit: int | None = None, workers: int = WORKERS) -> dict:
     """Alles annotieren, was noch keine oder eine veraltete Annotation hat."""
     kandidaten = main.papers(body_id=body_id)
+    if ann.only_usable:
+        # Manche Fragen stellen sich an einem Bebauungsplan gar nicht. Der
+        # Filter ist derselbe wie bei `fit.candidates_for` — eine Regel, zwei
+        # Aufrufer; ein zweites `transfer in USABLE` woanders liefe irgendwann
+        # auseinander.
+        uebertragbar = main.annotations_for("classify", "2")
+        kandidaten = [p for p in kandidaten
+                      if (uebertragbar.get(p["id"]) or {}).get("transfer") in USABLE]
     texte = {p["id"]: (main.text_for_paper(p["id"]) or "") for p in kandidaten}
     hashes = {p["id"]: source_hash(p, texte.get(p["id"]), ann) for p in kandidaten}
 
@@ -128,7 +136,12 @@ def run(main: CitiesStore, ann: Annotator, body_id: str | None = None,
         return {"annotated": 0, "errors": 0, "cost_usd": 0.0, "seconds": 0}
 
     logger.info("%s/%s: %s Vorlagen einzuordnen", ann.key, ann.version, len(offen))
-    system = prompts.render(ann.prompt_system, fields=field_list())
+    # Jeder Annotator füllt seine eigenen Platzhalter; `render` ignoriert, was
+    # sein Prompt nicht kennt. `classify` braucht die Themenfelder, `effort`
+    # den Oldenburg-Steckbrief — ohne ihn hielte es die VWG für ein Amt.
+    from council.cities.evidence import OLDENBURG_STECKBRIEF
+    system = prompts.render(ann.prompt_system, fields=field_list(),
+                            steckbrief=OLDENBURG_STECKBRIEF)
     sperre = threading.Lock()
     stand = {"annotated": 0, "errors": 0, "cost_usd": 0.0,
              "prompt_tokens": 0, "completion_tokens": 0}

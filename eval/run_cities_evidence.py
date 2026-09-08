@@ -49,6 +49,10 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL))
 
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(WURZEL / ".env")
+
 from council.cities import default_paths  # noqa: E402
 from council.cities import evidence as ev  # noqa: E402
 from council.cities.index import EMBED_MODEL  # noqa: E402

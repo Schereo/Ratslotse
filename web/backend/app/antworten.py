@@ -1380,6 +1380,14 @@ class Idea(TypedDict):
     obstacles: str | None
     confidence: str
     evidence: list[IdeaEvidence]
+    #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
+    #: Annotator `effort`): inquiry < review < resolution < decision < budget.
+    #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.
+    effort: str
+    #: Wer sie in Oldenburg TUN müsste, wenn nicht die Stadt selbst — „VWG",
+    #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
+    #: die Stadt selbst entscheidet, und das ist der Normalfall.
+    addressee: str | None
 
 
 class IdeasResponse(TypedDict):

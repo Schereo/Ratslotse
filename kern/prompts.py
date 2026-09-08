@@ -150,6 +150,75 @@ WORTH hängt NICHT am Status. Ein "present" kann "maybe" sein (Oldenburgs
 Fassung ist schmaler), ein "missing" kann "no" sein (nicht zuständig)."""
 
 
+PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
+von der bloßen Frage bis zum Haushaltsposten.
+
+Du bekommst mehrere Vorlagen aus Räten anderer Städte. Für jede zwei Angaben:
+wie AUFWENDIG ihre Umsetzung in Oldenburg wäre, und WER sie tun müsste, falls
+nicht die Stadt selbst.
+
+{steckbrief}
+
+Antworte NUR mit diesem JSON:
+{{"results": [{{"id": "<die Kennung aus der Eingabe>",
+               "effort": "inquiry" | "review" | "resolution" | "decision" | "budget",
+               "addressee": "<wer es tun müsste>" | null}}, …]}}
+
+AUFWAND — nach der ART des Ratsbeschlusses, nicht nach der Größe des Themas:
+- "inquiry": eine Anfrage an die Verwaltung. Sie will wissen, nicht ändern.
+  Auch die Antwort der Verwaltung darauf.
+- "review": ein Prüfauftrag — „die Verwaltung möge prüfen und berichten“.
+  Kostet Verwaltungsarbeit, bindet den Rat zu nichts.
+- "resolution": eine Resolution oder Appell an Land, Bund oder EU. Die
+  Zuständigkeit liegt woanders; der Rat kann nur fordern.
+- "decision": ein Beschluss mit unmittelbarer Wirkung — Satzung, Richtlinie,
+  Konzept, Programm, Vergabe — OHNE nennenswerten Haushaltsposten.
+- "budget": ein Beschluss, der Geld bindet: Förderprogramm, neue Stelle,
+  Baumaßnahme, Zuschuss.
+
+Im Zweifel die NIEDRIGERE Stufe: Ein Konzept, das erst noch erarbeitet werden
+soll, ist "review", nicht "decision".
+
+ADRESSAT — nur wenn es NICHT die Stadt selbst entscheidet.
+Nimm den Namen aus dem Steckbrief, wenn er dort steht: Stadtwerke, EWE, OOWV,
+VWG, GSG, Klinikum, ein Eigenbetrieb. Auch „Land Niedersachsen“ oder „Bund“,
+wenn die Sache dort liegt. Sonst null — und null ist der Normalfall.
+
+Der Adressat ist IMMER ein Akteur aus OLDENBURGS Welt. Die Vorlage kommt aus
+einer anderen Stadt; deren Stadtwerke, deren Verkehrsbetrieb und deren
+Bundesland gehören nicht hierher. Wenn dort das Land Brandenburg zuständig
+ist, ist es hier das Land Niedersachsen.
+
+BEISPIELE
+
+Vorlage: „Wie viele Ladesäulen stehen im Stadtgebiet?“ (Anfrage)
+{{"effort": "inquiry", "addressee": null}}
+— Sie will wissen, nicht ändern. Dass die Antwort die Stadtwerke betrifft,
+   macht sie nicht zu deren Sache: Gefragt wird die Verwaltung.
+
+Vorlage: „Die Verwaltung wird gebeten zu prüfen, ob ein Radschnellweg zwischen
+Innenstadt und Universität möglich ist.“
+{{"effort": "review", "addressee": null}}
+
+Vorlage: „Der Rat fordert die Landesregierung auf, die Krankenhausfinanzierung
+zu reformieren.“
+{{"effort": "resolution", "addressee": "Land Niedersachsen"}}
+
+Vorlage: „Satzung über die Erhebung von Gebühren für Sondernutzungen —
+Neufassung zum 01.01.2027“
+{{"effort": "decision", "addressee": null}}
+— Eine Satzung wirkt unmittelbar und kostet die Stadt nichts; sie nimmt ein.
+
+Vorlage: „Einrichtung eines Förderprogramms für Dachbegrünung mit 200.000 Euro
+jährlich ab 2027“
+{{"effort": "budget", "addressee": null}}
+
+Vorlage: „Nachtbus-Linien am Wochenende bis 2 Uhr verlängern“
+{{"effort": "budget", "addressee": "VWG"}}
+— Der Rat kann es wollen und bezahlen, fahren muss die VWG.
+"""
+
+
 PROMPT_CITIES_CLASSIFY = """Du ordnest Vorlagen aus Stadträten anderer deutscher Städte ein. Ziel ist eine
 Ideensammlung für die Stadt OLDENBURG (Oldb): kreisfreie Stadt in Niedersachsen,
 ~172.000 Einwohner, Universitätsstadt, Kommunalrecht NKomVG. Oldenburg hat KEINE
@@ -232,6 +301,20 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Fremde Ratsvorlagen — die Einträge",
         "description": "Der Batch. Platzhalter: {items}.",
         "template": "EINTRÄGE:\n{items}",
+    },
+    "cities_effort_system": {
+        "title": "Was würde diese Idee den Rat kosten?",
+        "description":
+            "Der Annotator `effort`. Platzhalter: {steckbrief} (der "
+            "Oldenburg-Steckbrief aus council/cities/evidence.py). Die "
+            "Beispiele sind ERFUNDEN, nicht aus dem Prüfstand — die Lehre aus "
+            "PR 10, wo der Eval sich selbst maß.",
+        "template": PROMPT_CITIES_EFFORT,
+    },
+    "cities_effort_user": {
+        "title": "Der Batch für die Aufwandsklasse",
+        "description": "Platzhalter: {items}.",
+        "template": "VORLAGEN:\n{items}",
     },
     "cities_evidence_terms": {
         "title": "Städtevergleich – Suchbegriffe für die Belege",
