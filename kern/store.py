@@ -3478,6 +3478,40 @@ class Store:
             "empty_share": anteil("ai_answer_empty", "ai_question"),
         }
 
+    def sackgassen(self, tage: int = 30, limit: int = 40) -> list[dict]:
+        """Fragen, deren Antwort keine einzige Quelle nennen konnte.
+
+        **Nur aus gespeicherten Gesprächen**, und das ist keine Einschränkung,
+        die man wegkonfigurieren sollte: Wer das Speichern nicht eingeschaltet
+        hat, dessen Fragen liegen nicht vor — sie sollen es auch nicht. Die
+        vollständige ZAHL steht daneben im Ereignis-Zähler
+        (``ai_answer_empty``); diese Liste zeigt nur die Fälle, die ohnehin in
+        der Datenbank stehen, und beantwortet die andere Frage: *woran* ist es
+        gescheitert.
+
+        Das Konto steht bewusst NICHT dabei. Für „welche Frage fand nichts?"
+        ist es ohne Belang, und eine Liste mit Kontokennung neben der Frage
+        wäre ein Leseprotokoll.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        raus: list[dict] = []
+        for r in self._conn.execute(
+                "SELECT question, answer, sources, created FROM qa_conversation_turns "
+                "WHERE created >= ? ORDER BY created DESC", (seit,)).fetchall():
+            try:
+                zitiert = (json.loads(r["sources"] or "{}") or {}).get("cited")
+            except (ValueError, TypeError):
+                zitiert = None
+            if zitiert:
+                continue
+            raus.append({"question": r["question"][:300],
+                         "answer": (r["answer"] or "")[:400],
+                         "created": r["created"]})
+            if len(raus) >= max(1, limit):
+                break
+        return raus
+
     def admin_growth(self, days: int | None = 90) -> dict:
         """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für
         registrierte Konten und angelegte Themen + Δ im Zeitraum + WAU. Jede
