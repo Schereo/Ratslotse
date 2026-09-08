@@ -1811,6 +1811,13 @@ def decision_elsewhere(
     Verfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo
     auch nichts zu holen.
 
+    **Die ``kvonr`` allein reicht nicht.** Sie steht an 274 von 9.059
+    Beschlüssen, die Vorlagennummer dagegen an 6.553 — und
+    ``council_templates`` übersetzt die eine in die andere. Ohne diesen Umweg
+    erschien der Block auf 50 Beschluss-Seiten, mit ihm auf 486 (gemessen
+    08.09.2026). Die ``kvonr`` am Beschluss bleibt die genauere Angabe und
+    hat Vorrang; die Nummer ist der Rückfall, nicht umgekehrt.
+
     Eine leere Liste ist der Normalzustand, solange ``check_cities`` noch
     nicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der
     Block blendet sich aus, statt einen Fehler zu zeigen.
@@ -1819,10 +1826,16 @@ def decision_elsewhere(
     if not beschluss:
         raise HTTPException(status_code=404, detail="Beschluss nicht gefunden")
     kvonr = beschluss.get("kvonr")
+    if not kvonr and beschluss.get("template_number"):
+        # `get_vorlage_by_nr` fällt von „22/0348/1" auf „22/0348" zurück —
+        # genau die Fälle, in denen das Protokoll eine Fassung zitiert, die
+        # die Tagesordnung unter der Grundnummer führt.
+        vorlage = store.get_vorlage_by_nr(beschluss["template_number"])
+        kvonr = vorlage.get("kvonr") if vorlage else None
     if not kvonr:
         return {"decision_id": decision_id, "items": [], "bodies": []}
 
-    from council.cities.annotators import get as get_annotator
+    from council.cities.annotators import USABLE, get as get_annotator
     from council.cities.index import EMBED_MODEL
     from council.cities.model import display_originator
     from council.cities.registry import BODIES
@@ -1855,12 +1868,25 @@ def decision_elsewhere(
             continue
         gesehen.add(schluessel)
         annotation = (cities.annotation("paper", t["b_id"], ann.key, ann.version) or {}).get("payload", {})
-        # Formalvorgänge fliegen raus — die Einordnung sagt selbst, dass sie
-        # nirgendwohin übertragbar sind. Gemessen am Klimakonzept-Beschluss
-        # stand sonst „Bestellung der Schriftführung für den Ausschuss für
-        # Umweltschutz" als sechster Treffer in der Liste: Sie teilt das
-        # Vokabular, aber keine Idee.
-        if annotation.get("transfer") == "one_off":
+        # **Nur übertragbare Treffer.** Das Einbettungsmodell misst, wie ein
+        # Dokument geschrieben ist, nicht wovon es handelt: Ein Oldenburger
+        # Bebauungsplan findet Osnabrücker Bebauungspläne bei 0,84, ein
+        # Haushaltsvollzug die Münsteraner Haushaltssatzung bei 0,86. Eine
+        # Schwelle trennt das nicht — sie stünde über den guten Treffern.
+        #
+        # Die Einordnung sieht es dagegen: In einer Stichprobe von zwölf
+        # Beschluss-Seiten trugen alle vier Gattungs-Fehltreffer auf der
+        # fremden Seite `local` oder `one_off`, und alle sechs guten hatten
+        # mindestens einen Treffer mit `direct` oder `adaptable`.
+        #
+        # Preis: Von 361 Vorlagen mit Block bleiben 190 (gemessen 08.09.2026).
+        # Die EIGENE Seite wird bewusst nicht gefiltert — das kostete
+        # Oldenburgs Mittagsverpflegungs-Satzung (ein `one_off`, dessen
+        # Braunschweiger Gegenstück eine Idee ist) und die Parkgebühren.
+        #
+        # Ein Papier ohne Annotation fällt damit auch heraus. Das ist richtig:
+        # Es ist noch nicht eingeordnet, der nächste Cron holt es nach.
+        if annotation.get("transfer") not in USABLE:
             continue
         ergebnis = cities.outcome_for_paper(t["b_id"]) or {}
         items.append({
