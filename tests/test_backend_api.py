@@ -1389,6 +1389,44 @@ def test_decision_detail_includes_vorlage(client):
     assert data["attachments"] == []  # keine Anlagen geseedet → leere Liste, kein Fehlen
 
 
+def test_decision_detail_schneidet_auswirkungen_aus_dem_auszug(client):
+    """Die Beschluss-Seite zeigt „Was kostet das?" und den Klima-Check als
+    eigene Karten. Derselbe Text stand bis #1211 zusätzlich im Auszug „Warum es
+    dazu kam" — dort ist er doppelt, und der Auszug soll den Bericht der
+    Verwaltung zeigen, nicht die Karten daneben wiederholen.
+
+    Der Schnitt hängt am Kartentext, nicht an der Überschrift: Wo die Ernte
+    nichts gefunden hat, bleibt der Block stehen statt ersatzlos zu
+    verschwinden."""
+    _register(client)
+    roh = ("Sachverhalt:\n"
+           + "Die Verwaltung berichtet über den Sachstand. " * 10
+           + "\nAuswirkungen:\n"
+             "a) Finanzen\nKosten von 50.000 Euro im Haushalt 2026.\n"
+             "b) Klima\nPrüfungsrelevant: Ja, es steuert den Verkehr.\n"
+             "Begründung:\nWeil es sein muss.\n")
+    cs = CouncilStore(COUNCIL_DB)
+    cs.save_session(CouncilSession(89, "Rat der Stadt", "2026-02-02", "18:00", "Rathaus",
+                                   agenda_items=[AgendaItem("Ö 3", "Kosten", template_number="26/0401", kvonr=902)]))
+    cs._insert_decision(89, 0, "decision", None, "Ö 3", "Kosten tragen", "Wird getragen.",
+                        "accepted", None, None, None, [], "26/0401", None, None)
+    cs._conn.commit()
+    did = cs._conn.execute("SELECT id FROM council_decisions WHERE ksinr = 89").fetchone()[0]
+    # save_vorlage erntet die beiden Felder selbst — genau wie im Betrieb.
+    cs.save_vorlage({"kvonr": 902, "template_number": "26/0401", "title": "Kosten",
+                     "kind": "Beschlussvorlage", "raw_text": roh, "status": "ok"})
+    cs.close()
+    t = client.get(f"/api/council/decision/{did}").json()["template"]
+    assert t["financial_impact"].startswith("Kosten von 50.000 Euro")
+    assert t["climate_impact"].startswith("Prüfungsrelevant: Ja")
+    # … und genau deshalb steht beides NICHT mehr im Auszug.
+    assert "50.000 Euro" not in t["excerpt"]
+    assert "Prüfungsrelevant" not in t["excerpt"]
+    # Der Bericht drumherum bleibt vollständig.
+    assert "Sachstand" in t["excerpt"]
+    assert "Weil es sein muss." in t["excerpt"]
+
+
 def test_decision_detail_lists_anlagen_and_analysis_has_antrag_stats(client):
     _register(client)
     cs = CouncilStore(COUNCIL_DB)

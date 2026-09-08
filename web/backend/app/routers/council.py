@@ -1864,7 +1864,17 @@ def decision_detail(
                 # aller Vorlagen brach er nach 2600 Zeichen mitten im Satz ab,
                 # auch hinter „Mehr anzeigen". Gekappt wird in der Anzeige
                 # (Web: line-clamp, App: lineLimit), nicht in den Daten.
-                "excerpt": vorlagen_mod.excerpt(v.get("raw_text") or "", None) or None,
+                #
+                # Ohne den „Auswirkungen"-Block, ABER nur wenn die beiden
+                # Karten darunter ihn auch wirklich tragen. Sonst stünde er
+                # zweimal auf derselben Seite; ist die Ernte an dieser Vorlage
+                # gescheitert (Sonderformen wie „a) Finanzen:" mit Doppelpunkt
+                # oder die alte Überschrift „Klimarelevante Auswirkungen:"),
+                # bleibt er im Auszug stehen statt ersatzlos zu verschwinden.
+                "excerpt": vorlagen_mod.excerpt(
+                    v.get("raw_text") or "", None,
+                    karte_finanzen=v.get("financial_impact"),
+                    karte_klima=v.get("climate_impact")) or None,
                 # Regex-Ernte: federführendes Amt + Klima-Check der Verwaltung.
                 "office": v.get("office"),
                 "climate_impact": v.get("climate_impact"),

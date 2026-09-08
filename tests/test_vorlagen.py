@@ -102,7 +102,9 @@ def test_excerpt_schneidet_anlagen_und_unterschrift_ab():
     )
     out = vorlagen.excerpt(raw, None)
     assert "Sachstand" in out
-    # Die Kostenangabe bleibt — sie steht sonst nirgends auf der Seite.
+    # Die Kostenangabe bleibt: OHNE ``karte_finanzen`` weiß der Aufrufer nicht,
+    # dass sie woanders steht — das ist der Weg fürs Chunking (Einbettungen,
+    # Volltextsuche, KI-Frage), wo sie die einzige Fundstelle ist.
     assert "Finanzielle Auswirkungen" in out
     # Gesperrte Unterschrift und Anlagen-Liste sind Verwaltungs-Schwanz.
     assert "U h r h a n" not in out and "In Vertretung" not in out
@@ -412,3 +414,101 @@ def test_anlagen_block_traegt_belegmarker():
     assert "NIE mit [id]" in block
     assert qa._anlagen_block([]) == ""
     assert qa._anlagen_block(None) == ""
+
+
+# --- „Auswirkungen"-Block: steht schon als Karte, also raus aus dem Auszug ---
+
+AUSWIRKUNGEN_ROH = (
+    "Sachverhalt:\n"
+    + "Die Verwaltung berichtet ausführlich über den Sachstand. " * 8
+    + "\nAuswirkungen:\n"
+    "a) Finanzen\n"
+    "Kosten von 50.000 Euro im Haushalt 2026.\n"
+    "b) Klima\n"
+    "Prüfungsrelevant: Ja, das Vorhaben steuert den Verkehr.\n"
+    "c) Weitere\n"
+    "Die Teilhabe im Quartier wird gestärkt.\n"
+    "Begründung:\n"
+    "Weil es sein muss.\n"
+)
+KARTE_FIN = "Kosten von 50.000 Euro im Haushalt 2026."
+KARTE_KLI = "Prüfungsrelevant: Ja, das Vorhaben steuert den Verkehr."
+
+
+def test_excerpt_laesst_auswirkungen_stehen_ohne_karten():
+    """Der Vorgabeweg — und der wichtigere: ``excerpt`` bedient auch das
+    Chunking für Einbettungen, Volltextsuche und KI-Frage. Dort ist der Block
+    die einzige Stelle, an der „was kostet das" auffindbar steht."""
+    out = vorlagen.excerpt(AUSWIRKUNGEN_ROH, None)
+    assert "a) Finanzen" in out and "50.000 Euro" in out
+    assert "b) Klima" in out and "Prüfungsrelevant" in out
+
+
+def test_excerpt_schneidet_auswirkungen_wenn_die_karten_sie_tragen():
+    out = vorlagen.excerpt(AUSWIRKUNGEN_ROH, None,
+                           karte_finanzen=KARTE_FIN, karte_klima=KARTE_KLI)
+    assert "50.000 Euro" not in out and "Prüfungsrelevant" not in out
+    # Die leergeräumte Überschrift geht mit — sie leitete sonst ins Nichts.
+    assert "Auswirkungen:" not in out
+    # Der Sachverhalt davor bleibt …
+    assert "Sachstand" in out
+    # … die „Begründung" DAHINTER auch. Bei 137 der 4760 Vorlagen mit diesem
+    # Block folgt noch ein Sachabschnitt; ein Schnitt bis zum Textende (wie
+    # beim Anlagen-Schwanz) verlöre ihn.
+    assert "Begründung:" in out and "Weil es sein muss." in out
+    # „c) Weitere" hat keine Karte — 696 Vorlagen tragen dort echten Inhalt.
+    assert "c) Weitere" in out and "Teilhabe im Quartier" in out
+
+
+def test_excerpt_schneidet_nur_die_haelfte_mit_karte():
+    """Die Ernte trifft regelmäßig nur eine der beiden Hälften — „a) Finanzen:"
+    mit Doppelpunkt oder mit Text auf derselben Zeile geht ihr durch. Ein
+    gemeinsamer Schnitt nähme dann auch die Hälfte mit, die auf keiner Karte
+    steht."""
+    nur_klima = vorlagen.excerpt(AUSWIRKUNGEN_ROH, None, karte_klima=KARTE_KLI)
+    assert "50.000 Euro" in nur_klima          # ohne Karte: bleibt
+    assert "Prüfungsrelevant" not in nur_klima
+    assert "Auswirkungen:" in nur_klima        # Überschrift trägt noch a)
+    nur_finanzen = vorlagen.excerpt(AUSWIRKUNGEN_ROH, None, karte_finanzen=KARTE_FIN)
+    assert "50.000 Euro" not in nur_finanzen
+    assert "Prüfungsrelevant" in nur_finanzen
+
+
+def test_excerpt_schneidet_nicht_bei_gekappter_karte():
+    """``ernte`` kappt ``financial_impact`` bei 800 Zeichen — an der Satzgrenze
+    und damit OHNE Auslassungszeichen, der gekappte Wert sieht vollständig aus.
+    142 Angaben im Bestand sind so gekappt, im Schnitt um knapp 500 Zeichen.
+    Gäbe der Auszug den Block trotzdem her, wären die auf der ganzen Seite
+    nirgends mehr zu lesen."""
+    out = vorlagen.excerpt(AUSWIRKUNGEN_ROH, None,
+                           karte_finanzen="Kosten von 50.000 Euro im",  # nur der Anfang
+                           karte_klima=KARTE_KLI)
+    assert "50.000 Euro im Haushalt 2026." in out
+    assert "Prüfungsrelevant" not in out       # die vollständige Hälfte geht
+
+
+def test_excerpt_schneidet_alte_ueberschrift():
+    raw = ("Sachverhalt:\n"
+           + "Die Verwaltung berichtet ausführlich über den Sachstand. " * 8
+           + "\nFinanzielle Auswirkungen:\n"
+           "Es entstehen Verfahrenskosten in üblicher Höhe.\n"
+           "In Vertretung\n"
+           "G a b r i e l e  N i e ß e n\n")
+    karte = "Es entstehen Verfahrenskosten in üblicher Höhe."
+    assert "Verfahrenskosten" in vorlagen.excerpt(raw, None)
+    out = vorlagen.excerpt(raw, None, karte_finanzen=karte)
+    assert "Verfahrenskosten" not in out and "Finanzielle Auswirkungen" not in out
+    assert "Sachstand" in out
+
+
+def test_kern_ueberlebt_silbentrennung_und_ss():
+    """Der Kartentext klebt die PDF-Zeilen bloß aneinander („Verwaltungs-
+    aufwand"), der Auszug heilt die Silbentrennung („Verwaltungsaufwand").
+    Ohne gemeinsame Vergleichsform fände der Schnitt seine eigene Angabe nicht
+    wieder. Und das ß muss mit: eine handgeschriebene Zeichenklasse
+    ``a-zà-öø-ÿ`` lässt es draußen, aus „Veräußerung" würde „veräuerung"."""
+    assert vorlagen._kern("Verwaltungs- aufwand") == vorlagen._kern("Verwaltungsaufwand")
+    assert vorlagen._kern("Veräußerung") == "veräußerung"
+    assert vorlagen._deckt_ab("Der Verwaltungsaufwand ist hoch.", ["Der Verwaltungs-", "aufwand ist hoch."])
+    assert not vorlagen._deckt_ab("Der Verwaltungs", ["Der Verwaltungsaufwand ist hoch."])
+    assert not vorlagen._deckt_ab(None, ["irgendwas"])
