@@ -102,11 +102,26 @@ Stelle, an der das Ereignis ohnehin verarbeitet wird:
 | `bookmark`, `share`, `template_follow` | die jeweiligen Endpunkte |
 | `ai_question_chip` statt `ai_question`, wenn die Frage wörtlich ein Vorschlagstext ist | `ask`-Endpunkt (Vergleich gegen die Chip-Liste, die der Server ohnehin liefert) |
 | `ai_answer_empty` | `ask`, wenn `cited` leer ist — die Sackgassen-Quote |
-| `from_mail` | Frontend-Hülle, wenn `?zeig=` im Aufruf steht (die Deep-Links der Mails) |
 | `wizard_skipped` je Schritt | `/onboarding/setup` |
 
 Dazu im Admin die vorhandene Funktions-Tabelle um die neuen Spalten. Der
 Test `tests/test_backend_api.py` (Design 20a) hält die erlaubten Werte fest.
+
+**`from_mail` stand hier als siebter Zähler und ist beim Bauen wieder
+herausgeflogen.** Die Annahme war, `?zeig=` markiere die Deep-Links der Mails.
+Das tut es nicht: `?zeig=` steht an genau zwei Stellen (Zustellungs-
+Einstellungen und der alte Abo-Link), alle übrigen Mail-Knöpfe zeigen auf
+denselben Pfad wie jeder Link in der App. „Kommen Leute über die Mails
+zurück?" ist damit heute **nicht messbar**, und der Zähler hätte eine Zahl
+geliefert, die etwas anderes zählt als ihr Name sagt.
+
+Richtig wäre ein eigener Parameter an **jedem** Mail-Link
+(`kern/digest_email.py::absolut`). Das ist kein Einzeiler, sondern eine
+Entscheidung: Der Parameter landet in der Adresszeile der Empfänger*innen,
+und die Seitenzählung müsste ihn durchlassen — sie lässt heute **genau einen**
+Query-Parameter durch (`?tab=`), und diese Sparsamkeit ist der Grund, warum
+man ihr trauen kann. Gehört deshalb zu PR 6, wo die Mails ohnehin angefasst
+werden, und wird dort mit dieser Abwägung entschieden.
 
 - Aufwand: S–M.
 
