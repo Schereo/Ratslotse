@@ -363,3 +363,44 @@ import Testing
     #expect(abo.webcalURL.hasPrefix("webcal://"))
     #expect(abo.subscribedCommittees == 3)
 }
+
+/// „Anderswo beschlossen": Sechs von sechzehn Feldern tragen einen
+/// Unterstrich, und die Ratsinformationssysteme füllen sehr unterschiedlich
+/// viel aus. Der zweite Eintrag hier ist der gemessene Münster-Fall — kein
+/// `web`, keine Einordnung, kein Ergebnis.
+@Test func elsewhereResponseDecodes() throws {
+    let json = #"""
+    {"decision_id": 8695, "bodies": ["Magdeburg", "Osnabrück"], "items": [
+      {"body_id": "osnabrueck", "body_name": "Osnabrück", "paper_id": "os:p:1",
+       "name": "Nachtkultur stärken", "reference": "VO/2026/1", "date": "2026-04-17",
+       "kind": "motion", "paper_type_raw": "Antrag",
+       "web": "https://example.org/vo/1", "outcome": "accepted", "outcome_raw": "beschlossen",
+       "score": 0.856, "summary": "Koordinierungsstelle Nachtkultur.",
+       "instrument": "Koordinierungsstelle schaffen", "transfer": "adaptable",
+       "originator": "Gruppe Grüne/SPD/Volt"},
+      {"body_id": "magdeburg", "body_name": "Magdeburg", "paper_id": "md:p:2",
+       "name": "Projekt Nachtengel", "reference": null, "date": null,
+       "kind": "motion", "paper_type_raw": null, "web": null, "outcome": "none",
+       "outcome_raw": null, "score": 0.715, "summary": null, "instrument": null,
+       "transfer": null, "originator": null}]}
+    """#
+    let antwort = try JSONDecoder().decode(ElsewhereResponse.self, from: Data(json.utf8))
+    #expect(antwort.decisionID == 8695)
+    #expect(antwort.bodies == ["Magdeburg", "Osnabrück"])
+    #expect(antwort.items.count == 2)
+    #expect(antwort.items[0].bodyName == "Osnabrück")
+    #expect(antwort.items[0].outcome == "accepted")
+    #expect(antwort.items[0].originator == "Gruppe Grüne/SPD/Volt")
+    #expect(antwort.items[0].score == 0.856)
+    // Ohne Adresse bleibt `web` leer — die Zeile bekommt dann keinen Link.
+    #expect(antwort.items[1].web == nil)
+    #expect(antwort.items[1].outcome == "none")
+    #expect(antwort.items[1].id == "md:p:2")
+}
+
+/// Der leere Fall ist der Normalzustand vor dem ersten Cron-Lauf.
+@Test func elsewhereResponseSurvivesEmptyPayload() throws {
+    let leer = try JSONDecoder().decode(ElsewhereResponse.self,
+                                        from: Data(#"{"decision_id": 1}"#.utf8))
+    #expect(leer.items.isEmpty && leer.bodies.isEmpty)
+}

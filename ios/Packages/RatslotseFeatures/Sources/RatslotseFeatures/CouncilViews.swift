@@ -1323,10 +1323,144 @@ private struct SessionYearDivider: View {
     }
 }
 
+/// „Anderswo beschlossen" — was andere Städte zu derselben Sache beantragt
+/// oder beschlossen haben.
+///
+/// Die Zeilen führen aus dem Haus heraus, ins Ratsinformationssystem der
+/// jeweiligen Stadt. Deshalb kein Chevron: Der verspricht eine Detailseite
+/// bei uns. Und deshalb ist der Link an die Adresse gebunden — nicht jede
+/// Stadt hat eine (Münster liefert über OParl nur die API-Adresse), und eine
+/// Zeile, die nichts öffnet, sieht aus wie ein Fehler.
+///
+/// **Keine Prozentzahl.** Die Nähe ist ein Rechenwert, keine Aussage über
+/// Qualität — sie sortiert und bleibt sonst unsichtbar.
+struct ElsewhereSection: View {
+    let response: ElsewhereResponse
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            VStack(alignment: .leading, spacing: 4) {
+                MonoKicker("Anderswo beschlossen")
+                Text("Was \(response.bodies.formatted(.list(type: .and))) zu einer ähnlichen "
+                     + "Sache beantragt oder beschlossen haben — aus den Ratsinformations"
+                     + "systemen dieser Städte.")
+                    .font(RatsFont.body(11.5))
+                    .foregroundStyle(RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(Array(response.items.enumerated()), id: \.element.id) { index, item in
+                if let raw = item.web, let url = URL(string: raw) {
+                    Link(destination: url) { ElsewhereRow(item: item, linked: true) }
+                        .buttonStyle(RatsPlainButtonStyle())
+                } else {
+                    ElsewhereRow(item: item, linked: false)
+                }
+                if index < response.items.count - 1 { Divider() }
+            }
+        }
+        .ratsCard()
+    }
+}
+
+private struct ElsewhereRow: View {
+    let item: ElsewhereItem
+    let linked: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 5) {
+                // Die Ergebnis-Marke sitzt fest oben rechts, die Angaben
+                // links davon brechen bei Bedarf um. Zwei Versuche vorher
+                // gingen schief: Ohne Anker rutschte die Marke unter den
+                // Kopf und stand neben dem Titel; mit `lineLimit(1)` fraß
+                // die Kürzung das Datum („Beschlussvorlage · 25.0…"), also
+                // die nützlichere Hälfte. Beides im Simulator an
+                // „Kulturförderung der Stadt Osnabrück" gesehen.
+                HStack(alignment: .top, spacing: 6) {
+                    RatsLabel(item.bodyName, .building2)
+                        .font(RatsFont.body(11.5, weight: .semibold))
+                        .foregroundStyle(RatsColor.text)
+                        .layoutPriority(1)
+                    if !kopfzeile.isEmpty {
+                        Text(kopfzeile)
+                            .font(RatsFont.mono(10))
+                            .foregroundStyle(RatsColor.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    if let ergebnis = Self.ergebnis[item.outcome] {
+                        Text(ergebnis)
+                            .font(RatsFont.body(10.5, weight: .medium))
+                            .foregroundStyle(RatsColor.secondary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(RatsColor.separator)
+                            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                            .layoutPriority(1)
+                    }
+                }
+                Text(item.name)
+                    .font(RatsFont.body(14, weight: .semibold))
+                    .foregroundStyle(RatsColor.text)
+                    .multilineTextAlignment(.leading)
+                if let summary = item.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                if let originator = item.originator, !originator.isEmpty {
+                    Text(originator)
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.muted)
+                }
+            }
+            Spacer(minLength: 0)
+            if linked {
+                RatsIcon(.externalLink, size: 13)
+                    .foregroundStyle(RatsColor.muted.opacity(0.7))
+                    .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    /// Vorlagenart und Datum — kurz, weil sie neben dem Stadtnamen stehen.
+    private var kopfzeile: String {
+        [Self.art[item.kind] ?? item.paperTypeRaw, Self.datum(item.date)]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// Kanonische Ergebnisse aus `council/cities/model.py`. `none` steht für
+    /// „die Stadt weist keins aus" und bekommt bewusst keine Marke.
+    private static let ergebnis: [String: String] = [
+        "accepted": "beschlossen", "amended": "geändert beschlossen",
+        "rejected": "abgelehnt", "postponed": "vertagt", "noted": "zur Kenntnis",
+        "referred": "verwiesen", "withdrawn": "zurückgezogen",
+    ]
+
+    private static let art: [String: String] = [
+        "motion": "Antrag", "amendment": "Änderungsantrag", "inquiry": "Anfrage",
+        "answer": "Antwort", "proposal": "Beschlussvorlage", "report": "Bericht",
+        "notice": "Mitteilung", "petition": "Eingabe",
+    ]
+
+    private static func datum(_ iso: String?) -> String? {
+        guard let iso, iso.count >= 10 else { return nil }
+        let teile = iso.prefix(10).split(separator: "-")
+        guard teile.count == 3 else { return nil }
+        return "\(teile[2]).\(teile[1]).\(teile[0])"
+    }
+}
+
 struct DecisionDetailView: View {
     let model: AppModel
     let decisionID: Int
     @State private var detail: DecisionDetail?
+    @State private var elsewhere: ElsewhereResponse?
     @State private var error: String?
     @State private var bookmarkID: Int?
     @State private var isWorking = false
@@ -1385,6 +1519,10 @@ struct DecisionDetailView: View {
                         DecisionAttendanceCard(attendance: detail.attendance)
                     }
 
+                    if let elsewhere, !elsewhere.items.isEmpty {
+                        ElsewhereSection(response: elsewhere)
+                    }
+
                     if !detail.similar.isEmpty {
                         VStack(alignment: .leading, spacing: 13) {
                             MonoKicker("Im Zusammenhang")
@@ -1427,6 +1565,11 @@ struct DecisionDetailView: View {
         .navigationTitle("Beschluss")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        // Eigener Takt, gebunden an den Schalter: Der kommt aus
+        // `/api/app-config` und ist beim ersten Aufbau der Ansicht oft noch
+        // nicht da. Ein einmaliger Aufruf im Ladepfad prüfte ihn zu früh und
+        // der Abschnitt blieb weg — gemessen im Simulator.
+        .task(id: model.feature("andere-staedte")) { await loadElsewhere() }
         .sheet(item: $previewAttachment) { attachment in
             CouncilAttachmentPreview(attachment: attachment)
         }
@@ -1456,6 +1599,26 @@ struct DecisionDetailView: View {
             }
             error = nil
         } catch { self.error = error.localizedDescription }
+    }
+
+    /// „Anderswo beschlossen" — eigener Aufruf, der still scheitern darf.
+    ///
+    /// Der Block ist Zugabe, kein Inhalt der Seite: Ein Fehler hier darf
+    /// weder die Fehlermeldung der Seite setzen noch das schon geladene
+    /// Detail verdrängen. Ohne den Schalter fragen wir gar nicht erst.
+    private func loadElsewhere() async {
+        guard model.feature("andere-staedte") else { return }
+        do {
+            // Die Typangabe steht hier ausgeschrieben, weil `scripts/ios_vertrag.py`
+            // die Bindung an der Aufrufstelle abliest: `try?` und ein abgeleiteter
+            // Typ wären für den Wächter unsichtbar — und genau dann driftet ein
+            // Feldname unbemerkt.
+            let antwort: ElsewhereResponse = try await model.api.get(
+                "/api/council/decision/\(decisionID)/elsewhere")
+            elsewhere = antwort
+        } catch {
+            elsewhere = nil
+        }
     }
 
     private static func pressURL(for title: String) -> URL? {
