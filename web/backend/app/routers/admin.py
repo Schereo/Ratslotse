@@ -136,7 +136,11 @@ def stats_page_views(
     Zeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die
     Aufteilung nach Client. Nichts davon ist einer Person zuzuordnen.
     """
-    return store.seitenaufrufe(max(1, min(days, 365)))
+    # `cast` wie bei den Fehlern: Der Store baut ein `dict`, die Form hält
+    # `AdminSeitenaufrufe` in `antworten.py` fest, und der Vertragstest prüft
+    # sie gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
+    # importiert nichts aus `app` (tests/test_schichten.py).
+    return cast("AdminSeitenaufrufe", store.seitenaufrufe(max(1, min(days, 365))))
 
 
 @router.get("/quiz/stats")
