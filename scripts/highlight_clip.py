@@ -48,10 +48,16 @@ ORANGE = (255, 107, 44)
 
 @dataclass(frozen=True)
 class Beat:
-    """Ein Klick: wann und wo (Pixel des Rohvideos)."""
+    """Ein Klick: wann und wo (Pixel des Rohvideos).
+
+    ``tap=False`` ist ein Blick statt eines Klicks: Der Zoom fährt hin, aber
+    es wird keine Tipp-Markierung gezeichnet — für eine Erklärung, die schon
+    beim Überfahren aufgeht (ein Klick schlösse sie wieder).
+    """
     t: float
     x: float
     y: float
+    tap: bool = True
 
 
 @dataclass(frozen=True)
@@ -174,7 +180,7 @@ def polish(quelle: Path, ziel: Path, beats: list[Beat], timing: Timing,
         if touch:
             for b in beats:
                 seit = t - b.t
-                if -0.10 <= seit <= 0.55:
+                if b.tap and -0.10 <= seit <= 0.55:
                     # Klickpunkt in Ausgabe-Koordinaten: durch den Ausschnitt gerechnet.
                     draw_touch(bild, (b.x - x) * z, (b.y - y) * z, seit, z)
         schreiben.stdin.write(bild.tobytes())
@@ -190,10 +196,12 @@ def polish(quelle: Path, ziel: Path, beats: list[Beat], timing: Timing,
 
 def _beat(text: str) -> Beat:
     try:
-        t, x, y = text.split(":")
-        return Beat(float(t), float(x), float(y))
+        t, x, y, *rest = text.split(":")
+        if rest and rest != ["look"]:
+            raise ValueError(text)
+        return Beat(float(t), float(x), float(y), tap=not rest)
     except ValueError as e:
-        raise argparse.ArgumentTypeError(f"--beat erwartet SEKUNDE:X:Y, nicht {text!r}") from e
+        raise argparse.ArgumentTypeError(f"--beat erwartet SEKUNDE:X:Y[:look], nicht {text!r}") from e
 
 
 def main() -> int:
@@ -201,7 +209,8 @@ def main() -> int:
     p.add_argument("quelle", type=Path)
     p.add_argument("ziel", type=Path)
     p.add_argument("--beat", type=_beat, action="append", required=True,
-                   help="SEKUNDE:X:Y — Zeitpunkt und Klickpunkt in Rohpixeln; mehrfach erlaubt")
+                   help="SEKUNDE:X:Y — Zeitpunkt und Klickpunkt in Rohpixeln; mehrfach erlaubt. "
+                        ":look dahinter zoomt nur, ohne Tipp-Markierung")
     p.add_argument("--zoom", type=float, default=Timing.zoom, help="Faktor im Halt (Vorgabe 1,8)")
     p.add_argument("--hold", type=float, default=Timing.hold, help="Halt nach dem Klick in Sekunden")
     p.add_argument("--lead", type=float, default=Timing.lead, help="Anfahrt vor dem Klick in Sekunden")

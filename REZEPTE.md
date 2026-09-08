@@ -135,24 +135,47 @@ Die drei Dinge, die man dabei vergisst:
    Versionsschnitt. Entwurf aus den Fragmenten:
    `scripts/changelog_schnitt.py x.y.0 --highlights`. Höchstens vier Highlights,
    jedes mit einem Ziel in der App, **nur große Features** — Fixes stehen im
-   Changelog. Verschickt wird später von Hand im Admin-Panel unter
+   Changelog. **Der Titel ist ein Name, kein Halbsatz:** „Das Teilen-Update",
+   benannt nach dem Hauptfeature (Tims Wunsch 08.09.2026; `test_releases.py`
+   hält 40 Zeichen). Verschickt wird später von Hand im Admin-Panel unter
    *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
 
-   **Dazu je Highlight ein Bild** (oder ein kurzer Clip) nach
-   `web/frontend/public/neuigkeiten/<version>/`, **immer in der hellen
-   Fassung** (Tims Entscheidung 07.09.2026 — eine zweite für den Dunkelmodus
-   wäre doppelte Arbeit je Ausgabe, und ein Bild in einem gerahmten Kasten
-   liest sich ohnehin als Abbildung), alle im **16:9-Rahmen** — die Bühne blättert sonst durch verschieden hohe Kästen.
-   Aufgenommen wird die laufende lokale App mit echten Daten (Playwright über
-   das installierte Chrome, `deviceScaleFactor: 2`, Ausschnitt um das Element
-   herum auf 16:9 erweitert; Bilder als WebP ≤ 1600 px, Clips als stummes
-   h264-MP4 mit Standbild). **Zeiger und Klick müssen im Clip sichtbar sein** —
-   Playwright zeichnet den Mauszeiger nicht mit, die Aufnahme malt ihn sich per
-   `addInitScript` selbst an die echten Mausereignisse. Entweder **alle**
-   Highlights einer Ausgabe haben ein Bild oder keins — sonst hat die Bühne ein
-   Loch, und `test_releases.py` meldet es.
+   **Je Highlight ein Clip, in dem man das Feature bedient sieht** — der
+   Zeiger fährt hin, der Klick ist markiert, das Bild zoomt auf die Stelle
+   (Tims Wunsch 08.09.2026: „dass es angeklickt wird, dass man das halt sehen
+   kann, wie es funktioniert"). Die Clips entstehen aus **Drehbüchern als
+   Code**, damit die nächste Ausgabe dieselbe Arbeit nicht noch einmal von
+   Hand macht:
 
-   **Für die App dieselben Bilder aus der App** (`media_ios`, Tims Wunsch
+   ```bash
+   python scripts/release_clips.py skeleton 2.3.0   # Drehbuch-Gerüst aus der Registry
+   #   → web/frontend/release-clips/2.3.0.mjs ausfüllen: goto, begin, click, look, pause
+   python scripts/release_clips.py web 2.3.0        # nimmt auf, schneidet, legt MP4 + WebP ab
+   python scripts/release_clips.py check 2.3.0      # Registry ↔ Drehbücher, beide Richtungen
+   ```
+
+   Voraussetzung: Frontend und Backend laufen lokal mit echten Daten. Ein
+   Drehbuch ist eine kurze Szene auf der Bühne `stage`
+   (`web/frontend/scripts/release-clip.mjs`): Aufbau — Seite öffnen, Zustand
+   herstellen, notfalls `page.route` für eine gestellte Antwort —, dann
+   `begin()` (alles davor wird weggeschnitten), dann je Beat ein `click(…)`;
+   `look(…)` zoomt ohne Tipp, für alles, was schon beim Überfahren aufgeht.
+   **Was gestellt ist, steht im Drehbuch dabei** (2.2.0: die KI-Antwort, und
+   dass die Ratssitzung gerade läuft — Tagesordnung, Begriffe und Erklärungen
+   sind echt). Immer hell, alle Browser-Clips einer Ausgabe im selben Rahmen
+   (980 px breit, oben 16:9 — die Tab-Leiste unten bleibt draußen). Entweder
+   **alle** Highlights einer Ausgabe haben ein Medium oder keins —
+   `test_releases.py` meldet das Loch, `test_release_clips.py` ein Video ohne
+   Drehbuch und ein Drehbuch ohne Video.
+
+   Drei Messungen vom 08.09.2026, die im Recorder als Kommentar stehen, damit
+   sie niemand wiederholt: Chromes Screencast liefert nur CSS-Pixel, 2× gibt
+   es nicht. Playwrights `recordVideo` verliert bei einem Seitenwechsel
+   0,5–0,9 s — deshalb der eigene Screencast mit Zeitstempeln. Und ein `scale`
+   als Einzel-Eigenschaft am Zeiger multipliziert dessen Verschiebung: Der
+   Pfeil sprang beim Klick 100 px weg.
+
+   **Für die App dieselben Szenen aus der App** (`media_ios`, Tims Wunsch
    07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im
    Simulator gegen das lokale Backend, **ganzes Telefon, nichts
    beschnitten** — ein zurechtgeschnittener Bildschirm sieht nicht mehr nach
@@ -192,28 +215,25 @@ Die drei Dinge, die man dabei vergisst:
    Weg „an jemanden schicken" zeigen will, filmt diese Sekunden auf einem
    echten iPhone.
 
-   Für einen App-Clip: `xcrun simctl io <UDID> recordVideo`, danach **erst auf
-   feste 30 fps normalisieren** (`-vf fps=30`) — die Zeitangaben der
-   Simulator-Aufnahme passen nicht zu ihren Bildern, ein Schnitt auf dem Rohfilm
-   landet daneben. Und: Die Aufnahme schreibt praktisch **nur bei
-   Bildwechseln** — ein stehendes Teilen-Blatt landet nicht im Film, egal wie
-   lange man wartet. Der Halt am Ende entsteht deshalb im Schnitt
-   (`tpad=stop_mode=clone`). Ein Tipp direkt nach einem Wisch wird
-   verschluckt; dazwischen warten.
-
-   **Zoom und Fingertipp macht danach ein Skript, keine Aufnahme-App:**
+   Der Simulator kennt keinen Zeiger, und `xcrun simctl io <UDID> recordVideo`
+   schreibt praktisch **nur bei Bildwechseln**, mit Zeitstempeln, die nicht zu
+   den Bildern passen. Deshalb **je Beat eine Aufnahme**: Aufnahme starten,
+   tippen, drei Sekunden laufen lassen, beenden; den Tippunkt in Rohpixeln
+   notieren. Ein Tipp direkt nach einem Wisch wird verschluckt — dazwischen
+   warten. Zusammensetzen, zoomen und ablegen macht dann:
 
    ```bash
-   .venv/bin/python scripts/highlight_clip.py roh.mp4 fertig.mp4 --beat 5.4:1068:690
+   python scripts/release_clips.py ios 2.3.0 teilen --segment blaettern.mov \
+     --segment teilen.mov:1068:1203 --segment erinnerungen.mov:204:1956 --segment haken.mov:1092:330
+   # ohne X:Y = ein Stück ohne Tipp (Blättern); --focus X:Y = Schluss-Blick ohne Tipp
    ```
 
-   `--beat SEKUNDE:X:Y` ist der Klick — Zeit und Ort kennt das Skript, das die
-   Aufnahme gesteuert hat, es muss nichts geraten werden. Der Zoom fährt kurz
-   vor dem Klick hinein, hält kurz und fährt heraus; die Pointe (Toast,
-   Teilen-Blatt) liegt außerhalb des Ausschnitts und wird beim Zurückfahren
-   sichtbar, deshalb `--hold` klein halten (0,5–0,6 s). Für Telefon-Clips
-   `--zoom 1.5`, für Browser 1,6 — mehr schneidet die Zeile ab, um die es
-   geht. Der Tipp wird als Scheibe mit Ringen ins gezoomte Bild gezeichnet.
+   Es findet in jeder Aufnahme den ersten Bildwechsel (die Reaktion auf den
+   Tipp), schneidet darum herum, legt die Stücke an identischen Standbildern
+   aneinander, friert den Schluss ein und schreibt `teilen-ios.mp4` samt
+   Standbild. Zoom und Tipp-Markierung kommen aus `scripts/highlight_clip.py`
+   (`--beat SEKUNDE:X:Y`, für Telefon-Clips Zoom 1,5, kurzer Halt — die Pointe
+   liegt außerhalb des Ausschnitts und wird beim Zurückfahren sichtbar).
 
    **Ein Teilen-Clip braucht ein Ziel.** Im Simulator gibt es keinen
    Messenger, und auf einem echten iPhone stünden im Teilen-Blatt die eigenen

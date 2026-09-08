@@ -572,9 +572,12 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   Schnitt; `changelog_schnitt.py x.y.0 --highlights` schlägt einen Entwurf aus
   den Fragmenten vor. **Nur die großen Sachen** — höchstens vier, jede mit
   einem Ziel in der App, Patch-Versionen gar keine (`tests/test_releases.py`
-  hält das). Jedes Highlight bringt eine **echte Aufnahme** aus der App mit
-  (`web/frontend/public/neuigkeiten/<version>/`, immer hell; im Browser
-  16:9, in der App das ganze Telefon) — die
+  hält das). Der Titel ist ein **Name nach dem Hauptfeature** („Das
+  Teilen-Update"), kein Halbsatz. Jedes Highlight bringt einen **kurzen Clip**
+  mit, in dem man das Feature bedient sieht — aus einem Drehbuch in
+  `web/frontend/release-clips/<version>.mjs`, aufgenommen und geschnitten von
+  `scripts/release_clips.py` (Ablage `web/frontend/public/neuigkeiten/<version>/`,
+  immer hell; im Browser 16:9, in der App das ganze Telefon) — die
   Karte ist eine Bühne zum Blättern, keine Stichpunktliste. Verschickt wird von
   Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:
   Ausliefern und Ankündigen sind zwei Entscheidungen.
