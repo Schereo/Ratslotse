@@ -891,16 +891,49 @@ class CitiesStore:
                 "  status=excluded.status, error=excluded.error, at=excluded.at",
                 (object_kind, object_id, stage, version, status, error, now()))
 
+    def unmapped_outcomes(self, body_id: str, limit: int = 10) -> list[dict]:
+        """Ergebnistexte einer Stadt, die auf ``none`` fallen — häufigste zuerst.
+
+        Womit man eine neue Stadt anschließt: Was hier oben steht, versteht
+        ``council.cities.model.outcome`` nicht. Manches gehört dorthin
+        („schriftliche Stellungnahme" ist wirklich kein Ergebnis), manches ist
+        eine Lücke in der Regel — und eine tausendfache Lücke macht die halbe
+        Beschlusslage einer Stadt unsichtbar.
+        """
+        rows = self._conn.execute(
+            "SELECT a.result_raw, COUNT(*) AS n FROM agenda_items a "
+            "JOIN meetings m ON m.id = a.meeting_id "
+            "WHERE m.body_id = ? AND a.outcome = 'none' "
+            "  AND a.result_raw IS NOT NULL AND length(trim(a.result_raw)) > 0 "
+            "GROUP BY a.result_raw ORDER BY n DESC LIMIT ?", (body_id, limit))
+        return [dict(r) for r in rows]
+
     def stage_counts(self, stage: str, version: str) -> dict[str, int]:
         return {r["status"]: r["n"] for r in self._conn.execute(
             "SELECT status, COUNT(*) AS n FROM stages WHERE stage=? AND version=? GROUP BY status",
             (stage, version))}
 
-    def stats(self) -> list[dict]:
-        """Kennzahlen je Stadt — für den Cron und das Admin-Panel."""
+    def stats(self, embed_model: str | None = None) -> list[dict]:
+        """Kennzahlen je Stadt — für den Cron und das Admin-Panel.
+
+        ``papers_unclassified`` und ``papers_unembedded`` sind der **Rückstand**:
+        Ein Papier ohne Einordnung ist für den Vergleich unsichtbar, eines ohne
+        Vektor hat keine Nachbarn und kann deshalb weder Beleg sein noch einen
+        bekommen. Beide Zahlen wachsen still — der Wochen-Cron ordnet nur
+        ``CITIES_ANNOTATE_MAX`` Vorlagen je Lauf ein, und nach einem Backfill
+        der Historie steht plötzlich das Zehnfache an. Am 08.09.2026 waren 19 %
+        des Bestands eingeordnet, ohne dass es irgendwo aufgefallen wäre.
+        """
+        modell = embed_model or ""
         rows = self._conn.execute(
             "SELECT b.id, b.name, b.state, b.ris_vendor, b.license, b.last_fetched, "
             "  (SELECT COUNT(*) FROM papers p WHERE p.body_id=b.id) AS papers, "
+            "  (SELECT COUNT(*) FROM papers p WHERE p.body_id=b.id AND NOT EXISTS ("
+            "     SELECT 1 FROM annotations a WHERE a.object_kind='paper' "
+            "       AND a.object_id=p.id AND a.annotator='classify')) AS papers_unclassified, "
+            "  (SELECT COUNT(*) FROM papers p WHERE p.body_id=b.id AND NOT EXISTS ("
+            "     SELECT 1 FROM object_embeddings o WHERE o.object_kind='paper' "
+            "       AND o.object_id=p.id AND o.model=?)) AS papers_unembedded, "
             "  (SELECT COUNT(DISTINCT p.id) FROM papers p JOIN files f ON f.paper_id=p.id "
             "     JOIN texts t ON t.file_id=f.id WHERE p.body_id=b.id AND length(t.text) > 0) "
             "   AS papers_with_text, "
@@ -909,7 +942,14 @@ class CitiesStore:
             "     WHERE m.body_id=b.id) AS agenda_items, "
             "  (SELECT COUNT(*) FROM agenda_items a JOIN meetings m ON m.id=a.meeting_id "
             "     WHERE m.body_id=b.id AND a.outcome != 'none') AS agenda_items_with_outcome, "
+            "  (SELECT COUNT(DISTINCT c.paper_id) FROM consultations c "
+            "     JOIN papers p ON p.id=c.paper_id "
+            "     JOIN agenda_items a ON a.id=c.agenda_item_id "
+            "     WHERE p.body_id=b.id AND a.outcome != 'none') AS papers_with_outcome, "
+            "  (SELECT COUNT(DISTINCT c.paper_id) FROM consultations c "
+            "     JOIN papers p ON p.id=c.paper_id "
+            "     WHERE p.body_id=b.id) AS papers_with_consultation, "
             "  (SELECT COUNT(*) FROM annotations an JOIN papers p ON p.id=an.object_id "
             "     WHERE p.body_id=b.id) AS annotations "
-            "FROM bodies b ORDER BY b.name")
+            "FROM bodies b ORDER BY b.name", (modell,))
         return [dict(r) for r in rows]

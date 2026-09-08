@@ -264,6 +264,26 @@ _OUTCOME_RULES: tuple[tuple[tuple[str, ...], Outcome], ...] = (
       "zugestimmt", "beschlussfassung"), Outcome.ACCEPTED),
 )
 
+#: Verneinte Zustimmung — steht VOR den Zustimmungswörtern, weil sie sie
+#: enthält. „nicht empfohlen" ist eine Ablehnung; als ``ACCEPTED" gezählt war
+#: sie 275-mal (Magdeburg, 08.09.2026) das genaue Gegenteil dessen, was im
+#: Protokoll steht. Dieselbe Komposita-Falle wie bei „ungeändert beschlossen",
+#: nur mit einem getrennt geschriebenen „nicht" — deshalb reicht das
+#: Ersetzen dort nicht, und es braucht eine eigene Regel.
+#: Die Wörter sind genau die Zustimmungswörter der Regel darüber — ein
+#: verneintes Wort, das dort nicht steht, könnte diesen Zweig nie erreichen.
+_ABLEHNUNG_RE = re.compile(
+    r"nicht\s+(beschlossen|angenommen|genehmigt|empfohlen|zugestimmt)")
+
+#: Kein Ergebnis, obwohl ein Zustimmungswort im Satz steht: „keine
+#: Beschlussfassung wegen Sitzungsabsage" (Münster, 10-mal), „Kein explizites
+#: Abstimmungsergebnis im Protokoll vermerkt" (Oldenburg, 6-mal). Beide
+#: standen als ``ACCEPTED`` da. Läuft NACH der Kenntnisnahme-Regel: „Kein
+#: Beschluss, nur Bericht zur Kenntnis genommen" ist eine Kenntnisnahme.
+_KEIN_ERGEBNIS_RE = re.compile(
+    r"\bkein(?:e|en|es)?\b[^.]{0,40}?"
+    r"\b(ergebnis|beschlussfassung|abstimmung|beschluss)\b")
+
 
 def outcome(raw: str | None) -> Outcome:
     """Ergebnistext eines Tagesordnungspunkts → kanonisches Ergebnis.
@@ -276,6 +296,14 @@ def outcome(raw: str | None) -> Outcome:
     beschlossen" enthält wörtlich „geändert beschlossen". Deutsche Komposita
     verschieben die Wortgrenze (dieselbe Regel wie für Regexe in
     ``council/CLAUDE.md``), deshalb wird die Verneinung vorher entschärft.
+
+    **Dieselbe Falle mit Abstand dazwischen**, gefunden erst, als Magdeburgs
+    Vokabular dazukam: „nicht empfohlen" enthält „empfohlen", „keine
+    Beschlussfassung" enthält „beschlussfassung". Ein Ersetzen hilft hier
+    nicht — die Verneinung steht als eigenes Wort davor. Sie wird deshalb
+    geprüft, bevor die Zustimmungswörter zugreifen, und zwar **nach** der
+    Kenntnisnahme: „Kein Beschluss, nur Bericht zur Kenntnis genommen" ist
+    eine Kenntnisnahme und kein fehlendes Ergebnis.
     """
     text = (raw or "").strip().lower()
     if not text:
@@ -285,6 +313,13 @@ def outcome(raw: str | None) -> Outcome:
     text = text.replace("ungeänder", "unveraender").replace("ungeaender", "unveraender")
     for needles, value in _OUTCOME_RULES:
         if any(n in text for n in needles):
+            # Erst hier, weil die Verneinung nur die Zustimmung umdrehen darf:
+            # „nicht verwiesen" gibt es nicht, „nicht empfohlen" schon.
+            if value is Outcome.ACCEPTED:
+                if _ABLEHNUNG_RE.search(text):
+                    return Outcome.REJECTED
+                if _KEIN_ERGEBNIS_RE.search(text):
+                    return Outcome.NONE
             return value
     return Outcome.NONE
 

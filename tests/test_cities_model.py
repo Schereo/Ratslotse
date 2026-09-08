@@ -173,3 +173,26 @@ def test_display_originator(roh, art, erwartet):
     dazukommt, die welche veröffentlicht.
     """
     assert display_originator(roh, art) == erwartet
+
+
+@pytest.mark.parametrize("text,erwartet", [
+    # Die Verneinung dreht die Zustimmung um — mit Abstand dazwischen, wo das
+    # Ersetzen von „ungeändert" nicht greift. 275-mal in Magdeburg stand
+    # deshalb „angenommen", wo „nicht empfohlen" im Protokoll steht.
+    ("nicht empfohlen", Outcome.REJECTED),
+    ("nicht zugestimmt", Outcome.REJECTED),
+    ("dem Antrag wurde nicht gefolgt, er wurde nicht angenommen", Outcome.REJECTED),
+    # … aber nur die Zustimmung: „nicht verwiesen" gibt es nicht, und ein
+    # vertagter Punkt bleibt vertagt, egal was sonst im Satz steht.
+    ("empfohlen", Outcome.ACCEPTED),
+    ("geändert empfohlen", Outcome.ACCEPTED),
+    ("ungeändert beschlossen", Outcome.ACCEPTED),
+    # Kein Ergebnis, obwohl ein Zustimmungswort im Satz steht.
+    ("keine Beschlussfassung wegen Sitzungsabsage", Outcome.NONE),
+    ("Kein explizites Abstimmungsergebnis im Protokoll vermerkt.", Outcome.NONE),
+    # Die Kenntnisnahme geht vor: Sie ist ein Ergebnis, kein fehlendes.
+    ("Kein Beschluss, nur Bericht zur Kenntnis genommen", Outcome.NOTED),
+    ("Keine Abstimmung, reine Kenntnisnahme.", Outcome.NOTED),
+])
+def test_verneinte_zustimmung_ist_keine_zustimmung(text, erwartet):
+    assert outcome(text) is erwartet
