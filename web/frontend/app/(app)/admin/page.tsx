@@ -25,6 +25,7 @@ type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLau
 type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
 type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
+type AdminSackgasse = ApiAntwort<"/admin/stats/dead-ends">[number];
 type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
@@ -596,6 +597,67 @@ function EreignisSection() {
   );
 }
 
+/** Fragen, auf die es keine belegte Antwort gab — die Liste hinter der Quote.
+ *
+ *  Eine Quote sagt „9 % scheitern", diese Liste sagt woran. Der bekannteste
+ *  Fall stand am 09.08.2026 im Bestand: zweimal „Giftmüll am Fliegerhorst",
+ *  zweimal „keine Informationen" — weil die Unterlagen „Sondermüll" und
+ *  „Schießanlage" sagen. Ein Blick hierher hätte das am selben Tag gezeigt.
+ */
+function SackgassenSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "dead-ends"],
+    queryFn: () => api.get<AdminSackgasse[]>("/admin/stats/dead-ends?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><CardListSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Liste kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-[15px] font-bold text-foreground">Fragen ohne Antwort</h3>
+        <span className="text-[11.5px] text-muted-foreground">letzte 30 Tage · aus gespeicherten Gesprächen</span>
+      </div>
+
+      {data.length === 0 ? (
+        <Card className="p-4">
+          <p className="text-[13px] text-muted-foreground">
+            Keine. Entweder fand alles etwas — oder es gab keine gespeicherten Gespräche
+            im Zeitraum.
+          </p>
+        </Card>
+      ) : (
+        <Card className="divide-y divide-border p-0">
+          {data.map((s, i) => (
+            <div key={`${s.created}-${i}`} className="p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-[14px] font-medium text-foreground">{s.question}</p>
+                <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
+                  {formatDate(s.created.slice(0, 10))}
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12.5px] leading-snug text-muted-foreground">{s.answer}</p>
+            </div>
+          ))}
+        </Card>
+      )}
+      <p className="text-[11.5px] leading-snug text-muted-foreground">
+        Ohne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?" ist beides ohne
+        Belang, und eine Liste mit Kennung neben der Frage wäre ein Leseprotokoll. Die
+        vollständige Zahl steht im Zähler „Antworten ohne Quelle" — diese Liste zeigt nur
+        die Fälle, die ohnehin gespeichert sind.
+      </p>
+    </div>
+  );
+}
+
 function StatsTab() {
   const [range, setRange] = useState("90d");
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -682,6 +744,8 @@ function StatsTab() {
       <SeitenaufrufeSection />
 
       <EreignisSection />
+
+      <SackgassenSection />
 
       <JobsSection />
     </div>

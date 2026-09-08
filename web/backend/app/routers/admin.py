@@ -32,7 +32,8 @@ from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
                          AdminEreignisse, AdminKohorten, AdminPlaceCandidates,
-                         AdminQuizStats, AdminRequestFehler, AdminSeitenaufrufe,
+                         AdminQuizStats, AdminRequestFehler, AdminSackgasse,
+                         AdminSeitenaufrufe,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_cities_store, get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
@@ -157,6 +158,23 @@ def stats_events(
     """
     # `cast`: Der Store baut ein `dict`, die Form hält `antworten.py` fest.
     return cast("AdminEreignisse", store.ereignisse(max(1, min(days, 365))))
+
+
+@router.get("/stats/dead-ends")
+def stats_dead_ends(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> list[AdminSackgasse]:
+    """Fragen, auf die es keine belegte Antwort gab.
+
+    Die Liste beantwortet, was eine Quote nicht kann: *woran* es scheitert.
+    Der bekannteste Fall stand am 09.08.2026 im Bestand — jemand fragte
+    zweimal nach „Giftmüll am Fliegerhorst" und bekam „keine Informationen",
+    weil die Unterlagen „Sondermüll" und „Schießanlage" sagen. Ein Blick in
+    diese Liste hätte das an dem Tag gezeigt, an dem es passierte.
+    """
+    return cast("list[AdminSackgasse]", store.sackgassen(max(1, min(days, 365))))
 
 
 @router.get("/quiz/stats")

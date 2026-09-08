@@ -1420,6 +1420,30 @@
         "title": "AdminRequestFehler",
         "type": "object"
       },
+      "AdminSackgasse": {
+        "description": "Eine Frage, die keine Quelle gefunden hat.\n\nOhne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?\" ist\nbeides ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein\nLeseprotokoll.",
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer",
+          "created"
+        ],
+        "title": "AdminSackgasse",
+        "type": "object"
+      },
       "AdminSeite": {
         "properties": {
           "n": {
@@ -17019,6 +17043,54 @@
           }
         },
         "summary": "Stats Cohorts",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/dead-ends": {
+      "get": {
+        "description": "Fragen, auf die es keine belegte Antwort gab.\n\nDie Liste beantwortet, was eine Quote nicht kann: *woran* es scheitert.\nDer bekannteste Fall stand am 09.08.2026 im Bestand — jemand fragte\nzweimal nach „Giftmüll am Fliegerhorst\" und bekam „keine Informationen\",\nweil die Unterlagen „Sondermüll\" und „Schießanlage\" sagen. Ein Blick in\ndiese Liste hätte das an dem Tag gezeigt, an dem es passierte.",
+        "operationId": "stats_dead_ends_api_admin_stats_dead_ends_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSackgasse"
+                  },
+                  "title": "Response Stats Dead Ends Api Admin Stats Dead Ends Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Dead Ends",
         "tags": [
           "admin"
         ]
