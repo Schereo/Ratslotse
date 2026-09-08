@@ -494,6 +494,9 @@ class CitiesStore:
     #: nicht am Aufrufer, weil die Abfrage sie im SQL braucht — und weil ein
     #: Wechsel der Fassung genau hier auffallen soll.
     IDEEN_CLASSIFY = ("classify", "2")
+    #: Die Oberfläche zeigt weiter Fassung 1, bis der Bestand in Fassung 2
+    #: durchgerechnet ist (PR 22). Beide liegen nebeneinander — genau dafür
+    #: gibt es den Fassungs-Schlüssel.
     IDEEN_FIT = ("fit", "1")
     #: Die Aufwandsklasse hängt als LEFT JOIN dran, nicht als JOIN: Sie ist
     #: jünger als die Urteile, und eine Idee ohne sie soll sichtbar bleiben,

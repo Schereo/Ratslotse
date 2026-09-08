@@ -56,7 +56,7 @@ MAX_FTS = 3
 #: Liste steht.
 MIN_NEIGHBOR_SCORE = 0.70
 
-EvidenceKind = Literal["neighbor", "chunk", "fts", "decision", "recap"]
+EvidenceKind = Literal["cluster", "neighbor", "chunk", "fts", "decision", "recap"]
 
 #: Wie die vier Arten im Prompt heißen. Deutsch, weil sie ein Modell liest,
 #: das deutsche Verwaltungstexte beurteilt — und benannt, weil sie NICHT
@@ -64,6 +64,7 @@ EvidenceKind = Literal["neighbor", "chunk", "fts", "decision", "recap"]
 #: Abschnitt ist eine Fundstelle aus einem Dokument, dessen Rest von etwas
 #: anderem handeln kann.
 ARTEN: dict[str, str] = {
+    "cluster": "Oldenburgs Vorlage zur GLEICHEN Idee",
     "decision": "Beschluss",
     "neighbor": "Vorlage",
     "fts": "Vorlage",
@@ -326,6 +327,15 @@ def evidence_for(main: CitiesStore, rats: CouncilStore, paper: dict,
     # Papier findet, bestimmt seine Art — die Fusion ordnet danach nur noch.
     daten: dict[str, tuple] = {}
 
+    # 0. Oldenburger Mitglieder DESSELBEN Ideen-Clusters. Der genaueste Arm:
+    #    Hier hat nicht ein Ähnlichkeitsmaß entschieden, dass zwei Texte
+    #    verwandt sind, sondern die Gruppierung, dass sie DIESELBE Idee sind.
+    #    Steht deshalb vorn — und trägt seine Art im Prompt, damit das Modell
+    #    ein schlechtes Mitglied verwerfen kann (an vierzehn gelesenen Clustern
+    #    waren drei falsch, immer nach dem Muster „gleiches Feld, anderes
+    #    Instrument").
+    quellen["cluster"] = _cluster_treffer(main, paper, model, daten)
+
     # 1. Die nächsten Oldenburger Papiere.
     nachbarn: list[str] = []
     for n in main.neighbors("paper", paper["id"], model, limit=POOL_JE_ARM * 3):
@@ -422,6 +432,67 @@ def fts_treffer(main: CitiesStore, begriffe: list[str], limit: int) -> list[dict
         if treffer:
             return treffer
     return []
+
+
+def _cluster_treffer(main: CitiesStore, paper: dict, model: str,
+                     daten: dict) -> list[str]:
+    """Oldenburger Papiere, die im selben Ideen-Cluster liegen.
+
+    Nur Oldenburger: Dass Osnabrück und Münster dasselbe tun, ist für die
+    Frage „hat OLDENBURG das schon?" keine Antwort — es steht als eigene
+    Zeile im Prompt (``cluster_zeile``), nicht als Beleg.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    treffer: list[str] = []
+    for m in main.cluster_of(paper["id"], model, CLUSTER_VERSION):
+        if m["body_id"] != "oldenburg":
+            continue
+        treffer.append(m["id"])
+        daten.setdefault(m["id"], ("cluster", m.get("name") or "", m.get("date"),
+                                   float(m.get("score") or 0.0), None))
+    return treffer[:POOL_JE_ARM]
+
+
+def cluster_zeile(main: CitiesStore, paper: dict, model: str) -> str:
+    """Was die Cluster über diese Idee sagen — zwei Sätze für den Prompt.
+
+    **Das ist die Aussage, die kein Einzelurteil treffen kann.** „Fünf von
+    sechs Städten haben das, Oldenburg nicht" wiegt anders als ein einzelner
+    fremder Antrag. Und die Gegenrichtung wiegt genauso: Wenn in 5.945
+    Oldenburger Vorlagen seit 2018 keine mit dieser Idee liegt, ist das ein
+    Befund und keine Lücke in der Suche.
+
+    Die fremden Mitglieder werden NAMENTLICH genannt, nicht gezählt: An
+    vierzehn gelesenen Clustern waren drei falsch gruppiert, und ein Modell,
+    das die Titel sieht, kann das erkennen — eine bloße Zahl kann es nicht.
+    """
+    from council.cities.clusters import CLUSTER_VERSION
+
+    mitglieder = main.cluster_of(paper["id"], model, CLUSTER_VERSION)
+    if not mitglieder:
+        return ("Ideen-Cluster: keiner — keine andere Stadt im Bestand hat "
+                "etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.")
+    fremde = [m for m in mitglieder
+              if m["body_id"] not in ("oldenburg", paper.get("body_id"))]
+    hat_oldenburg = any(m["body_id"] == "oldenburg" for m in mitglieder)
+    staedte = {m["body_id"] for m in mitglieder if m["body_id"] != "oldenburg"}
+
+    zeilen = [f"Gleiche Idee in {len(staedte)} anderen Städten:"]
+    for m in fremde[:5]:
+        ergebnis = (main.outcome_for_paper(m["id"]) or {}).get("outcome") or "offen"
+        zeilen.append(f"  - {m['body_id']} {(m.get('date') or '')[:7]} "
+                      f"({ergebnis}): {(m.get('name') or '')[:90]}")
+    if hat_oldenburg:
+        zeilen.append("In Oldenburg liegt eine Vorlage im selben Cluster — sie steht "
+                      "unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. "
+                      "Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, "
+                      "und dann betrifft sie dasselbe Themenfeld, aber ein anderes "
+                      "Instrument.")
+    else:
+        zeilen.append("In Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben "
+                      "Cluster.")
+    return "\n".join(zeilen)
 
 
 def _chunk_treffer(main: CitiesStore, classification: dict, paper: dict,

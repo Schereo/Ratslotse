@@ -90,16 +90,38 @@ Stadt beschäftigt, nicht ob sie dieses Instrument hat. Bei "missing" bleibt die
 Liste leer.
 
 WORTH — lohnt ein Antrag im Oldenburger Rat? Das ist eine EIGENE Frage, nicht
-die Umkehrung des Status.
-- "yes": Ein konkretes Instrument, das Oldenburg so nicht hat und das in seine
-  Zuständigkeit fällt. Auch bei Status "partial" möglich, wenn gerade der
-  Unterschied die Idee ist (Oldenburg hat den Plan, die andere Stadt hat die
-  Umsetzung mit Fristen und Geld).
-- "maybe": Oldenburg hat etwas Ähnliches, der Zugewinn wäre klein; oder die
-  Sache hängt an einer Voraussetzung, die erst zu klären wäre; oder Oldenburg hat
-  sie schon einmal abgelehnt.
+die Umkehrung des Status. Sei STRENG: „fehlt in Oldenburg" allein genügt nicht.
+Von tausend Urteilen lauteten die Hälfte „fehlt und lohnt sich" — eine Liste,
+auf der jede zweite Zeile ein Volltreffer ist, ist kein Vorschlag, sondern ein
+Katalog.
+
+ZWEI HARTE AUSSCHLÜSSE. Sie gelten immer, unabhängig davon, wie gut die Idee ist:
+  (1) Aufwandsklasse "resolution" ist nie "yes". Eine Resolution kostet nichts
+      und bewirkt unmittelbar nichts; sie ist nie das Beste, was der Rat zu
+      einer Sache tun kann.
+  (2) Steht unter „Adressat" jemand außerhalb der Stadt — ein Versorger, ein
+      Verkehrsunternehmen, das Land —, ist es höchstens "maybe". Der Rat kann
+      wollen, aber nicht beschließen.
+
+- "yes": Ein KONKRETER Hebel, den Oldenburg so nicht hat und selbst in der
+  Hand hat. Nicht bloß ein Thema, das jemand aufgreifen könnte: Das
+  Instrument muss benennbar sein (eine Satzung, ein Programm, ein Konzept,
+  ein Portal, ein Bericht mit Adressat).
+  Zwei Dinge sprechen deutlich FÜR "yes", ohne Bedingung zu sein: dieselbe
+  Idee liegt in mindestens zwei anderen Städten (siehe „Gleiche Idee in …
+  Städten"), oder ein Beleg zeigt einen Oldenburger Anknüpfungspunkt — einen
+  vertagten Antrag, einen Prüfauftrag, einen Beschluss, der genau das offen
+  lässt. Beides heißt: Die Sache ist reif.
+
+- "maybe": Der Hebel ist da, aber der Zugewinn wäre klein, weil Oldenburg
+  etwas Ähnliches hat; oder die Sache hängt an einer erst zu klärenden
+  Voraussetzung; oder Oldenburg hat sie schon einmal abgelehnt; oder ein
+  Adressat außerhalb der Stadt entscheidet mit.
+
 - "no": Oldenburg hat genau das bereits; oder es ist nicht kommunale
-  Zuständigkeit; oder es setzt etwas voraus, das Oldenburg nicht hat.
+  Zuständigkeit; oder es setzt etwas voraus, das Oldenburg nicht hat; oder es
+  ist eine Anfrage ohne jeden Oldenburger Anlass — eine Frage, die niemand
+  gestellt hat und die niemand vermisst, ist keine Idee.
 
 OBSTACLES — was dagegen spricht, in einem Halbsatz: Zuständigkeit (Land, Bund,
 Versorger, Landkreis), fehlende Struktur, andere Größenordnung, schon einmal
@@ -353,9 +375,13 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "cities_fit_user": {
         "title": "Fremde Vorlage und die Belege aus Oldenburg",
-        "description": "Platzhalter: {paper} (die fremde Vorlage), {evidence} "
+        "description": "Platzhalter: {paper} (die fremde Vorlage samt "
+                       "Aufwandsklasse), {cluster} (was die Ideen-Cluster über "
+                       "sie sagen), {evidence} "
                        "(die nummerierten Belege mit ihren Kennungen).",
-        "template": "FREMDE VORLAGE:\n{paper}\n\nBELEGE AUS OLDENBURG:\n{evidence}",
+        "template": ("FREMDE VORLAGE:\n{paper}\n\n"
+                     "{cluster}\n\n"
+                     "BELEGE AUS OLDENBURG:\n{evidence}"),
     },
     "deep_decomposition": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",

@@ -108,6 +108,31 @@ def _belege(fall: dict) -> list[Evidence]:
     return [Evidence(**b) for b in fall["evidence"]]
 
 
+#: Was im Prompt steht, wenn ein Fall keine Cluster-Angabe trägt. Wörtlich
+#: dasselbe wie ``evidence.cluster_zeile`` ohne Cluster — der Prüfstand darf
+#: dem Modell nichts anderes zeigen als der Betrieb.
+_KEIN_CLUSTER = ("Ideen-Cluster: keiner — keine andere Stadt im Bestand hat "
+                 "etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.")
+
+
+def _vorlage(fall: dict) -> str:
+    """Die Vorlage samt Aufwandsklasse, falls der Fall eine trägt.
+
+    Die vierzig Fälle stammen aus der Zeit vor dem Annotator `effort`; wo eine
+    Klasse fehlt, bleibt die Zeile weg — dann misst der Fall dieselbe Frage
+    wie vorher, nur ohne dieses Signal.
+    """
+    text = fall["paper"]
+    aufwand = fall.get("effort") or {}
+    klasse = aufwand.get("effort")
+    if klasse:
+        text += (f"\nAufwand: {klasse} — "
+                 f"{fit_modul.AUFWAND_TEXT.get(klasse, '')}")
+    if aufwand.get("addressee"):
+        text += f"\nAdressat: {aufwand['addressee']} (nicht die Stadt selbst)"
+    return text
+
+
 def urteilen(faelle: list[dict], model: str) -> tuple[dict[str, dict], float]:
     """Jeden Fall einzeln ans Modell — genauso wie im Betrieb."""
     from kern import llm, prompts
@@ -122,7 +147,8 @@ def urteilen(faelle: list[dict], model: str) -> tuple[dict[str, dict], float]:
                 model=model, response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": system},
                           {"role": "user", "content": prompts.render(
-                              ann.prompt_user, paper=fall["paper"],
+                              ann.prompt_user, paper=_vorlage(fall),
+                              cluster=fall.get("cluster") or _KEIN_CLUSTER,
                               evidence=fit_modul.evidence_text(_belege(fall)))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
                 extra_body={"provider": {}} if ann.routing_free else {},
@@ -140,6 +166,7 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
     n = status_treffer = worth_treffer = 0
     beleg_verstoesse: list[dict] = []
     matrix: Counter[tuple[str, str]] = Counter()
+    worth_matrix: Counter[tuple[str, str]] = Counter()
     fehler: list[dict] = []
 
     for f in faelle:
@@ -156,6 +183,7 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
         else:
             fehler.append({"case": f["name"][:70], "erwartet": erwartet["status"],
                            "bekommen": ist_status, "grund": str(got.get("reason", ""))[:90]})
+        worth_matrix[(erwartet["worth"], ist_worth)] += 1
         worth_treffer += ist_worth == erwartet["worth"]
 
         # Beleg-Disziplin: Nur Kennungen, die dem Modell vorlagen — und eine
@@ -215,6 +243,7 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
         "evidence_invented": erfundene,
         "evidence_violations": beleg_verstoesse,
         "confusion": {f"{a}→{b}": c for (a, b), c in sorted(matrix.items())},
+        "worth_confusion": {f"{a}→{b}": c for (a, b), c in sorted(worth_matrix.items())},
         "mistakes": fehler,
     }
 
@@ -244,6 +273,7 @@ def belege_neu_schreiben() -> int:
         faelle = lade_faelle()
         matrix = main_store.chunk_matrix(EMBED_MODEL, "oldenburg")
         einordnung = main_store.annotations_for("classify", "2")
+        aufwand = main_store.annotations_for("effort", "1")
         fehlt: list[str] = []
         ohne_papier = 0
         for f in faelle:
@@ -256,6 +286,11 @@ def belege_neu_schreiben() -> int:
             belege = ev.evidence_for(main_store, rats, papier, klasse, EMBED_MODEL,
                                      chunk_matrix=matrix)
             f["evidence"] = [asdict(b) for b in belege]
+            # Dieselben zwei Signale, die der Betrieb sieht: die Cluster-Zeile
+            # und die Aufwandsklasse. Ohne sie misst der Prüfstand eine
+            # Eingabe, die es nicht mehr gibt.
+            f["cluster"] = ev.cluster_zeile(main_store, papier, EMBED_MODEL)
+            f["effort"] = aufwand.get(f["id"]) or {}
             offen = set(f["expected"]["evidence"]) - {b.id for b in belege}
             if offen:
                 fehlt.append(f"{f['name'][:60]}: {', '.join(sorted(offen))}")
@@ -354,10 +389,21 @@ def main() -> int:
           f"({ergebnis['cost_per_1000']:.2f} $/1000 Urteile)")
     print(f"  Dauer               {ergebnis['seconds']}s")
 
+    # Beide Matrizen, denn beide Fragen entscheiden. Die für „lohnt sich"
+    # fehlte, als die verschärfte Regel gemessen wurde — und ohne sie ließ
+    # sich nicht sagen, ob das Modell strenger oder lockerer ist als der
+    # Maßstab. Genau das ist aber die einzige Frage, die weiterhilft.
+    if letzter["worth_confusion"]:
+        print("\n  Lohnt sich (erwartet -> bekommen):")
+        for k, v in sorted(letzter["worth_confusion"].items(), key=lambda x: -x[1]):
+            soll, _, ist = k.partition("\u2192")
+            marke = "  " if soll == ist else "\u2717 "
+            print(f"    {marke}{k:20} {v}")
+
     if letzter["confusion"]:
-        print("\n  Verwechslungen (erwartet → bekommen):")
+        print("\n  Status (erwartet -> bekommen):")
         for k, v in sorted(letzter["confusion"].items(), key=lambda x: -x[1]):
-            marke = "  " if k.split("→")[0] == k.split("→")[1] else "✗ "
+            marke = "  " if k.split("\u2192")[0] == k.split("\u2192")[1] else "\u2717 "
             print(f"    {marke}{k:24} {v}")
     if letzter["mistakes"]:
         print("\n  Wo es danebenging:")
