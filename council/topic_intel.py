@@ -113,6 +113,51 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
     return date(year, monat, min(heute.day, calendar.monthrange(year, monat)[1]))
 
 
+#: Wörter, die eine Aufzählung einleiten, aber selbst kein Thema sind.
+_AUFZAEHL_KOPF = ("stadtteile", "themen", "orte", "bereiche", "gebiete")
+
+
+def aufteilbar(name: str, hoechstens: int = 8) -> list[str]:
+    """Ist dieser Themen-Name in Wahrheit eine LISTE? Dann ihre Teile.
+
+    Der Fall aus dem Bestand: Jemand legte ein Thema namens „Stadtteile:
+    Bürgerfelde Nord, Dietrichsfeld, Helleheide, Brokhausen, Bloherfelde,
+    Haarentor, Wechloy" an — sieben Wünsche in einem Feld. Der Cross-Encoder
+    kann so etwas nicht bedienen: Er bewertet gegen EINEN Text, und dieser hat
+    kein Zentrum. Ergebnis waren elf Treffer mit durchweg negativer Relevanz,
+    also lauter Kandidaten, die gerade eben nicht verworfen wurden.
+
+    Als sieben Themen hätte dieselbe Person je Stadtteil eine eigene, saubere
+    Meldung bekommen. Diese Funktion erkennt den Fall, damit die Oberfläche
+    ihn ansprechen kann — sie verbietet nichts.
+
+    **Konservativ mit Absicht.** Erkannt wird nur, was durch Kommata (oder
+    Semikola) getrennt ist. „Bus und Bahn" bleibt EIN Thema: „und" verbindet
+    im Deutschen häufiger, als es aufzählt, und ein falsches Aufteilen-Angebot
+    ist ärgerlicher als ein fehlendes. Ebenso bleiben Namen mit einer Klammer
+    unangetastet — „Bebauungsplan 851 (Schützenweg, Haarentor)" ist eine
+    Ortsangabe, keine Liste.
+    """
+    roh = " ".join(str(name or "").split())
+    if not roh or "(" in roh or ")" in roh:
+        return []
+    # „Stadtteile: A, B, C" — der Kopf vor dem Doppelpunkt ist die Überschrift
+    # der Aufzählung und selbst kein Thema.
+    if ":" in roh:
+        kopf, _, rest = roh.partition(":")
+        if kopf.strip().lower().rstrip("n") in tuple(k.rstrip("n") for k in _AUFZAEHL_KOPF):
+            roh = rest
+    teile = [t.strip(" .;") for t in re.split(r"[,;]", roh)]
+    teile = [t for t in teile if len(t) >= 3]
+    if len(teile) < 2 or len(teile) > hoechstens:
+        return []
+    # Jeder Teil muss für sich als Thema durchgehen — sonst ist es ein Satz
+    # mit Kommata, keine Liste.
+    if any(len(t.split()) > 4 or looks_like_instruction(t) for t in teile):
+        return []
+    return teile
+
+
 def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
             schwelle: float = SCHWELLE) -> tuple[list[tuple[int, float]], bool, int]:
     """Relevante Beschlüsse zu einem Thema → ``(treffer, gedeckelt, kandidaten)``.

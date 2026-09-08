@@ -808,6 +808,9 @@ def describe_topic(
         "description": result["description"],
         "matches": result["matches"],
         "matches_capped": result["matches_capped"],
+        # Eine Liste in einem Feld ist ein Bedienfehler, den das Produkt
+        # bisher stillschweigend annahm (s. topic_intel.aufteilbar).
+        "parts": topic_intel.aufteilbar(body.name),
         "examples": result["examples"],
         "verdict": result["verdict"],
         "is_council_topic": result["is_council_topic"],

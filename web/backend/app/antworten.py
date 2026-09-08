@@ -772,6 +772,11 @@ class TopicDescription(TypedDict):
     vague: bool
     hint: str
     suggestion: str
+    #: Ist der Name in Wahrheit eine LISTE? Dann ihre Teile, sonst leer. Die
+    #: Oberfläche bietet damit das Aufteilen an — sieben Stadtteile in einem
+    #: Feld ergaben elf Treffer mit durchweg negativer Relevanz, als sieben
+    #: Themen wäre es je Stadtteil eine saubere Meldung gewesen.
+    parts: list[str]
 
 
 class UnreadTopicHits(TypedDict):
