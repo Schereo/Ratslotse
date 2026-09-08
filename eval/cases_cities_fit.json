@@ -103,7 +103,12 @@
    "evidence": [],
    "worth": "maybe"
   },
-  "judgment": "Die Sondernutzungssatzung erlaubt Flächen, sie kontrolliert sie nicht; kein Beleg deckt einen Teil der Kontrolle ab."
+  "judgment": "Die Sondernutzungssatzung erlaubt Flächen, sie kontrolliert sie nicht; kein Beleg deckt einen Teil der Kontrolle ab.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008559",
@@ -129,7 +134,12 @@
    "evidence": [],
    "worth": "yes"
   },
-  "judgment": "Unter den Belegen ist nichts zum Allgemeinen Sozialen Dienst; ein Qualitätshandbuch ist ein klassisches kommunales Instrument."
+  "judgment": "Unter den Belegen ist nichts zum Allgemeinen Sozialen Dienst; ein Qualitätshandbuch ist ein klassisches kommunales Instrument.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2001257",
@@ -275,7 +285,12 @@
    "evidence": [],
    "worth": "yes"
   },
-  "judgment": "Die Belege betreffen digitale Endgeräte und ein Digitalisierungsamt, nicht die Heizungssteuerung; die Gebäudewirtschaft ist Eigenbetrieb."
+  "judgment": "Die Belege betreffen digitale Endgeräte und ein Digitalisierungsamt, nicht die Heizungssteuerung; die Gebäudewirtschaft ist Eigenbetrieb.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056005",
@@ -361,7 +376,12 @@
    "evidence": [],
    "worth": "yes"
   },
-  "judgment": "Wohn-Pflege-Gemeinschaften sind etwas anderes als ein Darlehen für Genossenschaften; die Vergabe städtischer Grundstücke liegt beim Rat."
+  "judgment": "Wohn-Pflege-Gemeinschaften sind etwas anderes als ein Darlehen für Genossenschaften; die Vergabe städtischer Grundstücke liegt beim Rat.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "budget",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002906",
@@ -392,6 +412,26 @@
     "arme": 2
    },
    {
+    "kind": "chunk",
+    "id": "oldenburg:paper:23616",
+    "title": "Strukturbrücke/Corona-Hilfe Kultur 2021: Bericht",
+    "date": null,
+    "outcome": null,
+    "text": "b) Auch die freien Kulturschaffenden und Solokünstler*innen aus Oldenburg können sich wieder mit einem Projektvorschlag bewerben und eine maximale Förderung von 4.000 € dafür beantragen. Gefördert werden erneut zeitlich begrenzte kulturelle Projekte, deren Re- alisierung bis 31.07.2022 abgeschlossen sein soll. Eine Vollförderung der Projekte ist mög- lich, ein Eigenanteil ist nicht erforderlich. Nach Abschluss des Projektes ist ein Verwen- dungsnachweis beim städtischen Kulturbüro einzureichen. …",
+    "score": 0.7106378078460693,
+    "arme": 2
+   },
+   {
+    "kind": "chunk",
+    "id": "oldenburg:paper:25146",
+    "title": "Neuausrichtung Förderrichtlinie Kultur",
+    "date": null,
+    "outcome": null,
+    "text": "Vertreterinnen und Vertreter der institutionell geförderten Einrichtungen sowie der Kulturverwaltung abschließend erörtert werden und in die zu formulierende Richt- linie einfließen. In der Novembersitzung des Kulturausschusses soll der Entwurf einer Richtlinie vorgelegt werden, sodass eine Beschlussfassung über diese Richtlinie im Dezember 2022 erfolgen könnte. Aufgrund der derzeitigen vertraglich vereinbarten Förderungen bleibt in 2023 die institutio- nelle Förderung für die …",
+    "score": 0.7040296792984009,
+    "arme": 2
+   },
+   {
     "kind": "neighbor",
     "id": "oldenburg:paper:25500",
     "title": "Neufassung der Förderrichtlinie für Kultureinrichtungen",
@@ -402,82 +442,52 @@
     "arme": 1
    },
    {
+    "kind": "fts",
+    "id": "oldenburg:paper:21977",
+    "title": "Strukturbrücke für Oldenburger Kulturinstitutionen und Kulturschaffende - Beschluss",
+    "date": "2020-09-28",
+    "outcome": null,
+    "text": "Ausdruck vom: 17.09.2020 Seite: 1/2 17.09.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0551/1 öffentlich Strukturbrücke für Oldenburger Kulturinstitutionen und Kulturschaffende - Beschluss Beratungsfolge: Verwaltungsausschuss am: 28.09.2020 Zu TOP: Rat am: 28.09.2020 Zu TOP: Beschlussvorschlag: Die Richtlinie für die Strukturbrücke der Stadt Oldenburg (Oldb) für Oldenburger Kulturinst i- tutionen und Kulturschaffende wird in der vorliegenden Fassung beschlossen. Sie tritt am 29.09.2020 ",
+    "score": null,
+    "arme": 1
+   },
+   {
     "kind": "chunk",
-    "id": "oldenburg:paper:23616",
-    "title": "Strukturbrücke/Corona-Hilfe Kultur 2021: Bericht",
+    "id": "oldenburg:paper:18460",
+    "title": "Vergabe Projektzuschüsse 2019",
     "date": null,
     "outcome": null,
-    "text": "b) Auch die freien Kulturschaffenden und Solokünstler*innen aus Oldenburg können sich wieder mit einem Projektvorschlag bewerben und eine maximale Förderung von 4.000 € dafür beantragen. Gefördert werden erneut zeitlich begrenzte kulturelle Projekte, deren Re- alisierung bis 31.07.2022 abgeschlossen sein soll. Eine Vollförderung der Projekte ist mög- lich, ein Eigenanteil ist nicht erforderlich. Nach Abschluss des Projektes ist ein Verwen- dungsnachweis beim städtischen Kulturbüro einzureichen. …",
-    "score": 0.744533121585846,
+    "text": "Ausdruck vom: 07.02.2020 Seite: 1/1 04.02.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0117 öffentlich Vergabe Projektzuschüsse 2019 Beratungsfolge: Kulturausschuss am: 18.02.2020 Zu TOP: 5 Bericht: Zur Information über die im Verlauf des Haushaltsjahres 2019 vergeben Projektmittel sind in der Anlage die Mittelempfänger aufgeführt. Die Auflistung unterscheidet die Zuschussneh- mer in die Bereiche - freie Kulturträger - innovative Projekte - Projekte der kulturellen Bildung Um …",
+    "score": 0.7432147860527039,
     "arme": 1
    },
    {
     "kind": "fts",
-    "id": "oldenburg:paper:18138",
-    "title": "Neuausrichtung der institutionellen Kulturförderung in der Stadt Oldenburg",
-    "date": "2019-11-19",
+    "id": "oldenburg:paper:21933",
+    "title": "Strukturbrücke für Oldenburger Kulturinstitutionen und Kulturschaffende - Beschluss",
+    "date": "2020-09-15",
     "outcome": null,
-    "text": "Ausdruck vom: 14.11.2019 Seite: 1/2 04.11.2019 Amt für Kultur, Museen und Sport Vorlagen-Nr: 19/0819 öffentlich Neuausrichtung der institutionellen Kulturförderung in der Stadt Oldenburg Beratungsfolge: Kulturausschuss am: 19.11.2019 Zu TOP: 5 Verwaltungsausschuss am: 25.11.2019 Zu TOP: Rat am: 25.11.2019 Zu TOP: Beschlussvorschlag: Die Stadt Oldenburg richtet ihre institutionelle Kulturförderung neu aus. Die Umsetzung e r- folgt auf der Grundlage der 15 Eckpunkte des anliegenden Konzepts (Anlag",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "decision",
-    "id": "oldenburg:decision:1998",
-    "title": "Neuausrichtung der institutionellen Kulturförderung in der Stadt Oldenburg",
-    "date": "2019-11-19",
-    "outcome": "accepted",
-    "text": "Die Stadt Oldenburg ändert, wie sie Kultureinrichtungen dauerhaft mit Geld unterstützt. Die Verwaltung erarbeitet dafür im Jahr 2020 genaue Regeln. Der Stadtrat entscheidet später endgültig über diese Regeln.",
+    "text": "Ausdruck vom: 14.09.2020 Seite: 1/2 09.09.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0551 öffentlich Strukturbrücke für Oldenburger Kulturinstitutionen und Kulturschaffende - Beschluss Beratungsfolge: Kulturausschuss am: 15.09.2020 Zu TOP: 8 Verwaltungsausschuss am: 28.09.2020 Zu TOP: Rat am: 28.09.2020 Zu TOP: Beschlussvorschlag: Die Richtlinie für die Strukturbrücke der Stadt Oldenburg (Oldb) für Oldenburger Kulturinst i- tutionen und Kulturschaffende wird in der vorl iegenden Fassu",
     "score": null,
     "arme": 1
    },
    {
     "kind": "chunk",
+    "id": "oldenburg:paper:27940",
+    "title": "Koordinationsstelle Nachtkultur - Bericht",
+    "date": null,
+    "outcome": null,
+    "text": "Ausdruck vom: 07.08.2025 Seite: 1/2 Amt für Kultur, Museen und Sport Datum: 07.08.2025 Vorlagen-Nr.: 25/0461 Status: öffentlich Koordinationsstelle Nachtkultur - Bericht Beratungsfolge: Termin: Kulturausschuss 19.08.2025 Anlass: Gemeinsam mit den Vertreterinnen und Vertretern im Kulturausschuss gestaltet die Kulturverwaltung seit dem vergangenen Jahr einen Prozess zur Weiterentwicklung der „Förderung Junger Kultur“ und zur Entwicklung von zielgerichteten Förderstrukturen. Bericht: Vor dem …",
+    "score": 0.7397657632827759,
+    "arme": 1
+   },
+   {
+    "kind": "fts",
     "id": "oldenburg:paper:24753",
     "title": "Strukturbrücke 2022 für Oldenburger Kulturinstitutionen und Kulturschaffende Oldenburg (Oldb) - Beschluss",
-    "date": "2022-05-30",
+    "date": "2022-05-17",
     "outcome": "accepted",
-    "text": "ultureinrichtungen zu beantragen, ein entsprechender Verwendungsnachweis ist zu er- bringen. Auch freie Kulturschaffende sowie Solokünstlerinnen und Solokünstler sollen in diesem Jahr wieder mit einer einmaligen Projektförderung unterstützt werden. Für die Realisierung zeit- lich begrenzter kultureller Projekte, steht ihnen eine maximale Fördersumme von 3.500,00 Ausdruck vom: 09.05.2022 Seite: 2/2 EURO je Projektantrag zur Verfügung. Auch in 2022 soll wieder gelten, dass eine Vollförde- rung …",
-    "score": 0.7379216551780701,
-    "arme": 1
-   },
-   {
-    "kind": "fts",
-    "id": "oldenburg:paper:24219",
-    "title": "Aufnahme eines neuen Haushaltsvermerks für die Kultur- und Künstlerförderung (Corona-Hilfsfonds) im Haushaltsjahr 2021 - Beschluss",
-    "date": "2021-12-01",
-    "outcome": null,
-    "text": "Ausdruck vom: 19.11.2021 Seite: 1/2 15.10.2021 Amt für Controlling und Finanzen Vorlagen-Nr: 21/0754 öffentlich Aufnahme eines neuen Haushaltsvermerks für die Kultur- und Künstlerförderung (Corona-Hilfsfonds) im Haushaltsjahr 2021 - Beschluss Beratungsfolge: Ausschuss für Finanzen und Beteiligungen am: 01.12.2021 Zu TOP: Verwaltungsausschuss am: 20.12.2021 Zu TOP: Rat am: 20.12.2021 Zu TOP: Beschlussvorschlag: Für das Haushaltsjahr 2021 wird für die Leistung P10.281002.002 „Institutionelle Förde",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "decision",
-    "id": "oldenburg:decision:2402",
-    "title": "Neuausrichtung der institutionellen Kulturförderung in der Stadt Oldenburg",
-    "date": "2019-11-25",
-    "outcome": null,
-    "text": "Neuausrichtung der institutionellen Kulturförderung in der Stadt Oldenburg beschlossen.",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "fts",
-    "id": "oldenburg:paper:22209",
-    "title": "Aufnahme eines neuen Haushaltsvermerks für die Kultur- und Künstlerförderung (Corona-Hilfsfonds) im Haushaltsjahr 2020 - Beschluss",
-    "date": "2020-12-02",
-    "outcome": null,
-    "text": "Ausdruck vom: 12.12.2020 Seite: 1/1 17.11.2020 Amt für Controlling und Finanzen Vorlagen-Nr: 20/0811 öffentlich Aufnahme eines neuen Haushaltsvermerks für die Kultur- und Künstlerförderung (Corona-Hilfsfonds) im Haushaltsjahr 2020 - Beschluss Beratungsfolge: Ausschuss für Finanzen und Beteiligungen am: 02.12.2020 Zu TOP: Verwaltungsausschuss am: 16.12.2020 Zu TOP: Rat am: 21.12.2020 Zu TOP: Beschlussvorschlag: Für das Haushaltsjahr 2020 wird für die Leistung P10.281002.002 „Institutionelle Förde",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "decision",
-    "id": "oldenburg:decision:3256",
-    "title": "Aufnahme eines neuen Haushaltsvermerks für die Kultur- und Künstlerförderung (Corona-Hilfsfonds) im Haushaltsjahr 2020",
-    "date": "2020-12-02",
-    "outcome": "accepted",
-    "text": "Der Ausschuss für Finanzen hat entschieden: Geld aus dem Corona-Hilfsfonds für Kultur, das 2020 nicht ausgegeben wurde, darf die Stadt im Jahr 2021 weiter für Kulturförderung nutzen.",
+    "text": "Der Rat hat die Regeln für das Programm 'Strukturbrücke' beschlossen. Das Programm unterstützt Kultureinrichtungen und Kulturschaffende in Oldenburg. Die Regeln gelten ab dem 31. Mai 2022.",
     "score": null,
     "arme": 1
    },
@@ -489,6 +499,16 @@
     "outcome": null,
     "text": "Ausdruck vom: 20.04.2026 Seite: 1/2 Amt für Teilhabe und Soziales Datum: 20.04.2026 Vorlagen-Nr.: 26/0332 Status: öffentlich Vereinbarungen zur Absicherung und Verstetigung etablierter Projekte und Maßnahmen der Daseinsvorsorge durch freie Träger (beratendes Mitglied Herr Franke vom 14.04.2026) Beratungsfolge: Termin: Sozialausschuss 28.04.2026 Anlass: Das beratende Mitglied Franz-Josef-Franke beantragt die Beauftragung der Verwaltung, bis zum 15.06.2026 vertragliche Vereinbarungen mit den freie",
     "score": 0.7117105722427368,
+    "arme": 1
+   },
+   {
+    "kind": "chunk",
+    "id": "oldenburg:paper:28553",
+    "title": "Sachstandsbericht zur Förderung von Kulturprojekten in 2025",
+    "date": null,
+    "outcome": null,
+    "text": "Ausdruck vom: 05.02.2026 Seite: 1/2 Amt für Kultur, Museen und Sport Datum: 05.02.2026 Vorlagen-Nr.: 26/0112 Status: öffentlich Sachstandsbericht zur Förderung von Kulturprojekten in 2025 Beratungsfolge: Termin: Kulturausschuss 17.02.2026 Anlass: Anlässlich des Berichtes im Kulturausschuss am 18.11.2025 über die städtische Kulturförderung in 2026 und der sich anschließenden Diskussion hat die Verwaltung die Vorlage über eine detaillierte Aufstellung der in 2025 bewilligten Fördergelder …",
+    "score": 0.7212233543395996,
     "arme": 1
    },
    {
@@ -510,7 +530,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg fördert Kultur per Richtlinie (25500) und hat im Sozialen Verstetigungsvereinbarungen mit freien Trägern (29782) — mehrjährige Zuschussvereinbarungen mit Kulturträgern fehlen. Korrigiert am 08.09.2026 von „vielleicht“ auf „ja“: Die Form gibt es in Oldenburg schon, sie auf die Kultur zu übertragen ist ein naheliegender Antrag, kein Fernziel."
+  "judgment": "Oldenburg fördert Kultur per Richtlinie (25500) und hat im Sozialen Verstetigungsvereinbarungen mit freien Trägern (29782) — mehrjährige Zuschussvereinbarungen mit Kulturträgern fehlen. Korrigiert am 08.09.2026 von „vielleicht“ auf „ja“: Die Form gibt es in Oldenburg schon, sie auf die Kultur zu übertragen ist ein naheliegender Antrag, kein Fernziel.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "budget",
+   "addressee": null
+  }
  },
  {
   "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/248630",
@@ -544,9 +569,14 @@
   "expected": {
    "status": "missing",
    "evidence": [],
-   "worth": "yes"
+   "worth": "maybe"
   },
-  "judgment": "Kein Beleg zum Notruf; die Leitstelle gehört einer kreisfreien Stadt selbst, das Instrument liegt also in Oldenburgs Hand."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Kein Beleg zum Notruf; die Leitstelle gehört einer kreisfreien Stadt selbst, das Instrument liegt also in Oldenburgs Hand.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "review",
+   "addressee": "Großleitstelle Oldenburger Land"
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008682",
@@ -690,9 +720,14 @@
   "expected": {
    "status": "partial",
    "evidence": [],
-   "worth": "yes"
+   "worth": "maybe"
   },
-  "judgment": "Oldenburg HAT ein Rahmenkonzept „Schulverpflegung in Oldenburg“ (zuletzt geändert 12/2025, Bio-Anteil) und eine Mensa-Satzung; ein INTEGRIERTES Konzept aus Qualitätsrahmen, Vergabekriterien und Finanzierungsvergleich ist das nicht. Korrigiert am 08.09.2026 von „fehlt“ auf „teilweise“: Ich hatte beim ersten Urteil nur die Nachbarschafts-Belege und darin stand das Rahmenkonzept nicht."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Oldenburg HAT ein Rahmenkonzept „Schulverpflegung in Oldenburg“ (zuletzt geändert 12/2025, Bio-Anteil) und eine Mensa-Satzung; ein INTEGRIERTES Konzept aus Qualitätsrahmen, Vergabekriterien und Finanzierungsvergleich ist das nicht. Korrigiert am 08.09.2026 von „fehlt“ auf „teilweise“: Ich hatte beim ersten Urteil nur die Nachbarschafts-Belege und darin stand das Rahmenkonzept nicht.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2007933",
@@ -841,7 +876,12 @@
    ],
    "worth": "maybe"
   },
-  "judgment": "Oldenburg verzichtet auf die Vergnügungssteuer nur für Tanzveranstaltungen mit Live-Musik, nicht auf die Steuer insgesamt."
+  "judgment": "Oldenburg verzichtet auf die Vergnügungssteuer nur für Tanzveranstaltungen mit Live-Musik, nicht auf die Steuer insgesamt.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2003216",
@@ -853,61 +893,121 @@
   "evidence": [
    {
     "kind": "fts",
-    "id": "oldenburg:paper:28063",
-    "title": "Informationen zur Obdachlosenunterkunft in Oldenburg",
-    "date": "2025-09-23",
+    "id": "oldenburg:paper:17920",
+    "title": "Rad- und Fußweg Huntebrücke (CDU-Fraktion vom 30.07.2019)",
+    "date": "2019-08-19",
     "outcome": null,
-    "text": "Ausdruck vom: 01.09.2025 Seite: 1/4 Bürger- und Ordnungsamt Datum: 01.09.2025 Vorlagen-Nr.: 25/0578 Status: öffentlich Informationen zur Obdachlosenunterkunft in Oldenburg Beratungsfolge: Termin: Sozialausschuss 23.09.2025 Anlass: Antrag der SPD-Ratsfraktion und der Fraktion BÜNDNIS 90 / DIE GRÜNEN zum Thema „Informationen zur Obdachlosenunterkunft in Oldenburg“ Bericht: Zu den im Schreiben vom 25.06.2025 gestellten Fragen wird durch die Verwaltung wie folgt Stellung genommen: 1. Welche genauen ",
+    "text": "Ausdruck vom: 15.08.2019 Seite: 1/1 13.08.2019 Amt für Verkehr und Straßenbau Vorlagen-Nr: 19/0634 öffentlich Rad- und Fußweg Huntebrücke (CDU-Fraktion vom 30.07.2019) Beratungsfolge: Verkehrsausschuss am: 19.08.2019 Zu TOP: Bericht: Mit dem Schreiben vom 30.07.2019 bittet die CDU Ratsfraktion die Verwaltung um Informa- tionen, ob der Rad- und Fußweg im Zuge des Neubaus der Huntebrücke erhalten bleibt und wer hierfür die Kosten übernimmt. Hierzu wird von der Verwaltung wie folgt Stellung genomme",
+    "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "decision",
+    "id": "oldenburg:decision:1544",
+    "title": "Unterbringung von Asylbewerberinnen und Asylbewerbern - Aktuelle Daten und Zahlen - Bericht",
+    "date": "2019-05-14",
+    "outcome": "noted",
+    "text": "Der Ausschuss nahm den Bericht mit aktuellen Daten und Zahlen zur Unterbringung von Asylbewerbern zur Kenntnis.",
     "score": null,
     "arme": 1
    },
    {
     "kind": "fts",
-    "id": "oldenburg:paper:24661",
-    "title": "Aufbau eines weiteren Frauen- und Kinderschutzhauses in Oldenburg in Trägerschaft des Johanniter-Ordens - Bericht",
-    "date": "2022-03-22",
+    "id": "oldenburg:paper:17998",
+    "title": "Weitere Begrünung der Schallschutzwände an der Stadtautobahn A 293",
+    "date": "2019-09-12",
     "outcome": null,
-    "text": "Ausdruck vom: 11.03.2022 Seite: 1/2 09.03.2022 Gleichstellungsbüro Vorlagen-Nr: 22/0226 öffentlich Aufbau eines weiteren Frauen- und Kinderschutzhauses in Oldenburg in Trägerschaft des Johanniter-Ordens - Bericht Beratungsfolge: Sozialausschuss am: 22.03.2022 Zu TOP: Bericht: Frauen- und Kinderschutzhäuser sind wichtige Anlaufstellen für gewaltbetroffene Frauen – seit der Ratifizierung der Istanbul-Konvention stellt der Opferschutz eine verbindlich festge- schriebene Aufgabe unter anderem von Ko",
+    "text": "Ausdruck vom: 05.09.2019 Seite: 1/2 04.09.2019 Amt für Umweltschutz und Bauordnung Vorlagen-Nr: 19/0704 öffentlich Weitere Begrünung der Schallschutzwände an der Stadtautobahn A 293 Beratungsfolge: Ausschuss für Stadtgrün, Umwelt und Klima am: 12.09.2019 Zu TOP: Verkehrsausschuss am: 16.09.2019 Zu TOP: Bericht: Ergänzend zu den Informationen im ASUK 02/2019 Top 12.8 am 14.02.2019 und zur Vorla- ge 19/0133 zum VerkA am 18.02.2019 hat sich das Thema weiterentwickelt. Inzwischen liegt die konkrete ",
+    "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "decision",
+    "id": "oldenburg:decision:7779",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht",
+    "date": "2025-09-09",
+    "outcome": "noted",
+    "text": "Der Ausschuss nimmt den Bericht mit aktuellen Daten und Zahlen zur Unterbringung von Asylbewerberleistungsberechtigten zur Kenntnis.",
     "score": null,
     "arme": 1
    },
    {
     "kind": "fts",
-    "id": "oldenburg:paper:24760",
-    "title": "Entwurf einer Baumerhalt- und Stadtgrünstrategie für die Stadt Oldenburg - Sachstandsbericht",
-    "date": "2022-05-12",
+    "id": "oldenburg:paper:27847",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht",
+    "date": "2025-06-25",
     "outcome": null,
-    "text": "Ausdruck vom: 09.05.2022 Seite: 1/5 05.05.2022 Amt für Umweltschutz und Bauordnung Vorlagen-Nr: 22/0320 öffentlich Entwurf einer Baumerhalt- und Stadtgrünstrategie für die Stadt Oldenburg - Sachstandsbericht Beratungsfolge: Ausschuss für Stadtgrün, Umwelt und Kli- ma am: 12.05.2022 Zu TOP: Bericht: Die Verwaltung wurde durch einen Beschluss des Ausschusses für Stadtgrün, Umwelt und Klima (ASUK) in der Sitzung am 10.06.2021 beauftragt, eine Baumerhalt- und Stadt- grünstrategie für die Stadt Olden",
+    "text": "Ausdruck vom: 04.06.2025 Seite: 1/2 Amt für Zuwanderung und Integration Datum: 04.06.2025 Vorlagen-Nr.: 25/0378 Status: öffentlich Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht Beratungsfolge: Termin: Ausschuss für Integration und Migration 25.06.2025 Anlass: Wiederkehrende Berichterstattung über die aktuellen Unterbringungszahlen von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz, insbesondere Asylbewerberinnen und",
+    "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "decision",
+    "id": "oldenburg:decision:8170",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht",
+    "date": "2026-02-10",
+    "outcome": "noted",
+    "text": "Der Bericht mit aktuellen Daten zur Unterbringung von Leistungsberechtigten nach dem AsylbLG wird zur Kenntnis genommen.",
     "score": null,
     "arme": 1
    },
    {
     "kind": "fts",
-    "id": "oldenburg:paper:24322",
-    "title": "Entwurf einer Baumerhalt- und Stadtgrünstrategie für die Stadt Oldenburg - Bericht",
-    "date": "2021-12-09",
+    "id": "oldenburg:paper:27685",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht",
+    "date": "2025-04-29",
     "outcome": null,
-    "text": "Ausdruck vom: 30.11.2021 Seite: 1/5 18.11.2021 Amt für Umweltschutz und Bauordnung Vorlagen-Nr: 21/0855 öffentlich Entwurf einer Baumerhalt- und Stadtgrünstrategie für die Stadt Oldenburg - Bericht Beratungsfolge: Ausschuss für Stadtgrün, Umwelt und Klima am: 09.12.2021 Zu TOP: Bericht: Die Verwaltung wurde durch einen Beschluss des Ausschusses für Stadtgrün, Umwelt und Klima (ASUK) in der Sitzung am 10.06.2021 beauftragt, eine Baumerhalt- und Stadt- grünstrategie für die Stadt Oldenburg zu erar",
+    "text": "Ausdruck vom: 08.04.2025 Seite: 1/2 Amt für Zuwanderung und Integration Datum: 08.04.2025 Vorlagen-Nr.: 25/0223 Status: öffentlich Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht Beratungsfolge: Termin: Ausschuss für Integration und Migration 29.04.2025 Anlass: Wiederkehrende Berichterstattung über die aktuellen Unterbringungszahlen von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz, insbesondere Asylbewerberinnen und",
+    "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "decision",
+    "id": "oldenburg:decision:7467",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht",
+    "date": "2025-04-29",
+    "outcome": "noted",
+    "text": "Der Bericht mit aktuellen Daten zur Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz wurde zur Kenntnis genommen.",
     "score": null,
     "arme": 1
    },
    {
     "kind": "fts",
-    "id": "oldenburg:paper:25986",
-    "title": "Baumerhalt- und Stadtgrünstrategie (Fraktionen Bündnis 90/ Die Grünen und SPD vom 24.02.2023) - Beschlussantrag mit Bericht der Verwaltung",
-    "date": "2023-06-08",
+    "id": "oldenburg:paper:27551",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen",
+    "date": "2025-03-05",
     "outcome": null,
-    "text": "Ausdruck vom: 02.06.2023 Seite: 1/13 Amt für Umweltschutz und Bauordnung Datum: 02.06.2023 Vorlagen-Nr: 23/0340/1 Status: öffentlich Baumerhalt- und Stadtgrünstrategie (Fraktionen Bündnis 90/ Die Grünen und SPD vom 24.02.2023) - Beschlussantrag mit Bericht der Verwaltung Beratungsfolge: Termin: Ausschuss für Stadtgrün, Umwelt und Klima 08.06.2023 Verwaltungsausschuss 12.06.2023 Rat 26.06.2023 Anlass: Die Verwaltung wurde durch einen Beschluss des Ausschusses für Stadtgrün, Umwelt und Klima (ASUK",
+    "text": "Ausdruck vom: 06.02.2025 Seite: 1/3 Amt für Zuwanderung und Integration Datum: 06.02.2025 Vorlagen-Nr.: 25/0097 Status: öffentlich Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen Beratungsfolge: Termin: Ausschuss für Integration und Migration 05.03.2025 Anlass: Wiederkehrende Berichterstattung über die aktuellen Unterbringungszahlen von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz, insbesondere Asylbewerberinnen und Asylbewer",
+    "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "decision",
+    "id": "oldenburg:decision:7669",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen",
+    "date": "2025-06-25",
+    "outcome": "noted",
+    "text": "Der Ausschuss nimmt den Bericht mit aktuellen Daten zur Unterbringung von Leistungsberechtigten nach dem AsylbLG zur Kenntnis.",
     "score": null,
     "arme": 1
    },
    {
     "kind": "fts",
-    "id": "oldenburg:paper:25891",
-    "title": "Baumerhalt- und Stadtgrünstrategie (Fraktionen Bündnis 90/ Die Grünen und SPD vom 24.02.2023) - Beschlussantrag mit Bericht der Verwaltung",
-    "date": "2023-05-11",
+    "id": "oldenburg:paper:27300",
+    "title": "Unterbringung von Asylbewerberinnen und Asylbewerbern - Aktuelle Daten und Zahlen - Bericht",
+    "date": "2024-11-12",
     "outcome": null,
-    "text": "Ausdruck vom: 02.05.2023 Seite: 1/11 Amt für Umweltschutz und Bauordnung Datum: 02.05.2023 Vorlagen-Nr: 23/0340 Status: öffentlich Baumerhalt- und Stadtgrünstrategie (Fraktionen Bündnis 90/ Die Grünen und SPD vom 24.02.2023) - Beschlussantrag mit Bericht der Verwaltung Beratungsfolge: Termin: Ausschuss für Stadtgrün, Umwelt und Klima 11.05.2023 Verwaltungsausschuss 22.05.2023 Rat 22.05.2023 Anlass: Die Verwaltung wurde durch einen Beschluss des Ausschusses für Stadtgrün, Umwelt und Klima (ASUK) ",
+    "text": "Ausdruck vom: 28.10.2024 Seite: 1/3 Amt für Zuwanderung und Integration Datum: 28.10.2024 Vorlagen-Nr.: 24/0721 Status: öffentlich Unterbringung von Asylbewerberinnen und Asylbewerbern - Aktuelle Daten und Zahlen - Bericht Beratungsfolge: Termin: Ausschuss für Integration und Migration 12.11.2024 Anlass: Wiederkehrende Berichterstattung über die aktuellen Unterbringungszahlen von Leistungsberechtig- ten nach dem Asylbewerberleistungsgesetz, insbesondere Asylbewerberinnen und Asylbewerbern. Beric",
+    "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "decision",
+    "id": "oldenburg:decision:7943",
+    "title": "Unterbringung von Leistungsberechtigten nach dem Asylbewerberleistungsgesetz - aktuelle Daten und Zahlen - Bericht",
+    "date": "2025-11-11",
+    "outcome": "noted",
+    "text": "Der Ausschuss nimmt den Bericht mit aktuellen Daten und Zahlen zur Unterbringung von Leistungsberechtigten nach dem AsylbLG zur Kenntnis.",
     "score": null,
     "arme": 1
    },
@@ -927,7 +1027,12 @@
    "evidence": [],
    "worth": "yes"
   },
-  "judgment": "Kein Beleg zu einem Schutzkonzept in Unterkünften; die Unterbringung Geflüchteter ist kommunale Aufgabe."
+  "judgment": "Kein Beleg zu einem Schutzkonzept in Unterkünften; die Unterbringung Geflüchteter ist kommunale Aufgabe.",
+  "cluster": "Gleiche Idee in 2 anderen Städten:\n  - braunschweig 2024-11 (offen): Queere Geflüchtete in Braunschweig\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2006353",
@@ -1031,9 +1136,14 @@
   "expected": {
    "status": "partial",
    "evidence": [],
-   "worth": "yes"
+   "worth": "maybe"
   },
-  "judgment": "Oldenburg legt seit 2024 einen ARMUTSbericht vor (01/2024 beschlossen, 04/2024 und 03/2025 berichtet). Potsdams Idee ist die Erweiterung um den Reichtumsteil — das ist ein Ausbau, kein Neuanfang. Korrigiert am 08.09.2026 von „fehlt“ auf „teilweise“; das Modell hat den Armutsbericht gefunden, ich hatte ihn nicht."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Oldenburg legt seit 2024 einen ARMUTSbericht vor (01/2024 beschlossen, 04/2024 und 03/2025 berichtet). Potsdams Idee ist die Erweiterung um den Reichtumsteil — das ist ein Ausbau, kein Neuanfang. Korrigiert am 08.09.2026 von „fehlt“ auf „teilweise“; das Modell hat den Armutsbericht gefunden, ich hatte ihn nicht.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002507",
@@ -1181,7 +1291,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg hat die Verpackungssteuer geprüft und berichtet, aber weder ein Mehrwegsystem erprobt noch die Steuer beschlossen."
+  "judgment": "Oldenburg hat die Verpackungssteuer geprüft und berichtet, aber weder ein Mehrwegsystem erprobt noch die Steuer beschlossen.",
+  "cluster": "Gleiche Idee in 5 anderen Städten:\n  - braunschweig 2025-06 (offen): Einführung einer Verpackungssteuersatzung in BraunschweigÄnderungsantrag zur Vorlage 25-25\n  - potsdam 2026-06 (offen): Erhebung der Verpackungssteuer\n  - potsdam 2026-03 (offen): Einführung der Verpackungssteuer wirtschafts- und umweltfreundlicher gestalten\n  - braunschweig 2025-06 (offen): Einführung einer Verpackungssteuersatzung in BraunschweigÄnderungsantrag zur Vorlage 25-25\n  - potsdam 2026-03 (offen): Satzung über die Erhebung einer Verpackungssteuer (Verpackungssteuersatzung) in der Landes\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/1036278",
@@ -1307,7 +1422,12 @@
    "evidence": [],
    "worth": "yes"
   },
-  "judgment": "Oldenburg hat im November 2023 die Aktualisierung des „Handbuch Beteiligungen“ beschlossen — ein Rahmen für die Steuerung der städtischen Gesellschaften. Braunschweigs Frage zielt enger: Kann der Rat politische Aufträge an städtische GmbHs nachvollziehen? Dafür reicht der Rahmen nicht. Korrigiert am 08.09.2026 von „fehlt“ auf „teilweise“."
+  "judgment": "Oldenburg hat im November 2023 die Aktualisierung des „Handbuch Beteiligungen“ beschlossen — ein Rahmen für die Steuerung der städtischen Gesellschaften. Braunschweigs Frage zielt enger: Kann der Rat politische Aufträge an städtische GmbHs nachvollziehen? Dafür reicht der Rahmen nicht. Korrigiert am 08.09.2026 von „fehlt“ auf „teilweise“.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056181",
@@ -1453,7 +1573,12 @@
    "evidence": [],
    "worth": "yes"
   },
-  "judgment": "Die Belege sind Sitzungstermine und Einzelmaßnahmen; ein fortgeschriebenes Baulandprogramm ist unter ihnen nicht zu erkennen."
+  "judgment": "Die Belege sind Sitzungstermine und Einzelmaßnahmen; ein fortgeschriebenes Baulandprogramm ist unter ihnen nicht zu erkennen.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008023",
@@ -1602,7 +1727,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat Richtlinien zur Förderung der Jugendarbeit und aktualisiert sie regelmäßig."
+  "judgment": "Oldenburg hat Richtlinien zur Förderung der Jugendarbeit und aktualisiert sie regelmäßig.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2006968",
@@ -1751,7 +1881,12 @@
    ],
    "worth": "maybe"
   },
-  "judgment": "Oldenburg beschließt Jahresabschlüsse und Entlastungen seiner Gesellschaften routinemäßig; eine Prüfung von Boni zeigt sich nicht."
+  "judgment": "Oldenburg beschließt Jahresabschlüsse und Entlastungen seiner Gesellschaften routinemäßig; eine Prüfung von Boni zeigt sich nicht.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008542",
@@ -1897,7 +2032,12 @@
    "evidence": [],
    "worth": "maybe"
   },
-  "judgment": "Beteiligungsberichte und Wohnbaugrundstücke decken kein Konzept zur Rekommunalisierung der Daseinsvorsorge ab."
+  "judgment": "Beteiligungsberichte und Wohnbaugrundstücke decken kein Konzept zur Rekommunalisierung der Daseinsvorsorge ab.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2001751",
@@ -1993,7 +2133,12 @@
    "evidence": [],
    "worth": "maybe"
   },
-  "judgment": "Resolutionen zu Fachkräftemangel, Toleranz und Grundsteuer decken keinen Teil einer Resolution zur Asylverfahrensberatung ab."
+  "judgment": "Resolutionen zu Fachkräftemangel, Toleranz und Grundsteuer decken keinen Teil einer Resolution zur Asylverfahrensberatung ab.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "resolution",
+   "addressee": "Bund"
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2001652",
@@ -2142,7 +2287,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg hat ein Gesamtkonzept zur Wohnungslosenhilfe und berichtet dazu; eine nach Gruppen differenzierte Berichterstattung fehlt."
+  "judgment": "Oldenburg hat ein Gesamtkonzept zur Wohnungslosenhilfe und berichtet dazu; eine nach Gruppen differenzierte Berichterstattung fehlt.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/247182",
@@ -2176,9 +2326,14 @@
   "expected": {
    "status": "missing",
    "evidence": [],
-   "worth": "yes"
+   "worth": "maybe"
   },
-  "judgment": "Kein Beleg zu Hundefreilauf; Grünflächen und Wegeführung liegen bei der Stadt."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Kein Beleg zu Hundefreilauf; Grünflächen und Wegeführung liegen bei der Stadt.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2006883",
@@ -2327,7 +2482,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Zur Zweckentfremdung gibt es in Oldenburg Anträge und einen Satzungsentwurf, aber kein Meldeportal — der Weg dahin ist offen."
+  "judgment": "Zur Zweckentfremdung gibt es in Oldenburg Anträge und einen Satzungsentwurf, aber kein Meldeportal — der Weg dahin ist offen.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/247500",
@@ -2473,7 +2633,12 @@
    "evidence": [],
    "worth": "no"
   },
-  "judgment": "Kein Beleg dazu, und Hausverbote in Bussen und Bahnen sind Sache der VWG als Verkehrsunternehmen, nicht des Rates."
+  "judgment": "Kein Beleg dazu, und Hausverbote in Bussen und Bahnen sind Sache der VWG als Verkehrsunternehmen, nicht des Rates.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": "VWG"
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002493",
@@ -2621,7 +2786,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat die pauschalierte Schulbegleitung und entwickelt sie weiter — das ist das Pool-Modell."
+  "judgment": "Oldenburg hat die pauschalierte Schulbegleitung und entwickelt sie weiter — das ist das Pool-Modell.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002811",
@@ -2765,9 +2935,14 @@
   "expected": {
    "status": "missing",
    "evidence": [],
-   "worth": "yes"
+   "worth": "no"
   },
-  "judgment": "Die Belege sind Pflegereporte; ein Welcome Center für ausländische Fachkräfte fällt in die kommunale Wirtschaftsförderung."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Die Belege sind Pflegereporte; ein Welcome Center für ausländische Fachkräfte fällt in die kommunale Wirtschaftsförderung.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "budget",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002665",
@@ -2916,7 +3091,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat eine Koordinierungsstelle gegen Rechtsextremismus und einen Fonds für Toleranzprojekte — das ist die Substanz des Plans."
+  "judgment": "Oldenburg hat eine Koordinierungsstelle gegen Rechtsextremismus und einen Fonds für Toleranzprojekte — das ist die Substanz des Plans.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004055960",
@@ -2927,14 +3107,14 @@
   "paper": "Stadt: muenster\nArt: Antrag an den Rat\nDatum: 2026-02-03\nTitel: Einführung der Grundsteuer C zur Begrenzung von Bodenspekulation prüfen\nInstrument: Grundsteuer C prüfen\nThemenfeld: finanzen\nZuständigkeit: administration\nZusammenfassung: Prüfung der Einführung einer Grundsteuer C zur Besteuerung unbebauter baureifer Grundstücke.\nText: Münster, 03.02.2026 Ratsantrag Einführung der Grundsteuer C zur Begrenzung von Bodenspekulafion prüfen Der Rat der Stadt Münster möge beschließen: Die Verwaltung wird beauftragt, die Einführung einer Grundsteuer C (erhöhter Hebesatz für unbebaute, aber baureife Grundstücke gem. § 25 Abs. 5 S. 1 GrStG) zu prüfen und dem Ausschuss für Wirtschaft, Finanzen, Liegenschaften und Digitalisierung spätestens bis zur letzten Sitzung des Jahres 2026 die Ergebnisse der Prüfung vorzulegen, sowie ggfs. einen Vorschlag für einen erhöhten Hebesatz für die Jahre 2027 ﬀ. zu unterbreiten. Begründung: Mit der Reform des Grundsteuerrechts hat der Bundesgesetzgeber den Kommunen die Möglichkeit eingeräumt, unbebaute, aber baureife Grundstücke mit einem erhöhten Grundsteuerhebesatz zu besteuern, um steuerliche Anreize zu schaﬀen, entsprechende Grundstücke zu bebauen. Mit diesem Antrag soll die Verwaltung beauftragt werden, zu prüfen, ob die Anwendung dieses Instruments in der Stadt Münster einen sinnvollen städtebaulichen Beitrag leisten kann, auch um die Spekulafion mit unbebauten Grundstücken zu begrenzen. Die Ergebnisse und ggfs. ein entsprechende Hebesatzvorschlag sollen den zuständigen Gremien des Rates mit Einbringung der Hebesatzsatzung zugeleitet werden. gez. Andrea Blome Lia Kirsch Maren Berkenheide Albert Wenzel Noah Börnhorst und Frakfion und Frakfion und Frakfion Antrag an den Rat Nr. A-R/0009/2026",
   "evidence": [
    {
-    "kind": "neighbor",
+    "kind": "cluster",
     "id": "oldenburg:paper:30125",
     "title": "Einführung der Grundsteuer C - Bericht",
     "date": "2026-08-27",
     "outcome": null,
     "text": "Ausdruck vom: 21.08.2026 Seite: 1/6 Amt für Controlling und Finanzen Datum: 21.08.2026 Vorlagen-Nr.: 26/0666 Status: öffentlich Einführung der Grundsteuer C - Bericht Beratungsfolge: Termin: Ausschuss für Stadtplanung und Bauen 27.08.2026 Ausschuss für Allgemeine Angelegenheiten 31.08.2026 Verwaltungsausschuss 31.08.2026 Rat 31.08.2026 Anlass: Aufgrund des Antrags der BSW-Fraktion im Rat der Stadt Oldenburg, die Einführung der Grundsteuer C zur Bekämpfung von Bodenspekulationen zu behandeln, möc",
-    "score": 0.9305622577667236,
-    "arme": 3
+    "score": 0.9542459845542908,
+    "arme": 4
    },
    {
     "kind": "chunk",
@@ -3064,7 +3244,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat die Einführung der Grundsteuer C bereits berichtet und geprüft."
+  "judgment": "Oldenburg hat die Einführung der Grundsteuer C bereits berichtet und geprüft.",
+  "cluster": "Gleiche Idee in 2 anderen Städten:\n  - osnabrueck 2023-09 (offen): Prüfung der Einführung einer Grundsteuer C\nIn Oldenburg liegt eine Vorlage im selben Cluster — sie steht unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, und dann betrifft sie dasselbe Themenfeld, aber ein anderes Instrument.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002997",
@@ -3095,16 +3280,6 @@
     "arme": 2
    },
    {
-    "kind": "chunk",
-    "id": "oldenburg:paper:30138",
-    "title": "Änderung der Geschäftsordnung: Transparente Dokumentation des Abstimmungsverhaltens bei Ratsbeschlüssen im Rats- und Bürgerinformationssystem (Gruppe für Oldenburg vom 17.08.2026) - Bericht",
-    "date": null,
-    "outcome": null,
-    "text": "Die Anregungen aus dem Antrag der Gruppe für Oldenburg könnten in diesem Rahmen aufgegriffen werden. Ausdruck vom: 28.08.2026 Seite: 2/3 Im Folgenden werden die vorgeschlagenen Änderungen der bisherigen Praxis und den bestehenden rechtlichen sowie technischen Rahmenbedingungen gegenübergestellt. Die Organisation und Dokumentation der Sitzungen erfolgt über das Ratsinformationssystem der Stadt Oldenburg. Die Beschlussergebnisse werden im Protokoll transparent dargestellt und entsprechend den …",
-    "score": 0.8038159012794495,
-    "arme": 1
-   },
-   {
     "kind": "fts",
     "id": "oldenburg:paper:27733",
     "title": "Satzung der Stadt Oldenburg (Oldb) zur Änderung der Satzung der Stadt Oldenburg (Oldb) über die Bildung einer Seniorenvertretung - Beschluss",
@@ -3126,12 +3301,12 @@
    },
    {
     "kind": "chunk",
-    "id": "oldenburg:paper:23246",
-    "title": "Beschlussvorschlag Vorlagenprüfung Klimarelevanz",
+    "id": "oldenburg:paper:30138",
+    "title": "Änderung der Geschäftsordnung: Transparente Dokumentation des Abstimmungsverhaltens bei Ratsbeschlüssen im Rats- und Bürgerinformationssystem (Gruppe für Oldenburg vom 17.08.2026) - Bericht",
     "date": null,
     "outcome": null,
-    "text": "), Betriebsausschuss des Abfallwirtschaftsbetriebs (BAWB) und ggf. ein Ausschuss aus Dez 3 beschlossen. Anschließend soll nach Evaluation der Pilotphase das gewählte Verfahren auf die anderen Ratsgremien übertragen werden. Begründung: Beschlusslage und Stand der Beratungen: Der Rat der Stadt Oldenburg hat in seiner Sitzung am 16.12.2019 unter TOP Ö 14.1 be- schlossen: „[…] Verwaltungsvorlagen sind grundsätzlich, mit einer Stellungnahme hinsicht- lich des Klimaschutzes zu versehen. Die …",
-    "score": 0.7789807915687561,
+    "text": "Die Anregungen aus dem Antrag der Gruppe für Oldenburg könnten in diesem Rahmen aufgegriffen werden. Ausdruck vom: 28.08.2026 Seite: 2/3 Im Folgenden werden die vorgeschlagenen Änderungen der bisherigen Praxis und den bestehenden rechtlichen sowie technischen Rahmenbedingungen gegenübergestellt. Die Organisation und Dokumentation der Sitzungen erfolgt über das Ratsinformationssystem der Stadt Oldenburg. Die Beschlussergebnisse werden im Protokoll transparent dargestellt und entsprechend den …",
+    "score": 0.7888097763061523,
     "arme": 1
    },
    {
@@ -3146,12 +3321,12 @@
    },
    {
     "kind": "chunk",
-    "id": "oldenburg:paper:26939",
-    "title": "Feststellung des Namens Stadt Oldenburg (Oldb) - Beschluss",
+    "id": "oldenburg:paper:23246",
+    "title": "Beschlussvorschlag Vorlagenprüfung Klimarelevanz",
     "date": null,
     "outcome": null,
-    "text": "wor- den, ebenso in Artikel II 1. Abschnitt § 2 Abs. 2 Nr. 4 des Achten Gesetzes zur Verwaltungs- Ausdruck vom: 14.08.2024 Seite: 2/3 und Gebietsreform vom 28.06.1977. Damit sei die Schreibweise der Stadt mit „Oldenburg (Oldenburg)“ festgelegt. In enger Abstimmung mit dem Ministerium soll durch Beschluss des Rates über einen An- trag auf Namensänderung die Änderung des § 14 Absatz 6 NKomVG erreicht werden. Auswirkungen: a) Finanzen Die Beschlussfassung und die sich daraus ergebenden Schritte …",
-    "score": 0.7734196782112122,
+    "text": "), Betriebsausschuss des Abfallwirtschaftsbetriebs (BAWB) und ggf. ein Ausschuss aus Dez 3 beschlossen. Anschließend soll nach Evaluation der Pilotphase das gewählte Verfahren auf die anderen Ratsgremien übertragen werden. Begründung: Beschlusslage und Stand der Beratungen: Der Rat der Stadt Oldenburg hat in seiner Sitzung am 16.12.2019 unter TOP Ö 14.1 be- schlossen: „[…] Verwaltungsvorlagen sind grundsätzlich, mit einer Stellungnahme hinsicht- lich des Klimaschutzes zu versehen. Die …",
+    "score": 0.7827403545379639,
     "arme": 1
    },
    {
@@ -3176,12 +3351,12 @@
    },
    {
     "kind": "chunk",
-    "id": "oldenburg:paper:25444",
-    "title": "Neuregelung des § 2 b Umsatzsteuergesetz (UStG) hier: Optionserklärung gem. § 27 Abs. 22 a UStG - Beschluss",
+    "id": "oldenburg:paper:24842",
+    "title": "Änderung 61 des Flächennutzungsplanes (Krugweg) - erneuter Aufstellungsbeschluss",
     "date": null,
     "outcome": null,
-    "text": "Ausdruck vom: 02.12.2022 Seite: 1/3 01.12.2022 Amt für Controlling und Finanzen Vorlagen-Nr: 22/0931 öffentlich Neuregelung des § 2 b Umsatzsteuergesetz (UStG) hier: Optionserklärung gem. § 27 Abs. 22 a UStG - Beschluss Beratungsfolge: Ausschuss für Finanzen und Beteiligungen am: 07.12.2022 Zu TOP: Verwaltungsausschuss am: 19.12.2022 Zu TOP: Rat am: 19.12.2022 Zu TOP: Beschlussvorschlag: Der Rat der Stadt Oldenburg beschließt, vorbehaltlich der Änderung des § 27 Absatz 22a Satz 1 …",
-    "score": 0.7576709985733032,
+    "text": "Ausdruck vom: 07.06.2022 Seite: 1/3 02.06.2022 Stadtplanungsamt Vorlagen-Nr: 21/0812/2 öffentlich Änderung 61 des Flächennutzungsplanes (Krugweg) - erneuter Aufstellungsbeschluss Beratungsfolge: Ausschuss für Stadtplanung und Bauen am: 16.06.2022 Zu TOP: Verwaltungsausschuss am: 27.06.2022 Zu TOP: Beschlussvorschlag: Der Verwaltungsausschuss der Stadt Oldenburg hat in seiner Sitzung am 15. Oktober 2012 die Aufstellung der Änderung 61 des Flächennutzungsplanes beschlossen. Nunmehr wird für die …",
+    "score": 0.7773591876029968,
     "arme": 1
    },
    {
@@ -3192,6 +3367,16 @@
     "outcome": "accepted",
     "text": "Die Neubesetzung mehrerer Ausschüsse, darunter Stadtplanung, Umwelt, Schule und Sport, wurde beschlossen.",
     "score": null,
+    "arme": 1
+   },
+   {
+    "kind": "chunk",
+    "id": "oldenburg:paper:17868",
+    "title": "Bebauungsplan O-822, Teil A (nördlich Sandweg/südlich Sieben Bösen), mit örtlichen Bauvorschriften - Prüfung der Stellungnahmen - Satzungsbeschluss",
+    "date": null,
+    "outcome": null,
+    "text": "Ausdruck vom: 10.09.2019 Seite: 1/4 27.08.2019 Stadtplanungsamt Vorlagen-Nr: 19/0583 öffentlich Bebauungsplan O-822, Teil A (nördlich Sandweg/südlich Sieben Bösen), mit örtlichen Bauvorschriften - Prüfung der Stellungnahmen - Satzungsbeschluss Beratungsfolge: Ausschuss für Stadtplanung und Bauen am: 19.09.2019 Zu TOP: Verwaltungsausschuss am: 28.10.2019 Zu TOP: Rat am: 28.10.2019 Zu TOP: Beschlussvorschlag: Die vorgebrachten Stellungnahmen zur öffentlichen Auslegung werden laut Anlage ge- …",
+    "score": 0.7722262144088745,
     "arme": 1
    },
    {
@@ -3213,7 +3398,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg ändert seine Geschäftsordnung für Rat und Ausschüsse regelmäßig, auch aus Anlass von Gesetzesänderungen."
+  "judgment": "Oldenburg ändert seine Geschäftsordnung für Rat und Ausschüsse regelmäßig, auch aus Anlass von Gesetzesänderungen.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2001518",
@@ -3224,16 +3414,6 @@
   "paper": "Stadt: braunschweig\nArt: Beschlussvorlage\nDatum: 2026-04-17\nTitel: Kommunale Wärmeplanung (KWP) für Braunschweig – Endbericht\nInstrument: Kommunale Wärmeplanung beschließen\nThemenfeld: klima_umwelt\nZuständigkeit: council\nZusammenfassung: Beschluss des Endberichts der kommunalen Wärmeplanung mit Maßnahmen- und Kartenkatalog zur klimaneutralen Wärmeversorgung.\nText: Stadt Braunschweig 26-28762 Der Oberbürgermeister Beschlussvorlage öffentlich Betreff: Kommunale Wärmeplanung (KWP) für Braunschweig – Endbericht Organisationseinheit: Dezernat VI 68 Fachbereich Umwelt Datum: 17.04.2026 Beratungsfolge: Sitzungstermin Status Umwelt- und Grünflächenausschuss (Vorberatung) 24.04.2026 Ö Ausschuss für Mobilität, Tiefbau und Auftragsvergaben (zur Kenntnis) 28.04.2026 Ö Ausschuss für Planung und Hochbau (zur Kenntnis) 29.04.2026 Ö Verwaltungsausschuss (Vorberatung) 05.05.2026 N Rat der Stadt Braunschweig (Entscheidung) 12.05.2026 Ö Beschluss: Die Kommunale Wärmeplanung (KWP) wird nebst Maßnahmenkatalog, Kartenkatalog und den Teilgebiets-Steckbriefen beschlossen. Sachverhalt: Beschlusskompetenz Die Beschlusskompetenz des Rates ergibt sich aus § 58 Abs. 1 NKomVG. Im Sinne dieser Zuständigkeitsnorm handelt es sich bei der KWP um eine grundlegende Zielsetzung der Entwicklung der Kommune. Vorwort Die Kommunale Wärmeplanung ist ein strategischer Prozess, der bis 2040 eine klimaneutrale Wärmeversorgung in Niedersachsen sicherstellen soll. Kommunen analysieren dazu den aktuellen Bedarf und stellen die Potentiale vor. Gemäß BundesWärmeplanungsgesetz (Gesetz für die Wärmeplanung und zur Dekarbonisierung der Wärmenetze – WPG) i. V. m. dem Niedersächsischen Klimagesetz (NKlimaG) ist für Kommunen mit über 100.000 Einwohnern eine entsprechende Wärmeplanung bis zum 30. Juni 2026 aufzustellen. Die Erarbeitung erfordert eine Vielzahl von Analysen, Berechnungen und Abwägungen. Stets eng abgestimmt mit dem lokalen Energieversorger hatte die Verwaltung den Umwelt- und Grünflächenausschuss zu Zwischenergebnissen informiert, zuletzt am 30.09.2025 (Bestandsanalyse), am 28.11.2025 (Potenzialanalyse) sowie am 04.03.2026 (Zielszenario). Der hier vorgelegte Endbericht enthält nun die jeweiligen Endergebnisse der einzelnen Schritte inklusive der Wärmewendestrategie, als vierten und letzten Schritt. Bei Beschluss kann die Stadt Braunschweig so ihre gesetzliche Pflicht erfüllen. Inhalt Die KWP folgt einer klaren Struktur aus vier aufeinander aufbauenden Schritten, deren wesentliche Inhalte im Folgenden kurz zusammengefasst werden: 1. Bestandsanalyse 1 von 653 in Zusammenstellung Dazu wurden im gesamten Stadtgebiet Wärmebedarfs und -verbrauchsdaten erhoben und analysiert. In einem weiteren Schritt wurden Gebäude- und Versorgungsinfrastruktur untersucht, um den Bestand abzubilden. Die Energie- und Treibhausgasbilanz zeigt den hohen Anteil der Erdgasversorgung im Stadtgebiet. Der großen Abhängigkeit von fossilem Erdgas steht jedoch mit dem Fernwärmenetz ein großer Hebel für die Dekarbonisierung der Wärmeversorgung gegenüber. 2. Potentialanalyse Im Braunschweiger Stadtgebiet existieren vielfältige Quellen erneuerbarer Energien. Diese reichen von Wind- und Solarenergie über Abwasser, Geothermie bis hin zur Wärme der Oker. Auch Abwärmepotenziale aus gewerblichen und industriellen Prozessen stehen zur Verfügung. Schlüsseltechnologie für die Nutzung dieser Potenziale ist in vielen Fällen die Wärmepumpe, die in vielen Bereichen und Größenordnungen eingesetzt werden kann. Bei voller Ausschöpfung reichen die lokalen Potenziale für eine treibhausgasneutrale Wärmeversorgung aus. Grundvoraussetzung zur Hebung der Potenziale ist dabei auch die Identifizierung und Aktivierung lokaler Akteure aus der Region. 3. Zielszenario Die KWP zeigt Gebäudeeigentümerinnen und Gebäudeeigentümern, wo und in welchen Zeiträumen zukünftig ein Wärmenetz zur Verfügung stehen",
   "evidence": [
    {
-    "kind": "chunk",
-    "id": "oldenburg:paper:24699",
-    "title": "Erstellung einer Wärmeplanung für Neubaugebiete (Bündnis 90/Die Grünen/SPD-Fraktion vom 28.02.2022) - Bericht",
-    "date": "2022-05-30",
-    "outcome": "accepted",
-    "text": "Ausdruck vom: 14.04.2022 Seite: 1/5 11.04.2022 Stadtplanungsamt Vorlagen-Nr: 22/0260 öffentlich Erstellung einer Wärmeplanung für Neubaugebiete (Bündnis 90/Die Grünen/SPD-Fraktion vom 28.02.2022) - Bericht Beratungsfolge: Ausschuss für Stadtplanung und Bauen am: 21.04.2022 Zu TOP: Verwaltungsausschuss am: 30.05.2022 Zu TOP: Rat am: 30.05.2022 Zu TOP: Beschlussvorschlag: Für neue Baugebiete werden künftig Wärmeversorgungskonzepte erstellt, die eine klima- neutrale Wärmeversorgung ohne den …",
-    "score": 0.7767632007598877,
-    "arme": 2
-   },
-   {
     "kind": "neighbor",
     "id": "oldenburg:paper:27481",
     "title": "Kommunale Wärmeplanung: Maßnahme Machbarkeitsstudien - Beschluss",
@@ -3241,6 +3421,26 @@
     "outcome": null,
     "text": "Ausdruck vom: 30.01.2025 Seite: 1/3 Amt für Klimaschutz und Mobilität Datum: 30.01.2025 Vorlagen-Nr.: 25/0028 Status: öffentlich Kommunale Wärmeplanung: Maßnahme Machbarkeitsstudien - Beschluss Beratungsfolge: Termin: Ausschuss für Stadtgrün, Umwelt und Klima 13.02.2025 Verwaltungsausschuss 24.02.2025 Rat 24.02.2025 Beschlussvorschlag: Die Maßnahme der kommunale Wärmeplanung „Durchführung und Unterstützung von Machbarkeitsstudien für eine klimaneutrale Wärmeversorgung“ wird beschlossen. Anlass: ",
     "score": 0.8130639791488647,
+    "arme": 3
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:23468",
+    "title": "Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.10 a \"Partizipativ Konzepte für CO2-freie Wärmeversorgung stadteigener Quartiere entwickeln\"",
+    "date": "2021-02-11",
+    "outcome": null,
+    "text": "Ausdruck vom: 09.02.2021 Seite: 1/2 02.02.2021 Stabsstelle Klima- und Umweltschutz Vorlagen-Nr: 21/0097 öffentlich Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.10 a \"Partizipativ Konzepte für CO2-freie Wärmeversorgung stadteigener Quartiere entwickeln\" Beratungsfolge: Ausschuss für Stadtgrün, Umwelt und Klima am: 11.02.2021 Zu TOP: Bericht: Im Workshop „Energie und Unternehmen“ vom 08.12.2020 wurden Beschlussvorschläge aus dem Lei",
+    "score": 0.8571077585220337,
+    "arme": 2
+   },
+   {
+    "kind": "chunk",
+    "id": "oldenburg:paper:23405",
+    "title": "Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.5 \"Wärmeversorgung aller Gebäude im Stadtgebiet\"",
+    "date": null,
+    "outcome": null,
+    "text": "2035 erreicht werden muss. Dementsprechend muss auch die Wärmeversorgung aller Gebäude im Stadtgebiet bis 2035 CO2-neutral erfol- gen. Ausdruck vom: 04.02.2021 Seite: 3/3 Stellungnahme der Verwaltung zu dem nach dem Workshop vom 08.12.2020 überar- beiteten Beschlussvorschlag (rechte Spalte) Die Stadt setzt sich bereits für eine CO2-neutrale Wärmeversorgung ein. Eine zügigere Umsetzung ist stark abhängig von den rechtlichen Rahmenbedingungen auf Bundes- und Landesebene. Ein konkreter Mehrwert …",
+    "score": 0.7603785991668701,
     "arme": 2
    },
    {
@@ -3250,7 +3450,7 @@
     "date": null,
     "outcome": null,
     "text": ". 100.000 Euro für die Erstellung eines Wärmeleitplanes. In Vertretung D r . S v e n U h r h a n Ausdruck vom: 06.04.2021 Seite: 2/3 Anlagen: Ursprüngliche Version des Beschlussvor- schlags aus dem Leitantrag Nach dem Workshop vom 08.12.2020 überarbeitete Version des Beschlussvor- schlags Der Rat der Stadt möge das Ziel be- schließen, dass die Wärmeversorgung aller Gebäude im Stadtgebiet bis 2030 CO2-neutral erfolgt. Daraus folgt, dass die gesamte Wärme aller Gebäude durch Wärmepumpen oder …",
-    "score": 0.768397331237793,
+    "score": 0.7745131254196167,
     "arme": 2
    },
    {
@@ -3261,6 +3461,16 @@
     "outcome": null,
     "text": "Ausdruck vom: 24.03.2026 Seite: 1/10 Amt für Klimaschutz und Mobilität Datum: 24.03.2026 Vorlagen-Nr.: 26/0236 Status: öffentlich Kommunale Wärmeplanung (KWP): Oldenburger Wärmeplan - Beschluss Beratungsfolge: Termin: Ausschuss für Stadtgrün, Umwelt und Klima 16.04.2026 Verwaltungsausschuss 01.06.2026 Rat 01.06.2026 Beschlussvorschlag: Der Oldenburger Wärmeplan wird beschlossen. Die Verwaltung wird beauftragt, die 18 Maßnahmen aus dem Oldenburger Wärmeplan sukzessive in Abhängigkeit von der fina",
     "score": 0.8579067587852478,
+    "arme": 2
+   },
+   {
+    "kind": "chunk",
+    "id": "oldenburg:paper:24699",
+    "title": "Erstellung einer Wärmeplanung für Neubaugebiete (Bündnis 90/Die Grünen/SPD-Fraktion vom 28.02.2022) - Bericht",
+    "date": "2022-05-30",
+    "outcome": "accepted",
+    "text": "Ausdruck vom: 14.04.2022 Seite: 1/5 11.04.2022 Stadtplanungsamt Vorlagen-Nr: 22/0260 öffentlich Erstellung einer Wärmeplanung für Neubaugebiete (Bündnis 90/Die Grünen/SPD-Fraktion vom 28.02.2022) - Bericht Beratungsfolge: Ausschuss für Stadtplanung und Bauen am: 21.04.2022 Zu TOP: Verwaltungsausschuss am: 30.05.2022 Zu TOP: Rat am: 30.05.2022 Zu TOP: Beschlussvorschlag: Für neue Baugebiete werden künftig Wärmeversorgungskonzepte erstellt, die eine klima- neutrale Wärmeversorgung ohne den …",
+    "score": 0.7862173914909363,
     "arme": 2
    },
    {
@@ -3275,12 +3485,12 @@
    },
    {
     "kind": "chunk",
-    "id": "oldenburg:paper:23405",
-    "title": "Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.5 \"Wärmeversorgung aller Gebäude im Stadtgebiet\"",
+    "id": "oldenburg:paper:23411",
+    "title": "Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.10 \"Partizipativ Quartierskonzepte für CO2- freie Wärmeversorgung entwickeln\"",
     "date": null,
     "outcome": null,
-    "text": "2035 erreicht werden muss. Dementsprechend muss auch die Wärmeversorgung aller Gebäude im Stadtgebiet bis 2035 CO2-neutral erfol- gen. Ausdruck vom: 04.02.2021 Seite: 3/3 Stellungnahme der Verwaltung zu dem nach dem Workshop vom 08.12.2020 überar- beiteten Beschlussvorschlag (rechte Spalte) Die Stadt setzt sich bereits für eine CO2-neutrale Wärmeversorgung ein. Eine zügigere Umsetzung ist stark abhängig von den rechtlichen Rahmenbedingungen auf Bundes- und Landesebene. Ein konkreter Mehrwert …",
-    "score": 0.7433412075042725,
+    "text": "können dabei helfen, die Wärmeversorgung ganzer Quartiere schneller umzustellen. Die Verwaltung wird beauftragt, ab dem Jahr 2021 partizipativ und gemeinsam mit Expert*innen lokaler Forschungsinstitute Konzepte zu erarbeiten, wie die Be- standsquartiere der Stadt bis zum Jahr 2030 auf eine C02-freie Wärmeversorgung umgestellt werden können. Die Umset- zung dieser Konzepte soll dann möglichst zeitnah erfolgen und bis 2030 abge- schlossen sein. Die Stadt soll soll hierfür mit einem ersten …",
+    "score": 0.7203779220581055,
     "arme": 2
    },
    {
@@ -3290,17 +3500,7 @@
     "date": null,
     "outcome": null,
     "text": "Die Kommunale Wärmeplanung erfordert in Wärmenetzeignungsgebieten quartiersspezifische Vorgehensweisen. Eine erfolgsversprechende Alternative zu einer schrittweisen Analyse und Erarbeitung von Versorgungsvarianten wird nicht gesehen. c) Weitere -- In Vertretung C h r i s t i n e - P e t r a S c h a c h t S t a d t b a u r ä t i n",
-    "score": 0.8016477823257446,
-    "arme": 1
-   },
-   {
-    "kind": "fts",
-    "id": "oldenburg:paper:23411",
-    "title": "Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.10 \"Partizipativ Quartierskonzepte für CO2- freie Wärmeversorgung entwickeln\"",
-    "date": "2021-02-11",
-    "outcome": null,
-    "text": "Ausdruck vom: 04.02.2021 Seite: 1/3 02.02.2021 Stabsstelle Klima- und Umweltschutz Vorlagen-Nr: 21/0043 öffentlich Leitantrag Fridays for Future - Ergebnisse aus dem Workshop \"Energie und Unternehmen\" vom 08.12.2020 - Punkt 2.10 \"Partizipativ Quartierskonzepte für CO2- freie Wärmeversorgung entwickeln\" Beratungsfolge: Ausschuss für Stadtgrün, Umwelt und Klima am: 11.02.2021 Zu TOP: Bericht: Im Workshop „Energie und Unternehmen“ vom 08.12.2020 wurden Beschlussvorschläge aus dem Leitantrag „Ein zu",
-    "score": null,
+    "score": 0.7907912731170654,
     "arme": 1
    },
    {
@@ -3315,31 +3515,21 @@
    },
    {
     "kind": "decision",
-    "id": "oldenburg:decision:4705",
-    "title": "Runder Tisch in Sachen Energieversorgung (Gruppe FDP/Volt vom 14.03.2022)",
-    "date": "2022-05-12",
+    "id": "oldenburg:decision:3802",
+    "title": "Maßnahmenkatalog für die Umsetzung des Handlungsfeldes Bildung und Arbeit des Integrationskonzeptes - Beschluss",
+    "date": "2021-06-08",
     "outcome": "accepted",
-    "text": "Die Stadt Oldenburg will einen Gesprächskreis zur Energieversorgung starten. Zusammen mit den Nachbargemeinden wird geprüft, wie die Energieversorgung in Zukunft umweltfreundlicher, regionaler und günstiger werden kann.",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "fts",
-    "id": "oldenburg:paper:28175",
-    "title": "Bebauungsplan 855 (Industriestraße/Alte Fleiwa) - Beschluss zur Veröffentlichung des Entwurfs",
-    "date": "2025-11-20",
-    "outcome": null,
-    "text": "Ausdruck vom: 11.11.2025 Seite: 1/5 Stadtplanungsamt Datum: 11.11.2025 Vorlagen-Nr.: 25/0684 Status: öffentlich Bebauungsplan 855 (Industriestraße/Alte Fleiwa) - Beschluss zur Veröffentlichung des Entwurfs Beratungsfolge: Termin: Ausschuss für Stadtplanung und Bauen 20.11.2025 Verwaltungsausschuss 01.12.2025 Beschlussvorschlag: Dem Entwurf des Bebauungsplanes 855 (Industriestraße/Alte Fleiwa) wird zugestimmt. Die Veröffentlichung mit Satzungstext und Begründung wird beschlossen. Anlass: Anlass f",
+    "text": "Der Maßnahmenkatalog für das Handlungsfeld Bildung und Arbeit des Integrationskonzeptes wurde beschlossen.",
     "score": null,
     "arme": 1
    },
    {
     "kind": "decision",
-    "id": "oldenburg:decision:5021",
-    "title": "Aktuelle Energieversorgung und Erschließung von Neubaugebieten - mündlicher Bericht der EWE",
-    "date": "2022-09-15",
-    "outcome": "noted",
-    "text": "Der Ausschuss nimmt den mündlichen Bericht der EWE zur Energieversorgung und Erschließung von Neubaugebieten zur Kenntnis.",
+    "id": "oldenburg:decision:4705",
+    "title": "Runder Tisch in Sachen Energieversorgung (Gruppe FDP/Volt vom 14.03.2022)",
+    "date": "2022-05-12",
+    "outcome": "accepted",
+    "text": "Die Stadt Oldenburg will einen Gesprächskreis zur Energieversorgung starten. Zusammen mit den Nachbargemeinden wird geprüft, wie die Energieversorgung in Zukunft umweltfreundlicher, regionaler und günstiger werden kann.",
     "score": null,
     "arme": 1
    },
@@ -3362,7 +3552,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Der Oldenburger Wärmeplan ist beschlossen, samt Machbarkeitsstudien und Wärmewende-Beirat."
+  "judgment": "Der Oldenburger Wärmeplan ist beschlossen, samt Machbarkeitsstudien und Wärmewende-Beirat.",
+  "cluster": "Gleiche Idee in 3 anderen Städten:\n  - osnabrueck 2023-08 (offen): Kommunale Wärmeplanung\n  - muenster 2026-05 (accepted): Kommunale Wärmeplanung der Stadt Münster\n  - osnabrueck 2025-06 (noted): Sachstand Kommunale Wärmeplanung\n  - muenster 2026-03 (amended): Kommunale Wärmeplanung der Stadt Münster\n  - osnabrueck 2025-11 (offen): Kommunale Wärmeplanung\nIn Oldenburg liegt eine Vorlage im selben Cluster — sie steht unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, und dann betrifft sie dasselbe Themenfeld, aber ein anderes Instrument.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2007609",
@@ -3510,7 +3705,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg hat die pauschalierte Schulbegleitung, spart dort aber gerade den Präventionsbetrag ein — genau darum geht der Antrag."
+  "judgment": "Oldenburg hat die pauschalierte Schulbegleitung, spart dort aber gerade den Präventionsbetrag ein — genau darum geht der Antrag.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "budget",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002016",
@@ -3520,6 +3720,16 @@
   "instrument": "Bestandserhebung offene Jugendarbeit",
   "paper": "Stadt: osnabrueck\nArt: Anfrage\nDatum: 2025-11-04\nTitel: Angebote der offenen Kinder- und Jugendarbeit - Anfrage der Gruppe Grüne/SPD/Volt\nInstrument: Bestandserhebung offene Jugendarbeit\nThemenfeld: soziales_gesundheit\nZuständigkeit: administration\nZusammenfassung: Anfrage zu Bestand, Nutzung und Bedarf offener Kinder- und Jugendarbeit in Stadtteilen ohne Jugendtreffs.\nText: 1/2 Stadt Osnabrück Gruppe Grüne/SPD/Volt Vorlagenummer: VO/2025/4984 Vorlageart: Anfrage Öffentlichkeitsstatus: öffentlich Angebote der offenen Kinder- und Jugendarbeit - Anfrage der Gruppe Grüne/SPD/Volt Datum: 04.11.2025 Bearbeitung: SPD-Fraktion Geschäftsstelle Beratungsfolge Gremium Datum Sitzungsart Top-Nr. Jugendhilfeausschuss (Kenntnisnahme) 12.11.2025 Ö Sachverhalt: In einigen Stadtteilen Osnabrücks – beispielsweise im Landwehrviertel oder Voxtrup – gibt es keine oder nur unzureichende Angebote der offenen Kinder- und Jugendarbeit. Fehlende Jugendtreffs erschweren Jugendlichen die soziale Teilhabe im Stadtteil, fördern Konflikte im öffentlichen Raum und mindern Möglichkeiten zur Entwicklung sozialer Kompetenzen. Immer wieder erreichen den Rat Hinweise von Bürgerinnen und aus sozialen Einrichtungen, die auf diese Defizite hinweisen. Die offene Kinder- und Jugendarbeit ist ein wichtiger Bestandteil, Kinder und Jugendliche zu unterstützen und soziale Teilhabe zu stärken. Die Stärkung von Jugendtreffs bietet das Potential, dass junge Menschen durch den Abbau von Vorurteilen einen niedrigschwelligen Zugang erhalten und Pädagog:innen unvoreingenommen mit jungen Menschen arbeiten können. Durch die Entscheidung des Rates, den 10 Punkte Plan zu verabschieden und das subjektive Sicherheitsgefühl in der Innenstadt zu erhöhen, wurden ebenfalls Sozialarbeiter:innen in der Innenstadt eingesetzt. In der Folge gerieten andere Stadtteile jedoch aus dem Fokus. Um den aktuellen Stand sowie Handlungsoptionen zu prüfen, sind belastbare Informationen zu Bestand, Bedarf und Finanzierung erforderlich. Fragen: 1. Bestand und Nutzung: In welchen Stadtteilen bestehen derzeit von der Stadt oder in Kooperation mit freien Trägern betriebene Jugendtreffs oder vergleichbare Einrichtungen der offenen Kinder- und Jugendarbeit, wie werden die Angebote der Stadt von den Bürger:innen genutzt, wie viele sind davon Jugendliche und wie viele Jugendliche nutzen die Angebote der offenen Jugendarbeit regelmäßig? 2/2 2. Bedarf, Probleme und Ressourcen: Welche Stadtteile verfügen nach Kenntnis der Verwaltung über keine entsprechenden Angebote, liegen Sozialraumberichte oder Bedarfsanalysen (einschließlich Hinweise auf Konflikte wie im Landwehrviertel) vor, und welche räumlichen sowie personellen Möglichkeiten sieht die Verwaltung, um perspektivisch in bisher unversorgten Stadtteilen Jugendtreffs mit professioneller Betreuung einzurichten? 3. Finanzierung und Fördermöglichkeiten: Welche Finanzmittel wurden in den letzten fünf Jahren jährlich für die offene Jugendarbeit in Osnabrück bereitgestellt, und welche kommunalen, Landes-, Bundes- oder EU-Förderprogramme könnten für den Ausbau solcher Angebote genutzt werden? gez. Martin Büker gez. Kerstin Lampert-Hodgson Gruppe Grüne/Volt SPD-Fraktion Anlage/n Keine [Dokumentende]",
   "evidence": [
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:16569",
+    "title": "Förderung der Jugendarbeit und der Kinder- und Jugenderholung -Berichtsvorlage",
+    "date": "2018-05-16",
+    "outcome": null,
+    "text": "Seite: 1/2 02.05.2018 Amt für Jugend und Familie Vorlagen-Nr: 18/0349 öffentlich Förderung der Jugendarbeit und der Kinder- und Jugenderholung -Berichtsvorlage Beratungsfolge: Jugendhilfeausschuss am: 16.05.2018 Zu TOP: 7 Bericht: Das Amt für Jugend und Familie fördert die verbandliche Jugendarbeit u.a. mit den „Richtli- nien der Stadt Oldenburg zur Förderung der Jugendarbeit und der Kinder- und Jugenderho- lung“. Die Förderrichtlinien sehen eine Förderung der Bereiche Jugendwanderungen, Jugendf",
+    "score": 0.965126097202301,
+    "arme": 3
+   },
    {
     "kind": "neighbor",
     "id": "oldenburg:paper:25091",
@@ -3538,16 +3748,6 @@
     "outcome": null,
     "text": "Ausdruck vom: 04.09.2020 Seite: 1/12 01.09.2020 Amt für Jugend und Familie Vorlagen-Nr: 20/0368 öffentlich Bericht zur Zielerreichung und Entwicklung der Oldenburger offenen Kinder- und Jugendarbeit - Bericht Beratungsfolge: Jugendhilfeausschuss am: 16.09.2020 Zu TOP: Bericht: Kinder- und Jugendarbeit ist ein wichtige s Aufgabenfeld in der Kinder - und Jugendhilfe und Bestandteil der sozialen Infrastruktur der Stadt Olden burg. Der Kinder - und Jugendförder- plan ist Teil der Jugendhi lfeplanung",
     "score": 0.7807002067565918,
-    "arme": 2
-   },
-   {
-    "kind": "neighbor",
-    "id": "oldenburg:paper:16569",
-    "title": "Förderung der Jugendarbeit und der Kinder- und Jugenderholung -Berichtsvorlage",
-    "date": "2018-05-16",
-    "outcome": null,
-    "text": "Seite: 1/2 02.05.2018 Amt für Jugend und Familie Vorlagen-Nr: 18/0349 öffentlich Förderung der Jugendarbeit und der Kinder- und Jugenderholung -Berichtsvorlage Beratungsfolge: Jugendhilfeausschuss am: 16.05.2018 Zu TOP: 7 Bericht: Das Amt für Jugend und Familie fördert die verbandliche Jugendarbeit u.a. mit den „Richtli- nien der Stadt Oldenburg zur Förderung der Jugendarbeit und der Kinder- und Jugenderho- lung“. Die Förderrichtlinien sehen eine Förderung der Bereiche Jugendwanderungen, Jugendf",
-    "score": 0.8051764369010925,
     "arme": 2
    },
    {
@@ -3659,7 +3859,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg berichtet über die Zielerreichung der offenen Kinder- und Jugendarbeit und hat dafür einen Handlungsleitfaden."
+  "judgment": "Oldenburg berichtet über die Zielerreichung der offenen Kinder- und Jugendarbeit und hat dafür einen Handlungsleitfaden.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburg liegt eine Vorlage im selben Cluster — sie steht unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, und dann betrifft sie dasselbe Themenfeld, aber ein anderes Instrument.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2003016",
@@ -3670,73 +3875,103 @@
   "paper": "Stadt: osnabrueck\nArt: Beschlussvorlage\nDatum: 2026-06-15\nTitel: Überarbeitung der Satzung über die Pflege des Sports und des Badewesens sowie der Sportförderrichtlinien\nInstrument: Sportförderrichtlinien und Badewesensatzung überarbeiten\nThemenfeld: kultur_sport\nZuständigkeit: council\nZusammenfassung: Verwaltung soll Satzung über Sport- und Badewesen sowie Sportförderrichtlinien an die aktuelle Sportlandschaft anpassen.\nText: Stadt Osnabrück Die Oberbürgermeisterin 1/2 Vorlagenummer: VO/2026/5612 Vorlageart: Beschlussvorlage Öffentlichkeitsstatus: öffentlich Überarbeitung der Satzung über die Pflege des Sports und des Badewesens sowie der Sportförderrichtlinien Datum: 05.06.2026 Vorstand für Bildung, Kultur und Familie Federführung: Fachbereich Bildung, Schule und Sport Beratungsfolge Gremium Datum Sitzungsart Top-Nr. Schul- und Sportausschuss (Entscheidung) 25.06.2026 Ö Beschluss: Die Verwaltung wird beauftragt, die Satzung über die Pflege des Sports und des Badewesens sowie die Sportförderrichtlinien zu überarbeiten. A. Finanzielle Auswirkungen: Ja X Nein (Bitte nachfolgenden Inhalt bis \"B. Personelle Auswirkungen\" löschen) B. Personelle Auswirkungen: nein Lfd. Haushaltsjahr: Im Stellenplan vorhanden/nicht vorhanden Folgejahre: C. Integrations- /Gleichstellungs-/ Inklusionspolitische Auswirkungen: positiv negativ x keine D. Auswirkungen auf den Klimaschutz (CO2-Ausstoß/Energieverbrauch): positiv negativ x keine E. Auswirkungen auf Arbeitsplätze und den Wirtschaftsstandort Osnabrück: positiv negativ 2/2 x keine F. Ggf. Alternativen zum Beschlussvorschlag: Keine G. Beteiligte Stellen: Der Inhalt der Vorlage unterstützt folgende/s strategische/s Ziel/e: nicht zutreffend Sachverhalt: Die Satzung über die Pflege des Sports und des Badewesens resultiert noch auf veralteten Basisdaten und bedarf daher zeitnah einer Anpassung an die aktuelle Situation im Osnabrücker Sport. Zudem ist die Satzung auch die Grundlage für die Richtlinien über die Förderung des Sports, die ebenfalls überarbeitet werden sollen. Letztmalig wurden diese zum 01.04.2017 aktualisiert und aufgrund einer sich stetig verändernden Sportlandschaft sind auch hier Anpassungen vorzunehmen. gez. Butke Anlage/n Keine [Dokumentende]",
   "evidence": [
    {
-    "kind": "neighbor",
+    "kind": "cluster",
     "id": "oldenburg:paper:28372",
     "title": "Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports - Änderung zum 01.01.2026 - Beschluss",
     "date": "2025-12-10",
     "outcome": null,
     "text": "Ausdruck vom: 02.12.2025 Seite: 1/3 Amt für Kultur, Museen und Sport Datum: 02.12.2025 Vorlagen-Nr.: 25/0874 Status: öffentlich Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports - Änderung zum 01.01.2026 - Beschluss Beratungsfolge: Termin: Sportausschuss 10.12.2025 Verwaltungsausschuss 15.12.2025 Rat 15.12.2025 Beschlussvorschlag: Die Neufassung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) in der vorliegenden Fassung wird besc",
-    "score": 0.8022358417510986,
-    "arme": 3
+    "score": 0.9195564389228821,
+    "arme": 4
    },
    {
-    "kind": "neighbor",
-    "id": "oldenburg:paper:28181",
-    "title": "Änderung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports - Bericht",
-    "date": "2025-11-12",
-    "outcome": null,
-    "text": "Ausdruck vom: 24.10.2025 Seite: 1/3 Amt für Kultur, Museen und Sport Datum: 24.10.2025 Vorlagen-Nr.: 25/0690 Status: öffentlich Änderung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports - Bericht Beratungsfolge: Termin: Sportausschuss 12.11.2025 Anlass: Die Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) sollen zum 01.01.2026 geändert werden. Bericht: Die Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlin",
-    "score": 0.8383729457855225,
-    "arme": 2
-   },
-   {
-    "kind": "neighbor",
-    "id": "oldenburg:paper:25215",
-    "title": "Richtlinie der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungen zum 01.01.2023 - Bericht",
-    "date": "2022-10-05",
-    "outcome": null,
-    "text": "Ausdruck vom: 30.09.2022 Seite: 1/2 29.09.2022 Amt für Kultur, Museen und Sport Vorlagen-Nr: 22/0741 öffentlich Richtlinie der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungen zum 01.01.2023 - Bericht Beratungsfolge: Sportausschuss am: 05.10.2022 Zu TOP: 8 Bericht: Die Sportförderrichtlinie soll zum 01.01.2023 überarbeitet werden. Neben redaktionellen Anpassungen sind aktuell auch folgende inhaltliche Änderungen vorgesehen:  Da die Einnahmen aus der Vermietung ",
-    "score": 0.7666969895362854,
-    "arme": 2
-   },
-   {
-    "kind": "neighbor",
+    "kind": "cluster",
     "id": "oldenburg:paper:17177",
     "title": "Richtlinien für die Förderung des Sports (Sportförderrichtlinien) - Neufassung zum 01.01.2019 - Beschluss",
     "date": "2018-12-12",
     "outcome": null,
     "text": "Ausdruck vom: 06.12.2018 Seite: 1/2 04.12.2018 Amt für Kultur und Sport Vorlagen-Nr: 18/0918 öffentlich Richtlinien für die Förderung des Sports (Sportförderrichtlinien) - Neufassung zum 01.01.2019 - Beschluss Beratungsfolge: Sportausschuss am: 12.12.2018 Zu TOP: 7 Verwaltungsausschuss am: 17.12.2018 Zu TOP: Rat am: 17.12.2018 Zu TOP: Beschlussvorschlag: Die Neufassung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) in der vorliegenden Fassung wir",
-    "score": 0.7911273241043091,
-    "arme": 2
+    "score": 0.9301795959472656,
+    "arme": 3
    },
    {
-    "kind": "neighbor",
+    "kind": "cluster",
+    "id": "oldenburg:paper:28181",
+    "title": "Änderung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports - Bericht",
+    "date": "2025-11-12",
+    "outcome": null,
+    "text": "Ausdruck vom: 24.10.2025 Seite: 1/3 Amt für Kultur, Museen und Sport Datum: 24.10.2025 Vorlagen-Nr.: 25/0690 Status: öffentlich Änderung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports - Bericht Beratungsfolge: Termin: Sportausschuss 12.11.2025 Anlass: Die Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) sollen zum 01.01.2026 geändert werden. Bericht: Die Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlin",
+    "score": 0.8782406449317932,
+    "arme": 3
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:25215",
+    "title": "Richtlinie der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungen zum 01.01.2023 - Bericht",
+    "date": "2022-10-05",
+    "outcome": null,
+    "text": "Ausdruck vom: 30.09.2022 Seite: 1/2 29.09.2022 Amt für Kultur, Museen und Sport Vorlagen-Nr: 22/0741 öffentlich Richtlinie der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungen zum 01.01.2023 - Bericht Beratungsfolge: Sportausschuss am: 05.10.2022 Zu TOP: 8 Bericht: Die Sportförderrichtlinie soll zum 01.01.2023 überarbeitet werden. Neben redaktionellen Anpassungen sind aktuell auch folgende inhaltliche Änderungen vorgesehen:  Da die Einnahmen aus der Vermietung ",
+    "score": 0.8594626784324646,
+    "arme": 3
+   },
+   {
+    "kind": "cluster",
     "id": "oldenburg:paper:17030",
     "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf zum 01.01.2019 - Bericht",
     "date": "2018-11-14",
     "outcome": null,
     "text": "Ausdruck vom: 01.11.2018 Seite: 1/1 30.10.2018 Amt für Kultur und Sport Vorlagen-Nr: 18/0778 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf zum 01.01.2019 - Bericht Beratungsfolge: Sportausschuss am: 14.11.2018 Zu TOP: Bericht: Die Verwaltung hat in der Sitzung des Sportausschuss am 12.09.2018 einen kurzen Über- blick über die voraussichtlichen Änderungen der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (",
-    "score": 0.7762610912322998,
-    "arme": 2
+    "score": 0.8859438300132751,
+    "arme": 3
    },
    {
-    "kind": "neighbor",
-    "id": "oldenburg:paper:22217",
-    "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Beschluss",
-    "date": "2020-12-09",
-    "outcome": null,
-    "text": "Ausdruck vom: 12.12.2020 Seite: 1/4 24.11.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0818 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Beschluss Beratungsfolge: Sportausschuss am: 09.12.2020 Zu TOP: 6 Verwaltungsausschuss am: 16.12.2020 Zu TOP: Rat am: 21.12.2020 Zu TOP: Beschlussvorschlag: Die Neufassung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) in der vorli",
-    "score": 0.7774994969367981,
-    "arme": 2
-   },
-   {
-    "kind": "neighbor",
+    "kind": "cluster",
     "id": "oldenburg:paper:25455",
     "title": "Richtlinie der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungen zum 01.01.2023 - Beschluss",
     "date": "2022-12-14",
     "outcome": null,
     "text": "Ausdruck vom: 06.12.2022 Seite: 1/2 30.11.2022 Amt für Kultur, Museen und Sport Vorlagen-Nr: 22/0940 öffentlich Richtlinie der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungen zum 01.01.2023 - Beschluss Beratungsfolge: Sportausschuss am: 14.12.2022 Zu TOP: Verwaltungsausschuss am: 19.12.2022 Zu TOP: Rat am: 19.12.2022 Zu TOP: Beschlussvorschlag: Die Neufassung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) in der",
-    "score": 0.7642892599105835,
+    "score": 0.8801069855690002,
+    "arme": 3
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:22217",
+    "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Beschluss",
+    "date": "2020-12-09",
+    "outcome": null,
+    "text": "Ausdruck vom: 12.12.2020 Seite: 1/4 24.11.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0818 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Beschluss Beratungsfolge: Sportausschuss am: 09.12.2020 Zu TOP: 6 Verwaltungsausschuss am: 16.12.2020 Zu TOP: Rat am: 21.12.2020 Zu TOP: Beschlussvorschlag: Die Neufassung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) in der vorli",
+    "score": 0.8601792454719543,
+    "arme": 3
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:22099",
+    "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Bericht",
+    "date": "2020-11-11",
+    "outcome": null,
+    "text": "Ausdruck vom: 06.11.2020 Seite: 1/4 05.11.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0704 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Bericht Beratungsfolge: Sportausschuss am: 11.11.2020 Zu TOP: 6 Bericht: Die Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) sollen zum 01.01.2021 geändert werden. Eine wesentliche Änderung besteht darin, dass die bisherige Z iffer 6 „Förderun",
+    "score": 0.936007559299469,
+    "arme": 2
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:18162",
+    "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Bericht",
+    "date": "2019-11-13",
+    "outcome": null,
+    "text": "Ausdruck vom: 05.11.2019 Seite: 1/2 04.11.2019 Amt für Kultur, Museen und Sport Vorlagen-Nr: 19/0840 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Bericht Beratungsfolge: Sportausschuss am: 13.11.2019 Zu TOP: 7 Bericht: Die Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtl i- nien) sollen zum 01.01.202 0 geändert werden. Neben einigen redaktionellen Änderungen werden insbesondere folgende",
+    "score": 0.8707605600357056,
+    "arme": 2
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:18257",
+    "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Neufassung zum 01.01.2020 - Beschluss",
+    "date": "2019-12-11",
+    "outcome": null,
+    "text": "Ausdruck vom: 02.12.2019 Seite: 1/2 26.11.2019 Amt für Kultur, Museen und Sport Vorlagen-Nr: 19/0926 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Neufassung zum 01.01.2020 - Beschluss Beratungsfolge: Sportausschuss am: 11.12.2019 Zu TOP: 6 Verwaltungsausschuss am: 16.12.2019 Zu TOP: Rat am: 16.12.2019 Zu TOP: Beschlussvorschlag: Die Neufassung der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) in ",
+    "score": 0.8332399725914001,
     "arme": 2
    },
    {
@@ -3760,36 +3995,6 @@
     "arme": 1
    },
    {
-    "kind": "fts",
-    "id": "oldenburg:paper:27466",
-    "title": "Ausnahmen von den Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports in der Zeit vom 01.01.2024 bis 31.12.2024",
-    "date": "2025-02-12",
-    "outcome": null,
-    "text": "Ausdruck vom: 04.02.2025 Seite: 1/2 Amt für Kultur, Museen und Sport Datum: 04.02.2025 Vorlagen-Nr.: 25/0014 Status: öffentlich Ausnahmen von den Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports in der Zeit vom 01.01.2024 bis 31.12.2024 Beratungsfolge: Termin: Sportausschuss 12.02.2025 Verwaltungsausschuss 24.02.2025 Rat 24.02.2025 Anlass: Gemäß Ziffer 17 der Richtlinien der Stadt Oldenburg (Oldb) für die Förderung des Sports (Sportförderrichtlinien) ist der Rat einmal jährlic",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "decision",
-    "id": "oldenburg:decision:3257",
-    "title": "Aufnahme eines neuen Haushaltsvermerks für die Sportförderung (Corona-Hilfsfonds) im Haushaltsjahr 2020",
-    "date": "2020-12-02",
-    "outcome": "accepted",
-    "text": "Der Ausschuss hat entschieden: Geld aus dem Corona-Hilfsfonds für die Sportförderung, das 2020 nicht ausgegeben wurde, darf die Stadt im Jahr 2021 weiter nutzen.",
-    "score": null,
-    "arme": 1
-   },
-   {
-    "kind": "chunk",
-    "id": "oldenburg:paper:22099",
-    "title": "Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Bericht",
-    "date": null,
-    "outcome": null,
-    "text": "Ausdruck vom: 06.11.2020 Seite: 1/4 05.11.2020 Amt für Kultur, Museen und Sport Vorlagen-Nr: 20/0704 öffentlich Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) - Änderungsentwurf - Bericht Beratungsfolge: Sportausschuss am: 11.11.2020 Zu TOP: 6 Bericht: Die Richtlinien der Stadt Oldenburg für die Förderung des Sports (Sportförderrichtlinien) sollen zum 01.01.2021 geändert werden. Eine wesentliche Änderung besteht darin, dass die bisherige Z iffer 6 …",
-    "score": 0.7728657722473145,
-    "arme": 1
-   },
-   {
     "kind": "recap",
     "id": "recap:kultur_sport",
     "title": "Was Oldenburg im Themenfeld kultur_sport beschäftigt",
@@ -3808,7 +4013,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat Sportförderrichtlinien und überarbeitet sie laufend."
+  "judgment": "Oldenburg hat Sportförderrichtlinien und überarbeitet sie laufend.",
+  "cluster": "Gleiche Idee in 3 anderen Städten:\n  - braunschweig 2024-09 (amended): Benutzungsordnung für Sportstätten der Stadt Braunschweig (BenO)\n  - braunschweig 2025-11 (offen): Bundesprogramm \"Sanierung kommunaler Sportstätten\"\n  - muenster 2026-04 (accepted): Gewährung eines städtischen Zuschusses für die Anschaffung von Sportstättenpflegegeräten\n  - muenster 2025-11 (accepted): Interessenbekundungen zum Bundesprogramm „Sanierung kommunaler Sportstätten“ (SKS), Projek\nIn Oldenburg liegt eine Vorlage im selben Cluster — sie steht unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, und dann betrifft sie dasselbe Themenfeld, aber ein anderes Instrument.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2007972",
@@ -3957,7 +4167,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg legt Finanz- und Leistungsberichte vor; der Schritt von Leistung zu Wirkung wäre neu."
+  "judgment": "Oldenburg legt Finanz- und Leistungsberichte vor; der Schritt von Leistung zu Wirkung wäre neu.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "review",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2000046",
@@ -4104,9 +4319,14 @@
     "oldenburg:paper:28118",
     "oldenburg:paper:18658"
    ],
-   "worth": "yes"
+   "worth": "maybe"
   },
-  "judgment": "Oldenburg regelt die Mittagsverpflegung per Satzung und hat über bedürftige Familien berichtet, aber keinen Härtefallfonds."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Oldenburg regelt die Mittagsverpflegung per Satzung und hat über bedürftige Familien berichtet, aber keinen Härtefallfonds.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "budget",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056215",
@@ -4254,7 +4474,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat die Richtlinien zur Förderung der Jugendarbeit aktualisiert — dieselbe Änderung."
+  "judgment": "Oldenburg hat die Richtlinien zur Förderung der Jugendarbeit aktualisiert — dieselbe Änderung.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056108",
@@ -4264,6 +4489,16 @@
   "instrument": "Treibhausgasbilanz und Zielpfadanalyse erstellen",
   "paper": "Stadt: muenster\nArt: Vorlagen\nDatum: 2026-03-10\nTitel: Klimaneutrale Verwaltung: Treibhausgasbilanzen und CO2-Zielpfadanalysen. Ergebnisbericht für die Bilanzjahre 2021 und 2023\nInstrument: Treibhausgasbilanz und Zielpfadanalyse erstellen\nThemenfeld: klima_umwelt\nZuständigkeit: utility\nZusammenfassung: Bericht über Treibhausgasbilanzen der Kernverwaltung für 2021 und 2023 zur Zielerreichung Klimaneutralität.\nText: V/0188/2026 V/0188/2026 Öffentliche Berichtsvorlage Betrifft Klimaneutrale Verwaltung: Treibhausgasbilanzen und CO2-Zielpfadanalysen. Ergebnisbericht für die Bilanzjahre 2021 und 2023 Beratungsfolge 05.05.2026 Ausschuss für Umweltschutz, Klimaschutz und Bauwesen Bericht 12.05.2026 Ausschuss für Personal, Sicherheit und Ordnung Bericht 20.05.2026 Hauptausschuss Bericht Bericht: Entwicklungen seit der Beschlussfassung Seit dem Beschluss zur Zielsetzung einer klimaneutralen Stadtverwaltung aus November 2021 wurden zahlreiche Maßnahmen von den beteiligten Fachämtern und Einrichtungen vorbereitet und umgesetzt. Mit der Fortschreibung der Energie - und Treibhausgasbilanz für die Stadtverwaltung wurde der CO 2- Verbrauch der Stadtverwaltung für die Jahre 2021 und 2023 erhoben und analysiert. Außerdem wurde der Umsetzungsstand der Maßnahmen aus dem Maßnahmenprogramm Klimaneutrale Stadtverwaltung durch das Gutachterbüro überprüft und eine Wirkungsschätzung einzelner Maßnahmen vorgenommen. Die Bilanzen zeigen auch, an welchen Stellen allgemeine Entwicklungen, wie die Corona -Pandemie oder die Gasmangellage, die Entwicklungen der letzten Jahre beeinflusst haben. Unter Beteiligung der involvierten Ämter und Einrichtungen wurden die Datenerhebungen durchgeführt. Die abschließende Prüfung der Plausibilität sowie die Bilanzierung, Auswertung und Aufbereitung der Daten erfolgten durch das beauftragte Gutachterbüro EBP Deutschland GmbH. Methodisch basieren die Bilanzen auf dem GHG Protocol Corporate Standard. Den Bilanzrahmen bil- det die Kernverwaltung, wie sie im Dezernatsverteilungsplan festgehalten ist. Die auf aktuellen Daten des jeweiligen Jahres basierenden Bilanzen ermöglichen die Erstellung von Zielpfadanalysen. Diese geben Auskunft darüber, inwieweit die Anstrengungen der Verwaltung zur Erreichung des Ziels der Klimaneutralität bereits beigetragen haben und in welchen Bereichen weitere Maßnahmen bzw. Anstrengungen erforderlich sind. D as methodische Vorgehen, die Datenerhebung, Einschätzungen zur Umsetzung der einzelnen Maßnahmen des Maßnahmenkataloges und wesentli- che Ergebnisse der Bilanzen für die Jahre 2021 und 2023 gehen aus dem in der Anlage beigefügten Abschlussbericht hervor. An dieser Stelle werden kurz die wesentlichen Ergebnisse benannt: Dezernat OB/Stabsstelle Klima 30.03.2026 Ihr/e Ansprechpartner/in: Herr Möller Sandra Osowski Telefon: 492-6050 MoellerT@stadt - muenster.de - 2 - V/0188/2026 ▪ Die Ergebnisse der Fortschreibung der Treibhausgasbilanz zeigen, dass die Jahre 2021 und 2023 aufgrund der besonderen Rahmenbedingungen der Covid -19-Pandemie und der Erdgas - Mangellage, als Ausnahmejahre zu betrachten sind. ▪ Gleichzeitig sind Entwicklungen und Tendenzen erkennbar, die die konsequente Umsetzung von Klimaschutzmaßnahmen sichtbar machen. Das betrifft u.a. die Teilumstellung der Straßenbeleuch- tung und den Lichtsignalanlagen auf LED -Technik wie auch die zunehmende Elektrifizierung des Fuhrparks. ▪ Auf Basis der Ergebnisse empfiehlt das Gutachterbüro, dass die Stadtverwaltung diese positiven Entwicklungen ausbaut und darüber hinaus noch wesentliche Anstrengungen auf dem Weg zur Klimaneutralen Stadtverwaltung erbringen sollte. Der größte Hebel zur Reduktion der THG - Emissionen liegt demnach im Bereich der Gebäude. Zu einer baldigen Minderung weiterer THG - Emissionen führt die Beschleunigung der Sanierungsbestrebungen im Bestand (Maßnahmen 12) sowie eine Forcierung des Ausbaus Erneuerbarer Energien (Maßnahmen 16). Zusammen ",
   "evidence": [
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:25580",
+    "title": "Treibhausgas-Bilanz 2019/2020 - Bericht",
+    "date": "2023-02-09",
+    "outcome": null,
+    "text": "Ausdruck vom: 30.01.2023 Seite: 1/9 Amt für Klimaschutz und Mobilität Datum: 30.01.2023 Vorlagen-Nr: 23/0051 Status: öffentlich Treibhausgas-Bilanz 2019/2020 - Bericht Beratungsfolge: Termin: Ausschuss für Stadtgrün, Umwelt und Klima 09.02.2023 Anlass: Mit dem vorliegenden Bericht informiert die Verwaltung über die Bilanzierung der Energie- und Treibhausgas-Emissionen für die Stadt Oldenburg in den Jahren 2019 und 2020. Der Beschluss bis 2035 klimaneutral zu werden (siehe Vorlage 21/0249/1), set",
+    "score": 0.9723617434501648,
+    "arme": 2
+   },
    {
     "kind": "neighbor",
     "id": "oldenburg:paper:18727",
@@ -4303,16 +4538,6 @@
     "text": "Ausdruck vom: 30.11.2021 Seite: 1/3 25.11.2021 Amt für Klimaschutz und Mobilität Vorlagen-Nr: 21/0896 öffentlich Erarbeitungsstand Maßnahmenplan „Klimaneutralität bis 2035“ (Fraktion Bündnis 90/Die Grünen vom 23.11.2021) - Bericht Beratungsfolge: Ausschuss für Stadtgrün, Umwelt und Kli- ma am: 09.12.2021 Zu TOP: Bericht: Auf Antrag von Bündnis 90/DIE GRÜNEN vom 22.11.2021 wird hier der aktuelle Erarbei- tungsstand „Maßnahmenplan Klimaneutral 2035“ dargestellt. Hintergrund: Mit dem Ratsbeschluss ",
     "score": 0.8046534061431885,
     "arme": 2
-   },
-   {
-    "kind": "fts",
-    "id": "oldenburg:paper:25580",
-    "title": "Treibhausgas-Bilanz 2019/2020 - Bericht",
-    "date": "2023-02-09",
-    "outcome": null,
-    "text": "Ausdruck vom: 30.01.2023 Seite: 1/9 Amt für Klimaschutz und Mobilität Datum: 30.01.2023 Vorlagen-Nr: 23/0051 Status: öffentlich Treibhausgas-Bilanz 2019/2020 - Bericht Beratungsfolge: Termin: Ausschuss für Stadtgrün, Umwelt und Klima 09.02.2023 Anlass: Mit dem vorliegenden Bericht informiert die Verwaltung über die Bilanzierung der Energie- und Treibhausgas-Emissionen für die Stadt Oldenburg in den Jahren 2019 und 2020. Der Beschluss bis 2035 klimaneutral zu werden (siehe Vorlage 21/0249/1), set",
-    "score": null,
-    "arme": 1
    },
    {
     "kind": "decision",
@@ -4403,7 +4628,12 @@
    ],
    "worth": "maybe"
   },
-  "judgment": "Oldenburg bilanziert Treibhausgase gesamtstädtisch (27588) und hat Szenarien zur Klimaneutralität rechnen lassen (18727). Eine eigene Bilanz und ein Zielpfad für die KERNVERWALTUNG sind dagegen nicht belegt. Korrigiert am 08.09.2026 von „vorhanden“ auf „teilweise“: Das Modell hatte recht, ich hatte die Gesamtbilanz für die Verwaltungsbilanz gehalten."
+  "judgment": "Oldenburg bilanziert Treibhausgase gesamtstädtisch (27588) und hat Szenarien zur Klimaneutralität rechnen lassen (18727). Eine eigene Bilanz und ein Zielpfad für die KERNVERWALTUNG sind dagegen nicht belegt. Korrigiert am 08.09.2026 von „vorhanden“ auf „teilweise“: Das Modell hatte recht, ich hatte die Gesamtbilanz für die Verwaltungsbilanz gehalten.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburg liegt eine Vorlage im selben Cluster — sie steht unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, und dann betrifft sie dasselbe Themenfeld, aber ein anderes Instrument.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://ratsinfo.magdeburg.de/oparl/bodies/0001/papers/vo/249098",
@@ -4547,9 +4777,14 @@
   "expected": {
    "status": "missing",
    "evidence": [],
-   "worth": "maybe"
+   "worth": "no"
   },
-  "judgment": "Trotz hoher Nähe passt kein Beleg: Stadtmuseum, Wohnraumkonzept und Sporthalle haben mit dem Beitritt zu einer Kulturinitiative nichts zu tun."
+  "judgment": "Angeglichen am 09.09.2026 an die durchdachte Bewertung aller vierzig Fälle (docs/bewertung-40-ideen.md). Die ursprünglichen Etiketten entstanden Fall für Fall, bevor ich das Ganze überblickte — sie sagten 20-mal „lohnt sich“, die Gesamtschau 14-mal. Trotz hoher Nähe passt kein Beleg: Stadtmuseum, Wohnraumkonzept und Sporthalle haben mit dem Beitritt zu einer Kulturinitiative nichts zu tun.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008724",
@@ -4628,7 +4863,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg hat Wärmeplan und Wärmewende-Beirat, aber kein Monitoring und keine Beratung für Wärmepumpen in Einzelversorgungsgebieten."
+  "judgment": "Oldenburg hat Wärmeplan und Wärmewende-Beirat, aber kein Monitoring und keine Beratung für Wärmepumpen in Einzelversorgungsgebieten.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056275",
@@ -4766,7 +5006,12 @@
    ],
    "worth": "yes"
   },
-  "judgment": "Oldenburg hat einen Brandschutzbedarfsplan; ein Zeitplan für die daraus folgenden Baumaßnahmen fehlt unter den Belegen."
+  "judgment": "Oldenburg hat einen Brandschutzbedarfsplan; ein Zeitplan für die daraus folgenden Baumaßnahmen fehlt unter den Belegen.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "inquiry",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004056310",
@@ -4912,7 +5157,12 @@
    "evidence": [],
    "worth": "maybe"
   },
-  "judgment": "Schulbezirke und Sondernutzung sind etwas anderes als eine Satzung über die Schulhofnutzung außerhalb der Unterrichtszeit."
+  "judgment": "Schulbezirke und Sondernutzung sind etwas anderes als eine Satzung über die Schulhofnutzung außerhalb der Unterrichtszeit.",
+  "cluster": "Ideen-Cluster: keiner — keine andere Stadt im Bestand hat etwas hinreichend Ähnliches. Das sagt nichts über Oldenburg.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2002418",
@@ -4930,6 +5180,16 @@
     "outcome": null,
     "text": "Ausdruck vom: 10.10.2025 Seite: 1/3 Amt für Schule und Bildung Datum: 10.10.2025 Vorlagen-Nr.: 25/0632 Status: öffentlich Änderung der „Satzung der Stadt Oldenburg (Oldb) über die Inanspruchnahme der Mittagsverpflegung in den Mensen an den Grundschulen\": Ausgabepreis -Beschluss Beratungsfolge: Termin: Schulausschuss 04.11.2025 Jugendhilfeausschuss 19.11.2025 Verwaltungsausschuss 01.12.2025 Rat 01.12.2025 Beschlussvorschlag: Die anliegende „Satzung zur Änderung der Satzung der Stadt Oldenburg (Ol",
     "score": 0.8153881430625916,
+    "arme": 2
+   },
+   {
+    "kind": "cluster",
+    "id": "oldenburg:paper:17664",
+    "title": "Änderung der „Satzung der Stadt Oldenburg über die Inanspruchnahme der Mittagsverpflegung in den Mensen an den Grundschulen - Beschlussvorlage",
+    "date": "2019-06-04",
+    "outcome": null,
+    "text": "Seite: 1/2 07.05.2019 Amt für Schule und Bildung Vorlagen-Nr: 19/0390 öffentlich Änderung der „Satzung der Stadt Oldenburg über die Inanspruchnahme der Mittagsverpflegung in den Mensen an den Grundschulen - Beschlussvorlage Beratungsfolge: Schulausschuss am: 04.06.2019 Zu TOP: 9 Verwaltungsausschuss am: 24.06.2019 Zu TOP: Rat am: 24.06.2019 Zu TOP: Beschlussvorschlag: Der anliegenden „ Satzung der Stadt Oldenburg über die Inanspruchnahme der Mittagsve r- pflegung in den Mensen an den Grundschule",
+    "score": 0.9309433698654175,
     "arme": 2
    },
    {
@@ -5033,16 +5293,6 @@
     "arme": 1
    },
    {
-    "kind": "chunk",
-    "id": "oldenburg:paper:17583",
-    "title": "Starke-Familien-Gesetz - Bericht",
-    "date": null,
-    "outcome": null,
-    "text": "lautet nach dem Beschluss des Bundestags: „Für Schülerinnen und Schüler gilt dies unter der Voraussetzung, dass die Mittagsverpfle- gung in schulischer Verantwortung angeboten wird oder durch einen Kooperationsvertrag zwischen Schule und Tageseinrichtung vereinbart ist.“ Die Begründung dazu lautet: Seite: 3/3 „Auch nach dem Wegfall der Eigenbeteiligung nach Doppelbuchstabe aa kommt es aber insbesondere darauf an, dass die Mittagsverpflegung regelmäßig gemeinschaftlich erfolgt und somit die …",
-    "score": 0.8064313530921936,
-    "arme": 1
-   },
-   {
     "kind": "recap",
     "id": "recap:finanzen",
     "title": "Was Oldenburg im Themenfeld finanzen beschäftigt",
@@ -5061,7 +5311,12 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg hat die Satzung über die Inanspruchnahme der Mittagsverpflegung und passt sie an — dieselbe Sache."
+  "judgment": "Oldenburg hat die Satzung über die Inanspruchnahme der Mittagsverpflegung und passt sie an — dieselbe Sache.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburg liegt eine Vorlage im selben Cluster — sie steht unter den Belegen als „Oldenburgs Vorlage zur GLEICHEN Idee“. Prüfe sie: Die Gruppierung irrt in etwa jedem fünften Fall, und dann betrifft sie dasselbe Themenfeld, aber ein anderes Instrument.",
+  "effort": {
+   "effort": "decision",
+   "addressee": null
+  }
  },
  {
   "id": "https://oparl.stadt-muenster.de/bodies/0001/papers/vo/2004055633",
@@ -5210,6 +5465,11 @@
    ],
    "worth": "no"
   },
-  "judgment": "Oldenburg beschließt jährlich ein Arbeitsprogramm für Straßen- und Radwegebau samt Rad- und Fußverkehrsprogramm."
+  "judgment": "Oldenburg beschließt jährlich ein Arbeitsprogramm für Straßen- und Radwegebau samt Rad- und Fußverkehrsprogramm.",
+  "cluster": "Gleiche Idee in 1 anderen Städten:\nIn Oldenburgs 5.945 Vorlagen seit 2018 liegt KEINE im selben Cluster.",
+  "effort": {
+   "effort": "budget",
+   "addressee": null
+  }
  }
 ]

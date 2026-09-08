@@ -215,7 +215,7 @@ def test_lauf_schreibt_ein_urteil(cities, rats, monkeypatch):
     monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
     stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
     assert stand["annotated"] == 1 and stand["errors"] == 0
-    eintrag = cities.annotation("paper", "os:p:1", "fit", "1")
+    eintrag = cities.annotation("paper", "os:p:1", "fit", get("fit").version)
     assert eintrag["payload"]["status"] == "partial"
     assert eintrag["payload"]["evidence"] == ["oldenburg:paper:4711"]
     assert eintrag["payload"]["worth"] == "yes"
@@ -236,11 +236,14 @@ def test_ohne_belege_wird_gar_nicht_erst_gefragt(cities, rats, monkeypatch):
 
 
 def test_erfundene_kennung_wird_nicht_gespeichert(cities, rats, monkeypatch):
+    """JEDE Stimme wird einzeln geprüft — sonst trüge die Mehrheit die
+    Erfindung mit, weil zwei andere Stimmen sie überstimmen."""
     kaputt = dict(URTEIL, evidence=["oldenburg:paper:12345"])
     monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(kaputt))
     stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
-    assert stand["annotated"] == 0 and stand["hallucinated_evidence"] == 1
-    assert cities.annotation("paper", "os:p:1", "fit", "1") is None
+    assert stand["annotated"] == 0
+    assert stand["hallucinated_evidence"] == fit_modul.VOTES
+    assert cities.annotation("paper", "os:p:1", "fit", get("fit").version) is None
 
 
 def test_kaputte_antwort_kippt_den_lauf_nicht(cities, rats, monkeypatch):
@@ -249,7 +252,7 @@ def test_kaputte_antwort_kippt_den_lauf_nicht(cities, rats, monkeypatch):
     monkeypatch.setattr(fit_modul.llm, "chat_complete",
                         lambda **kw: _antwort({"status": "irgendwas"}))
     stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
-    assert stand["annotated"] == 0 and stand["errors"] == 1
+    assert stand["annotated"] == 0 and stand["errors"] == fit_modul.VOTES
 
 
 def test_zweiter_lauf_urteilt_nicht_neu(cities, rats, monkeypatch):
@@ -419,3 +422,98 @@ def test_rrf_belohnt_was_zwei_arme_finden():
     punkte = _rrf([["a", "b", "c"], ["c", "d"], ["e"]])
     assert max(punkte, key=lambda k: punkte[k]) == "c", \
         "c steht in zwei Listen und schlägt das a, das nur in einer vorn steht"
+
+
+# ------------------------------------------------------- Mehrheit aus Stimmen
+
+def _urteil(status="partial", worth="yes", belege=("oldenburg:paper:4711",),
+            confidence="high"):
+    return OldenburgFit(status=status, worth=worth, evidence=list(belege),
+                        reason="Grund.", why_worth="Nutzen.", obstacles=None,
+                        confidence=confidence)
+
+
+def test_die_mehrheit_entscheidet_status_und_nutzen_getrennt():
+    """Zwei Fragen, zwei Auszählungen — so steht es im Prompt.
+
+    Ein Modell, das beim Status schwankt, kann beim Nutzen sicher sein.
+    """
+    ergebnis, einigkeit = fit_modul.majority([
+        _urteil(status="partial", worth="yes"),
+        _urteil(status="missing", worth="yes"),
+        _urteil(status="partial", worth="maybe"),
+    ])
+    assert ergebnis.status == "partial" and ergebnis.worth == "yes"
+    assert einigkeit == "2/3"
+
+
+def test_bei_patt_gewinnt_der_vorsichtigere_wert():
+    """„Oldenburg hat das schon" nimmt eine Idee von der Liste — der teurere
+    Irrtum. Bei Gleichstand fällt die Wahl deshalb nach unten."""
+    ergebnis, _ = fit_modul.majority([
+        _urteil(status="present"), _urteil(status="missing"), _urteil(status="partial")])
+    assert ergebnis.status == "missing"
+
+
+def test_nur_belege_die_zwei_stimmen_nennen():
+    """Eine Kennung, die nur ein Lauf gesehen hat, trägt kein Urteil."""
+    ergebnis, _ = fit_modul.majority([
+        _urteil(belege=["oldenburg:paper:1", "oldenburg:paper:2"]),
+        _urteil(belege=["oldenburg:paper:1"]),
+        _urteil(belege=["oldenburg:paper:1", "oldenburg:paper:3"]),
+    ])
+    assert ergebnis.evidence == ["oldenburg:paper:1"]
+
+
+def test_uneinigkeit_senkt_die_zuversicht():
+    einig, _ = fit_modul.majority([_urteil(), _urteil(), _urteil()])
+    assert einig.confidence == "high", "drei gleiche Stimmen behalten ihre Zuversicht"
+    uneinig, _ = fit_modul.majority([
+        _urteil(status="present"), _urteil(status="missing"), _urteil(status="partial")])
+    assert uneinig.confidence == "low", "ein Patt ist kein sicheres Urteil"
+
+
+def test_eine_einzelne_stimme_bleibt_gueltig():
+    """Verwirft `pruefe` zwei von drei, bleibt die dritte — mit `low`."""
+    ergebnis, einigkeit = fit_modul.majority([_urteil(confidence="high")])
+    assert ergebnis.status == "partial" and einigkeit == "1/1"
+    assert ergebnis.evidence == ["oldenburg:paper:4711"], \
+        "bei einer Stimme reicht EINE Nennung, sonst bliebe kein Beleg übrig"
+
+
+# ------------------------------------------------- Cluster im Prompt und Urteil
+
+def test_der_cluster_ist_ein_tragender_beleg():
+    assert "cluster" in fit_modul.TRAGENDE_ARTEN
+
+
+def test_ohne_cluster_sagt_die_zeile_das_deutlich(cities):
+    """Kein Cluster heißt: keine andere Stadt hat etwas Ähnliches — und das
+    sagt für sich genommen NICHTS über Oldenburg."""
+    from council.cities.evidence import cluster_zeile
+    zeile = cluster_zeile(cities, cities.paper("os:p:1"), MODELL)
+    assert "keiner" in zeile and "nichts über Oldenburg" in zeile
+
+
+def test_die_cluster_zeile_nennt_die_fremden_mitglieder(cities):
+    """Namentlich, nicht gezählt: An vierzehn gelesenen Clustern waren drei
+    falsch gruppiert — ein Modell, das die Titel sieht, kann das erkennen."""
+    from council.cities.clusters import CLUSTER_VERSION
+    from council.cities.evidence import cluster_zeile
+    cities.replace_idea_clusters(MODELL, CLUSTER_VERSION, [
+        (MODELL, CLUSTER_VERSION, 1, "os:p:1", 0.9),
+        (MODELL, CLUSTER_VERSION, 1, "oldenburg:paper:4711", 0.88),
+    ])
+    zeile = cluster_zeile(cities, cities.paper("oldenburg:paper:4711"), MODELL)
+    assert "osnabrueck" in zeile and "Wärmenetz" in zeile
+    assert "Gruppierung irrt" in zeile, "das Modell muss ein schlechtes Mitglied verwerfen können"
+
+
+def test_der_aufwand_steht_im_vorlagentext():
+    """Zwei der drei „lohnt sich"-Bedingungen hängen daran."""
+    text = fit_modul.paper_text(
+        {"body_id": "osnabrueck", "name": "Titel", "kind": "motion"},
+        {"instrument": "Etwas tun"}, None, get("fit"),
+        {"effort": "resolution", "addressee": "Bund"})
+    assert "resolution" in text and "Bund" in text
+    assert "nicht die Stadt selbst" in text

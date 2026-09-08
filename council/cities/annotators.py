@@ -219,7 +219,12 @@ ANNOTATORS: dict[str, Annotator] = {
                  "(gemessen: fünf Läufe zwischen 84 und 91 %).",
     ),
     "fit": Annotator(
-        key="fit", version="1", applies_to=("paper",),
+        # Fassung 2 seit 09.09.2026: Ideen-Cluster und Aufwandsklasse im
+        # Prompt, ein strengeres „lohnt sich" und drei Stimmen je Vorlage
+        # statt einer. Fassung 1 bleibt in der Tabelle liegen, bis die
+        # Oberfläche umgestellt ist (PR 22) — beide nebeneinander zu haben
+        # ist der Zweck des Fassungs-Schlüssels.
+        key="fit", version="2", applies_to=("paper",),
         prompt_system="cities_fit_system", prompt_user="cities_fit_user",
         model=os.environ.get("CITIES_FIT_MODEL", "deepseek/deepseek-v4-flash"),
         payload=OldenburgFit,
@@ -230,7 +235,13 @@ ANNOTATORS: dict[str, Annotator] = {
         # keine Fehlermeldung, sondern eine ABGESCHNITTENE Antwort mit Status
         # 200 — im Prüfstand als „unlesbare Antwort“ sichtbar geworden.
         batch_size=1, input_chars=3500, max_tokens=6000, needs_index=True,
-        gut_wenn="eval/run_cities_fit.py hält fünf Schranken. Zwei sind harte "
+        gut_wenn="Fassung 2 ist erst reif, wenn der BESTAND einmal damit "
+                 "gerechnet ist und der Anteil „fehlt + lohnt sich“ unter 30 % "
+                 "liegt (Fassung 1: 50 %, gemessen an 1.290 Urteilen). Die "
+                 "vierzig Prüffälle können das nicht zeigen — sie sind nach "
+                 "Status geschichtet, nicht nach der Verteilung im Bestand. "
+                 "Bis dahin zeigt die Oberfläche Fassung 1. Dazu wie bisher: "
+                 "eval/run_cities_fit.py hält fünf Schranken. Zwei sind harte "
                  "Zusagen und stehen bei NULL: erfundene Beleg-Kennungen und "
                  "falsche „vorhanden“ (Oldenburg habe etwas, das fehlt — in "
                  "sieben Läufen nie vorgekommen). Drei sind "

@@ -22,17 +22,19 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import threading
 import time
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
 from council.cities.annotate import parse_json
-from council.cities.annotators import USABLE, Annotator
+from council.cities.annotators import USABLE, Annotator, OldenburgFit
 from council.cities.evidence import (
-    OLDENBURG_STECKBRIEF, Evidence, evidence_for)
+    OLDENBURG_STECKBRIEF, Evidence, cluster_zeile, evidence_for)
 from council.cities.store import CitiesStore
 from kern import llm, prompts
 
@@ -47,7 +49,7 @@ WORKERS = 4
 #: gehört nicht dazu: Er sagt, was die Stadt gerade beschäftigt, nicht ob sie
 #: dieses eine Instrument hat. Ein Papier, für das es nur ihn gibt, wird
 #: übersprungen.
-TRAGENDE_ARTEN = ("neighbor", "chunk", "fts", "decision")
+TRAGENDE_ARTEN = ("cluster", "neighbor", "chunk", "fts", "decision")
 
 
 def candidates_for(main: CitiesStore, body_id: str | None = None) -> list[dict]:
@@ -64,7 +66,7 @@ def candidates_for(main: CitiesStore, body_id: str | None = None) -> list[dict]:
 
 
 def source_hash(paper: dict, classification: dict, belege: list[Evidence],
-                ann: Annotator) -> str:
+                ann: Annotator, cluster: str = "", effort: dict | None = None) -> str:
     """Woraus das Urteil entstanden ist — Vorlage UND Belege.
 
     Der Unterschied zu ``annotate.source_hash``: Dort hängt das Etikett allein
@@ -80,13 +82,28 @@ def source_hash(paper: dict, classification: dict, belege: list[Evidence],
         # Der Rückblick ändert sich wöchentlich; sein Text gehört mit hinein,
         # sonst bliebe ein Urteil stehen, dessen Kontext ein anderer ist.
         "|".join(e.text[:120] for e in belege if e.kind == "recap"),
+        # Der Cluster wächst mit jeder geernteten Stadt, die Aufwandsklasse
+        # kann sich mit einer neuen Fassung ändern — beides gehört in den
+        # Hash, sonst bliebe ein Urteil stehen, dessen Grundlage eine andere
+        # ist. Genau das merkt `annotations_missing`.
+        cluster or "", str(sorted((effort or {}).items())),
         ann.version, prompts.get(ann.prompt_system)[:200],
     ]
     return hashlib.sha256("␟".join(teile).encode("utf-8")).hexdigest()
 
 
+#: Die Aufwandsklassen im Klartext — dieselben Worte wie im effort-Prompt.
+AUFWAND_TEXT = {
+    "inquiry": "Anfrage (will wissen, nicht ändern)",
+    "review": "Prüfauftrag an die Verwaltung",
+    "resolution": "Resolution an Land oder Bund",
+    "decision": "Beschluss mit unmittelbarer Wirkung",
+    "budget": "Beschluss, der Geld bindet",
+}
+
+
 def paper_text(paper: dict, classification: dict, text: str | None,
-               ann: Annotator) -> str:
+               ann: Annotator, effort: dict | None = None) -> str:
     """Die fremde Vorlage, so wie sie im Prompt steht."""
     zeilen = [
         f"Stadt: {paper.get('body_id')}",
@@ -100,6 +117,15 @@ def paper_text(paper: dict, classification: dict, text: str | None,
         wert = classification.get(schluessel)
         if wert:
             zeilen.append(f"{label}: {wert}")
+    # Aufwand und Adressat entscheiden zwei der drei „lohnt sich"-Bedingungen —
+    # eine Resolution ist nie das Beste, was der Rat tun kann, und was die VWG
+    # entscheidet, kann er nicht beschließen.
+    if effort:
+        klasse = effort.get("effort")
+        if klasse:
+            zeilen.append(f"Aufwand: {klasse} — {AUFWAND_TEXT.get(klasse, '')}")
+        if effort.get("addressee"):
+            zeilen.append(f"Adressat: {effort['addressee']} (nicht die Stadt selbst)")
     if text:
         zeilen.append("Text: " + " ".join(text.split())[:ann.input_chars])
     return "\n".join(zeilen)
@@ -140,11 +166,79 @@ def pruefe(nutzlast, erlaubte: set[str], tragende: set[str] | None = None) -> st
     return None
 
 
+#: Wie viele Stimmen je Vorlage. Die Eigenstreuung des Modells lag über fünf
+#: Läufe bei 12 Punkten (60–72 % Status) — bei EINER Stimme entscheidet
+#: zufällig, welche davon in der Datenbank landet.
+VOTES = int(os.environ.get("CITIES_FIT_VOTES", "3"))
+
+#: Vom Vorsichtigen zum Kühnen. Bei Gleichstand gewinnt der vordere Wert:
+#: „Oldenburg hat das schon" nimmt eine Idee von der Liste und ist damit der
+#: teurere Irrtum — dieselbe Asymmetrie, die der Prüfstand als harte Schranke
+#: führt.
+STATUS_ORDNUNG = ("missing", "partial", "present")
+WORTH_ORDNUNG = ("maybe", "no", "yes")
+
+
+def _mehrheit(werte: list[str], ordnung: tuple[str, ...]) -> str:
+    """Der häufigste Wert; bei Gleichstand der vorsichtigere."""
+    zaehler: dict[str, int] = {}
+    for w in werte:
+        zaehler[w] = zaehler.get(w, 0) + 1
+    hoechste = max(zaehler.values())
+    gleichauf = [w for w, n in zaehler.items() if n == hoechste]
+    return min(gleichauf, key=lambda w: ordnung.index(w) if w in ordnung else 99)
+
+
+def majority(urteile: Sequence[OldenburgFit]) -> tuple[OldenburgFit, str]:
+    """Aus mehreren Stimmen ein Urteil — und wie sicher es ist.
+
+    **Status und „lohnt sich" werden GETRENNT ausgezählt.** Sie sind zwei
+    Fragen (das steht so im Prompt), und ein Modell, das beim Status schwankt,
+    kann beim Nutzen sicher sein.
+
+    Belege: nur die, die MINDESTENS ZWEI Stimmen nennen — eine Kennung, die
+    nur ein Lauf gesehen hat, trägt kein Urteil. Bleibt danach keine übrig,
+    obwohl der Status eine Behauptung ist, greift `pruefe` und verwirft.
+
+    Die Begründung stammt aus der Stimme, die der Mehrheit entspricht und die
+    höchste Zuversicht trägt — nicht aus einer zusammengesetzten.
+    """
+    if not urteile:
+        raise ValueError("keine Stimmen")
+    status = _mehrheit([u.status for u in urteile], STATUS_ORDNUNG)
+    worth = _mehrheit([u.worth for u in urteile], WORTH_ORDNUNG)
+
+    zaehler: dict[str, int] = {}
+    for u in urteile:
+        for k in u.evidence:
+            zaehler[k] = zaehler.get(k, 0) + 1
+    schwelle = 2 if len(urteile) > 1 else 1
+    belege = [k for k, n in zaehler.items() if n >= schwelle][:3]
+
+    rang = {"high": 0, "medium": 1, "low": 2}
+    passend = [u for u in urteile if u.status == status] or urteile
+    traeger = min(passend, key=lambda u: rang.get(u.confidence, 9))
+
+    einig = sum(1 for u in urteile if u.status == status)
+    if einig == len(urteile) and len(urteile) > 1:
+        zuversicht = traeger.confidence
+    elif einig * 2 > len(urteile):
+        zuversicht = "medium" if traeger.confidence == "high" else traeger.confidence
+    else:
+        zuversicht = "low"
+
+    ergebnis = traeger.model_copy(update={
+        "status": status, "worth": worth, "evidence": belege,
+        "confidence": zuversicht})
+    return ergebnis, f"{einig}/{len(urteile)}"
+
+
 def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         model: str, body_id: str | None = None, limit: int | None = None,
         workers: int = WORKERS) -> dict:
     """Jede übertragbare fremde Vorlage einmal gegen Oldenburg halten."""
     einordnung = main.annotations_for("classify", "2")
+    aufwand = main.annotations_for("effort", "1")
     kandidaten = candidates_for(main, body_id)
     if not kandidaten:
         return _leer()
@@ -157,12 +251,15 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     matrix = main.chunk_matrix(model, "oldenburg")
     logger.info("fit: %s Oldenburger Textabschnitte im Speicher", len(matrix[0]))
     belege_je: dict[str, list[Evidence]] = {}
+    cluster_je: dict[str, str] = {}
     hashes: dict[str, str] = {}
     for n, p in enumerate(kandidaten, 1):
         klasse = einordnung.get(p["id"]) or {}
         belege = evidence_for(main, rats, p, klasse, model, chunk_matrix=matrix)
         belege_je[p["id"]] = belege
-        hashes[p["id"]] = source_hash(p, klasse, belege, ann)
+        cluster_je[p["id"]] = cluster_zeile(main, p, model)
+        hashes[p["id"]] = source_hash(p, klasse, belege, ann,
+                                      cluster_je[p["id"]], aufwand.get(p["id"]))
         if n % 200 == 0:
             logger.info("  Belege %s/%s", n, len(kandidaten))
 
@@ -178,18 +275,13 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     sperre = threading.Lock()
     stand = {"annotated": 0, "errors": 0, "skipped_no_evidence": 0,
              "hallucinated_evidence": 0, "claim_without_evidence": 0,
-             "claim_only_on_recap": 0,
+             "claim_only_on_recap": 0, "votes": 0, "incomplete_votes": 0,
+             "split": 0,
              "cost_usd": 0.0, "prompt_tokens": 0, "completion_tokens": 0}
     t0 = time.time()
 
-    def eine(p: dict) -> tuple[str, dict, float] | None:
-        """Ein Papier ans Modell — **ohne** die Datenbank anzufassen."""
-        belege = belege_je.get(p["id"]) or []
-        if not any(e.kind in TRAGENDE_ARTEN for e in belege):
-            with sperre:
-                stand["skipped_no_evidence"] += 1
-            return None
-        klasse = einordnung.get(p["id"]) or {}
+    def eine_stimme(p: dict, belege: list[Evidence], klasse: dict):
+        """Ein Aufruf ans Modell — gibt die geprüfte Nutzlast oder ``None``."""
         try:
             extra = {"provider": {}} if ann.routing_free else {}
             antwort = llm.chat_complete(
@@ -197,7 +289,9 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 messages=[{"role": "system", "content": system},
                           {"role": "user", "content": prompts.render(
                               ann.prompt_user,
-                              paper=paper_text(p, klasse, main.text_for_paper(p["id"]), ann),
+                              paper=paper_text(p, klasse, main.text_for_paper(p["id"]),
+                                               ann, aufwand.get(p["id"])),
+                              cluster=cluster_je.get(p["id"], ""),
                               evidence=evidence_text(belege))}],
                 max_tokens=ann.max_tokens, temperature=ann.temperature,
                 extra_body=extra, _feature=ann.feature)
@@ -218,21 +312,65 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 stand["cost_usd"] += kosten
         try:
             nutzlast = ann.payload.model_validate(daten)
+            if not isinstance(nutzlast, OldenburgFit):
+                # Kein Typ-Theater: `majority` liest `status`, `worth` und
+                # `evidence`. Wer `fit` mit einer anderen Nutzlast registriert,
+                # soll es HIER erfahren und nicht drei Zeilen später an einem
+                # fehlenden Attribut.
+                raise TypeError(
+                    f"fit erwartet OldenburgFit, bekam {type(nutzlast).__name__}")
         except ValidationError as e:
             with sperre:
                 stand["errors"] += 1
             logger.info("Antwort passt nicht zur Form (%s): %s", p["id"], str(e)[:120])
             return None
 
+        # Jede Stimme wird EINZELN geprüft. Eine, die sich einen Beleg
+        # ausdenkt, zählt nicht mit — sonst trüge die Mehrheit die Erfindung
+        # mit, weil zwei andere Stimmen sie überstimmen.
         grund = pruefe(nutzlast, {e.id for e in belege},
                        {e.id for e in belege if e.kind in TRAGENDE_ARTEN})
         if grund:
             with sperre:
                 schluessel = grund.split(":")[0]
                 stand[schluessel] = stand.get(schluessel, 0) + 1
-            logger.info("Urteil verworfen (%s): %s", p["id"], grund)
+            logger.info("Stimme verworfen (%s): %s", p["id"], grund)
             return None
-        return p["id"], nutzlast.model_dump(), kosten
+        return nutzlast
+
+    def eine(p: dict) -> tuple[str, dict, float] | None:
+        """Ein Papier, mehrere Stimmen, ein Urteil — ohne die Datenbank."""
+        belege = belege_je.get(p["id"]) or []
+        if not any(e.kind in TRAGENDE_ARTEN for e in belege):
+            with sperre:
+                stand["skipped_no_evidence"] += 1
+            return None
+        klasse = einordnung.get(p["id"]) or {}
+        vorher = stand["cost_usd"]
+        stimmen = [x for x in (eine_stimme(p, belege, klasse) for _ in range(VOTES))
+                   if x is not None]
+        kosten = stand["cost_usd"] - vorher
+        if not stimmen:
+            return None
+        ergebnis, einigkeit = majority(stimmen)
+        with sperre:
+            stand["votes"] = stand.get("votes", 0) + len(stimmen)
+            if len(stimmen) < VOTES:
+                stand["incomplete_votes"] = stand.get("incomplete_votes", 0) + 1
+            if einigkeit.startswith("1/") and VOTES > 1:
+                stand["split"] = stand.get("split", 0) + 1
+        # Die Mehrheit kann Belege wegnehmen (nur was zwei Stimmen nennen) —
+        # damit kann sie eine Behauptung ohne Beleg erzeugen, die keine
+        # Einzelstimme war. Deshalb hier noch einmal prüfen.
+        grund = pruefe(ergebnis, {e.id for e in belege},
+                       {e.id for e in belege if e.kind in TRAGENDE_ARTEN})
+        if grund:
+            with sperre:
+                schluessel = grund.split(":")[0]
+                stand[schluessel] = stand.get(schluessel, 0) + 1
+            logger.info("Mehrheit verworfen (%s): %s", p["id"], grund)
+            return None
+        return p["id"], ergebnis.model_dump(), kosten
 
     def schreiben(ergebnisse: list[tuple[str, dict, float]]) -> None:
         """Der EINE Schreiber — im Hauptthread, in einer Transaktion."""
@@ -270,4 +408,5 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
 def _leer() -> dict:
     return {"annotated": 0, "errors": 0, "skipped_no_evidence": 0,
             "hallucinated_evidence": 0, "claim_without_evidence": 0,
-            "claim_only_on_recap": 0, "cost_usd": 0.0, "seconds": 0}
+            "claim_only_on_recap": 0, "votes": 0, "incomplete_votes": 0,
+            "split": 0, "cost_usd": 0.0, "seconds": 0}
