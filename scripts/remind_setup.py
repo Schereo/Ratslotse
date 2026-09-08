@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Erinnert einmalig an eine angefangene, nicht beendete Einrichtung (Design 26a).
+"""Erinnert einmalig — an eine liegen gebliebene Einrichtung ODER an ein Konto
+ganz ohne Haken (Design 26a, erweitert 09/2026).
+
+**Zwei Anlässe, eine Mail.** Der ursprüngliche verlangt ein *begonnenes*
+Setup. Genau daran ging die größere Gruppe vorbei: Am 08.09.2026 hatten
+sieben von neun neuen Konten den Assistenten nie angefangen, fünf standen am
+Ende ohne Thema und ohne Gremium da — und für die gab es keinen einzigen
+Anlass, sich je wieder zu melden, auch keine Erinnerung.
+
+Der zweite Anlass zählt deshalb nicht den erreichten Schritt, sondern den
+HAKEN: Wer weder Thema noch Gremium hat, bekommt die Mail — auch wenn er
+formal „fertig" ist; wer beides hat, bekommt keine, egal wie weit er kam.
+Beide Anlässe teilen sich dieselbe Marke (``setup_reminded_at``), es bleibt
+also bei EINER Mail je Konto, nie wieder.
 
 Warum per E-Mail und nicht per Push: Die Erlaubnis für Mitteilungen holt der
 Assistent erst in Schritt 3 ein. Wer vorher abbricht — also genau die Gruppe,
@@ -47,6 +60,14 @@ APP_URL = os.environ.get("APP_BASE_URL", "https://ratslotse.de")
 # 4 Mitteilungen. Die App kennt den Stadtteil-Schritt nicht und meldet 1–3 —
 # ihr Schritt 3 ist die Push-Frage. Der Satz zu 3 muss deshalb für beides
 # passen; deshalb nennt er die Themen und nicht „nur noch die Erlaubnis".
+#: Für die zweite Gruppe: Sie hat nichts angefangen, das man fortsetzen
+#: könnte. „Einrichtung fortsetzen" wäre für sie schlicht falsch — der Text
+#: nennt deshalb, was fehlt und was es bringt, nicht einen abgebrochenen
+#: Schritt.
+OHNE_HAKEN_SATZ = ("Dein Konto steht, aber es ist noch kein Thema und kein Gremium "
+                   "hinterlegt — deshalb hat Lotti bisher keinen Anlass, sich bei dir "
+                   "zu melden.")
+
 OPEN_AT_STEP = {
     1: "Du wolltest gerade Gremien auswählen, über die Lotti dich informiert.",
     2: "Du wolltest gerade Stadtteile auswählen, die dich interessieren.",
@@ -55,8 +76,9 @@ OPEN_AT_STEP = {
 }
 
 
-def _body(name: str | None, step: int) -> str:
-    offen = OPEN_AT_STEP.get(step, "Ein paar Handgriffe fehlen noch.")
+def _body(name: str | None, step: int, ohne_haken: bool = False) -> str:
+    offen = OHNE_HAKEN_SATZ if ohne_haken else OPEN_AT_STEP.get(
+        step, "Ein paar Handgriffe fehlen noch.")
     return (
         f"<p style='margin:0'>{offen}</p>"
         "<p style='margin:10px 0 0'>Die Einrichtung dauert keine Minute — danach "
@@ -73,28 +95,39 @@ def main() -> dict:
     # Cron-Skripten: RATSLOTSE_DB, sonst data/ratslotse.sqlite im Repo.
     store = Store(os.environ.get("RATSLOTSE_DB") or ROOT / "data" / "ratslotse.sqlite")
     pending = store.setups_to_remind(older_than_hours=REMIND_AFTER_HOURS)
+    # Der zweite Anlass. Konten, die BEIDES treffen (angefangen und ohne
+    # Haken), stehen in beiden Listen — die id-Menge hält sie auseinander,
+    # sonst bekäme jemand zwei Mails an einem Tag.
+    schon = {u["id"] for u in pending}
+    ohne_haken = [u for u in store.accounts_without_hook(older_than_hours=REMIND_AFTER_HOURS)
+                  if u["id"] not in schon]
+    pending = pending + ohne_haken
     if not pending:
-        return {"kandidaten": 0, "gesendet": 0}
+        return {"kandidaten": 0, "gesendet": 0, "ohne_haken": 0}
     if not email_ready():
         # Kein Schlüssel → nichts verschicken UND nichts als erinnert markieren,
         # sonst verlöre man die Kandidaten stillschweigend.
         print(f"{len(pending)} offene Einrichtungen, aber kein RESEND_API_KEY — übersprungen.")
-        return {"kandidaten": len(pending), "gesendet": 0, "reason": "kein_mailversand"}
+        return {"kandidaten": len(pending), "gesendet": 0, "ohne_haken": len(ohne_haken),
+                "reason": "kein_mailversand"}
 
     sent = 0
+    ohne_haken_ids = {u["id"] for u in ohne_haken}
     for u in pending:
         step = int(u.get("setup_step") or 0)
+        leer = u["id"] in ohne_haken_ids
         try:
             send_email(
                 u["email"],
-                "Deine Einrichtung bei Ratslotse wartet noch",
+                ("Ratslotse meldet sich noch nicht bei dir" if leer
+                 else "Deine Einrichtung bei Ratslotse wartet noch"),
                 render_html_email(
-                    "Fast fertig eingerichtet",
-                    _body(u.get("display_name"), step),
+                    "Noch kein Thema hinterlegt" if leer else "Fast fertig eingerichtet",
+                    _body(u.get("display_name"), step, ohne_haken=leer),
                     greeting_name=u.get("display_name"),
                     held="erinnerung",
                     kicker="Deine Einrichtung",
-                    title="Fast fertig eingerichtet",
+                    title="Noch kein Thema hinterlegt" if leer else "Fast fertig eingerichtet",
                     fusszeile="Diese Erinnerung schicken wir exact einmal — "
                               "du bekommst sie nicht noch einmal.",
                 ),
@@ -106,8 +139,8 @@ def main() -> dict:
         # einzige Erinnerung nicht verbrauchen.
         store.mark_setup_reminded(u["id"])
         sent += 1
-        print(f"  erinnert: Konto {u['id']} (Schritt {step})")
-    return {"kandidaten": len(pending), "gesendet": sent}
+        print(f"  erinnert: Konto {u['id']} ({'ohne Haken' if leer else f'Schritt {step}'})")
+    return {"kandidaten": len(pending), "gesendet": sent, "ohne_haken": len(ohne_haken)}
 
 
 if __name__ == "__main__":
