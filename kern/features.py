@@ -69,6 +69,14 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
                     "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
     ),
+    "andere-staedte": Feature(
+        key="andere-staedte",
+        description="„Anderswo beschlossen“: Auf Beschluss-Seiten, was andere Städte "
+                    "zu derselben Sache beantragt oder beschlossen haben — aus deren "
+                    "Ratsinformationssystemen (council/cities).",
+        fertig_wenn="Der Block lag vier Wochen auf dev, und mindestens zwei Nutzer*innen "
+                    "mit Mandat haben die Treffer als brauchbar bestätigt.",
+    ),
     "wahlabend": Feature(
         key="wahlabend",
         description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "

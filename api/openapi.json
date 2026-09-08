@@ -7312,6 +7312,151 @@
         "title": "ElectionTotals",
         "type": "object"
       },
+      "ElsewhereItem": {
+        "description": "Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "body_name": {
+            "title": "Body Name",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "originator": {
+            "title": "Originator",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "outcome_raw": {
+            "title": "Outcome Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "paper_type_raw": {
+            "title": "Paper Type Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "title": "Reference",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transfer": {
+            "title": "Transfer",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "web": {
+            "title": "Web",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "body_id",
+          "body_name",
+          "paper_id",
+          "name",
+          "reference",
+          "date",
+          "kind",
+          "paper_type_raw",
+          "web",
+          "outcome",
+          "outcome_raw",
+          "score",
+          "summary",
+          "instrument",
+          "transfer",
+          "originator"
+        ],
+        "title": "ElsewhereItem",
+        "type": "object"
+      },
+      "ElsewhereResponse": {
+        "properties": {
+          "bodies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bodies",
+            "type": "array"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ElsewhereItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decision_id",
+          "items",
+          "bodies"
+        ],
+        "title": "ElsewhereResponse",
+        "type": "object"
+      },
       "EmergingTag": {
         "description": "Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft\nvorkam (mindestens zweimal), ohne Verfahrens-Vokabular.",
         "properties": {
@@ -18236,6 +18381,49 @@
           }
         },
         "summary": "Decision Detail",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/decision/{decision_id}/elsewhere": {
+      "get": {
+        "description": "Was andere Städte zu derselben Sache beantragt oder beschlossen haben.\n\n**Öffentlich**, wie die Beschluss-Seite selbst.\n\nDie Brücke ist die Vorlage: Ein Oldenburger Beschluss hängt an einer\n``kvonr``, und die ist im Städte-Speicher das Papier\n``oldenburg:paper:<kvonr>``. Beschlüsse ohne Vorlage — Wahlen,\nVerfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo\nauch nichts zu holen.\n\nEine leere Liste ist der Normalzustand, solange ``check_cities`` noch\nnicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der\nBlock blendet sich aus, statt einen Fehler zu zeigen.",
+        "operationId": "decision_elsewhere_api_council_decision__decision_id__elsewhere_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "title": "Decision Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElsewhereResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decision Elsewhere",
         "tags": [
           "council"
         ]
