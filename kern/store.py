@@ -3431,6 +3431,53 @@ class Store:
             "clients": clients,
         }
 
+    #: Was der Zähler ``user_activity.feature`` kennt — und wie es auf Deutsch
+    #: heißt. Die Liste steht hier, damit ein neuer Wert nicht als stille Null
+    #: irgendwo auftaucht: ``tests/test_ereignisse.py`` hält sie gegen die
+    #: ``record_activity``-Aufrufe im Backend.
+    EREIGNISSE: tuple[tuple[str, str], ...] = (
+        ("session", "Zugriffe"),
+        ("ai_question", "Fragen gestellt"),
+        ("ai_question_chip", "davon aus einem Vorschlag"),
+        ("ai_answer_empty", "Antworten ohne Quelle"),
+        ("search", "Suchbegriffe eingegeben"),
+        ("research", "Tiefen-Recherchen"),
+        ("analysis", "Auswertungen geöffnet"),
+        ("map", "Karte geöffnet"),
+        ("topic_created", "Themen angelegt"),
+        ("bookmark", "Lesezeichen gesetzt"),
+        ("template_follow", "Vorgängen gefolgt"),
+    )
+
+    def ereignisse(self, tage: int = 30) -> dict:
+        """Was in den letzten ``tage`` Tagen wie oft passiert ist.
+
+        Der Zweck sind die beiden Anteile darunter: Wie viele Fragen kommen aus
+        einem Vorschlags-Chip statt aus dem Eingabefeld, und wie viele
+        Antworten nennen keine einzige Quelle. Beides ließ sich vorher nur
+        schätzen — die Chip-Frage gar nicht, die Sackgassen nur an den
+        gespeicherten Gesprächen, also an rund drei Vierteln.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        roh = {r["feature"]: (r["n"], r["k"]) for r in self._conn.execute(
+            "SELECT feature, SUM(count) n, COUNT(DISTINCT owner_id) k FROM user_activity "
+            "WHERE day >= ? GROUP BY feature", (seit,)).fetchall()}
+        zeilen = [{"key": key, "label": label,
+                   "n": roh.get(key, (0, 0))[0], "users": roh.get(key, (0, 0))[1]}
+                  for key, label in self.EREIGNISSE]
+
+        def anteil(zaehler: str, nenner: str) -> float | None:
+            oben, unten = roh.get(zaehler, (0, 0))[0], roh.get(nenner, (0, 0))[0]
+            return round(oben / unten, 3) if unten else None
+
+        return {
+            "days": tage,
+            "events": zeilen,
+            "chip_share": anteil("ai_question_chip", "ai_question"),
+            "empty_share": anteil("ai_answer_empty", "ai_question"),
+        }
+
     def admin_growth(self, days: int | None = 90) -> dict:
         """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für
         registrierte Konten und angelegte Themen + Δ im Zeitraum + WAU. Jede

@@ -1544,6 +1544,24 @@ class AdminSeitenaufrufe(TypedDict):
     clients: list[AdminSeitenClient]
 
 
+class AdminEreignis(TypedDict):
+    key: str
+    label: str
+    n: int
+    #: Wie viele verschiedene Konten — eine hohe Zahl aus einem Konto ist
+    #: etwas anderes als dieselbe Zahl aus zwanzig.
+    users: int
+
+
+class AdminEreignisse(TypedDict):
+    days: int
+    events: list[AdminEreignis]
+    #: Anteil der Fragen, die aus einem Vorschlags-Chip kamen.
+    chip_share: float | None
+    #: Anteil der Antworten ohne eine einzige Quelle.
+    empty_share: float | None
+
+
 class AdminQuizArea(TypedDict):
     area_type: str
     area_key: str

@@ -655,6 +655,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Events
+         * @description Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.
+         *
+         *     „Fragen aus einem Vorschlag" und „Antworten ohne Quelle" sind die zwei
+         *     Zahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen
+         *     messbar waren.
+         */
+        get: operations["stats_events_api_admin_stats_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/growth": {
         parameters: {
             query?: never;
@@ -4610,6 +4634,28 @@ export interface components {
             /** Source */
             source: string | null;
         };
+        /** AdminEreignis */
+        AdminEreignis: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** N */
+            n: number;
+            /** Users */
+            users: number;
+        };
+        /** AdminEreignisse */
+        AdminEreignisse: {
+            /** Chip Share */
+            chip_share: number | null;
+            /** Days */
+            days: number;
+            /** Empty Share */
+            empty_share: number | null;
+            /** Events */
+            events: components["schemas"]["AdminEreignis"][];
+        };
         /** AdminFeedbackList */
         AdminFeedbackList: {
             /** Items */
@@ -5399,6 +5445,11 @@ export interface components {
         AskBody: {
             /** Conversation Id */
             conversation_id?: number | null;
+            /**
+             * From Suggestion
+             * @default false
+             */
+            from_suggestion: boolean;
             /** History */
             history?: components["schemas"]["AskTurn"][];
             /**
@@ -11899,6 +11950,37 @@ export interface operations {
             };
         };
     };
+    stats_events_api_admin_stats_events_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminEreignisse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_growth_api_admin_stats_growth_get: {
         parameters: {
             query?: {
@@ -16502,4 +16584,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3fd8b26d7144b1aaef9cb193bb67ec95c36b1afde6864d2418235f88cc93009b
+// vertrag-sha256: 1cc9c192220bbaf20fbd4b95270de1c0cba9f85333a2d83ff71a0a74c7236ef2
