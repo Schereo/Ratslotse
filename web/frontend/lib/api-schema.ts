@@ -2357,6 +2357,13 @@ export interface paths {
          *     Verfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo
          *     auch nichts zu holen.
          *
+         *     **Die ``kvonr`` allein reicht nicht.** Sie steht an 274 von 9.059
+         *     Beschlüssen, die Vorlagennummer dagegen an 6.553 — und
+         *     ``council_templates`` übersetzt die eine in die andere. Ohne diesen Umweg
+         *     erschien der Block auf 50 Beschluss-Seiten, mit ihm auf 486 (gemessen
+         *     08.09.2026). Die ``kvonr`` am Beschluss bleibt die genauere Angabe und
+         *     hat Vorrang; die Nummer ist der Rückfall, nicht umgekehrt.
+         *
          *     Eine leere Liste ist der Normalzustand, solange ``check_cities`` noch
          *     nicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der
          *     Block blendet sich aus, statt einen Fehler zu zeigen.
@@ -15879,4 +15886,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: c188c30b7c1a3ee1b958c2df31fb49ce61843a382369fad65e58b43084c10db5
+// vertrag-sha256: bdd2c54923e18e1161b4cf23000debce283a21e06418496b6509dc7f65a9e6f9

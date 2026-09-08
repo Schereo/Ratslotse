@@ -21,7 +21,9 @@ from web.backend.app.main import app
 
 @pytest.fixture()
 def rats_db(tmp_path):
-    """Ein Beschluss mit Vorlage (kvonr) und einer ohne."""
+    """Vier Beschlüsse: mit kvonr, ganz ohne Vorlage, und zwei, die ihre
+    Vorlage erst über die Nummer finden — der Normalfall im Bestand (274 von
+    9.059 Beschlüssen tragen eine kvonr, 6.553 eine Vorlagennummer)."""
     store = CouncilStore(tmp_path / "council.sqlite")
     with store._conn:
         store._conn.execute(
@@ -34,6 +36,26 @@ def rats_db(tmp_path):
         store._conn.execute(
             "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, title, outcome) "
             "VALUES (2, 99, 2, 'decision', '6', 'Wahl der Schriftführung', 'accepted')")
+        # Nur Vorlagennummer, keine kvonr — die Brücke muss sie auflösen.
+        store._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, title, "
+            "  outcome, template_number) VALUES (3, 99, 3, 'decision', '7', "
+            "  'Kommunale Wärmeplanung — 2. Lesung', 'accepted', '26/0468')")
+        # Die Fassung „/1"; die Tagesordnung führt sie unter der Grundnummer.
+        store._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, title, "
+            "  outcome, template_number) VALUES (4, 99, 4, 'decision', '8', "
+            "  'Kommunale Wärmeplanung — Neufassung', 'accepted', '26/0468/1')")
+        # Beides gesetzt und widersprüchlich: die kvonr am Beschluss gewinnt.
+        store._conn.execute(
+            "INSERT INTO council_decisions (id, ksinr, position, kind, item_number, title, "
+            "  outcome, kvonr, template_number) VALUES (5, 99, 5, 'decision', '9', "
+            "  'Kommunale Wärmeplanung — Bericht', 'noted', 4711, '26/0999')")
+        for nr, kvonr in (("26/0468", 4711), ("26/0999", 9999)):
+            store._conn.execute(
+                "INSERT INTO council_templates (kvonr, template_number, title, fetched_at, "
+                "  status, attachments_scanned) VALUES (?, ?, 'Kommunale Wärmeplanung', "
+                "  '2026-06-02', 'ok', 0)", (kvonr, nr))
     yield store
     store.close()
 
@@ -146,6 +168,10 @@ def test_zufallsnahe_treffer_werden_nicht_gezeigt(client, cities_db):
     kommunaler Aufsichtsräte" stand bei 0,570 unter dem Klimakonzept."""
     cities_db.upsert_batch(Batch(papers=[
         Paper("os:p:3", "osnabrueck", "Verschwiegenheitspflicht kommunaler Aufsichtsräte")]))
+    # Übertragbar eingeordnet — es scheitert allein an der Nähe.
+    cities_db.put_annotation("paper", "os:p:3", "classify", "2",
+                             {"summary": "Aufsichtsräte werden belehrt.",
+                              "transfer": "adaptable"}, "h3")
     cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
                                 [("paper", "os:p:1", 0.86), ("paper", "os:p:3", 0.57)])
     daten = client.get("/api/council/decision/1/elsewhere").json()
@@ -159,6 +185,9 @@ def test_dieselbe_sache_zweimal_kostet_nur_einen_platz(client, cities_db):
         Paper("os:p:4", "osnabrueck", "Kommunale Wärmeplanung", date="2026-04-01"),
         Paper("bs:p:1", "braunschweig", "Kommunale Wärmeplanung", date="2026-03-01")]))
     cities_db.upsert_body(Body("braunschweig", "Braunschweig", "NI", "allris4"))
+    for pid in ("os:p:4", "bs:p:1"):
+        cities_db.put_annotation("paper", pid, "classify", "2",
+                                 {"summary": "Wärmeplan.", "transfer": "adaptable"}, "h" + pid)
     cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
                                 [("paper", "os:p:1", 0.86), ("paper", "os:p:4", 0.84),
                                  ("paper", "bs:p:1", 0.82)])
@@ -194,3 +223,57 @@ def test_bei_einer_eingabe_bleibt_der_urheber_weg(client, cities_db):
     (eintrag,) = client.get("/api/council/decision/1/elsewhere").json()["items"]
     assert eintrag["paper_id"] == "os:p:9"
     assert eintrag["originator"] is None
+
+
+# ------------------------------------------------------- Brücke zur Vorlage
+
+def test_brücke_über_die_vorlagennummer(client):
+    """Der Regelfall: Der Beschluss trägt keine `kvonr`, aber eine
+    Vorlagennummer — und `council_templates` übersetzt sie. Ohne diesen Umweg
+    erschien der Block auf 50 von 9.059 Beschluss-Seiten, mit ihm auf 486."""
+    daten = client.get("/api/council/decision/3/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1"]
+    assert daten["decision_id"] == 3
+
+
+def test_die_fassung_findet_die_grundnummer(client):
+    """„26/0468/1" steht im Protokoll, „26/0468" in der Tagesordnung.
+    `get_vorlage_by_nr` fällt auf die Grundnummer zurück."""
+    daten = client.get("/api/council/decision/4/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1"]
+
+
+def test_die_kvonr_am_beschluss_gewinnt(client):
+    """Beides gesetzt, und die Nummer zeigt auf eine andere Vorlage: Die
+    `kvonr` am Beschluss ist die genauere Angabe, die Nummer der Rückfall."""
+    daten = client.get("/api/council/decision/5/elsewhere").json()
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:1"]
+
+
+def test_wahl_hat_weder_kvonr_noch_nummer(client):
+    """Wahlen und Verfahrensfragen hängen an gar keiner Vorlage — auch die
+    Brücke findet dort nichts."""
+    assert client.get("/api/council/decision/2/elsewhere").json()["items"] == []
+
+
+# ------------------------------------------------ Nur übertragbare Treffer
+
+def test_nur_übertragbare_treffer_werden_gezeigt(client, cities_db):
+    """Das Einbettungsmodell misst die Textsorte, nicht das Thema: Ein
+    Bebauungsplan findet Bebauungspläne bei 0,84. Eine Schwelle trennt das
+    nicht — die Einordnung schon."""
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("os:p:5", "osnabrueck", "Bebauungsplan Nr. 674"),
+        Paper("os:p:6", "osnabrueck", "Wärmenetz-Ausbau beschließen"),
+        Paper("os:p:7", "osnabrueck", "Noch nicht eingeordnet")]))
+    cities_db.put_annotation("paper", "os:p:5", "classify", "2",
+                             {"summary": "Satzungsbeschluss.", "transfer": "local"}, "h5")
+    cities_db.put_annotation("paper", "os:p:6", "classify", "2",
+                             {"summary": "Wärmenetz.", "transfer": "adaptable"}, "h6")
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "oldenburg:paper:4711",
+                                [("paper", "os:p:5", 0.84), ("paper", "os:p:6", 0.79),
+                                 ("paper", "os:p:7", 0.77)])
+    daten = client.get("/api/council/decision/1/elsewhere").json()
+    # `local` fliegt trotz höchster Nähe raus; das noch nicht eingeordnete
+    # Papier ebenfalls — der nächste Cron holt es nach.
+    assert [i["paper_id"] for i in daten["items"]] == ["os:p:6"]
