@@ -399,6 +399,33 @@ Stadt ist, gegen die alles verglichen wird: Fällt die Zahl, fehlt dem
 Vergleich die eine Seite — und zwar still, weil die anderen Städte
 weiterlaufen.
 
+### Der Weg auf Prod
+
+Beide Schalter des Städtevergleichs sind **Schulden mit Fälligkeitsdatum**:
+Jeder nennt in `kern/features.py` unter `fertig_wenn`, woran man erkennt, dass
+er weg kann. Sie umzulegen ist keine technische Frage, sondern eine
+inhaltliche — deshalb steht hier die Reihenfolge, nicht der Griff.
+
+| # | Schritt | Bedingung |
+|---|---|---|
+| 1 | `cities.sqlite` auf der Dev-VM aufbauen (Backfill oben, Stunden) | keine — ohne sie zeigt dev nichts |
+| 2 | `andere-staedte` in `FEATURE_FLAGS` auf Prod | Der Block lag vier Wochen auf dev, und zwei Mandatsträger*innen haben die Treffer als brauchbar bestätigt |
+| 3 | `cities.sqlite` auf der Prod-VM aufbauen und den Wochen-Cron eintragen | vor Schritt 2, sonst zeigt der Block dort nichts |
+| 4 | `ideen-anderswo` in `FEATURE_FLAGS` auf Prod | Tim hat zwei Themenfelder durchgesehen und die Urteile für tragfähig erklärt |
+| 5 | Beide Schalter aus der Registry nehmen | wenn sie auf Prod stehen und niemand sie mehr umlegt |
+
+**Auf dev steht `FEATURE_FLAGS=*`**, dort sind beide also schon an — sichtbar
+wird trotzdem erst etwas, wenn Schritt 1 gelaufen ist.
+
+**Schritt 5 ist kein Aufräumen, sondern Teil der Sache.** Ein Schalter, den
+niemand mehr umlegt, ist eine Verzweigung, die jeder mitliest und niemand
+braucht; `tests/test_features.py` meldet einen, den keine Oberfläche mehr
+abfragt.
+
+**Was der Rollout NICHT braucht:** einen App-Store-Build. Beide Oberflächen
+holen ihre Schalter über `/api/app-config`; die ausgelieferte App bekommt die
+Seite in dem Moment, in dem der Schalter auf Prod steht.
+
 **Lokal zum Arbeiten:** `python scripts/lokale_daten.py hol --mit-staedten`
 und `setz --mit-staedten` nehmen den Speicher vom Server mit. Ohne den
 Schalter bleibt alles wie bisher; 600 MB will nicht jede*r auf dem Notebook.

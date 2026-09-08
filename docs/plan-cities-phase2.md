@@ -692,6 +692,13 @@ sieht anders aus, nur besser sortiert.
 
 ## PR 15 — Auf Prod
 
+**Stand 08.09.2026: PR 8 bis 14 sind gemergt.** Der Rollout selbst steht als
+Checkliste in der [Betriebsdoku](https://ratslotse.de/docs/betrieb/) — er ist
+keine technische Frage mehr, sondern hängt an zwei Bedingungen, die Zeit und
+Tims Urteil brauchen (`fertig_wenn` in `kern/features.py`). Auf dev sind beide
+Schalter an (`FEATURE_FLAGS=*`); sichtbar wird dort etwas, sobald der Backfill
+auf der Dev-VM gelaufen ist.
+
 Kein Code, eine Reihenfolge:
 
 1. Nach PR 8 auf dev: `FEATURE_FLAGS` auf Prod um `andere-staedte`
