@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
-  BookOpen, MapPin, SearchX } from "lucide-react";
+  BookOpen, Check, MapPin, SearchX } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -30,7 +30,11 @@ import type { QaOrtPin } from "@/components/qa-orte-karte";
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
 const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
 import { QaSource } from "@/lib/types";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, apiUrl, authHeaders } from "@/lib/api";
+// Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
+// damit hier den Build statt still eine leere Kachel zu zeigen.
+import { type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
@@ -530,6 +534,84 @@ function kurzerGegenstand(roh: string): string {
     t = `${schnitt.slice(0, luecke).replace(/[,;:.\-–—]+$/, "")} …`;
   }
   return t.length >= 8 ? t : "";
+}
+
+/** „Dieses Thema verfolgen" — der eine Handgriff, der aus einer Frage einen
+ *  Anlass macht, sich wieder zu melden.
+ *
+ *  Zwei Wege, und der erste ist die Abkürzung: Passt die Frage zu einem
+ *  KURATIERTEN Stadtthema (`council/city_topics.py`), legt ein Tipp es mit
+ *  seiner am Bestand kalibrierten Beschreibung an — die trifft besser als
+ *  alles, was man aus einer Frage bauen könnte. Sonst führt der Weg ins
+ *  vorbefüllte Formular, wo die Beschreibung geschrieben und die Trefferzahl
+ *  vorab gezeigt wird.
+ *
+ *  Gemessen an fünfzehn echten Fragen greift die Abkürzung bei vieren; für
+ *  Fliegerhorst, Haushalt oder Kultur gibt es bewusst kein kuratiertes Thema.
+ *  Deshalb ist der zweite Weg kein Notnagel, sondern der häufigere.
+ */
+type CityTopicMatch = ApiAntwort<"/topics/match">;
+
+function ThemenBruecke({ frage }: { frage: string }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [angelegt, setAngelegt] = useState<string | null>(null);
+  const treffer = useQuery({
+    queryKey: ["topic-match", frage],
+    queryFn: () => api.get<CityTopicMatch>(`/topics/match?q=${encodeURIComponent(frage.slice(0, 300))}`),
+    staleTime: 5 * 60_000,
+  });
+
+  const m = treffer.data?.match ?? null;
+  const schon = treffer.data?.already ?? false;
+
+  if (angelegt) {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
+        Thema „{angelegt}" angelegt — Lotti meldet sich, sobald der Rat dazu entscheidet.
+      </p>
+    );
+  }
+  // Kein Treffer, schon vorhanden oder noch am Laden: kein Platzhalter, keine
+  // leere Kachel. Eine Zeile, die nichts anbietet, ist schlechter als keine.
+  if (treffer.isPending || schon) return null;
+
+  const anlegen = async () => {
+    if (!m) return;
+    setBusy(true);
+    try {
+      await api.post("/topics", { name: m.name, description: m.description });
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+      setAngelegt(m.name);
+      toast.success(`Thema „${m.name}" angelegt`);
+    } catch {
+      toast.error("Das Thema ließ sich gerade nicht anlegen.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {m ? (
+        <button type="button" onClick={() => void anlegen()} disabled={busy}
+          title={m.description}
+          className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
+          <Plus className="h-3 w-3" aria-hidden />
+          Thema „{m.name}" verfolgen
+        </button>
+      ) : (
+        <Link href={`/topics?neu=${encodeURIComponent(frage)}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <Plus className="h-3 w-3" aria-hidden />
+          Daraus ein Thema machen
+        </Link>
+      )}
+      <span className="text-[11px] text-muted-foreground">
+        Dann meldet sich Lotti, sobald der Rat dazu entscheidet.
+      </span>
+    </div>
+  );
 }
 
 /** 5a/I-02: „stützt sich auf N Beschlüsse von X bis Y" — Zeitraum-Ehrlichkeit
@@ -2425,6 +2507,16 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 Frage umformulieren
               </button>
             </div>
+          )}
+
+          {/* Die Brücke von „ich habe etwas gefragt" zu „das Produkt meldet
+              sich bei mir". Sie stand bisher NUR bei „nichts gefunden" — also
+              ausgerechnet dort, wo man am wenigsten Lust auf ein Abo hat. Am
+              08.09.2026 hatten fünf von neun neuen Konten weder Thema noch
+              Gremium; für die gibt es keinen Anlass, sie je wieder
+              anzusprechen. */}
+          {!beschaeftigt && hatAntwort && !turn.fehler && !nichtsGefunden && (
+            <ThemenBruecke frage={turn.question} />
           )}
 
           {/* Meta-Zeile: stille Icons + Disclaimer (Design 2③) — bei JEDEM

@@ -147,6 +147,37 @@ CITY_TOPICS: tuple[CityTopic, ...] = (
 _COMPILED = {t.key: re.compile(t.pattern, re.IGNORECASE) for t in CITY_TOPICS}
 
 
+def match_question(frage: str) -> CityTopic | None:
+    """Das kuratierte Stadtthema, zu dem eine FRAGE passt — oder ``None``.
+
+    Dieselben Muster wie ``count_topics``, nur auf den Text einer Nutzerfrage
+    statt auf einen Beschluss. Das ist die Brücke von „ich habe etwas gefragt"
+    zu „das Produkt meldet sich bei mir": Wer nach dem Radverkehr fragt,
+    bekommt das fertige Thema *Radverkehr* mit einer Beschreibung, die am
+    Bestand kalibriert ist — statt eines Formulars, in das er eine Frage
+    tippt, die als Thema nicht funktioniert.
+
+    **Wie oft das trifft, ist gemessen, nicht geschätzt:** An den fünfzehn
+    echten Fragen vom 08.09.2026 traf es bei vieren (Radverkehr, Kitas,
+    Stadion, Klimaschutz). Fliegerhorst, Haushalt, Sport und Kultur haben
+    bewusst kein kuratiertes Thema — sie waren als Dauerabo zu laut oder zu
+    selten (s. Modul-Kopf). Für den Rest bleibt der vorbefüllte Weg über das
+    Themen-Formular; dieser hier ist die Abkürzung, nicht der einzige Weg.
+
+    Bei mehreren Treffern gewinnt der ERSTE aus ``CITY_TOPICS``: Die Liste ist
+    von Hand sortiert, und eine Frage, die „Schule" und „Kita" enthält, ist
+    eher eine Schulfrage — geraten wäre hier schlechter als eine feste Regel,
+    die man nachlesen kann.
+    """
+    text = (frage or "").strip()
+    if len(text) < 4:
+        return None
+    for t in CITY_TOPICS:
+        if _COMPILED[t.key].search(text):
+            return t
+    return None
+
+
 def count_topics(texts: list[str]) -> dict[str, int]:
     """Wie viele der Texte jedes Thema trifft — ein Text zählt je Thema einmal."""
     counts = {t.key: 0 for t in CITY_TOPICS}
