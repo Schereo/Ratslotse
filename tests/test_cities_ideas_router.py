@@ -14,6 +14,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from council.cities.index import EMBED_MODEL
 from council.cities.model import Batch, Body, Paper
 from council.cities.store import CitiesStore
 from council.store import CouncilStore
@@ -76,6 +77,12 @@ def cities_db(tmp_path):
     s.put_annotation("paper", "os:p:3", "fit", "1",
                      _urteil("present", "no", evidence=["oldenburg:paper:4711"]), "f3")
     s.put_annotation("paper", "os:p:9", "fit", "1", _urteil("missing", "maybe"), "f9")
+    # Der Volltextindex entsteht sonst erst im Cron; die Suche braucht ihn.
+    for pid, titel in (("os:p:1", "Hitzeaktionsplan aufstellen"),
+                       ("os:p:2", "Wärmenetz erweitern"),
+                       ("os:p:3", "Wärmeplan beschließen"),
+                       ("os:p:9", "Ganz andere Sache")):
+        s.fts_upsert(pid, "osnabrueck", titel, None, titel, None)
     yield s
     s.close()
 
@@ -221,3 +228,85 @@ def test_oldenburg_taucht_nicht_als_idee_auf(client, cities_db):
     daten = client.get(
         "/api/council/cities/ideas?field=klima_umwelt&status=&worth=").json()
     assert all(not i["paper_id"].startswith("oldenburg:") for i in daten["items"])
+
+
+# --------------------------------------------------------------- Freie Suche
+
+def test_die_suche_findet_ueber_den_titel(client):
+    daten = client.get("/api/council/cities/search?q=Hitzeaktionsplan").json()
+    assert daten["query"] == "Hitzeaktionsplan"
+    assert [i["paper_id"] for i in daten["items"]][:1] == ["os:p:1"]
+
+
+def test_die_suche_liefert_dieselbe_form_wie_die_liste(client):
+    """Beide Endpunkte bauen ihre Ideen über denselben Helfer — sonst fehlte
+    ein neues Feld in einem von beiden, und niemand merkte es."""
+    (aus_suche,) = [i for i in client.get(
+        "/api/council/cities/search?q=Hitzeaktionsplan").json()["items"]
+        if i["paper_id"] == "os:p:1"]
+    (aus_liste,) = [i for i in client.get(
+        "/api/council/cities/ideas?field=klima_umwelt").json()["items"]
+        if i["paper_id"] == "os:p:1"]
+    assert set(aus_suche) == set(aus_liste)
+    assert aus_suche["status"] == aus_liste["status"]
+    assert aus_suche["body_name"] == "Osnabrück"
+
+
+def test_die_suche_zieht_die_nachbarn_der_besten_treffer_dazu(client, cities_db):
+    """Die Hälfte, die reine Stichwortsuche nicht kann: Wer „Hitzeschutz"
+    tippt, findet über den Text nur, was so heißt — über die Nachbarschaft
+    aber auch den Hitzeaktionsplan."""
+    cities_db.replace_neighbors(EMBED_MODEL, "paper", "os:p:1",
+                                [("paper", "os:p:2", 0.83)])
+    ids = [i["paper_id"] for i in client.get(
+        "/api/council/cities/search?q=Hitzeaktionsplan").json()["items"]]
+    assert "os:p:1" in ids and "os:p:2" in ids
+    # Der Volltexttreffer steht trotzdem vorn.
+    assert ids[0] == "os:p:1"
+
+
+def test_ein_papier_zaehlt_im_nachbar_arm_nur_einmal(client, cities_db):
+    """Addierte man die Beiträge über mehrere Ausgangstreffer, sammelte ein
+    Nachbar mehr Punkte als ein echter Volltexttreffer. Gemessen: So stand
+    unter „Hitzeaktionsplan" eine Vorlage auf Platz eins, die das Wort gar
+    nicht enthält."""
+    cities_db.upsert_batch(Batch(papers=[
+        Paper("os:p:5", "osnabrueck", "Hitzeaktionsplan zweiter Teil",
+              date="2026-01-01", kind="motion")]))
+    cities_db.fts_upsert("os:p:5", "osnabrueck", "Hitzeaktionsplan zweiter Teil",
+                         None, "Hitzeaktionsplan zweiter Teil", None)
+    # os:p:2 ist Nachbar BEIDER Volltexttreffer.
+    for quelle in ("os:p:1", "os:p:5"):
+        cities_db.replace_neighbors(EMBED_MODEL, "paper", quelle,
+                                    [("paper", "os:p:2", 0.85)])
+    ids = [i["paper_id"] for i in client.get(
+        "/api/council/cities/search?q=Hitzeaktionsplan").json()["items"]]
+    assert set(ids[:2]) == {"os:p:1", "os:p:5"}, "beide Volltexttreffer vor dem Nachbarn"
+    assert ids.index("os:p:2") == 2
+
+
+def test_oldenburg_ist_kein_suchtreffer(client, cities_db):
+    """Es ist die Stadt, gegen die verglichen wird."""
+    cities_db.fts_upsert("oldenburg:paper:4711", "oldenburg",
+                         "Hitzeaktionsplan Oldenburg", None, "Hitze", None)
+    ids = [i["paper_id"] for i in client.get(
+        "/api/council/cities/search?q=Hitzeaktionsplan").json()["items"]]
+    assert all(not i.startswith("oldenburg:") for i in ids)
+
+
+def test_kaputte_suchsyntax_ist_kein_serverfehler(client):
+    """Ein roher Satz mit Klammern ist für FTS5 Syntax und wirft."""
+    for frage in ["(unvollständig", 'AND OR "', "***", ""]:
+        antwort = client.get(f"/api/council/cities/search?q={frage}")
+        assert antwort.status_code == 200
+        assert antwort.json()["items"] == []
+
+
+def test_kurze_grossgeschriebene_woerter_zaehlen(client, cities_db):
+    """„Grundsteuer C" ist etwas anderes als „Grundsteuer B" — gemessen: Ohne
+    diese Ausnahme fand die Suche zuerst die Vorlage zur Grundsteuer B."""
+    from council.cities.store import _such_stufen
+    assert _such_stufen("Grundsteuer C")[0] == '"Grundsteuer" AND "C"'
+    assert _such_stufen("Tempo 30")[0] == '"Tempo" AND "30"'
+    # Kleine Füllwörter bleiben draußen.
+    assert '"in"' not in _such_stufen("Tempo 30 in der Stadt")[0]

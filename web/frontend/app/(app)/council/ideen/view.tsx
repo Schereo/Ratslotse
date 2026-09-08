@@ -18,7 +18,8 @@
  */
 import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpRight, Building2, ChevronLeft } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRight, Building2, ChevronLeft, Search } from "lucide-react";
 
 import { DecisionLinkCard, POLICY_FIELD_LABELS } from "@/components/decision-ui";
 import { Card } from "@/components/ui/card";
@@ -29,12 +30,21 @@ import { useQuery } from "@tanstack/react-query";
 
 type Felder = ApiAntwort<"/council/cities/ideas/fields">;
 type Ideen = ApiAntwort<"/council/cities/ideas">;
+type Suche = ApiAntwort<"/council/cities/search">;
 type Idee = Ideen["items"][number];
 
-/** Was das Urteil auf der Karte sagt. */
+/** Was das Urteil auf der Karte sagt.
+ *
+ *  Die Töne kommen aus derselben Palette wie „vertagt" und „umstritten"
+ *  (`council-goals.tsx`, `decision-ui.tsx`) — Anzeigetafel-Tönung, nie eine
+ *  dunkle Karte im Hellmodus. `bg-warning` gibt es in diesem Projekt nicht;
+ *  die erste Fassung hier benutzte es und die Marke blieb ungetönt. */
 const STATUS: Record<string, { text: string; ton: string }> = {
   missing: { text: "In Oldenburg nicht gefunden", ton: "bg-primary/10 text-primary" },
-  partial: { text: "Teilweise vorhanden", ton: "bg-warning/15 text-warning-foreground" },
+  partial: {
+    text: "Teilweise vorhanden",
+    ton: "bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+  },
   present: { text: "Oldenburg hat das", ton: "bg-muted text-muted-foreground" },
 };
 
@@ -237,12 +247,82 @@ function Feld({ feld }: { feld: string }) {
   );
 }
 
+// --------------------------------------------------------------- Suche
+
+/**
+ * Eine Zeile, keine eigene Seite.
+ *
+ * Der Volltextindex hat kein Fenster nach vorn: Wer eine Sache im Kopf hat,
+ * soll nicht erst das richtige Themenfeld raten müssen. Die Ergebnisse sehen
+ * aus wie die Ideen darunter — es ist dieselbe Karte.
+ */
+function Suchzeile({ onTreffer }: { onTreffer: (q: string) => void }) {
+  const [text, setText] = useState("");
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); onTreffer(text.trim()); }}
+      className="flex items-center gap-2"
+    >
+      <div className="relative flex-1">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Was haben andere Städte zu …?"
+          aria-label="Ideen anderer Städte durchsuchen"
+          className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+    </form>
+  );
+}
+
+function Suchergebnis({ frage, zurueck }: { frage: string; zurueck: () => void }) {
+  const { data, isPending } = useQuery({
+    queryKey: ["ideen-suche", frage],
+    queryFn: () => api.get<Suche>(`/council/cities/search?q=${encodeURIComponent(frage)}`),
+    staleTime: 60 * 60 * 1000,
+  });
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={zurueck}
+        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ChevronLeft className="h-3 w-3" aria-hidden />
+        Alle Themenfelder
+      </button>
+      <h2 className="mt-2 text-lg font-semibold text-foreground">„{frage}"</h2>
+      {!isPending && (
+        <p className="text-xs text-muted-foreground">
+          {data?.total ?? 0} Treffer in den Ratsinformationssystemen der anderen Städte.
+        </p>
+      )}
+      <div className="mt-4 space-y-3">
+        {(data?.items ?? []).map((i) => (
+          <IdeenKarte key={i.paper_id} idee={i} />
+        ))}
+      </div>
+      {!isPending && !(data?.items ?? []).length && (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Dazu haben die anderen Städte nichts — jedenfalls nicht mit diesen Wörtern.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- Seite
 
 export default function View() {
   const an = useFeature("ideen-anderswo");
   const params = useSearchParams();
   const feld = useMemo(() => params?.get("feld") ?? null, [params]);
+  const [frage, setFrage] = useState("");
 
   if (!an) return null;
 
@@ -257,7 +337,12 @@ export default function View() {
           sie sich stützt, stehen unter jeder Idee.
         </p>
       </div>
-      {feld ? <Feld feld={feld} /> : <Uebersicht />}
+      <Suchzeile onTreffer={setFrage} />
+      {frage
+        ? <Suchergebnis frage={frage} zurueck={() => setFrage("")} />
+        : feld
+          ? <Feld feld={feld} />
+          : <Uebersicht />}
     </div>
   );
 }

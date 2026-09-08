@@ -19,12 +19,17 @@ struct IdeasView: View {
     @State private var ideen: IdeasResponse?
     @State private var laedt = true
     @State private var fehler: String?
+    @State private var frage = ""
+    @State private var treffer: IdeaSearchResponse?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 kopf
-                if let gewaehlt {
+                suchzeile
+                if let treffer {
+                    suchergebnis(treffer)
+                } else if let gewaehlt {
                     feldListe(gewaehlt)
                 } else {
                     uebersicht
@@ -54,6 +59,76 @@ struct IdeasView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 8)
+    }
+
+    // ---------------------------------------------------------------- Suche
+
+    /// Eine Zeile, keine eigene Ansicht: Der Volltextindex hat kein Fenster
+    /// nach vorn, und wer eine Sache im Kopf hat, soll nicht erst das
+    /// richtige Themenfeld raten müssen.
+    private var suchzeile: some View {
+        HStack(spacing: 8) {
+            RatsIcon(.search, size: 15).foregroundStyle(RatsColor.muted)
+            TextField("Was haben andere Städte zu …?", text: $frage)
+                .font(RatsFont.body(14))
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .onSubmit { Task { await suche() } }
+            if !frage.isEmpty {
+                Button {
+                    frage = ""
+                    treffer = nil
+                } label: {
+                    RatsIcon(.x, size: 14).foregroundStyle(RatsColor.muted)
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(RatsColor.card)
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(RatsColor.border))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func suchergebnis(_ antwort: IdeaSearchResponse) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(antwort.query)
+                .font(RatsFont.body(17, weight: .semibold))
+                .foregroundStyle(RatsColor.text)
+            Text("\(antwort.total) Treffer in den Ratsinformationssystemen der "
+                 + "anderen Städte.")
+                .font(RatsFont.body(11.5))
+                .foregroundStyle(RatsColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(antwort.items) { idee in
+                IdeaCard(model: model, idee: idee)
+            }
+            if antwort.items.isEmpty {
+                Text("Dazu haben die anderen Städte nichts — jedenfalls nicht mit "
+                     + "diesen Wörtern.")
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func suche() async {
+        let text = frage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { treffer = nil; return }
+        do {
+            // Wie bei der Liste: Der Parameter geht über `query:`, nicht in
+            // den Pfad — sonst wird das „?" mitkodiert und der Server
+            // antwortet mit 404.
+            let antwort: IdeaSearchResponse = try await model.api.get(
+                "/api/council/cities/search", query: [URLQueryItem(name: "q", value: text)])
+            treffer = antwort
+        } catch {
+            fehler = error.localizedDescription
+        }
     }
 
     // ------------------------------------------------------------ Übersicht

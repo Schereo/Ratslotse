@@ -48,7 +48,8 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          ConversationsDeleted, CouncilMembers, CouncilRecess, CouncilWeekPreview,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeasResponse,
+                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
                          PartyFilter, PartyOpinions, PeopleDirectory, PersonDetail, PlaceCatalog,
@@ -97,6 +98,11 @@ ELSEWHERE_MIN_SCORE = 0.70
 IDEEN_STATUS_VORGABE = ("missing", "partial")
 IDEEN_WORTH_VORGABE = ("yes", "maybe")
 IDEEN_PRO_SEITE = 30
+
+#: Das Modell, unter dem die Nachbarschaften liegen. `council.cities.index`
+#: lädt numpy erst in den Funktionen, der Import hier ist also leicht — und
+#: die Suche braucht den Namen, um die richtigen Kanten zu finden.
+from council.cities.index import EMBED_MODEL as EMBED_MODEL_FUER_SUCHE  # noqa: E402
 
 #: Der Haushalts-Bereich ist Ratsmitgliedern (und Admins) vorbehalten — 20
 #: Routen unter ``/budget…``, eine Dependency für alle. Wer eine neue anlegt,
@@ -1819,6 +1825,29 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     return {"fields": felder}
 
 
+@router.get("/cities/search")
+def cities_search(
+    q: str,
+    body: str | None = None,
+    limit: int = IDEEN_PRO_SEITE,
+    store: CouncilStore = Depends(get_council_store),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> IdeaSearchResponse:
+    """„Was haben andere Städte zu …?" — frei durchsuchbar.
+
+    **Zwei Hälften, keine Vektor-Suche über die Anfrage.** Die bräuchte
+    ``fastembed`` im Web-Dienst, und das ist es bewusst nicht. Stattdessen
+    Volltext plus die schon berechneten Nachbarschaften der besten Treffer;
+    die Einzelheiten stehen an ``CitiesStore.search_ideas``.
+
+    Öffentlich wie die Ideen-Liste, und hinter demselben Schalter.
+    """
+    zeilen = cities.search_ideas(q, EMBED_MODEL_FUER_SUCHE, body_id=body,
+                                 limit=max(1, min(limit, 100)))
+    return {"query": q, "total": len(zeilen),
+            "items": [_idee_aus_zeile(store, cities, r) for r in zeilen]}
+
+
 @router.get("/cities/ideas")
 def cities_ideas(
     field: str,
@@ -1852,32 +1881,40 @@ def cities_ideas(
         limit=max(1, min(per_page, 100)),
         offset=max(0, (page - 1) * per_page))
 
+    items = [_idee_aus_zeile(store, cities, r) for r in zeilen]
+    return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
+            "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
+
+
+def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict) -> Idea:
+    """Eine Zeile des Städte-Speichers als Idee für die Oberfläche.
+
+    Beide Endpunkte — Liste und Suche — bauen dieselbe Form; sie zweimal zu
+    tippen hieße, dass ein neues Feld in einem von beiden fehlt und niemand
+    es merkt.
+    """
     from council.cities.model import display_originator
     from council.cities.registry import BODIES
 
-    items: list[Idea] = []
-    for r in zeilen:
-        klasse = json.loads(r["classify_json"] or "{}")
-        urteil = json.loads(r["fit_json"] or "{}")
-        items.append({
-            "paper_id": r["id"], "body_id": r["body_id"],
-            "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
-                          else (r["body_name"] or r["body_id"])),
-            "name": r["name"] or "", "date": r.get("date"),
-            "kind": r.get("kind") or "other", "web": r.get("web"),
-            "outcome": (cities.outcome_for_paper(r["id"]) or {}).get("outcome") or "none",
-            "field": klasse.get("field"), "instrument": klasse.get("instrument"),
-            "summary": klasse.get("summary"), "transfer": klasse.get("transfer") or "",
-            "competence": klasse.get("competence"),
-            "originator": display_originator(klasse.get("originator"), r.get("kind")),
-            "status": urteil.get("status") or "", "reason": urteil.get("reason") or "",
-            "worth": urteil.get("worth") or "", "why_worth": urteil.get("why_worth") or "",
-            "obstacles": urteil.get("obstacles"),
-            "confidence": urteil.get("confidence") or "",
-            "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
-        })
-    return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
-            "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
+    klasse = json.loads(r.get("classify_json") or "{}")
+    urteil = json.loads(r.get("fit_json") or "{}")
+    return {
+        "paper_id": r["id"], "body_id": r["body_id"],
+        "body_name": (BODIES[r["body_id"]].name if r["body_id"] in BODIES
+                      else (r.get("body_name") or r["body_id"])),
+        "name": r.get("name") or "", "date": r.get("date"),
+        "kind": r.get("kind") or "other", "web": r.get("web"),
+        "outcome": (cities.outcome_for_paper(r["id"]) or {}).get("outcome") or "none",
+        "field": klasse.get("field"), "instrument": klasse.get("instrument"),
+        "summary": klasse.get("summary"), "transfer": klasse.get("transfer") or "",
+        "competence": klasse.get("competence"),
+        "originator": display_originator(klasse.get("originator"), r.get("kind")),
+        "status": urteil.get("status") or "", "reason": urteil.get("reason") or "",
+        "worth": urteil.get("worth") or "", "why_worth": urteil.get("why_worth") or "",
+        "obstacles": urteil.get("obstacles"),
+        "confidence": urteil.get("confidence") or "",
+        "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
+    }
 
 
 def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence]:

@@ -1393,6 +1393,13 @@ class IdeasResponse(TypedDict):
     items: list[Idea]
 
 
+class IdeaSearchResponse(TypedDict):
+    """Freie Suche über die Vorlagen anderer Städte."""
+    query: str
+    total: int
+    items: list[Idea]
+
+
 class IdeaFieldSummary(TypedDict):
     """Ein Themenfeld auf der Übersicht."""
     field: str
