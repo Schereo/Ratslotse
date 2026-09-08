@@ -417,6 +417,102 @@ class SetupState(TypedDict):
 
 
 # --------------------------------------------------------------------------
+# „Neu bei Ratslotse" (kern/releases.py)
+# --------------------------------------------------------------------------
+
+
+class ReleaseMedia(TypedDict):
+    """Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+
+    Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+    den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+    einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+    nur bei ``kind == "video"`` und ist zugleich das, was bei
+    ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+    """
+    kind: str
+    src: str
+    alt: str
+    #: Seitenverhältnis als CSS-Wert — im Browser querformatige Fenster
+    #: (``16/9``), in der App hochkante Telefon-Bildschirme (``9/16``). Die
+    #: Bühne baut ihren Rahmen daraus, statt ihn zu raten.
+    aspect: str
+    poster: str | None
+
+
+class ReleaseHighlight(TypedDict):
+    """Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht."""
+    title: str
+    text: str
+    #: App-Pfad, kein externer Link — die native App zeigt dieselbe Karte.
+    url: str
+    #: ``None``, solange eine Ausgabe ohne Bilder auskommt — dann zeigt die
+    #: Karte die Listenform statt der Bühne.
+    media: ReleaseMedia | None
+
+
+class ReleaseNews(TypedDict):
+    version: str
+    date: str
+    title: str
+    highlights: list[ReleaseHighlight]
+
+
+class NewsState(TypedDict):
+    """Was dieses Konto noch nicht gesehen hat.
+
+    ``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases
+    verpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf
+    ``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die
+    Entscheidung fällt serverseitig, damit Web und App dieselbe Antwort
+    bekommen (dieselbe Regel wie ``SetupState.pending``).
+    """
+    releases: list[ReleaseNews]
+    older_count: int
+    #: Die Hochwassermarke des Kontos — was es zuletzt weggeklickt hat.
+    seen_version: str | None
+
+
+class NewsSeen(TypedDict):
+    """Die Marke, die nach dem Wegklicken gilt. Sie steigt nur."""
+    seen_version: str | None
+
+
+class AdminNewsRelease(TypedDict):
+    """Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands."""
+    version: str
+    date: str
+    title: str
+    highlights: list[ReleaseHighlight]
+    #: Wie viele Konten die Ankündigung JETZT bekämen.
+    open_recipients: int
+    #: Wie viele sie schon bekommen haben.
+    sent_recipients: int
+
+
+class AdminNewsList(TypedDict):
+    releases: list[AdminNewsRelease]
+
+
+class AdminNewsSent(TypedDict):
+    """Bilanz eines Versands.
+
+    ``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den
+    Anlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein
+    ist eine Antwort und keine offene Aufgabe.
+
+    Die **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht
+    gezählt: Zweihundert Mails über die Resend-API dauern länger als eine
+    HTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt
+    ohnehin erst der Morgen-Cron mit.
+    """
+    version: str
+    recipients: int
+    queued: int
+    skipped: int
+
+
+# --------------------------------------------------------------------------
 # Lotsen-Abzeichen (RL-U12)
 # --------------------------------------------------------------------------
 

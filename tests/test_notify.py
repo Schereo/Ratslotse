@@ -404,11 +404,15 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
 def test_vorgaben_fuer_ein_gewoehnliches_konto():
     """Tims Entscheidung 06.09.2026: Die Tagesordnung je Gremium bekommt nur,
     wer sie ausdrücklich einschaltet; der Wochenüberblick kommt ab Werk. Die
-    Unter-Option „Änderungen" bleibt an — sie wirkt ohnehin nur mit N1."""
+    Unter-Option „Änderungen" bleibt an — sie wirkt ohnehin nur mit N1.
+
+    ``N7_NEWS`` („Neu bei Ratslotse") ist ab Werk an (Tim, 07.09.2026): Er
+    kommt ein paar Mal im Jahr und ist die einzige Gelegenheit, von einem
+    neuen Feature zu erfahren, ohne selbst nachzusehen."""
     an = {k for k, v in notify.NOTIFY_DEFAULTS.items() if v}
     aus = {k for k, v in notify.NOTIFY_DEFAULTS.items() if not v}
     assert an == {notify.N1_AENDERUNG, notify.N2_THEMA, notify.N3_ERGEBNIS,
-                  notify.N4_VORGANG, notify.N6_WOCHE}
+                  notify.N4_VORGANG, notify.N6_WOCHE, notify.N7_NEWS}
     assert aus == {notify.N1_TAGESORDNUNG, notify.N5_VORABEND}
     # Jede Art hat eine Beschriftung — sonst fehlte sie stumm in den Einstellungen.
     assert set(notify.NOTIFY_LABELS) == set(notify.NOTIFY_DEFAULTS)

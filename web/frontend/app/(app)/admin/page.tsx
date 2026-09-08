@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
-type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen" | "live";
+type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen" | "live" | "news";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -61,6 +61,7 @@ export default function AdminPage() {
           ["orte", "Ortskandidaten"],
           ["themen", "Themen-Dubletten"],
           ["live", "Live-Probe"],
+          ["news", "Neuigkeiten"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -83,6 +84,7 @@ export default function AdminPage() {
         {tab === "orte" && <PlaceCandidatesTab />}
         {tab === "themen" && <EntityAliasTab />}
         {tab === "live" && <LiveProbeTab />}
+        {tab === "news" && <NewsTab />}
       </div>
     </div>
   );
@@ -1872,6 +1874,132 @@ function LiveProbeTab() {
           <div ref={endRef} />
         </Card>
       )}
+    </div>
+  );
+}
+
+/** „Neuigkeiten": die Release-Karten aus `kern/releases.py` und ihr Versand.
+ *
+ *  Der Text steht als Code im Repo, hier gibt es ihn nicht zu bearbeiten — ein
+ *  Editor an dieser Stelle wäre eine zweite Wahrheit neben dem Changelog
+ *  (dieselbe Entscheidung wie bei den Prompts, `kern/prompts.py`).
+ *
+ *  Was es hier gibt, ist die eine Handlung, die Ausliefern von Ankündigen
+ *  trennt: verschicken, wenn der Deploy ein paar Tage stabil ist. Davor die
+ *  Probe an das eigene Konto — eine Mail an alle ist nicht zurückzuholen.
+ */
+function NewsTab() {
+  const qc = useQueryClient();
+  const [fragt, setFragt] = useState<string | null>(null);
+
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin-news"],
+    queryFn: () => vertrag.get("/admin/news"),
+  });
+
+  const probe = useMutation({
+    mutationFn: (version: string) => api.post<{ sent: string[] }>(`/admin/news/${version}/test`, {}),
+    onSuccess: (d) =>
+      d.sent.length
+        ? toast.success(`Probe raus (${d.sent.join(", ")}).`)
+        : toast.error("Nichts verschickt — Zustellweg oder Mail-Schlüssel fehlt."),
+    onError: () => toast.error("Die Probe ist nicht rausgegangen."),
+  });
+
+  const senden = useMutation({
+    mutationFn: (version: string) =>
+      api.post<{ recipients: number; queued: number; skipped: number }>(
+        `/admin/news/${version}/send`, {}),
+    onSuccess: (d) => {
+      toast.success(
+        d.recipients === 0
+          ? "Niemand offen — alle haben die Ausgabe schon."
+          : `${d.queued} eingereiht, ${d.skipped} übersprungen (Anlass aus). Zustellung läuft.`);
+      void qc.invalidateQueries({ queryKey: ["admin-news"] });
+    },
+    onError: () => toast.error("Der Versand ist nicht angelaufen."),
+  });
+
+  if (isLoading) return <CardListSkeleton rows={2} />;
+  if (isError || !data) {
+    return <ErrorState title="Die Ausgaben kamen nicht durch"
+      onRetry={() => void refetch()} busy={isFetching} />;
+  }
+
+  const offeneVersion = fragt;
+
+  return (
+    <div className="@container">
+      <p className="mb-4 max-w-2xl text-sm text-muted-foreground">
+        Die Karte „Neu bei Ratslotse“ erscheint von selbst auf der Übersicht, sobald
+        eine Ausgabe ausgeliefert ist. Der Versand per Mail und Push ist der
+        zweite, eigene Schritt — am besten ein paar Tage später, wenn kein Hotfix
+        mehr kommt. Wer die Karte schon weggeklickt hat, bekommt keine Mail mehr.
+        Der Text selbst steht als Code in <code className="font-mono text-xs">kern/releases.py</code>.
+      </p>
+
+      {data.releases.length === 0 && (
+        <EmptyState title="Noch keine Ausgabe mit Karte"
+          hint="Ein Eintrag entsteht im Release-PR, zusammen mit dem Versionsschnitt." />
+      )}
+
+      <div className="flex flex-col gap-4">
+        {data.releases.map((r) => (
+          <Card key={r.version} className="p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="min-w-0">
+                <StatKicker>{`Version ${r.version} · ${formatDate(r.date)}`}</StatKicker>
+                <h3 className="mt-1 font-display text-lg font-bold text-foreground">{r.title}</h3>
+              </div>
+              <div className="shrink-0 text-right text-sm">
+                <p className="font-semibold tabular-nums text-foreground">
+                  {r.open_recipients} offen
+                </p>
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {r.sent_recipients} schon angeschrieben
+                </p>
+              </div>
+            </div>
+
+            <ul className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
+              {r.highlights.map((h) => (
+                <li key={h.url + h.title} className="text-sm">
+                  <span className="font-semibold text-foreground">{h.title}</span>
+                  <span className="text-muted-foreground"> — {h.text} </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{h.url}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" disabled={probe.isPending}
+                onClick={() => probe.mutate(r.version)}>
+                Probe an mich
+              </Button>
+              <Button size="sm"
+                disabled={senden.isPending || r.open_recipients === 0}
+                onClick={() => setFragt(r.version)}>
+                {r.open_recipients === 0
+                  ? "Alle angeschrieben"
+                  : `An ${r.open_recipients} verschicken`}
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <ConfirmDialog
+        open={offeneVersion !== null}
+        onOpenChange={(o) => { if (!o) setFragt(null); }}
+        title={`Ankündigung zu ${offeneVersion ?? ""} verschicken?`}
+        description={
+          "Geht als Mail und Push an alle, die die Karte noch nicht gesehen und den " +
+          "Anlass nicht abgeschaltet haben. Das lässt sich nicht zurückholen — schick " +
+          "vorher eine Probe an dich selbst."
+        }
+        confirmLabel="Verschicken"
+        onConfirm={() => { if (offeneVersion) senden.mutate(offeneVersion); }}
+      />
     </div>
   );
 }

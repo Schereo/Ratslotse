@@ -20,6 +20,7 @@ import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
 import { PushPrimer } from "@/components/push-primer";
 import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
+import { ReleaseNewsCard } from "@/components/release-news-card";
 import { formatEuro } from "@/components/decision-ui";
 import { fragenHref, decisionHref, viertelHref } from "@/lib/routes";
 import { useFeature } from "@/lib/features";
@@ -124,6 +125,10 @@ export default function DashboardPage() {
           { key: "live", label: "Sitzung läuft", node: <LiveBanner /> },
           { key: "pause", label: "Sitzungspause", node: <SitzungspauseBanner /> },
           { key: "erste-schritte", label: "Erste Schritte", node: <FirstStepsBar /> },
+          // „Neu bei Ratslotse": nach allem, was gerade passiert (Sitzung,
+          // Wahlabend), aber vor der Push-Frage — sie kommt wieder, ein
+          // Release nicht.
+          { key: "neuigkeiten", label: "Neu bei Ratslotse", node: <ReleaseNewsCard /> },
           { key: "push", label: "Mitteilungen", node: <PushPrimer /> },
         ]}
       />

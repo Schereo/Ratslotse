@@ -72,6 +72,9 @@ from datetime import date
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parent.parent
+# `--highlights` liest MAX_HIGHLIGHTS aus kern/releases.py — dafür muss die
+# Repo-Wurzel im Pfad stehen, wenn das Skript direkt aufgerufen wird.
+sys.path.insert(0, str(WURZEL))
 
 # Kategorie-Kürzel im Frontmatter → Abschnitts-Überschrift im Changelog.
 KATEGORIEN = {
@@ -498,6 +501,52 @@ def kernsaetze(block: str) -> str:
     return "\n".join(zeilen).strip("\n")
 
 
+def highlight_entwurf(version: str, wurzel: Path = WURZEL) -> str:
+    """Ein Vorschlag für ``kern/releases.py`` aus den offenen Fragmenten.
+
+    **Nur ``hinzugefuegt``.** „Geändert" und „Behoben" tauchen im Entwurf gar
+    nicht auf: Auf die Karte „Neu bei Ratslotse" gehören die großen Sachen,
+    nicht die Reparaturen (Tims Regel 07.09.2026). Was der Entwurf nicht kann,
+    ist auswählen und kürzen — er legt die Kernsätze nebeneinander, streichen
+    muss ein Mensch. Deshalb ist es ein Entwurf und kein Generator: Der
+    Kernsatz eines Fragments ist ein Changelog-Satz, kein Kartentext.
+    """
+    from kern.releases import MAX_HIGHLIGHTS
+
+    fragmente = [f for f in sammle_fragmente(wurzel / "changelog.d")
+                 if f.category == "hinzugefuegt"]
+    zeilen = [
+        "    Release(",
+        f'        version="{version}",',
+        f'        date="{date.today().isoformat()}",',
+        '        title="…",   # ein Halbsatz über die ganze Ausgabe',
+        "        highlights=(",
+    ]
+    for fragment in fragmente:
+        kern = _kernsatz(fragment.text).rstrip(".")
+        # Der Kernsatz steht im Fragment fett am Anfang und wandert in den
+        # Titel — im Text wäre er ein zweites Mal dasselbe.
+        rest = re.sub(r"^\*\*.+?\*\*\s*", "", fragment.text)
+        zeilen += [
+            "            Highlight(",
+            # repr(): Die Changelog-Texte tragen Anführungszeichen und
+            # Gedankenstriche. Von Hand in "…" gesetzt ergäbe das ein kaputtes
+            # Python-Literal, und der Entwurf soll sich einfügen lassen.
+            f"                title={kern!r},",
+            f"                text={textwrap.shorten(rest, width=240, placeholder=' …')!r},",
+            '                url="/…",',
+            "            ),",
+        ]
+    zeilen += ["        ),", "    ),"]
+    kopf = (
+        f"# Entwurf für kern/releases.py — {len(fragmente)} Fragment(e) der "
+        f"Kategorie „hinzugefügt“.\n"
+        f"# Auf höchstens {MAX_HIGHLIGHTS} Highlights kürzen, Titel und Ziele setzen. "
+        "Alles Übrige streichen.\n"
+    )
+    return kopf + "\n".join(zeilen)
+
+
 def release_text(block: str, version: str) -> str:
     """Der Release-Text: der Abschnitt, notfalls als Kurzfassung mit Verweis."""
     if len(block) <= GITHUB_TEXTGRENZE:
@@ -598,6 +647,9 @@ def main() -> int:
     p.add_argument("--release", action="store_true",
                    help="GitHub-Release zur (bereits getaggten und gepushten) Version anlegen")
     p.add_argument("--titel", help="Titel des Releases (Default: 'vx.y.z')")
+    p.add_argument("--highlights", action="store_true",
+                   help="Entwurf für kern/releases.py aus den offenen Fragmenten zeigen "
+                        "(schreibt nichts — die Auswahl trifft ein Mensch)")
     args = p.parse_args()
 
     if args.pruefen:
@@ -613,6 +665,14 @@ def main() -> int:
         p.error("die Version fehlt (oder --pruefen benutzen)")
     if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
         p.error(f"'{args.version}' sieht nicht wie eine Version aus (x.y.z)")
+
+    if args.highlights:
+        try:
+            print(highlight_entwurf(args.version))
+        except FragmentFehler as fehler:
+            print(f"FEHLER: {fehler}", file=sys.stderr)
+            return 1
+        return 0
 
     if args.release:
         try:

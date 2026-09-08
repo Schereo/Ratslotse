@@ -126,10 +126,85 @@ ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet".
 
 Der einzige Ablauf, der von Hand geht und **nicht** gesquasht wird. Er steht
 vollständig in [`CLAUDE.md`](CLAUDE.md) unter „Deployment & Branch-Modell".
-Die zwei Dinge, die man dabei vergisst:
+Die drei Dinge, die man dabei vergisst:
 
 1. `python3 scripts/ios_vertrag.py --ausgeliefert` — bricht die App im Store?
 2. Nach einem Fix auf `main`: zurück nach `dev` mergen.
+3. **Bei einer Minor-Version: die Karte „Neu bei Ratslotse"** — ein `Release(…)`
+   in [`kern/releases.py`](kern/releases.py), in denselben Commit wie der
+   Versionsschnitt. Entwurf aus den Fragmenten:
+   `scripts/changelog_schnitt.py x.y.0 --highlights`. Höchstens vier Highlights,
+   jedes mit einem Ziel in der App, **nur große Features** — Fixes stehen im
+   Changelog. Verschickt wird später von Hand im Admin-Panel unter
+   *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
+
+   **Dazu je Highlight ein Bild** (oder ein kurzer Clip) nach
+   `web/frontend/public/neuigkeiten/<version>/`, **immer in der hellen
+   Fassung** (Tims Entscheidung 07.09.2026 — eine zweite für den Dunkelmodus
+   wäre doppelte Arbeit je Ausgabe, und ein Bild in einem gerahmten Kasten
+   liest sich ohnehin als Abbildung), alle im **16:9-Rahmen** — die Bühne blättert sonst durch verschieden hohe Kästen.
+   Aufgenommen wird die laufende lokale App mit echten Daten (Playwright über
+   das installierte Chrome, `deviceScaleFactor: 2`, Ausschnitt um das Element
+   herum auf 16:9 erweitert; Bilder als WebP ≤ 1600 px, Clips als stummes
+   h264-MP4 mit Standbild). **Zeiger und Klick müssen im Clip sichtbar sein** —
+   Playwright zeichnet den Mauszeiger nicht mit, die Aufnahme malt ihn sich per
+   `addInitScript` selbst an die echten Mausereignisse. Entweder **alle**
+   Highlights einer Ausgabe haben ein Bild oder keins — sonst hat die Bühne ein
+   Loch, und `test_releases.py` meldet es.
+
+   **Für die App dieselben Bilder aus der App** (`media_ios`, Tims Wunsch
+   07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im
+   Simulator gegen das lokale Backend, **ganzes Telefon, nichts
+   beschnitten** — ein zurechtgeschnittener Bildschirm sieht nicht mehr nach
+   iPhone aus:
+
+   ```bash
+   xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
+     -destination 'platform=iOS Simulator,id=<UDID>' -derivedDataPath <scratch> build
+   xcrun simctl install <UDID> <scratch>/Build/Products/Debug-iphonesimulator/Ratslotse.app
+   SIMCTL_CHILD_RATSLOTSE_API_BASE_URL=http://127.0.0.1:<port> \
+   SIMCTL_CHILD_RATSLOTSE_DEBUG_ACCESS_TOKEN=<Token> \
+     xcrun simctl launch <UDID> de.ratslotse.dev
+   xcrun simctl io <UDID> screenshot bild.png
+   ```
+
+   Vier Dinge, die dabei Zeit kosten:
+
+   * `RATSLOTSE_DEBUG_ROUTE` ist ein **Deep-Link**, kein App-Screen: `/abos`
+     landet im Web-View. Native Screens werden getippt.
+   * **Auf Hell stellen geht nur über Mehr → Konto → Erscheinungsbild**,
+     `simctl ui appearance` wirkt auf die App nicht.
+   * Ein Start aus Safari lässt „◀ Safari" in der Statusleiste stehen; vor der
+     Aufnahme Safari beenden und `simctl status_bar … override` setzen.
+   * Für die Live-Karte braucht es eine laufende Sitzung: `council_sessions`
+     auf heute ziehen und eine Zeile in `council_live_state` legen —
+     **hinterher zurückdrehen**.
+
+   **Die App-Aufnahmen sind hochkant und ungeschnitten** (`aspect` =
+   Bildschirmmaß, Tims Vorgabe 07.09.2026): Ein Telefon-Bildschirm in einem
+   16:9-Kasten stünde als schmaler Streifen zwischen zwei leeren Flächen, und
+   ein oben und unten beschnittener sieht nicht mehr nach iPhone aus. Die Bühne
+   baut ihren Rahmen aus dem Feld, alle Medien einer Ausgabe teilen sich eines.
+
+   **Was der Simulator NICHT kann:** Im Teilen-Blatt steht dort nur
+   „Erinnerungen" — kein Messenger meldet sich als Ziel an (Messages ist
+   installiert, bietet im Simulator aber keine Teilen-Erweiterung). Wer den
+   Weg „an jemanden schicken" zeigen will, filmt diese Sekunden auf einem
+   echten iPhone.
+
+   Für einen App-Clip: `xcrun simctl io <UDID> recordVideo`, danach **erst auf
+   feste 30 fps normalisieren** (`-vf fps=30`) — die Zeitangaben der
+   Simulator-Aufnahme passen nicht zu ihren Bildern, ein Schnitt auf dem Rohfilm
+   landet daneben. Nach dem Tipp großzügig weiterlaufen lassen (25 s), die
+   Aufnahme hinkt der Eingabe deutlich hinterher. Den **Fingertipp** malt
+   hinterher ffmpeg: eine gefüllte Scheibe plus fünf wachsende Ringe an der
+   Tippstelle — iOS zeichnet keinen Zeiger auf, und ohne Markierung springt das
+   Teilen-Blatt aus dem Nichts auf.
+
+   Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
+   die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der
+   App gar nicht gibt (2.2.0: das Glossar), bekommt `only="web"` — angekündigt
+   wird nur, was man auf dem eigenen Gerät auch findet.
 
 ---
 

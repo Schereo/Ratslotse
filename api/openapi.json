@@ -674,6 +674,93 @@
         "title": "AdminLlmUsageFeature",
         "type": "object"
       },
+      "AdminNewsList": {
+        "properties": {
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/AdminNewsRelease"
+            },
+            "title": "Releases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "releases"
+        ],
+        "title": "AdminNewsList",
+        "type": "object"
+      },
+      "AdminNewsRelease": {
+        "description": "Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseHighlight"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "open_recipients": {
+            "title": "Open Recipients",
+            "type": "integer"
+          },
+          "sent_recipients": {
+            "title": "Sent Recipients",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "date",
+          "title",
+          "highlights",
+          "open_recipients",
+          "sent_recipients"
+        ],
+        "title": "AdminNewsRelease",
+        "type": "object"
+      },
+      "AdminNewsSent": {
+        "description": "Bilanz eines Versands.\n\n``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den\nAnlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein\nist eine Antwort und keine offene Aufgabe.\n\nDie **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht\ngezählt: Zweihundert Mails über die Resend-API dauern länger als eine\nHTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt\nohnehin erst der Morgen-Cron mit.",
+        "properties": {
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "recipients": {
+            "title": "Recipients",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "recipients",
+          "queued",
+          "skipped"
+        ],
+        "title": "AdminNewsSent",
+        "type": "object"
+      },
       "AdminPlaceCandidate": {
         "description": "Ein Ortskandidat aus ``CouncilStore.location_candidates`` — dieselbe\nZeile liefert auch das PUT auf ``/place-candidates/{location_slug}``.\n\nDie ersten elf Felder sind die Spalten von ``council_locations``\n(``SELECT l.*``); ein Wächter-Test (``test_api_vertrag``) schlägt an, wenn\ndie Tabelle wächst, damit hier nichts still abgeschnitten wird. Darunter\nstehen die Spalten der Prüf-Tabelle (mit ``review_``-Präfix, wo der Name\nsonst kollidierte) und das, was die Abfrage ausrechnet.\n\n``status`` ist der aufgelöste Prüfstand (``review_status`` oder\n``\"pending\"``), ``aliases`` die geparste JSON-Spalte.",
         "properties": {
@@ -9411,6 +9498,69 @@
         "title": "NearbySuggestion",
         "type": "object"
       },
+      "NewsSeen": {
+        "description": "Die Marke, die nach dem Wegklicken gilt. Sie steigt nur.",
+        "properties": {
+          "seen_version": {
+            "title": "Seen Version",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "seen_version"
+        ],
+        "title": "NewsSeen",
+        "type": "object"
+      },
+      "NewsSeenIn": {
+        "description": "Welche Release-Karte weggeklickt wurde (``kern/releases.py``).\n\nDie Version kommt vom Client, weil er die GEZEIGTE meldet und nicht die\nneueste — sonst erledigte ein Wisch ein Release mit, das zwischen Laden\nund Klick erschienen ist. Unbekannte Werte lässt der Store unberührt; hier\nsteht nur der Deckel gegen Datenmüll in der Spalte.",
+        "properties": {
+          "version": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "NewsSeenIn",
+        "type": "object"
+      },
+      "NewsState": {
+        "description": "Was dieses Konto noch nicht gesehen hat.\n\n``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases\nverpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf\n``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die\nEntscheidung fällt serverseitig, damit Web und App dieselbe Antwort\nbekommen (dieselbe Regel wie ``SetupState.pending``).",
+        "properties": {
+          "older_count": {
+            "title": "Older Count",
+            "type": "integer"
+          },
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseNews"
+            },
+            "title": "Releases",
+            "type": "array"
+          },
+          "seen_version": {
+            "title": "Seen Version",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "releases",
+          "older_count",
+          "seen_version"
+        ],
+        "title": "NewsState",
+        "type": "object"
+      },
       "NotifyKind": {
         "description": "Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste\npflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option\neines anderen ist.",
         "properties": {
@@ -12036,6 +12186,139 @@
           "score"
         ],
         "title": "RelatedEntity",
+        "type": "object"
+      },
+      "ReleaseHighlight": {
+        "description": "Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.",
+        "properties": {
+          "media": {
+            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+            "properties": {
+              "alt": {
+                "title": "Alt",
+                "type": "string"
+              },
+              "aspect": {
+                "title": "Aspect",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "poster": {
+                "title": "Poster",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "src": {
+                "title": "Src",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "src",
+              "alt",
+              "aspect",
+              "poster"
+            ],
+            "title": "ReleaseMedia",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "text",
+          "url",
+          "media"
+        ],
+        "title": "ReleaseHighlight",
+        "type": "object"
+      },
+      "ReleaseMedia": {
+        "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+        "properties": {
+          "alt": {
+            "title": "Alt",
+            "type": "string"
+          },
+          "aspect": {
+            "title": "Aspect",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "poster": {
+            "title": "Poster",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "src": {
+            "title": "Src",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "src",
+          "alt",
+          "aspect",
+          "poster"
+        ],
+        "title": "ReleaseMedia",
+        "type": "object"
+      },
+      "ReleaseNews": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseHighlight"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "date",
+          "title",
+          "highlights"
+        ],
+        "title": "ReleaseNews",
         "type": "object"
       },
       "ResearchCurrent": {
@@ -15588,6 +15871,114 @@
           }
         },
         "summary": "Llm Usage",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/news": {
+      "get": {
+        "description": "Alle Einträge der Registry samt Stand ihres Versands.\n\nDie beiden Zahlen je Eintrag beantworten die Frage vor dem Drücken: Wie\nviele bekämen die Ankündigung jetzt, und wie viele haben sie schon. Sie\nentstehen aus **einer** Abfrage über alle Konten, nicht aus einer je\nRelease — die Registry wächst mit jedem Release, die Kontenzahl auch.",
+        "operationId": "admin_news_api_admin_news_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNewsList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin News",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/news/{version}/send": {
+      "post": {
+        "description": "Die Ankündigung an alle offenen Empfänger einreihen.\n\nEingereiht wird sofort (nur Datenbank), **zugestellt im Hintergrund**:\nZweihundert Mails über die Resend-API dauern länger, als eine HTTP-Anfrage\nwarten darf. Der Hintergrund-Lauf öffnet einen eigenen Store — die\nAbhängigkeit aus dem Request ist zu diesem Zeitpunkt längst geschlossen.",
+        "operationId": "admin_news_send_api_admin_news__version__send_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNewsSent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin News Send",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/news/{version}/test": {
+      "post": {
+        "description": "Die Ankündigung einmal an das eigene Konto — vor dem echten Versand.\n\nBewusst **nicht** über die Warteschlange: Eine Probe soll sofort ankommen\nund darf nicht an der eigenen Nachtruhe oder Tagesgrenze hängen bleiben.\nSie ändert deshalb auch keine Marke — sie zählt nicht als Versand.",
+        "operationId": "admin_news_test_api_admin_news__version__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestDelivery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin News Test",
         "tags": [
           "admin"
         ]
@@ -20158,6 +20549,70 @@
         "summary": "Quelle Pruefen",
         "tags": [
           "kommunalwahl"
+        ]
+      }
+    },
+    "/api/news": {
+      "get": {
+        "description": "Die offenen Release-Karten dieses Kontos, neueste zuerst.\n\nDie Bilder kommen **passend zum Client**: Wer auf dem iPhone liest, soll\ndas iPhone sehen und nicht ein Browserfenster mit Seitenleiste (Tims\nWunsch 07.09.2026). Die Auswahl fällt hier und nicht im Client — sonst\nmüsste jede Oberfläche zwei Felder auseinanderhalten, und eine dritte\nPlattform bräuchte überall eine Änderung statt nur einen Registry-Eintrag.",
+        "operationId": "get_news_api_news_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get News",
+        "tags": [
+          "news"
+        ]
+      }
+    },
+    "/api/news/seen": {
+      "post": {
+        "description": "Die Karte ist weggeklickt — die Hochwassermarke nachziehen.\n\nDer Client meldet die Version, die er GEZEIGT hat. Käme zwischen Laden und\nWegklicken ein Deploy, würde „die neueste laut Server\" ein Release\nmiterledigen, das nie jemand gesehen hat.",
+        "operationId": "mark_seen_api_news_seen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsSeenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsSeen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Seen",
+        "tags": [
+          "news"
         ]
       }
     },

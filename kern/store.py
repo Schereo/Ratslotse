@@ -194,6 +194,16 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Kalender-Abo (ICS): das Geheimnis in der Abo-Adresse dieses Kontos.
     -- Beim ersten Abruf angelegt, einzeln erneuerbar; NULL = nie abgerufen.
     calendar_token   TEXT,
+    -- „Neu bei Ratslotse" (kern/releases.py): die HÖCHSTE weggeklickte
+    -- Version, nicht die zuletzt gezeigte. Als Hochwassermarke, damit zwei
+    -- verpasste Releases beide erscheinen und ein Wisch alles darunter
+    -- erledigt. NULL = noch nie eine Karte weggeklickt.
+    news_seen_version TEXT,
+    -- Bis zu welcher Version dieses Konto die Ankündigung per Mail/Push
+    -- bekommen hat. Getrennt von `news_seen_version`: Gesehen und
+    -- angeschrieben sind zwei Dinge, und nur so findet ein zweiter Klick auf
+    -- „Verschicken" null Empfänger statt aller.
+    news_sent_version TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -1279,6 +1289,14 @@ class Store:
                 # entstanden, und ein geratenes „web" wäre eine Behauptung.
                 if "signup_client" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN signup_client TEXT")
+                # „Neu bei Ratslotse" (kern/releases.py). Bestandskonten
+                # bleiben NULL — sie haben noch nie eine Karte weggeklickt und
+                # sollen die des laufenden Releases sehen. Jede Spalte prüft
+                # sich selbst (s. tests/test_web_users_spalten.py).
+                if "news_seen_version" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN news_seen_version TEXT")
+                if "news_sent_version" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN news_sent_version TEXT")
         # Die Rollen ziehen aus der Spalte in die Tabelle um (09/2026).
         # `web_user_roles` legt das SCHEMA selbst an (CREATE TABLE IF NOT
         # EXISTS läuft bei jedem Öffnen) — hier fehlt nur der Inhalt.
@@ -1809,6 +1827,78 @@ class Store:
             self._conn.execute(
                 "UPDATE web_users SET setup_reminded_at = ? WHERE id = ?",
                 (datetime.utcnow().isoformat(timespec="seconds"), user_id),
+            )
+
+    # ---- „Neu bei Ratslotse" (kern/releases.py) ----------------------------
+
+    def set_news_seen(self, user_id: int, version: str) -> str | None:
+        """Die Hochwassermarke setzen — sie steigt nur.
+
+        Gibt die Marke zurück, die danach gilt. Sie **sinkt nie**: Die
+        Oberfläche meldet die Version, die sie gerade gezeigt hat, nicht „die
+        neueste laut Server". Kommt zwischen Laden und Wegklicken ein Deploy,
+        bliebe das neue Release sonst nicht nur offen, sondern würde von einem
+        alten Wisch mit erledigt.
+
+        Ein unbekanntes Format lässt die Marke unberührt statt zu werfen: Das
+        ist eine Wisch-Geste, kein Formular — sie darf nichts kaputt machen.
+        """
+        from kern import releases
+
+        row = self._conn.execute(
+            "SELECT news_seen_version FROM web_users WHERE id = ?", (user_id,)).fetchone()
+        if row is None:
+            return None
+        aktuell = row[0]
+        try:
+            neu_key = releases.version_key(version)
+        except ValueError:
+            return aktuell
+        if aktuell:
+            try:
+                if releases.version_key(aktuell) >= neu_key:
+                    return aktuell
+            except ValueError:
+                pass  # Unlesbare Altmarke: überschreiben ist besser als bleiben
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET news_seen_version = ? WHERE id = ?", (version, user_id))
+        return version
+
+    def news_candidates(self) -> list[dict]:
+        """Alle Konten, die eine Release-Ankündigung überhaupt bekommen dürfen.
+
+        Aktiv und mit bestätigter Adresse — mehr filtert SQL hier bewusst
+        nicht. **Welche Version wer noch nicht hat, entscheidet Python**
+        (``kern.releases.version_key``): Als Zeichenkette verglichen stünde
+        ``"2.10.0"`` vor ``"2.9.0"``, und ein ``ORDER BY`` über Versionen wäre
+        genau die Sorte stiller Fehler, die erst beim zehnten Minor auffällt.
+
+        Der Zustellweg zählt hier nicht mit: Ob jemand Mail, Push oder gar
+        nichts will, entscheidet ``kern.notify`` beim Einreihen — an einer
+        Stelle für alle Anlässe.
+        """
+        rows = self._conn.execute(
+            "SELECT id, created_at, news_seen_version, news_sent_version "
+            "FROM web_users WHERE status = 'active' AND email_verified = 1 "
+            "ORDER BY id"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_news_sent(self, user_ids: list[int], version: str) -> None:
+        """Vermerken, dass die Ankündigung dieser Version raus ist.
+
+        Auch für Konten, bei denen ``notify.einreihen`` nichts eingereiht hat
+        (Anlass abgeschaltet, Zustellung aus): Sonst fasst sie jeder weitere
+        Lauf erneut an, und aus „will das nicht" würde eine tägliche Frage.
+        """
+        if not user_ids:
+            return
+        ph = ",".join("?" * len(user_ids))
+        with self._conn:
+            self._conn.execute(
+                f"UPDATE web_users SET news_sent_version = ? WHERE id IN ({ph})",
+                (version, *user_ids),
             )
 
     # ---- Quiz: Antworten (Punkte je Gebiet) + Bewertungen ----
