@@ -10641,6 +10641,8 @@ export interface components {
             matches_capped: boolean;
             /** Name */
             name: string;
+            /** Parts */
+            parts: string[];
             /** Reason */
             reason: string;
             /** Suggestion */
@@ -16757,4 +16759,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a40cfd7da7b77914513862732e73bc3bcaf75a321432c786c24c0723a06cb1d7
+// vertrag-sha256: 18aafd080f4a6fd73009a122603ff21b60e82abe625db0c82fc5bdacc024f236

@@ -14674,6 +14674,13 @@
             "title": "Name",
             "type": "string"
           },
+          "parts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -14702,7 +14709,8 @@
           "reason",
           "vague",
           "hint",
-          "suggestion"
+          "suggestion",
+          "parts"
         ],
         "title": "TopicDescription",
         "type": "object"
