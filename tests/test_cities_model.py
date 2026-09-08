@@ -196,3 +196,18 @@ def test_display_originator(roh, art, erwartet):
 ])
 def test_verneinte_zustimmung_ist_keine_zustimmung(text, erwartet):
     assert outcome(text) is erwartet
+
+
+@pytest.mark.parametrize("text,erwartet", [
+    # Münsters „ohne Beschlussfassung geschoben" stand 288-mal als ANGENOMMEN
+    # da, weil „beschlussfassung" in der Zustimmungsliste steht und der
+    # Zustimmungs-Zweig zuletzt greift. Dieselbe Falle wie „nicht empfohlen".
+    ("ohne Beschlussfassung geschoben", Outcome.POSTPONED),
+    ("verschoben", Outcome.POSTPONED),
+    ("aufgeschoben in die nächste Sitzung", Outcome.POSTPONED),
+    # … und die Zustimmung bleibt Zustimmung.
+    ("einstimmig beschlossen", Outcome.ACCEPTED),
+    ("mit Beschlussfassung erledigt", Outcome.WITHDRAWN),
+])
+def test_geschobenes_ist_vertagt_nicht_beschlossen(text, erwartet):
+    assert outcome(text) is erwartet

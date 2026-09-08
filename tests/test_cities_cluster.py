@@ -165,3 +165,28 @@ def test_unveraenderte_ideen_werden_nicht_neu_gerechnet(store, monkeypatch):
                         lambda texte: np.ones((len(texte), 2), dtype=np.float32))
     assert cl.embed_ideas(store, MODELL) == 1
     assert cl.embed_ideas(store, MODELL) == 0, "derselbe Text, derselbe Vektor"
+
+
+# ------------------------------------------------------------ Gegenrichtung
+
+def test_der_cluster_findet_die_fremden_gegenstuecke(store):
+    """„Wie ging dieselbe Sache anderswo aus?" — die Frage am Abend vor der
+    Sitzung. Sie braucht nur den Cluster und das Ergebnis je Mitglied."""
+    from council.cities.model import AgendaItem, Consultation, Meeting, Outcome
+
+    idee(store, "os:1", "osnabrueck", "Grundsteuer C prüfen",
+         "Grundsteuer C einführen", vektor(1.0, 0.0))
+    idee(store, "ol:1", "oldenburg", "Einführung der Grundsteuer C",
+         "Grundsteuer C prüfen", vektor(0.99, 0.14))
+    store.upsert_batch(Batch(
+        meetings=[Meeting("os:m:1", "osnabrueck", None, "Rat", "2026-02-01")],
+        agenda_items=[AgendaItem("os:a:1", "os:m:1", "Grundsteuer C",
+                                 result_raw="verwiesen", outcome=Outcome.REFERRED)],
+        consultations=[Consultation("os:c:1", "os:1", agenda_item_id="os:a:1")]))
+    cl.build_clusters(store, MODELL, threshold=0.86, version="1")
+
+    fremde = [m for m in store.cluster_of("ol:1", MODELL, "1")
+              if m["body_id"] != "oldenburg"]
+    assert [m["id"] for m in fremde] == ["os:1"]
+    assert (store.outcome_for_paper("os:1") or {}).get("outcome") == "referred", \
+        "ohne das Ergebnis beantwortet der Cluster die Frage nicht"

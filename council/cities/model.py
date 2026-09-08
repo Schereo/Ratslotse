@@ -256,7 +256,13 @@ _OUTCOME_RULES: tuple[tuple[tuple[str, ...], Outcome], ...] = (
     (("geändert beschlossen", "geaendert beschlossen", "geänderte empfehlung",
       "geaenderte empfehlung", "mit änderung", "mit aenderung", "geändert zugestimmt"), Outcome.AMENDED),
     (("abgelehnt", "nicht beschlossen", "keine zustimmung", "abgelehnt."), Outcome.REJECTED),
-    (("vertagt", "zurückgestellt", "zurueckgestellt", "abgesetzt", "verschoben"), Outcome.POSTPONED),
+    # „geschoben" fängt auch „verschoben" und „aufgeschoben" — und vor allem
+    # Münsters „ohne Beschlussfassung geschoben", das 288-mal als ANGENOMMEN
+    # dastand, weil „beschlussfassung" in der Zustimmungsliste steht. Dieselbe
+    # Falle wie „nicht empfohlen", nur mit einem anderen Wort davor: Der
+    # Zustimmungs-Zweig ist der letzte, also fängt ihn jede frühere Regel ab.
+    (("vertagt", "zurückgestellt", "zurueckgestellt", "abgesetzt", "geschoben",
+      "verschoben"), Outcome.POSTPONED),
     (("verwiesen", "überwiesen", "ueberwiesen", "weitergeleitet"), Outcome.REFERRED),
     (("zurückgezogen", "zurueckgezogen", "erledigt", "zurückgenommen"), Outcome.WITHDRAWN),
     (("kenntnis",), Outcome.NOTED),
