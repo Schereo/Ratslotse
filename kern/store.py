@@ -429,6 +429,32 @@ CREATE TABLE IF NOT EXISTS user_activity (
     PRIMARY KEY (owner_id, day, feature, client)
 );
 CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
+
+-- Wie oft welche Seite aufgerufen wurde — OHNE zu wissen, von wem.
+-- Das Gegenstück zu `user_activity`: die zählt, was ANGEMELDETE Konten tun,
+-- diese hier zählt auch die anonyme Nutzung, die bis 09/2026 vollständig
+-- unbeobachtet war (kein Zugriffslog, keine Analytik).
+--
+-- Keine Kennung, kein Cookie, keine IP, kein Referrer, keine Query — die
+-- Begründung je Feld steht in kern/seitenaufrufe.py. `route` kann nur einen
+-- Wert aus der dortigen Positivliste tragen; alles Unbekannte fällt in die
+-- Sammelzeile `/andere`, damit ein fremder Browser die Tabelle weder mit
+-- erfundenen Pfaden aufblähen noch einen Suchbegriff hineinschreiben kann.
+--
+-- `sessions` zählt den ERSTEN Aufruf je Browser-Tab (Marke im sessionStorage,
+-- verschwindet mit dem Tab). Das ist so nah an „Besuche", wie man ohne
+-- Wiedererkennung kommt — und bewusst nicht „Besucher".
+CREATE TABLE IF NOT EXISTS page_views (
+    day       TEXT NOT NULL,
+    route     TEXT NOT NULL,
+    client    TEXT NOT NULL DEFAULT 'web',
+    logged_in INTEGER NOT NULL DEFAULT 0,
+    count     INTEGER NOT NULL DEFAULT 0,
+    sessions  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, route, client, logged_in)
+);
+CREATE INDEX IF NOT EXISTS idx_page_views_day ON page_views(day);
+
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
 
 -- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (kern/alerts.py).
@@ -3345,6 +3371,65 @@ class Store:
         if len(werte) % 2:
             return float(werte[mitte])
         return round((werte[mitte - 1] + werte[mitte]) / 2, 1)
+
+    # ---- Seitenaufrufe (anonym, siehe kern/seitenaufrufe.py) ----
+    def merke_seitenaufruf(self, route: str, client: str = "web",
+                           angemeldet: bool = False, erster: bool = False) -> None:
+        """Einen Seitenaufruf zählen — best-effort, nie load-bearing.
+
+        Wie ``record_activity``: Ein Zähler, der einen Request scheitern lässt,
+        ist schlimmer als kein Zähler. Der Aufrufer normalisiert Route und
+        Client vorher über ``kern.seitenaufrufe``; hier wird nur addiert.
+        """
+        from datetime import date
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO page_views (day, route, client, logged_in, count, sessions) "
+                    "VALUES (?, ?, ?, ?, 1, ?) "
+                    "ON CONFLICT(day, route, client, logged_in) DO UPDATE SET "
+                    "count = count + 1, sessions = sessions + ?",
+                    (date.today().isoformat(), route, client, 1 if angemeldet else 0,
+                     1 if erster else 0, 1 if erster else 0),
+                )
+        except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
+            pass
+
+    def seitenaufrufe(self, tage: int = 30) -> dict:
+        """Was in den letzten ``tage`` Tagen aufgerufen wurde.
+
+        Drei Schnitte auf denselben Zeilen: der Verlauf je Tag, die
+        meistgesehenen Seiten und die Aufteilung angemeldet/anonym samt
+        Client. Mehr Schnitte wären am Bestand billiger als eine zweite
+        Tabelle — die Zeilenzahl ist durch die Positivliste gedeckelt.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        verlauf = [{"day": r["day"], "n": r["n"], "sessions": r["s"]}
+                   for r in self._conn.execute(
+                       "SELECT day, SUM(count) n, SUM(sessions) s FROM page_views "
+                       "WHERE day >= ? GROUP BY day ORDER BY day", (seit,)).fetchall()]
+        seiten = [{"route": r["route"], "n": r["n"], "sessions": r["s"]}
+                  for r in self._conn.execute(
+                      "SELECT route, SUM(count) n, SUM(sessions) s FROM page_views "
+                      "WHERE day >= ? GROUP BY route ORDER BY n DESC LIMIT 12",
+                      (seit,)).fetchall()]
+        clients = [{"client": r["client"], "n": r["n"]} for r in self._conn.execute(
+            "SELECT client, SUM(count) n FROM page_views WHERE day >= ? "
+            "GROUP BY client ORDER BY n DESC", (seit,)).fetchall()]
+        summe = self._conn.execute(
+            "SELECT COALESCE(SUM(count), 0) n, COALESCE(SUM(sessions), 0) s, "
+            "COALESCE(SUM(CASE WHEN logged_in = 0 THEN count ELSE 0 END), 0) anon "
+            "FROM page_views WHERE day >= ?", (seit,)).fetchone()
+        return {
+            "days": tage,
+            "total": summe["n"],
+            "sessions": summe["s"],
+            "anonymous": summe["anon"],
+            "series": verlauf,
+            "pages": seiten,
+            "clients": clients,
+        }
 
     def admin_growth(self, days: int | None = 90) -> dict:
         """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für

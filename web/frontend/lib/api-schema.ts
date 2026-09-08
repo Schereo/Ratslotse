@@ -675,6 +675,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/page-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Page Views
+         * @description Anonyme Seitenaufrufe — die Nutzung, die vorher unsichtbar war.
+         *
+         *     Zeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die
+         *     Aufteilung nach Client. Nichts davon ist einer Person zuzuordnen.
+         */
+        get: operations["stats_page_views_api_admin_stats_page_views_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -3686,6 +3709,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/page-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seitenaufruf
+         * @description Einen Seitenaufruf zählen — anonym, aggregiert, ohne Kennung.
+         *
+         *     **Warum offen (ohne Konto).** Genau die Nutzung ohne Anmeldung war bisher
+         *     unsichtbar: Startseite, geteilte Beschlüsse, Changelog. Ein Zähler, der
+         *     erst nach dem Anmelden anspringt, beantwortet die Frage nicht, für die er
+         *     gebaut ist.
+         *
+         *     **Was gespeichert wird.** Tag, Seitenmuster aus der Positivliste, Client
+         *     und das Ja/Nein „war jemand angemeldet". Kein Konto, keine Kennung, keine
+         *     Query, kein Referrer, keine IP — ``kern/seitenaufrufe.py`` begründet jedes
+         *     Feld einzeln, ``tests/test_seitenaufrufe.py`` hält die Liste fest.
+         *
+         *     **Ohne Cookie, ohne Kontoauflösung.** Ob jemand angemeldet war, sagt der
+         *     Client selbst (``logged_in``); der Server schaut dafür in kein Token und
+         *     in keine Kontotabelle. Das ist strenger als ``optional_user`` und macht
+         *     den Endpunkt zugleich billiger. Ein Client, der lügt, verschiebt eine
+         *     grobe Statistik — Rechte hängen an keiner dieser Zahlen.
+         *
+         *     **Immer 200.** Ein Zähler, der einem Browser einen Fehler zurückgibt,
+         *     erzeugt eine Fehlermeldung über eine Zählung — das hilft niemandem.
+         */
+        post: operations["seitenaufruf_api_page_views_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/push/register": {
         parameters: {
             query?: never;
@@ -5007,6 +5069,54 @@ export interface components {
             route: string;
             /** Trace */
             trace: string | null;
+        };
+        /** AdminSeite */
+        AdminSeite: {
+            /** N */
+            n: number;
+            /** Route */
+            route: string;
+            /** Sessions */
+            sessions: number;
+        };
+        /** AdminSeitenClient */
+        AdminSeitenClient: {
+            /** Client */
+            client: string;
+            /** N */
+            n: number;
+        };
+        /** AdminSeitenTag */
+        AdminSeitenTag: {
+            /** Day */
+            day: string;
+            /** N */
+            n: number;
+            /** Sessions */
+            sessions: number;
+        };
+        /**
+         * AdminSeitenaufrufe
+         * @description Anonyme Seitenaufrufe. Keine Zahl hier lässt sich einer Person zuordnen.
+         *
+         *     ``sessions`` ist der erste Aufruf je Browser-Tab und damit so nah an
+         *     „Besuche", wie man ohne Wiedererkennung kommt — bewusst nicht „Besucher".
+         */
+        AdminSeitenaufrufe: {
+            /** Anonymous */
+            anonymous: number;
+            /** Clients */
+            clients: components["schemas"]["AdminSeitenClient"][];
+            /** Days */
+            days: number;
+            /** Pages */
+            pages: components["schemas"]["AdminSeite"][];
+            /** Series */
+            series: components["schemas"]["AdminSeitenTag"][];
+            /** Sessions */
+            sessions: number;
+            /** Total */
+            total: number;
         };
         /** AdminSeries */
         AdminSeries: {
@@ -8627,6 +8737,38 @@ export interface components {
             /** Steps */
             steps?: string[];
         };
+        /**
+         * PageViewIn
+         * @description Ein Seitenaufruf, gemeldet vom Browser.
+         *
+         *     Absichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,
+         *     Kennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in
+         *     ``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine
+         *     Positivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie
+         *     geschickt.
+         */
+        PageViewIn: {
+            /**
+             * Client
+             * @default web
+             */
+            client: string;
+            /**
+             * First
+             * @default false
+             */
+            first: boolean;
+            /**
+             * Logged In
+             * @default false
+             */
+            logged_in: boolean;
+            /**
+             * Route
+             * @default /
+             */
+            route: string;
+        };
         /** PartyFilter */
         PartyFilter: {
             /** Parties */
@@ -11771,6 +11913,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminGrowth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_page_views_api_admin_stats_page_views_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSeitenaufrufe"];
                 };
             };
             /** @description Validation Error */
@@ -15065,6 +15238,39 @@ export interface operations {
             };
         };
     };
+    seitenaufruf_api_page_views_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageViewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     register_push_api_push_register_post: {
         parameters: {
             query?: never;
@@ -16292,4 +16498,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8eccbb7a5b6b2ba9cfbaead3a91e7ff87ea8f8a9e0b3d9a23ec539c1b4603927
+// vertrag-sha256: 8c4c1aa8960524f900401b2192371b0a05fbbb9cf893a61c803f0ad35bd3d636

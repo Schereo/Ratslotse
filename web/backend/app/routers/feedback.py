@@ -13,8 +13,8 @@ from kern.store import Store
 from ..config import get_settings
 from ..antworten import Ok
 from ..deps import get_store, require_active
-from ..ratelimit import client_error_limiter, support_limiter
-from ..schemas import ClientErrorIn, FeedbackIn, SupportIn
+from ..ratelimit import client_error_limiter, page_view_limiter, support_limiter
+from ..schemas import ClientErrorIn, FeedbackIn, PageViewIn, SupportIn
 
 logger = logging.getLogger("ratslotse.web.feedback")
 
@@ -185,4 +185,51 @@ def melden(payload: ClientErrorIn, request: Request,
             browser_aufbereiten(payload.model_dump(), payload.route or "/"))
     except Exception:  # noqa: BLE001 — der Sammler bleibt folgenlos
         logger.exception("Browser-Fehler ließ sich nicht festhalten")
+    return {"ok": True}
+
+
+# Ebenfalls ein eigener Router ohne Präfix: Ein Seitenaufruf ist kein Feedback.
+page_views_router = APIRouter(prefix="/api/page-views", tags=["page-views"])
+
+
+@page_views_router.post("")
+def seitenaufruf(payload: PageViewIn, request: Request,
+                 store: Store = Depends(get_store)) -> Ok:
+    """Einen Seitenaufruf zählen — anonym, aggregiert, ohne Kennung.
+
+    **Warum offen (ohne Konto).** Genau die Nutzung ohne Anmeldung war bisher
+    unsichtbar: Startseite, geteilte Beschlüsse, Changelog. Ein Zähler, der
+    erst nach dem Anmelden anspringt, beantwortet die Frage nicht, für die er
+    gebaut ist.
+
+    **Was gespeichert wird.** Tag, Seitenmuster aus der Positivliste, Client
+    und das Ja/Nein „war jemand angemeldet". Kein Konto, keine Kennung, keine
+    Query, kein Referrer, keine IP — ``kern/seitenaufrufe.py`` begründet jedes
+    Feld einzeln, ``tests/test_seitenaufrufe.py`` hält die Liste fest.
+
+    **Ohne Cookie, ohne Kontoauflösung.** Ob jemand angemeldet war, sagt der
+    Client selbst (``logged_in``); der Server schaut dafür in kein Token und
+    in keine Kontotabelle. Das ist strenger als ``optional_user`` und macht
+    den Endpunkt zugleich billiger. Ein Client, der lügt, verschiebt eine
+    grobe Statistik — Rechte hängen an keiner dieser Zahlen.
+
+    **Immer 200.** Ein Zähler, der einem Browser einen Fehler zurückgibt,
+    erzeugt eine Fehlermeldung über eine Zählung — das hilft niemandem.
+    """
+    try:
+        page_view_limiter.check(request)
+    except HTTPException:
+        return {"ok": True}
+
+    try:
+        from kern import seitenaufrufe as sa
+
+        store.merke_seitenaufruf(
+            sa.normalisieren(payload.route),
+            sa.client_normalisieren(payload.client),
+            angemeldet=bool(payload.logged_in),
+            erster=bool(payload.first),
+        )
+    except Exception:  # noqa: BLE001 — die Zählung bleibt folgenlos
+        logger.exception("Seitenaufruf ließ sich nicht zählen")
     return {"ok": True}

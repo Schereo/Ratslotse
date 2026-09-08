@@ -1502,6 +1502,40 @@ class AdminKohorten(TypedDict):
     kennzahlen: AdminKennzahlen
 
 
+class AdminSeitenTag(TypedDict):
+    day: str
+    n: int
+    sessions: int
+
+
+class AdminSeite(TypedDict):
+    #: Ein Muster aus ``kern.seitenaufrufe.ROUTEN`` — nie ein roher Pfad.
+    route: str
+    n: int
+    sessions: int
+
+
+class AdminSeitenClient(TypedDict):
+    client: str
+    n: int
+
+
+class AdminSeitenaufrufe(TypedDict):
+    """Anonyme Seitenaufrufe. Keine Zahl hier lässt sich einer Person zuordnen.
+
+    ``sessions`` ist der erste Aufruf je Browser-Tab und damit so nah an
+    „Besuche", wie man ohne Wiedererkennung kommt — bewusst nicht „Besucher".
+    """
+    days: int
+    total: int
+    sessions: int
+    #: Aufrufe ohne Anmeldung — die Gruppe, die vorher gar nicht sichtbar war.
+    anonymous: int
+    series: list[AdminSeitenTag]
+    pages: list[AdminSeite]
+    clients: list[AdminSeitenClient]
+
+
 class AdminQuizArea(TypedDict):
     area_type: str
     area_key: str
