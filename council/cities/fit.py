@@ -279,7 +279,12 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     # Die Chunk-Matrix EINMAL: 34.000 Vektoren je Vorlage neu zu lesen wäre
     # der teuerste Teil des ganzen Laufs, und sie ändert sich dabei nicht.
     matrix = main.chunk_matrix(model, "oldenburg")
-    logger.info("fit: %s Oldenburger Textabschnitte im Speicher", len(matrix[0]))
+    # Und die PAPIER-Matrix, aus demselben Grund: Der Nachbar-Arm rechnet
+    # seit 09.09.2026 selbst gegen sie, statt die Tabelle `neighbors` zu
+    # lesen — die hält je Objekt nur die acht nächsten über ALLE Städte.
+    papier_matrix = main.paper_matrix(model, "oldenburg")
+    logger.info("fit: %s Oldenburger Textabschnitte, %s Vorlagen im Speicher",
+                len(matrix[0]), len(papier_matrix[0]))
     belege_je: dict[str, list[Evidence]] = {}
     cluster_je: dict[str, str] = {}
     # Der Vorlagentext, hier und nicht im Arbeiter. Siehe `texte_je` unten.
@@ -299,7 +304,8 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         for p, begriffe in zip(block, begriffe_je):
             klasse = einordnung.get(p["id"]) or {}
             belege = evidence_for(main, rats, p, klasse, model,
-                                  chunk_matrix=matrix, begriffe=begriffe)
+                                  chunk_matrix=matrix, begriffe=begriffe,
+                                  paper_matrix=papier_matrix)
             belege_je[p["id"]] = belege
             cluster_je[p["id"]] = cluster_zeile(main, p, model)
             texte_je[p["id"]] = main.text_for_paper(p["id"])
