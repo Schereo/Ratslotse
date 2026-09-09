@@ -7,6 +7,655 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.3.0] – 2026-09-09
+
+### Hinzugefügt
+- **Live-Probe im Admin-Panel.** Ein neuer Reiter transkribiert den O1-Stream
+  (was gerade läuft) über denselben Weg wie in der Ratssitzung — ffmpeg,
+  Streaming-Transkription, Äußerung mit Zeitmarke — und zeigt jede Äußerung in
+  dem Moment, in dem sie ankommt, samt Verzug nach Satzende. Damit lässt sich
+  vor einem Sitzungsabend prüfen, dass Schlüssel, Netz und Stream
+  zusammenspielen, ohne eine Sitzung abzuwarten. Höchstens zehn Minuten, eine
+  Probe zugleich. (#1131)
+- **„Dazu habe ich nichts gefunden" ist keine Sackgasse mehr.** Findet die Suche
+  zu einer Frage gar nichts, schlägt Ratslotse jetzt bis zu drei Fragen vor, die
+  etwas finden — gebaut aus dem Stichwort, das in der Frage schon richtig war.
+  Der Anlass steht im Datenbestand: Jemand fragte zweimal nach „Giftmüll am
+  Fliegerhorst", bekam zweimal „keine Informationen" und gab zweimal Daumen
+  runter, einmal mit dem Grund „Falschinfo". Er hatte recht — die Unterlagen
+  sagen „Sondermüll" und „Schießanlage", und er musste sich die Antwort
+  erkämpfen. Der Umweg über die Beschlusstitel beantwortet nebenbei die Frage
+  dahinter: wie das, wonach man sucht, in den Unterlagen eigentlich heißt. Die
+  Bremse ist wichtiger als die Funktion: Das Wort der Frage muss im **Titel**
+  des vorgeschlagenen Beschlusses stehen. „Wie backe ich einen Kuchen?" bekommt
+  deshalb nichts, und „Wie ist das Wetter morgen?" genau eine Zeile — die
+  handelt wirklich von Extremwetterlagen. Ein Vorschlag, der auch danebenliegt,
+  wäre schlechter als keiner. (#1220)
+- **Ein Ausfall meldet sich jetzt von selbst.** Bricht der Prod-Deploy ab,
+  bleibt die Wartungsbarriere absichtlich stehen — die Seite ist dann für
+  Angemeldete unten, bis jemand eingreift. Bisher stand das nur als roter
+  Eintrag in einer Liste, in die man schauen muss: Am 07.09.2026 hat es deshalb
+  74 Minuten niemand erfahren. Jetzt schickt der Deploy im Fehlerfall eine Mail
+  mit dem Zustand der Barriere und der Dienste. Zusätzlich pingt ein Workflow
+  alle zehn Minuten von außerhalb des Servers die Startseite und die
+  Gesundheitsprüfung an und schlägt Alarm, wenn dreimal hintereinander nichts
+  zurückkommt. (#1180)
+- **Grundlage für den Städtevergleich: ein eigener Speicher für Ratsdokumente
+  anderer Kommunen.** Er trennt streng, was eine Schnittstelle geliefert hat,
+  von allem, was daraus gerechnet wird — Text, Einordnung, Ähnlichkeiten liegen
+  als versionierte Ableitungen daneben und lassen sich jederzeit neu berechnen.
+  Damit legt eine heutige Auswertung keine künftige fest. Sichtbar ist davon
+  noch nichts. (#1185)
+- **Ratslotse beurteilt jetzt, ob Oldenburg eine Idee aus einer anderen Stadt
+  schon hat — und belegt das.** Zu jeder übertragbaren fremden Vorlage entsteht
+  ein Urteil: hat der Rat genau dieses Instrument schon, hat er einen Teil
+  davon, oder fehlt es ganz. Dazu, ob sich ein Antrag lohnen würde und was
+  dagegen spricht. Jedes Urteil nennt die Oldenburger Beschlüsse, auf die es
+  sich stützt; ohne Beleg wird keines gespeichert. Sichtbar wird das mit dem
+  nächsten Schritt. (#1197)
+- **Neu: „Ideen aus anderen Städten".** Eine Seite je Themenfeld zeigt, was Räte
+  in Osnabrück, Braunschweig, Münster, Potsdam und Magdeburg beschlossen haben
+  und ob Oldenburg dasselbe schon hat. Zu jeder Idee steht, ob sich ein Antrag
+  lohnen könnte und was dagegen spricht — und darunter die Oldenburger
+  Beschlüsse, auf die sich diese Einschätzung stützt. (#1198)
+- **„Ideen aus anderen Städten" jetzt auch in der App.** Unter „Mehr" steht
+  dieselbe Übersicht wie im Web: je Themenfeld, was andere Räte beschlossen
+  haben und ob Oldenburg dasselbe schon hat, mit Begründung und den Beschlüssen,
+  auf die sie sich stützt. (#1200)
+- **Die Ideen anderer Städte lassen sich jetzt frei durchsuchen.** Über der
+  Liste steht eine Zeile: „Was haben andere Städte zu …?" Wer eine Sache im Kopf
+  hat, muss nicht erst das richtige Themenfeld raten. Gesucht wird über die
+  Texte und zusätzlich über die inhaltliche Nachbarschaft der besten Treffer —
+  so findet „Hitzeschutz" auch den Hitzeaktionsplan, der anders heißt. (#1201)
+- **Jede Idee aus einer anderen Stadt trägt jetzt, was sie den Rat kosten
+  würde.** Fünf Stufen von der bloßen Anfrage über den Prüfauftrag und die
+  Resolution bis zum Beschluss und zum Haushaltsposten — knapp ein Drittel der
+  übertragbaren Vorlagen sind nämlich Anfragen, und „eine Anfrage zu
+  Fußwegbreiten stellen" ist eine ganz andere Sorte Idee als „ein
+  Darlehensprogramm für Genossenschaften einführen". Dazu steht dabei, wer es in
+  Oldenburg tun müsste, wenn es nicht die Stadt selbst ist: Hausverbote in
+  Bussen spricht die VWG aus, nicht der Rat. (#1215)
+- **Der Städtevergleich erkennt jetzt, wenn mehrere Städte dieselbe Idee
+  haben.** Bisher stand jede fremde Vorlage für sich; ein „Osnabrück hat das,
+  Oldenburg nicht" ist eine Beobachtung, „fünf von sechs Städten haben das,
+  Oldenburg nicht" ein Argument. Weil die Städte dieselbe Sache verschieden
+  nennen — von 1.461 Formulierungen waren fünf wortgleich —, werden die Ideen
+  dafür verglichen, nicht die Wörter. Gefunden hat es unter anderem die
+  Verpackungssteuer, die in fünf Städten läuft und in Oldenburg nur als Bericht
+  vorliegt, und die Grundsatzbeschlüsse zum Bau-Turbo, die drei Städte seit
+  Dezember gefasst haben. (#1223)
+- **Der Städte-Speicher holt sich die Ratsdokumente jetzt selbst.** Ein Client
+  spricht die Schnittstellen von Osnabrück, Braunschweig, Münster, Potsdam und
+  Magdeburg an — je Hersteller ein Adapter, der dessen Eigenheiten kennt: dass
+  die einen ihre Listen von hinten sortieren, die anderen den Zeitfilter nach
+  zwei Seiten stillschweigend fallen lassen, und dass eine Stadt Dateiadressen
+  nennt, die es nicht gibt. Jede Antwort wird unverändert aufbewahrt, bevor sie
+  jemand auswertet. (#1186)
+- **Jede Idee aus einer anderen Stadt zeigt jetzt, was sie kosten würde und wie
+  verbreitet sie ist.** Neben der Herkunft steht in einem Wort, ob es um eine
+  Anfrage, einen Prüfauftrag, eine Resolution, einen Beschluss oder um Geld geht
+  — und daneben, in wie vielen anderen Städten dieselbe Sache schon vorkommt. Wo
+  nicht die Stadt allein entscheidet, steht der Adressat beim Urteil:
+  Hausverbote in Bussen spricht das Verkehrsunternehmen aus, nicht der Rat.
+  (#1226)
+- **Oldenburg liegt jetzt im selben Speicher wie die Vergleichsstädte.** Erst
+  dadurch wird der Vergleich symmetrisch: „Was fehlt uns?" und „Was haben wir,
+  was andere nicht haben?" sind dieselbe Rechnung mit vertauschten Rollen. Der
+  Weg dorthin führt über die vorhandene Rats-Datenbank, ohne einen einzigen
+  zusätzlichen Abruf beim städtischen Ratsinformationssystem. Ein wöchentlicher
+  Lauf hält alle sechs Städte aktuell. (#1187)
+- **Fremde Ratsvorlagen werden eingeordnet: Themenfeld, übertragbarer Kern,
+  Zuständigkeit.** Was ein Sprachmodell dazu sagt, liegt versioniert neben den
+  Dokumenten statt in ihnen — zwei Fassungen desselben Urteils können
+  nebeneinander stehen und sich messen lassen. Eine neue Frage an die Dokumente
+  ist damit ein Eintrag in einer Registry, keine Datenbank-Änderung. Ein
+  Prüfstand aus 45 von Hand eingeordneten Vorlagen sagt, ob eine Änderung besser
+  oder schlechter ist. (#1188)
+- **Ein Oldenburger Beschluss findet jetzt seine Entsprechung in anderen
+  Städten.** Alle Vorlagen — die eigenen wie die fremden — liegen im selben
+  Bedeutungsraum, und daraus entstehen Nachbarschaften über Stadtgrenzen hinweg.
+  Dazu ein Volltextindex über Titel, Aktenzeichen und Zusammenfassung. Welches
+  Modell den Raum aufspannt, steht im Schlüssel: Ein besseres kann neben dem
+  heutigen liegen und sich mit ihm messen, statt es zu ersetzen. (#1189)
+- **Anderswo beschlossen: Was andere Städte zur selben Sache gemacht haben.**
+  Auf Beschluss-Seiten steht jetzt ein Block mit ähnlichen Anträgen und Vorlagen
+  aus den Ratsinformationssystemen anderer Kommunen — mit Stadt, Datum, Ergebnis
+  und einer kurzen Zusammenfassung, verlinkt ins jeweilige Original. Der Block
+  erscheint nur, wo es wirklich etwas zu zeigen gibt. (#1190)
+- **„Anderswo beschlossen" jetzt auch in der App.** Beschluss-Seiten zeigen dort
+  denselben Block wie im Web: was andere Städte zur selben Sache beantragt oder
+  beschlossen haben, mit Stadt, Vorlagenart, Datum, Ergebnis und einer kurzen
+  Zusammenfassung. Wo die andere Stadt eine Ansichtsseite veröffentlicht, führt
+  die Zeile dorthin. (#1192)
+- **Bei jeder Idee aus einer anderen Stadt lässt sich jetzt sagen, ob der Befund
+  stimmt.** Zwei Wörter am Fuß der Karte — „Ja" oder „Nein" —, und damit
+  entsteht der Maßstab, an dem die Urteile künftig gemessen werden. Bisher waren
+  das vierzig Fälle, die eine Person an einem Tag beurteilt hat. **Und die
+  KI-Frage kennt die anderen Städte.** Wer fragt „Wie machen das andere Städte?"
+  oder „Gibt es das anderswo schon?", bekommt Beschlüsse aus Osnabrück,
+  Braunschweig, Münster, Potsdam und Magdeburg dazu — immer mit der Stadt davor,
+  denn was dort gilt, gilt nicht in Oldenburg. (#1227)
+- **Wer eine Frage stellt, kann daraus mit einem Tipp ein Thema machen.** Unter
+  jeder Antwort steht jetzt der Weg zum Abo — nicht mehr nur dort, wo nichts
+  gefunden wurde, also ausgerechnet an der Stelle mit der geringsten Lust
+  darauf. Passt die Frage zu einem der kuratierten Stadtthemen (Radverkehr,
+  Kitas, Stadion …), legt ein Klick es samt fertiger Beschreibung an; sonst
+  führt der Weg wie bisher ins vorbefüllte Formular. **Und die Einrichtung endet
+  nicht mehr mit leeren Händen.** Wer sie durchläuft, ohne ein einziges Thema
+  oder Gremium zu hinterlegen, bekommt am Schluss einen letzten Schirm mit drei
+  Vorschlägen. Der Grund dahinter ist eine Zahl: Von neun echten Neuanmeldungen
+  hatten fünf am Ende nichts hinterlegt — und damit gibt es keinen Anlass mehr,
+  sich je wieder bei ihnen zu melden. Übersprungen werden kann auch dieser
+  Schirm; der Assistent zwingt an keiner Stelle zu einer Eingabe. (#1218)
+- **Der Zoom wechselt die Stufe der Stadtkarte.** Wer auf der Stadtansicht in
+  einen Ortsbereich hineinzoomt, landet in dessen Viertel-Ansicht mit Tafel; wer
+  im Viertel wieder herauszoomt, ist zurück in der Stadt. Die Chips, Brotkrumen
+  und die Ortsauswahl bleiben als zweiter Weg. (#1173)
+- **Das Admin-Panel zeigt, was aus neuen Konten wird.** Unter *Statistik* steht
+  jetzt ein Trichter je Registrierungswoche: angemeldet, bestätigt, Einrichtung
+  begonnen und beendet, erstes Thema oder Gremium binnen 24 Stunden, erste
+  Frage, und ob jemand an einem zweiten Tag wiederkam. Dazu vier Kennzahlen, an
+  denen sich künftige Änderungen messen lassen. Zwei Dinge macht die Ansicht
+  bewusst anders. Sie rechnet **erreicht gegen erreichbar**: Ein Konto von
+  gestern kann „kam binnen 30 Tagen wieder" weder geschafft noch verfehlt haben
+  und steht deshalb als „noch offen" da, nicht als Null — sonst läse sich jede
+  frische Woche als Totalausfall. Und sie lässt Betreiber- und Testkonten heraus
+  (Recht `admin` plus die Domänen aus `STATS_EXCLUDE_DOMAINS`), weil sie sonst
+  zum großen Teil das eigene Klicken misst. Ratsmitglieder bleiben drin:
+  Ausgeschlossen wird ein Recht, keine Rolle. (#1207)
+- **Neben jedem Ausschuss steht jetzt, wie viel Post er bedeutet.** Ein Abo
+  schickt je Sitzung eine Tagesordnungs-Meldung — bisher sah man das erst am
+  Posteingang. Vier Konten hatten binnen fünfzehn Sekunden alle sechzehn
+  Ausschüsse abonniert, zwei davon bekamen daraufhin rund zwanzig Mails und
+  waren nie wieder da. Jetzt trägt jedes Gremium seine Menge („≈ 1 Meldung im
+  Monat"), und über der Liste steht, was die aktuelle Auswahl zusammen bedeutet.
+  Gerechnet aus den Sitzungen der letzten zwölf Monate, gerundet und mit „≈" —
+  es ist eine Erwartung, keine Zusage. Kein Riegel, keine Warnung: nur eine Zahl
+  vor der Entscheidung statt danach. (#1222)
+- **Bebauungspläne liegen jetzt als Fläche auf der Karte von „Mein Viertel“.**
+  Bisher zeigte die Karte nur, was OpenStreetMap kennt — eine beschlossene, aber
+  noch nicht gebaute Straße wie die Entlastungsstraße auf dem Fliegerhorst hatte
+  keinen Ort. Jetzt hängt an jedem Vorhaben, dessen Beschluss eine Plannummer
+  nennt („Bebauungsplan N-777 G“, „Änderung 1 des Bebauungsplanes 777 D“), der
+  Geltungsbereich des Plans aus dem Geoportal der Stadt Oldenburg:
+  rechtsverbindliche Pläne durchgezogen, Pläne in Aufstellung gestrichelt,
+  jeweils in der Farbe des Stands, mit Nummer, Name und den Stationen
+  Aufstellung, Satzung, Rechtskraft im Detail. Der Wochenlauf hält den Spiegel
+  frisch. (#1149)
+- **„Mein Viertel“ zeigt jetzt auch, was die Stadt selbst meldet: Sperrungen und
+  Pressemitteilungen.** Die laufenden Sperrungen aus dem Geoportal der Stadt
+  liegen als gestrichelte Linie auf der Karte des Viertels, dazu eine Karte
+  „Gesperrt und im Bau“ mit Straße, Grund, Art und Frist. Darunter steht
+  „Aktuelles von der Stadt“: die Pressemitteilungen der letzten vier Monate, die
+  das Viertel oder eine seiner Straßen nennen — regelbasiert verortet, ohne
+  Sprachmodell; Sitzungsankündigungen und stadtweite Mitteilungen bleiben
+  draußen. Beides kommt täglich mit dem Stadt-Quellen-Lauf, in Web und App.
+  (#1153)
+- **„Neu bei Ratslotse": Was eine neue Version bringt, steht jetzt auf der
+  Übersicht.** Ratslotse liefert laufend aus — wer alle paar Wochen vorbeikommt,
+  merkte von einem neuen Feature bisher nichts. Nach einer größeren Ausgabe
+  steht jetzt eine Karte auf „Heute", und sie erzählt nicht, sondern zeigt: zu
+  jeder Neuerung eine echte Aufnahme aus der App — beim Teilen ein kurzer Clip,
+  sonst ein Bild —, dazu ein Satz und der Weg dorthin. Man blättert mit den
+  Reitern darunter oder mit den Pfeiltasten durch sie; die Bilder gibt es hell
+  und dunkel, und wer Bewegung abgeschaltet hat, sieht statt des Clips sein
+  Standbild. Der Durchgang führt: „Weiter" ist der Hauptknopf, „Alles klar" gibt
+  es erst, wenn alles einmal dastand. Die Karte gibt es auch in der iPhone-App —
+  dort mit Clips aus der App: Man sieht das iPhone, nicht den Browser, und ein
+  Wisch über den Clip blättert weiter. Wer länger nicht da war, bekommt die
+  verpassten Ausgaben mit — das Jüngste ausführlich, das Ältere in einer Zeile.
+  Wer nach einer Ausgabe dazugekommen ist, sieht sie nie: Für ihn ist alles neu.
+  Die Karte merkt sich am Konto, was weggeklickt wurde, gilt also auf jedem
+  Gerät. Dieselben Sätze gehen auf Wunsch als E-Mail und Push raus, über
+  denselben Weg wie alle Ratsmeldungen — mit Aus-Schalter, Nachtruhe und
+  Tagesgrenze, und einem eigenen Schalter „Neu bei Ratslotse" unter *Mein
+  Konto*. Angekündigt werden nur die großen Sachen: Fixes und kleine
+  Verbesserungen stehen weiter im Changelog und kommen gar nicht erst auf die
+  Karte. (#1178)
+- **Das Admin-Panel zeigt die Fragen, auf die es keine belegte Antwort gab.**
+  Eine Quote sagt „neun Prozent scheitern", diese Liste sagt woran. Der
+  bekannteste Fall stand am 09.08.2026 im Bestand: Jemand fragte zweimal nach
+  „Giftmüll am Fliegerhorst" und bekam zweimal „keine Informationen" — weil die
+  Unterlagen „Sondermüll" und „Schießanlage" sagen. Ein Blick in diese Liste
+  hätte das an dem Tag gezeigt, an dem es passierte. Die Liste stammt
+  ausschließlich aus **gespeicherten** Gesprächen: Wessen Fragen nicht in der
+  Datenbank liegen, dessen Fragen erscheinen auch hier nicht. Konto und
+  Gesprächskennung fehlen bewusst — für „woran ist es gescheitert?" sind sie
+  ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein
+  Leseprotokoll. (#1210)
+- **Ratslotse zählt jetzt selbst, welche Seiten aufgerufen werden — anonym.**
+  Die Nutzung ohne Anmeldung war bis dahin vollständig unbeobachtet: kein
+  Zugriffslog, keine Analytik. Wer die Startseite ansah oder einem geteilten
+  Beschluss-Link folgte, hinterließ keine Spur, und „wir hatten viele Besucher"
+  war ein Gefühl statt einer Zahl. Gezählt werden vier Dinge: Tag, Seite, Client
+  und ob jemand angemeldet war. Kein Cookie, keine Kennung, keine IP, kein
+  Referrer, kein User-Agent, keine Verweildauer — und vor allem **keine Query**,
+  denn die trägt hier alles Persönliche (`?id=` sagt, welchen Beschluss jemand
+  liest, `?q=` wäre die Suchanfrage). Der Server nimmt zudem nur Seiten an, die
+  er kennt; alles andere fällt in eine Sammelzeile, damit ein fremder Browser
+  die Tabelle weder aufblähen noch beschriften kann. Kein Dritt-Dienst ist
+  beteiligt: Die Meldung geht an dieselbe Domäne, aus der die Seite kommt. Eine
+  einzige Ausnahme von „Query kommt nie mit": der Reiter auf der Ratsinfo-Seite.
+  Suche, Sitzungen, Themen und Analyse sind nicht vier Seiten, sondern eine mit
+  vier Reitern — ohne diesen einen Parameter (mit genau vier erlaubten Werten)
+  fielen die vier meistbenutzten Bereiche in eine Zeile zusammen. Im Admin-Panel
+  steht das unter *Statistik*: Aufrufe je Tag, Besuche, Anteil ohne Anmeldung,
+  die meistgesehenen Seiten und die Aufteilung nach App und Web. (#1208)
+- **Laufende Beteiligungen liegen als Fläche auf der Karte.** Wo die Stadt
+  gerade zu einem Bebauungsplan Stellungnahmen sammelt, zeigt die Viertel-Karte
+  den Geltungsbereich des Plans punktiert in Signal-Orange, mit Frist und
+  Verfahrensschritt beim Zeigen; ein Tipp öffnet die Beteiligung bei der Stadt.
+  Die Fläche kommt aus dem Geoportal, der Plan aus dem Titel der Beteiligung.
+  Auf `/karte` ist das die Ebene „Beteiligungen“ (Schritt 4 des Umbauplans), auf
+  „Mein Viertel“ liegt sie immer. Die App zeigt die Beteiligungen jetzt auch als
+  Karte und Fläche. (#1163)
+- **Die vereinte Stadtkarte beginnt — hinter dem Schalter `stadtkarte`.** Unter
+  `/karte` liegt eine Karte mit drei Zoomstufen: die Stadt mit ihren 31
+  Ortsbereichen, nach Zahl der Vorhaben getönt; ein Tipp zoomt ins Viertel mit
+  Pins, Planflächen und Sperrungen; ein Pin öffnet das Vorhaben. Rechts läuft
+  eine Tafel-Spalte mit, die mit dem Zoom ihren Inhalt wechselt — dieselben
+  Bausteine wie auf „Mein Viertel“, das sich nicht ändert. Oben auf der Karte
+  liegen drei Ebenen-Chips (Vorhaben, Bebauungspläne, Sperrungen) mit Farbpunkt
+  und Zähler; ein Tipp schaltet die Ebene aus oder an, die Wahl steht in der
+  Adresse und wird im Browser gemerkt, die Quellenzeile nennt nur, was gerade
+  liegt. Erste zwei Schritte des Umbauplans in `STADTKARTE-PLAN.md`; sichtbar
+  nur mit eingeschaltetem Schalter und Konto. (#1158)
+- **Die Stadtkarte in der App: Stadt, Viertel, Vorhaben auf einer Karte.** „Mein
+  Viertel“ öffnet in der iOS-App jetzt die vereinte Karte: die 31 Ortsbereiche
+  nach Zahl ihrer Vorhaben getönt, ein Tipp zoomt ins Viertel mit Pins,
+  Planflächen, Sperrungen und Beteiligungs-Flächen; die Tafel läuft daneben
+  (iPad) oder darunter (iPhone) mit, das Vorhaben öffnet als Sheet. Ebenen
+  lassen sich als Chips über der Karte schalten — auch die Themen-Orte der
+  bisherigen Stadtkarte, gebündelt nach Zoom. Der Abschnitt „Stadtkarte“ im
+  Rats-Tab zeigt dieselbe Karte; der Eintrag „Stadtkarte“ unter „Mehr“ ist in
+  „Mein Viertel“ aufgegangen. (#1166)
+- **Die Themen-Orte der alten Stadtkarte sind jetzt eine Ebene der neuen.** Auf
+  `/karte` schaltet der Chip „Themen-Orte“ die verorteten Themen und
+  Beschlussorte aus allen Jahren dazu — Punktgröße nach Zahl der Beschlüsse,
+  nahe Punkte im Weitzoom gebündelt, Namen erst beim Hineinzoomen; darunter die
+  Art als Unter-Chips (Orte, Organisationen, Projekte, Beschlussorte). Im
+  Viertel liegen nur die Punkte des Ortsbereichs. Auf der Stadt-Stufe zeigt die
+  Tafel dazu „Themen, die gerade laufen“. Schritt 3 des Umbauplans, weiter
+  hinter dem Schalter `stadtkarte`. (#1161)
+- **Das Wahlergebnis als Ebene der Stadtkarte.** Mit dem Wahlabend zur Ratswahl
+  am 13. September lässt sich auf der Stadtkarte unter „Mein Viertel“ die Ebene
+  „Wahlergebnis“ einschalten: Die Ortsbereiche tönen nach der Stärke der
+  stärksten Liste ihres Wahlbereichs, der Hinweis beim Zeigen nennt die vorderen
+  Listen mit Anteil, die Tafel zeigt stadtweit und je Viertel die Listen mit
+  Anteil und Sitzen samt Auszählungsstand und führt zum Wahlabend-Dashboard.
+  Parteifarben stehen nur als Punkt, die Fläche bleibt eine Tönung; die
+  Zuordnung über die Ortsbereiche ist ungefähr, die Stadt schneidet nach
+  Wahlbezirken. (#1170)
+- **Eine Statusseite sagt jetzt, ob ratslotse.de läuft.** Sie liegt bewusst
+  nicht auf dem eigenen Server, denn eine Statusseite, die mit dem Dienst
+  stirbt, den sie beschreibt, ist keine. Zu sehen sind der aktuelle Zustand, die
+  Messungen der letzten Stunden und die Erklärung, was überhaupt geprüft wird.
+  Die Werte kommen direkt aus den Probeläufen, nicht aus einer nachgeführten
+  Datei, die von der Wirklichkeit abweichen könnte. (#1183)
+- **Sechs Handlungen, die bisher niemand gezählt hat, zählen jetzt mit.** Ein
+  angelegtes Thema, ein gesetztes Lesezeichen, ein verfolgter Vorgang — und vor
+  allem zwei Zahlen, die es vorher gar nicht gab: wie viele Fragen aus einem
+  Vorschlags-Chip kommen statt aus dem Eingabefeld, und wie viele Antworten
+  **keine einzige Quelle** nennen. Beide beantworten etwas, das man sonst nur
+  raten kann. Ob gute Vorschläge das Produkt tragen oder ob niemand ins Feld
+  tippt, sieht man der Fragenliste nicht an. Und Antworten ohne Quelle ließen
+  sich bisher nur an den gespeicherten Gesprächen abschätzen, also an einem Teil
+  — jetzt werden alle gezählt. Dazu ein Wächter, der einen alten Fehler nicht
+  wiederkehren lässt: Bis 09/2026 versprach das Admin-Panel Zähler für Suche,
+  Analyse und Karte, aber niemand schrieb sie. Für jedes Konto stand dort „nie",
+  und nichts schlug an — eine 0 sieht aus wie eine Messung. Der Test hält jetzt
+  beide Richtungen fest: kein versprochener Zähler ohne Schreibstelle, keine
+  Schreibstelle ohne Anzeige. (#1209)
+- **Wer mehrere Themen in ein Feld schreibt, wird darauf hingewiesen.** Ein Name
+  wie „Stadtteile: Bürgerfelde Nord, Dietrichsfeld, Helleheide, …" nahm
+  Ratslotse bisher stillschweigend an — und lieferte dann elf Treffer, die alle
+  knapp über der Verwerfungsschwelle lagen. Der Grund ist bauartbedingt: Der
+  Wächter bewertet jeden Beschluss gegen **einen** Text, und eine Aufzählung hat
+  kein Zentrum. Getrennt bekommt jeder Teil seine eigene, saubere Meldung. Das
+  Formular bietet deshalb an, den Namen aufzuteilen — mit einem Klick werden
+  daraus mehrere Themen, jedes mit eigener Beschreibung. Ein Angebot, kein
+  Verbot: „Als ein Thema lassen" steht daneben. Der Erkenner ist bewusst
+  zurückhaltend. Er trennt nur an Kommata, nie an „und" („Bus und Bahn" ist ein
+  Thema), und lässt Namen mit Klammern in Ruhe — „Bebauungsplan 851
+  (Schützenweg, Haarentor)" ist eine Ortsangabe, keine Liste. (#1221)
+- **Wahlabend zur Ratswahl am 13. September 2026.** Unter `/wahlabend` zeigt
+  Ratslotse den Auszählungsstand der Stadt live: Stimmenanteile und Sitze je
+  Liste, für jede Liste die Kandidat*innen in den sechs Wahlbereichen mit
+  Personenstimmen, wer nach dem Zuteilungsverfahren des Kommunalwahlgesetzes
+  gerade im Rat wäre und wie viele Stimmen bis zum Sitz fehlen. Dazu eine
+  Hochrechnung aus den noch offenen Wahlbezirken auf Basis der Ergebnisse von
+  2021, der Halbkreis der Sitze, ein Mehrheiten-Rechner mit allen rechnerisch
+  möglichen Bündnissen, Gewinne und Verluste gegenüber 2021, der Verlauf des
+  Abends als Zeitreihe, das Kandidatenrennen je Wahlbereich und ein teilbares
+  Bild des Stands als PNG. Die Zahlen kommen aus den Open-Data-Dateien des
+  Votemanagers der Stadt; das Sitzverfahren ist gegen das amtliche Ergebnis von
+  2021 geprüft. Bis Sonntag 18 Uhr zählen Seite und Einstiege herunter und
+  fragen nicht im Minutentakt nach; der beginnt mit dem Wahlabend. Die Seite
+  hängt am Feature-Schalter `wahlabend`. (#1150)
+
+### Geändert
+- **Der Bericht der Verwaltung wiederholt nicht mehr, was daneben schon als
+  Karte steht.** Auf Beschluss-Seiten stand der Abschnitt „Auswirkungen"
+  zweimal: einmal im Auszug „Warum es dazu kam", einmal in den Karten „Was
+  kostet das?" und „Klima-Check" direkt daneben. Jetzt steht er nur noch in den
+  Karten — der Auszug wird dadurch im Mittel rund 300 Zeichen kürzer und kommt
+  schneller zur Sache. Bis dahin ging das nicht: Die Karten waren fast immer
+  leer, ein Schnitt hätte die Angabe ersatzlos verloren. Seit sie sich füllen,
+  geht es — und der Schnitt hängt weiter an ihnen. Trägt eine Karte den
+  Abschnitt nicht oder nur zur Hälfte, bleibt er im Auszug stehen. Das betrifft
+  mehr Fälle, als man denkt: Vorlagen, in denen die Verwaltung nur die Kosten
+  notiert hat und nichts zum Klima, ungewöhnlich gesetzte Überschriften, und die
+  längsten Kostenangaben, von denen die Karte nur den Anfang zeigt. Der Punkt
+  „c) Weitere", für den es gar keine Karte gibt, bleibt ebenfalls stehen.
+  (#1212)
+- **Die Browsertests laufen noch einmal knapp doppelt so schnell.** Bisher
+  meldete sich fast jeder von ihnen neu an — Formular ausfüllen, warten, den
+  Einrichtungs-Assistenten wegräumen, neu laden. Das kostete rund fünf Sekunden
+  je Test bei Seiten, die selbst in einer Zehntelsekunde stehen, und war über
+  die ganze Suite gut die Hälfte der Laufzeit. Jetzt wird jede Identität einmal
+  je Lauf angemeldet; die Tests starten mit fertiger Sitzung. Geprüft wird das
+  Anmelden weiterhin — an der einen Stelle, an der es der Gegenstand ist.
+  (#1168)
+- **Die CI-Prüfungen eines Pull Requests sind von 16–21 Minuten auf gut acht
+  gefallen.** Das Warten hing praktisch allein an den Browsertests: Sie liefen
+  auf einem einzigen Läufer, während jede andere Prüfung längst fertig war. Sie
+  sind jetzt auf vier Läufer aufgeteilt, von denen jeder sein eigenes Backend
+  auf einer eigenen Wegwerf-Datenbank mitbringt. Dazu zwei kleinere Sachen: In
+  der CI entstehen keine Bildschirmaufnahmen mehr von grünen Tests, die ohnehin
+  niemand ansieht, und die iOS-App wird nicht mehr zweimal übersetzt — der
+  frühere Vorab-Build lief gegen ein anderes Ziel als der Testlauf und wurde
+  deshalb komplett verworfen. (#1156)
+- **Für den Städtevergleich bleibt das kleinere Sprachmodell — nachgemessen.**
+  Ein dreimal größeres Modell fand weniger von dem, was tatsächlich zusammen
+  gehört, und schob dabei alle Ähnlichkeitswerte so eng zusammen, dass sich
+  Verwandtes von Zufälligem kaum noch trennen ließ. Der Vergleich lässt sich
+  jederzeit wiederholen. (#1202)
+- **Der Weg des Städtevergleichs auf die öffentliche Seite steht als Checkliste
+  in der Betriebsdokumentation.** Beide Bereiche sind fertig gebaut und auf der
+  Testumgebung sichtbar; wann sie öffentlich werden, hängt daran, dass
+  Ratsmitglieder die Treffer für tragfähig halten. (#1203)
+- **Die Belege für „Hat Oldenburg das schon?" kommen jetzt aus vier Quellen
+  statt zwei.** Neben den inhaltlich nächsten Vorlagen und der Volltextsuche
+  werden einzelne Textabschnitte durchsucht — damit findet sich auch die Sache,
+  die auf Seite elf einer großen Vorlage steht — und Oldenburgs eigene
+  Beschlüsse mit ihrem Abstimmungsergebnis, das bisher gar nicht zur Verfügung
+  stand. Die Suchwörter übersetzt ein Modell vorher ins Verwaltungsdeutsch: Wer
+  „Außengastronomie" sucht, findet in Oldenburg „Sondernutzungssatzung".
+  Gemessen an vierzig handgeprüften Fällen steht der richtige Beleg jetzt in
+  allen 23 Fällen in der Liste statt in 19 — und drei dieser Handurteile waren
+  selbst falsch, weil sie mit der alten, schwächeren Suche gefällt worden waren.
+  (#1213)
+- **Das Urteil „Hat Oldenburg das schon?" wird jetzt dreimal gefällt und dann
+  ausgezählt.** Das Modell schwankte zwischen Läufen um zwölf Prozentpunkte;
+  welche seiner Antworten in der Datenbank landete, entschied damit der Zufall.
+  Drei Stimmen je Vorlage halbieren die Schwankung, und bei Gleichstand gewinnt
+  der vorsichtigere Wert — „Oldenburg hat das schon" nimmt eine Idee von der
+  Liste und ist der teurere Irrtum. Außerdem sieht das Urteil jetzt, in wie
+  vielen anderen Städten dieselbe Idee vorkommt und was sie den Rat kosten
+  würde. (#1224)
+- **Der Städtevergleich kennt jetzt Oldenburgs ganze Ratsgeschichte, nicht nur
+  das letzte Jahr.** Ob eine Idee aus einer anderen Stadt hier fehlt,
+  entscheidet nicht, was der Rat in den vergangenen zwölf Monaten beschlossen
+  hat, sondern was er seit 2018 beschlossen hat. Der Bestand für Oldenburg
+  wächst damit von 710 auf 5.945 Vorlagen und Anträge. (#1195)
+- **Der Städtevergleich urteilt über den ganzen Bestand, nicht mehr über eine
+  Stichprobe.** Bevor das Modell entscheiden kann, ob Oldenburg eine Idee schon
+  hat, muss es wissen, wie Oldenburg sie nennen würde — „Lernbegleiter:innen"
+  heißt hier „Schulbegleitung". Dieser eine kleine Aufruf je Vorlage lief bisher
+  nacheinander und machte aus der Vorbereitung 73 Minuten Warten. Er läuft jetzt
+  nebenläufig, die Vorbereitung dauert sieben Minuten. Für die 9.688
+  übertragbaren Vorlagen der fünf anderen Städte heißt das: Ihre Bewertung ist
+  ein Lauf von Stunden statt von Tagen. (#1230)
+- **Bei den Ideen aus anderen Städten steht jetzt, was ist — nicht, was sich
+  lohnt.** Bisher sagte ein Sprachmodell zu jeder Idee auch, ob ein Antrag sich
+  lohnen würde. Gemessen über drei Fassungen traf es diese Frage nur in jedem
+  zweiten Fall, während es die Tatsachenfrage „hat Oldenburg das schon?" in zwei
+  von drei Fällen trifft. Deshalb wird es nicht mehr danach gefragt. Die Karte
+  zeigt stattdessen fünf Angaben, aus denen sich das selbst schließen lässt:
+  Befund, Belege, Aufwand, Adressat und in wie vielen anderen Städten dieselbe
+  Sache vorkommt. Sortiert wird danach, was mehrere Räte beschlossen haben und
+  Oldenburg fehlt. (#1227)
+- **Die einmalige Erinnerung erreicht jetzt auch die, die nie angefangen
+  haben.** Bisher setzte sie ein *begonnenes* Einrichtungs-Gespräch voraus — und
+  ging damit an der größeren Gruppe vorbei: Von neun neuen Konten hatten sieben
+  den Assistenten nie geöffnet, fünf standen am Ende ohne Thema und ohne Gremium
+  da. Für die gab es keinen einzigen Anlass, sich je wieder zu melden, auch
+  keine Erinnerung. Der neue Anlass zählt deshalb nicht den erreichten Schritt,
+  sondern den Haken: Wer weder Thema noch Gremium hat, bekommt die Mail — auch
+  wenn er formal „fertig" ist; wer eines von beiden hat, bekommt keine, egal wie
+  weit er kam. Der Text sagt entsprechend, was fehlt und was es bringt, statt
+  zum Fortsetzen eines Schritts aufzufordern, den es nie gab. An der
+  Zurückhaltung ändert sich nichts: beide Anlässe teilen sich dieselbe Marke, es
+  bleibt bei **einer** Mail je Konto, nie wieder. (#1219)
+- **`FEATURE_FLAGS=*` schaltet alle Feature-Schalter an.** Auf der Dev-Umgebung
+  ist damit alles sichtbar, sobald es gemergt ist; auf Prod bleibt die Liste
+  explizit. (#1167)
+- **Der Startbildschirm der App trägt jetzt die Bausteine der Social-Karten.**
+  Die plastische Sonne und die drei 3D-Wellenlinien sind weg; stattdessen stehen
+  Lotti, Wortmarke und Kicker auf dem leisen Wellenmuster, unter weichem
+  Morgenlicht mit Möwen und über den Wogen, die auch die Instagram-Karten tragen
+  — im Dunkelmodus mit Mond statt Sonne. Lotti selbst schaut jetzt zugewandt und
+  mit gewölbten Freude-Brauen in die Kamera, statt wie die bisherige Helden-Pose
+  traurig nach unten — und ihre beiden Küken stehen mit auf dem Bild. Das Bild
+  entsteht aus einem Skript (`ios/scripts/make_splash.py`), das die Bausteine
+  aus ratslotse-social nimmt, statt als Datei ohne Herkunft im Repo zu liegen.
+  (#1147)
+- **Der Kalender-Feed nennt jedes Gremium mit vollem Namen.** Bisher stand im
+  Termin der Kurzname aus der Web-Oberfläche („Umwelt", „Rat"), der amtliche
+  Name nur unten in der Beschreibung. Das Abo landet aber vor allem bei
+  Ratsmitgliedern zwischen ihren übrigen Terminen, und dort heißt die Sitzung
+  so, wie sie in der Einladung heißt: „Ausschuss für Stadtgrün, Umwelt und
+  Klima", „Rat der Stadt Oldenburg". Auch die Erinnerung am Vorabend trägt jetzt
+  den vollen Namen. (#1143)
+- **„Mein Viertel“ fragt jetzt zuerst nach deiner Haustür.** Die Auswahlseite
+  war eine blasse Stadtkarte über einem Alphabet aus 31 Kacheln. Jetzt steht
+  oben eine Anzeigetafel mit der Zahl aller Vorhaben in der Stadt und wie viele
+  davon im Bau, beschlossen oder in Planung sind — daneben die eine Handlung, um
+  die es geht: Straße oder Stadtteil eintippen (mit Vorschlägen aus den
+  Beschlüssen) oder den eigenen Standort nehmen, beides führt direkt auf die
+  Tafel des Viertels; nichts davon wird gespeichert. Die Karte tönt nach Zahl
+  der Vorhaben, daneben stehen die Vorhaben, die stadtweit gerade herausstechen
+  (im Bau zuerst, je Ortsbereich höchstens eines), und darunter die Rangliste
+  aller Ortsbereiche statt des Alphabets. Ein Highlight öffnet auf der Tafel
+  gleich das gemeinte Vorhaben. (#1145)
+- **Die Karte von „Mein Viertel“ reagiert jetzt auf den Zeiger.** Wer auf einen
+  Pin, eine Straßenlinie oder eine Planfläche zeigt, sieht das Vorhaben wachsen
+  und einen Hinweis mit Stand, Termin und Name; zeigt man auf eine Zeile der
+  Liste, hebt sich ihr Pin auf der Karte, und umgekehrt hebt ein Pin seine
+  Zeile. Ein Tipp auf einen Pin wählt das Vorhaben direkt — bisher brauchte es
+  erst ein Popup und darin einen zweiten Tipp. Das gewählte Vorhaben trägt ein
+  Namensschild und einen pulsierenden Ring, damit man auf der Karte findet, was
+  man angeklickt hat. (#1152)
+- **„Neu zu deinen Themen" sagt jetzt, was entschieden wurde.** Die Karte auf
+  „Heute" zeigte je Treffer nur eine Themen-Pille, den amtlichen Titel und „vor
+  drei Wochen" — ohne Ergebnis und ohne einen Satz dazu. Jetzt trägt jede Zeile
+  dieselbe Anatomie wie die Themen-Karte: ein Punkt vor ungelesenen Treffern,
+  der Titel, die Zusammenfassung in einem Satz, darunter Datum · Gremium ·
+  Thema, rechts das Ergebnis (Angenommen, Abgelehnt, Zur Kenntnis …). Im Kopf
+  steht, wie viel ungelesen ist und wie viele Themen und Treffer hinter der
+  Auswahl stehen; wer einen Treffer öffnet, hat ihn damit gelesen — wie auf
+  „Meine Themen". Die Karte zeigt drei statt zwei Treffer, und zwar wirklich die
+  jüngsten: Vorher nahm sie je Thema nur die zehn passendsten und sortierte erst
+  die nach Datum. Die iPhone-App zieht nach: Dieselbe Zeile, dieselbe Neu-Marke,
+  die Mengen als Mono-Zeile über den Treffern. (#1146)
+- **Ein Deploy lässt die Seite nicht mehr wegen einer einzelnen Kachel unten.**
+  Die Rauchprobe nach dem Deploy war alles-oder-nichts: Fiel irgendein Endpunkt
+  durch, brach der Deploy ab und die Wartungssperre blieb stehen. Am 07.09.2026
+  kostete das 74 Minuten Ausfall, ausgelöst von einer Wochenvorschau, die in der
+  laufenden Fassung genauso kaputt war. Jetzt unterscheidet die Probe: Bricht
+  der Kern, also Gesundheitsprüfung, Konfiguration und die tragenden Listen,
+  bleibt der Abbruch. Fällt nur eine einzelne Karte durch, läuft der Deploy
+  weiter und schickt stattdessen eine Mail. (#1181)
+- **„Mein Viertel“ und die Stadtkarte sind eine Karte.** Der Menüpunkt „Mein
+  Viertel“ öffnet jetzt die vereinte Stadtkarte unter `/karte` — mit dem eigenen
+  Stadtteil, wenn einer gewählt ist, sonst mit der Stadt. Der Eintrag
+  „Stadtkarte“ fällt aus dem Menü; der Themen-Tab zeigt nur noch die Liste und
+  verweist auf die Karte, die Themen-Orte liegen dort als Ebene. Die alte
+  Adresse `/viertel` leitet weiter, Mails und geteilte Links bleiben gültig. Die
+  ganze Karte samt Tafel liegt ab jetzt hinter der Anmeldung; öffentlich bleibt
+  die Startseite. (#1164)
+- **Die Messpunkte auf der Statusseite lassen sich jetzt ablesen.** Wer mit dem
+  Zeiger über einen Balken fährt, hebt ihn heraus, während die übrigen
+  zurücktreten. Unter dem Streifen steht dann statt der Zeitachse die volle
+  Angabe: Wochentag, Datum, Uhrzeit und ob die Seite zu diesem Zeitpunkt
+  erreichbar war. Der kleine Browser-Tooltip entfällt dafür. Auf dem Telefon
+  hält eine Berührung dieselbe Anzeige, ohne das Scrollen zu blockieren. (#1184)
+- **Die Testsuite läuft parallel.** Der Lauf verteilt sich mit `pytest -n auto`
+  auf alle Kerne: In der CI fällt der Testschritt von 4:39 auf 2:15, auf einem
+  Zehnkerner von 1:42 auf 0:35. Möglich wurde das, indem die Wegwerf-Datenbanken
+  der Backend-Tests nicht mehr von jedem Testmodul einzeln über eine
+  Prozessvariable verabredet werden, sondern einmal je Prozess in
+  `tests/conftest.py`. Vorher entschied die Import-Reihenfolge, welche Datei
+  galt — seriell war die fest, auf mehrere Prozesse verteilt bei jedem Lauf eine
+  andere, und ein Test schrieb seine Zeilen in eine andere Datenbank, als die
+  Anwendung las. Ein Wächter hält die Regel fest, damit die nächste Zuweisung
+  nicht wieder sporadisch rote Läufe erzeugt. (#1162)
+- **Der wöchentliche Themen-Abgleich schreibt einen Brief statt einer Meldung je
+  Thema.** Tauchen beim Sonntagslauf zu mehreren deiner Themen neue Beschlüsse
+  auf, kommt jetzt ein Brief mit einer Gruppe je Thema — derselbe Aufbau wie der
+  Ergebnis-Brief aus dem Protokoll-Import: Der Beschluss mit der größten
+  Tragweite führt jede Gruppe mit Ergebnis, Stimmen, Datum und Lottis
+  Kurzfassung, der Rest steht als Liste darunter. Ein Beschluss, der zu zwei
+  Themen passt, steht nur einmal. Der Betreff nennt die Themen („Neu zu
+  „Finanzen“, „Radwege“ — 5 Beschlüsse"), und weil ein Treffer bis zu ein halbes
+  Jahr alt sein kann, geht dieser Brief nie an der Tagesgrenze vorbei. (#1129)
+- **Die neuen Statistik-Abschnitte im Admin-Panel zeigen jetzt, was sich
+  verändert hat — nicht nur, wo es steht.** Jede Kennzahl trägt Zähler und
+  Nenner („6 von 14") und die Veränderung gegen dieselbe Spanne davor, als Chip
+  in Signal-Orange wie jedes Delta in der Designsprache. Der Trichter hat drei
+  Lagen in einer Farbe — alle Anmeldungen, die alt genug sind, die es geschafft
+  haben — statt einer Ampel, die etwas anderes meinte als die Balkenlänge; der
+  Abriss zur Stufe davor steht als Zahl daneben. Seitenaufrufe heißen wie die
+  Seiten („Ratsinfo · Suche", nicht `/council?tab=decisions`), Anteile stehen
+  dabei, angemeldet/anonym und App/Web sind je ein Balken. **Der letzte Schirm
+  der Einrichtung** zeigt die drei Themen als Karten mit Einordnung und
+  Beschlusszahl statt als drei Chips auf leerer Fläche. Die Themen-Brücke unter
+  einer Antwort nennt, worum es in dem Thema geht. Das Aufteilen-Angebot bei
+  einer Themenliste steht im Primär-Ton statt in Signal-Orange (das ist nie eine
+  Flächenfarbe). Und auf den Ausschuss-Abos steht die Mailmenge je Gremium als
+  eigenes Stück mit Glocke, die Summe der Auswahl als Karte mit der Zahl vorn —
+  ab dem ersten Abo, nicht erst ab zwölf. (#1228)
+
+### Behoben
+- **Ergebnisse aus Magdeburg und Münster kamen nicht an.** Beim Städtevergleich
+  hatte keine einzige Magdeburger Vorlage ein Beratungsergebnis, obwohl fast
+  6.000 Tagesordnungspunkte eines tragen: Die Schnittstelle führt dort zwei
+  Kennungsräume für denselben Punkt, und sie vergibt dieselbe Beratungs-Kennung
+  an bis zu sechs verschiedene Stationen. Beides ist jetzt aufgelöst — die
+  Beratung findet ihren Punkt über die Sitzung, die sie selbst nennt. Außerdem
+  wurde „nicht empfohlen" als Zustimmung gezählt: 275-mal stand damit das
+  Gegenteil dessen da, was im Protokoll steht. (#1206)
+- **„Ohne Beschlussfassung geschoben" galt als beschlossen.** Der
+  Städtevergleich zählte den Satz 288-mal als Zustimmung, obwohl er das
+  Gegenteil sagt — dieselbe Falle wie zuvor bei „nicht empfohlen": Das Wort
+  „Beschlussfassung" steht in der Zustimmungsliste und griff, bevor das
+  „geschoben" davor gelesen wurde. (#1225)
+- **„Anderswo beschlossen" erscheint jetzt auf fünfmal so vielen
+  Beschluss-Seiten — und zeigt dort nur noch, was sich übertragen lässt.** Der
+  Block fand seine Vorlage bisher nur über eine Kennung, die kaum ein Beschluss
+  trägt; jetzt findet er sie auch über die Vorlagennummer. Gleichzeitig fallen
+  Treffer heraus, die zwar ähnlich klingen, aber nichts zu übertragen haben: Ein
+  Bebauungsplan aus einer anderen Stadt ist für Oldenburg keine Idee, sondern
+  nur ein Dokument derselben Sorte. (#1194)
+- **Der Einordnungslauf über fremde Ratsvorlagen bricht nicht mehr ab, wenn ein
+  Modell Unsinn antwortet.** Kam ein Batch als Liste von Zeichenketten statt als
+  Liste von Objekten zurück, warf der Zugriff im Arbeitsthread und riss den
+  ganzen Lauf um — gemessen nach 520 von 619 Batches. Solche Antworten werden
+  jetzt verworfen und die betroffenen Vorlagen einzeln nachgereicht. (#1191)
+- **Lange Überschriften liefen aus den Hinweiskarten der Stadtkarte heraus.**
+  Der Hinweis beim Zeigen auf ein Vorhaben bricht jetzt um, statt in einer Zeile
+  über den Rand zu schießen. Außerdem stand darunter ein zweiter, grauer Hinweis
+  des Browsers mit demselben Text; er ist weg, den Namen des Punkts bekommt die
+  Sprachausgabe weiterhin. (#1176)
+- **Die Linien auf der Stadtkarte wurden mit jedem Zeigen dicker.** Wer mehrmals
+  über ein Vorhaben in der Liste fuhr, sah seine Straßenlinie immer breiter
+  werden; jetzt kehrt sie beim Verlassen zur Ruhe-Stärke zurück, auch eine
+  blasse Linie zu ihrer Deckkraft. (#1172)
+- **Im Vorhaben-Blatt der Stadtkarte standen zwei Schließen-Kreuze
+  übereinander.** Das Blatt bringt auf dem Telefon sein eigenes Kreuz mit; das
+  zweite aus dem Detail ist weg. In der Seitenspalte am Schreibtisch bleibt es,
+  dort gibt es kein anderes. (#1175)
+- **„Was kostet das?" und der Klima-Check bleiben nicht mehr fast immer leer.**
+  Auf Beschluss-Seiten gibt es zwei Karten, die aus der Vorlage vorlesen, was
+  die Verwaltung zu Kosten und Klimawirkung geschrieben hat — gefüllt waren sie
+  bei 64 bzw. 57 von 5079 Vorlagen. Zwei Ursachen: Der Auszug lief nur beim
+  Einlesen einer neuen Vorlage, den vorhandenen Bestand hat er nie angefasst;
+  und er kannte nur die seit 2022 übliche Form „a) Finanzen", nicht die ältere
+  Überschrift „Finanzielle Auswirkungen:", unter der gut die Hälfte aller
+  Vorlagen ihre Kostenangabe führt. Jetzt sind es 3438 Kostenangaben und 5069
+  statt 95 zuständige Ämter; auch der Beschlussvorschlag der Verwaltung steht
+  auf 2295 statt 43 Seiten. Der Abgleich läuft ab sofort wöchentlich mit, damit
+  spätere Verbesserungen den Bestand erreichen und nicht nur neu eingelesene
+  Vorlagen. Nebenbei enden die Angaben jetzt sauber vor der Grußformel: Wo
+  vorher „keine Auswirkungen. In Vertretung J ü r g e n K r o g m a n n" stand,
+  steht die Unterschrift nicht mehr mit in der Karte — und ein bloßes „keine"
+  wird wieder als „keine Angabe" erkannt statt als Kostenangabe ausgegeben.
+  (#1211)
+- **Die Hintergrund-Jobs überstehen ein überlastetes Sprachmodell.** Meldet der
+  Anbieter ein Rate-Limit, wartet ein Job jetzt bis zu fünf Minuten und versucht
+  es wieder; antwortet das Modell auch dann nicht, übernimmt ein gemessen fast
+  gleich gutes Ersatzmodell. Das gilt für Kurzfassungen, Tragweite, Kartentexte,
+  Kritiker, Ausschuss-Zusammenfassung, Videoauswertung und „Mein Viertel“ — im
+  September waren so 37 von 39 Rate-Limit-Ausfällen auf ein einziges Modell
+  zurückgegangen, das seit Ende August die meisten dieser Jobs trägt. (#1142)
+- **Der Wochenlauf von „Mein Viertel“ übersteht ein Rate-Limit.** Meldet das
+  Sprachmodell „gerade überlastet“, wartet der Lauf und versucht es dreimal
+  wieder, statt abzubrechen; ein Ortsbereich, der trotzdem scheitert, wird
+  übersprungen und beim nächsten Lauf nachgeholt. Der erste Lauf auf der
+  Dev-Umgebung war so nach vier von 31 Ortsbereichen stehen geblieben. Eine
+  Tafel, die noch nie gerechnet wurde, sagt das jetzt auch so, statt zu
+  behaupten, der Rat habe nichts beschlossen. (#1138)
+- **„Meinen Standort nehmen“ auf der Stadtkarte fragt jetzt wirklich nach dem
+  Standort.** Die Seite hatte die Ortung für sich selbst gesperrt, der Browser
+  fragte gar nicht erst, der Knopf sagte nur „nicht verfügbar“. Scheitert die
+  Ortung, nennt die Meldung jetzt den Grund: verweigert, zu langsam oder gerade
+  nicht verfügbar. (#1174)
+- **Das Aufteilen-Angebot bei Themen greift nur noch bei echten Listen.** Die
+  erste Fassung erkannte jede Aufzählung mit Komma — und damit auch Beisätze
+  („Oldenburg, Stadt der Wissenschaft"), Angaben mit Zahl („Klimaschutz 2035,
+  Maßnahmenplan") und Sätze mit „und" („Radwege, Fahrradstraßen und
+  Abstellanlagen" wurde zu „Radwege" und „Fahrradstraßen und Abstellanlagen").
+  Jetzt zählt nur noch, was aus reinen Namen besteht: kein Artikel, keine
+  Präposition, kein „und", keine Zahl in einem der Teile. Saubere Listen wie
+  „Kitas, Schulen, Spielplätze" oder die sieben Stadtteile aus dem Bestand
+  werden weiterhin angeboten. Der Preis: „Bebauungsplan 851, Bebauungsplan 852"
+  wird nicht mehr erkannt — ein fehlendes Angebot ist das kleinere Übel. (#1229)
+- **Auf der Viertel-Karte sind Abschnittsgrenzen keine Baustellen mehr.** Wird
+  die Tweelbäker Tredde „von Am Schmeel bis Brahmweg“ ausgebaut, sind die beiden
+  Grenzstraßen nicht betroffen — vorher standen sie mit Linie und Pin auf der
+  Karte wie eigene Vorhaben. Jetzt trägt nur der Gegenstand Linie und Pin, die
+  Grenzen stehen im Detail als „Abschnitt: …“. Straßen, die ein Vorhaben nur
+  benennen („Quartier Am Schmeel/Krusenbusch“), bekommen ebenfalls keine Linie
+  mehr und stehen als „Umfeld: …“. Und sobald ein Vorhaben ausgewählt ist,
+  treten die anderen auf der Karte zurück. Web und App. (#1144)
+- **Die Bahnbrücke Krusenbusch–Bümmerstede steht auf der Viertel-Karte.** Das
+  Bauwerk hat keinen Straßennamen, kein Geocoder fand es, und das Vorhaben hing
+  an einem Nebenweg. Jetzt trägt es einen redaktionell geprüften Punkt samt
+  Linie über die Bahn — und weil die Linie beide Seiten berührt, sehen
+  Krusenbusch und Bümmerstede das Vorhaben in ihrem Viertel. (#1148)
+- **Der Bericht der Verwaltung bricht nicht mehr mitten im Satz ab.** Auf
+  Beschluss-Seiten stand unter „Warum es dazu kam" nur der Anfang von
+  Sachverhalt und Begründung — nach 2600 Zeichen endete der Text mit drei
+  Punkten, und zwar auch dann, wenn man ihn über „Mehr anzeigen" ganz
+  aufgeklappt hatte. Betroffen war gut die Hälfte aller Vorlagen. Jetzt kommt
+  der Bericht vollständig; gekürzt wird nur noch die Anzeige, nicht der Text.
+  Gleichzeitig fällt am Ende der Verwaltungs-Schwanz weg: die Anlagen-Liste, die
+  gleich daneben unter „Dokumente & Anlagen" steht, und die Unterschrift, die
+  aus dem PDF als Buchstabensalat („D r . S v e n U h r h a n") herausfiel. Die
+  Angabe zu den finanziellen Auswirkungen bleibt erhalten. (#1205)
+- **Die Schrittliste des Wochenlaufs kannte einen Schritt nicht.** Beim
+  Zusammenführen der Zweige kam das Holen der Bebauungsplan-Umringe dazu, ohne
+  dass der Katalog im Kopf der Datei es erfuhr — genau der Fall, gegen den seit
+  kurzem ein Wächter steht. Er hat angeschlagen; die Liste ist wieder
+  vollständig. (#1216)
+- **Die Wochenvorschau fiel aus, sobald eine frisch veröffentlichte Tagesordnung
+  noch keine KI-Tragweite hatte.** Punkte, die nur nach Regeln bewertet waren,
+  trugen das Feld für den Tragweite-Grund gar nicht, und der Endpunkt brach mit
+  einem Validierungsfehler ab. Am 07.09.2026 blieb deshalb nach einem Deploy die
+  Prod-API gut siebzig Minuten gestoppt: Die Rauchprobe stolperte über genau
+  diesen Endpunkt, und die Wartungssperre hielt fail-closed. Das Feld ist jetzt
+  immer da, notfalls leer. (#1179)
+
 ## [2.2.0] – 2026-09-06
 
 ### Hinzugefügt
@@ -6964,7 +7613,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.2.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.3.0...main
+[2.3.0]: https://github.com/Schereo/Ratslotse/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Schereo/Ratslotse/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/Schereo/Ratslotse/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Schereo/Ratslotse/compare/v1.15.0...v2.0.0

@@ -21,7 +21,8 @@ press links and "Ähnliche Beschlüsse" are heavier and run here, once a week, i
      9. Personen-Stammdaten    backfill_stammdaten.py      — Mandate/Ausschuss-Besetzungen aus dem Ratsinfo
     10. Tragweite              rate_impact.py              — 500er-Tranche, VOR dem Wichtigkeits-Score
     11. Wichtigkeits-Score     score_importance.py         — mischt Tragweite + Gesprächswert (kein LLM)
-   11b. Mein Viertel           build_district_projects.py  — bündelt verortete Beschlüsse zu Vorhaben je Ortsbereich
+   11b. B-Plan-Umringe        fetch_bplan_outlines.py     — Flächen aus openGEOdata, auch wo OSM noch nichts kennt
+   11c. Mein Viertel           build_district_projects.py  — bündelt verortete Beschlüsse zu Vorhaben je Ortsbereich
     12. Quizfragen             generate_quiz.py            — füllt Gebiete unter Ziel-Fragenzahl auf
     13. Interessantheit        rate_interest.py            — 500er-Tranche, speist das Fundstück
     14. Fundstücke             generate_fundstuecke.py     — 21 Tage Vorlauf, idempotent
@@ -110,6 +111,10 @@ STEPS: list[tuple[str, str]] = [
     # damit die 50/50-Mischung frische Werte sieht.
     ("Tragweite", "rate_impact.py --limit 500"),
     ("Wichtigkeits-Score", "score_importance.py"),
+    # Bebauungsplan-Umringe der Stadt (openGEOdata, ein Aufruf, kein LLM):
+    # die Flächen, die „Mein Viertel" an Bebauungsplan-Beschlüsse hängt —
+    # auch dort, wo noch nichts gebaut ist und OSM deshalb nichts kennt.
+    ("Bebauungsplan-Umringe (Stadt)", "fetch_bplan_outlines.py"),
     # „Mein Viertel" (LLM, gecacht): Richter-Urteil je neuem verorteten
     # Beschluss und Bündelung zu Vorhaben je Ortsbereich. Nach dem Geocoding
     # und der Ortszuordnung, weil es deren Tabellen liest.
@@ -132,7 +137,7 @@ def main() -> list[dict]:
     hier nur die Namen der Fehlschläge, und in der Cron-Übersicht stand
     entsprechend eine einzige Zahl („16 Schritte, 0 fehlgeschlagen"). Welcher
     Schritt zwei Stunden brauchte und welcher stumm nichts tat, sah man nur im
-    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 18 der 20
+    Log auf dem Server — obwohl der Lauf es die ganze Zeit wusste. 19 der 21
     Schritte rufen kein ``run_guarded``, schreiben also auch keine eigene
     ``job_runs``-Zeile; ihre Bilanz kann nur von hier kommen.
 

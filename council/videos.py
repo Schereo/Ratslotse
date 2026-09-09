@@ -352,7 +352,7 @@ def _ask(agenda_text: str, chunk: str, tag: str, attempt: int = 0) -> list[dict]
                f"TRANSKRIPT-ABSCHNITT:\n{chunk}")
     resp = llm.chat_complete(
         model=MODEL, _feature="video_results",
-        _allow_empty_response=True,
+        _allow_empty_response=True, _geduld=True, _ersatz=llm.ersatz_fuer(MODEL),
         messages=[{"role": "system", "content": SYSTEM_PROMPT},
                   {"role": "user", "content": content}],
         temperature=0, response_format={"type": "json_object"}, max_tokens=32_000,

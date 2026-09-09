@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Täglicher Abgleich der Stadt-Pressemitteilungen (RSS → Details → FTS/Chunks).
+"""Täglicher Abgleich der Stadt-Quellen: Pressemitteilungen (RSS → Details → FTS/Chunks
+→ Ortsbezug), Bauleitplan-Beteiligungen und aktuelle Sperrungen (Geoportal).
 
 Holt den RSS-Feed (60 Einträge), lädt fehlende Detailseiten, schreibt sie in
 council_press (+FTS) und embeddet die neuen Texte direkt (best-effort — ohne
@@ -64,10 +65,27 @@ def main() -> dict:
         bet = store.save_beteiligungen(beteiligung.fetch_planfaelle())
     except Exception:  # noqa: BLE001
         pass
+    # Ortsbezug der neuen (und noch nie geprüften) Mitteilungen — regelbasiert,
+    # kein Modell; die Tafel „Mein Viertel" liest ihn.
+    orte: dict = {}
+    try:
+        from council import presse_orte
+        orte = presse_orte.verorte(store, store.press_without_places(limit=300))
+    except Exception:  # noqa: BLE001
+        pass
+    # Aktuelle Sperrungen aus dem Geoportal — eigener try, eigener Ausfall.
+    sperr: dict = {}
+    try:
+        from council import sperrungen
+        sperr = store.save_road_closures(sperrungen.fetch_closures())
+    except Exception:  # noqa: BLE001
+        pass
     store.close()
     return {"feed": len(feed), "neu": neu, "fehlgeschlagen": fehlgeschlagen,
             "chunks": chunks, "beteiligungen": bet.get("laufend", -1),
-            "bet_neu": bet.get("neu", 0), "bet_beendet": bet.get("beendet", 0)}
+            "bet_neu": bet.get("neu", 0), "bet_beendet": bet.get("beendet", 0),
+            "verortet": orte.get("verortet", 0), "sperrungen": sperr.get("laufend", -1),
+            "sperr_neu": sperr.get("neu", 0), "sperr_beendet": sperr.get("beendet", 0)}
 
 
 if __name__ == "__main__":

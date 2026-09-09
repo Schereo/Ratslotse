@@ -52,7 +52,7 @@ RATSCHE = WURZEL / "pyrightconfig.ratsche.json"
 #: neue ein; das ist der halbe Lohn der Arbeit. Fällt ein Bereich auf null,
 #: gehört er in `include` von `pyrightconfig.json`, nicht mehr hierher.
 SCHULDEN = {
-    "council": 194,
+    "council": 183,
     "web/backend/app/routers": 111,
     "scripts": 44,
     "eval": 7,

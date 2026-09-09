@@ -3,7 +3,8 @@
  *
  * ÜBERARBEITET am 03.09.2026. Die Datei prüfte eine Oberfläche von vorher:
  * eine Überschrift „Ratsinformationssystem" (die Reiter heißen heute
- * „Suche", „Sitzungen", „Stadtkarte", „Analyse"), einen Zeitraum „Kommend"
+ * „Suche", „Sitzungen", „Analyse"; die Stadtkarte wohnt seit 09/2026 unter
+ * „Mein Viertel"), einen Zeitraum „Kommend"
  * (heute „Anstehend") — und vor allem einen DIALOG für die Tagesordnung. Die
  * klappt seit dem Umbau in der Karte selbst auf, und `/council` beginnt nicht
  * mehr bei den Sitzungen, sondern bei der Suche.

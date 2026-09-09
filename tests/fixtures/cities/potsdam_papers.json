@@ -1,0 +1,259 @@
+[
+ {
+  "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008372",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.potsdam.sitzung-online.de/oparl/bodies/1",
+  "name": "Befragung der Einwohner von Groß Glienicke zum Bau von fünf Windrädern",
+  "reference": "26/SVV/0541",
+  "date": "2026-09-01",
+  "paperType": "Antrag",
+  "mainFile": {
+   "id": "https://www.potsdam.sitzung-online.de/oparl/files/2911676",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-06-08 26_SVV_0541 Befragung der Einwoh SAO.pdf",
+   "mimeType": "pdf",
+   "size": 77425,
+   "accessUrl": "https://egov.potsdam.de/public/doc?DOCTYP=130&DOLFDNR=2911676&OTYP=41",
+   "created": "2026-06-08T16:08:07+02:00",
+   "modified": "2026-08-24T18:38:05+02:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.potsdam.sitzung-online.de/oparl/organizations/at/2000011"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2006856",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/89"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-06-16T11:43:45+02:00",
+    "modified": "2026-06-16T11:43:45+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2006857",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/1"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-06-16T11:44:09+02:00",
+    "modified": "2026-06-16T11:44:09+02:00",
+    "deleted": false
+   }
+  ],
+  "created": "2026-06-08T16:08:07+02:00",
+  "modified": "2026-09-01T10:48:03+02:00",
+  "web": "https://egov.potsdam.de/public/VO020?VOLFDNR=2008372",
+  "deleted": false
+ },
+ {
+  "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008897",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.potsdam.sitzung-online.de/oparl/bodies/1",
+  "name": "ÄA - Anwendung des Konzeptverfahrens Preisgedämpfter Wohnraum",
+  "reference": "26/SVV/0341-001",
+  "date": "2026-09-01",
+  "paperType": "Änderungs- /Ergänzungsantrag",
+  "superordinatedPaper": [
+   "https://www.potsdam.sitzung-online.de/oparl/papers/2007963"
+  ],
+  "mainFile": {
+   "id": "https://www.potsdam.sitzung-online.de/oparl/files/2931287",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-09-01 26_SVV_0341-001 AeA - Anwendung des K SAO.pdf",
+   "mimeType": "pdf",
+   "size": 77918,
+   "accessUrl": "https://egov.potsdam.de/public/doc?DOCTYP=130&DOLFDNR=2931287&OTYP=41",
+   "created": "2026-09-01T08:42:03+02:00",
+   "modified": "2026-09-01T18:40:30+02:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.potsdam.sitzung-online.de/oparl/organizations/at/51"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007170",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/6"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T08:57:30+02:00",
+    "modified": "2026-09-01T08:57:30+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007171",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/1"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T08:57:45+02:00",
+    "modified": "2026-09-01T08:57:45+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007168",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/86"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T08:42:19+02:00",
+    "modified": "2026-09-01T08:42:19+02:00",
+    "deleted": false
+   }
+  ],
+  "created": "2026-09-01T08:42:02+02:00",
+  "modified": "2026-09-01T10:49:31+02:00",
+  "web": "https://egov.potsdam.de/public/VO020?VOLFDNR=2008897",
+  "deleted": false
+ },
+ {
+  "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008898",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.potsdam.sitzung-online.de/oparl/bodies/1",
+  "name": "Verbesserung der Versorgung mit kostenfreiem Trinkwasser im öffentlichen Raum",
+  "reference": "26/SVV/0762",
+  "date": "2026-09-01",
+  "paperType": "Antrag",
+  "mainFile": {
+   "id": "https://www.potsdam.sitzung-online.de/oparl/files/2931297",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-09-01 26_SVV_0762 Verbesserung der Ver SAO.pdf",
+   "mimeType": "pdf",
+   "accessUrl": "https://egov.potsdam.de/public/doc?DOCTYP=130&DOLFDNR=2931297&OTYP=41",
+   "created": "2026-09-01T09:08:44+02:00",
+   "modified": "2026-09-01T09:11:42+02:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.potsdam.sitzung-online.de/oparl/organizations/at/51"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007176",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/1"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T09:10:44+02:00",
+    "modified": "2026-09-01T09:10:44+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007175",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/2000008"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T09:10:32+02:00",
+    "modified": "2026-09-01T09:10:32+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007172",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/89"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T09:08:59+02:00",
+    "modified": "2026-09-01T09:09:49+02:00",
+    "deleted": false
+   }
+  ],
+  "created": "2026-09-01T09:08:44+02:00",
+  "modified": "2026-09-01T10:49:17+02:00",
+  "web": "https://egov.potsdam.de/public/VO020?VOLFDNR=2008898",
+  "deleted": false
+ },
+ {
+  "id": "https://www.potsdam.sitzung-online.de/oparl/papers/2008902",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.potsdam.sitzung-online.de/oparl/bodies/1",
+  "name": "Ergänzung - Initiierung und Förderung gemeinschaftlicher Wohnformen",
+  "reference": "26/SVV/0583-001",
+  "date": "2026-09-01",
+  "paperType": "Änderungs- /Ergänzungsantrag",
+  "superordinatedPaper": [
+   "https://www.potsdam.sitzung-online.de/oparl/papers/2008469"
+  ],
+  "mainFile": {
+   "id": "https://www.potsdam.sitzung-online.de/oparl/files/2931322",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-09-01 26_SVV_0583-001 Ergaenzung - Initiier SAO.pdf",
+   "mimeType": "pdf",
+   "size": 230629,
+   "accessUrl": "https://egov.potsdam.de/public/doc?DOCTYP=130&DOLFDNR=2931322&OTYP=41",
+   "created": "2026-09-01T10:26:30+02:00",
+   "modified": "2026-09-01T18:40:29+02:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.potsdam.sitzung-online.de/oparl/organizations/at/51"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007180",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/1"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T10:27:00+02:00",
+    "modified": "2026-09-01T10:27:00+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007178",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/86"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T10:26:41+02:00",
+    "modified": "2026-09-01T10:26:41+02:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.potsdam.sitzung-online.de/oparl/consultations/2007179",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.potsdam.sitzung-online.de/oparl/organizations/gr/2000009"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2026-09-01T10:26:51+02:00",
+    "modified": "2026-09-01T10:26:51+02:00",
+    "deleted": false
+   }
+  ],
+  "created": "2026-09-01T10:26:30+02:00",
+  "modified": "2026-09-01T10:49:04+02:00",
+  "web": "https://egov.potsdam.de/public/VO020?VOLFDNR=2008902",
+  "deleted": false
+ }
+]

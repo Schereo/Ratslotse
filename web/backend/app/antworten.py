@@ -417,6 +417,102 @@ class SetupState(TypedDict):
 
 
 # --------------------------------------------------------------------------
+# „Neu bei Ratslotse" (kern/releases.py)
+# --------------------------------------------------------------------------
+
+
+class ReleaseMedia(TypedDict):
+    """Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+
+    Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+    den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+    einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+    nur bei ``kind == "video"`` und ist zugleich das, was bei
+    ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+    """
+    kind: str
+    src: str
+    alt: str
+    #: Seitenverhältnis als CSS-Wert — im Browser querformatige Fenster
+    #: (``16/9``), in der App hochkante Telefon-Bildschirme (``9/16``). Die
+    #: Bühne baut ihren Rahmen daraus, statt ihn zu raten.
+    aspect: str
+    poster: str | None
+
+
+class ReleaseHighlight(TypedDict):
+    """Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht."""
+    title: str
+    text: str
+    #: App-Pfad, kein externer Link — die native App zeigt dieselbe Karte.
+    url: str
+    #: ``None``, solange eine Ausgabe ohne Bilder auskommt — dann zeigt die
+    #: Karte die Listenform statt der Bühne.
+    media: ReleaseMedia | None
+
+
+class ReleaseNews(TypedDict):
+    version: str
+    date: str
+    title: str
+    highlights: list[ReleaseHighlight]
+
+
+class NewsState(TypedDict):
+    """Was dieses Konto noch nicht gesehen hat.
+
+    ``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases
+    verpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf
+    ``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die
+    Entscheidung fällt serverseitig, damit Web und App dieselbe Antwort
+    bekommen (dieselbe Regel wie ``SetupState.pending``).
+    """
+    releases: list[ReleaseNews]
+    older_count: int
+    #: Die Hochwassermarke des Kontos — was es zuletzt weggeklickt hat.
+    seen_version: str | None
+
+
+class NewsSeen(TypedDict):
+    """Die Marke, die nach dem Wegklicken gilt. Sie steigt nur."""
+    seen_version: str | None
+
+
+class AdminNewsRelease(TypedDict):
+    """Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands."""
+    version: str
+    date: str
+    title: str
+    highlights: list[ReleaseHighlight]
+    #: Wie viele Konten die Ankündigung JETZT bekämen.
+    open_recipients: int
+    #: Wie viele sie schon bekommen haben.
+    sent_recipients: int
+
+
+class AdminNewsList(TypedDict):
+    releases: list[AdminNewsRelease]
+
+
+class AdminNewsSent(TypedDict):
+    """Bilanz eines Versands.
+
+    ``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den
+    Anlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein
+    ist eine Antwort und keine offene Aufgabe.
+
+    Die **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht
+    gezählt: Zweihundert Mails über die Resend-API dauern länger als eine
+    HTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt
+    ohnehin erst der Morgen-Cron mit.
+    """
+    version: str
+    recipients: int
+    queued: int
+    skipped: int
+
+
+# --------------------------------------------------------------------------
 # Lotsen-Abzeichen (RL-U12)
 # --------------------------------------------------------------------------
 
@@ -634,6 +730,20 @@ class CityTopicSuggestion(TopicSuggestion):
     months: int
 
 
+class CityTopicMatch(TypedDict):
+    """Das kuratierte Stadtthema zu einer Frage — oder nichts.
+
+    ``match`` ist ``None``, wenn keins passt, und das ist der Normalfall: An
+    den fünfzehn echten Fragen vom 08.09.2026 traf es bei vieren. Die
+    Oberfläche zeigt dann ihren eigenen Weg (vorbefülltes Themen-Formular),
+    nicht etwa eine leere Kachel.
+    """
+    match: CityTopicSuggestion | None
+    #: Hat das Konto dieses Thema schon? Dann ist der Vorschlag erledigt, und
+    #: die Oberfläche sagt das, statt ein Duplikat anzubieten.
+    already: bool
+
+
 class TopicSuggestions(TypedDict):
     #: Kuratierte Stadtthemen mit Substanz, die aktivsten zuerst. Anders als
     #: die übrigen Listen NICHT um die eigenen Themen bereinigt: Die Liste ist
@@ -662,6 +772,11 @@ class TopicDescription(TypedDict):
     vague: bool
     hint: str
     suggestion: str
+    #: Ist der Name in Wahrheit eine LISTE? Dann ihre Teile, sonst leer. Die
+    #: Oberfläche bietet damit das Aufteilen an — sieben Stadtteile in einem
+    #: Feld ergaben elf Treffer mit durchweg negativer Relevanz, als sieben
+    #: Themen wäre es je Stadtteil eine saubere Meldung gewesen.
+    parts: list[str]
 
 
 class UnreadTopicHits(TypedDict):
@@ -673,15 +788,32 @@ class MarkedHits(TypedDict):
 
 
 class TopicHit(TypedDict):
+    """Ein Beschluss-Treffer auf der Karte „Neu zu deinen Themen" (Heute).
+
+    Bis 09/2026 trug er nur Titel, Gremium und Datum — die Karte konnte damit
+    weder sagen, WAS entschieden wurde (``summary``), noch WIE (``outcome``),
+    noch ob man es schon kannte (``is_new``). Dieselben drei Felder trägt die
+    Themen-Karte seit dem 28.08.2026 (``TopicHitOut``); ``topic_id`` braucht
+    der Gelesen-Ruf (``POST /topics/{topic_id}/seen``)."""
+    topic_id: int
     topic_name: str
     id: int
     title: str
     committee: str
     session_date: str
+    outcome: Beschlussergebnis | None
+    summary: str | None
+    is_new: bool
 
 
 class TopicHitList(TypedDict):
     hits: list[TopicHit]
+    # Der ehrliche Kicker der Karte (DESIGNSPRACHE § 6: nie „viele", immer
+    # Zahl): wie viele Themen und wie viele Treffer hinter der Auswahl stehen —
+    # und wie viele davon noch nicht gesehen sind.
+    topic_count: int
+    total: int
+    unread_total: int
 
 
 class TopicDecision(TypedDict):
@@ -1210,6 +1342,146 @@ class AdminClientShare(TypedDict):
     users: int
 
 
+class ElsewhereItem(TypedDict):
+    """Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt."""
+    body_id: str
+    body_name: str
+    paper_id: str
+    name: str
+    reference: str | None
+    date: str | None
+    kind: str
+    paper_type_raw: str | None
+    web: str | None
+    #: Kanonisches Ergebnis; ``none``, wenn die Stadt keins ausweist — bei rund
+    #: der Hälfte der Tagesordnungspunkte der Normalfall, kein Fehler.
+    outcome: str
+    outcome_raw: str | None
+    score: float
+    summary: str | None
+    instrument: str | None
+    transfer: str | None
+    originator: str | None
+
+
+class IdeaEvidence(TypedDict):
+    """Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin."""
+    #: Die Beschluss-Id, wenn ein Beschluss dahintersteht. Dann verlinkt die
+    #: Karte intern; sonst bleibt der Beleg eine Zeile ohne Ziel.
+    decision_id: int | None
+    kvonr: int | None
+    title: str
+    date: str | None
+    outcome: str | None
+
+
+class Idea(TypedDict):
+    """Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat."""
+    paper_id: str
+    body_id: str
+    body_name: str
+    name: str
+    date: str | None
+    kind: str
+    web: str | None
+    outcome: str
+    field: str | None
+    instrument: str | None
+    summary: str | None
+    transfer: str
+    competence: str | None
+    originator: str | None
+    #: Der Befund aus `council/cities/fit.py`: Hat Oldenburg dieses
+    #: Instrument schon? Eine TATSACHENFRAGE. Ob sich ein Antrag lohnt, sagt
+    #: hier bewusst niemand mehr — das hängt an Mehrheiten und Haushaltslage,
+    #: und das Modell traf es zu 46–58 %, den Status dagegen zu 62–69 %.
+    status: str
+    reason: str
+    confidence: str
+    evidence: list[IdeaEvidence]
+    #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
+    #: Annotator `effort`): inquiry < review < resolution < decision < budget.
+    #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.
+    effort: str
+    #: Wer sie in Oldenburg TUN müsste, wenn nicht die Stadt selbst — „VWG",
+    #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
+    #: die Stadt selbst entscheidet, und das ist der Normalfall.
+    addressee: str | None
+    #: Was DIESES Konto zum Urteil gesagt hat: „right", „wrong" oder leer.
+    #: Der Rückkanal ist der billigste Maßstab, den es gibt — vierhundert
+    #: Rückmeldungen von zwei Ratsmitgliedern schlagen vierzig Fälle, die ein
+    #: Mensch an einem Tag geurteilt hat.
+    feedback: str
+    #: In wie vielen ANDEREN Städten dieselbe Idee vorkommt
+    #: (`council/cities/clusters.py`). 0 heißt: in keiner — und das ist kein
+    #: Makel, sondern eine Aussage über die Idee.
+    peers: int
+
+
+class IdeasResponse(TypedDict):
+    field: str
+    total: int
+    page: int
+    per_page: int
+    #: Je Status die Zahl der Ideen im Feld — für die Filter-Chips, damit die
+    #: Zahl nicht erst durch Blättern sichtbar wird.
+    counts: dict[str, int]
+    items: list[Idea]
+
+
+class IdeaSearchResponse(TypedDict):
+    """Freie Suche über die Vorlagen anderer Städte."""
+    query: str
+    total: int
+    items: list[Idea]
+
+
+class IdeaFieldSummary(TypedDict):
+    """Ein Themenfeld auf der Übersicht."""
+    field: str
+    total: int
+    missing: int
+    partial: int
+    present: int
+    #: Ideen dieses Feldes, die in mindestens ZWEI anderen Städten liegen und
+    #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
+    #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.
+    multi_city: int
+
+
+class FeedbackAck(TypedDict):
+    """Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht."""
+    paper_id: str
+    verdict: str
+
+
+class IdeaFields(TypedDict):
+    fields: list[IdeaFieldSummary]
+
+
+class ElsewhereResponse(TypedDict):
+    decision_id: int
+    items: list[ElsewhereItem]
+    #: Die Städte, aus denen Treffer stammen — für die Zeile „aus X und Y".
+    bodies: list[str]
+
+
+class CityStats(TypedDict):
+    """Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik)."""
+    id: str
+    name: str
+    state: str
+    ris_vendor: str
+    license: str | None
+    last_fetched: str | None
+    papers: int
+    papers_with_text: int
+    meetings: int
+    agenda_items: int
+    agenda_items_with_outcome: int
+    annotations: int
+
+
 class AdminGrowth(TypedDict):
     users: AdminSeries
     topics: AdminSeries
@@ -1225,6 +1497,141 @@ class AdminGrowth(TypedDict):
     clients_both: int
     #: Womit die vorhandenen Konten angelegt wurden (gesamter Bestand).
     signup_clients: list[AdminClientShare]
+
+
+class AdminKohortenStufe(TypedDict):
+    """Eine Stufe des Trichters.
+
+    ``n`` ist die Zahl der Konten, die diese Stufe erreicht haben; ``eligible``
+    die Zahl derer, die sie überhaupt schon erreichen KONNTEN. Bei den
+    zeitlichen Stufen („noch da nach 30 Tagen") sind das zwei verschiedene
+    Zahlen, und wer sie verwechselt, liest jede frische Kohorte als Totalausfall.
+    """
+    key: str
+    label: str
+    n: int
+    eligible: int
+    #: Tage, die vergehen müssen, damit die Stufe erreichbar ist — oder ``None``.
+    window_days: int | None
+
+
+class AdminKohorte(TypedDict):
+    #: Montag der Registrierungswoche (ISO-Datum).
+    week: str
+    n: int
+    stages: list[AdminKohortenStufe]
+
+
+class AdminKennzahlen(TypedDict):
+    """Die vier Zahlen, an denen sich Maßnahmen messen lassen sollen.
+
+    Alle ``None``, solange die Grundgesamtheit leer ist — eine Quote aus null
+    Konten ist keine 0 %, sondern keine Aussage.
+    """
+    haken_quote: float | None
+    tag2: float | None
+    tag7: float | None
+    tag30: float | None
+    #: Anteil Antworten ohne Quelle; heute nur aus gespeicherten Gesprächen.
+    sackgassen_quote: float | None
+    #: Median der Fragen je aktivem Konto, letzte 7 Tage.
+    fragen_median: float | None
+
+
+class AdminKohortenBasis(TypedDict):
+    """Zähler und Nenner hinter den Quoten — „43 %" allein sagt nicht, ob es
+    3 von 7 oder 43 von 100 sind."""
+    haken: tuple[int, int]
+    tag2: tuple[int, int]
+    tag7: tuple[int, int]
+    tag30: tuple[int, int]
+    sackgassen: tuple[int, int]
+    #: Wie viele Konten der Vorzeitraum hatte — die Grundlage der Veränderung.
+    vorher_n: int
+
+
+class AdminKohorten(TypedDict):
+    weeks: int
+    #: Wie viele Konten als Betreiber-/Testkonten aus der Statistik fielen.
+    excluded: int
+    cohorts: list[AdminKohorte]
+    total: list[AdminKohortenStufe]
+    kennzahlen: AdminKennzahlen
+    #: Dieselben Kennzahlen für die Spanne davor — daraus zeigt die Oberfläche
+    #: die Veränderung. Ein Stand allein sagt nicht, ob etwas gewirkt hat.
+    previous: AdminKennzahlen
+    basis: AdminKohortenBasis
+
+
+class AdminSeitenTag(TypedDict):
+    day: str
+    n: int
+    sessions: int
+
+
+class AdminSeite(TypedDict):
+    #: Ein Muster aus ``kern.seitenaufrufe.ROUTEN`` — nie ein roher Pfad.
+    route: str
+    n: int
+    sessions: int
+
+
+class AdminSeitenClient(TypedDict):
+    client: str
+    n: int
+
+
+class AdminSeitenaufrufe(TypedDict):
+    """Anonyme Seitenaufrufe. Keine Zahl hier lässt sich einer Person zuordnen.
+
+    ``sessions`` ist der erste Aufruf je Browser-Tab und damit so nah an
+    „Besuche", wie man ohne Wiedererkennung kommt — bewusst nicht „Besucher".
+    """
+    days: int
+    total: int
+    sessions: int
+    #: Aufrufe ohne Anmeldung — die Gruppe, die vorher gar nicht sichtbar war.
+    anonymous: int
+    #: Dieselbe Spanne unmittelbar davor — für die Veränderung.
+    previous_total: int
+    previous_sessions: int
+    series: list[AdminSeitenTag]
+    pages: list[AdminSeite]
+    clients: list[AdminSeitenClient]
+
+
+class AdminEreignis(TypedDict):
+    key: str
+    label: str
+    n: int
+    #: Wie viele verschiedene Konten — eine hohe Zahl aus einem Konto ist
+    #: etwas anderes als dieselbe Zahl aus zwanzig.
+    users: int
+    #: Dieselbe Spanne davor.
+    previous: int
+
+
+class AdminEreignisse(TypedDict):
+    days: int
+    events: list[AdminEreignis]
+    #: Anteil der Fragen, die aus einem Vorschlags-Chip kamen.
+    chip_share: float | None
+    #: Anteil der Antworten ohne eine einzige Quelle.
+    empty_share: float | None
+    previous_chip_share: float | None
+    previous_empty_share: float | None
+
+
+class AdminSackgasse(TypedDict):
+    """Eine Frage, die keine Quelle gefunden hat.
+
+    Ohne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?" ist
+    beides ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein
+    Leseprotokoll.
+    """
+    question: str
+    answer: str
+    created: str
 
 
 class AdminQuizArea(TypedDict):
@@ -2020,6 +2427,11 @@ class CommitteeDetail(TypedDict):
     next_date: str | None
     next_time: str | None
     decisions_year: int
+    #: Sitzungen der letzten zwölf Monate — die MENGE, die ein Abo kostet:
+    #: je Sitzung eine Tagesordnungs-Meldung. Wer abonniert, soll das vorher
+    #: wissen können; am 08.09.2026 hatten vier Konten binnen fünfzehn
+    #: Sekunden alle sechzehn Ausschüsse abonniert.
+    sessions_year: int
 
 
 class Committees(TypedDict):
@@ -2062,14 +2474,36 @@ class DistrictProjectDecision(TypedDict):
     committee: str | None
 
 
+class DistrictPlanInfo(TypedDict):
+    """Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
+    die Stationen des Verfahrens aus den offenen Geodaten der Stadt."""
+    nr: str
+    name: str
+    #: ``effective`` (rechtsverbindlich) oder ``in_procedure`` (in Aufstellung).
+    status: str
+    resolution_date: str | None
+    adoption_date: str | None
+    effective_date: str | None
+    note: str | None
+    source: str
+    source_url: str
+
+
 class DistrictProjectLocation(TypedDict):
-    """Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON."""
+    """Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie,
+    bei Bebauungsplänen (``kind = bplan``) der Geltungsbereich als GeoJSON."""
     slug: str
     name: str
     kind: str
     lat: float
     lon: float
     geometry: Any
+    #: Nur bei ``kind = bplan``: der Plan dahinter.
+    plan: NotRequired[DistrictPlanInfo]
+    #: ``subject`` — dort ändert sich etwas; ``boundary`` — nur Abschnittsgrenze
+    #: („Am Schmeel bis Brahmweg"); ``context`` — eine Straße, die das Vorhaben
+    #: nur benennt („Quartier Am Schmeel"). Nur ``subject`` trägt eine Linie.
+    role: str
 
 
 class DistrictProject(TypedDict):
@@ -2121,7 +2555,9 @@ class DistrictInvestment(TypedDict):
 
 
 class DistrictParticipation(TypedDict):
-    """Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel."""
+    """Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug
+    ins Viertel — und dem Geltungsbereich des Plans als Fläche, wo das Geoportal
+    ihn kennt."""
     title: str | None
     place: str | None
     step: str | None
@@ -2129,12 +2565,48 @@ class DistrictParticipation(TypedDict):
     valid_until: str | None
     url: str | None
     plan_nrs: list[str]
+    #: Polygon/MultiPolygon als GeoJSON — oder ``None``, wenn der Plan (noch)
+    #: keinen Umring im Geoportal hat.
+    geometry: Any
+    lat: float | None
+    lon: float | None
+    plan_nr: str | None
+    #: ``effective`` oder ``in_procedure`` (s. ``DistrictPlanInfo``).
+    plan_status: str | None
 
 
 class DistrictNeighbour(TypedDict):
     place_id: str
     name: str
     count: int
+
+
+class DistrictClosure(TypedDict):
+    """Eine laufende Sperrung der Stadt (Geoportal, Ebene „Aktuelle Sperrungen") im Viertel."""
+    id: int
+    street: str
+    reason: str | None
+    kind: int | None
+    kind_label: str | None
+    valid_from: str | None
+    valid_until: str | None
+    description: str | None
+    #: LineString/MultiLineString als GeoJSON — die Linie auf der Karte.
+    geometry: Any
+    lat: float | None
+    lon: float | None
+
+
+class DistrictPressItem(TypedDict):
+    """Eine Pressemitteilung der Stadt mit Bezug auf das Viertel (council/presse_orte.py)."""
+    id: int
+    title: str
+    date: str | None
+    url: str
+    teaser: str
+    #: Der Ortsname, über den die Mitteilung hierher gehört.
+    evidence: str | None
+    via: str | None
 
 
 class DistrictProjects(TypedDict):
@@ -2144,6 +2616,8 @@ class DistrictProjects(TypedDict):
     upcoming: list[DistrictUpcomingItem]
     investments: list[DistrictInvestment]
     participations: list[DistrictParticipation]
+    closures: list[DistrictClosure]
+    press: list[DistrictPressItem]
     neighbours: list[DistrictNeighbour]
     updated_at: str | None
 
@@ -2153,12 +2627,45 @@ class DistrictProjectsOverviewEntry(TypedDict):
     name: str
     count: int
     last_date: str | None
+    #: Vorhaben je Stand (``building``, ``decided``, …) — trägt die Wärmekarte.
+    stages: dict[str, int]
+
+
+class DistrictHighlight(TypedDict):
+    """Ein Vorhaben, das stadtweit gerade heraussticht — für die Auswahl-Seite."""
+    id: int
+    place_id: str
+    place_name: str
+    name: str
+    what: str
+    stage: str
+    when: str | None
+    category: str
+    last_date: str | None
 
 
 class DistrictProjectsOverview(TypedDict):
-    """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl."""
+    """``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
+    dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen."""
     districts: list[DistrictProjectsOverviewEntry]
+    total: int
+    stages: dict[str, int]
+    highlights: list[DistrictHighlight]
     updated_at: str | None
+
+
+class DistrictLookupMatch(TypedDict):
+    """Ein Treffer der Straßen-/Stadtteilsuche: der Ort und sein Ortsbereich."""
+    name: str
+    kind: str
+    place_id: str
+    place_name: str
+    count: int
+
+
+class DistrictLookup(TypedDict):
+    """``GET /api/districts/lookup?q=`` — „Ich wohne in der …" → Ortsbereich."""
+    matches: list[DistrictLookupMatch]
 
 
 class DistrictProjectReportOut(TypedDict):
@@ -2911,6 +3418,24 @@ SSE_FRAGE: dict[int | str, dict[str, Any]] = {
         ),
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
     },
+}
+
+#: ``GET /api/admin/live-probe`` — der O1-Stream als Transkript, live.
+SSE_LIVE_PROBE: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine "
+            "`data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n"
+            "- `status` — Text zum Stand (`text`), etwa „verbunden\"\n"
+            "- `segment` — eine fertige Äußerung: `start`/`end` in Sekunden "
+            "seit Beginn, `text`, `wall` = Sekunden seit Beginn auf der "
+            "Server-Uhr (die Differenz zu `end` ist der Verzug)\n"
+            "- `done` — Schluss mit `segments` (Zahl) und `seconds`\n"
+            "- `error` — abgebrochen (`message`)"
+        ),
+        "content": {"text/event-stream": {"schema": {"type": "string"}}},
+    },
+    409: {"description": "Es läuft schon eine Probe — nur eine zugleich."},
 }
 
 #: ``GET /api/council/deep-research/{job_id}/events`` — die tiefe Recherche.

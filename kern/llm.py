@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Any
 
 from openai import (
@@ -58,12 +59,52 @@ MODEL_PARAMS: dict[str, dict[str, Any]] = {
     "openai/gpt-4o-mini": {},
     "deepseek/deepseek-v4-pro": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
     "deepseek/deepseek-v4-flash": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
+    # Die datierte Fassung fehlte hier bis 09/2026 — und ohne den Boden
+    # verbraucht sie ihr Budget beim Denken und antwortet LEER (Status 200,
+    # finish_reason='length'). Gemessen am Städte-Prüfstand: 84 % Lieferquote
+    # statt 100 %, bei 38 statt 2 Minuten. Wer ein neues DeepSeek-Modell
+    # benutzt, trägt es hier ein.
+    "deepseek/deepseek-v4-flash-0731": {"min_max_tokens": DEEPSEEK_MIN_MAX_TOKENS},
     **{m: {"min_max_tokens": GPT56_MIN_MAX_TOKENS} for m in (
         "openai/gpt-5.6-luna", "openai/gpt-5.6-luna-pro",
         "openai/gpt-5.6-sol", "openai/gpt-5.6-sol-pro",
         "openai/gpt-5.6-terra", "openai/gpt-5.6-terra-pro",
     )},
 }
+
+
+#: Wie lange ein BATCH-Job bei einem vorübergehenden Fehler zusätzlich wartet,
+#: nachdem die vier schnellen Anläufe von ``_create`` (2–8 s) verbraucht sind.
+#: Gemessen am 06.09.2026: OpenRouters geteilter OpenAI-Zugang meldet Luna
+#: minutenlang als „temporarily rate-limited upstream" — 37 von 39 Treffern in
+#: den Prod-Logs seit dem 03.09. Eine Welle von Minuten überlebt kein
+#: Sekunden-Retry; ein Cron darf dagegen ruhig fünf Minuten warten. Für
+#: Web-Anfragen gilt das NICHT — dort bleibt es bei den schnellen Anläufen.
+GEDULD_PAUSEN: tuple[int, ...] = (30, 90, 180)
+
+#: Ersatzmodelle, wenn das gewünschte Modell auch nach der Geduld nicht
+#: antwortet. Gemessen am Tragweite-Golden-Set (30 handbewertete Beschlüsse,
+#: scripts/eval_impact.py, 06.09.2026) — Spearman über die Band-Mitten und
+#: Band-Trefferquote, dazu die Dauer für 30 Beschlüsse:
+#:
+#:   openai/gpt-5.6-luna           ρ 0,833   27/30   14 s   (das Original)
+#:   google/gemini-2.5-flash       ρ 0,831   26/30   21 s
+#:   deepseek/deepseek-v4-pro      ρ 0,820   23/30   75 s
+#:   google/gemini-3.1-flash-lite  ρ 0,786   27/30    6 s
+#:
+#: Gemini 2.5 Flash ist damit praktisch gleichauf und läuft bei einem anderen
+#: Anbieter — genau der Sinn eines Ersatzes, wenn OpenAIs Pool voll ist.
+#: DeepSeek als zweite Reserve (anderer Anbieter, DSGVO-Routing greift).
+#: Die anderen GPT-5.6-Varianten (sol, terra) hängen am selben Pool und
+#: taugen deshalb NICHT als Ersatz. Wer die Reihenfolge ändert, misst neu.
+ERSATZ: dict[str, tuple[str, ...]] = {
+    "openai/gpt-5.6-luna": ("google/gemini-2.5-flash", "deepseek/deepseek-v4-pro"),
+}
+
+
+def ersatz_fuer(model: str | None) -> list[str]:
+    """Die Ersatzmodelle zu ``model`` — leer, wenn keine gemessen sind."""
+    return list(ERSATZ.get(model or "", ()))
 
 
 def _with_model_params(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -284,11 +325,49 @@ def chat_complete(**kwargs: Any):
     LLM page (stripped before the API call; best-effort). ``_allow_empty_response``
     is reserved for callers that explicitly handle a response without
     ``choices``; the private flag is never sent upstream.
+
+    **Für Batch-Jobs:** ``_geduld=True`` wartet bei vorübergehenden Fehlern
+    zusätzlich ``GEDULD_PAUSEN`` (Minuten, nicht Sekunden), und
+    ``_ersatz=[…]`` nennt Modelle, auf die der Aufruf ausweicht, wenn das
+    gewünschte auch dann nicht antwortet (``ersatz_fuer(MODEL)``). Die
+    Kostenzählung trägt das Modell, das wirklich geantwortet hat. Beides ist
+    für Cron-Läufe gedacht — eine Web-Anfrage darf nicht minutenlang hängen.
     """
     feature = kwargs.pop("_feature", None)
-    resp = _create(**kwargs)
-    _record_usage(feature, kwargs.get("model"), getattr(resp, "usage", None))
-    return resp
+    geduld = bool(kwargs.pop("_geduld", False))
+    ersatz = list(kwargs.pop("_ersatz", None) or [])
+    modelle = [kwargs.get("model"), *ersatz]
+    for i, model in enumerate(modelle):
+        versuch = {**kwargs, "model": model}
+        try:
+            resp = _create_geduldig(versuch) if geduld else _create(**versuch)
+        except Exception as exc:  # noqa: BLE001 — nur Vorübergehendes wird ersetzt
+            if i == len(modelle) - 1 or not _is_transient(exc):
+                raise
+            print(f"  ⚠️ {model}: {exc!r} — weiche auf {modelle[i + 1]} aus", flush=True)
+            continue
+        _record_usage(feature, model, getattr(resp, "usage", None))
+        return resp
+    raise AssertionError("unerreichbar: kein Modell")  # pragma: no cover
+
+
+def _create_geduldig(kwargs: dict[str, Any]):
+    """``_create`` mit langen Pausen dazwischen — für Batch-Jobs.
+
+    Jeder Anlauf hier ist selbst schon die retried Fassung (vier Versuche,
+    2–8 s); dazwischen liegen ``GEDULD_PAUSEN``. Nach der letzten Pause fliegt
+    der Fehler — ``chat_complete`` greift dann zum Ersatzmodell, falls eins da
+    ist.
+    """
+    for pause in (*GEDULD_PAUSEN, None):
+        try:
+            return _create(**kwargs)
+        except Exception as exc:  # noqa: BLE001
+            if pause is None or not _is_transient(exc):
+                raise
+            print(f"  ⏳ {kwargs.get('model')}: {exc!r} — warte {pause} s", flush=True)
+            time.sleep(pause)
+    raise AssertionError("unerreichbar")  # pragma: no cover
 
 
 def chat_stream(**kwargs: Any):

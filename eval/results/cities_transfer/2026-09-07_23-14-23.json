@@ -1,0 +1,40 @@
+{
+  "suite": "cities_transfer",
+  "model": "deepseek/deepseek-v4-flash",
+  "prompt_version": "2",
+  "n_cases": 45,
+  "n_answered": 39,
+  "usable_accuracy": 89.7,
+  "transfer_accuracy": 79.5,
+  "field_accuracy": 79.5,
+  "competence_accuracy": 66.7,
+  "cost_usd": 0.0086,
+  "seconds": 572,
+  "cost_per_1000": 0.219,
+  "mistakes": [
+    {
+      "case": "Quartiersbezogenes Verkehrs- und Mobilitätskonzept Medienstadt Babelsb",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Quartiersbezogenes Verkehrskonzept erstellen"
+    },
+    {
+      "case": "Einheitliches Anmeldeverfahren für mehr Chancengerechtigkeit!",
+      "erwartet": "jurisdiction",
+      "bekommen": "adaptable",
+      "instrument": "Einheitliches Anmeldeverfahren für Schulen"
+    },
+    {
+      "case": "Grundsatzbeschluss zur Zukunft der Abfallwirtschaft und Straßenreinigu",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Eigenbetrieb für Abfallwirtschaft anstreben"
+    },
+    {
+      "case": "Rahmenplan Bornim/ Bornstedt",
+      "erwartet": "local",
+      "bekommen": "adaptable",
+      "instrument": "Rahmenplan mit Bürgerbeteiligung"
+    }
+  ]
+}

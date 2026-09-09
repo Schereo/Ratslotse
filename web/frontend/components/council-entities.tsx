@@ -1,50 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import { useRouter, useSearchParams } from "next/navigation";
-import { MapPin, Building2, Boxes, Search, ChevronDown, X } from "lucide-react";
-import { Entity, EntityMapPoint } from "@/lib/types";
-import { Card, Input, Spinner, TableSkeleton, EmptyState } from "@/components/ui";
+import { MapPin, Building2, Boxes, Search, Map as MapIcon } from "lucide-react";
+import { Entity } from "@/lib/types";
+import { Card, Input, TableSkeleton, EmptyState } from "@/components/ui";
 import { useFetch } from "@/lib/use-fetch";
 import { cn } from "@/lib/utils";
-import { themaHref } from "@/lib/routes";
+import { themaHref, karteHref } from "@/lib/routes";
 import { KIND_COLOR } from "@/components/council-map";
-import {
-  loadOrtsbereiche,
-  loadOrtsbereichCatalog,
-  ortsbereichFor,
-  ortsbereicheImWahlbereich,
-  type OrtsbereichEntry,
-  type OrtsbereichFeature,
-} from "@/lib/districts";
+import { ebenenZuUrl, VORGABE } from "@/lib/karten-ebenen";
 
-// Form und Höhe der Stadtkarte stehen hier an EINER Stelle — Karte und beide
-// Platzhalter (Chunk, Geo-Fetch) müssen sie teilen, sonst springt das Layout
-// beim Nachladen.
-//
-// Seitenverhältnis statt reinem vh-Anteil: 38 vh ergeben auf dem Telefon einen
-// fast quadratischen Rahmen (356 × 319), auf dem iPad quer aber einen
-// Briefschlitz (1114 × 310, 3,6 : 1). In einen so flachen Rahmen passt die
-// Punktwolke nur, wenn Leaflet zwei Zoomstufen herauszoomt — sichtbar waren
-// 102 km von Aurich bis Bremen, Oldenburg ein Klecks in der Mitte (Tims
-// iPad-Befund). Deshalb: mindestens 38 vh (das Telefon bleibt, wie es ist),
-// Form 12 : 5, und nie mehr als die halbe Bildschirmhöhe — unter der Karte
-// muss die Filterzeile angeschnitten stehen bleiben, sonst merkt niemand,
-// dass es weitergeht. Der frühere Boden `min-h-[17rem]` fällt weg: auf einem
-// quer gehaltenen Telefon fraß er 70 % der Höhe.
-//
-// `w-full` ist Pflicht, nicht Deko: Ohne feste Breite rechnet der Browser sie
-// aus Seitenverhältnis und Höhe zurück, sobald `min-h` die Höhe bestimmt — die
-// Karte wuchs auf dem Telefon auf 768 px und lief aus dem Bild (gemessen).
-const KARTE_RAHMEN = "w-full aspect-[12/5] min-h-[38vh] max-h-[min(30rem,50vh)]";
+// Bis 09/2026 stand hier die Stadtkarte der Themen (Leaflet, Cluster,
+// Ortsbereich-Filter, Wahlbereichs-Schnellauswahl). Sie ist als Ebene
+// „Themen-Orte" in die vereinte Karte unter /karte gewandert
+// (STADTKARTE-PLAN.md, Schritte 3 und 5); der Tab ist seitdem die LISTE der
+// Themen — und ein Link dorthin, wo die Karte jetzt liegt.
 
-// Leaflet needs `window`, so the map is client-only (ssr:false).
-const CouncilMap = dynamic(() => import("@/components/council-map").then((m) => m.CouncilMap), {
-  ssr: false,
-  loading: () => <div className={cn(KARTE_RAHMEN, "flex items-center justify-center rounded-xl border border-border")}><Spinner /></div>,
-});
+/** Die Karte mit der Ebene „Themen-Orte" — die Vorgabe plus diese eine. */
+export const THEMEN_KARTE_HREF = `${karteHref()}?ebenen=${ebenenZuUrl(new Set([...VORGABE, "themen-orte"]))}`;
 
 export const ENTITY_KIND: Record<string, { label: string; plural: string; Icon: typeof MapPin }> = {
   place: { label: "Ort", plural: "Orte", Icon: MapPin },
@@ -106,149 +80,10 @@ function TopEntityCard({ e, maxRecent }: { e: Entity; maxRecent: number }) {
 
 type KindFilter = "" | "place" | "organisation" | "project";
 
-/** Kompakter Mehrfach-Auswahl-Popover für die 31 Ortsbereiche — filtert die
- *  Punkte auf der Karte (die Liste darunter bleibt vollständig). */
-function OrtsbereichFilter({ names, places, counts, selected, onChange }: {
-  names: string[];
-  places: OrtsbereichEntry[];
-  counts: Record<string, number>;
-  selected: Set<string>;
-  onChange: (next: Set<string>) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("pointerdown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const toggle = (name: string) => {
-    const next = new Set(selected);
-    if (next.has(name)) next.delete(name); else next.add(name);
-    onChange(next);
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-          selected.size > 0 ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <MapPin className="h-3.5 w-3.5" />
-        {selected.size > 0 ? `Ortsbereiche · ${selected.size}` : "Ortsbereiche"}
-        <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        // Desktop: Dropdown rechts unter dem Chip. Mobil: unten verankertes
-        // Sheet über der Tab-Bar (w-72 + right-0 ragte sonst aus dem Bild, weil
-        // der Chip mittig in Zeile 2 sitzt).
-        <div className="z-[60] rounded-xl border border-border bg-card p-3 shadow-lg
-          max-sm:fixed max-sm:inset-x-3 max-sm:bottom-[calc(5rem+env(safe-area-inset-bottom))] max-sm:max-h-[70vh] max-sm:overflow-y-auto
-          sm:absolute sm:right-0 sm:mt-2 sm:w-72">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-foreground">Karte nach Ortsbereichen filtern</p>
-            {selected.size > 0 && (
-              <button type="button" onClick={() => onChange(new Set())}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
-                <X className="h-3 w-3" /> Zurücksetzen
-              </button>
-            )}
-          </div>
-          {/* Schnellauswahl: die 6 Kommunalwahl-Wahlbereiche togglen ihre
-              Ortsbereiche als Gruppe. */}
-          {places.length > 0 && <div className="mt-2">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">Wahlbereiche</p>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {[1, 2, 3, 4, 5, 6].map((wb) => {
-                const gruppe = ortsbereicheImWahlbereich(wb, places);
-                const active = gruppe.every((n) => selected.has(n));
-                return (
-                  <button
-                    key={wb}
-                    type="button"
-                    title={gruppe.join(", ")}
-                    onClick={() => {
-                      const next = new Set(selected);
-                      if (active) gruppe.forEach((n) => next.delete(n));
-                      else gruppe.forEach((n) => next.add(n));
-                      onChange(next);
-                    }}
-                    className={cn(
-                      "rounded-md border px-2 py-1 text-[11px] font-medium tabular-nums transition-colors",
-                      active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    WB {wb}
-                  </button>
-                );
-              })}
-            </div>
-          </div>}
-          <div className="mt-2 grid max-h-64 grid-cols-2 gap-x-3 gap-y-0.5 overflow-y-auto overscroll-contain pr-1">
-            {names.map((name) => (
-              <label key={name} className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs text-foreground hover:bg-muted">
-                <input
-                  type="checkbox"
-                  checked={selected.has(name)}
-                  onChange={() => toggle(name)}
-                  className="h-3.5 w-3.5 rounded border-border accent-[hsl(var(--primary))]"
-                />
-                <span className="min-w-0 flex-1 truncate">{name}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground/70">{counts[name] ?? 0}</span>
-              </label>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-            Ratslotse-Ortsbereiche, keine amtlichen Stadtteile · Grenzen: © OpenStreetMap-Mitwirkende · Wahlbereiche: Stadt Oldenburg
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function EntitiesTab() {
-  // V-05: Aus der Mini-Karte einer KI-Antwort führt „Auf der Stadtkarte
-  // öffnen" hierher — mit genau den Orten der zitierten Beschlüsse in `orte`
-  // (Namen, komma-getrennt). Ohne den Parameter ändert sich nichts.
-  const sp = useSearchParams();
-  const router = useRouter();
-  const orteFilter = useMemo(() => {
-    const roh = sp.get("orte");
-    if (!roh) return null;
-    const namen = roh.split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
-    return namen.length ? new Set(namen) : null;
-  }, [sp]);
-  const orteWeg = () => {
-    const p = new URLSearchParams(sp.toString());
-    p.delete("orte");
-    router.replace(`/council?${p.toString()}`, { scroll: false });
-  };
   const { data, loading } = useFetch<{ entities: Entity[] }>("/council/entities");
-  const { data: geo, loading: geoLoading } = useFetch<{ entities: EntityMapPoint[] }>("/council/entities-map");
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<KindFilter>("");
-  const [districts, setStadtteile] = useState<OrtsbereichFeature[]>([]);
-  const [ortskatalog, setOrtskatalog] = useState<OrtsbereichEntry[]>([]);
-  const [selectedST, setSelectedST] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    void loadOrtsbereiche().then(setStadtteile);
-    void loadOrtsbereichCatalog().then((catalog) => setOrtskatalog(catalog.places)).catch(() => {});
-  }, []);
 
   const all = useMemo(() => data?.entities ?? [], [data]);
   const counts = useMemo(() => {
@@ -257,34 +92,6 @@ export function EntitiesTab() {
     return c;
   }, [all]);
 
-  // Stadtteil je Kartenpunkt (einmal berechnet); Punkte außerhalb Oldenburgs → null.
-  const pointST = useMemo(() => {
-    const m = new Map<string, string | null>();
-    if (districts.length) {
-      for (const p of geo?.entities ?? []) m.set(p.slug, ortsbereichFor(p.lat, p.lon, districts));
-    }
-    return m;
-  }, [geo, districts]);
-  const stCounts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const st of pointST.values()) if (st) c[st] = (c[st] ?? 0) + 1;
-    return c;
-  }, [pointST]);
-
-  // Punkte + Grenz-Overlays memoisiert — die Karte remountet sonst bei jedem
-  // Tastendruck in der Suche (Array-Identität ist ihre Effect-Dependency).
-  const points = useMemo(
-    () => (geo?.entities ?? [])
-      .filter((p) => (orteFilter ? orteFilter.has(p.name.toLowerCase()) : true))
-      .filter((p) => (kind ? p.kind === kind : true))
-      .filter((p) => (selectedST.size ? selectedST.has(pointST.get(p.slug) ?? "") : true)),
-    [geo, kind, selectedST, pointST, orteFilter],
-  );
-  const outlines = useMemo(
-    () => (selectedST.size ? districts.filter((f) => selectedST.has(f.properties.name)) : undefined),
-    [districts, selectedST],
-  );
-
   if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={3} /></div>;
   if (all.length === 0) {
     return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
@@ -292,7 +99,6 @@ export function EntitiesTab() {
 
   const needle = q.trim().toLowerCase();
   const filtered = all
-    .filter((e) => (orteFilter ? orteFilter.has(e.name.toLowerCase()) : true))
     .filter((e) => (kind ? e.kind === kind : true))
     .filter((e) => (needle ? e.name.toLowerCase().includes(needle) : true));
   const maxRecent = Math.max(1, ...all.map((e) => e.n_recent ?? 0));
@@ -313,57 +119,21 @@ export function EntitiesTab() {
 
   return (
     <div className="mt-4 space-y-4">
-      {/* Sichtbar und abwählbar wie der Themen-Filter der Beschluss-Suche —
-          sonst wüsste niemand, warum die Karte nur ein paar Pins zeigt. */}
-      {orteFilter && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-            Orte aus deiner Frage · {points.length === 1 ? "1 Ort" : `${points.length} Orte`}
-            <button type="button" onClick={orteWeg} aria-label="Ortsfilter entfernen"
-              className="rounded-full p-0.5 transition-colors hover:bg-primary/15">
-              <X className="h-3 w-3" aria-hidden />
-            </button>
-          </span>
-        </div>
-      )}
-      {/* Die Karte zuerst — sie ist der Blickfang der Seite, kein verstecktes
-          Toggle-Feature. Kind-Chips unten filtern Karte UND Liste. Während der
-          Geo-Fetch läuft, hält ein Platzhalter dieselbe Höhe (kein Pop-in-Shift). */}
-      {geoLoading ? (
-        <div className={cn(KARTE_RAHMEN, "flex items-center justify-center rounded-xl border border-border")}>
-          <Spinner />
-        </div>
-      ) : (geo?.entities.length ?? 0) > 0 ? (
-        // Hier bewusst KEIN `isolate`: Leaflets Panes (z bis ~700) fängt schon
-        // `.leaflet-container` selbst ein (globals.css). Ein zweiter
-        // Stapelkontext an dieser Stelle sperrte dagegen das Vollbild der Karte
-        // in diesen Kasten — die Karte lag dann unter Topbar und Tab-Leiste,
-        // ihr Schließen-Knopf verschwand dahinter, und vom Rest der Seite
-        // stachen ausgerechnet die *positionierten* Teile durch: Suchfeld und
-        // Stadtteil-Wähler schwebten mitten auf der Karte, Titel, Legende und
-        // Art-Chips blieben unsichtbar (Tims iPad-Befund aus Build 11).
-        <div className="relative">
-          <CouncilMap points={points} outlines={outlines} className={cn(KARTE_RAHMEN, "rounded-xl")} />
-          {/* Die Legende steht UNTER der Karte, nicht darin: Als Overlay unten
-              links lag sie auf schmalen Displays über Leaflets Quellenangabe
-              („OpenStreetMap, CARTO") — zwei Zeilen Text auf einer Zeile
-              Nachweis, beides unlesbar. Darunter kann sie umbrechen, ohne
-              etwas zu verdecken. „Punkt öffnet" statt „klicken öffnet":
-              auf dem Telefon klickt niemand. */}
-          <p className="mt-1.5 px-1 text-[11px] leading-relaxed text-muted-foreground">
-            {selectedST.size > 0
-              ? `${points.length} von ${geo!.entities.length} Punkten · ${selectedST.size} ${selectedST.size === 1 ? "Ortsbereich" : "Ortsbereiche"} ausgewählt`
-              : `${points.length} verortete Themen und Beschlussorte · Punktgröße = Beschlüsse`}
-            <span className="ml-2">Zahlenkreise bündeln nahe Orte</span>
-            <span className="ml-2 inline-flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full" style={{ background: KIND_COLOR.beschlussort }} />
-              Orange = konkreter Beschlussort
-            </span>
-          </p>
-        </div>
-      ) : null}
+      {/* Wo die Karte hin ist: Ein Verweis statt einer zweiten Karte — die
+          Punkte liegen als Ebene auf der Stadtkarte unter „Mein Viertel". */}
+      <Link href={THEMEN_KARTE_HREF}
+        className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <MapIcon className="h-5 w-5" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">Auf der Karte</span>
+          <span className="block text-xs text-muted-foreground">Verortete Themen und Beschlussorte liegen als Ebene auf der Stadtkarte — Stadt, Viertel, Vorhaben.</span>
+        </span>
+        <span className="shrink-0 text-sm font-medium text-primary">Öffnen →</span>
+      </Link>
 
-      {/* Suche + Kind-Filter (Farbpunkte = Kartenlegende) */}
+      {/* Suche + Kind-Filter (Farbpunkte wie die Ebene auf der Karte) */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[14rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -387,15 +157,6 @@ export function EntitiesTab() {
               {ENTITY_KIND[k].plural} · {counts[k] ?? 0}
             </button>
           ))}
-          {districts.length > 0 && (geo?.entities.length ?? 0) > 0 && (
-            <OrtsbereichFilter
-              names={districts.map((f) => f.properties.name)}
-              places={ortskatalog}
-              counts={stCounts}
-              selected={selectedST}
-              onChange={setSelectedST}
-            />
-          )}
         </div>
       </div>
 

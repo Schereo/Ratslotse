@@ -111,3 +111,77 @@ def test_unverified_and_pending_accounts_are_spared(store):
         store.set_setup_step(uid, 2)
         _backdate(store, uid, 72)
     assert store.setups_to_remind() == []
+
+
+# ---------------------------------------------------------------------------
+# Der zweite Anlass (Plan „Sehen und Zurückholen", Teil B / PR 6): Konten ohne
+# jeden Haken. Sie gingen an der Erinnerung vorbei, weil die ein BEGONNENES
+# Setup verlangt — und am 08.09.2026 hatten sieben von neun neuen Konten den
+# Assistenten nie angefangen.
+# ---------------------------------------------------------------------------
+
+def _konto_ohne_haken(store, uid: int, *, stunden_alt: int = 72,
+                      email: str | None = None, verified: int = 1,
+                      status: str = "active", erinnert: str | None = None) -> None:
+    alt = (datetime.utcnow() - timedelta(hours=stunden_alt)).isoformat(timespec="seconds")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO web_users (id, email, password_hash, role, status, created_at,"
+            " email_verified, setup_reminded_at) VALUES (?, ?, 'x', 'user', ?, ?, ?, ?)",
+            (uid, email or f"k{uid}@example.org", status, alt, verified, erinnert))
+
+
+def test_konto_ohne_thema_und_gremium_wird_gefunden(tmp_path):
+    store = Store(tmp_path / "r.sqlite")
+    _konto_ohne_haken(store, 1)
+    assert [u["id"] for u in store.accounts_without_hook()] == [1]
+    store.close()
+
+
+def test_ein_thema_genuegt_als_haken(tmp_path):
+    """Gezählt wird der HAKEN, nicht der Schritt — wer etwas hat, hört nichts."""
+    store = Store(tmp_path / "r.sqlite")
+    _konto_ohne_haken(store, 1)
+    _konto_ohne_haken(store, 2, email="b@example.org")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO topics (owner_id, name, description, created_at)"
+            " VALUES (2, 'Radverkehr', '', '2026-09-01T10:00:00')")
+    assert [u["id"] for u in store.accounts_without_hook()] == [1]
+    store.close()
+
+
+def test_ein_gremium_genuegt_auch(tmp_path):
+    store = Store(tmp_path / "r.sqlite")
+    _konto_ohne_haken(store, 1)
+    _konto_ohne_haken(store, 2, email="b@example.org")
+    with store._conn:
+        store._conn.execute(
+            "INSERT INTO committee_subscriptions (owner_id, committee_name, created_at)"
+            " VALUES (2, 'Rat', '2026-09-01T10:00:00')")
+    assert [u["id"] for u in store.accounts_without_hook()] == [1]
+    store.close()
+
+
+def test_frische_konten_bleiben_in_ruhe(tmp_path):
+    """Erst nach der Frist — sonst käme die Mail, während jemand noch klickt."""
+    store = Store(tmp_path / "r.sqlite")
+    _konto_ohne_haken(store, 1, stunden_alt=2)
+    assert store.accounts_without_hook(older_than_hours=48) == []
+    store.close()
+
+
+def test_niemand_bekommt_zwei_mails(tmp_path):
+    """Beide Anlässe teilen sich dieselbe Marke — eine je Konto, nie wieder."""
+    store = Store(tmp_path / "r.sqlite")
+    _konto_ohne_haken(store, 1, erinnert="2026-09-01T10:00:00")
+    assert store.accounts_without_hook() == []
+    store.close()
+
+
+def test_unbestaetigte_und_gesperrte_bleiben_aussen_vor(tmp_path):
+    store = Store(tmp_path / "r.sqlite")
+    _konto_ohne_haken(store, 1, verified=0)
+    _konto_ohne_haken(store, 2, email="b@example.org", status="blocked")
+    assert store.accounts_without_hook() == []
+    store.close()

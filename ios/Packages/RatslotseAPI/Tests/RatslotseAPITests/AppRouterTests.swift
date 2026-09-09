@@ -19,7 +19,13 @@ private let router = AppRouter()
     ("https://ratslotse.de/council/ort?id=stadtteil%3Aeversten", .place(id: "stadtteil:eversten")),
     ("https://ratslotse.de/viertel", .district(id: nil)),
     ("https://ratslotse.de/viertel?id=kreyenbrueck", .district(id: "kreyenbrueck")),
+    // Die vereinte Stadtkarte (Schritt 5): dieselbe Ansicht, neue Adresse.
+    ("https://ratslotse.de/karte", .district(id: nil)),
+    ("https://ratslotse.de/karte?ort=kreyenbrueck&v=94", .district(id: "kreyenbrueck")),
     ("https://ratslotse.de/topics", .tab(.topics)),
+    // Ziel der Kalender-Neuerung auf der Karte „Neu bei Ratslotse" — bis
+    // 09/2026 landete /abos im Browser statt auf dem eigenen Screen.
+    ("https://ratslotse.de/abos", .subscriptions),
     ("https://ratslotse.de/g?t=abc", .sharedAnswer(token: "abc")),
 ])
 func mapsHistoricalUniversalLinks(input: String, expected: AppRoute) throws {

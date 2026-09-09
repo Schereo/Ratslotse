@@ -1,0 +1,390 @@
+"""Was ein Release den Nutzer*innen gebracht hat — kuratiert, als Code.
+
+**Wozu.** Ratslotse liefert laufend aus; wer die Seite alle paar Wochen öffnet,
+merkt von einem neuen Feature nichts. Der Changelog steht zwar öffentlich, ist
+aber ein Protokoll und keine Ankündigung: Der Abschnitt zu 2.2.0 trägt allein
+unter „Hinzugefügt" sechs Einträge mit je über hundert Wörtern.
+
+Hier steht die **kurze** Fassung: je Release drei bis vier Sätze, jeder mit
+einem Ziel in der App. Daraus baut die Oberfläche die Karte „Neu bei
+Ratslotse", und derselbe Text geht auf Wunsch als Mail und Push raus.
+
+**Nur die großen Sachen** (Tims Regel 07.09.2026). Ein Fix, eine schnellere
+Abfrage, ein aufgeräumtes Layout gehören in den Changelog und nicht auf die
+Karte. Drei Schranken halten das, statt es zu erbitten — ``tests/test_releases.py``
+prüft alle drei:
+
+1. **Nur Minor- und Major-Versionen.** Ein Eintrag für ``2.3.1`` fliegt raus:
+   Ein Patch-Release ist definitionsgemäß Reparatur.
+2. **Höchstens vier Highlights.** Wer ein fünftes will, streicht ein anderes.
+   Ein Release ganz ohne Eintrag ist erlaubt und der Normalfall für kleine.
+3. **Jedes Highlight braucht ein Ziel in der App.** Was man sich nirgends
+   ansehen kann, ist keine Karte wert — das sortiert Optimierungen von selbst
+   aus.
+
+**Warum als Code und nicht in der Datenbank.** Dieselbe Begründung wie bei den
+Prompts (``kern/prompts.py``): im Pull Request sichtbar, mit Diff und
+Historie, und niemand tippt einen Ankündigungstext aus der Hüfte ins
+Admin-Panel. Ein Editor dort wäre außerdem eine zweite Wahrheit neben dem
+Changelog.
+
+**Alte Einträge bleiben stehen.** Die Liste ist eine Geschichte, kein
+Aushang: Wer ein halbes Jahr nicht da war, soll sehen, was er verpasst hat
+(``pending_for``). Wer nach einem Release dazugekommen ist, sieht es nie —
+für ihn ist alles neu.
+
+**Beim Versionsschnitt** schlägt ``scripts/changelog_schnitt.py --highlights``
+einen Entwurf aus den Fragmenten vor; die Auswahl trifft ein Mensch.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+#: Eine Version, wie sie im Changelog steht: genau drei Zahlen.
+VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+
+#: So viele Releases zeigt die Karte höchstens auf einmal. Alles Ältere wird
+#: gezählt und verweist auf den Changelog — sonst wächst die Karte mit der
+#: Abwesenheit, und ausgerechnet wer lange weg war, bekäme die längste Wand.
+CARD_LIMIT = 3
+
+#: Mehr als vier Zeilen liest niemand auf einer Karte. Die Zahl ist zugleich
+#: die Bremse gegen „nehmen wir alles mit".
+MAX_HIGHLIGHTS = 4
+
+#: Werte von ``Highlight.only`` — für welche Oberfläche ein Highlight gilt.
+NUR_WEB = "web"
+NUR_NATIVE = "native"
+
+
+@dataclass(frozen=True)
+class Media:
+    """Das Bild oder der Clip zu einem Highlight.
+
+    **Immer in der hellen Fassung aufgenommen** (Tims Entscheidung
+    07.09.2026). Vorher gab es jede Aufnahme zweimal, hell und dunkel, und die
+    Karte tauschte sie über die ``dark:``-Regel. Das war doppelte Arbeit bei
+    jeder Ausgabe und doppelte Ablage für einen Unterschied, den ein Bild in
+    einem gerahmten Kasten ohnehin verträgt: Es liest sich als Abbildung, nicht
+    als Loch in der Oberfläche.
+
+    Die Dateien liegen unter ``web/frontend/public/neuigkeiten/<version>/``
+    und wandern damit auch in den statischen Export der App.
+    ``tests/test_releases.py`` prüft, dass jede genannte Datei existiert —
+    ein Tippfehler im Pfad wäre sonst ein leeres Feld auf der Karte.
+    """
+
+    #: ``image`` (WebP) oder ``video`` (MP4, stumm, in Schleife).
+    kind: str
+    src: str
+    #: Was zu sehen ist — für Screenreader und für den Fall, dass nichts lädt.
+    alt: str
+    #: Das Seitenverhältnis als CSS-Wert (``"16/9"``, ``"9/16"``). Die Bühne
+    #: baut ihren Rahmen daraus, statt ihn zu raten: Im Browser sind die
+    #: Aufnahmen querformatige Fenster, in der App **hochkant** — ein
+    #: Telefon-Bildschirm in einem 16:9-Kasten stünde als schmaler Streifen
+    #: zwischen zwei leeren Flächen (Tims Befund 07.09.2026).
+    #:
+    #: Alle Medien einer Ausgabe teilen sich EIN Verhältnis, sonst springt der
+    #: Kasten beim Blättern (``tests/test_releases.py``).
+    aspect: str = "16/9"
+    #: Nur bei ``video``: das Standbild, bis der Clip läuft. Es ist zugleich
+    #: das, was bei ``prefers-reduced-motion`` STATT des Clips steht.
+    poster: str | None = None
+
+
+@dataclass(frozen=True)
+class Highlight:
+    """Ein Feature in einem Satz, mit einem Ort, an dem man es sieht."""
+
+    #: Kurz und konkret, ohne Punkt am Ende („Sitzungen teilen").
+    title: str
+    #: Ein bis zwei Sätze: Was kann man jetzt, was vorher nicht ging.
+    text: str
+    #: Wohin es führt. **App-Pfad** (mit ``/`` beginnend), denn derselbe Link
+    #: steht in der nativen App — eine externe Adresse ließe den Tipp dort
+    #: wortlos ins Leere laufen (dieselbe Regel wie ``kern/notify.py``).
+    url: str
+    #: Das Bild oder der Clip. **Entweder alle Highlights einer Ausgabe haben
+    #: eins oder keines** (``tests/test_releases.py`` hält das): Die Karte
+    #: zeigt sonst eine Bühne mit einem Loch darin. Ohne Medien fällt sie auf
+    #: die Listenform zurück, die auch ohne Bilder lesbar ist.
+    media: Media | None = None
+    #: Dasselbe Feature, aber **aus der App aufgenommen** (Tims Wunsch
+    #: 07.09.2026). Wer auf dem iPhone liest, soll das iPhone sehen: Ein
+    #: Browserfenster mit Seitenleiste zeigt eine Oberfläche, die es dort gar
+    #: nicht gibt, und wer danach sucht, sucht vergeblich.
+    #:
+    #: Auch hier gilt alles oder nichts, und zwar **je Ausgabe**: Fehlt einem
+    #: Highlight die App-Fassung, bekommt die App für ALLE die Web-Bilder
+    #: (``media_for``). Ein Wechsel mitten in der Bühne wäre schlimmer als eine
+    #: durchgehend fremde Oberfläche.
+    media_ios: Media | None = None
+    #: Für welche Oberfläche dieses Highlight überhaupt gilt: ``None``
+    #: (überall), ``"web"`` oder ``"native"``.
+    #:
+    #: Features unterscheiden sich wirklich zwischen Web und App — 2.2.0 hat
+    #: das Glossar nur im Browser, und die App-Fassungen der iOS-Ausgabe haben
+    #: umgekehrt kein Gegenstück im Web. Ein Highlight anzukündigen, das man
+    #: auf dem eigenen Gerät nicht finden kann, ist schlimmer als eines
+    #: weniger (Tims Entscheidung 07.09.2026).
+    only: str | None = None
+
+
+@dataclass(frozen=True)
+class Release:
+    """Ein Release, wie die Karte es zeigt."""
+
+    #: ``x.y.0`` — dieselbe Zahl wie im Changelog und im Git-Tag.
+    version: str
+    #: Erscheinungsdatum, ISO. Es entscheidet, wer die Karte sieht: Ein Konto,
+    #: das jünger ist, hat das Feature von Anfang an gehabt.
+    date: str
+    #: Die Überschrift der Karte — ein Halbsatz, der die Ausgabe zusammenfasst.
+    title: str
+    highlights: tuple[Highlight, ...]
+
+
+#: Alle Releases mit Karte, **neueste zuerst**.
+#:
+#: Wer hier einträgt, tut es im Release-PR (``dev`` → ``main``), zusammen mit
+#: dem Versionsschnitt: Changelog, App-Version und diese Liste gehören in
+#: denselben Commit.
+RELEASES: tuple[Release, ...] = (
+    Release(
+        version="2.2.0",
+        date="2026-09-06",
+        title="Das Teilen-Update",
+        highlights=(
+            Highlight(
+                title="Sitzungen teilen — auch einzelne Punkte",
+                text="An jeder Sitzung und an jeder Zeile der Tagesordnung steht "
+                     "jetzt ein Teilen-Knopf. Wer den Link bekommt, liest die "
+                     "Sitzung ohne Konto und landet direkt bei dem gemeinten Punkt.",
+                url="/council?tab=sessions",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/teilen.mp4",
+                    poster="/neuigkeiten/2.2.0/teilen.webp",
+                    alt="Eine aufgeklappte Tagesordnung; an jeder Zeile ein "
+                        "Teilen-Knopf. Einer wird angetippt, es erscheint "
+                        "„Link kopiert“.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/teilen-ios.mp4", poster="/neuigkeiten/2.2.0/teilen-ios.webp",
+                    alt="Dieselbe Tagesordnung auf dem iPhone: ein Tipp auf das "
+                        "Teilen-Zeichen an einem Punkt öffnet das Teilen-Blatt "
+                        "von iOS, ein Tipp auf „Erinnerungen“ legt den Link "
+                        "dort als neue Erinnerung ab.",
+                ),
+            ),
+            Highlight(
+                title="Deine Sitzungen im Kalender",
+                text="Die Termine deiner abonnierten Gremien laufen jetzt in Apple "
+                     "Kalender, Google oder Outlook mit — einmal abonniert, danach "
+                     "aktualisiert sich alles von selbst.",
+                url="/abos",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/kalender.mp4",
+                    poster="/neuigkeiten/2.2.0/kalender.webp",
+                    alt="Die Seite „Ausschuss-Abos“: Ein Klick auf „Im Kalender "
+                        "abonnieren“ klappt die Karte auf, ein Klick auf "
+                        "„Link kopieren“ zeigt „Link kopiert“.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/kalender-ios.mp4", poster="/neuigkeiten/2.2.0/kalender-ios.webp",
+                    alt="Der Bildschirm „Ausschuss-Abos“ auf dem iPhone: Ein Tipp "
+                        "klappt „Im Kalender abonnieren“ auf, ein Tipp auf "
+                        "„Kalender abonnieren“ öffnet die Kalender-App mit dem "
+                        "Abo-Dialog.",
+                ),
+            ),
+            Highlight(
+                title="Der Rat erklärt seine Fachwörter",
+                text="„Was ist eine Ausfallbürgschaft?“ beantwortet die KI-Frage "
+                     "jetzt zuverlässig, und im Antworttext liegt unter jedem "
+                     "Fachwort eine kurze Erklärung zum Antippen.",
+                url="/fragen",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/glossar.mp4",
+                    poster="/neuigkeiten/2.2.0/glossar.webp",
+                    alt="Die KI-Frage „Was ist eine Veränderungssperre?“ wird "
+                        "beantwortet; im Antworttext ist der Begriff gepunktet "
+                        "unterstrichen, beim Überfahren erscheint die Erklärung.",
+                ),
+                # Nur im Browser: Im ganzen ``ios/``-Baum kommt „glossar" nicht
+                # vor. Ein Feature anzukündigen, das man auf dem eigenen Gerät
+                # nicht finden kann, ist schlimmer als eines weniger.
+                only=NUR_WEB,
+            ),
+            Highlight(
+                title="Live: welcher Punkt gerade dran ist",
+                text="Während einer Ratssitzung zeigt die Übersicht mit, welcher "
+                     "Tagesordnungspunkt gerade läuft und wer spricht — aus der "
+                     "Übertragung mitgelesen.",
+                url="/dashboard",
+                media=Media(
+                    kind="video",
+                    src="/neuigkeiten/2.2.0/live.mp4",
+                    poster="/neuigkeiten/2.2.0/live.webp",
+                    alt="Die Live-Karte „Der Stadtrat tagt gerade“ mit dem "
+                        "laufenden Punkt; ein Klick auf „Tagesordnung“ öffnet "
+                        "die Sitzung, der Punkt trägt „Läuft gerade“.",
+                ),
+                media_ios=Media(
+                    kind="video", aspect="1206/2622",
+                    src="/neuigkeiten/2.2.0/live-ios.mp4", poster="/neuigkeiten/2.2.0/live-ios.webp",
+                    alt="Die Startseite der App mit der Live-Karte „Der Stadtrat "
+                        "tagt gerade“; ein Tipp auf „Tagesordnung“ öffnet die "
+                        "Sitzung, der laufende Punkt trägt „Läuft gerade“.",
+                ),
+            ),
+        ),
+    ),
+)
+
+
+def version_key(version: str) -> tuple[int, int, int]:
+    """``"2.10.0"`` → ``(2, 10, 0)``, damit Versionen der Reihe nach vergleichbar
+    sind.
+
+    Als Zeichenkette verglichen stünde ``"2.10.0"`` vor ``"2.9.0"`` — genau der
+    Vergleich, den die Hochwassermarke eines Kontos braucht. Deshalb wird
+    **nirgends** in SQL nach Versionen sortiert, sondern immer hierüber.
+    """
+    m = VERSION.match(version.strip())
+    if not m:
+        raise ValueError(f"Keine Version im Format x.y.z: {version!r}")
+    return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+
+def is_feature_release(version: str) -> bool:
+    """Darf diese Version eine Karte haben? Nur ``x.y.0``."""
+    try:
+        return version_key(version)[2] == 0
+    except ValueError:
+        return False
+
+
+def latest() -> Release | None:
+    """Das jüngste Release mit Karte."""
+    return RELEASES[0] if RELEASES else None
+
+
+def get(version: str) -> Release | None:
+    for release in RELEASES:
+        if release.version == version:
+            return release
+    return None
+
+
+def pending_for(seen_version: str | None,
+                account_created: str | None) -> tuple[list[Release], int]:
+    """Was dieses Konto noch nicht gesehen hat: ``(zu zeigen, weitere)``.
+
+    Zwei Bedingungen, und beide sind nötig:
+
+    * **jünger als die Hochwassermarke** — ``seen_version`` ist die höchste
+      weggeklickte Version, nicht die zuletzt gesehene. Wer zwei Releases
+      verpasst hat, bekommt beide; wer eine Karte wegklickt, bekommt keine
+      davon je wieder.
+    * **älter als das Konto nicht** — wer sich nach dem Release angemeldet hat,
+      hatte das Feature von der ersten Minute an. Für ihn ist es keine
+      Neuigkeit, sondern die App.
+
+    Zurück kommen höchstens ``CARD_LIMIT`` Releases (neueste zuerst) und die
+    Zahl der übrigen. Die Karte zeigt das erste voll und die anderen als
+    Zeilen; was darüber hinausgeht, steht im Changelog.
+    """
+    marke = version_key(seen_version) if seen_version else None
+    # Nur das Datum vergleichen: ``created_at`` trägt eine Uhrzeit, ``date``
+    # nicht. Wer am Release-Tag dazugekommen ist, zählt als „war schon da" —
+    # der mildere Irrtum, denn eine Karte zu viel ist ein Wisch, eine
+    # verpasste Ankündigung ist weg.
+    erstellt = (account_created or "")[:10]
+
+    offen = [
+        r for r in RELEASES
+        if (marke is None or version_key(r.version) > marke)
+        and (not erstellt or erstellt <= r.date)
+    ]
+    offen.sort(key=lambda r: version_key(r.version), reverse=True)
+    return offen[:CARD_LIMIT], max(0, len(offen) - CARD_LIMIT)
+
+
+#: Wo die Medien im Repo liegen — von hier aus prüft der Wächter, ob eine
+#: genannte Datei wirklich existiert, und von hier aus liefert Next.js sie aus.
+MEDIA_ROOT = "web/frontend/public"
+
+
+def has_media(release: Release) -> bool:
+    """Trägt diese Ausgabe Bilder? (Alle oder keines, s. ``Highlight.media``.)"""
+    return all(h.media is not None for h in release.highlights)
+
+
+#: Clients, die die App-Fassung der Bilder bekommen sollen. Deckt sich mit
+#: ``web.backend.app.clients.NATIVE_CLIENTS`` — hier noch einmal, weil ``kern``
+#: nichts aus dem Backend importieren darf (s. tests/test_schichten.py).
+NATIVE_CLIENTS = frozenset({"ios", "android", "app"})
+
+
+def highlights_for(release: Release, client: str = "web") -> tuple[Highlight, ...]:
+    """Die Highlights, die auf DIESER Oberfläche etwas zu suchen haben."""
+    nativ = client in NATIVE_CLIENTS
+    return tuple(
+        h for h in release.highlights
+        if h.only is None or h.only == (NUR_NATIVE if nativ else NUR_WEB)
+    )
+
+
+def has_native_media(release: Release) -> bool:
+    """Ist die App-Fassung dieser Ausgabe vollständig?
+
+    Gemessen an den Highlights, die die App überhaupt zeigt — ein rein
+    webseitiges braucht dort kein Bild, weil es dort gar nicht erscheint.
+    """
+    sichtbar = highlights_for(release, "ios")
+    return bool(sichtbar) and all(h.media_ios is not None for h in sichtbar)
+
+
+def media_for(highlight: Highlight, client: str = "web") -> Media | None:
+    """Welches Bild dieser Client sehen soll.
+
+    Die Entscheidung fällt **serverseitig**, damit die Clients nicht zwei
+    Felder auseinanderhalten müssen und eine dritte Plattform später nichts
+    außer einem Registry-Feld braucht.
+    """
+    if client in NATIVE_CLIENTS and highlight.media_ios is not None:
+        return highlight.media_ios
+    return highlight.media
+
+
+def as_dict(release: Release, client: str = "web") -> dict:
+    """Die Antwortform der API — englische Feldnamen, deutsche Inhalte.
+
+    ``client`` entscheidet, welche Fassung der Bilder mitgeht (``media_for``);
+    unvollständige App-Fassungen fallen für die ganze Ausgabe auf Web zurück.
+    """
+    nativ = client in NATIVE_CLIENTS and has_native_media(release)
+
+    def medium(m: Media | None) -> dict | None:
+        if m is None:
+            return None
+        return {"kind": m.kind, "src": m.src, "alt": m.alt,
+                "aspect": m.aspect, "poster": m.poster}
+
+    return {
+        "version": release.version,
+        "date": release.date,
+        "title": release.title,
+        "highlights": [
+            {"title": h.title, "text": h.text, "url": h.url,
+             "media": medium(h.media_ios if nativ else h.media)}
+            for h in highlights_for(release, client)
+        ],
+    }

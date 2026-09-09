@@ -73,6 +73,12 @@ SPEICHER = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "r
 ABZUG = SPEICHER / "council.sqlite"
 STAND = SPEICHER / "stand.json"
 
+#: Der Städte-Speicher (`council/cities`) liegt daneben und kommt nur auf
+#: Zuruf mit: Er ist rund 600 MB groß und wird für die Arbeit an einer
+#: Oberfläche nicht gebraucht. Wer am Städtevergleich arbeitet, nimmt ihn mit.
+STAEDTE_ABZUG = SPEICHER / "cities.sqlite"
+STAEDTE_FERN = "/home/tim/app/data/cities.sqlite"
+
 #: Quellen. Die Namen sind SSH-Hosts aus ``~/.ssh/config``.
 QUELLEN = {
     "dev": ("tk-dev", "/home/tim/app/data/council.sqlite"),
@@ -199,6 +205,23 @@ def hol(quelle: str) -> int:
     return 0
 
 
+def hol_staedte(quelle: str) -> int:
+    """Den Städte-Speicher unverändert herunterladen.
+
+    Keine Abspeckung wie bei der Rats-Datenbank: Es stehen ausschließlich
+    öffentliche Ratsdokumente anderer Städte darin, keine Konten, keine
+    Personendaten. Deshalb reicht ein `scp`.
+    """
+    host, _ = QUELLEN[quelle]
+    SPEICHER.mkdir(parents=True, exist_ok=True)
+    t0 = time.monotonic()
+    print(f"Städte-Speicher von {quelle} holen …")
+    _lauf(["scp", f"{host}:{STAEDTE_FERN}", str(STAEDTE_ABZUG)])
+    print(f"✓ {STAEDTE_ABZUG}  ({STAEDTE_ABZUG.stat().st_size / 1e6:.0f} MB, "
+          f"{time.monotonic() - t0:.0f}s)")
+    return 0
+
+
 def setz(ueberschreiben: bool) -> int:
     if not ABZUG.exists():
         print("Kein Abzug da. Erst holen:  python scripts/lokale_daten.py hol",
@@ -224,6 +247,32 @@ def setz(ueberschreiben: bool) -> int:
         shutil.copy2(ABZUG, ziel)
     print(f"✓ {ziel.relative_to(WURZEL)} ({'geklont' if geklont else 'kopiert'})")
     _warnen()
+    return 0
+
+
+def setz_staedte(ueberschreiben: bool) -> int:
+    if not STAEDTE_ABZUG.exists():
+        print("Kein Städte-Abzug da. Erst holen:  "
+              "python scripts/lokale_daten.py hol --mit-staedten", file=sys.stderr)
+        return 1
+    ziel = WURZEL / "data" / "cities.sqlite"
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    if ziel.exists() and not ueberschreiben:
+        print(f"{ziel.relative_to(WURZEL)} gibt es schon "
+              f"({ziel.stat().st_size / 1e6:.0f} MB). Mit --ueberschreiben ersetzen.",
+              file=sys.stderr)
+        return 1
+    for rest in ("", "-wal", "-shm"):
+        q = Path(str(ziel) + rest)
+        if q.exists():
+            q.unlink()
+    geklont = False
+    if platform.system() == "Darwin":
+        geklont = subprocess.run(["cp", "-c", str(STAEDTE_ABZUG), str(ziel)],
+                                 capture_output=True).returncode == 0
+    if not geklont:
+        shutil.copy2(STAEDTE_ABZUG, ziel)
+    print(f"✓ {ziel.relative_to(WURZEL)} ({'geklont' if geklont else 'kopiert'})")
     return 0
 
 
@@ -314,15 +363,25 @@ def main() -> int:
     unter = p.add_subparsers(dest="was", required=True)
     h = unter.add_parser("hol", help="Abzug vom Server bauen und herunterladen")
     h.add_argument("--von", default="dev", choices=sorted(QUELLEN))
+    h.add_argument("--mit-staedten", action="store_true",
+                   help="den Städte-Speicher (council/cities) mitnehmen, ~600 MB")
     s = unter.add_parser("setz", help="Abzug in data/ dieses Worktrees legen")
     s.add_argument("--ueberschreiben", action="store_true")
+    s.add_argument("--mit-staedten", action="store_true",
+                   help="den Städte-Speicher mitlegen")
     unter.add_parser("stand", help="Was liegt da, und wie alt?")
     args = p.parse_args()
 
     if args.was == "hol":
-        return hol(args.von)
+        code = hol(args.von)
+        if code == 0 and args.mit_staedten:
+            code = hol_staedte(args.von)
+        return code
     if args.was == "setz":
-        return setz(args.ueberschreiben)
+        code = setz(args.ueberschreiben)
+        if code == 0 and args.mit_staedten:
+            code = setz_staedte(args.ueberschreiben)
+        return code
     return stand()
 
 

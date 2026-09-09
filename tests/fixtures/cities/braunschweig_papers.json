@@ -1,0 +1,230 @@
+[
+ {
+  "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002747",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/bodies/1",
+  "name": "Fortschreibung des Landes-Raumordnungsprogramms (LROP) - Stellungnahme der Stadt Braunschweig zum zweiten LROP-Entwurf",
+  "reference": "26-29361",
+  "date": "2026-09-07",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/files/2222794",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-17 26-29361 Fortschreibung des L SAO.pdf",
+   "mimeType": "pdf",
+   "size": 40489825,
+   "accessUrl": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2222794&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/at/67"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003263",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/1123"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/VO020?VOLFDNR=2002747",
+  "deleted": false
+ },
+ {
+  "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002864",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/bodies/1",
+  "name": "Ergänzungsvertrag zum Städtebaulichen Vertrag „Am Salgenholz“, WE 56, Stadtgebiet zwischen der Gifhorner Straße (K 2), der Schunter und dem östlichen Siedlungsrand von Wenden",
+  "reference": "26-29428",
+  "date": "2026-09-04",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/files/2224664",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-21 26-29428 Ergaenzungsvertrag zu SAO.pdf",
+   "mimeType": "pdf",
+   "size": 5024790,
+   "accessUrl": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2224664&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/at/67"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003386",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/1123"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/VO020?VOLFDNR=2002864",
+  "deleted": false
+ },
+ {
+  "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002960",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/bodies/1",
+  "name": "Innovationsstrategie für Braunschweig",
+  "reference": "26-29470",
+  "date": "2026-09-04",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/files/2226599",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-25 26-29470 Innovationsstrategie SAO.pdf",
+   "mimeType": "pdf",
+   "size": 1259863,
+   "accessUrl": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2226599&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/at/1"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003500",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/3"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003501",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/1"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003499",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/1121"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/VO020?VOLFDNR=2002960",
+  "deleted": false
+ },
+ {
+  "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/papers/2002986",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/bodies/1",
+  "name": "Bauvoranfrage Konversion einer Gewerbefläche in ein Wohnquartier („Cola-Quartier“) Alte Frankfurter Straße 181, Aktenzeichen 60.3/4144/202 – Beschluss zur Zustimmung nach § 36a BauGB im Rahmen des Bauturbos",
+  "reference": "26-29481",
+  "date": "2026-09-04",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/files/2227567",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-26 26-29481 Bauvoranfrage Konver SAO.pdf",
+   "mimeType": "pdf",
+   "size": 8989664,
+   "accessUrl": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/doc?DOCTYP=130&DOLFDNR=2227567&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/at/67"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003614",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/37"
+    ],
+    "authoritative": false,
+    "role": "Anhörung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003615",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/1123"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003616",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/3"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/consultations/2003617",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.ratsinfo.braunschweig.sitzung-online.de/oparl/organizations/gr/1"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.ratsinfo.braunschweig.sitzung-online.de/public/VO020?VOLFDNR=2002986",
+  "deleted": false
+ }
+]

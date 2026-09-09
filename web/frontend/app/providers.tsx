@@ -7,6 +7,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { AuthProvider } from "@/lib/auth";
 import { OnboardingFlow } from "@/components/onboarding-flow";
+import { AufrufZaehler } from "@/components/aufruf-zaehler";
 import { OfflinePill } from "@/components/offline-pill";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { Toaster } from "@/components/ui";
@@ -74,6 +75,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
             Muss INNERHALB des AuthProviders hängen: Der Flow richtet Abos und
             Themen ein, die es ohne Konto nicht gibt. */}
         <OnboardingFlow />
+        {/* Zählt Seitenaufrufe (anonym, ohne Cookie). Muss INNERHALB des
+            AuthProviders hängen: Ob jemand angemeldet ist, geht als Ja/Nein
+            mit, damit der Server dafür kein Konto auflösen muss. */}
+        <AufrufZaehler />
       </AuthProvider>
       {/* RL-1103/1104: Offline-Hinweis (web + app) und Pull-to-Refresh (nur App). */}
       <OfflinePill />

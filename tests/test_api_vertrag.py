@@ -36,6 +36,7 @@ KEIN_JSON = {
     ("get", "/api/council/deep-research/{job_id}/events"),
     ("get", "/api/council/plan-bild/{document_id}"),
     ("get", "/api/calendar/{token}.ics"),
+    ("get", "/api/admin/live-probe"),
     ("get", "/api/wahlabend/bild.png"),
 }
 
@@ -45,6 +46,7 @@ KEIN_JSON_MEDIENTYP = {
     ("get", "/api/council/deep-research/{job_id}/events"): "text/event-stream",
     ("get", "/api/council/plan-bild/{document_id}"): "image/jpeg",
     ("get", "/api/calendar/{token}.ics"): "text/calendar",
+    ("get", "/api/admin/live-probe"): "text/event-stream",
     ("get", "/api/wahlabend/bild.png"): "image/png",
 }
 

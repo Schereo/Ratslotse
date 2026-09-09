@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, apiUrl, authHeaders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { AdminUserDetail, AdminGrowth, AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
@@ -24,15 +24,20 @@ type JobLauf = {
 type AdminJob = Omit<ApiAntwort<"/admin/jobs">[number], "last"> & { last: JobLauf | null };
 type AdminUserRow = ApiAntwort<"/admin/users">[number];
 type AdminQuizStats = ApiAntwort<"/admin/quiz/stats">;
+type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
+type AdminSackgasse = ApiAntwort<"/admin/stats/dead-ends">[number];
+type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
+type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
+import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
 
-type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen";
+type Tab = "stats" | "fehler" | "feedback" | "llm" | "users" | "quiz" | "orte" | "themen" | "live" | "news";
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -60,6 +65,8 @@ export default function AdminPage() {
           ["quiz", "Quiz"],
           ["orte", "Ortskandidaten"],
           ["themen", "Themen-Dubletten"],
+          ["live", "Live-Probe"],
+          ["news", "Neuigkeiten"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
             key={t}
@@ -81,6 +88,8 @@ export default function AdminPage() {
         {tab === "quiz" && <QuizModerationTab />}
         {tab === "orte" && <PlaceCandidatesTab />}
         {tab === "themen" && <EntityAliasTab />}
+        {tab === "live" && <LiveProbeTab />}
+        {tab === "news" && <NewsTab />}
       </div>
     </div>
   );
@@ -219,6 +228,563 @@ function fetchAge(hours: number): string {
   return `${Math.round(hours / 24)} Tagen`;
 }
 
+/** Die vier neuen Statistik-Abschnitte (Plan „Sehen und Zurückholen", Teil A).
+ *
+ *  Gemeinsamer Grundsatz nach Tims Rückmeldung vom 09.09.: Jede Zahl sagt,
+ *  **woraus** sie besteht (Zähler und Nenner) und **wie sie sich verändert**
+ *  hat (gegen dieselbe Spanne davor). Ein Stand allein — „43 %" — sagt weder,
+ *  ob das 3 von 7 sind, noch ob es letzte Woche 60 % waren. Die Veränderung
+ *  trägt Signal-Orange, wie jedes Delta in der Designsprache (§ 2, § 5 RG-04);
+ *  Ampelfarben auf Balken sind raus, sie beantworteten eine andere Frage als
+ *  die Balkenlänge und brauchten eine Legende, um nicht falsch gelesen zu werden.
+ */
+
+/** Zähler und Nenner in Mono — „6 von 14". */
+function Basis({ n, von, was }: { n: number; von: number; was?: string }) {
+  return (
+    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+      {n.toLocaleString("de-DE")} von {von.toLocaleString("de-DE")}{was ? ` ${was}` : ""}
+    </span>
+  );
+}
+
+/** Die Veränderung gegen den Vorzeitraum — als Chip in Signal-Orange.
+ *
+ *  `prozent`: beide Werte sind Anteile, die Differenz steht in Punkten.
+ *  `invers`: klein ist gut (Antworten ohne Quelle). Die Farbe sagt nicht
+ *  „gut/schlecht", sondern nur „hat sich bewegt" — die Richtung trägt der
+ *  Pfeil, die Bewertung der Kontext. Ohne Vergleichswert: „kein Vergleich",
+ *  nie eine erfundene Null. */
+function Veraenderung({ jetzt, vorher, prozent, invers, klein }: {
+  jetzt: number | null; vorher: number | null | undefined; prozent?: boolean; invers?: boolean; klein?: boolean;
+}) {
+  const groesse = klein ? "text-[10.5px] px-1.5 py-px" : "text-[11px] px-2 py-0.5";
+  if (jetzt == null || vorher == null) {
+    return <span className={cn("inline-flex items-center rounded-full border border-dashed border-border font-mono text-muted-foreground/70", groesse)}>kein Vergleich</span>;
+  }
+  const d = prozent ? Math.round((jetzt - vorher) * 100) : jetzt - vorher;
+  if (d === 0) {
+    return <span className={cn("inline-flex items-center rounded-full bg-muted font-mono text-muted-foreground", groesse)}>unverändert</span>;
+  }
+  const besser = invers ? d < 0 : d > 0;
+  const text = prozent ? `${d > 0 ? "+" : "−"}${Math.abs(d)} Pkt.` : `${d > 0 ? "+" : "−"}${Math.abs(d).toLocaleString("de-DE")}`;
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full bg-signal/[0.10] font-mono font-semibold text-signal", groesse)}
+      title={besser ? "besser als im Zeitraum davor" : "schlechter als im Zeitraum davor"}>
+      <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        {d > 0 ? <path d="M12 19V5M5 12l7-7 7 7" /> : <path d="M12 5v14M19 12l-7 7-7-7" />}
+      </svg>
+      {text}
+    </span>
+  );
+}
+
+function AbschnittKopf({ titel, rechts, children }: { titel: string; rechts?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-x-6 gap-y-1">
+      <div className="min-w-0">
+        <h3 className="font-display text-[15px] font-bold text-foreground">{titel}</h3>
+        {children && <p className="mt-0.5 max-w-[62ch] text-[12px] text-muted-foreground">{children}</p>}
+      </div>
+      {rechts && <span className="shrink-0 pt-1 text-right font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">{rechts}</span>}
+    </div>
+  );
+}
+
+/** Der Trichter je Registrierungswoche — wo neue Konten abreißen.
+ *
+ *  Die eine Regel, die diese Ansicht trägt: **erreicht IMMER gegen erreichbar**.
+ *  Ein Konto von gestern kann „kam binnen 30 Tagen wieder" noch nicht geschafft
+ *  haben; zeigte man nur die erreichte Zahl, läse sich jede frische Woche als
+ *  Totalausfall. Der Balken hat deshalb drei Lagen: alle Anmeldungen (Spur),
+ *  die schon alt genug sind (heller Teil), die es geschafft haben (dunkler
+ *  Teil) — dieselbe Skala für alle drei, keine Farbe, die etwas anderes meint.
+ */
+function KohortenSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "cohorts"],
+    queryFn: () => api.get<AdminKohorten>("/admin/stats/cohorts?weeks=8"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Der Trichter kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const k = data.kennzahlen;
+  const v = data.previous;
+  const b = data.basis;
+  const start = data.total.find((s) => s.key === "registriert")?.n ?? 0;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="Neue Konten: was daraus wird"
+        rechts={`${data.weeks} Wochen · davor ${b.vorher_n} ${b.vorher_n === 1 ? "Konto" : "Konten"}`}>
+        {data.excluded === 1 ? "Ein Betreiber-/Testkonto ist nicht gezählt." : `${data.excluded} Betreiber-/Testkonten sind nicht gezählt.`}
+        {" "}Veränderung jeweils gegen dieselbe Spanne davor.
+      </AbschnittKopf>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KennzahlCard label="Haken-Quote" hint="Thema oder Gremium am ersten Tag" wert={k.haken_quote} vorher={v.haken_quote} basis={b.haken} anteil vergleichbar={b.vorher_n >= 3} />
+        <KennzahlCard label="Kam wieder" hint="binnen sieben Tagen" wert={k.tag7} vorher={v.tag7} basis={b.tag7} anteil vergleichbar={b.vorher_n >= 3} />
+        <KennzahlCard label="Ohne Quelle" hint="Antworten, 90 Tage" wert={k.sackgassen_quote} vorher={v.sackgassen_quote} basis={b.sackgassen} anteil invers />
+        <KennzahlCard label="Fragen je Konto" hint="Median aktiver Konten, 7 Tage" wert={k.fragen_median} vorher={v.fragen_median} />
+      </div>
+
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Trichter</StatKicker>
+          <span className="font-mono text-[10.5px] text-muted-foreground">{start} Anmeldungen</span>
+        </div>
+        <div className="mt-3.5 flex flex-col gap-2">
+          {data.total.map((stufe, i) => (
+            <TrichterZeile key={stufe.key} stufe={stufe} start={start} davor={i > 0 ? data.total[i - 1] : null} />
+          ))}
+        </div>
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-primary" /> hat die Stufe erreicht</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-primary/25" /> ist alt genug, um sie zu erreichen</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-muted" /> alle Anmeldungen</span>
+        </div>
+      </Card>
+
+      {data.cohorts.length > 0 && (
+        <Card className="p-4">
+          <div className="flex items-baseline justify-between">
+            <StatKicker>Je Registrierungswoche</StatKicker>
+            <span className="font-mono text-[10.5px] text-muted-foreground">erreicht / alt genug</span>
+          </div>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="pb-2 pr-3 font-medium">Woche ab</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Neu</th>
+                  <th className="pb-2 pr-3 text-right font-medium">Haken</th>
+                  <th className="pb-2 pr-3 text-right font-medium">2. Tag</th>
+                  <th className="pb-2 pr-3 text-right font-medium">7 Tage</th>
+                  <th className="pb-2 text-right font-medium">30 Tage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...data.cohorts].reverse().map((kohorte, i) => (
+                  <tr key={kohorte.week} className={cn("border-b border-border/60 last:border-0", i === 0 && "bg-primary/[0.04]")}>
+                    <td className="py-2 pr-3 text-foreground">
+                      {formatDate(kohorte.week)}
+                      {i === 0 && <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.08em] text-primary">läuft</span>}
+                    </td>
+                    <td className="py-2 pr-3 text-right font-semibold tabular-nums text-foreground">{kohorte.n}</td>
+                    {(["haken", "tag2", "tag7", "tag30"] as const).map((key) => {
+                      const st = kohorte.stages.find((x) => x.key === key);
+                      return (
+                        <td key={key} className="py-2 pr-3 text-right font-mono tabular-nums last:pr-0">
+                          {!st || st.eligible === 0 ? (
+                            <span className="text-muted-foreground/50" title="Noch keine dieser Anmeldungen ist alt genug">–</span>
+                          ) : (
+                            <ZellenAnteil n={st.n} von={st.eligible} />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2.5 text-[11.5px] text-muted-foreground">
+            „–" heißt: noch nicht messbar. Ein Konto von gestern kann „30 Tage" weder geschafft noch verfehlt haben.
+          </p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/** Eine Tabellenzelle „2 / 4" mit einem Füllstand dahinter — so liest man die
+ *  Spalte auf einen Blick, statt jeden Bruch im Kopf zu rechnen. */
+function ZellenAnteil({ n, von }: { n: number; von: number }) {
+  const anteil = von > 0 ? n / von : 0;
+  return (
+    <span className="inline-flex items-center justify-end gap-2">
+      <span className="hidden h-1.5 w-10 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.round(anteil * 100)}%` }} />
+      </span>
+      <span className="text-foreground">{n}<span className="text-muted-foreground"> / {von}</span></span>
+    </span>
+  );
+}
+
+/** Eine Stufe als dreilagiger Balken — alle, alt genug, erreicht. */
+function TrichterZeile({ stufe, start, davor }: {
+  stufe: AdminKohorten["total"][number]; start: number; davor: AdminKohorten["total"][number] | null;
+}) {
+  const offen = stufe.eligible === 0;
+  const pct = (x: number) => (start > 0 ? Math.round((x / start) * 100) : 0);
+  // Der Abriss zur Stufe davor — die Zahl, die man wissen will: WO reißt es?
+  const abriss = davor && !offen && davor.n > stufe.n ? davor.n - stufe.n : 0;
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[13.5rem_minmax(0,1fr)_7.5rem]">
+      <span className="truncate text-[13px] text-foreground">{stufe.label}</span>
+      <div className="relative hidden h-3 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+        <div className="absolute inset-y-0 left-0 rounded-full bg-primary/25" style={{ width: `${pct(stufe.eligible)}%` }} />
+        <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${pct(stufe.n)}%` }} />
+      </div>
+      <span className="flex items-baseline justify-end gap-2 whitespace-nowrap text-right tabular-nums">
+        {offen ? (
+          <span className="font-mono text-[11px] text-muted-foreground/70">noch offen</span>
+        ) : (
+          <>
+            {abriss > 0 && <span className="font-mono text-[10.5px] text-signal">−{abriss}</span>}
+            <span className="text-[12.5px]"><span className="font-semibold text-foreground">{stufe.n}</span><span className="text-muted-foreground"> von {stufe.eligible}</span></span>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** Eine Kennzahl: die Zahl, woraus sie besteht, und wie sie sich bewegt hat.
+ *  `null` heißt „keine Aussage", nicht „0 %". */
+function KennzahlCard({ label, hint, wert, vorher, basis, anteil, invers, vergleichbar = true }: {
+  label: string; hint: string; wert: number | null; vorher: number | null;
+  basis?: [number, number] | readonly [number, number]; anteil?: boolean; invers?: boolean;
+  /** Ein Vorzeitraum mit ein, zwei Konten ist kein Vergleich, sondern Rauschen —
+   *  dann steht „kein Vergleich" da, nicht „−57 Pkt.". */
+  vergleichbar?: boolean;
+}) {
+  const text = wert == null ? "–" : anteil ? `${Math.round(wert * 100)} %` : wert.toLocaleString("de-DE");
+  return (
+    <Card className="p-3.5">
+      <StatKicker>{label}</StatKicker>
+      <p className={cn("mt-1.5 whitespace-nowrap font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", wert == null ? "text-muted-foreground" : "text-foreground")}>
+        {text}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <Veraenderung jetzt={wert} vorher={vergleichbar ? vorher : null} prozent={anteil} invers={invers} klein />
+        {basis && wert != null && <Basis n={basis[0]} von={basis[1]} />}
+      </div>
+      <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{wert == null ? "noch keine Grundlage" : hint}</p>
+    </Card>
+  );
+}
+
+/** Lesbare Namen für die Seitenmuster — der Pfad bleibt als Zweitzeile stehen,
+ *  weil er die Wahrheit ist; der Name ist die Übersetzung. Die vier Reiter der
+ *  Ratsinfo-Seite tragen ihren Bereich, sonst sähen sie aus wie vier Seiten. */
+const SEITEN_NAMEN: Record<string, string> = {
+  "/": "Startseite", "/login": "Anmelden", "/register": "Registrieren", "/forgot-password": "Passwort vergessen",
+  "/reset-password": "Passwort zurücksetzen", "/verify-email": "E-Mail bestätigen", "/hilfe": "Hilfe",
+  "/impressum": "Impressum", "/datenschutz": "Datenschutz", "/barrierefreiheit": "Barrierefreiheit",
+  "/changelog": "Changelog", "/g": "Geteilte Antwort", "/kommunalwahl": "Kommunalwahl", "/wahlabend": "Wahlabend",
+  "/council": "Ratsinfo", "/council?tab=decisions": "Ratsinfo · Suche", "/council?tab=sessions": "Ratsinfo · Sitzungen",
+  "/council?tab=themen": "Ratsinfo · Themen", "/council?tab=analysis": "Ratsinfo · Analyse",
+  "/council/decision": "Beschluss-Seite", "/council/sitzung": "Sitzungs-Seite", "/council/thema": "Themen-Seite",
+  "/council/person": "Personen-Seite", "/council/ort": "Orts-Seite", "/council/ideen": "Ideen",
+  "/dashboard": "Heute", "/fragen": "Fragen", "/karte": "Stadtkarte", "/viertel": "Mein Viertel",
+  "/topics": "Meine Themen", "/abos": "Abos", "/bookmarks": "Merkliste", "/quiz": "Quiz", "/quiz/stats": "Quiz-Statistik",
+  "/account": "Konto", "/admin": "Admin", "/haushalt": "Haushalt", "/andere": "Sonstiges",
+};
+function seitenName(route: string): string {
+  if (SEITEN_NAMEN[route]) return SEITEN_NAMEN[route];
+  if (route.startsWith("/haushalt/")) return "Haushalt · " + route.slice("/haushalt/".length);
+  if (route.startsWith("/kommunalwahl/")) return "Kommunalwahl · " + route.slice("/kommunalwahl/".length).replace("/{slug}", "");
+  return route;
+}
+
+/** Zwei Anteile als EIN Balken — ergibt zusammen immer die ganze Breite. */
+function AnteilBalken({ teile }: { teile: { label: string; n: number; ton: string }[] }) {
+  const summe = Math.max(1, teile.reduce((a, t) => a + t.n, 0));
+  return (
+    <div>
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+        {teile.map((t) => <span key={t.label} className={t.ton} style={{ width: `${(t.n / summe) * 100}%` }} />)}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+        {teile.map((t) => (
+          <span key={t.label} className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <span className={cn("h-2 w-2 rounded-full", t.ton)} />
+            {t.label} <span className="font-mono tabular-nums text-foreground">{Math.round((t.n / summe) * 100)} %</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Anonyme Seitenaufrufe — die Nutzung, die vorher gar nicht sichtbar war.
+ *
+ *  Die Ansicht sagt bewusst „Aufrufe" und „Besuche", nie „Besucher": Ohne
+ *  Wiedererkennung gibt es keine eindeutigen Personen, und eine Zahl, die so
+ *  tut, wäre gelogen. Ein „Besuch" ist der erste Aufruf in einem Browser-Tab.
+ */
+function SeitenaufrufeSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "page-views"],
+    queryFn: () => api.get<AdminSeitenaufrufe>("/admin/stats/page-views?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Seitenaufrufe kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  if (data.total === 0) {
+    return (
+      <div className="space-y-3 pt-2">
+        <AbschnittKopf titel="Seitenaufrufe" rechts="anonym · ohne Kennung" />
+        <Card className="flex items-center gap-4 p-4">
+          <Mascot pose="search" className="h-14 w-14 shrink-0" />
+          <p className="text-[13px] text-muted-foreground">
+            Noch nichts gezählt. Die Zählung läuft ab dem Deploy dieser Version — vorher
+            aufgerufene Seiten lassen sich nicht nachtragen.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const angemeldet = data.total - data.anonymous;
+  const spitze = data.pages[0]?.n ?? 1;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="Seitenaufrufe" rechts={`${data.days} Tage · anonym, ohne Kennung`}>
+        Ein „Besuch" ist der erste Aufruf in einem Browser-Tab. Wiedererkennung gibt es nicht — deshalb steht hier nirgends eine Zahl von Besucher*innen.
+      </AbschnittKopf>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <StatKicker>Aufrufe je Tag</StatKicker>
+              <div className="mt-1.5 flex items-end gap-2">
+                <p className="font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">{data.total.toLocaleString("de-DE")}</p>
+                <Veraenderung jetzt={data.total} vorher={data.previous_total} />
+              </div>
+            </div>
+            <div className="text-right">
+              <StatKicker>Besuche</StatKicker>
+              <div className="mt-1.5 flex items-end justify-end gap-2">
+                <p className="font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">{data.sessions.toLocaleString("de-DE")}</p>
+                <Veraenderung jetzt={data.sessions} vorher={data.previous_sessions} klein />
+              </div>
+            </div>
+          </div>
+          <MiniBars values={data.series.length ? data.series.map((d) => d.n) : [0]} days={data.series.map((d) => d.day)} height={64} className="mt-4" />
+        </Card>
+        <Card className="flex flex-col gap-4 p-4">
+          <div>
+            <StatKicker>Angemeldet oder nicht</StatKicker>
+            <div className="mt-2.5">
+              <AnteilBalken teile={[
+                { label: "ohne Anmeldung", n: data.anonymous, ton: "bg-primary/30" },
+                { label: "angemeldet", n: angemeldet, ton: "bg-primary" },
+              ]} />
+            </div>
+          </div>
+          {data.clients.length > 1 && (
+            <div>
+              <StatKicker>Womit</StatKicker>
+              <div className="mt-2.5">
+                <AnteilBalken teile={data.clients.map((c, i) => ({
+                  label: clientLabel(c.client), n: c.n, ton: i === 0 ? "bg-primary" : i === 1 ? "bg-signal/70" : "bg-primary/30",
+                }))} />
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Meistgesehene Seiten</StatKicker>
+          <span className="font-mono text-[10.5px] text-muted-foreground">Aufrufe · Anteil</span>
+        </div>
+        <div className="mt-3.5 flex flex-col gap-2">
+          {data.pages.map((seite) => (
+            <div key={seite.route} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[15rem_minmax(0,1fr)_7rem]">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] text-foreground">{seitenName(seite.route)}</p>
+                <p className="truncate font-mono text-[10.5px] text-muted-foreground">{seite.route}</p>
+              </div>
+              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(2, Math.round((seite.n / spitze) * 100))}%` }} />
+              </div>
+              <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums">
+                <span className="font-semibold text-foreground">{seite.n.toLocaleString("de-DE")}</span>
+                <span className="font-mono text-[10.5px] text-muted-foreground"> · {Math.round((seite.n / data.total) * 100)} %</span>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
+          Detailseiten tragen ihre Kennung in der Query, und die wird nicht gemeldet —
+          „Beschluss-Seite" heißt also „irgendein Beschluss", nie welcher.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+/** Welche Handlungen wie oft vorkommen — und die zwei Anteile dahinter.
+ *
+ *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt, und wie sie sich
+ *  gegen die Spanne davor bewegt hat. Das ist der Unterschied zwischen
+ *  „hundert Fragen" und „hundert Fragen von einer Person, halb so viele wie
+ *  im Monat davor".
+ */
+function EreignisSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "events"],
+    queryFn: () => api.get<AdminEreignisse>("/admin/stats/events?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Ereignisse kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const zugriffe = data.events.find((e) => e.key === "session");
+  const fragen = data.events.find((e) => e.key === "ai_question");
+  const zeilen = data.events.filter((e) => e.key !== "session");
+  const spitze = Math.max(1, ...zeilen.map((e) => e.n));
+  const chipN = data.events.find((e) => e.key === "ai_question_chip")?.n ?? 0;
+  const leerN = data.events.find((e) => e.key === "ai_answer_empty")?.n ?? 0;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="Was gemacht wird"
+        rechts={zugriffe ? `${zugriffe.n.toLocaleString("de-DE")} Zugriffe · ${zugriffe.users} Konten · ${data.days} Tage` : `${data.days} Tage`}>
+        Jede Zeile mit Konten-Zahl und Veränderung gegen die {data.days} Tage davor.
+      </AbschnittKopf>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="p-3.5">
+          <StatKicker>Fragen aus einem Vorschlag</StatKicker>
+          <div className="mt-1.5 flex items-end justify-between gap-2">
+            <p className={cn("font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", data.chip_share == null ? "text-muted-foreground" : "text-foreground")}>
+              {data.chip_share == null ? "–" : `${Math.round(data.chip_share * 100)} %`}
+            </p>
+            <Veraenderung jetzt={data.chip_share} vorher={data.previous_chip_share} prozent />
+          </div>
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2">
+            <span className="text-[11.5px] text-muted-foreground">{data.chip_share == null ? "noch keine Fragen im Zeitraum" : "der Rest wurde ins Feld getippt"}</span>
+            {fragen && data.chip_share != null && <Basis n={chipN} von={fragen.n} was="Fragen" />}
+          </div>
+        </Card>
+        <Card className="p-3.5">
+          <StatKicker>Antworten ohne Quelle</StatKicker>
+          <div className="mt-1.5 flex items-end justify-between gap-2">
+            <p className={cn("font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", data.empty_share == null ? "text-muted-foreground" : "text-foreground")}>
+              {data.empty_share == null ? "–" : `${Math.round(data.empty_share * 100)} %`}
+            </p>
+            <Veraenderung jetzt={data.empty_share} vorher={data.previous_empty_share} prozent invers />
+          </div>
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2">
+            <span className="text-[11.5px] text-muted-foreground">{data.empty_share == null ? "noch keine Fragen im Zeitraum" : "jede davon ist eine Sackgasse"}</span>
+            {fragen && data.empty_share != null && <Basis n={leerN} von={fragen.n} was="Antworten" />}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <div className="flex flex-col gap-2">
+          {zeilen.map((e) => (
+            <div key={e.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[15rem_minmax(0,1fr)_11rem]">
+              <span className={cn("truncate text-[13px]", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>{e.label}</span>
+              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+                <div className={cn("h-full rounded-full", e.n === 0 ? "bg-transparent" : "bg-primary")} style={{ width: `${Math.min(100, Math.round((e.n / spitze) * 100))}%` }} />
+              </div>
+              <span className="flex items-baseline justify-end gap-2 whitespace-nowrap text-right tabular-nums">
+                <Veraenderung jetzt={e.n} vorher={e.previous} klein />
+                <span className="text-[12.5px]">
+                  <span className={cn("font-semibold", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>{e.n.toLocaleString("de-DE")}</span>
+                  <span className="font-mono text-[10.5px] text-muted-foreground"> · {e.users} {e.users === 1 ? "Konto" : "Konten"}</span>
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
+          Die zweite Zahl ist die der Konten. Eine große Zahl aus einem einzigen Konto
+          ist etwas anderes als dieselbe Zahl aus zwanzig.
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+/** Fragen, auf die es keine belegte Antwort gab — die Liste hinter der Quote.
+ *
+ *  Eine Quote sagt „9 % scheitern", diese Liste sagt woran. Der bekannteste
+ *  Fall stand am 09.08.2026 im Bestand: zweimal „Giftmüll am Fliegerhorst",
+ *  zweimal „keine Informationen" — weil die Unterlagen „Sondermüll" und
+ *  „Schießanlage" sagen. Ein Blick hierher hätte das am selben Tag gezeigt.
+ */
+function SackgassenSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "dead-ends"],
+    queryFn: () => api.get<AdminSackgasse[]>("/admin/stats/dead-ends?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><CardListSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Liste kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="Fragen ohne Antwort"
+        rechts={`${data.length} ${data.length === 1 ? "Frage" : "Fragen"} · 30 Tage · gespeicherte Gespräche`}>
+        Woran es scheitert — ohne Konto und ohne Gesprächs-id, denn eine Liste mit Kennung neben der Frage wäre ein Leseprotokoll.
+      </AbschnittKopf>
+
+      {data.length === 0 ? (
+        <Card className="flex items-center gap-4 p-4">
+          <Mascot pose="wave" className="h-14 w-14 shrink-0" />
+          <p className="text-[13px] text-muted-foreground">
+            Keine in den letzten 30 Tagen. Entweder fand alles etwas — oder es gab keine gespeicherten Gespräche im Zeitraum.
+          </p>
+        </Card>
+      ) : (
+        <Card className="divide-y divide-border p-0">
+          {data.map((s, i) => (
+            <div key={`${s.created}-${i}`} className="grid gap-x-4 gap-y-1 p-4 sm:grid-cols-[5.5rem_minmax(0,1fr)]">
+              <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground sm:pt-1">
+                {formatDate(s.created.slice(0, 10))}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold leading-snug text-foreground">{s.question}</p>
+                <p className="mt-1 text-[12.5px] italic leading-snug text-muted-foreground">{s.answer}</p>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+      <p className="text-[11.5px] leading-snug text-muted-foreground">
+        Die vollständige Zahl steht oben unter „Antworten ohne Quelle" — diese Liste zeigt nur die Fälle, die ohnehin gespeichert sind.
+      </p>
+    </div>
+  );
+}
+
 function StatsTab() {
   const [range, setRange] = useState("90d");
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -299,6 +865,14 @@ function StatsTab() {
           </div>
         </Card>
       </div>
+
+      <KohortenSection />
+
+      <SeitenaufrufeSection />
+
+      <EreignisSection />
+
+      <SackgassenSection />
 
       <JobsSection />
     </div>
@@ -477,6 +1051,14 @@ type LlmUsage = {
  *  englisch sind, stünde dort `attachment_ocr` — deshalb jetzt vollständig.
  *  Wer ein neues `_feature=` einführt, trägt es hier ein. */
 const FEATURE_LABELS: Record<string, string> = {
+  cities_classify: "Fremde Ratsvorlage einordnen",
+  cities_fit: "Hat Oldenburg das schon?",
+  cities_evidence_terms: "Städtevergleich: Oldenburger Suchwörter",
+  cities_effort: "Städtevergleich: Was kostet die Idee?",
+  cities_cluster_check: "Städtevergleich: Gehört das zusammen?",
+  eval_cities_effort: "Prüfstand: Was kostet die Idee?",
+  eval_cities_transfer: "Prüfstand: Einordnung fremder Vorlagen",
+  eval_cities_fit: "Prüfstand: Hat Oldenburg das schon?",
   attachment_ocr: "Anlagen-Texterkennung",
   committee_summary: "Ausschuss-Zusammenfassung",
   daily_find_story: "Fundstück des Tages",
@@ -1729,6 +2311,270 @@ function EntityAliasTab() {
           if (undoing) undo.mutate(undoing.slug);
           setUndoing(null);
         }}
+      />
+    </div>
+  );
+}
+
+
+/* ---------------------------------------------------------------- Live-Probe
+   Der O1-Stream als Transkript, Äußerung für Äußerung — dieselbe Strecke
+   wie in der Ratssitzung (ffmpeg → Gladia → Segment), nur ohne Sitzung.
+   Tims Wunsch 06.09.2026: vor dem ersten echten Abend sehen, was ankommt
+   und wie schnell. Server-Sent Events, kein Neuladen. */
+
+type ProbeSegment = { start: number; end: number; text: string; wall: number };
+
+function LiveProbeTab() {
+  const [seconds, setSeconds] = useState(120);
+  const [running, setRunning] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [segments, setSegments] = useState<ProbeSegment[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "nearest" }); }, [segments.length]);
+
+  const stop = () => { abortRef.current?.abort(); abortRef.current = null; setRunning(false); };
+
+  const start = async () => {
+    setSegments([]); setError(null); setStatus("verbinde …"); setRunning(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    try {
+      const res = await fetch(apiUrl(`/admin/live-probe?seconds=${seconds}`), {
+        credentials: "include", signal: ctrl.signal,
+        headers: { Accept: "text/event-stream", ...authHeaders() },
+      });
+      if (!res.ok || !res.body) {
+        let msg = `Probe nicht gestartet (${res.status}).`;
+        try { const b = await res.json(); if (typeof b?.detail === "string") msg = b.detail; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let bytes = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        // Die ersten Bytes sind der Vorspann des Servers — ab hier steht
+        // die Leitung, auch wenn noch keine Äußerung da ist.
+        if (bytes === 0) setStatus((s) => (s === "verbinde …" ? "Leitung steht — warte auf den Server" : s));
+        bytes += value.byteLength;
+        buf += decoder.decode(value, { stream: true });
+        const chunks = buf.split("\n\n");
+        buf = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          const line = chunk.replace(/^data: ?/, "").trim();
+          if (!line || line.startsWith(":")) continue;
+          let msg: { type: string; [k: string]: unknown };
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "status") setStatus(msg.text as string);
+          else if (msg.type === "segment") {
+            setStatus(null);
+            setSegments((prev) => [...prev, msg as unknown as ProbeSegment]);
+          } else if (msg.type === "done") setStatus(`Fertig: ${msg.segments} Äußerungen in ${msg.seconds} s.`);
+          else if (msg.type === "error") setError(msg.message as string);
+        }
+      }
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : "Probe fehlgeschlagen.");
+    } finally {
+      setRunning(false);
+      abortRef.current = null;
+    }
+  };
+
+  // ffmpeg liefert beim Start erst den HLS-Puffer (10–20 s Audio in zwei
+  // Sekunden), danach Echtzeit. `wall - end` wäre anfangs negativ; der
+  // größte Vorsprung des Audios vor der Uhr ist dieser Puffer, und um ihn
+  // korrigiert ist der Rest der echte Verzug der Transkription.
+  const backlog = Math.max(0, ...segments.map((s) => s.end - s.wall));
+  const lagOf = (s: ProbeSegment) => s.wall - s.end + backlog;
+  const lags = segments.map(lagOf);
+  const median = lags.length ? [...lags].sort((a, b) => a - b)[Math.floor(lags.length / 2)] : null;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Transkribiert den O1-Stream (was gerade läuft) über denselben Weg wie in der Ratssitzung:
+        ffmpeg → Gladia → Äußerung mit Zeitmarke. Kostet rund 0,75 $ je Stunde, deshalb höchstens
+        zehn Minuten und nur eine Probe zugleich.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          Dauer
+          <select value={seconds} onChange={(e) => setSeconds(Number(e.target.value))} disabled={running}
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+            {[60, 120, 300, 600].map((s) => <option key={s} value={s}>{s < 120 ? `${s} s` : `${s / 60} min`}</option>)}
+          </select>
+        </label>
+        {running
+          ? <Button size="sm" variant="secondary" onClick={stop}>Stopp</Button>
+          : <Button size="sm" onClick={() => void start()}>Probe starten</Button>}
+        {running && (
+          <span className="inline-flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+            <span className="relative flex h-2 w-2" aria-hidden>
+              <span className="absolute inset-0 rounded-full bg-red-500 motion-safe:animate-ping" />
+              <span className="relative h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            läuft
+          </span>
+        )}
+        {median != null && (
+          <span className="text-xs text-muted-foreground">
+            Verzug (Median): <strong className="font-semibold text-foreground">{median.toFixed(1)} s</strong> nach Satzende
+          </span>
+        )}
+      </div>
+      {status && <p className="text-sm text-muted-foreground">{status}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {segments.length > 0 && (
+        <Card className="max-h-[60vh] overflow-y-auto p-0">
+          <ol className="divide-y divide-border">
+            {segments.map((s, i) => (
+              <li key={i} className="flex gap-3 px-4 py-2 text-sm">
+                <span className="w-14 shrink-0 font-mono text-[11px] text-muted-foreground">
+                  {Math.floor(s.start / 60)}:{String(Math.floor(s.start % 60)).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1 text-foreground">{s.text}</span>
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground" title="Sekunden nach Satzende">
+                  +{lagOf(s).toFixed(1)} s
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div ref={endRef} />
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/** „Neuigkeiten": die Release-Karten aus `kern/releases.py` und ihr Versand.
+ *
+ *  Der Text steht als Code im Repo, hier gibt es ihn nicht zu bearbeiten — ein
+ *  Editor an dieser Stelle wäre eine zweite Wahrheit neben dem Changelog
+ *  (dieselbe Entscheidung wie bei den Prompts, `kern/prompts.py`).
+ *
+ *  Was es hier gibt, ist die eine Handlung, die Ausliefern von Ankündigen
+ *  trennt: verschicken, wenn der Deploy ein paar Tage stabil ist. Davor die
+ *  Probe an das eigene Konto — eine Mail an alle ist nicht zurückzuholen.
+ */
+function NewsTab() {
+  const qc = useQueryClient();
+  const [fragt, setFragt] = useState<string | null>(null);
+
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin-news"],
+    queryFn: () => vertrag.get("/admin/news"),
+  });
+
+  const probe = useMutation({
+    mutationFn: (version: string) => api.post<{ sent: string[] }>(`/admin/news/${version}/test`, {}),
+    onSuccess: (d) =>
+      d.sent.length
+        ? toast.success(`Probe raus (${d.sent.join(", ")}).`)
+        : toast.error("Nichts verschickt — Zustellweg oder Mail-Schlüssel fehlt."),
+    onError: () => toast.error("Die Probe ist nicht rausgegangen."),
+  });
+
+  const senden = useMutation({
+    mutationFn: (version: string) =>
+      api.post<{ recipients: number; queued: number; skipped: number }>(
+        `/admin/news/${version}/send`, {}),
+    onSuccess: (d) => {
+      toast.success(
+        d.recipients === 0
+          ? "Niemand offen — alle haben die Ausgabe schon."
+          : `${d.queued} eingereiht, ${d.skipped} übersprungen (Anlass aus). Zustellung läuft.`);
+      void qc.invalidateQueries({ queryKey: ["admin-news"] });
+    },
+    onError: () => toast.error("Der Versand ist nicht angelaufen."),
+  });
+
+  if (isLoading) return <CardListSkeleton rows={2} />;
+  if (isError || !data) {
+    return <ErrorState title="Die Ausgaben kamen nicht durch"
+      onRetry={() => void refetch()} busy={isFetching} />;
+  }
+
+  const offeneVersion = fragt;
+
+  return (
+    <div className="@container">
+      <p className="mb-4 max-w-2xl text-sm text-muted-foreground">
+        Die Karte „Neu bei Ratslotse“ erscheint von selbst auf der Übersicht, sobald
+        eine Ausgabe ausgeliefert ist. Der Versand per Mail und Push ist der
+        zweite, eigene Schritt — am besten ein paar Tage später, wenn kein Hotfix
+        mehr kommt. Wer die Karte schon weggeklickt hat, bekommt keine Mail mehr.
+        Der Text selbst steht als Code in <code className="font-mono text-xs">kern/releases.py</code>.
+      </p>
+
+      {data.releases.length === 0 && (
+        <EmptyState title="Noch keine Ausgabe mit Karte"
+          hint="Ein Eintrag entsteht im Release-PR, zusammen mit dem Versionsschnitt." />
+      )}
+
+      <div className="flex flex-col gap-4">
+        {data.releases.map((r) => (
+          <Card key={r.version} className="p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="min-w-0">
+                <StatKicker>{`Version ${r.version} · ${formatDate(r.date)}`}</StatKicker>
+                <h3 className="mt-1 font-display text-lg font-bold text-foreground">{r.title}</h3>
+              </div>
+              <div className="shrink-0 text-right text-sm">
+                <p className="font-semibold tabular-nums text-foreground">
+                  {r.open_recipients} offen
+                </p>
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {r.sent_recipients} schon angeschrieben
+                </p>
+              </div>
+            </div>
+
+            <ul className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
+              {r.highlights.map((h) => (
+                <li key={h.url + h.title} className="text-sm">
+                  <span className="font-semibold text-foreground">{h.title}</span>
+                  <span className="text-muted-foreground"> — {h.text} </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">{h.url}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" disabled={probe.isPending}
+                onClick={() => probe.mutate(r.version)}>
+                Probe an mich
+              </Button>
+              <Button size="sm"
+                disabled={senden.isPending || r.open_recipients === 0}
+                onClick={() => setFragt(r.version)}>
+                {r.open_recipients === 0
+                  ? "Alle angeschrieben"
+                  : `An ${r.open_recipients} verschicken`}
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <ConfirmDialog
+        open={offeneVersion !== null}
+        onOpenChange={(o) => { if (!o) setFragt(null); }}
+        title={`Ankündigung zu ${offeneVersion ?? ""} verschicken?`}
+        description={
+          "Geht als Mail und Push an alle, die die Karte noch nicht gesehen und den " +
+          "Anlass nicht abgeschaltet haben. Das lässt sich nicht zurückholen — schick " +
+          "vorher eine Probe an dich selbst."
+        }
+        confirmLabel="Verschicken"
+        onConfirm={() => { if (offeneVersion) senden.mutate(offeneVersion); }}
       />
     </div>
   );

@@ -197,6 +197,92 @@
         "title": "AdminEntityAlias",
         "type": "object"
       },
+      "AdminEreignis": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "previous": {
+            "title": "Previous",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "n",
+          "users",
+          "previous"
+        ],
+        "title": "AdminEreignis",
+        "type": "object"
+      },
+      "AdminEreignisse": {
+        "properties": {
+          "chip_share": {
+            "title": "Chip Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "empty_share": {
+            "title": "Empty Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AdminEreignis"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "previous_chip_share": {
+            "title": "Previous Chip Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "previous_empty_share": {
+            "title": "Previous Empty Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "days",
+          "events",
+          "chip_share",
+          "empty_share",
+          "previous_chip_share",
+          "previous_empty_share"
+        ],
+        "title": "AdminEreignisse",
+        "type": "object"
+      },
       "AdminFeedbackList": {
         "properties": {
           "items": {
@@ -496,6 +582,261 @@
         "title": "AdminJobStep",
         "type": "object"
       },
+      "AdminKennzahlen": {
+        "description": "Die vier Zahlen, an denen sich Maßnahmen messen lassen sollen.\n\nAlle ``None``, solange die Grundgesamtheit leer ist — eine Quote aus null\nKonten ist keine 0 %, sondern keine Aussage.",
+        "properties": {
+          "fragen_median": {
+            "title": "Fragen Median",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "haken_quote": {
+            "title": "Haken Quote",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sackgassen_quote": {
+            "title": "Sackgassen Quote",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tag2": {
+            "title": "Tag2",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tag30": {
+            "title": "Tag30",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tag7": {
+            "title": "Tag7",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "haken_quote",
+          "tag2",
+          "tag7",
+          "tag30",
+          "sackgassen_quote",
+          "fragen_median"
+        ],
+        "title": "AdminKennzahlen",
+        "type": "object"
+      },
+      "AdminKohorte": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminKohortenStufe"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "week": {
+            "title": "Week",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week",
+          "n",
+          "stages"
+        ],
+        "title": "AdminKohorte",
+        "type": "object"
+      },
+      "AdminKohorten": {
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/AdminKohortenBasis"
+          },
+          "cohorts": {
+            "items": {
+              "$ref": "#/components/schemas/AdminKohorte"
+            },
+            "title": "Cohorts",
+            "type": "array"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "integer"
+          },
+          "kennzahlen": {
+            "$ref": "#/components/schemas/AdminKennzahlen"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/AdminKennzahlen"
+          },
+          "total": {
+            "items": {
+              "$ref": "#/components/schemas/AdminKohortenStufe"
+            },
+            "title": "Total",
+            "type": "array"
+          },
+          "weeks": {
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weeks",
+          "excluded",
+          "cohorts",
+          "total",
+          "kennzahlen",
+          "previous",
+          "basis"
+        ],
+        "title": "AdminKohorten",
+        "type": "object"
+      },
+      "AdminKohortenBasis": {
+        "description": "Zähler und Nenner hinter den Quoten — „43 %\" allein sagt nicht, ob es\n3 von 7 oder 43 von 100 sind.",
+        "properties": {
+          "haken": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Haken",
+            "type": "array"
+          },
+          "sackgassen": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Sackgassen",
+            "type": "array"
+          },
+          "tag2": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Tag2",
+            "type": "array"
+          },
+          "tag30": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Tag30",
+            "type": "array"
+          },
+          "tag7": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Tag7",
+            "type": "array"
+          },
+          "vorher_n": {
+            "title": "Vorher N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "haken",
+          "tag2",
+          "tag7",
+          "tag30",
+          "sackgassen",
+          "vorher_n"
+        ],
+        "title": "AdminKohortenBasis",
+        "type": "object"
+      },
+      "AdminKohortenStufe": {
+        "description": "Eine Stufe des Trichters.\n\n``n`` ist die Zahl der Konten, die diese Stufe erreicht haben; ``eligible``\ndie Zahl derer, die sie überhaupt schon erreichen KONNTEN. Bei den\nzeitlichen Stufen („noch da nach 30 Tagen\") sind das zwei verschiedene\nZahlen, und wer sie verwechselt, liest jede frische Kohorte als Totalausfall.",
+        "properties": {
+          "eligible": {
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "n",
+          "eligible",
+          "window_days"
+        ],
+        "title": "AdminKohortenStufe",
+        "type": "object"
+      },
       "AdminLimits": {
         "properties": {
           "deep_limit": {
@@ -672,6 +1013,93 @@
           "last"
         ],
         "title": "AdminLlmUsageFeature",
+        "type": "object"
+      },
+      "AdminNewsList": {
+        "properties": {
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/AdminNewsRelease"
+            },
+            "title": "Releases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "releases"
+        ],
+        "title": "AdminNewsList",
+        "type": "object"
+      },
+      "AdminNewsRelease": {
+        "description": "Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseHighlight"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "open_recipients": {
+            "title": "Open Recipients",
+            "type": "integer"
+          },
+          "sent_recipients": {
+            "title": "Sent Recipients",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "date",
+          "title",
+          "highlights",
+          "open_recipients",
+          "sent_recipients"
+        ],
+        "title": "AdminNewsRelease",
+        "type": "object"
+      },
+      "AdminNewsSent": {
+        "description": "Bilanz eines Versands.\n\n``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den\nAnlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein\nist eine Antwort und keine offene Aufgabe.\n\nDie **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht\ngezählt: Zweihundert Mails über die Resend-API dauern länger als eine\nHTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt\nohnehin erst der Morgen-Cron mit.",
+        "properties": {
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "recipients": {
+            "title": "Recipients",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "recipients",
+          "queued",
+          "skipped"
+        ],
+        "title": "AdminNewsSent",
         "type": "object"
       },
       "AdminPlaceCandidate": {
@@ -1108,6 +1536,157 @@
           "daily"
         ],
         "title": "AdminRequestFehler",
+        "type": "object"
+      },
+      "AdminSackgasse": {
+        "description": "Eine Frage, die keine Quelle gefunden hat.\n\nOhne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?\" ist\nbeides ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein\nLeseprotokoll.",
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer",
+          "created"
+        ],
+        "title": "AdminSackgasse",
+        "type": "object"
+      },
+      "AdminSeite": {
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "route",
+          "n",
+          "sessions"
+        ],
+        "title": "AdminSeite",
+        "type": "object"
+      },
+      "AdminSeitenClient": {
+        "properties": {
+          "client": {
+            "title": "Client",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client",
+          "n"
+        ],
+        "title": "AdminSeitenClient",
+        "type": "object"
+      },
+      "AdminSeitenTag": {
+        "properties": {
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "n",
+          "sessions"
+        ],
+        "title": "AdminSeitenTag",
+        "type": "object"
+      },
+      "AdminSeitenaufrufe": {
+        "description": "Anonyme Seitenaufrufe. Keine Zahl hier lässt sich einer Person zuordnen.\n\n``sessions`` ist der erste Aufruf je Browser-Tab und damit so nah an\n„Besuche\", wie man ohne Wiedererkennung kommt — bewusst nicht „Besucher\".",
+        "properties": {
+          "anonymous": {
+            "title": "Anonymous",
+            "type": "integer"
+          },
+          "clients": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSeitenClient"
+            },
+            "title": "Clients",
+            "type": "array"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSeite"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "previous_sessions": {
+            "title": "Previous Sessions",
+            "type": "integer"
+          },
+          "previous_total": {
+            "title": "Previous Total",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSeitenTag"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "days",
+          "total",
+          "sessions",
+          "anonymous",
+          "previous_total",
+          "previous_sessions",
+          "series",
+          "pages",
+          "clients"
+        ],
+        "title": "AdminSeitenaufrufe",
         "type": "object"
       },
       "AdminSeries": {
@@ -1734,6 +2313,11 @@
               "integer",
               "null"
             ]
+          },
+          "from_suggestion": {
+            "default": false,
+            "title": "From Suggestion",
+            "type": "boolean"
           },
           "history": {
             "items": {
@@ -4038,6 +4622,141 @@
         "title": "CityMapPoint",
         "type": "object"
       },
+      "CityStats": {
+        "description": "Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik).",
+        "properties": {
+          "agenda_items": {
+            "title": "Agenda Items",
+            "type": "integer"
+          },
+          "agenda_items_with_outcome": {
+            "title": "Agenda Items With Outcome",
+            "type": "integer"
+          },
+          "annotations": {
+            "title": "Annotations",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_fetched": {
+            "title": "Last Fetched",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "license": {
+            "title": "License",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "meetings": {
+            "title": "Meetings",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "papers": {
+            "title": "Papers",
+            "type": "integer"
+          },
+          "papers_with_text": {
+            "title": "Papers With Text",
+            "type": "integer"
+          },
+          "ris_vendor": {
+            "title": "Ris Vendor",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "state",
+          "ris_vendor",
+          "license",
+          "last_fetched",
+          "papers",
+          "papers_with_text",
+          "meetings",
+          "agenda_items",
+          "agenda_items_with_outcome",
+          "annotations"
+        ],
+        "title": "CityStats",
+        "type": "object"
+      },
+      "CityTopicMatch": {
+        "description": "Das kuratierte Stadtthema zu einer Frage — oder nichts.\n\n``match`` ist ``None``, wenn keins passt, und das ist der Normalfall: An\nden fünfzehn echten Fragen vom 08.09.2026 traf es bei vieren. Die\nOberfläche zeigt dann ihren eigenen Weg (vorbefülltes Themen-Formular),\nnicht etwa eine leere Kachel.",
+        "properties": {
+          "already": {
+            "title": "Already",
+            "type": "boolean"
+          },
+          "match": {
+            "description": "Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,\nWohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die\nEntitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.",
+            "properties": {
+              "context": {
+                "title": "Context",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "title": "Description",
+                "type": "string"
+              },
+              "key": {
+                "title": "Key",
+                "type": "string"
+              },
+              "months": {
+                "title": "Months",
+                "type": "integer"
+              },
+              "n": {
+                "title": "N",
+                "type": "integer"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "n",
+              "context",
+              "key",
+              "months"
+            ],
+            "title": "CityTopicSuggestion",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "match",
+          "already"
+        ],
+        "title": "CityTopicMatch",
+        "type": "object"
+      },
       "CityTopicSuggestion": {
         "description": "Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,\nWohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die\nEntitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.",
         "properties": {
@@ -4134,13 +4853,18 @@
               "string",
               "null"
             ]
+          },
+          "sessions_year": {
+            "title": "Sessions Year",
+            "type": "integer"
           }
         },
         "required": [
           "name",
           "next_date",
           "next_time",
-          "decisions_year"
+          "decisions_year",
+          "sessions_year"
         ],
         "title": "CommitteeDetail",
         "type": "object"
@@ -5569,6 +6293,153 @@
         "title": "DisplayNameIn",
         "type": "object"
       },
+      "DistrictClosure": {
+        "description": "Eine laufende Sperrung der Stadt (Geoportal, Ebene „Aktuelle Sperrungen\") im Viertel.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "geometry": {
+            "title": "Geometry"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kind_label": {
+            "title": "Kind Label",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lat": {
+            "title": "Lat",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "title": "Lon",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reason": {
+            "title": "Reason",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "title": "Street",
+            "type": "string"
+          },
+          "valid_from": {
+            "title": "Valid From",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "valid_until": {
+            "title": "Valid Until",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "street",
+          "reason",
+          "kind",
+          "kind_label",
+          "valid_from",
+          "valid_until",
+          "description",
+          "geometry",
+          "lat",
+          "lon"
+        ],
+        "title": "DistrictClosure",
+        "type": "object"
+      },
+      "DistrictHighlight": {
+        "description": "Ein Vorhaben, das stadtweit gerade heraussticht — für die Auswahl-Seite.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_date": {
+            "title": "Last Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "place_name": {
+            "title": "Place Name",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          },
+          "when": {
+            "title": "When",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "place_id",
+          "place_name",
+          "name",
+          "what",
+          "stage",
+          "when",
+          "category",
+          "last_date"
+        ],
+        "title": "DistrictHighlight",
+        "type": "object"
+      },
       "DistrictInvestment": {
         "description": "Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.",
         "properties": {
@@ -5606,6 +6477,57 @@
         "title": "DistrictInvestment",
         "type": "object"
       },
+      "DistrictLookup": {
+        "description": "``GET /api/districts/lookup?q=`` — „Ich wohne in der …\" → Ortsbereich.",
+        "properties": {
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictLookupMatch"
+            },
+            "title": "Matches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "matches"
+        ],
+        "title": "DistrictLookup",
+        "type": "object"
+      },
+      "DistrictLookupMatch": {
+        "description": "Ein Treffer der Straßen-/Stadtteilsuche: der Ort und sein Ortsbereich.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "place_id": {
+            "title": "Place Id",
+            "type": "string"
+          },
+          "place_name": {
+            "title": "Place Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "place_id",
+          "place_name",
+          "count"
+        ],
+        "title": "DistrictLookupMatch",
+        "type": "object"
+      },
       "DistrictNeighbour": {
         "properties": {
           "count": {
@@ -5630,10 +6552,34 @@
         "type": "object"
       },
       "DistrictParticipation": {
-        "description": "Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.",
+        "description": "Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug\nins Viertel — und dem Geltungsbereich des Plans als Fläche, wo das Geoportal\nihn kennt.",
         "properties": {
+          "geometry": {
+            "title": "Geometry"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "title": "Lon",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "place": {
             "title": "Place",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan_nr": {
+            "title": "Plan Nr",
             "type": [
               "string",
               "null"
@@ -5645,6 +6591,13 @@
             },
             "title": "Plan Nrs",
             "type": "array"
+          },
+          "plan_status": {
+            "title": "Plan Status",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "step": {
             "title": "Step",
@@ -5689,9 +6642,133 @@
           "valid_from",
           "valid_until",
           "url",
-          "plan_nrs"
+          "plan_nrs",
+          "geometry",
+          "lat",
+          "lon",
+          "plan_nr",
+          "plan_status"
         ],
         "title": "DistrictParticipation",
+        "type": "object"
+      },
+      "DistrictPlanInfo": {
+        "description": "Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und\ndie Stationen des Verfahrens aus den offenen Geodaten der Stadt.",
+        "properties": {
+          "adoption_date": {
+            "title": "Adoption Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effective_date": {
+            "title": "Effective Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nr": {
+            "title": "Nr",
+            "type": "string"
+          },
+          "resolution_date": {
+            "title": "Resolution Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nr",
+          "name",
+          "status",
+          "resolution_date",
+          "adoption_date",
+          "effective_date",
+          "note",
+          "source",
+          "source_url"
+        ],
+        "title": "DistrictPlanInfo",
+        "type": "object"
+      },
+      "DistrictPressItem": {
+        "description": "Eine Pressemitteilung der Stadt mit Bezug auf das Viertel (council/presse_orte.py).",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "teaser": {
+            "title": "Teaser",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "via": {
+            "title": "Via",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date",
+          "url",
+          "teaser",
+          "evidence",
+          "via"
+        ],
+        "title": "DistrictPressItem",
         "type": "object"
       },
       "DistrictProject": {
@@ -5839,7 +6916,7 @@
         "type": "object"
       },
       "DistrictProjectLocation": {
-        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.",
+        "description": "Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie,\nbei Bebauungsplänen (``kind = bplan``) der Geltungsbereich als GeoJSON.",
         "properties": {
           "geometry": {
             "title": "Geometry"
@@ -5860,6 +6937,13 @@
             "title": "Name",
             "type": "string"
           },
+          "plan": {
+            "$ref": "#/components/schemas/DistrictPlanInfo"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -5871,7 +6955,8 @@
           "kind",
           "lat",
           "lon",
-          "geometry"
+          "geometry",
+          "role"
         ],
         "title": "DistrictProjectLocation",
         "type": "object"
@@ -5902,6 +6987,13 @@
       "DistrictProjects": {
         "description": "``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.",
         "properties": {
+          "closures": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictClosure"
+            },
+            "title": "Closures",
+            "type": "array"
+          },
           "investments": {
             "items": {
               "$ref": "#/components/schemas/DistrictInvestment"
@@ -5925,6 +7017,13 @@
           },
           "place": {
             "title": "Place"
+          },
+          "press": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictPressItem"
+            },
+            "title": "Press",
+            "type": "array"
           },
           "projects": {
             "items": {
@@ -5954,6 +7053,8 @@
           "upcoming",
           "investments",
           "participations",
+          "closures",
+          "press",
           "neighbours",
           "updated_at"
         ],
@@ -5961,7 +7062,7 @@
         "type": "object"
       },
       "DistrictProjectsOverview": {
-        "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.",
+        "description": "``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,\ndazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.",
         "properties": {
           "districts": {
             "items": {
@@ -5969,6 +7070,24 @@
             },
             "title": "Districts",
             "type": "array"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/DistrictHighlight"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "stages": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Stages",
+            "type": "object"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
           },
           "updated_at": {
             "title": "Updated At",
@@ -5980,6 +7099,9 @@
         },
         "required": [
           "districts",
+          "total",
+          "stages",
+          "highlights",
           "updated_at"
         ],
         "title": "DistrictProjectsOverview",
@@ -6005,13 +7127,21 @@
           "place_id": {
             "title": "Place Id",
             "type": "string"
+          },
+          "stages": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Stages",
+            "type": "object"
           }
         },
         "required": [
           "place_id",
           "name",
           "count",
-          "last_date"
+          "last_date",
+          "stages"
         ],
         "title": "DistrictProjectsOverviewEntry",
         "type": "object"
@@ -6744,6 +7874,151 @@
         "title": "ElectionTotals",
         "type": "object"
       },
+      "ElsewhereItem": {
+        "description": "Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt.",
+        "properties": {
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "body_name": {
+            "title": "Body Name",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "originator": {
+            "title": "Originator",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "outcome_raw": {
+            "title": "Outcome Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "paper_type_raw": {
+            "title": "Paper Type Raw",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference": {
+            "title": "Reference",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transfer": {
+            "title": "Transfer",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "web": {
+            "title": "Web",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "body_id",
+          "body_name",
+          "paper_id",
+          "name",
+          "reference",
+          "date",
+          "kind",
+          "paper_type_raw",
+          "web",
+          "outcome",
+          "outcome_raw",
+          "score",
+          "summary",
+          "instrument",
+          "transfer",
+          "originator"
+        ],
+        "title": "ElsewhereItem",
+        "type": "object"
+      },
+      "ElsewhereResponse": {
+        "properties": {
+          "bodies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bodies",
+            "type": "array"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ElsewhereItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "decision_id",
+          "items",
+          "bodies"
+        ],
+        "title": "ElsewhereResponse",
+        "type": "object"
+      },
       "EmergingTag": {
         "description": "Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft\nvorkam (mindestens zweimal), ohne Verfahrens-Vokabular.",
         "properties": {
@@ -7098,6 +8373,25 @@
           "n"
         ],
         "title": "FactionPhase",
+        "type": "object"
+      },
+      "FeedbackAck": {
+        "description": "Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht.",
+        "properties": {
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "verdict"
+        ],
+        "title": "FeedbackAck",
         "type": "object"
       },
       "FeedbackIn": {
@@ -7778,6 +9072,324 @@
           "highest_id"
         ],
         "title": "HighestDecisionId",
+        "type": "object"
+      },
+      "Idea": {
+        "description": "Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.",
+        "properties": {
+          "addressee": {
+            "title": "Addressee",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body_id": {
+            "title": "Body Id",
+            "type": "string"
+          },
+          "body_name": {
+            "title": "Body Name",
+            "type": "string"
+          },
+          "competence": {
+            "title": "Competence",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effort": {
+            "title": "Effort",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "feedback": {
+            "title": "Feedback",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrument": {
+            "title": "Instrument",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "originator": {
+            "title": "Originator",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "peers": {
+            "title": "Peers",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transfer": {
+            "title": "Transfer",
+            "type": "string"
+          },
+          "web": {
+            "title": "Web",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "paper_id",
+          "body_id",
+          "body_name",
+          "name",
+          "date",
+          "kind",
+          "web",
+          "outcome",
+          "field",
+          "instrument",
+          "summary",
+          "transfer",
+          "competence",
+          "originator",
+          "status",
+          "reason",
+          "confidence",
+          "evidence",
+          "effort",
+          "addressee",
+          "feedback",
+          "peers"
+        ],
+        "title": "Idea",
+        "type": "object"
+      },
+      "IdeaEvidence": {
+        "description": "Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "kvonr": {
+            "title": "Kvonr",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision_id",
+          "kvonr",
+          "title",
+          "date",
+          "outcome"
+        ],
+        "title": "IdeaEvidence",
+        "type": "object"
+      },
+      "IdeaFieldSummary": {
+        "description": "Ein Themenfeld auf der Übersicht.",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "missing": {
+            "title": "Missing",
+            "type": "integer"
+          },
+          "multi_city": {
+            "title": "Multi City",
+            "type": "integer"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "integer"
+          },
+          "present": {
+            "title": "Present",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "total",
+          "missing",
+          "partial",
+          "present",
+          "multi_city"
+        ],
+        "title": "IdeaFieldSummary",
+        "type": "object"
+      },
+      "IdeaFields": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaFieldSummary"
+            },
+            "title": "Fields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "title": "IdeaFields",
+        "type": "object"
+      },
+      "IdeaSearchResponse": {
+        "description": "Freie Suche über die Vorlagen anderer Städte.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Idea"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "total",
+          "items"
+        ],
+        "title": "IdeaSearchResponse",
+        "type": "object"
+      },
+      "IdeasResponse": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Idea"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "field",
+          "total",
+          "page",
+          "per_page",
+          "counts",
+          "items"
+        ],
+        "title": "IdeasResponse",
         "type": "object"
       },
       "ImportanceBreakdown": {
@@ -8785,6 +10397,69 @@
         "title": "NearbySuggestion",
         "type": "object"
       },
+      "NewsSeen": {
+        "description": "Die Marke, die nach dem Wegklicken gilt. Sie steigt nur.",
+        "properties": {
+          "seen_version": {
+            "title": "Seen Version",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "seen_version"
+        ],
+        "title": "NewsSeen",
+        "type": "object"
+      },
+      "NewsSeenIn": {
+        "description": "Welche Release-Karte weggeklickt wurde (``kern/releases.py``).\n\nDie Version kommt vom Client, weil er die GEZEIGTE meldet und nicht die\nneueste — sonst erledigte ein Wisch ein Release mit, das zwischen Laden\nund Klick erschienen ist. Unbekannte Werte lässt der Store unberührt; hier\nsteht nur der Deckel gegen Datenmüll in der Spalte.",
+        "properties": {
+          "version": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "NewsSeenIn",
+        "type": "object"
+      },
+      "NewsState": {
+        "description": "Was dieses Konto noch nicht gesehen hat.\n\n``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases\nverpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf\n``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die\nEntscheidung fällt serverseitig, damit Web und App dieselbe Antwort\nbekommen (dieselbe Regel wie ``SetupState.pending``).",
+        "properties": {
+          "older_count": {
+            "title": "Older Count",
+            "type": "integer"
+          },
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseNews"
+            },
+            "title": "Releases",
+            "type": "array"
+          },
+          "seen_version": {
+            "title": "Seen Version",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "releases",
+          "older_count",
+          "seen_version"
+        ],
+        "title": "NewsState",
+        "type": "object"
+      },
       "NotifyKind": {
         "description": "Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste\npflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option\neines anderen ist.",
         "properties": {
@@ -9026,6 +10701,35 @@
           }
         },
         "title": "OnboardingUpdate",
+        "type": "object"
+      },
+      "PageViewIn": {
+        "description": "Ein Seitenaufruf, gemeldet vom Browser.\n\nAbsichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,\nKennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in\n``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine\nPositivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie\ngeschickt.",
+        "properties": {
+          "client": {
+            "default": "web",
+            "maxLength": 20,
+            "title": "Client",
+            "type": "string"
+          },
+          "first": {
+            "default": false,
+            "title": "First",
+            "type": "boolean"
+          },
+          "logged_in": {
+            "default": false,
+            "title": "Logged In",
+            "type": "boolean"
+          },
+          "route": {
+            "default": "/",
+            "maxLength": 200,
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "title": "PageViewIn",
         "type": "object"
       },
       "PartyFilter": {
@@ -11412,6 +13116,139 @@
         "title": "RelatedEntity",
         "type": "object"
       },
+      "ReleaseHighlight": {
+        "description": "Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.",
+        "properties": {
+          "media": {
+            "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+            "properties": {
+              "alt": {
+                "title": "Alt",
+                "type": "string"
+              },
+              "aspect": {
+                "title": "Aspect",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "poster": {
+                "title": "Poster",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "src": {
+                "title": "Src",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "src",
+              "alt",
+              "aspect",
+              "poster"
+            ],
+            "title": "ReleaseMedia",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "text",
+          "url",
+          "media"
+        ],
+        "title": "ReleaseHighlight",
+        "type": "object"
+      },
+      "ReleaseMedia": {
+        "description": "Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).\n\nImmer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für\nden Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in\neinem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht\nnur bei ``kind == \"video\"`` und ist zugleich das, was bei\n``prefers-reduced-motion`` anstelle des Clips gezeigt wird.",
+        "properties": {
+          "alt": {
+            "title": "Alt",
+            "type": "string"
+          },
+          "aspect": {
+            "title": "Aspect",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "poster": {
+            "title": "Poster",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "src": {
+            "title": "Src",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "src",
+          "alt",
+          "aspect",
+          "poster"
+        ],
+        "title": "ReleaseMedia",
+        "type": "object"
+      },
+      "ReleaseNews": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseHighlight"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "date",
+          "title",
+          "highlights"
+        ],
+        "title": "ReleaseNews",
+        "type": "object"
+      },
       "ResearchCurrent": {
         "properties": {
           "job": {
@@ -12976,6 +14813,13 @@
             "title": "Name",
             "type": "string"
           },
+          "parts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -13004,12 +14848,14 @@
           "reason",
           "vague",
           "hint",
-          "suggestion"
+          "suggestion",
+          "parts"
         ],
         "title": "TopicDescription",
         "type": "object"
       },
       "TopicHit": {
+        "description": "Ein Beschluss-Treffer auf der Karte „Neu zu deinen Themen\" (Heute).\n\nBis 09/2026 trug er nur Titel, Gremium und Datum — die Karte konnte damit\nweder sagen, WAS entschieden wurde (``summary``), noch WIE (``outcome``),\nnoch ob man es schon kannte (``is_new``). Dieselben drei Felder trägt die\nThemen-Karte seit dem 28.08.2026 (``TopicHitOut``); ``topic_id`` braucht\nder Gelesen-Ruf (``POST /topics/{topic_id}/seen``).",
         "properties": {
           "committee": {
             "title": "Committee",
@@ -13019,13 +14865,42 @@
             "title": "Id",
             "type": "integer"
           },
+          "is_new": {
+            "title": "Is New",
+            "type": "boolean"
+          },
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "postponed",
+              "noted",
+              "no_decision"
+            ],
+            "title": "Outcome",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "session_date": {
             "title": "Session Date",
             "type": "string"
           },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "topic_id": {
+            "title": "Topic Id",
+            "type": "integer"
           },
           "topic_name": {
             "title": "Topic Name",
@@ -13033,11 +14908,15 @@
           }
         },
         "required": [
+          "topic_id",
           "topic_name",
           "id",
           "title",
           "committee",
-          "session_date"
+          "session_date",
+          "outcome",
+          "summary",
+          "is_new"
         ],
         "title": "TopicHit",
         "type": "object"
@@ -13050,10 +14929,25 @@
             },
             "title": "Hits",
             "type": "array"
+          },
+          "topic_count": {
+            "title": "Topic Count",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unread_total": {
+            "title": "Unread Total",
+            "type": "integer"
           }
         },
         "required": [
-          "hits"
+          "hits",
+          "topic_count",
+          "total",
+          "unread_total"
         ],
         "title": "TopicHitList",
         "type": "object"
@@ -14426,6 +16320,32 @@
         ]
       }
     },
+    "/api/admin/cities": {
+      "get": {
+        "description": "Was im Städte-Speicher liegt, je Stadt.\n\nDie Liste ist leer, solange noch nichts geerntet wurde — das ist kein\nFehler, sondern der Zustand vor dem ersten Lauf von ``check_cities``.",
+        "operationId": "cities_stats_api_admin_cities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CityStats"
+                  },
+                  "title": "Response Cities Stats Api Admin Cities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cities Stats",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/entity-aliases": {
       "get": {
         "description": "Zusammengeführte Themen mit Quelle und Begründung, für die Durchsicht.",
@@ -14821,6 +16741,55 @@
         ]
       }
     },
+    "/api/admin/live-probe": {
+      "get": {
+        "description": "Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe\nder Streaming-Transkription (``council/stream_stt``) im Admin-Panel.\n\nTims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des\naktuellen O1-Programms anzeigen\". Was hier ankommt, kommt genauso in der\nRatssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste\n(hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine\nProbe zugleich; verlässt der Browser die Seite, endet die Aufnahme.",
+        "operationId": "live_probe_api_admin_live_probe_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "seconds",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "maximum": 600,
+              "minimum": 10,
+              "title": "Seconds",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:\n\n- `status` — Text zum Stand (`text`), etwa „verbunden\"\n- `segment` — eine fertige Äußerung: `start`/`end` in Sekunden seit Beginn, `text`, `wall` = Sekunden seit Beginn auf der Server-Uhr (die Differenz zu `end` ist der Verzug)\n- `done` — Schluss mit `segments` (Zahl) und `seconds`\n- `error` — abgebrochen (`message`)"
+          },
+          "409": {
+            "description": "Es läuft schon eine Probe — nur eine zugleich."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Probe",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/llm-usage": {
       "get": {
         "description": "LLM-Kosten-Dashboard (Design 21a): per-Feature-Aggregat + 30-Tage-Verlauf,\nMonatskosten mit Hochrechnung und Budget-Ampel (aus llm_usage in ratslotse.sqlite).",
@@ -14838,6 +16807,114 @@
           }
         },
         "summary": "Llm Usage",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/news": {
+      "get": {
+        "description": "Alle Einträge der Registry samt Stand ihres Versands.\n\nDie beiden Zahlen je Eintrag beantworten die Frage vor dem Drücken: Wie\nviele bekämen die Ankündigung jetzt, und wie viele haben sie schon. Sie\nentstehen aus **einer** Abfrage über alle Konten, nicht aus einer je\nRelease — die Registry wächst mit jedem Release, die Kontenzahl auch.",
+        "operationId": "admin_news_api_admin_news_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNewsList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin News",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/news/{version}/send": {
+      "post": {
+        "description": "Die Ankündigung an alle offenen Empfänger einreihen.\n\nEingereiht wird sofort (nur Datenbank), **zugestellt im Hintergrund**:\nZweihundert Mails über die Resend-API dauern länger, als eine HTTP-Anfrage\nwarten darf. Der Hintergrund-Lauf öffnet einen eigenen Store — die\nAbhängigkeit aus dem Request ist zu diesem Zeitpunkt längst geschlossen.",
+        "operationId": "admin_news_send_api_admin_news__version__send_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNewsSent"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin News Send",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/news/{version}/test": {
+      "post": {
+        "description": "Die Ankündigung einmal an das eigene Konto — vor dem echten Versand.\n\nBewusst **nicht** über die Warteschlange: Eine Probe soll sofort ankommen\nund darf nicht an der eigenen Nachtruhe oder Tagesgrenze hängen bleiben.\nSie ändert deshalb auch keine Marke — sie zählt nicht als Versand.",
+        "operationId": "admin_news_test_api_admin_news__version__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestDelivery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin News Test",
         "tags": [
           "admin"
         ]
@@ -15152,6 +17229,142 @@
         ]
       }
     },
+    "/api/admin/stats/cohorts": {
+      "get": {
+        "description": "Der Trichter je Registrierungswoche — wer bleibt, und wo es abreißt.\n\nBetreiber- und Testkonten fallen heraus; welche das sind, entscheidet die\nAdminrolle plus ``STATS_EXCLUDE_DOMAINS``. Ohne diesen Schnitt zeigte die\nStatistik zum großen Teil das eigene Klicken.",
+        "operationId": "stats_cohorts_api_admin_stats_cohorts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminKohorten"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Cohorts",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/dead-ends": {
+      "get": {
+        "description": "Fragen, auf die es keine belegte Antwort gab.\n\nDie Liste beantwortet, was eine Quote nicht kann: *woran* es scheitert.\nDer bekannteste Fall stand am 09.08.2026 im Bestand — jemand fragte\nzweimal nach „Giftmüll am Fliegerhorst\" und bekam „keine Informationen\",\nweil die Unterlagen „Sondermüll\" und „Schießanlage\" sagen. Ein Blick in\ndiese Liste hätte das an dem Tag gezeigt, an dem es passierte.",
+        "operationId": "stats_dead_ends_api_admin_stats_dead_ends_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminSackgasse"
+                  },
+                  "title": "Response Stats Dead Ends Api Admin Stats Dead Ends Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Dead Ends",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/events": {
+      "get": {
+        "description": "Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.\n\n„Fragen aus einem Vorschlag\" und „Antworten ohne Quelle\" sind die zwei\nZahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen\nmessbar waren.",
+        "operationId": "stats_events_api_admin_stats_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminEreignisse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Events",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/admin/stats/growth": {
       "get": {
         "description": "Wachstums-Verläufe + WAU + Ratsinfo-Import für den Statistik-Tab (20a).",
@@ -15191,6 +17404,50 @@
           }
         },
         "summary": "Stats Growth",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/stats/page-views": {
+      "get": {
+        "description": "Anonyme Seitenaufrufe — die Nutzung, die vorher unsichtbar war.\n\nZeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die\nAufteilung nach Client. Nichts davon ist einer Person zuzuordnen.",
+        "operationId": "stats_page_views_api_admin_stats_page_views_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSeitenaufrufe"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stats Page Views",
         "tags": [
           "admin"
         ]
@@ -16894,6 +19151,252 @@
         ]
       }
     },
+    "/api/council/cities/ideas": {
+      "get": {
+        "description": "Was andere Städte haben und Oldenburg fehlt — je Themenfeld.\n\n**Ein Feld ist Pflicht.** Eine Liste über alle zwölf Felder wäre ein\nFließband ohne Anfang; die Übersicht (``/cities/ideas/fields``) ist der\nEinstieg, und von dort geht es in ein Feld.\n\nFiltern, Sortieren und Zählen macht die Abfrage (``CitiesStore.ideas``),\nnicht das Frontend — sonst blätterte die App durch alles, um zu zählen.\n\n**Die Belege werden hier aufgelöst.** Das Urteil nennt Kennungen wie\n``oldenburg:paper:28119``; die Karte soll auf die Beschluss-Seite führen.\nDie Übersetzung braucht die Rats-Datenbank und gehört deshalb hierher,\nnicht in den Städte-Speicher.",
+        "operationId": "cities_ideas_api_council_cities_ideas_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "title": "Field",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "missing,partial",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "effort",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Effort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "title": "Body",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Per Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeasResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Ideas",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/ideas/fields": {
+      "get": {
+        "description": "Je Themenfeld, wie viele Ideen dort liegen — die Übersicht.\n\n**Öffentlich**, wie die Beschluss-Seiten: Es stehen ausschließlich\nRatsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg\ndasselbe schon hat.",
+        "operationId": "cities_idea_fields_api_council_cities_ideas_fields_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaFields"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cities Idea Fields",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/ideas/{paper_id}/feedback": {
+      "post": {
+        "description": "„Stimmt\" oder „stimmt nicht\" zu einem Urteil — ein Klick an der Karte.\n\n**Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des\nStädtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an\neinem Tag beurteilt hat — und in vier von sieben Pull Requests war genau\ndieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von\nzwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.\n\n**Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine\nRückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele\nStimmen), und der Maßstab wäre wieder wertlos.\n\nDie FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch\"\ngilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.",
+        "operationId": "cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paper_id",
+            "required": true,
+            "schema": {
+              "title": "Paper Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "required": true,
+            "schema": {
+              "title": "Verdict",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "note",
+            "required": false,
+            "schema": {
+              "title": "Note",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Idea Feedback",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/search": {
+      "get": {
+        "description": "„Was haben andere Städte zu …?\" — frei durchsuchbar.\n\n**Zwei Hälften, keine Vektor-Suche über die Anfrage.** Die bräuchte\n``fastembed`` im Web-Dienst, und das ist es bewusst nicht. Stattdessen\nVolltext plus die schon berechneten Nachbarschaften der besten Treffer;\ndie Einzelheiten stehen an ``CitiesStore.search_ideas``.\n\nÖffentlich wie die Ideen-Liste, und hinter demselben Schalter.",
+        "operationId": "cities_search_api_council_cities_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "body",
+            "required": false,
+            "schema": {
+              "title": "Body",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdeaSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Search",
+        "tags": [
+          "council"
+        ]
+      }
+    },
     "/api/council/committees": {
       "get": {
         "description": "Gremienliste — plus ``details`` für die Ausschuss-Abos.\n\n``committees`` bleibt die reine Namensliste: Themen-Seite und\nEinrichtungs-Assistent lesen sie als String-Liste, ein Umbau auf Objekte\nbräche beide. Die Zusatzangaben stehen deshalb daneben in ``details``, in\nderselben Reihenfolge.\n\nGenau zwei zusätzliche Abfragen für die ganze Liste (nicht eine je\nGremium) — die Seite lädt das bei jedem Aufruf.",
@@ -17240,6 +19743,49 @@
           }
         },
         "summary": "Decision Detail",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/decision/{decision_id}/elsewhere": {
+      "get": {
+        "description": "Was andere Städte zu derselben Sache beantragt oder beschlossen haben.\n\n**Öffentlich**, wie die Beschluss-Seite selbst.\n\nDie Brücke ist die Vorlage: Ein Oldenburger Beschluss hängt an einer\n``kvonr``, und die ist im Städte-Speicher das Papier\n``oldenburg:paper:<kvonr>``. Beschlüsse ohne Vorlage — Wahlen,\nVerfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo\nauch nichts zu holen.\n\n**Die ``kvonr`` allein reicht nicht.** Sie steht an 274 von 9.059\nBeschlüssen, die Vorlagennummer dagegen an 6.553 — und\n``council_templates`` übersetzt die eine in die andere. Ohne diesen Umweg\nerschien der Block auf 50 Beschluss-Seiten, mit ihm auf 486 (gemessen\n08.09.2026). Die ``kvonr`` am Beschluss bleibt die genauere Angabe und\nhat Vorrang; die Nummer ist der Rückfall, nicht umgekehrt.\n\nEine leere Liste ist der Normalzustand, solange ``check_cities`` noch\nnicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der\nBlock blendet sich aus, statt einen Fehler zu zeigen.",
+        "operationId": "decision_elsewhere_api_council_decision__decision_id__elsewhere_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "title": "Decision Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElsewhereResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decision Elsewhere",
         "tags": [
           "council"
         ]
@@ -19060,9 +21606,54 @@
         ]
       }
     },
+    "/api/districts/lookup": {
+      "get": {
+        "description": "„Ich wohne in der …\": Straße, Platz oder Stadtteilname → Ortsbereich.\n\nStadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den\nBeschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein\nSprachmodell, keine Speicherung der Eingabe.",
+        "operationId": "district_lookup_api_districts_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 80,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistrictLookup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "District Lookup",
+        "tags": [
+          "districts"
+        ]
+      }
+    },
     "/api/districts/projects": {
       "get": {
-        "description": "Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.",
+        "description": "Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.\n\nDazu die Stadtzahlen (wie viele Vorhaben, wie viele je Stand) und die\nVorhaben, die gerade herausstechen: Die Seite ohne gewähltes Viertel soll\nschon etwas zeigen, nicht nur fragen.",
         "operationId": "district_projects_overview_api_districts_projects_get",
         "responses": {
           "200": {
@@ -19137,7 +21728,7 @@
     },
     "/api/districts/{place_id}/projects": {
       "get": {
-        "description": "Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im\nRat ansteht, was im Investitionsprogramm steht und wo gerade eine\nBeteiligung läuft.",
+        "description": "Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im\nRat ansteht, was im Investitionsprogramm steht, wo gerade eine\nBeteiligung läuft, was die Stadt gesperrt hat und was sie zum Viertel\nmitgeteilt hat.",
         "operationId": "district_projects_api_districts__place_id__projects_get",
         "parameters": [
           {
@@ -19323,6 +21914,70 @@
         ]
       }
     },
+    "/api/news": {
+      "get": {
+        "description": "Die offenen Release-Karten dieses Kontos, neueste zuerst.\n\nDie Bilder kommen **passend zum Client**: Wer auf dem iPhone liest, soll\ndas iPhone sehen und nicht ein Browserfenster mit Seitenleiste (Tims\nWunsch 07.09.2026). Die Auswahl fällt hier und nicht im Client — sonst\nmüsste jede Oberfläche zwei Felder auseinanderhalten, und eine dritte\nPlattform bräuchte überall eine Änderung statt nur einen Registry-Eintrag.",
+        "operationId": "get_news_api_news_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get News",
+        "tags": [
+          "news"
+        ]
+      }
+    },
+    "/api/news/seen": {
+      "post": {
+        "description": "Die Karte ist weggeklickt — die Hochwassermarke nachziehen.\n\nDer Client meldet die Version, die er GEZEIGT hat. Käme zwischen Laden und\nWegklicken ein Deploy, würde „die neueste laut Server\" ein Release\nmiterledigen, das nie jemand gesehen hat.",
+        "operationId": "mark_seen_api_news_seen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewsSeenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsSeen"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Seen",
+        "tags": [
+          "news"
+        ]
+      }
+    },
     "/api/onboarding": {
       "get": {
         "operationId": "get_onboarding_api_onboarding_get",
@@ -19442,6 +22097,48 @@
         "summary": "Set Setup",
         "tags": [
           "onboarding"
+        ]
+      }
+    },
+    "/api/page-views": {
+      "post": {
+        "description": "Einen Seitenaufruf zählen — anonym, aggregiert, ohne Kennung.\n\n**Warum offen (ohne Konto).** Genau die Nutzung ohne Anmeldung war bisher\nunsichtbar: Startseite, geteilte Beschlüsse, Changelog. Ein Zähler, der\nerst nach dem Anmelden anspringt, beantwortet die Frage nicht, für die er\ngebaut ist.\n\n**Was gespeichert wird.** Tag, Seitenmuster aus der Positivliste, Client\nund das Ja/Nein „war jemand angemeldet\". Kein Konto, keine Kennung, keine\nQuery, kein Referrer, keine IP — ``kern/seitenaufrufe.py`` begründet jedes\nFeld einzeln, ``tests/test_seitenaufrufe.py`` hält die Liste fest.\n\n**Ohne Cookie, ohne Kontoauflösung.** Ob jemand angemeldet war, sagt der\nClient selbst (``logged_in``); der Server schaut dafür in kein Token und\nin keine Kontotabelle. Das ist strenger als ``optional_user`` und macht\nden Endpunkt zugleich billiger. Ein Client, der lügt, verschiebt eine\ngrobe Statistik — Rechte hängen an keiner dieser Zahlen.\n\n**Immer 200.** Ein Zähler, der einem Browser einen Fehler zurückgibt,\nerzeugt eine Fehlermeldung über eine Zählung — das hilft niemandem.",
+        "operationId": "seitenaufruf_api_page_views_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageViewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Seitenaufruf",
+        "tags": [
+          "page-views"
         ]
       }
     },
@@ -20706,7 +23403,7 @@
     },
     "/api/topics/latest-hits": {
       "get": {
-        "description": "Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die\n„Neu zu deinen Themen\"-Karte im Heute-Briefing (RL-401). Vor der\n{topic_id}-Route registriert, damit „latest-hits\" nicht als ID parst.",
+        "description": "Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die\n„Neu zu deinen Themen\"-Karte im Heute-Briefing (RL-401). Vor der\n{topic_id}-Route registriert, damit „latest-hits\" nicht als ID parst.\n\nDieselbe Menge wie die Themen-Karten (``list_topics``): alle Treffer,\nnach Sitzungsdatum. Bis 09/2026 nahm die Route je Thema nur die zehn\nBESTBEWERTETEN Treffer und sortierte erst die nach Datum — „neu\" hieß\ndamit „das Jüngste unter den Passendsten\", und die Karte konnte einen\nBeschluss verschweigen, den die Themen-Seite als jüngsten führte.\n\nEin Beschluss, der zu mehreren Themen passt, steht einmal da — mit dem\nThema, in dem er noch ungelesen ist, falls es eines gibt.",
         "operationId": "latest_hits_api_topics_latest_hits_get",
         "parameters": [
           {
@@ -20745,6 +23442,51 @@
           }
         },
         "summary": "Latest Hits",
+        "tags": [
+          "topics"
+        ]
+      }
+    },
+    "/api/topics/match": {
+      "get": {
+        "description": "Passt eine FRAGE zu einem kuratierten Stadtthema?\n\nDie Brücke von „ich habe etwas gefragt\" zu „das Produkt meldet sich bei\nmir\". Wer nach dem Radverkehr fragt, bekommt das fertige Thema\n*Radverkehr* mit einer am Bestand kalibrierten Beschreibung — statt eines\nFormulars, in das er eine Frage tippt, die als Thema nicht funktioniert.\n\n**Deterministisch und ohne Modell:** ein Satz Muster aus\n``council.city_topics`` gegen den Fragetext. Der Endpunkt darf deshalb bei\njeder Antwort gefragt werden; er kostet eine Regex und eine Kontoabfrage.\n\n``n`` und ``months`` fehlen hier bewusst — die Zahl der Beschlüsse\nberechnet ``/topics/suggestions`` mit einem Scan über den Bestand, und\ndafür ist dies der falsche Ort. Wer den Vorschlag annimmt, sieht die Zahl\nunmittelbar danach an seinem angelegten Thema.",
+        "operationId": "topic_match_api_topics_match_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 300,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CityTopicMatch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Topic Match",
         "tags": [
           "topics"
         ]

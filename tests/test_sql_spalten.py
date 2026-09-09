@@ -56,6 +56,11 @@ AUSNAHMEN = {
     # und muss dafür die alte lesen. Es ist eine Migration, nur heißt sie
     # nicht so — deshalb greift die Regel oben hier nicht.
     ("council/store_schema.py", "bild"),
+    # Einmal-Werkzeug: liest den Probelauf-Bestand aus
+    # ~/.cache/ratslotse/phase0/peers.sqlite — eine FREMDE Datenbank mit
+    # eigenem Schema, die hier niemand anlegt.
+    ("scripts/cities_import_phase0.py", "papers"),
+    ("scripts/cities_import_phase0.py", "agenda"),
 }
 
 
@@ -99,15 +104,23 @@ def _dateien():
 
 @pytest.fixture(scope="module")
 def datenbanken(tmp_path_factory):
-    """Zwei frische Datenbanken plus alles, was der Code selbst nachlegt."""
+    """Die frischen Datenbanken plus alles, was der Code selbst nachlegt.
+
+    Drei, seit es den Städte-Speicher gibt: Eine Abfrage gilt als in Ordnung,
+    wenn sie auf EINER von ihnen aufgeht — ``council/cities/store.py`` spricht
+    ausschließlich ``cities.sqlite``, der übrige Code die beiden anderen.
+    """
+    from council.cities.store import CitiesStore
     from council.store import CouncilStore
     from kern.store import Store
 
     ordner = tmp_path_factory.mktemp("sql")
     CouncilStore(ordner / "council.sqlite")
     Store(ordner / "ratslotse.sqlite")
+    CitiesStore(ordner / "cities.sqlite")
     conns = [sqlite3.connect(ordner / "council.sqlite"),
-             sqlite3.connect(ordner / "ratslotse.sqlite")]
+             sqlite3.connect(ordner / "ratslotse.sqlite"),
+             sqlite3.connect(ordner / "cities.sqlite")]
 
     for _rel, pfad in _dateien():
         try:
@@ -130,7 +143,7 @@ def datenbanken(tmp_path_factory):
 
 
 def _vorbereitbar(conns, sql: str) -> str | None:
-    """``None``, wenn die Anweisung auf einer der beiden Datenbanken aufgeht."""
+    """``None``, wenn die Anweisung auf einer der Datenbanken aufgeht."""
     platzhalter = [None] * sql.count("?")
     fehler = []
     for c in conns:

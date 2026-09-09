@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Sparkles, Loader2, ListChecks, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { vertrag } from "@/lib/vertrag";
@@ -28,6 +28,8 @@ export function TopicsView() {
   const [editing, setEditing] = useState<Topic | null>(null);
   const [loeschFrage, setLoeschFrage] = useState<number | null>(null);
   const [kiText, setKiText] = useState("");
+  /** Teile eines Namens, der in Wahrheit eine Aufzählung ist. */
+  const [teile, setTeile] = useState<string[]>([]);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   /* ?neu= aus der URL (KI-Frage ohne Treffer → „Als Thema anlegen"): Namen
@@ -100,6 +102,11 @@ export function TopicsView() {
     mutationFn: (n: string) => api.post<Described>("/topics/describe", { name: n }),
     onSuccess: (d) => {
       if (d.description) setDescription(d.description);
+      // Eine Liste in einem Feld: Das Produkt nahm sie bisher stillschweigend
+      // an. Sieben Stadtteile in einem Thema ergaben elf Treffer mit durchweg
+      // negativer Relevanz — als sieben Themen wäre es je Stadtteil eine
+      // saubere Meldung gewesen.
+      setTeile(d.parts ?? []);
       setKiText(d.verdict === "plausibel"
         ? "Zu diesem Thema hat der Rat bisher nichts entschieden — wir melden uns, sobald es so weit ist."
         : "Vorschlag — kurz prüfen und anpassen.");
@@ -122,6 +129,37 @@ export function TopicsView() {
   const alleGelesen = (t: Topic) => {
     if ((t.unread_count ?? 0) <= 0) return;
     gelesenMelden(t.id);
+  };
+
+  const [aufteilenLaeuft, setAufteilenLaeuft] = useState(false);
+
+  /** Aus einer Aufzählung mehrere Themen machen — der Reihe nach, damit der
+   *  Server je Teil eine eigene Beschreibung schreiben kann. */
+  const aufteilen = async () => {
+    setAufteilenLaeuft(true);
+    let angelegt = 0;
+    try {
+      for (const teil of teile) {
+        try {
+          const d = await api.post<Described>("/topics/describe", { name: teil });
+          await api.post("/topics", { name: teil, description: d.description || teil });
+          angelegt += 1;
+        } catch {
+          // Ein Teil, der scheitert, darf die übrigen nicht mitnehmen.
+        }
+      }
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+      if (angelegt > 0) {
+        setName(""); setDescription(""); setKiText(""); setTeile([]);
+        toast.success(angelegt === teile.length
+          ? `${angelegt} Themen angelegt`
+          : `${angelegt} von ${teile.length} Themen angelegt`);
+      } else {
+        toast.error("Das ließ sich gerade nicht anlegen.");
+      }
+    } finally {
+      setAufteilenLaeuft(false);
+    }
   };
 
   const anlegen = () => {
@@ -195,6 +233,48 @@ export function TopicsView() {
               </button>
               {kiText && <span className="text-[10.5px] text-muted-foreground">{kiText}</span>}
             </div>
+            {teile.length > 1 && (
+              /* Kein Verbot, ein Angebot: Der Cross-Encoder bewertet gegen
+                 EINEN Text, und eine Aufzählung hat kein Zentrum. Getrennt
+                 bekommt jeder Teil seine eigene, saubere Meldung. */
+              <div className="rounded-[12px] border border-primary/25 bg-primary/[0.04] p-3.5">
+                {/* Primär-Tint, nicht Signal-Orange: Das ist ein Angebot des
+                    Produkts, keine Warnung — und Signal-Orange ist nie eine
+                    Flächenfarbe (Designsprache § 8). */}
+                <div className="flex items-start gap-2.5">
+                  <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-foreground">
+                      Das sieht nach {teile.length} Themen in einem Feld aus.
+                    </p>
+                    <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                      Getrennt bekommst du zu jedem eine eigene Meldung. Zusammen findet Lotti
+                      kaum etwas — der Text hat kein Zentrum.
+                    </p>
+                  </div>
+                </div>
+                <ol className="mt-2.5 flex flex-wrap gap-1.5">
+                  {teile.map((t, i) => (
+                    <li key={t} className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-card px-2.5 py-1 text-[12px] text-foreground">
+                      <span className="font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                      {t}
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button type="button" disabled={aufteilenLaeuft}
+                    onClick={() => void aufteilen()}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-[10px] bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                    {aufteilenLaeuft ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Check className="h-3.5 w-3.5" aria-hidden />}
+                    {aufteilenLaeuft ? "Lege an …" : `Als ${teile.length} Themen anlegen`}
+                  </button>
+                  <button type="button" onClick={() => setTeile([])}
+                    className="rounded-[10px] px-2.5 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    Als ein Thema lassen
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button type="submit" disabled={addMutation.isPending || !name.trim() || !description.trim()}>
                 {addMutation.isPending ? "Hinzufügen…" : "Thema hinzufügen"}

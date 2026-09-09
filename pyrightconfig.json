@@ -13,7 +13,8 @@
   // andere benutzt — und der Backend-Kern ohne die Router.
   "include": [
     "kern",
-    "web/backend/app"
+    "web/backend/app",
+    "council/cities"
   ],
 
   "exclude": [

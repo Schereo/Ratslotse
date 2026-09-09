@@ -11,20 +11,31 @@ import logging
 from datetime import datetime
 from typing import cast
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+import json
+import queue
+import threading
+import time
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
+
+from council.cities.store import CitiesStore
 from council.store import CouncilStore
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
 from kern import roles as rollen
 from kern.store import Store
 
+from council import stream_stt
 from ..config import get_settings
-from ..antworten import (AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
+from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
+                         AdminAliasDeleted, AdminAliasList, AdminFeedbackList, AdminFeedbackRead,
                          AdminGrowth, AdminJob, AdminLimits, AdminLlmUsage, AdminPlaceCandidate,
-                         AdminPlaceCandidates, AdminQuizStats, AdminRequestFehler,
+                         AdminEreignisse, AdminKohorten, AdminPlaceCandidates,
+                         AdminQuizStats, AdminRequestFehler, AdminSackgasse,
+                         AdminSeitenaufrufe,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
-from ..deps import get_council_store, get_store, require_admin
+from ..deps import get_cities_store, get_council_store, get_store, require_admin
 from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
                        RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate, WebUserOut)
 
@@ -80,6 +91,90 @@ def stats_growth(
     data = store.admin_growth(days)
     data["council"] = council.admin_stats()
     return data
+
+
+@router.get("/cities")
+def cities_stats(
+    _admin: dict = Depends(require_admin),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> list[CityStats]:
+    """Was im Städte-Speicher liegt, je Stadt.
+
+    Die Liste ist leer, solange noch nichts geerntet wurde — das ist kein
+    Fehler, sondern der Zustand vor dem ersten Lauf von ``check_cities``.
+    """
+    return cities.stats()
+
+
+@router.get("/stats/cohorts")
+def stats_cohorts(
+    weeks: int = 8,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminKohorten:
+    """Der Trichter je Registrierungswoche — wer bleibt, und wo es abreißt.
+
+    Betreiber- und Testkonten fallen heraus; welche das sind, entscheidet die
+    Adminrolle plus ``STATS_EXCLUDE_DOMAINS``. Ohne diesen Schnitt zeigte die
+    Statistik zum großen Teil das eigene Klicken.
+    """
+    domains = [d for d in (get_settings().stats_exclude_domains or "").split(",") if d.strip()]
+    # `cast` wie bei den Fehlern: Der Store baut ein `dict`, die Form hält
+    # `AdminKohorten` in `antworten.py` fest, und der Vertragstest prüft sie
+    # gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
+    # importiert nichts aus `app` (tests/test_schichten.py).
+    return cast("AdminKohorten", store.admin_kohorten(max(1, min(weeks, 26)), domains))
+
+
+@router.get("/stats/page-views")
+def stats_page_views(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminSeitenaufrufe:
+    """Anonyme Seitenaufrufe — die Nutzung, die vorher unsichtbar war.
+
+    Zeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die
+    Aufteilung nach Client. Nichts davon ist einer Person zuzuordnen.
+    """
+    # `cast` wie bei den Fehlern: Der Store baut ein `dict`, die Form hält
+    # `AdminSeitenaufrufe` in `antworten.py` fest, und der Vertragstest prüft
+    # sie gegen das Schema. `kern/` darf die Form nicht selbst kennen — es
+    # importiert nichts aus `app` (tests/test_schichten.py).
+    return cast("AdminSeitenaufrufe", store.seitenaufrufe(max(1, min(days, 365))))
+
+
+@router.get("/stats/events")
+def stats_events(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminEreignisse:
+    """Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.
+
+    „Fragen aus einem Vorschlag" und „Antworten ohne Quelle" sind die zwei
+    Zahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen
+    messbar waren.
+    """
+    # `cast`: Der Store baut ein `dict`, die Form hält `antworten.py` fest.
+    return cast("AdminEreignisse", store.ereignisse(max(1, min(days, 365))))
+
+
+@router.get("/stats/dead-ends")
+def stats_dead_ends(
+    days: int = 30,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> list[AdminSackgasse]:
+    """Fragen, auf die es keine belegte Antwort gab.
+
+    Die Liste beantwortet, was eine Quote nicht kann: *woran* es scheitert.
+    Der bekannteste Fall stand am 09.08.2026 im Bestand — jemand fragte
+    zweimal nach „Giftmüll am Fliegerhorst" und bekam „keine Informationen",
+    weil die Unterlagen „Sondermüll" und „Schießanlage" sagen. Ein Blick in
+    diese Liste hätte das an dem Tag gezeigt, an dem es passierte.
+    """
+    return cast("list[AdminSackgasse]", store.sackgassen(max(1, min(days, 365))))
 
 
 @router.get("/quiz/stats")
@@ -519,3 +614,79 @@ def reopen_place_candidate(
     if not store.delete_location_review(location_slug):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Prüfung nicht gefunden.")
     return {"ok": True}
+
+
+# ------------------------------------------------------------- Live-Probe
+
+#: Nur eine Probe zugleich: Jede öffnet einen eigenen Gladia-Strom (0,75 $ je
+#: Stunde) und einen ffmpeg-Prozess.
+_LIVE_PROBE_LOCK = threading.Lock()
+LIVE_PROBE_MAX_SECONDS = 600
+
+
+@router.get("/live-probe", response_class=EventStreamResponse, responses=SSE_LIVE_PROBE)
+def live_probe(seconds: int = Query(120, ge=10, le=LIVE_PROBE_MAX_SECONDS),
+               user: dict = Depends(require_admin)) -> StreamingResponse:
+    """Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe
+    der Streaming-Transkription (``council/stream_stt``) im Admin-Panel.
+
+    Tims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des
+    aktuellen O1-Programms anzeigen". Was hier ankommt, kommt genauso in der
+    Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
+    (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
+    Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+    """
+    if not stream_stt.configured():
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            "GLADIA_API_KEY fehlt — Streaming ist auf diesem Server aus.")
+    if not _LIVE_PROBE_LOCK.acquire(blocking=False):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Es läuft schon eine Probe.")
+
+    events: queue.Queue = queue.Queue()
+    stop = threading.Event()
+    t0 = time.monotonic()
+
+    def on_segment(start: float, end: float, text: str) -> None:
+        events.put({"type": "segment", "start": round(start, 1), "end": round(end, 1),
+                    "text": text, "wall": round(time.monotonic() - t0, 1)})
+
+    def run() -> None:
+        try:
+            events.put({"type": "status", "text": "verbunden — warte auf die erste Äußerung"})
+            segs = stream_stt.record_and_transcribe(
+                on_segment=on_segment, max_seconds=seconds, people=[], stop=stop)
+            events.put({"type": "done", "segments": len(segs),
+                        "seconds": round(time.monotonic() - t0)})
+        except Exception as exc:  # noqa: BLE001 — dem Client sagen, dann Schluss
+            logger.exception("Live-Probe fehlgeschlagen")
+            events.put({"type": "error", "message": str(exc)[:200]})
+        finally:
+            events.put(None)
+
+    threading.Thread(target=run, daemon=True).start()
+
+    def gen():
+        # Vorspann: 2 KB Kommentar. Zwischen Browser und Backend liegen zwei
+        # Proxys (Edge-Caddy, Next-Rewrite); ein Puffer, der erst ab ein paar
+        # Kilobyte weiterreicht, hielte den 80-Byte-Statusrahmen sonst zurück,
+        # bis Minuten später die erste Äußerung kommt — Tims Befund 06.09.
+        # auf dev: „dort steht nur verbinde …". Die Frage-Antwort (/council/
+        # ask) merkt davon nichts, sie schickt sofort Token für Token.
+        yield ":" + " " * 2048 + "\n\n"
+        try:
+            while True:
+                try:
+                    ev = events.get(timeout=5)
+                except queue.Empty:
+                    yield ": ping\n\n"   # hält Proxy und Browser bei der Stange
+                    continue
+                if ev is None:
+                    break
+                yield "data: " + json.dumps(ev, ensure_ascii=False) + "\n\n"
+        finally:
+            stop.set()
+            _LIVE_PROBE_LOCK.release()
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache, no-transform",
+                                      "X-Accel-Buffering": "no"})

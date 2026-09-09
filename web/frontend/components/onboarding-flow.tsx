@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { isNativeApp } from "@/lib/platform";
 import { cn, pfad } from "@/lib/utils";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, toast } from "@/components/ui";
 import { Mascot, type MascotPose } from "@/components/mascot";
 import { committeeExplains, committeeIcon, committeeRank, shortCommittee } from "@/lib/committees";
 import { useAuth } from "@/lib/auth";
@@ -57,7 +57,14 @@ const PUSH_SNOOZE_DAYS = 7;
  *  kein Erstnutzer mehr und wird nicht nachträglich durchs Onboarding geschickt. */
 const LEGACY_INTRO_KEY = "ratslotse.intro.done";
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
+/** Schritt 5 ist kein Schritt im Pfad, sondern ein Auffangnetz: Er erscheint
+ *  ausschließlich, wenn nach dem letzten Schritt WEDER ein Thema NOCH ein
+ *  Gremium hinterlegt ist. Am 08.09.2026 traf das auf fünf von neun neuen
+ *  Konten zu — und für die gibt es danach keinen einzigen Anlass mehr, sich
+ *  je wieder bei ihnen zu melden. Deshalb zählt er nicht in `SCHRITTE` und
+ *  steht nicht im Schritt-Pfad; er ist überspringbar wie alles andere. */
+const HAKEN_SCHRITT = 5;
 
 /** Der laufende Schritt, für das Gerüst. Als Kontext statt als Prop, weil ihn
  *  nur `StepShell` braucht — vier Schritt-Komponenten, die ihn bloß
@@ -171,6 +178,9 @@ export function OnboardingFlow() {
   const router = useRouter();
   const pathname = usePathname();
   const [step, setStep] = useState<Step | null>(null);
+  // Genau einmal je Durchlauf: Ohne die Merke riefe `go("done")` aus dem
+  // Rückruf die Prüfung erneut auf — eine Schleife.
+  const hakenGeprueft = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const native = isNativeApp();
   // In DIESER Sitzung abgeschlossen. Ohne den Riegel schöbe die noch im Cache
@@ -237,7 +247,31 @@ export function OnboardingFlow() {
     setStep(Math.max(0, Math.min(4, setupData.step)) as Step);
   }, [user, loading, native, setupData, pathname]);
 
+  /** Hat das Konto irgendetwas, woran sich eine Meldung hängen ließe? */
+  const hatHaken = async (): Promise<boolean> => {
+    try {
+      const [themen, abos] = await Promise.all([
+        api.get<TopicRow[]>("/topics"),
+        api.get<{ subscriptions: string[] }>("/subscriptions"),
+      ]);
+      return themen.length > 0 || (abos.subscriptions?.length ?? 0) > 0;
+    } catch {
+      // Im Zweifel NICHT nachfragen: Ein Netzfehler darf keinen zusätzlichen
+      // Schirm erzeugen, den niemand erwartet hat.
+      return true;
+    }
+  };
+
   const go = (next: Step | "done") => {
+    if (next === "done" && !hakenGeprueft.current) {
+      hakenGeprueft.current = true;
+      void hatHaken().then((ja) => {
+        if (ja) { go("done"); return; }
+        try { localStorage.setItem(STEP_KEY, String(HAKEN_SCHRITT)); } catch { /* egal */ }
+        setStep(HAKEN_SCHRITT as Step);
+      });
+      return;
+    }
     if (next === "done") {
       fertig.current = true;
       try {
@@ -348,7 +382,9 @@ export function OnboardingFlow() {
       step > 0 && "lg:flex-row lg:items-center lg:justify-center lg:p-6 xl:p-10",
     )}>
       {step === 0 ? <Welcome onNext={() => go(1)} /> : (
-        <section aria-label={`Einrichtung, Schritt ${step} von ${SCHRITTE}`}
+        <section aria-label={step === HAKEN_SCHRITT
+            ? "Einrichtung, letzter Hinweis"
+            : `Einrichtung, Schritt ${step} von ${SCHRITTE}`}
           className={cn(
             "flex min-h-0 flex-1 flex-col",
             "lg:max-h-full lg:w-full lg:max-w-[1040px] lg:flex-none lg:overflow-hidden",
@@ -358,7 +394,12 @@ export function OnboardingFlow() {
               stiller Mono-Kicker — dort trägt der Schritt-Pfad in der linken
               Spalte den Fortschritt, und zwei Anzeigen für dieselbe Sache
               übereinander wären eine zu viel. */}
-          <div className={cn(SPALTE, "px-[18px] lg:px-8 lg:pt-5")}>
+          {/* Auf dem Auffangnetz KEINE Kopfzeile: Es ist kein Schritt im Pfad,
+              und „Schritt 5 von 4" wäre schlicht falsch. Sein „Später" steht
+              in der Fußleiste, ein zweites „Überspringen" daneben wären zwei
+              Wege für dieselbe Handlung. */}
+          <div className={cn(SPALTE, "px-[18px] lg:px-8 lg:pt-5",
+                             step === HAKEN_SCHRITT && "hidden")}>
             <div className="flex items-center gap-3">
               {/* Segmente statt eines Laufbalkens: Man sieht, wie viele
                   Schritte es überhaupt sind. */}
@@ -392,6 +433,7 @@ export function OnboardingFlow() {
           {step === 4 && (native
             ? <PushStep onDone={() => go("done")} />
             : <MailStep onDone={() => go("done")} />)}
+          {step === HAKEN_SCHRITT && <HakenStep onDone={() => go("done")} />}
         </section>
       )}
     </div>
@@ -1493,6 +1535,133 @@ const SCHRITT_NAMEN = ["Gremien", "Stadtteile", "Themen"] as const;
  *  erledigt = gefüllter Punkt, aktuell = Ring mit Halo, offen = Rand-Punkt.
  *  Am Telefon übernehmen die Segmente in der Kopfzeile; zweimal dasselbe
  *  bräuchte niemand. */
+/** Das Auffangnetz: erscheint NUR, wenn nach dem letzten Schritt weder ein
+ *  Thema noch ein Gremium hinterlegt ist.
+ *
+ *  Warum es das braucht. Am 08.09.2026 hatten fünf von neun echten neuen
+ *  Konten am Ende nichts hinterlegt — und damit gibt es keinen einzigen
+ *  Anlass, sich je wieder bei ihnen zu melden: keine Tagesordnung, keine
+ *  Ergebnis-Mail, nichts. Ob sie wiederkommen, entscheidet sich allein daran,
+ *  ob sie von selbst daran denken. Das ist die größte Einzelverlustquelle im
+ *  ganzen Trichter, und sie lässt sich mit einem Tipp schließen.
+ *
+ *  Warum trotzdem überspringbar. Der Assistent zwingt an keiner Stelle zu
+ *  einer Eingabe (Modul-Kopf), und ein Schirm, an dem man nicht vorbeikommt,
+ *  wäre der erste. „Später" steht deshalb da — nur eben als Textlink und
+ *  nicht als gleichrangiger Knopf.
+ *
+ *  Die Vorschläge sind dieselben kuratierten Stadtthemen wie in Schritt 3:
+ *  Sie kosten kein Modell, stehen sofort da und sind daran kalibriert, in den
+ *  nächsten Wochen wirklich etwas zu melden.
+ */
+function HakenStep({ onDone }: { onDone: () => void }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [gewaehlt, setGewaehlt] = useState<string[]>([]);
+  const stadt = useQuery({
+    queryKey: ["topic-suggestions", "city"],
+    queryFn: () => api.get<VorschlagsAntwort>("/topics/suggestions?citywide=0&city=1").then((d) => d.city),
+  });
+  // Drei, nicht alle: Dies ist der letzte Schirm vor dem Schluss, und eine
+  // Wand aus Kacheln ist hier das Gegenteil von „ein Handgriff". Aber drei
+  // KARTEN mit Einordnung und Zahl, keine drei Chips — auf einer Fläche, die
+  // sonst zu vier Fünfteln leer stünde (Tims Rückmeldung 09.09.).
+  const vorschlaege = (stadt.data ?? []).slice(0, 3);
+
+  const waehlen = async (v: Vorschlag) => {
+    setBusy(v.name);
+    try {
+      await api.post("/topics", { name: v.name, description: v.description });
+      setGewaehlt((g) => [...g, v.name]);
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+    } catch {
+      toast.error("Das Thema ließ sich gerade nicht anlegen.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <StepShell
+      title="Eine Sache noch"
+      lead="Ohne ein Thema oder ein Gremium hat Lotti keinen Anlass, sich je bei dir zu melden — dann bleibt Ratslotse eine Seite, an die du selbst denken musst."
+      pose="point"
+      footer={
+        // EIN Weg hinaus, nicht zwei. Solange nichts gewählt ist, gibt es nur
+        // den stillen Ausgang; der Hauptknopf erscheint, sobald es etwas zu
+        // bestätigen gibt — und sagt dann, was er bestätigt.
+        <div className="flex items-center justify-between gap-6">
+          <span className="min-w-0 text-[12px] text-muted-foreground">
+            {gewaehlt.length === 0
+              ? "Kein Zwang — unter „Meine Themen“ geht es jederzeit."
+              : gewaehlt.length === 1
+                ? `„${gewaehlt[0]}“ ist angelegt.`
+                : `${gewaehlt.length} Themen sind angelegt.`}
+          </span>
+          {gewaehlt.length === 0 ? (
+            <button type="button" onClick={onDone}
+              className="shrink-0 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              Später, ohne Thema
+            </button>
+          ) : (
+            <Button onClick={onDone} disabled={busy !== null}>Fertig — Lotti meldet sich</Button>
+          )}
+        </div>
+      }
+    >
+      <p className="text-[13px] text-muted-foreground">
+        Drei Themen, in denen der Rat gerade wirklich entscheidet. Ein Tipp legt eines an — mit
+        einer Beschreibung, die am Bestand geprüft ist.
+      </p>
+      {stadt.isPending ? (
+        <div className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Vorschläge werden geladen …
+        </div>
+      ) : vorschlaege.length === 0 ? (
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          Unter „Meine Themen" legst du jederzeit eines an.
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-2">
+          {vorschlaege.map((v) => {
+            const dran = gewaehlt.includes(v.name);
+            const laeuft = busy === v.name;
+            return (
+              <li key={v.name} className={cn(
+                "flex items-center gap-3 rounded-[12px] border px-3.5 py-3 transition-colors",
+                dran ? "border-primary/30 bg-primary/[0.05]" : "border-border bg-card",
+              )}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-[14px] font-semibold text-foreground">{v.name}</span>
+                    {v.n > 0 && (
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                        {v.n} {v.n === 1 ? "Beschluss" : "Beschlüsse"} im letzten Jahr
+                      </span>
+                    )}
+                  </div>
+                  {v.context && <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">{v.context}</p>}
+                </div>
+                {dran ? (
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-medium text-primary">
+                    <Check className="h-3.5 w-3.5" aria-hidden /> angelegt
+                  </span>
+                ) : (
+                  <button type="button" disabled={busy !== null} onClick={() => void waehlen(v)}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] border border-primary/30 bg-primary/[0.04] px-3 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
+                    {laeuft ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Plus className="h-3.5 w-3.5" aria-hidden />}
+                    Verfolgen
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </StepShell>
+  );
+}
+
 function SchrittPfad({ aktuell, native }: { aktuell: Step; native: boolean }) {
   const namen = [...SCHRITT_NAMEN, native ? "Mitteilungen" : "Benachrichtigungen"];
   return (

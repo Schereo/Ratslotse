@@ -190,7 +190,11 @@ ERLAUBT_ZEILE = {
     "abgesetzt": re.compile(r'e\.includes|\.test\(|contains\('),
     # `alt` ist im Frontend fast immer das Bild-Attribut.
     "alt": re.compile(r'alt:\s*(hover|"|\{|`)|alt='),
-    "sonstiges": re.compile(r'sonstiges:\s*(Tag|")'),
+    # `sonstiges: "Sonstiges"` im Web, `"sonstiges": "Sonstiges"` in Swift —
+    # dieselbe Zuordnungstabelle in zwei Sprachen. Vor 09/2026 kannte der
+    # Ausdruck nur die erste Schreibweise, und die App-Seite schlug an, obwohl
+    # sie dasselbe tat.
+    "sonstiges": re.compile(r'"?sonstiges"?:\s*(Tag|")'),
     "wahlbereich": re.compile(r'^\s*\*|//'),
     # `gesamt`, `posten`, `beides`, `stadt`, `entfernt`, `geaendert`, `neu`
     # und `thema` sind daneben ganz gewoehnliche Woerter. Erlaubt sind sie
@@ -235,12 +239,16 @@ ERLAUBT_STELLE = {
     ("ProfileAndQuizViews.swift", "rat"): "`art` des Personen-Profils, im Backend deutsch",
     ("ProfileAndQuizViews.swift", "beratend"): "`art` des Personen-Profils, im Backend deutsch",
     ("RatslotseAppTests.swift", "thema"): "`qtype` der Beleg-Prüfung, im Backend deutsch",
+    ("ModelDecodingTests.swift", "alt"): "Feldname `alt` der Bildbeschreibung (ReleaseMedia, wie das HTML-Attribut), kein Wert",
     ("haushalt-vergleich.ts", "stadt"): "Feldname der Vergleichsstädte-Zeilen (`{stadt, was}`), kein Wert",
     ("haushalt-indicators.ts", "einwohner"): "Kennzahl-Schlüssel der Stadt (`council_indicators`) bleiben deutsch wie `steuerquote`; umbenannt wurde nur der Einwohner-Indikator des Städtevergleichs",
     ("haushalt-konzern.ts", "stadt"): "Beschriftung zum `entity_key` des Konzerns — der bleibt deutsch",
     ("haushalt-dokumente.ts", "vorlage"): "Beschriftung zur Zielart des Beleg-Apparats — die bleibt deutsch",
     ("page.tsx", "ort"): "Pfad-Teil der Link-Vorschau (/preview/ort/…) — eigener Schnitt",
+    ("view.tsx", "ort"): "URL-Parameter `?ort=` der Stadtkarte (/karte) — Website-Adressen bleiben deutsch, wie /viertel?id=",
+    ("AppRoute.swift", "ort"): "derselbe URL-Parameter `?ort=` von /karte, gelesen und gebaut von der App",
     ("council-map.tsx", "ort"): "`target` der Kartenpunkte (ort|location) — eigenes Vokabular",
+    ("CityMapView.swift", "ort"): "dasselbe `target`-Vokabular der Kartenpunkte, gelesen von der App",
     ("share-metadata.ts", "ort"): "Pfad-Teil der Link-Vorschau — eigener Schnitt",
     ("types.ts", "ort"): "`target` der Kartenpunkte (thema|ort|location) — eigenes Vokabular",
     ("CouncilMapView.swift", "ort"): "`target` der Kartenpunkte — eigenes Vokabular",

@@ -68,6 +68,16 @@ OEFFENTLICH = {
     # gebremst (`client_error_limiter`).
     ("post", "/api/client-errors"),
 
+    # Seitenaufrufe. Der ganze Zweck ist die Nutzung OHNE Anmeldung: Startseite,
+    # geteilte Beschlüsse, Changelog. Ein Zähler, der erst nach dem Anmelden
+    # anspringt, beantwortet die Frage nicht, für die er gebaut ist. Der
+    # Endpunkt nimmt vier gedeckelte Felder, bildet den Pfad auf eine
+    # Positivliste ab (`kern/seitenaufrufe.py`), speichert nur Summen ohne
+    # jede Kennung, antwortet immer 200 und ist gebremst (`page_view_limiter`).
+    # Bewusst NICHT `optional_user`: Der Server soll für die Zählung gar kein
+    # Konto auflösen — der Anmeldestatus kommt als Ja/Nein vom Client.
+    ("post", "/api/page-views"),
+
     # Öffentliche Ratsinhalte: Beschluss-, Personen- und Ortsseiten sind ohne
     # Konto lesbar, weil die Arbeit des Rats öffentlich ist. Die Sitzung
     # hängt daran (die Beschluss-Seite zieht Gremium und Datum nach).
@@ -77,11 +87,24 @@ OEFFENTLICH = {
     ("get", "/api/council/person/{slug}/speeches"),
     ("get", "/api/council/people-directory"),
     ("get", "/api/council/place/{place_id}"),
-    # „Mein Viertel": Die Übersicht (alle 31 Ortsbereiche mit Zahl) ist die
-    # Auswahl vor der Tafel — ohne Konto lesbar wie die Ortsseite. Die Tafel
-    # selbst trägt `optional_user` (persönlicher Zusatz: schon gemeldet?) und
-    # steht deshalb nicht hier.
-    ("get", "/api/districts/projects"),
+    # „Anderswo beschlossen" steht auf derselben Seite wie der Beschluss
+    # selbst und zeigt ausschließlich Vorlagen aus den öffentlichen
+    # Ratsinformationssystemen anderer Städte — nichts Persönliches, nichts
+    # Kontobezogenes. Hinter dem Schalter `andere-staedte`.
+    ("get", "/api/council/decision/{decision_id}/elsewhere"),
+    # „Ideen aus anderen Städten": dieselbe Begründung eine Ebene weiter.
+    # Was hier steht, sind Ratsdokumente anderer Kommunen und ein Urteil
+    # darüber, ob Oldenburg dasselbe schon hat — nichts Persönliches,
+    # nichts Kontobezogenes. Hinter dem Schalter `ideen-anderswo`.
+    ("get", "/api/council/cities/ideas/fields"),
+    # Die Liste und die Suche standen bis 09/2026 auch hier. Sie sind WEITER
+    # ohne Konto erreichbar — sie hängen aber jetzt an `optional_user`, weil
+    # sie die eigene Rückmeldung mitliefern („stimmt / stimmt nicht"), und
+    # dieser Wächter zählt `optional_user` als Schutz. Wer sie hier wieder
+    # einträgt, bekommt keinen offenen Endpunkt, sondern einen roten Test.
+    # „Mein Viertel" (/api/districts/projects, /lookup) stand hier bis 09/2026.
+    # Seit dem Umzug auf die vereinte Stadtkarte liegt alles davon hinter der
+    # Anmeldung (STADTKARTE-PLAN.md, Schritt 5).
     ("get", "/api/council/heute"),
     ("get", "/api/council/public-stats"),
     ("get", "/api/council/qa-beispiele"),

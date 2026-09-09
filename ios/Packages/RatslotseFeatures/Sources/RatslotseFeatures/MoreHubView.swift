@@ -4,6 +4,7 @@ import SwiftUI
 
 private enum MoreDestination: Hashable {
     case analysis
+    case ideas
     case subscriptions
     case saved
     case quiz
@@ -21,6 +22,7 @@ struct MoreHubView: View {
         var path = NavigationPath()
         switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE_DESTINATION"] {
         case "analysis": path.append(MoreDestination.analysis)
+        case "ideas": path.append(MoreDestination.ideas)
         case "subscriptions": path.append(MoreDestination.subscriptions)
         case "saved": path.append(MoreDestination.saved)
         case "quiz": path.append(MoreDestination.quiz)
@@ -93,6 +95,10 @@ struct MoreHubView: View {
                     MoreDestinationScaffold(title: "Mehr", back: goBack) {
                         CouncilInsightsView(model: model)
                     }
+                case .ideas:
+                    MoreDestinationScaffold(title: "Mehr", back: goBack) {
+                        IdeasView(model: model)
+                    }
                 case .subscriptions:
                     MoreDestinationScaffold(title: "Mehr", back: goBack) {
                         CommitteeSubscriptionsView(model: model)
@@ -126,9 +132,10 @@ struct MoreHubView: View {
             subtitle: "Suchen, einordnen und vor Ort entdecken",
             rows: [
                 .action("Suche", "Beschlüsse und Vorlagen finden", .search) { open(.decisions) },
-                .action("Stadtkarte", "Was der Rat an welchen Orten bewegt", .map) { open(.map) },
+                // „Stadtkarte" stand hier bis 09/2026 — sie ist in „Mein Viertel"
+                // aufgegangen (STADTKARTE-PLAN.md, Schritt 6; das Menü nicht bloaten).
             ] + (model.feature("mein-viertel") ? [
-                .action("Mein Viertel", "Was sich in deinem Ortsbereich ändert", .mapPin) {
+                .action("Mein Viertel", "Stadt, Viertel, Vorhaben — auf einer Karte", .map) {
                     dismiss()
                     model.tabletPage = nil
                     model.selectedTab = .today
@@ -136,7 +143,12 @@ struct MoreHubView: View {
                 },
             ] : []) + [
                 .link("Analyse", "Trends, Parteien, Personen, Finanzen und Ziele", .analysis, .analysis),
-            ]
+            ] + (model.feature("ideen-anderswo") ? [
+                // Hinter der Analyse, wie im Web: Beide stellen dieselbe Frage
+                // aus verschiedenen Richtungen.
+                .link("Ideen anderswo", "Was andere Räte beschlossen haben und Oldenburg fehlt",
+                      .lightbulb, .ideas),
+            ] : [])
         )
     }
 

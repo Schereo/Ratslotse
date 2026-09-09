@@ -12,7 +12,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from council.store import CouncilStore
-from kern.calendar_feed import _esc, _fold, build_feed, short_committee
+from kern.calendar_feed import _esc, _fold, build_feed
 from kern.store import Store
 
 
@@ -31,17 +31,6 @@ def test_faltung_bricht_nie_mitten_im_zeichen():
     assert all(p.startswith(" ") for p in parts[1:])
     # Zusammengesetzt ergibt sich das Original.
     assert parts[0] + "".join(p[1:] for p in parts[1:]) == line
-
-
-@pytest.mark.parametrize("voll, kurz", [
-    ("Ausschuss für Stadtgrün, Umwelt und Klima", "Stadtgrün, Umwelt & Klima"),
-    ("Rat der Stadt Oldenburg", "Rat"),
-    ("Umweltausschuss", "Umwelt"),
-    ("Sozialausschuss", "Sozial"),
-    ("Ausschuss für Finanzen", "Finanzen"),
-])
-def test_kurzname(voll, kurz):
-    assert short_committee(voll) == kurz
 
 
 # ---- Konto-Token -------------------------------------------------------------
@@ -163,8 +152,9 @@ def test_zeit_ort_dauer_und_backlink(welt):
     assert "DTEND;TZID=Europe/Berlin:20260907T220000" in text      # Rat: 4 h
     assert "LOCATION:Rathaus\\, Raum 1" in text
     assert "URL:https://ratslotse.de/council/sitzung?ksinr=1" in text
-    assert "SUMMARY:Umwelt\r\n" in text
-    assert "SUMMARY:Rat\r\n" in text
+    # Der volle Name im Titel — kein Kurzname wie im Web.
+    assert "SUMMARY:Umweltausschuss\r\n" in text
+    assert "SUMMARY:Rat der Stadt Oldenburg\r\n" in text
     # Ohne Uhrzeit: ganztägig.
     assert "DTSTART;VALUE=DATE:20260826" in text
     # Vergangen, mit Beschluss: der Termin sagt es.
@@ -172,7 +162,7 @@ def test_zeit_ort_dauer_und_backlink(welt):
     # Terminierte Sitzung ohne Tagesordnung.
     assert "STATUS:TENTATIVE" in text
     assert "Die Tagesordnung veröffentlicht das Ratsinfo" in text
-    assert "Amtlicher Name: Rat der Stadt Oldenburg" in text
+    assert "Amtlicher Name" not in text
 
 
 def test_abos_filtern_und_themen_treffer_kommen_trotzdem(welt):
@@ -187,9 +177,9 @@ def test_abos_filtern_und_themen_treffer_kommen_trotzdem(welt):
     st.replace_agenda_matches(uid, 2, "hash", {topic.id: ["Ö 3"]})
     text = _feed(welt).replace("\r\n ", "")
     assert "UID:sitzung-2@ratslotse.de" in text
-    assert "SUMMARY:Rat · dein Thema" in text
+    assert "SUMMARY:Rat der Stadt Oldenburg · dein Thema" in text
     assert "dein Thema: Kita" in text
     # Erinnerung am Vorabend, 18:00 Berlin = 16:00 UTC.
     assert "BEGIN:VALARM" in text
     assert "TRIGGER;VALUE=DATE-TIME:20260906T160000Z" in text
-    assert "Morgen im Rat: Kita" in text
+    assert "Morgen im Rat der Stadt Oldenburg: Kita" in text

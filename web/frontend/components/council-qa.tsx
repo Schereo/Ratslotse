@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
-  BookOpen, MapPin, SearchX } from "lucide-react";
+  BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -30,7 +30,11 @@ import type { QaOrtPin } from "@/components/qa-orte-karte";
 // 5a/I-10: Leaflet kennt kein SSR — die Mini-Karte kommt nur im Browser.
 const QaOrteKarte = dynamic(() => import("@/components/qa-orte-karte"), { ssr: false });
 import { QaSource } from "@/lib/types";
-import { apiUrl, authHeaders } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, apiUrl, authHeaders } from "@/lib/api";
+// Der Vertrag statt einer abgetippten Form: ein umbenanntes Feld bricht
+// damit hier den Build statt still eine leere Kachel zu zeigen.
+import { type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
 import { entwurfAbholen, entwurfMelden } from "@/lib/draft";
 import { leseHatGespraeche, leseQaBeispiele, merkeHatGespraeche, merkeQaBeispiele } from "@/lib/qa-zuletzt";
@@ -532,6 +536,95 @@ function kurzerGegenstand(roh: string): string {
   return t.length >= 8 ? t : "";
 }
 
+/** „Dieses Thema verfolgen" — der eine Handgriff, der aus einer Frage einen
+ *  Anlass macht, sich wieder zu melden.
+ *
+ *  Zwei Wege, und der erste ist die Abkürzung: Passt die Frage zu einem
+ *  KURATIERTEN Stadtthema (`council/city_topics.py`), legt ein Tipp es mit
+ *  seiner am Bestand kalibrierten Beschreibung an — die trifft besser als
+ *  alles, was man aus einer Frage bauen könnte. Sonst führt der Weg ins
+ *  vorbefüllte Formular, wo die Beschreibung geschrieben und die Trefferzahl
+ *  vorab gezeigt wird.
+ *
+ *  Gemessen an fünfzehn echten Fragen greift die Abkürzung bei vieren; für
+ *  Fliegerhorst, Haushalt oder Kultur gibt es bewusst kein kuratiertes Thema.
+ *  Deshalb ist der zweite Weg kein Notnagel, sondern der häufigere.
+ */
+type CityTopicMatch = ApiAntwort<"/topics/match">;
+
+function ThemenBruecke({ frage }: { frage: string }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [angelegt, setAngelegt] = useState<string | null>(null);
+  const treffer = useQuery({
+    queryKey: ["topic-match", frage],
+    queryFn: () => api.get<CityTopicMatch>(`/topics/match?q=${encodeURIComponent(frage.slice(0, 300))}`),
+    staleTime: 5 * 60_000,
+  });
+
+  const m = treffer.data?.match ?? null;
+  const schon = treffer.data?.already ?? false;
+
+  if (angelegt) {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
+        Thema „{angelegt}" angelegt — Lotti meldet sich, sobald der Rat dazu entscheidet.
+      </p>
+    );
+  }
+  // Kein Treffer, schon vorhanden oder noch am Laden: kein Platzhalter, keine
+  // leere Kachel. Eine Zeile, die nichts anbietet, ist schlechter als keine.
+  if (treffer.isPending || schon) return null;
+
+  const anlegen = async () => {
+    if (!m) return;
+    setBusy(true);
+    try {
+      await api.post("/topics", { name: m.name, description: m.description });
+      await qc.invalidateQueries({ queryKey: ["topics"] });
+      setAngelegt(m.name);
+      toast.success(`Thema „${m.name}" angelegt`);
+    } catch {
+      toast.error("Das Thema ließ sich gerade nicht anlegen.");
+      setBusy(false);
+    }
+  };
+
+  // Eine Zeile, zwei Teile: links die Handlung als Chip, rechts das, was sie
+  // bedeutet — beim Stadtthema dessen Einordnung („Radwege, Fahrradstraßen,
+  // Abstellanlagen"), sonst der Hinweis auf das vorbefüllte Formular. Der
+  // frühere Satz „Dann meldet sich Lotti …" stand unter jeder Antwort gleich
+  // und sagte nichts über DIESES Thema.
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      {m ? (
+        <>
+          <button type="button" onClick={() => void anlegen()} disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Bell className="h-3 w-3" aria-hidden />}
+            Thema „{m.name}" verfolgen
+          </button>
+          <span className="text-[11.5px] text-muted-foreground">
+            {m.context ? <>{m.context} — </> : null}Lotti meldet sich, sobald der Rat dazu entscheidet.
+          </span>
+        </>
+      ) : (
+        <>
+          <Link href={`/topics?neu=${encodeURIComponent(frage)}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <Plus className="h-3 w-3" aria-hidden />
+            Daraus ein Thema machen
+          </Link>
+          <span className="text-[11.5px] text-muted-foreground">
+            Name ist vorbefüllt, die Beschreibung schreibt Lotti — dann meldet sie sich bei Neuem.
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** 5a/I-02: „stützt sich auf N Beschlüsse von X bis Y" — Zeitraum-Ehrlichkeit
  *  in der Meta-Zeile; leer, wenn nichts zitiert wurde. */
 function stuetztAuf(zitierte: QaSource[]): string {
@@ -739,7 +832,12 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
     .slice(-4)
     .map((t) => ({ question: t.question.slice(0, 300), answer: t.answer.slice(0, 600) }));
 
-  const ask = async (question: string) => {
+  /** `ausVorschlag`: kam die Frage aus einem Chip oder aus dem Eingabefeld?
+   *  Nur der Client weiß das sicher — der Server müsste den Text gegen die
+   *  Chip-Vorlagen halten und läge falsch, sobald jemand dieselbe Frage
+   *  selbst tippt. Die Antwort darauf entscheidet, ob gute Vorschläge das
+   *  Produkt tragen oder ob niemand ins Feld tippt. */
+  const ask = async (question: string, ausVorschlag = false) => {
     const text = question.trim();
     if (text.length < 4 || einstellung === null || einstellung === undefined) return;
     try { localStorage.setItem("ratslotse:qa-benutzt", "1"); } catch {}
@@ -779,7 +877,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ question: text, history: verlauf, conversation_id: gespraechId,
-                               previous_answer: vorherigeAntwort }),
+                               previous_answer: vorherigeAntwort,
+                               from_suggestion: ausVorschlag }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -1197,7 +1296,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
    *  vorliegenden Antwort („Einfacher erklären", „Ausführlicher"), der erneute
    *  Versuch nach einem Fehler und „stattdessen schnell fragen" — die meinen
    *  jeweils genau einen Weg. */
-  const frageStellen = (text: string) => void (rechercheModus ? askDeep(text) : ask(text));
+  /** Ein Klick auf einen Vorschlag — im Unterschied zum Tippen ins Feld. */
+  const frageStellen = (text: string) => void (rechercheModus ? askDeep(text) : ask(text, true));
 
   const neuesGespraech = () => {
     abortRef.current?.abort();
@@ -1965,11 +2065,11 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               {/* 5a/I-09: feste Register — dieselbe Antwort, andere Flughöhe. */}
               {!loading && letzter && !letzter.fehler && letzter.answer && (
                 <>
-                  <button type="button" onClick={() => void ask("Erkläre das bitte einfacher, ohne Fachbegriffe.")}
+                  <button type="button" onClick={() => void ask("Erkläre das bitte einfacher, ohne Fachbegriffe.", true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     Einfacher erklären
                   </button>
-                  <button type="button" onClick={() => void ask("Bitte ausführlicher — was gehört noch zum Bild?")}
+                  <button type="button" onClick={() => void ask("Bitte ausführlicher — was gehört noch zum Bild?", true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     Ausführlicher
                   </button>
@@ -2370,10 +2470,11 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                   {ortsPins.length === 1 ? "1 Ort" : `${ortsPins.length} Orte`} aus den zitierten Beschlüssen
                 </p>
                 {/* V-05: Nicht mehr nur „irgendwohin zur Karte" — der Link nimmt
-                    GENAU die gezeigten Orte mit, die große Karte filtert danach
-                    und sagt es mit einem abwählbaren Chip. */}
+                    GENAU die gezeigten Orte mit, die Stadtkarte (Ebene
+                    „Themen-Orte") filtert danach und sagt es mit einem
+                    abwählbaren Chip. */}
                 <Link
-                  href={`/council?tab=themen&orte=${encodeURIComponent(
+                  href={`/karte?orte=${encodeURIComponent(
                     ortsPins.map((p) => p.name).filter(Boolean).join(","))}`}
                   className="shrink-0 text-[11px] font-medium text-primary hover:underline">
                   Auf der Stadtkarte öffnen →
@@ -2417,6 +2518,16 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
                 Frage umformulieren
               </button>
             </div>
+          )}
+
+          {/* Die Brücke von „ich habe etwas gefragt" zu „das Produkt meldet
+              sich bei mir". Sie stand bisher NUR bei „nichts gefunden" — also
+              ausgerechnet dort, wo man am wenigsten Lust auf ein Abo hat. Am
+              08.09.2026 hatten fünf von neun neuen Konten weder Thema noch
+              Gremium; für die gibt es keinen Anlass, sie je wieder
+              anzusprechen. */}
+          {!beschaeftigt && hatAntwort && !turn.fehler && !nichtsGefunden && (
+            <ThemenBruecke frage={turn.question} />
           )}
 
           {/* Meta-Zeile: stille Icons + Disclaimer (Design 2③) — bei JEDEM

@@ -6,6 +6,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   BarChart3, Bookmark, CalendarDays, CornerDownLeft, Gavel, History, Home, Landmark,
   Play, Scale, Search, Settings, Sparkles, SunMoon, Tag, Tags, UserCircle, type LucideIcon,
+  MapPinned,
 } from "lucide-react";
 import { api, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -123,7 +124,8 @@ export function CommandPalette() {
       { key: "nav-dash", section: "Navigation", label: "Übersicht", icon: Home, run: () => go("/dashboard") },
       { key: "nav-besch", section: "Navigation", label: "Beschlüsse", icon: Gavel, run: () => go("/council?tab=decisions") },
       { key: "nav-sitz", section: "Navigation", label: "Sitzungen", icon: CalendarDays, run: () => go("/council?tab=sessions") },
-      { key: "nav-themen", section: "Navigation", label: "Themen & Karte", icon: Tag, run: () => go("/council?tab=themen") },
+      { key: "nav-themen", section: "Navigation", label: "Themen", icon: Tag, run: () => go("/council?tab=themen") },
+      { key: "nav-karte", section: "Navigation", label: "Mein Viertel — Stadtkarte", icon: MapPinned, run: () => go("/karte") },
       { key: "nav-analyse", section: "Navigation", label: "Analyse", icon: BarChart3, run: () => go("/council?tab=analysis") },
       { key: "nav-meine", section: "Navigation", label: "Meine Themen", icon: Tags, run: () => go("/topics") },
       { key: "nav-merkliste", section: "Navigation", label: "Merkliste", icon: Bookmark, run: () => go("/bookmarks") },

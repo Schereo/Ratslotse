@@ -62,17 +62,27 @@ class ViertelMixin(StoreBasis):
     """Die Viertel-Abfragen von :class:`council.store.CouncilStore` — nur zum Mitvererben."""
 
     if TYPE_CHECKING:
-        # Zwei Nachbar-Methoden, die dieses Mixin am zusammengesetzten Store
+        # Die Nachbar-Methoden, die dieses Mixin am zusammengesetzten Store
         # aufruft. Zur Laufzeit steht hier nichts — die Auflösung läuft wie
         # immer über die MRO von ``CouncilStore``; für die Typprüfung leiht
         # sich die Klasse die Signatur beim Eigentümer, damit beide nicht
         # auseinanderlaufen. In ``StoreBasis`` gehören sie nicht: Die
         # beschreibt den gemeinsamen Nenner, nicht die Kopplung zweier Nachbarn.
+        #
+        # WER HIER FEHLT, FÄLLT NICHT AUF. Ein nicht eingetragener Nachbar
+        # kostet einen Befund je AUFRUFSTELLE, nicht je Methode — und die
+        # Sperrklinke in `scripts/pruefe_typschulden.py` meldet nur eine Zahl.
+        # `bplan_outlines_by_keys` stand deshalb erst mit der zweiten
+        # Aufrufstelle (#1163) über der Schranke, obwohl schon die erste einen
+        # Befund erzeugt hatte. Wer hier eine Nachbar-Methode aufruft, trägt
+        # sie mit ein.
+        from council.store_bplan import BplanMixin
         from council.store_orte import OrteMixin
         from council.store_presse import PresseMixin
 
         resolve_place = OrteMixin.resolve_place
         list_beteiligungen = PresseMixin.list_beteiligungen
+        bplan_outlines_by_keys = BplanMixin.bplan_outlines_by_keys
 
     # ------------------------------------------------------------ Kandidaten
 
@@ -299,6 +309,31 @@ class ViertelMixin(StoreBasis):
             (*decision_ids, place_id, self._place_name(place_id), CANDIDATE_MIN_SHARE)).fetchall()
         from council import geo
         place_name = self._place_name(place_id)
+        # Die Texte des Vorhabens entscheiden, welcher Ort Gegenstand ist und
+        # welcher nur eine Abschnittsgrenze („Am Schmeel bis Brahmweg") — in
+        # Stufen: Titel vor Zusammenfassung vor Beschlusstext vor Vorlage vor
+        # der Fundstelle der Orts-Pipeline (s. ``ortsrollen``). Die Vorlage
+        # wird gesucht wie dort (``store_orte``): über kvonr, sonst über die
+        # Vorlagen-Nummer — am 06.09.2026 hing sie bei „Tweelbäker Tredde"
+        # nur an der Nummer, und ein Join allein über kvonr fand sie nicht.
+        stufen: list[list[str]] = [[], [], [], [], []]
+        for d in self._conn.execute(
+                f"SELECT d.title, d.summary, d.official_text, COALESCE("
+                f"(SELECT v.raw_text FROM council_templates v WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1), "
+                f"(SELECT v.raw_text FROM council_templates v WHERE v.status = 'ok' "
+                f" AND v.template_number = d.template_number ORDER BY v.kvonr DESC LIMIT 1)) AS raw_text "
+                f"FROM council_decisions d WHERE d.id IN ({ph})",
+                decision_ids).fetchall():
+            for i, k in enumerate(("title", "summary", "official_text", "raw_text")):
+                if d[k]:
+                    stufen[i].append(d[k][:20000])
+        for e in self._conn.execute(
+                f"SELECT DISTINCT evidence FROM council_decision_locations WHERE decision_id IN ({ph})",
+                decision_ids).fetchall():
+            if e["evidence"]:
+                stufen[4].append(e["evidence"])
+        rollen = ortsrollen([r["name"] for r in rows], ["\n\n".join(t) for t in stufen],
+                            kinds={r["name"]: r["kind"] for r in rows})
         out = []
         for r in rows:
             geometry = None
@@ -319,7 +354,64 @@ class ViertelMixin(StoreBasis):
                 elif isinstance(g, dict) and g.get("type") in ("Polygon", "MultiPolygon"):
                     geometry = g
             out.append({"slug": r["slug"], "name": r["name"], "kind": r["kind"],
-                        "lat": lat, "lon": lon, "geometry": geometry})
+                        "lat": lat, "lon": lon, "geometry": geometry,
+                        "role": rollen.get(r["name"], "subject")})
+        out.extend(self._bplan_locations(stufen[0], place_name))
+        return out
+
+    #: Ab diesem Flächenanteil im Ortsbereich gehört ein Bebauungsplan auf die
+    #: Tafel. Niedriger als bei Straßen (0,5): Ein Plan wie „Fliegerhorst/
+    #: Alexanderstraße" liegt zu einem guten Teil im Nachbarbereich, und wer
+    #: den Beschluss dazu auf der Tafel sieht, soll auch die Fläche sehen.
+    BPLAN_MIN_SHARE = 0.3
+
+    def _bplan_locations(self, titles: list[str], place_name: str) -> list[dict]:
+        """Die Geltungsbereiche der Bebauungspläne, die die Beschlusstitel eines
+        Vorhabens nennen (``bplan.plannummern_im_titel``) — als Fläche auf der
+        Karte, wo OpenStreetMap noch nichts kennt, weil noch nichts gebaut ist.
+
+        Je Titel gilt der erste Schlüssel, zu dem es einen Umring gibt: die
+        Änderung vor dem Ursprungsplan. Ein Plan zählt nur, wenn er zu
+        ``BPLAN_MIN_SHARE`` in diesem Ortsbereich liegt — sonst zöge ein
+        stadtweit genannter Plan Flächen aus fremden Vierteln herein.
+        """
+        from council import bplan, geo
+        je_titel = [bplan.plannummern_im_titel(t) for t in titles]
+        alle = [k for keys in je_titel for k in keys]
+        if not alle:
+            return []
+        umringe = self.bplan_outlines_by_keys(alle)
+        out: list[dict] = []
+        gesehen: set[str] = set()
+        for keys in je_titel:
+            treffer = next((umringe[k] for k in keys if k in umringe), None)
+            if not treffer or treffer["key"] in gesehen:
+                continue
+            gesehen.add(treffer["key"])
+            try:
+                geometrie = json.loads(treffer["geojson"])
+            except (TypeError, ValueError):
+                continue
+            anteile = geo.ortsbereiche_der_geometrie(geometrie)
+            gesamt = sum(anteile.values()) or 1
+            if anteile.get(place_name, 0) / gesamt < self.BPLAN_MIN_SHARE:
+                continue
+            if treffer["lat"] is None or treffer["lon"] is None:
+                continue
+            out.append({
+                "slug": f"bplan-{treffer['key'].lower().replace(' ', '-')}",
+                "name": f"Bebauungsplan {treffer['nr']}",
+                "kind": "bplan", "lat": treffer["lat"], "lon": treffer["lon"],
+                "geometry": geometrie, "role": "subject",
+                "plan": {
+                    "nr": treffer["nr"], "name": treffer["name"], "status": treffer["status"],
+                    "resolution_date": treffer["resolution_date"],
+                    "adoption_date": treffer["adoption_date"],
+                    "effective_date": treffer["effective_date"],
+                    "note": treffer["note"],
+                    "source": bplan.QUELLE_LABEL, "source_url": bplan.QUELLE_URL,
+                },
+            })
         return out
 
     def _place_name(self, place_id: str) -> str:
@@ -337,8 +429,109 @@ class ViertelMixin(StoreBasis):
             if not tabelle_fehlt(fehler):
                 raise
             return {}
-        return {r["place_id"]: {"count": r["n"], "last_date": r["last_date"], "updated_at": r["updated_at"]}
-                for r in rows}
+        out = {r["place_id"]: {"count": r["n"], "last_date": r["last_date"], "updated_at": r["updated_at"],
+                               "stages": {}}
+               for r in rows}
+        # Die Stände je Ortsbereich tragen die Wärmekarte der Auswahl: Wo
+        # gebaut wird, ist mehr los als wo nur eine Idee steht.
+        for r in self._conn.execute(
+                "SELECT place_id, stage, COUNT(*) AS n FROM council_district_projects "
+                "WHERE confidence >= ? GROUP BY place_id, stage", (min_confidence,)):
+            out[r["place_id"]]["stages"][r["stage"]] = r["n"]
+        return out
+
+    #: Reihenfolge der Stände für die Stadt-Highlights: was gerade passiert,
+    #: zuerst. Abgelehnt und fertig sind kein Blickfang.
+    _HIGHLIGHT_ORDER = ("building", "decided", "planning", "idea")
+
+    def district_highlights(self, *, limit: int = 6,
+                            min_confidence: int = PROJECT_MIN_CONFIDENCE) -> list[dict]:
+        """Die Vorhaben, die stadtweit gerade am meisten hergeben — für die
+        Auswahl-Seite, bevor man ein Viertel gewählt hat.
+
+        Reihenfolge: im Bau vor beschlossen vor Planung, dazwischen die mit
+        Termin vor denen ohne, dann das jüngste zuerst. Und **je Ortsbereich
+        höchstens eines**, solange die Auswahl reicht: Sechs Karten aus
+        Eversten sagen nichts über die Stadt, sie sagen, dass Eversten groß ist.
+        Vorhaben, die zwei Konten als falsch verortet gemeldet haben, bleiben
+        weg — wie auf der Tafel.
+        """
+        order = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(self._HIGHLIGHT_ORDER))
+        try:
+            rows = self._conn.execute(
+                "SELECT p.id, p.project_key, p.place_id, p.name, p.what, p.stage, p.when_text, "
+                "p.category, p.last_date, (SELECT COUNT(*) FROM council_district_project_reports r "
+                "WHERE r.project_key = p.project_key) AS report_count "
+                "FROM council_district_projects p WHERE p.confidence >= ? "
+                f"AND p.stage IN ({','.join('?' * len(self._HIGHLIGHT_ORDER))}) "
+                f"ORDER BY CASE p.stage {order} ELSE 9 END, (p.when_text IS NULL), p.last_date DESC, p.id "
+                "LIMIT ?", (min_confidence, *self._HIGHLIGHT_ORDER, limit * 8)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        rows = [r for r in rows if r["report_count"] < PROJECT_HIDE_REPORTS]
+        gewaehlt: list = []
+        gesehen: set[str] = set()
+        for r in rows:
+            if r["place_id"] in gesehen:
+                continue
+            gesehen.add(r["place_id"])
+            gewaehlt.append(r)
+            if len(gewaehlt) >= limit:
+                break
+        if len(gewaehlt) < limit:
+            rest = [r for r in rows if r not in gewaehlt]
+            gewaehlt.extend(rest[: limit - len(gewaehlt)])
+        return [{
+            "id": r["id"], "place_id": r["place_id"], "place_name": self._place_name(r["place_id"]),
+            "name": r["name"], "what": r["what"], "stage": r["stage"], "when": r["when_text"],
+            "category": r["category"], "last_date": r["last_date"],
+        } for r in gewaehlt]
+
+    def district_lookup_streets(self, q: str, *, limit: int = 6) -> list[dict]:
+        """Straßen und Plätze zu einer Eingabe, mit dem Ortsbereich, in dem sie
+        liegen — die Antwort auf „Ich wohne in der …".
+
+        Nur Orte, die ein Beschluss je genannt hat (das ist der Bestand von
+        ``council_locations``), und nur mit einem Flächenanteil ab
+        ``CANDIDATE_MIN_SHARE``: Eine Straße, die durch drei Viertel läuft,
+        bekommt das, in dem ihr größtes Stück liegt. Ein Anfang gewinnt vor
+        einem Treffer mittendrin, Kürzeres vor Längerem — „Haupt" soll die
+        Hauptstraße zeigen, nicht „Hauptstraße 12–14".
+        """
+        q = (q or "").strip()
+        if len(q) < 2:
+            return []
+        like = q.replace("%", "").replace("_", "")
+        try:
+            rows = self._conn.execute(
+                "SELECT l.slug, l.name, l.kind, ld.place_id, MAX(ld.share) AS share "
+                "FROM council_locations l JOIN council_location_districts ld ON ld.location_slug = l.slug "
+                "WHERE l.kind IN ('street', 'square') AND ld.place_id IS NOT NULL AND ld.share >= ? "
+                "AND l.name LIKE ? ESCAPE '\\' "
+                "GROUP BY l.slug ORDER BY (l.name LIKE ? ESCAPE '\\') DESC, LENGTH(l.name), l.name LIMIT ?",
+                (CANDIDATE_MIN_SHARE, f"%{like}%", f"{like}%", limit * 3)).fetchall()
+        except sqlite3.OperationalError as fehler:
+            if not tabelle_fehlt(fehler):
+                raise
+            return []
+        # „Ziegelhofstr", „Ziegelhofstraße" und „Ziegelhofstr. 125-127" sind
+        # derselbe Ort; Abkürzung und Hausnummer sind nur die Schreibweise
+        # einer Vorlage. Je Schlüssel bleibt die ausgeschriebene Form ohne
+        # Nummer — sie ist die, die man selbst eintippen würde.
+        beste: dict[tuple[str, str], sqlite3.Row] = {}
+        reihenfolge: list[tuple[str, str]] = []
+        for r in rows:
+            key = (_street_key(r["name"]), r["place_id"])
+            if key not in beste:
+                beste[key] = r
+                reihenfolge.append(key)
+            elif _street_rank(r["name"]) > _street_rank(beste[key]["name"]):
+                beste[key] = r
+        return [{"slug": r["slug"], "name": r["name"], "kind": r["kind"],
+                 "place_id": r["place_id"], "place_name": self._place_name(r["place_id"])}
+                for r in (beste[k] for k in reihenfolge[:limit])]
 
     def district_projects_updated_at(self, place_id: str) -> str | None:
         try:
@@ -461,16 +654,132 @@ class ViertelMixin(StoreBasis):
         return out
 
     def district_participations(self, place) -> list[dict]:
-        """Laufende Bauleitplan-Beteiligungen (planungsbeteiligung.de) mit Ortsbezug hierher."""
+        """Laufende Bauleitplan-Beteiligungen (planungsbeteiligung.de) mit Ortsbezug
+        hierher — und, wo das Geoportal den Plan kennt, mit seinem Geltungs-
+        bereich als Fläche (``geometry``), damit „Mitreden" auf der Karte einen
+        Ort hat. Eine Beteiligung läuft meist zu einem Plan in Aufstellung;
+        genau die trägt die Ebene 19 des Geoportals (``council/bplan.py``).
+        Fehlt der Umring, bleibt die Beteiligung ohne Fläche — sie steht dann
+        nur in der Tafel."""
+        from council import bplan
         names = self.district_location_names(place) + [place.name]
         out = []
         for b in self.list_beteiligungen(nur_laufende=True):
             text = f"{b.get('title') or ''} {b.get('ort') or ''}"
-            if any(re.search(re.escape(n) + r"(?![a-zäöüß])", text, re.IGNORECASE) for n in names):
-                out.append({"title": b.get("title"), "place": b.get("ort"), "step": b.get("schritt"),
-                            "valid_from": b.get("valid_from"), "valid_until": b.get("valid_until"),
-                            "url": b.get("url"), "plan_nrs": b.get("plan_nrs") or []})
+            if not any(re.search(re.escape(n) + r"(?![a-zäöüß])", text, re.IGNORECASE) for n in names):
+                continue
+            zeile = {"title": b.get("title"), "place": b.get("ort"), "step": b.get("schritt"),
+                     "valid_from": b.get("valid_from"), "valid_until": b.get("valid_until"),
+                     "url": b.get("url"), "plan_nrs": b.get("plan_nrs") or [],
+                     "geometry": None, "lat": None, "lon": None, "plan_nr": None, "plan_status": None}
+            # Die Plannummer aus dem Titel der Beteiligung — dieselbe Lesart wie
+            # bei den Beschlüssen (Änderung vor Ursprungsplan, VhB erkannt).
+            keys = bplan.plannummern_im_titel(b.get("title"))
+            umringe = self.bplan_outlines_by_keys(keys) if keys else {}
+            treffer = next((umringe[k] for k in keys if k in umringe), None)
+            if treffer:
+                try:
+                    zeile["geometry"] = json.loads(treffer["geojson"])
+                except (TypeError, ValueError):
+                    zeile["geometry"] = None
+                zeile.update({"lat": treffer["lat"], "lon": treffer["lon"],
+                              "plan_nr": treffer["nr"], "plan_status": treffer["status"]})
+            out.append(zeile)
         return out
+
+
+def _street_key(name: str) -> str:
+    """Schreibweisen einer Straße auf einen Schlüssel: Hausnummern weg,
+    „straße"/„str."/„str" gleich."""
+    base = re.sub(r"[\s.,]*\d.*$", "", name).lower().strip()
+    return re.sub(r"stra(ß|ss)e\b|str\.?\b", "str", base)
+
+
+def _street_rank(name: str) -> int:
+    """Welche Schreibweise gezeigt wird: ohne Hausnummer vor mit, ausgeschrieben vor abgekürzt."""
+    return (0 if re.search(r"\d", name) else 2) + (1 if re.search(r"stra(ß|ss)e", name, re.IGNORECASE) else 0)
+
+
+#: Wörter, die vor einem Ortsnamen sagen: Das ist eine GRENZE des Abschnitts,
+#: nicht der Ort, an dem sich etwas ändert. „Tweelbäker Tredde (Am Schmeel bis
+#: Brahmweg)" baut die Tredde aus — Am Schmeel und Brahmweg bleiben, wie sie
+#: sind (Tims Befund 06.09.2026: als Linie markiert sahen sie betroffen aus).
+_GRENZWORT = r"(?:zwischen|von|vom|ab|bis|bis\s+zur|bis\s+zum|bis\s+an|in\s+höhe|höhe|und)"
+_GRENZ_VOR_RE = re.compile(_GRENZWORT + r"\s+(?:der|dem|des|die|das)?\s*$", re.IGNORECASE)
+
+
+def ortsrollen(names: list[str], texts: list[str], kinds: dict[str, str] | None = None) -> dict[str, str]:
+    """Je Ortsname ``subject`` (dort ändert sich etwas), ``boundary`` (nur
+    Abschnittsgrenze: „von X bis Y") oder ``context`` (eine Straße, die den
+    Ort nur benennt: „Quartier Am Schmeel", „Flächen Am Schmeel/Brahmweg").
+
+    ``texts`` sind Stufen in absteigender Verbindlichkeit (Titel, Zusammen-
+    fassung, Beschlusstext, Vorlage, Fundstelle der Orts-Pipeline). **Die
+    erste Stufe, die den Namen nennt, entscheidet.** Dort ist er Grenze, wenn
+    jede Fundstelle hinter einem Grenzwort steht („zwischen X und Y", „von X
+    bis Y", „(X bis Y)", „ab X", „in Höhe X") oder in einem Satz übers
+    Straßennetz („bindet … an"). Eine **Straße** (``kinds``) ist darüber
+    hinaus nur Gegenstand, wenn ein Satz mit ihr von Bauen an der Straße
+    spricht (Ausbau, Sanierung, Kreuzung, Radweg, …) — sonst ist sie Bezug:
+    Beim Wohnquartier Krusenbusch stehen Am Schmeel, Tredde und Brahmweg in
+    jedem Titel, gebaut wird auf den Flächen dahinter. Flächen, Gebäude und
+    Plätze bleiben Gegenstand, sobald sie frei stehen.
+
+    Warum Stufen und nicht ein Blob: Die Vorlage erzählt auch drumherum —
+    über alle Fundstellen gerechnet machte ein Satz übers Straßennetz Am
+    Schmeel wieder zum Gegenstand, obwohl der Titel „(Am Schmeel bis
+    Brahmweg)" die Rolle längst geklärt hat (Krusenbusch, 06.09.2026). Kommt
+    ein Name nirgends vor (Katalog-Variante), bleibt er Gegenstand: Lieber
+    einmal zu viel markiert als still verschwunden.
+    """
+    rollen: dict[str, str] = {}
+    for name in names:
+        muster = re.compile(re.escape(name) + r"(?![a-zäöüß])", re.IGNORECASE)
+        rollen[name] = "subject"
+        for blob in texts:
+            treffer = list(muster.finditer(blob or ""))
+            if not treffer:
+                continue
+            if all(_ist_grenzfund(blob, m) for m in treffer):
+                rollen[name] = "boundary"
+            elif (kinds or {}).get(name) == "street" and not any(_BAUWORT_RE.search(_satz(blob, m)) for m in treffer):
+                rollen[name] = "context"
+            break
+    return rollen
+
+
+_BEZUGSSATZ_RE = re.compile(r"\b(?:bindet|binden|anbind|angebunden|Anbindung)", re.IGNORECASE)
+#: Woran man erkennt, dass an der Straße selbst gebaut wird.
+_BAUWORT_RE = re.compile(
+    r"ausbau|ausgebaut|sanier|umbau|umgebaut|neubau|erneuer|instandsetz|straßenbau|fahrbahn|gehweg|radweg"
+    r"|fußweg|querung|kreuzung|einmündung|verkehrsberuhig|tempo|sperrung|umleitung|beleuchtung|stellplätz"
+    r"|baumaßnahm|bauabschnitt|umgestalt|markierung|ampel|lichtsignal|haltestelle|asphalt|pflaster|parkplatz"
+    r"|straßenraum|verkehrsführung|einbahn|schulweg|zebrastreifen|fahrradstraße|straßenverkehr|verkehrssicher",
+    re.IGNORECASE)
+
+
+def _satz(blob: str, m: re.Match) -> str:
+    # Satzgrenze ist der Punkt (oder eine Leerzeile zwischen zwei Titeln),
+    # nicht der Zeilenumbruch — der PDF-Text der Vorlagen bricht mitten im
+    # Satz um („die Straßen\nDießelweg, …").
+    anfang = max(blob.rfind(z, 0, m.start()) for z in (".", "!", "?", "\n\n")) + 1
+    ende = min((i for i in (blob.find(z, m.end()) for z in (".", "!", "?", "\n\n")) if i >= 0), default=len(blob))
+    return blob[anfang:ende]
+
+
+def _ist_grenzfund(blob: str, m: re.Match) -> bool:
+    davor = blob[max(0, m.start() - 40):m.start()]
+    danach = blob[m.end():m.end() + 12]
+    if _GRENZ_VOR_RE.search(davor):
+        return True
+    # „… bindet die Straßen Dießelweg und Brahmweg an die Straße Am Schmeel
+    # an": ein Satz über das Straßennetz, kein Vorhaben an diesen Straßen.
+    if _BEZUGSSATZ_RE.search(_satz(blob, m)):
+        return True
+    if not re.match(r"\s*(?:bis|und)\s", danach, re.IGNORECASE):
+        return False
+    return ("zwischen" in davor.lower() or "(" in davor[-3:] or bool(re.search(r"\bvon\b", davor, re.IGNORECASE))
+            or re.match(r"\s*bis\s", danach, re.IGNORECASE) is not None)
 
 
 def _months_ago(months: int) -> str:
@@ -489,4 +798,4 @@ def project_key_ids(project: dict) -> list[int]:
 
 
 __all__ = ["ViertelMixin", "PROJECT_MIN_CONFIDENCE", "PROJECT_HIDE_REPORTS", "CANDIDATE_MONTHS",
-           "CANDIDATE_MIN_SHARE", "project_key_ids", "json"]
+           "CANDIDATE_MIN_SHARE", "project_key_ids", "ortsrollen", "json"]

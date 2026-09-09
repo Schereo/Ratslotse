@@ -113,6 +113,80 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
     return date(year, monat, min(heute.day, calendar.monthrange(year, monat)[1]))
 
 
+#: Wörter, die eine Aufzählung einleiten, aber selbst kein Thema sind.
+_AUFZAEHL_KOPF = ("stadtteile", "themen", "orte", "bereiche", "gebiete")
+
+#: Wörter, die einen Teil zum Satzstück machen: Artikel, Präpositionen, „und".
+#: Ein Themen-Name wie „Fliegerhorst" hat keins davon; „Wohnen in Kreyenbrück"
+#: und „Stadt der Wissenschaft" schon.
+_SATZWOERTER = frozenset({
+    "und", "oder", "sowie", "in", "im", "am", "an", "auf", "aus", "bei", "mit",
+    "nach", "von", "vom", "zu", "zum", "zur", "für", "über", "unter", "ohne",
+    "der", "die", "das", "des", "dem", "den", "ein", "eine", "einer", "eines",
+})
+
+
+def aufteilbar(name: str, hoechstens: int = 8) -> list[str]:
+    """Ist dieser Themen-Name in Wahrheit eine LISTE? Dann ihre Teile.
+
+    Der Fall aus dem Bestand: Jemand legte ein Thema namens „Stadtteile:
+    Bürgerfelde Nord, Dietrichsfeld, Helleheide, Brokhausen, Bloherfelde,
+    Haarentor, Wechloy" an — sieben Wünsche in einem Feld. Der Cross-Encoder
+    kann so etwas nicht bedienen: Er bewertet gegen EINEN Text, und dieser hat
+    kein Zentrum. Ergebnis waren elf Treffer mit durchweg negativer Relevanz,
+    also lauter Kandidaten, die gerade eben nicht verworfen wurden.
+
+    Als sieben Themen hätte dieselbe Person je Stadtteil eine eigene, saubere
+    Meldung bekommen. Diese Funktion erkennt den Fall, damit die Oberfläche
+    ihn ansprechen kann — sie verbietet nichts.
+
+    **Konservativ mit Absicht.** Erkannt wird nur, was durch Kommata (oder
+    Semikola) getrennt ist. „Bus und Bahn" bleibt EIN Thema: „und" verbindet
+    im Deutschen häufiger, als es aufzählt, und ein falsches Aufteilen-Angebot
+    ist ärgerlicher als ein fehlendes. Ebenso bleiben Namen mit einer Klammer
+    unangetastet — „Bebauungsplan 851 (Schützenweg, Haarentor)" ist eine
+    Ortsangabe, keine Liste.
+    """
+    roh = " ".join(str(name or "").split())
+    if not roh or "(" in roh or ")" in roh:
+        return []
+    # „Stadtteile: A, B, C" — der Kopf vor dem Doppelpunkt ist die Überschrift
+    # der Aufzählung und selbst kein Thema.
+    if ":" in roh:
+        kopf, _, rest = roh.partition(":")
+        if kopf.strip().lower().rstrip("n") in tuple(k.rstrip("n") for k in _AUFZAEHL_KOPF):
+            roh = rest
+    teile = [t.strip(" .;") for t in re.split(r"[,;]", roh)]
+    teile = [t for t in teile if len(t) >= 3]
+    if len(teile) < 2 or len(teile) > hoechstens:
+        return []
+    # Jeder Teil muss für sich als Thema durchgehen — sonst ist es ein Satz
+    # mit Kommata, keine Liste.
+    if any(len(t.split()) > 4 or looks_like_instruction(t) for t in teile):
+        return []
+    # Drei Fälle, an denen die erste Fassung am 09.09.2026 gescheitert ist —
+    # gemessen an erfundenen, aber plausiblen Eingaben:
+    #
+    # * „Radwege, Fahrradstraßen und Abstellanlagen" wurde zu zwei Teilen,
+    #   und der zweite hieß „Fahrradstraßen und Abstellanlagen". Ein „und" in
+    #   einem der Teile heißt: Das ist EINE Sache, mit Komma im Satz, keine
+    #   Liste — dann wird gar nicht aufgeteilt (nicht etwa in drei).
+    # * „Oldenburg, Stadt der Wissenschaft" und „Wohnen in Kreyenbrück, …"
+    #   sind Beisätze: Ein Teil mit Artikel oder Präposition ist ein Satzstück,
+    #   kein Name.
+    # * „Klimaschutz 2035, Maßnahmenplan" und „Sanierung Cäcilienbrücke,
+    #   Bauabschnitt 2": Eine Zahl in einem Teil macht ihn zur Angabe, nicht
+    #   zum Thema. Der Preis ist, dass „Bebauungsplan 851, Bebauungsplan 852"
+    #   nicht angeboten wird — ein fehlendes Angebot bleibt das kleinere Übel.
+    for t in teile:
+        woerter = [w.lower() for w in t.split()]
+        if any(w in _SATZWOERTER for w in woerter):
+            return []
+        if re.search(r"\d", t):
+            return []
+    return teile
+
+
 def treffer(store, name: str, text: str, *, deckel: int = DECKEL,
             schwelle: float = SCHWELLE) -> tuple[list[tuple[int, float]], bool, int]:
     """Relevante Beschlüsse zu einem Thema → ``(treffer, gedeckelt, kandidaten)``.

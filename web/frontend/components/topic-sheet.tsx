@@ -21,6 +21,8 @@ export type Described = {
   vague: boolean;
   hint: string;
   suggestion: string;
+  /** Ist der Name in Wahrheit eine Liste? Dann ihre Teile, sonst leer. */
+  parts: string[];
 };
 
 /** Nur, was das Blatt wirklich braucht — passt sowohl auf die Zeilen im

@@ -363,3 +363,124 @@ import Testing
     #expect(abo.webcalURL.hasPrefix("webcal://"))
     #expect(abo.subscribedCommittees == 3)
 }
+
+/// „Anderswo beschlossen": Sechs von sechzehn Feldern tragen einen
+/// Unterstrich, und die Ratsinformationssysteme füllen sehr unterschiedlich
+/// viel aus. Der zweite Eintrag hier ist der gemessene Münster-Fall — kein
+/// `web`, keine Einordnung, kein Ergebnis.
+@Test func elsewhereResponseDecodes() throws {
+    let json = #"""
+    {"decision_id": 8695, "bodies": ["Magdeburg", "Osnabrück"], "items": [
+      {"body_id": "osnabrueck", "body_name": "Osnabrück", "paper_id": "os:p:1",
+       "name": "Nachtkultur stärken", "reference": "VO/2026/1", "date": "2026-04-17",
+       "kind": "motion", "paper_type_raw": "Antrag",
+       "web": "https://example.org/vo/1", "outcome": "accepted", "outcome_raw": "beschlossen",
+       "score": 0.856, "summary": "Koordinierungsstelle Nachtkultur.",
+       "instrument": "Koordinierungsstelle schaffen", "transfer": "adaptable",
+       "originator": "Gruppe Grüne/SPD/Volt"},
+      {"body_id": "magdeburg", "body_name": "Magdeburg", "paper_id": "md:p:2",
+       "name": "Projekt Nachtengel", "reference": null, "date": null,
+       "kind": "motion", "paper_type_raw": null, "web": null, "outcome": "none",
+       "outcome_raw": null, "score": 0.715, "summary": null, "instrument": null,
+       "transfer": null, "originator": null}]}
+    """#
+    let antwort = try JSONDecoder().decode(ElsewhereResponse.self, from: Data(json.utf8))
+    #expect(antwort.decisionID == 8695)
+    #expect(antwort.bodies == ["Magdeburg", "Osnabrück"])
+    #expect(antwort.items.count == 2)
+    #expect(antwort.items[0].bodyName == "Osnabrück")
+    #expect(antwort.items[0].outcome == "accepted")
+    #expect(antwort.items[0].originator == "Gruppe Grüne/SPD/Volt")
+    #expect(antwort.items[0].score == 0.856)
+    // Ohne Adresse bleibt `web` leer — die Zeile bekommt dann keinen Link.
+    #expect(antwort.items[1].web == nil)
+    #expect(antwort.items[1].outcome == "none")
+    #expect(antwort.items[1].id == "md:p:2")
+}
+
+/// Der leere Fall ist der Normalzustand vor dem ersten Cron-Lauf.
+@Test func elsewhereResponseSurvivesEmptyPayload() throws {
+    let leer = try JSONDecoder().decode(ElsewhereResponse.self,
+                                        from: Data(#"{"decision_id": 1}"#.utf8))
+    #expect(leer.items.isEmpty && leer.bodies.isEmpty)
+}
+
+/// „Ideen aus anderen Städten": Neun der zweiundzwanzig Felder tragen einen
+/// Unterstrich, und die Belege sind verschachtelt. Der zweite Eintrag hier ist
+/// der Fall, in dem das Modell nichts gefunden hat — dort ist die leere
+/// Beleg-Liste die Aussage.
+@Test func ideasResponseDecodes() throws {
+    let json = #"""
+    {"field": "klima_umwelt", "total": 44, "page": 1, "per_page": 30,
+     "counts": {"missing": 39, "partial": 5}, "items": [
+      {"paper_id": "bs:p:1", "body_id": "braunschweig", "body_name": "Braunschweig",
+       "name": "Hitzeaktionsplan", "date": "2026-05-01", "kind": "motion",
+       "web": "https://example.org/vo/1", "outcome": "accepted",
+       "field": "klima_umwelt", "instrument": "Hitzeaktionsplan aufstellen",
+       "summary": "Ein Plan gegen Hitze.", "transfer": "adaptable",
+       "competence": "council", "originator": "SPD-Fraktion",
+       "status": "partial", "reason": "Oldenburg hat den Wärmeplan, nicht den Hitzeplan.",
+       "confidence": "high",
+       "evidence": [{"decision_id": 8525, "kvonr": 4711, "title": "Kommunale Wärmeplanung",
+                     "date": "2025-11-20", "outcome": "accepted"}]},
+      {"paper_id": "md:p:2", "body_id": "magdeburg", "body_name": "Magdeburg",
+       "name": "Hundewanderweg", "date": null, "kind": "motion",
+       "web": null, "outcome": "none", "field": "klima_umwelt", "instrument": null,
+       "summary": null, "transfer": "adaptable", "competence": null, "originator": null,
+       "status": "missing", "reason": "Kein Beleg.",
+       "confidence": "medium", "evidence": []}]}
+    """#
+    let antwort = try JSONDecoder().decode(IdeasResponse.self, from: Data(json.utf8))
+    #expect(antwort.total == 44 && antwort.perPage == 30)
+    #expect(antwort.counts["missing"] == 39)
+    #expect(antwort.items.count == 2)
+    let erste = antwort.items[0]
+    #expect(erste.status == "partial")
+    #expect(erste.reason.hasPrefix("Oldenburg"))
+    #expect(erste.evidence.first?.decisionID == 8525)
+    // Ohne Beschluss dahinter keine Zeigerhand — und ohne Beleg keine Liste.
+    #expect(antwort.items[1].evidence.isEmpty)
+    #expect(antwort.items[1].web == nil)
+}
+
+/// Der leere Fall ist der Normalzustand vor dem ersten Cron-Lauf.
+@Test func ideaFieldsSurvivesEmptyPayload() throws {
+    let leer = try JSONDecoder().decode(IdeaFields.self, from: Data(#"{}"#.utf8))
+    #expect(leer.fields.isEmpty)
+    let felder = try JSONDecoder().decode(IdeaFields.self, from: Data(#"""
+    {"fields": [{"field": "verkehr", "total": 60, "missing": 40, "partial": 6,
+                 "present": 8, "multi_city": 12}]}
+    """#.utf8))
+    #expect(felder.fields.first?.multiCity == 12)
+    #expect(felder.fields.first?.id == "verkehr")
+}
+
+/// Die Karte „Neu bei Ratslotse": Bühne (mit Aufnahme) und Liste (ohne) in
+/// derselben Antwort, dazu die Marke, die der Server für dieses Konto führt.
+@Test func newsStateDecodesStageAndListForms() throws {
+    let json = #"""
+    {
+      "releases": [{
+        "version": "2.2.0", "date": "2026-09-07", "title": "Das Teilen-Update",
+        "highlights": [
+          {"title": "Sitzungen teilen", "text": "An jeder Zeile ein Teilen-Knopf.", "url": "/council?tab=sessions",
+           "media": {"kind": "video", "src": "/neuigkeiten/2.2.0/teilen-ios.mp4", "alt": "Das Teilen-Blatt",
+                     "aspect": "1206/2622", "poster": "/neuigkeiten/2.2.0/teilen-ios.webp"}},
+          {"title": "Live", "text": "Welcher Punkt gerade dran ist.", "url": "/dashboard", "media": null}
+        ]
+      }],
+      "older_count": 1,
+      "seen_version": null
+    }
+    """#
+    let state = try JSONDecoder().decode(NewsState.self, from: Data(json.utf8))
+    let release = try #require(state.releases.first)
+    #expect(release.title == "Das Teilen-Update")
+    #expect(state.olderCount == 1)
+    #expect(state.seenVersion == nil)
+    let media = try #require(release.highlights.first?.media)
+    #expect(media.isVideo)
+    #expect(media.aspectRatio.map { $0 < 1 } == true)
+    #expect(media.poster == "/neuigkeiten/2.2.0/teilen-ios.webp")
+    #expect(release.highlights.last?.media == nil)
+}

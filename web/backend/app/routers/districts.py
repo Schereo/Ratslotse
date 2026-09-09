@@ -13,18 +13,20 @@ from __future__ import annotations
 
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from council import geo
 from council.store import CouncilStore
 
 from ..antworten import (
+    DistrictLookup,
+    DistrictLookupMatch,
     DistrictProjectReportOut,
     DistrictProjects,
     DistrictProjectsOverview,
 )
-from ..deps import get_council_store, optional_user, require_active
+from ..deps import get_council_store, require_active
 
 router = APIRouter(prefix="/api/districts", tags=["districts"])
 
@@ -37,30 +39,76 @@ def _primary_places(store: CouncilStore) -> list:
     return [p for p in store.all_places() if p.is_primary]
 
 
+# Seit dem Umzug auf die vereinte Stadtkarte (STADTKARTE-PLAN.md, Schritt 5)
+# verlangen alle drei Lese-Endpunkte ein Konto — wie die Karte selbst (Tims
+# Entscheidung 07.09.2026: öffentlich bleibt nur die Landingpage). Vorher waren
+# Übersicht und Suche offen, damit ein geteilter Tafel-Link ohne Konto ging.
 @router.get("/projects")
-def district_projects_overview(store: CouncilStore = Depends(get_council_store)) -> DistrictProjectsOverview:
-    """Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite."""
+def district_projects_overview(
+    _user: dict = Depends(require_active),
+    store: CouncilStore = Depends(get_council_store),
+) -> DistrictProjectsOverview:
+    """Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.
+
+    Dazu die Stadtzahlen (wie viele Vorhaben, wie viele je Stand) und die
+    Vorhaben, die gerade herausstechen: Die Seite ohne gewähltes Viertel soll
+    schon etwas zeigen, nicht nur fragen."""
     overview = store.district_projects_overview()
     rows = []
     updated: str | None = None
+    stages: dict[str, int] = {}
     for place in sorted(_primary_places(store), key=lambda p: p.name):
         o = overview.get(place.id) or {}
         rows.append({"place_id": place.id, "name": place.name, "count": o.get("count", 0),
-                     "last_date": o.get("last_date")})
+                     "last_date": o.get("last_date"), "stages": o.get("stages") or {}})
+        for stage, n in (o.get("stages") or {}).items():
+            stages[stage] = stages.get(stage, 0) + n
         if o.get("updated_at") and (updated is None or o["updated_at"] > updated):
             updated = o["updated_at"]
-    return {"districts": rows, "updated_at": updated}
+    # Lose dicts aus dem Store; die Form hält der Vertrag, geprüft vom Test.
+    return cast(DistrictProjectsOverview, {
+        "districts": rows, "total": sum(r["count"] for r in rows), "stages": stages,
+        "highlights": store.district_highlights(), "updated_at": updated,
+    })
+
+
+@router.get("/lookup")
+def district_lookup(q: str = Query("", max_length=80),
+                    _user: dict = Depends(require_active),
+                    store: CouncilStore = Depends(get_council_store)) -> DistrictLookup:
+    """„Ich wohne in der …": Straße, Platz oder Stadtteilname → Ortsbereich.
+
+    Stadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den
+    Beschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein
+    Sprachmodell, keine Speicherung der Eingabe."""
+    q = q.strip()
+    if len(q) < 2:
+        return {"matches": []}
+    overview = store.district_projects_overview()
+    needle = q.lower()
+    matches: list[DistrictLookupMatch] = []
+    for place in sorted(_primary_places(store), key=lambda p: p.name):
+        if any(n.lower().startswith(needle) for n in (place.name, *place.aliases)):
+            matches.append({"name": place.name, "kind": "district", "place_id": place.id,
+                            "place_name": place.name,
+                            "count": (overview.get(place.id) or {}).get("count", 0)})
+    for m in store.district_lookup_streets(q, limit=6):
+        matches.append({"name": m["name"], "kind": m["kind"], "place_id": m["place_id"],
+                        "place_name": m["place_name"],
+                        "count": (overview.get(m["place_id"]) or {}).get("count", 0)})
+    return {"matches": matches[:8]}
 
 
 @router.get("/{place_id}/projects")
 def district_projects(
     place_id: str,
-    user: dict | None = Depends(optional_user),
+    user: dict = Depends(require_active),
     store: CouncilStore = Depends(get_council_store),
 ) -> DistrictProjects:
     """Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im
-    Rat ansteht, was im Investitionsprogramm steht und wo gerade eine
-    Beteiligung läuft."""
+    Rat ansteht, was im Investitionsprogramm steht, wo gerade eine
+    Beteiligung läuft, was die Stadt gesperrt hat und was sie zum Viertel
+    mitgeteilt hat."""
     place = store.resolve_place(place_id)
     if not place or not place.is_primary:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ortsbereich nicht gefunden.")
@@ -84,6 +132,8 @@ def district_projects(
         "upcoming": store.district_upcoming_items(place),
         "investments": store.district_investments(place),
         "participations": store.district_participations(place),
+        "closures": store.district_road_closures(place.id),
+        "press": store.district_press(place.id),
         "neighbours": neighbours,
         "updated_at": store.district_projects_updated_at(place.id),
     })

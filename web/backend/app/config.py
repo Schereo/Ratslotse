@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     apple_key_id: str = ""
     apple_private_key: str = ""
 
+    # Nutzungsstatistik: Adressen auf diesen Domänen zählen nicht als echte
+    # Nutzung (kommagetrennt, z. B. "timsigl.de,test.de"). Konten mit der
+    # Adminrolle fallen ohnehin heraus. Ohne diese Liste misst der
+    # Kohorten-Trichter zu einem großen Teil die eigenen Testkonten.
+    stats_exclude_domains: str = ""
+
     # Admin-LLM-Kosten (Design 21a): Monatsbudget für die Budget-Ampel
     # (Warnung ab 80 %). Reine Anzeige-Schwelle, drosselt nichts.
     llm_budget_monthly: float = 40.0
@@ -71,6 +77,13 @@ class Settings(BaseSettings):
     # Databases (shared with the bot)
     ratslotse_db: str = str(ROOT / "data" / "ratslotse.sqlite")
     council_db: str = str(ROOT / "data" / "council.sqlite")
+    # Städte-Speicher: Ratsdokumente anderer Kommunen (council/cities/).
+    # Eigene Datei, weil ein Vollneuaufbau der Städte die Rats-Datenbank nicht
+    # berühren darf und der lokale Abzug ohne sie auskommen soll. Dieselben
+    # Vorgaben liest council.cities.default_paths() für die Skripte.
+    cities_db: str = str(ROOT / "data" / "cities.sqlite")
+    cities_files_dir: str = str(ROOT / "data" / "cities-files")
+    cities_raw_dir: str = str(ROOT / "data" / "cities-raw")
 
     # Telegram bot username, used to render link instructions in the UI
 

@@ -404,11 +404,15 @@ def test_abgeschalteter_anlass_wird_gar_nicht_erst_eingereiht(store, monkeypatch
 def test_vorgaben_fuer_ein_gewoehnliches_konto():
     """Tims Entscheidung 06.09.2026: Die Tagesordnung je Gremium bekommt nur,
     wer sie ausdrücklich einschaltet; der Wochenüberblick kommt ab Werk. Die
-    Unter-Option „Änderungen" bleibt an — sie wirkt ohnehin nur mit N1."""
+    Unter-Option „Änderungen" bleibt an — sie wirkt ohnehin nur mit N1.
+
+    ``N7_NEWS`` („Neu bei Ratslotse") ist ab Werk an (Tim, 07.09.2026): Er
+    kommt ein paar Mal im Jahr und ist die einzige Gelegenheit, von einem
+    neuen Feature zu erfahren, ohne selbst nachzusehen."""
     an = {k for k, v in notify.NOTIFY_DEFAULTS.items() if v}
     aus = {k for k, v in notify.NOTIFY_DEFAULTS.items() if not v}
     assert an == {notify.N1_AENDERUNG, notify.N2_THEMA, notify.N3_ERGEBNIS,
-                  notify.N4_VORGANG, notify.N6_WOCHE}
+                  notify.N4_VORGANG, notify.N6_WOCHE, notify.N7_NEWS}
     assert aus == {notify.N1_TAGESORDNUNG, notify.N5_VORABEND}
     # Jede Art hat eine Beschriftung — sonst fehlte sie stumm in den Einstellungen.
     assert set(notify.NOTIFY_LABELS) == set(notify.NOTIFY_DEFAULTS)
@@ -598,7 +602,7 @@ def test_ein_protokoll_schub_wird_ein_brief(store, tmp_path):
     assert body.index("Dein Thema · Stadion") < body.index("Dein Thema · Wärmeplanung")
     assert body.index("Stadionneubau") < body.index("Bürgschaft") < body.index("Parkplätze")
     assert "3 Beschlüsse" in body and "57,3 Mio. €" in body
-    assert "Im Rat am 1. Juni angenommen (mehrheitlich, 18 dagegen)" in body
+    assert "Im Rat am 1. Juni 2026 angenommen (mehrheitlich, 18 dagegen)" in body
     assert p["push_text"].startswith("Stadion: angenommen (18 dagegen) · Wärmeplanung: angenommen")
     assert "2 weitere aus 2 Protokollen" in p["push_text"]
     # Beide Sitzungen gelten als gemeldet — der zweite Lauf schweigt.

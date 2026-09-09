@@ -343,6 +343,141 @@ per `nohup` weiter, während der Workflow selbst schon fertig ist.
 
 ---
 
+## Städte-Speicher: der einmalige Backfill
+
+`data/cities.sqlite` (Ratsdokumente der Vergleichsstädte, `council/cities`)
+entsteht **nicht** allein aus dem Wochen-Cron. `check_cities.py` schaut je
+Stadt 60 Tage zurück — das hält den Bestand aktuell, baut ihn aber nie auf.
+Der Aufbau ist ein einmaliger Lauf je Stadt:
+
+```bash
+# Oldenburg: kein Netz, Minuten — der Adapter liest council.sqlite
+python scripts/cities_backfill.py --run --body oldenburg
+# Die fünf mit OParl: je Stadt Stunden, ein Abruf je Sekunde je Host
+for stadt in osnabrueck braunschweig muenster potsdam magdeburg; do
+  python scripts/cities_backfill.py --run --body "$stadt" --since 2023-01-01
+done
+```
+
+Danach einordnen und indizieren (beides über `check_cities.py` oder von Hand
+über `council.cities.pipeline`). Die Einordnung kostet rund 0,31 $ je 1.000
+Vorlagen; `CITIES_ANNOTATE_MAX` deckelt sie je Lauf, damit ein Rückstand über
+mehrere Wochen abgebaut wird statt an einem Sonntag teuer zu werden.
+
+**Reihenfolge beachten**, und sie ist seit 09/2026 länger:
+
+```bash
+python scripts/cities_backfill.py --run --stage annotate   # classify + effort
+python scripts/cities_backfill.py --run --stage index      # Chunks, Vektoren, FTS, Nachbarn
+python scripts/cities_backfill.py --run --stage cluster    # Ideen-Cluster über Städte
+# fit läuft nur im Cron — es braucht Index UND Cluster
+```
+
+Jede Stufe braucht die vorige: Die Einordnung sagt, was eine *Idee* ist; der
+Index rechnet Nachbarschaften über alle Städte; die Cluster fassen zusammen,
+was dieselbe Idee ist; und `fit` urteilt erst, wenn es beides hat.
+
+**Nach jeder Ernte die Plausibilität prüfen.** Am 08.09.2026 lagen vier
+Ernte-Fehler gleichzeitig im Bestand, und kein einziger hat sich gemeldet —
+kein Absturz, kein roter Test, keine auffällige Zahl:
+
+```bash
+python scripts/cities_backfill.py --pruefen
+```
+
+Vier Bänder je Stadt (Vorlagen je Sitzung, Anteil mit Ergebnis, mit Text, mit
+Beratung), aus dem Bestand gemessen. Dazu die Ergebnistexte, die die Zuordnung
+nicht kennt — das ist die Liste, mit der man eine neue Stadt anschließt. Die
+Einzelheiten stehen in `council/cities/CLAUDE.md`, die Prüfung läuft auch im
+Wochen-Cron und schreibt `implausibel` in die Kennzahlen.
+
+**Was der Bestand hergibt**, sobald er steht:
+
+```bash
+python scripts/cities_cluster_bericht.py --ohne-oldenburg   # Ideen, die Oldenburg fehlen
+python scripts/cities_gegenrichtung.py --offen              # wie ging es anderswo aus?
+```
+
+**Platz:** Der Speicher wächst mit der Historie; drei Jahre über fünf Städte
+plus Oldenburg seit 2018 sind rund 600 MB. `check_herzschlag.py` schaut auf
+den freien Platz, aber vor dem ersten Lauf lohnt ein Blick.
+
+**Nie zwei Läufe auf dieselbe Datei.** `--parallel` erntet mehrere Städte
+gleichzeitig in getrennte Rohdateien; das ist erlaubt. Zwei Prozesse, die
+beide in `cities.sqlite` schreiben, sind es nicht — SQLite quittiert das mit
+`database is locked`, und im Probelauf starb der unterlegene Thread still.
+
+**Ein anderes Einbettungs-Modell probieren.** Der Speicher hält Vektoren und
+Nachbarschaften je Modell getrennt, ein neues liegt also neben dem alten und
+löscht nichts:
+
+```bash
+python scripts/cities_modellvergleich.py --einbetten --modell <name>
+python scripts/cities_modellvergleich.py --modell <name>
+```
+
+Gemessen am 08.09.2026 über 16.585 Papiere: Das größere
+`paraphrase-multilingual-mpnet-base-v2` (768 Dimensionen) fand **weniger** von
+dem, was ein Mensch als richtigen Beleg bezeichnet hat (12 von 23 gegen 19 von
+23), und drängte fast alle Kanten ins obere Band — 20.523 über 0,85, wo das
+heutige Modell 233 hat. Die Schwellen der Anzeige sind auf dieses Band geeicht;
+wer das Modell wechselt, misst sie neu.
+
+**Kennzahlen des Wochenlaufs:** `papers_total` und `papers_oldenburg` stehen
+im Admin-Panel unter *Statistik → Cron-Jobs*. Oldenburg eigens, weil es die
+Stadt ist, gegen die alles verglichen wird: Fällt die Zahl, fehlt dem
+Vergleich die eine Seite — und zwar still, weil die anderen Städte
+weiterlaufen.
+
+### Der Weg auf Prod
+
+Beide Schalter des Städtevergleichs sind **Schulden mit Fälligkeitsdatum**:
+Jeder nennt in `kern/features.py` unter `fertig_wenn`, woran man erkennt, dass
+er weg kann. Sie umzulegen ist keine technische Frage, sondern eine
+inhaltliche — deshalb steht hier die Reihenfolge, nicht der Griff.
+
+| # | Schritt | Bedingung |
+|---|---|---|
+| 1 | `cities.sqlite` auf der Dev-VM aufbauen (Backfill oben, Stunden) | keine — ohne sie zeigt dev nichts |
+| 2 | `andere-staedte` in `FEATURE_FLAGS` auf Prod | Der Block lag vier Wochen auf dev, und zwei Mandatsträger*innen haben die Treffer als brauchbar bestätigt |
+| 3 | `cities.sqlite` auf der Prod-VM aufbauen und den Wochen-Cron eintragen | vor Schritt 2, sonst zeigt der Block dort nichts |
+| 4 | `ideen-anderswo` in `FEATURE_FLAGS` auf Prod | Tim hat zwei Themenfelder durchgesehen und die Urteile für tragfähig erklärt |
+| 5 | Beide Schalter aus der Registry nehmen | wenn sie auf Prod stehen und niemand sie mehr umlegt |
+
+**Ein Schritt liegt quer dazu: die Fassung des Urteils.** Die Oberfläche zeigt
+`fit`/1; Fassung 2 (Ideen-Cluster, Aufwandsklasse, drei Stimmen) liegt
+daneben und ist noch nicht umgestellt. Der Grund steht als `gut_wenn` am
+Annotator und ist eine Zahl, keine Meinung:
+
+> Fassung 2 ist reif, wenn der Bestand einmal damit gerechnet ist und der
+> Anteil „fehlt + lohnt sich" unter 30 % liegt. Fassung 1 liegt bei 50 %
+> (649 von 1.290 Urteilen) — eine Liste, auf der jede zweite Zeile ein
+> Volltreffer ist, ist kein Vorschlag, sondern ein Katalog.
+
+Umgestellt wird an genau einer Stelle: `CitiesStore.IDEEN_FIT`. Danach der
+Aufräumlauf, der Fassung 1 löscht — aber erst dann.
+
+**Auf dev steht `FEATURE_FLAGS=*`**, dort sind beide also schon an — sichtbar
+wird trotzdem erst etwas, wenn Schritt 1 gelaufen ist.
+
+**Schritt 5 ist kein Aufräumen, sondern Teil der Sache.** Ein Schalter, den
+niemand mehr umlegt, ist eine Verzweigung, die jeder mitliest und niemand
+braucht; `tests/test_features.py` meldet einen, den keine Oberfläche mehr
+abfragt.
+
+**Was der Rollout NICHT braucht:** einen App-Store-Build. Beide Oberflächen
+holen ihre Schalter über `/api/app-config`; die ausgelieferte App bekommt die
+Seite in dem Moment, in dem der Schalter auf Prod steht.
+
+**Lokal zum Arbeiten:** `python scripts/lokale_daten.py hol --mit-staedten`
+und `setz --mit-staedten` nehmen den Speicher vom Server mit. Ohne den
+Schalter bleibt alles wie bisher; 600 MB will nicht jede*r auf dem Notebook.
+Eine Abspeckung wie bei der Rats-Datenbank braucht es nicht — es stehen
+ausschließlich öffentliche Ratsdokumente anderer Städte darin, keine Konten,
+keine Personendaten.
+
+---
+
 ## Backups
 
 `scripts/backup_db.py` läuft täglich um 03:00 und sichert **beide** Datenbanken

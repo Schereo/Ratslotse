@@ -1,0 +1,290 @@
+[
+ {
+  "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2003254",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.osnabrueck.sitzung-online.de/oparl/bodies/1000001",
+  "name": "Straßenbenennungen im Lokviertel - Antrag der SPD- Fraktion",
+  "reference": "VO/2026/5756",
+  "date": "2026-09-07",
+  "paperType": "Antrag",
+  "mainFile": {
+   "id": "https://www.osnabrueck.sitzung-online.de/oparl/files/2414880",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-19 VO_2026_5756 Strassenbenennungen i SAO.pdf",
+   "mimeType": "pdf",
+   "size": 58918,
+   "accessUrl": "https://www.osnabrueck.sitzung-online.de/publickiosk/doc?DOCTYP=130&DOLFDNR=2414880&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.osnabrueck.sitzung-online.de/oparl/organizations/at/1000025"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004218",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000017"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004219",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000001"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004217",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000005"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.osnabrueck.sitzung-online.de/publickiosk/VO020?VOLFDNR=2003254",
+  "deleted": false
+ },
+ {
+  "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2003173",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.osnabrueck.sitzung-online.de/oparl/bodies/1000001",
+  "name": "Aussetzung der Infrastrukturabgabe",
+  "reference": "VO/2026/5702",
+  "date": "2026-09-03",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.osnabrueck.sitzung-online.de/oparl/files/2412680",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-07-21 VO_2026_5702 Aussetzung der Infra SAO.pdf",
+   "mimeType": "pdf",
+   "size": 66430,
+   "accessUrl": "https://www.osnabrueck.sitzung-online.de/publickiosk/doc?DOCTYP=130&DOLFDNR=2412680&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.osnabrueck.sitzung-online.de/oparl/organizations/at/1000012"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004106",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000017"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004107",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000001"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004104",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000108"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004152",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000060"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004105",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000164"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.osnabrueck.sitzung-online.de/publickiosk/VO020?VOLFDNR=2003173",
+  "deleted": false
+ },
+ {
+  "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2003205",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.osnabrueck.sitzung-online.de/oparl/bodies/1000001",
+  "name": "Jahresabschluss des Eigenbetriebes Immobilien- und Gebäudemanagement 2025",
+  "reference": "VO/2026/5720",
+  "date": "2026-09-03",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.osnabrueck.sitzung-online.de/oparl/files/2414093",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-10 VO_2026_5720 Jahresabschluss des  SAO.pdf",
+   "mimeType": "pdf",
+   "size": 5411114,
+   "accessUrl": "https://www.osnabrueck.sitzung-online.de/publickiosk/doc?DOCTYP=130&DOLFDNR=2414093&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.osnabrueck.sitzung-online.de/oparl/organizations/at/1000012"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004154",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000017"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004155",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000001"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004153",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000108"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.osnabrueck.sitzung-online.de/publickiosk/VO020?VOLFDNR=2003205",
+  "deleted": false
+ },
+ {
+  "id": "https://www.osnabrueck.sitzung-online.de/oparl/papers/2003238",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "body": "https://www.osnabrueck.sitzung-online.de/oparl/bodies/1000001",
+  "name": "Jahresabschluss Sondervermögen Klärwerke und Kanalbetrieb 2025 - Verwendung Jahresergebnis",
+  "reference": "VO/2026/5747",
+  "date": "2026-09-03",
+  "paperType": "Beschlussvorlage",
+  "mainFile": {
+   "id": "https://www.osnabrueck.sitzung-online.de/oparl/files/2414801",
+   "type": "https://schema.oparl.org/1.1/File",
+   "name": "Sammeldokument öffentlich",
+   "fileName": "2026-08-17 VO_2026_5747 Jahresabschluss Sond SAO.pdf",
+   "mimeType": "pdf",
+   "size": 1394798,
+   "accessUrl": "https://www.osnabrueck.sitzung-online.de/publickiosk/doc?DOCTYP=130&DOLFDNR=2414801&OTYP=41",
+   "created": "2000-01-01T00:00:00+01:00",
+   "modified": "2000-01-01T00:00:00+01:00",
+   "deleted": false
+  },
+  "underDirectionOf": [
+   "https://www.osnabrueck.sitzung-online.de/oparl/organizations/at/1000002"
+  ],
+  "consultation": [
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004280",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000001"
+    ],
+    "authoritative": true,
+    "role": "Entscheidung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004278",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000164"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   },
+   {
+    "id": "https://www.osnabrueck.sitzung-online.de/oparl/consultations/2004279",
+    "type": "https://schema.oparl.org/1.1/Consultation",
+    "organization": [
+     "https://www.osnabrueck.sitzung-online.de/oparl/organizations/gr/1000017"
+    ],
+    "authoritative": false,
+    "role": "Vorberatung",
+    "created": "2000-01-01T00:00:00+01:00",
+    "modified": "2000-01-01T00:00:00+01:00",
+    "deleted": false
+   }
+  ],
+  "created": "2000-01-01T00:00:00+01:00",
+  "modified": "2000-01-01T00:00:00+01:00",
+  "web": "https://www.osnabrueck.sitzung-online.de/publickiosk/VO020?VOLFDNR=2003238",
+  "deleted": false
+ }
+]

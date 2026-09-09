@@ -43,9 +43,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from kern.store import Store
 from council.store import CouncilStore
 
-from ..antworten import (MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet, Subscriptions,
-                         TopicDecisions, TopicDescription, TopicHitList, TopicSuggestions,
-                         UnreadTopicHits)
+from ..antworten import (CityTopicMatch, MarkedHits, Ok, SubscriptionRemoved, SubscriptionSet,
+                         Subscriptions, TopicDecisions, TopicDescription, TopicHit, TopicHitList,
+                         TopicSuggestions, UnreadTopicHits)
+from ..clients import client_kind
 from ..deps import get_council_store, get_store, require_active
 from ..ratelimit import topic_describe_limiter, topic_match_limiter
 from ..schemas import SubscriptionIn, TopicDescribeIn, TopicHitOut, TopicIn, TopicOut, TopicSeenIn
@@ -644,6 +645,41 @@ def _ohne_eigenen_ortsbereich(council: CouncilStore, kandidaten: list[dict], pla
             if eigener not in zugehoerig.get(k.get("slug") or "", set())]
 
 
+@router.get("/match")
+def topic_match(
+    q: Annotated[str, Query(max_length=300)] = "",
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> CityTopicMatch:
+    """Passt eine FRAGE zu einem kuratierten Stadtthema?
+
+    Die Brücke von „ich habe etwas gefragt" zu „das Produkt meldet sich bei
+    mir". Wer nach dem Radverkehr fragt, bekommt das fertige Thema
+    *Radverkehr* mit einer am Bestand kalibrierten Beschreibung — statt eines
+    Formulars, in das er eine Frage tippt, die als Thema nicht funktioniert.
+
+    **Deterministisch und ohne Modell:** ein Satz Muster aus
+    ``council.city_topics`` gegen den Fragetext. Der Endpunkt darf deshalb bei
+    jeder Antwort gefragt werden; er kostet eine Regex und eine Kontoabfrage.
+
+    ``n`` und ``months`` fehlen hier bewusst — die Zahl der Beschlüsse
+    berechnet ``/topics/suggestions`` mit einem Scan über den Bestand, und
+    dafür ist dies der falsche Ort. Wer den Vorschlag annimmt, sieht die Zahl
+    unmittelbar danach an seinem angelegten Thema.
+    """
+    from council.city_topics import match_question
+
+    t = match_question(q)
+    if t is None:
+        return {"match": None, "already": False}
+    vorhanden = any(vorhandenes.name == t.name for vorhandenes in store.get_topics(user["id"]))
+    return {
+        "match": {"key": t.key, "name": t.name, "description": t.description,
+                  "context": t.context, "n": 0, "months": 0},
+        "already": vorhanden,
+    }
+
+
 @router.get("/suggestions")
 def topic_suggestions(
     district: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI liest die Vorgabe nur
@@ -772,6 +808,9 @@ def describe_topic(
         "description": result["description"],
         "matches": result["matches"],
         "matches_capped": result["matches_capped"],
+        # Eine Liste in einem Feld ist ein Bedienfehler, den das Produkt
+        # bisher stillschweigend annahm (s. topic_intel.aufteilbar).
+        "parts": topic_intel.aufteilbar(body.name),
         "examples": result["examples"],
         "verdict": result["verdict"],
         "is_council_topic": result["is_council_topic"],
@@ -805,6 +844,10 @@ def add_topic(
     topic_match_limiter.check(request)
     t = store.add_topic(user["id"], body.name, body.description)
     count, gedeckelt, abgeglichen = _erstabgleich(store, council, t, user["id"])
+    # Der Haken, an dem alles Weitere hängt: Ohne ein Thema (oder ein Gremium)
+    # hat das Produkt keinen Anlass, sich je wieder zu melden. Deshalb ist das
+    # Anlegen ein eigenes Ereignis und nicht nur eine Zeile in `topics`.
+    store.record_activity(user["id"], "topic_created", client_kind(request))
     return TopicOut(id=t.id, name=t.name, description=t.description, created_at=t.created_at,
                     decision_count=count, decision_count_capped=gedeckelt, matched=abgeglichen)
 
@@ -905,20 +948,41 @@ def latest_hits(
 ) -> TopicHitList:
     """Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
-    {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst."""
-    pairs: list[tuple[str, int]] = []
-    for t in store.get_topics(user["id"]):
-        pairs += [(t.name, m["decision_id"]) for m in store.get_topic_decision_matches(t.id)[:10]]
-    by_id = {d["id"]: d for d in council.get_decisions_by_ids([d_id for _, d_id in pairs])}
-    rows = [
-        {"topic_name": name, "id": d["id"], "title": d["title"],
-         "committee": d["committee"], "session_date": d["session_date"]}
-        for name, d_id in pairs if (d := by_id.get(d_id))
+    {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst.
+
+    Dieselbe Menge wie die Themen-Karten (``list_topics``): alle Treffer,
+    nach Sitzungsdatum. Bis 09/2026 nahm die Route je Thema nur die zehn
+    BESTBEWERTETEN Treffer und sortierte erst die nach Datum — „neu" hieß
+    damit „das Jüngste unter den Passendsten", und die Karte konnte einen
+    Beschluss verschweigen, den die Themen-Seite als jüngsten führte.
+
+    Ein Beschluss, der zu mehreren Themen passt, steht einmal da — mit dem
+    Thema, in dem er noch ungelesen ist, falls es eines gibt.
+    """
+    owner_id = user["id"]
+    topics = store.get_topics(owner_id)
+    wanted = [(t, m["decision_id"]) for t in topics for m in store.get_topic_decision_matches(t.id)]
+    by_id = {d["id"]: d for d in council.get_decisions_by_ids([d_id for _, d_id in wanted])}
+    unseen = store.unseen_hit_ids(owner_id)
+    rows: list[TopicHit] = [
+        {"topic_id": t.id, "topic_name": t.name, "id": d["id"], "title": (d["title"] or "").strip(),
+         "committee": d["committee"], "session_date": d["session_date"],
+         "outcome": d.get("outcome"), "summary": d.get("summary") or None,
+         "is_new": d["id"] in unseen.get(t.id, set())}
+        for t, d_id in wanted if (d := by_id.get(d_id))
     ]
-    rows.sort(key=lambda r: r["session_date"] or "", reverse=True)
+    # Jüngste zuerst; bei gleichem Beschluss gewinnt die ungelesene Zeile
+    # den Doppel-Abgleich unten, damit der Punkt nicht am Thema hängt.
+    rows.sort(key=lambda r: (r["session_date"] or "", r["is_new"]), reverse=True)
     seen: set[int] = set()
     out = [r for r in rows if not (r["id"] in seen or seen.add(r["id"]))]
-    return {"hits": out[:limit]}
+    return {
+        "hits": out[:limit],
+        "topic_count": len(topics),
+        "total": len(out),
+        # Dieselbe Zählung wie die „n neue"-Abzeichen der Themen-Karten.
+        "unread_total": sum(len(ids) for ids in unseen.values()),
+    }
 
 
 @router.get("/{topic_id}/decisions")

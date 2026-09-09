@@ -26,7 +26,396 @@ import textwrap
 # die Kurzerklärung für Menschen, die hier lesen; `template` ist das, was das
 # Modell nach .format() bekommt.
 
+#: Die Einordnung fremder Ratsvorlagen. Steht als Konstante über ``DEFAULTS``,
+#: weil sie mit 60 Zeilen jedes Wörterbuch unlesbar machen würde.
+PROMPT_CITIES_FIT = """Du prüfst, ob die Stadt Oldenburg (Oldb) sich mit einer Sache schon
+befasst hat — und ob es sich lohnt, sie dort zu beantragen.
+
+Du bekommst EINE Vorlage aus dem Rat einer anderen Stadt und BELEGE aus Oldenburg.
+Jeder Beleg trägt eine KENNUNG und in Klammern seine ART:
+- "Beschluss": ein Beschluss des Oldenburger Rates, mit Abstimmungsergebnis.
+  Der stärkste Beleg — hier steht, was tatsächlich entschieden wurde.
+- "Vorlage": eine Oldenburger Ratsvorlage. Ob sie beschlossen wurde, steht
+  hier NICHT — eine Vorlage allein belegt eine Befassung, keinen Beschluss.
+- "Fundstelle in einer Vorlage": ein Textabschnitt aus einem größeren Dokument.
+  Vorsicht: Der Rest des Dokuments kann von etwas ganz anderem handeln.
+- "Rückblick aufs Themenfeld": was Oldenburg in dem Feld gerade beschäftigt.
+  KONTEXT, kein Beleg — er kann ein Urteil begleiten, nie tragen.
+
+Steht bei einem Beleg "von N Suchwegen gefunden", haben mehrere unabhängige
+Suchen dasselbe Papier gefunden. Das ist ein starkes Zeichen, dass es wirklich
+um dieselbe Sache geht.
+
+{steckbrief}
+
+Antworte NUR mit diesem JSON:
+{{"status": "present" | "partial" | "missing",
+  "evidence": ["<Kennung>", …],
+  "reason": "<ein Satz, max. 300 Zeichen>",
+  "confidence": "high" | "medium" | "low"}}
+
+Du beantwortest EINE Frage: Hat Oldenburg dieses Instrument schon? Ob sich
+ein Antrag lohnt, wirst du NICHT gefragt — das hängt an Mehrheiten, an der
+Haushaltslage und daran, was eine Fraktion gerade vorhat, und nichts davon
+steht in einem Ratsinformationssystem. Wer die Liste liest, schließt das
+selbst.
+
+STATUS — hat Oldenburg GENAU DIESES Instrument schon?
+- "present": Oldenburg hat genau dieses Instrument beschlossen oder eingeführt.
+- "partial": Ein Beleg deckt einen TEIL dieses Instruments ab oder eine frühere
+  Stufe davon — anderer Zuschnitt, kleinerer Umfang, nur für einen Teilbereich,
+  nur ein Antrag ohne Beschluss, nur ein Prüfauftrag, nur ein Bericht.
+- "missing": Kein Beleg deckt auch nur einen Teil ab. Dass ein Beleg dasselbe
+  THEMENFELD betrifft, genügt dafür nicht.
+
+Sei streng: Ein Beleg, der nur dasselbe THEMENFELD berührt, ist NICHT "present".
+Wärmeplanung und Wärmenetz-Ausbau sind zwei Sachen; ein Radverkehrskonzept belegt
+keine Fahrradstraße.
+
+Aber miss am Instrument, WIE DIE FREMDE VORLAGE ES VERLANGT — nicht an einer
+Maximalfassung davon:
+- Verlangt sie eine PRÜFUNG oder einen BERICHT und Oldenburg hat geprüft oder
+  berichtet, ist das "present". Nicht "partial", weil ein Beschluss fehlt, den
+  niemand verlangt hat.
+- Verlangt sie einen BESCHLUSS und Oldenburg hat erst geprüft, ist es "partial".
+- Der ANLASS muss nicht derselbe sein. Hat Oldenburg seine Geschäftsordnung
+  schon einmal wegen einer Gesetzesänderung angepasst, ist das Instrument
+  „Geschäftsordnung anpassen" vorhanden — auch wenn es eine andere Änderung war.
+- Ein ÄLTERER Beleg zählt. Was Oldenburg 2019 eingeführt hat, hat es.
+
+EVIDENCE — die Kennungen, auf die sich dein Status stützt, höchstens drei.
+Eine Kennung ist die Zeichenkette am Anfang einer Beleg-Zeile, etwa
+"oldenburg:paper:28119" oder "recap:verkehr" — NICHT die Position in der Liste
+und nicht der Titel. Nenne nur Kennungen, die wirklich dastehen; erfinde keine.
+Bei "present" und "partial" ist mindestens eine Pflicht, und mindestens eine
+davon muss eine "oldenburg:paper:"-Kennung sein: Der Rückblick sagt, was die
+Stadt beschäftigt, nicht ob sie dieses Instrument hat. Bei "missing" bleibt die
+Liste leer.
+
+CONFIDENCE — "high" nur, wenn die Belege die Frage wirklich beantworten. Wenige
+oder unspezifische Belege heißen "low"; das ist ein brauchbares Ergebnis, keine
+Schwäche.
+
+DURCHGERECHNETE BEISPIELE — an diesen Fällen ist die Grenze zu erkennen. Sie
+sind erfunden, aber typisch; keiner davon steht im Prüfstand, damit der Maßstab
+nicht sich selbst misst.
+
+1. Vorlage: „Solarpflicht für private Neubauten einführen".
+   Beleg: Oldenburg, „Photovoltaik auf städtischen Dächern — Beschluss".
+   → status "partial". Ein TEIL der Sache ist geregelt (die eigenen Gebäude),
+     der andere nicht (private Neubauten). Nicht "missing": Der Beleg deckt
+     einen Teil ab.
+
+2. Vorlage: „Bewohnerparkzone im Bahnhofsviertel einrichten".
+   Beleg: Oldenburg, „Parkraumkonzept Innenstadt — Beschluss".
+   → status "partial". Das Konzept ist die FRÜHERE STUFE desselben Weges; die
+     Zone ist der Vollzug daraus. Nicht "missing", nur weil die Zone fehlt.
+
+3. Vorlage: „Sondernutzungssatzung an die neue Rechtslage anpassen".
+   Beleg: Oldenburg, „Änderung der Sondernutzungssatzung — Beschluss".
+   → status "present". Das Instrument ist vorhanden, auch wenn der ANLASS ein
+     anderer war.
+
+4. Vorlage: „Einführung einer Übernachtungssteuer prüfen".
+   Beleg: Oldenburg, „Übernachtungssteuer — Bericht der Verwaltung".
+   → status "present". Verlangt ist eine PRÜFUNG, und die liegt vor. Nicht
+     "partial", nur weil kein Beschluss folgte — den verlangt niemand.
+
+5. Vorlage: „Bewerbung als Kulturhauptstadt vorbereiten".
+   Belege: Oldenburg, „Grobkonzept Neues Stadtmuseum"; „Sanierung Sporthalle".
+   → status "missing". Die Belege sind aus demselben Themenfeld und haben mit
+     der Sache trotzdem nichts zu tun. Hohe Ähnlichkeit ist kein Beleg.
+
+6. Vorlage: „Fahrpreise im Nahverkehr senken".
+   Kein passender Beleg.
+   → status "missing". Dass die Tarife beim Verkehrsverbund liegen und nicht
+     beim Rat, ändert am Status nichts — es steht als Adressat an anderer
+     Stelle."""
+
+
+PROMPT_CITIES_CLUSTER_CHECK = """Du prüfst, ob mehrere Ratsvorlagen wirklich DIESELBE Idee
+meinen — oder ob eine darunter etwas anderes ist.
+
+Die Vorlagen wurden automatisch gruppiert, weil ihre Beschreibungen sich
+ähneln. Das Verfahren KETTET: Hält es A und B für dasselbe und B und C auch,
+landen A und C in einer Gruppe, ohne je verglichen worden zu sein. Genau
+diese Fälle sollst du finden.
+
+Antworte NUR mit diesem JSON:
+{{"label": "<was die MEHRHEIT gemeinsam hat, in 2–6 Wörtern>",
+  "drop": ["<Kennung>", …],
+  "reason": "<ein Satz, warum sie herausfallen, max. 300 Zeichen>"}}
+
+GEH IN DIESER REIHENFOLGE VOR
+1. Suche zuerst, was die MEHRHEIT der Vorlagen gemeinsam hat. Nicht, was die
+   erste sagt — die Reihenfolge bedeutet nichts.
+2. Fasse den gemeinsamen Nenner so WEIT, dass die Mehrheit hineinpasst. Ein
+   zu enges Label ist der häufigste Fehler: Wer eine Gruppe „Berichtswesen"
+   nennt, wirft danach jedes „Konzept" hinaus — obwohl beide dieselbe Sache
+   in zwei Stufen sind.
+3. Erst dann: Welche EINZELNEN Vorlagen passen nicht zu dieser Mehrheit?
+
+Fällt mehr als ein Drittel heraus, hast du das Label zu eng gefasst. Dann
+fasse es weiter und prüfe noch einmal.
+
+WANN ETWAS HERAUSFÄLLT
+Nur, wenn es ein ANDERES INSTRUMENT ist — eine andere Sache, die der Rat
+täte. Nicht, wenn es dasselbe Instrument in einem anderen Jahr, einer
+anderen Stadt, einer anderen Stufe (Antrag, Bericht, Beschluss) oder mit
+anderen Worten ist. Genau das soll die Gruppe ja zusammenhalten.
+
+Beispiele für ANDERE Instrumente in derselben Gruppe:
+- „Lärmaktionsplan fortschreiben" und „Tempo 30 anordnen" — verwandt, aber
+  das eine ist ein Plan, das andere eine Verkehrsanordnung.
+- „Radwege bauen" und „Fahrradstraßen ausweisen" — beides Radverkehr, aber
+  zwei verschiedene Beschlüsse.
+- „Kita-Plätze ausbauen" und „Kita-Gebühren senken" — dasselbe Feld, ganz
+  verschiedene Hebel.
+
+Beispiele für DASSELBE Instrument (nichts fällt heraus):
+- „Verpackungssteuersatzung einführen" und „Steuer auf Einwegverpackungen
+  erheben" — zwei Formulierungen, eine Sache.
+- „Sportförderrichtlinien anpassen" 2018, 2020, 2022 und 2025 — dieselbe
+  Sache, viermal.
+- „Bevölkerungsprognose erstellen" und „Einwohnerprognose - Bericht" — eine
+  Sache, zwei Städte.
+
+IM ZWEIFEL NICHTS ENTFERNEN. Eine zu Unrecht entfernte Vorlage nimmt einer
+Idee eine Stadt und macht die Aussage „auch in vier anderen Städten" falsch.
+Eine zu Unrecht behaltene fällt einem Menschen beim Lesen auf. Die leere
+Liste ist die häufigste richtige Antwort.
+
+Fällt dir keine einzelne Vorlage auf, die klar etwas anderes meint, ist die
+leere Liste die richtige Antwort. Das ist der Normalfall.
+"""
+
+
+PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
+von der bloßen Frage bis zum Haushaltsposten.
+
+Du bekommst mehrere Vorlagen aus Räten anderer Städte. Für jede zwei Angaben:
+wie AUFWENDIG ihre Umsetzung in Oldenburg wäre, und WER sie tun müsste, falls
+nicht die Stadt selbst.
+
+{steckbrief}
+
+Antworte NUR mit diesem JSON:
+{{"results": [{{"id": "<die Kennung aus der Eingabe>",
+               "effort": "inquiry" | "review" | "resolution" | "decision" | "budget",
+               "addressee": "<wer es tun müsste>" | null}}, …]}}
+
+AUFWAND — nach der ART des Ratsbeschlusses, nicht nach der Größe des Themas:
+- "inquiry": eine Anfrage an die Verwaltung. Sie will wissen, nicht ändern.
+  Auch die Antwort der Verwaltung darauf.
+- "review": ein Prüfauftrag — „die Verwaltung möge prüfen und berichten“.
+  Kostet Verwaltungsarbeit, bindet den Rat zu nichts.
+- "resolution": eine Resolution oder Appell an Land, Bund oder EU. Die
+  Zuständigkeit liegt woanders; der Rat kann nur fordern.
+- "decision": ein Beschluss mit unmittelbarer Wirkung — Satzung, Richtlinie,
+  Konzept, Programm, Vergabe — OHNE nennenswerten Haushaltsposten.
+- "budget": ein Beschluss, der Geld bindet: Förderprogramm, neue Stelle,
+  Baumaßnahme, Zuschuss.
+
+Im Zweifel die NIEDRIGERE Stufe: Ein Konzept, das erst noch erarbeitet werden
+soll, ist "review", nicht "decision".
+
+ADRESSAT — nur wenn es NICHT die Stadt selbst entscheidet.
+Nimm den Namen aus dem Steckbrief, wenn er dort steht: Stadtwerke, EWE, OOWV,
+VWG, GSG, Klinikum, ein Eigenbetrieb. Auch „Land Niedersachsen“ oder „Bund“,
+wenn die Sache dort liegt. Sonst null — und null ist der Normalfall.
+
+Der Adressat ist IMMER ein Akteur aus OLDENBURGS Welt. Die Vorlage kommt aus
+einer anderen Stadt; deren Stadtwerke, deren Verkehrsbetrieb und deren
+Bundesland gehören nicht hierher. Wenn dort das Land Brandenburg zuständig
+ist, ist es hier das Land Niedersachsen.
+
+BEISPIELE
+
+Vorlage: „Wie viele Ladesäulen stehen im Stadtgebiet?“ (Anfrage)
+{{"effort": "inquiry", "addressee": null}}
+— Sie will wissen, nicht ändern. Dass die Antwort die Stadtwerke betrifft,
+   macht sie nicht zu deren Sache: Gefragt wird die Verwaltung.
+
+Vorlage: „Die Verwaltung wird gebeten zu prüfen, ob ein Radschnellweg zwischen
+Innenstadt und Universität möglich ist.“
+{{"effort": "review", "addressee": null}}
+
+Vorlage: „Der Rat fordert die Landesregierung auf, die Krankenhausfinanzierung
+zu reformieren.“
+{{"effort": "resolution", "addressee": "Land Niedersachsen"}}
+
+Vorlage: „Satzung über die Erhebung von Gebühren für Sondernutzungen —
+Neufassung zum 01.01.2027“
+{{"effort": "decision", "addressee": null}}
+— Eine Satzung wirkt unmittelbar und kostet die Stadt nichts; sie nimmt ein.
+
+Vorlage: „Einrichtung eines Förderprogramms für Dachbegrünung mit 200.000 Euro
+jährlich ab 2027“
+{{"effort": "budget", "addressee": null}}
+
+Vorlage: „Nachtbus-Linien am Wochenende bis 2 Uhr verlängern“
+{{"effort": "budget", "addressee": "VWG"}}
+— Der Rat kann es wollen und bezahlen, fahren muss die VWG.
+"""
+
+
+PROMPT_CITIES_CLASSIFY = """Du ordnest Vorlagen aus Stadträten anderer deutscher Städte ein. Ziel ist eine
+Ideensammlung für die Stadt OLDENBURG (Oldb): kreisfreie Stadt in Niedersachsen,
+~172.000 Einwohner, Universitätsstadt, Kommunalrecht NKomVG. Oldenburg hat KEINE
+Ortsräte oder Bezirksvertretungen und ist kreisfrei (keine Landkreis-Ebene über sich).
+Gebäudewirtschaft, Abfallwirtschaft und Bäder sind Eigenbetriebe; Stadtwerke (EWE-Anteil),
+Klinikum, VWG (Verkehr) und GSG (Wohnen) sind Beteiligungen.
+
+Für JEDEN Eintrag lieferst du:
+
+- "field": GENAU EIN Schlüssel aus dieser Liste:
+{fields}
+
+- "instrument": Der übertragbare KERN in 2 bis 6 Wörtern, ohne Ortsnamen, ohne
+  Straßennamen, ohne Eigennamen. Nicht der Titel, sondern das Werkzeug dahinter.
+  Beispiele: "Hitzeaktionsplan aufstellen", "Solaranlagen auf Schuldächern",
+  "Querungshilfe an Schulwegen", "Zweckentfremdungssatzung erlassen",
+  "Vereinsbeiträge für Kinder bezuschussen". Bei reinen Personal-, Ehrungs- oder
+  Formalvorgängen: null.
+
+- "transfer": Wie übertragbar ist das auf Oldenburg? GENAU EIN Schlüssel:
+  - "local": An einen konkreten Ort, ein Grundstück, ein Gebäude, EINEN Verein,
+    EIN Quartier oder eine Person gebunden; ohne dieses Einzelne sinnlos
+    (Straßenbenennung, Grünpflege in Straße X, Bebauungsplan Nr. 42, Ehrung einer
+    Person, Zuschuss an den Verein Y, Rahmenplan für das Quartier Z, Umbau des
+    Gebäudes W). Ein allgemein klingendes Instrument im Titel ändert daran nichts,
+    wenn der Beschluss selbst nur diesen einen Fall regelt.
+  - "one_off": Einmalig, reaktiv ODER laufendes Pflichtgeschäft. Dazu gehören
+    ausdrücklich: Haushaltssatzung und Haushaltsvollzug, über- und außerplanmäßige
+    Mittel, Änderungsanträge zu einem konkreten Haushalt, Gebührenkalkulationen und
+    jährliche Gebührenanpassungen, Jahresabschlüsse, Wirtschaftspläne, Bestellung von
+    Abschlussprüfern, Stellenplan, Entschädigungen und Auslagenersatz, Dienstreisen,
+    Feststellung von Wahl- oder Abstimmungsergebnissen, Aufnahme eines Punktes auf die
+    Tagesordnung, Resolutionen zu Tagesereignissen. Solche Vorgänge gibt es in JEDER
+    Stadt — genau deshalb sind sie keine Idee, die man sich abschauen könnte.
+  - "jurisdiction": Setzt etwas voraus, das Oldenburg nicht hat, nicht darf oder
+    gar nicht erst besitzt (z. B. eine Umweltzone, eine U-Bahn, einen Hafen):
+    Landesrecht eines anderen Bundeslandes (NRW, Brandenburg, Sachsen-Anhalt),
+    Bezirksvertretungen/Ortsräte/Ortschaftsräte, Stadtstaat, Landkreis-Aufgaben,
+    Großstadt-Sonderlagen (U-Bahn, Hafen, Flughafen), Landeshauptstadt-Aufgaben.
+  - "adaptable": Ein Instrument — Satzung, Förderrichtlinie, Programm, Konzept,
+    Prüfauftrag, Beteiligungsformat, Organisationsmaßnahme, Standard —, das in
+    Oldenburg mit Anpassung genauso ginge.
+  - "direct": Wie "adaptable", aber die Rechtsgrundlage gilt in Niedersachsen
+    ebenso (NKomVG, NBauO, NZwEWG, NSchG …) oder es ist ein Beitritt, eine
+    Berichtspflicht oder ein bundesweit gleiches Förderprogramm.
+  Wichtig: Ein Ortsname IM TITEL macht eine Sache noch nicht "local" — entscheidend
+  ist, ob das INSTRUMENT ohne diesen Ort noch Sinn ergibt.
+
+- "competence": Wer müsste das in Oldenburg tun? GENAU EIN Schlüssel:
+  "council" (Ratsbeschluss nötig), "administration" (Verwaltung, kein Beschluss nötig),
+  "utility" (Eigenbetrieb: Gebäude, Abfall, Bäder), "holding" (Beteiligung: Stadtwerke,
+  Klinikum, VWG, GSG), "state" (Land oder Bund, Stadt kann nur auffordern).
+
+- "originator": Antragstellende Fraktion/Gruppe, wörtlich wie im Text ("SPD-Fraktion",
+  "Gruppe FDP/UWG", "Fraktion Die Linke"); bei Verwaltungsvorlagen null.
+
+- "summary": EIN neutraler Satz, höchstens 160 Zeichen: was gefordert oder
+  vorgeschlagen wird.
+
+Antworte mit NUR JSON: {{"results": [{{"id": "<id>", "field": "...", "instrument": "..." ,
+"transfer": "...", "competence": "...", "originator": "...", "summary": "..."}}]}}
+
+Regeln: Gib für JEDE vorgelegte id genau ein Ergebnis mit exakt derselben id zurück.
+Erfinde nichts. Wenn der Text zu dünn ist, richte dich nach dem Titel."""
+
+
 DEFAULTS: dict[str, dict[str, str]] = {
+    # --- Städte-Speicher (council/cities): fremde Ratsvorlagen einordnen ------
+    "cities_classify_system": {
+        "title": "Fremde Ratsvorlage einordnen",
+        "description":
+            "Themenfeld, Instrument, Übertragbarkeit auf Oldenburg, Zuständigkeit und "
+            "Antragsteller — ein Aufruf je Batch. Platzhalter: {fields} (die Themenfelder "
+            "aus council/topics.py). ZWEITE Fassung: Sie zählt laufende Pflichtgeschäfte "
+            "namentlich auf. Gemessen an 45 handeingeordneten Vorlagen hob genau das die "
+            "entscheidende Trefferquote von 73 auf 98 Prozent — bei gleichem Modell.",
+        "template": PROMPT_CITIES_CLASSIFY,
+    },
+    "cities_classify_user": {
+        "title": "Fremde Ratsvorlagen — die Einträge",
+        "description": "Der Batch. Platzhalter: {items}.",
+        "template": "EINTRÄGE:\n{items}",
+    },
+    "cities_cluster_check_system": {
+        "title": "Gehören diese Vorlagen wirklich zusammen?",
+        "description":
+            "Der Annotator `cluster_check`. Ohne Platzhalter. Prüft eine "
+            "Ideen-Gruppe auf Mitglieder, die ein ANDERES Instrument meinen — "
+            "die Gruppierung kettet, und seit die Zahl der Städte auf der "
+            "Karte steht, ist ein falscher Cluster eine falsche öffentliche "
+            "Aussage.",
+        "template": PROMPT_CITIES_CLUSTER_CHECK,
+    },
+    "cities_cluster_check_user": {
+        "title": "Die Mitglieder einer Ideen-Gruppe",
+        "description": "Platzhalter: {items}.",
+        "template": "VORLAGEN DIESER GRUPPE:\n{items}",
+    },
+    "cities_effort_system": {
+        "title": "Was würde diese Idee den Rat kosten?",
+        "description":
+            "Der Annotator `effort`. Platzhalter: {steckbrief} (der "
+            "Oldenburg-Steckbrief aus council/cities/evidence.py). Die "
+            "Beispiele sind ERFUNDEN, nicht aus dem Prüfstand — die Lehre aus "
+            "PR 10, wo der Eval sich selbst maß.",
+        "template": PROMPT_CITIES_EFFORT,
+    },
+    "cities_effort_user": {
+        "title": "Der Batch für die Aufwandsklasse",
+        "description": "Platzhalter: {items}.",
+        "template": "VORLAGEN:\n{items}",
+    },
+    "cities_evidence_terms": {
+        "title": "Städtevergleich – Suchbegriffe für die Belege",
+        "description":
+            "Übersetzt eine fremde Idee in die Wörter, unter denen Oldenburg "
+            "dieselbe Sache führen würde. Platzhalter: {instrument}, {summary}, "
+            "{title}. Läuft je Vorlage einmal beim Sammeln der Belege — nicht im "
+            "Request, sondern im Wochen-Cron.",
+        "template": (
+            "Eine andere Stadt hat diese Sache beschlossen oder beantragt. Nenne "
+            "4–7 deutsche Suchbegriffe, unter denen die Stadt OLDENBURG dieselbe "
+            "Sache in ihren Ratsvorlagen führen würde.\n\n"
+            "Nimm das Verwaltungsdeutsch, nicht die Alltagssprache: Wer nach "
+            "„Außengastronomie“ sucht, findet in Oldenburg „Sondernutzungssatzung“; "
+            "wer „Lernbegleiter“ sucht, findet „Schulbegleitung“. Substantive und "
+            "nahe Synonyme, KEINE Ortsnamen, keine Floskeln wie „Antrag“, "
+            "„Beschluss“, „Verwaltung“. Nur die Begriffe, durch Leerzeichen "
+            "getrennt.\n\n"
+            "INSTRUMENT: {instrument}\n"
+            "WORUM ES GEHT: {summary}\n"
+            "TITEL: {title}\n"
+            "SUCHBEGRIFFE:"
+        ),
+    },
+    "cities_fit_system": {
+        "title": "Fremde Vorlage: Hat Oldenburg das schon, und lohnt es sich?",
+        "description":
+            "Das Urteil des Annotators `fit`. Platzhalter: {steckbrief} (der "
+            "Oldenburg-Steckbrief aus council/cities/evidence.py). Ein Aufruf je "
+            "Vorlage, weil jede ihre eigenen Belege hat. Aufgebaut auf dem "
+            "Gegenprobe-Prompt aus dem Probelauf, der über 54 Cluster 29-mal "
+            "„fehlt“, 13-mal „teilweise“ und 11-mal „vorhanden“ traf — und dabei "
+            "den Oldenburger Wärmeplan und die Bewohnerparkzone Haarenesch "
+            "richtig als vorhanden erkannte.",
+        "template": PROMPT_CITIES_FIT,
+    },
+    "cities_fit_user": {
+        "title": "Fremde Vorlage und die Belege aus Oldenburg",
+        "description": "Platzhalter: {paper} (die fremde Vorlage samt "
+                       "Aufwandsklasse), {cluster} (was die Ideen-Cluster über "
+                       "sie sagen), {evidence} "
+                       "(die nummerierten Belege mit ihren Kennungen).",
+        "template": ("FREMDE VORLAGE:\n{paper}\n\n"
+                     "{cluster}\n\n"
+                     "BELEGE AUS OLDENBURG:\n{evidence}"),
+    },
     "deep_decomposition": {
         "title": "Gründliche Recherche – Facetten-Zerlegung",
         "description": "Zerlegt eine Frage in 3–5 Recherche-Facetten für den Deep-Research-Modus (Task 34). Platzhalter: {question}.",
@@ -478,13 +867,20 @@ DEFAULTS: dict[str, dict[str, str]] = {
             '- "decisions" immer; "debates" für Aussagen/Positionen, "budget" für Haushaltszahlen, '
             '"press" für aktuellen Verwaltungsstand, "sessions" für konkrete Sitzungen, '
             '"future_agenda" für nächste Schritte, "places" für räumliche Fragen und '
-            '"documents" für Vorlagen/Anlagen mit fachlichen Details.\n'
+            '"documents" für Vorlagen/Anlagen mit fachlichen Details und '
+            '"other_cities", wenn nach ANDEREN Städten gefragt ist.\n'
             'Erlaubte needs: "amounts", "statements", "dates", "votes", "locations", '
             '"documents", "current_info", "official_updates", "future_dates".\n'
             'Nutze "official_updates" NUR, wenn Veröffentlichungen/Pressemitteilungen der '
             'Stadt oder ein aktueller Verwaltungsstand gefragt sind; dazu gehört "press". '
             'Formulierungen wie „Was hat die Stadt zuletzt mitgeteilt?“, „Was meldet die Stadt?“ '
             'oder „Worüber informierte die Verwaltung?“ sind official_updates + press. '
+            'Nutze "other_cities" NUR, wenn die Frage über Oldenburg HINAUSGEHT: '
+            '„Wie machen das andere Städte?“, „Gibt es das anderswo schon?“, '
+            '„Was hat Osnabrück dazu beschlossen?“, „Sind wir die Einzigen?“. '
+            'NICHT für Fragen, die nur Oldenburg meinen — der Speicher kennt '
+            'sechs Städte, und ihre Beschlüsse sind für eine Oldenburger Frage '
+            'kein Beleg, sondern Ablenkung.\n'
             'Nutze "future_dates" NUR für kommende Sitzungen, Tagesordnungen, nächste '
             'Beratungen oder nächste Schritte; dazu gehört "future_agenda". '
             'Nutze "documents" NUR, wenn die Antwort Inhalte aus Vorlagen oder Anlagen '

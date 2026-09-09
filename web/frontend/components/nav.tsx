@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Home, Tags, Search, Settings, LogOut, UserCircle, ChevronRight,
-  CalendarDays, BarChart3, Trophy, Sparkles, Map as MapIcon, Command,
+  CalendarDays, BarChart3, Trophy, Sparkles, Command, Lightbulb,
   MoreHorizontal, MessageCircle, Bookmark, Euro, Bell, MapPinned,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,19 @@ import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { cn, pfad } from "@/lib/utils";
 import { openCommandPalette } from "@/components/command-palette";
 import { useGleitMarker, GleitMarker } from "@/components/gleit-marker";
+import { karteHref } from "@/lib/routes";
+import { useMeineOrtsbereiche, useUebersicht } from "@/components/viertel/bausteine";
+
+/** Wohin „Mein Viertel" führt: auf den eigenen Stadtteil, wenn einer gewählt
+ *  ist (Tims Entscheidung 5, STADTKARTE-PLAN.md), sonst auf die Stadt-Stufe.
+ *  Die Übersicht wird nur geholt, wenn der Schalter an und jemand angemeldet
+ *  ist — die Startseite fragt denselben Schlüssel, es kostet also nichts
+ *  Zweites. */
+function useViertelZiel(an: boolean): string {
+  const uebersicht = useUebersicht(an);
+  const meine = useMeineOrtsbereiche(an ? uebersicht.data?.districts : undefined);
+  return karteHref(meine[0]?.place_id ?? null);
+}
 
 // `tour` markiert Elemente als Anker für die Lotti-Tour (components/tour.tsx);
 // Sidebar und Bottom-Nav tragen denselben Wert — die Tour nimmt das sichtbare.
@@ -108,7 +121,10 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
   { href: "/fragen", label: "Fragen", icon: Sparkles, tour: "nav-fragen" },
   { href: "/council", label: "Suche", icon: Search, tab: "decisions" },
   { href: "/council?tab=sessions", label: "Sitzungen", icon: CalendarDays, tab: "sessions" },
-  { href: "/council?tab=themen", label: "Stadtkarte", icon: MapIcon, tab: "themen" },
+  // „Stadtkarte" (/council?tab=themen) stand hier bis 09/2026. Die Karte ist
+  // in „Mein Viertel" aufgegangen (STADTKARTE-PLAN.md, Schritt 5; Tim:
+  // „wir dürfen das Nav nicht bloaten") — der Themen-Tab ist nur noch die
+  // Liste und hat keinen eigenen Eintrag mehr.
   { href: "/council?tab=analysis", label: "Analyse", icon: BarChart3, tab: "analysis" },
 ];
 
@@ -120,10 +136,11 @@ const MAIN_ITEMS: (Item & { tab?: string })[] = [
 // Ein Anker auf eine Seite, die für diese Person ein 404 ist, wäre schlechter
 // als kein Anker — genau diese Falle steht in web/frontend/CLAUDE.md.
 const HAUSHALT: Item = { href: "/haushalt", label: "Haushalt", icon: Euro };
-// „Mein Viertel" (Feature-Schalter `mein-viertel`): Was sich im eigenen
-// Ortsbereich in den nächsten Jahren ändert. Steht neben der Liste, weil der
-// Schalter zur Laufzeit kommt — eine Modul-Konstante kennt ihn nicht.
-const VIERTEL: Item = { href: "/viertel", label: "Mein Viertel", icon: MapPinned };
+// „Mein Viertel" (Feature-Schalter `mein-viertel`): die vereinte Stadtkarte
+// unter /karte — Stadt, Viertel, Vorhaben. Steht neben der Liste, weil der
+// Schalter zur Laufzeit kommt — eine Modul-Konstante kennt ihn nicht. Das
+// Ziel trägt den eigenen Stadtteil, sobald einer gewählt ist (s. unten).
+const VIERTEL: Item = { href: karteHref(), label: "Mein Viertel", icon: MapPinned };
 const PERSONAL: Item = { href: "/topics", label: "Meine Themen", icon: Tags, tour: "nav-themen" };
 // Split 28.08.2026: Ausschuss-Abos hingen als Block unter „Meine Themen" und
 // bekamen dadurch weder Platz noch einen eigenen Weg dorthin — man musste an
@@ -152,7 +169,7 @@ const MEHR_AKTIV = (pathname: string, tab: string | null) =>
   // (Beschluss, Person, Thema), die ihr Inneres sind.
   (pathname === "/council" && tab !== "sessions")
   || pathname.startsWith("/council/")
-  || ["/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
+  || ["/karte", "/viertel", "/abos", "/bookmarks", "/quiz", "/account", "/admin"].some((p) => pathname === p || pathname.startsWith(p + "/"));
 
 // RL-U09: In der App-Hülle sitzt der Lotti-Himmel-Schalter (WebThemeSwitch)
 // nur in der Desktop-Sidebar — mobil läuft die Wahl über Konto →
@@ -203,6 +220,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
   const unread = useUnreadTopicHits();
   const openFeedback = useUnreadFeedback(darfAdmin(user));
   const viertel = useFeature("mein-viertel");
+  const viertelZiel = useViertelZiel(viertel && !!user);
 
   // Der Marker muss neu messen, sobald sich das aktive Ziel ändern KANN — das
   // ist der Pfad plus der ?tab=-Wert (fünf der Punkte zeigen auf /council und
@@ -231,7 +249,7 @@ function NavLinksInner({ activeTab, onNavigate }: { activeTab: string; onNavigat
           />
         ))}
         {viertel && (
-          <NavItem item={VIERTEL} active={isActive("/viertel")} onNavigate={onNavigate} />
+          <NavItem item={{ ...VIERTEL, href: viertelZiel }} active={isActive("/karte") || isActive("/viertel")} onNavigate={onNavigate} />
         )}
         {darfHaushalt(user) && (
           <NavItem item={HAUSHALT} active={isActive("/haushalt")} onNavigate={onNavigate} />
@@ -570,6 +588,9 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
   const router = useRouter();
   const { user, logout } = useAuth();
   const openFeedbackUnread = useUnreadFeedback(darfAdmin(user));
+  const viertel = useFeature("mein-viertel");
+  const ideen = useFeature("ideen-anderswo");
+  const viertelZiel = useViertelZiel(viertel && !!user);
   // Hintergrund einfrieren, solange das Sheet offen ist.
   useEffect(() => {
     const alt = document.body.style.overflow;
@@ -638,8 +659,12 @@ function MehrSheet({ abgang, onClose, onFertig }: { abgang: boolean; onClose: ()
               öffnet die Befehlspalette, nicht die Seite. Sie steht deshalb
               zuoberst im Sheet, vor Stadtkarte und Analyse. */}
           <MehrZeile href="/council" icon={Search} label="Suche" onClose={onClose} />
-          <MehrZeile href="/council?tab=themen" icon={MapIcon} label="Stadtkarte" onClose={onClose} />
+          {viertel && <MehrZeile href={viertelZiel} icon={MapPinned} label="Mein Viertel" onClose={onClose} />}
           <MehrZeile href="/council?tab=analysis" icon={BarChart3} label="Analyse" onClose={onClose} />
+          {/* Kein Platz in der Tab-Leiste (Tim: „wir dürfen das Nav nicht
+              bloaten") — die Ideen stehen hier, direkt hinter der Analyse, weil
+              sie dieselbe Frage aus der anderen Richtung stellen. */}
+          {ideen && <MehrZeile href="/council/ideen" icon={Lightbulb} label="Ideen anderswo" onClose={onClose} />}
           {darfHaushalt(user) && <MehrZeile href="/haushalt" icon={Euro} label="Haushalt" onClose={onClose} />}
           {/* Direkt hinter „Themen" in der Tab-Leiste gedacht: Die Abos sind
               die zweite Art, dem Rat zu folgen, und hatten seit dem Split vom

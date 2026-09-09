@@ -75,6 +75,11 @@ _ANALYSE_CACHE: dict[str, dict] = {}
 RESEARCH_CHANNELS = (
     "decisions", "debates", "budget", "press", "sessions",
     "future_agenda", "places", "documents",
+    # „Wie machen das andere Städte?" — der Städte-Speicher als Quelle. Ein
+    # eigener Kanal und keine Erweiterung von `decisions`: Was hier steht,
+    # sind Beschlüsse ANDERER Räte, und sie dürfen nie so aussehen, als hätte
+    # Oldenburg sie gefasst. Die Antwort muss die Stadt immer mitnennen.
+    "other_cities",
 )
 RESEARCH_INTENTS = (
     "fact", "overview", "status", "timeline", "money", "position", "session",
@@ -713,6 +718,105 @@ def finde_ort(question: str, store=None) -> dict | None:
     return {"id": place.id, "name": place.name, "kind": place.kind,
             "kind_label": places.kind_label(place.kind),
             "description": place.description}
+
+
+#: So viele Alternativ-Fragen höchstens. Drei sind eine Auswahl, sechs sind
+#: eine zweite Suche — und wer gerade „nichts gefunden" gelesen hat, will
+#: keine zweite Suche, sondern einen Ausweg.
+ALTERNATIVEN = 3
+
+#: So viele Volltext-Treffer je Stichwort werden angesehen. Größer heißt nur
+#: langsamer: Was der Titel-Filter darunter durchlässt, steht ohnehin vorn.
+ANKER_POOL = 60
+
+#: Wörter, die in der FRAGE stehen, aber nichts über ihren Gegenstand sagen.
+#: Ohne sie gewönne das Gerüst der Frage gegen ihren Inhalt: Zu „erzähl mir
+#: was über das Thema Giftmüll am Fliegerhorst" schlug die erste Fassung
+#: Vorträge über strukturellen Rassismus vor, weil „Thema" häufiger war als
+#: „Fliegerhorst". Ergänzt `_STOP`, das für die Suche gedacht ist und solche
+#: Gerüstwörter durchlässt.
+_GERUEST = {
+    "thema", "themen", "stand", "sachstand", "frage", "fragen", "auskunft",
+    "information", "informationen", "ergebnis", "ergebnisse", "vortrag",
+    "bericht", "berichte", "sitzung", "sitzungen", "aktuell", "aktuelle",
+    "aktuellen", "geplante", "geplanten", "letzte", "letzten",
+}
+
+
+def alternativ_fragen(store, frage: str, limit: int = ALTERNATIVEN) -> list[str]:
+    """Ausweg-Fragen, wenn die Suche zu einer Frage gar nichts fand.
+
+    **Warum es das gibt.** Am 09.08.2026 fragte jemand zweimal nach „Giftmüll
+    am Fliegerhorst" und bekam zweimal „keine Informationen" — zweimal Daumen
+    runter, einmal mit dem Grund „Falschinfo". Die Person hatte recht: Die
+    Unterlagen sagen „Sondermüll" und „Schießanlage". Sie musste sich die
+    Antwort erkämpfen („Da muss was zu sein …"), und das ist die teuerste
+    Stelle im ganzen Datenbestand.
+
+    **Wie der Ausweg gefunden wird.** Nicht mit einer zweiten, lockereren
+    Vektorsuche — die hat gerade nichts gefunden. Sondern mit dem Stichwort,
+    das die Person RICHTIG hatte: Von den Substantiven der Frage trägt meist
+    eines (hier „Fliegerhorst"), die anderen nicht. Angeboten werden dessen
+    Beschlüsse als fertige Fragen. Der Umweg über den Titel ist Absicht — er
+    nennt das Wort, nach dem die Unterlagen sortiert sind, und beantwortet
+    nebenbei „wie hättest du das nennen sollen".
+
+    **Der Anker muss im TITEL stehen.** Das ist die ganze Relevanzprüfung, und
+    sie ersetzt jede Häufigkeitsgrenze. Ohne sie schlug der Ausweg vor, was
+    der Volltext irgendwo streift: „Wie ist das Wetter morgen?" ergab
+    Grünstreifen, Sportförderung und einen Abfall-Lernpfad. Mit ihr bleibt von
+    derselben Frage genau eine Zeile übrig, und die handelt wirklich von
+    Extremwetterlagen. Teilwort-Suche ist dabei Absicht: „Leerstand" soll
+    „Wohnungsleerstand" treffen.
+
+    Eine Häufigkeitsgrenze hatte ich zuerst — sie warf ausgerechnet den Fall
+    hinaus, für den das hier gebaut ist: „Fliegerhorst" steht in über
+    zweihundert Volltexten und ist trotzdem der richtige Anker.
+
+    Nur Volltextsuche, kein Modell. Leere Liste, wenn nichts trägt: Ein
+    Vorschlag, der auch danebenliegt, ist schlechter als keiner.
+    """
+    from council.ergebnisse import _kurz  # lokal: qa wird früh importiert
+
+    begriffe = [b for b in extract_keywords(frage)
+                if len(b) >= 5 and b not in _GERUEST]
+    if not begriffe:
+        return []
+
+    beste: tuple[tuple[int, int], list[dict]] | None = None
+    for begriff in begriffe[:6]:
+        try:
+            treffer = store.search_decisions_fts(begriff, limit=ANKER_POOL)
+        except Exception:  # noqa: BLE001 — ein Ausweg darf nie die Antwort brechen
+            continue
+        if not treffer:
+            continue
+        try:
+            zeilen = [z for z in store.get_decisions_by_ids([t[0] for t in treffer])
+                      if begriff in (z.get("title") or "").lower()]
+        except Exception:  # noqa: BLE001 — dito
+            continue
+        if not zeilen:
+            continue
+        # Das SELTENERE Wort gewinnt: Es unterscheidet die Frage von allen
+        # anderen. Bei Gleichstand das mit mehr Titel-Treffern.
+        rang = (len(treffer), -len(zeilen))
+        if beste is None or rang < beste[0]:
+            beste = (rang, zeilen)
+
+    if beste is None:
+        return []
+    fragen: list[str] = []
+    for z in beste[1]:
+        kurz = _kurz(z.get("title") or "", grenze=54)
+        if len(kurz) < 8:
+            continue
+        satz = f'Was wurde zu „{kurz}“ entschieden?'
+        if satz not in fragen:
+            fragen.append(satz)
+        if len(fragen) >= limit:
+            break
+    return fragen
 
 
 def anker_ids_fuer(store, question: str) -> list[int]:
@@ -1365,6 +1469,7 @@ def _planungen_block(planungen: list[dict] | None) -> str:
 
 def deep_bericht_stream(question: str, candidates: list[dict],
                         presse: list[dict] | None = None,
+                        staedte: list[dict] | None = None,
                         debatten: list[dict] | None = None,
                         haushalt: list[dict] | None = None,
                         planungen: list[dict] | None = None,
@@ -1391,6 +1496,7 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
     zusatz = (_glossar_block(begriffe_fuer(question))
               + _debatten_block(debatten) + _presse_block(presse)
+              + _staedte_block(staedte)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
                             context=_build_context(candidates),
@@ -1583,6 +1689,28 @@ def _presse_block(presse: list[dict] | None) -> str:
     return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen). Ergänze\n"
             "die Antwort um den aktuellen Stand der Verwaltung, wo die Mitteilungen\n"
             "Neues zur Sache tragen — als „Laut Pressemitteilung vom …“, NIE mit [id]:\n"
+            f"{zeilen}\n")
+
+
+def _staedte_block(staedte: list[dict] | None) -> str:
+    """Kontext-Absatz „Aus anderen Städten" — Beschlüsse FREMDER Räte.
+
+    **Die Stadt muss in jeden Satz.** Was hier steht, hat nicht der Oldenburger
+    Rat beschlossen, und eine Antwort, die das verschweigt, ist schlimmer als
+    keine: Sie behauptet über Oldenburg etwas, das anderswo gilt. Deshalb kein
+    ``[id]`` — die Zitat-Nummern gehören den Oldenburger Beschlüssen — und ein
+    ausdrücklicher Satz im Block.
+    """
+    if not staedte:
+        return ""
+    zeilen = "\n".join(
+        f"- {s.get('body_name') or s.get('body_id')}, {_datum_de(s.get('date'))}: "
+        f"{(s.get('name') or '').strip()[:160]}"
+        + (f" — {s['summary'].strip()[:180]}" if s.get("summary") else "")
+        for s in staedte)
+    return ("\nAUS ANDEREN STÄDTEN (Beschlüsse und Anträge fremder Räte, nicht "
+            "Oldenburgs).\nNenne bei JEDER dieser Angaben die Stadt — sie sagen "
+            "nichts darüber, was\nin Oldenburg gilt. Nie mit [id] zitieren:\n"
             f"{zeilen}\n")
 
 
@@ -3003,7 +3131,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      tax_capacity: dict | None = None,
                      geld: dict | None = None,
                      sitzungen: list[dict] | None = None,
-                     ort: dict | None = None) -> tuple[list[dict], dict]:
+                     ort: dict | None = None,
+                     staedte: list[dict] | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
@@ -3050,6 +3179,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             presse=_sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
+                            + _staedte_block(staedte)
                             + geld_block(geld) + _debatten_block(debatten, eng)
                             + _anlagen_block(anlagen),
                             gespraech=gespraech)
@@ -3196,11 +3326,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     duenn: bool = False, eng: bool = False,
                     taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
-                    ort: dict | None = None):
+                    ort: dict | None = None, staedte: list[dict] | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
-                                       taxes, tax_capacity, geld, sitzungen, ort)
+                                       taxes, tax_capacity, geld, sitzungen, ort,
+                                       staedte)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -3215,13 +3346,14 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   duenn: bool = False, eng: bool = False,
                   taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
-                  ort: dict | None = None):
+                  ort: dict | None = None, staedte: list[dict] | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
-                                       taxes, tax_capacity, geld, sitzungen, ort)
+                                       taxes, tax_capacity, geld, sitzungen, ort,
+                                       staedte)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

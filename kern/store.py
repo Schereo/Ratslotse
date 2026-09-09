@@ -194,6 +194,16 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Kalender-Abo (ICS): das Geheimnis in der Abo-Adresse dieses Kontos.
     -- Beim ersten Abruf angelegt, einzeln erneuerbar; NULL = nie abgerufen.
     calendar_token   TEXT,
+    -- „Neu bei Ratslotse" (kern/releases.py): die HÖCHSTE weggeklickte
+    -- Version, nicht die zuletzt gezeigte. Als Hochwassermarke, damit zwei
+    -- verpasste Releases beide erscheinen und ein Wisch alles darunter
+    -- erledigt. NULL = noch nie eine Karte weggeklickt.
+    news_seen_version TEXT,
+    -- Bis zu welcher Version dieses Konto die Ankündigung per Mail/Push
+    -- bekommen hat. Getrennt von `news_seen_version`: Gesehen und
+    -- angeschrieben sind zwei Dinge, und nur so findet ein zweiter Klick auf
+    -- „Verschicken" null Empfänger statt aller.
+    news_sent_version TEXT,
     created_at       TEXT NOT NULL
 );
 
@@ -419,6 +429,32 @@ CREATE TABLE IF NOT EXISTS user_activity (
     PRIMARY KEY (owner_id, day, feature, client)
 );
 CREATE INDEX IF NOT EXISTS idx_user_activity_day ON user_activity(day);
+
+-- Wie oft welche Seite aufgerufen wurde — OHNE zu wissen, von wem.
+-- Das Gegenstück zu `user_activity`: die zählt, was ANGEMELDETE Konten tun,
+-- diese hier zählt auch die anonyme Nutzung, die bis 09/2026 vollständig
+-- unbeobachtet war (kein Zugriffslog, keine Analytik).
+--
+-- Keine Kennung, kein Cookie, keine IP, kein Referrer, keine Query — die
+-- Begründung je Feld steht in kern/seitenaufrufe.py. `route` kann nur einen
+-- Wert aus der dortigen Positivliste tragen; alles Unbekannte fällt in die
+-- Sammelzeile `/andere`, damit ein fremder Browser die Tabelle weder mit
+-- erfundenen Pfaden aufblähen noch einen Suchbegriff hineinschreiben kann.
+--
+-- `sessions` zählt den ERSTEN Aufruf je Browser-Tab (Marke im sessionStorage,
+-- verschwindet mit dem Tab). Das ist so nah an „Besuche", wie man ohne
+-- Wiedererkennung kommt — und bewusst nicht „Besucher".
+CREATE TABLE IF NOT EXISTS page_views (
+    day       TEXT NOT NULL,
+    route     TEXT NOT NULL,
+    client    TEXT NOT NULL DEFAULT 'web',
+    logged_in INTEGER NOT NULL DEFAULT 0,
+    count     INTEGER NOT NULL DEFAULT 0,
+    sessions  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, route, client, logged_in)
+);
+CREATE INDEX IF NOT EXISTS idx_page_views_day ON page_views(day);
+
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
 
 -- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (kern/alerts.py).
@@ -1279,6 +1315,14 @@ class Store:
                 # entstanden, und ein geratenes „web" wäre eine Behauptung.
                 if "signup_client" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN signup_client TEXT")
+                # „Neu bei Ratslotse" (kern/releases.py). Bestandskonten
+                # bleiben NULL — sie haben noch nie eine Karte weggeklickt und
+                # sollen die des laufenden Releases sehen. Jede Spalte prüft
+                # sich selbst (s. tests/test_web_users_spalten.py).
+                if "news_seen_version" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN news_seen_version TEXT")
+                if "news_sent_version" not in wu_cols:
+                    self._conn.execute("ALTER TABLE web_users ADD COLUMN news_sent_version TEXT")
         # Die Rollen ziehen aus der Spalte in die Tabelle um (09/2026).
         # `web_user_roles` legt das SCHEMA selbst an (CREATE TABLE IF NOT
         # EXISTS läuft bei jedem Öffnen) — hier fehlt nur der Inhalt.
@@ -1804,11 +1848,116 @@ class Store:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def accounts_without_hook(self, older_than_hours: int = 48, limit: int = 200) -> list[dict]:
+        """Bestätigte Konten, die WEDER ein Thema NOCH ein Gremium haben.
+
+        Die Lücke, die ``setups_to_remind`` offen lässt. Jene Abfrage verlangt
+        ein **begonnenes** Setup (``setup_step >= 1``) — und genau daran ging
+        die Gruppe vorbei, um die es hier geht: Am 08.09.2026 hatten sieben von
+        neun neuen Konten den Assistenten nie angefangen, fünf standen am Ende
+        ohne jeden Haken da. Für die gab es keinen einzigen Anlass, sich je
+        wieder bei ihnen zu melden — auch keine Erinnerung.
+
+        **Gezählt wird der Haken, nicht der Schritt.** Wer Themen oder Abos
+        hat, bekommt nichts, egal wie weit der Assistent kam; wer keine hat,
+        bekommt die Mail, auch wenn er formal „fertig" ist. Das ist der
+        Unterschied zwischen „hat aufgehört zu klicken" und „hat nichts,
+        worüber wir ihn informieren könnten".
+
+        Dieselbe Zurückhaltung wie bei der Setup-Erinnerung, und dieselbe
+        Marke: ``setup_reminded_at``. Wer schon eine bekommen hat, bekommt
+        keine zweite — die beiden Anlässe teilen sich das eine Mal.
+        """
+        cutoff = (datetime.utcnow() - timedelta(hours=older_than_hours)).isoformat(timespec="seconds")
+        rows = self._conn.execute(
+            "SELECT id, email, display_name, setup_step, created_at FROM web_users u "
+            "WHERE u.created_at <= ? "
+            "  AND u.setup_reminded_at IS NULL "
+            "  AND u.status = 'active' AND u.email_verified = 1 "
+            "  AND NOT EXISTS (SELECT 1 FROM topics t WHERE t.owner_id = u.id) "
+            "  AND NOT EXISTS (SELECT 1 FROM committee_subscriptions s WHERE s.owner_id = u.id) "
+            "ORDER BY u.created_at LIMIT ?",
+            (cutoff, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     def mark_setup_reminded(self, user_id: int) -> None:
         with self._conn:
             self._conn.execute(
                 "UPDATE web_users SET setup_reminded_at = ? WHERE id = ?",
                 (datetime.utcnow().isoformat(timespec="seconds"), user_id),
+            )
+
+    # ---- „Neu bei Ratslotse" (kern/releases.py) ----------------------------
+
+    def set_news_seen(self, user_id: int, version: str) -> str | None:
+        """Die Hochwassermarke setzen — sie steigt nur.
+
+        Gibt die Marke zurück, die danach gilt. Sie **sinkt nie**: Die
+        Oberfläche meldet die Version, die sie gerade gezeigt hat, nicht „die
+        neueste laut Server". Kommt zwischen Laden und Wegklicken ein Deploy,
+        bliebe das neue Release sonst nicht nur offen, sondern würde von einem
+        alten Wisch mit erledigt.
+
+        Ein unbekanntes Format lässt die Marke unberührt statt zu werfen: Das
+        ist eine Wisch-Geste, kein Formular — sie darf nichts kaputt machen.
+        """
+        from kern import releases
+
+        row = self._conn.execute(
+            "SELECT news_seen_version FROM web_users WHERE id = ?", (user_id,)).fetchone()
+        if row is None:
+            return None
+        aktuell = row[0]
+        try:
+            neu_key = releases.version_key(version)
+        except ValueError:
+            return aktuell
+        if aktuell:
+            try:
+                if releases.version_key(aktuell) >= neu_key:
+                    return aktuell
+            except ValueError:
+                pass  # Unlesbare Altmarke: überschreiben ist besser als bleiben
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET news_seen_version = ? WHERE id = ?", (version, user_id))
+        return version
+
+    def news_candidates(self) -> list[dict]:
+        """Alle Konten, die eine Release-Ankündigung überhaupt bekommen dürfen.
+
+        Aktiv und mit bestätigter Adresse — mehr filtert SQL hier bewusst
+        nicht. **Welche Version wer noch nicht hat, entscheidet Python**
+        (``kern.releases.version_key``): Als Zeichenkette verglichen stünde
+        ``"2.10.0"`` vor ``"2.9.0"``, und ein ``ORDER BY`` über Versionen wäre
+        genau die Sorte stiller Fehler, die erst beim zehnten Minor auffällt.
+
+        Der Zustellweg zählt hier nicht mit: Ob jemand Mail, Push oder gar
+        nichts will, entscheidet ``kern.notify`` beim Einreihen — an einer
+        Stelle für alle Anlässe.
+        """
+        rows = self._conn.execute(
+            "SELECT id, created_at, news_seen_version, news_sent_version "
+            "FROM web_users WHERE status = 'active' AND email_verified = 1 "
+            "ORDER BY id"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_news_sent(self, user_ids: list[int], version: str) -> None:
+        """Vermerken, dass die Ankündigung dieser Version raus ist.
+
+        Auch für Konten, bei denen ``notify.einreihen`` nichts eingereiht hat
+        (Anlass abgeschaltet, Zustellung aus): Sonst fasst sie jeder weitere
+        Lauf erneut an, und aus „will das nicht" würde eine tägliche Frage.
+        """
+        if not user_ids:
+            return
+        ph = ",".join("?" * len(user_ids))
+        with self._conn:
+            self._conn.execute(
+                f"UPDATE web_users SET news_sent_version = ? WHERE id IN ({ph})",
+                (version, *user_ids),
             )
 
     # ---- Quiz: Antworten (Punkte je Gebiet) + Bewertungen ----
@@ -3037,6 +3186,422 @@ class Store:
                 (start.isoformat(), end.isoformat())).fetchone()[0]
             out.append({"day": end.isoformat(), "n": n})
         return out
+
+    # ---- Kohorten-Trichter (Plan „Sehen und Zurückholen", Teil A) ----
+    #: Die Stufen des Trichters, in der Reihenfolge, in der man sie durchläuft.
+    #: `fenster` (Tage) heißt: Die Stufe braucht Zeit, um erreicht zu werden —
+    #: ein Konto von gestern KANN „Tag 30" noch nicht geschafft haben. Solche
+    #: Stufen weisen deshalb neben der erreichten Zahl aus, wie viele Konten
+    #: überhaupt schon so alt sind (``eligible``). Ohne diese Unterscheidung
+    #: liest sich jede frische Woche als Totalausfall, und genau das war die
+    #: Fehllesart in der ersten Auswertung („0 von 9 heute noch aktiv" —
+    #: bei Konten, die drei Tage alt waren).
+    KOHORTEN_STUFEN: tuple[tuple[str, str, int | None], ...] = (
+        ("registriert", "registriert", None),
+        ("bestaetigt", "E-Mail bestätigt", None),
+        ("setup_begonnen", "Einrichtung begonnen", None),
+        ("setup_fertig", "Einrichtung fertig", None),
+        ("haken", "Thema oder Gremium (24 h)", 1),
+        ("frage", "erste Frage gestellt", None),
+        # „Kam wieder", nicht „ist noch da": gezählt wird, wer im Fenster an
+        # IRGENDEINEM weiteren Tag aktiv war. Das ist die Frage, die sich bei
+        # zweistelligen Kontozahlen überhaupt beantworten lässt — echtes
+        # Verbleiben („war an Tag 30 aktiv") träfe fast nie jemanden und sagte
+        # nichts. Die Stufen sind dadurch sauber ineinander enthalten.
+        ("tag2", "kam wieder (2. Tag)", 2),
+        ("tag7", "kam wieder (7 Tage)", 7),
+        ("tag30", "kam wieder (30 Tage)", 30),
+    )
+
+    def _stats_ausschluss(self, domains: Iterable[str] = ()) -> set[int]:
+        """Konten, die in der Nutzungsstatistik nichts verloren haben.
+
+        Betreiber- und Testkonten sind in einem Bestand dieser Größe nicht
+        Rauschen, sondern die Mehrheit: Am 08.09.2026 stammten 15.209 von
+        23.888 Zugriffen aus EINEM Konto — dem des Betreibers. Eine Statistik,
+        die das mitzählt, misst das eigene Klicken.
+
+        Ausgeschlossen wird, wer das Recht ``admin`` hat (Betreiber und
+        Entwickler*innen) oder dessen Adresse auf einer der genannten Domänen
+        liegt (``STATS_EXCLUDE_DOMAINS``, kommagetrennt).
+
+        **Gegen das Recht, nicht gegen „hat überhaupt eine Rolle".** Die erste
+        Fassung warf jedes Konto mit einer Rollenzeile hinaus und traf damit
+        die Ratsmitglieder mit — also ausgerechnet die aufmerksamsten echten
+        Nutzer*innen. Am Prod-Bestand gemessen (08.09.2026) waren das fünf von
+        fünfzehn ausgeschlossenen Konten. Dieselbe Regel wie überall sonst:
+        geprüft wird ein RECHT, nie ein Rollenname (``kern/roles.py``).
+        """
+        from kern import roles as rollen
+
+        endungen = tuple(
+            "@" + d.strip().lstrip("@").lower() for d in domains if d and d.strip())
+        raus: set[int] = set()
+        for r in self._conn.execute("SELECT id, email, role FROM web_users").fetchall():
+            mail = (r["email"] or "").lower()
+            if endungen and mail.endswith(endungen):
+                raus.add(r["id"])
+            # `web_users.role` ist nur ein abgeleitetes Schaufenster — für
+            # Konten aus der Zeit vor `web_user_roles` aber das einzige Signal.
+            elif "admin" in rollen.permissions_for([r["role"]]):
+                raus.add(r["id"])
+        rollen_je_konto = self.web_user_roles_map()
+        for uid, ihre in rollen_je_konto.items():
+            if "admin" in rollen.permissions_for(ihre):
+                raus.add(uid)
+        return raus
+
+    def admin_kohorten(self, wochen: int = 8, ausschluss_domains: Iterable[str] = ()) -> dict:
+        """Der Trichter je Registrierungswoche — und die vier Kennzahlen.
+
+        Beantwortet die Frage, an der die Auswertung vom 08.09.2026 hängen
+        blieb: Von den Leuten, die sich anmelden, wie viele richten etwas ein,
+        und wie viele kommen wieder? Die Zahlen dafür lagen längst in den
+        Tabellen; es fehlte nur die Auswertung.
+
+        Alles ohne Betreiber- und Testkonten (``_stats_ausschluss``). Wie viele
+        das waren, steht als ``excluded`` in der Antwort — eine Statistik, die
+        stillschweigend Zeilen wegwirft, ist selbst eine Falle.
+        """
+        from datetime import date
+
+        heute = date.today()
+        raus = self._stats_ausschluss(ausschluss_domains)
+
+        # Ein Query je Tabelle statt eines Unterausdrucks je Konto: Der Bestand
+        # ist klein, die Zahl der Konten wächst aber, und das hier bleibt so
+        # linear wie es aussieht.
+        konten = [dict(r) for r in self._conn.execute(
+            "SELECT id, created_at, email_verified, setup_started_at, setup_done_at "
+            "FROM web_users WHERE created_at IS NOT NULL ORDER BY created_at").fetchall()
+            if r["id"] not in raus]
+
+        erste_aktivitaet: dict[int, list[str]] = {}
+        for r in self._conn.execute(
+                "SELECT owner_id, day FROM user_activity ORDER BY day").fetchall():
+            erste_aktivitaet.setdefault(r["owner_id"], []).append(r["day"])
+        frage_gestellt = {r["owner_id"] for r in self._conn.execute(
+            "SELECT DISTINCT owner_id FROM user_activity WHERE feature = 'ai_question'").fetchall()}
+        haken_am: dict[int, str] = {}
+        for sql in ("SELECT owner_id, MIN(created_at) a FROM topics GROUP BY owner_id",
+                    "SELECT owner_id, MIN(created_at) a FROM committee_subscriptions GROUP BY owner_id"):
+            for r in self._conn.execute(sql).fetchall():
+                frueher = haken_am.get(r["owner_id"])
+                if r["a"] and (frueher is None or r["a"] < frueher):
+                    haken_am[r["owner_id"]] = r["a"]
+
+        def montag(tag: date) -> date:
+            return tag - timedelta(days=tag.weekday())
+
+        eimer: dict[str, list[dict]] = {}
+        grenze = montag(heute) - timedelta(days=7 * (max(1, wochen) - 1))
+        # Der Vorzeitraum: dieselbe Spanne unmittelbar davor. Ohne ihn ist jede
+        # Zahl nur ein Stand — erst der Vergleich sagt, ob eine Maßnahme etwas
+        # bewegt hat, und genau dafür wurde der Trichter gebaut.
+        vor_grenze = grenze - timedelta(days=7 * max(1, wochen))
+        vorher: list[dict] = []
+        for k in konten:
+            reg = date.fromisoformat(k["created_at"][:10])
+            if reg < vor_grenze:
+                continue
+            if reg < grenze:
+                vorher.append(k)
+                continue
+            eimer.setdefault(montag(reg).isoformat(), []).append(k)
+
+        def stufen_fuer(gruppe: list[dict]) -> list[dict]:
+            out: list[dict] = []
+            for key, label, fenster in self.KOHORTEN_STUFEN:
+                erreicht = 0
+                moeglich = 0
+                for k in gruppe:
+                    reg = date.fromisoformat(k["created_at"][:10])
+                    reif = fenster is None or (heute - reg).days >= fenster
+                    if reif:
+                        moeglich += 1
+                    if not reif:
+                        continue
+                    if key == "registriert":
+                        erreicht += 1
+                    elif key == "bestaetigt":
+                        erreicht += 1 if k["email_verified"] else 0
+                    elif key == "setup_begonnen":
+                        erreicht += 1 if k["setup_started_at"] else 0
+                    elif key == "setup_fertig":
+                        erreicht += 1 if k["setup_done_at"] else 0
+                    elif key == "haken":
+                        a = haken_am.get(k["id"])
+                        erreicht += 1 if a and a[:10] <= (reg + timedelta(days=1)).isoformat() else 0
+                    elif key == "frage":
+                        erreicht += 1 if k["id"] in frage_gestellt else 0
+                    else:  # tagN — ein WEITERER Tag, der Anmeldetag zählt nicht
+                        tage = erste_aktivitaet.get(k["id"], [])
+                        bis = (reg + timedelta(days=fenster or 0)).isoformat()
+                        erreicht += 1 if any(
+                            reg.isoformat() < t <= bis for t in tage) else 0
+                out.append({"key": key, "label": label, "n": erreicht,
+                            "eligible": moeglich, "window_days": fenster})
+            return out
+
+        kohorten = [{"week": woche, "n": len(gruppe), "stages": stufen_fuer(gruppe)}
+                    for woche, gruppe in sorted(eimer.items())]
+        alle = [k for g in eimer.values() for k in g]
+        gesamt = stufen_fuer(alle)
+        davor = stufen_fuer(vorher)
+
+        def quote(stufen: list[dict], key: str) -> float | None:
+            s = next((x for x in stufen if x["key"] == key), None)
+            return round(s["n"] / s["eligible"], 3) if s and s["eligible"] else None
+
+        def basis(key: str) -> tuple[int, int]:
+            s = next((x for x in gesamt if x["key"] == key), None)
+            return (s["n"], s["eligible"]) if s else (0, 0)
+
+        tage_sack = 90
+        return {
+            "weeks": wochen,
+            "excluded": len(raus),
+            "cohorts": kohorten,
+            "total": gesamt,
+            "kennzahlen": {
+                "haken_quote": quote(gesamt, "haken"),
+                "tag2": quote(gesamt, "tag2"),
+                "tag7": quote(gesamt, "tag7"),
+                "tag30": quote(gesamt, "tag30"),
+                "sackgassen_quote": self.sackgassen_quote(tage_sack),
+                "fragen_median": self.fragen_median_je_konto(),
+            },
+            # Dieselben Zahlen für den Zeitraum davor — die Oberfläche zeigt
+            # daraus die Veränderung. `None`, wo es nichts zu vergleichen gibt.
+            "previous": {
+                "haken_quote": quote(davor, "haken"),
+                "tag2": quote(davor, "tag2"),
+                "tag7": quote(davor, "tag7"),
+                "tag30": quote(davor, "tag30"),
+                "sackgassen_quote": self.sackgassen_quote(tage_sack, versatz=tage_sack),
+                "fragen_median": self.fragen_median_je_konto(versatz=7),
+            },
+            # Zähler und Nenner hinter den Quoten: „43 %" allein sagt nicht,
+            # ob es 3 von 7 oder 43 von 100 sind.
+            "basis": {
+                "haken": basis("haken"), "tag2": basis("tag2"),
+                "tag7": basis("tag7"), "tag30": basis("tag30"),
+                "sackgassen": self.sackgassen_basis(tage_sack),
+                "vorher_n": len(vorher),
+            },
+        }
+
+    def sackgassen_basis(self, tage: int = 90, versatz: int = 0) -> tuple[int, int]:
+        """(Antworten ohne Quelle, Antworten gesamt) im Fenster — ``versatz``
+        Tage zurückgeschoben für den Vorzeitraum."""
+        ende = datetime.now(timezone.utc) - timedelta(days=versatz)
+        seit = (ende - timedelta(days=tage)).date().isoformat()
+        bis = ende.date().isoformat()
+        rows = self._conn.execute(
+            "SELECT sources FROM qa_conversation_turns WHERE created >= ? AND created < ?",
+            (seit, bis + "T99")).fetchall()
+        leer = 0
+        for r in rows:
+            try:
+                zitiert = (json.loads(r["sources"] or "{}") or {}).get("cited")
+            except (ValueError, TypeError):
+                zitiert = None
+            if not zitiert:
+                leer += 1
+        return (leer, len(rows))
+
+    def sackgassen_quote(self, tage: int = 90, versatz: int = 0) -> float | None:
+        """Anteil der Antworten, die keine einzige Quelle nennen.
+
+        Gerechnet auf den GESPEICHERTEN Gesprächen — das ist die einzige
+        Quelle, die es heute gibt, und sie deckt nur Konten mit eingeschaltetem
+        Speichern ab (am 08.09.2026: 124 von 169 Fragen). Der vollständige
+        Zähler kommt mit ``ai_answer_empty`` in ``user_activity``; bis dahin ist
+        diese Zahl eine Untergrenze der Wahrheit, keine Schätzung.
+        """
+        leer, gesamt = self.sackgassen_basis(tage, versatz)
+        return round(leer / gesamt, 3) if gesamt else None
+
+    def fragen_median_je_konto(self, tage: int = 7, versatz: int = 0) -> float | None:
+        """Median der Fragen je Konto, das im Zeitraum überhaupt aktiv war.
+
+        Der Median und nicht der Mittelwert: Ein einzelnes Konto mit 108 Fragen
+        (das des Betreibers) verschöbe jeden Mittelwert so weit, dass er über
+        niemanden mehr etwas sagt.
+        """
+        from datetime import date
+        bis = date.today() - timedelta(days=versatz)
+        seit = (bis - timedelta(days=tage - 1)).isoformat()
+        aktiv = {r["owner_id"] for r in self._conn.execute(
+            "SELECT DISTINCT owner_id FROM user_activity WHERE day >= ? AND day <= ?",
+            (seit, bis.isoformat())).fetchall()}
+        if not aktiv:
+            return None
+        fragen = {r["owner_id"]: r["c"] for r in self._conn.execute(
+            "SELECT owner_id, SUM(count) c FROM user_activity "
+            "WHERE day >= ? AND day <= ? AND feature = 'ai_question' GROUP BY owner_id",
+            (seit, bis.isoformat())).fetchall()}
+        werte = sorted(fragen.get(o, 0) for o in aktiv)
+        mitte = len(werte) // 2
+        if len(werte) % 2:
+            return float(werte[mitte])
+        return round((werte[mitte - 1] + werte[mitte]) / 2, 1)
+
+    # ---- Seitenaufrufe (anonym, siehe kern/seitenaufrufe.py) ----
+    def merke_seitenaufruf(self, route: str, client: str = "web",
+                           angemeldet: bool = False, erster: bool = False) -> None:
+        """Einen Seitenaufruf zählen — best-effort, nie load-bearing.
+
+        Wie ``record_activity``: Ein Zähler, der einen Request scheitern lässt,
+        ist schlimmer als kein Zähler. Der Aufrufer normalisiert Route und
+        Client vorher über ``kern.seitenaufrufe``; hier wird nur addiert.
+        """
+        from datetime import date
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO page_views (day, route, client, logged_in, count, sessions) "
+                    "VALUES (?, ?, ?, ?, 1, ?) "
+                    "ON CONFLICT(day, route, client, logged_in) DO UPDATE SET "
+                    "count = count + 1, sessions = sessions + ?",
+                    (date.today().isoformat(), route, client, 1 if angemeldet else 0,
+                     1 if erster else 0, 1 if erster else 0),
+                )
+        except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
+            pass
+
+    def seitenaufrufe(self, tage: int = 30) -> dict:
+        """Was in den letzten ``tage`` Tagen aufgerufen wurde.
+
+        Drei Schnitte auf denselben Zeilen: der Verlauf je Tag, die
+        meistgesehenen Seiten und die Aufteilung angemeldet/anonym samt
+        Client. Mehr Schnitte wären am Bestand billiger als eine zweite
+        Tabelle — die Zeilenzahl ist durch die Positivliste gedeckelt.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        verlauf = [{"day": r["day"], "n": r["n"], "sessions": r["s"]}
+                   for r in self._conn.execute(
+                       "SELECT day, SUM(count) n, SUM(sessions) s FROM page_views "
+                       "WHERE day >= ? GROUP BY day ORDER BY day", (seit,)).fetchall()]
+        seiten = [{"route": r["route"], "n": r["n"], "sessions": r["s"]}
+                  for r in self._conn.execute(
+                      "SELECT route, SUM(count) n, SUM(sessions) s FROM page_views "
+                      "WHERE day >= ? GROUP BY route ORDER BY n DESC LIMIT 12",
+                      (seit,)).fetchall()]
+        clients = [{"client": r["client"], "n": r["n"]} for r in self._conn.execute(
+            "SELECT client, SUM(count) n FROM page_views WHERE day >= ? "
+            "GROUP BY client ORDER BY n DESC", (seit,)).fetchall()]
+        summe = self._conn.execute(
+            "SELECT COALESCE(SUM(count), 0) n, COALESCE(SUM(sessions), 0) s, "
+            "COALESCE(SUM(CASE WHEN logged_in = 0 THEN count ELSE 0 END), 0) anon "
+            "FROM page_views WHERE day >= ?", (seit,)).fetchone()
+        # Dieselbe Spanne unmittelbar davor — sonst ist jede Zahl nur ein Stand.
+        vor_seit = (date.today() - timedelta(days=2 * max(1, tage) - 1)).isoformat()
+        davor = self._conn.execute(
+            "SELECT COALESCE(SUM(count), 0) n, COALESCE(SUM(sessions), 0) s "
+            "FROM page_views WHERE day >= ? AND day < ?", (vor_seit, seit)).fetchone()
+        return {
+            "days": tage,
+            "total": summe["n"],
+            "sessions": summe["s"],
+            "anonymous": summe["anon"],
+            "previous_total": davor["n"],
+            "previous_sessions": davor["s"],
+            "series": verlauf,
+            "pages": seiten,
+            "clients": clients,
+        }
+
+    #: Was der Zähler ``user_activity.feature`` kennt — und wie es auf Deutsch
+    #: heißt. Die Liste steht hier, damit ein neuer Wert nicht als stille Null
+    #: irgendwo auftaucht: ``tests/test_ereignisse.py`` hält sie gegen die
+    #: ``record_activity``-Aufrufe im Backend.
+    EREIGNISSE: tuple[tuple[str, str], ...] = (
+        ("session", "Zugriffe"),
+        ("ai_question", "Fragen gestellt"),
+        ("ai_question_chip", "davon aus einem Vorschlag"),
+        ("ai_answer_empty", "Antworten ohne Quelle"),
+        ("search", "Suchbegriffe eingegeben"),
+        ("research", "Tiefen-Recherchen"),
+        ("analysis", "Auswertungen geöffnet"),
+        ("map", "Karte geöffnet"),
+        ("topic_created", "Themen angelegt"),
+        ("bookmark", "Lesezeichen gesetzt"),
+        ("template_follow", "Vorgängen gefolgt"),
+    )
+
+    def ereignisse(self, tage: int = 30) -> dict:
+        """Was in den letzten ``tage`` Tagen wie oft passiert ist.
+
+        Der Zweck sind die beiden Anteile darunter: Wie viele Fragen kommen aus
+        einem Vorschlags-Chip statt aus dem Eingabefeld, und wie viele
+        Antworten nennen keine einzige Quelle. Beides ließ sich vorher nur
+        schätzen — die Chip-Frage gar nicht, die Sackgassen nur an den
+        gespeicherten Gesprächen, also an rund drei Vierteln.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        roh = {r["feature"]: (r["n"], r["k"]) for r in self._conn.execute(
+            "SELECT feature, SUM(count) n, COUNT(DISTINCT owner_id) k FROM user_activity "
+            "WHERE day >= ? GROUP BY feature", (seit,)).fetchall()}
+        vor_seit = (date.today() - timedelta(days=2 * max(1, tage) - 1)).isoformat()
+        davor = {r["feature"]: r["n"] for r in self._conn.execute(
+            "SELECT feature, SUM(count) n FROM user_activity "
+            "WHERE day >= ? AND day < ? GROUP BY feature", (vor_seit, seit)).fetchall()}
+        zeilen = [{"key": key, "label": label,
+                   "n": roh.get(key, (0, 0))[0], "users": roh.get(key, (0, 0))[1],
+                   "previous": davor.get(key, 0)}
+                  for key, label in self.EREIGNISSE]
+
+        def anteil(quelle: dict, zaehler: str, nenner: str) -> float | None:
+            o = quelle.get(zaehler, (0, 0)); u = quelle.get(nenner, (0, 0))
+            oben = o[0] if isinstance(o, tuple) else o
+            unten = u[0] if isinstance(u, tuple) else u
+            return round(oben / unten, 3) if unten else None
+
+        return {
+            "days": tage,
+            "events": zeilen,
+            "chip_share": anteil(roh, "ai_question_chip", "ai_question"),
+            "empty_share": anteil(roh, "ai_answer_empty", "ai_question"),
+            "previous_chip_share": anteil(davor, "ai_question_chip", "ai_question"),
+            "previous_empty_share": anteil(davor, "ai_answer_empty", "ai_question"),
+        }
+
+    def sackgassen(self, tage: int = 30, limit: int = 40) -> list[dict]:
+        """Fragen, deren Antwort keine einzige Quelle nennen konnte.
+
+        **Nur aus gespeicherten Gesprächen**, und das ist keine Einschränkung,
+        die man wegkonfigurieren sollte: Wer das Speichern nicht eingeschaltet
+        hat, dessen Fragen liegen nicht vor — sie sollen es auch nicht. Die
+        vollständige ZAHL steht daneben im Ereignis-Zähler
+        (``ai_answer_empty``); diese Liste zeigt nur die Fälle, die ohnehin in
+        der Datenbank stehen, und beantwortet die andere Frage: *woran* ist es
+        gescheitert.
+
+        Das Konto steht bewusst NICHT dabei. Für „welche Frage fand nichts?"
+        ist es ohne Belang, und eine Liste mit Kontokennung neben der Frage
+        wäre ein Leseprotokoll.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        raus: list[dict] = []
+        for r in self._conn.execute(
+                "SELECT question, answer, sources, created FROM qa_conversation_turns "
+                "WHERE created >= ? ORDER BY created DESC", (seit,)).fetchall():
+            try:
+                zitiert = (json.loads(r["sources"] or "{}") or {}).get("cited")
+            except (ValueError, TypeError):
+                zitiert = None
+            if zitiert:
+                continue
+            raus.append({"question": r["question"][:300],
+                         "answer": (r["answer"] or "")[:400],
+                         "created": r["created"]})
+            if len(raus) >= max(1, limit):
+                break
+        return raus
 
     def admin_growth(self, days: int | None = 90) -> dict:
         """Wachstums-Daten für den Statistik-Tab (20a): kumulierte Verläufe für

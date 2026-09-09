@@ -257,6 +257,7 @@ automatisch mitgelesen, sobald dort gearbeitet wird:
 | Datei | Worum es geht |
 |---|---|
 | [`council/CLAUDE.md`](council/CLAUDE.md) | Scraper, Parser, Stores: Schema **und** Migration, Register mitpflegen |
+| [`council/cities/CLAUDE.md`](council/cities/CLAUDE.md) | Städte-Speicher: ein Adapter je Ratsinformationssystem, Plausibilitätsprüfung nach jeder Ernte |
 | [`kern/CLAUDE.md`](kern/CLAUDE.md) | Benachrichtigungen nur über `notify.einreihen`, LLM-Aufrufe, Cron-Takte |
 | [`web/backend/CLAUDE.md`](web/backend/CLAUDE.md) | Neue Endpunkte: Antwortform in `antworten.py`, Vertrag neu schneiden |
 | [`web/frontend/CLAUDE.md`](web/frontend/CLAUDE.md) | Nur über `lib/api.ts` ans Backend, Typen aus `lib/vertrag.ts`, Designsprache |
@@ -376,7 +377,13 @@ Schalter aus [`kern/features.py`](kern/features.py):
 
 ```bash
 FEATURE_FLAGS=neue-suche      # in der .env, dann Dienst neu starten
+FEATURE_FLAGS=*               # alle — so steht es auf dev
 ```
+
+**Auf dev sind alle Schalter an** (`FEATURE_FLAGS=*`, Tims Entscheidung
+07.09.2026): Was gemergt ist, ist dort sichtbar, ohne dass jeder PR einen
+Eintrag in der `.env` der VM nachzieht. Der Schalter regelt damit nur noch,
+was auf **Prod** schon zu sehen ist — dort bleibt die Liste explizit.
 
 Im Frontend `useFeature("neue-suche")` aus `lib/features.ts`. Die Liste kommt
 über `/api/app-config` — **bewusst nicht** über `NEXT_PUBLIC_…`: Das wird zur
@@ -460,7 +467,7 @@ APP_BASE_URL=https://ratslotse.de
 FEEDBACK_EMAIL=...                   # Empfänger des Nutzer-Feedbacks
 ALERT_EMAIL=...                      # Cron-Fehler-Alarme (Fallback: WEB_ADMIN_EMAIL)
 FASTEMBED_CACHE_PATH=~/.cache/fastembed  # persistenter Modell-Cache (sonst /tmp → weg beim Reboot)
-FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py)
+FEATURE_FLAGS=                        # Feature-Schalter, kommagetrennt (s. kern/features.py); `*` = alle (dev)
 APPLE_BUNDLE_ID=de.ratslotse.app     # Sign in with Apple: aud der nativen App (Default passt)
 APPLE_SERVICE_ID=de.ratslotse.web    # Sign in with Apple im Browser (Services ID; leer = Web-Flow aus)
 APPLE_TEAM_ID=…                       # Pflicht für Apple-Token-Widerruf bei Kontolöschung
@@ -558,6 +565,23 @@ NWZ_OPENROUTER_ZDR=1                 # "0" lockert die Zero-Data-Retention-Pflic
   git tag -a vx.y.z -m "Ratslotse x.y.z" && git push origin vx.y.z
   .venv/bin/python scripts/changelog_schnitt.py x.y.z --release --titel "vx.y.z — …"
   ```
+
+  **Eine Minor-Version bekommt zusätzlich eine Karte.** „Neu bei Ratslotse"
+  zeigt Nutzer*innen beim nächsten Öffnen, was dazugekommen ist, und geht auf
+  Knopfdruck als Mail und Push raus. Der Text steht kuratiert als Code in
+  [`kern/releases.py`](kern/releases.py) und gehört in denselben Commit wie der
+  Schnitt; `changelog_schnitt.py x.y.0 --highlights` schlägt einen Entwurf aus
+  den Fragmenten vor. **Nur die großen Sachen** — höchstens vier, jede mit
+  einem Ziel in der App, Patch-Versionen gar keine (`tests/test_releases.py`
+  hält das). Der Titel ist ein **Name nach dem Hauptfeature** („Das
+  Teilen-Update"), kein Halbsatz. Jedes Highlight bringt einen **kurzen Clip**
+  mit, in dem man das Feature bedient sieht — aus einem Drehbuch in
+  `web/frontend/release-clips/<version>.mjs`, aufgenommen und geschnitten von
+  `scripts/release_clips.py` (Ablage `web/frontend/public/neuigkeiten/<version>/`,
+  immer hell; im Browser 16:9, in der App das ganze Telefon) — die
+  Karte ist eine Bühne zum Blättern, keine Stichpunktliste. Verschickt wird von
+  Hand im Admin-Panel unter *Neuigkeiten*, ein paar Tage nach dem Deploy:
+  Ausliefern und Ankündigen sind zwei Entscheidungen.
 
   Der zweite Befehl war bis 09/2026 Handarbeit und fiel deshalb dreimal aus:
   v1.14.0, v1.15.0 und v2.0.0 lagen als Tags bei GitHub, ohne dass ein Release

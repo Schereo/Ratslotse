@@ -264,15 +264,27 @@ private struct RatsRouteButtonStyle: ButtonStyle {
 
 private struct LaunchLoadingView: View {
     var body: some View {
-        ZStack {
-            RatsColor.page.ignoresSafeArea()
-            // The exact same full-screen artwork is used by UILaunchScreen.
-            // Keeping it here prevents Lotti from changing size while the
-            // session is restored. Real in-app loading states animate her.
+        // The exact same full-screen artwork is used by UILaunchScreen.
+        // Keeping it here prevents Lotti from changing size while the
+        // session is restored. Real in-app loading states animate her.
+        //
+        // The artwork is a 1400-pt canvas that overflows every screen, and
+        // the system launch screen centres it in the FULL window. As the
+        // root of a NavigationStack this view is centred in the safe area
+        // instead, 14 pt lower on an iPhone 17 (measured 06.09.2026) — a
+        // plain `.ignoresSafeArea()` on a ZStack did not change that. The
+        // GeometryReader takes the full window and places the image on its
+        // centre explicitly, so the hand-over from the launch screen is
+        // pixel-identical.
+        GeometryReader { geo in
             Image("Splash")
                 .renderingMode(.original)
                 .accessibilityHidden(true)
+                .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
+        .ignoresSafeArea()
+        .background(RatsColor.page.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
@@ -571,7 +583,10 @@ private enum MainNavigationDestination: Identifiable {
         case .questions: "Fragen"
         case .decisions: "Beschlüsse"
         case .sessions: "Sitzungen"
-        case .map: "Stadtkarte"
+        // Bis 09/2026 „Stadtkarte" — seit Schritt 6 des Karten-Plans ist der
+        // Rats-Abschnitt .map die vereinte Karte, und die heißt überall
+        // „Mein Viertel" (Tim: das Menü nicht bloaten, ein Eintrag).
+        case .map: "Mein Viertel"
         case .topics: "Themen"
         case .analysis: "Analyse"
         case .subscriptions: "Abos"
@@ -588,7 +603,7 @@ private enum MainNavigationDestination: Identifiable {
         case .questions: .ask
         case .decisions: .decisions
         case .sessions: .calendar
-        case .map: .map
+        case .map: .mapPin
         case .topics: .topics
         case .analysis: .analysis
         case .subscriptions: .subscriptions
@@ -871,10 +886,9 @@ struct RouteDestinationView: View {
         case .person(let slug): PublicProfileView(model: model, kind: .person, key: slug)
         case .topic(let slug): PublicProfileView(model: model, kind: .topic, key: slug)
         case .place(let id): PublicProfileView(model: model, kind: .place, key: id)
-        case .district(let id):
-            if let id { DistrictBoardView(model: model, placeID: id) }
-            else { DistrictChooserView(model: model) }
+        case .district(let id): CityMapView(model: model, placeID: id)
         case .quiz(let area): QuizView(model: model, area: area)
+        case .subscriptions: CommitteeSubscriptionsView(model: model)
         case .analysis: CouncilInsightsView(model: model)
         case .admin: AdminView(model: model)
         case .sharedAnswer(let token): SharedAnswerView(model: model, token: token)

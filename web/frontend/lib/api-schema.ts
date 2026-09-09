@@ -143,6 +143,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Stats
+         * @description Was im Städte-Speicher liegt, je Stadt.
+         *
+         *     Die Liste ist leer, solange noch nichts geerntet wurde — das ist kein
+         *     Fehler, sondern der Zustand vor dem ersten Lauf von ``check_cities``.
+         */
+        get: operations["cities_stats_api_admin_cities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/entity-aliases": {
         parameters: {
             query?: never;
@@ -345,6 +368,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/live-probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Probe
+         * @description Der O1-Stream als Transkript, Äußerung für Äußerung — die Generalprobe
+         *     der Streaming-Transkription (``council/stream_stt``) im Admin-Panel.
+         *
+         *     Tims Wunsch 06.09.2026: „auf der dev-Seite mal das Transkript des
+         *     aktuellen O1-Programms anzeigen". Was hier ankommt, kommt genauso in der
+         *     Ratssitzung an: derselbe ffmpeg, derselbe Websocket, dieselbe Wortliste
+         *     (hier ohne Namen — es gibt keine Sitzung). Höchstens zehn Minuten, eine
+         *     Probe zugleich; verlässt der Browser die Seite, endet die Aufnahme.
+         */
+        get: operations["live_probe_api_admin_live_probe_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/llm-usage": {
         parameters: {
             query?: never;
@@ -360,6 +410,80 @@ export interface paths {
         get: operations["llm_usage_api_admin_llm_usage_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Admin News
+         * @description Alle Einträge der Registry samt Stand ihres Versands.
+         *
+         *     Die beiden Zahlen je Eintrag beantworten die Frage vor dem Drücken: Wie
+         *     viele bekämen die Ankündigung jetzt, und wie viele haben sie schon. Sie
+         *     entstehen aus **einer** Abfrage über alle Konten, nicht aus einer je
+         *     Release — die Registry wächst mit jedem Release, die Kontenzahl auch.
+         */
+        get: operations["admin_news_api_admin_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/news/{version}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin News Send
+         * @description Die Ankündigung an alle offenen Empfänger einreihen.
+         *
+         *     Eingereiht wird sofort (nur Datenbank), **zugestellt im Hintergrund**:
+         *     Zweihundert Mails über die Resend-API dauern länger, als eine HTTP-Anfrage
+         *     warten darf. Der Hintergrund-Lauf öffnet einen eigenen Store — die
+         *     Abhängigkeit aus dem Request ist zu diesem Zeitpunkt längst geschlossen.
+         */
+        post: operations["admin_news_send_api_admin_news__version__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/news/{version}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin News Test
+         * @description Die Ankündigung einmal an das eigene Konto — vor dem echten Versand.
+         *
+         *     Bewusst **nicht** über die Warteschlange: Eine Probe soll sofort ankommen
+         *     und darf nicht an der eigenen Nachtruhe oder Tagesgrenze hängen bleiben.
+         *     Sie ändert deshalb auch keine Marke — sie zählt nicht als Versand.
+         */
+        post: operations["admin_news_test_api_admin_news__version__test_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -507,6 +631,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/cohorts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Cohorts
+         * @description Der Trichter je Registrierungswoche — wer bleibt, und wo es abreißt.
+         *
+         *     Betreiber- und Testkonten fallen heraus; welche das sind, entscheidet die
+         *     Adminrolle plus ``STATS_EXCLUDE_DOMAINS``. Ohne diesen Schnitt zeigte die
+         *     Statistik zum großen Teil das eigene Klicken.
+         */
+        get: operations["stats_cohorts_api_admin_stats_cohorts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/dead-ends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Dead Ends
+         * @description Fragen, auf die es keine belegte Antwort gab.
+         *
+         *     Die Liste beantwortet, was eine Quote nicht kann: *woran* es scheitert.
+         *     Der bekannteste Fall stand am 09.08.2026 im Bestand — jemand fragte
+         *     zweimal nach „Giftmüll am Fliegerhorst" und bekam „keine Informationen",
+         *     weil die Unterlagen „Sondermüll" und „Schießanlage" sagen. Ein Blick in
+         *     diese Liste hätte das an dem Tag gezeigt, an dem es passierte.
+         */
+        get: operations["stats_dead_ends_api_admin_stats_dead_ends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Events
+         * @description Welche Handlungen wie oft vorkamen — und die beiden Anteile dahinter.
+         *
+         *     „Fragen aus einem Vorschlag" und „Antworten ohne Quelle" sind die zwei
+         *     Zahlen, die vorher gar nicht bzw. nur an den gespeicherten Gesprächen
+         *     messbar waren.
+         */
+        get: operations["stats_events_api_admin_stats_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/stats/growth": {
         parameters: {
             query?: never;
@@ -519,6 +717,29 @@ export interface paths {
          * @description Wachstums-Verläufe + WAU + Ratsinfo-Import für den Statistik-Tab (20a).
          */
         get: operations["stats_growth_api_admin_stats_growth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/stats/page-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Page Views
+         * @description Anonyme Seitenaufrufe — die Nutzung, die vorher unsichtbar war.
+         *
+         *     Zeigt Aufrufe und Tab-Besuche je Tag, die meistgesehenen Seiten und die
+         *     Aufteilung nach Client. Nichts davon ist einer Person zuzuordnen.
+         */
+        get: operations["stats_page_views_api_admin_stats_page_views_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2060,6 +2281,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Ideas
+         * @description Was andere Städte haben und Oldenburg fehlt — je Themenfeld.
+         *
+         *     **Ein Feld ist Pflicht.** Eine Liste über alle zwölf Felder wäre ein
+         *     Fließband ohne Anfang; die Übersicht (``/cities/ideas/fields``) ist der
+         *     Einstieg, und von dort geht es in ein Feld.
+         *
+         *     Filtern, Sortieren und Zählen macht die Abfrage (``CitiesStore.ideas``),
+         *     nicht das Frontend — sonst blätterte die App durch alles, um zu zählen.
+         *
+         *     **Die Belege werden hier aufgelöst.** Das Urteil nennt Kennungen wie
+         *     ``oldenburg:paper:28119``; die Karte soll auf die Beschluss-Seite führen.
+         *     Die Übersetzung braucht die Rats-Datenbank und gehört deshalb hierher,
+         *     nicht in den Städte-Speicher.
+         */
+        get: operations["cities_ideas_api_council_cities_ideas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/ideas/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Idea Fields
+         * @description Je Themenfeld, wie viele Ideen dort liegen — die Übersicht.
+         *
+         *     **Öffentlich**, wie die Beschluss-Seiten: Es stehen ausschließlich
+         *     Ratsdokumente anderer Städte darin und ein Urteil darüber, ob Oldenburg
+         *     dasselbe schon hat.
+         */
+        get: operations["cities_idea_fields_api_council_cities_ideas_fields_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/ideas/{paper_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cities Idea Feedback
+         * @description „Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
+         *
+         *     **Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des
+         *     Städtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an
+         *     einem Tag beurteilt hat — und in vier von sieben Pull Requests war genau
+         *     dieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von
+         *     zwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.
+         *
+         *     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
+         *     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
+         *     Stimmen), und der Maßstab wäre wieder wertlos.
+         *
+         *     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
+         *     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
+         */
+        post: operations["cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/cities/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cities Search
+         * @description „Was haben andere Städte zu …?" — frei durchsuchbar.
+         *
+         *     **Zwei Hälften, keine Vektor-Suche über die Anfrage.** Die bräuchte
+         *     ``fastembed`` im Web-Dienst, und das ist es bewusst nicht. Stattdessen
+         *     Volltext plus die schon berechneten Nachbarschaften der besten Treffer;
+         *     die Einzelheiten stehen an ``CitiesStore.search_ideas``.
+         *
+         *     Öffentlich wie die Ideen-Liste, und hinter demselben Schalter.
+         */
+        get: operations["cities_search_api_council_cities_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/committees": {
         parameters: {
             query?: never;
@@ -2206,6 +2543,45 @@ export interface paths {
          *     dazu, wenn wirklich jemand angemeldet ist.
          */
         get: operations["decision_detail_api_council_decision__decision_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/council/decision/{decision_id}/elsewhere": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Decision Elsewhere
+         * @description Was andere Städte zu derselben Sache beantragt oder beschlossen haben.
+         *
+         *     **Öffentlich**, wie die Beschluss-Seite selbst.
+         *
+         *     Die Brücke ist die Vorlage: Ein Oldenburger Beschluss hängt an einer
+         *     ``kvonr``, und die ist im Städte-Speicher das Papier
+         *     ``oldenburg:paper:<kvonr>``. Beschlüsse ohne Vorlage — Wahlen,
+         *     Verfahrensfragen — bekommen eine leere Liste; für sie gibt es anderswo
+         *     auch nichts zu holen.
+         *
+         *     **Die ``kvonr`` allein reicht nicht.** Sie steht an 274 von 9.059
+         *     Beschlüssen, die Vorlagennummer dagegen an 6.553 — und
+         *     ``council_templates`` übersetzt die eine in die andere. Ohne diesen Umweg
+         *     erschien der Block auf 50 Beschluss-Seiten, mit ihm auf 486 (gemessen
+         *     08.09.2026). Die ``kvonr`` am Beschluss bleibt die genauere Angabe und
+         *     hat Vorrang; die Nummer ist der Rückfall, nicht umgekehrt.
+         *
+         *     Eine leere Liste ist der Normalzustand, solange ``check_cities`` noch
+         *     nicht gelaufen ist. Der Endpunkt antwortet dann trotzdem mit 200: Der
+         *     Block blendet sich aus, statt einen Fehler zu zeigen.
+         */
+        get: operations["decision_elsewhere_api_council_decision__decision_id__elsewhere_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3142,6 +3518,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/districts/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * District Lookup
+         * @description „Ich wohne in der …": Straße, Platz oder Stadtteilname → Ortsbereich.
+         *
+         *     Stadtteile (Name und Aliase) zuerst, dann Straßen und Plätze aus den
+         *     Beschlüssen. Öffentlich wie die Auswahl-Seite selbst; kein Konto, kein
+         *     Sprachmodell, keine Speicherung der Eingabe.
+         */
+        get: operations["district_lookup_api_districts_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/districts/projects": {
         parameters: {
             query?: never;
@@ -3152,6 +3552,10 @@ export interface paths {
         /**
          * District Projects Overview
          * @description Alle Ortsbereiche mit der Zahl ihrer Vorhaben — für die Auswahl-Seite.
+         *
+         *     Dazu die Stadtzahlen (wie viele Vorhaben, wie viele je Stand) und die
+         *     Vorhaben, die gerade herausstechen: Die Seite ohne gewähltes Viertel soll
+         *     schon etwas zeigen, nicht nur fragen.
          */
         get: operations["district_projects_overview_api_districts_projects_get"];
         put?: never;
@@ -3194,8 +3598,9 @@ export interface paths {
         /**
          * District Projects
          * @description Die Tafel eines Ortsbereichs: Vorhaben mit Stand, dazu was demnächst im
-         *     Rat ansteht, was im Investitionsprogramm steht und wo gerade eine
-         *     Beteiligung läuft.
+         *     Rat ansteht, was im Investitionsprogramm steht, wo gerade eine
+         *     Beteiligung läuft, was die Stadt gesperrt hat und was sie zum Viertel
+         *     mitgeteilt hat.
          */
         get: operations["district_projects_api_districts__place_id__projects_get"];
         put?: never;
@@ -3291,6 +3696,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/news": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get News
+         * @description Die offenen Release-Karten dieses Kontos, neueste zuerst.
+         *
+         *     Die Bilder kommen **passend zum Client**: Wer auf dem iPhone liest, soll
+         *     das iPhone sehen und nicht ein Browserfenster mit Seitenleiste (Tims
+         *     Wunsch 07.09.2026). Die Auswahl fällt hier und nicht im Client — sonst
+         *     müsste jede Oberfläche zwei Felder auseinanderhalten, und eine dritte
+         *     Plattform bräuchte überall eine Änderung statt nur einen Registry-Eintrag.
+         */
+        get: operations["get_news_api_news_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/news/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Seen
+         * @description Die Karte ist weggeklickt — die Hochwassermarke nachziehen.
+         *
+         *     Der Client meldet die Version, die er GEZEIGT hat. Käme zwischen Laden und
+         *     Wegklicken ein Deploy, würde „die neueste laut Server" ein Release
+         *     miterledigen, das nie jemand gesehen hat.
+         */
+        post: operations["mark_seen_api_news_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding": {
         parameters: {
             query?: never;
@@ -3331,6 +3786,45 @@ export interface paths {
          *     erkennen, wer angefangen und nicht zu Ende gebracht hat.
          */
         post: operations["set_setup_api_onboarding_setup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/page-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seitenaufruf
+         * @description Einen Seitenaufruf zählen — anonym, aggregiert, ohne Kennung.
+         *
+         *     **Warum offen (ohne Konto).** Genau die Nutzung ohne Anmeldung war bisher
+         *     unsichtbar: Startseite, geteilte Beschlüsse, Changelog. Ein Zähler, der
+         *     erst nach dem Anmelden anspringt, beantwortet die Frage nicht, für die er
+         *     gebaut ist.
+         *
+         *     **Was gespeichert wird.** Tag, Seitenmuster aus der Positivliste, Client
+         *     und das Ja/Nein „war jemand angemeldet". Kein Konto, keine Kennung, keine
+         *     Query, kein Referrer, keine IP — ``kern/seitenaufrufe.py`` begründet jedes
+         *     Feld einzeln, ``tests/test_seitenaufrufe.py`` hält die Liste fest.
+         *
+         *     **Ohne Cookie, ohne Kontoauflösung.** Ob jemand angemeldet war, sagt der
+         *     Client selbst (``logged_in``); der Server schaut dafür in kein Token und
+         *     in keine Kontotabelle. Das ist strenger als ``optional_user`` und macht
+         *     den Endpunkt zugleich billiger. Ein Client, der lügt, verschiebt eine
+         *     grobe Statistik — Rechte hängen an keiner dieser Zahlen.
+         *
+         *     **Immer 200.** Ein Zähler, der einem Browser einen Fehler zurückgibt,
+         *     erzeugt eine Fehlermeldung über eine Zählung — das hilft niemandem.
+         */
+        post: operations["seitenaufruf_api_page_views_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3892,8 +4386,51 @@ export interface paths {
          * @description Die jüngsten Beschluss-Treffer über ALLE Themen des Kontos — für die
          *     „Neu zu deinen Themen"-Karte im Heute-Briefing (RL-401). Vor der
          *     {topic_id}-Route registriert, damit „latest-hits" nicht als ID parst.
+         *
+         *     Dieselbe Menge wie die Themen-Karten (``list_topics``): alle Treffer,
+         *     nach Sitzungsdatum. Bis 09/2026 nahm die Route je Thema nur die zehn
+         *     BESTBEWERTETEN Treffer und sortierte erst die nach Datum — „neu" hieß
+         *     damit „das Jüngste unter den Passendsten", und die Karte konnte einen
+         *     Beschluss verschweigen, den die Themen-Seite als jüngsten führte.
+         *
+         *     Ein Beschluss, der zu mehreren Themen passt, steht einmal da — mit dem
+         *     Thema, in dem er noch ungelesen ist, falls es eines gibt.
          */
         get: operations["latest_hits_api_topics_latest_hits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/topics/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Topic Match
+         * @description Passt eine FRAGE zu einem kuratierten Stadtthema?
+         *
+         *     Die Brücke von „ich habe etwas gefragt" zu „das Produkt meldet sich bei
+         *     mir". Wer nach dem Radverkehr fragt, bekommt das fertige Thema
+         *     *Radverkehr* mit einer am Bestand kalibrierten Beschreibung — statt eines
+         *     Formulars, in das er eine Frage tippt, die als Thema nicht funktioniert.
+         *
+         *     **Deterministisch und ohne Modell:** ein Satz Muster aus
+         *     ``council.city_topics`` gegen den Fragetext. Der Endpunkt darf deshalb bei
+         *     jeder Antwort gefragt werden; er kostet eine Regex und eine Kontoabfrage.
+         *
+         *     ``n`` und ``months`` fehlen hier bewusst — die Zahl der Beschlüsse
+         *     berechnet ``/topics/suggestions`` mit einem Scan über den Bestand, und
+         *     dafür ist dies der falsche Ort. Wer den Vorschlag annimmt, sieht die Zahl
+         *     unmittelbar danach an seinem angelegten Thema.
+         */
+        get: operations["topic_match_api_topics_match_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4190,6 +4727,34 @@ export interface components {
             /** Source */
             source: string | null;
         };
+        /** AdminEreignis */
+        AdminEreignis: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** N */
+            n: number;
+            /** Previous */
+            previous: number;
+            /** Users */
+            users: number;
+        };
+        /** AdminEreignisse */
+        AdminEreignisse: {
+            /** Chip Share */
+            chip_share: number | null;
+            /** Days */
+            days: number;
+            /** Empty Share */
+            empty_share: number | null;
+            /** Events */
+            events: components["schemas"]["AdminEreignis"][];
+            /** Previous Chip Share */
+            previous_chip_share: number | null;
+            /** Previous Empty Share */
+            previous_empty_share: number | null;
+        };
         /** AdminFeedbackList */
         AdminFeedbackList: {
             /** Items */
@@ -4313,6 +4878,105 @@ export interface components {
              */
             status: "ok" | "error";
         };
+        /**
+         * AdminKennzahlen
+         * @description Die vier Zahlen, an denen sich Maßnahmen messen lassen sollen.
+         *
+         *     Alle ``None``, solange die Grundgesamtheit leer ist — eine Quote aus null
+         *     Konten ist keine 0 %, sondern keine Aussage.
+         */
+        AdminKennzahlen: {
+            /** Fragen Median */
+            fragen_median: number | null;
+            /** Haken Quote */
+            haken_quote: number | null;
+            /** Sackgassen Quote */
+            sackgassen_quote: number | null;
+            /** Tag2 */
+            tag2: number | null;
+            /** Tag30 */
+            tag30: number | null;
+            /** Tag7 */
+            tag7: number | null;
+        };
+        /** AdminKohorte */
+        AdminKohorte: {
+            /** N */
+            n: number;
+            /** Stages */
+            stages: components["schemas"]["AdminKohortenStufe"][];
+            /** Week */
+            week: string;
+        };
+        /** AdminKohorten */
+        AdminKohorten: {
+            basis: components["schemas"]["AdminKohortenBasis"];
+            /** Cohorts */
+            cohorts: components["schemas"]["AdminKohorte"][];
+            /** Excluded */
+            excluded: number;
+            kennzahlen: components["schemas"]["AdminKennzahlen"];
+            previous: components["schemas"]["AdminKennzahlen"];
+            /** Total */
+            total: components["schemas"]["AdminKohortenStufe"][];
+            /** Weeks */
+            weeks: number;
+        };
+        /**
+         * AdminKohortenBasis
+         * @description Zähler und Nenner hinter den Quoten — „43 %" allein sagt nicht, ob es
+         *     3 von 7 oder 43 von 100 sind.
+         */
+        AdminKohortenBasis: {
+            /** Haken */
+            haken: [
+                number,
+                number
+            ];
+            /** Sackgassen */
+            sackgassen: [
+                number,
+                number
+            ];
+            /** Tag2 */
+            tag2: [
+                number,
+                number
+            ];
+            /** Tag30 */
+            tag30: [
+                number,
+                number
+            ];
+            /** Tag7 */
+            tag7: [
+                number,
+                number
+            ];
+            /** Vorher N */
+            vorher_n: number;
+        };
+        /**
+         * AdminKohortenStufe
+         * @description Eine Stufe des Trichters.
+         *
+         *     ``n`` ist die Zahl der Konten, die diese Stufe erreicht haben; ``eligible``
+         *     die Zahl derer, die sie überhaupt schon erreichen KONNTEN. Bei den
+         *     zeitlichen Stufen („noch da nach 30 Tagen") sind das zwei verschiedene
+         *     Zahlen, und wer sie verwechselt, liest jede frische Kohorte als Totalausfall.
+         */
+        AdminKohortenStufe: {
+            /** Eligible */
+            eligible: number;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** N */
+            n: number;
+            /** Window Days */
+            window_days: number | null;
+        };
         /** AdminLimits */
         AdminLimits: {
             /** Deep Limit */
@@ -4387,6 +5051,52 @@ export interface components {
             models: string[];
             /** Prompt Tokens */
             prompt_tokens: number;
+        };
+        /** AdminNewsList */
+        AdminNewsList: {
+            /** Releases */
+            releases: components["schemas"]["AdminNewsRelease"][];
+        };
+        /**
+         * AdminNewsRelease
+         * @description Ein Registry-Eintrag im Admin-Panel, mit dem Stand seines Versands.
+         */
+        AdminNewsRelease: {
+            /** Date */
+            date: string;
+            /** Highlights */
+            highlights: components["schemas"]["ReleaseHighlight"][];
+            /** Open Recipients */
+            open_recipients: number;
+            /** Sent Recipients */
+            sent_recipients: number;
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * AdminNewsSent
+         * @description Bilanz eines Versands.
+         *
+         *     ``queued`` sind die eingereihten Meldungen, ``skipped`` die Konten, die den
+         *     Anlass abgeschaltet haben — beide gelten als angeschrieben, denn ein Nein
+         *     ist eine Antwort und keine offene Aufgabe.
+         *
+         *     Die **Zustellung** läuft danach im Hintergrund und wird hier bewusst nicht
+         *     gezählt: Zweihundert Mails über die Resend-API dauern länger als eine
+         *     HTTP-Anfrage warten darf. Was in der Nachtruhe liegen bleibt, nimmt
+         *     ohnehin erst der Morgen-Cron mit.
+         */
+        AdminNewsSent: {
+            /** Queued */
+            queued: number;
+            /** Recipients */
+            recipients: number;
+            /** Skipped */
+            skipped: number;
+            /** Version */
+            version: string;
         };
         /**
          * AdminPlaceCandidate
@@ -4540,6 +5250,74 @@ export interface components {
             route: string;
             /** Trace */
             trace: string | null;
+        };
+        /**
+         * AdminSackgasse
+         * @description Eine Frage, die keine Quelle gefunden hat.
+         *
+         *     Ohne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?" ist
+         *     beides ohne Belang, und eine Liste mit Kennung neben der Frage wäre ein
+         *     Leseprotokoll.
+         */
+        AdminSackgasse: {
+            /** Answer */
+            answer: string;
+            /** Created */
+            created: string;
+            /** Question */
+            question: string;
+        };
+        /** AdminSeite */
+        AdminSeite: {
+            /** N */
+            n: number;
+            /** Route */
+            route: string;
+            /** Sessions */
+            sessions: number;
+        };
+        /** AdminSeitenClient */
+        AdminSeitenClient: {
+            /** Client */
+            client: string;
+            /** N */
+            n: number;
+        };
+        /** AdminSeitenTag */
+        AdminSeitenTag: {
+            /** Day */
+            day: string;
+            /** N */
+            n: number;
+            /** Sessions */
+            sessions: number;
+        };
+        /**
+         * AdminSeitenaufrufe
+         * @description Anonyme Seitenaufrufe. Keine Zahl hier lässt sich einer Person zuordnen.
+         *
+         *     ``sessions`` ist der erste Aufruf je Browser-Tab und damit so nah an
+         *     „Besuche", wie man ohne Wiedererkennung kommt — bewusst nicht „Besucher".
+         */
+        AdminSeitenaufrufe: {
+            /** Anonymous */
+            anonymous: number;
+            /** Clients */
+            clients: components["schemas"]["AdminSeitenClient"][];
+            /** Days */
+            days: number;
+            /** Pages */
+            pages: components["schemas"]["AdminSeite"][];
+            /** Previous Sessions */
+            previous_sessions: number;
+            /** Previous Total */
+            previous_total: number;
+            /** Series */
+            series: components["schemas"]["AdminSeitenTag"][];
+            /** Sessions */
+            sessions: number;
+            /** Total */
+            total: number;
         };
         /** AdminSeries */
         AdminSeries: {
@@ -4822,6 +5600,11 @@ export interface components {
         AskBody: {
             /** Conversation Id */
             conversation_id?: number | null;
+            /**
+             * From Suggestion
+             * @default false
+             */
+            from_suggestion: boolean;
             /** History */
             history?: components["schemas"]["AskTurn"][];
             /**
@@ -5801,6 +6584,69 @@ export interface components {
             target: string;
         };
         /**
+         * CityStats
+         * @description Kennzahlen einer Stadt im Städte-Speicher (Admin-Statistik).
+         */
+        CityStats: {
+            /** Agenda Items */
+            agenda_items: number;
+            /** Agenda Items With Outcome */
+            agenda_items_with_outcome: number;
+            /** Annotations */
+            annotations: number;
+            /** Id */
+            id: string;
+            /** Last Fetched */
+            last_fetched: string | null;
+            /** License */
+            license: string | null;
+            /** Meetings */
+            meetings: number;
+            /** Name */
+            name: string;
+            /** Papers */
+            papers: number;
+            /** Papers With Text */
+            papers_with_text: number;
+            /** Ris Vendor */
+            ris_vendor: string;
+            /** State */
+            state: string;
+        };
+        /**
+         * CityTopicMatch
+         * @description Das kuratierte Stadtthema zu einer Frage — oder nichts.
+         *
+         *     ``match`` ist ``None``, wenn keins passt, und das ist der Normalfall: An
+         *     den fünfzehn echten Fragen vom 08.09.2026 traf es bei vieren. Die
+         *     Oberfläche zeigt dann ihren eigenen Weg (vorbefülltes Themen-Formular),
+         *     nicht etwa eine leere Kachel.
+         */
+        CityTopicMatch: {
+            /** Already */
+            already: boolean;
+            /**
+             * CityTopicSuggestion
+             * @description Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
+             *     Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
+             *     Entitäts-Vorschläge, plus Schlüssel und Zeitraum der Zählung.
+             */
+            match: {
+                /** Context */
+                context: string | null;
+                /** Description */
+                description: string;
+                /** Key */
+                key: string;
+                /** Months */
+                months: number;
+                /** N */
+                n: number;
+                /** Name */
+                name: string;
+            } | null;
+        };
+        /**
          * CityTopicSuggestion
          * @description Ein kuratiertes Stadtthema (``council.city_topics``): Radverkehr, Kitas,
          *     Wohnungsbau — Interessen statt Straßennamen. Gleiche Kachel wie die
@@ -5861,6 +6707,8 @@ export interface components {
             next_date: string | null;
             /** Next Time */
             next_time: string | null;
+            /** Sessions Year */
+            sessions_year: number;
         };
         /** Committees */
         Committees: {
@@ -6421,6 +7269,58 @@ export interface components {
             display_name?: string | null;
         };
         /**
+         * DistrictClosure
+         * @description Eine laufende Sperrung der Stadt (Geoportal, Ebene „Aktuelle Sperrungen") im Viertel.
+         */
+        DistrictClosure: {
+            /** Description */
+            description: string | null;
+            /** Geometry */
+            geometry: unknown;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: number | null;
+            /** Kind Label */
+            kind_label: string | null;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /** Reason */
+            reason: string | null;
+            /** Street */
+            street: string;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+        };
+        /**
+         * DistrictHighlight
+         * @description Ein Vorhaben, das stadtweit gerade heraussticht — für die Auswahl-Seite.
+         */
+        DistrictHighlight: {
+            /** Category */
+            category: string;
+            /** Id */
+            id: number;
+            /** Last Date */
+            last_date: string | null;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Place Name */
+            place_name: string;
+            /** Stage */
+            stage: string;
+            /** What */
+            what: string;
+            /** When */
+            when: string | null;
+        };
+        /**
          * DistrictInvestment
          * @description Ein Vorhaben des Investitionsprogramms mit Straßenbezug ins Viertel.
          */
@@ -6436,6 +7336,30 @@ export interface components {
             /** Total Eur */
             total_eur: number;
         };
+        /**
+         * DistrictLookup
+         * @description ``GET /api/districts/lookup?q=`` — „Ich wohne in der …" → Ortsbereich.
+         */
+        DistrictLookup: {
+            /** Matches */
+            matches: components["schemas"]["DistrictLookupMatch"][];
+        };
+        /**
+         * DistrictLookupMatch
+         * @description Ein Treffer der Straßen-/Stadtteilsuche: der Ort und sein Ortsbereich.
+         */
+        DistrictLookupMatch: {
+            /** Count */
+            count: number;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Place Id */
+            place_id: string;
+            /** Place Name */
+            place_name: string;
+        };
         /** DistrictNeighbour */
         DistrictNeighbour: {
             /** Count */
@@ -6447,13 +7371,25 @@ export interface components {
         };
         /**
          * DistrictParticipation
-         * @description Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug ins Viertel.
+         * @description Eine laufende Bauleitplan-Beteiligung (planungsbeteiligung.de) mit Ortsbezug
+         *     ins Viertel — und dem Geltungsbereich des Plans als Fläche, wo das Geoportal
+         *     ihn kennt.
          */
         DistrictParticipation: {
+            /** Geometry */
+            geometry: unknown;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
             /** Place */
             place: string | null;
+            /** Plan Nr */
+            plan_nr: string | null;
             /** Plan Nrs */
             plan_nrs: string[];
+            /** Plan Status */
+            plan_status: string | null;
             /** Step */
             step: string | null;
             /** Title */
@@ -6464,6 +7400,51 @@ export interface components {
             valid_from: string | null;
             /** Valid Until */
             valid_until: string | null;
+        };
+        /**
+         * DistrictPlanInfo
+         * @description Ein Bebauungsplan hinter einem Ort der Art ``bplan``: Nummer, Name und
+         *     die Stationen des Verfahrens aus den offenen Geodaten der Stadt.
+         */
+        DistrictPlanInfo: {
+            /** Adoption Date */
+            adoption_date: string | null;
+            /** Effective Date */
+            effective_date: string | null;
+            /** Name */
+            name: string;
+            /** Note */
+            note: string | null;
+            /** Nr */
+            nr: string;
+            /** Resolution Date */
+            resolution_date: string | null;
+            /** Source */
+            source: string;
+            /** Source Url */
+            source_url: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * DistrictPressItem
+         * @description Eine Pressemitteilung der Stadt mit Bezug auf das Viertel (council/presse_orte.py).
+         */
+        DistrictPressItem: {
+            /** Date */
+            date: string | null;
+            /** Evidence */
+            evidence: string | null;
+            /** Id */
+            id: number;
+            /** Teaser */
+            teaser: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Via */
+            via: string | null;
         };
         /**
          * DistrictProject
@@ -6526,7 +7507,8 @@ export interface components {
         };
         /**
          * DistrictProjectLocation
-         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie als GeoJSON.
+         * @description Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie,
+         *     bei Bebauungsplänen (``kind = bplan``) der Geltungsbereich als GeoJSON.
          */
         DistrictProjectLocation: {
             /** Geometry */
@@ -6539,6 +7521,9 @@ export interface components {
             lon: number;
             /** Name */
             name: string;
+            plan?: components["schemas"]["DistrictPlanInfo"];
+            /** Role */
+            role: string;
             /** Slug */
             slug: string;
         };
@@ -6556,6 +7541,8 @@ export interface components {
          * @description ``GET /api/districts/{place_id}/projects`` — die Tafel eines Ortsbereichs.
          */
         DistrictProjects: {
+            /** Closures */
+            closures: components["schemas"]["DistrictClosure"][];
             /** Investments */
             investments: components["schemas"]["DistrictInvestment"][];
             /** Neighbours */
@@ -6564,6 +7551,8 @@ export interface components {
             participations: components["schemas"]["DistrictParticipation"][];
             /** Place */
             place: unknown;
+            /** Press */
+            press: components["schemas"]["DistrictPressItem"][];
             /** Projects */
             projects: components["schemas"]["DistrictProject"][];
             /** Upcoming */
@@ -6573,11 +7562,20 @@ export interface components {
         };
         /**
          * DistrictProjectsOverview
-         * @description ``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl.
+         * @description ``GET /api/districts/projects`` — alle Ortsbereiche mit Vorhaben-Zahl,
+         *     dazu die Stadtzahlen und die Vorhaben, die gerade herausstechen.
          */
         DistrictProjectsOverview: {
             /** Districts */
             districts: components["schemas"]["DistrictProjectsOverviewEntry"][];
+            /** Highlights */
+            highlights: components["schemas"]["DistrictHighlight"][];
+            /** Stages */
+            stages: {
+                [key: string]: number;
+            };
+            /** Total */
+            total: number;
             /** Updated At */
             updated_at: string | null;
         };
@@ -6591,6 +7589,10 @@ export interface components {
             name: string;
             /** Place Id */
             place_id: string;
+            /** Stages */
+            stages: {
+                [key: string]: number;
+            };
         };
         /**
          * DistrictSuggestions
@@ -6836,6 +7838,53 @@ export interface components {
             voters: number | null;
         };
         /**
+         * ElsewhereItem
+         * @description Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss passt.
+         */
+        ElsewhereItem: {
+            /** Body Id */
+            body_id: string;
+            /** Body Name */
+            body_name: string;
+            /** Date */
+            date: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Originator */
+            originator: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Outcome Raw */
+            outcome_raw: string | null;
+            /** Paper Id */
+            paper_id: string;
+            /** Paper Type Raw */
+            paper_type_raw: string | null;
+            /** Reference */
+            reference: string | null;
+            /** Score */
+            score: number;
+            /** Summary */
+            summary: string | null;
+            /** Transfer */
+            transfer: string | null;
+            /** Web */
+            web: string | null;
+        };
+        /** ElsewhereResponse */
+        ElsewhereResponse: {
+            /** Bodies */
+            bodies: string[];
+            /** Decision Id */
+            decision_id: number;
+            /** Items */
+            items: components["schemas"]["ElsewhereItem"][];
+        };
+        /**
          * EmergingTag
          * @description Ein Schlagwort, das in den letzten beiden Quartalen auffällig oft
          *     vorkam (mindestens zweimal), ohne Verfahrens-Vokabular.
@@ -6991,6 +8040,16 @@ export interface components {
             n: number;
             /** Parties */
             parties: string[];
+        };
+        /**
+         * FeedbackAck
+         * @description Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht.
+         */
+        FeedbackAck: {
+            /** Paper Id */
+            paper_id: string;
+            /** Verdict */
+            verdict: string;
         };
         /** FeedbackIn */
         FeedbackIn: {
@@ -7271,6 +8330,124 @@ export interface components {
         HighestDecisionId: {
             /** Highest Id */
             highest_id: number;
+        };
+        /**
+         * Idea
+         * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+         */
+        Idea: {
+            /** Addressee */
+            addressee: string | null;
+            /** Body Id */
+            body_id: string;
+            /** Body Name */
+            body_name: string;
+            /** Competence */
+            competence: string | null;
+            /** Confidence */
+            confidence: string;
+            /** Date */
+            date: string | null;
+            /** Effort */
+            effort: string;
+            /** Evidence */
+            evidence: components["schemas"]["IdeaEvidence"][];
+            /** Feedback */
+            feedback: string;
+            /** Field */
+            field: string | null;
+            /** Instrument */
+            instrument: string | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            /** Originator */
+            originator: string | null;
+            /** Outcome */
+            outcome: string;
+            /** Paper Id */
+            paper_id: string;
+            /** Peers */
+            peers: number;
+            /** Reason */
+            reason: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
+            /** Transfer */
+            transfer: string;
+            /** Web */
+            web: string | null;
+        };
+        /**
+         * IdeaEvidence
+         * @description Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
+         */
+        IdeaEvidence: {
+            /** Date */
+            date: string | null;
+            /** Decision Id */
+            decision_id: number | null;
+            /** Kvonr */
+            kvonr: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Title */
+            title: string;
+        };
+        /**
+         * IdeaFieldSummary
+         * @description Ein Themenfeld auf der Übersicht.
+         */
+        IdeaFieldSummary: {
+            /** Field */
+            field: string;
+            /** Missing */
+            missing: number;
+            /** Multi City */
+            multi_city: number;
+            /** Partial */
+            partial: number;
+            /** Present */
+            present: number;
+            /** Total */
+            total: number;
+        };
+        /** IdeaFields */
+        IdeaFields: {
+            /** Fields */
+            fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /**
+         * IdeaSearchResponse
+         * @description Freie Suche über die Vorlagen anderer Städte.
+         */
+        IdeaSearchResponse: {
+            /** Items */
+            items: components["schemas"]["Idea"][];
+            /** Query */
+            query: string;
+            /** Total */
+            total: number;
+        };
+        /** IdeasResponse */
+        IdeasResponse: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Field */
+            field: string;
+            /** Items */
+            items: components["schemas"]["Idea"][];
+            /** Page */
+            page: number;
+            /** Per Page */
+            per_page: number;
+            /** Total */
+            total: number;
         };
         /**
          * ImportanceBreakdown
@@ -7665,6 +8842,45 @@ export interface components {
             place_reason: string | null;
         };
         /**
+         * NewsSeen
+         * @description Die Marke, die nach dem Wegklicken gilt. Sie steigt nur.
+         */
+        NewsSeen: {
+            /** Seen Version */
+            seen_version: string | null;
+        };
+        /**
+         * NewsSeenIn
+         * @description Welche Release-Karte weggeklickt wurde (``kern/releases.py``).
+         *
+         *     Die Version kommt vom Client, weil er die GEZEIGTE meldet und nicht die
+         *     neueste — sonst erledigte ein Wisch ein Release mit, das zwischen Laden
+         *     und Klick erschienen ist. Unbekannte Werte lässt der Store unberührt; hier
+         *     steht nur der Deckel gegen Datenmüll in der Spalte.
+         */
+        NewsSeenIn: {
+            /** Version */
+            version: string;
+        };
+        /**
+         * NewsState
+         * @description Was dieses Konto noch nicht gesehen hat.
+         *
+         *     ``releases`` ist eine LISTE, keine einzelne Ausgabe: Wer zwei Releases
+         *     verpasst hat, soll beide sehen. Neueste zuerst, gedeckelt auf
+         *     ``releases.CARD_LIMIT``; was darüber liegt, zählt ``older_count``. Die
+         *     Entscheidung fällt serverseitig, damit Web und App dieselbe Antwort
+         *     bekommen (dieselbe Regel wie ``SetupState.pending``).
+         */
+        NewsState: {
+            /** Older Count */
+            older_count: number;
+            /** Releases */
+            releases: components["schemas"]["ReleaseNews"][];
+            /** Seen Version */
+            seen_version: string | null;
+        };
+        /**
          * NotifyKind
          * @description Ein Anlass samt Beschriftung — die Oberfläche soll keine zweite Liste
          *     pflegen müssen. ``parent`` ist gesetzt, wenn der Anlass eine Unter-Option
@@ -7773,6 +8989,38 @@ export interface components {
             celebrated?: boolean | null;
             /** Steps */
             steps?: string[];
+        };
+        /**
+         * PageViewIn
+         * @description Ein Seitenaufruf, gemeldet vom Browser.
+         *
+         *     Absichtlich winzig. Was NICHT drinsteht — Query, Referrer, User-Agent,
+         *     Kennung — ist der Punkt der ganzen Übung; die Begründung je Feld steht in
+         *     ``kern/seitenaufrufe.py``. Der Server prüft ``route`` zusätzlich gegen eine
+         *     Positivliste: Alles Unbekannte wird zu ``/andere``, nicht gespeichert wie
+         *     geschickt.
+         */
+        PageViewIn: {
+            /**
+             * Client
+             * @default web
+             */
+            client: string;
+            /**
+             * First
+             * @default false
+             */
+            first: boolean;
+            /**
+             * Logged In
+             * @default false
+             */
+            logged_in: boolean;
+            /**
+             * Route
+             * @default /
+             */
+            route: string;
         };
         /** PartyFilter */
         PartyFilter: {
@@ -8738,6 +9986,73 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /**
+         * ReleaseHighlight
+         * @description Ein Feature auf der Karte: ein Satz und ein Ort, an dem man es sieht.
+         */
+        ReleaseHighlight: {
+            /**
+             * ReleaseMedia
+             * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+             *
+             *     Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+             *     den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+             *     einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+             *     nur bei ``kind == "video"`` und ist zugleich das, was bei
+             *     ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+             */
+            media: {
+                /** Alt */
+                alt: string;
+                /** Aspect */
+                aspect: string;
+                /** Kind */
+                kind: string;
+                /** Poster */
+                poster: string | null;
+                /** Src */
+                src: string;
+            } | null;
+            /** Text */
+            text: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * ReleaseMedia
+         * @description Das Bild oder der Clip zu einem Highlight (``kern/releases.py``).
+         *
+         *     Immer die helle Fassung (Tims Entscheidung 07.09.2026) — eine zweite für
+         *     den Dunkelmodus wäre doppelte Arbeit bei jeder Ausgabe, und ein Bild in
+         *     einem gerahmten Kasten liest sich ohnehin als Abbildung. ``poster`` steht
+         *     nur bei ``kind == "video"`` und ist zugleich das, was bei
+         *     ``prefers-reduced-motion`` anstelle des Clips gezeigt wird.
+         */
+        ReleaseMedia: {
+            /** Alt */
+            alt: string;
+            /** Aspect */
+            aspect: string;
+            /** Kind */
+            kind: string;
+            /** Poster */
+            poster: string | null;
+            /** Src */
+            src: string;
+        };
+        /** ReleaseNews */
+        ReleaseNews: {
+            /** Date */
+            date: string;
+            /** Highlights */
+            highlights: components["schemas"]["ReleaseHighlight"][];
+            /** Title */
+            title: string;
+            /** Version */
+            version: string;
+        };
         /** ResearchCurrent */
         ResearchCurrent: {
             /**
@@ -9413,6 +10728,8 @@ export interface components {
             matches_capped: boolean;
             /** Name */
             name: string;
+            /** Parts */
+            parts: string[];
             /** Reason */
             reason: string;
             /** Suggestion */
@@ -9422,16 +10739,36 @@ export interface components {
             /** Verdict */
             verdict: string;
         };
-        /** TopicHit */
+        /**
+         * TopicHit
+         * @description Ein Beschluss-Treffer auf der Karte „Neu zu deinen Themen" (Heute).
+         *
+         *     Bis 09/2026 trug er nur Titel, Gremium und Datum — die Karte konnte damit
+         *     weder sagen, WAS entschieden wurde (``summary``), noch WIE (``outcome``),
+         *     noch ob man es schon kannte (``is_new``). Dieselben drei Felder trägt die
+         *     Themen-Karte seit dem 28.08.2026 (``TopicHitOut``); ``topic_id`` braucht
+         *     der Gelesen-Ruf (``POST /topics/{topic_id}/seen``).
+         */
         TopicHit: {
             /** Committee */
             committee: string;
             /** Id */
             id: number;
+            /** Is New */
+            is_new: boolean;
+            /**
+             * Outcome
+             * @enum {string|null}
+             */
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision" | null;
             /** Session Date */
             session_date: string;
+            /** Summary */
+            summary: string | null;
             /** Title */
             title: string;
+            /** Topic Id */
+            topic_id: number;
             /** Topic Name */
             topic_name: string;
         };
@@ -9439,6 +10776,12 @@ export interface components {
         TopicHitList: {
             /** Hits */
             hits: components["schemas"]["TopicHit"][];
+            /** Topic Count */
+            topic_count: number;
+            /** Total */
+            total: number;
+            /** Unread Total */
+            unread_total: number;
         };
         /**
          * TopicHitOut
@@ -10116,6 +11459,26 @@ export interface operations {
             };
         };
     };
+    cities_stats_api_admin_cities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityStats"][];
+                };
+            };
+        };
+    };
     list_entity_aliases_api_admin_entity_aliases_get: {
         parameters: {
             query?: never;
@@ -10390,6 +11753,51 @@ export interface operations {
             };
         };
     };
+    live_probe_api_admin_live_probe_get: {
+        parameters: {
+            query?: {
+                seconds?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Server-Sent Events (`text/event-stream`). Jeder Rahmen ist eine `data:`-Zeile mit einem JSON-Objekt und einem Feld `type`:
+             *
+             *     - `status` — Text zum Stand (`text`), etwa „verbunden"
+             *     - `segment` — eine fertige Äußerung: `start`/`end` in Sekunden seit Beginn, `text`, `wall` = Sekunden seit Beginn auf der Server-Uhr (die Differenz zu `end` ist der Verzug)
+             *     - `done` — Schluss mit `segments` (Zahl) und `seconds`
+             *     - `error` — abgebrochen (`message`)
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Es läuft schon eine Probe — nur eine zugleich. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     llm_usage_api_admin_llm_usage_get: {
         parameters: {
             query?: never;
@@ -10406,6 +11814,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminLlmUsage"];
+                };
+            };
+        };
+    };
+    admin_news_api_admin_news_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsList"];
+                };
+            };
+        };
+    };
+    admin_news_send_api_admin_news__version__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNewsSent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_news_test_api_admin_news__version__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestDelivery"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10629,6 +12119,99 @@ export interface operations {
             };
         };
     };
+    stats_cohorts_api_admin_stats_cohorts_get: {
+        parameters: {
+            query?: {
+                weeks?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminKohorten"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_dead_ends_api_admin_stats_dead_ends_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSackgasse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_events_api_admin_stats_events_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminEreignisse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stats_growth_api_admin_stats_growth_get: {
         parameters: {
             query?: {
@@ -10647,6 +12230,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminGrowth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_page_views_api_admin_stats_page_views_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSeitenaufrufe"];
                 };
             };
             /** @description Validation Error */
@@ -11959,6 +13573,129 @@ export interface operations {
             };
         };
     };
+    cities_ideas_api_council_cities_ideas_get: {
+        parameters: {
+            query: {
+                field: string;
+                status?: string;
+                effort?: string;
+                body?: string | null;
+                page?: number;
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeasResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_idea_fields_api_council_cities_ideas_fields_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaFields"];
+                };
+            };
+        };
+    };
+    cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post: {
+        parameters: {
+            query: {
+                verdict: string;
+                note?: string | null;
+            };
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cities_search_api_council_cities_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                body?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdeaSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     committees_api_council_committees_get: {
         parameters: {
             query?: never;
@@ -12200,6 +13937,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decision_elsewhere_api_council_decision__decision_id__elsewhere_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElsewhereResponse"];
                 };
             };
             /** @description Validation Error */
@@ -13428,6 +15196,37 @@ export interface operations {
             };
         };
     };
+    district_lookup_api_districts_lookup_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DistrictLookup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     district_projects_overview_api_districts_projects_get: {
         parameters: {
             query?: never;
@@ -13631,6 +15430,59 @@ export interface operations {
             };
         };
     };
+    get_news_api_news_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsState"];
+                };
+            };
+        };
+    };
+    mark_seen_api_news_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsSeenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsSeen"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_onboarding_api_onboarding_get: {
         parameters: {
             query?: never;
@@ -13724,6 +15576,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetupState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seitenaufruf_api_page_views_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageViewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
                 };
             };
             /** @description Validation Error */
@@ -14676,6 +16561,37 @@ export interface operations {
             };
         };
     };
+    topic_match_api_topics_match_get: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CityTopicMatch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     uebersicht_gesehen_api_topics_overview_seen_post: {
         parameters: {
             query?: never;
@@ -14964,4 +16880,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 32b6ee7c6a2c921a4e65e2bb6b0e38a64626e06dd5fe9334b908ed5c616ad1ec
+// vertrag-sha256: 96a895eaee5f72ad0c43f0da3ad81ffb55edaa4b80bcf909aa9ba189b647bdf2

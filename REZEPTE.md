@@ -126,10 +126,128 @@ ist **dauerhaft aus** und sieht aus wie „noch nicht angeschaltet".
 
 Der einzige Ablauf, der von Hand geht und **nicht** gesquasht wird. Er steht
 vollständig in [`CLAUDE.md`](CLAUDE.md) unter „Deployment & Branch-Modell".
-Die zwei Dinge, die man dabei vergisst:
+Die drei Dinge, die man dabei vergisst:
 
 1. `python3 scripts/ios_vertrag.py --ausgeliefert` — bricht die App im Store?
 2. Nach einem Fix auf `main`: zurück nach `dev` mergen.
+3. **Bei einer Minor-Version: die Karte „Neu bei Ratslotse"** — ein `Release(…)`
+   in [`kern/releases.py`](kern/releases.py), in denselben Commit wie der
+   Versionsschnitt. Entwurf aus den Fragmenten:
+   `scripts/changelog_schnitt.py x.y.0 --highlights`. Höchstens vier Highlights,
+   jedes mit einem Ziel in der App, **nur große Features** — Fixes stehen im
+   Changelog. **Der Titel ist ein Name, kein Halbsatz:** „Das Teilen-Update",
+   benannt nach dem Hauptfeature (Tims Wunsch 08.09.2026; `test_releases.py`
+   hält 40 Zeichen). Verschickt wird später von Hand im Admin-Panel unter
+   *Neuigkeiten*; ein Patch-Release bekommt gar keinen Eintrag.
+
+   **Je Highlight ein Clip, in dem man das Feature bedient sieht** — der
+   Zeiger fährt hin, der Klick ist markiert, das Bild zoomt auf die Stelle
+   (Tims Wunsch 08.09.2026: „dass es angeklickt wird, dass man das halt sehen
+   kann, wie es funktioniert"). Die Clips entstehen aus **Drehbüchern als
+   Code**, damit die nächste Ausgabe dieselbe Arbeit nicht noch einmal von
+   Hand macht:
+
+   ```bash
+   python scripts/release_clips.py skeleton 2.3.0   # Drehbuch-Gerüst aus der Registry
+   #   → web/frontend/release-clips/2.3.0.mjs ausfüllen: goto, begin, click, look, pause
+   python scripts/release_clips.py web 2.3.0        # nimmt auf, schneidet, legt MP4 + WebP ab
+   python scripts/release_clips.py check 2.3.0      # Registry ↔ Drehbücher, beide Richtungen
+   ```
+
+   Voraussetzung: Frontend und Backend laufen lokal mit echten Daten. Ein
+   Drehbuch ist eine kurze Szene auf der Bühne `stage`
+   (`web/frontend/scripts/release-clip.mjs`): Aufbau — Seite öffnen, Zustand
+   herstellen, notfalls `page.route` für eine gestellte Antwort —, dann
+   `begin()` (alles davor wird weggeschnitten), dann je Beat ein `click(…)`;
+   `look(…)` zoomt ohne Tipp, für alles, was schon beim Überfahren aufgeht.
+   **Was gestellt ist, steht im Drehbuch dabei** (2.2.0: die KI-Antwort, und
+   dass die Ratssitzung gerade läuft — Tagesordnung, Begriffe und Erklärungen
+   sind echt). Immer hell, alle Browser-Clips einer Ausgabe im selben Rahmen
+   (980 px breit, oben 16:9 — die Tab-Leiste unten bleibt draußen). Entweder
+   **alle** Highlights einer Ausgabe haben ein Medium oder keins —
+   `test_releases.py` meldet das Loch, `test_release_clips.py` ein Video ohne
+   Drehbuch und ein Drehbuch ohne Video.
+
+   Drei Messungen vom 08.09.2026, die im Recorder als Kommentar stehen, damit
+   sie niemand wiederholt: Chromes Screencast liefert nur CSS-Pixel, 2× gibt
+   es nicht. Playwrights `recordVideo` verliert bei einem Seitenwechsel
+   0,5–0,9 s — deshalb der eigene Screencast mit Zeitstempeln. Und ein `scale`
+   als Einzel-Eigenschaft am Zeiger multipliziert dessen Verschiebung: Der
+   Pfeil sprang beim Klick 100 px weg.
+
+   **Für die App dieselben Szenen aus der App** (`media_ios`, Tims Wunsch
+   07.09.2026): Wer auf dem iPhone liest, soll das iPhone sehen. Aufgenommen im
+   Simulator gegen das lokale Backend, **ganzes Telefon, nichts
+   beschnitten** — ein zurechtgeschnittener Bildschirm sieht nicht mehr nach
+   iPhone aus:
+
+   ```bash
+   xcodebuild -project ios/Ratslotse.xcodeproj -scheme Ratslotse \
+     -destination 'platform=iOS Simulator,id=<UDID>' -derivedDataPath <scratch> build
+   xcrun simctl install <UDID> <scratch>/Build/Products/Debug-iphonesimulator/Ratslotse.app
+   SIMCTL_CHILD_RATSLOTSE_API_BASE_URL=http://127.0.0.1:<port> \
+   SIMCTL_CHILD_RATSLOTSE_DEBUG_ACCESS_TOKEN=<Token> \
+     xcrun simctl launch <UDID> de.ratslotse.dev
+   xcrun simctl io <UDID> screenshot bild.png
+   ```
+
+   Vier Dinge, die dabei Zeit kosten:
+
+   * `RATSLOTSE_DEBUG_ROUTE` ist ein **Deep-Link**, kein App-Screen: `/abos`
+     landet im Web-View. Native Screens werden getippt.
+   * **Auf Hell stellen geht nur über Mehr → Konto → Erscheinungsbild**,
+     `simctl ui appearance` wirkt auf die App nicht.
+   * Ein Start aus Safari lässt „◀ Safari" in der Statusleiste stehen; vor der
+     Aufnahme Safari beenden und `simctl status_bar … override` setzen.
+   * Für die Live-Karte braucht es eine laufende Sitzung: `council_sessions`
+     auf heute ziehen und eine Zeile in `council_live_state` legen —
+     **hinterher zurückdrehen**.
+
+   **Die App-Aufnahmen sind hochkant und ungeschnitten** (`aspect` =
+   Bildschirmmaß, Tims Vorgabe 07.09.2026): Ein Telefon-Bildschirm in einem
+   16:9-Kasten stünde als schmaler Streifen zwischen zwei leeren Flächen, und
+   ein oben und unten beschnittener sieht nicht mehr nach iPhone aus. Die Bühne
+   baut ihren Rahmen aus dem Feld, alle Medien einer Ausgabe teilen sich eines.
+
+   **Was der Simulator NICHT kann:** Im Teilen-Blatt steht dort nur
+   „Erinnerungen" — kein Messenger meldet sich als Ziel an (Messages ist
+   installiert, bietet im Simulator aber keine Teilen-Erweiterung). Wer den
+   Weg „an jemanden schicken" zeigen will, filmt diese Sekunden auf einem
+   echten iPhone.
+
+   Der Simulator kennt keinen Zeiger, und `xcrun simctl io <UDID> recordVideo`
+   schreibt praktisch **nur bei Bildwechseln**, mit Zeitstempeln, die nicht zu
+   den Bildern passen. Deshalb **je Beat eine Aufnahme**: Aufnahme starten,
+   tippen, drei Sekunden laufen lassen, beenden; den Tippunkt in Rohpixeln
+   notieren. Ein Tipp direkt nach einem Wisch wird verschluckt — dazwischen
+   warten. Zusammensetzen, zoomen und ablegen macht dann:
+
+   ```bash
+   python scripts/release_clips.py ios 2.3.0 teilen --segment blaettern.mov \
+     --segment teilen.mov:1068:1203 --segment erinnerungen.mov:204:1956 --segment haken.mov:1092:330
+   # ohne X:Y = ein Stück ohne Tipp (Blättern); --focus X:Y = Schluss-Blick ohne Tipp
+   ```
+
+   Es findet in jeder Aufnahme den ersten Bildwechsel (die Reaktion auf den
+   Tipp), schneidet darum herum, legt die Stücke an identischen Standbildern
+   aneinander, friert den Schluss ein und schreibt `teilen-ios.mp4` samt
+   Standbild. Zoom und Tipp-Markierung kommen aus `scripts/highlight_clip.py`
+   (`--beat SEKUNDE:X:Y`, für Telefon-Clips Zoom 1,5, kurzer Halt — die Pointe
+   liegt außerhalb des Ausschnitts und wird beim Zurückfahren sichtbar).
+
+   **Ein Teilen-Clip braucht ein Ziel.** Im Simulator gibt es keinen
+   Messenger, und auf einem echten iPhone stünden im Teilen-Blatt die eigenen
+   Kontakte — beides scheidet aus. Was geht: die **Erinnerungen**-App. Ihre
+   Teilen-Erweiterung ist im Simulator dabei, öffnet sichtbar eine andere App
+   und zeigt den Ratslotse-Link als neue Erinnerung; ein Tipp auf den Haken
+   führt zurück. Vier Beats also (Blättern, Teilen, „Erinnerungen“, Haken),
+   jeden als eigene Aufnahme, dann zusammenschneiden — die Nähte liegen auf
+   identischen Standbildern und fallen nicht auf.
+
+   Auch hier alles oder nichts: Fehlt einem Highlight die App-Fassung, bekommt
+   die App für die ganze Ausgabe die Web-Bilder. Und ein Feature, das es in der
+   App gar nicht gibt (2.2.0: das Glossar), bekommt `only="web"` — angekündigt
+   wird nur, was man auf dem eigenen Gerät auch findet.
 
 ---
 

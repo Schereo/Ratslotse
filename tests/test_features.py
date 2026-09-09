@@ -90,6 +90,13 @@ def test_ein_unbekannter_name_wird_verworfen_statt_durchgereicht(probe):
     assert aktive("gibtesnicht,alpha") == ["alpha"]
 
 
+def test_stern_schaltet_alle_an(probe):
+    # ``*`` ist die Vorgabe für dev: alles an, was die Registry kennt — in
+    # ihrer Reihenfolge, und Unbekanntes daneben stört nicht.
+    assert aktive("*") == list(probe)
+    assert aktive("gibtesnicht, *") == list(probe)
+
+
 def test_leerraum_und_leere_eintraege_stoeren_nicht(probe):
     assert aktive("") == []
     assert aktive(" , , ") == []

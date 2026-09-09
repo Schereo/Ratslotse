@@ -55,6 +55,24 @@ neues Token. Der öffentliche Endpoint `/api/app-config` kann über
 `APP_MIN_BUILD` alte Store-Builds sperren und mit `APP_UPDATE_NOTICE` einen
 Hinweis anzeigen.
 
+## Startbildschirm
+
+Das Bild hinter `UILaunchScreen` (`Resources/Assets.xcassets/Splash.imageset/`)
+ist erzeugt, nicht gemalt: `scripts/make_splash.py` setzt es aus den
+Bausteinen von [ratslotse-social](https://github.com/Schereo/ratslotse-social)
+— Wellenmuster, weiche Sonne, Möwen, Wogen — mit Lottis Splash-Render aus
+demselben Studio (Szene `splash`, `assets/marke/lotti-splash.png`), Wortmarke
+und Kicker. Es braucht einen Checkout des Social-Repos daneben (oder
+`--social PFAD`) und die venv des Hauptprojekts (Pillow):
+
+```bash
+.venv/bin/python ios/scripts/make_splash.py --vorschau /tmp/splash
+```
+
+`--vorschau` legt zusätzlich Handy-Ausschnitte ab, wie das Gerät sie zeigt.
+Die Leinwand ist bewusst 1.400 pt groß und wird vom System **nicht** skaliert
+— warum, steht im Skript.
+
 ## Erststart mit Lotti
 
 Der native Erststart übernimmt den Einrichtungsablauf der bisherigen App:

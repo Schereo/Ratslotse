@@ -45,13 +45,47 @@ public struct DistrictProjectsOverviewEntry: Codable, Sendable, Hashable, Identi
     }
 }
 
+/// Ein Vorhaben, das stadtweit gerade heraussticht — für die Stadt-Stufe der Karte.
+public struct DistrictHighlight: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let placeID: String
+    public let placeName: String
+    public let name: String
+    public let what: String
+    public let stage: String
+    public let when: String?
+    public let category: String
+    public let lastDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, what, stage, when, category
+        case placeID = "place_id"
+        case placeName = "place_name"
+        case lastDate = "last_date"
+    }
+}
+
 public struct DistrictProjectsOverview: Codable, Sendable {
     public let districts: [DistrictProjectsOverviewEntry]
+    /// Stadtzahlen und Highlights (seit der Auswahl-Anzeigetafel, 09/2026) —
+    /// optional, damit ein älterer Server die Übersicht nicht leer lässt.
+    public let total: Int?
+    public let stages: [String: Int]?
+    public let highlights: [DistrictHighlight]?
     public let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case districts
+        case districts, total, stages, highlights
         case updatedAt = "updated_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        districts = try c.decode([DistrictProjectsOverviewEntry].self, forKey: .districts)
+        total = try c.decodeIfPresent(Int.self, forKey: .total)
+        stages = try c.decodeIfPresent([String: Int].self, forKey: .stages)
+        highlights = try c.decodeIfPresent([DistrictHighlight].self, forKey: .highlights)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 }
 
@@ -63,8 +97,33 @@ public struct DistrictProjectDecision: Codable, Sendable, Hashable, Identifiable
     public let committee: String?
 }
 
-/// Ein Ort eines Vorhabens auf der Karte — Punkt, und bei Straßen die Linie
-/// als GeoJSON (LineString/MultiLineString), als `JSONValue` durchgereicht.
+/// Ein Bebauungsplan hinter einem Ort der Art `bplan`: Nummer, Name und die
+/// Stationen des Verfahrens aus den offenen Geodaten der Stadt.
+public struct DistrictPlanInfo: Codable, Sendable, Hashable {
+    public let nr: String
+    public let name: String
+    /// `effective` (rechtsverbindlich) oder `in_procedure` (in Aufstellung).
+    public let status: String
+    public let resolutionDate: String?
+    public let adoptionDate: String?
+    public let effectiveDate: String?
+    public let note: String?
+    public let source: String
+    public let sourceURL: String
+
+    enum CodingKeys: String, CodingKey {
+        case nr, name, status, note, source
+        case resolutionDate = "resolution_date"
+        case adoptionDate = "adoption_date"
+        case effectiveDate = "effective_date"
+        case sourceURL = "source_url"
+    }
+}
+
+/// Ein Ort eines Vorhabens auf der Karte — Punkt, bei Straßen die Linie
+/// (LineString/MultiLineString), bei Bebauungsplänen (`kind = bplan`) der
+/// Geltungsbereich (Polygon/MultiPolygon) als GeoJSON, als `JSONValue`
+/// durchgereicht.
 public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable {
     public var id: String { slug }
     public let slug: String
@@ -73,9 +132,14 @@ public struct DistrictProjectLocation: Codable, Sendable, Hashable, Identifiable
     public let latitude: Double
     public let longitude: Double
     public let geometry: JSONValue?
+    /// `subject` — dort ändert sich etwas; `boundary` — nur Abschnittsgrenze
+    /// („Am Schmeel bis Brahmweg"), auf der Karte keine Linie.
+    public let role: String
+    /// Nur bei `kind == "bplan"`: der Plan hinter der Fläche.
+    public let plan: DistrictPlanInfo?
 
     enum CodingKeys: String, CodingKey {
-        case slug, name, kind, geometry
+        case slug, name, kind, geometry, role, plan
         case latitude = "lat"
         case longitude = "lon"
     }
@@ -145,7 +209,8 @@ public struct DistrictInvestment: Codable, Sendable, Hashable {
     }
 }
 
-public struct DistrictParticipation: Codable, Sendable, Hashable {
+public struct DistrictParticipation: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { (url ?? "") + (title ?? "") + (step ?? "") }
     public let title: String?
     public let place: String?
     public let step: String?
@@ -153,12 +218,24 @@ public struct DistrictParticipation: Codable, Sendable, Hashable {
     public let validUntil: String?
     public let url: String?
     public let planNrs: [String]
+    /// Geltungsbereich des Plans (Polygon/MultiPolygon als GeoJSON) — nil,
+    /// wenn das Geoportal den Plan (noch) nicht kennt. Optional dekodiert:
+    /// ältere Server liefern das Feld nicht.
+    public let geometry: JSONValue?
+    public let latitude: Double?
+    public let longitude: Double?
+    public let planNr: String?
+    public let planStatus: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, place, step, url
+        case title, place, step, url, geometry
         case validFrom = "valid_from"
         case validUntil = "valid_until"
         case planNrs = "plan_nrs"
+        case latitude = "lat"
+        case longitude = "lon"
+        case planNr = "plan_nr"
+        case planStatus = "plan_status"
     }
 }
 
@@ -174,20 +251,73 @@ public struct DistrictNeighbour: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+/// Eine laufende Sperrung der Stadt (Geoportal) im Viertel — Linie als
+/// GeoJSON (LineString/MultiLineString), Kontext, kein Vorhaben.
+public struct DistrictClosure: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let street: String
+    public let reason: String?
+    public let kind: Int?
+    public let kindLabel: String?
+    public let validFrom: String?
+    public let validUntil: String?
+    public let description: String?
+    public let geometry: JSONValue?
+    public let latitude: Double?
+    public let longitude: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, street, reason, kind, description, geometry
+        case kindLabel = "kind_label"
+        case validFrom = "valid_from"
+        case validUntil = "valid_until"
+        case latitude = "lat"
+        case longitude = "lon"
+    }
+}
+
+/// Eine Pressemitteilung der Stadt mit Bezug auf das Viertel.
+public struct DistrictPressItem: Codable, Sendable, Hashable, Identifiable {
+    public let id: Int
+    public let title: String
+    public let date: String?
+    public let url: String
+    public let teaser: String
+    public let evidence: String?
+    public let via: String?
+}
+
 /// `GET /api/districts/{place_id}/projects` — die Tafel eines Ortsbereichs.
 /// `place` ist die Ortsdarstellung des Katalogs; hier reichen id und name.
+/// `closures` und `press` sind optional dekodiert: Die App im Store wurde
+/// gegen einen Server ohne die beiden Felder gebaut (s. ios/CLAUDE.md).
 public struct DistrictProjects: Codable, Sendable {
     public let place: DistrictPlace
     public let projects: [DistrictProject]
     public let upcoming: [DistrictUpcomingItem]
     public let investments: [DistrictInvestment]
     public let participations: [DistrictParticipation]
+    public let closures: [DistrictClosure]
+    public let press: [DistrictPressItem]
     public let neighbours: [DistrictNeighbour]
     public let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case place, projects, upcoming, investments, participations, neighbours
+        case place, projects, upcoming, investments, participations, closures, press, neighbours
         case updatedAt = "updated_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        place = try c.decode(DistrictPlace.self, forKey: .place)
+        projects = try c.decode([DistrictProject].self, forKey: .projects)
+        upcoming = try c.decode([DistrictUpcomingItem].self, forKey: .upcoming)
+        investments = try c.decode([DistrictInvestment].self, forKey: .investments)
+        participations = try c.decode([DistrictParticipation].self, forKey: .participations)
+        closures = try c.decodeIfPresent([DistrictClosure].self, forKey: .closures) ?? []
+        press = try c.decodeIfPresent([DistrictPressItem].self, forKey: .press) ?? []
+        neighbours = try c.decode([DistrictNeighbour].self, forKey: .neighbours)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
     }
 }
 
@@ -330,6 +460,308 @@ public struct TopicHit: Codable, Sendable, Equatable, Identifiable {
         case id, title, committee, outcome
         case sessionDate = "session_date"
         case isNew = "is_new"
+    }
+}
+
+/// Ein Oldenburger Beleg unter einem Urteil — wo möglich mit Weg dorthin.
+public struct IdeaEvidence: Codable, Sendable, Hashable, Identifiable {
+    public var id: Int { kvonr ?? decisionID ?? title.hashValue }
+    /// Die Beschluss-Id, wenn ein Beschluss dahintersteht. Dann führt die
+    /// Zeile auf seine Seite; sonst bleibt sie eine Zeile ohne Ziel.
+    public let decisionID: Int?
+    public let kvonr: Int?
+    public let title: String
+    public let date: String?
+    public let outcome: String?
+
+    enum CodingKeys: String, CodingKey {
+        case title, date, outcome, kvonr
+        case decisionID = "decision_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        decisionID = try v.decodeIfPresent(Int.self, forKey: .decisionID)
+        kvonr = try v.decodeIfPresent(Int.self, forKey: .kvonr)
+        title = try v.decodeIfPresent(String.self, forKey: .title) ?? ""
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+        outcome = try v.decodeIfPresent(String.self, forKey: .outcome)
+    }
+
+    public init(decisionID: Int? = nil, kvonr: Int? = nil, title: String,
+                date: String? = nil, outcome: String? = nil) {
+        self.decisionID = decisionID
+        self.kvonr = kvonr
+        self.title = title
+        self.date = date
+        self.outcome = outcome
+    }
+}
+
+/// Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+///
+/// Alles außer der Kennung ist optional oder hat eine Vorgabe — dieselbe
+/// Lehre wie bei ``ElsewhereItem``: Die Ratsinformationssysteme füllen sehr
+/// unterschiedlich viel aus, und ein nicht-optionales Feld hieße,
+/// `JSONDecoder` wirft und die ganze Liste bleibt leer statt unvollständig.
+public struct Idea: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let paperID: String
+    public let bodyID: String
+    public let bodyName: String
+    public let name: String
+    public let date: String?
+    public let kind: String
+    public let web: String?
+    public let outcome: String
+    public let field: String?
+    public let instrument: String?
+    public let summary: String?
+    public let transfer: String
+    public let competence: String?
+    public let originator: String?
+    /// Das Urteil aus `council/cities/fit.py`.
+    public let status: String
+    public let reason: String
+    public let confidence: String
+    public let evidence: [IdeaEvidence]
+    /// Was die Idee den Rat kosten würde: inquiry < review < resolution <
+    /// decision < budget. Leer, solange der Wochen-Cron sie nicht vergeben hat.
+    public let effort: String
+    /// Wer sie in Oldenburg tun müsste, wenn nicht die Stadt selbst.
+    public let addressee: String?
+    /// In wie vielen ANDEREN Städten dieselbe Idee vorkommt. 0 heißt: in
+    /// keiner — kein Makel, sondern eine Aussage über die Idee.
+    public let peers: Int
+    /// Was DIESES Konto zum Urteil gesagt hat: "right", "wrong" oder leer.
+    public let feedback: String
+
+    enum CodingKeys: String, CodingKey {
+        case name, date, kind, web, outcome, field, instrument, summary
+        case transfer, competence, originator, status, reason
+        case confidence, evidence, effort, addressee, peers, feedback
+        case paperID = "paper_id"
+        case bodyID = "body_id"
+        case bodyName = "body_name"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        paperID = try v.decode(String.self, forKey: .paperID)
+        bodyID = try v.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        bodyName = try v.decodeIfPresent(String.self, forKey: .bodyName) ?? bodyID
+        name = try v.decodeIfPresent(String.self, forKey: .name) ?? "Vorlage"
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+        kind = try v.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        web = try v.decodeIfPresent(String.self, forKey: .web)
+        outcome = try v.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
+        field = try v.decodeIfPresent(String.self, forKey: .field)
+        instrument = try v.decodeIfPresent(String.self, forKey: .instrument)
+        summary = try v.decodeIfPresent(String.self, forKey: .summary)
+        transfer = try v.decodeIfPresent(String.self, forKey: .transfer) ?? ""
+        competence = try v.decodeIfPresent(String.self, forKey: .competence)
+        originator = try v.decodeIfPresent(String.self, forKey: .originator)
+        status = try v.decodeIfPresent(String.self, forKey: .status) ?? ""
+        reason = try v.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
+        evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []
+        // Alle drei mit Rückfall: Die ausgelieferte App muss auch dann laufen,
+        // wenn der Server sie noch nicht schickt (`ios_vertrag.py`).
+        effort = try v.decodeIfPresent(String.self, forKey: .effort) ?? ""
+        addressee = try v.decodeIfPresent(String.self, forKey: .addressee)
+        peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
+        feedback = try v.decodeIfPresent(String.self, forKey: .feedback) ?? ""
+    }
+}
+
+public struct IdeasResponse: Codable, Sendable {
+    public let field: String
+    public let total: Int
+    public let page: Int
+    public let perPage: Int
+    /// Je Status die Zahl der Ideen im Feld.
+    public let counts: [String: Int]
+    public let items: [Idea]
+
+    enum CodingKeys: String, CodingKey {
+        case field, total, page, counts, items
+        case perPage = "per_page"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        field = try v.decodeIfPresent(String.self, forKey: .field) ?? ""
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        page = try v.decodeIfPresent(Int.self, forKey: .page) ?? 1
+        perPage = try v.decodeIfPresent(Int.self, forKey: .perPage) ?? 30
+        counts = try v.decodeIfPresent([String: Int].self, forKey: .counts) ?? [:]
+        items = try v.decodeIfPresent([Idea].self, forKey: .items) ?? []
+    }
+}
+
+/// Die freie Suche über die Vorlagen anderer Städte.
+public struct IdeaSearchResponse: Codable, Sendable {
+    public let query: String
+    public let total: Int
+    public let items: [Idea]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        query = try v.decodeIfPresent(String.self, forKey: .query) ?? ""
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        items = try v.decodeIfPresent([Idea].self, forKey: .items) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case query, total, items }
+}
+
+
+/// Ein Themenfeld auf der Übersicht.
+public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { field }
+    public let field: String
+    public let total: Int
+    public let missing: Int
+    public let partial: Int
+    public let present: Int
+    /// Ideen dieses Feldes, die in mindestens ZWEI anderen Städten liegen und
+    /// Oldenburg fehlen. Eine Tatsache — vorher stand hier die Zahl der
+    /// „lohnt sich"-Urteile, also eine Modellmeinung.
+    public let multiCity: Int
+
+    enum CodingKeys: String, CodingKey {
+        case field, total, missing, partial, present
+        case multiCity = "multi_city"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        field = try v.decodeIfPresent(String.self, forKey: .field) ?? ""
+        total = try v.decodeIfPresent(Int.self, forKey: .total) ?? 0
+        missing = try v.decodeIfPresent(Int.self, forKey: .missing) ?? 0
+        partial = try v.decodeIfPresent(Int.self, forKey: .partial) ?? 0
+        present = try v.decodeIfPresent(Int.self, forKey: .present) ?? 0
+        multiCity = try v.decodeIfPresent(Int.self, forKey: .multiCity) ?? 0
+    }
+}
+
+public struct IdeaFields: Codable, Sendable {
+    public let fields: [IdeaFieldSummary]
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        fields = try v.decodeIfPresent([IdeaFieldSummary].self, forKey: .fields) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case fields }
+}
+
+
+/// Eine Vorlage aus einer anderen Stadt, die zu einem Oldenburger Beschluss
+/// passt — der Block „Anderswo beschlossen".
+///
+/// Alles außer der Kennung ist optional: Die Ratsinformationssysteme der
+/// Städte füllen unterschiedlich viel aus. Münster etwa liefert über OParl
+/// keine Ansichtsseite, also bleibt `web` leer und die Zeile bekommt keinen
+/// Link. Ein nicht-optionales Feld hier hieße: `JSONDecoder` wirft, und der
+/// ganze Abschnitt bleibt leer statt unvollständig.
+public struct ElsewhereItem: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let bodyID: String
+    public let bodyName: String
+    public let paperID: String
+    public let name: String
+    public let reference: String?
+    public let date: String?
+    public let kind: String
+    public let paperTypeRaw: String?
+    public let web: String?
+    /// Kanonisches Ergebnis; `none`, wenn die Stadt keins ausweist — bei rund
+    /// der Hälfte der Tagesordnungspunkte der Normalfall, kein Fehler.
+    public let outcome: String
+    public let outcomeRaw: String?
+    public let score: Double
+    public let summary: String?
+    public let instrument: String?
+    public let transfer: String?
+    public let originator: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, kind, web, outcome, score, summary, instrument, transfer, originator
+        case date, reference
+        case bodyID = "body_id"
+        case bodyName = "body_name"
+        case paperID = "paper_id"
+        case paperTypeRaw = "paper_type_raw"
+        case outcomeRaw = "outcome_raw"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        paperID = try values.decode(String.self, forKey: .paperID)
+        bodyID = try values.decodeIfPresent(String.self, forKey: .bodyID) ?? ""
+        bodyName = try values.decodeIfPresent(String.self, forKey: .bodyName) ?? bodyID
+        name = try values.decodeIfPresent(String.self, forKey: .name) ?? "Vorlage"
+        reference = try values.decodeIfPresent(String.self, forKey: .reference)
+        date = try values.decodeIfPresent(String.self, forKey: .date)
+        kind = try values.decodeIfPresent(String.self, forKey: .kind) ?? "other"
+        paperTypeRaw = try values.decodeIfPresent(String.self, forKey: .paperTypeRaw)
+        web = try values.decodeIfPresent(String.self, forKey: .web)
+        outcome = try values.decodeIfPresent(String.self, forKey: .outcome) ?? "none"
+        outcomeRaw = try values.decodeIfPresent(String.self, forKey: .outcomeRaw)
+        score = try values.decodeIfPresent(Double.self, forKey: .score) ?? 0
+        summary = try values.decodeIfPresent(String.self, forKey: .summary)
+        instrument = try values.decodeIfPresent(String.self, forKey: .instrument)
+        transfer = try values.decodeIfPresent(String.self, forKey: .transfer)
+        originator = try values.decodeIfPresent(String.self, forKey: .originator)
+    }
+
+    public init(bodyID: String, bodyName: String, paperID: String, name: String,
+                reference: String? = nil, date: String? = nil, kind: String = "other",
+                paperTypeRaw: String? = nil, web: String? = nil, outcome: String = "none",
+                outcomeRaw: String? = nil, score: Double = 0, summary: String? = nil,
+                instrument: String? = nil, transfer: String? = nil, originator: String? = nil) {
+        self.bodyID = bodyID
+        self.bodyName = bodyName
+        self.paperID = paperID
+        self.name = name
+        self.reference = reference
+        self.date = date
+        self.kind = kind
+        self.paperTypeRaw = paperTypeRaw
+        self.web = web
+        self.outcome = outcome
+        self.outcomeRaw = outcomeRaw
+        self.score = score
+        self.summary = summary
+        self.instrument = instrument
+        self.transfer = transfer
+        self.originator = originator
+    }
+}
+
+public struct ElsewhereResponse: Codable, Sendable {
+    public let decisionID: Int
+    public let items: [ElsewhereItem]
+    /// Die Städte, aus denen Treffer stammen — für die Zeile „aus X und Y".
+    public let bodies: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case items, bodies
+        case decisionID = "decision_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        decisionID = try values.decodeIfPresent(Int.self, forKey: .decisionID) ?? 0
+        items = try values.decodeIfPresent([ElsewhereItem].self, forKey: .items) ?? []
+        bodies = try values.decodeIfPresent([String].self, forKey: .bodies) ?? []
+    }
+
+    public init(decisionID: Int, items: [ElsewhereItem], bodies: [String]) {
+        self.decisionID = decisionID
+        self.items = items
+        self.bodies = bodies
     }
 }
 
@@ -1381,5 +1813,135 @@ public struct DeepResearchRequest: Encodable, Sendable {
         try values.encode(question, forKey: .question)
         // `null` bedeutet auch bei der Recherche: ein neues Gespräch beginnen.
         try values.encode(conversationID, forKey: .conversationID)
+    }
+}
+
+// MARK: - Neu bei Ratslotse
+
+/// Was `GET /api/news` liefert: die Ausgaben, die dieses Konto noch nicht
+/// gesehen hat (neueste zuerst), und wie viele ältere darüber hinaus liegen.
+/// **Wer die Karte sieht, entscheidet der Server** — dieselbe Regel wie beim
+/// Einrichtungs-Assistenten: Web und App bekommen dieselbe Antwort, statt die
+/// Bedingung je Client nachzubauen. Die Medien darin sind bereits die der App
+/// (der Client meldet sich mit `X-Client: ios`).
+public struct NewsState: Codable, Sendable {
+    public let releases: [ReleaseNews]
+    public let olderCount: Int
+    public let seenVersion: String?
+
+    enum CodingKeys: String, CodingKey {
+        case releases
+        case olderCount = "older_count"
+        case seenVersion = "seen_version"
+    }
+
+    public init(releases: [ReleaseNews], olderCount: Int, seenVersion: String?) {
+        self.releases = releases
+        self.olderCount = olderCount
+        self.seenVersion = seenVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        releases = try values.decode([ReleaseNews].self, forKey: .releases)
+        olderCount = try values.decodeIfPresent(Int.self, forKey: .olderCount) ?? 0
+        seenVersion = try values.decodeIfPresent(String.self, forKey: .seenVersion)
+    }
+}
+
+/// Eine Ausgabe der Karte: Version, Name („Das Teilen-Update") und ihre
+/// Highlights, kuratiert in `kern/releases.py`.
+public struct ReleaseNews: Codable, Sendable {
+    public let version: String
+    public let date: String
+    public let title: String
+    public let highlights: [ReleaseHighlight]
+
+    public init(version: String, date: String, title: String, highlights: [ReleaseHighlight]) {
+        self.version = version
+        self.date = date
+        self.title = title
+        self.highlights = highlights
+    }
+}
+
+extension ReleaseNews: Identifiable {
+    public var id: String { version }
+}
+
+/// Ein Highlight: Titel, Satz, Ziel in der App — und die Aufnahme dazu. Ohne
+/// Aufnahme (`media` null) fällt die Karte auf die Listenform zurück; die
+/// Registry verlangt je Ausgabe alle oder keines.
+public struct ReleaseHighlight: Codable, Sendable {
+    public let title: String
+    public let text: String
+    public let url: String
+    public let media: ReleaseMedia?
+
+    enum CodingKeys: String, CodingKey {
+        case title, text, url, media
+    }
+
+    public init(title: String, text: String, url: String, media: ReleaseMedia?) {
+        self.title = title
+        self.text = text
+        self.url = url
+        self.media = media
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        title = try values.decode(String.self, forKey: .title)
+        text = try values.decode(String.self, forKey: .text)
+        url = try values.decode(String.self, forKey: .url)
+        media = try values.decodeIfPresent(ReleaseMedia.self, forKey: .media)
+    }
+}
+
+extension ReleaseHighlight: Identifiable {
+    public var id: String { url + "#" + title }
+}
+
+/// Bild oder Clip eines Highlights. `src` und `poster` sind Pfade auf dem
+/// Server (`/neuigkeiten/<version>/…`), `aspect` ein CSS-Verhältnis wie
+/// „16/9" oder „1206/2622" — im Browser querformatige Fenster, in der App das
+/// ganze Telefon. Alle Medien einer Ausgabe teilen sich eines.
+public struct ReleaseMedia: Codable, Sendable, Equatable {
+    public let kind: String
+    public let src: String
+    public let alt: String
+    public let aspect: String
+    public let poster: String?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, src, alt, aspect, poster
+    }
+
+    public init(kind: String, src: String, alt: String, aspect: String, poster: String?) {
+        self.kind = kind
+        self.src = src
+        self.alt = alt
+        self.aspect = aspect
+        self.poster = poster
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try values.decode(String.self, forKey: .kind)
+        src = try values.decode(String.self, forKey: .src)
+        alt = try values.decode(String.self, forKey: .alt)
+        aspect = try values.decodeIfPresent(String.self, forKey: .aspect) ?? "16/9"
+        poster = try values.decodeIfPresent(String.self, forKey: .poster)
+    }
+}
+
+extension ReleaseMedia {
+    public var isVideo: Bool { kind == "video" }
+
+    /// Breite durch Höhe aus „16/9"; nil, wenn der Wert unlesbar ist.
+    public var aspectRatio: Double? {
+        let parts = aspect.split(separator: "/").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count == 2, parts[1] > 0 else { return nil }
+        return parts[0] / parts[1]
     }
 }

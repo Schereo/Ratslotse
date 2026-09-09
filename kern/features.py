@@ -69,6 +69,23 @@ FEATURES: dict[str, Feature] = {
         fertig_wenn="Das Vorhaben-Register läuft einige Wochen ohne „Gehört nicht "
                     "hierher“-Treffer auf Prod, und Tim hat die Tafel freigegeben.",
     ),
+    "andere-staedte": Feature(
+        key="andere-staedte",
+        description="„Anderswo beschlossen“: Auf Beschluss-Seiten, was andere Städte "
+                    "zu derselben Sache beantragt oder beschlossen haben — aus deren "
+                    "Ratsinformationssystemen (council/cities).",
+        fertig_wenn="Der Block lag vier Wochen auf dev, und mindestens zwei Nutzer*innen "
+                    "mit Mandat haben die Treffer als brauchbar bestätigt.",
+    ),
+    "ideen-anderswo": Feature(
+        key="ideen-anderswo",
+        description="„Ideen aus anderen Städten“: je Themenfeld, was andere Räte "
+                    "beschlossen haben und Oldenburg fehlt — mit Urteil, Belegen "
+                    "und dem Weg zum Original (council/cities, Annotator `fit`).",
+        fertig_wenn="Tim hat zwei Themenfelder durchgesehen und die Urteile für "
+                    "tragfähig erklärt. Bis dahin ist die Seite auf dev sichtbar "
+                    "und auf Prod nicht.",
+    ),
     "wahlabend": Feature(
         key="wahlabend",
         description="Der Wahlabend zur Ratswahl am 13.09.2026: Auszählungsstand, "
@@ -85,6 +102,7 @@ def aktive(roh: str | None = None) -> list[str]:
     """Die eingeschalteten Schalter, aus ``FEATURE_FLAGS``.
 
     Kommagetrennt, Leerraum egal: ``FEATURE_FLAGS=haushalt-labor, neue-suche``.
+    ``FEATURE_FLAGS=*`` heißt: alle — die Vorgabe für dev.
     Ein Name, den ``FEATURES`` nicht kennt, wird **verworfen** und nicht
     durchgereicht — sonst schaltete ein Tippfehler in der ``.env`` etwas frei,
     das es nicht gibt, und niemand sähe den Unterschied zu „ist eben aus".
@@ -94,6 +112,12 @@ def aktive(roh: str | None = None) -> list[str]:
     """
     wert = os.environ.get("FEATURE_FLAGS", "") if roh is None else roh
     gewuenscht = {t.strip() for t in wert.split(",") if t.strip()}
+    # ``*`` schaltet ALLE Schalter an — für dev, wo jedes Feature sichtbar
+    # sein soll, sobald es gemergt ist (Tim, 07.09.2026), statt dass jeder PR
+    # einen Eintrag in der ``.env`` der VM nachzieht. Auf Prod bleibt die
+    # Liste explizit; ein ``*`` dort wäre eine Entscheidung, kein Versehen.
+    if "*" in gewuenscht:
+        return list(FEATURES)
     return [k for k in FEATURES if k in gewuenscht]
 
 

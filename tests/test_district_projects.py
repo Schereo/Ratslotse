@@ -197,7 +197,7 @@ def _register(client, email="tester@example.org"):
     return r.json()["access_token"]
 
 
-def test_endpunkte_oeffentlich_und_melden():
+def test_endpunkte_mit_konto_und_melden():
     store = _store()
     _seed(store)
     store.replace_district_projects("kreyenbrueck", [
@@ -206,11 +206,31 @@ def test_endpunkte_oeffentlich_und_melden():
     ])
     store.close()
     client = TestClient(app)
+    # Seit dem Umzug auf die Stadtkarte (Schritt 5) verlangen alle drei
+    # Lese-Endpunkte ein Konto — ohne eins: 401, nicht 200 mit leerer Liste.
+    assert client.get("/api/districts/projects").status_code == 401
+    assert client.get("/api/districts/lookup", params={"q": "krey"}).status_code == 401
+    assert client.get("/api/districts/kreyenbrueck/projects").status_code == 401
+    client.headers["Authorization"] = f"Bearer {_register(client, 'leserin@example.org')}"
 
     r = client.get("/api/districts/projects")
     assert r.status_code == 200
-    zeile = next(d for d in r.json()["districts"] if d["place_id"] == "kreyenbrueck")
+    uebersicht = r.json()
+    zeile = next(d for d in uebersicht["districts"] if d["place_id"] == "kreyenbrueck")
     assert zeile["count"] == 1 and zeile["name"] == "Kreyenbrück"
+    assert zeile["stages"] == {"planning": 1}
+    # Die Stadtzahlen und Highlights der Auswahl-Seite: hier ein Vorhaben, also eins.
+    assert uebersicht["total"] == 1 and uebersicht["stages"] == {"planning": 1}
+    assert [(h["place_id"], h["name"], h["when"]) for h in uebersicht["highlights"]] == [
+        ("kreyenbrueck", "Wohnungen Sandkruger Straße", "2028")]
+
+    # „Ich wohne in der …": Stadtteil (auch über den Alias) und Straße führen zum Ortsbereich.
+    assert client.get("/api/districts/lookup", params={"q": "k"}).json() == {"matches": []}
+    treffer = client.get("/api/districts/lookup", params={"q": "krey"}).json()["matches"]
+    assert treffer[0] == {"name": "Kreyenbrück", "kind": "district", "place_id": "kreyenbrueck",
+                          "place_name": "Kreyenbrück", "count": 1}
+    treffer = client.get("/api/districts/lookup", params={"q": "sandkrug"}).json()["matches"]
+    assert [(t["name"], t["place_id"], t["kind"]) for t in treffer] == [("Sandkruger Straße", "kreyenbrueck", "street")]
 
     r = client.get("/api/districts/kreyenbrueck/projects")
     assert r.status_code == 200
@@ -220,10 +240,34 @@ def test_endpunkte_oeffentlich_und_melden():
     assert tafel["projects"][0]["decisions"][0]["id"] == 10
     assert tafel["projects"][0]["reported"] is False
     assert len(tafel["neighbours"]) == 3
+    # Eine laufende Beteiligung zum Plan bekommt den Umring als Fläche (Schritt 4
+    # des Stadtkarte-Plans): Plannummer aus dem Beteiligungs-Titel, Umring aus dem
+    # Geoportal-Spiegel. Ohne Umring bleibt sie ohne Fläche, aber in der Tafel.
+    from council import bplan
+    from council import geo as _geo
+    store = _store()
+    lat, lon = _geo.ortsbereich_center("Kreyenbrück")
+    store.replace_bplan_outlines([bplan.normiere({"properties": {"Planverfahren": "81"}, "geometry": {
+        "type": "Polygon", "coordinates": [[[lon - 0.002, lat - 0.002], [lon + 0.002, lat - 0.002],
+                                            [lon + 0.002, lat + 0.002], [lon - 0.002, lat + 0.002], [lon - 0.002, lat - 0.002]]]}},
+        "in_procedure")])
+    store.save_beteiligungen([
+        {"title": "Bebauungsplan 81 (Sandkruger Straße)", "ort": "Kreyenbrück", "schritt": "Frühzeitige Beteiligung",
+         "valid_from": "2026-09-01", "valid_until": "2026-09-30", "url": "https://example.org/b/81", "plan_nrs": ["bp-81"]},
+        {"title": "Bebauungsplan 999 (Sandkruger Straße)", "ort": "Kreyenbrück", "schritt": "Auslegung",
+         "valid_from": None, "valid_until": None, "url": "https://example.org/b/999", "plan_nrs": ["bp-999"]},
+    ])
+    store.close()
+    bet = {b["title"]: b for b in client.get("/api/districts/kreyenbrueck/projects").json()["participations"]}
+    assert bet["Bebauungsplan 81 (Sandkruger Straße)"]["geometry"]["type"] == "Polygon"
+    assert bet["Bebauungsplan 81 (Sandkruger Straße)"]["plan_nr"] == "81"
+    assert bet["Bebauungsplan 81 (Sandkruger Straße)"]["plan_status"] == "in_procedure"
+    assert bet["Bebauungsplan 999 (Sandkruger Straße)"]["geometry"] is None
     assert client.get("/api/districts/nirgendwo/projects").status_code == 404
 
     pid = tafel["projects"][0]["id"]
-    assert client.post(f"/api/districts/projects/{pid}/report", json={}).status_code == 401
+    # Ohne Konto: 401 — ein frischer Client, der Lese-Client oben trägt ja schon eins.
+    assert TestClient(app).post(f"/api/districts/projects/{pid}/report", json={}).status_code == 401
 
     kopf = {"Authorization": f"Bearer {_register(client)}"}
     r = client.post(f"/api/districts/projects/{pid}/report", json={"reason": "liegt in Bümmerstede"}, headers=kopf)
@@ -263,3 +307,78 @@ def test_linie_wird_auf_den_ortsbereich_beschnitten():
     assert geo.auf_ortsbereich_beschneiden(linie, "Nordmoslesfehn") is None
     flaeche = {"type": "Polygon", "coordinates": [punkte[:3] + [punkte[0]]]}
     assert geo.auf_ortsbereich_beschneiden(flaeche, "Kreyenbrück") == flaeche
+
+
+def test_lauf_ueberlebt_einen_scheiternden_ortsbereich(monkeypatch):
+    """Ein Rate-Limit in der Bündelung eines Viertels darf nicht die übrigen
+    30 mitreißen — auf dev starb der erste Stadtlauf nach vier von 31."""
+    store = _store()
+    _seed(store)
+    monkeypatch.setattr(viertel.llm, "GEDULD_PAUSEN", ())  # nicht wirklich warten
+    aufrufe: list[str] = []
+
+    def fake(**kwargs):
+        system = kwargs["messages"][0]["content"]
+        user = kwargs["messages"][1]["content"]
+        if "VORHABEN" in system:
+            aufrufe.append("bündeln")
+            if "Kreyenbrück" in user:
+                raise RuntimeError("429 temporarily rate-limited upstream")
+            return _Antwort({"projects": []})
+        aufrufe.append("richten")
+        return _Antwort({"reviews": [
+            {"id": i, "relation": "district", "changes": True, "what": "x", "stage": "decided",
+             "category": "other", "confidence": 95} for i in (10, 11, 12)]})
+
+    monkeypatch.setattr(viertel.llm, "chat_complete", fake)
+    stats = viertel.build_all(store, ["kreyenbrueck", "eversten"])
+    by_place = {s["place_id"]: s for s in stats}
+    assert by_place["kreyenbrueck"].get("failed") is True
+    assert by_place["eversten"].get("failed") is None
+    # Die Urteile von Kreyenbrück sind trotzdem im Cache — der nächste Lauf
+    # holt nur die Bündelung nach.
+    assert set(store.district_reviews("kreyenbrueck")) == {10, 11, 12}
+    store.close()
+
+
+def test_abschnittsgrenzen_sind_kein_gegenstand():
+    """„Tweelbäker Tredde (Am Schmeel bis Brahmweg)" baut die Tredde aus — die
+    beiden Grenzen bleiben, wie sie sind (Tims Befund 06.09.2026)."""
+    from council.store_viertel import ortsrollen
+    strassen = {n: "street" for n in ("Tweelbäker Tredde", "Am Schmeel", "Brahmweg", "Dießelweg", "Scharfgabenweg")}
+    rollen = ortsrollen(["Tweelbäker Tredde", "Am Schmeel", "Brahmweg", "Dießelweg", "Scharfgabenweg"], [
+        "Tweelbäker Tredde (Am Schmeel bis Brahmweg) – Straßenausbau",
+        "Die Tweelbäker Tredde soll zwischen Am Schmeel und Brahmweg ausgebaut werden.",
+        "",
+        # Die echte Vorlage erzählt das Straßennetz drumherum — das darf die
+        # Rolle aus dem Titel nicht kippen, und die Nebenstraßen darin sind
+        # kein Gegenstand.
+        "Die Tweelbäker Tredde ist eine Wohnsammelstraße und bindet unter anderem die Straßen\n"
+        "Dießelweg, Scharfgabenweg und Brahmweg an die Straße Am Schmeel an. Der Ausbau der "
+        "Tweelbäker Tredde erfolgt zwischen Am Schmeel und Brahmweg.",
+    ], kinds=strassen)
+    assert rollen == {"Tweelbäker Tredde": "subject", "Am Schmeel": "boundary", "Brahmweg": "boundary",
+                      "Dießelweg": "boundary", "Scharfgabenweg": "boundary"}
+    # Die erste Stufe entscheidet: Steht ein Name im Titel frei, macht ihn
+    # kein „zwischen" in der Vorlage zur Grenze.
+    assert ortsrollen(["Hauptstraße"], ["Sanierung der Hauptstraße", "zwischen Hauptstraße und Bahn"],
+                      kinds={"Hauptstraße": "street"}) == {"Hauptstraße": "subject"}
+    # Das Wohnquartier: Die drei Straßen stehen in jedem Titel, gebaut wird
+    # auf den Flächen dahinter — Straßen ohne Bauwort sind Bezug, die Fläche
+    # bleibt Gegenstand. Titel sind durch Leerzeilen getrennte Sätze.
+    assert ortsrollen(["Am Schmeel", "Brahmweg", "Quartier am Krusenbusch"], [
+        "Entwicklungsabsichten Quartier Am Schmeel/Krusenbusch - Bericht\n\n"
+        "Bebauungsplan 865 (Quartier am Krusenbusch) - Aufstellungsbeschluss\n\n"
+        "Geplantes Wohnquartier Krusenbusch (Am Schmeel, Tweelbäker Tredde, Brahmweg) - Bericht",
+        "Zudem ist beabsichtigt, die vorhandene Hofstelle am Brahmweg zu sanieren.",
+    ], kinds={"Am Schmeel": "street", "Brahmweg": "street", "Quartier am Krusenbusch": "area"}) == {
+        "Am Schmeel": "context", "Brahmweg": "context", "Quartier am Krusenbusch": "subject"}
+    # Eine Kreuzung ist Gegenstand, beide Straßen sind betroffen.
+    assert ortsrollen(["Schützenhofstraße", "Bremer Straße"],
+                      ["Straßenbaumaßnahme Kreuzung Schützenhofstraße/Bremer Straße"],
+                      kinds={"Schützenhofstraße": "street", "Bremer Straße": "street"}) == {
+        "Schützenhofstraße": "subject", "Bremer Straße": "subject"}
+    # Nur Grenzen: die Fläche dazwischen ist das Vorhaben — Rolle bleibt Grenze.
+    assert ortsrollen(["Rüschenweg"], ["Flächen zwischen der A 29 und dem Rüschenweg"]) == {"Rüschenweg": "boundary"}
+    # Nicht im Text (Katalog-Variante) → Gegenstand, nie still weg.
+    assert ortsrollen(["Huntemannstr"], ["Kita an der Huntemannstraße"]) == {"Huntemannstr": "subject"}
