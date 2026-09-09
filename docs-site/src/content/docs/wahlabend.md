@@ -99,6 +99,59 @@ Warnung in `notes` („Spalte D7 heißt beim Votemanager ‚PIRATEN‘, im Regis
 Listenlängen des Registers. Notausgang ohne Deploy: `WAHLABEND_COLUMNS`
 (Slugs in Spaltenreihenfolge, `.env`, Neustart).
 
+### Der Ersatzpfad: die Ergebnisdarstellung
+
+Ob die Open-Data-CSVs am Wahlabend genauso zügig gefüllt werden wie die
+Website der Stadt, weiß niemand. Deshalb gibt es seit dem 09.09.2026 einen
+zweiten Weg (`presentation.py`): Die Ergebnispräsentation unter
+`/praesentation/` ist eine Vue-Anwendung, und alles, was sie zeigt, lädt sie
+aus JSON-Dateien unter `/daten/api/wahl_913/`. Genau die lesen wir — kein
+HTML, kein Browser.
+
+| Datei | Inhalt |
+|---|---|
+| `wahl.json` | `menu_links`: die Gebiets-Id der Stadt und die Ebene der Wahlbereiche |
+| `uebersicht_<ebene>_0.json` | eine Zeile je Wahlbereich mit Label und Gebiets-Id — **vor der Auszählung leer** (nur ein Zeitstempel) |
+| `ergebnis_<gebiet>_0.json` | je Liste drei Zeilen (Gesamt, Partei, Summe Kandidaten); die dritte trägt `sub_zeilen` mit jeder Bewerber*in **in Listenreihenfolge**; dazu Wahlberechtigte, Wähler\*innen, Stimmzettel, gültige Stimmen und der Stand („22 von 22 Ergebnissen") |
+
+Gemessen an der Ratswahl 2021 auf demselben Votemanager: Aus den sechs
+Wahlbereichs-JSONs entstehen **dieselben** Zeilen wie aus der CSV — je Liste,
+je Listenplatz dieselbe Zahl — und damit dieselben 50 Mandate
+(`tests/test_wahlabend_praesentation.py`, Fixtures unter
+`tests/fixtures/wahlabend/praesentation-2021/`).
+
+Wann er greift: `votemanager.fetch()` sieht nach jedem CSV-Abruf nach, ob
+die Wahlbereichsdatei fehlt oder **einem** Wahlbereich noch die
+Personenstimmen fehlen. Nur dann holt er Übersicht, sechs Wahlbereiche und
+die Stadt (acht Abrufe) und übernimmt, was weiter ist: eine JSON-Zeile
+ersetzt die CSV-Zeile, wo diese fehlt oder keine Personenstimmen trägt.
+Trägt die CSV überall Personenstimmen, wird die Darstellung nicht gefragt.
+Die Wahlbezirke (133 Dateien) holt er **nicht** — die Hochrechnung hängt an
+der CSV; ohne sie gibt es Sitze und Namen, aber keine Prognose. Was
+übernommen wurde, steht als Hinweis in `notes` („I - Stadtmitte Nord, Stadt:
+Zahlen aus der Ergebnisdarstellung …"); ein CSV-Ausfall bleibt daneben als
+`source.error` stehen, denn er ist einer.
+
+Zwei Dinge unterscheiden die Quelle von der CSV, und beide sind der Grund,
+warum sie nur der Ersatz ist:
+
+- **Die Listen stehen unter ihrem Namen**, nicht unter einer Spaltennummer;
+  eine Liste, die im Wahlbereich nicht antritt, fehlt dort einfach. Die
+  Zuordnung läuft über dieselben Schlüsselwörter wie die Spaltenprobe
+  (`crosscheck.KEYWORDS`). Passt ein Name zu keiner oder zu zwei Listen,
+  wird der **ganze Wahlbereich** verworfen und gemeldet — eine fehlende
+  Partei rechnete sich sonst still zu null Stimmen.
+- **Die Bewerber\*innen tragen keinen Listenplatz**, nur ihre Position in der
+  Reihenfolge. Platz `k` ist Zeile `k`.
+
+Die Stadt-Ebene trägt nach der Auszählung außerdem `Komponente.sitze` — die
+Sitzverteilung, wie der Votemanager sie rechnet. Sie wird bei jedem Abruf
+mitgelesen (auch ohne Ersatzpfad, die Datei ist dieselbe wie bei der
+Spaltenprobe) und am Ende der Auszählung gegen die eigene Zuteilung gehalten:
+„Die Sitzverteilung des Votemanagers weicht von der eigenen Zuteilung ab:
+SPD 14 statt 15 — Zuordnung prüfen!" Nur bei Phase `complete` —
+Zwischenstände holen beide zu verschiedenen Minuten.
+
 Der Dienst selbst wirft nie: volles Bild → Bild ohne Hochrechnung und Abstände
 → letzter guter Stand mit Vermerk → leeres Bild mit Fehlertext. Jede Stufe
 steht in `notes` und im Log. Gleichzeitige erste Aufrufe warten auf EINEN
@@ -440,6 +493,8 @@ Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
 | Pfad | Inhalt |
 |---|---|
 | `web/backend/app/election/votemanager.py` | Abruf und Parser der drei CSVs, beide Spaltenschemata, 60-s-Cache, Nummernregel Bezirk → Bereich |
+| `web/backend/app/election/presentation.py` | Der Ersatzpfad: die JSON-Dateien der Ergebnisdarstellung (Übersicht, Wahlbereiche, Stadt, Sitzverteilung) |
+| `web/backend/app/election/crosscheck.py` | Spaltenprobe: Listenreihenfolge und Kopfzeile gegen das Register |
 | `web/backend/app/election/register.py` | Kandidatenregister aus `kandidaten.json` + Farben |
 | `web/backend/app/election/seats.py` | Hare/Niemeyer und die Zuteilung nach §§ 36, 37 NKWG, dazu die Abstandsrechnungen |
 | `web/backend/app/election/reference.py` | Die Ratswahl 2021 als Vergleich und Basis der Hochrechnung |
@@ -454,6 +509,8 @@ Reihenfolge, die am Wahlabend trägt — jede Zeile ist ohne Deploy machbar:
 | `kommunalwahl/kandidaten.json` | 16 Wahlvorschläge, 383 Bewerber\*innen, 6 Wahlbereiche, 52 Sitze |
 | `kommunalwahl/referenz-2021/` | Die drei Open-Data-CSVs von 2021 und die amtliche Sitzverteilung |
 | `tests/test_wahlabend.py` | Zuteilung gegen 2021, Register gegen die CSV-Köpfe, Parser, Hochrechnung, Endpunkt |
+| `tests/test_wahlabend_praesentation.py` | Der Ersatzpfad gegen die echten JSONs von 2021: dieselben Zeilen wie die CSV, dieselben 50 Mandate |
+| `tests/fixtures/wahlabend/praesentation-2021/` | `wahl.json`, Übersicht, sechs Wahlbereiche und die Stadt der Ratswahl 2021, unverändert vom Votemanager |
 
 ## Was die Tests halten
 

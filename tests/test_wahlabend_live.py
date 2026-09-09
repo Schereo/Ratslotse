@@ -41,6 +41,13 @@ STADT = "/daten/opendata/Open-Data-03403000-Stadtratswahl-Stadt.csv"
 BEREICHE = "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbereiche.csv"
 BEZIRKE = "/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbezirk.csv"
 TABELLE = "/daten/api/wahl_913/ergebnis_ebene_-6361_id_10358_0.json"
+#: Die Ergebnisdarstellung (der Ersatzpfad, ``presentation.py``).
+WAHL = "/daten/api/wahl_913/wahl.json"
+UEBERSICHT = "/daten/api/wahl_913/uebersicht_ebene_-6362_0.json"
+
+
+def ergebnis_pfad(nummer: int) -> str:
+    return f"/daten/api/wahl_913/ergebnis_ebene_-6362_id_{10400 + nummer}_0.json"
 
 #: Die Kopfzeile des echten Exports von 2026 — Grundlage aller geschriebenen CSVs.
 KOPF = (FIXTURES / "2026-wahlbereiche.csv").read_text(encoding="utf-8-sig").splitlines()[0].split(";")
@@ -71,6 +78,8 @@ class Lage:
     def __init__(self, ordner: Path) -> None:
         self.ordner = ordner
         self.stoerungen: dict[str, Stoerung] = {}
+        #: Jeder abgerufene Pfad — um zu prüfen, was der Abruf NICHT holt.
+        self.abrufe: list[str] = []
 
     def leg(self, pfad: str, text: str) -> None:
         ziel = self.ordner / pfad.lstrip("/")
@@ -88,6 +97,7 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 — von BaseHTTPRequestHandler vorgegeben
         lage: Lage = self.server.lage  # type: ignore[attr-defined]
         pfad = self.path.split("?")[0]
+        lage.abrufe.append(pfad)
         stoerung = lage.stoerungen.get(pfad)
         if stoerung and stoerung.schlaeft:
             time.sleep(stoerung.schlaeft)
@@ -207,9 +217,9 @@ def _summe(name: str, nummer: int | None, rows: list[AreaRow]) -> AreaRow:
     )
 
 
-def leg_ergebnisse(lage: Lage, ausgezaehlt: int) -> None:
-    """Die drei CSVs mit echten Zahlen: die 2021er Ergebnisse, umgeschlüsselt
-    auf die Spaltenindizes von 2026, davon die ersten ``ausgezählt`` Bezirke."""
+def _stand(ausgezaehlt: int) -> tuple[list[AreaRow], AreaRow, list[int | None], list[AreaRow]]:
+    """Die 2021er Ergebnisse, umgeschlüsselt auf die Spaltenindizes von 2026,
+    davon die ersten ``ausgezählt`` Bezirke: (Wahlbereiche, Stadt, Bezirksnummern, Bezirke)."""
     reg, ref = register.load(), reference.load()
     bezirke = [ref.remap(r, reg) for r in ref.districts]
     bezirke = [b if i < ausgezaehlt else _ungezaehlt(b) for i, b in enumerate(bezirke)]
@@ -220,11 +230,115 @@ def leg_ergebnisse(lage: Lage, ausgezaehlt: int) -> None:
         meine = [b for b, n in zip(bezirke, nummern)
                  if n is not None and votemanager.area_of_district(n) == a.number]
         bereiche.append(_summe(f"Wahlbereich {a.number}", a.number, meine))
-    stadt = _summe("Stadt Oldenburg", None, bereiche)
+    return bereiche, _summe("Stadt Oldenburg", None, bereiche), nummern, bezirke
 
+
+def leg_ergebnisse(lage: Lage, ausgezaehlt: int) -> None:
+    """Die drei CSVs mit echten Zahlen."""
+    bereiche, stadt, nummern, bezirke = _stand(ausgezaehlt)
     lage.leg(STADT, _als_csv([(None, stadt)]))
     lage.leg(BEREICHE, _als_csv([(b.number, b) for b in bereiche]))
     lage.leg(BEZIRKE, _als_csv(list(zip(nummern, bezirke))))
+
+
+def _ohne_personen(row: AreaRow) -> AreaRow:
+    """Gesamt- und Listenstimmen ja, Kandidatenspalten leer — so sähe eine
+    CSV aus, in der die Personenstimmen nachhinken."""
+    lists = {i: ListRow(i, lr.total, lr.list_votes, None, None) for i, lr in row.lists.items()}
+    return AreaRow(row.name, row.number, row.reports_expected, row.reports_received, row.eligible, row.voters,
+                   row.invalid_ballots, row.valid_ballots, row.valid_votes, lists)
+
+
+# ------------------------------------------------------------------ Die Ergebnisdarstellung
+
+def _zahl(wert: int | None) -> str:
+    """So schreibt der Votemanager Zahlen: mit Tausenderpunkt, leer für „noch nicht"."""
+    return "" if wert is None else f"{wert:,}".replace(",", ".")
+
+
+def _plaetze_2026(index: int) -> int:
+    """Wie viele Kandidatenspalten die Kopfzeile von 2026 für Liste ``index`` hat."""
+    return sum(1 for h in KOPF if h.startswith(f"D{index}_2_"))
+
+
+def _als_ergebnis_json(row: AreaRow, titel: str, sitze: dict[str, int] | None = None,
+                       namen: dict[str, str] | None = None) -> str:
+    """Ein Gebiets-JSON in der Form der Ergebnisdarstellung (s. ``presentation.py``)."""
+    reg = register.load()
+    zeilen: list[dict] = []
+    for i, lr in sorted(row.lists.items()):
+        p = reg.party(i)
+        assert p is not None
+        if lr.total is None:
+            continue
+        if p.kind == "einzelbewerber":
+            zeilen.append({"label": {"labelKurz": f"{p.short}, Einzelwahlvorschlag Stille"}, "zahl": _zahl(lr.total)})
+            continue
+        name = (namen or {}).get(p.slug) or VOTEMANAGER_NAMEN.get(p.slug, p.short)
+        sub = None
+        if lr.candidates is not None:
+            # Die Darstellung führt JEDE Bewerber*in als Zeile, auch ohne
+            # Stimme — eine Lücke in der Reihenfolge gibt es dort nicht. Und
+            # nicht mehr Plätze, als die Liste 2026 hat: Die 2021er Zahlen
+            # tragen hier und da einen zwölften Platz, den die CSV-Kopfzeile
+            # von 2026 ebenfalls nicht kennt.
+            plaetze = _plaetze_2026(i)
+            sub = [{"label": {"labelKurz": f"Platz {k}"}, "zahl": _zahl(lr.candidates.get(k, 0)), "prozent": ""}
+                   for k in range(1, min(max(lr.candidates, default=0), plaetze) + 1)]
+        zeilen += [
+            {"label": {"labelKurz": f"{name} - {ZEILEN_JE_LISTE[0]}"}, "zahl": _zahl(lr.total)},
+            {"label": {"labelKurz": f"{name} - {ZEILEN_JE_LISTE[1]}"}, "zahl": _zahl(lr.list_votes)},
+            {"label": {"labelKurz": f"{name} - {ZEILEN_JE_LISTE[2]}"}, "zahl": _zahl(lr.candidate_sum),
+             **({"sub_zeilen": sub} if sub is not None else {})},
+        ]
+    info = {
+        "titel": titel,
+        "hinweis": [f"{row.reports_received} von {row.reports_expected} Ergebnissen"],
+        "tabelle": {"zeilen": [
+            {"label": {"labelKurz": "Wahlberechtigte"}, "zahl": _zahl(row.eligible)},
+            {"label": {"labelKurz": "Wählerinnen/Wähler"}, "zahl": _zahl(row.voters)},
+            {"label": {"labelKurz": "ungültige Stimmzettel"}, "zahl": _zahl(row.invalid_ballots)},
+            {"label": {"labelKurz": "gültige Stimmzettel"}, "zahl": _zahl(row.valid_ballots)},
+            {"label": {"labelKurz": "gültige Stimmen"}, "zahl": _zahl(row.valid_votes)},
+        ]},
+    }
+    komponente: dict = {"tabelle": {"zeilen": zeilen}, "info": info}
+    if sitze is not None:
+        entries = [{"label": VOTEMANAGER_NAMEN.get(slug, reg.by_slug(slug).short), "sitze": n}  # type: ignore[union-attr]
+                   for slug, n in sitze.items()]
+        komponente["sitze"] = {"hinweis": f"Es wurden {sum(sitze.values())} Sitze vergeben.",
+                               "tortenDiagramm": {"entries": entries}}
+    return json.dumps({"zeitstempel": "13.09.2026 20:15", "Komponente": komponente}, ensure_ascii=False)
+
+
+def leg_praesentation(lage: Lage, bereiche: list[AreaRow], stadt: AreaRow | None, *,
+                      sitze: dict[str, int] | None = None, namen: dict[str, str] | None = None) -> None:
+    """Die Ergebnisdarstellung: ``wahl.json``, die Übersicht der Wahlbereiche,
+    je Wahlbereich ein Ergebnis — und die Stadt, wenn gewünscht."""
+    reg = register.load()
+    lage.leg(WAHL, json.dumps({"titel": "Stadtratswahl", "menu_links": [
+        {"id": "ebene_-6361_id_10358", "type": "ergebnis", "title": "Stadt Oldenburg"},
+        {"id": "ebene_-6362", "type": "uebersicht", "title": "Wahlbereiche"},
+        {"id": "ebene_6", "type": "uebersicht", "title": "Wahlbezirke"}]}))
+    zeilen = []
+    for b in bereiche:
+        a = next(a for a in reg.areas if a.number == b.number)
+        label = f"{a.roman} - {a.name}"
+        zeilen.append({"label": label, "link": {"id": f"ebene_-6362_id_{10400 + a.number}", "type": "ergebnis", "title": label},
+                       "statusString": f"{b.reports_received} von {b.reports_expected}"})
+        lage.leg(ergebnis_pfad(a.number), _als_ergebnis_json(b, f"Stadt Oldenburg - {label}", namen=namen))
+    zeilen.append({"label": "Stadt Oldenburg", "link": {"id": "ebene_-6361_id_10358", "type": "ergebnis", "title": "Stadt Oldenburg"}})
+    lage.leg(UEBERSICHT, json.dumps({"zeitstempel": "13.09.2026 20:15", "tabelle": {"header": [], "zeilen": zeilen}},
+                                    ensure_ascii=False))
+    if stadt is not None:
+        lage.leg(TABELLE, _als_ergebnis_json(stadt, "Stadt Oldenburg - Gesamtergebnis", sitze=sitze, namen=namen))
+
+
+def leg_leere_praesentation(lage: Lage) -> None:
+    """So liegen die JSONs am Nachmittag da: nur ein Zeitstempel."""
+    leer = json.dumps({"zeitstempel": "13.09.2026 12:54", "file_version": "26.08.03"})
+    lage.leg(UEBERSICHT, leer)
+    lage.leg(TABELLE, leer)
 
 
 def leg_leere_dateien(lage: Lage) -> None:
@@ -397,6 +511,111 @@ def test_nach_der_stoerung_zaehlt_wieder_frisch(votemanager_server, client, monk
     assert d["source"]["ok"] is True and d["source"]["error"] is None
     assert d["progress"] == {"districts_total": 133, "districts_counted": 60}
     assert votemanager.fetch().warnings == []
+
+
+# ------------------------------------------------------------------ (j) der Ersatzpfad: die Ergebnisdarstellung
+
+def test_ohne_csv_kommen_die_zahlen_aus_der_ergebnisdarstellung(votemanager_server, client):
+    """Die CSVs fehlen ganz (404) — die Website zeigt längst Zahlen. Dann
+    kommen Sitze UND Namen aus ihren JSON-Dateien; der CSV-Ausfall bleibt
+    trotzdem als Fehler stehen, denn er ist einer."""
+    bereiche, stadt, _, _ = _stand(40)
+    leg_praesentation(votemanager_server, bereiche, stadt)
+    d = hol(client)
+    assert d["phase"] == "counting"
+    assert d["progress"] == {"districts_total": 133, "districts_counted": 40}
+    assert sum(p["seats"] or 0 for p in d["parties"]) > 0 and d["mandates"]
+    assert d["person_votes_available"] is True
+    assert all(m["name"] for m in d["mandates"]), "Namen fehlen, obwohl die Personenstimmen da sind"
+    assert d["source"]["ok"] is False and "Wahlbereiche" in (d["source"]["error"] or "")
+    hinweise = [n for n in d["notes"] if "Ergebnisdarstellung" in n]
+    assert len(hinweise) == 1 and "I - Stadtmitte Nord" in hinweise[0] and "Stadt" in hinweise[0], d["notes"]
+    # Der Ersatz liefert dieselben Zahlen wie der Hauptweg.
+    votemanager.reset_memory()
+    service.reset()
+    leg_ergebnisse(votemanager_server, 40)
+    leg_tabelle(votemanager_server, standardreihenfolge())
+    csv = hol(client)
+    assert [(p["slug"], p["votes"], p["seats"]) for p in csv["parties"]] == [(p["slug"], p["votes"], p["seats"]) for p in d["parties"]]
+    assert {(m["slug"], m["area"], m["position"], m["kind"]) for m in csv["mandates"]} == {(m["slug"], m["area"], m["position"], m["kind"]) for m in d["mandates"]}
+
+
+def test_csv_ohne_personenstimmen_holt_sie_aus_der_ergebnisdarstellung(votemanager_server, client):
+    """Der wahrscheinlichere Fall: Die CSV kommt, aber die Kandidatenspalten
+    bleiben leer — Sitze ja, Namen nein. Die Darstellung trägt die Namen."""
+    bereiche, stadt, nummern, bezirke = _stand(40)
+    votemanager_server.leg(STADT, _als_csv([(None, _ohne_personen(stadt))]))
+    votemanager_server.leg(BEREICHE, _als_csv([(b.number, _ohne_personen(b)) for b in bereiche]))
+    votemanager_server.leg(BEZIRKE, _als_csv([(n, _ohne_personen(b)) for n, b in zip(nummern, bezirke)]))
+    leg_praesentation(votemanager_server, bereiche, stadt)
+    d = hol(client)
+    assert d["source"]["ok"] is True and d["source"]["error"] is None
+    assert d["phase"] == "counting" and d["person_votes_available"] is True
+    assert all(m["name"] for m in d["mandates"])
+    assert any("Ergebnisdarstellung" in n for n in d["notes"]), d["notes"]
+    # Die Bezirke bleiben die der CSV — die Hochrechnung hängt an ihnen.
+    assert d["progress"] == {"districts_total": 133, "districts_counted": 40}
+
+
+def test_mit_vollstaendiger_csv_bleibt_die_darstellung_ungefragt(votemanager_server, client):
+    """Trägt die CSV in jedem Wahlbereich Personenstimmen, gibt es nichts zu
+    ersetzen — und dann werden die JSONs auch nicht geholt. Acht Abrufe je
+    Minute sind sonst Lärm beim Votemanager, ohne Gewinn. (Solange EIN
+    Wahlbereich noch ohne Personenstimmen dasteht, wird nachgesehen — das
+    ist der Fall, für den der Ersatz gebaut ist.)"""
+    leg_ergebnisse(votemanager_server, 133)
+    leg_tabelle(votemanager_server, standardreihenfolge())
+    bereiche, stadt, _, _ = _stand(133)
+    leg_praesentation(votemanager_server, bereiche, stadt)
+    votemanager_server.abrufe.clear()
+    d = hol(client)
+    assert d["person_votes_available"] is True
+    assert UEBERSICHT not in votemanager_server.abrufe
+    assert not any(p.startswith("/daten/api/wahl_913/ergebnis_ebene_-6362") for p in votemanager_server.abrufe)
+    assert not any("Ergebnisdarstellung" in n for n in d["notes"])
+
+
+def test_vor_der_auszaehlung_ist_die_darstellung_leer_und_stoert_nicht(votemanager_server, client):
+    leg_leere_dateien(votemanager_server)
+    leg_leere_praesentation(votemanager_server)
+    d = hol(client)
+    assert d["phase"] == "before" and d["source"]["ok"] is True
+    assert not any("Ergebnisdarstellung" in n for n in d["notes"])
+
+
+def test_unbekannte_liste_in_der_darstellung_wird_gemeldet_und_nicht_geraten(votemanager_server, client):
+    bereiche, stadt, _, _ = _stand(40)
+    leg_praesentation(votemanager_server, bereiche, stadt, namen={"volt": "Wählerliste Zukunft"})
+    d = hol(client)
+    # Kein Wahlbereich ist brauchbar — die Liste steht in jedem. Also nichts
+    # statt falscher Zahlen, und ein Hinweis, der die Liste beim Namen nennt.
+    assert d["phase"] == "before"
+    assert any("Wählerliste Zukunft" in n and "außen vor" in n for n in d["notes"]), d["notes"]
+
+
+def test_sitzverteilung_des_votemanagers_als_gegenprobe(votemanager_server, client):
+    """Am Ende der Auszählung weist der Votemanager selbst Sitze aus. Stimmen
+    sie mit der eigenen Zuteilung überein, schweigt die Seite; weichen sie ab,
+    steht es in ``notes``."""
+    leg_ergebnisse(votemanager_server, 133)
+    bereiche, stadt, _, _ = _stand(133)
+    eigene = {p["slug"]: p["seats"] for p in hol(client)["parties"] if p["seats"]}
+    assert eigene and hol(client)["phase"] == "complete"
+
+    leg_praesentation(votemanager_server, bereiche, stadt, sitze=eigene)
+    votemanager.reset_cache()
+    service.reset()
+    assert not any("weicht" in n for n in hol(client)["notes"])
+
+    falsch = dict(eigene)
+    erster = next(iter(falsch))
+    falsch[erster] -= 1
+    leg_praesentation(votemanager_server, bereiche, stadt, sitze=falsch)
+    votemanager.reset_cache()
+    service.reset()
+    d = hol(client)
+    hinweise = [n for n in d["notes"] if "weicht" in n]
+    assert len(hinweise) == 1 and f"{falsch[erster]} statt {eigene[erster]}" in hinweise[0], d["notes"]
 
 
 # ------------------------------------------------------------------ (i) der Notausgang

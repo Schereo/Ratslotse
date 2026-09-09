@@ -177,6 +177,29 @@ def _district_lists(reg: Register, area_rows: dict[int, AreaRow]) -> tuple[list[
     return lists, persons
 
 
+def _official_check(reg: Register, alloc: Allocation, official: dict[str, int] | None) -> list[str]:
+    """Die eigene Zuteilung gegen die Sitzverteilung des Votemanagers.
+
+    Er rechnet dasselbe Verfahren; weichen die Sitze je Liste ab, ist entweder
+    eine Spalte vertauscht oder ein Absatz anders gelesen — beides gehört
+    sichtbar auf die Seite, nicht erst in die Zeitung am Montag. Nur am Ende
+    der Auszählung: Zwischenstände holen beide zu verschiedenen Minuten."""
+    if not official:
+        return []
+    diffs = []
+    for p in reg.parties:
+        theirs = official.get(p.slug)
+        if theirs is None:
+            continue
+        ours = alloc.seats_by_party.get(p.slug, 0)
+        if ours != theirs:
+            diffs.append(f"{p.short} {theirs} statt {ours}")
+    if not diffs:
+        return []
+    return ["Die Sitzverteilung des Votemanagers weicht von der eigenen Zuteilung ab: " + ", ".join(diffs)
+            + " — Zuordnung prüfen!"]
+
+
 def _scaled(lists: Iterable[DistrictList], projection: Projection, reg: Register) -> list[DistrictList]:
     """Die Listen auf die Hochrechnung skaliert — Personen- und Listenstimmen
     im selben Verhältnis wie die Summe."""
@@ -305,6 +328,8 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
         notes += alloc.ties
         if alloc.vacant:
             notes.append(f"{alloc.vacant} Sitz(e) bleiben unbesetzt (§ 36 Abs. 7 NKWG).")
+        if phase == "complete":
+            notes += _official_check(reg, alloc, getattr(snap, "official_seats", None))
     if phase != "before" and not has_votes:
         notes.append("Es sind Wahlbezirke ausgezählt, aber noch keine Stimmen gemeldet — die Sitze folgen.")
     elif phase != "before" and not persons:
