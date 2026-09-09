@@ -36,10 +36,17 @@ struct TodayView: View {
                 }
                 .ratsStaggered(0)
 
-                AskCouncilEntry {
-                    model.navigation.removeAll()
-                    model.selectedTab = .questions
-                }
+                AskCouncilEntry(
+                    open: {
+                        model.navigation.removeAll()
+                        model.selectedTab = .questions
+                    },
+                    ask: { question in
+                        model.navigation.removeAll()
+                        model.pendingQuestion = question
+                        model.selectedTab = .questions
+                    }
+                )
                 .ratsStaggered(1)
 
                 ViewThatFits(in: .horizontal) {
@@ -708,42 +715,64 @@ private struct LiveCouncilCard: View {
 /// Fragen-Seite bekannt ist (Designsprache § 5, Composer). Der frühere
 /// vollflächige Signal-Orange-Knopf verstieß gegen § 8: Signal-Orange ist
 /// Akzent, nie Flächenfarbe.
+///
+/// Seit dem 09.09.2026 ein echtes Feld: Die Frage wird HIER getippt und
+/// abgeschickt, erst dann wechselt die Ansicht und stellt sie sofort.
+/// Vorher wechselte schon der Tipp ins Feld — wer tippen wollte, landete
+/// auf der anderen Seite und fing dort von vorn an (Tim).
 private struct AskCouncilEntry: View {
-    let action: () -> Void
+    let open: () -> Void
+    let ask: (String) -> Void
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    private var trimmed: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var canSend: Bool { trimmed.count >= 4 }
+
+    private func submit() {
+        guard canSend else {
+            open()
+            return
+        }
+        focused = false
+        ask(trimmed)
+        text = ""
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MonoKicker("Frag den Rat")
-            Button(action: action) {
-                HStack(spacing: 10) {
-                    RatsIcon(.sparkles, size: 17)
-                        .foregroundStyle(RatsColor.signal)
-                        .accessibilityHidden(true)
-                    Text("Was möchtest du über den Rat wissen?")
-                        .font(RatsFont.body(15))
-                        .foregroundStyle(RatsColor.muted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                    Spacer(minLength: 6)
+            HStack(spacing: 10) {
+                RatsIcon(.sparkles, size: 17)
+                    .foregroundStyle(RatsColor.signal)
+                    .accessibilityHidden(true)
+                TextField("Was möchtest du über den Rat wissen?", text: $text, axis: .vertical)
+                    .font(RatsFont.body(15))
+                    .lineLimit(1...3)
+                    .focused($focused)
+                    .submitLabel(.send)
+                    .onSubmit(submit)
+                    .accessibilityLabel("Frag den Rat")
+                    .accessibilityHint("Frage eingeben und mit Senden an „Frag den Rat“ übergeben")
+                Spacer(minLength: 6)
+                Button(action: submit) {
                     RatsIcon(.arrowUp, size: 15)
                         .foregroundStyle(RatsColor.primaryText)
                         .frame(width: 38, height: 38)
-                        .background(RatsColor.primary)
+                        .background(RatsColor.primary.opacity(canSend || text.isEmpty ? 1 : 0.35))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .accessibilityHidden(true)
                 }
-                .padding(.leading, 14)
-                .padding(.trailing, 7)
-                .padding(.vertical, 7)
-                .background(RatsColor.card)
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(RatsColor.border))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: RatsColor.primary.opacity(0.10), radius: 14, y: 6)
-                .contentShape(Rectangle())
+                .buttonStyle(RatsPlainButtonStyle())
+                .accessibilityLabel(canSend ? "Frage senden" : "Fragen-Seite öffnen")
             }
-            .buttonStyle(RatsPlainButtonStyle())
-            .accessibilityLabel("Frag den Rat")
-            .accessibilityHint("Öffnet die Fragen-Seite")
+            .padding(.leading, 14)
+            .padding(.trailing, 7)
+            .padding(.vertical, 7)
+            .background(RatsColor.card)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(focused ? RatsColor.primary.opacity(0.42) : RatsColor.border))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: RatsColor.primary.opacity(0.10), radius: 14, y: 6)
+            .animation(RatsMotion.flow, value: focused)
         }
     }
 }

@@ -83,6 +83,11 @@ public final class AppModel {
     var pendingLocationFilter: LocationFilter?
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
+    /// Eine Frage, die auf der Heute-Seite getippt und abgeschickt wurde:
+    /// „Frag den Rat“ stellt sie beim Öffnen sofort, statt sie nur ins Feld
+    /// zu legen (Tim, 09.09.2026 — vorher wechselte ein Tipp in die Kachel
+    /// nur die Ansicht).
+    public var pendingQuestion: String?
     public var questionShareToken: String?
     public var isOffline = false
     public var updateRequired = false

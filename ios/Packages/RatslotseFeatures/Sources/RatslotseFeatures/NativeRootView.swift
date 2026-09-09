@@ -340,6 +340,17 @@ private struct MainTabsView: View {
     /// einen Fokus — so gilt es für jedes Feld in jedem Tab und auch für
     /// ein Blatt darüber.
     @State private var keyboardVisible = false
+    /// Gemessene Höhe der Tab-Leiste. Der `safeAreaInset` mit der Leiste
+    /// sitzt außen am TabView, und dessen Seiten erben diesen Bereich NICHT
+    /// — auf „Heute“ lag die letzte Karte unter der Leiste, egal wie weit
+    /// man scrollte (Tim, 09.09.2026). Deshalb bekommt jede Seite die Höhe
+    /// als eigenen Safe-Area-Rand; steht die Tastatur, ist die Leiste weg
+    /// und der Rand null.
+    @State private var bottomBarHeight: CGFloat = 0
+
+    private var tabBarClearance: CGFloat {
+        horizontalSizeClass == .regular || keyboardVisible ? 0 : bottomBarHeight
+    }
 
     var body: some View {
         Group {
@@ -363,6 +374,13 @@ private struct MainTabsView: View {
                                 select: select,
                                 openMore: { showsMore = true }
                             )
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.onChange(of: geometry.size.height, initial: true) { _, height in
+                                        bottomBarHeight = height
+                                    }
+                                }
+                            }
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
@@ -496,21 +514,26 @@ private struct MainTabsView: View {
                 TodayView(model: model)
                     .tag(AppTab.today)
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, tabBarClearance)
                 QuestionsView(model: model)
                     .tag(AppTab.questions)
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, tabBarClearance)
                 CouncilBrowserView(model: model)
                     .tag(AppTab.council)
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, tabBarClearance)
                 TopicsView(model: model)
                     .tag(AppTab.topics)
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, tabBarClearance)
                 AccountView(model: model) {
                     model.selectedTab = accountReturnTab
                     showsMore = true
                 }
                     .tag(AppTab.account)
                     .toolbar(.hidden, for: .tabBar)
+                    .safeAreaPadding(.bottom, tabBarClearance)
             }
             .toolbar(.hidden, for: .tabBar)
         }
