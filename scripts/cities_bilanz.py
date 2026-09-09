@@ -50,7 +50,7 @@ def urteile(main: CitiesStore, version: str) -> list[dict]:
     Ganze statische Anweisung (``tests/test_sql_spalten.py``).
     """
     rows = main._conn.execute(
-        "SELECT p.id, p.body_id, p.name, p.date, "
+        "SELECT p.id, p.body_id, p.name, p.date, p.kind, "
         "       json_extract(f.payload, '$.status') AS status, "
         "       json_extract(f.payload, '$.confidence') AS confidence, "
         "       json_extract(c.payload, '$.field') AS field, "
