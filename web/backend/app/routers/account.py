@@ -1,7 +1,11 @@
 """Account self-service: delivery channel, password, account deletion."""
 from __future__ import annotations
 
+import hashlib
 import logging
+import secrets
+import sqlite3
+from datetime import datetime, timedelta
 
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
@@ -13,11 +17,13 @@ from council.store import CouncilStore
 
 from ..config import get_settings
 from ..antworten import NotifySettings, Ok, TestDelivery
-from ..deps import get_council_store, get_store, require_active
-from ..schemas import (ChangePasswordRequest, DeleteAccountRequest, DeliveryUpdate,
-                       NotifyPrefsIn, UserOut)
+from ..deps import get_council_store, get_current_user, get_store, ist_admin, require_active
+from ..ratelimit import change_email_limiter
+from ..schemas import (ChangeEmailRequest, ChangePasswordRequest, DeleteAccountRequest,
+                       DeliveryUpdate, NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
-from .auth import _app_access_token, _set_auth_cookie, _to_out
+from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _send_email_change_link,
+                   _send_email_change_notice, _set_auth_cookie, _to_out)
 
 logger = logging.getLogger("ratslotse.web.account")
 
@@ -55,6 +61,47 @@ def _send_goodbye_email(email: str) -> None:
         )
     except Exception:  # noqa: BLE001 — die Löschung ist durch, die Mail ist Kür
         logger.exception("goodbye email failed for %s", email)
+
+
+def _frisch(store: Store, user_id: int) -> dict:
+    """Das Konto neu aus der Datenbank — mit gesicherter Nicht-Null-Zusage.
+
+    ``get_web_user_by_id`` gibt ``dict | None`` zurück. Hier kann es nicht
+    ``None`` sein: Der Request ist durch ``get_current_user`` gekommen, die
+    Zeile lag also gerade noch vor. Bliebe sie offen, schleppte jeder Aufrufer
+    einen Fall mit, den es nicht gibt — und pyright zählte ihn mit.
+    """
+    konto = store.get_web_user_by_id(user_id)
+    if konto is None:  # pragma: no cover — nur bei Löschung mitten im Request
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Konto nicht gefunden.")
+    return konto
+
+
+def _reauth(user: dict, current_password: str, apple_identity_token: str) -> None:
+    """Frische Bestätigung der Identität — oder ``HTTPException``.
+
+    Der gemeinsame Kern von „Konto löschen" und „Adresse ändern": Beides sind
+    Schritte, die eine offen liegende Sitzung allein nicht auslösen können
+    darf (fremdes Gerät, gestohlenes Cookie). Konten mit Passwort bestätigen
+    mit dem Passwort, Apple-only-Konten mit einem frischen Apple-Identity-Token,
+    dessen ``sub`` zu genau diesem Konto gehören muss.
+
+    Der Widerruf der Apple-Autorisierung gehört NICHT hierher — er ist nur beim
+    Löschen richtig, und ein Adresswechsel würde damit die Anmeldung kappen.
+    """
+    if apple_identity_token and user.get("apple_sub"):
+        from .auth_apple import verify_apple_identity_token
+        claims = verify_apple_identity_token(apple_identity_token)
+        if str(claims.get("sub")) != str(user["apple_sub"]):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                                "Apple-Bestätigung gehört zu einem anderen Konto.")
+        return
+    if not verify_password(current_password, user["password_hash"]):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Aktuelles Passwort ist falsch." if user.get("password_set", 1)
+            else "Dieses Konto nutzt Apple — bitte in der App per Apple bestätigen "
+                 "oder zuerst über „Passwort vergessen“ ein Passwort setzen.")
 
 
 class DisplayNameIn(BaseModel):
@@ -158,6 +205,89 @@ def change_password(
     return _to_out(updated, _app_access_token(request, updated))
 
 
+@router.post("/change-email", response_model=UserOut)
+def change_email(
+    request: Request,
+    body: ChangeEmailRequest,
+    background: BackgroundTasks,
+    # Bewusst `get_current_user` statt `require_active`: Der häufigste echte
+    # Fall ist der Tippfehler bei der Registrierung — also genau das
+    # unbestätigte Konto, das `require_active` aussperrt. Der Status wird
+    # deshalb hier von Hand geprüft.
+    user: dict = Depends(get_current_user),
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Einen Adresswechsel anstoßen: Passwort jetzt, Link an die neue Adresse.
+
+    Bis der Link geklickt ist, ändert sich **nichts** — Anmeldung,
+    Benachrichtigungen und „Passwort vergessen“ laufen weiter über die
+    bisherige Adresse. Das ist der Grund, warum die alte Adresse schon jetzt
+    eine Warnung bekommt: Solange der Wechsel schwebt, kann sie das Konto noch
+    selbst zurückholen.
+    """
+    change_email_limiter.check(request, subject=user["id"])
+    # Unbestätigt darf wechseln (Tippfehler), deaktiviert nicht.
+    if not ist_admin(user) and user.get("status") != "active" and user.get("email_verified"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
+    _reauth(user, body.current_password, body.apple_identity_token)
+
+    neu = str(body.new_email).lower().strip()
+    alt = str(user.get("email", ""))
+    if neu == alt:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Das ist bereits deine Adresse.")
+    if neu.endswith("@local"):
+        # `…@local` sind die synthetischen Adressen des Telegram-Altbestands.
+        # Sie haben kein Postfach — ein Konto dorthin zu wechseln hieße, es
+        # unerreichbar zu machen.
+        #
+        # Heute kommt hier nichts an: `EmailStr` weist eine Domain ohne Punkt
+        # schon mit 422 ab. Der Riegel bleibt trotzdem stehen, weil die
+        # Erreichbarkeit des Kontos nicht still an einer fremden
+        # Validierungsregel hängen soll — er kostet nichts und beschreibt die
+        # Absicht an der Stelle, an der sie gilt.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Diese Adresse ist nicht zulässig.")
+    if store.get_web_user_by_email(neu):
+        raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
+
+    settings = get_settings()
+    if not settings.resend_api_key:
+        # Ohne Mail-Versand gibt es keinen Bestätigungslink — dieselbe Regel
+        # wie bei der Registrierung (dort: `verified = not can_send_email`).
+        # Sonst ließe sich der Wechsel auf dev, auf feature und in den
+        # Browsertests überhaupt nicht ausprobieren.
+        try:
+            store.update_email(user["id"], neu)
+        except sqlite3.IntegrityError:
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                "E-Mail ist bereits registriert.") from None
+        return _to_out(_frisch(store, user["id"]), _app_access_token(request, user))
+
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
+    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=neu)
+    background.add_task(_send_email_change_link, neu, raw, user.get("display_name"))
+    if alt and not alt.endswith("@local"):
+        background.add_task(_send_email_change_notice, alt, neu, user.get("display_name"))
+    return _to_out(user, _app_access_token(request, user), pending_email=neu)
+
+
+@router.delete("/change-email", response_model=UserOut)
+def cancel_change_email(
+    request: Request,
+    user: dict = Depends(get_current_user),
+    store: Store = Depends(get_store),
+) -> UserOut:
+    """Einen schwebenden Adresswechsel verwerfen — der Link wird ungültig.
+
+    Braucht keine erneute Bestätigung: Abbrechen stellt den Zustand her, der
+    ohnehin gilt, und wer die Sitzung hat, könnte den Link sowieso nie
+    einlösen (er liegt im fremden Postfach).
+    """
+    store.cancel_email_change(int(user["id"]))
+    return _to_out(_frisch(store, user["id"]), _app_access_token(request, user))
+
+
 @router.post("/test-notification")
 def test_notification(
     user: dict = Depends(require_active),
@@ -200,22 +330,17 @@ def delete_account(
     Fremdschlüssel, und in ``council.sqlite`` steht mit
     ``committee_notifications``/``session_followups_sent``, welche Sitzungen
     diesem Konto gemeldet wurden — eine Verhaltensspur, die mit weg muss."""
-    if body.apple_identity_token and user.get("apple_sub"):
-        from .auth_apple import revoke_apple_authorization_code, verify_apple_identity_token
-        claims = verify_apple_identity_token(body.apple_identity_token)
-        if str(claims.get("sub")) != str(user["apple_sub"]):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Apple-Bestätigung gehört zu einem anderen Konto.")
-        if body.apple_authorization_code:
-            background.add_task(
-                revoke_apple_authorization_code,
-                body.apple_authorization_code,
-                get_settings().apple_bundle_id,
-            )
-    elif not verify_password(body.current_password, user["password_hash"]):
-        msg = ("Aktuelles Passwort ist falsch." if user.get("password_set", 1)
-               else "Dieses Konto nutzt Apple — bitte in der App per Apple bestätigen "
-                    "oder zuerst über „Passwort vergessen“ ein Passwort setzen.")
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
+    _reauth(user, body.current_password, body.apple_identity_token)
+    # Nur beim Löschen: Apple die Autorisierung zurückgeben. Steht bewusst
+    # außerhalb von `_reauth` — beim Adresswechsel würde derselbe Aufruf die
+    # Anmeldung des Kontos kappen, das gerade weiterlaufen soll.
+    if body.apple_identity_token and user.get("apple_sub") and body.apple_authorization_code:
+        from .auth_apple import revoke_apple_authorization_code
+        background.add_task(
+            revoke_apple_authorization_code,
+            body.apple_authorization_code,
+            get_settings().apple_bundle_id,
+        )
     email = str(user.get("email", ""))
     council.delete_owner_data(user["id"])
     store.delete_web_user(user["id"])

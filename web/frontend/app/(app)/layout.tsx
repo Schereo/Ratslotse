@@ -21,7 +21,7 @@ import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
-import { Button, Card, CardListSkeleton, Skeleton, Spinner, toast } from "@/components/ui";
+import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
@@ -240,7 +240,17 @@ function ShellSkeleton() {
 }
 
 function VerifyNotice({ email }: { email: string }) {
+  const { user, refresh } = useAuth();
   const [busy, setBusy] = useState(false);
+  // Der Ausweg beim Tippfehler. Er steht HIER und nicht auf der Konto-Seite:
+  // Diese Ansicht ersetzt die ganze App-Hülle, ein unbestätigtes Konto kommt
+  // also gar nicht bis `/account`. Ohne diese Zeilen wäre eine vertippte
+  // Adresse eine Sackgasse — Konto löschen und neu anlegen.
+  const [aendern, setAendern] = useState(false);
+  const [neu, setNeu] = useState("");
+  const [passwort, setPasswort] = useState("");
+  // Wohin der Link zuletzt ging: die neue Adresse, sobald ein Wechsel schwebt.
+  const zieladresse = user?.pending_email ?? email;
 
   const resend = async () => {
     setBusy(true);
@@ -254,6 +264,30 @@ function VerifyNotice({ email }: { email: string }) {
     }
   };
 
+  const wechseln = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const u = await api.post<{ pending_email?: string | null }>("/account/change-email", {
+        new_email: neu.trim(),
+        current_password: passwort,
+      });
+      toast.success(
+        u.pending_email
+          ? `Bestätigungslink an ${u.pending_email} unterwegs.`
+          : "E-Mail-Adresse geändert.",
+      );
+      setAendern(false);
+      setNeu("");
+      setPasswort("");
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Adresse konnte nicht geändert werden.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
@@ -261,7 +295,7 @@ function VerifyNotice({ email }: { email: string }) {
       </div>
       <h1 className="mt-4 text-xl font-bold text-foreground">Bitte bestätige deine E-Mail</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Wir haben einen Bestätigungslink an <span className="font-medium">{email}</span> geschickt.
+        Wir haben einen Bestätigungslink an <span className="font-medium">{zieladresse}</span> geschickt.
         Klick den Link, um fortzufahren. Schau auch im Spam-Ordner nach.
       </p>
       {/* Der Screen wartet sichtbar mit: Sobald der Link im anderen Tab (oder
@@ -273,6 +307,51 @@ function VerifyNotice({ email }: { email: string }) {
       <Button onClick={resend} disabled={busy} variant="secondary" className="mt-5">
         {busy ? "Senden…" : "E-Mail erneut senden"}
       </Button>
+
+      {aendern ? (
+        <form onSubmit={wechseln} className="mt-6 space-y-3 text-left">
+          <div>
+            <Label htmlFor="verify-neue-email">Richtige E-Mail-Adresse</Label>
+            <Input
+              id="verify-neue-email"
+              type="email"
+              className="mt-1"
+              value={neu}
+              onChange={(e) => setNeu(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="name@example.org"
+            />
+          </div>
+          <div>
+            <Label htmlFor="verify-passwort">Dein Passwort</Label>
+            <PasswordInput
+              id="verify-passwort"
+              className="mt-1"
+              value={passwort}
+              onChange={(e) => setPasswort(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" variant="secondary" disabled={busy || !neu.trim() || !passwort}>
+              {busy ? "Wird geändert…" : "Adresse ändern"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setAendern(false)} disabled={busy}>
+              Abbrechen
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAendern(true)}
+          className="mt-4 text-sm font-medium text-primary hover:underline"
+        >
+          Falsche Adresse? Ändern
+        </button>
+      )}
     </Card>
   );
 }

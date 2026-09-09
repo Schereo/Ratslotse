@@ -5,6 +5,7 @@ import hashlib
 import html as _html
 import logging
 import secrets
+import sqlite3
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
@@ -162,7 +163,8 @@ def _app_access_token(request: Request, user: dict) -> str | None:
     )
 
 
-def _to_out(user: dict, access_token: str | None = None) -> UserOut:
+def _to_out(user: dict, access_token: str | None = None,
+            pending_email: str | None = None) -> UserOut:
     # Rollen und Rechte kommen aus `kern.roles` und nicht aus der Spalte:
     # `role` daneben ist nur die stärkste davon, für die ausgelieferte App.
     rollen_des_kontos = kern_roles.known_roles(user.get("roles"))
@@ -180,6 +182,7 @@ def _to_out(user: dict, access_token: str | None = None) -> UserOut:
         display_name=user.get("display_name"),
         saves_conversations=user.get("saves_conversations"),
         access_token=access_token,
+        pending_email=pending_email,
     )
 
 
@@ -276,7 +279,8 @@ def logout(response: Response) -> Ok:
 
 
 @router.get("/me", response_model=UserOut)
-def me(request: Request, user: dict = Depends(get_current_user)) -> UserOut:
+def me(request: Request, user: dict = Depends(get_current_user),
+       store: Store = Depends(get_store)) -> UserOut:
     """Das aktuelle Konto — und für die App gleich ein frisches Token.
 
     Die App fragt diesen Endpunkt bei jedem Start. Das Token, das sie dabei
@@ -284,7 +288,9 @@ def me(request: Request, user: dict = Depends(get_current_user)) -> UserOut:
     bleibt also angemeldet. Das Gegenstück zur stillen Cookie-Verlängerung im
     Browser (``app/session.py``), die für Bearer-Clients nicht funktioniert.
     """
-    return _to_out(user, _app_access_token(request, user))
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    return _to_out(user, _app_access_token(request, user),
+                   store.pending_email_change(int(user["id"]), now))
 
 
 def _send_reset_email(email: str, raw_token: str, display_name: str | None = None) -> None:
@@ -393,6 +399,123 @@ def _send_verification_email(email: str, raw_token: str, display_name: str | Non
         logger.exception("verification email failed for %s", email)
 
 
+def _send_email_change_link(neue_adresse: str, raw_token: str,
+                            display_name: str | None = None) -> None:
+    """Background task: der Bestätigungslink an die NEUE Adresse (24 h).
+
+    Bewusst derselbe Pfad wie die Erstbestätigung — ``/verify-email`` kennt
+    die im App Store ausgelieferte App, jeder andere Pfad landete dort in
+    Safari. ``change=1`` steuert nur den Erfolgstext der Webseite; ob ein
+    Wechsel dahintersteht, sagt allein der Token.
+    """
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    link = f"{settings.app_base_url.rstrip('/')}/verify-email?token={raw_token}&change=1"
+    subject = "Ratslotse – neue E-Mail-Adresse bestätigen"
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Diese Adresse soll künftig zu deinem "
+        "Ratslotse-Konto gehören. Ein Klick, dann ist der Wechsel erledigt — "
+        "der Link ist <b>24 Stunden</b> gültig.</p>"
+        + knopf(link, "Neue Adresse bestätigen"),
+        greeting_name=display_name,
+        held="willkommen",
+        kicker="Dein Konto",
+        title="Neue Adresse bestätigen",
+        fusszeile="Wenn du das nicht angefordert hast, ignoriere diese E-Mail — "
+                  "dann bleibt alles, wie es ist.",
+    )
+    text = (
+        "Bestätige deine neue E-Mail-Adresse bei Ratslotse.\n\n"
+        f"Neue Adresse bestätigen (24 Stunden gültig): {link}\n\n"
+        "Wenn du das nicht angefordert hast, ignoriere diese E-Mail.\n"
+    )
+    try:
+        send_email(neue_adresse, subject, body, text=text,
+                   api_key=settings.resend_api_key, sender=settings.email_from)
+    except Exception:  # noqa: BLE001 — best effort, „Erneut senden" ist der Ausweg
+        logger.exception("email-change link failed for %s", neue_adresse)
+
+
+def _send_email_change_notice(alte_adresse: str, neue_adresse: str,
+                              display_name: str | None = None) -> None:
+    """Background task: Warnung an die ALTE Adresse, dass ein Wechsel läuft.
+
+    Der wirksame Moment: Solange der Wechsel schwebt, gehen „Passwort
+    vergessen"-Mails noch hierher. Wer das hier liest und es nicht selbst war,
+    kann das Konto also noch selbst zurückholen — nach dem Wechsel nicht mehr.
+    """
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    reset_url = f"{settings.app_base_url.rstrip('/')}/forgot-password"
+    subject = "Ratslotse – Änderung deiner E-Mail-Adresse angefordert"
+    ziel = _html.escape(neue_adresse)
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Für dein Ratslotse-Konto wurde gerade angefordert, "
+        f"die E-Mail-Adresse zu ändern in:</p><p style='margin:10px 0 0;font-weight:600'>{ziel}</p>"
+        "<p style='margin:10px 0 0'>Der Wechsel gilt erst, wenn der Link in der "
+        "E-Mail an die neue Adresse angeklickt wurde. Bis dahin ändert sich nichts.</p>"
+        "<p style='margin:10px 0 0'><b>Warst du das nicht?</b> Dann ändere jetzt dein "
+        "Passwort — damit wird der Wechsel hinfällig und alle offenen Sitzungen enden.</p>"
+        + knopf(reset_url, "Passwort ändern"),
+        greeting_name=display_name,
+        held="passwort",
+        kicker="Dein Konto",
+        title="Adresse soll geändert werden",
+        fusszeile="Diese E-Mail geht an deine bisherige Adresse, damit ein Wechsel "
+                  "dir nie entgeht.",
+    )
+    text = (
+        f"Für dein Ratslotse-Konto wurde angefordert, die E-Mail-Adresse zu ändern in: {neue_adresse}\n\n"
+        "Der Wechsel gilt erst, wenn der Link in der E-Mail an die neue Adresse angeklickt wurde.\n\n"
+        f"Warst du das nicht? Dann ändere jetzt dein Passwort: {reset_url}\n"
+    )
+    try:
+        send_email(alte_adresse, subject, body, text=text,
+                   api_key=settings.resend_api_key, sender=settings.email_from)
+    except Exception:  # noqa: BLE001 — der Wechsel hängt nicht an dieser Mail
+        logger.exception("email-change notice failed for %s", alte_adresse)
+
+
+def _send_email_changed_notice(alte_adresse: str, neue_adresse: str,
+                               display_name: str | None = None) -> None:
+    """Background task: Quittung an die alte Adresse, nachdem der Wechsel gilt."""
+    settings = get_settings()
+    if not settings.resend_api_key:
+        return
+    ziel = _html.escape(neue_adresse)
+    subject = "Ratslotse – deine E-Mail-Adresse wurde geändert"
+    body = render_html_email(
+        subject,
+        "<p style='margin:0'>Die E-Mail-Adresse deines Ratslotse-Kontos lautet ab "
+        f"sofort:</p><p style='margin:10px 0 0;font-weight:600'>{ziel}</p>"
+        "<p style='margin:10px 0 0'>Anmeldung, Benachrichtigungen und „Passwort "
+        "vergessen“ laufen ab jetzt über die neue Adresse. An diese hier schicken "
+        "wir nichts mehr.</p>",
+        greeting_name=display_name,
+        held="passwort",
+        kicker="Dein Konto",
+        title="Adresse geändert",
+        fusszeile="Warst du das nicht? Dann antworte bitte umgehend auf diese E-Mail — "
+                  "über diese Adresse erreichst du uns weiterhin.",
+    )
+    text = (
+        f"Die E-Mail-Adresse deines Ratslotse-Kontos lautet ab sofort: {neue_adresse}\n\n"
+        "Anmeldung, Benachrichtigungen und „Passwort vergessen“ laufen ab jetzt über "
+        "die neue Adresse.\n\n"
+        "Warst du das nicht? Dann antworte bitte umgehend auf diese E-Mail.\n"
+    )
+    try:
+        send_email(alte_adresse, subject, body, text=text,
+                   reply_to=settings.feedback_email or settings.web_admin_email or None,
+                   api_key=settings.resend_api_key, sender=settings.email_from)
+    except Exception:  # noqa: BLE001 — der Wechsel ist durch, die Mail ist Kür
+        logger.exception("email-changed notice failed for %s", alte_adresse)
+
+
 @router.post("/verify-email", response_model=UserOut)
 def verify_email(
     request: Request,
@@ -400,20 +523,57 @@ def verify_email(
     background: BackgroundTasks,
     store: Store = Depends(get_store),
 ) -> UserOut:
-    """Confirm an email address from a valid verification token."""
+    """Confirm an email address from a valid verification token.
+
+    Derselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der
+    Registrierung und einen Adresswechsel. Was von beidem, sagt der Token
+    (``new_email``) — nicht die URL und nicht der Kontostand.
+    """
     token_hash = hashlib.sha256(body.token.encode()).hexdigest()
     now = datetime.utcnow().isoformat(timespec="seconds")
-    user_id = store.consume_email_verification(token_hash, now)
-    if user_id is None:
+    treffer = store.consume_email_verification(token_hash, now)
+    if treffer is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Der Bestätigungslink ist ungültig oder abgelaufen. "
                             "Bitte fordere einen neuen an.")
-    store.set_email_verified(user_id, True)
+    user_id = treffer["user_id"]
+    neue_adresse = treffer["new_email"]
+    vorher = store.get_web_user_by_id(user_id)
+    # VOR dem Umschreiben merken — und das ist keine Stilfrage: `status ==
+    # pending` heißt auch „von einem Admin deaktiviert". Ohne diesen Merker
+    # könnte ein deaktiviertes Konto sich über einen Wechsel-Link selbst
+    # wieder freischalten.
+    war_unbestaetigt = not (vorher or {}).get("email_verified")
+    alte_adresse = str((vorher or {}).get("email", ""))
+
+    if neue_adresse:
+        if store.get_web_user_by_email(neue_adresse):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Diese E-Mail-Adresse ist inzwischen vergeben. Bitte fordere den "
+                "Wechsel mit einer anderen Adresse erneut an.")
+        try:
+            store.update_email(user_id, neue_adresse)
+        except sqlite3.IntegrityError:
+            # Wettlauf zwischen Prüfung und UPDATE — jemand hat die Adresse in
+            # genau diesem Moment registriert. Der UNIQUE-Index ist die einzige
+            # Instanz, die das sicher entscheidet.
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Diese E-Mail-Adresse ist inzwischen vergeben. Bitte fordere den "
+                "Wechsel mit einer anderen Adresse erneut an.") from None
+        if alte_adresse and not alte_adresse.endswith("@local"):
+            background.add_task(_send_email_changed_notice, alte_adresse, neue_adresse,
+                                (vorher or {}).get("display_name"))
+    else:
+        store.set_email_verified(user_id, True)
+
     user = store.get_web_user_by_id(user_id)
     # A confirmed address activates the account — no manual admin approval.
-    # (Suspended accounts can't reach this: their tokens are already consumed
-    # and resend-verification no-ops for verified addresses.)
-    if user and user.get("status") == "pending":
+    # Nur für ein Konto, das VORHER unbestätigt war: Ein bestätigtes Konto auf
+    # `pending` wurde von einem Admin deaktiviert und darf sich hier nicht
+    # selbst zurückholen.
+    if user and war_unbestaetigt and user.get("status") == "pending":
         store.set_web_user_status(user_id, "active")
         user = store.get_web_user_by_id(user_id)
         background.add_task(_notify_admins_registration, user["email"])
@@ -433,18 +593,34 @@ def resend_verification(
     user: dict = Depends(get_current_user),
     store: Store = Depends(get_store),
 ) -> Ok:
-    """Re-send the verification link to the logged-in user's address."""
+    """Re-send the verification link — an die Adresse, um die es gerade geht.
+
+    Schwebt ein ADRESSWECHSEL, geht der Link an die neue Adresse; sonst an die
+    eigene, noch unbestätigte. Beides über denselben Endpunkt, damit das
+    Banner am unbestätigten Konto und der Knopf in der Konto-Karte dasselbe
+    tun. Und weil `create_email_verification` alle älteren Tokens des Kontos
+    verwirft, hätte ein zweiter Endpunkt hier sonst den schwebenden Wechsel
+    stillschweigend gelöscht.
+    """
     verify_email_limiter.check(request)
     settings = get_settings()
-    if user.get("email_verified"):
-        return {"ok": True}  # already verified — no-op
-    email = str(user["email"])
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    wechsel = store.pending_email_change(int(user["id"]), now)
+    if not wechsel and user.get("email_verified"):
+        return {"ok": True}  # already verified, kein Wechsel offen — no-op
+    email = wechsel or str(user["email"])
     if not settings.resend_api_key or email.endswith("@local"):
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "E-Mail-Versand ist nicht konfiguriert.")
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
-    store.create_email_verification(int(user["id"]), token_hash, expires)
-    background.add_task(_send_verification_email, email, raw, user.get("display_name"))
+    store.create_email_verification(int(user["id"]), token_hash, expires, new_email=wechsel)
+    # Am Aufruf verzweigen statt die Funktion in eine Variable zu wählen: Die
+    # beiden Versender haben verschiedene Parameternamen, eine gemeinsame
+    # Variable wäre ein Union-Typ, den `add_task` nicht mehr prüfen kann.
+    if wechsel:
+        background.add_task(_send_email_change_link, email, raw, user.get("display_name"))
+    else:
+        background.add_task(_send_verification_email, email, raw, user.get("display_name"))
     return {"ok": True}

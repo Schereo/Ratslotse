@@ -261,6 +261,31 @@ public final class AppModel {
         }
     }
 
+    /// Einen Adresswechsel anstoßen. Bestätigt wird mit dem Passwort oder —
+    /// bei Apple-Konten ohne eigenes Passwort — mit einem frischen
+    /// Apple-Identity-Token. Bis der Link in der neuen Mailbox geklickt ist,
+    /// ändert sich nichts; `user.pendingEmail` trägt so lange das Ziel.
+    public func changeEmail(newEmail: String, password: String = "",
+                            appleIdentityToken: String = "") async throws {
+        struct Body: Codable, Sendable {
+            let new_email: String
+            let current_password: String
+            let apple_identity_token: String
+        }
+        let user: User = try await api.send(
+            "/api/account/change-email",
+            body: Body(new_email: newEmail, current_password: password,
+                       apple_identity_token: appleIdentityToken)
+        )
+        try await accept(user: user)
+    }
+
+    /// Einen schwebenden Adresswechsel verwerfen — der Link wird ungültig.
+    public func cancelEmailChange() async throws {
+        let user: User = try await api.sendWithoutBody("/api/account/change-email", method: .delete)
+        try await accept(user: user)
+    }
+
     public func resendVerification() async throws {
         struct Response: Codable, Sendable { let ok: Bool }
         let _: Response = try await api.sendWithoutBody("/api/auth/resend-verification")

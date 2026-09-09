@@ -33,6 +33,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/change-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Email
+         * @description Einen Adresswechsel anstoßen: Passwort jetzt, Link an die neue Adresse.
+         *
+         *     Bis der Link geklickt ist, ändert sich **nichts** — Anmeldung,
+         *     Benachrichtigungen und „Passwort vergessen“ laufen weiter über die
+         *     bisherige Adresse. Das ist der Grund, warum die alte Adresse schon jetzt
+         *     eine Warnung bekommt: Solange der Wechsel schwebt, kann sie das Konto noch
+         *     selbst zurückholen.
+         */
+        post: operations["change_email_api_account_change_email_post"];
+        /**
+         * Cancel Change Email
+         * @description Einen schwebenden Adresswechsel verwerfen — der Link wird ungültig.
+         *
+         *     Braucht keine erneute Bestätigung: Abbrechen stellt den Zustand her, der
+         *     ohnehin gilt, und wer die Sitzung hat, könnte den Link sowieso nie
+         *     einlösen (er liegt im fremden Postfach).
+         */
+        delete: operations["cancel_change_email_api_account_change_email_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account/change-password": {
         parameters: {
             query?: never;
@@ -1023,7 +1057,14 @@ export interface paths {
         put?: never;
         /**
          * Resend Verification
-         * @description Re-send the verification link to the logged-in user's address.
+         * @description Re-send the verification link — an die Adresse, um die es gerade geht.
+         *
+         *     Schwebt ein ADRESSWECHSEL, geht der Link an die neue Adresse; sonst an die
+         *     eigene, noch unbestätigte. Beides über denselben Endpunkt, damit das
+         *     Banner am unbestätigten Konto und der Knopf in der Konto-Karte dasselbe
+         *     tun. Und weil `create_email_verification` alle älteren Tokens des Kontos
+         *     verwirft, hätte ein zweiter Endpunkt hier sonst den schwebenden Wechsel
+         *     stillschweigend gelöscht.
          */
         post: operations["resend_verification_api_auth_resend_verification_post"];
         delete?: never;
@@ -1064,6 +1105,10 @@ export interface paths {
         /**
          * Verify Email
          * @description Confirm an email address from a valid verification token.
+         *
+         *     Derselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der
+         *     Registrierung und einen Adresswechsel. Was von beidem, sagt der Token
+         *     (``new_email``) — nicht die URL und nicht der Kontostand.
          */
         post: operations["verify_email_api_auth_verify_email_post"];
         delete?: never;
@@ -6531,6 +6576,32 @@ export interface components {
             /** Webcal Url */
             webcal_url: string;
         };
+        /**
+         * ChangeEmailRequest
+         * @description Adresswechsel verlangt eine frische Bestätigung — wie
+         *     ``DeleteAccountRequest``, und aus demselben Grund: Eine offen liegende
+         *     Sitzung (Laptop im Café, gestohlenes Cookie) darf die Adresse nicht
+         *     wechseln können, sonst übernimmt, wer die Sitzung hat, per „Passwort
+         *     vergessen" gleich das ganze Konto. Konten mit Passwort bestätigen mit dem
+         *     Passwort, Apple-only-Konten mit einem frischen Apple-Identity-Token.
+         */
+        ChangeEmailRequest: {
+            /**
+             * Apple Identity Token
+             * @default
+             */
+            apple_identity_token: string;
+            /**
+             * Current Password
+             * @default
+             */
+            current_password: string;
+            /**
+             * New Email
+             * Format: email
+             */
+            new_email: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -10960,6 +11031,8 @@ export interface components {
             has_password: boolean;
             /** Id */
             id: number;
+            /** Pending Email */
+            pending_email?: string | null;
             /** Permissions */
             permissions: ("budget" | "mandate" | "admin")[];
             /**
@@ -11283,6 +11356,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_email_api_account_change_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_change_email_api_account_change_email_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
                 };
             };
         };
@@ -16880,4 +17006,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 96a895eaee5f72ad0c43f0da3ad81ffb55edaa4b80bcf909aa9ba189b647bdf2
+// vertrag-sha256: a6d029e5805da11a617cbdd5702b5dae8fc90577067112d991a6b9f181a21e32
