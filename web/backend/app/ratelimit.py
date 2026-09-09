@@ -80,6 +80,13 @@ login_limiter = RateLimiter(max_calls=10, window_seconds=60)
 register_limiter = RateLimiter(max_calls=5, window_seconds=300)
 forgot_password_limiter = RateLimiter(max_calls=5, window_seconds=900)
 verify_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
+# Adresswechsel: angemeldet, verschickt aber zwei Mails je Aufruf — eine davon
+# an eine FREMDE, frei gewählte Adresse. Ohne Bremse wäre das ein Versandweg
+# für Belästigung auf unsere Kosten (Resend-Kontingent, unsere Absenderdomain).
+# Deshalb pro KONTO gezählt, nicht pro IP: Ein Konto ist die Einheit, an der
+# der Missbrauch hängt, und Mobilfunkanbieter bündeln viele Geräte hinter einer
+# Adresse. Fünf in einer Viertelstunde deckt jeden ehrlichen Tippfehler.
+change_email_limiter = RateLimiter(max_calls=5, window_seconds=900)
 # „Frag den Rat" ist der einzige Endpoint, der pro Aufruf LLM-Kosten erzeugt —
 # großzügig genug für echtes Nachfragen, aber kein offener Geldhahn.
 qa_limiter = RateLimiter(max_calls=10, window_seconds=600)

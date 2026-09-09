@@ -488,6 +488,7 @@ struct AccountView: View {
     @State private var displayNameSuccessPulse = 0
     @State private var displayNameErrorPulse = 0
     @State private var isChangingPassword = false
+    @State private var isChangingEmail = false
     @State private var isDeletingAccount = false
     @State private var error: String?
 
@@ -551,6 +552,25 @@ struct AccountView: View {
                         .disabled(isSavingDisplayName)
                         .accessibilityLabel(displayNameSaved ? "Anzeigename wurde gespeichert" : "Anzeigename speichern")
                         .animation(.spring(response: 0.36, dampingFraction: 0.76), value: displayNameSaved)
+
+                        Divider().overlay(RatsColor.separator)
+
+                        // Adresswechsel. Schwebt einer, sagt die Zeile das
+                        // statt der aktuellen Adresse — sonst sieht es aus,
+                        // als wäre nichts passiert, während der Link schon
+                        // unterwegs ist.
+                        Button { isChangingEmail = true } label: {
+                            RatsSettingsRow(
+                                "E-Mail-Adresse",
+                                detail: (model.user?.pendingEmail ?? user.pendingEmail)
+                                    .map { "Bestätigung an \($0) unterwegs" }
+                                    ?? (model.user?.email ?? user.email),
+                                symbol: .mailWarning
+                            ) {
+                                RatsIcon(.chevronRight, size: 16).foregroundStyle(RatsColor.muted)
+                            }
+                        }
+                        .buttonStyle(RatsPlainButtonStyle())
                     }
 
                     BadgeCollectionCard(model: model)
@@ -733,12 +753,17 @@ struct AccountView: View {
                 switch ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ACCOUNT_SHEET"] {
                 case "password": isChangingPassword = true
                 case "delete": isDeletingAccount = true
+                case "email": isChangingEmail = true
                 default: break
                 }
 #endif
             }
             .sheet(isPresented: $isChangingPassword) {
                 ChangePasswordView(model: model)
+                    .ratsLargeSheet()
+            }
+            .sheet(isPresented: $isChangingEmail) {
+                ChangeEmailView(model: model)
                     .ratsLargeSheet()
             }
             .sheet(isPresented: $isDeletingAccount) {
@@ -880,6 +905,172 @@ struct AccountView: View {
             }
         }
         .buttonStyle(RatsPlainButtonStyle())
+    }
+}
+
+/// E-Mail-Adresse ändern: Passwort jetzt, Bestätigungslink an die neue Adresse.
+///
+/// Schwebt bereits ein Wechsel, zeigt das Sheet KEIN Formular mehr, sondern den
+/// Stand samt Ausweg — zwei Angebote nebeneinander („ändern" und „wird gerade
+/// geändert") wären widersprüchlich.
+private struct ChangeEmailView: View {
+    let model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var neu = ""
+    @State private var passwort = ""
+    @State private var appleToken = ""
+    @State private var busy = false
+    @State private var error: String?
+
+    /// Apple-Konto ohne selbst gesetztes Passwort: Hier weist man sich per
+    /// Apple aus, nicht mit einem Passwort, das es nicht gibt.
+    private var brauchtApple: Bool { model.user?.hasPassword == false }
+    private var schwebend: String? { model.user?.pendingEmail }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                RatsSheetHeader("E-Mail-Adresse", leadingTitle: "Abbrechen", leadingAction: { dismiss() })
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if let schwebend {
+                            RatsModalIntro(
+                                kicker: "Fast fertig",
+                                title: "Bestätigung unterwegs",
+                                message: "Wir haben einen Link an \(schwebend) geschickt — 24 Stunden gültig. "
+                                    + "Bis er geklickt ist, bleibt alles bei deiner bisherigen Adresse.",
+                                symbol: .mailWarning
+                            )
+                            if let error { ErrorCard(message: error) { erneutSenden() } }
+                            Button { erneutSenden() } label: {
+                                RatsLabel("Link erneut senden", .send)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .disabled(busy)
+                            Button(role: .destructive) { abbrechen() } label: {
+                                RatsLabel("Wechsel abbrechen", .x)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(RatsPlainButtonStyle())
+                            .disabled(busy)
+                        } else {
+                            RatsModalIntro(
+                                kicker: "Dein Konto",
+                                title: "Adresse ändern",
+                                message: "Deine neue Adresse gilt, sobald du den Link darin bestätigt hast. "
+                                    + "Themen, Merkliste und Abzeichen bleiben.",
+                                symbol: .mailWarning
+                            )
+                            RatsSectionPanel("Neue Adresse", symbol: .send) {
+                                RatsLabeledField(label: "E-Mail-Adresse") {
+                                    TextField("name@example.org", text: $neu)
+                                        .textContentType(.emailAddress)
+                                        .keyboardType(.emailAddress)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .textFieldStyle(.plain)
+                                }
+                            }
+                            RatsSectionPanel(
+                                "Identität bestätigen",
+                                detail: "Damit niemand über ein offenes Gerät deine Adresse ändern kann.",
+                                symbol: .userCog
+                            ) {
+                                if brauchtApple {
+                                    SignInWithAppleButton(.continue) { request in
+                                        request.requestedScopes = []
+                                    } onCompletion: { result in
+                                        if case .success(let auth) = result,
+                                           let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                                           let data = credential.identityToken,
+                                           let token = String(data: data, encoding: .utf8) {
+                                            appleToken = token
+                                        }
+                                    }
+                                    .frame(height: 46)
+                                    .clipShape(RoundedRectangle(cornerRadius: RatsRadius.button))
+                                } else {
+                                    RatsLabeledField(label: "Aktuelles Passwort") {
+                                        SecureField("Passwort", text: $passwort)
+                                            .textContentType(.password)
+                                            .textFieldStyle(.plain)
+                                    }
+                                }
+                            }
+                            if let error { ErrorCard(message: error) { aendern() } }
+                            Button { aendern() } label: {
+                                Text(busy ? "Wird geändert …" : "Adresse ändern")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .disabled(!bereit || busy)
+                            .opacity(!bereit || busy ? 0.5 : 1)
+                        }
+                    }
+                    .frame(maxWidth: 560, alignment: .leading)
+                    .padding(18)
+                }
+                .background(RatsColor.page)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private var bereit: Bool {
+        guard neu.contains("@"), !neu.hasPrefix("@"), !neu.hasSuffix("@") else { return false }
+        return brauchtApple ? !appleToken.isEmpty : !passwort.isEmpty
+    }
+
+    private func aendern() {
+        busy = true
+        error = nil
+        Task {
+            do {
+                try await model.changeEmail(
+                    newEmail: neu.trimmingCharacters(in: .whitespacesAndNewlines),
+                    password: passwort, appleIdentityToken: appleToken)
+                // Ohne Mail-Versand ist die Adresse schon umgeschrieben, sonst
+                // ist erst ein Link unterwegs — beides sagt `pendingEmail`.
+                model.alertMessage = model.user?.pendingEmail.map {
+                    "Bestätigungslink an \($0) unterwegs."
+                } ?? "Deine E-Mail-Adresse wurde geändert."
+                if model.user?.pendingEmail == nil { dismiss() }
+                passwort = ""
+                appleToken = ""
+            } catch {
+                self.error = error.localizedDescription
+            }
+            busy = false
+        }
+    }
+
+    private func erneutSenden() {
+        busy = true
+        error = nil
+        Task {
+            do {
+                try await model.resendVerification()
+                model.alertMessage = "Der Bestätigungslink ist erneut unterwegs."
+            } catch {
+                self.error = error.localizedDescription
+            }
+            busy = false
+        }
+    }
+
+    private func abbrechen() {
+        busy = true
+        error = nil
+        Task {
+            do {
+                try await model.cancelEmailChange()
+                neu = ""
+            } catch {
+                self.error = error.localizedDescription
+            }
+            busy = false
+        }
     }
 }
 
