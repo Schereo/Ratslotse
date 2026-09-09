@@ -34,6 +34,7 @@ from council.cities import default_paths  # noqa: E402
 from council.cities.annotators import get as get_annotator  # noqa: E402
 from council.cities.clusters import CLUSTER_VERSION  # noqa: E402
 from council.cities.index import EMBED_MODEL  # noqa: E402
+from council.cities.model import IDEA_KINDS  # noqa: E402
 from council.cities.store import CitiesStore  # noqa: E402
 
 #: Wie ein Status auf Deutsch heißt, und was er für die Liste bedeutet.
@@ -44,7 +45,8 @@ STATUS = {
 }
 
 
-def urteile(main: CitiesStore, version: str) -> list[dict]:
+def urteile(main: CitiesStore, version: str,
+            alle_arten: bool = False) -> list[dict]:
     """Jede fremde Vorlage mit einem Urteil dieser Fassung, samt Themenfeld.
 
     Ganze statische Anweisung (``tests/test_sql_spalten.py``).
@@ -66,7 +68,15 @@ def urteile(main: CitiesStore, version: str) -> list[dict]:
         "  AND e.annotator='effort' AND e.version='1' "
         "WHERE f.object_kind='paper' AND f.annotator='fit' AND f.version=?",
         (EMBED_MODEL, CLUSTER_VERSION, version))
-    return [dict(r) for r in rows]
+    zeilen = [dict(r) for r in rows]
+    if alle_arten:
+        return zeilen
+    # Dieselbe Auswahl wie die Karte (`CitiesStore._IDEEN_*`): nur, was jemand
+    # VORGESCHLAGEN hat. Gefiltert wird hier in Python und nicht im SQL, damit
+    # die Anweisung eine GANZE statische bleibt — zusammengesetztes SQL
+    # überspringt `tests/test_sql_spalten.py`, und dann prüft es gar nichts.
+    erlaubt = {k.value for k in IDEA_KINDS}
+    return [z for z in zeilen if z["kind"] in erlaubt]
 
 
 def ohne_dubletten(zeilen: list[dict]) -> list[dict]:
@@ -149,6 +159,9 @@ def main() -> int:
                    help="Fassung des Annotators (Vorgabe: die aktuelle)")
     p.add_argument("--ab", type=int, default=2,
                    help="ab wie vielen ANDEREN Städten eine Idee zählt (Vorgabe 2)")
+    p.add_argument("--alle-arten", action="store_true",
+                   help="auch Antworten, Mitteilungen und Berichte zählen. Die "
+                        "Karte zeigt sie nicht — dort schlägt niemand etwas vor.")
     p.add_argument("--vorlagen", action="store_true",
                    help="je VORLAGE zählen statt je Idee. Die Karte zeigt Ideen "
                         "(eine Zeile je Stadt und Gruppe); dieser Schalter macht "
@@ -161,7 +174,7 @@ def main() -> int:
     db, _f, _r = default_paths()
     store = CitiesStore(db)
     try:
-        zeilen = urteile(store, version)
+        zeilen = urteile(store, version, a.alle_arten)
         roh = len(zeilen)
         if not a.vorlagen:
             zeilen = ohne_dubletten(zeilen)
