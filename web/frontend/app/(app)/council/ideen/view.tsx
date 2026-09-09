@@ -54,6 +54,21 @@ const WORTH: Record<string, string> = {
   no: "Lohnt sich nicht",
 };
 
+/**
+ * Was die Idee den Rat kosten würde — von der Frage bis zum Haushaltsposten.
+ *
+ * Knapp ein Drittel der Ideen sind Anfragen. „Eine Anfrage zu Fußwegbreiten
+ * stellen" ist eine andere Sorte Vorschlag als „ein Darlehensprogramm
+ * einführen", und wer die Liste liest, will das auf einen Blick sehen.
+ */
+const AUFWAND: Record<string, string> = {
+  inquiry: "Anfrage",
+  review: "Prüfauftrag",
+  resolution: "Resolution",
+  decision: "Beschluss",
+  budget: "kostet Geld",
+};
+
 /** Vorlagenarten — kurz, wie im Block „Anderswo beschlossen". */
 const ART: Record<string, string> = {
   motion: "Antrag", amendment: "Änderungsantrag", inquiry: "Anfrage",
@@ -133,6 +148,19 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         {idee.originator && (
           <span className="text-xs text-muted-foreground/80">{idee.originator}</span>
         )}
+        {/* Aufwand und Verbreitung: zwei Wörter, die den Rest der Karte
+            einordnen. Sie stehen als leises Etikett neben der Herkunft, nicht
+            als Auszeichnung — die Aussage macht das Urteil weiter unten. */}
+        {AUFWAND[idee.effort] && (
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+            {AUFWAND[idee.effort]}
+          </span>
+        )}
+        {idee.peers > 0 && (
+          <span className="text-[11px] text-muted-foreground">
+            {idee.peers === 1 ? "auch in 1 anderen Stadt" : `auch in ${idee.peers} anderen Städten`}
+          </span>
+        )}
       </div>
 
       <h3 className="mt-1.5 text-sm font-semibold text-foreground">{idee.name}</h3>
@@ -160,6 +188,11 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         )}
         {idee.why_worth && (
           <p className="mt-1 text-xs leading-relaxed text-foreground/80">{idee.why_worth}</p>
+        )}
+        {idee.addressee && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
+            Entscheidet nicht die Stadt allein: {idee.addressee}
+          </p>
         )}
         {idee.obstacles && (
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">

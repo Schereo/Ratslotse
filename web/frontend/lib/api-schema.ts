@@ -8279,6 +8279,8 @@ export interface components {
             outcome: string;
             /** Paper Id */
             paper_id: string;
+            /** Peers */
+            peers: number;
             /** Reason */
             reason: string;
             /** Status */
@@ -16759,4 +16761,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 18aafd080f4a6fd73009a122603ff21b60e82abe625db0c82fc5bdacc024f236
+// vertrag-sha256: 0fc03691f60fc0a52d4b70444f76dfd78dc09645144ac7b1e60dff4637b7aad6

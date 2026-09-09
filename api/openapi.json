@@ -9018,6 +9018,10 @@
             "title": "Paper Id",
             "type": "string"
           },
+          "peers": {
+            "title": "Peers",
+            "type": "integer"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -9076,7 +9080,8 @@
           "confidence",
           "evidence",
           "effort",
-          "addressee"
+          "addressee",
+          "peers"
         ],
         "title": "Idea",
         "type": "object"

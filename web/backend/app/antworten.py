@@ -1407,6 +1407,10 @@ class Idea(TypedDict):
     #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
     #: die Stadt selbst entscheidet, und das ist der Normalfall.
     addressee: str | None
+    #: In wie vielen ANDEREN Städten dieselbe Idee vorkommt
+    #: (`council/cities/clusters.py`). 0 heißt: in keiner — und das ist kein
+    #: Makel, sondern eine Aussage über die Idee.
+    peers: int
 
 
 class IdeasResponse(TypedDict):

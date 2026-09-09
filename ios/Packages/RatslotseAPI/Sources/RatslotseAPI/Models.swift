@@ -528,11 +528,19 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public let obstacles: String?
     public let confidence: String
     public let evidence: [IdeaEvidence]
+    /// Was die Idee den Rat kosten würde: inquiry < review < resolution <
+    /// decision < budget. Leer, solange der Wochen-Cron sie nicht vergeben hat.
+    public let effort: String
+    /// Wer sie in Oldenburg tun müsste, wenn nicht die Stadt selbst.
+    public let addressee: String?
+    /// In wie vielen ANDEREN Städten dieselbe Idee vorkommt. 0 heißt: in
+    /// keiner — kein Makel, sondern eine Aussage über die Idee.
+    public let peers: Int
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
         case transfer, competence, originator, status, reason, worth
-        case obstacles, confidence, evidence
+        case obstacles, confidence, evidence, effort, addressee, peers
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
@@ -562,6 +570,11 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         obstacles = try v.decodeIfPresent(String.self, forKey: .obstacles)
         confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
         evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []
+        // Alle drei mit Rückfall: Die ausgelieferte App muss auch dann laufen,
+        // wenn der Server sie noch nicht schickt (`ios_vertrag.py`).
+        effort = try v.decodeIfPresent(String.self, forKey: .effort) ?? ""
+        addressee = try v.decodeIfPresent(String.self, forKey: .addressee)
+        peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
     }
 }
 
