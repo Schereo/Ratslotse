@@ -385,10 +385,12 @@ def main() -> int:
           f"({ergebnis['cost_per_1000']:.2f} $/1000 Urteile)")
     print(f"  Dauer               {ergebnis['seconds']}s")
 
-    # Beide Matrizen, denn beide Fragen entscheiden. Die für „lohnt sich"
-    # fehlte, als die verschärfte Regel gemessen wurde — und ohne sie ließ
-    # sich nicht sagen, ob das Modell strenger oder lockerer ist als der
-    # Maßstab. Genau das ist aber die einzige Frage, die weiterhilft.
+    # Die Matrix, nicht die Trefferquote. Eine Quote sagt, WIE OFT das Modell
+    # danebenliegt; die Matrix sagt, in welche RICHTUNG — ob es strenger ist
+    # als der Maßstab oder lockerer. Genau das ist die Frage, die weiterhilft,
+    # und ohne sie ließ sich am 08.09.2026 nicht deuten, warum die verschärfte
+    # Regel schlechter maß. (Bis Fassung 2 standen hier zwei Matrizen. Die
+    # zweite galt „lohnt sich" — die Frage stellt Fassung 3 nicht mehr.)
     if letzter["confusion"]:
         print("\n  Status (erwartet -> bekommen):")
         for k, v in sorted(letzter["confusion"].items(), key=lambda x: -x[1]):
