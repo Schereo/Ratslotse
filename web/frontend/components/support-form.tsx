@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { KONTAKT_EMAIL } from "@/lib/kontakt";
 
 const KINDS = [
   { value: "konto", label: "Konto & Anmeldung" },
@@ -42,7 +43,7 @@ export function SupportForm() {
       setError(
         err instanceof ApiError && err.status === 429
           ? "Gerade sind zu viele Anfragen angekommen. Bitte versuche es in einer Viertelstunde noch einmal."
-          : "Die Nachricht ließ sich nicht abschicken. Schreib mir bitte direkt an ratslotse@timsigl.de.",
+          : "Die Nachricht ließ sich nicht abschicken. Schreib mir bitte direkt an ${KONTAKT_EMAIL}.",
       );
     } finally {
       setSending(false);

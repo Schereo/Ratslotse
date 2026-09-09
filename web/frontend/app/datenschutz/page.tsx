@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
+import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 
 export const metadata: Metadata = {
   title: "Datenschutzerklärung – Ratslotse",
@@ -42,7 +43,7 @@ export default function DatenschutzPage() {
           <Section title="Verantwortlicher">
             <p>
               Tim Sigl, Krusenweg 26, 26135 Oldenburg ·{" "}
-              <a href="mailto:ratslotse@timsigl.de" className="text-primary hover:underline">ratslotse@timsigl.de</a>
+              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
             </p>
           </Section>
 
@@ -152,7 +153,7 @@ export default function DatenschutzPage() {
               <li>
                 <strong>Widerspruch und Korrektur:</strong> Wer in diesen Daten vorkommt, kann der Verarbeitung nach
                 Art. 21 DSGVO widersprechen sowie Auskunft, Berichtigung oder Löschung verlangen — formlos an{" "}
-                <a href="mailto:ratslotse@timsigl.de" className="text-primary hover:underline">ratslotse@timsigl.de</a>.
+                <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>.
                 Fehlerhafte Zuordnungen (etwa Namensverwechslungen) korrigiere ich auch ohne förmlichen Antrag; ein
                 Hinweis genügt. Bei einem Widerspruch prüfe ich im Einzelfall, ob das öffentliche Interesse an der
                 Nachvollziehbarkeit einer konkreten Entscheidung überwiegt, und teile das Ergebnis mit.

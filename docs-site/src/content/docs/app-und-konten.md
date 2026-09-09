@@ -289,9 +289,30 @@ erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 | Spalte | Werte | Bedeutung |
 |---|---|---|
 | `web_users.role` | `user`, `admin` | `admin` sieht den Admin-Bereich (`require_admin`) und ist immer aktiv |
-| `web_users.status` | `pending`, `active` | `pending` = E-Mail noch nicht bestätigt **oder** von einem Admin deaktiviert |
+| `web_users.status` | `pending`, `active`, `disabled` | `pending` = wartet auf die **eigene** E-Mail-Bestätigung; `disabled` = von einem Admin abgeschaltet |
 | `web_users.email_verified` | 0/1 | gesetzt durch Verifikationslink oder Apple-Login |
 | `web_users.password_set` | 0/1 | 0 = Apple-Konto ohne selbst gesetztes Passwort |
+
+**Die beiden Wartezustände sind seit 09/2026 getrennt.** Bis dahin trug
+`pending` beide: „E-Mail noch nicht bestätigt" und „von einem Admin
+abgeschaltet". Das war nicht nur unscharf, sondern hatte zwei Folgen:
+
+- Der Apple-Verknüpfungspfad las `pending` als „unbestätigt" und schaltete das
+  Konto frei. Ein gesperrtes Konto hob damit seine Sperre selbst auf, sobald
+  die Apple-ID dieselbe bestätigte Adresse trug.
+- Die iOS-App zeigte einer gesperrten Person „Bestätige deine E-Mail-Adresse",
+  die sie längst bestätigt hatte, samt eines Knopfes, der Erfolg meldete und
+  nichts verschickte.
+
+Der Bestand wurde einmalig nachgezogen: bestätigt **und** nicht aktiv heißt
+rückwirkend `disabled`. Der Schritt trägt eine Migrationsmarke und läuft
+deshalb genau einmal je Datenbank — `verify_email` setzt erst
+`email_verified`, dann den Status, und in diesem Moment sähe eine ganz normale
+Bestätigung wie ein abgeschaltetes Konto aus.
+
+`PUT /api/admin/users/{id}/status` nimmt `active` und `disabled`. Der alte Wert
+`pending` wird weiterhin angenommen und als `disabled` gespeichert: Die im App
+Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau ihn.
 
 **Die Registrierung vergibt keine Rollen**: Jedes über `/api/auth/register`
 angelegte Konto ist `user` — auch die Adresse aus `WEB_ADMIN_EMAIL` und auch das

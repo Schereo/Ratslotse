@@ -14193,6 +14193,7 @@
         "type": "object"
       },
       "StatusUpdate": {
+        "description": "``active`` oder ``disabled``.\n\n``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im\nApp Store ausgelieferte Admin-Ansicht schickt beim „Sperren\" genau diesen\nWert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.",
         "properties": {
           "status": {
             "title": "Status",
@@ -15416,7 +15417,7 @@
             "enum": [
               "pending",
               "active",
-              "blocked"
+              "disabled"
             ],
             "title": "Status",
             "type": "string"
@@ -15844,7 +15845,7 @@
             "enum": [
               "pending",
               "active",
-              "blocked"
+              "disabled"
             ],
             "title": "Status",
             "type": "string"
@@ -17718,7 +17719,7 @@
     },
     "/api/admin/users/{user_id}/status": {
       "put": {
-        "description": "Approve ('active') or suspend ('pending') a web account. Emails the user on first approval.",
+        "description": "Ein Konto freischalten ('active') oder abschalten ('disabled').\n\n``pending`` wird als ``disabled`` gelesen: Die im App Store ausgelieferte\nAdmin-Ansicht schickt beim „Sperren\" noch den alten Wert, und ein 400 dort\nhieße, dass Sperren aus der App nicht mehr geht. Gespeichert wird immer der\nneue Wert — sonst entstünde genau der Zustand wieder, den die Trennung\nbeseitigt: ein bestätigtes Konto auf ``pending``.",
         "operationId": "set_status_api_admin_users__user_id__status_put",
         "parameters": [
           {

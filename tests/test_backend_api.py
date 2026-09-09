@@ -676,9 +676,14 @@ def test_activation_emails_user_on_approve(client):
     TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})  # aktiv (kein Mail-Versand konfiguriert)
     bob = next(u for u in client.get("/api/admin/users").json() if u["email"] == "bob@test.de")
     assert bob["status"] == "active"
-    # Admin sperrt bob — damit es wieder einen pending→active-Übergang gibt.
+    # Admin sperrt bob — damit es wieder einen Übergang nach 'active' gibt.
+    # Geschickt wird hier bewusst der ALTE Wert `pending`: Genau den sendet die
+    # im App Store ausgelieferte Admin-Ansicht beim „Sperren". Er muss weiter
+    # angenommen und als `disabled` gespeichert werden, sonst ginge Sperren aus
+    # der App nicht mehr — und es entstünde wieder ein bestätigtes Konto auf
+    # `pending`, also genau die Doppelbedeutung, die getrennt werden sollte.
     r = client.put(f"/api/admin/users/{bob['id']}/status", json={"status": "pending"})
-    assert r.status_code == 200 and r.json()["status"] == "pending"
+    assert r.status_code == 200 and r.json()["status"] == "disabled"
 
     sent = {}
     fake_settings = SimpleNamespace(resend_api_key="x", app_base_url="https://ratslotse.de",

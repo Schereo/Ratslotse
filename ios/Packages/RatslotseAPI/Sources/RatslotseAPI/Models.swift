@@ -375,6 +375,19 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
 
     public var isActive: Bool { status == "active" && emailVerified }
 
+    /// Von einem Admin abgeschaltet — nicht zu verwechseln mit „wartet auf die
+    /// eigene E-Mail-Bestätigung".
+    ///
+    /// Bis 09/2026 trugen beide Zustände serverseitig denselben Wert
+    /// `pending`, und die App zeigte deshalb einer gesperrten Person „Bestätige
+    /// deine E-Mail-Adresse" — die sie längst bestätigt hatte. Der zweite Teil
+    /// der Bedingung fängt ein Backend im alten Stand ab: Dort ist ein
+    /// bestätigtes, nicht aktives Konto genau dieser Fall.
+    public var isDisabled: Bool {
+        guard !isActive else { return false }
+        return status == "disabled" || (status != "active" && emailVerified)
+    }
+
     /// Trägt dieses Konto das Recht? Der eine Weg, Rechte zu prüfen.
     public func can(_ permission: String) -> Bool {
         if let permissions { return permissions.contains(permission) }
