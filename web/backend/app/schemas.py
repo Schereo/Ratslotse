@@ -64,11 +64,16 @@ if TYPE_CHECKING:
 else:
     Recht = Literal[tuple(rollen.PERMISSIONS)]
 
-#: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
-#: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
-#: trotzdem: Eine Antwortform, die einen vorhandenen Wert verschweigt, ist ein
-#: 500er in dem Moment, in dem er auftaucht.
-Kontostand = Literal["pending", "active", "blocked"]
+#: Der Zustand eines Kontos. Die Trennung der beiden Wartezustände ist der
+#: Punkt: ``pending`` heißt „E-Mail noch nicht bestätigt" — das Konto wartet
+#: auf sich selbst; ``disabled`` heißt „von einem Admin abgeschaltet" — es
+#: wartet auf jemand anderen. Bis 09/2026 trugen beide denselben Wert, und die
+#: Verwechslung war ausnutzbar (#1240) und für die App sichtbar falsch.
+#:
+#: ``blocked`` ist ersatzlos weg: Der Wert stand seit jeher hier, geschrieben
+#: hat ihn nie eine Zeile Produktivcode. Die Migration in ``kern/store.py``
+#: sammelt etwaige Altzeilen nach ``disabled`` ein.
+Kontostand = Literal["pending", "active", "disabled"]
 
 #: Wohin Benachrichtigungen gehen — ``off`` heißt: gar nicht.
 Zustellweg = Literal["email", "push", "both", "off"]
@@ -111,6 +116,13 @@ class UserOut(BaseModel):
     # cookie and leave this null.
     access_token: str | None = None
     display_name: str | None = None
+    # Ein SCHWEBENDER Adresswechsel: die Adresse, an die ein Bestätigungslink
+    # unterwegs ist (null = keiner). Optional mit Vorgabe, anders als die
+    # Pflichtfelder oben — gefüllt wird es nur von `/auth/me` und den beiden
+    # Konto-Endpunkten, damit `get_current_user` nicht bei JEDEM Request eine
+    # zweite Abfrage fährt. Die im App Store ausgelieferte App kennt den
+    # Schlüssel nicht und überliest ihn.
+    pending_email: str | None = None
     # Einwilligung „Gespräche merken" (null = nie gefragt). Reist mit dem
     # Konto mit, damit die Frage-Seite beim Öffnen sofort weiß, ob die
     # Erstnutzungs-Karte steht — sonst erscheint sie erst nach der Antwort von
@@ -301,7 +313,13 @@ class RoleInfo(BaseModel):
 
 
 class StatusUpdate(BaseModel):
-    status: str  # 'active' | 'pending'
+    """``active`` oder ``disabled``.
+
+    ``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im
+    App Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau diesen
+    Wert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.
+    """
+    status: str  # 'active' | 'disabled' (| 'pending' als Alt-Schreibweise)
 
 
 class LimitsUpdate(BaseModel):
@@ -314,6 +332,18 @@ class LimitsUpdate(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class ChangeEmailRequest(BaseModel):
+    """Adresswechsel verlangt eine frische Bestätigung — wie
+    ``DeleteAccountRequest``, und aus demselben Grund: Eine offen liegende
+    Sitzung (Laptop im Café, gestohlenes Cookie) darf die Adresse nicht
+    wechseln können, sonst übernimmt, wer die Sitzung hat, per „Passwort
+    vergessen" gleich das ganze Konto. Konten mit Passwort bestätigen mit dem
+    Passwort, Apple-only-Konten mit einem frischen Apple-Identity-Token."""
+    new_email: EmailStr
+    current_password: str = Field(default="", max_length=128)
+    apple_identity_token: str = Field(default="", max_length=4096)
 
 
 class DeleteAccountRequest(BaseModel):

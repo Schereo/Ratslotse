@@ -4535,6 +4535,33 @@
         "title": "CalendarSubscription",
         "type": "object"
       },
+      "ChangeEmailRequest": {
+        "description": "Adresswechsel verlangt eine frische Bestätigung — wie\n``DeleteAccountRequest``, und aus demselben Grund: Eine offen liegende\nSitzung (Laptop im Café, gestohlenes Cookie) darf die Adresse nicht\nwechseln können, sonst übernimmt, wer die Sitzung hat, per „Passwort\nvergessen\" gleich das ganze Konto. Konten mit Passwort bestätigen mit dem\nPasswort, Apple-only-Konten mit einem frischen Apple-Identity-Token.",
+        "properties": {
+          "apple_identity_token": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Apple Identity Token",
+            "type": "string"
+          },
+          "current_password": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_email": {
+            "format": "email",
+            "title": "New Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_email"
+        ],
+        "title": "ChangeEmailRequest",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -9075,7 +9102,7 @@
         "type": "object"
       },
       "Idea": {
-        "description": "Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.",
+        "description": "Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.\n\nEine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das\nKonzept für bürgerschaftliches Engagement in der Denkmalpflege\ndreimal beantragt, Münster den Jugendrat zweimal. Gemessen am\n09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.\nGezeigt wird die jüngste, die übrigen stehen in ``siblings``.",
         "properties": {
           "addressee": {
             "title": "Addressee",
@@ -9170,6 +9197,13 @@
             "title": "Reason",
             "type": "string"
           },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaSibling"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -9213,6 +9247,7 @@
           "confidence",
           "evidence",
           "effort",
+          "siblings",
           "addressee",
           "feedback",
           "peers"
@@ -9346,6 +9381,33 @@
           "items"
         ],
         "title": "IdeaSearchResponse",
+        "type": "object"
+      },
+      "IdeaSibling": {
+        "description": "Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "name",
+          "date"
+        ],
+        "title": "IdeaSibling",
         "type": "object"
       },
       "IdeasResponse": {
@@ -14158,6 +14220,7 @@
         "type": "object"
       },
       "StatusUpdate": {
+        "description": "``active`` oder ``disabled``.\n\n``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im\nApp Store ausgelieferte Admin-Ansicht schickt beim „Sperren\" genau diesen\nWert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.",
         "properties": {
           "status": {
             "title": "Status",
@@ -15337,6 +15400,13 @@
             "title": "Id",
             "type": "integer"
           },
+          "pending_email": {
+            "title": "Pending Email",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "permissions": {
             "items": {
               "enum": [
@@ -15381,7 +15451,7 @@
             "enum": [
               "pending",
               "active",
-              "blocked"
+              "disabled"
             ],
             "title": "Status",
             "type": "string"
@@ -15809,7 +15879,7 @@
             "enum": [
               "pending",
               "active",
-              "blocked"
+              "disabled"
             ],
             "title": "Status",
             "type": "string"
@@ -16107,6 +16177,68 @@
           }
         },
         "summary": "Delete Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/account/change-email": {
+      "delete": {
+        "description": "Einen schwebenden Adresswechsel verwerfen — der Link wird ungültig.\n\nBraucht keine erneute Bestätigung: Abbrechen stellt den Zustand her, der\nohnehin gilt, und wer die Sitzung hat, könnte den Link sowieso nie\neinlösen (er liegt im fremden Postfach).",
+        "operationId": "cancel_change_email_api_account_change_email_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cancel Change Email",
+        "tags": [
+          "account"
+        ]
+      },
+      "post": {
+        "description": "Einen Adresswechsel anstoßen: Passwort jetzt, Link an die neue Adresse.\n\nBis der Link geklickt ist, ändert sich **nichts** — Anmeldung,\nBenachrichtigungen und „Passwort vergessen“ laufen weiter über die\nbisherige Adresse. Das ist der Grund, warum die alte Adresse schon jetzt\neine Warnung bekommt: Solange der Wechsel schwebt, kann sie das Konto noch\nselbst zurückholen.",
+        "operationId": "change_email_api_account_change_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Email",
         "tags": [
           "account"
         ]
@@ -17683,7 +17815,7 @@
     },
     "/api/admin/users/{user_id}/status": {
       "put": {
-        "description": "Approve ('active') or suspend ('pending') a web account. Emails the user on first approval.",
+        "description": "Ein Konto freischalten ('active') oder abschalten ('disabled').\n\n``pending`` wird als ``disabled`` gelesen: Die im App Store ausgelieferte\nAdmin-Ansicht schickt beim „Sperren\" noch den alten Wert, und ein 400 dort\nhieße, dass Sperren aus der App nicht mehr geht. Gespeichert wird immer der\nneue Wert — sonst entstünde genau der Zustand wieder, den die Trennung\nbeseitigt: ein bestätigtes Konto auf ``pending``.",
         "operationId": "set_status_api_admin_users__user_id__status_put",
         "parameters": [
           {
@@ -17963,7 +18095,7 @@
     },
     "/api/auth/resend-verification": {
       "post": {
-        "description": "Re-send the verification link to the logged-in user's address.",
+        "description": "Re-send the verification link — an die Adresse, um die es gerade geht.\n\nSchwebt ein ADRESSWECHSEL, geht der Link an die neue Adresse; sonst an die\neigene, noch unbestätigte. Beides über denselben Endpunkt, damit das\nBanner am unbestätigten Konto und der Knopf in der Konto-Karte dasselbe\ntun. Und weil `create_email_verification` alle älteren Tokens des Kontos\nverwirft, hätte ein zweiter Endpunkt hier sonst den schwebenden Wechsel\nstillschweigend gelöscht.",
         "operationId": "resend_verification_api_auth_resend_verification_post",
         "responses": {
           "200": {
@@ -18027,7 +18159,7 @@
     },
     "/api/auth/verify-email": {
       "post": {
-        "description": "Confirm an email address from a valid verification token.",
+        "description": "Confirm an email address from a valid verification token.\n\nDerselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der\nRegistrierung und einen Adresswechsel. Was von beidem, sagt der Token\n(``new_email``) — nicht die URL und nicht der Kontostand.",
         "operationId": "verify_email_api_auth_verify_email_post",
         "requestBody": {
           "content": {

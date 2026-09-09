@@ -21,8 +21,9 @@ import { BackToTop } from "@/components/back-to-top";
 import { ScrollMemory } from "@/components/scroll-memory";
 import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
-import { Button, Card, CardListSkeleton, Skeleton, Spinner, toast } from "@/components/ui";
+import { Button, Card, CardListSkeleton, Input, Label, PasswordInput, Skeleton, Spinner, toast } from "@/components/ui";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
+import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
 
@@ -34,15 +35,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const oeffentlich = istOeffentlich(pathname);
 
   const needsVerify = !!user && !user.email_verified && !darfAdmin(user);
-  const pending = !!user && user.status === "pending" && !darfAdmin(user);
-  const gated = needsVerify || pending;
+  // Alles, was nicht `active` ist und nicht auf die eigene Bestätigung wartet,
+  // ist abgeschaltet. Bewusst über „nicht aktiv" statt über `status ===
+  // "disabled"`: Ein Konto, das die Migration auf den eigenen Status nicht
+  // erwischt hat, bliebe sonst ungesperrt sichtbar — ein unbekannter Wert
+  // gehört auf die Sperrseite, nicht in die App.
+  const gesperrt = !!user && !needsVerify && user.status !== "active" && !darfAdmin(user);
+  const gated = needsVerify || gesperrt;
 
   // Solange das Konto gesperrt ist, hier auf die Bestätigung warten, statt eine
   // Seite neu laden zu lassen. Beim Warten auf die E-Mail im Sekundentakt: Das
   // ist der Tab, in dem registriert wurde, und die Bestätigung passiert in
   // aller Regel binnen einer Minute im Nachbartab. Die 30 s von früher hießen,
   // dass dieser Screen nach der Bestätigung noch eine halbe Minute stehenblieb.
-  // Für ein deaktiviertes Konto (`pending`) bleibt der ruhige Takt.
+  // Für ein deaktiviertes Konto bleibt der ruhige Takt.
   const queryClient = useQueryClient();
   useQuery({
     queryKey: ["me-poll"],
@@ -55,7 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
       return u;
     }),
-    refetchInterval: needsVerify ? 3_000 : pending ? 30_000 : false,
+    refetchInterval: needsVerify ? 3_000 : gesperrt ? 30_000 : false,
     enabled: gated,
   });
 
@@ -240,7 +246,17 @@ function ShellSkeleton() {
 }
 
 function VerifyNotice({ email }: { email: string }) {
+  const { user, refresh } = useAuth();
   const [busy, setBusy] = useState(false);
+  // Der Ausweg beim Tippfehler. Er steht HIER und nicht auf der Konto-Seite:
+  // Diese Ansicht ersetzt die ganze App-Hülle, ein unbestätigtes Konto kommt
+  // also gar nicht bis `/account`. Ohne diese Zeilen wäre eine vertippte
+  // Adresse eine Sackgasse — Konto löschen und neu anlegen.
+  const [aendern, setAendern] = useState(false);
+  const [neu, setNeu] = useState("");
+  const [passwort, setPasswort] = useState("");
+  // Wohin der Link zuletzt ging: die neue Adresse, sobald ein Wechsel schwebt.
+  const zieladresse = user?.pending_email ?? email;
 
   const resend = async () => {
     setBusy(true);
@@ -254,6 +270,30 @@ function VerifyNotice({ email }: { email: string }) {
     }
   };
 
+  const wechseln = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const u = await api.post<{ pending_email?: string | null }>("/account/change-email", {
+        new_email: neu.trim(),
+        current_password: passwort,
+      });
+      toast.success(
+        u.pending_email
+          ? `Bestätigungslink an ${u.pending_email} unterwegs.`
+          : "E-Mail-Adresse geändert.",
+      );
+      setAendern(false);
+      setNeu("");
+      setPasswort("");
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Adresse konnte nicht geändert werden.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
@@ -261,7 +301,7 @@ function VerifyNotice({ email }: { email: string }) {
       </div>
       <h1 className="mt-4 text-xl font-bold text-foreground">Bitte bestätige deine E-Mail</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Wir haben einen Bestätigungslink an <span className="font-medium">{email}</span> geschickt.
+        Wir haben einen Bestätigungslink an <span className="font-medium">{zieladresse}</span> geschickt.
         Klick den Link, um fortzufahren. Schau auch im Spam-Ordner nach.
       </p>
       {/* Der Screen wartet sichtbar mit: Sobald der Link im anderen Tab (oder
@@ -273,12 +313,59 @@ function VerifyNotice({ email }: { email: string }) {
       <Button onClick={resend} disabled={busy} variant="secondary" className="mt-5">
         {busy ? "Senden…" : "E-Mail erneut senden"}
       </Button>
+
+      {aendern ? (
+        <form onSubmit={wechseln} className="mt-6 space-y-3 text-left">
+          <div>
+            <Label htmlFor="verify-neue-email">Richtige E-Mail-Adresse</Label>
+            <Input
+              id="verify-neue-email"
+              type="email"
+              className="mt-1"
+              value={neu}
+              onChange={(e) => setNeu(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="name@example.org"
+            />
+          </div>
+          <div>
+            <Label htmlFor="verify-passwort">Dein Passwort</Label>
+            <PasswordInput
+              id="verify-passwort"
+              className="mt-1"
+              value={passwort}
+              onChange={(e) => setPasswort(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" variant="secondary" disabled={busy || !neu.trim() || !passwort}>
+              {busy ? "Wird geändert…" : "Adresse ändern"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setAendern(false)} disabled={busy}>
+              Abbrechen
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAendern(true)}
+          className="mt-4 text-sm font-medium text-primary hover:underline"
+        >
+          Falsche Adresse? Ändern
+        </button>
+      )}
     </Card>
   );
 }
 
-/** Nach der Auto-Aktivierung bedeutet `pending` bei verifizierter Adresse:
-    von einem Admin deaktiviert (Moderation). */
+/** Das Konto wurde von einem Admin abgeschaltet (`status: "disabled"`).
+
+    Bis 09/2026 war das ein Umkehrschluss — `pending` trotz bestätigter
+    Adresse. Jetzt sagt der Status es selbst. */
 function PendingNotice({ email }: { email: string }) {
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
@@ -288,9 +375,17 @@ function PendingNotice({ email }: { email: string }) {
       <h1 className="mt-4 text-xl font-bold text-foreground">Konto ist deaktiviert</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
-        Wenn du meinst, dass das ein Irrtum ist, melde dich gern per E-Mail — die
-        Kontaktadresse steht im Impressum.
+        Wenn du meinst, dass das ein Irrtum ist, melde dich gern.
       </p>
+      {/* Die Adresse steht hier direkt statt als Verweis aufs Impressum: Wer
+          gesperrt ist, sieht nur noch diese eine Karte — ihn von dort erst
+          suchen zu schicken, ist genau der falsche Moment. */}
+      <a
+        href={KONTAKT_MAILTO}
+        className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+      >
+        {KONTAKT_EMAIL}
+      </a>
     </Card>
   );
 }

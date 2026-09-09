@@ -82,6 +82,19 @@ TERM_WORKERS = int(os.environ.get("CITIES_TERM_WORKERS", "16"))
 #: wie ein hängender Lauf.
 TERM_BLOCK = 200
 
+#: Nach wie vielen Urteilen der Lauf sich selbst prüft. Tims Regel vom
+#: 09.09.2026: „bitte überprüfe bei langen jobs zwischendurch die ergebnisse
+#: um so etwas frühzeitig zu merken."
+#:
+#: Geprüft wird der MECHANISMUS, nicht das Ergebnis. Ob 74 % „fehlt"
+#: herauskommt, kann richtig sein — ob ein Beleg-Arm gar nichts mehr liefert,
+#: nie. Genau das war am selben Tag zweimal der Fall: erst ``cluster`` und
+#: ``neighbor``, weil der Index nur Oldenburg kannte, dann ``neighbor``
+#: allein, weil die Nachbartabelle nach dem Index über alle Städte auf
+#: fremde Städte zeigte. Beide Male lief der Lauf ohne eine Fehlermeldung
+#: durch und kostete gut $15.
+PROBE_NACH = int(os.environ.get("CITIES_FIT_PROBE", "300"))
+
 #: Belege, die eine Aussage über Oldenburg tragen. Der Themenfeld-Rückblick
 #: gehört nicht dazu: Er sagt, was die Stadt gerade beschäftigt, nicht ob sie
 #: dieses eine Instrument hat. Ein Papier, für das es nur ihn gibt, wird
@@ -263,9 +276,37 @@ def majority(urteile: Sequence[OldenburgStatus]) -> tuple[OldenburgStatus, str]:
     return ergebnis, f"{einig}/{len(urteile)}"
 
 
+class LaufAbbruch(RuntimeError):
+    """Der Lauf hört auf, weil Weiterzahlen nichts Besseres bringt."""
+
+
+def _probe(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
+           einordnung: dict, model: str, chunk_matrix, papier_matrix,
+           stand: dict) -> list[str]:
+    """Die Stichprobe mitten im Lauf: Welcher Arm liefert nichts?
+
+    Erwartet wird ein Arm nur, wenn seine Grundlage im Bestand liegt — ohne
+    Oldenburger Vektoren ist ein leerer ``neighbor``-Arm richtig, mit ihnen
+    ist er ein Befund. Deshalb entscheidet nicht eine feste Liste, sondern
+    das, was die Datenbank hergibt.
+    """
+    zaehler = beleg_modul.arm_census(main, rats, papiere, einordnung, model,
+                                        chunk_matrix=chunk_matrix,
+                                        paper_matrix=papier_matrix)
+    stand["probe"] = zaehler
+    logger.info("Stichprobe nach %s Urteilen, %s Vorlagen: %s", stand["annotated"],
+                len(papiere), zaehler or "NICHTS")
+    erwartet = []
+    if papier_matrix and papier_matrix[0]:
+        erwartet.append("neighbor")
+    if chunk_matrix and chunk_matrix[0]:
+        erwartet.append("chunk")
+    return [art for art in erwartet if not zaehler.get(art)]
+
+
 def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         model: str, body_id: str | None = None, limit: int | None = None,
-        workers: int = WORKERS) -> dict:
+        workers: int = WORKERS, probe_after: int | None = None) -> dict:
     """Jede übertragbare fremde Vorlage einmal gegen Oldenburg halten."""
     einordnung = main.annotations_for("classify", "2")
     aufwand = main.annotations_for("effort", "1")
@@ -279,7 +320,12 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     # Die Chunk-Matrix EINMAL: 34.000 Vektoren je Vorlage neu zu lesen wäre
     # der teuerste Teil des ganzen Laufs, und sie ändert sich dabei nicht.
     matrix = main.chunk_matrix(model, "oldenburg")
-    logger.info("fit: %s Oldenburger Textabschnitte im Speicher", len(matrix[0]))
+    # Und die PAPIER-Matrix, aus demselben Grund: Der Nachbar-Arm rechnet
+    # seit 09.09.2026 selbst gegen sie, statt die Tabelle `neighbors` zu
+    # lesen — die hält je Objekt nur die acht nächsten über ALLE Städte.
+    papier_matrix = main.paper_matrix(model, "oldenburg")
+    logger.info("fit: %s Oldenburger Textabschnitte, %s Vorlagen im Speicher",
+                len(matrix[0]), len(papier_matrix[0]))
     belege_je: dict[str, list[Evidence]] = {}
     cluster_je: dict[str, str] = {}
     # Der Vorlagentext, hier und nicht im Arbeiter. Siehe `texte_je` unten.
@@ -299,7 +345,8 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
         for p, begriffe in zip(block, begriffe_je):
             klasse = einordnung.get(p["id"]) or {}
             belege = evidence_for(main, rats, p, klasse, model,
-                                  chunk_matrix=matrix, begriffe=begriffe)
+                                  chunk_matrix=matrix, begriffe=begriffe,
+                                  paper_matrix=papier_matrix)
             belege_je[p["id"]] = belege
             cluster_je[p["id"]] = cluster_zeile(main, p, model)
             texte_je[p["id"]] = main.text_for_paper(p["id"])
@@ -440,6 +487,14 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
             if n % 50 == 0:
                 logger.info("  %s/%s · %.0fs · $%.4f", n, len(offen),
                             time.time() - t0, stand["cost_usd"])
+            if n == (PROBE_NACH if probe_after is None else probe_after):
+                fehlend = _probe(main, rats, offen[:30], einordnung, model,
+                                 matrix, papier_matrix, stand)
+                if fehlend:
+                    raise LaufAbbruch(
+                        f"Beleg-Arm ohne einen einzigen Treffer: {', '.join(fehlend)}. "
+                        "Der Unterbau ist unvollständig — erst `cities_backfill.py "
+                        "--run --stage index --stage cluster`, dann neu urteilen.")
     schreiben(puffer)
 
     stand["seconds"] = round(time.time() - t0)

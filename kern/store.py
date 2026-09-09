@@ -170,6 +170,17 @@ CREATE TABLE IF NOT EXISTS web_users (
     email            TEXT NOT NULL UNIQUE,
     password_hash    TEXT NOT NULL,
     role             TEXT NOT NULL DEFAULT 'user',
+    -- Der Zustand des Kontos. Drei Werte, und die Trennung der letzten beiden
+    -- ist der Punkt:
+    --   pending  = E-Mail noch nicht bestätigt (wartet auf sich selbst)
+    --   active   = benutzbar
+    --   disabled = von einem Admin abgeschaltet (wartet auf jemand anderen)
+    -- Bis 09/2026 trugen die beiden Wartezustände denselben Wert `pending`.
+    -- Das war nicht nur unscharf, es war ausnutzbar: Der Apple-
+    -- Verknüpfungspfad las `pending` als „unbestätigt" und schaltete das Konto
+    -- frei — ein gesperrtes Konto hob damit seine Sperre selbst auf (#1240).
+    -- Und die App zeigte einer gesperrten Person „Bestätige deine
+    -- E-Mail-Adresse", was sie längst getan hatte.
     status           TEXT NOT NULL DEFAULT 'pending',
     telegram_chat_id INTEGER,
     delivery_channel TEXT NOT NULL DEFAULT 'email',
@@ -236,11 +247,21 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 );
 
 -- Single-use email-verification tokens (only the sha256 hash is stored) with expiry.
+--
+-- `new_email` trägt den ADRESSWECHSEL: NULL = Erstbestätigung (die Adresse
+-- steht schon in web_users), gesetzt = die Adresse, auf die dieses Konto
+-- wechseln will. Bewusst dieselbe Tabelle und derselbe Endpunkt wie die
+-- Erstbestätigung — die im App Store ausgelieferte App kennt den Pfad
+-- `/verify-email` und schickt jeden anderen nach Safari; so kann selbst eine
+-- alte App-Fassung einen Wechsel abschließen. Nebeneffekt der Regel „ein
+-- Token je Konto": Wer nach einem Tippfehler bei der Registrierung die
+-- Adresse ändert, macht damit den Link auf die Tippfehler-Adresse ungültig.
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
     token_hash TEXT PRIMARY KEY,
     user_id    INTEGER NOT NULL,
     expires_at TEXT NOT NULL,
-    used       INTEGER NOT NULL DEFAULT 0
+    used       INTEGER NOT NULL DEFAULT 0,
+    new_email  TEXT
 );
 
 -- Native-app push device tokens (APNs on iOS, FCM on Android). One row per
@@ -948,6 +969,51 @@ class Store:
         return bool(self._conn.execute(
             "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone())
 
+    def _kontostand_disabled_nachziehen(self) -> None:
+        """Abgeschaltete Konten von ``pending`` auf ``disabled`` heben — einmalig.
+
+        Der Bestand kennt nur zwei Werte, und ``pending`` trägt beide
+        Wartezustände. Auseinanderhalten lassen sie sich rückwirkend genau an
+        einem Merkmal: Wer die Adresse **bestätigt** hat und trotzdem nicht
+        aktiv ist, wurde von einem Admin abgeschaltet. Wer sie nicht bestätigt
+        hat, wartet auf sich selbst.
+
+        **Warum mit Marke und nicht bei jedem Start.** ``verify_email`` setzt
+        erst ``email_verified``, dann den Status — dazwischen liegt ein Moment,
+        in dem eine völlig normale Bestätigung wie ein abgeschaltetes Konto
+        aussieht. Liefe dieser Schritt bei jedem Öffnen des Stores, könnte ein
+        paralleler Prozess genau dort zuschlagen und das Konto auf ``disabled``
+        festnageln. Einmal je Datenbank ist zudem das, was der Schritt
+        inhaltlich ist: das Nachziehen einer Modelländerung, kein Dauerzustand.
+
+        ``blocked`` wird gleich mit eingesammelt: Der Wert stand seit jeher im
+        API-Vertrag, geschrieben hat ihn nie eine Zeile Produktivcode.
+        """
+        marke = "kontostand_disabled_2026_09"
+        if self._marke_gesetzt(marke):
+            return
+        spalten = self._table_cols("web_users")
+        if not spalten or "email_verified" not in spalten:
+            return
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            cur = self._conn.execute(
+                "UPDATE web_users SET status = 'disabled' "
+                "WHERE status = 'pending' AND email_verified = 1")
+            abgeschaltet = cur.rowcount
+            cur = self._conn.execute(
+                "UPDATE web_users SET status = 'disabled' WHERE status = 'blocked'")
+            blockiert = cur.rowcount
+            self._conn.execute(
+                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if abgeschaltet or blockiert:
+            logging.getLogger("kern.store").warning(
+                "Kontostand nachgezogen: %d abgeschaltet, %d aus 'blocked' → 'disabled'",
+                abgeschaltet, blockiert)
+
     def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
                                     karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
@@ -1323,6 +1389,17 @@ class Store:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN news_seen_version TEXT")
                 if "news_sent_version" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN news_sent_version TEXT")
+        # Adresswechsel (09/2026): derselbe Bestätigungs-Token trägt jetzt
+        # optional die neue Adresse. Die Spalte prüft sich SELBST — sie an
+        # einer fremden Bedingung aufzuhängen ist genau der Fehler, den
+        # `tests/test_web_users_spalten.py` festhält. Bestandszeilen bleiben
+        # NULL und sind damit weiterhin Erstbestätigungen.
+        evt_cols = self._table_cols("email_verification_tokens")
+        if evt_cols and "new_email" not in evt_cols:
+            with self._conn:
+                self._conn.execute(
+                    "ALTER TABLE email_verification_tokens ADD COLUMN new_email TEXT")
+        self._kontostand_disabled_nachziehen()
         # Die Rollen ziehen aus der Spalte in die Tabelle um (09/2026).
         # `web_user_roles` legt das SCHEMA selbst an (CREATE TABLE IF NOT
         # EXISTS läuft bei jedem Öffnen) — hier fehlt nur der Inhalt.
@@ -2622,21 +2699,36 @@ class Store:
                 (1 if verified else 0, user_id),
             )
 
-    def create_email_verification(self, user_id: int, token_hash: str, expires_at: str) -> None:
+    def create_email_verification(self, user_id: int, token_hash: str, expires_at: str,
+                                  new_email: str | None = None) -> None:
         """Store a single-use email-verification token (only its sha256 hash). Drops the
-        user's prior unused tokens so requesting a new link invalidates old ones."""
+        user's prior unused tokens so requesting a new link invalidates old ones.
+
+        ``new_email`` gesetzt heißt ADRESSWECHSEL: Erst der Klick auf den Link
+        schreibt die Adresse um. Bis dahin bleibt alles beim Alten — Anmeldung,
+        Benachrichtigungen und „Passwort vergessen" laufen weiter über die
+        bisherige Adresse.
+        """
         with self._conn:
             self._conn.execute("DELETE FROM email_verification_tokens WHERE user_id = ?", (user_id,))
             self._conn.execute(
-                "INSERT INTO email_verification_tokens(token_hash, user_id, expires_at, used) VALUES (?,?,?,0)",
-                (token_hash, user_id, expires_at),
+                "INSERT INTO email_verification_tokens(token_hash, user_id, expires_at, used, new_email) "
+                "VALUES (?,?,?,0,?)",
+                (token_hash, user_id, expires_at, (new_email or "").lower().strip() or None),
             )
 
-    def consume_email_verification(self, token_hash: str, now: str) -> int | None:
-        """Validate + burn a verification token: returns the user_id if it exists, is
-        unused and not expired (then marks it used); otherwise None."""
+    def consume_email_verification(self, token_hash: str, now: str) -> dict | None:
+        """Validate + burn a verification token: returns ``{"user_id", "new_email"}``
+        if it exists, is unused and not expired (then marks it used); otherwise None.
+
+        Gibt bewusst ein dict und nicht mehr nur die id zurück: Ob ein Token
+        eine Erstbestätigung oder einen Adresswechsel abschließt, steht IM
+        TOKEN und nirgends sonst — ein Aufrufer, der das aus der URL oder aus
+        dem Kontostand ableiten müsste, läge irgendwann falsch.
+        """
         row = self._conn.execute(
-            "SELECT user_id, expires_at, used FROM email_verification_tokens WHERE token_hash = ?",
+            "SELECT user_id, expires_at, used, new_email FROM email_verification_tokens "
+            "WHERE token_hash = ?",
             (token_hash,),
         ).fetchone()
         if not row or row["used"] or row["expires_at"] <= now:
@@ -2645,7 +2737,50 @@ class Store:
             self._conn.execute(
                 "UPDATE email_verification_tokens SET used = 1 WHERE token_hash = ?", (token_hash,)
             )
-        return int(row["user_id"])
+        return {"user_id": int(row["user_id"]), "new_email": row["new_email"]}
+
+    def pending_email_change(self, user_id: int, now: str) -> str | None:
+        """Die Adresse eines SCHWEBENDEN Wechsels — sonst ``None``.
+
+        Schwebend heißt: Token da, nicht verbraucht, nicht abgelaufen. Ein
+        abgelaufener Token ist kein Wechsel mehr; die Oberfläche soll dann
+        wieder das normale Formular zeigen und nicht auf eine Bestätigung
+        warten, die nicht mehr kommen kann.
+        """
+        row = self._conn.execute(
+            "SELECT new_email FROM email_verification_tokens "
+            "WHERE user_id = ? AND used = 0 AND new_email IS NOT NULL AND expires_at > ?",
+            (user_id, now),
+        ).fetchone()
+        return row["new_email"] if row else None
+
+    def cancel_email_change(self, user_id: int) -> None:
+        """Einen schwebenden Adresswechsel verwerfen (der Link wird ungültig).
+
+        Rührt Erstbestätigungs-Tokens (``new_email IS NULL``) nicht an: Sonst
+        nähme „Wechsel abbrechen" einem unbestätigten Konto den Link, mit dem
+        es sich überhaupt erst freischalten kann.
+        """
+        with self._conn:
+            self._conn.execute(
+                "DELETE FROM email_verification_tokens WHERE user_id = ? AND new_email IS NOT NULL",
+                (user_id,),
+            )
+
+    def update_email(self, user_id: int, new_email: str) -> None:
+        """Die Adresse eines Kontos umschreiben — und sie damit als bestätigt
+        führen (den Weg hierher gibt es nur über einen Link an genau diese
+        Adresse).
+
+        Wirft ``sqlite3.IntegrityError``, wenn die Adresse inzwischen vergeben
+        ist; das ist ein echter Wettlauf (jemand registriert sie zwischen
+        Anstoßen und Klick) und gehört als 409 an den Client, nicht geschluckt.
+        """
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET email = ?, email_verified = 1 WHERE id = ?",
+                (new_email.lower().strip(), user_id),
+            )
 
     def delete_web_user(self, user_id: int) -> None:
         """Hard-delete a web account and everything keyed to it (GDPR: right to erasure).

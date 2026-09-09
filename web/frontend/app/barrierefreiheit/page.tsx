@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
+import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 
 export const metadata: Metadata = {
   title: "Erklärung zur Barrierefreiheit – Ratslotse",
@@ -98,7 +99,7 @@ export default function BarrierefreiheitPage() {
               schnellste Art, diese Seite kürzer zu machen.
             </p>
             <p>
-              <a href="mailto:ratslotse@timsigl.de" className="text-primary hover:underline">ratslotse@timsigl.de</a>
+              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
               {" · "}
               <Link href="/hilfe" className="text-primary hover:underline">Kontaktformular (ohne Anmeldung)</Link>
               {" · "}

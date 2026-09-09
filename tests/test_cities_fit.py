@@ -47,6 +47,39 @@ def rats(tmp_path):
     store.close()
 
 
+#: Der Vektor, den `_embed_eins` in diesen Tests für JEDE Vorlage liefert.
+#: Vier Zahlen genügen — die Arme rechnen ein Skalarprodukt, keine Semantik.
+FRAGE_VEKTOR = (1.0, 0.0, 0.0, 0.0)
+
+
+@pytest.fixture(autouse=True)
+def fester_vektor(monkeypatch):
+    """Der Nachbar-Arm rechnet seit 09.09.2026 selbst gegen Oldenburgs Matrix,
+    statt die Tabelle `neighbors` zu lesen (siehe `evidence._nachbar_treffer`).
+    Damit die Tests eine Ähnlichkeit VORGEBEN können statt sie zu erwürfeln,
+    steht die Frage fest; `oldenburger_nachbar` legt die Gegenstücke dazu.
+    """
+    import numpy as np
+
+    from council.cities import evidence as ev
+    monkeypatch.setattr(ev, "_embed_eins",
+                        lambda text: np.array(FRAGE_VEKTOR, dtype=np.float32))
+
+
+def oldenburger_nachbar(store, paper_id: str, naehe: float) -> None:
+    """Eine Oldenburger Vorlage mit genau dieser Ähnlichkeit zur Frage.
+
+    Ersetzt das frühere `replace_neighbors`: Die Zahl steht jetzt im Vektor,
+    nicht in einer Tabellenspalte — und genau das ist der Punkt der Änderung.
+    """
+    import math
+
+    import numpy as np
+    rest = math.sqrt(max(0.0, 1.0 - naehe * naehe))
+    v = np.array([naehe, rest, 0.0, 0.0], dtype=np.float32)
+    store.put_object_embedding("paper", paper_id, MODELL, "h:" + paper_id, v.tobytes())
+
+
 @pytest.fixture(autouse=True)
 def feste_suchbegriffe(monkeypatch):
     """Die Belegsuche fragt ein Modell nach Oldenburger Suchwörtern.
@@ -86,8 +119,7 @@ def cities(tmp_path):
                           "summary": "Zusammenfassung."}, "h" + pid)
     s.fts_upsert("oldenburg:paper:4711", "oldenburg", "Kommunale Wärmeplanung",
                  None, "Wärmenetz und Wärmeplanung für Oldenburg", None)
-    s.replace_neighbors(MODELL, "paper", "os:p:1",
-                        [("paper", "oldenburg:paper:4711", 0.84)])
+    oldenburger_nachbar(s, "oldenburg:paper:4711", 0.84)
     yield s
     s.close()
 
@@ -138,8 +170,7 @@ def test_belege_sind_eindeutig(cities, rats):
 def test_zu_ferne_nachbarn_belegen_nichts(cities, rats):
     """Der Median der Ähnlichkeit zweier beliebiger Verwaltungstexte liegt bei
     0,70. Was darunter liegt, ist kein Beleg — es sieht nur so aus."""
-    cities.replace_neighbors(MODELL, "paper", "os:p:1",
-                             [("paper", "oldenburg:paper:4711", 0.41)])
+    oldenburger_nachbar(cities, "oldenburg:paper:4711", 0.41)
     papier = cities.paper("os:p:1")
     klasse = cities.annotation("paper", "os:p:1", "classify", "2")["payload"]
     belege = evidence_for(cities, rats, papier, klasse, MODELL)
@@ -227,7 +258,7 @@ def test_ohne_belege_wird_gar_nicht_erst_gefragt(cities, rats, monkeypatch):
     """Ein Urteil ohne Grundlage ist eine Behauptung. Der Rückblick allein
     trägt sie nicht — er sagt, was die Stadt beschäftigt, nicht ob sie dieses
     Instrument hat."""
-    cities.replace_neighbors(MODELL, "paper", "os:p:1", [])
+    cities._conn.execute("DELETE FROM object_embeddings")
     cities._conn.execute("DELETE FROM papers_fts")
     aufrufe = []
     monkeypatch.setattr(fit_modul.llm, "chat_complete",
@@ -317,6 +348,35 @@ def test_arbeiter_fassen_die_datenbank_nicht_an(cities, rats, monkeypatch):
         "ihr kommt, gehört VOR den Lauf der Arbeiter")
 
 
+def test_stichprobe_bricht_bei_totem_beleg_arm_ab(cities, rats, monkeypatch):
+    """Ein Arm, der nichts mehr liefert, beendet den Lauf — statt ihn zu bezahlen.
+
+    Zweimal am 09.09.2026 lief `fit` über Stunden mit einem stummen Arm
+    durch: erst ohne Index (`cluster` und `neighbor` leer), dann mit einer
+    Nachbartabelle, die nach dem Index über alle Städte auf fremde Städte
+    zeigte. Beide Male gab es keine Fehlermeldung, nur schlechtere Urteile
+    und je gut $15.
+
+    Hier steht Oldenburgs Papier-Matrix voll (es GIBT Vektoren), aber der
+    Arm findet nichts — der Fall, in dem Weiterlaufen sinnlos ist.
+    """
+    oldenburger_nachbar(cities, "oldenburg:paper:4711", 0.84)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    monkeypatch.setattr(fit_modul.beleg_modul, "_nachbar_treffer",
+                        lambda *a, **kw: [])
+    with pytest.raises(fit_modul.LaufAbbruch, match="neighbor"):
+        fit_modul.run(cities, rats, get("fit"), MODELL, workers=1, probe_after=1)
+
+
+def test_stichprobe_laeuft_durch_wenn_die_arme_liefern(cities, rats, monkeypatch):
+    """Die Gegenrichtung: Ein Wächter, der immer anschlägt, ist keiner."""
+    oldenburger_nachbar(cities, "oldenburg:paper:4711", 0.84)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1, probe_after=1)
+    assert stand["annotated"] == 1
+    assert stand["probe"]["neighbor"] >= 1, "der Arm liefert, das muss die Probe sehen"
+
+
 def test_erfundene_kennung_wird_nicht_gespeichert(cities, rats, monkeypatch):
     """JEDE Stimme wird einzeln geprüft — sonst trüge die Mehrheit die
     Erfindung mit, weil zwei andere Stimmen sie überstimmen."""
@@ -354,9 +414,7 @@ def test_ein_neuer_oldenburger_beleg_macht_das_urteil_alt(cities, rats, monkeypa
     fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
     cities.upsert_batch(Batch(papers=[
         Paper("oldenburg:paper:5000", "oldenburg", "Wärmenetz Oldenburg", date="2026-02-01")]))
-    cities.replace_neighbors(MODELL, "paper", "os:p:1",
-                             [("paper", "oldenburg:paper:4711", 0.84),
-                              ("paper", "oldenburg:paper:5000", 0.81)])
+    oldenburger_nachbar(cities, "oldenburg:paper:5000", 0.81)
     stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
     assert stand["annotated"] == 1, "ein neuer Beleg muss das Urteil neu stellen"
 

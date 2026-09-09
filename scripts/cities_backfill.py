@@ -109,16 +109,50 @@ def pruefbericht(main: CitiesStore, specs: list[BodySpec]) -> int:
     return 1 if befunde else 0
 
 
+def unterbau_pruefen(main: CitiesStore) -> list[str]:
+    """Was vor der Stufe `fit` wahr sein muss — sonst urteilt das Modell blind.
+
+    **Der teuerste Fehler dieses Projekts steht hinter dieser Funktion.** Am
+    09.09.2026 lief `fit` über 9.688 Vorlagen, während 21.700 fremde Vorlagen
+    keinen Vektor hatten und die Cluster-Schicht 16 % der Ideen kannte. Zwei
+    der fünf Beleg-Arme waren damit leer; das Modell urteilte „fehlt", weil
+    ihm nichts vorlag. 72 Minuten, $15,40, Ergebnis unbrauchbar — und kein
+    Absturz, kein roter Test, keine auffällige Kennzahl.
+
+    Der Wochen-Cron (`scripts/check_cities.py`) macht es richtig, weil er die
+    Stufen fest in der Reihenfolge ruft. Wer hier `--stage` benutzt, hatte
+    bis heute keine Sicherung. Die Reihenfolge ist:
+
+        classify  →  index  →  cluster  →  fit
+    """
+    befunde = []
+    luecken = main.substrate_gaps(EMBED_MODEL)
+    if luecken["papers_unembedded"]:
+        befunde.append(
+            f"{luecken['papers_unembedded']} Vorlagen ohne Vektor "
+            f"(davon {luecken['oldenburg_unembedded']} Oldenburger) — "
+            "ohne sie ist der Nachbar-Arm leer. Erst: --stage index")
+    if luecken["ideas_unembedded"]:
+        befunde.append(
+            f"{luecken['ideas_unembedded']} übertragbare Vorlagen ohne "
+            "Ideen-Vektor — sie können in keiner Gruppe liegen, der "
+            "Cluster-Arm ist für sie leer. Erst: --stage cluster")
+    return befunde
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--run", action="store_true", help="wirklich ernten (sonst nur Bericht)")
     p.add_argument("--body", action="append", help="nur diese Stadt (mehrfach möglich)")
     p.add_argument("--stage", action="append",
-                   choices=("fetch", "normalize", "extract", "annotate", "index", "cluster"),
-                   help="nur diese Stufe (mehrfach möglich). `annotate` und `index` "
-                        "sind NICHT in der Vorgabe: Sie kosten Geld bzw. Stunden CPU "
-                        "und laufen sonst im Wochen-Cron mit Deckel.")
+                   choices=("fetch", "normalize", "extract", "annotate", "index",
+                            "cluster", "fit"),
+                   help="nur diese Stufe (mehrfach möglich). `annotate`, `index`, "
+                        "`cluster` und `fit` sind NICHT in der Vorgabe: Sie kosten "
+                        "Geld bzw. Stunden CPU und laufen sonst im Wochen-Cron mit "
+                        "Deckel. `fit` prüft vorher den Unterbau (s. "
+                        "`unterbau_pruefen`).")
     p.add_argument("--annotate-max", type=int, default=None,
                    help="Deckel für die Stufe `annotate` (Vorgabe: keiner — das ist "
                         "der Backfill; der Cron deckelt bei CITIES_ANNOTATE_MAX)")
@@ -129,6 +163,10 @@ def main() -> int:
     p.add_argument("--pruefen", action="store_true",
                    help="Plausibilität je Stadt prüfen und das unbekannte "
                         "Ergebnis-Vokabular zeigen (für neue Städte)")
+    p.add_argument("--trotzdem", action="store_true",
+                   help="`fit` auch starten, wenn der Unterbau Lücken hat. Der "
+                        "Grund gehört ins Log — ein Lauf mit totem Beleg-Arm "
+                        "kostet Geld und liefert Urteile, die niemand benutzen kann.")
     p.add_argument("--verbose", action="store_true")
     a = p.parse_args()
 
@@ -206,6 +244,23 @@ def main() -> int:
             zahlen = pipeline.cluster_all(main_store)
             ergebnisse.setdefault("(alle)", {})["cluster"] = zahlen
             print(f"  Cluster: {zahlen}", flush=True)
+        if "fit" in stages:
+            befunde = unterbau_pruefen(main_store)
+            if befunde and not a.trotzdem:
+                print("\nDer Unterbau ist unvollständig — `fit` würde mit toten "
+                      "Beleg-Armen urteilen:", file=sys.stderr)
+                for b in befunde:
+                    print(f"  ⚠ {b}", file=sys.stderr)
+                print("\n--trotzdem überstimmt das.", file=sys.stderr)
+                return 1
+            if befunde:
+                print(f"  Unterbau unvollständig, --trotzdem: {'; '.join(befunde)}",
+                      flush=True)
+            for stadt in auswahl:
+                for schluessel, zahlen in pipeline.annotate(
+                        main_store, body_id=stadt, nach_index=True).items():
+                    ergebnisse.setdefault(stadt or "(alle)", {})[schluessel] = zahlen
+                    print(f"  {stadt or 'alle'} {schluessel}: {zahlen}", flush=True)
 
         print(f"\nFertig in {time.time() - t0:.0f}s.\n")
         bericht(main_store, specs)

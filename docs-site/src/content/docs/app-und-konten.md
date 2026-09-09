@@ -192,8 +192,10 @@ Push-Token ab (`lib/auth.tsx`, `lib/push.ts`).
 | `GET /api/auth/me` | aktuelles Konto (`UserOut`) | — |
 | `POST /api/auth/forgot-password` | Reset-Link (1 h gültig); antwortet **immer** 200, verrät also nicht, ob ein Konto existiert | 5 / 15 min |
 | `POST /api/auth/reset-password` | neues Passwort setzen, danach alle Sitzungen ungültig | — |
-| `POST /api/auth/verify-email` | Adresse bestätigen (Link 24 h gültig) → Konto wird aktiv | — |
-| `POST /api/auth/resend-verification` | Bestätigungslink erneut senden | 5 / 15 min |
+| `POST /api/auth/verify-email` | Adresse bestätigen (Link 24 h gültig) → Konto wird aktiv; derselbe Endpunkt schließt auch einen **Adresswechsel** ab | — |
+| `POST /api/auth/resend-verification` | Bestätigungslink erneut senden — an die neue Adresse, wenn ein Wechsel schwebt | 5 / 15 min |
+| `POST /api/account/change-email` | Adresswechsel anstoßen (Passwort bzw. Apple-Re-Auth) | 5 / 15 min je Konto |
+| `DELETE /api/account/change-email` | schwebenden Wechsel verwerfen | — |
 | `POST /api/auth/apple` | Sign in with Apple | 10 / min |
 
 Die Registrierung braucht **keine Admin-Freigabe**: Wer die E-Mail bestätigt,
@@ -289,9 +291,72 @@ erneut zu versuchen (Apple sendet die Adresse nur bei der Erstautorisierung).
 | Spalte | Werte | Bedeutung |
 |---|---|---|
 | `web_users.role` | `user`, `admin` | `admin` sieht den Admin-Bereich (`require_admin`) und ist immer aktiv |
-| `web_users.status` | `pending`, `active` | `pending` = E-Mail noch nicht bestätigt **oder** von einem Admin deaktiviert |
+| `web_users.status` | `pending`, `active`, `disabled` | `pending` = wartet auf die **eigene** E-Mail-Bestätigung; `disabled` = von einem Admin abgeschaltet |
 | `web_users.email_verified` | 0/1 | gesetzt durch Verifikationslink oder Apple-Login |
 | `web_users.password_set` | 0/1 | 0 = Apple-Konto ohne selbst gesetztes Passwort |
+
+<<<<<<< HEAD
+### E-Mail-Adresse ändern
+
+Zweistufig, und zwar aus zwei verschiedenen Gründen:
+
+1. **Passwort jetzt.** Eine offen liegende Sitzung (fremdes Gerät, gestohlenes
+   Cookie) darf die Adresse nicht wechseln können — sonst übernimmt, wer die
+   Sitzung hat, per „Passwort vergessen" gleich das ganze Konto. Apple-Konten
+   ohne eigenes Passwort weisen sich mit einem frischen Apple-Identity-Token
+   aus, dessen `sub` zum Konto gehören muss.
+2. **Link an die neue Adresse.** Bis er geklickt ist, ändert sich nichts:
+   Anmeldung, Benachrichtigungen und Passwort-Reset laufen weiter über die
+   bisherige Adresse. Erst der Klick schreibt sie um.
+
+Der Token liegt in derselben Tabelle wie die Erstbestätigung
+(`email_verification_tokens.new_email`), und bestätigt wird über denselben
+Endpunkt. Das ist Absicht: Die im App Store ausgelieferte App kennt den Pfad
+`/verify-email` und schickt jeden anderen nach Safari — so kann auch eine alte
+App-Fassung einen Wechsel abschließen. Weil je Konto nur **ein** Token gilt,
+macht ein Wechsel nebenbei einen älteren Bestätigungslink ungültig.
+
+Die bisherige Adresse wird **zweimal** angeschrieben: beim Anstoßen („wenn du
+das nicht warst, ändere jetzt dein Passwort" — solange der Wechsel schwebt,
+gehen Reset-Mails noch dorthin) und nach dem Wechsel als Quittung.
+
+`UserOut.pending_email` trägt einen schwebenden Wechsel; die Sitzungen bleiben
+gültig (`token_version` steigt nicht). Ein **unbestätigtes** Konto darf
+wechseln — der Tippfehler bei der Registrierung ist der häufigste Anlass, und
+der Hinweisbildschirm bietet die Korrektur deshalb selbst an. Ein vom Admin
+**deaktiviertes** Konto darf es nicht, und ein alter Token schaltet es auch
+nicht frei. Ohne `RESEND_API_KEY` (dev, feature, Tests) gilt der Wechsel
+sofort, dieselbe Regel wie bei der Registrierung.
+
+:::caution[Für den Betrieb]
+Wechselt das **Admin-Konto** seine Adresse weg von `WEB_ADMIN_EMAIL`, findet
+`scripts/rauchprobe.py` es nach dem nächsten Deploy nicht mehr — der
+angemeldete Teil der Probe entfällt dann mit der Meldung „kein Konto". Dann
+`RAUCHPROBE_KONTO` in der `.env` auf die neue Adresse setzen. Die Rollen selbst
+hängen an der Konto-id und bleiben beim Wechsel unberührt.
+:::
+=======
+**Die beiden Wartezustände sind seit 09/2026 getrennt.** Bis dahin trug
+`pending` beide: „E-Mail noch nicht bestätigt" und „von einem Admin
+abgeschaltet". Das war nicht nur unscharf, sondern hatte zwei Folgen:
+
+- Der Apple-Verknüpfungspfad las `pending` als „unbestätigt" und schaltete das
+  Konto frei. Ein gesperrtes Konto hob damit seine Sperre selbst auf, sobald
+  die Apple-ID dieselbe bestätigte Adresse trug.
+- Die iOS-App zeigte einer gesperrten Person „Bestätige deine E-Mail-Adresse",
+  die sie längst bestätigt hatte, samt eines Knopfes, der Erfolg meldete und
+  nichts verschickte.
+
+Der Bestand wurde einmalig nachgezogen: bestätigt **und** nicht aktiv heißt
+rückwirkend `disabled`. Der Schritt trägt eine Migrationsmarke und läuft
+deshalb genau einmal je Datenbank — `verify_email` setzt erst
+`email_verified`, dann den Status, und in diesem Moment sähe eine ganz normale
+Bestätigung wie ein abgeschaltetes Konto aus.
+
+`PUT /api/admin/users/{id}/status` nimmt `active` und `disabled`. Der alte Wert
+`pending` wird weiterhin angenommen und als `disabled` gespeichert: Die im App
+Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau ihn.
+>>>>>>> origin/dev
 
 **Die Registrierung vergibt keine Rollen**: Jedes über `/api/auth/register`
 angelegte Konto ist `user` — auch die Adresse aus `WEB_ADMIN_EMAIL` und auch das

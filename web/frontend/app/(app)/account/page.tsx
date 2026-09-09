@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { appleIdentityToken, appleSignInAvailable } from "@/lib/apple";
 import { isNativeApp } from "@/lib/platform";
+import type { User } from "@/lib/types";
 import { applyTheme, getTheme, isDarkNow, THEME_EVENT, type Theme } from "@/lib/theme";
 import { Button, Card, ConfirmDialog, Input, Label, PageHeader, PasswordInput, toast } from "@/components/ui";
 import { DeliverySettings } from "@/components/delivery-settings";
@@ -211,6 +212,8 @@ export default function AccountPage() {
 
             <DisplayNameCard />
 
+            <EmailCard />
+
             <AppearanceCard />
 
             {hasPassword ? (
@@ -384,6 +387,166 @@ export default function AccountPage() {
 /** Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand, die
  *  bei der Registrierung keinen angeben konnten. Speist die persönliche
  *  Ansprache auf der Übersicht und in Benachrichtigungs-Mails. */
+/**
+ * „E-Mail-Adresse" — Anzeige, Wechsel, schwebende Bestätigung.
+ *
+ * Der Wechsel ist zweistufig: Passwort jetzt, Bestätigungslink an die neue
+ * Adresse. Solange er schwebt, zeigt die Karte KEIN Formular mehr, sondern den
+ * Stand samt Ausweg — sonst stünden zwei widersprüchliche Angebote
+ * nebeneinander („ändern" und „wird gerade geändert").
+ *
+ * Ohne Mail-Versand (dev, feature, Browsertests) gilt der Wechsel sofort; die
+ * Antwort sagt, was passiert ist, und die Meldung richtet sich danach.
+ */
+function EmailCard() {
+  const { user, refresh } = useAuth();
+  const [neu, setNeu] = useState("");
+  const [passwort, setPasswort] = useState("");
+  const hatPasswort = user?.has_password !== false;
+  const [nativeApple, setNativeApple] = useState(false);
+  useEffect(() => setNativeApple(appleSignInAvailable()), []);
+  const schwebend = user?.pending_email ?? null;
+
+  const wechseln = useMutation({
+    mutationFn: async () => {
+      if (hatPasswort) {
+        return api.post<User>("/account/change-email", {
+          new_email: neu.trim(),
+          current_password: passwort,
+        });
+      }
+      const token = await appleIdentityToken();
+      if (!token) throw new ApiError(400, "Apple-Bestätigung abgebrochen.");
+      return api.post<User>("/account/change-email", {
+        new_email: neu.trim(),
+        apple_identity_token: token,
+      });
+    },
+    onSuccess: async (u) => {
+      // Zwei Ausgänge, zwei Sätze: Ohne Mail-Versand ist die Adresse schon
+      // umgeschrieben, sonst ist erst ein Link unterwegs.
+      toast.success(
+        u.pending_email
+          ? `Bestätigungslink an ${u.pending_email} unterwegs.`
+          : "E-Mail-Adresse geändert.",
+      );
+      setNeu("");
+      setPasswort("");
+      await refresh();
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Adresse konnte nicht geändert werden."),
+  });
+
+  const erneut = useMutation({
+    mutationFn: () => api.post("/auth/resend-verification"),
+    onSuccess: () => toast.success("Bestätigungslink erneut gesendet."),
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Senden fehlgeschlagen."),
+  });
+
+  const abbrechen = useMutation({
+    mutationFn: () => api.del("/account/change-email"),
+    onSuccess: async () => {
+      toast.success("Der Wechsel wurde abgebrochen.");
+      await refresh();
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Abbrechen fehlgeschlagen."),
+  });
+
+  return (
+    <Card className="p-6">
+      <h2 className="font-semibold text-foreground">E-Mail-Adresse</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Damit meldest du dich an, und dorthin gehen Benachrichtigungen.
+      </p>
+      <p className="mt-3 text-sm font-medium text-foreground">{user?.email}</p>
+
+      {schwebend ? (
+        <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] p-4">
+          <p className="text-sm text-foreground">
+            Bestätigungslink an <span className="font-medium">{schwebend}</span> unterwegs.
+            Der Link ist 24 Stunden gültig. Bis er geklickt ist, bleibt alles bei
+            der bisherigen Adresse.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-4">
+            <button
+              type="button"
+              onClick={() => erneut.mutate()}
+              disabled={erneut.isPending}
+              className="text-sm font-medium text-primary hover:underline disabled:opacity-60"
+            >
+              {erneut.isPending ? "Senden…" : "Erneut senden"}
+            </button>
+            <button
+              type="button"
+              onClick={() => abbrechen.mutate()}
+              disabled={abbrechen.isPending}
+              className="text-sm font-medium text-muted-foreground hover:underline disabled:opacity-60"
+            >
+              {abbrechen.isPending ? "Wird abgebrochen…" : "Wechsel abbrechen"}
+            </button>
+          </div>
+        </div>
+      ) : hatPasswort || nativeApple ? (
+        <form
+          onSubmit={(e: React.FormEvent) => {
+            e.preventDefault();
+            wechseln.mutate();
+          }}
+          className="mt-4 space-y-4"
+        >
+          <div>
+            <Label htmlFor="neue-email">Neue E-Mail-Adresse</Label>
+            <Input
+              id="neue-email"
+              type="email"
+              className="mt-1"
+              value={neu}
+              onChange={(e) => setNeu(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="name@example.org"
+            />
+          </div>
+          {hatPasswort && (
+            <div>
+              <Label htmlFor="email-passwort">Aktuelles Passwort</Label>
+              <PasswordInput
+                id="email-passwort"
+                className="mt-1"
+                value={passwort}
+                onChange={(e) => setPasswort(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Wir fragen danach, damit niemand über eine offen liegende Sitzung
+                deine Adresse ändern kann.
+              </p>
+            </div>
+          )}
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={wechseln.isPending || !neu.trim() || (hatPasswort && !passwort)}
+          >
+            {wechseln.isPending ? "Wird geändert…" : "Adresse ändern"}
+          </Button>
+        </form>
+      ) : (
+        /* Apple-Konto ohne eigenes Passwort, im Browser: Hier gibt es keine
+           Möglichkeit, sich frisch auszuweisen — in der App schon. */
+        <p className="mt-4 text-sm text-muted-foreground">
+          Dieses Konto meldet sich mit Apple an. Ändere die Adresse in der
+          iOS-App, oder richte über „Passwort vergessen“ zuerst ein Passwort ein.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 function DisplayNameCard() {
   const { user, refresh } = useAuth();
   const [name, setName] = useState("");

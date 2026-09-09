@@ -33,6 +33,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/account/change-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Email
+         * @description Einen Adresswechsel anstoßen: Passwort jetzt, Link an die neue Adresse.
+         *
+         *     Bis der Link geklickt ist, ändert sich **nichts** — Anmeldung,
+         *     Benachrichtigungen und „Passwort vergessen“ laufen weiter über die
+         *     bisherige Adresse. Das ist der Grund, warum die alte Adresse schon jetzt
+         *     eine Warnung bekommt: Solange der Wechsel schwebt, kann sie das Konto noch
+         *     selbst zurückholen.
+         */
+        post: operations["change_email_api_account_change_email_post"];
+        /**
+         * Cancel Change Email
+         * @description Einen schwebenden Adresswechsel verwerfen — der Link wird ungültig.
+         *
+         *     Braucht keine erneute Bestätigung: Abbrechen stellt den Zustand her, der
+         *     ohnehin gilt, und wer die Sitzung hat, könnte den Link sowieso nie
+         *     einlösen (er liegt im fremden Postfach).
+         */
+        delete: operations["cancel_change_email_api_account_change_email_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/account/change-password": {
         parameters: {
             query?: never;
@@ -868,7 +902,13 @@ export interface paths {
         get?: never;
         /**
          * Set Status
-         * @description Approve ('active') or suspend ('pending') a web account. Emails the user on first approval.
+         * @description Ein Konto freischalten ('active') oder abschalten ('disabled').
+         *
+         *     ``pending`` wird als ``disabled`` gelesen: Die im App Store ausgelieferte
+         *     Admin-Ansicht schickt beim „Sperren" noch den alten Wert, und ein 400 dort
+         *     hieße, dass Sperren aus der App nicht mehr geht. Gespeichert wird immer der
+         *     neue Wert — sonst entstünde genau der Zustand wieder, den die Trennung
+         *     beseitigt: ein bestätigtes Konto auf ``pending``.
          */
         put: operations["set_status_api_admin_users__user_id__status_put"];
         post?: never;
@@ -1023,7 +1063,14 @@ export interface paths {
         put?: never;
         /**
          * Resend Verification
-         * @description Re-send the verification link to the logged-in user's address.
+         * @description Re-send the verification link — an die Adresse, um die es gerade geht.
+         *
+         *     Schwebt ein ADRESSWECHSEL, geht der Link an die neue Adresse; sonst an die
+         *     eigene, noch unbestätigte. Beides über denselben Endpunkt, damit das
+         *     Banner am unbestätigten Konto und der Knopf in der Konto-Karte dasselbe
+         *     tun. Und weil `create_email_verification` alle älteren Tokens des Kontos
+         *     verwirft, hätte ein zweiter Endpunkt hier sonst den schwebenden Wechsel
+         *     stillschweigend gelöscht.
          */
         post: operations["resend_verification_api_auth_resend_verification_post"];
         delete?: never;
@@ -1064,6 +1111,10 @@ export interface paths {
         /**
          * Verify Email
          * @description Confirm an email address from a valid verification token.
+         *
+         *     Derselbe Endpunkt schließt BEIDES ab: die Erstbestätigung nach der
+         *     Registrierung und einen Adresswechsel. Was von beidem, sagt der Token
+         *     (``new_email``) — nicht die URL und nicht der Kontostand.
          */
         post: operations["verify_email_api_auth_verify_email_post"];
         delete?: never;
@@ -6531,6 +6582,32 @@ export interface components {
             /** Webcal Url */
             webcal_url: string;
         };
+        /**
+         * ChangeEmailRequest
+         * @description Adresswechsel verlangt eine frische Bestätigung — wie
+         *     ``DeleteAccountRequest``, und aus demselben Grund: Eine offen liegende
+         *     Sitzung (Laptop im Café, gestohlenes Cookie) darf die Adresse nicht
+         *     wechseln können, sonst übernimmt, wer die Sitzung hat, per „Passwort
+         *     vergessen" gleich das ganze Konto. Konten mit Passwort bestätigen mit dem
+         *     Passwort, Apple-only-Konten mit einem frischen Apple-Identity-Token.
+         */
+        ChangeEmailRequest: {
+            /**
+             * Apple Identity Token
+             * @default
+             */
+            apple_identity_token: string;
+            /**
+             * Current Password
+             * @default
+             */
+            current_password: string;
+            /**
+             * New Email
+             * Format: email
+             */
+            new_email: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -8333,7 +8410,13 @@ export interface components {
         };
         /**
          * Idea
-         * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+         * @description Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
+         *
+         *     Eine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das
+         *     Konzept für bürgerschaftliches Engagement in der Denkmalpflege
+         *     dreimal beantragt, Münster den Jugendrat zweimal. Gemessen am
+         *     09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.
+         *     Gezeigt wird die jüngste, die übrigen stehen in ``siblings``.
          */
         Idea: {
             /** Addressee */
@@ -8372,6 +8455,8 @@ export interface components {
             peers: number;
             /** Reason */
             reason: string;
+            /** Siblings */
+            siblings: components["schemas"]["IdeaSibling"][];
             /** Status */
             status: string;
             /** Summary */
@@ -8431,6 +8516,18 @@ export interface components {
             query: string;
             /** Total */
             total: number;
+        };
+        /**
+         * IdeaSibling
+         * @description Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.
+         */
+        IdeaSibling: {
+            /** Date */
+            date: string | null;
+            /** Name */
+            name: string;
+            /** Paper Id */
+            paper_id: string;
         };
         /** IdeasResponse */
         IdeasResponse: {
@@ -10456,7 +10553,14 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** StatusUpdate */
+        /**
+         * StatusUpdate
+         * @description ``active`` oder ``disabled``.
+         *
+         *     ``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im
+         *     App Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau diesen
+         *     Wert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.
+         */
         StatusUpdate: {
             /** Status */
             status: string;
@@ -10960,6 +11064,8 @@ export interface components {
             has_password: boolean;
             /** Id */
             id: number;
+            /** Pending Email */
+            pending_email?: string | null;
             /** Permissions */
             permissions: ("budget" | "mandate" | "admin")[];
             /**
@@ -10975,7 +11081,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "pending" | "active" | "blocked";
+            status: "pending" | "active" | "disabled";
         };
         /** UserQuizAnswerIn */
         UserQuizAnswerIn: {
@@ -11139,7 +11245,7 @@ export interface components {
              * @default pending
              * @enum {string}
              */
-            status: "pending" | "active" | "blocked";
+            status: "pending" | "active" | "disabled";
         };
         /**
          * WeekPreview
@@ -11283,6 +11389,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_email_api_account_change_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_change_email_api_account_change_email_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserOut"];
                 };
             };
         };
@@ -16880,4 +17039,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 96a895eaee5f72ad0c43f0da3ad81ffb55edaa4b80bcf909aa9ba189b647bdf2
+// vertrag-sha256: a68aacf963c9c2fa1fd2be50b2942a22c58c5a67b6add1fcd1e03c6968df4a8b

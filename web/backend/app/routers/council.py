@@ -50,7 +50,7 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary,
+                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaSibling,
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
@@ -1978,9 +1978,25 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
+        "siblings": _geschwister(r.get("siblings_json")),
         "peers": (peers or {}).get(r["id"], 0),
         "feedback": (feedback or {}).get(r["id"], ""),
     }
+
+
+def _geschwister(roh: str | None) -> list[IdeaSibling]:
+    """Die verdrängten Vorlagen derselben Stadt, älteste zuerst.
+
+    Die Abfrage liefert sie als JSON in einer Spalte — ein zweiter Rundgang
+    je Zeile wären dreißig Abfragen für eine Seite. Undatierte kommen ans
+    Ende: `None` sortiert sonst vor jedem Datum und behauptet damit Alter.
+    """
+    if not roh:
+        return []
+    zeilen = json.loads(roh)
+    zeilen.sort(key=lambda z: (z.get("date") is None, z.get("date") or ""))
+    return [{"paper_id": z["id"], "name": z.get("name") or "",
+             "date": z.get("date")} for z in zeilen]
 
 
 def _belege_aufloesen(store: CouncilStore, kennungen: list) -> list[IdeaEvidence]:

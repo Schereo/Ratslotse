@@ -36,6 +36,8 @@ logger = logging.getLogger("council.cities.evidence")
 #: Papier-Kennungen, Chunk-Nummern und die Vektoren am Stück — einmal je Lauf
 #: geladen (``CitiesStore.chunk_matrix``), nicht je Vorlage.
 ChunkMatrix = tuple[list[str], list[int], bytes]
+#: Die Papier-Vektoren einer Stadt: Kennungen und Rohbytes.
+PaperMatrix = tuple[list[str], bytes]
 
 #: Das Modell für die Suchbegriffe. Dasselbe wie bei der Query-Expansion der
 #: KI-Frage und aus demselben Grund: Die Aufgabe ist klein, die Antwort kurz,
@@ -76,20 +78,31 @@ ARTEN: dict[str, str] = {
 #: plus 3 Volltexttreffer aus zwei getrennten Töpfen; jetzt ordnet die Fusion,
 #: nicht die Quelle — ein Papier, das zwei Arme finden, gehört nach oben.
 #:
-#: **Zwölf, weil vier Arme mehr Gutes liefern, als acht Plätze fassen.**
-#: Gemessen daran, wie viele der 40 handverlesenen Belege überhaupt in der
-#: Liste stehen:
+#: **Zwanzig, seit alle fünf Arme wirklich liefern.** Zwölf reichten, solange
+#: die Hälfte der Arme leer lief: Vor dem Index über den ganzen Bestand
+#: (09.09.2026) hatten nur 3.000 der 24.728 fremden Vorlagen einen Vektor,
+#: Cluster- und Nachbar-Arm fielen also meistens aus. Danach konkurrieren bis
+#: zu sechzig Kandidaten um die Plätze — und der richtige Beleg wurde
+#: HINAUSGEDRÄNGT, nicht etwa nicht gefunden. Im schärfsten gemessenen Fall
+#: stand er auf **Rang 4 von 5.945** und stand trotzdem nicht auf der Liste.
 #:
-#: | Plätze | erwartete Belege in der Liste |
+#: Gemessen gegen die 23 Handfälle mit Beleg, alle fünf Arme aktiv:
+#:
+#: | Plätze | erwarteter Beleg in der Liste |
 #: |---|---|
-#: | 8 | 35/40 |
-#: | 10 | 36/40 |
-#: | **12** | **38/40** |
-#: | 14 | 39/40 |
+#: | 12 | 18/23 |
+#: | 16 | 21/23 |
+#: | **20** | **22/23** |
+#: | 24 | 22/23 |
 #:
-#: Der Sprung von 8 auf 12 holt drei zurück, der von 12 auf 14 nur noch einen —
-#: und jeder Platz kostet rund 250 Eingabe-Token je Urteil.
-MAX_EVIDENCE = 12
+#: Bei 24 kommt nichts mehr dazu. Jeder Platz kostet rund 250 Eingabe-Token je
+#: Urteil, acht Plätze also gut ein Drittel mehr — den Preis ist es wert, denn
+#: was das Modell nie sieht, kann es nicht zitieren.
+#:
+#: Die vier neu gewonnenen Fälle stehen auf den Rängen 14, 15, 16 und 19; die
+#: Reihenfolge der übrigen ändert sich NICHT (die Fusion ordnet unabhängig von
+#: der Listenlänge, diese schneidet nur ab). Der Median bleibt deshalb bei 1.
+MAX_EVIDENCE = 20
 
 #: Wie viele Kandidaten jeder Arm liefert, bevor fusioniert wird.
 POOL_JE_ARM = 12
@@ -277,6 +290,37 @@ def search_terms(classification: dict, paper: dict) -> list[str]:
     return _woerter(instrument)
 
 
+def arm_census(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
+               classifications: dict, model: str,
+               chunk_matrix: ChunkMatrix | None = None,
+               paper_matrix: PaperMatrix | None = None) -> dict[str, int]:
+    """Wie viele Vorlagen jeder Arm belegt — ohne ein einziges Sprachmodell.
+
+    **Wozu.** Ein Arm kann stumm ausfallen: Am 09.09.2026 lieferte
+    ``neighbor`` monatelang nichts mehr, weil die Tabelle ``neighbors`` je
+    Objekt nur die acht nächsten über ALLE Städte hält und nach dem Index
+    über den ganzen Bestand nur noch ein Viertel davon auf Oldenburg zeigte.
+    Kein Absturz, kein roter Test — nur schlechtere Urteile, sichtbar erst in
+    der Auswertung Stunden später.
+
+    Dreißig Vorlagen und ein paar Sekunden genügen, um das zu sehen. Gemessen
+    an dreißig Vorlagen des Bestandslaufs: ``fts`` 28, ``decision`` 23,
+    ``neighbor`` 17, ``chunk`` 14, ``cluster`` 2 von 30 (vor dem Fix:
+    ``neighbor`` 0).
+
+    Gezählt werden **Vorlagen je Art**, nicht Belege: Dass ein Arm zwölf
+    Treffer für ein Papier liefert, sagt weniger als dass er für die Hälfte
+    aller Papiere überhaupt etwas findet.
+    """
+    zaehler: dict[str, int] = {}
+    for p in papiere:
+        belege = evidence_for(main, rats, p, classifications.get(p["id"]) or {}, model,
+                              chunk_matrix=chunk_matrix, paper_matrix=paper_matrix)
+        for art in {b.kind for b in belege}:
+            zaehler[art] = zaehler.get(art, 0) + 1
+    return zaehler
+
+
 def _rrf(raenge: list[list[str]]) -> dict[str, float]:
     """Reciprocal Rank Fusion über mehrere Ranglisten von Kennungen."""
     punkte: dict[str, float] = {}
@@ -291,7 +335,8 @@ def evidence_for(main: CitiesStore, rats: CouncilStore, paper: dict,
                  k: int = MAX_EVIDENCE,
                  min_score: float = MIN_NEIGHBOR_SCORE,
                  chunk_matrix: ChunkMatrix | None = None,
-                 begriffe: list[str] | None = None) -> list[Evidence]:
+                 begriffe: list[str] | None = None,
+                 paper_matrix: PaperMatrix | None = None) -> list[Evidence]:
     """Was Oldenburg zu dieser fremden Vorlage hat — als Liste von Belegen.
 
     **Vier Arme, weil jeder etwas findet, das die anderen verfehlen:**
@@ -336,24 +381,22 @@ def evidence_for(main: CitiesStore, rats: CouncilStore, paper: dict,
     #    Instrument").
     quellen["cluster"] = _cluster_treffer(main, paper, model, daten)
 
+    # Der Vektor DIESER Vorlage — EINMAL, für die beiden Vektor-Arme. Es ist
+    # derselbe Text, den `index.py` einbettet; zwei getrennte Aufrufe wären
+    # zweimal dasselbe Ergebnis für den doppelten Preis. Träge, damit ein
+    # Aufrufer ohne Matrizen (und ohne fastembed) gar nicht erst einbettet.
+    if paper_matrix is None:
+        paper_matrix = main.paper_matrix(model, "oldenburg")
+    frage = _Vektor(main, paper, classification)
+
     # 1. Die nächsten Oldenburger Papiere.
-    nachbarn: list[str] = []
-    for n in main.neighbors("paper", paper["id"], model, limit=POOL_JE_ARM * 3):
-        if n.get("body_id") != "oldenburg" or float(n["score"]) < min_score:
-            continue
-        nachbarn.append(n["b_id"])
-        daten.setdefault(n["b_id"], ("neighbor", n.get("name") or "", n.get("date"),
-                                     float(n["score"]), None))
-        if len(nachbarn) >= POOL_JE_ARM:
-            break
-    quellen["neighbor"] = nachbarn
+    quellen["neighbor"] = _nachbar_treffer(frage, paper_matrix, min_score, daten)
 
     if begriffe is None:
         begriffe = search_terms(classification, paper)
 
     # 2. Die nächsten Oldenburger Textabschnitte.
-    quellen["chunk"] = _chunk_treffer(main, classification, paper, model,
-                                      chunk_matrix, daten)
+    quellen["chunk"] = _chunk_treffer(frage, chunk_matrix, daten)
 
     # 3. Volltext auf die Oldenburger Begriffe.
     volltext: list[str] = []
@@ -495,14 +538,78 @@ def cluster_zeile(main: CitiesStore, paper: dict, model: str) -> str:
     return "\n".join(zeilen)
 
 
-def _chunk_treffer(main: CitiesStore, classification: dict, paper: dict,
-                   model: str, matrix: ChunkMatrix | None,
+class _Vektor:
+    """Der Vektor dieser Vorlage, erst gerechnet, wenn ihn jemand braucht.
+
+    Beide Vektor-Arme fragen ihn; ohne Matrix fragt ihn keiner. Ein Fehler
+    (kein fastembed, kein Modell) wird EINMAL gemeldet und macht beide Arme
+    leer, statt den Lauf zu kippen.
+    """
+
+    def __init__(self, main: CitiesStore, paper: dict, classification: dict):
+        self._main, self._paper, self._klasse = main, paper, classification
+        self._wert = None
+        self._gerechnet = False
+
+    def hol(self):
+        if not self._gerechnet:
+            self._gerechnet = True
+            try:
+                from council.cities.index import object_text
+                self._wert = _embed_eins(object_text(
+                    self._paper, self._klasse,
+                    self._main.text_for_paper(self._paper["id"])))
+            except Exception as e:  # noqa: BLE001 — ohne fastembed bleiben die Arme leer
+                logger.info("Vektor-Arme übersprungen (%s)", type(e).__name__)
+        return self._wert
+
+
+def _nachbar_treffer(frage: _Vektor, matrix: PaperMatrix | None,
+                     min_score: float, daten: dict) -> list[str]:
+    """Die nächsten OLDENBURGER Vorlagen — gegen Oldenburgs Matrix gerechnet.
+
+    **Warum nicht aus ``neighbors``.** Die Tabelle hält je Objekt die acht
+    nächsten über ALLE Städte. Solange nur Oldenburg Vektoren hatte, war das
+    dasselbe wie „die acht nächsten Oldenburger". Seit dem Index über den
+    ganzen Bestand (09.09.2026) ist es das nicht mehr: Nur ein Viertel der
+    gespeicherten Nachbarschaften zeigt noch auf Oldenburg, und für eine
+    einzelne fremde Vorlage sind es oft null von acht. Der Arm fiel dadurch
+    stumm aus — der Prüfstand fand statt 23 von 23 erwarteten Belegen nur
+    noch 17, ohne dass irgendetwas rot wurde.
+
+    Ein tieferes ``NEIGHBOR_TOP_K`` verschöbe das nur bis zur nächsten Stadt.
+    Deshalb dieselbe Bauform wie beim Chunk-Arm: eine Matrix, einmal geladen.
+    """
+    if matrix is None:
+        return []
+    papiere, vektoren = matrix
+    if not papiere:
+        return []
+    vektor = frage.hol()
+    if vektor is None:
+        return []
+    import numpy as np
+
+    matrix_np = np.frombuffer(vektoren, dtype=np.float32).reshape(len(papiere), -1)
+    naehe = matrix_np @ vektor
+    rang = sorted(range(len(papiere)), key=lambda i: -naehe[i])[:POOL_JE_ARM]
+    treffer: list[str] = []
+    for i in rang:
+        wert = float(naehe[i])
+        if wert < min_score:
+            break
+        treffer.append(papiere[i])
+        daten.setdefault(papiere[i], ("neighbor", "", None, wert, None))
+    return treffer
+
+
+def _chunk_treffer(frage: _Vektor, matrix: ChunkMatrix | None,
                    daten: dict) -> list[str]:
     """Die nächsten Oldenburger TEXTABSCHNITTE, auf ihr Papier abgebildet.
 
     Der Vektor eines ganzen Papiers mittelt über alles, was darin steht: In
     einer 40-seitigen Vorlage verschwindet der eine Absatz, um den es geht.
-    Der Städte-Speicher hat die Chunks längst (34.000 Vektoren), nur hat sie
+    Der Städte-Speicher hat die Chunks längst (85.000 Vektoren), nur hat sie
     bisher niemand für die Belege gelesen.
 
     **Je Papier zählt der beste Chunk**, nicht ihre Summe — sonst gewönne die
@@ -514,17 +621,13 @@ def _chunk_treffer(main: CitiesStore, classification: dict, paper: dict,
     papiere, indizes, vektoren = matrix
     if not papiere:
         return []
+    vektor = frage.hol()
+    if vektor is None:
+        return []
     import numpy as np
 
-    from council.cities.index import object_text
-    text = object_text(paper, classification, main.text_for_paper(paper["id"]))
-    try:
-        frage = _embed_eins(text)
-    except Exception as e:  # noqa: BLE001 — ohne fastembed bleibt der Arm leer
-        logger.info("Chunk-Arm übersprungen (%s)", type(e).__name__)
-        return []
     matrix_np = np.frombuffer(vektoren, dtype=np.float32).reshape(len(papiere), -1)
-    naehe = matrix_np @ frage
+    naehe = matrix_np @ vektor
 
     bestes: dict[str, tuple[float, int]] = {}
     for i, kennung in enumerate(papiere):

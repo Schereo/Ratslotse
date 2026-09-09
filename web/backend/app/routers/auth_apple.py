@@ -212,11 +212,20 @@ def apple_login(
             # Verknüpfen: gleiche, von Apple bestätigte Adresse. Apple bestätigt
             # damit auch die Mailbox — ein evtl. offener Verifizierungs-Schwebezustand
             # ist erledigt.
+            #
+            # Freigeschaltet wird aber NUR ein Konto, das vorher wegen der
+            # unbestätigten Adresse gesperrt war. `status == "pending"` heißt
+            # nämlich zweierlei: „E-Mail noch nicht bestätigt" UND „von einem
+            # Admin deaktiviert". Ohne diese Unterscheidung holte sich ein
+            # gesperrtes Konto seine Freischaltung über „Mit Apple anmelden"
+            # selbst zurück — die Moderationsentscheidung war damit aushebelbar,
+            # sobald die Apple-ID dieselbe bestätigte Adresse trug.
+            war_unbestaetigt = not existing.get("email_verified")
             store.link_apple_sub(existing["id"], sub)
-            if not existing.get("email_verified"):
+            if war_unbestaetigt:
                 store.set_email_verified(existing["id"])
-            if existing.get("status") == "pending":
-                store.set_web_user_status(existing["id"], "active")
+                if existing.get("status") == "pending":
+                    store.set_web_user_status(existing["id"], "active")
             user = store.get_web_user_by_id(existing["id"])
             logger.info("Apple-Konto mit bestehendem Konto %s verknüpft", existing["id"])
     if user is None:
