@@ -202,11 +202,134 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
 
 
 def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
-    """Beide Schritte — für den Wochen-Cron und den Backfill."""
+    """Alle drei Schritte — für den Wochen-Cron und den Backfill.
+
+    Der Prüflauf gehört dazu und nicht daneben: Eine frisch gerechnete Gruppe
+    ist ungeprüft, und ungeprüft steht sie auf der Karte als „auch in vier
+    anderen Städten". Er kostet 0,3 $ über den ganzen Bestand und läuft nur
+    für Gruppen, die noch kein Urteil haben.
+    """
     eingebettet = embed_ideas(main, model)
     zahlen = build_clusters(main, model)
     zahlen["embedded"] = eingebettet
+    for name, wert in check_clusters(main, model).items():
+        zahlen[f"check_{name}"] = wert
     return zahlen
+
+
+#: Ab dieser Größe wird eine Gruppe geprüft. Zwei Mitglieder können nicht
+#: verkettet sein — sie wurden direkt miteinander verglichen.
+CHECK_AB_MITGLIEDERN = 3
+
+
+def check_clusters(main: CitiesStore, model: str = EMBED_MODEL,
+                   version: str = CLUSTER_VERSION,
+                   limit: int | None = None) -> dict:
+    """Jede Gruppe ab drei Mitgliedern einmal gegenlesen lassen.
+
+    **Warum überhaupt.** Die Gruppierung kettet (single linkage): Hält sie A
+    und B für dieselbe Idee und B und C auch, landen A und C in einer Menge,
+    ohne je verglichen worden zu sein. Gemessen an acht Stichproben
+    (09.09.2026) war einer von acht Clustern so entstanden — er mischte
+    „Lärmaktionsplan evaluieren" mit „Tempo-30-Anordnung prüfen". Eine höhere
+    Schwelle behebt das nicht, sie zerreißt die Ketten, die den Wert
+    ausmachen: Die Verpackungssteuer läuft über fünf Städte mit fünf
+    Formulierungen.
+
+    **Warum gerade jetzt.** Bis PR 22 war ein falscher Cluster eine Zahl in
+    einem Bericht. Seitdem steht auf der Karte „auch in 4 anderen Städten" —
+    ein falscher Cluster ist damit eine falsche öffentliche Aussage.
+
+    **Was geschrieben wird und was nicht.** Die Gruppierung selbst bleibt
+    unangetastet; das Urteil steht als Annotation daneben
+    (``object_kind='cluster'``, Kennung ``<version>:<cluster_id>``). Schicht 1
+    trägt keine Meinung — dieselbe Regel wie überall hier, und sie zahlt sich
+    aus: Wer wissen will, warum ein Papier nicht mehr mitzählt, sieht beides
+    nebeneinander.
+    """
+    from council.cities.annotate import parse_json
+    from council.cities.annotators import get as get_annotator
+    from kern import llm, prompts
+
+    ann = get_annotator("cluster_check")
+    gruppen = _gruppen_mit_mitgliedern(main, version)
+    offen = [(cid, m) for cid, m in gruppen.items()
+             if len(m) >= CHECK_AB_MITGLIEDERN
+             and main.annotation("cluster", f"{version}:{cid}", ann.key, ann.version) is None]
+    if limit:
+        offen = offen[:limit]
+    stand = {"checked": 0, "dropped": 0, "clusters_touched": 0,
+             "zu_viel": 0, "errors": 0, "cost_usd": 0.0}
+    if not offen:
+        return stand
+
+    logger.info("cluster_check: %s Gruppen zu prüfen", len(offen))
+    system = prompts.get(ann.prompt_system)
+    for cid, mitglieder in offen:
+        zeilen = "\n".join(
+            f"- {m['paper_id']} ({m['body_id']}, {(m.get('date') or '')[:7]}): "
+            f"{m.get('instrument') or m.get('name') or ''}"
+            for m in mitglieder)
+        try:
+            antwort = llm.chat_complete(
+                model=ann.model, response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system},
+                          {"role": "user", "content": prompts.render(
+                              ann.prompt_user, items=zeilen[:ann.input_chars * 4])}],
+                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                extra_body={"provider": {}} if ann.routing_free else {},
+                _feature=ann.feature)
+            nutzlast = ann.payload.model_validate(
+                parse_json(antwort.choices[0].message.content or ""))
+        except Exception as e:  # noqa: BLE001 — eine Gruppe, nicht der Lauf
+            stand["errors"] += 1
+            logger.info("cluster_check gescheitert (%s): %s", cid, type(e).__name__)
+            continue
+
+        # Erfundene Kennungen fliegen raus — dieselbe Regel wie bei `fit`:
+        # Was dem Modell nicht vorlag, kann es nicht entfernen.
+        erlaubt = {m["paper_id"] for m in mitglieder}
+        raus = [k for k in getattr(nutzlast, "drop", []) if k in erlaubt]
+        # HÖCHSTENS EIN DRITTEL. Gemessen am ersten Lauf (09.09.2026) war das
+        # die entscheidende Sicherung: Das Modell wählte für eine Gruppe das
+        # zu enge Label „Klimaschutz-Berichtswesen" und warf danach 9 von 16
+        # Mitgliedern hinaus — jedes, das „Konzept" oder „Maßnahmenplan" hieß,
+        # obwohl das dieselbe Sache in einer anderen Stufe ist.
+        #
+        # Wer mehr als ein Drittel entfernen will, hat nicht die Gruppe
+        # geputzt, sondern sie neu definiert. Das ist kein Putzen mehr, und
+        # dann bleibt sie lieber, wie sie ist: Ein zu Unrecht entferntes
+        # Mitglied nimmt einer Idee eine Stadt und macht die Aussage „auch in
+        # vier anderen Städten" falsch.
+        if len(raus) > len(mitglieder) // 3:
+            logger.info("cluster_check: %s wollte %s von %s entfernen — zu viel, "
+                        "die Gruppe bleibt", cid, len(raus), len(mitglieder))
+            stand["zu_viel"] = stand.get("zu_viel", 0) + 1
+            raus = []
+        nutzlast = nutzlast.model_copy(update={"drop": raus})
+
+        verbrauch = getattr(antwort, "usage", None)
+        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        main.put_annotation("cluster", f"{version}:{cid}", ann.key, ann.version,
+                            nutzlast.model_dump(), text_hash(zeilen),
+                            model=ann.model, cost_usd=kosten)
+        stand["checked"] += 1
+        stand["cost_usd"] += kosten
+        if raus:
+            stand["dropped"] += len(raus)
+            stand["clusters_touched"] += 1
+    logger.info("cluster_check: %s geprüft, %s Mitglieder aus %s Gruppen entfernt, $%.4f",
+                stand["checked"], stand["dropped"], stand["clusters_touched"],
+                stand["cost_usd"])
+    return stand
+
+
+def _gruppen_mit_mitgliedern(main: CitiesStore, version: str) -> dict[int, list[dict]]:
+    """Cluster-Id → Mitglieder mit Stadt, Datum und Instrument."""
+    gruppen: dict[int, list[dict]] = {}
+    for zeile in main.cluster_members(version):
+        gruppen.setdefault(zeile["cluster_id"], []).append(zeile)
+    return gruppen
 
 
 # ---------------------------------------------------------------------------

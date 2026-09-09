@@ -52,10 +52,13 @@ Antworte NUR mit diesem JSON:
 {{"status": "present" | "partial" | "missing",
   "evidence": ["<Kennung>", …],
   "reason": "<ein Satz, max. 300 Zeichen>",
-  "worth": "yes" | "maybe" | "no",
-  "why_worth": "<ein Satz, max. 300 Zeichen>",
-  "obstacles": "<was dagegen spricht, max. 200 Zeichen>" | null,
   "confidence": "high" | "medium" | "low"}}
+
+Du beantwortest EINE Frage: Hat Oldenburg dieses Instrument schon? Ob sich
+ein Antrag lohnt, wirst du NICHT gefragt — das hängt an Mehrheiten, an der
+Haushaltslage und daran, was eine Fraktion gerade vorhat, und nichts davon
+steht in einem Ratsinformationssystem. Wer die Liste liest, schließt das
+selbst.
 
 STATUS — hat Oldenburg GENAU DIESES Instrument schon?
 - "present": Oldenburg hat genau dieses Instrument beschlossen oder eingeführt.
@@ -89,44 +92,6 @@ davon muss eine "oldenburg:paper:"-Kennung sein: Der Rückblick sagt, was die
 Stadt beschäftigt, nicht ob sie dieses Instrument hat. Bei "missing" bleibt die
 Liste leer.
 
-WORTH — lohnt ein Antrag im Oldenburger Rat? Das ist eine EIGENE Frage, nicht
-die Umkehrung des Status. Sei STRENG: „fehlt in Oldenburg" allein genügt nicht.
-Von tausend Urteilen lauteten die Hälfte „fehlt und lohnt sich" — eine Liste,
-auf der jede zweite Zeile ein Volltreffer ist, ist kein Vorschlag, sondern ein
-Katalog.
-
-ZWEI HARTE AUSSCHLÜSSE. Sie gelten immer, unabhängig davon, wie gut die Idee ist:
-  (1) Aufwandsklasse "resolution" ist nie "yes". Eine Resolution kostet nichts
-      und bewirkt unmittelbar nichts; sie ist nie das Beste, was der Rat zu
-      einer Sache tun kann.
-  (2) Steht unter „Adressat" jemand außerhalb der Stadt — ein Versorger, ein
-      Verkehrsunternehmen, das Land —, ist es höchstens "maybe". Der Rat kann
-      wollen, aber nicht beschließen.
-
-- "yes": Ein KONKRETER Hebel, den Oldenburg so nicht hat und selbst in der
-  Hand hat. Nicht bloß ein Thema, das jemand aufgreifen könnte: Das
-  Instrument muss benennbar sein (eine Satzung, ein Programm, ein Konzept,
-  ein Portal, ein Bericht mit Adressat).
-  Zwei Dinge sprechen deutlich FÜR "yes", ohne Bedingung zu sein: dieselbe
-  Idee liegt in mindestens zwei anderen Städten (siehe „Gleiche Idee in …
-  Städten"), oder ein Beleg zeigt einen Oldenburger Anknüpfungspunkt — einen
-  vertagten Antrag, einen Prüfauftrag, einen Beschluss, der genau das offen
-  lässt. Beides heißt: Die Sache ist reif.
-
-- "maybe": Der Hebel ist da, aber der Zugewinn wäre klein, weil Oldenburg
-  etwas Ähnliches hat; oder die Sache hängt an einer erst zu klärenden
-  Voraussetzung; oder Oldenburg hat sie schon einmal abgelehnt; oder ein
-  Adressat außerhalb der Stadt entscheidet mit.
-
-- "no": Oldenburg hat genau das bereits; oder es ist nicht kommunale
-  Zuständigkeit; oder es setzt etwas voraus, das Oldenburg nicht hat; oder es
-  ist eine Anfrage ohne jeden Oldenburger Anlass — eine Frage, die niemand
-  gestellt hat und die niemand vermisst, ist keine Idee.
-
-OBSTACLES — was dagegen spricht, in einem Halbsatz: Zuständigkeit (Land, Bund,
-Versorger, Landkreis), fehlende Struktur, andere Größenordnung, schon einmal
-abgelehnt. Nichts dagegen: null.
-
 CONFIDENCE — "high" nur, wenn die Belege die Frage wirklich beantworten. Wenige
 oder unspezifische Belege heißen "low"; das ist ein brauchbares Ergebnis, keine
 Schwäche.
@@ -140,7 +105,6 @@ nicht sich selbst misst.
    → status "partial". Ein TEIL der Sache ist geregelt (die eigenen Gebäude),
      der andere nicht (private Neubauten). Nicht "missing": Der Beleg deckt
      einen Teil ab.
-   → worth "yes". Der ungedeckte Teil ist die Idee.
 
 2. Vorlage: „Bewohnerparkzone im Bahnhofsviertel einrichten".
    Beleg: Oldenburg, „Parkraumkonzept Innenstadt — Beschluss".
@@ -151,7 +115,6 @@ nicht sich selbst misst.
    Beleg: Oldenburg, „Änderung der Sondernutzungssatzung — Beschluss".
    → status "present". Das Instrument ist vorhanden, auch wenn der ANLASS ein
      anderer war.
-   → worth "no". Oldenburg tut das ohnehin, wenn es nötig wird.
 
 4. Vorlage: „Einführung einer Übernachtungssteuer prüfen".
    Beleg: Oldenburg, „Übernachtungssteuer — Bericht der Verwaltung".
@@ -165,11 +128,66 @@ nicht sich selbst misst.
 
 6. Vorlage: „Fahrpreise im Nahverkehr senken".
    Kein passender Beleg.
-   → status "missing", worth "no": Die Tarife setzt der Verkehrsverbund mit der
-     VWG, nicht der Rat. obstacles: „Tarifhoheit liegt beim Verbund."
+   → status "missing". Dass die Tarife beim Verkehrsverbund liegen und nicht
+     beim Rat, ändert am Status nichts — es steht als Adressat an anderer
+     Stelle."""
 
-WORTH hängt NICHT am Status. Ein "present" kann "maybe" sein (Oldenburgs
-Fassung ist schmaler), ein "missing" kann "no" sein (nicht zuständig)."""
+
+PROMPT_CITIES_CLUSTER_CHECK = """Du prüfst, ob mehrere Ratsvorlagen wirklich DIESELBE Idee
+meinen — oder ob eine darunter etwas anderes ist.
+
+Die Vorlagen wurden automatisch gruppiert, weil ihre Beschreibungen sich
+ähneln. Das Verfahren KETTET: Hält es A und B für dasselbe und B und C auch,
+landen A und C in einer Gruppe, ohne je verglichen worden zu sein. Genau
+diese Fälle sollst du finden.
+
+Antworte NUR mit diesem JSON:
+{{"label": "<was die MEHRHEIT gemeinsam hat, in 2–6 Wörtern>",
+  "drop": ["<Kennung>", …],
+  "reason": "<ein Satz, warum sie herausfallen, max. 300 Zeichen>"}}
+
+GEH IN DIESER REIHENFOLGE VOR
+1. Suche zuerst, was die MEHRHEIT der Vorlagen gemeinsam hat. Nicht, was die
+   erste sagt — die Reihenfolge bedeutet nichts.
+2. Fasse den gemeinsamen Nenner so WEIT, dass die Mehrheit hineinpasst. Ein
+   zu enges Label ist der häufigste Fehler: Wer eine Gruppe „Berichtswesen"
+   nennt, wirft danach jedes „Konzept" hinaus — obwohl beide dieselbe Sache
+   in zwei Stufen sind.
+3. Erst dann: Welche EINZELNEN Vorlagen passen nicht zu dieser Mehrheit?
+
+Fällt mehr als ein Drittel heraus, hast du das Label zu eng gefasst. Dann
+fasse es weiter und prüfe noch einmal.
+
+WANN ETWAS HERAUSFÄLLT
+Nur, wenn es ein ANDERES INSTRUMENT ist — eine andere Sache, die der Rat
+täte. Nicht, wenn es dasselbe Instrument in einem anderen Jahr, einer
+anderen Stadt, einer anderen Stufe (Antrag, Bericht, Beschluss) oder mit
+anderen Worten ist. Genau das soll die Gruppe ja zusammenhalten.
+
+Beispiele für ANDERE Instrumente in derselben Gruppe:
+- „Lärmaktionsplan fortschreiben" und „Tempo 30 anordnen" — verwandt, aber
+  das eine ist ein Plan, das andere eine Verkehrsanordnung.
+- „Radwege bauen" und „Fahrradstraßen ausweisen" — beides Radverkehr, aber
+  zwei verschiedene Beschlüsse.
+- „Kita-Plätze ausbauen" und „Kita-Gebühren senken" — dasselbe Feld, ganz
+  verschiedene Hebel.
+
+Beispiele für DASSELBE Instrument (nichts fällt heraus):
+- „Verpackungssteuersatzung einführen" und „Steuer auf Einwegverpackungen
+  erheben" — zwei Formulierungen, eine Sache.
+- „Sportförderrichtlinien anpassen" 2018, 2020, 2022 und 2025 — dieselbe
+  Sache, viermal.
+- „Bevölkerungsprognose erstellen" und „Einwohnerprognose - Bericht" — eine
+  Sache, zwei Städte.
+
+IM ZWEIFEL NICHTS ENTFERNEN. Eine zu Unrecht entfernte Vorlage nimmt einer
+Idee eine Stadt und macht die Aussage „auch in vier anderen Städten" falsch.
+Eine zu Unrecht behaltene fällt einem Menschen beim Lesen auf. Die leere
+Liste ist die häufigste richtige Antwort.
+
+Fällt dir keine einzelne Vorlage auf, die klar etwas anderes meint, ist die
+leere Liste die richtige Antwort. Das ist der Normalfall.
+"""
 
 
 PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
@@ -323,6 +341,21 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Fremde Ratsvorlagen — die Einträge",
         "description": "Der Batch. Platzhalter: {items}.",
         "template": "EINTRÄGE:\n{items}",
+    },
+    "cities_cluster_check_system": {
+        "title": "Gehören diese Vorlagen wirklich zusammen?",
+        "description":
+            "Der Annotator `cluster_check`. Ohne Platzhalter. Prüft eine "
+            "Ideen-Gruppe auf Mitglieder, die ein ANDERES Instrument meinen — "
+            "die Gruppierung kettet, und seit die Zahl der Städte auf der "
+            "Karte steht, ist ein falscher Cluster eine falsche öffentliche "
+            "Aussage.",
+        "template": PROMPT_CITIES_CLUSTER_CHECK,
+    },
+    "cities_cluster_check_user": {
+        "title": "Die Mitglieder einer Ideen-Gruppe",
+        "description": "Platzhalter: {items}.",
+        "template": "VORLAGEN DIESER GRUPPE:\n{items}",
     },
     "cities_effort_system": {
         "title": "Was würde diese Idee den Rat kosten?",

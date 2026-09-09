@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Misst, wie gut ein Modell beurteilt, ob Oldenburg eine fremde Idee schon hat.
 
-**Drei Fragen, drei Maße.** Der Annotator ``fit`` sagt zu einer fremden
-Vorlage: *hat Oldenburg das schon* (``status``), *lohnt ein Antrag*
-(``worth``) — und *worauf stützt sich das* (``evidence``). Die dritte ist die
-wichtigste: Ein Urteil, das sich auf einen erfundenen Beleg beruft, ist nicht
-ungenau, sondern falsch. Deshalb ist die Beleg-Disziplin das einzige Maß mit
-Schwelle 100 %.
+**Zwei Fragen, zwei Maße.** Der Annotator ``fit`` sagt zu einer fremden
+Vorlage: *hat Oldenburg das schon* (``status``) — und *worauf stützt sich das*
+(``evidence``). Die zweite ist die wichtigere: Ein Urteil, das sich auf einen
+erfundenen Beleg beruft, ist nicht ungenau, sondern falsch. Deshalb ist die
+Beleg-Disziplin das einzige Maß mit Schwelle 100 %.
+
+**Die dritte Frage gibt es seit Fassung 3 nicht mehr.** „Lohnt ein Antrag?"
+traf das Modell über drei Fassungen zu 46–58 % bei bis zu 20 Punkten
+Streuung, während es den Status zu 62–69 % trifft; die verschärfte Regel in
+Fassung 2 machte sie messbar schlechter (32 %). Es kann Tatsachen und keine
+Werturteile — und das ist die richtige Arbeitsteilung. Das Feld ``worth`` in
+den Prüffällen bleibt als Dokumentation der Handurteile stehen, wird aber
+nicht mehr gemessen.
 
 Maßstab sind 40 von Hand geurteilte Vorlagen
 (``cases_cities_fit.json``, geschichtet über Themenfelder und Städte). Sie
@@ -92,7 +99,6 @@ SUITE = "cities_fit"
 #: schlechteren gemessenen Lauf. Was darunter fällt, ist eine Verschlechterung;
 #: was darüber liegt, ist Rauschen (ein Fall sind 2,5 Punkte).
 SCHWELLE_STATUS = 55.0
-SCHWELLE_WORTH = 50.0
 #: Zitierfehler (Urteil nur auf den Rückblick gestützt) fängt der Betrieb ab —
 #: er wirft die Antwort weg und zählt sie. Das kostet einen zweiten Anlauf,
 #: keine falsche Aussage. Eine ERFUNDENE Kennung ist etwas anderes und steht
@@ -163,10 +169,9 @@ def urteilen(faelle: list[dict], model: str) -> tuple[dict[str, dict], float]:
 
 
 def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
-    n = status_treffer = worth_treffer = 0
+    n = status_treffer = 0
     beleg_verstoesse: list[dict] = []
     matrix: Counter[tuple[str, str]] = Counter()
-    worth_matrix: Counter[tuple[str, str]] = Counter()
     fehler: list[dict] = []
 
     for f in faelle:
@@ -176,15 +181,13 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
         n += 1
         erwartet = f["expected"]
         ist_status = str(got.get("status", ""))
-        ist_worth = str(got.get("worth", ""))
         matrix[(erwartet["status"], ist_status)] += 1
         if ist_status == erwartet["status"]:
             status_treffer += 1
         else:
             fehler.append({"case": f["name"][:70], "erwartet": erwartet["status"],
                            "bekommen": ist_status, "grund": str(got.get("reason", ""))[:90]})
-        worth_matrix[(erwartet["worth"], ist_worth)] += 1
-        worth_treffer += ist_worth == erwartet["worth"]
+
 
         # Beleg-Disziplin: Nur Kennungen, die dem Modell vorlagen — und eine
         # Behauptung über Oldenburg braucht mindestens eine.
@@ -238,12 +241,10 @@ def messen(faelle: list[dict], vorhersage: dict[str, dict]) -> dict:
         "n_answered": n,
         "false_present": falsch_vorhanden, "missed_present": uebersehen,
         "status_accuracy": quote(status_treffer),
-        "worth_accuracy": quote(worth_treffer),
         "evidence_discipline": quote(n - len(beleg_verstoesse)),
         "evidence_invented": erfundene,
         "evidence_violations": beleg_verstoesse,
         "confusion": {f"{a}→{b}": c for (a, b), c in sorted(matrix.items())},
-        "worth_confusion": {f"{a}→{b}": c for (a, b), c in sorted(worth_matrix.items())},
         "mistakes": fehler,
     }
 
@@ -342,7 +343,6 @@ def main() -> int:
         mass = messen(faelle, vorhersage)
         laeufe.append(mass)
         print(f"  Lauf {lauf}: Status {mass['status_accuracy']:.0f} % · "
-              f"Lohnt {mass['worth_accuracy']:.0f} % · "
               f"Belege {mass['evidence_discipline']:.0f} %")
 
     def spanne(schluessel: str) -> tuple[float, float, float]:
@@ -353,7 +353,6 @@ def main() -> int:
     uebersehen = sum(x["missed_present"] for x in laeufe)
     erfundene = sum(x["evidence_invented"] for x in laeufe)
     status_m, status_min, status_max = spanne("status_accuracy")
-    worth_m, worth_min, worth_max = spanne("worth_accuracy")
     beleg_m, beleg_min, _ = spanne("evidence_discipline")
     letzter = laeufe[-1]
 
@@ -361,7 +360,6 @@ def main() -> int:
         "suite": SUITE, "model": model, "prompt_version": ann.version,
         "n_cases": len(faelle), "runs": a.runs,
         "status_accuracy": status_m, "status_range": [status_min, status_max],
-        "worth_accuracy": worth_m, "worth_range": [worth_min, worth_max],
         "evidence_discipline": beleg_m, "false_present": falsch_vorhanden,
         "missed_present": uebersehen,
         "evidence_invented": erfundene,
@@ -375,8 +373,6 @@ def main() -> int:
 
     print(f"\n  Status (3 Klassen)  {status_m:.0f} %  ({status_min:.0f}–{status_max:.0f})"
           f"   Schwelle {SCHWELLE_STATUS:.0f} %")
-    print(f"  Lohnt sich          {worth_m:.0f} %  ({worth_min:.0f}–{worth_max:.0f})"
-          f"   Schwelle {SCHWELLE_WORTH:.0f} %")
     print(f"  Erfundene Belege    {erfundene}"
           f"                    Schwelle 0   (das darf nie vorkommen)")
     print(f"  Beleg-Disziplin     {beleg_m:.0f} %"
@@ -393,13 +389,6 @@ def main() -> int:
     # fehlte, als die verschärfte Regel gemessen wurde — und ohne sie ließ
     # sich nicht sagen, ob das Modell strenger oder lockerer ist als der
     # Maßstab. Genau das ist aber die einzige Frage, die weiterhilft.
-    if letzter["worth_confusion"]:
-        print("\n  Lohnt sich (erwartet -> bekommen):")
-        for k, v in sorted(letzter["worth_confusion"].items(), key=lambda x: -x[1]):
-            soll, _, ist = k.partition("\u2192")
-            marke = "  " if soll == ist else "\u2717 "
-            print(f"    {marke}{k:20} {v}")
-
     if letzter["confusion"]:
         print("\n  Status (erwartet -> bekommen):")
         for k, v in sorted(letzter["confusion"].items(), key=lambda x: -x[1]):
@@ -421,7 +410,6 @@ def main() -> int:
         if vorher and pfad:
             print(f"\n  Gegen {pfad.name} ({vorher.get('model')}):")
             for schluessel, name in (("status_accuracy", "Status"),
-                                     ("worth_accuracy", "Lohnt sich"),
                                      ("evidence_discipline", "Beleg-Disziplin")):
                 alt, neu = vorher.get(schluessel, 0), ergebnis[schluessel]
                 pfeil = "↑" if neu > alt else ("↓" if neu < alt else "→")
@@ -431,7 +419,7 @@ def main() -> int:
     if a.save:
         print(f"\n  Baseline: {harness.save_result(ergebnis)}")
 
-    bestanden = (status_m >= SCHWELLE_STATUS and worth_m >= SCHWELLE_WORTH
+    bestanden = (status_m >= SCHWELLE_STATUS
                  and erfundene == 0 and beleg_min >= SCHWELLE_BELEGE
                  and falsch_vorhanden == 0)
     print(f"\n  {'BESTANDEN' if bestanden else 'NICHT BESTANDEN'}")

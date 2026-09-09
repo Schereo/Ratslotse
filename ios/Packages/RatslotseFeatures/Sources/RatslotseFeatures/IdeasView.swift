@@ -166,16 +166,19 @@ struct IdeasView: View {
                 .font(RatsFont.body(13, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
                 .multilineTextAlignment(.leading)
-            Text("\(f.worthYes)")
+            // Die große Zahl ist eine TATSACHE: Ideen, die mehrere andere
+            // Städte haben und Oldenburg nicht. Vorher stand hier „Ideen, die
+            // sich lohnen könnten" — gezählt aus einem Werturteil.
+            Text("\(f.multiCity)")
                 .font(RatsFont.body(24, weight: .semibold))
                 .foregroundStyle(RatsColor.primary)
                 .monospacedDigit()
-            Text(f.worthYes == 1 ? "Idee, die sich lohnen könnte"
-                                 : "Ideen, die sich lohnen könnten")
+            Text(f.multiCity == 1 ? "Idee aus mehreren Städten, die Oldenburg fehlt"
+                                  : "Ideen aus mehreren Städten, die Oldenburg fehlen")
                 .font(RatsFont.body(10.5))
                 .foregroundStyle(RatsColor.muted)
                 .multilineTextAlignment(.leading)
-            Text("\(f.total) geprüft · \(f.present) hat Oldenburg schon")
+            Text("\(f.missing + f.partial) fehlen ganz oder halb · \(f.present) hat Oldenburg schon")
                 .font(RatsFont.body(10))
                 .foregroundStyle(RatsColor.muted.opacity(0.8))
         }
@@ -372,9 +375,6 @@ private struct IdeaCard: View {
                                     ? RatsColor.primary.opacity(0.1) : RatsColor.separator)
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                 }
-                Text(Self.worth[idee.worth] ?? idee.worth)
-                    .font(RatsFont.body(11, weight: .medium))
-                    .foregroundStyle(RatsColor.text)
                 if idee.confidence == "low" {
                     Text("unsicher")
                         .font(RatsFont.body(10.5))
@@ -386,19 +386,9 @@ private struct IdeaCard: View {
                 Text(idee.reason).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if !idee.whyWorth.isEmpty {
-                Text(idee.whyWorth).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.text)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             if let addressee = idee.addressee, !addressee.isEmpty {
                 Text("Entscheidet nicht die Stadt allein: \(addressee)")
                     .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let obstacles = idee.obstacles, !obstacles.isEmpty {
-                Text("Dagegen spricht: \(obstacles)")
-                    .font(RatsFont.body(11))
-                    .foregroundStyle(RatsColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -440,9 +430,6 @@ private struct IdeaCard: View {
         "missing": "In Oldenburg nicht gefunden",
         "partial": "Teilweise vorhanden",
         "present": "Oldenburg hat das",
-    ]
-    private static let worth: [String: String] = [
-        "yes": "Lohnt sich", "maybe": "Vielleicht", "no": "Lohnt sich nicht",
     ]
     /// Dieselben fünf Wörter wie im Web (`ideen/view.tsx`). Web und App
     /// zeigen dieselbe Sache; zwei Vokabulare wären zwei Produkte.

@@ -190,3 +190,72 @@ def test_der_cluster_findet_die_fremden_gegenstuecke(store):
     assert [m["id"] for m in fremde] == ["os:1"]
     assert (store.outcome_for_paper("os:1") or {}).get("outcome") == "referred", \
         "ohne das Ergebnis beantwortet der Cluster die Frage nicht"
+
+
+# ------------------------------------------------- Der Putz und seine Grenzen
+
+def _pruefe_mit(monkeypatch, store, antwort: dict, mitglieder: int = 9):
+    """Eine Gruppe bauen und den Prüflauf mit fester Modellantwort laufen lassen."""
+    import json
+    from types import SimpleNamespace
+    for i in range(mitglieder):
+        idee(store, f"x:{i}", "osnabrueck" if i else "oldenburg",
+             f"Vorlage {i}", "Sportförderrichtlinien anpassen", vektor(1.0, i * 0.001))
+    cl.build_clusters(store, MODELL, threshold=0.5, version="1")
+    monkeypatch.setattr(cl, "text_hash", lambda t: "h")
+    from kern import llm
+    monkeypatch.setattr(llm, "chat_complete", lambda **kw: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(antwort)))],
+        usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5, cost=0.0)))
+    return cl.check_clusters(store, MODELL, "1")
+
+
+def test_hoechstens_ein_drittel_faellt_heraus(monkeypatch, store):
+    """Die Sicherung, die den ersten Messlauf gerettet hat.
+
+    Das Modell wählte für eine Gruppe das zu enge Label
+    „Klimaschutz-Berichtswesen" und warf danach 9 von 16 Mitgliedern hinaus —
+    jedes, das „Konzept" oder „Maßnahmenplan" hieß, obwohl das dieselbe Sache
+    in einer anderen Stufe ist. Wer mehr als ein Drittel entfernen will, hat
+    die Gruppe nicht geputzt, sondern neu definiert.
+    """
+    stand = _pruefe_mit(monkeypatch, store,
+                        {"label": "zu eng", "drop": [f"x:{i}" for i in range(6)],
+                         "reason": "passt nicht"}, mitglieder=9)
+    assert stand["dropped"] == 0, "sechs von neun ist kein Putzen mehr"
+    assert stand["zu_viel"] == 1
+    assert len(store.cluster_of("x:0", MODELL, "1")) == 9, "die Gruppe bleibt ganz"
+
+
+def test_ein_einzelnes_fremdes_mitglied_faellt_heraus(monkeypatch, store):
+    """Der Normalfall: In einer großen Gruppe passt genau eines nicht."""
+    stand = _pruefe_mit(monkeypatch, store,
+                        {"label": "Sportförderung", "drop": ["x:3"],
+                         "reason": "ein anderes Instrument"}, mitglieder=9)
+    assert stand["dropped"] == 1
+    übrig = {m["id"] for m in store.cluster_of("x:0", MODELL, "1")}
+    assert "x:3" not in übrig and len(übrig) == 8
+
+
+def test_erfundene_kennungen_werden_ignoriert(monkeypatch, store):
+    """Was dem Modell nicht vorlag, kann es nicht entfernen — wie bei `fit`."""
+    stand = _pruefe_mit(monkeypatch, store,
+                        {"label": "x", "drop": ["gibt-es-nicht"], "reason": "…"},
+                        mitglieder=9)
+    assert stand["dropped"] == 0
+    assert len(store.cluster_of("x:0", MODELL, "1")) == 9
+
+
+def test_die_gruppierung_selbst_bleibt_unangetastet(monkeypatch, store):
+    """Schicht 1 trägt keine Meinung: Der Putz steht als Annotation daneben.
+
+    Wer wissen will, warum ein Papier nicht mehr mitzählt, sieht beides
+    nebeneinander — und ein besseres Urteil kann das alte ersetzen, ohne die
+    Rechnung zu wiederholen.
+    """
+    _pruefe_mit(monkeypatch, store,
+                {"label": "x", "drop": ["x:3"], "reason": "…"}, mitglieder=9)
+    roh = store._conn.execute(
+        "SELECT COUNT(*) FROM idea_clusters WHERE version='1'").fetchone()[0]
+    assert roh == 9, "die gerechnete Gruppe verliert kein Mitglied"
+    assert store.annotation("cluster", "1:1", "cluster_check", "1") is not None

@@ -33,7 +33,7 @@ def test_jeder_annotator_ist_vollstaendig():
     for ann in ANNOTATORS.values():
         assert prompts.get(ann.prompt_system), f"{ann.key}: Prompt fehlt"
         assert prompts.get(ann.prompt_user)
-        assert ann.applies_to and all(k in ("paper", "agenda_item", "meeting")
+        assert ann.applies_to and all(k in ("paper", "agenda_item", "meeting", "cluster")
                                       for k in ann.applies_to)
         assert ann.version, f"{ann.key}: ohne Fassung ist keine zweite möglich"
         assert ann.batch_size >= 1 and ann.max_tokens >= 4000

@@ -8996,13 +8996,6 @@
             "title": "Name",
             "type": "string"
           },
-          "obstacles": {
-            "title": "Obstacles",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "originator": {
             "title": "Originator",
             "type": [
@@ -9047,14 +9040,6 @@
               "string",
               "null"
             ]
-          },
-          "why_worth": {
-            "title": "Why Worth",
-            "type": "string"
-          },
-          "worth": {
-            "title": "Worth",
-            "type": "string"
           }
         },
         "required": [
@@ -9074,9 +9059,6 @@
           "originator",
           "status",
           "reason",
-          "worth",
-          "why_worth",
-          "obstacles",
           "confidence",
           "evidence",
           "effort",
@@ -9143,6 +9125,10 @@
             "title": "Missing",
             "type": "integer"
           },
+          "multi_city": {
+            "title": "Multi City",
+            "type": "integer"
+          },
           "partial": {
             "title": "Partial",
             "type": "integer"
@@ -9154,10 +9140,6 @@
           "total": {
             "title": "Total",
             "type": "integer"
-          },
-          "worth_yes": {
-            "title": "Worth Yes",
-            "type": "integer"
           }
         },
         "required": [
@@ -9166,7 +9148,7 @@
           "missing",
           "partial",
           "present",
-          "worth_yes"
+          "multi_city"
         ],
         "title": "IdeaFieldSummary",
         "type": "object"
@@ -19043,11 +19025,11 @@
           },
           {
             "in": "query",
-            "name": "worth",
+            "name": "effort",
             "required": false,
             "schema": {
-              "default": "yes,maybe",
-              "title": "Worth",
+              "default": "",
+              "title": "Effort",
               "type": "string"
             }
           },

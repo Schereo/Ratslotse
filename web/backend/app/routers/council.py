@@ -93,11 +93,10 @@ ELSEWHERE_LIMIT = 6
 #: Block ist ehrlicher als ein voller aus Zufallstreffern.
 ELSEWHERE_MIN_SCORE = 0.70
 
-#: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat, und was sich
-#: lohnen könnte. „vorhanden“ und „lohnt nicht“ sind über die Filter
-#: erreichbar — sie gehören zur Antwort, nur nicht in die erste Ansicht.
+#: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat. „Vorhanden“ ist
+#: über den Filter erreichbar — es gehört zur Antwort, nur nicht in die erste
+#: Ansicht.
 IDEEN_STATUS_VORGABE = ("missing", "partial")
-IDEEN_WORTH_VORGABE = ("yes", "maybe")
 IDEEN_PRO_SEITE = 30
 
 #: Das Modell, unter dem die Nachbarschaften liegen. `council.cities.index`
@@ -1826,7 +1825,8 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     felder: list[IdeaFieldSummary] = [
         {"field": r["field"], "total": int(r["total"] or 0),
          "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),
-         "present": int(r["present"] or 0), "worth_yes": int(r["worth_yes"] or 0)}
+         "present": int(r["present"] or 0),
+         "multi_city": int(r["multi_city"] or 0)}
         for r in cities.idea_fields()]
     return {"fields": felder}
 
@@ -1859,7 +1859,7 @@ def cities_search(
 def cities_ideas(
     field: str,
     status: str = ",".join(IDEEN_STATUS_VORGABE),
-    worth: str = ",".join(IDEEN_WORTH_VORGABE),
+    effort: str = "",
     body: str | None = None,
     page: int = 1,
     per_page: int = IDEEN_PRO_SEITE,
@@ -1883,7 +1883,7 @@ def cities_ideas(
     zeilen, gesamt, zaehler = cities.ideas(
         field,
         status=tuple(x for x in status.split(",") if x),
-        worth=tuple(x for x in worth.split(",") if x),
+        effort=tuple(x for x in effort.split(",") if x),
         body_id=body,
         limit=max(1, min(per_page, 100)),
         offset=max(0, (page - 1) * per_page))
@@ -1920,8 +1920,6 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "competence": klasse.get("competence"),
         "originator": display_originator(klasse.get("originator"), r.get("kind")),
         "status": urteil.get("status") or "", "reason": urteil.get("reason") or "",
-        "worth": urteil.get("worth") or "", "why_worth": urteil.get("why_worth") or "",
-        "obstacles": urteil.get("obstacles"),
         "confidence": urteil.get("confidence") or "",
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",

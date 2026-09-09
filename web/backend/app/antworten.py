@@ -1391,12 +1391,12 @@ class Idea(TypedDict):
     transfer: str
     competence: str | None
     originator: str | None
-    #: Das Urteil aus `council/cities/fit.py`.
+    #: Der Befund aus `council/cities/fit.py`: Hat Oldenburg dieses
+    #: Instrument schon? Eine TATSACHENFRAGE. Ob sich ein Antrag lohnt, sagt
+    #: hier bewusst niemand mehr — das hängt an Mehrheiten und Haushaltslage,
+    #: und das Modell traf es zu 46–58 %, den Status dagegen zu 62–69 %.
     status: str
     reason: str
-    worth: str
-    why_worth: str
-    obstacles: str | None
     confidence: str
     evidence: list[IdeaEvidence]
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
@@ -1438,7 +1438,10 @@ class IdeaFieldSummary(TypedDict):
     missing: int
     partial: int
     present: int
-    worth_yes: int
+    #: Ideen dieses Feldes, die in mindestens ZWEI anderen Städten liegen und
+    #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
+    #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.
+    multi_city: int
 
 
 class IdeaFields(TypedDict):

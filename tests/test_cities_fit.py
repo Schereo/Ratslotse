@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from council.cities import fit as fit_modul
-from council.cities.annotators import OldenburgFit, get
+from council.cities.annotators import OldenburgStatus, get
 from council.cities.evidence import evidence_for, kvonr_aus
 from council.cities.model import Batch, Body, File, FileRole, Paper
 from council.cities.store import CitiesStore
@@ -98,8 +98,7 @@ def _antwort(nutzlast: dict, kosten: float = 0.0001):
 
 URTEIL = {"status": "partial", "evidence": ["oldenburg:paper:4711"],
           "reason": "Oldenburg hat den Plan, nicht den Ausbau.",
-          "worth": "yes", "why_worth": "Der Ausbau ist der nächste Schritt.",
-          "obstacles": None, "confidence": "high"}
+          "confidence": "high"}
 
 
 # ------------------------------------------------------------------- Belege
@@ -179,8 +178,7 @@ def test_volltextsuche_geht_von_streng_nach_nachsichtig(cities):
 # ------------------------------------------------------------ Beleg-Disziplin
 
 def test_erfundene_kennung_macht_das_urteil_ungueltig():
-    nutzlast = OldenburgFit(status="present", evidence=["oldenburg:paper:9999"],
-                            worth="no", confidence="high")
+    nutzlast = OldenburgStatus(status="present", evidence=["oldenburg:paper:9999"], confidence="high")
     grund = fit_modul.pruefe(nutzlast, {"oldenburg:paper:4711"})
     assert grund and grund.startswith("hallucinated_evidence")
 
@@ -189,9 +187,9 @@ def test_behauptung_ohne_beleg_wird_verworfen():
     """„Oldenburg hat das" ist eine Aussage über Oldenburg — sie braucht eine
     Kennung. Bei `missing` ist die leere Liste dagegen die Aussage."""
     for status in ("present", "partial"):
-        nutzlast = OldenburgFit(status=status, evidence=[], worth="no", confidence="low")
+        nutzlast = OldenburgStatus(status=status, evidence=[], confidence="low")
         assert fit_modul.pruefe(nutzlast, {"oldenburg:paper:4711"}) == "claim_without_evidence"
-    leer = OldenburgFit(status="missing", evidence=[], worth="yes", confidence="low")
+    leer = OldenburgStatus(status="missing", evidence=[], confidence="low")
     assert fit_modul.pruefe(leer, {"oldenburg:paper:4711"}) is None
 
 
@@ -218,7 +216,9 @@ def test_lauf_schreibt_ein_urteil(cities, rats, monkeypatch):
     eintrag = cities.annotation("paper", "os:p:1", "fit", get("fit").version)
     assert eintrag["payload"]["status"] == "partial"
     assert eintrag["payload"]["evidence"] == ["oldenburg:paper:4711"]
-    assert eintrag["payload"]["worth"] == "yes"
+    assert "worth" not in eintrag["payload"], (
+        "seit Fassung 3 wird das Modell nicht mehr nach dem Nutzen gefragt")
+    assert eintrag["payload"]["confidence"] == "high"
 
 
 def test_ohne_belege_wird_gar_nicht_erst_gefragt(cities, rats, monkeypatch):
@@ -322,12 +322,11 @@ def test_der_rueckblick_traegt_kein_urteil():
     Instrument hat. Beim Bauen des Golden Sets war das der Fall, in dem ich
     selbst versucht war, aus „Oldenburg hat einen Brandbrief gegen Kürzungen
     geschrieben" ein „vorhanden" zu machen."""
-    nutzlast = OldenburgFit(status="present", evidence=["recap:klima_umwelt"],
-                            worth="no", confidence="high")
+    nutzlast = OldenburgStatus(status="present", evidence=["recap:klima_umwelt"], confidence="high")
     erlaubt = {"recap:klima_umwelt", "oldenburg:paper:1"}
     assert fit_modul.pruefe(nutzlast, erlaubt, {"oldenburg:paper:1"}) == "claim_only_on_recap"
     # Mit einem tragenden Beleg daneben ist der Rückblick unschädlich.
-    mit = OldenburgFit(status="present", worth="no", confidence="high",
+    mit = OldenburgStatus(status="present", confidence="high",
                        evidence=["recap:klima_umwelt", "oldenburg:paper:1"])
     assert fit_modul.pruefe(mit, erlaubt, {"oldenburg:paper:1"}) is None
 
@@ -336,10 +335,8 @@ def test_zu_langer_freitext_wird_gekuerzt_nicht_verworfen():
     """Die Längen sind Anzeige-Grenzen, keine Zusagen. Im Bestandslauf über
     300 Vorlagen gingen zwei vollständig richtige Urteile verloren, beide weil
     `obstacles` zwanzig Zeichen zu lang war."""
-    f = OldenburgFit(status="missing", worth="no", confidence="low",
-                     obstacles="x" * 400, reason="y" * 500, why_worth="z" * 500)
-    assert len(f.obstacles or "") == 200
-    assert len(f.reason) == 300 and len(f.why_worth) == 300
+    f = OldenburgStatus(status="missing", confidence="low", reason="y" * 500)
+    assert len(f.reason) == 300
 
 
 def test_die_behauptungen_bleiben_streng():
@@ -348,10 +345,10 @@ def test_die_behauptungen_bleiben_streng():
     import pytest as _pytest
     from pydantic import ValidationError as _VE
 
-    for kaputt in ({"status": "vorhanden"}, {"worth": "vielleicht"},
+    for kaputt in ({"status": "vorhanden"},
                    {"confidence": "hoch"}):
         with _pytest.raises(_VE):
-            OldenburgFit(**{"status": "missing", "worth": "no",
+            OldenburgStatus(**{"status": "missing",
                             "confidence": "low", **kaputt})
 
 
@@ -426,24 +423,20 @@ def test_rrf_belohnt_was_zwei_arme_finden():
 
 # ------------------------------------------------------- Mehrheit aus Stimmen
 
-def _urteil(status="partial", worth="yes", belege=("oldenburg:paper:4711",),
+def _urteil(status="partial", belege=("oldenburg:paper:4711",),
             confidence="high"):
-    return OldenburgFit(status=status, worth=worth, evidence=list(belege),
-                        reason="Grund.", why_worth="Nutzen.", obstacles=None,
-                        confidence=confidence)
+    return OldenburgStatus(status=status, evidence=list(belege),
+                           reason="Grund.", confidence=confidence)
 
 
-def test_die_mehrheit_entscheidet_status_und_nutzen_getrennt():
-    """Zwei Fragen, zwei Auszählungen — so steht es im Prompt.
-
-    Ein Modell, das beim Status schwankt, kann beim Nutzen sicher sein.
-    """
+def test_die_mehrheit_entscheidet_den_status():
+    """Zwei von drei Stimmen tragen das Urteil, und die Einigkeit steht dabei."""
     ergebnis, einigkeit = fit_modul.majority([
-        _urteil(status="partial", worth="yes"),
-        _urteil(status="missing", worth="yes"),
-        _urteil(status="partial", worth="maybe"),
+        _urteil(status="partial"),
+        _urteil(status="missing"),
+        _urteil(status="partial"),
     ])
-    assert ergebnis.status == "partial" and ergebnis.worth == "yes"
+    assert ergebnis.status == "partial"
     assert einigkeit == "2/3"
 
 

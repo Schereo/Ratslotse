@@ -48,12 +48,6 @@ const STATUS: Record<string, { text: string; ton: string }> = {
   present: { text: "Oldenburg hat das", ton: "bg-muted text-muted-foreground" },
 };
 
-const WORTH: Record<string, string> = {
-  yes: "Lohnt sich",
-  maybe: "Vielleicht",
-  no: "Lohnt sich nicht",
-};
-
 /**
  * Was die Idee den Rat kosten würde — von der Frage bis zum Haushaltsposten.
  *
@@ -116,14 +110,20 @@ function Uebersicht() {
             <div className="text-sm font-semibold text-foreground">
               {POLICY_FIELD_LABELS[f.field] ?? f.field}
             </div>
+            {/* Die große Zahl ist eine TATSACHE: Ideen, die mehrere andere
+                Städte haben und Oldenburg nicht. Vorher stand hier „Ideen,
+                die sich lohnen könnten" — gezählt aus einem Werturteil, das
+                das Modell zu 46–58 % traf. */}
             <div className="mt-2 text-2xl font-semibold tabular-nums text-primary">
-              {f.worth_yes}
+              {f.multi_city}
             </div>
             <div className="text-xs text-muted-foreground">
-              {f.worth_yes === 1 ? "Idee, die sich lohnen könnte" : "Ideen, die sich lohnen könnten"}
+              {f.multi_city === 1
+                ? "Idee aus mehreren Städten, die Oldenburg fehlt"
+                : "Ideen aus mehreren Städten, die Oldenburg fehlen"}
             </div>
             <div className="mt-2 text-xs text-muted-foreground/80">
-              {f.total} geprüft · {f.present} hat Oldenburg schon
+              {f.missing + f.partial} fehlen ganz oder halb · {f.present} hat Oldenburg schon
             </div>
           </Card>
         </button>
@@ -176,9 +176,6 @@ function IdeenKarte({ idee }: { idee: Idee }) {
               {status.text}
             </span>
           )}
-          <span className="text-xs font-medium text-foreground">
-            {WORTH[idee.worth] ?? idee.worth}
-          </span>
           {idee.confidence === "low" && (
             <span className="text-xs text-muted-foreground/70">unsicher</span>
           )}
@@ -186,17 +183,9 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         {idee.reason && (
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{idee.reason}</p>
         )}
-        {idee.why_worth && (
-          <p className="mt-1 text-xs leading-relaxed text-foreground/80">{idee.why_worth}</p>
-        )}
         {idee.addressee && (
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
             Entscheidet nicht die Stadt allein: {idee.addressee}
-          </p>
-        )}
-        {idee.obstacles && (
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
-            Dagegen spricht: {idee.obstacles}
           </p>
         )}
       </div>
@@ -262,8 +251,8 @@ function Feld({ feld }: { feld: string }) {
       <h2 className="mt-2 text-lg font-semibold text-foreground">{label}</h2>
       {!isPending && (
         <p className="text-xs text-muted-foreground">
-          {data?.total ?? 0} Ideen aus anderen Städten, sortiert nach dem, was
-          sich am ehesten lohnen könnte.
+          {data?.total ?? 0} Ideen aus anderen Städten. Zuerst, was mehrere
+          Räte beschlossen haben und Oldenburg fehlt.
         </p>
       )}
       <div className="mt-4 space-y-3">
@@ -365,9 +354,10 @@ export default function View() {
         <h1 className="text-xl font-semibold text-foreground">Ideen aus anderen Städten</h1>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
           Was Räte in Osnabrück, Braunschweig, Münster, Potsdam und Magdeburg
-          beschlossen haben — und ob Oldenburg dasselbe schon hat. Die
-          Einschätzung stammt von einem Sprachmodell; die Beschlüsse, auf die
-          sie sich stützt, stehen unter jeder Idee.
+          beschlossen haben — und ob Oldenburg dasselbe schon hat. Das prüft
+          ein Sprachmodell an Oldenburger Beschlüssen; sie stehen unter jeder
+          Idee. Ob sich ein Antrag lohnt, sagt hier bewusst niemand: Das hängt
+          an Mehrheiten und Haushaltslage.
         </p>
       </div>
       <Suchzeile onTreffer={setFrage} />

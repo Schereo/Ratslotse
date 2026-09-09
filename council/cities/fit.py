@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from council.cities.annotate import parse_json
-from council.cities.annotators import USABLE, Annotator, OldenburgFit
+from council.cities.annotators import USABLE, Annotator, OldenburgStatus
 from council.cities.evidence import (
     OLDENBURG_STECKBRIEF, Evidence, cluster_zeile, evidence_for)
 from council.cities.store import CitiesStore
@@ -176,7 +176,6 @@ VOTES = int(os.environ.get("CITIES_FIT_VOTES", "3"))
 #: teurere Irrtum — dieselbe Asymmetrie, die der Prüfstand als harte Schranke
 #: führt.
 STATUS_ORDNUNG = ("missing", "partial", "present")
-WORTH_ORDNUNG = ("maybe", "no", "yes")
 
 
 def _mehrheit(werte: list[str], ordnung: tuple[str, ...]) -> str:
@@ -189,12 +188,8 @@ def _mehrheit(werte: list[str], ordnung: tuple[str, ...]) -> str:
     return min(gleichauf, key=lambda w: ordnung.index(w) if w in ordnung else 99)
 
 
-def majority(urteile: Sequence[OldenburgFit]) -> tuple[OldenburgFit, str]:
+def majority(urteile: Sequence[OldenburgStatus]) -> tuple[OldenburgStatus, str]:
     """Aus mehreren Stimmen ein Urteil — und wie sicher es ist.
-
-    **Status und „lohnt sich" werden GETRENNT ausgezählt.** Sie sind zwei
-    Fragen (das steht so im Prompt), und ein Modell, das beim Status schwankt,
-    kann beim Nutzen sicher sein.
 
     Belege: nur die, die MINDESTENS ZWEI Stimmen nennen — eine Kennung, die
     nur ein Lauf gesehen hat, trägt kein Urteil. Bleibt danach keine übrig,
@@ -206,7 +201,6 @@ def majority(urteile: Sequence[OldenburgFit]) -> tuple[OldenburgFit, str]:
     if not urteile:
         raise ValueError("keine Stimmen")
     status = _mehrheit([u.status for u in urteile], STATUS_ORDNUNG)
-    worth = _mehrheit([u.worth for u in urteile], WORTH_ORDNUNG)
 
     zaehler: dict[str, int] = {}
     for u in urteile:
@@ -228,8 +222,7 @@ def majority(urteile: Sequence[OldenburgFit]) -> tuple[OldenburgFit, str]:
         zuversicht = "low"
 
     ergebnis = traeger.model_copy(update={
-        "status": status, "worth": worth, "evidence": belege,
-        "confidence": zuversicht})
+        "status": status, "evidence": belege, "confidence": zuversicht})
     return ergebnis, f"{einig}/{len(urteile)}"
 
 
@@ -312,13 +305,13 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 stand["cost_usd"] += kosten
         try:
             nutzlast = ann.payload.model_validate(daten)
-            if not isinstance(nutzlast, OldenburgFit):
+            if not isinstance(nutzlast, OldenburgStatus):
                 # Kein Typ-Theater: `majority` liest `status`, `worth` und
                 # `evidence`. Wer `fit` mit einer anderen Nutzlast registriert,
                 # soll es HIER erfahren und nicht drei Zeilen später an einem
                 # fehlenden Attribut.
                 raise TypeError(
-                    f"fit erwartet OldenburgFit, bekam {type(nutzlast).__name__}")
+                    f"fit erwartet OldenburgStatus, bekam {type(nutzlast).__name__}")
         except ValidationError as e:
             with sperre:
                 stand["errors"] += 1

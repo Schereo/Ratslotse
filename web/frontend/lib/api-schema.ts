@@ -8271,8 +8271,6 @@ export interface components {
             kind: string;
             /** Name */
             name: string;
-            /** Obstacles */
-            obstacles: string | null;
             /** Originator */
             originator: string | null;
             /** Outcome */
@@ -8291,10 +8289,6 @@ export interface components {
             transfer: string;
             /** Web */
             web: string | null;
-            /** Why Worth */
-            why_worth: string;
-            /** Worth */
-            worth: string;
         };
         /**
          * IdeaEvidence
@@ -8321,14 +8315,14 @@ export interface components {
             field: string;
             /** Missing */
             missing: number;
+            /** Multi City */
+            multi_city: number;
             /** Partial */
             partial: number;
             /** Present */
             present: number;
             /** Total */
             total: number;
-            /** Worth Yes */
-            worth_yes: number;
         };
         /** IdeaFields */
         IdeaFields: {
@@ -13493,7 +13487,7 @@ export interface operations {
             query: {
                 field: string;
                 status?: string;
-                worth?: string;
+                effort?: string;
                 body?: string | null;
                 page?: number;
                 per_page?: number;
@@ -16761,4 +16755,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0fc03691f60fc0a52d4b70444f76dfd78dc09645144ac7b1e60dff4637b7aad6
+// vertrag-sha256: a0eeb1317907bfc66b254930caf5096ad424ff245dde682fed0a0ddfe50a65cc
