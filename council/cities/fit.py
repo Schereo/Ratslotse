@@ -13,10 +13,19 @@ die Antwort wäre eine Behauptung ins Leere. Und nennt es eine Kennung, die
 ihm nicht vorlag, fliegt der ganze Eintrag raus. Beides wird gezählt, damit
 ein Rückgang auffällt.
 
-**Geschrieben wird nur im Hauptthread.** Dieselbe Lehre wie in
-``annotate.py``: Eine SQLite-Verbindung gehört dem Thread, der sie geöffnet
-hat, und ein Schreibversuch von anderswo wirft. Die Arbeiter sammeln, der
-Hauptthread schreibt.
+**Die Arbeiter fassen die Datenbank GAR NICHT an — auch nicht lesend.**
+Bisher stand hier nur „geschrieben wird im Hauptthread", und genau die
+Lücke hat am 09.09.2026 zugeschlagen: Der Prompt holte sich den
+Vorlagentext mit ``text_for_paper`` aus dem Arbeiter. Bei vier Arbeitern
+fiel das nie auf, bei vierzig warf SQLite ``InterfaceError: bad parameter
+or other API misuse`` — dieselbe Verbindung, zwei Threads gleichzeitig. Der
+Fehler wurde als „eine Vorlage gescheitert" gezählt und **verschluckt**: Der
+Lauf lief weiter, die Stimme fehlte.
+
+Alles, was aus der Datenbank kommt, wird deshalb VORHER eingesammelt —
+Belege, Cluster-Zeile, Vorlagentext — und liegt als Dict bereit, wenn die
+Arbeiter starten. Sie rechnen und rufen das Modell; sie lesen und schreiben
+nichts. ``tests/test_cities_fit.py`` hält das fest.
 """
 from __future__ import annotations
 
@@ -273,6 +282,8 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     logger.info("fit: %s Oldenburger Textabschnitte im Speicher", len(matrix[0]))
     belege_je: dict[str, list[Evidence]] = {}
     cluster_je: dict[str, str] = {}
+    # Der Vorlagentext, hier und nicht im Arbeiter. Siehe `texte_je` unten.
+    texte_je: dict[str, str | None] = {}
     hashes: dict[str, str] = {}
     for start in range(0, len(kandidaten), TERM_BLOCK):
         block = kandidaten[start:start + TERM_BLOCK]
@@ -291,6 +302,7 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                                   chunk_matrix=matrix, begriffe=begriffe)
             belege_je[p["id"]] = belege
             cluster_je[p["id"]] = cluster_zeile(main, p, model)
+            texte_je[p["id"]] = main.text_for_paper(p["id"])
             hashes[p["id"]] = source_hash(p, klasse, belege, ann,
                                           cluster_je[p["id"]], aufwand.get(p["id"]))
         logger.info("  Belege %s/%s", min(start + TERM_BLOCK, len(kandidaten)),
@@ -322,7 +334,7 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
                 messages=[{"role": "system", "content": system},
                           {"role": "user", "content": prompts.render(
                               ann.prompt_user,
-                              paper=paper_text(p, klasse, main.text_for_paper(p["id"]),
+                              paper=paper_text(p, klasse, texte_je.get(p["id"]),
                                                ann, aufwand.get(p["id"])),
                               cluster=cluster_je.get(p["id"], ""),
                               evidence=evidence_text(belege))}],
