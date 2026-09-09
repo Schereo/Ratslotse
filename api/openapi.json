@@ -9189,6 +9189,13 @@
             "title": "Paper Id",
             "type": "string"
           },
+          "peer_stances": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Peer Stances",
+            "type": "object"
+          },
           "peers": {
             "title": "Peers",
             "type": "integer"
@@ -9203,6 +9210,10 @@
             },
             "title": "Siblings",
             "type": "array"
+          },
+          "stance": {
+            "title": "Stance",
+            "type": "string"
           },
           "status": {
             "title": "Status",
@@ -9248,6 +9259,8 @@
           "evidence",
           "effort",
           "siblings",
+          "stance",
+          "peer_stances",
           "addressee",
           "feedback",
           "peers"

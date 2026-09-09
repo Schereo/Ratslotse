@@ -190,6 +190,48 @@ leere Liste die richtige Antwort. Das ist der Normalfall.
 """
 
 
+PROMPT_CITIES_STANCE = """Eine Gruppe von Ratsvorlagen aus mehreren Städten behandelt
+DIESELBE Sache. Du liest die Gruppe, erkennst daran die gemeinsame Sache, und
+sagst dann für EINE Vorlage, wie sie zu dieser Sache steht.
+
+Antworte NUR mit diesem JSON:
+{{"stance": "for|against|review",
+  "reason": "<ein Satz, max. 200 Zeichen>"}}
+
+DIE DREI
+- for:     Die Vorlage WILL die Sache. Einführen, erlassen, ausweiten,
+           fortschreiben, umsetzen, verstetigen — alles, was sie voranbringt.
+- against: Sie will sie NICHT. Verhindern, einstellen, aufheben, beenden,
+           zurücknehmen, verschieben, einschränken.
+- review:  Sie will erst prüfen, berichten, eine Machbarkeit klären. Noch
+           keine Festlegung, ob die Sache kommen soll.
+
+ERST DIE SACHE, DANN DIE HALTUNG. Was die MEHRHEIT der Gruppe behandelt, ist
+die Sache; die Reihenfolge in der Liste bedeutet nichts.
+
+DER HÄUFIGSTE FEHLER IST, DAS VERB DER ÜBERSCHRIFT ZU LESEN statt die Haltung
+zur Sache. Heißt die Sache der Gruppe „Straßenausbaubeiträge abschaffen",
+dann ist „Straßenausbaubeitragssatzung aufheben" ein `for` — die Abschaffung
+IST die Sache, und die Vorlage will sie. Ein `against` wäre dort ein Antrag,
+der die Abschaffung verhindert.
+
+BEISPIELE, alle zur Sache „Verpackungssteuer einführen" (erfunden):
+- „Verpackungssteuersatzung erlassen"             -> for
+- „Verpackungssteuer auf Einwegbecher ausweiten"  -> for
+- „Prüfauftrag Verpackungssteuer einstellen"      -> against
+- „Einführung der Verpackungssteuer verschieben"  -> against
+- „Verpackungssteuer für Kleinbetriebe aussetzen" -> against
+- „Machbarkeit einer Verpackungssteuer prüfen"    -> review
+
+Zwischen `for` und `review` entscheidet, ob die Vorlage eine ENTSCHEIDUNG
+verlangt oder erst Wissen beschaffen will. „Der Rat beschließt das Konzept"
+ist `for`; „die Verwaltung möge ein Konzept vorlegen" ist `review`. Ein
+Antrag, der eine Maßnahme fordert und dafür einen Bericht verlangt, ist
+`for` — der Bericht ist dort das Mittel, nicht der Zweck.
+"""
+
+
+
 PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
 von der bloßen Frage bis zum Haushaltsposten.
 
@@ -356,6 +398,26 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Die Mitglieder einer Ideen-Gruppe",
         "description": "Platzhalter: {items}.",
         "template": "VORLAGEN DIESER GRUPPE:\n{items}",
+    },
+    "cities_stance_system": {
+        "title": "Wohin will diese Vorlage die gemeinsame Sache bewegen?",
+        "description":
+            "Der Annotator `stance`. Keine Platzhalter — die Sache der Gruppe "
+            "und die Vorlage stehen in der Nutzer-Nachricht. Die Beispiele "
+            "sind ERFUNDEN, nicht aus dem Prüfstand (die Lehre aus PR 10, wo "
+            "der Eval sich selbst maß).",
+        "template": PROMPT_CITIES_STANCE,
+    },
+    "cities_stance_user": {
+        "title": "Die Sache der Gruppe und die eine Vorlage",
+        "description":
+            "Platzhalter: {gruppe} (die Instrumente der Mitglieder), {paper}. "
+            "Bewusst NICHT das Label aus `cluster_check`: Gemessen am "
+            "09.09.2026 trug Cluster 10 — achtzehnmal „Straßenausbaubeiträge "
+            "abschaffen“, völlig homogen — das Label „Integrationsfonds und "
+            "-budget“. Ein falscher Bezugspunkt macht die Richtungsfrage "
+            "wertlos; die Mitglieder selbst sind die Wahrheit.",
+        "template": "DIE GRUPPE:\n{gruppe}\n\nDIE VORLAGE:\n{paper}",
     },
     "cities_effort_system": {
         "title": "Was würde diese Idee den Rat kosten?",

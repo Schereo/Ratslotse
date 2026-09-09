@@ -1979,9 +1979,26 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
         "siblings": _geschwister(r.get("siblings_json")),
+        "stance": r.get("stance") or "",
+        "peer_stances": _richtungen(r.get("peer_stances_json")),
         "peers": (peers or {}).get(r["id"], 0),
         "feedback": (feedback or {}).get(r["id"], ""),
     }
+
+
+def _richtungen(roh: str | None) -> dict[str, int]:
+    """Die Richtungen der anderen Städte, gezählt.
+
+    `json_group_array` liefert auch `null` für Mitglieder ohne Urteil; die
+    fallen hier weg, statt als Richtung „null" auf der Karte zu landen.
+    """
+    if not roh:
+        return {}
+    zaehler: dict[str, int] = {}
+    for x in json.loads(roh):
+        if x:
+            zaehler[x] = zaehler.get(x, 0) + 1
+    return zaehler
 
 
 def _geschwister(roh: str | None) -> list[IdeaSibling]:

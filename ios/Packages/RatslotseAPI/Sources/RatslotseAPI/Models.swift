@@ -571,11 +571,19 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     /// zuerst. Potsdam hat das Denkmalpflege-Konzept dreimal beantragt;
     /// gezeigt wird die jüngste, hier stehen die übrigen.
     public let siblings: [IdeaSibling]
+    /// Wohin DIESE Vorlage die gemeinsame Sache bewegen will: introduce,
+    /// expand, restrict, stop, review. Leer, solange der Cron sie nicht
+    /// vergeben hat oder die Idee in keiner Gruppe liegt.
+    public let stance: String
+    /// Wie viele ANDERE Städte in welche Richtung wollen.
+    public let peerStances: [String: Int]
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
         case transfer, competence, originator, status, reason
         case confidence, evidence, effort, addressee, peers, feedback, siblings
+        case stance
+        case peerStances = "peer_stances"
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
@@ -608,6 +616,8 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
         feedback = try v.decodeIfPresent(String.self, forKey: .feedback) ?? ""
         siblings = try v.decodeIfPresent([IdeaSibling].self, forKey: .siblings) ?? []
+        stance = try v.decodeIfPresent(String.self, forKey: .stance) ?? ""
+        peerStances = try v.decodeIfPresent([String: Int].self, forKey: .peerStances) ?? [:]
     }
 }
 

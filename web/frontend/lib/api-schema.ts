@@ -8451,12 +8451,18 @@ export interface components {
             outcome: string;
             /** Paper Id */
             paper_id: string;
+            /** Peer Stances */
+            peer_stances: {
+                [key: string]: number;
+            };
             /** Peers */
             peers: number;
             /** Reason */
             reason: string;
             /** Siblings */
             siblings: components["schemas"]["IdeaSibling"][];
+            /** Stance */
+            stance: string;
             /** Status */
             status: string;
             /** Summary */
@@ -17039,4 +17045,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a68aacf963c9c2fa1fd2be50b2942a22c58c5a67b6add1fcd1e03c6968df4a8b
+// vertrag-sha256: f600e8492532dab8b6aaa5b4c15c911d8bf916daae49c449e3e86aedcc85d445
