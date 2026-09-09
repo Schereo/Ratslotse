@@ -177,16 +177,29 @@ def _rohdatei_mit_papieren(raw_dir: Path, stadt: str) -> None:
 
 
 def test_normalize_ist_idempotent(tmp_path):
-    """Zweimal laufen lassen ändert nichts — die Stufe wird oft wiederholt."""
+    """Zweimal laufen lassen ändert nichts — die Stufe wird oft wiederholt.
+
+    **`last_fetched` gehört NICHT dazu**, und das ist keine Bequemlichkeit:
+    Der Wert sagt, wann zuletzt geholt wurde, und der zweite Lauf ist ein
+    zweiter Lauf. Bis 09.09.2026 verglich der Test ihn mit, und die Prüfung
+    fiel um, wann immer die beiden Aufrufe eine Sekundengrenze überschritten
+    — in der CI unter Last regelmäßig, lokal so gut wie nie. Ein Test, der
+    einmal in zwanzig Läufen ohne Ursache rot wird, bringt niemandem etwas
+    bei; er lehrt nur, rote Läufe noch einmal zu starten.
+    """
     spec = BodySpec("osnabrueck", "Osnabrück", "NI", "allris4", "https://x.de/oparl/system")
     _rohdatei_mit_papieren(tmp_path / "raw", "osnabrueck")
     main = CitiesStore(tmp_path / "cities.sqlite")
+
+    def ohne_zeitstempel(zeilen):
+        return [{k: v for k, v in z.items() if k != "last_fetched"} for z in zeilen]
+
     try:
         erst = normalize(spec, tmp_path / "raw", main)
-        stand = main.stats()
+        stand = ohne_zeitstempel(main.stats())
         zweit = normalize(spec, tmp_path / "raw", main)
         assert erst == zweit
-        assert main.stats() == stand
+        assert ohne_zeitstempel(main.stats()) == stand
         assert main.paper_count("osnabrueck") == 4
     finally:
         main.close()
