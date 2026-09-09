@@ -18,6 +18,17 @@ struct ConversationsView: View {
     @State private var search = ""
     @State private var renameTarget: ConversationSummary?
     @State private var renameTitle = ""
+    /// Das Suchfeld gibt die Tastatur ab, BEVOR das Blatt geht. Sonst bleibt
+    /// sie als Geist stehen: Sie gehört einem Feld, das es nicht mehr gibt,
+    /// und die Ansicht darunter weicht ihr nicht aus — Eingabefeld und
+    /// Tab-Leiste liegen dann unsichtbar unter den Tasten (Pias
+    /// TestFlight-Bild vom 09.09.2026: „die Navigation war weg“).
+    @FocusState private var searchFocused: Bool
+
+    private func close() {
+        searchFocused = false
+        dismiss()
+    }
 
     var body: some View {
         NavigationStack {
@@ -25,7 +36,7 @@ struct ConversationsView: View {
                 RatsSheetHeader(
                     "Meine Gespräche",
                     leadingTitle: "Schließen",
-                    leadingAction: { dismiss() }
+                    leadingAction: close
                 )
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 14) {
@@ -38,7 +49,7 @@ struct ConversationsView: View {
 
                         Button {
                             onNew()
-                            dismiss()
+                            close()
                         } label: {
                             RatsLabel("Neues Gespräch", .squarePen)
                                 .font(RatsFont.body(15, weight: .semibold))
@@ -48,7 +59,7 @@ struct ConversationsView: View {
 
                         if let currentConversationTitle {
                             MonoKicker("Gerade geöffnet")
-                            Button { dismiss() } label: {
+                            Button(action: close) {
                                 HStack(spacing: 12) {
                                     RatsIcon(.messagesSquare, size: 16)
                                         .foregroundStyle(.white)
@@ -93,6 +104,7 @@ struct ConversationsView: View {
                                 RatsIcon(.search, size: 16)
                                     .foregroundStyle(RatsColor.muted)
                                 TextField("In Gesprächen suchen …", text: $search)
+                                    .focused($searchFocused)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
                             }
@@ -241,7 +253,7 @@ struct ConversationsView: View {
         do {
             let payload: JSONValue = try await model.api.get("/api/council/conversations/\(id)")
             onOpen(id, payload)
-            dismiss()
+            close()
         } catch { self.error = error.localizedDescription }
     }
 
@@ -252,7 +264,7 @@ struct ConversationsView: View {
                 conversations.removeAll { $0.id == id }
                 if id == activeConversationID {
                     onDeletedActive()
-                    dismiss()
+                    close()
                 }
             } catch { self.error = error.localizedDescription }
         }
