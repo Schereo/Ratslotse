@@ -348,6 +348,35 @@ def test_arbeiter_fassen_die_datenbank_nicht_an(cities, rats, monkeypatch):
         "ihr kommt, gehört VOR den Lauf der Arbeiter")
 
 
+def test_stichprobe_bricht_bei_totem_beleg_arm_ab(cities, rats, monkeypatch):
+    """Ein Arm, der nichts mehr liefert, beendet den Lauf — statt ihn zu bezahlen.
+
+    Zweimal am 09.09.2026 lief `fit` über Stunden mit einem stummen Arm
+    durch: erst ohne Index (`cluster` und `neighbor` leer), dann mit einer
+    Nachbartabelle, die nach dem Index über alle Städte auf fremde Städte
+    zeigte. Beide Male gab es keine Fehlermeldung, nur schlechtere Urteile
+    und je gut $15.
+
+    Hier steht Oldenburgs Papier-Matrix voll (es GIBT Vektoren), aber der
+    Arm findet nichts — der Fall, in dem Weiterlaufen sinnlos ist.
+    """
+    oldenburger_nachbar(cities, "oldenburg:paper:4711", 0.84)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    monkeypatch.setattr(fit_modul.beleg_modul, "_nachbar_treffer",
+                        lambda *a, **kw: [])
+    with pytest.raises(fit_modul.LaufAbbruch, match="neighbor"):
+        fit_modul.run(cities, rats, get("fit"), MODELL, workers=1, probe_after=1)
+
+
+def test_stichprobe_laeuft_durch_wenn_die_arme_liefern(cities, rats, monkeypatch):
+    """Die Gegenrichtung: Ein Wächter, der immer anschlägt, ist keiner."""
+    oldenburger_nachbar(cities, "oldenburg:paper:4711", 0.84)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1, probe_after=1)
+    assert stand["annotated"] == 1
+    assert stand["probe"]["neighbor"] >= 1, "der Arm liefert, das muss die Probe sehen"
+
+
 def test_erfundene_kennung_wird_nicht_gespeichert(cities, rats, monkeypatch):
     """JEDE Stimme wird einzeln geprüft — sonst trüge die Mehrheit die
     Erfindung mit, weil zwei andere Stimmen sie überstimmen."""

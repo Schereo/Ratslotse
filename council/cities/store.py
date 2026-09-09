@@ -874,6 +874,49 @@ class CitiesStore:
         indizes = [r["chunk_idx"] for r in rows]
         return papiere, indizes, b"".join(r["vector"] for r in rows)
 
+    def substrate_gaps(self, model: str) -> dict:
+        """Was vor einem ``fit``-Lauf fehlen würde — zwei Zahlen, beide teuer.
+
+        **Warum das eine eigene Abfrage ist und kein Blick auf Zeitstempel.**
+        Weder ``object_embeddings`` noch ``idea_clusters`` trägt ein Datum, und
+        selbst mit einem wäre „Cluster älter als Vektor" die falsche Frage: Der
+        Schaden entsteht nicht durch Alter, sondern durch **Lücken**.
+
+        Am 09.09.2026 lief ``fit`` über 9.688 Vorlagen, während 21.700 fremde
+        Vorlagen keinen Vektor hatten. Zwei der fünf Beleg-Arme
+        (``neighbor``, ``cluster``) waren damit für die meisten Vorlagen leer;
+        das Modell urteilte „fehlt", weil ihm nichts vorlag. Kosten: $15,40
+        für einen Lauf, dessen Ergebnis niemand benutzen konnte.
+
+        - ``papers_unembedded`` — ohne Papier-Vektor gibt es keinen
+          Nachbar-Arm (``evidence._nachbar_treffer`` rechnet gegen Oldenburgs
+          Matrix, und die entsteht aus genau dieser Tabelle).
+        - ``ideas_unembedded`` — eine übertragbare Vorlage ohne Ideen-Vektor
+          war beim letzten ``cluster``-Lauf noch nicht eingeordnet. Sie kann
+          in keiner Gruppe liegen, also fehlt ihr der Cluster-Arm.
+
+        Beide zählen nur, was ``fit`` überhaupt betrifft: fremde Vorlagen für
+        die Papier-Vektoren (Oldenburgs eigene sind die Gegenseite und werden
+        getrennt geprüft), übertragbare für die Ideen.
+        """
+        row = self._conn.execute(
+            "SELECT "
+            "  (SELECT COUNT(*) FROM papers p WHERE NOT EXISTS ("
+            "     SELECT 1 FROM object_embeddings o WHERE o.object_kind='paper' "
+            "       AND o.object_id=p.id AND o.model=?)) AS papers_unembedded, "
+            "  (SELECT COUNT(*) FROM papers p WHERE p.body_id='oldenburg' AND NOT EXISTS ("
+            "     SELECT 1 FROM object_embeddings o WHERE o.object_kind='paper' "
+            "       AND o.object_id=p.id AND o.model=?)) AS oldenburg_unembedded, "
+            "  (SELECT COUNT(*) FROM papers p "
+            "     JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
+            "       AND a.annotator='classify' AND a.version='2' "
+            "   WHERE json_extract(a.payload,'$.transfer') IN ('adaptable','universal') "
+            "     AND NOT EXISTS (SELECT 1 FROM object_embeddings o "
+            "                     WHERE o.object_kind='idea' AND o.object_id=p.id "
+            "                       AND o.model=?)) AS ideas_unembedded",
+            (model, model, model)).fetchone()
+        return dict(row)
+
     def paper_matrix(self, model: str, body_id: str) -> tuple[list[str], bytes]:
         """Alle Papier-Vektoren einer Stadt am Stück — Kennung und Rohbytes.
 

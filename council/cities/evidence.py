@@ -290,6 +290,37 @@ def search_terms(classification: dict, paper: dict) -> list[str]:
     return _woerter(instrument)
 
 
+def arm_census(main: CitiesStore, rats: CouncilStore, papiere: list[dict],
+               classifications: dict, model: str,
+               chunk_matrix: ChunkMatrix | None = None,
+               paper_matrix: PaperMatrix | None = None) -> dict[str, int]:
+    """Wie viele Vorlagen jeder Arm belegt — ohne ein einziges Sprachmodell.
+
+    **Wozu.** Ein Arm kann stumm ausfallen: Am 09.09.2026 lieferte
+    ``neighbor`` monatelang nichts mehr, weil die Tabelle ``neighbors`` je
+    Objekt nur die acht nächsten über ALLE Städte hält und nach dem Index
+    über den ganzen Bestand nur noch ein Viertel davon auf Oldenburg zeigte.
+    Kein Absturz, kein roter Test — nur schlechtere Urteile, sichtbar erst in
+    der Auswertung Stunden später.
+
+    Dreißig Vorlagen und ein paar Sekunden genügen, um das zu sehen. Gemessen
+    an dreißig Vorlagen des Bestandslaufs: ``fts`` 28, ``decision`` 23,
+    ``neighbor`` 17, ``chunk`` 14, ``cluster`` 2 von 30 (vor dem Fix:
+    ``neighbor`` 0).
+
+    Gezählt werden **Vorlagen je Art**, nicht Belege: Dass ein Arm zwölf
+    Treffer für ein Papier liefert, sagt weniger als dass er für die Hälfte
+    aller Papiere überhaupt etwas findet.
+    """
+    zaehler: dict[str, int] = {}
+    for p in papiere:
+        belege = evidence_for(main, rats, p, classifications.get(p["id"]) or {}, model,
+                              chunk_matrix=chunk_matrix, paper_matrix=paper_matrix)
+        for art in {b.kind for b in belege}:
+            zaehler[art] = zaehler.get(art, 0) + 1
+    return zaehler
+
+
 def _rrf(raenge: list[list[str]]) -> dict[str, float]:
     """Reciprocal Rank Fusion über mehrere Ranglisten von Kennungen."""
     punkte: dict[str, float] = {}
