@@ -50,12 +50,14 @@ def urteile(main: CitiesStore, version: str) -> list[dict]:
     Ganze statische Anweisung (``tests/test_sql_spalten.py``).
     """
     rows = main._conn.execute(
-        "SELECT p.id, p.body_id, p.name, p.date, "
+        "SELECT p.id, p.body_id, p.name, p.date, p.kind, "
         "       json_extract(f.payload, '$.status') AS status, "
         "       json_extract(f.payload, '$.confidence') AS confidence, "
         "       json_extract(c.payload, '$.field') AS field, "
         "       json_extract(c.payload, '$.instrument') AS instrument, "
-        "       json_extract(e.payload, '$.effort') AS effort "
+        "       json_extract(e.payload, '$.effort') AS effort, "
+        "       (SELECT k.cluster_id FROM idea_clusters k "
+        "        WHERE k.paper_id = p.id AND k.model = ? AND k.version = ?) AS cluster_id "
         "FROM annotations f "
         "JOIN papers p ON p.id = f.object_id "
         "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
@@ -63,8 +65,32 @@ def urteile(main: CitiesStore, version: str) -> list[dict]:
         "LEFT JOIN annotations e ON e.object_kind='paper' AND e.object_id=p.id "
         "  AND e.annotator='effort' AND e.version='1' "
         "WHERE f.object_kind='paper' AND f.annotator='fit' AND f.version=?",
-        (version,))
+        (EMBED_MODEL, CLUSTER_VERSION, version))
     return [dict(r) for r in rows]
+
+
+def ohne_dubletten(zeilen: list[dict]) -> list[dict]:
+    """Je Stadt und Idee eine Zeile — dieselbe Regel wie `CitiesStore.ideas`.
+
+    **Die Abfrage im Store ist die Wahrheit**, nicht diese Funktion: Dort
+    entscheidet SQL, hier Python, und zwei Fassungen laufen auseinander. Sie
+    steht trotzdem hier, weil dieser Bericht über ALLE Themenfelder auf
+    einmal rechnet und die Ideen-Abfrage je Feld einzeln antwortet.
+
+    Es bleibt die jüngste; bei gleichem Datum entscheidet die Kennung.
+    """
+    beste: dict[tuple, dict] = {}
+    frei: list[dict] = []
+    for z in zeilen:
+        if z.get("cluster_id") is None:
+            frei.append(z)
+            continue
+        k = (z["body_id"], z["cluster_id"])
+        vorher = beste.get(k)
+        schluessel = (z.get("date") or "", z["id"])
+        if vorher is None or schluessel > (vorher.get("date") or "", vorher["id"]):
+            beste[k] = z
+    return frei + list(beste.values())
 
 
 def bilanz(zeilen: list[dict], peers: dict[str, int], ab: int) -> None:
@@ -123,6 +149,10 @@ def main() -> int:
                    help="Fassung des Annotators (Vorgabe: die aktuelle)")
     p.add_argument("--ab", type=int, default=2,
                    help="ab wie vielen ANDEREN Städten eine Idee zählt (Vorgabe 2)")
+    p.add_argument("--vorlagen", action="store_true",
+                   help="je VORLAGE zählen statt je Idee. Die Karte zeigt Ideen "
+                        "(eine Zeile je Stadt und Gruppe); dieser Schalter macht "
+                        "sichtbar, wie viele Wiederholungen dahinterstehen.")
     p.add_argument("--zeigen", type=int, default=0,
                    help="zusätzlich die obersten N Ideen auflisten")
     a = p.parse_args()
@@ -132,11 +162,17 @@ def main() -> int:
     store = CitiesStore(db)
     try:
         zeilen = urteile(store, version)
+        roh = len(zeilen)
+        if not a.vorlagen:
+            zeilen = ohne_dubletten(zeilen)
         if not zeilen:
             print(f"Kein Urteil in Fassung {version}. Läuft der Bestandslauf noch?")
             return 1
         peers = store.peers_by_paper(EMBED_MODEL, CLUSTER_VERSION)
         print(f"fit-Fassung {version}, Cluster-Fassung {CLUSTER_VERSION}")
+        if not a.vorlagen:
+            print(f"Je Stadt und Idee eine Zeile: {roh} Vorlagen → {len(zeilen)} Ideen "
+                  f"({roh - len(zeilen)} Wiederholungen). --vorlagen zeigt die rohe Zahl.")
         bilanz(zeilen, peers, a.ab)
         if a.zeigen:
             spitze(zeilen, peers, a.zeigen)

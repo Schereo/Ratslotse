@@ -1375,8 +1375,22 @@ class IdeaEvidence(TypedDict):
     outcome: str | None
 
 
+class IdeaSibling(TypedDict):
+    """Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee."""
+    paper_id: str
+    name: str
+    date: str | None
+
+
 class Idea(TypedDict):
-    """Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat."""
+    """Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
+
+    Eine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das
+    Konzept für bürgerschaftliches Engagement in der Denkmalpflege
+    dreimal beantragt, Münster den Jugendrat zweimal. Gemessen am
+    09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.
+    Gezeigt wird die jüngste, die übrigen stehen in ``siblings``.
+    """
     paper_id: str
     body_id: str
     body_name: str
@@ -1403,6 +1417,9 @@ class Idea(TypedDict):
     #: Annotator `effort`): inquiry < review < resolution < decision < budget.
     #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.
     effort: str
+    #: Die weiteren Vorlagen derselben Stadt zu derselben Idee, älteste
+    #: zuerst. Leer, wenn die Stadt die Sache nur einmal behandelt hat.
+    siblings: list[IdeaSibling]
     #: Wer sie in Oldenburg TUN müsste, wenn nicht die Stadt selbst — „VWG",
     #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
     #: die Stadt selbst entscheidet, und das ist der Normalfall.

@@ -9075,7 +9075,7 @@
         "type": "object"
       },
       "Idea": {
-        "description": "Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.",
+        "description": "Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.\n\nEine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das\nKonzept für bürgerschaftliches Engagement in der Denkmalpflege\ndreimal beantragt, Münster den Jugendrat zweimal. Gemessen am\n09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.\nGezeigt wird die jüngste, die übrigen stehen in ``siblings``.",
         "properties": {
           "addressee": {
             "title": "Addressee",
@@ -9170,6 +9170,13 @@
             "title": "Reason",
             "type": "string"
           },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaSibling"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -9213,6 +9220,7 @@
           "confidence",
           "evidence",
           "effort",
+          "siblings",
           "addressee",
           "feedback",
           "peers"
@@ -9346,6 +9354,33 @@
           "items"
         ],
         "title": "IdeaSearchResponse",
+        "type": "object"
+      },
+      "IdeaSibling": {
+        "description": "Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "name",
+          "date"
+        ],
+        "title": "IdeaSibling",
         "type": "object"
       },
       "IdeasResponse": {
