@@ -2,6 +2,7 @@ import Foundation
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
+import UIKit
 
 #if DEBUG
 func ratsDebugValue(_ key: String) -> String? {
@@ -333,6 +334,12 @@ private struct MainTabsView: View {
     @State private var showsMore = ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_MORE"] == "1"
     @State private var showsTour = ratsDebugValue("RATSLOTSE_DEBUG_TOUR") == "1"
     @State private var accountReturnTab: AppTab = .today
+    /// Solange die Tastatur steht, weicht die Tab-Leiste: Sie stand sonst
+    /// zwischen Tastatur und Eingabefeld und nahm dem Gespräch rund 90 pt
+    /// (Tim, 09.09.2026). Gehört wird auf die System-Meldungen, nicht auf
+    /// einen Fokus — so gilt es für jedes Feld in jedem Tab und auch für
+    /// ein Blatt darüber.
+    @State private var keyboardVisible = false
 
     var body: some View {
         Group {
@@ -350,12 +357,26 @@ private struct MainTabsView: View {
             } else {
                 tabContent
                     .safeAreaInset(edge: .bottom, spacing: 0) {
-                        RatsBottomNavigation(
-                            active: activeDestination,
-                            select: select,
-                            openMore: { showsMore = true }
-                        )
+                        if !keyboardVisible {
+                            RatsBottomNavigation(
+                                active: activeDestination,
+                                select: select,
+                                openMore: { showsMore = true }
+                            )
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
+                    .animation(RatsMotion.flow, value: keyboardVisible)
+            }
+        }
+        .task {
+            for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillShowNotification) {
+                keyboardVisible = true
+            }
+        }
+        .task {
+            for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillHideNotification) {
+                keyboardVisible = false
             }
         }
         .sheet(isPresented: $showsMore) {
