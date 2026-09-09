@@ -364,9 +364,39 @@ Danach einordnen und indizieren (beides über `check_cities.py` oder von Hand
 Vorlagen; `CITIES_ANNOTATE_MAX` deckelt sie je Lauf, damit ein Rückstand über
 mehrere Wochen abgebaut wird statt an einem Sonntag teuer zu werden.
 
-**Reihenfolge beachten:** erst ernten, dann einordnen, dann indizieren — der
-Index baut auf Text *und* Einordnung auf, und die Nachbarschaften entstehen
-zuletzt über alle Städte zusammen.
+**Reihenfolge beachten**, und sie ist seit 09/2026 länger:
+
+```bash
+python scripts/cities_backfill.py --run --stage annotate   # classify + effort
+python scripts/cities_backfill.py --run --stage index      # Chunks, Vektoren, FTS, Nachbarn
+python scripts/cities_backfill.py --run --stage cluster    # Ideen-Cluster über Städte
+# fit läuft nur im Cron — es braucht Index UND Cluster
+```
+
+Jede Stufe braucht die vorige: Die Einordnung sagt, was eine *Idee* ist; der
+Index rechnet Nachbarschaften über alle Städte; die Cluster fassen zusammen,
+was dieselbe Idee ist; und `fit` urteilt erst, wenn es beides hat.
+
+**Nach jeder Ernte die Plausibilität prüfen.** Am 08.09.2026 lagen vier
+Ernte-Fehler gleichzeitig im Bestand, und kein einziger hat sich gemeldet —
+kein Absturz, kein roter Test, keine auffällige Zahl:
+
+```bash
+python scripts/cities_backfill.py --pruefen
+```
+
+Vier Bänder je Stadt (Vorlagen je Sitzung, Anteil mit Ergebnis, mit Text, mit
+Beratung), aus dem Bestand gemessen. Dazu die Ergebnistexte, die die Zuordnung
+nicht kennt — das ist die Liste, mit der man eine neue Stadt anschließt. Die
+Einzelheiten stehen in `council/cities/CLAUDE.md`, die Prüfung läuft auch im
+Wochen-Cron und schreibt `implausibel` in die Kennzahlen.
+
+**Was der Bestand hergibt**, sobald er steht:
+
+```bash
+python scripts/cities_cluster_bericht.py --ohne-oldenburg   # Ideen, die Oldenburg fehlen
+python scripts/cities_gegenrichtung.py --offen              # wie ging es anderswo aus?
+```
 
 **Platz:** Der Speicher wächst mit der Historie; drei Jahre über fünf Städte
 plus Oldenburg seit 2018 sind rund 600 MB. `check_herzschlag.py` schaut auf
@@ -413,6 +443,19 @@ inhaltliche — deshalb steht hier die Reihenfolge, nicht der Griff.
 | 3 | `cities.sqlite` auf der Prod-VM aufbauen und den Wochen-Cron eintragen | vor Schritt 2, sonst zeigt der Block dort nichts |
 | 4 | `ideen-anderswo` in `FEATURE_FLAGS` auf Prod | Tim hat zwei Themenfelder durchgesehen und die Urteile für tragfähig erklärt |
 | 5 | Beide Schalter aus der Registry nehmen | wenn sie auf Prod stehen und niemand sie mehr umlegt |
+
+**Ein Schritt liegt quer dazu: die Fassung des Urteils.** Die Oberfläche zeigt
+`fit`/1; Fassung 2 (Ideen-Cluster, Aufwandsklasse, drei Stimmen) liegt
+daneben und ist noch nicht umgestellt. Der Grund steht als `gut_wenn` am
+Annotator und ist eine Zahl, keine Meinung:
+
+> Fassung 2 ist reif, wenn der Bestand einmal damit gerechnet ist und der
+> Anteil „fehlt + lohnt sich" unter 30 % liegt. Fassung 1 liegt bei 50 %
+> (649 von 1.290 Urteilen) — eine Liste, auf der jede zweite Zeile ein
+> Volltreffer ist, ist kein Vorschlag, sondern ein Katalog.
+
+Umgestellt wird an genau einer Stelle: `CitiesStore.IDEEN_FIT`. Danach der
+Aufräumlauf, der Fassung 1 löscht — aber erst dann.
 
 **Auf dev steht `FEATURE_FLAGS=*`**, dort sind beide also schon an — sichtbar
 wird trotzdem erst etwas, wenn Schritt 1 gelaufen ist.

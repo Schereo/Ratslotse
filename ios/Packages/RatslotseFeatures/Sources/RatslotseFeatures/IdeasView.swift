@@ -290,6 +290,14 @@ private struct IdeaCard: View {
             if let originator = idee.originator, !originator.isEmpty {
                 Text(originator).font(RatsFont.body(10.5)).foregroundStyle(RatsColor.muted)
             }
+            // Aufwand und Verbreitung ordnen den Rest der Karte ein, bevor man
+            // ihn liest: „Anfrage, auch in drei anderen Städten" sagt schon
+            // fast alles. Leise gesetzt — die Aussage macht das Urteil.
+            if !aufwandUndVerbreitung.isEmpty {
+                Text(aufwandUndVerbreitung)
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted)
+            }
 
             Text(idee.name)
                 .font(RatsFont.body(14, weight: .semibold))
@@ -338,6 +346,18 @@ private struct IdeaCard: View {
     }
 
     /// Das Urteil. Anzeigetafel-Tönung, nie eine dunkle Karte im Hellmodus.
+    /// Was die Idee kostet und wie verbreitet sie ist — eine Zeile.
+    private var aufwandUndVerbreitung: String {
+        var teile: [String] = []
+        if let aufwand = Self.aufwand[idee.effort] { teile.append(aufwand) }
+        if idee.peers == 1 {
+            teile.append("auch in 1 anderen Stadt")
+        } else if idee.peers > 1 {
+            teile.append("auch in \(idee.peers) anderen Städten")
+        }
+        return teile.joined(separator: " · ")
+    }
+
     private var urteil: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
@@ -368,6 +388,11 @@ private struct IdeaCard: View {
             }
             if !idee.whyWorth.isEmpty {
                 Text(idee.whyWorth).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let addressee = idee.addressee, !addressee.isEmpty {
+                Text("Entscheidet nicht die Stadt allein: \(addressee)")
+                    .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             if let obstacles = idee.obstacles, !obstacles.isEmpty {
@@ -418,6 +443,12 @@ private struct IdeaCard: View {
     ]
     private static let worth: [String: String] = [
         "yes": "Lohnt sich", "maybe": "Vielleicht", "no": "Lohnt sich nicht",
+    ]
+    /// Dieselben fünf Wörter wie im Web (`ideen/view.tsx`). Web und App
+    /// zeigen dieselbe Sache; zwei Vokabulare wären zwei Produkte.
+    private static let aufwand: [String: String] = [
+        "inquiry": "Anfrage", "review": "Prüfauftrag", "resolution": "Resolution",
+        "decision": "Beschluss", "budget": "kostet Geld",
     ]
     private static let art: [String: String] = [
         "motion": "Antrag", "amendment": "Änderungsantrag", "inquiry": "Anfrage",

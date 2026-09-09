@@ -950,6 +950,26 @@ class CitiesStore:
             (paper_id, model, version))
         return [dict(r) for r in rows]
 
+    def peers_by_paper(self, model: str, version: str = "1") -> dict[str, int]:
+        """Papier-Kennung → wie viele ANDERE Städte dieselbe Idee haben.
+
+        Einmal je Request statt einmal je Zeile: Die Ideen-Liste zeigt dreißig
+        Papiere, und dreißig Einzelabfragen für eine Zahl wären dreißig
+        Rundgänge durch dieselbe Tabelle. Die Zahl zählt die Stadt des Papiers
+        selbst NICHT mit — „in drei anderen Städten" ist die Aussage, die
+        jemanden interessiert.
+        """
+        rows = self._conn.execute(
+            "SELECT k.paper_id, COUNT(DISTINCT p2.body_id) AS peers "
+            "FROM idea_clusters k "
+            "JOIN papers p ON p.id = k.paper_id "
+            "JOIN idea_clusters k2 ON k2.model = k.model AND k2.version = k.version "
+            "  AND k2.cluster_id = k.cluster_id "
+            "JOIN papers p2 ON p2.id = k2.paper_id "
+            "WHERE k.model = ? AND k.version = ? AND p2.body_id != p.body_id "
+            "GROUP BY k.paper_id", (model, version))
+        return {r["paper_id"]: int(r["peers"]) for r in rows}
+
     def cluster_stats(self, model: str, version: str = "1") -> list[dict]:
         """Je Cluster: Mitglieder, Städte, und ob Oldenburg dabei ist.
 

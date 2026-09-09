@@ -1850,8 +1850,9 @@ def cities_search(
     """
     zeilen = cities.search_ideas(q, EMBED_MODEL_FUER_SUCHE, body_id=body,
                                  limit=max(1, min(limit, 100)))
+    peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
     return {"query": q, "total": len(zeilen),
-            "items": [_idee_aus_zeile(store, cities, r) for r in zeilen]}
+            "items": [_idee_aus_zeile(store, cities, r, peers) for r in zeilen]}
 
 
 @router.get("/cities/ideas")
@@ -1887,12 +1888,14 @@ def cities_ideas(
         limit=max(1, min(per_page, 100)),
         offset=max(0, (page - 1) * per_page))
 
-    items = [_idee_aus_zeile(store, cities, r) for r in zeilen]
+    peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
+    items = [_idee_aus_zeile(store, cities, r, peers) for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
 
 
-def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict) -> Idea:
+def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
+                    peers: dict[str, int] | None = None) -> Idea:
     """Eine Zeile des Städte-Speichers als Idee für die Oberfläche.
 
     Beide Endpunkte — Liste und Suche — bauen dieselbe Form; sie zweimal zu
@@ -1923,6 +1926,7 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict) -> Idea:
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
+        "peers": (peers or {}).get(r["id"], 0),
     }
 
 
