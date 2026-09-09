@@ -23,6 +23,7 @@ import { PeekingChick } from "@/components/peeking-chick";
 import { PublicShell } from "@/components/public-shell";
 import { Button, Card, CardListSkeleton, Skeleton, Spinner, toast } from "@/components/ui";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
+import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 import { istOeffentlich, mitRuecksprung } from "@/lib/public-routes";
 import type { User } from "@/lib/types";
 
@@ -295,9 +296,17 @@ function PendingNotice({ email }: { email: string }) {
       <h1 className="mt-4 text-xl font-bold text-foreground">Konto ist deaktiviert</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Dein Konto <span className="font-medium">{email}</span> ist derzeit deaktiviert.
-        Wenn du meinst, dass das ein Irrtum ist, melde dich gern per E-Mail — die
-        Kontaktadresse steht im Impressum.
+        Wenn du meinst, dass das ein Irrtum ist, melde dich gern.
       </p>
+      {/* Die Adresse steht hier direkt statt als Verweis aufs Impressum: Wer
+          gesperrt ist, sieht nur noch diese eine Karte — ihn von dort erst
+          suchen zu schicken, ist genau der falsche Moment. */}
+      <a
+        href={KONTAKT_MAILTO}
+        className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+      >
+        {KONTAKT_EMAIL}
+      </a>
     </Card>
   );
 }
