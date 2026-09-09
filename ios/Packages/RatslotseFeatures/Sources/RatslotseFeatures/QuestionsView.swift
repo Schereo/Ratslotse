@@ -123,8 +123,11 @@ struct QuestionsView: View {
     private var composerBottomPadding: CGFloat {
         // Die Bottom-Navigation reserviert bereits ihren eigenen Safe-Area-
         // Bereich. 82 pt lassen die beiden Glasflächen optisch zusammenstehen,
-        // ohne Schatten oder Trefferflächen überlappen zu lassen.
-        horizontalSizeClass == .compact ? 82 : 18
+        // ohne Schatten oder Trefferflächen überlappen zu lassen. Steht die
+        // Tastatur, weicht die Leiste (NativeRootView) — dann rückt das Feld
+        // direkt an die Tasten.
+        guard horizontalSizeClass == .compact else { return 18 }
+        return composerFocused ? 10 : 82
     }
     private var shouldAutoScroll: Bool {
 #if DEBUG
@@ -368,6 +371,7 @@ struct QuestionsView: View {
             .padding(.top, 8)
             .padding(.bottom, composerBottomPadding)
             .frame(maxWidth: .infinity)
+            .animation(RatsMotion.flow, value: composerFocused)
             .background {
                 GeometryReader { geometry in
                     Color.clear.onChange(of: geometry.frame(in: .global).minY, initial: true) { _, y in
