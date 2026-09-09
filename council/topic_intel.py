@@ -116,6 +116,15 @@ def vor_sechs_monaten(heute: date | None = None) -> date:
 #: Wörter, die eine Aufzählung einleiten, aber selbst kein Thema sind.
 _AUFZAEHL_KOPF = ("stadtteile", "themen", "orte", "bereiche", "gebiete")
 
+#: Wörter, die einen Teil zum Satzstück machen: Artikel, Präpositionen, „und".
+#: Ein Themen-Name wie „Fliegerhorst" hat keins davon; „Wohnen in Kreyenbrück"
+#: und „Stadt der Wissenschaft" schon.
+_SATZWOERTER = frozenset({
+    "und", "oder", "sowie", "in", "im", "am", "an", "auf", "aus", "bei", "mit",
+    "nach", "von", "vom", "zu", "zum", "zur", "für", "über", "unter", "ohne",
+    "der", "die", "das", "des", "dem", "den", "ein", "eine", "einer", "eines",
+})
+
 
 def aufteilbar(name: str, hoechstens: int = 8) -> list[str]:
     """Ist dieser Themen-Name in Wahrheit eine LISTE? Dann ihre Teile.
@@ -155,6 +164,26 @@ def aufteilbar(name: str, hoechstens: int = 8) -> list[str]:
     # mit Kommata, keine Liste.
     if any(len(t.split()) > 4 or looks_like_instruction(t) for t in teile):
         return []
+    # Drei Fälle, an denen die erste Fassung am 09.09.2026 gescheitert ist —
+    # gemessen an erfundenen, aber plausiblen Eingaben:
+    #
+    # * „Radwege, Fahrradstraßen und Abstellanlagen" wurde zu zwei Teilen,
+    #   und der zweite hieß „Fahrradstraßen und Abstellanlagen". Ein „und" in
+    #   einem der Teile heißt: Das ist EINE Sache, mit Komma im Satz, keine
+    #   Liste — dann wird gar nicht aufgeteilt (nicht etwa in drei).
+    # * „Oldenburg, Stadt der Wissenschaft" und „Wohnen in Kreyenbrück, …"
+    #   sind Beisätze: Ein Teil mit Artikel oder Präposition ist ein Satzstück,
+    #   kein Name.
+    # * „Klimaschutz 2035, Maßnahmenplan" und „Sanierung Cäcilienbrücke,
+    #   Bauabschnitt 2": Eine Zahl in einem Teil macht ihn zur Angabe, nicht
+    #   zum Thema. Der Preis ist, dass „Bebauungsplan 851, Bebauungsplan 852"
+    #   nicht angeboten wird — ein fehlendes Angebot bleibt das kleinere Übel.
+    for t in teile:
+        woerter = [w.lower() for w in t.split()]
+        if any(w in _SATZWOERTER for w in woerter):
+            return []
+        if re.search(r"\d", t):
+            return []
     return teile
 
 
