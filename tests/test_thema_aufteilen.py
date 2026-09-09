@@ -48,3 +48,32 @@ def test_sehr_lange_listen_werden_nicht_angeboten():
     """Zwanzig Teile sind kein Bedienfehler mehr, sondern etwas anderes —
     und zwanzig Themen anzulegen wäre für niemanden ein Gefallen."""
     assert aufteilbar(", ".join(f"Ort {i}" for i in range(20))) == []
+
+
+# ---- Die Fehlgriffe vom 09.09.2026, gemessen an plausiblen Eingaben ----
+
+def test_ein_und_in_einem_teil_heisst_keine_liste():
+    """„A, B und C" ist ein Satz mit Komma, kein Angebot für drei Themen —
+    die erste Fassung machte daraus „A" und „B und C"."""
+    assert aufteilbar("Radwege, Fahrradstraßen und Abstellanlagen") == []
+    assert aufteilbar("Wohnen in Kreyenbrück, Bümmerstede und Krusenbusch") == []
+
+
+def test_beisaetze_sind_keine_listen():
+    for name in ("Oldenburg, Stadt der Wissenschaft", "Cäcilienbrücke, die Sanierung",
+                 "Fliegerhorst, Wohnen für alle"):
+        assert aufteilbar(name) == [], name
+
+
+def test_zahlen_machen_einen_teil_zur_angabe():
+    for name in ("Klimaschutz 2035, Maßnahmenplan", "Sanierung Cäcilienbrücke, Bauabschnitt 2",
+                 "Bebauungsplan 851, Bebauungsplan 852"):
+        assert aufteilbar(name) == [], name
+
+
+def test_saubere_listen_gehen_weiterhin():
+    assert aufteilbar("Kitas, Schulen, Spielplätze") == ["Kitas", "Schulen", "Spielplätze"]
+    assert aufteilbar("Ofenerdiek; Etzhorn; Ohmstede") == ["Ofenerdiek", "Etzhorn", "Ohmstede"]
+    assert aufteilbar("Themen: Wohnen, Verkehr, Klima") == ["Wohnen", "Verkehr", "Klima"]
+    assert aufteilbar("Stadtteile: Bürgerfelde Nord,Dietrichsfeld,Haarentor") == [
+        "Bürgerfelde Nord", "Dietrichsfeld", "Haarentor"]
