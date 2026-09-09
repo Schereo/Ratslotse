@@ -72,7 +72,10 @@ JOBS: list[dict] = [
         "label": "Andere Städte",
         "description": "Vorlagen, Sitzungen und Ergebnisse der Vergleichsstädte über OParl — "
                        "plus Oldenburg aus der eigenen Rats-Datenbank.",
-        "schedule": "sonntags 3 Uhr",
+        # Fünf Uhr und nicht drei: `weekly_enrich` läuft sonntags um drei, und
+        # zwei Läufe, die beide ein Embedding-Modell laden, gehören nicht auf
+        # dieselbe Stunde einer VM mit zwei Kernen.
+        "schedule": "sonntags 5 Uhr",
         # Großzügig: Der Lauf ist wöchentlich, und ein einzelner ausgefallener
         # Sonntag ist kein Alarm — erst zwei hintereinander.
         "max_age_h": 8 * 24,
