@@ -533,11 +533,13 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     /// In wie vielen ANDEREN Städten dieselbe Idee vorkommt. 0 heißt: in
     /// keiner — kein Makel, sondern eine Aussage über die Idee.
     public let peers: Int
+    /// Was DIESES Konto zum Urteil gesagt hat: "right", "wrong" oder leer.
+    public let feedback: String
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
         case transfer, competence, originator, status, reason
-        case confidence, evidence, effort, addressee, peers
+        case confidence, evidence, effort, addressee, peers, feedback
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
@@ -568,6 +570,7 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         effort = try v.decodeIfPresent(String.self, forKey: .effort) ?? ""
         addressee = try v.decodeIfPresent(String.self, forKey: .addressee)
         peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
+        feedback = try v.decodeIfPresent(String.self, forKey: .feedback) ?? ""
     }
 }
 

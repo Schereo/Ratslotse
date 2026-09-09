@@ -134,6 +134,64 @@ function Uebersicht() {
 
 // ------------------------------------------------------------ Eine Karte
 
+/**
+ * „Stimmt" / „Stimmt nicht" — ein Klick, der den Maßstab baut.
+ *
+ * Jedes Urteil des Städtevergleichs wird gegen vierzig Fälle gemessen, die
+ * EIN Mensch an einem Tag beurteilt hat — und in vier von sieben Pull
+ * Requests war genau dieser Maßstab der Fehler, nicht das Modell.
+ * Vierhundert Rückmeldungen von zwei Ratsmitgliedern wären ein besserer.
+ *
+ * Bewusst leise: zwei Wörter am Fuß der Karte, keine Sterne, keine Skala.
+ * Wer nichts sagen will, sieht fast nichts.
+ */
+function Rueckmeldung({ idee }: { idee: Idee }) {
+  const [gesagt, setGesagt] = useState(idee.feedback);
+  const [fehler, setFehler] = useState(false);
+
+  async function sagen(verdict: "right" | "wrong") {
+    const neu = gesagt === verdict ? "" : verdict;
+    setGesagt(neu);
+    setFehler(false);
+    if (!neu) return;
+    try {
+      await api.post(
+        `/council/cities/ideas/${encodeURIComponent(idee.paper_id)}/feedback?verdict=${verdict}`,
+      );
+    } catch {
+      // Ohne Konto geht es nicht, und das ist der Punkt: Eine Rückmeldung,
+      // die sich nicht zählen lässt, ist kein Maßstab. Ein Hinweis statt
+      // eines stillen Fehlschlags.
+      setGesagt("");
+      setFehler(true);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-3 text-[11px]">
+      <span className="text-muted-foreground/70">Stimmt das?</span>
+      {(["right", "wrong"] as const).map((wert) => (
+        <button
+          key={wert}
+          type="button"
+          onClick={() => sagen(wert)}
+          aria-pressed={gesagt === wert}
+          className={
+            gesagt === wert
+              ? "font-medium text-primary"
+              : "text-muted-foreground/70 hover:text-foreground"
+          }
+        >
+          {wert === "right" ? "Ja" : "Nein"}
+        </button>
+      ))}
+      {fehler && (
+        <span className="text-muted-foreground/70">Dafür braucht es ein Konto.</span>
+      )}
+    </div>
+  );
+}
+
 function IdeenKarte({ idee }: { idee: Idee }) {
   const status = STATUS[idee.status];
   const kopf = [ART[idee.kind] ?? null, datum(idee.date)].filter(Boolean).join(" · ");
@@ -188,6 +246,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
             Entscheidet nicht die Stadt allein: {idee.addressee}
           </p>
         )}
+        <Rueckmeldung idee={idee} />
       </div>
 
       {idee.evidence.length > 0 && (

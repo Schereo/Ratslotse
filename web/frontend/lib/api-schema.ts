@@ -2337,6 +2337,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/council/cities/ideas/{paper_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cities Idea Feedback
+         * @description „Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
+         *
+         *     **Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des
+         *     Städtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an
+         *     einem Tag beurteilt hat — und in vier von sieben Pull Requests war genau
+         *     dieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von
+         *     zwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.
+         *
+         *     **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
+         *     Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
+         *     Stimmen), und der Maßstab wäre wieder wertlos.
+         *
+         *     Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
+         *     gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
+         */
+        post: operations["cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/council/cities/search": {
         parameters: {
             query?: never;
@@ -7962,6 +7995,16 @@ export interface components {
             /** Parties */
             parties: string[];
         };
+        /**
+         * FeedbackAck
+         * @description Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht.
+         */
+        FeedbackAck: {
+            /** Paper Id */
+            paper_id: string;
+            /** Verdict */
+            verdict: string;
+        };
         /** FeedbackIn */
         FeedbackIn: {
             /** Kind */
@@ -8263,6 +8306,8 @@ export interface components {
             effort: string;
             /** Evidence */
             evidence: components["schemas"]["IdeaEvidence"][];
+            /** Feedback */
+            feedback: string;
             /** Field */
             field: string | null;
             /** Instrument */
@@ -13538,6 +13583,40 @@ export interface operations {
             };
         };
     };
+    cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post: {
+        parameters: {
+            query: {
+                verdict: string;
+                note?: string | null;
+            };
+            header?: never;
+            path: {
+                paper_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackAck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cities_search_api_council_cities_search_get: {
         parameters: {
             query: {
@@ -16755,4 +16834,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a0eeb1317907bfc66b254930caf5096ad424ff245dde682fed0a0ddfe50a65cc
+// vertrag-sha256: 5a7ecfc63a9f15ccdd524b3d96f5b5d1a4e01ed64789a8eb21c2675e8da0c127

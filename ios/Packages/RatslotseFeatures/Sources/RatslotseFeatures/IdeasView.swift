@@ -274,6 +274,8 @@ struct IdeasView: View {
 private struct IdeaCard: View {
     let model: AppModel
     let idee: Idea
+    @State private var gesagt: String = ""
+    @State private var fehlgeschlagen = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -361,6 +363,58 @@ private struct IdeaCard: View {
         return teile.joined(separator: " · ")
     }
 
+    /// „Stimmt das?" — dieselben zwei Wörter wie im Web.
+    ///
+    /// Jedes Urteil wird gegen vierzig handgeurteilte Fälle gemessen, und
+    /// genau dieser Maßstab war in vier von sieben Pull Requests der Fehler.
+    /// Vierhundert Rückmeldungen von zwei Ratsmitgliedern wären ein besserer,
+    /// und sie kosten einen Klick an der Karte, die ohnehin gelesen wird.
+    @ViewBuilder
+    private var rueckmeldung: some View {
+        HStack(spacing: 12) {
+            Text("Stimmt das?")
+                .font(RatsFont.body(10.5))
+                .foregroundStyle(RatsColor.muted.opacity(0.8))
+            ForEach(["right", "wrong"], id: \.self) { wert in
+                Button {
+                    Task { await sagen(wert) }
+                } label: {
+                    Text(wert == "right" ? "Ja" : "Nein")
+                        .font(RatsFont.body(10.5,
+                                            weight: gesagt == wert ? .medium : .regular))
+                        .foregroundStyle(gesagt == wert ? RatsColor.primary
+                                                        : RatsColor.muted.opacity(0.8))
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+            }
+            if fehlgeschlagen {
+                Text("Dafür braucht es ein Konto.")
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted.opacity(0.8))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 2)
+    }
+
+    private func sagen(_ wert: String) async {
+        let neu = gesagt == wert ? "" : wert
+        gesagt = neu
+        fehlgeschlagen = false
+        guard !neu.isEmpty else { return }
+        do {
+            // Der Parameter geht über `query:`, nicht in den Pfad — sonst wird
+            // das „?" mitkodiert und der Server antwortet mit 404. Dieselbe
+            // Falle wie bei der Ideen-Liste.
+            try await model.api.sendVoid(
+                "/api/council/cities/ideas/\(idee.paperID)/feedback",
+                query: [URLQueryItem(name: "verdict", value: wert)])
+        } catch {
+            gesagt = ""
+            fehlgeschlagen = true
+        }
+    }
+
     private var urteil: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
@@ -391,6 +445,7 @@ private struct IdeaCard: View {
                     .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            rueckmeldung
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)

@@ -1407,6 +1407,11 @@ class Idea(TypedDict):
     #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
     #: die Stadt selbst entscheidet, und das ist der Normalfall.
     addressee: str | None
+    #: Was DIESES Konto zum Urteil gesagt hat: „right", „wrong" oder leer.
+    #: Der Rückkanal ist der billigste Maßstab, den es gibt — vierhundert
+    #: Rückmeldungen von zwei Ratsmitgliedern schlagen vierzig Fälle, die ein
+    #: Mensch an einem Tag geurteilt hat.
+    feedback: str
     #: In wie vielen ANDEREN Städten dieselbe Idee vorkommt
     #: (`council/cities/clusters.py`). 0 heißt: in keiner — und das ist kein
     #: Makel, sondern eine Aussage über die Idee.
@@ -1442,6 +1447,12 @@ class IdeaFieldSummary(TypedDict):
     #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
     #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.
     multi_city: int
+
+
+class FeedbackAck(TypedDict):
+    """Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht."""
+    paper_id: str
+    verdict: str
 
 
 class IdeaFields(TypedDict):

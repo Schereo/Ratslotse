@@ -1076,6 +1076,75 @@ class CitiesStore:
 
     # ------------------------------------------------------------- Pipeline
 
+    # ------------------------------------------------------------- Schicht 5
+
+    def put_feedback(self, object_kind: str, object_id: str, annotator: str,
+                     version: str, user_id: int, verdict: str,
+                     note: str | None = None) -> None:
+        """Eine Rückmeldung zu einem Urteil — eine je Konto, die zweite ersetzt.
+
+        **Die Fassung gehört in den Schlüssel.** „Das Urteil ist falsch" gilt
+        für das Urteil, das jemand GESEHEN hat; kommt eine neue Fassung des
+        Annotators, ist die alte Rückmeldung Geschichte, nicht Wahrheit über
+        die neue. Ohne die Fassung im Schlüssel schleppte ein Prüfstand
+        Urteile über etwas mit, das es nicht mehr gibt.
+        """
+        if verdict not in ("right", "wrong"):
+            raise ValueError(f"unbekanntes Urteil {verdict!r}")
+        with self._write() as conn:
+            conn.execute(
+                "INSERT INTO feedback (object_kind, object_id, annotator, version, "
+                "  user_id, verdict, note, created_at) VALUES (?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(object_kind, object_id, annotator, version, user_id) "
+                "DO UPDATE SET verdict=excluded.verdict, note=excluded.note, "
+                "  created_at=excluded.created_at",
+                (object_kind, object_id, annotator, version, user_id, verdict,
+                 note, now()))
+
+    def feedback_for(self, object_id: str, annotator: str, version: str,
+                     user_id: int) -> str | None:
+        """Was DIESES Konto zu diesem Urteil gesagt hat — für die Anzeige."""
+        row = self._conn.execute(
+            "SELECT verdict FROM feedback WHERE object_kind='paper' AND object_id=? "
+            "  AND annotator=? AND version=? AND user_id=?",
+            (object_id, annotator, version, user_id)).fetchone()
+        return row["verdict"] if row else None
+
+    def feedback_by_paper(self, annotator: str, version: str,
+                          user_id: int) -> dict[str, str]:
+        """Alle Rückmeldungen dieses Kontos auf einmal — wie ``peers_by_paper``.
+
+        Die Ideen-Liste zeigt dreißig Karten; dreißig Einzelabfragen für je ein
+        Wort wären dreißig Rundgänge durch dieselbe Tabelle.
+        """
+        rows = self._conn.execute(
+            "SELECT object_id, verdict FROM feedback WHERE object_kind='paper' "
+            "  AND annotator=? AND version=? AND user_id=?",
+            (annotator, version, user_id))
+        return {r["object_id"]: r["verdict"] for r in rows}
+
+    def feedback_stats(self, annotator: str, version: str) -> list[dict]:
+        """Je Urteil: wie viele Menschen es für richtig oder falsch halten.
+
+        Die Grundlage des nächsten Maßstabs. Was mehrere unabhängig für falsch
+        halten, gehört ins Golden Set — und zwar mit ihrem Urteil, nicht mit
+        meinem.
+        """
+        rows = self._conn.execute(
+            "SELECT f.object_id, "
+            "  SUM(f.verdict='right') AS richtig, SUM(f.verdict='wrong') AS falsch, "
+            "  p.name, p.body_id, a.payload AS urteil "
+            "FROM feedback f "
+            "JOIN papers p ON p.id = f.object_id "
+            "LEFT JOIN annotations a ON a.object_kind='paper' AND a.object_id=f.object_id "
+            "  AND a.annotator=f.annotator AND a.version=f.version "
+            "WHERE f.object_kind='paper' AND f.annotator=? AND f.version=? "
+            "GROUP BY f.object_id ORDER BY falsch DESC, richtig DESC",
+            (annotator, version))
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------- Pipeline
+
     def stage_done(self, object_kind: str, object_id: str, stage: str, version: str) -> bool:
         row = self._conn.execute(
             "SELECT status FROM stages WHERE object_kind=? AND object_id=? AND stage=? AND version=?",

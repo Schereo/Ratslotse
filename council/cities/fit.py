@@ -43,7 +43,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("council.cities.fit")
 
-WORKERS = 4
+#: Wie viele Urteile gleichzeitig unterwegs sind. Vier ist der sichere Wert
+#: für den Wochen-Cron; ein BACKFILL über den ganzen Bestand braucht mehr —
+#: 9.675 Kandidaten mal drei Stimmen sind bei vier Arbeitern Tage statt
+#: Stunden. Über die Umgebung, damit ein Nachlauf nicht Code ändern muss.
+WORKERS = int(os.environ.get("CITIES_FIT_WORKERS", "4"))
 
 #: Belege, die eine Aussage über Oldenburg tragen. Der Themenfeld-Rückblick
 #: gehört nicht dazu: Er sagt, was die Stadt gerade beschäftigt, nicht ob sie
