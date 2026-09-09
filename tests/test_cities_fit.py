@@ -47,6 +47,39 @@ def rats(tmp_path):
     store.close()
 
 
+#: Der Vektor, den `_embed_eins` in diesen Tests für JEDE Vorlage liefert.
+#: Vier Zahlen genügen — die Arme rechnen ein Skalarprodukt, keine Semantik.
+FRAGE_VEKTOR = (1.0, 0.0, 0.0, 0.0)
+
+
+@pytest.fixture(autouse=True)
+def fester_vektor(monkeypatch):
+    """Der Nachbar-Arm rechnet seit 09.09.2026 selbst gegen Oldenburgs Matrix,
+    statt die Tabelle `neighbors` zu lesen (siehe `evidence._nachbar_treffer`).
+    Damit die Tests eine Ähnlichkeit VORGEBEN können statt sie zu erwürfeln,
+    steht die Frage fest; `oldenburger_nachbar` legt die Gegenstücke dazu.
+    """
+    import numpy as np
+
+    from council.cities import evidence as ev
+    monkeypatch.setattr(ev, "_embed_eins",
+                        lambda text: np.array(FRAGE_VEKTOR, dtype=np.float32))
+
+
+def oldenburger_nachbar(store, paper_id: str, naehe: float) -> None:
+    """Eine Oldenburger Vorlage mit genau dieser Ähnlichkeit zur Frage.
+
+    Ersetzt das frühere `replace_neighbors`: Die Zahl steht jetzt im Vektor,
+    nicht in einer Tabellenspalte — und genau das ist der Punkt der Änderung.
+    """
+    import math
+
+    import numpy as np
+    rest = math.sqrt(max(0.0, 1.0 - naehe * naehe))
+    v = np.array([naehe, rest, 0.0, 0.0], dtype=np.float32)
+    store.put_object_embedding("paper", paper_id, MODELL, "h:" + paper_id, v.tobytes())
+
+
 @pytest.fixture(autouse=True)
 def feste_suchbegriffe(monkeypatch):
     """Die Belegsuche fragt ein Modell nach Oldenburger Suchwörtern.
@@ -86,8 +119,7 @@ def cities(tmp_path):
                           "summary": "Zusammenfassung."}, "h" + pid)
     s.fts_upsert("oldenburg:paper:4711", "oldenburg", "Kommunale Wärmeplanung",
                  None, "Wärmenetz und Wärmeplanung für Oldenburg", None)
-    s.replace_neighbors(MODELL, "paper", "os:p:1",
-                        [("paper", "oldenburg:paper:4711", 0.84)])
+    oldenburger_nachbar(s, "oldenburg:paper:4711", 0.84)
     yield s
     s.close()
 
@@ -138,8 +170,7 @@ def test_belege_sind_eindeutig(cities, rats):
 def test_zu_ferne_nachbarn_belegen_nichts(cities, rats):
     """Der Median der Ähnlichkeit zweier beliebiger Verwaltungstexte liegt bei
     0,70. Was darunter liegt, ist kein Beleg — es sieht nur so aus."""
-    cities.replace_neighbors(MODELL, "paper", "os:p:1",
-                             [("paper", "oldenburg:paper:4711", 0.41)])
+    oldenburger_nachbar(cities, "oldenburg:paper:4711", 0.41)
     papier = cities.paper("os:p:1")
     klasse = cities.annotation("paper", "os:p:1", "classify", "2")["payload"]
     belege = evidence_for(cities, rats, papier, klasse, MODELL)
@@ -227,7 +258,7 @@ def test_ohne_belege_wird_gar_nicht_erst_gefragt(cities, rats, monkeypatch):
     """Ein Urteil ohne Grundlage ist eine Behauptung. Der Rückblick allein
     trägt sie nicht — er sagt, was die Stadt beschäftigt, nicht ob sie dieses
     Instrument hat."""
-    cities.replace_neighbors(MODELL, "paper", "os:p:1", [])
+    cities._conn.execute("DELETE FROM object_embeddings")
     cities._conn.execute("DELETE FROM papers_fts")
     aufrufe = []
     monkeypatch.setattr(fit_modul.llm, "chat_complete",
@@ -354,9 +385,7 @@ def test_ein_neuer_oldenburger_beleg_macht_das_urteil_alt(cities, rats, monkeypa
     fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
     cities.upsert_batch(Batch(papers=[
         Paper("oldenburg:paper:5000", "oldenburg", "Wärmenetz Oldenburg", date="2026-02-01")]))
-    cities.replace_neighbors(MODELL, "paper", "os:p:1",
-                             [("paper", "oldenburg:paper:4711", 0.84),
-                              ("paper", "oldenburg:paper:5000", 0.81)])
+    oldenburger_nachbar(cities, "oldenburg:paper:5000", 0.81)
     stand = fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
     assert stand["annotated"] == 1, "ein neuer Beleg muss das Urteil neu stellen"
 
