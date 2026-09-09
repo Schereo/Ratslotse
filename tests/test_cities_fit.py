@@ -235,6 +235,33 @@ def test_ohne_belege_wird_gar_nicht_erst_gefragt(cities, rats, monkeypatch):
     assert stand["skipped_no_evidence"] == 1 and stand["annotated"] == 0
 
 
+def test_suchbegriffe_werden_je_vorlage_genau_einmal_geholt(cities, rats, monkeypatch):
+    """Der Aufruf, der den Bestandslauf lange gebremst hat, darf sich nicht
+    verdoppeln.
+
+    Die Suchwörter (»wie hieße das in Oldenburg?«) werden seit 09.09.2026
+    für einen ganzen Block VORAB geholt, nebenläufig — das ist der Grund,
+    warum die Belegsammlung über 9.688 Vorlagen sieben statt 73 Minuten
+    braucht. Sie gehen danach als ``begriffe`` in ``evidence_for``. Fällt
+    dieses Durchreichen weg, holt die Belegsuche sie ein zweites Mal:
+    doppelte Kosten, doppelte Wartezeit, **kein roter Test** — die Belege
+    kämen ja richtig heraus. Deshalb wird hier gezählt.
+    """
+    from council.cities import evidence as ev
+    geholt: list[str] = []
+
+    def zaehlend(klasse, papier):
+        geholt.append(papier["id"])
+        return ev._woerter(klasse.get("instrument") or "")
+
+    monkeypatch.setattr(ev, "search_terms", zaehlend)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    fit_modul.run(cities, rats, get("fit"), MODELL, workers=1)
+    assert geholt.count("os:p:1") == 1, (
+        "die Suchwörter wurden zweimal geholt — `begriffe` kommt nicht "
+        "mehr aus dem Vorlauf in `evidence_for` an")
+
+
 def test_erfundene_kennung_wird_nicht_gespeichert(cities, rats, monkeypatch):
     """JEDE Stimme wird einzeln geprüft — sonst trüge die Mehrheit die
     Erfindung mit, weil zwei andere Stimmen sie überstimmen."""

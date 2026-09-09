@@ -33,6 +33,7 @@ from pydantic import ValidationError
 
 from council.cities.annotate import parse_json
 from council.cities.annotators import USABLE, Annotator, OldenburgStatus
+from council.cities import evidence as beleg_modul
 from council.cities.evidence import (
     OLDENBURG_STECKBRIEF, Evidence, cluster_zeile, evidence_for)
 from council.cities.store import CitiesStore
@@ -48,6 +49,29 @@ logger = logging.getLogger("council.cities.fit")
 #: 9.675 Kandidaten mal drei Stimmen sind bei vier Arbeitern Tage statt
 #: Stunden. Über die Umgebung, damit ein Nachlauf nicht Code ändern muss.
 WORKERS = int(os.environ.get("CITIES_FIT_WORKERS", "4"))
+
+#: Wie viele Suchwort-Aufrufe gleichzeitig unterwegs sind — und warum das
+#: ein eigener Regler ist. Die Belegsammlung sieht nach Rechenarbeit aus
+#: (20.936 Vektoren je Vorlage), ist aber fast nur Warten: Gemessen am
+#: 09.09.2026 lief sie mit **2,2 Vorlagen je Sekunde**, und in jeder dieser
+#: 0,45 Sekunden steckte EIN kleiner Modellaufruf für die Oldenburger
+#: Suchwörter (``evidence.search_terms``). Über 9.688 Vorlagen sind das
+#: **73 Minuten**, in denen ein Kern wartet und sonst nichts geschieht — vor
+#: dem eigentlichen Lauf, der noch gar nicht begonnen hat.
+#:
+#: Parallel läuft deshalb **nur dieser Aufruf**. Er fasst keine Datenbank an;
+#: alles Übrige (``neighbors``, FTS, die Oldenburger Beschlüsse) bleibt im
+#: Hauptthread, weil eine SQLite-Verbindung nebenläufig zu benutzen genau der
+#: Fehler ist, den der Modulkopf beschreibt. Die Wörter gehen als
+#: ``begriffe`` in ``evidence_for`` — für genau diesen Fall gibt es den
+#: Parameter, er ist nicht neu.
+TERM_WORKERS = int(os.environ.get("CITIES_TERM_WORKERS", "16"))
+
+#: Blockweise, nicht auf einen Schlag: 9.688 Aufträge gleichzeitig in einen
+#: Pool zu werfen kostet nichts an Zeit, aber der Fortschritt stünde erst am
+#: Ende in einer Zeile — und ein Lauf ohne sichtbaren Fortschritt sieht aus
+#: wie ein hängender Lauf.
+TERM_BLOCK = 200
 
 #: Belege, die eine Aussage über Oldenburg tragen. Der Themenfeld-Rückblick
 #: gehört nicht dazu: Er sagt, was die Stadt gerade beschäftigt, nicht ob sie
@@ -250,15 +274,27 @@ def run(main: CitiesStore, rats: CouncilStore, ann: Annotator,
     belege_je: dict[str, list[Evidence]] = {}
     cluster_je: dict[str, str] = {}
     hashes: dict[str, str] = {}
-    for n, p in enumerate(kandidaten, 1):
-        klasse = einordnung.get(p["id"]) or {}
-        belege = evidence_for(main, rats, p, klasse, model, chunk_matrix=matrix)
-        belege_je[p["id"]] = belege
-        cluster_je[p["id"]] = cluster_zeile(main, p, model)
-        hashes[p["id"]] = source_hash(p, klasse, belege, ann,
-                                      cluster_je[p["id"]], aufwand.get(p["id"]))
-        if n % 200 == 0:
-            logger.info("  Belege %s/%s", n, len(kandidaten))
+    for start in range(0, len(kandidaten), TERM_BLOCK):
+        block = kandidaten[start:start + TERM_BLOCK]
+        # Erst die Suchwörter für den ganzen Block — nebenläufig, weil nur
+        # sie warten. Was danach kommt, rechnet und liest und bleibt hier.
+        # Über das MODUL gerufen, nicht als importierter Name: `evidence_for`
+        # tut es auch so, und ein Prüfstand, der `evidence.search_terms`
+        # ersetzt, träfe eine hier festgehaltene Kopie sonst nicht.
+        with ThreadPoolExecutor(max_workers=TERM_WORKERS) as pool:
+            begriffe_je = list(pool.map(
+                lambda p: beleg_modul.search_terms(einordnung.get(p["id"]) or {}, p),
+                block))
+        for p, begriffe in zip(block, begriffe_je):
+            klasse = einordnung.get(p["id"]) or {}
+            belege = evidence_for(main, rats, p, klasse, model,
+                                  chunk_matrix=matrix, begriffe=begriffe)
+            belege_je[p["id"]] = belege
+            cluster_je[p["id"]] = cluster_zeile(main, p, model)
+            hashes[p["id"]] = source_hash(p, klasse, belege, ann,
+                                          cluster_je[p["id"]], aufwand.get(p["id"]))
+        logger.info("  Belege %s/%s", min(start + TERM_BLOCK, len(kandidaten)),
+                    len(kandidaten))
 
     offen = main.annotations_missing("paper", ann.key, ann.version, body_id=body_id,
                                      source_hashes=hashes)
