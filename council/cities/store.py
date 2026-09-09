@@ -874,6 +874,31 @@ class CitiesStore:
         indizes = [r["chunk_idx"] for r in rows]
         return papiere, indizes, b"".join(r["vector"] for r in rows)
 
+    def paper_matrix(self, model: str, body_id: str) -> tuple[list[str], bytes]:
+        """Alle Papier-Vektoren einer Stadt am Stück — Kennung und Rohbytes.
+
+        **Warum die Nachbartabelle das nicht kann.** ``neighbors`` hält je
+        Objekt die acht nächsten — über ALLE Städte. Solange nur Oldenburg
+        Vektoren hatte, war das dasselbe wie „die acht nächsten Oldenburger";
+        seit dem Index über den ganzen Bestand (09.09.2026) ist es das nicht
+        mehr: Von 372.327 gespeicherten Nachbarschaften zeigen nur noch 25 %
+        auf Oldenburg, und für eine einzelne fremde Vorlage sind es oft
+        **null von acht**. Der Beleg-Arm ``neighbor`` fiel dadurch stumm aus —
+        der Prüfstand fand statt 23 von 23 erwarteten Belegen nur noch 17.
+
+        Ein tieferes ``NEIGHBOR_TOP_K`` verschöbe das nur bis zur nächsten
+        Stadt. Die Frage lautet „welche OLDENBURGER Vorlage ist die nächste?",
+        und die beantwortet man gegen die Oldenburger Matrix — 5.945 Vektoren
+        zu 384 Zahlen, neun Megabyte, einmal geladen. Genauso macht es der
+        Chunk-Arm seit dem Ausbau.
+        """
+        rows = self._conn.execute(
+            "SELECT e.object_id, e.vector FROM object_embeddings e "
+            "JOIN papers p ON p.id = e.object_id "
+            "WHERE e.model = ? AND e.object_kind = 'paper' AND p.body_id = ? "
+            "ORDER BY e.object_id", (model, body_id)).fetchall()
+        return [r["object_id"] for r in rows], b"".join(r["vector"] for r in rows)
+
     def chunk_text(self, paper_id: str, chunk_idx: int) -> str | None:
         """Der Wortlaut eines Chunks — für den Beleg, der ihn zitiert."""
         row = self._conn.execute(
