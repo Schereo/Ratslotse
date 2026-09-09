@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { setToken } from "@/lib/token";
 import type { User } from "@/lib/types";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Spinner, toast } from "@/components/ui";
 import { AuthShell } from "@/components/auth-shell";
 import { useAuth } from "@/lib/auth";
 import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
@@ -16,7 +16,12 @@ import { SETUP_QUERY_KEY, holeSetupStand } from "@/lib/onboarding-setup";
 type State = "missing" | "verifying" | "ok" | "error";
 
 function VerifyInner() {
-  const token = useSearchParams().get("token") ?? "";
+  const params = useSearchParams();
+  const token = params.get("token") ?? "";
+  // Nur Kosmetik: Steuert Erfolgstext und Sprungziel. Ob wirklich ein
+  // Adresswechsel dahintersteht, entscheidet allein der Token im Backend —
+  // ein manipuliertes `change=1` ändert nichts an der Wirkung.
+  const istWechsel = params.get("change") === "1";
   const { refresh } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -34,6 +39,15 @@ function VerifyInner() {
         // user lands logged-in. On the web access_token is null → no-op.
         if (u.access_token) await setToken(u.access_token);
         try { await refresh(); } catch { /* not logged in — fine */ }
+        if (istWechsel) {
+          // Ein Adresswechsel ist kein Einstieg: Wer hier landet, benutzt
+          // Ratslotse längst. Der Assistenten-Vorgriff unten wäre also
+          // sinnlos, und das Ziel ist die Konto-Seite, von der aus der
+          // Wechsel angestoßen wurde.
+          toast.success("Deine neue E-Mail-Adresse ist bestätigt.");
+          setState("ok");
+          return;
+        }
         // Den Stand des Assistenten schon HIER holen, nicht erst im Dashboard:
         // Sonst stünde nach dem Sprung erst „Heute" und der Assistent legte
         // sich eine Antwort später darüber. Fehlschlag ist egal — dann fragt
@@ -47,7 +61,7 @@ function VerifyInner() {
         setState("error");
       }
     })();
-  }, [token, refresh, queryClient]);
+  }, [token, refresh, queryClient, istWechsel]);
 
   // Nach dem Bestätigen nicht stehenbleiben: In der App kommt man über einen
   // Deep-Link aus dem Mail-Programm hierher. Wer danach die App wechselt und
@@ -61,8 +75,8 @@ function VerifyInner() {
   // Einrichten; bis dahin läuft der Lade-Zustand dieser Seite weiter.
   useEffect(() => {
     if (state !== "ok") return;
-    router.replace("/dashboard");
-  }, [state, router]);
+    router.replace(istWechsel ? "/account" : "/dashboard");
+  }, [state, router, istWechsel]);
 
   if (state === "missing") {
     return (
@@ -77,7 +91,12 @@ function VerifyInner() {
   if (state === "verifying" || state === "ok") {
     return (
       <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
-        <Spinner /> {state === "ok" ? "Es geht los…" : "E-Mail wird bestätigt…"}
+        <Spinner />{" "}
+        {state !== "ok"
+          ? "E-Mail wird bestätigt…"
+          : istWechsel
+            ? "Adresse geändert — einen Moment…"
+            : "Es geht los…"}
       </div>
     );
   }
