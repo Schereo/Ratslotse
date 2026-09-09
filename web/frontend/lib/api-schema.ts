@@ -8333,7 +8333,13 @@ export interface components {
         };
         /**
          * Idea
-         * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+         * @description Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
+         *
+         *     Eine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das
+         *     Konzept für bürgerschaftliches Engagement in der Denkmalpflege
+         *     dreimal beantragt, Münster den Jugendrat zweimal. Gemessen am
+         *     09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.
+         *     Gezeigt wird die jüngste, die übrigen stehen in ``siblings``.
          */
         Idea: {
             /** Addressee */
@@ -8372,6 +8378,8 @@ export interface components {
             peers: number;
             /** Reason */
             reason: string;
+            /** Siblings */
+            siblings: components["schemas"]["IdeaSibling"][];
             /** Status */
             status: string;
             /** Summary */
@@ -8431,6 +8439,18 @@ export interface components {
             query: string;
             /** Total */
             total: number;
+        };
+        /**
+         * IdeaSibling
+         * @description Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.
+         */
+        IdeaSibling: {
+            /** Date */
+            date: string | null;
+            /** Name */
+            name: string;
+            /** Paper Id */
+            paper_id: string;
         };
         /** IdeasResponse */
         IdeasResponse: {
@@ -16880,4 +16900,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 96a895eaee5f72ad0c43f0da3ad81ffb55edaa4b80bcf909aa9ba189b647bdf2
+// vertrag-sha256: 43ae5f031f560fa25b99849839cd02dad1b3ea1503251358911cb9fec3f93de4

@@ -498,10 +498,13 @@ class CitiesStore:
     #: nicht am Aufrufer, weil die Abfrage sie im SQL braucht — und weil ein
     #: Wechsel der Fassung genau hier auffallen soll.
     IDEEN_CLASSIFY = ("classify", "2")
-    #: Die Oberfläche zeigt weiter Fassung 1, bis der Bestand in Fassung 2
-    #: durchgerechnet ist (PR 22). Beide liegen nebeneinander — genau dafür
-    #: gibt es den Fassungs-Schlüssel.
-    IDEEN_FIT = ("fit", "1")
+    #: Fassung 3, seit der Bestandslauf am 09.09.2026 durch ist: 9.484
+    #: Urteile über alle übertragbaren Vorlagen. Fassung 1 (1.254 Urteile)
+    #: blieb sichtbar, solange 3 noch nicht gerechnet war — genau dafür gibt
+    #: es den Fassungs-Schlüssel. Sie blieb es auch danach noch einen halben
+    #: Tag, weil niemand die Zeile umstellte; seitdem hält
+    #: ``tests/test_cities_guards.py`` sie an der Fassung des Annotators.
+    IDEEN_FIT = ("fit", "3")
     #: Die Aufwandsklasse hängt als LEFT JOIN dran, nicht als JOIN: Sie ist
     #: jünger als die Urteile, und eine Idee ohne sie soll sichtbar bleiben,
     #: statt aus der Liste zu fallen, bis der Cron nachgezogen hat.
@@ -540,7 +543,38 @@ class CitiesStore:
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
-        "  AND (? = '' OR p.body_id = ?)")
+        "  AND (? = '' OR p.body_id = ?) "
+        # Je Stadt und Idee EINE Zeile. Potsdam hat das Konzept für
+        # bürgerschaftliches Engagement in der Denkmalpflege dreimal
+        # beantragt, Münster den Jugendrat zweimal — auf der Liste waren
+        # das drei bzw. zwei „Ideen, die Oldenburg fehlen". Gemessen am
+        # 09.09.2026: 195 der 262 Einträge waren solche Dubletten.
+        #
+        # Es bleibt die JÜNGSTE: Wer eine Sache dreimal beantragt hat, hat
+        # sie beim dritten Mal am besten formuliert, und das Datum sagt, ob
+        # sie noch läuft. Bei gleichem Datum entscheidet die Kennung, damit
+        # die Auswahl stabil ist und das Blättern nicht springt.
+        #
+        # Ein von `cluster_check` ausgeschlossenes Mitglied verdrängt
+        # nichts: Es gehört nicht zu dieser Idee, also ist es auch keine
+        # Dublette.
+        "  AND NOT EXISTS (SELECT 1 FROM idea_clusters k "
+        "                    JOIN idea_clusters k2 ON k2.model = k.model "
+        "                      AND k2.version = k.version "
+        "                      AND k2.cluster_id = k.cluster_id "
+        "                    JOIN papers p2 ON p2.id = k2.paper_id "
+        "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
+        "                    AND p2.id != p.id "
+        "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
+        "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
+        "                             AND p2.id > p.id)) "
+        "                    AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+        "                                        json_each(ck.payload, '$.drop') d "
+        "                                    WHERE ck.object_kind = 'cluster' "
+        "                                      AND ck.annotator = 'cluster_check' "
+        "                                      AND ck.object_id = k.version || ':' || k.cluster_id "
+        "                                      AND d.value IN (p.id, p2.id))) "
+    )
 
     _IDEEN_JE_STATUS = (
         "SELECT json_extract(f.payload, '$.status') AS status, COUNT(*) AS n "
@@ -556,7 +590,37 @@ class CitiesStore:
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
-        "  AND (? = '' OR p.body_id = ?)"
+        "  AND (? = '' OR p.body_id = ?) "
+        # Je Stadt und Idee EINE Zeile. Potsdam hat das Konzept für
+        # bürgerschaftliches Engagement in der Denkmalpflege dreimal
+        # beantragt, Münster den Jugendrat zweimal — auf der Liste waren
+        # das drei bzw. zwei „Ideen, die Oldenburg fehlen". Gemessen am
+        # 09.09.2026: 195 der 262 Einträge waren solche Dubletten.
+        #
+        # Es bleibt die JÜNGSTE: Wer eine Sache dreimal beantragt hat, hat
+        # sie beim dritten Mal am besten formuliert, und das Datum sagt, ob
+        # sie noch läuft. Bei gleichem Datum entscheidet die Kennung, damit
+        # die Auswahl stabil ist und das Blättern nicht springt.
+        #
+        # Ein von `cluster_check` ausgeschlossenes Mitglied verdrängt
+        # nichts: Es gehört nicht zu dieser Idee, also ist es auch keine
+        # Dublette.
+        "  AND NOT EXISTS (SELECT 1 FROM idea_clusters k "
+        "                    JOIN idea_clusters k2 ON k2.model = k.model "
+        "                      AND k2.version = k.version "
+        "                      AND k2.cluster_id = k.cluster_id "
+        "                    JOIN papers p2 ON p2.id = k2.paper_id "
+        "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
+        "                    AND p2.id != p.id "
+        "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
+        "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
+        "                             AND p2.id > p.id)) "
+        "                    AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+        "                                        json_each(ck.payload, '$.drop') d "
+        "                                    WHERE ck.object_kind = 'cluster' "
+        "                                      AND ck.annotator = 'cluster_check' "
+        "                                      AND ck.object_id = k.version || ':' || k.cluster_id "
+        "                                      AND d.value IN (p.id, p2.id))) "
         " GROUP BY 1")
 
     #: Die Reihenfolge beantwortet „was soll ich lesen": erst was sich lohnt,
@@ -564,7 +628,25 @@ class CitiesStore:
     #: Neueste. Sie steht im SQL, damit Blättern und Zählen dieselbe sehen.
     _IDEEN_ZEILEN = (
         "SELECT p.*, c.payload AS classify_json, f.payload AS fit_json, "
-        "       e.payload AS effort_json, b.name AS body_name "
+        "       e.payload AS effort_json, b.name AS body_name, "
+        # Die verdrängten Geschwister derselben Stadt — damit die Karte
+        # „Potsdam · 3 Vorlagen 2024–2025" sagen kann statt dreimal
+        # dasselbe zu zeigen. Sie kommen als JSON mit, weil ein zweiter
+        # Rundgang je Zeile dreißig Abfragen je Seite wären.
+        "       (SELECT json_group_array(json_object("
+        "                  'id', p3.id, 'name', p3.name, 'date', p3.date)) "
+        "        FROM idea_clusters k3 "
+        "          JOIN idea_clusters k4 ON k4.model = k3.model "
+        "            AND k4.version = k3.version AND k4.cluster_id = k3.cluster_id "
+        "          JOIN papers p3 ON p3.id = k4.paper_id "
+        "        WHERE k3.paper_id = p.id AND p3.body_id = p.body_id "
+        "          AND p3.id != p.id "
+        "          AND NOT EXISTS (SELECT 1 FROM annotations ck2, "
+        "                              json_each(ck2.payload, '$.drop') d2 "
+        "                          WHERE ck2.object_kind = 'cluster' "
+        "                            AND ck2.annotator = 'cluster_check' "
+        "                            AND ck2.object_id = k3.version || ':' || k3.cluster_id "
+        "                            AND d2.value IN (p.id, p3.id))) AS siblings_json "
         "FROM papers p "
         "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
         "  AND f.annotator=? AND f.version=? "
@@ -577,7 +659,37 @@ class CitiesStore:
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
-        "  AND (? = '' OR p.body_id = ?)"
+        "  AND (? = '' OR p.body_id = ?) "
+        # Je Stadt und Idee EINE Zeile. Potsdam hat das Konzept für
+        # bürgerschaftliches Engagement in der Denkmalpflege dreimal
+        # beantragt, Münster den Jugendrat zweimal — auf der Liste waren
+        # das drei bzw. zwei „Ideen, die Oldenburg fehlen". Gemessen am
+        # 09.09.2026: 195 der 262 Einträge waren solche Dubletten.
+        #
+        # Es bleibt die JÜNGSTE: Wer eine Sache dreimal beantragt hat, hat
+        # sie beim dritten Mal am besten formuliert, und das Datum sagt, ob
+        # sie noch läuft. Bei gleichem Datum entscheidet die Kennung, damit
+        # die Auswahl stabil ist und das Blättern nicht springt.
+        #
+        # Ein von `cluster_check` ausgeschlossenes Mitglied verdrängt
+        # nichts: Es gehört nicht zu dieser Idee, also ist es auch keine
+        # Dublette.
+        "  AND NOT EXISTS (SELECT 1 FROM idea_clusters k "
+        "                    JOIN idea_clusters k2 ON k2.model = k.model "
+        "                      AND k2.version = k.version "
+        "                      AND k2.cluster_id = k.cluster_id "
+        "                    JOIN papers p2 ON p2.id = k2.paper_id "
+        "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
+        "                    AND p2.id != p.id "
+        "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
+        "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
+        "                             AND p2.id > p.id)) "
+        "                    AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+        "                                        json_each(ck.payload, '$.drop') d "
+        "                                    WHERE ck.object_kind = 'cluster' "
+        "                                      AND ck.annotator = 'cluster_check' "
+        "                                      AND ck.object_id = k.version || ':' || k.cluster_id "
+        "                                      AND d.value IN (p.id, p2.id))) "
         # Sortiert nach TATSACHEN, nicht nach einer Modellmeinung. Bis
         # Fassung 3 stand hier „lohnt sich" ganz vorn — ein Werturteil, das
         # das Modell zu 46–58 % traf, während es den Status zu 62–69 % trifft.

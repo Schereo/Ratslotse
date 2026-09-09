@@ -115,3 +115,29 @@ def test_rohablage_wird_nicht_veraendert():
             f"{pfad.name} verändert die Rohablage ({treffer}). Sie ist append-only: "
             f"Ein geändertes Objekt bekommt eine neue Zeile, damit die Geschichte "
             f"eines Vorgangs erhalten bleibt.")
+
+
+def test_die_oberflaeche_liest_die_aktuelle_fassung():
+    """Welche Fassung die Ideen-Seite zeigt, darf nicht still veralten.
+
+    Ein neuer Annotator liegt bewusst NEBEN dem alten (`(annotator, version)`
+    im Schlüssel), bis der Bestand durchgerechnet ist — die Oberfläche zeigt
+    solange die alte Fassung. Der Haken: Danach muss jemand die Zeile
+    umstellen, und wenn es niemand tut, passiert nichts Sichtbares. Genau so
+    zeigte die Karte am 09.09.2026 noch 1.254 Urteile aus Fassung 1, während
+    9.484 aus Fassung 3 danebenlagen.
+
+    Wer während einer Umstellung absichtlich die alte Fassung zeigt, ändert
+    diesen Test im selben PR und schreibt dazu, warum — dann ist die
+    Entscheidung sichtbar statt vergessen.
+    """
+    from council.cities.annotators import get
+    from council.cities.store import CitiesStore
+
+    for konstante, schluessel in ((CitiesStore.IDEEN_CLASSIFY, "classify"),
+                                  (CitiesStore.IDEEN_FIT, "fit"),
+                                  (CitiesStore.IDEEN_EFFORT, "effort")):
+        ann = get(schluessel)
+        assert konstante == (ann.key, ann.version), (
+            f"Die Ideen-Seite liest {schluessel} in Fassung {konstante[1]}, "
+            f"der Annotator steht auf {ann.version}.")
