@@ -163,17 +163,49 @@ def test_allris_verbindet_papier_und_ergebnis_ueber_den_titel(store):
         "ein geratener Treffer muss als solcher erkennbar bleiben"
 
 
-def test_titelabgleich_bleibt_bei_mehrdeutigkeit_stumm():
-    """Zwei gleichnamige Punkte: dann lieber kein Ergebnis als ein falsches."""
+def test_titelabgleich_verbindet_ALLE_stationen():
+    """Ausschuss und dann Rat — das ist der Normalfall, kein Widerspruch.
+
+    Bis 09.09.2026 stand hier die Regel „nur eindeutige Treffer, sonst
+    lieber kein Ergebnis als ein falsches". Sie klingt vorsichtig und war
+    teuer: Weil eine Vorlage fast immer durch mindestens zwei Stationen
+    läuft, traf sie fast nie zu. Potsdam kam auf 23 % Papiere mit Ergebnis,
+    Braunschweig auf 42 % — gemessen fehlten 5.224 Papieren ein Ergebnis,
+    obwohl ein gleichnamiger Punkt mit Ergebnis danebenlag.
+
+    Welche Station gilt, entscheidet `store.outcome_for_paper`: erst
+    `authoritative`, dann die späteste Sitzung. Die Entscheidung gehört
+    dorthin, wo sie schon steht.
+    """
     batch = Batch(
         papers=[Paper("p1", "x", "Bericht zur Lage")],
-        meetings=[Meeting("m1", "x", None, "Rat", "2026-01-01"),
+        meetings=[Meeting("m1", "x", None, "Ausschuss", "2026-01-01"),
                   Meeting("m2", "x", None, "Rat", "2026-02-01")],
         agenda_items=[
-            AgendaItem("a1", "m1", "Bericht zur Lage", result_raw="beschlossen", outcome=Outcome.ACCEPTED),
+            AgendaItem("a1", "m1", "Bericht zur Lage", result_raw="empfohlen", outcome=Outcome.ACCEPTED),
             AgendaItem("a2", "m2", "Bericht zur Lage", result_raw="beschlossen", outcome=Outcome.ACCEPTED),
         ])
+    assert link_by_title(batch) == 2
+    assert {c.agenda_item_id for c in batch.consultations} == {"a1", "a2"}
+
+
+def test_titelabgleich_bleibt_bei_mehrdeutigem_TITEL_stumm():
+    """Wo der echte Fehler droht: zwei PAPIERE, ein Titel.
+
+    „Antrag", „Liquiditätsstand - Bericht", „Annahme von Zuwendungen durch
+    den Rat" — solche Titel gibt es dutzendfach in einer Stadt. Ein Abgleich
+    darüber ist kein Abgleich, sondern Raten. Gemessen sind 27 % aller Titel
+    im Bestand mehrdeutig; sie stellen 2.934 der 5.224 Papiere, die sonst
+    ein Ergebnis bekämen — mehrheitlich ein falsches.
+    """
+    batch = Batch(
+        papers=[Paper("p1", "x", "Antrag"), Paper("p2", "x", "Antrag")],
+        meetings=[Meeting("m1", "x", None, "Rat", "2026-01-01")],
+        agenda_items=[
+            AgendaItem("a1", "m1", "Antrag", result_raw="beschlossen", outcome=Outcome.ACCEPTED),
+        ])
     assert link_by_title(batch) == 0
+    assert not batch.consultations
 
 
 def test_titelabgleich_ruehrt_verbundene_papiere_nicht_an():

@@ -344,23 +344,42 @@ def link_by_title(batch: Batch) -> int:
     for a in batch.agenda_items:
         titel_zu_items.setdefault(normalize_title(a.name), []).append(a)
 
+    # Titel, die MEHRERE Papiere derselben Stadt tragen, sind kein Abgleich,
+    # sondern Raten: „Antrag", „Liquiditätsstand - Bericht", „Annahme von
+    # Zuwendungen durch den Rat" gibt es dutzendfach. Gemessen am 09.09.2026
+    # sind 27 % aller Titel im Bestand mehrdeutig, und sie stellen 2.934 der
+    # 5.224 Papiere, die sonst ein Ergebnis bekämen — mehrheitlich ein
+    # falsches.
+    titel_zu_papieren: dict[str, int] = {}
+    for p in batch.papers:
+        t = normalize_title(p.name)
+        titel_zu_papieren[t] = titel_zu_papieren.get(t, 0) + 1
+
     schon_verbunden = {c.paper_id for c in batch.consultations if c.agenda_item_id}
     ergaenzt = 0
     for p in batch.papers:
         if p.id in schon_verbunden:
             continue
-        kandidaten = titel_zu_items.get(normalize_title(p.name), [])
-        # Nur eindeutige Treffer: Zwei gleichnamige Punkte in verschiedenen
-        # Sitzungen sind meist dieselbe Sache in zwei Stationen — welche
-        # gemeint ist, weiß der Titel nicht.
-        mit_ergebnis = [a for a in kandidaten if a.outcome != "none"]
-        wahl = mit_ergebnis or kandidaten
-        if len(wahl) != 1:
+        titel = normalize_title(p.name)
+        if titel_zu_papieren.get(titel, 0) > 1:
             continue
-        ziel = wahl[0]
-        batch.consultations.append(Consultation(
-            id=f"{p.id}#title-match#{ziel.id}", paper_id=p.id,
-            meeting_id=ziel.meeting_id, agenda_item_id=ziel.id,
-            role_raw="Titelabgleich", authoritative=None))
-        ergaenzt += 1
+        kandidaten = titel_zu_items.get(titel, [])
+        # ALLE Stationen mit Ergebnis, nicht nur eindeutige. Bis 09.09.2026
+        # stand hier „nur eindeutige Treffer" — und weil eine Vorlage durch
+        # Ausschuss UND Rat läuft, traf das fast nie zu: Potsdam kam auf 23 %
+        # Papiere mit Ergebnis, Braunschweig auf 42 %.
+        #
+        # Mehrere Stationen sind kein Widerspruch, sondern der Normalfall.
+        # Welche gilt, entscheidet ohnehin `store.outcome_for_paper` — sie
+        # sortiert nach `authoritative` und dann nach der spätesten Sitzung.
+        # Die Entscheidung gehört dorthin, wo sie schon steht, und nicht in
+        # eine zweite Regel, die daneben ausfranst.
+        mit_ergebnis = [a for a in kandidaten if a.outcome != "none"]
+        wahl = mit_ergebnis or (kandidaten if len(kandidaten) == 1 else [])
+        for ziel in wahl:
+            batch.consultations.append(Consultation(
+                id=f"{p.id}#title-match#{ziel.id}", paper_id=p.id,
+                meeting_id=ziel.meeting_id, agenda_item_id=ziel.id,
+                role_raw="Titelabgleich", authoritative=None))
+            ergaenzt += 1
     return ergaenzt
