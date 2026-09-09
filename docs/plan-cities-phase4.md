@@ -1,6 +1,7 @@
 # Umsetzungsplan Phase 4: von 6.908 „fehlt" zu den 42 Ideen, die es sind
 
-Stand: 09.09.2026, abends. Dieser Plan folgt auf
+Stand: 09.09.2026, abends; PR 30 am selben Abend umgeschrieben (Sync
+statt Backfill, Cron in Betrieb). Dieser Plan folgt auf
 [`plan-cities-phase3.md`](plan-cities-phase3.md) (PR 16–22, alle gemergt)
 und auf die fünf Punkte vom selben Tag (#1226, #1227, #1230, #1231, #1233).
 Er ist wie seine Vorgänger geschrieben: **ohne das Gespräch dahinter
@@ -88,10 +89,10 @@ Am Ende dieses Plans:
   │                                │ │    1× abgelehnt" (PR 26, 27)   │
   └────────────────────────────────┘ └────────────────────────────────┘
   ┌────────────────────────────────┐ ┌────────────────────────────────┐
-  │ C  Die Liste hat einen         │ │ D  Der Unterbau kann nicht     │
-  │    eigenen Prüfstand:          │ │    mehr in falscher Reihenfolge│
-  │    Präzision@20 gegen ein      │ │    laufen, und jeder Lauf misst│
-  │    Golden Set von Tim (PR 28)  │ │    sich selbst (PR 25)         │
+  │ C  Die Liste hat einen         │ │ D  Prod sammelt jeden Sonntag  │
+  │    eigenen Prüfstand:          │ │    Neues aus sechs Räten ein — │
+  │    Präzision@20 gegen ein      │ │    durch dieselbe Kette, mit   │
+  │    Golden Set von Tim (PR 28)  │ │    Wächter (PR 25, 30)         │
   └────────────────────────────────┘ └────────────────────────────────┘
 ```
 
@@ -122,6 +123,14 @@ Bestandslaufs: fts 189, decision 126, neighbor 74, chunk 49, cluster 9.
 haben **33 kein Ergebnis** in ihrer eigenen Stadt (`outcome = none`) — die
 Hälfte. Und `feedback` hat 0 Zeilen: Der Rückkanal aus Punkt 5 ist gebaut,
 aber niemand mit Mandat sieht die Karte.
+
+**Die Server.** Gemessen am 09.09.2026 abends: Auf der **dev-VM gibt es
+keine `cities.sqlite`** — die Seiten sind an (`FEATURE_FLAGS=*`) und zeigen
+Leere. Auf **Prod liegt eine 270-KB-Hülle**, die das Backend beim ersten
+Öffnen angelegt hat, die Schalter sind aus. In **keiner crontab** steht
+`check_cities.py`, obwohl der Job seit Phase 3 gebaut und in `kern/jobs.py`
+registriert ist (`sonntags 3 Uhr`, `max_age_h` 8 Tage). Lokal: 1.453 MB
+Datenbank (kompaktiert), 511 MB Rohernte je Stadt, 14 GB PDFs.
 
 **Was die Zahlen NICHT sagen.** Ob die 42 Ideen *gute* Ideen sind, weiß
 niemand — dafür gibt es keinen Maßstab, und PR 28 baut ihn. Und ob 73 %
@@ -426,34 +435,92 @@ Aufklappen.
 
 **Kosten.** Keine.
 
-## PR 30 — Betrieb: dev-VM, Prod-Schalter, Rückkanal in Betrieb
+## PR 30 — Sync statt Backfill, und der Cron geht in Betrieb
 
-**Warum.** `feedback` hat 0 Zeilen, weil die Karte nur lokal jemand sieht.
-Der Rückkanal ist das billigste Golden Set (Phase 3, Anhang B) — und er
-liefert nichts, solange niemand mit Mandat davorsitzt.
+**Warum kein Backfill.** Die erste Fassung dieses Plans sah vor, den Bestand
+auf der dev-VM neu zu ernten und zu beurteilen — 14 GB PDFs aus sechs
+Städten, Stunden Rechenzeit, $16, um zu reproduzieren, was lokal schon
+liegt. Tims Einwand vom 09.09.: „können wir nicht die Arbeitsdaten von hier
+syncen?" Ja. Und weil auf beiden Servern nichts liegt, ist es nicht einmal
+ein Merge, sondern eine Kopie.
+
+**Warum der Cron das Eigentliche ist.** Der Sync bringt den Stand von heute.
+Was Tim will — *„neue interessante Beschlüsse auch in Zukunft anzeigen"* —
+liefert nur ein Lauf, der jede Woche die sechs Ratsinformationssysteme
+abfragt und alles Neue durch dieselbe Kette zieht: einordnen, indizieren,
+gruppieren, urteilen. Genau das tut `scripts/check_cities.py` seit Phase 3:
+60 Tage Rückschau (Ergebnisse werden Wochen nach der Sitzung nachgetragen),
+Rohablage dedupliziert, Einordnung gedeckelt auf 3.000 je Lauf, danach
+`index_all`, `cluster_all`, `fit` — in der richtigen Reihenfolge (Regel 18).
+Er ist in `kern/jobs.py` registriert und läuft **nirgends**, weil die
+crontab-Zeile fehlt. `check_herzschlag.py` müsste ihn seit Wochen als
+überfällig melden — nachsehen, ob er das tut; wenn nicht, ist das ein
+zweiter Befund.
 
 **Was sich ändert.**
 
-1. **Backfill auf der dev-VM** in der richtigen Reihenfolge, mit dem
-   Wächter aus PR 25: `cities_backfill.py --run --stage annotate --stage
-   index --stage cluster --stage fit`. Nach jeder Stufe `--pruefen`. Dauer
-   auf 2 Kernen: Index ~2 h, `fit` mit `CITIES_FIT_WORKERS=32` ~3 h, ~$16.
-   Die VM hat dieselben Rohdaten wie lokal; die Annotationen könnten auch
-   kopiert werden — aber ein Lauf auf der VM ist der Beweis, dass der Cron
-   sie ab dann selbst nachzieht.
-2. **`andere-staedte` und `ideen-anderswo` auf Prod** — Tims Wort. Erst
-   nach PR 29 und nach dem Backfill dort (gleiche Schritte, gleiche Kosten).
-3. **Rückmeldungen auswerten**: `scripts/cities_bilanz.py --rueckmeldungen`
+1. **`scripts/lokale_daten.py schieb --staedte --nach dev|prod`** — das
+   Gegenstück zu `hol --mit-staedten`. Checkt den WAL ein, schreibt mit
+   `VACUUM INTO` eine kompakte Kopie ins Scratch-Verzeichnis (die lebende
+   Datei wird nicht angefasst), kopiert sie per `scp` nach
+   `STAEDTE_FERN`, dazu die **Rohernte** (`cities-raw/`, 511 MB, damit der
+   erste Cron-Lauf dedupliziert statt neu zu holen). **Nicht** die PDFs:
+   Die Texte stehen extrahiert in `texts`, das Backend liest nie eine Datei,
+   und neue Vorlagen bringen ihre PDFs mit dem Cron.
+
+   Vorher fragt `schieb`, ob auf dem Ziel eine Datenbank mit Inhalt liegt
+   (`papers > 0` oder `feedback > 0`), und **weigert sich** dann — eine
+   Rückmeldung eines Ratsmitglieds darf kein lokaler Stand überschreiben.
+   Wer den Cron einmal laufen hat, braucht `schieb` ohnehin nicht mehr; für
+   dev, das keine Crons hat, bleibt es der Weg.
+
+   Das Backend öffnet die Datenbank je Anfrage (`deps.py`), ein Tausch
+   unter dem laufenden Dienst ist deshalb sicher; ein Neustart ist nicht
+   nötig.
+
+2. **Die crontab-Zeile auf Prod**, nach dem Muster der übrigen:
+   ```
+   0 5 * * 0  cd ~/app && .venv/bin/python scripts/check_cities.py >> ~/app/data/check_cities.log 2>&1
+   ```
+   Fünf Uhr, nicht drei: `weekly_enrich.py` läuft sonntags um drei, und
+   zwei Läufe, die beide ein Embedding-Modell laden, gehören nicht auf
+   dieselbe Stunde. `kern/jobs.py` zieht `schedule` auf „sonntags 5 Uhr"
+   nach — die Ampel rechnet dagegen (`scripts/CLAUDE.md`).
+
+   **Nur Prod.** Dev hat per Entscheidung keine Crons (Basic-Auth, keine
+   Mail, keine Abrufe fremder Server im Wochentakt von zwei Maschinen). Dev
+   bekommt den Stand per `schieb`, wenn jemand ihn dort braucht.
+
+3. **Der erste Prod-Lauf wird beobachtet** (Regel 19): `--verbose`, von
+   Hand, mit `--pruefen` danach. Die Kennzahlen landen in `job_runs`; was
+   der Lauf je Stufe geschrieben hat, steht im Admin-Panel unter Cron-Jobs.
+   Erst wenn ein Sonntag ohne Hand durchgelaufen ist, gilt der Cron als in
+   Betrieb.
+
+4. **Schalter auf Prod** — `andere-staedte`, `ideen-anderswo` — Tims Wort,
+   erst nach PR 29.
+
+5. **Rückmeldungen auswerten**: `scripts/cities_bilanz.py --rueckmeldungen`
    zeigt je Urteil Ja/Nein-Zähler und die zehn umstrittensten. Ab 50
    Rückmeldungen wandern die in `eval/cases_cities_fit.json` — das Golden
    Set wächst (Regel 16).
 
-**Test.** Keine Codeänderung außer dem Bericht.
+**Was der Cron kostet.** Gemessen: `fit` $0,0016 je Vorlage, `classify`
+$0,31 je 1.000, `effort` ähnlich. Sechs Städte liefern zusammen grob
+300–600 neue Vorlagen je Woche → **unter $2 die Woche**, plus einmal die
+Beleg-Suchwörter. Der Deckel `CITIES_ANNOTATE_MAX` fängt einen Ausreißer.
 
-**Messung.** Zahl der Rückmeldungen nach zwei Wochen auf Prod. Fertig, wenn
-die erste Handvoll drin ist und die Auswertung sie zeigt.
+**Test.** `tests/test_lokale_daten.py::test_schieb_weigert_sich_bei_inhalt`
+(gemockter Zielbefund `papers > 0` → Abbruch, kein `scp`).
+`tests/test_jobs.py` hält `schedule` und Registry zusammen.
 
-**Kosten.** ~$16 dev-VM, ~$16 Prod, einmalig.
+**Messung.** Nach dem Sync: `cities_bilanz.py` auf Prod liefert dieselben
+Zahlen wie lokal (9.484 Urteile, 262 → 42). Nach dem ersten Cron-Sonntag:
+`job_runs` trägt eine Zeile mit `annotated > 0` und `judged > 0`, und in
+`cities_bilanz.py --zeigen 20` steht mindestens eine Vorlage mit Datum nach
+dem Sync. Fertig, wenn beides steht.
+
+**Kosten.** Einmalig keine; laufend unter $2 je Woche.
 
 ## Anhang A — Reihenfolge, Aufwand, Kosten
 
@@ -466,14 +533,20 @@ die erste Handvoll drin ist und die Auswertung sie zeigt.
 | 26 | Richtung der Idee | 23 | 1 Tag | < $1 |
 | 27 | Ergebnisse für die Liste | 23, 24 | ½–1 Tag | 0 |
 | 29 | Karte Web + iOS | 23–27; **Tims Bild** | 1 Tag | 0 |
-| 30 | dev-VM, Prod, Rückkanal | 25, 29; **Tims Wort** | ½ Tag + Laufzeit | ~$32 |
+| 30 | Sync statt Backfill, Cron in Betrieb, Rückkanal | 25; Schalter erst nach 29 | 1 Tag | 0 einmalig, < $2/Woche |
 
 PR 25 zuerst, weil er billig ist und den teuersten Fehler dieses Tages
 unmöglich macht. 23 und 24 sind die Messung aus §1 als Code. 28 kann
 parallel zu 26/27 laufen — Tims Teil davon braucht nur die Liste nach 24.
 Nichts davon ist gestapelt: jeder PR von `dev`, jeder für sich mergebar.
 
-Gesamt: rund sechs Arbeitstage, unter $40, davon $32 Betrieb.
+Gesamt: rund sechs Arbeitstage, unter $5 einmalig, danach unter $2 je
+Woche für den Cron.
+
+**PR 30 kann vorgezogen werden.** Sync und crontab hängen an nichts außer
+PR 25 (der Wächter gehört auf den Server, bevor dort je ein Lauf von Hand
+startet). Wer will, dass Prod ab nächstem Sonntag Neues einsammelt, macht
+25 und 30 zuerst — die Schalter bleiben ohnehin aus, bis 29 steht.
 
 ## Anhang B — Was ausdrücklich NICHT in diesem Plan liegt
 
@@ -482,8 +555,9 @@ Gesamt: rund sechs Arbeitstage, unter $40, davon $32 Betrieb.
   tut — Dubletten, Vorlagenart, Richtung, Ergebnis, Prüfstand für die Liste
   — ersetzt das Werturteil durch fünf Tatsachen. Sollte P@20 aus PR 28
   danach unter 50 % liegen, ist die Frage neu zu stellen; vorher nicht.
-- **Neue Städte.** Unverändert Registry-Eintrag plus Backfill, jetzt mit
-  dem Wächter aus PR 25 — kein PR.
+- **Neue Städte.** Registry-Eintrag, Backfill **lokal** (mit dem Wächter
+  aus PR 25), dann `schieb` — kein PR. Der Cron nimmt die Stadt ab dem
+  nächsten Sonntag mit.
 - **Antragsentwürfe.** Unverändert: eine Stufe über dem, was gesichert ist.
   Nach PR 28 gibt es zum ersten Mal eine Zahl, die sagt, ob die Liste die
   Grundlage dafür wäre.
