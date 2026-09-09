@@ -22,6 +22,14 @@ der Daten da waren. Jetzt wird jede Datei einzeln geholt; scheitert eine, gilt
 für SIE der letzte gute Stand, die anderen ziehen weiter. ``Snapshot.ok`` ist
 dann ``False`` und ``Snapshot.error`` nennt die Datei beim Namen.
 
+**Wenn die CSV nicht liefert, liefert die Website.** Die Ergebnisdarstellung
+des Votemanagers lädt ihre Zahlen aus JSON-Dateien (``presentation.py``); je
+Wahlbereich stehen dort dieselben Größen samt Personenstimmen in
+Listenreihenfolge. Fehlt einem Wahlbereich in der CSV noch die
+Personenstimme (oder die Datei ganz), wird die JSON-Fassung geholt und
+übernommen, wo sie weiter ist. Die CSV bleibt die erste Quelle: Ihre Spalten
+sind nummeriert, die JSON-Listen tragen nur Namen.
+
 **Status 200 heißt nicht, dass es die Datei ist.** Ein Reverse-Proxy antwortet
 im Zweifel mit einer HTML-Wartungsseite, ein halb geschriebener Export mit
 nichts. Beides parst ``csv`` klaglos zu null Zeilen — und null Zeilen sehen
@@ -42,7 +50,8 @@ from datetime import datetime, timezone
 
 import requests
 
-from . import crosscheck
+from . import crosscheck, presentation
+from .register import load as load_register
 
 DEFAULT_BASE = "https://votemanager.kdo.de/20260913/03403000"
 PRESENTATION_PATH = "/praesentation/"
@@ -129,10 +138,10 @@ def _area_number(name: str, number: str | None) -> int | None:
         n = int(number)
         if 1 <= n <= 6:
             return n
-    m = re.search(r"Wahlbereich\s+(\d)", name)
-    if m:
-        return int(m.group(1))
     roman = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}
+    m = re.search(r"Wahlbereich\s+(\d|[IVX]+)\b", name)
+    if m:
+        return int(m.group(1)) if m.group(1).isdigit() else roman.get(m.group(1))
     m = re.match(r"([IVX]+)\s*[-–]", name)
     return roman.get(m.group(1)) if m else None
 
@@ -217,6 +226,57 @@ class Snapshot:
     #: Hinweise der Spaltenprobe (``crosscheck``). Sie ändern ``ok`` NICHT: Ob
     #: die Spalten stimmen, ist eine andere Frage als ob die Zahlen da sind.
     warnings: list[str] = field(default_factory=list)
+    #: Sitze je Liste (Slug), wie der Votemanager sie auf der Stadt-Ebene
+    #: ausweist — ``None``, solange er keine zeigt. Nur zur Gegenprobe.
+    official_seats: dict[str, int] | None = None
+
+
+# ------------------------------------------------------------------ Ersatz: die Ergebnisdarstellung
+
+def row_from_presentation(area: presentation.PresentationArea, label: str, number: int | None,
+                          resolve: presentation.Resolver) -> tuple[AreaRow | None, list[str]]:
+    """Ein Gebiet der Ergebnisdarstellung als ``AreaRow`` — oder ``None`` mit
+    Begründung, wenn eine Liste keinem Register-Eintrag zuzuordnen ist. Halb
+    ist hier schlechter als gar nicht: Eine fehlende Liste zählte in der
+    Zuteilung als null Stimmen."""
+    lists: dict[int, ListRow] = {}
+    for pl in area.lists:
+        index = resolve(pl.name)
+        if index is None:
+            return None, [f"{label}: Die Liste ‚{pl.name}‘ der Ergebnisdarstellung passt zu keinem "
+                          f"Eintrag im Register — der Wahlbereich bleibt außen vor."]
+        if index in lists:
+            return None, [f"{label}: Die Liste ‚{pl.name}‘ der Ergebnisdarstellung trifft dieselbe "
+                          f"Spalte D{index} wie eine andere — der Wahlbereich bleibt außen vor."]
+        cands = {k: v for k, v in enumerate(pl.candidates, start=1)} if pl.candidates is not None else None
+        lists[index] = ListRow(index, pl.total, pl.list_votes, pl.candidate_sum, cands)
+    return AreaRow(
+        name=label, number=number,
+        reports_expected=area.reports_expected, reports_received=area.reports_received,
+        eligible=area.eligible, voters=area.voters, invalid_ballots=area.invalid_ballots,
+        valid_ballots=area.valid_ballots, valid_votes=area.valid_votes, lists=lists,
+    ), []
+
+
+def _has_persons(row: AreaRow) -> bool:
+    return any(lr.candidates is not None for lr in row.lists.values())
+
+
+def _needs_presentation(areas: list[AreaRow] | None) -> bool:
+    """Fehlt die Wahlbereichsdatei, oder fehlt einem Wahlbereich noch die
+    Personenstimme? Dann lohnt der Blick in die Ergebnisdarstellung."""
+    if not areas:
+        return True
+    return any(not _has_persons(r) for r in areas)
+
+
+def _better(csv_row: AreaRow | None, json_row: AreaRow) -> bool:
+    """Übernommen wird die JSON-Fassung, wo die CSV-Zeile fehlt — oder wo
+    sie weiter ist: ausgezählt mit Personenstimmen, während die CSV-Zeile
+    keine trägt."""
+    if csv_row is None:
+        return True
+    return json_row.counted and _has_persons(json_row) and not _has_persons(csv_row)
 
 
 @dataclass(frozen=True)
@@ -233,6 +293,10 @@ _lock = threading.Lock()
 _cache: tuple[float, Snapshot] | None = None
 #: Datei -> letzter guter Stand. Überlebt den Ablauf des Minuten-Caches.
 _good: dict[str, _Fetched] = {}
+#: Der letzte gute Stand aus der Ergebnisdarstellung: Wahlbereich -> Zeile,
+#: dazu ``0`` für die Stadt. Überlebt wie ``_good`` den Minuten-Cache.
+_pres: dict[int, AreaRow] = {}
+_pres_seats: dict[str, int] | None = None
 
 
 def _get(session: requests.Session, url: str) -> tuple[str, str | None]:
@@ -264,15 +328,91 @@ def _header_of(text: str) -> list[str]:
     return header
 
 
-def _crosscheck(session: requests.Session, base: str, snap: Snapshot) -> list[str]:
-    """Die vierte, OPTIONALE Datei. Ein Fehler hier ändert ``ok`` nicht."""
+def _official_seats(payload: object) -> dict[str, int]:
+    """Die Sitzverteilung des Votemanagers aus der Stadt-Tabelle, je Slug."""
+    city = presentation.parse_area(payload)
+    seats: dict[str, int] = {}
+    for name, n in (city.official_seats if city else {}).items():
+        slugs = crosscheck.slugs_for(name)
+        if len(slugs) == 1:
+            seats[next(iter(slugs))] = n
+    return seats
+
+
+def _crosscheck(session: requests.Session, base: str, snap: Snapshot, payload: object | None) -> list[str]:
+    """Die vierte, OPTIONALE Datei. Ein Fehler hier ändert ``ok`` nicht.
+
+    Nebenbei die Sitzverteilung, die der Votemanager selbst ausweist — sie
+    steht in derselben Datei und wandert als ``official_seats`` in den Stand,
+    damit ``service.compose`` sie gegen die eigene Zuteilung halten kann."""
+    global _pres_seats
     try:
         header = _good["areas"].header if "areas" in _good else None
         counted = any(r.reports_received > 0 for r in snap.areas) or any(r.reports_received > 0 for r in snap.city)
-        return crosscheck.run(session, base, header, counted=counted)
+        if payload is None and counted:
+            payload = crosscheck.fetch_table(session, base)
+        if payload is not None:
+            seats = _official_seats(payload)
+            if seats:
+                _pres_seats = seats
+        snap.official_seats = _pres_seats
+        return crosscheck.run(session, base, header, counted=counted, payload=payload)
     except Exception:  # eine Zugabe darf den Abend nicht umbringen
         _log.exception("Wahlabend: Spaltenprobe fehlgeschlagen")
         return []
+
+
+def _from_presentation(session: requests.Session, base: str) -> tuple[list[str], object | None]:
+    """Die Ergebnisdarstellung holen und in ``_pres`` übernehmen, was weiter
+    ist. Zurück kommen Hinweise für die Seite und die Stadt-Tabelle für die
+    Spaltenprobe. Wirft nie."""
+    notes: list[str] = []
+    try:
+        reg = load_register()
+        resolve = presentation.resolver(reg)
+        got = presentation.fetch(session, base)
+        for label, area in got.areas.items():
+            number = _area_number(label, None)
+            if number is None:
+                continue  # die Übersicht führt auch die Stadt selbst
+            row, why = row_from_presentation(area, label, number, resolve)
+            notes += why
+            if row is not None:
+                _pres[number] = row
+        if got.city is not None:
+            row, why = row_from_presentation(got.city, got.city.title or "Stadt Oldenburg", None, resolve)
+            notes += why
+            if row is not None:
+                _pres[0] = row
+        if got.errors:
+            _log.info("Wahlabend: Ergebnisdarstellung teilweise ohne Antwort — %s", "; ".join(got.errors)[:400])
+        return notes, got.city_payload
+    except Exception:  # der Ersatz darf den Hauptweg nicht mitnehmen
+        _log.exception("Wahlabend: Ersatzpfad über die Ergebnisdarstellung fehlgeschlagen")
+        return notes, None
+
+
+def _merge_presentation(snap: Snapshot) -> list[str]:
+    """Wo die Ergebnisdarstellung weiter ist als die CSV, ihre Zeilen einsetzen."""
+    by_number = {r.number: r for r in snap.areas if r.number is not None}
+    taken: list[str] = []
+    for number in sorted(n for n in _pres if n > 0):
+        json_row = _pres[number]
+        if _better(by_number.get(number), json_row):
+            by_number[number] = json_row
+            taken.append(json_row.name)
+    if taken:
+        untouched = [r for r in snap.areas if r.number is None]
+        snap.areas = [by_number[n] for n in sorted(by_number)] + untouched
+    city_json = _pres.get(0)
+    city_csv = snap.city[0] if snap.city else None
+    if city_json is not None and (city_csv is None or (not city_csv.counted and city_json.counted)):
+        snap.city = [city_json]
+        taken.append("Stadt")
+    if not taken:
+        return []
+    return [f"{', '.join(taken)}: Zahlen aus der Ergebnisdarstellung des Votemanagers — die Open-Data-CSV "
+            f"trägt dort noch keine Personenstimmen."]
 
 
 def fetch(force: bool = False) -> Snapshot:
@@ -315,7 +455,12 @@ def fetch(force: bool = False) -> Snapshot:
             )
             if errors:
                 _log.warning("Wahlabend: Abruf unvollständig — %s", snap.error)
-            snap.warnings = _crosscheck(session, base, snap)
+            payload: object | None = None
+            notes: list[str] = []
+            if _needs_presentation(areas.rows if areas else None):
+                notes, payload = _from_presentation(session, base)
+                notes += _merge_presentation(snap)
+            snap.warnings = _crosscheck(session, base, snap, payload) + notes
         _cache = (now, snap)
         return snap
 
@@ -330,7 +475,10 @@ def reset_cache() -> None:
 
 def reset_memory() -> None:
     """Alles vergessen, auch den letzten guten Stand je Datei (für Tests)."""
-    global _cache
+    global _cache, _pres_seats
     with _lock:
         _cache = None
         _good.clear()
+        _pres.clear()
+        _pres_seats = None
+        presentation.reset()
