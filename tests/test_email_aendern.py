@@ -300,14 +300,14 @@ def test_deaktiviertes_konto_kann_sich_nicht_selbst_freischalten(client, postfac
     try:
         konto = store.get_web_user_by_email(ALT)
         store.set_email_verified(konto["id"], True)
-        store.set_web_user_status(konto["id"], "pending")   # Admin schaltet ab
+        store.set_web_user_status(konto["id"], "disabled")   # Admin schaltet ab
     finally:
         store.close()
 
     v = _bestaetigen(client, postfach, token)
     assert v.status_code == 200
-    assert v.json()["email"] == NEU          # die Adresse wechselt
-    assert v.json()["status"] == "pending"   # der Rauswurf bleibt
+    assert v.json()["email"] == NEU           # die Adresse wechselt
+    assert v.json()["status"] == "disabled"   # der Rauswurf bleibt
 
 
 def test_deaktiviertes_konto_kann_keinen_wechsel_anstossen(client):
@@ -316,7 +316,7 @@ def test_deaktiviertes_konto_kann_keinen_wechsel_anstossen(client):
     try:
         konto = store.get_web_user_by_email(ALT)
         store.set_email_verified(konto["id"], True)
-        store.set_web_user_status(konto["id"], "pending")
+        store.set_web_user_status(konto["id"], "disabled")
     finally:
         store.close()
     r = client.post("/api/account/change-email",

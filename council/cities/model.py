@@ -40,6 +40,25 @@ class PaperKind(StrEnum):
     OTHER = "other"
 
 
+#: Die Vorlagenarten, die eine IDEE tragen — jemand schlägt etwas vor.
+#:
+#: **Was fehlt und warum.** Eine Antwort der Verwaltung auf eine Kleine
+#: Anfrage ist keine Idee, die Oldenburg fehlt: Sie ist die Reaktion auf
+#: eine. Dasselbe gilt für Mitteilungen und Berichte — dort schlägt niemand
+#: etwas vor, dort wird berichtet. Die Idee steht in der Anfrage, und die
+#: liegt fast immer in derselben Gruppe.
+#:
+#: Gemessen am 09.09.2026 auf der Liste „fehlt in Oldenburg, in mindestens
+#: zwei anderen Räten": 35 der 87 Einträge waren `answer`, `notice` oder
+#: `report`. Sie machten die Liste nicht länger, sondern nur voller.
+#:
+#: `petition` fehlt aus einem anderen Grund: Ein Einwohnerantrag ist eine
+#: Idee, aber keine des RATES — und der Vergleich fragt, was andere Räte
+#: beschlossen haben. Kommt eine Petition durch, gibt es einen Antrag dazu.
+IDEA_KINDS = (PaperKind.MOTION, PaperKind.PROPOSAL,
+              PaperKind.INQUIRY, PaperKind.AMENDMENT)
+
+
 class Outcome(StrEnum):
     """Wie ist ein Tagesordnungspunkt ausgegangen? Dieselben Werte wie
     ``council_decisions.outcome`` in Oldenburg, plus zwei, die es dort nicht

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand";
 import { BackLink } from "@/components/back-link";
 import { SupportForm } from "@/components/support-form";
+import { KONTAKT_EMAIL, KONTAKT_MAILTO } from "@/lib/kontakt";
 
 export const metadata: Metadata = {
   title: "Hilfe & Kontakt – Ratslotse",
@@ -60,8 +61,8 @@ export default function HilfePage() {
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               Lieber direkt per Mail?{" "}
-              <a href="mailto:ratslotse@timsigl.de" className="text-primary hover:underline">
-                ratslotse@timsigl.de
+              <a href={KONTAKT_MAILTO} className="text-primary hover:underline">
+                {KONTAKT_EMAIL}
               </a>
             </p>
           </section>

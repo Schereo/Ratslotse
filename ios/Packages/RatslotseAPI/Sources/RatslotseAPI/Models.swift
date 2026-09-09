@@ -381,6 +381,19 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
 
     public var isActive: Bool { status == "active" && emailVerified }
 
+    /// Von einem Admin abgeschaltet — nicht zu verwechseln mit „wartet auf die
+    /// eigene E-Mail-Bestätigung".
+    ///
+    /// Bis 09/2026 trugen beide Zustände serverseitig denselben Wert
+    /// `pending`, und die App zeigte deshalb einer gesperrten Person „Bestätige
+    /// deine E-Mail-Adresse" — die sie längst bestätigt hatte. Der zweite Teil
+    /// der Bedingung fängt ein Backend im alten Stand ab: Dort ist ein
+    /// bestätigtes, nicht aktives Konto genau dieser Fall.
+    public var isDisabled: Bool {
+        guard !isActive else { return false }
+        return status == "disabled" || (status != "active" && emailVerified)
+    }
+
     /// Trägt dieses Konto das Recht? Der eine Weg, Rechte zu prüfen.
     public func can(_ permission: String) -> Bool {
         if let permissions { return permissions.contains(permission) }
@@ -511,6 +524,18 @@ public struct IdeaEvidence: Codable, Sendable, Hashable, Identifiable {
 /// Lehre wie bei ``ElsewhereItem``: Die Ratsinformationssysteme füllen sehr
 /// unterschiedlich viel aus, und ein nicht-optionales Feld hieße,
 /// `JSONDecoder` wirft und die ganze Liste bleibt leer statt unvollständig.
+public struct IdeaSibling: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let paperID: String
+    public let name: String
+    public let date: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, date
+        case paperID = "paper_id"
+    }
+}
+
 public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public var id: String { paperID }
     public let paperID: String
@@ -542,11 +567,15 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public let peers: Int
     /// Was DIESES Konto zum Urteil gesagt hat: "right", "wrong" oder leer.
     public let feedback: String
+    /// Die weiteren Vorlagen DERSELBEN Stadt zu derselben Idee, älteste
+    /// zuerst. Potsdam hat das Denkmalpflege-Konzept dreimal beantragt;
+    /// gezeigt wird die jüngste, hier stehen die übrigen.
+    public let siblings: [IdeaSibling]
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
         case transfer, competence, originator, status, reason
-        case confidence, evidence, effort, addressee, peers, feedback
+        case confidence, evidence, effort, addressee, peers, feedback, siblings
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
@@ -578,6 +607,7 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         addressee = try v.decodeIfPresent(String.self, forKey: .addressee)
         peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
         feedback = try v.decodeIfPresent(String.self, forKey: .feedback) ?? ""
+        siblings = try v.decodeIfPresent([IdeaSibling].self, forKey: .siblings) ?? []
     }
 }
 

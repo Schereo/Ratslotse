@@ -226,8 +226,16 @@ def change_email(
     selbst zurückholen.
     """
     change_email_limiter.check(request, subject=user["id"])
-    # Unbestätigt darf wechseln (Tippfehler), deaktiviert nicht.
-    if not ist_admin(user) and user.get("status") != "active" and user.get("email_verified"):
+    # Unbestätigt darf wechseln (der Tippfehler bei der Registrierung),
+    # abgeschaltet nicht. Seit die beiden Wartezustände getrennte Werte haben,
+    # steht das hier als das, was es ist — vorher war es ein Umkehrschluss
+    # über `email_verified`. Geprüft wird gegen „nicht aktiv und nicht
+    # unbestätigt": Ein Konto, das die Migration auf `disabled` verfehlt hat,
+    # bleibt damit ebenfalls draußen.
+    if not ist_admin(user) and user.get("status") not in ("active", "pending"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
+    if not ist_admin(user) and user.get("status") == "pending" and user.get("email_verified"):
+        # Alt-Bestand vor der Trennung: bestätigt UND pending hieß abgeschaltet.
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Dein Konto ist derzeit deaktiviert.")
     _reauth(user, body.current_password, body.apple_identity_token)
 

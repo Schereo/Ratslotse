@@ -539,10 +539,12 @@ def verify_email(
     user_id = treffer["user_id"]
     neue_adresse = treffer["new_email"]
     vorher = store.get_web_user_by_id(user_id)
-    # VOR dem Umschreiben merken — und das ist keine Stilfrage: `status ==
-    # pending` heißt auch „von einem Admin deaktiviert". Ohne diesen Merker
-    # könnte ein deaktiviertes Konto sich über einen Wechsel-Link selbst
-    # wieder freischalten.
+    # VOR dem Umschreiben merken. Seit `disabled` ein eigener Status ist,
+    # trägt das Modell die Unterscheidung selbst — der Merker ist damit der
+    # zweite Riegel, nicht mehr der einzige. Er bleibt für den Alt-Bestand:
+    # Eine Datenbank, die die Migration auf `disabled` noch nicht gesehen hat,
+    # trägt abgeschaltete Konten weiter als bestätigtes `pending`, und ohne
+    # ihn schaltete ein Wechsel-Link sie frei.
     war_unbestaetigt = not (vorher or {}).get("email_verified")
     alte_adresse = str((vorher or {}).get("email", ""))
 
@@ -570,9 +572,8 @@ def verify_email(
 
     user = store.get_web_user_by_id(user_id)
     # A confirmed address activates the account — no manual admin approval.
-    # Nur für ein Konto, das VORHER unbestätigt war: Ein bestätigtes Konto auf
-    # `pending` wurde von einem Admin deaktiviert und darf sich hier nicht
-    # selbst zurückholen.
+    # Nur für ein Konto, das VORHER unbestätigt war (s. o.): Ein abgeschaltetes
+    # darf sich hier nicht selbst zurückholen.
     if user and war_unbestaetigt and user.get("status") == "pending":
         store.set_web_user_status(user_id, "active")
         user = store.get_web_user_by_id(user_id)

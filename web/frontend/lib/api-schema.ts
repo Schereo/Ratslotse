@@ -902,7 +902,13 @@ export interface paths {
         get?: never;
         /**
          * Set Status
-         * @description Approve ('active') or suspend ('pending') a web account. Emails the user on first approval.
+         * @description Ein Konto freischalten ('active') oder abschalten ('disabled').
+         *
+         *     ``pending`` wird als ``disabled`` gelesen: Die im App Store ausgelieferte
+         *     Admin-Ansicht schickt beim „Sperren" noch den alten Wert, und ein 400 dort
+         *     hieße, dass Sperren aus der App nicht mehr geht. Gespeichert wird immer der
+         *     neue Wert — sonst entstünde genau der Zustand wieder, den die Trennung
+         *     beseitigt: ein bestätigtes Konto auf ``pending``.
          */
         put: operations["set_status_api_admin_users__user_id__status_put"];
         post?: never;
@@ -8404,7 +8410,13 @@ export interface components {
         };
         /**
          * Idea
-         * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+         * @description Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
+         *
+         *     Eine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das
+         *     Konzept für bürgerschaftliches Engagement in der Denkmalpflege
+         *     dreimal beantragt, Münster den Jugendrat zweimal. Gemessen am
+         *     09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.
+         *     Gezeigt wird die jüngste, die übrigen stehen in ``siblings``.
          */
         Idea: {
             /** Addressee */
@@ -8443,6 +8455,8 @@ export interface components {
             peers: number;
             /** Reason */
             reason: string;
+            /** Siblings */
+            siblings: components["schemas"]["IdeaSibling"][];
             /** Status */
             status: string;
             /** Summary */
@@ -8502,6 +8516,18 @@ export interface components {
             query: string;
             /** Total */
             total: number;
+        };
+        /**
+         * IdeaSibling
+         * @description Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.
+         */
+        IdeaSibling: {
+            /** Date */
+            date: string | null;
+            /** Name */
+            name: string;
+            /** Paper Id */
+            paper_id: string;
         };
         /** IdeasResponse */
         IdeasResponse: {
@@ -10527,7 +10553,14 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** StatusUpdate */
+        /**
+         * StatusUpdate
+         * @description ``active`` oder ``disabled``.
+         *
+         *     ``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im
+         *     App Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau diesen
+         *     Wert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.
+         */
         StatusUpdate: {
             /** Status */
             status: string;
@@ -11048,7 +11081,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "pending" | "active" | "blocked";
+            status: "pending" | "active" | "disabled";
         };
         /** UserQuizAnswerIn */
         UserQuizAnswerIn: {
@@ -11212,7 +11245,7 @@ export interface components {
              * @default pending
              * @enum {string}
              */
-            status: "pending" | "active" | "blocked";
+            status: "pending" | "active" | "disabled";
         };
         /**
          * WeekPreview
@@ -17006,4 +17039,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a6d029e5805da11a617cbdd5702b5dae8fc90577067112d991a6b9f181a21e32
+// vertrag-sha256: a68aacf963c9c2fa1fd2be50b2942a22c58c5a67b6add1fcd1e03c6968df4a8b

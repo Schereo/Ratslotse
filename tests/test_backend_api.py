@@ -676,9 +676,14 @@ def test_activation_emails_user_on_approve(client):
     TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})  # aktiv (kein Mail-Versand konfiguriert)
     bob = next(u for u in client.get("/api/admin/users").json() if u["email"] == "bob@test.de")
     assert bob["status"] == "active"
-    # Admin sperrt bob — damit es wieder einen pending→active-Übergang gibt.
+    # Admin sperrt bob — damit es wieder einen Übergang nach 'active' gibt.
+    # Geschickt wird hier bewusst der ALTE Wert `pending`: Genau den sendet die
+    # im App Store ausgelieferte Admin-Ansicht beim „Sperren". Er muss weiter
+    # angenommen und als `disabled` gespeichert werden, sonst ginge Sperren aus
+    # der App nicht mehr — und es entstünde wieder ein bestätigtes Konto auf
+    # `pending`, also genau die Doppelbedeutung, die getrennt werden sollte.
     r = client.put(f"/api/admin/users/{bob['id']}/status", json={"status": "pending"})
-    assert r.status_code == 200 and r.json()["status"] == "pending"
+    assert r.status_code == 200 and r.json()["status"] == "disabled"
 
     sent = {}
     fake_settings = SimpleNamespace(resend_api_key="x", app_base_url="https://ratslotse.de",
@@ -2924,6 +2929,61 @@ def test_apple_login_links_existing_account_by_email(client, apple_jwks):
     body = r.json()
     assert body["email"] == "admin@test.de"
     assert body["apple_linked"] is True and body["has_password"] is True
+
+
+def test_apple_login_reaktiviert_kein_gesperrtes_konto(client, apple_jwks):
+    """Ein deaktiviertes Konto darf sich über „Mit Apple anmelden" NICHT selbst
+    freischalten.
+
+    `web_users.status` kennt nur `pending` und `active`, und `pending` heißt
+    zweierlei: „E-Mail noch nicht bestätigt" und „von einem Admin deaktiviert".
+    Der Verknüpfungspfad las es als Ersteres und setzte auf `active` — die
+    Moderationsentscheidung war damit aushebelbar, sobald die Apple-ID dieselbe
+    bestätigte Adresse trug. Gemessen am 09.09.2026: pending → active.
+    """
+    _register(client)                       # Admin
+    _register(client, "gesperrt@example.org")
+    store = Store(RATSLOTSE_DB)
+    try:
+        konto = store.get_web_user_by_email("gesperrt@example.org")
+        uid = konto["id"]
+        store.set_email_verified(uid, True)
+        store.set_web_user_status(uid, "pending")      # Admin deaktiviert
+    finally:
+        store.close()
+
+    fremd = TestClient(app)
+    r = fremd.post("/api/auth/apple", json={
+        "identity_token": _apple_token(sub="sub-gesperrt", email="gesperrt@example.org")})
+    assert r.status_code == 200
+    assert r.json()["status"] == "pending", "gesperrtes Konto wurde freigeschaltet"
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert store.get_web_user_by_id(uid)["status"] == "pending"
+    finally:
+        store.close()
+    # Und die Sperre wirkt auch wirklich weiter.
+    assert fremd.get("/api/topics").status_code == 403
+
+
+def test_apple_login_schaltet_ein_unbestaetigtes_konto_weiter_frei(client, apple_jwks):
+    """Die Gegenprobe: Der eigentliche Zweck des Pfades bleibt erhalten —
+    Apple bestätigt die Mailbox, das Konto wird aktiv."""
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store.create_web_user("neu@example.org", "x", "user", "pending",
+                                    email_verified=False)
+    finally:
+        store.close()
+
+    fremd = TestClient(app)
+    r = fremd.post("/api/auth/apple", json={
+        "identity_token": _apple_token(sub="sub-neu", email="neu@example.org")})
+    assert r.status_code == 200
+    assert r.json()["status"] == "active" and r.json()["email_verified"] is True
+    assert r.json()["id"] == uid
 
 
 def test_apple_login_rejects_foreign_audience_and_bad_signature(client, apple_jwks):

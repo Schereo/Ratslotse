@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -247,6 +247,13 @@ CREATE TABLE IF NOT EXISTS idea_clusters (
     PRIMARY KEY (model, version, paper_id)
 );
 CREATE INDEX IF NOT EXISTS idx_idea_clusters ON idea_clusters(model, version, cluster_id);
+-- Die Gegenrichtung: von der VORLAGE zu ihrer Gruppe. Der Primärschlüssel
+-- führt model, version, paper_id — paper_id steht hinten und ist allein
+-- nicht benutzbar. Ohne diesen Index wählt SQLite für die Dubletten-Prüfung
+-- der Ideen-Liste `SCAN k2` über alle Cluster-Zeilen: EIN Zähler brauchte
+-- damit 14,3 Sekunden (gemessen 09.09.2026, 3.641 Zeilen), mit Index
+-- Millisekunden. Ein Endpunkt, der 14 Sekunden braucht, ist kaputt.
+CREATE INDEX IF NOT EXISTS idx_idea_clusters_paper ON idea_clusters(paper_id);
 
 -- ---------------------------------------------------------------- Schicht 5
 -- Was MENSCHEN zu einem Urteil sagen. Die einzige Tabelle hier, die weder aus
@@ -287,6 +294,14 @@ CREATE TABLE IF NOT EXISTS meta (
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
 MIGRATIONS: list[tuple[int, str]] = [
+    # 4 — Der Weg von der Vorlage zu ihrer Ideen-Gruppe (09.09.2026). Die
+    # Ideen-Liste zieht Dubletten je Stadt zusammen und fragt dafür je Zeile
+    # „liegt eine jüngere Schwester im selben Cluster?". Ohne Index wählt
+    # SQLite `SCAN k2` über alle Cluster-Zeilen — ein Zähler brauchte 14,3
+    # Sekunden statt Millisekunden.
+    (4, """
+    CREATE INDEX IF NOT EXISTS idx_idea_clusters_paper ON idea_clusters(paper_id);
+    """),
     # 3 — Rückmeldungen von Menschen zu einem Urteil (09.09.2026). Der Absatz
     # am SCHEMA sagt, warum: Der Maßstab für jedes Urteil sind vierzig
     # handgeurteilte Fälle, und der war viermal der Fehler.
