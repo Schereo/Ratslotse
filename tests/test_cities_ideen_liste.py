@@ -51,6 +51,36 @@ def cities(tmp_path):
     s.close()
 
 
+def test_antworten_und_mitteilungen_stehen_nicht_auf_der_liste(cities):
+    """Die Verwaltung REAGIERT dort — die Idee steht in der Anfrage.
+
+    Gemessen am 09.09.2026 waren 35 der 87 Einträge `answer`, `notice` oder
+    `report`. Sie machten die Liste nicht länger, sondern nur voller.
+    """
+    cities.upsert_batch(Batch(papers=[
+        Paper("po:9", "potsdam", "Antwort auf die Anfrage", date="2026-09-01",
+              kind="answer"),
+    ]))
+    cities.put_annotation("paper", "po:9", "classify", "2",
+                          {"field": "kultur_sport", "transfer": "adaptable",
+                           "competence": "council",
+                           "instrument": "Denkmalpflege-Konzept erstellen",
+                           "summary": "."}, "hpo9")
+    cities.put_annotation("paper", "po:9", "fit", "3",
+                          {"status": "missing", "evidence": [], "reason": ".",
+                           "confidence": "high"}, "fpo9")
+    # In DERSELBEN Gruppe und JÜNGER als der Antrag — genau der Fall, in dem
+    # sie ihn verdrängen würde und danach selbst durch den Art-Filter fiele.
+    cities.replace_idea_clusters(MODELL, "1", [
+        (MODELL, "1", 7, "po:1", 0.9), (MODELL, "1", 7, "po:2", 0.9),
+        (MODELL, "1", 7, "po:3", 0.9), (MODELL, "1", 7, "ms:1", 0.9),
+        (MODELL, "1", 7, "po:9", 0.9)])
+    zeilen, _, _ = cities.ideas("kultur_sport", status=("missing",))
+    assert "po:9" not in {z["id"] for z in zeilen}
+    assert {z["id"] for z in zeilen} == {"po:3", "ms:1"}, (
+        "die jüngere Antwort darf den Antrag auch nicht verdrängen")
+
+
 def test_dubletten_je_stadt_werden_zusammengezogen(cities):
     zeilen, gesamt, _ = cities.ideas("kultur_sport", status=("missing",))
     kennungen = [z["id"] for z in zeilen]

@@ -141,3 +141,31 @@ def test_die_oberflaeche_liest_die_aktuelle_fassung():
         assert konstante == (ann.key, ann.version), (
             f"Die Ideen-Seite liest {schluessel} in Fassung {konstante[1]}, "
             f"der Annotator steht auf {ann.version}.")
+
+
+def test_die_ideen_abfragen_filtern_dieselben_vorlagenarten():
+    """`IDEA_KINDS` steht in Python, die Abfrage trägt die Werte im SQL.
+
+    Sie dort als Platzhalter zu binden ginge nicht ohne zusammengesetztes
+    SQL, und genau das überspringt `tests/test_sql_spalten.py` — der Wächter
+    wäre an der neuesten Abfrage blind. Also stehen die Werte ausgeschrieben
+    da, und dieser Test hält sie an der Liste. Ein Tippfehler filterte sonst
+    still die halbe Liste weg.
+
+    Die Volltextsuche (`_SUCHE`) ist ABSICHTLICH nicht dabei: Wer nach
+    „Hitzeschutz" sucht, will auch die Antwort der Verwaltung finden.
+    """
+    import re
+
+    from council.cities.model import IDEA_KINDS
+    from council.cities.store import CitiesStore
+
+    erwartet = tuple(k.value for k in IDEA_KINDS)
+    for name in ("_IDEEN_ZAEHLEN", "_IDEEN_JE_STATUS", "_IDEEN_ZEILEN"):
+        treffer = re.search(r"p\.kind IN \(([^)]*)\)", getattr(CitiesStore, name))
+        assert treffer, f"{name} filtert die Vorlagenart nicht mehr"
+        im_sql = tuple(x.strip().strip("'") for x in treffer.group(1).split(","))
+        assert im_sql == erwartet, (
+            f"{name} filtert {im_sql}, model.IDEA_KINDS sagt {erwartet}")
+    assert "p.kind IN" not in CitiesStore._SUCHE, (
+        "die Volltextsuche soll auch Antworten und Mitteilungen finden")

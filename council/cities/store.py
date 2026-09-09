@@ -544,6 +544,12 @@ class CitiesStore:
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?) "
+        # Nur, was jemand VORGESCHLAGEN hat. Eine Antwort der Verwaltung auf
+        # eine Kleine Anfrage ist keine Idee, die Oldenburg fehlt — sie ist
+        # die Reaktion auf eine; die Idee steht in der Anfrage, und die liegt
+        # fast immer in derselben Gruppe. Gemessen: 35 der 87 Einträge waren
+        # `answer`, `notice` oder `report` (`model.IDEA_KINDS`).
+        "  AND p.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         # Je Stadt und Idee EINE Zeile. Potsdam hat das Konzept für
         # bürgerschaftliches Engagement in der Denkmalpflege dreimal
         # beantragt, Münster den Jugendrat zweimal — auf der Liste waren
@@ -565,6 +571,7 @@ class CitiesStore:
         "                    JOIN papers p2 ON p2.id = k2.paper_id "
         "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
         "                    AND p2.id != p.id "
+        "                    AND p2.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
         "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
         "                             AND p2.id > p.id)) "
@@ -591,6 +598,12 @@ class CitiesStore:
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?) "
+        # Nur, was jemand VORGESCHLAGEN hat. Eine Antwort der Verwaltung auf
+        # eine Kleine Anfrage ist keine Idee, die Oldenburg fehlt — sie ist
+        # die Reaktion auf eine; die Idee steht in der Anfrage, und die liegt
+        # fast immer in derselben Gruppe. Gemessen: 35 der 87 Einträge waren
+        # `answer`, `notice` oder `report` (`model.IDEA_KINDS`).
+        "  AND p.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         # Je Stadt und Idee EINE Zeile. Potsdam hat das Konzept für
         # bürgerschaftliches Engagement in der Denkmalpflege dreimal
         # beantragt, Münster den Jugendrat zweimal — auf der Liste waren
@@ -612,6 +625,7 @@ class CitiesStore:
         "                    JOIN papers p2 ON p2.id = k2.paper_id "
         "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
         "                    AND p2.id != p.id "
+        "                    AND p2.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
         "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
         "                             AND p2.id > p.id)) "
@@ -641,6 +655,7 @@ class CitiesStore:
         "          JOIN papers p3 ON p3.id = k4.paper_id "
         "        WHERE k3.paper_id = p.id AND p3.body_id = p.body_id "
         "          AND p3.id != p.id "
+        "          AND p3.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         "          AND NOT EXISTS (SELECT 1 FROM annotations ck2, "
         "                              json_each(ck2.payload, '$.drop') d2 "
         "                          WHERE ck2.object_kind = 'cluster' "
@@ -660,6 +675,12 @@ class CitiesStore:
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?) "
+        # Nur, was jemand VORGESCHLAGEN hat. Eine Antwort der Verwaltung auf
+        # eine Kleine Anfrage ist keine Idee, die Oldenburg fehlt — sie ist
+        # die Reaktion auf eine; die Idee steht in der Anfrage, und die liegt
+        # fast immer in derselben Gruppe. Gemessen: 35 der 87 Einträge waren
+        # `answer`, `notice` oder `report` (`model.IDEA_KINDS`).
+        "  AND p.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         # Je Stadt und Idee EINE Zeile. Potsdam hat das Konzept für
         # bürgerschaftliches Engagement in der Denkmalpflege dreimal
         # beantragt, Münster den Jugendrat zweimal — auf der Liste waren
@@ -681,6 +702,7 @@ class CitiesStore:
         "                    JOIN papers p2 ON p2.id = k2.paper_id "
         "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
         "                    AND p2.id != p.id "
+        "                    AND p2.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
         "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
         "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
         "                             AND p2.id > p.id)) "
