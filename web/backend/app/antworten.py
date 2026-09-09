@@ -1420,6 +1420,14 @@ class Idea(TypedDict):
     #: Die weiteren Vorlagen derselben Stadt zu derselben Idee, älteste
     #: zuerst. Leer, wenn die Stadt die Sache nur einmal behandelt hat.
     siblings: list[IdeaSibling]
+    #: Wohin DIESE Vorlage die gemeinsame Sache bewegen will: introduce,
+    #: expand, restrict, stop, review. Leer, solange der Cron sie nicht
+    #: vergeben hat oder die Idee in keiner Gruppe liegt.
+    stance: str
+    #: Wie viele ANDERE Städte in welche Richtung wollen — „4 Räte führen
+    #: ein, 1 stellt die Prüfung ein". Ohne das zählte die Karte eine Stadt
+    #: für eine Idee, die sie gerade abgelehnt hat.
+    peer_stances: dict[str, int]
     #: Wer sie in Oldenburg TUN müsste, wenn nicht die Stadt selbst — „VWG",
     #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
     #: die Stadt selbst entscheidet, und das ist der Normalfall.

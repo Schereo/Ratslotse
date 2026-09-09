@@ -169,3 +169,30 @@ def test_die_ideen_abfragen_filtern_dieselben_vorlagenarten():
             f"{name} filtert {im_sql}, model.IDEA_KINDS sagt {erwartet}")
     assert "p.kind IN" not in CitiesStore._SUCHE, (
         "die Volltextsuche soll auch Antworten und Mitteilungen finden")
+
+
+def test_das_richtungs_goldenset_kennt_nur_gueltige_werte():
+    """Ein Golden Set mit einem Wert, den es nicht mehr gibt, misst nichts.
+
+    Genau das wäre am 09.09.2026 passiert: Die erste Fassung von `stance`
+    hatte fünf Klassen (`introduce`/`expand`/`restrict`/`stop`/`review`) und
+    traf 72 %; sechs der dreizehn Fehler lagen zwischen `introduce` und
+    `expand`, einer Grenze, für die es keine Regel gibt. Zusammengelegt zu
+    drei Klassen: 87 %. Die alten Werte stehen als `expected_fein` noch in
+    den Fällen — sie dokumentieren die Zusammenlegung, sie messen nicht.
+    """
+    import json
+    from pathlib import Path as P
+
+    from council.cities.annotators import STANCE_VALUES
+
+    datei = P(__file__).resolve().parents[1] / "eval" / "cases_cities_stance.json"
+    faelle = json.loads(datei.read_text(encoding="utf-8"))
+    assert faelle, "ohne Fälle misst der Prüfstand nichts"
+    unbekannt = {f["expected"] for f in faelle} - set(STANCE_VALUES)
+    assert not unbekannt, (
+        f"Das Golden Set erwartet {sorted(unbekannt)}, `STANCE_VALUES` kennt "
+        f"nur {list(STANCE_VALUES)}.")
+    assert sum(1 for f in faelle if f["expected"] == "against") >= 5, (
+        "Ohne Gegenrichtungen prüft der Lauf genau das nicht, wofür es den "
+        "Annotator gibt")

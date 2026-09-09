@@ -647,6 +647,28 @@ class CitiesStore:
         # „Potsdam · 3 Vorlagen 2024–2025" sagen kann statt dreimal
         # dasselbe zu zeigen. Sie kommen als JSON mit, weil ein zweiter
         # Rundgang je Zeile dreißig Abfragen je Seite wären.
+        # Die Richtungen der ANDEREN Städte zu derselben Idee: „4 Räte führen
+        # ein, 1 stellt die Prüfung ein". Ohne sie zählt die Karte eine Stadt
+        # für eine Idee, die sie gerade abgelehnt hat — gemessen an der
+        # Verpackungssteuer, die in zwei von fünf Räten gestoppt wurde.
+        # Ausgeschlossene Mitglieder zählen nicht mit.
+        "       (SELECT json_group_array(json_extract(st.payload, '$.stance')) "
+        "        FROM idea_clusters k5 "
+        "          JOIN idea_clusters k6 ON k6.model = k5.model "
+        "            AND k6.version = k5.version AND k6.cluster_id = k5.cluster_id "
+        "          JOIN papers p5 ON p5.id = k6.paper_id "
+        "          JOIN annotations st ON st.object_kind = 'paper' "
+        "            AND st.object_id = p5.id AND st.annotator = 'stance' "
+        "        WHERE k5.paper_id = p.id AND p5.body_id != p.body_id "
+        "          AND NOT EXISTS (SELECT 1 FROM annotations ck3, "
+        "                              json_each(ck3.payload, '$.drop') d3 "
+        "                          WHERE ck3.object_kind = 'cluster' "
+        "                            AND ck3.annotator = 'cluster_check' "
+        "                            AND ck3.object_id = k5.version || ':' || k5.cluster_id "
+        "                            AND d3.value IN (p.id, p5.id))) AS peer_stances_json, "
+        "       (SELECT json_extract(st2.payload, '$.stance') FROM annotations st2 "
+        "        WHERE st2.object_kind = 'paper' AND st2.object_id = p.id "
+        "          AND st2.annotator = 'stance') AS stance, "
         "       (SELECT json_group_array(json_object("
         "                  'id', p3.id, 'name', p3.name, 'date', p3.date)) "
         "        FROM idea_clusters k3 "

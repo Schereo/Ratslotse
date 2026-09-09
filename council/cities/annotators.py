@@ -53,6 +53,56 @@ CONFIDENCE_VALUES = ("high", "medium", "low")
 EFFORT_VALUES = ("inquiry", "review", "resolution", "decision", "budget")
 
 
+#: Was eine Vorlage mit der gemeinsamen Sache ihrer Gruppe vorhat.
+#:
+#: **Warum das gebraucht wird.** „Verpackungssteuersatzung erlassen"
+#: (Braunschweig) und „Verpackungssteuer-Prüfung einstellen" (Magdeburg)
+#: liegen im selben Cluster — zu Recht, es ist dieselbe Sache — und standen
+#: beide als fehlende Idee auf der Liste. ``cluster_check`` hat das gesehen
+#: und die Gruppe ausdrücklich BEHALTEN: Sie ist richtig, nur die Richtung
+#: ist verschieden. Was fehlte, war ein Feld, das die Richtung trägt.
+STANCE_VALUES = ("for", "against", "review")
+
+
+class IdeaStance(BaseModel):
+    """Wohin diese Vorlage die gemeinsame Sache bewegen will.
+
+    - ``for``: Die Vorlage WILL die Sache — sie einführen, ausweiten,
+      fortschreiben, umsetzen.
+    - ``against``: Sie will sie NICHT — verhindern, einstellen, zurücknehmen,
+      einschränken.
+    - ``review``: Erst prüfen, berichten, Machbarkeit klären. Noch keine
+      Festlegung.
+
+    **Drei Klassen und nicht fünf, und das ist gemessen.** Die erste Fassung
+    unterschied ``introduce`` / ``expand`` / ``restrict`` / ``stop`` /
+    ``review``. Ergebnis am 09.09.2026 gegen 46 Handfälle: **72 %**, und
+    sechs der dreizehn Fehler waren ``introduce`` gegen ``expand`` — „Lärm-
+    aktionsplan fortschreiben" ist beides, je nachdem ob man den Plan oder
+    seine Fortschreibung für die Sache hält. Ich konnte die Grenze selbst
+    nicht scharf ziehen; eine Klasse, für die es keine Regel gibt, ist keine
+    Klasse. Zusammengelegt: **87 %**, über der Schranke.
+
+    Für die Karte ist es ohnehin das, was man lesen will: „4 Räte dafür,
+    1 dagegen, 2 prüfen erst".
+
+    **Die Richtung ist RELATIV zur Sache, nicht zum Verb der Überschrift.**
+    Das ist die Falle, an der eine naive Umsetzung scheitert:
+    „Straßenausbaubeiträge abschaffen" ist ``introduce``, wenn die Sache der
+    Gruppe „Straßenausbaubeiträge abschaffen" heißt — die Abschaffung IST
+    die Sache, und die Vorlage will sie. ``stop`` wäre dort ein Antrag, der
+    die Abschaffung verhindert. Gemessen am 09.09.2026 tragen 24 Vorlagen in
+    Gruppen mit drei oder mehr Städten ein solches Gegen-Wort im Instrument,
+    und die Hälfte davon meint damit die Sache selbst.
+
+    Deshalb bekommt das Modell das LABEL der Gruppe aus ``cluster_check`` als
+    Bezugspunkt — es liegt für alle 81 Gruppen mit drei oder mehr Städten vor.
+    """
+
+    stance: Literal[STANCE_VALUES]  # type: ignore[valid-type]
+    reason: str = Field(default="", max_length=200)
+
+
 class IdeaEffort(BaseModel):
     """Was diese Idee den Oldenburger Rat kosten würde.
 
@@ -352,6 +402,31 @@ ANNOTATORS: dict[str, Annotator] = {
                  "wieder über ein Mitglied je Gruppe oder schlägt die "
                  "Ein-Drittel-Sicherung oft an (`zu_viel` in den Kennzahlen), "
                  "ist das Label wieder zu eng.",
+    ),
+    "stance": Annotator(
+        key="stance", version="1", applies_to=("paper",),
+        prompt_system="cities_stance_system", prompt_user="cities_stance_user",
+        model=os.environ.get("CITIES_STANCE_MODEL", "deepseek/deepseek-v4-flash"),
+        payload=IdeaStance,
+        # Ein Aufruf je Vorlage, weil jede ihr eigenes Gruppen-Label als
+        # Bezugspunkt braucht. Sechs Vorlagen aus sechs Gruppen in einem
+        # Aufruf hieße sechs Bezugspunkte — genau die Verwechslung, die die
+        # Frage kaputt macht.
+        # 4.000 nicht, weil die Antwort lang wird — sie ist zwei Felder —,
+        # sondern weil ein knappes Budget keine Fehlermeldung liefert,
+        # sondern eine ABGESCHNITTENE Antwort mit Status 200.
+        batch_size=1, input_chars=1200, max_tokens=4000,
+        # Nur Vorlagen in einer Gruppe: Ohne gemeinsame Sache gibt es keine
+        # Richtung, auf die sich das Urteil beziehen könnte.
+        only_usable=True, needs_index=True,
+        gut_wenn="eval/run_cities_stance.py gegen 40 Handfälle aus Gruppen mit "
+                 "drei oder mehr Städten. Schranke 85 % — höher als bei "
+                 "`transfer`, weil die Kanten schärfer sind: Eine Vorlage will "
+                 "eine Sache oder sie will sie nicht. Strittig ist nur die "
+                 "Grenze zwischen `introduce` und `review` (verlangt sie eine "
+                 "Entscheidung oder erst Wissen?); steht die Verwechslungs-"
+                 "matrix voll davon, ist der Prompt an dieser Stelle zu "
+                 "unscharf und nicht das Modell zu schlecht.",
     ),
     "effort": Annotator(
         key="effort", version="1", applies_to=("paper",),

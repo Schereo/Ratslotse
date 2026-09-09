@@ -26,6 +26,8 @@ der zweite, unabhängige Kanal zu ``fit``, und die beiden müssen übereinstimme
 from __future__ import annotations
 
 import logging
+import os
+import time
 from typing import TYPE_CHECKING
 
 from council.cities.annotators import USABLE
@@ -215,6 +217,154 @@ def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
     for name, wert in check_clusters(main, model).items():
         zahlen[f"check_{name}"] = wert
     return zahlen
+
+
+#: Ab wie vielen STÄDTEN eine Gruppe nach der Richtung gefragt wird. Bei zwei
+#: Städten trägt die Angabe wenig — die Karte zeigt sie erst ab zwei ANDEREN
+#: Räten, und dort ist die Gegenrichtung der interessante Fall.
+STANCE_AB_STAEDTEN = 3
+
+#: Wie viele Richtungs-Urteile gleichzeitig unterwegs sind. Dieselbe Lehre wie
+#: bei `fit`: Die Arbeiter rufen das Modell, geschrieben wird im Hauptthread.
+STANCE_WORKERS = int(os.environ.get("CITIES_STANCE_WORKERS", "12"))
+
+
+def stance_all(main: CitiesStore, model: str = EMBED_MODEL,
+               version: str = CLUSTER_VERSION, limit: int | None = None,
+               workers: int = 0) -> dict:
+    """Wohin will jede Vorlage die gemeinsame Sache ihrer Gruppe bewegen?
+
+    **Warum das nicht in ``annotate.py`` läuft.** Der übliche Lauf fragt
+    Batches von Vorlagen nach einem Etikett, das nur an ihnen selbst hängt.
+    Die Richtung hängt am LABEL DER GRUPPE — „Straßenausbaubeiträge
+    abschaffen" ist ``introduce``, wenn die Gruppe genau das will, und
+    ``stop``, wenn sie das Gegenteil will. Sechs Vorlagen aus sechs Gruppen
+    in einem Aufruf hieße sechs Bezugspunkte.
+
+    Gefragt werden nur Gruppen ab ``STANCE_AB_STAEDTEN`` Städten, und nur
+    solche mit einem Label aus ``cluster_check`` — ohne Bezugspunkt gibt es
+    keine Richtung. Gemessen am 09.09.2026: 81 Gruppen, 838 Vorlagen.
+    """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from council.cities.annotate import parse_json
+    from council.cities.annotators import get as get_annotator
+    from kern import llm, prompts
+
+    ann = get_annotator("stance")
+    gruppen = _gruppen_mit_mitgliedern(main, version)
+    einordnung = main.annotations_for("classify", "2")
+    auftraege: list[tuple[str, dict]] = []
+    for cid, mitglieder in gruppen.items():
+        if len({m["body_id"] for m in mitglieder}) < STANCE_AB_STAEDTEN:
+            continue
+        pruefung = main.annotation("cluster", f"{version}:{cid}",
+                                   "cluster_check", "1")
+        raus = set(((pruefung or {}).get("payload") or {}).get("drop") or [])
+        bleibt = [m for m in mitglieder if m["paper_id"] not in raus]
+        gruppe = _gruppen_text(bleibt, einordnung)
+        if not gruppe:
+            continue
+        for m in bleibt:
+            if main.annotation("paper", m["paper_id"], ann.key, ann.version):
+                continue
+            auftraege.append((gruppe, m))
+    if limit:
+        auftraege = auftraege[:limit]
+    stand = {"annotated": 0, "errors": 0, "cost_usd": 0.0, "seconds": 0}
+    if not auftraege:
+        return stand
+
+    logger.info("stance: %s Vorlagen in %s Gruppen", len(auftraege),
+                len({m["cluster_id"] for _, m in auftraege}))
+    system = prompts.get(ann.prompt_system)
+    sperre = threading.Lock()
+    t0 = time.time()
+
+    def eine(auftrag: tuple[str, dict]):
+        gruppe, m = auftrag
+        klasse = einordnung.get(m["paper_id"]) or {}
+        text = (f"Stadt: {m['body_id']}\n"
+                f"Datum: {(m.get('date') or '')[:10]}\n"
+                f"Titel: {m.get('name') or ''}\n"
+                f"Instrument: {klasse.get('instrument') or ''}\n"
+                f"Zusammenfassung: {klasse.get('summary') or ''}")
+        try:
+            antwort = llm.chat_complete(
+                model=ann.model, response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system},
+                          {"role": "user", "content": prompts.render(
+                              ann.prompt_user, gruppe=gruppe,
+                              paper=text[:ann.input_chars * 4])}],
+                max_tokens=ann.max_tokens, temperature=ann.temperature,
+                extra_body={"provider": {}} if ann.routing_free else {},
+                _feature=ann.feature)
+            nutzlast = ann.payload.model_validate(
+                parse_json(antwort.choices[0].message.content or ""))
+        except Exception as e:  # noqa: BLE001 — eine Vorlage, nicht der Lauf
+            with sperre:
+                stand["errors"] += 1
+            logger.info("stance gescheitert (%s): %s", m["paper_id"], type(e).__name__)
+            return None
+        verbrauch = getattr(antwort, "usage", None)
+        kosten = float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
+        return m["paper_id"], nutzlast.model_dump(), text_hash(gruppe + text), kosten
+
+    # Geschrieben wird nur im Hauptthread (`council/cities/fit.py` erklärt,
+    # warum: eine SQLite-Verbindung gehört dem Thread, der sie geöffnet hat).
+    with ThreadPoolExecutor(workers or STANCE_WORKERS) as pool:
+        puffer = []
+        for ergebnis in pool.map(eine, auftraege):
+            if ergebnis is None:
+                continue
+            puffer.append(ergebnis)
+            stand["cost_usd"] += ergebnis[3]
+            if len(puffer) >= 25:
+                _stance_schreiben(main, ann, puffer)
+                stand["annotated"] += len(puffer)
+                puffer = []
+        if puffer:
+            _stance_schreiben(main, ann, puffer)
+            stand["annotated"] += len(puffer)
+    stand["seconds"] = round(time.time() - t0)
+    logger.info("stance fertig: %s Urteile, %s Fehler, $%.4f, %ss",
+                stand["annotated"], stand["errors"], stand["cost_usd"],
+                stand["seconds"])
+    return stand
+
+
+def _gruppen_text(mitglieder: list[dict], einordnung: dict) -> str:
+    """Die Gruppe als Liste ihrer Instrumente — der Bezugspunkt der Richtung.
+
+    **Warum nicht das Label aus ``cluster_check``.** Es ist nicht verlässlich:
+    Gemessen am 09.09.2026 trug Cluster 10 — achtzehn Mitglieder, alle
+    „Straßenausbaubeiträge abschaffen", so homogen wie eine Gruppe nur sein
+    kann — das Label „Integrationsfonds und -budget". Ein falscher
+    Bezugspunkt macht die Richtungsfrage wertlos, und zwar unbemerkt: Die
+    Antwort sieht dann genauso aus wie eine richtige.
+
+    Die Mitglieder selbst sind die Wahrheit. Doppelte Instrumente fallen
+    weg — dieselbe Formulierung fünfmal sagt nicht mehr als einmal, kostet
+    aber Platz, den die übrigen Städte brauchen.
+    """
+    gesehen: list[str] = []
+    for m in mitglieder:
+        instr = ((einordnung.get(m["paper_id"]) or {}).get("instrument")
+                 or m.get("name") or "").strip()
+        if instr and instr not in gesehen:
+            gesehen.append(instr)
+        if len(gesehen) >= 8:
+            break
+    return "\n".join(f"- {x}" for x in gesehen)
+
+
+def _stance_schreiben(main: CitiesStore, ann, puffer: list) -> None:
+    with main.transaction():
+        for kennung, nutzlast, quelle, kosten in puffer:
+            main.put_annotation("paper", kennung, ann.key, ann.version,
+                                nutzlast, quelle, model=ann.model,
+                                cost_usd=kosten)
 
 
 #: Ab dieser Größe wird eine Gruppe geprüft. Zwei Mitglieder können nicht
