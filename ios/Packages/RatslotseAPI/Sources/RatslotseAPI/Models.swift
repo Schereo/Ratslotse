@@ -523,9 +523,6 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     /// Das Urteil aus `council/cities/fit.py`.
     public let status: String
     public let reason: String
-    public let worth: String
-    public let whyWorth: String
-    public let obstacles: String?
     public let confidence: String
     public let evidence: [IdeaEvidence]
     /// Was die Idee den Rat kosten würde: inquiry < review < resolution <
@@ -536,15 +533,16 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     /// In wie vielen ANDEREN Städten dieselbe Idee vorkommt. 0 heißt: in
     /// keiner — kein Makel, sondern eine Aussage über die Idee.
     public let peers: Int
+    /// Was DIESES Konto zum Urteil gesagt hat: "right", "wrong" oder leer.
+    public let feedback: String
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
-        case transfer, competence, originator, status, reason, worth
-        case obstacles, confidence, evidence, effort, addressee, peers
+        case transfer, competence, originator, status, reason
+        case confidence, evidence, effort, addressee, peers, feedback
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
-        case whyWorth = "why_worth"
     }
 
     public init(from decoder: Decoder) throws {
@@ -565,9 +563,6 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         originator = try v.decodeIfPresent(String.self, forKey: .originator)
         status = try v.decodeIfPresent(String.self, forKey: .status) ?? ""
         reason = try v.decodeIfPresent(String.self, forKey: .reason) ?? ""
-        worth = try v.decodeIfPresent(String.self, forKey: .worth) ?? ""
-        whyWorth = try v.decodeIfPresent(String.self, forKey: .whyWorth) ?? ""
-        obstacles = try v.decodeIfPresent(String.self, forKey: .obstacles)
         confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
         evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []
         // Alle drei mit Rückfall: Die ausgelieferte App muss auch dann laufen,
@@ -575,6 +570,7 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         effort = try v.decodeIfPresent(String.self, forKey: .effort) ?? ""
         addressee = try v.decodeIfPresent(String.self, forKey: .addressee)
         peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
+        feedback = try v.decodeIfPresent(String.self, forKey: .feedback) ?? ""
     }
 }
 
@@ -628,11 +624,14 @@ public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
     public let missing: Int
     public let partial: Int
     public let present: Int
-    public let worthYes: Int
+    /// Ideen dieses Feldes, die in mindestens ZWEI anderen Städten liegen und
+    /// Oldenburg fehlen. Eine Tatsache — vorher stand hier die Zahl der
+    /// „lohnt sich"-Urteile, also eine Modellmeinung.
+    public let multiCity: Int
 
     enum CodingKeys: String, CodingKey {
         case field, total, missing, partial, present
-        case worthYes = "worth_yes"
+        case multiCity = "multi_city"
     }
 
     public init(from decoder: Decoder) throws {
@@ -642,7 +641,7 @@ public struct IdeaFieldSummary: Codable, Sendable, Hashable, Identifiable {
         missing = try v.decodeIfPresent(Int.self, forKey: .missing) ?? 0
         partial = try v.decodeIfPresent(Int.self, forKey: .partial) ?? 0
         present = try v.decodeIfPresent(Int.self, forKey: .present) ?? 0
-        worthYes = try v.decodeIfPresent(Int.self, forKey: .worthYes) ?? 0
+        multiCity = try v.decodeIfPresent(Int.self, forKey: .multiCity) ?? 0
     }
 }
 

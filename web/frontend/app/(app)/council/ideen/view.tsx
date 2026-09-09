@@ -48,12 +48,6 @@ const STATUS: Record<string, { text: string; ton: string }> = {
   present: { text: "Oldenburg hat das", ton: "bg-muted text-muted-foreground" },
 };
 
-const WORTH: Record<string, string> = {
-  yes: "Lohnt sich",
-  maybe: "Vielleicht",
-  no: "Lohnt sich nicht",
-};
-
 /**
  * Was die Idee den Rat kosten würde — von der Frage bis zum Haushaltsposten.
  *
@@ -116,14 +110,20 @@ function Uebersicht() {
             <div className="text-sm font-semibold text-foreground">
               {POLICY_FIELD_LABELS[f.field] ?? f.field}
             </div>
+            {/* Die große Zahl ist eine TATSACHE: Ideen, die mehrere andere
+                Städte haben und Oldenburg nicht. Vorher stand hier „Ideen,
+                die sich lohnen könnten" — gezählt aus einem Werturteil, das
+                das Modell zu 46–58 % traf. */}
             <div className="mt-2 text-2xl font-semibold tabular-nums text-primary">
-              {f.worth_yes}
+              {f.multi_city}
             </div>
             <div className="text-xs text-muted-foreground">
-              {f.worth_yes === 1 ? "Idee, die sich lohnen könnte" : "Ideen, die sich lohnen könnten"}
+              {f.multi_city === 1
+                ? "Idee aus mehreren Städten, die Oldenburg fehlt"
+                : "Ideen aus mehreren Städten, die Oldenburg fehlen"}
             </div>
             <div className="mt-2 text-xs text-muted-foreground/80">
-              {f.total} geprüft · {f.present} hat Oldenburg schon
+              {f.missing + f.partial} fehlen ganz oder halb · {f.present} hat Oldenburg schon
             </div>
           </Card>
         </button>
@@ -133,6 +133,64 @@ function Uebersicht() {
 }
 
 // ------------------------------------------------------------ Eine Karte
+
+/**
+ * „Stimmt" / „Stimmt nicht" — ein Klick, der den Maßstab baut.
+ *
+ * Jedes Urteil des Städtevergleichs wird gegen vierzig Fälle gemessen, die
+ * EIN Mensch an einem Tag beurteilt hat — und in vier von sieben Pull
+ * Requests war genau dieser Maßstab der Fehler, nicht das Modell.
+ * Vierhundert Rückmeldungen von zwei Ratsmitgliedern wären ein besserer.
+ *
+ * Bewusst leise: zwei Wörter am Fuß der Karte, keine Sterne, keine Skala.
+ * Wer nichts sagen will, sieht fast nichts.
+ */
+function Rueckmeldung({ idee }: { idee: Idee }) {
+  const [gesagt, setGesagt] = useState(idee.feedback);
+  const [fehler, setFehler] = useState(false);
+
+  async function sagen(verdict: "right" | "wrong") {
+    const neu = gesagt === verdict ? "" : verdict;
+    setGesagt(neu);
+    setFehler(false);
+    if (!neu) return;
+    try {
+      await api.post(
+        `/council/cities/ideas/${encodeURIComponent(idee.paper_id)}/feedback?verdict=${verdict}`,
+      );
+    } catch {
+      // Ohne Konto geht es nicht, und das ist der Punkt: Eine Rückmeldung,
+      // die sich nicht zählen lässt, ist kein Maßstab. Ein Hinweis statt
+      // eines stillen Fehlschlags.
+      setGesagt("");
+      setFehler(true);
+    }
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-3 text-[11px]">
+      <span className="text-muted-foreground/70">Stimmt das?</span>
+      {(["right", "wrong"] as const).map((wert) => (
+        <button
+          key={wert}
+          type="button"
+          onClick={() => sagen(wert)}
+          aria-pressed={gesagt === wert}
+          className={
+            gesagt === wert
+              ? "font-medium text-primary"
+              : "text-muted-foreground/70 hover:text-foreground"
+          }
+        >
+          {wert === "right" ? "Ja" : "Nein"}
+        </button>
+      ))}
+      {fehler && (
+        <span className="text-muted-foreground/70">Dafür braucht es ein Konto.</span>
+      )}
+    </div>
+  );
+}
 
 function IdeenKarte({ idee }: { idee: Idee }) {
   const status = STATUS[idee.status];
@@ -176,9 +234,6 @@ function IdeenKarte({ idee }: { idee: Idee }) {
               {status.text}
             </span>
           )}
-          <span className="text-xs font-medium text-foreground">
-            {WORTH[idee.worth] ?? idee.worth}
-          </span>
           {idee.confidence === "low" && (
             <span className="text-xs text-muted-foreground/70">unsicher</span>
           )}
@@ -186,19 +241,12 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         {idee.reason && (
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{idee.reason}</p>
         )}
-        {idee.why_worth && (
-          <p className="mt-1 text-xs leading-relaxed text-foreground/80">{idee.why_worth}</p>
-        )}
         {idee.addressee && (
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
             Entscheidet nicht die Stadt allein: {idee.addressee}
           </p>
         )}
-        {idee.obstacles && (
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground/80">
-            Dagegen spricht: {idee.obstacles}
-          </p>
-        )}
+        <Rueckmeldung idee={idee} />
       </div>
 
       {idee.evidence.length > 0 && (
@@ -262,8 +310,8 @@ function Feld({ feld }: { feld: string }) {
       <h2 className="mt-2 text-lg font-semibold text-foreground">{label}</h2>
       {!isPending && (
         <p className="text-xs text-muted-foreground">
-          {data?.total ?? 0} Ideen aus anderen Städten, sortiert nach dem, was
-          sich am ehesten lohnen könnte.
+          {data?.total ?? 0} Ideen aus anderen Städten. Zuerst, was mehrere
+          Räte beschlossen haben und Oldenburg fehlt.
         </p>
       )}
       <div className="mt-4 space-y-3">
@@ -365,9 +413,10 @@ export default function View() {
         <h1 className="text-xl font-semibold text-foreground">Ideen aus anderen Städten</h1>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
           Was Räte in Osnabrück, Braunschweig, Münster, Potsdam und Magdeburg
-          beschlossen haben — und ob Oldenburg dasselbe schon hat. Die
-          Einschätzung stammt von einem Sprachmodell; die Beschlüsse, auf die
-          sie sich stützt, stehen unter jeder Idee.
+          beschlossen haben — und ob Oldenburg dasselbe schon hat. Das prüft
+          ein Sprachmodell an Oldenburger Beschlüssen; sie stehen unter jeder
+          Idee. Ob sich ein Antrag lohnt, sagt hier bewusst niemand: Das hängt
+          an Mehrheiten und Haushaltslage.
         </p>
       </div>
       <Suchzeile onTreffer={setFrage} />

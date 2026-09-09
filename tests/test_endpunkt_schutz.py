@@ -96,9 +96,12 @@ OEFFENTLICH = {
     # Was hier steht, sind Ratsdokumente anderer Kommunen und ein Urteil
     # darüber, ob Oldenburg dasselbe schon hat — nichts Persönliches,
     # nichts Kontobezogenes. Hinter dem Schalter `ideen-anderswo`.
-    ("get", "/api/council/cities/ideas"),
     ("get", "/api/council/cities/ideas/fields"),
-    ("get", "/api/council/cities/search"),
+    # Die Liste und die Suche standen bis 09/2026 auch hier. Sie sind WEITER
+    # ohne Konto erreichbar — sie hängen aber jetzt an `optional_user`, weil
+    # sie die eigene Rückmeldung mitliefern („stimmt / stimmt nicht"), und
+    # dieser Wächter zählt `optional_user` als Schutz. Wer sie hier wieder
+    # einträgt, bekommt keinen offenen Endpunkt, sondern einen roten Test.
     # „Mein Viertel" (/api/districts/projects, /lookup) stand hier bis 09/2026.
     # Seit dem Umzug auf die vereinte Stadtkarte liegt alles davon hinter der
     # Anmeldung (STADTKARTE-PLAN.md, Schritt 5).

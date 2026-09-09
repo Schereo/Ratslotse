@@ -132,8 +132,15 @@ public actor APIClient {
         try validate(response: response, data: data)
     }
 
-    public func sendVoid(_ path: String, method: HTTPMethod = .post) async throws {
-        let request = try makeRequest(path, method: method)
+    /// Ein Aufruf ohne Körper und ohne Antwort — mit Abfrageparametern.
+    ///
+    /// `query` gehört hierher und NICHT in den Pfad: Ein „?" im Pfad wird
+    /// prozentkodiert, der Server sieht es als Teil des Namens und antwortet
+    /// mit 404. Die Ansicht lädt dann ewig, ohne dass irgendwo ein Fehler
+    /// steht — genau so ist die Ideen-Liste einmal ausgefallen.
+    public func sendVoid(_ path: String, method: HTTPMethod = .post,
+                         query: [URLQueryItem] = []) async throws {
+        let request = try makeRequest(path, method: method, query: query)
         let (data, response) = try await session.data(for: request)
         try validate(response: response, data: data)
     }

@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -248,6 +248,33 @@ CREATE TABLE IF NOT EXISTS idea_clusters (
 );
 CREATE INDEX IF NOT EXISTS idx_idea_clusters ON idea_clusters(model, version, cluster_id);
 
+-- ---------------------------------------------------------------- Schicht 5
+-- Was MENSCHEN zu einem Urteil sagen. Die einzige Tabelle hier, die weder aus
+-- einer Quelle noch aus einem Modell entsteht.
+--
+-- **Warum sie das Wichtigste im Speicher werden kann.** Der Maßstab für jedes
+-- Urteil sind vierzig Fälle, die EIN Mensch an einem Tag beurteilt hat — und
+-- in vier von sieben Pull Requests war genau dieser Maßstab der Fehler, nicht
+-- das Modell. Vierhundert Rückmeldungen von zwei Ratsmitgliedern wären ein
+-- besserer, und sie kosten niemanden Arbeit: ein Klick an der Karte, die
+-- ohnehin gelesen wird.
+--
+-- Ein Konto gibt je Urteil EINE Rückmeldung; eine zweite ersetzt die erste.
+-- Es gibt nur „richtig" und „falsch" — eine Skala mit fünf Stufen beantwortet
+-- niemand ehrlich, und für einen Maßstab braucht es ohnehin nur die Kante.
+CREATE TABLE IF NOT EXISTS feedback (
+    object_kind  TEXT NOT NULL,
+    object_id    TEXT NOT NULL,
+    annotator    TEXT NOT NULL,
+    version      TEXT NOT NULL,
+    user_id      INTEGER NOT NULL,
+    verdict      TEXT NOT NULL CHECK (verdict IN ('right', 'wrong')),
+    note         TEXT,
+    created_at   TEXT NOT NULL,
+    PRIMARY KEY (object_kind, object_id, annotator, version, user_id)
+);
+CREATE INDEX IF NOT EXISTS feedback_verdict ON feedback(annotator, version, verdict);
+
 CREATE TABLE IF NOT EXISTS meta (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
@@ -260,6 +287,24 @@ CREATE TABLE IF NOT EXISTS meta (
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
 MIGRATIONS: list[tuple[int, str]] = [
+    # 3 — Rückmeldungen von Menschen zu einem Urteil (09.09.2026). Der Absatz
+    # am SCHEMA sagt, warum: Der Maßstab für jedes Urteil sind vierzig
+    # handgeurteilte Fälle, und der war viermal der Fehler.
+    (3, """
+    CREATE TABLE IF NOT EXISTS feedback (
+        object_kind  TEXT NOT NULL,
+        object_id    TEXT NOT NULL,
+        annotator    TEXT NOT NULL,
+        version      TEXT NOT NULL,
+        user_id      INTEGER NOT NULL,
+        verdict      TEXT NOT NULL CHECK (verdict IN ('right', 'wrong')),
+        note         TEXT,
+        created_at   TEXT NOT NULL,
+        PRIMARY KEY (object_kind, object_id, annotator, version, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS feedback_verdict
+        ON feedback(annotator, version, verdict);
+    """),
     # 2 — Ideen-Cluster über Stadtgrenzen (09.09.2026).
     #
     # Ein Papier gehört in höchstens EINEN Cluster je (Modell, Fassung); das

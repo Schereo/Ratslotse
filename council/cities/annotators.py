@@ -90,6 +90,41 @@ class IdeaEffort(BaseModel):
         return v[:60] if isinstance(v, str) else v
 
 
+class ClusterCheck(BaseModel):
+    """Gehören wirklich alle Mitglieder eines Clusters zusammen?
+
+    **Warum ein Modell und nicht eine höhere Schwelle.** Die Gruppierung
+    kettet: Wer A und B für dieselbe Idee hält und B und C auch, steckt A und
+    C in eine Menge, ohne sie je verglichen zu haben. Gemessen an acht
+    Stichproben (09.09.2026) war einer von acht Clustern so entstanden — er
+    mischte „Lärmaktionsplan evaluieren" mit „Tempo-30-Anordnung prüfen".
+    Verwandt, aber nicht dasselbe. Eine höhere Schwelle zerreißt dagegen
+    genau die Ketten, die den Wert ausmachen: Die Verpackungssteuer läuft
+    über fünf Städte mit fünf Formulierungen.
+
+    **Warum das seit PR 22 dringender ist.** Bis dahin war ein falscher
+    Cluster eine Zahl in einem Bericht. Jetzt steht auf der Karte „auch in 4
+    anderen Städten" — ein falscher Cluster ist damit eine falsche
+    öffentliche Aussage.
+    """
+
+    #: Der gemeinsame Nenner in wenigen Wörtern. Dient der Kontrolle, nicht
+    #: der Anzeige — den Namen vergibt weiterhin das typischste Mitglied.
+    label: str = Field(default="", max_length=80)
+    #: Papier-Kennungen, die NICHT zu diesem gemeinsamen Nenner gehören.
+    #: Leer ist der Normalfall und die erwünschte Antwort.
+    drop: list[str] = Field(default_factory=list)
+    #: Ein Satz, warum sie herausfallen. Leer, wenn nichts herausfällt.
+    reason: str = Field(default="", max_length=300)
+
+    @field_validator("label", "reason", mode="before")
+    @classmethod
+    def _kuerzen(cls, v: object, info: ValidationInfo) -> object:
+        """Freitext kürzen statt den ganzen Eintrag verwerfen — wie bei `fit`."""
+        grenzen = {"label": 80, "reason": 300}
+        return v[:grenzen.get(info.field_name or "", 300)] if isinstance(v, str) else v
+
+
 class PaperClassification(BaseModel):
     """Was ein Modell über eine fremde Vorlage sagt.
 
@@ -111,6 +146,51 @@ class PaperClassification(BaseModel):
     @property
     def usable(self) -> bool:
         return self.transfer in USABLE
+
+
+class OldenburgStatus(BaseModel):
+    """Hat Oldenburg dieses Instrument schon? — und sonst nichts.
+
+    **Warum „lohnt sich?" hier nicht mehr steht.** Über drei Fassungen und
+    vierzehn Messläufe traf das Modell den STATUS zu 62–69 % und zitierte
+    seine Belege zu 100 % sauber; die Frage „lohnt sich ein Antrag?" traf es
+    zu 46–58 % mit bis zu 20 Punkten Streuung, und die verschärfte Regel in
+    Fassung 2 machte sie messbar schlechter statt besser (32 %). Es kann
+    Tatsachen und keine Werturteile.
+
+    Das ist keine Schwäche des Modells, sondern die richtige Arbeitsteilung:
+    Ob sich ein Antrag lohnt, hängt an Mehrheiten, Haushaltslage und dem, was
+    eine Fraktion gerade vorhat — nichts davon steht in einem
+    Ratsinformationssystem. Die Oberfläche zeigt stattdessen fünf Tatsachen,
+    aus denen ein Ratsmitglied in zwei Sekunden selbst schließt: Status,
+    Belege, Aufwandsklasse, Adressat und die Zahl der Städte.
+
+    Nebeneffekt, gemessen: Der Prompt wird um ein Drittel kürzer und die
+    Antwort um die Hälfte — rund 40 % weniger Kosten je Urteil.
+    """
+
+    status: Literal[FIT_STATUS]  # type: ignore[valid-type]
+    #: Kennungen aus der vorgelegten Beleg-Liste, höchstens drei. Leer nur bei
+    #: ``missing`` — dort IST die leere Liste die Aussage.
+    evidence: list[str] = Field(default_factory=list, max_length=3)
+    reason: str = Field(default="", max_length=300)
+    confidence: Literal[CONFIDENCE_VALUES]  # type: ignore[valid-type]
+
+    @property
+    def braucht_beleg(self) -> bool:
+        """``present`` und ``partial`` sind Behauptungen über Oldenburg."""
+        return self.status in ("present", "partial")
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def _kuerzen(cls, v: object) -> object:
+        """Zu langen Freitext kürzen statt das Urteil verwerfen.
+
+        Zwei richtige Urteile gingen in einem Messlauf an einer Überlänge von
+        zwanzig Zeichen verloren. Die BEHAUPTUNGEN bleiben streng — ein
+        erfundener Beleg fliegt weiterhin ganz raus.
+        """
+        return v[:300] if isinstance(v, str) else v
 
 
 class OldenburgFit(BaseModel):
@@ -224,10 +304,10 @@ ANNOTATORS: dict[str, Annotator] = {
         # statt einer. Fassung 1 bleibt in der Tabelle liegen, bis die
         # Oberfläche umgestellt ist (PR 22) — beide nebeneinander zu haben
         # ist der Zweck des Fassungs-Schlüssels.
-        key="fit", version="2", applies_to=("paper",),
+        key="fit", version="3", applies_to=("paper",),
         prompt_system="cities_fit_system", prompt_user="cities_fit_user",
         model=os.environ.get("CITIES_FIT_MODEL", "deepseek/deepseek-v4-flash"),
-        payload=OldenburgFit,
+        payload=OldenburgStatus,
         # Ein Aufruf je Vorlage: Jede hat ihre eigenen Belege, ein Batch
         # teilte sie sich und das Modell verwechselte, welcher zu welcher gehört.
         # 6.000 statt 4.000 seit dem Ausbau auf vier Beleg-Arme: Zwölf Belege
@@ -235,21 +315,43 @@ ANNOTATORS: dict[str, Annotator] = {
         # keine Fehlermeldung, sondern eine ABGESCHNITTENE Antwort mit Status
         # 200 — im Prüfstand als „unlesbare Antwort“ sichtbar geworden.
         batch_size=1, input_chars=3500, max_tokens=6000, needs_index=True,
-        gut_wenn="Fassung 2 ist erst reif, wenn der BESTAND einmal damit "
-                 "gerechnet ist und der Anteil „fehlt + lohnt sich“ unter 30 % "
-                 "liegt (Fassung 1: 50 %, gemessen an 1.290 Urteilen). Die "
-                 "vierzig Prüffälle können das nicht zeigen — sie sind nach "
-                 "Status geschichtet, nicht nach der Verteilung im Bestand. "
-                 "Bis dahin zeigt die Oberfläche Fassung 1. Dazu wie bisher: "
-                 "eval/run_cities_fit.py hält fünf Schranken. Zwei sind harte "
-                 "Zusagen und stehen bei NULL: erfundene Beleg-Kennungen und "
-                 "falsche „vorhanden“ (Oldenburg habe etwas, das fehlt — in "
-                 "sieben Läufen nie vorgekommen). Drei sind "
-                 "Regressions-Schranken, zehn Punkte unter dem gemessenen Stand: "
-                 "Status über 55 % (gemessen 64 %), „lohnt sich“ über 50 % "
-                 "(gemessen 59 %), Beleg-Disziplin über 95 %. Die drei Klassen "
-                 "sind auch unter Menschen strittig; was zählt, ist dass das "
-                 "Modell nie behauptet, Oldenburg habe etwas, das fehlt.",
+        gut_wenn="eval/run_cities_fit.py hält drei Schranken, und ZWEI davon "
+                 "sind harte Zusagen, die bei NULL stehen: erfundene "
+                 "Beleg-Kennungen und falsche „vorhanden“ (das Modell "
+                 "behauptet, Oldenburg habe etwas, das fehlt — in vierzehn "
+                 "Läufen nie vorgekommen; es nimmt eine Idee von der Liste). "
+                 "Die dritte ist eine Regressions-Schranke: Status über 55 % "
+                 "(gemessen 62–69 % über drei Fassungen). Die drei Klassen "
+                 "sind auch unter Menschen strittig.\n\n"
+                 "Fassung 3 fragt „lohnt sich ein Antrag?“ NICHT mehr. Über "
+                 "drei Fassungen traf das Modell den Status zu 62–69 % und die "
+                 "Nutzenfrage zu 46–58 % bei bis zu 20 Punkten Streuung — die "
+                 "verschärfte Regel in Fassung 2 machte sie messbar schlechter "
+                 "(32 %). Es kann Tatsachen und keine Werturteile, und das ist "
+                 "die richtige Arbeitsteilung: Ob sich ein Antrag lohnt, hängt "
+                 "an Mehrheiten und Haushaltslage, und nichts davon steht in "
+                 "einem Ratsinformationssystem.",
+    ),
+    "cluster_check": Annotator(
+        key="cluster_check", version="1", applies_to=("cluster",),
+        prompt_system="cities_cluster_check_system",
+        prompt_user="cities_cluster_check_user",
+        model=os.environ.get("CITIES_CLUSTER_MODEL", "deepseek/deepseek-v4-flash"),
+        payload=ClusterCheck,
+        # Ein Cluster je Aufruf: Die Frage ist ein Vergleich INNERHALB der
+        # Menge, und zwei Mengen in einem Aufruf lädt genau zu der
+        # Verwechslung ein, die hier gefunden werden soll.
+        batch_size=1, input_chars=2000, max_tokens=4000,
+        gut_wenn="Die MENGE entscheidet, nicht die Quote. Im ersten Messlauf "
+                 "(09.09.2026) wollte das Modell aus 12 von 17 Gruppen etwas "
+                 "entfernen, darunter 9 von 16 Mitgliedern einer einzigen — es "
+                 "hatte das Label zu eng gefasst („Klimaschutz-Berichtswesen“) "
+                 "und warf danach jedes „Konzept“ hinaus. Nach der Korrektur "
+                 "(erst die Mehrheit suchen, dann filtern; höchstens ein "
+                 "Drittel) fällt je Gruppe eines heraus. Steigt der Schnitt "
+                 "wieder über ein Mitglied je Gruppe oder schlägt die "
+                 "Ein-Drittel-Sicherung oft an (`zu_viel` in den Kennzahlen), "
+                 "ist das Label wieder zu eng.",
     ),
     "effort": Annotator(
         key="effort", version="1", applies_to=("paper",),

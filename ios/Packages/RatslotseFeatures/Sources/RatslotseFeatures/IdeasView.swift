@@ -166,16 +166,19 @@ struct IdeasView: View {
                 .font(RatsFont.body(13, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
                 .multilineTextAlignment(.leading)
-            Text("\(f.worthYes)")
+            // Die große Zahl ist eine TATSACHE: Ideen, die mehrere andere
+            // Städte haben und Oldenburg nicht. Vorher stand hier „Ideen, die
+            // sich lohnen könnten" — gezählt aus einem Werturteil.
+            Text("\(f.multiCity)")
                 .font(RatsFont.body(24, weight: .semibold))
                 .foregroundStyle(RatsColor.primary)
                 .monospacedDigit()
-            Text(f.worthYes == 1 ? "Idee, die sich lohnen könnte"
-                                 : "Ideen, die sich lohnen könnten")
+            Text(f.multiCity == 1 ? "Idee aus mehreren Städten, die Oldenburg fehlt"
+                                  : "Ideen aus mehreren Städten, die Oldenburg fehlen")
                 .font(RatsFont.body(10.5))
                 .foregroundStyle(RatsColor.muted)
                 .multilineTextAlignment(.leading)
-            Text("\(f.total) geprüft · \(f.present) hat Oldenburg schon")
+            Text("\(f.missing + f.partial) fehlen ganz oder halb · \(f.present) hat Oldenburg schon")
                 .font(RatsFont.body(10))
                 .foregroundStyle(RatsColor.muted.opacity(0.8))
         }
@@ -271,6 +274,8 @@ struct IdeasView: View {
 private struct IdeaCard: View {
     let model: AppModel
     let idee: Idea
+    @State private var gesagt: String = ""
+    @State private var fehlgeschlagen = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -358,6 +363,58 @@ private struct IdeaCard: View {
         return teile.joined(separator: " · ")
     }
 
+    /// „Stimmt das?" — dieselben zwei Wörter wie im Web.
+    ///
+    /// Jedes Urteil wird gegen vierzig handgeurteilte Fälle gemessen, und
+    /// genau dieser Maßstab war in vier von sieben Pull Requests der Fehler.
+    /// Vierhundert Rückmeldungen von zwei Ratsmitgliedern wären ein besserer,
+    /// und sie kosten einen Klick an der Karte, die ohnehin gelesen wird.
+    @ViewBuilder
+    private var rueckmeldung: some View {
+        HStack(spacing: 12) {
+            Text("Stimmt das?")
+                .font(RatsFont.body(10.5))
+                .foregroundStyle(RatsColor.muted.opacity(0.8))
+            ForEach(["right", "wrong"], id: \.self) { wert in
+                Button {
+                    Task { await sagen(wert) }
+                } label: {
+                    Text(wert == "right" ? "Ja" : "Nein")
+                        .font(RatsFont.body(10.5,
+                                            weight: gesagt == wert ? .medium : .regular))
+                        .foregroundStyle(gesagt == wert ? RatsColor.primary
+                                                        : RatsColor.muted.opacity(0.8))
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+            }
+            if fehlgeschlagen {
+                Text("Dafür braucht es ein Konto.")
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted.opacity(0.8))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 2)
+    }
+
+    private func sagen(_ wert: String) async {
+        let neu = gesagt == wert ? "" : wert
+        gesagt = neu
+        fehlgeschlagen = false
+        guard !neu.isEmpty else { return }
+        do {
+            // Der Parameter geht über `query:`, nicht in den Pfad — sonst wird
+            // das „?" mitkodiert und der Server antwortet mit 404. Dieselbe
+            // Falle wie bei der Ideen-Liste.
+            try await model.api.sendVoid(
+                "/api/council/cities/ideas/\(idee.paperID)/feedback",
+                query: [URLQueryItem(name: "verdict", value: wert)])
+        } catch {
+            gesagt = ""
+            fehlgeschlagen = true
+        }
+    }
+
     private var urteil: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
@@ -372,9 +429,6 @@ private struct IdeaCard: View {
                                     ? RatsColor.primary.opacity(0.1) : RatsColor.separator)
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                 }
-                Text(Self.worth[idee.worth] ?? idee.worth)
-                    .font(RatsFont.body(11, weight: .medium))
-                    .foregroundStyle(RatsColor.text)
                 if idee.confidence == "low" {
                     Text("unsicher")
                         .font(RatsFont.body(10.5))
@@ -386,21 +440,12 @@ private struct IdeaCard: View {
                 Text(idee.reason).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if !idee.whyWorth.isEmpty {
-                Text(idee.whyWorth).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.text)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             if let addressee = idee.addressee, !addressee.isEmpty {
                 Text("Entscheidet nicht die Stadt allein: \(addressee)")
                     .font(RatsFont.body(11)).foregroundStyle(RatsColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let obstacles = idee.obstacles, !obstacles.isEmpty {
-                Text("Dagegen spricht: \(obstacles)")
-                    .font(RatsFont.body(11))
-                    .foregroundStyle(RatsColor.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            rueckmeldung
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -440,9 +485,6 @@ private struct IdeaCard: View {
         "missing": "In Oldenburg nicht gefunden",
         "partial": "Teilweise vorhanden",
         "present": "Oldenburg hat das",
-    ]
-    private static let worth: [String: String] = [
-        "yes": "Lohnt sich", "maybe": "Vielleicht", "no": "Lohnt sich nicht",
     ]
     /// Dieselben fünf Wörter wie im Web (`ideen/view.tsx`). Web und App
     /// zeigen dieselbe Sache; zwei Vokabulare wären zwei Produkte.

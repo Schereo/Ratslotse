@@ -75,6 +75,11 @@ _ANALYSE_CACHE: dict[str, dict] = {}
 RESEARCH_CHANNELS = (
     "decisions", "debates", "budget", "press", "sessions",
     "future_agenda", "places", "documents",
+    # „Wie machen das andere Städte?" — der Städte-Speicher als Quelle. Ein
+    # eigener Kanal und keine Erweiterung von `decisions`: Was hier steht,
+    # sind Beschlüsse ANDERER Räte, und sie dürfen nie so aussehen, als hätte
+    # Oldenburg sie gefasst. Die Antwort muss die Stadt immer mitnennen.
+    "other_cities",
 )
 RESEARCH_INTENTS = (
     "fact", "overview", "status", "timeline", "money", "position", "session",
@@ -1464,6 +1469,7 @@ def _planungen_block(planungen: list[dict] | None) -> str:
 
 def deep_bericht_stream(question: str, candidates: list[dict],
                         presse: list[dict] | None = None,
+                        staedte: list[dict] | None = None,
                         debatten: list[dict] | None = None,
                         haushalt: list[dict] | None = None,
                         planungen: list[dict] | None = None,
@@ -1490,6 +1496,7 @@ def deep_bericht_stream(question: str, candidates: list[dict],
     # als Tooltip. Ohne diesen Block hätte nur der Prompt sie nicht gehabt.
     zusatz = (_glossar_block(begriffe_fuer(question))
               + _debatten_block(debatten) + _presse_block(presse)
+              + _staedte_block(staedte)
               + geld_regeln(geld) + geld_block(geld) + _anlagen_block(anlagen))
     prompt = prompts.render("deep_report", question=question.strip()[:300],
                             context=_build_context(candidates),
@@ -1682,6 +1689,28 @@ def _presse_block(presse: list[dict] | None) -> str:
     return ("\nAKTUELLES VON DER STADT (thematisch geprüfte Pressemitteilungen). Ergänze\n"
             "die Antwort um den aktuellen Stand der Verwaltung, wo die Mitteilungen\n"
             "Neues zur Sache tragen — als „Laut Pressemitteilung vom …“, NIE mit [id]:\n"
+            f"{zeilen}\n")
+
+
+def _staedte_block(staedte: list[dict] | None) -> str:
+    """Kontext-Absatz „Aus anderen Städten" — Beschlüsse FREMDER Räte.
+
+    **Die Stadt muss in jeden Satz.** Was hier steht, hat nicht der Oldenburger
+    Rat beschlossen, und eine Antwort, die das verschweigt, ist schlimmer als
+    keine: Sie behauptet über Oldenburg etwas, das anderswo gilt. Deshalb kein
+    ``[id]`` — die Zitat-Nummern gehören den Oldenburger Beschlüssen — und ein
+    ausdrücklicher Satz im Block.
+    """
+    if not staedte:
+        return ""
+    zeilen = "\n".join(
+        f"- {s.get('body_name') or s.get('body_id')}, {_datum_de(s.get('date'))}: "
+        f"{(s.get('name') or '').strip()[:160]}"
+        + (f" — {s['summary'].strip()[:180]}" if s.get("summary") else "")
+        for s in staedte)
+    return ("\nAUS ANDEREN STÄDTEN (Beschlüsse und Anträge fremder Räte, nicht "
+            "Oldenburgs).\nNenne bei JEDER dieser Angaben die Stadt — sie sagen "
+            "nichts darüber, was\nin Oldenburg gilt. Nie mit [id] zitieren:\n"
             f"{zeilen}\n")
 
 
@@ -3102,7 +3131,8 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                      tax_capacity: dict | None = None,
                      geld: dict | None = None,
                      sitzungen: list[dict] | None = None,
-                     ort: dict | None = None) -> tuple[list[dict], dict]:
+                     ort: dict | None = None,
+                     staedte: list[dict] | None = None) -> tuple[list[dict], dict]:
     vtext = _verlauf_zeilen(verlauf)
     gespraech = (f"Dies ist eine Anschlussfrage in einem Gespräch. Bisher:\n{vtext}\n\n"
                  if vtext else "")
@@ -3149,6 +3179,7 @@ def _answer_messages(question: str, candidates: list[dict], typ: str = "topic",
                             presse=_sitzungen_block(sitzungen)
                             + _glossar_block(begriffe_fuer(question))
                             + _steckbrief_block(steckbriefe) + _presse_block(presse)
+                            + _staedte_block(staedte)
                             + geld_block(geld) + _debatten_block(debatten, eng)
                             + _anlagen_block(anlagen),
                             gespraech=gespraech)
@@ -3295,11 +3326,12 @@ def answer_question(question: str, candidates: list[dict], model: str = MODEL, t
                     duenn: bool = False, eng: bool = False,
                     taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                     geld: dict | None = None, sitzungen: list[dict] | None = None,
-                    ort: dict | None = None):
+                    ort: dict | None = None, staedte: list[dict] | None = None):
     """Synthesise an answer from retrieved candidates. Returns ``(answer, cited_ids)``."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
-                                       taxes, tax_capacity, geld, sitzungen, ort)
+                                       taxes, tax_capacity, geld, sitzungen, ort,
+                                       staedte)
     resp = llm.chat_complete(model=model, _feature="qa_answer", temperature=0.2,
                              max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
     answer = (resp.choices[0].message.content or "").strip()
@@ -3314,13 +3346,14 @@ def answer_stream(question: str, candidates: list[dict], model: str = MODEL, typ
                   duenn: bool = False, eng: bool = False,
                   taxes: list[dict] | None = None, tax_capacity: dict | None = None,
                   geld: dict | None = None, sitzungen: list[dict] | None = None,
-                  ort: dict | None = None):
+                  ort: dict | None = None, staedte: list[dict] | None = None):
     """Stream the answer text deltas (same prompt/context as answer_question) so the
     UI can render the answer as it is written. Citation resolution is the caller's
     job once the full text is assembled (see resolve_citations)."""
     messages, extra = _answer_messages(question, candidates, typ, model, presse, verlauf,
                                        haushalt, debatten, anlagen, gross, steckbriefe, duenn, eng,
-                                       taxes, tax_capacity, geld, sitzungen, ort)
+                                       taxes, tax_capacity, geld, sitzungen, ort,
+                                       staedte)
     yield from llm.chat_stream(model=model, _feature="qa_answer", temperature=0.2,
                                max_tokens=_answer_tokens(typ, gross, eng), messages=messages, **extra)
 

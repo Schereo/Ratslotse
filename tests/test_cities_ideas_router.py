@@ -22,11 +22,11 @@ from web.backend.app.deps import get_cities_store, get_council_store
 from web.backend.app.main import app
 
 
-def _urteil(status: str, worth: str, confidence: str = "high",
+def _urteil(status: str, confidence: str = "high",
             evidence: list[str] | None = None) -> dict:
-    return {"status": status, "worth": worth, "confidence": confidence,
+    return {"status": status, "confidence": confidence,
             "evidence": evidence or [], "reason": "Begründung.",
-            "why_worth": "Warum es sich lohnt.", "obstacles": None}
+            }
 
 
 @pytest.fixture()
@@ -72,11 +72,11 @@ def cities_db(tmp_path):
                          {"field": feld, "transfer": transfer, "competence": "council",
                           "instrument": "Instrument", "summary": "Zusammenfassung.",
                           "originator": "SPD-Fraktion"}, "h" + pid)
-    s.put_annotation("paper", "os:p:1", "fit", "1", _urteil("missing", "yes"), "f1")
-    s.put_annotation("paper", "os:p:2", "fit", "1", _urteil("partial", "yes"), "f2")
+    s.put_annotation("paper", "os:p:1", "fit", "1", _urteil("missing"), "f1")
+    s.put_annotation("paper", "os:p:2", "fit", "1", _urteil("partial"), "f2")
     s.put_annotation("paper", "os:p:3", "fit", "1",
-                     _urteil("present", "no", evidence=["oldenburg:paper:4711"]), "f3")
-    s.put_annotation("paper", "os:p:9", "fit", "1", _urteil("missing", "maybe"), "f9")
+                     _urteil("present", evidence=["oldenburg:paper:4711"]), "f3")
+    s.put_annotation("paper", "os:p:9", "fit", "1", _urteil("missing"), "f9")
     # Der Volltextindex entsteht sonst erst im Cron; die Suche braucht ihn.
     for pid, titel in (("os:p:1", "Hitzeaktionsplan aufstellen"),
                        ("os:p:2", "Wärmenetz erweitern"),
@@ -104,7 +104,8 @@ def test_die_uebersicht_zaehlt_je_themenfeld(client):
     assert felder["klima_umwelt"]["missing"] == 1
     assert felder["klima_umwelt"]["partial"] == 1
     assert felder["klima_umwelt"]["present"] == 1
-    assert felder["klima_umwelt"]["worth_yes"] == 2
+    assert "multi_city" in felder["klima_umwelt"], (
+        "die Übersicht zählt Tatsachen, nicht ein Werturteil")
     assert felder["verkehr"]["total"] == 1
 
 
@@ -120,7 +121,7 @@ def test_die_uebersicht_stellt_das_ergiebigste_feld_nach_vorn(client):
 def test_die_reihenfolge_beantwortet_was_soll_ich_lesen(client):
     """Erst was sich lohnt, dann was fehlt, dann das Neueste. Ohne Filter
     kommt auch das Vorhandene mit — aber zuletzt."""
-    daten = client.get("/api/council/cities/ideas?field=klima_umwelt&status=&worth=").json()
+    daten = client.get("/api/council/cities/ideas?field=klima_umwelt&status=").json()
     assert [i["paper_id"] for i in daten["items"]] == ["os:p:1", "os:p:2", "os:p:3"]
 
 
@@ -146,8 +147,10 @@ def test_der_anzeigename_kommt_aus_der_registry(client):
 
 def test_das_urteil_kommt_mit_allem_was_die_karte_braucht(client):
     (erste, _) = client.get("/api/council/cities/ideas?field=klima_umwelt").json()["items"]
-    assert erste["status"] == "missing" and erste["worth"] == "yes"
-    assert erste["reason"] and erste["why_worth"]
+    assert erste["status"] == "missing"
+    assert erste["reason"]
+    assert "worth" not in erste, (
+        "seit Fassung 3 fällt das Modell kein Werturteil mehr")
     assert erste["confidence"] == "high"
     assert erste["originator"] == "SPD-Fraktion"
     assert erste["web"] == "https://example.org/vo/1"
@@ -157,7 +160,7 @@ def test_belege_werden_auf_beschluesse_aufgeloest(client):
     """Das Urteil nennt `oldenburg:paper:4711`; die Karte soll auf die
     Beschluss-Seite führen. Die Übersetzung braucht die Rats-Datenbank."""
     daten = client.get(
-        "/api/council/cities/ideas?field=klima_umwelt&status=present&worth=no").json()
+        "/api/council/cities/ideas?field=klima_umwelt&status=present").json()
     (eintrag,) = daten["items"]
     (beleg,) = eintrag["evidence"]
     assert beleg["decision_id"] == 1
@@ -171,7 +174,7 @@ def test_ein_beleg_ohne_beschluss_faellt_weg(client, cities_db):
     Vorlagen-Id. Auf der Karte stünde sonst eine Zeile ohne Ziel."""
     cities_db.put_annotation(
         "paper", "os:p:2", "fit", "1",
-        _urteil("partial", "yes", evidence=["recap:klima_umwelt",
+        _urteil("partial", evidence=["recap:klima_umwelt",
                                             "oldenburg:paper:att:99"]), "f2b")
     daten = client.get("/api/council/cities/ideas?field=klima_umwelt").json()
     zweite = next(i for i in daten["items"] if i["paper_id"] == "os:p:2")
@@ -186,9 +189,9 @@ def test_nach_stadt_filtern(client):
 
 def test_blaettern_bleibt_stabil(client):
     erste = client.get(
-        "/api/council/cities/ideas?field=klima_umwelt&status=&worth=&per_page=2").json()
+        "/api/council/cities/ideas?field=klima_umwelt&status=&per_page=2").json()
     zweite = client.get(
-        "/api/council/cities/ideas?field=klima_umwelt&status=&worth=&per_page=2&page=2").json()
+        "/api/council/cities/ideas?field=klima_umwelt&status=&per_page=2&page=2").json()
     assert len(erste["items"]) == 2 and len(zweite["items"]) == 1
     assert erste["total"] == zweite["total"] == 3
     assert not ({i["paper_id"] for i in erste["items"]}
@@ -224,9 +227,9 @@ def test_oldenburg_taucht_nicht_als_idee_auf(client, cities_db):
     cities_db.put_annotation("paper", "oldenburg:paper:4711", "classify", "2",
                              {"field": "klima_umwelt", "transfer": "direct"}, "hol")
     cities_db.put_annotation("paper", "oldenburg:paper:4711", "fit", "1",
-                             _urteil("missing", "yes"), "fol")
+                             _urteil("missing"), "fol")
     daten = client.get(
-        "/api/council/cities/ideas?field=klima_umwelt&status=&worth=").json()
+        "/api/council/cities/ideas?field=klima_umwelt&status=").json()
     assert all(not i["paper_id"].startswith("oldenburg:") for i in daten["items"])
 
 

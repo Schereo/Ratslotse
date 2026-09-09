@@ -28,6 +28,7 @@ from council import steuertabellen
 from council import trade_tax_statistics as gewst
 from council import beteiligungsbericht, qa
 from council import ernte
+from kern import features
 from council import importance
 from council import live as live_mod
 from council import sitzungspause as pause_mod
@@ -48,6 +49,7 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          ConversationsDeleted, CouncilMembers, CouncilRecess, CouncilWeekPreview,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
+                         FeedbackAck,
                          Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary,
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
@@ -61,8 +63,8 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          TemplateFollowed, TemplateFollows, TemplateUnfollowed, ThisWeek,
                          TodayBriefing, TrendData)
 from ..clients import client_kind
-from ..deps import (get_cities_store, get_council_store, get_store, optional_user, require_active,
-                    require_permission)
+from ..deps import (get_cities_store, get_council_store, get_current_user, get_store,
+                    optional_user, require_active, require_permission)
 from ..ratelimit import (
     partei_meinungen_limiter,
     qa_feedback_limiter,
@@ -93,11 +95,10 @@ ELSEWHERE_LIMIT = 6
 #: Block ist ehrlicher als ein voller aus Zufallstreffern.
 ELSEWHERE_MIN_SCORE = 0.70
 
-#: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat, und was sich
-#: lohnen könnte. „vorhanden“ und „lohnt nicht“ sind über die Filter
-#: erreichbar — sie gehören zur Antwort, nur nicht in die erste Ansicht.
+#: Vorgabe der Ideen-Seite: was Oldenburg fehlt oder halb hat. „Vorhanden“ ist
+#: über den Filter erreichbar — es gehört zur Antwort, nur nicht in die erste
+#: Ansicht.
 IDEEN_STATUS_VORGABE = ("missing", "partial")
-IDEEN_WORTH_VORGABE = ("yes", "maybe")
 IDEEN_PRO_SEITE = 30
 
 #: Das Modell, unter dem die Nachbarschaften liegen. `council.cities.index`
@@ -1815,6 +1816,52 @@ def decisions(
     return {"total": total, "decisions": rows}
 
 
+def _eigene_rueckmeldungen(cities: CitiesStore, user: dict | None) -> dict[str, str]:
+    """Was DIESES Konto zu den Urteilen gesagt hat — einmal je Request.
+
+    Ohne Konto leer: Die Liste ist öffentlich, der Rückkanal nicht. Eine
+    Rückmeldung ohne Konto ließe sich nicht zählen, und ein Maßstab, den ein
+    Mensch beliebig oft bedienen kann, ist keiner.
+    """
+    if not user:
+        return {}
+    ann, ver = CitiesStore.IDEEN_FIT
+    return cities.feedback_by_paper(ann, ver, int(user["id"]))
+
+
+@router.post("/cities/ideas/{paper_id:path}/feedback")
+def cities_idea_feedback(
+    paper_id: str,
+    verdict: str,
+    note: str | None = None,
+    user: dict = Depends(get_current_user),
+    cities: CitiesStore = Depends(get_cities_store),
+) -> FeedbackAck:
+    """„Stimmt" oder „stimmt nicht" zu einem Urteil — ein Klick an der Karte.
+
+    **Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des
+    Städtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an
+    einem Tag beurteilt hat — und in vier von sieben Pull Requests war genau
+    dieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von
+    zwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.
+
+    **Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine
+    Rückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele
+    Stimmen), und der Maßstab wäre wieder wertlos.
+
+    Die FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch"
+    gilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.
+    """
+    if verdict not in ("right", "wrong"):
+        raise HTTPException(400, "verdict muss 'right' oder 'wrong' sein")
+    if not cities.paper(paper_id):
+        raise HTTPException(404, "unbekannte Vorlage")
+    ann, ver = CitiesStore.IDEEN_FIT
+    cities.put_feedback("paper", paper_id, ann, ver, int(user["id"]), verdict,
+                        (note or "").strip()[:500] or None)
+    return {"paper_id": paper_id, "verdict": verdict}
+
+
 @router.get("/cities/ideas/fields")
 def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaFields:
     """Je Themenfeld, wie viele Ideen dort liegen — die Übersicht.
@@ -1826,7 +1873,8 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
     felder: list[IdeaFieldSummary] = [
         {"field": r["field"], "total": int(r["total"] or 0),
          "missing": int(r["missing"] or 0), "partial": int(r["partial"] or 0),
-         "present": int(r["present"] or 0), "worth_yes": int(r["worth_yes"] or 0)}
+         "present": int(r["present"] or 0),
+         "multi_city": int(r["multi_city"] or 0)}
         for r in cities.idea_fields()]
     return {"fields": felder}
 
@@ -1838,6 +1886,7 @@ def cities_search(
     limit: int = IDEEN_PRO_SEITE,
     store: CouncilStore = Depends(get_council_store),
     cities: CitiesStore = Depends(get_cities_store),
+    user: dict | None = Depends(optional_user),
 ) -> IdeaSearchResponse:
     """„Was haben andere Städte zu …?" — frei durchsuchbar.
 
@@ -1851,20 +1900,23 @@ def cities_search(
     zeilen = cities.search_ideas(q, EMBED_MODEL_FUER_SUCHE, body_id=body,
                                  limit=max(1, min(limit, 100)))
     peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
+    eigenes = _eigene_rueckmeldungen(cities, user)
     return {"query": q, "total": len(zeilen),
-            "items": [_idee_aus_zeile(store, cities, r, peers) for r in zeilen]}
+            "items": [_idee_aus_zeile(store, cities, r, peers, eigenes)
+                      for r in zeilen]}
 
 
 @router.get("/cities/ideas")
 def cities_ideas(
     field: str,
     status: str = ",".join(IDEEN_STATUS_VORGABE),
-    worth: str = ",".join(IDEEN_WORTH_VORGABE),
+    effort: str = "",
     body: str | None = None,
     page: int = 1,
     per_page: int = IDEEN_PRO_SEITE,
     store: CouncilStore = Depends(get_council_store),
     cities: CitiesStore = Depends(get_cities_store),
+    user: dict | None = Depends(optional_user),
 ) -> IdeasResponse:
     """Was andere Städte haben und Oldenburg fehlt — je Themenfeld.
 
@@ -1883,19 +1935,21 @@ def cities_ideas(
     zeilen, gesamt, zaehler = cities.ideas(
         field,
         status=tuple(x for x in status.split(",") if x),
-        worth=tuple(x for x in worth.split(",") if x),
+        effort=tuple(x for x in effort.split(",") if x),
         body_id=body,
         limit=max(1, min(per_page, 100)),
         offset=max(0, (page - 1) * per_page))
 
     peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
-    items = [_idee_aus_zeile(store, cities, r, peers) for r in zeilen]
+    eigenes = _eigene_rueckmeldungen(cities, user)
+    items = [_idee_aus_zeile(store, cities, r, peers, eigenes) for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
 
 
 def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
-                    peers: dict[str, int] | None = None) -> Idea:
+                    peers: dict[str, int] | None = None,
+                    feedback: dict[str, str] | None = None) -> Idea:
     """Eine Zeile des Städte-Speichers als Idee für die Oberfläche.
 
     Beide Endpunkte — Liste und Suche — bauen dieselbe Form; sie zweimal zu
@@ -1920,13 +1974,12 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "competence": klasse.get("competence"),
         "originator": display_originator(klasse.get("originator"), r.get("kind")),
         "status": urteil.get("status") or "", "reason": urteil.get("reason") or "",
-        "worth": urteil.get("worth") or "", "why_worth": urteil.get("why_worth") or "",
-        "obstacles": urteil.get("obstacles"),
         "confidence": urteil.get("confidence") or "",
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
         "peers": (peers or {}).get(r["id"], 0),
+        "feedback": (feedback or {}).get(r["id"], ""),
     }
 
 
@@ -3487,6 +3540,7 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
 @router.post("/ask", response_class=EventStreamResponse, responses=SSE_FRAGE)
 def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
         store: CouncilStore = Depends(get_council_store),
+        cities: CitiesStore = Depends(get_cities_store),
         ratslotse: Store = Depends(get_store)) -> StreamingResponse:
     """Answer a free-text question from the decisions, streamed as Server-Sent Events:
     progress steps → the ranked source decisions (the moment retrieval+rerank finish)
@@ -3698,6 +3752,20 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     presse_rows = store.presse_by_ids([pid for pid, _ in hits_p])
                 except Exception:  # noqa: BLE001 — Presse ist Zusatz, nie Blocker
                     pass
+            # „Wie machen das andere Städte?" — nur wenn der Plan danach fragt.
+            # Hinter dem Schalter `andere-staedte`, wie der Block auf der
+            # Beschluss-Seite: Ohne aufgebauten Städte-Speicher gibt es hier
+            # nichts, und eine leere Liste ist besser als ein Fehler.
+            staedte_rows: list[dict] = []
+            if (qa.research_channel_enabled(shadow_plan, "other_cities",
+                                            fallback=False)
+                    and features.an("andere-staedte")):
+                try:
+                    staedte_rows = cities.search_ideas(
+                        q_suche, EMBED_MODEL_FUER_SUCHE, limit=6)
+                except Exception:  # noqa: BLE001 — Zusatz, nie Blocker
+                    staedte_rows = []
+
             debatten_rows: list[dict] = []
             # Kommende oder protokolllose Sitzung: Es KANN noch keine Debatte
             # dieser Sitzung geben — die Ähnlichkeitssuche fände nur Beiträge
@@ -4035,6 +4103,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     "budget": sum(len(value) if isinstance(value, list) else int(bool(value))
                                   for key, value in geld.items() if key != "facets"),
                     "press": len(presse_rows),
+                    "other_cities": len(staedte_rows),
                     "sessions": len(sitzungen),
                     "future_agenda": len(planungen),
                     "places": sum(bool(c.get("location_matches")) for c in candidates),
@@ -4070,6 +4139,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                 strom = (qa.vereinfachen_stream(frage_thema, body.previous_answer, ctx)
                          if einfach else
                          qa.answer_stream(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                          staedte=staedte_rows,
                                           geld=geld, debatten=debatten_rows,
                                           anlagen=anlagen_rows,
                                           gross=gross, steckbriefe=steckbriefe,
@@ -4104,6 +4174,7 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
                     ans, _ = (qa.vereinfachen_question(frage_thema, body.previous_answer, ctx)
                               if einfach else
                               qa.answer_question(q, ctx, typ=typ, presse=presse_rows, verlauf=verlauf,
+                                            staedte=staedte_rows,
                                                  geld=geld, debatten=debatten_rows,
                                                  anlagen=anlagen_rows,
                                                  gross=gross, steckbriefe=steckbriefe,

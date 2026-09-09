@@ -8247,6 +8247,25 @@
         "title": "FactionPhase",
         "type": "object"
       },
+      "FeedbackAck": {
+        "description": "Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht.",
+        "properties": {
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "verdict"
+        ],
+        "title": "FeedbackAck",
+        "type": "object"
+      },
       "FeedbackIn": {
         "properties": {
           "kind": {
@@ -8974,6 +8993,10 @@
             "title": "Evidence",
             "type": "array"
           },
+          "feedback": {
+            "title": "Feedback",
+            "type": "string"
+          },
           "field": {
             "title": "Field",
             "type": [
@@ -8995,13 +9018,6 @@
           "name": {
             "title": "Name",
             "type": "string"
-          },
-          "obstacles": {
-            "title": "Obstacles",
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "originator": {
             "title": "Originator",
@@ -9047,14 +9063,6 @@
               "string",
               "null"
             ]
-          },
-          "why_worth": {
-            "title": "Why Worth",
-            "type": "string"
-          },
-          "worth": {
-            "title": "Worth",
-            "type": "string"
           }
         },
         "required": [
@@ -9074,13 +9082,11 @@
           "originator",
           "status",
           "reason",
-          "worth",
-          "why_worth",
-          "obstacles",
           "confidence",
           "evidence",
           "effort",
           "addressee",
+          "feedback",
           "peers"
         ],
         "title": "Idea",
@@ -9143,6 +9149,10 @@
             "title": "Missing",
             "type": "integer"
           },
+          "multi_city": {
+            "title": "Multi City",
+            "type": "integer"
+          },
           "partial": {
             "title": "Partial",
             "type": "integer"
@@ -9154,10 +9164,6 @@
           "total": {
             "title": "Total",
             "type": "integer"
-          },
-          "worth_yes": {
-            "title": "Worth Yes",
-            "type": "integer"
           }
         },
         "required": [
@@ -9166,7 +9172,7 @@
           "missing",
           "partial",
           "present",
-          "worth_yes"
+          "multi_city"
         ],
         "title": "IdeaFieldSummary",
         "type": "object"
@@ -19043,11 +19049,11 @@
           },
           {
             "in": "query",
-            "name": "worth",
+            "name": "effort",
             "required": false,
             "schema": {
-              "default": "yes,maybe",
-              "title": "Worth",
+              "default": "",
+              "title": "Effort",
               "type": "string"
             }
           },
@@ -19129,6 +19135,70 @@
           }
         },
         "summary": "Cities Idea Fields",
+        "tags": [
+          "council"
+        ]
+      }
+    },
+    "/api/council/cities/ideas/{paper_id}/feedback": {
+      "post": {
+        "description": "„Stimmt\" oder „stimmt nicht\" zu einem Urteil — ein Klick an der Karte.\n\n**Warum das der billigste Maßstab ist, den es gibt.** Jedes Urteil des\nStädtevergleichs wird gegen vierzig Fälle gemessen, die EIN Mensch an\neinem Tag beurteilt hat — und in vier von sieben Pull Requests war genau\ndieser Maßstab der Fehler, nicht das Modell. Vierhundert Rückmeldungen von\nzwei Ratsmitgliedern wären ein besserer, und sie kosten niemanden Arbeit.\n\n**Nur angemeldet**, und das ist keine Hürde, sondern der Punkt: Eine\nRückmeldung ohne Konto ließe sich nicht zählen (ein Mensch, viele\nStimmen), und der Maßstab wäre wieder wertlos.\n\nDie FASSUNG des Annotators geht in den Schlüssel: „Das Urteil ist falsch\"\ngilt für das Urteil, das jemand gesehen hat, nicht für ein späteres.",
+        "operationId": "cities_idea_feedback_api_council_cities_ideas__paper_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "paper_id",
+            "required": true,
+            "schema": {
+              "title": "Paper Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "required": true,
+            "schema": {
+              "title": "Verdict",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "note",
+            "required": false,
+            "schema": {
+              "title": "Note",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cities Idea Feedback",
         "tags": [
           "council"
         ]

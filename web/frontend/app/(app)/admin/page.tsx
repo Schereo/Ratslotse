@@ -928,6 +928,7 @@ const FEATURE_LABELS: Record<string, string> = {
   cities_fit: "Hat Oldenburg das schon?",
   cities_evidence_terms: "Städtevergleich: Oldenburger Suchwörter",
   cities_effort: "Städtevergleich: Was kostet die Idee?",
+  cities_cluster_check: "Städtevergleich: Gehört das zusammen?",
   eval_cities_effort: "Prüfstand: Was kostet die Idee?",
   eval_cities_transfer: "Prüfstand: Einordnung fremder Vorlagen",
   eval_cities_fit: "Prüfstand: Hat Oldenburg das schon?",

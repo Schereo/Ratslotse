@@ -28,7 +28,11 @@ from council.cities.schema import MIGRATIONS, SCHEMA, SCHEMA_VERSION
 #: Objektarten, die eine Annotation tragen können. Bewusst eine geschlossene
 #: Liste: Ein Tippfehler im ``object_kind`` wäre sonst eine Annotation, die
 #: niemand je wiederfindet.
-OBJECT_KINDS = ("paper", "agenda_item", "meeting", "organization", "body")
+#: „cluster" ist kein OParl-Objekt, sondern eine gerechnete Menge — sie
+#: bekommt trotzdem Annotationen (`cluster_check`), und die brauchen eine
+#: Objektart. Ihre Kennung ist `<fassung>:<cluster_id>`.
+OBJECT_KINDS = ("paper", "agenda_item", "meeting", "organization", "body",
+                "cluster")
 
 #: Die Verschmelzung der beiden Such-Hälften (Reciprocal Rank Fusion).
 #: ``RRF_K`` dämpft die Spitze — ohne ihn entschiede der erste Treffer allein.
@@ -535,7 +539,6 @@ class CitiesStore:
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
-        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?)")
 
@@ -552,7 +555,6 @@ class CitiesStore:
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
-        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?)"
         " GROUP BY 1")
@@ -574,18 +576,32 @@ class CitiesStore:
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
         "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
-        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.worth') || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?)"
-        " ORDER BY CASE json_extract(f.payload, '$.worth') "
-        "            WHEN 'yes' THEN 0 WHEN 'maybe' THEN 1 ELSE 2 END, "
+        # Sortiert nach TATSACHEN, nicht nach einer Modellmeinung. Bis
+        # Fassung 3 stand hier „lohnt sich" ganz vorn — ein Werturteil, das
+        # das Modell zu 46–58 % traf, während es den Status zu 62–69 % trifft.
+        # Jetzt entscheidet zuerst, in wie vielen ANDEREN Städten dieselbe
+        # Idee liegt: Was fünf Räte beschlossen haben und Oldenburg nicht, ist
+        # ein Argument; was einer beschlossen hat, eine Beobachtung.
+        " ORDER BY (SELECT COUNT(DISTINCT p2.body_id) FROM idea_clusters k "
+        "             JOIN idea_clusters k2 ON k2.model = k.model "
+        "               AND k2.version = k.version AND k2.cluster_id = k.cluster_id "
+        "             JOIN papers p2 ON p2.id = k2.paper_id "
+        "           WHERE k.paper_id = p.id AND p2.body_id != p.body_id "
+        "             AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+        "                                 json_each(ck.payload, '$.drop') d "
+        "                             WHERE ck.object_kind = 'cluster' "
+        "                               AND ck.annotator = 'cluster_check' "
+        "                               AND ck.object_id = k.version || ':' || k.cluster_id "
+        "                               AND d.value IN (p.id, p2.id))) DESC, "
         "          CASE json_extract(f.payload, '$.status') "
         "            WHEN 'missing' THEN 0 WHEN 'partial' THEN 1 ELSE 2 END, "
         "          CASE json_extract(f.payload, '$.confidence') "
         "            WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, "
         "          COALESCE(p.date, '') DESC, p.id LIMIT ? OFFSET ?")
 
-    def _ideen_args(self, field: str, status: Sequence[str], worth: Sequence[str],
+    def _ideen_args(self, field: str, status: Sequence[str],
                     body_id: str | None, effort: Sequence[str] = ()) -> list[Any]:
         """Die Platzhalter der Ideen-Abfragen, in ihrer Reihenfolge.
 
@@ -598,13 +614,12 @@ class CitiesStore:
         f_ann, f_ver = self.IDEEN_FIT
         e_ann, e_ver = self.IDEEN_EFFORT
         st = "," + ",".join(status) + "," if status else ""
-        wo = "," + ",".join(worth) + "," if worth else ""
         ef = "," + ",".join(effort) + "," if effort else ""
         bo = body_id or ""
         return [f_ann, f_ver, c_ann, c_ver, e_ann, e_ver,
-                field, st, st, wo, wo, ef, ef, bo, bo]
+                field, st, st, ef, ef, bo, bo]
 
-    def ideas(self, field: str, status: Sequence[str] = (), worth: Sequence[str] = (),
+    def ideas(self, field: str, status: Sequence[str] = (),
               body_id: str | None = None, limit: int = 30, offset: int = 0,
               effort: Sequence[str] = ()) -> tuple[list[dict], int, dict[str, int]]:
         """``(zeilen, gesamt, zahl je status)`` für ein Themenfeld.
@@ -615,7 +630,7 @@ class CitiesStore:
         jeden Request. Filtern, Sortieren und Zählen gehören ins Backend
         (Wurzel-``CLAUDE.md``), und hier heißt Backend: in die Abfrage.
         """
-        args = self._ideen_args(field, status, worth, body_id, effort)
+        args = self._ideen_args(field, status, body_id, effort)
         gesamt = int(self._conn.execute(self._IDEEN_ZAEHLEN, args).fetchone()[0])
         zaehler = {r["status"]: r["n"]
                    for r in self._conn.execute(self._IDEEN_JE_STATUS, args)}
@@ -743,14 +758,29 @@ class CitiesStore:
             "  SUM(json_extract(f.payload,'$.status')='missing') AS missing, "
             "  SUM(json_extract(f.payload,'$.status')='partial') AS partial, "
             "  SUM(json_extract(f.payload,'$.status')='present') AS present, "
-            "  SUM(json_extract(f.payload,'$.worth')='yes') AS worth_yes "
+            # Wie viele Ideen dieses Feldes liegen in mindestens ZWEI anderen
+            # Städten und fehlen Oldenburg? Das ist die Zahl, nach der ein
+            # Themenfeld interessant ist — vorher stand hier „lohnt sich",
+            # gezählt aus einem Werturteil, das das Modell zu 46–58 % traf.
+            "  SUM(json_extract(f.payload,'$.status')='missing' AND ("
+            "     SELECT COUNT(DISTINCT p2.body_id) FROM idea_clusters k "
+            "       JOIN idea_clusters k2 ON k2.model = k.model "
+            "         AND k2.version = k.version AND k2.cluster_id = k.cluster_id "
+            "       JOIN papers p2 ON p2.id = k2.paper_id "
+            "     WHERE k.paper_id = p.id AND p2.body_id != p.body_id "
+            "       AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+            "                           json_each(ck.payload, '$.drop') d "
+            "                       WHERE ck.object_kind = 'cluster' "
+            "                         AND ck.annotator = 'cluster_check' "
+            "                         AND ck.object_id = k.version || ':' || k.cluster_id "
+            "                         AND d.value IN (p.id, p2.id))) >= 2) AS multi_city "
             "FROM papers p "
             "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
             "  AND f.annotator=? AND f.version=? "
             "JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
             "  AND c.annotator=? AND c.version=? "
             "WHERE p.body_id != 'oldenburg' AND field IS NOT NULL "
-            "GROUP BY 1 ORDER BY worth_yes DESC, total DESC",
+            "GROUP BY 1 ORDER BY multi_city DESC, missing DESC, total DESC",
             (f_ann, f_ver, c_ann, c_ver))
         return [dict(r) for r in rows]
 
@@ -922,6 +952,23 @@ class CitiesStore:
                 "VALUES (?,?,?,?,?)", zeilen)
         return len(zeilen)
 
+    def cluster_members(self, version: str = "1") -> list[dict]:
+        """Alle Cluster-Mitglieder mit Instrument — UNGEFILTERT.
+
+        Die einzige Abfrage, die auch die aussortierten Mitglieder liefert:
+        Der Prüflauf (``clusters.check_clusters``) muss die Gruppe sehen, wie
+        sie gerechnet wurde, sonst prüft er sein eigenes Ergebnis nach.
+        """
+        rows = self._conn.execute(
+            "SELECT k.cluster_id, k.paper_id, p.body_id, p.name, p.date, "
+            "       json_extract(c.payload, '$.instrument') AS instrument "
+            "FROM idea_clusters k "
+            "JOIN papers p ON p.id = k.paper_id "
+            "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
+            "  AND c.annotator='classify' AND c.version='2' "
+            "WHERE k.version = ? ORDER BY k.cluster_id, k.score DESC", (version,))
+        return [dict(r) for r in rows]
+
     def cluster_of(self, paper_id: str, model: str, version: str = "1") -> list[dict]:
         """Alle Mitglieder des Clusters, in dem dieses Papier liegt.
 
@@ -946,6 +993,12 @@ class CitiesStore:
             "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
             "  AND c.annotator='classify' AND c.version='2' "
             "WHERE k.model = ? AND k.version = ? "
+            "  AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+            "                       json_each(ck.payload, '$.drop') d "
+            "                  WHERE ck.object_kind = 'cluster' "
+            "                    AND ck.annotator = 'cluster_check' "
+            "                    AND ck.object_id = k.version || ':' || k.cluster_id "
+            "                    AND d.value = p.id) "
             "ORDER BY k.score DESC, p.date DESC",
             (paper_id, model, version))
         return [dict(r) for r in rows]
@@ -967,6 +1020,12 @@ class CitiesStore:
             "  AND k2.cluster_id = k.cluster_id "
             "JOIN papers p2 ON p2.id = k2.paper_id "
             "WHERE k.model = ? AND k.version = ? AND p2.body_id != p.body_id "
+            "  AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+            "                       json_each(ck.payload, '$.drop') d "
+            "                  WHERE ck.object_kind = 'cluster' "
+            "                    AND ck.annotator = 'cluster_check' "
+            "                    AND ck.object_id = k.version || ':' || k.cluster_id "
+            "                    AND d.value IN (p.id, p2.id)) "
             "GROUP BY k.paper_id", (model, version))
         return {r["paper_id"]: int(r["peers"]) for r in rows}
 
@@ -983,6 +1042,12 @@ class CitiesStore:
             "       MAX(CASE WHEN p.body_id='oldenburg' THEN 1 ELSE 0 END) AS has_oldenburg "
             "FROM idea_clusters k JOIN papers p ON p.id = k.paper_id "
             "WHERE k.model = ? AND k.version = ? "
+            "  AND NOT EXISTS (SELECT 1 FROM annotations ck, "
+            "                       json_each(ck.payload, '$.drop') d "
+            "                  WHERE ck.object_kind = 'cluster' "
+            "                    AND ck.annotator = 'cluster_check' "
+            "                    AND ck.object_id = k.version || ':' || k.cluster_id "
+            "                    AND d.value = p.id) "
             "GROUP BY k.cluster_id ORDER BY cities DESC, members DESC",
             (model, version))
         return [dict(r) for r in rows]
@@ -1008,6 +1073,75 @@ class CitiesStore:
         except sqlite3.OperationalError:
             # Kaputte FTS-Syntax in einer Nutzerfrage ist kein Serverfehler.
             return []
+
+    # ------------------------------------------------------------- Pipeline
+
+    # ------------------------------------------------------------- Schicht 5
+
+    def put_feedback(self, object_kind: str, object_id: str, annotator: str,
+                     version: str, user_id: int, verdict: str,
+                     note: str | None = None) -> None:
+        """Eine Rückmeldung zu einem Urteil — eine je Konto, die zweite ersetzt.
+
+        **Die Fassung gehört in den Schlüssel.** „Das Urteil ist falsch" gilt
+        für das Urteil, das jemand GESEHEN hat; kommt eine neue Fassung des
+        Annotators, ist die alte Rückmeldung Geschichte, nicht Wahrheit über
+        die neue. Ohne die Fassung im Schlüssel schleppte ein Prüfstand
+        Urteile über etwas mit, das es nicht mehr gibt.
+        """
+        if verdict not in ("right", "wrong"):
+            raise ValueError(f"unbekanntes Urteil {verdict!r}")
+        with self._write() as conn:
+            conn.execute(
+                "INSERT INTO feedback (object_kind, object_id, annotator, version, "
+                "  user_id, verdict, note, created_at) VALUES (?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(object_kind, object_id, annotator, version, user_id) "
+                "DO UPDATE SET verdict=excluded.verdict, note=excluded.note, "
+                "  created_at=excluded.created_at",
+                (object_kind, object_id, annotator, version, user_id, verdict,
+                 note, now()))
+
+    def feedback_for(self, object_id: str, annotator: str, version: str,
+                     user_id: int) -> str | None:
+        """Was DIESES Konto zu diesem Urteil gesagt hat — für die Anzeige."""
+        row = self._conn.execute(
+            "SELECT verdict FROM feedback WHERE object_kind='paper' AND object_id=? "
+            "  AND annotator=? AND version=? AND user_id=?",
+            (object_id, annotator, version, user_id)).fetchone()
+        return row["verdict"] if row else None
+
+    def feedback_by_paper(self, annotator: str, version: str,
+                          user_id: int) -> dict[str, str]:
+        """Alle Rückmeldungen dieses Kontos auf einmal — wie ``peers_by_paper``.
+
+        Die Ideen-Liste zeigt dreißig Karten; dreißig Einzelabfragen für je ein
+        Wort wären dreißig Rundgänge durch dieselbe Tabelle.
+        """
+        rows = self._conn.execute(
+            "SELECT object_id, verdict FROM feedback WHERE object_kind='paper' "
+            "  AND annotator=? AND version=? AND user_id=?",
+            (annotator, version, user_id))
+        return {r["object_id"]: r["verdict"] for r in rows}
+
+    def feedback_stats(self, annotator: str, version: str) -> list[dict]:
+        """Je Urteil: wie viele Menschen es für richtig oder falsch halten.
+
+        Die Grundlage des nächsten Maßstabs. Was mehrere unabhängig für falsch
+        halten, gehört ins Golden Set — und zwar mit ihrem Urteil, nicht mit
+        meinem.
+        """
+        rows = self._conn.execute(
+            "SELECT f.object_id, "
+            "  SUM(f.verdict='right') AS richtig, SUM(f.verdict='wrong') AS falsch, "
+            "  p.name, p.body_id, a.payload AS urteil "
+            "FROM feedback f "
+            "JOIN papers p ON p.id = f.object_id "
+            "LEFT JOIN annotations a ON a.object_kind='paper' AND a.object_id=f.object_id "
+            "  AND a.annotator=f.annotator AND a.version=f.version "
+            "WHERE f.object_kind='paper' AND f.annotator=? AND f.version=? "
+            "GROUP BY f.object_id ORDER BY falsch DESC, richtig DESC",
+            (annotator, version))
+        return [dict(r) for r in rows]
 
     # ------------------------------------------------------------- Pipeline
 

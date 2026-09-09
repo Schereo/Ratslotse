@@ -1391,12 +1391,12 @@ class Idea(TypedDict):
     transfer: str
     competence: str | None
     originator: str | None
-    #: Das Urteil aus `council/cities/fit.py`.
+    #: Der Befund aus `council/cities/fit.py`: Hat Oldenburg dieses
+    #: Instrument schon? Eine TATSACHENFRAGE. Ob sich ein Antrag lohnt, sagt
+    #: hier bewusst niemand mehr — das hängt an Mehrheiten und Haushaltslage,
+    #: und das Modell traf es zu 46–58 %, den Status dagegen zu 62–69 %.
     status: str
     reason: str
-    worth: str
-    why_worth: str
-    obstacles: str | None
     confidence: str
     evidence: list[IdeaEvidence]
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
@@ -1407,6 +1407,11 @@ class Idea(TypedDict):
     #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
     #: die Stadt selbst entscheidet, und das ist der Normalfall.
     addressee: str | None
+    #: Was DIESES Konto zum Urteil gesagt hat: „right", „wrong" oder leer.
+    #: Der Rückkanal ist der billigste Maßstab, den es gibt — vierhundert
+    #: Rückmeldungen von zwei Ratsmitgliedern schlagen vierzig Fälle, die ein
+    #: Mensch an einem Tag geurteilt hat.
+    feedback: str
     #: In wie vielen ANDEREN Städten dieselbe Idee vorkommt
     #: (`council/cities/clusters.py`). 0 heißt: in keiner — und das ist kein
     #: Makel, sondern eine Aussage über die Idee.
@@ -1438,7 +1443,16 @@ class IdeaFieldSummary(TypedDict):
     missing: int
     partial: int
     present: int
-    worth_yes: int
+    #: Ideen dieses Feldes, die in mindestens ZWEI anderen Städten liegen und
+    #: Oldenburg fehlen. Danach ist ein Themenfeld interessant — vorher stand
+    #: hier die Zahl der „lohnt sich"-Urteile, also eine Modellmeinung.
+    multi_city: int
+
+
+class FeedbackAck(TypedDict):
+    """Die Bestätigung einer Rückmeldung — mehr braucht die Karte nicht."""
+    paper_id: str
+    verdict: str
 
 
 class IdeaFields(TypedDict):
