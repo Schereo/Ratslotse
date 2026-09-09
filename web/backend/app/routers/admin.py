@@ -471,17 +471,26 @@ def set_status(
     admin: dict = Depends(require_admin),
     store: Store = Depends(get_store),
 ) -> WebUserOut:
-    """Approve ('active') or suspend ('pending') a web account. Emails the user on first approval."""
-    if body.status not in ("active", "pending"):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Status muss 'active' oder 'pending' sein.")
+    """Ein Konto freischalten ('active') oder abschalten ('disabled').
+
+    ``pending`` wird als ``disabled`` gelesen: Die im App Store ausgelieferte
+    Admin-Ansicht schickt beim „Sperren" noch den alten Wert, und ein 400 dort
+    hieße, dass Sperren aus der App nicht mehr geht. Gespeichert wird immer der
+    neue Wert — sonst entstünde genau der Zustand wieder, den die Trennung
+    beseitigt: ein bestätigtes Konto auf ``pending``.
+    """
+    if body.status not in ("active", "disabled", "pending"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Status muss 'active' oder 'disabled' sein.")
+    neuer_stand = "active" if body.status == "active" else "disabled"
     target = store.get_web_user_by_id(user_id)
     if not target:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Nutzer*in nicht gefunden.")
-    if target["id"] == admin["id"] and body.status != "active":
+    if target["id"] == admin["id"] and neuer_stand != "active":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst dich nicht selbst sperren.")
-    store.set_web_user_status(user_id, body.status)
-    # Notify the user only on the pending → active transition (not on re-saves/no-ops).
-    if body.status == "active" and target.get("status") != "active":
+    store.set_web_user_status(user_id, neuer_stand)
+    # Notify the user only on the transition into 'active' (not on re-saves/no-ops).
+    if neuer_stand == "active" and target.get("status") != "active":
         background.add_task(_send_activation_email, target.get("email", ""))
     return WebUserOut(**store.get_web_user_by_id(user_id))
 

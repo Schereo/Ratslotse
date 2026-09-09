@@ -170,6 +170,17 @@ CREATE TABLE IF NOT EXISTS web_users (
     email            TEXT NOT NULL UNIQUE,
     password_hash    TEXT NOT NULL,
     role             TEXT NOT NULL DEFAULT 'user',
+    -- Der Zustand des Kontos. Drei Werte, und die Trennung der letzten beiden
+    -- ist der Punkt:
+    --   pending  = E-Mail noch nicht bestätigt (wartet auf sich selbst)
+    --   active   = benutzbar
+    --   disabled = von einem Admin abgeschaltet (wartet auf jemand anderen)
+    -- Bis 09/2026 trugen die beiden Wartezustände denselben Wert `pending`.
+    -- Das war nicht nur unscharf, es war ausnutzbar: Der Apple-
+    -- Verknüpfungspfad las `pending` als „unbestätigt" und schaltete das Konto
+    -- frei — ein gesperrtes Konto hob damit seine Sperre selbst auf (#1240).
+    -- Und die App zeigte einer gesperrten Person „Bestätige deine
+    -- E-Mail-Adresse", was sie längst getan hatte.
     status           TEXT NOT NULL DEFAULT 'pending',
     telegram_chat_id INTEGER,
     delivery_channel TEXT NOT NULL DEFAULT 'email',
@@ -948,6 +959,51 @@ class Store:
         return bool(self._conn.execute(
             "SELECT 1 FROM migration_marks WHERE marke = ?", (marke,)).fetchone())
 
+    def _kontostand_disabled_nachziehen(self) -> None:
+        """Abgeschaltete Konten von ``pending`` auf ``disabled`` heben — einmalig.
+
+        Der Bestand kennt nur zwei Werte, und ``pending`` trägt beide
+        Wartezustände. Auseinanderhalten lassen sie sich rückwirkend genau an
+        einem Merkmal: Wer die Adresse **bestätigt** hat und trotzdem nicht
+        aktiv ist, wurde von einem Admin abgeschaltet. Wer sie nicht bestätigt
+        hat, wartet auf sich selbst.
+
+        **Warum mit Marke und nicht bei jedem Start.** ``verify_email`` setzt
+        erst ``email_verified``, dann den Status — dazwischen liegt ein Moment,
+        in dem eine völlig normale Bestätigung wie ein abgeschaltetes Konto
+        aussieht. Liefe dieser Schritt bei jedem Öffnen des Stores, könnte ein
+        paralleler Prozess genau dort zuschlagen und das Konto auf ``disabled``
+        festnageln. Einmal je Datenbank ist zudem das, was der Schritt
+        inhaltlich ist: das Nachziehen einer Modelländerung, kein Dauerzustand.
+
+        ``blocked`` wird gleich mit eingesammelt: Der Wert stand seit jeher im
+        API-Vertrag, geschrieben hat ihn nie eine Zeile Produktivcode.
+        """
+        marke = "kontostand_disabled_2026_09"
+        if self._marke_gesetzt(marke):
+            return
+        spalten = self._table_cols("web_users")
+        if not spalten or "email_verified" not in spalten:
+            return
+        with self._conn:
+            self._conn.execute(
+                "CREATE TABLE IF NOT EXISTS migration_marks ("
+                "marke TEXT PRIMARY KEY, gesetzt_am TEXT NOT NULL)")
+            cur = self._conn.execute(
+                "UPDATE web_users SET status = 'disabled' "
+                "WHERE status = 'pending' AND email_verified = 1")
+            abgeschaltet = cur.rowcount
+            cur = self._conn.execute(
+                "UPDATE web_users SET status = 'disabled' WHERE status = 'blocked'")
+            blockiert = cur.rowcount
+            self._conn.execute(
+                "INSERT OR REPLACE INTO migration_marks (marke, gesetzt_am) "
+                "VALUES (?, datetime('now'))", (marke,))
+        if abgeschaltet or blockiert:
+            logging.getLogger("kern.store").warning(
+                "Kontostand nachgezogen: %d abgeschaltet, %d aus 'blocked' → 'disabled'",
+                abgeschaltet, blockiert)
+
     def _json_schluessel_umbenennen(self, tabelle: str, spalte: str, marke: str,
                                     karte: dict[str, str] | None = None) -> None:
         """Die Schlüssel INNERHALB eines JSON-Blobs nachziehen — einmalig.
@@ -1323,6 +1379,7 @@ class Store:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN news_seen_version TEXT")
                 if "news_sent_version" not in wu_cols:
                     self._conn.execute("ALTER TABLE web_users ADD COLUMN news_sent_version TEXT")
+        self._kontostand_disabled_nachziehen()
         # Die Rollen ziehen aus der Spalte in die Tabelle um (09/2026).
         # `web_user_roles` legt das SCHEMA selbst an (CREATE TABLE IF NOT
         # EXISTS läuft bei jedem Öffnen) — hier fehlt nur der Inhalt.

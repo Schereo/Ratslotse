@@ -46,6 +46,8 @@ public struct NativeRootView: View {
                         }
                     case .pending(let user):
                         VerificationPendingView(model: model, user: user)
+                    case .disabled(let user):
+                        AccountDisabledView(model: model, user: user)
                     case .active:
                         if model.onboardingStep == 0 {
                             NativeOnboardingWelcomeView(model: model)

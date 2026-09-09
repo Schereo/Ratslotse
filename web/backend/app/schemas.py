@@ -64,11 +64,16 @@ if TYPE_CHECKING:
 else:
     Recht = Literal[tuple(rollen.PERMISSIONS)]
 
-#: Der Zustand eines Kontos. ``blocked`` kann nur über ein Skript entstehen —
-#: die Admin-Oberfläche setzt nur ``active`` und ``pending``. Es steht hier
-#: trotzdem: Eine Antwortform, die einen vorhandenen Wert verschweigt, ist ein
-#: 500er in dem Moment, in dem er auftaucht.
-Kontostand = Literal["pending", "active", "blocked"]
+#: Der Zustand eines Kontos. Die Trennung der beiden Wartezustände ist der
+#: Punkt: ``pending`` heißt „E-Mail noch nicht bestätigt" — das Konto wartet
+#: auf sich selbst; ``disabled`` heißt „von einem Admin abgeschaltet" — es
+#: wartet auf jemand anderen. Bis 09/2026 trugen beide denselben Wert, und die
+#: Verwechslung war ausnutzbar (#1240) und für die App sichtbar falsch.
+#:
+#: ``blocked`` ist ersatzlos weg: Der Wert stand seit jeher hier, geschrieben
+#: hat ihn nie eine Zeile Produktivcode. Die Migration in ``kern/store.py``
+#: sammelt etwaige Altzeilen nach ``disabled`` ein.
+Kontostand = Literal["pending", "active", "disabled"]
 
 #: Wohin Benachrichtigungen gehen — ``off`` heißt: gar nicht.
 Zustellweg = Literal["email", "push", "both", "off"]
@@ -301,7 +306,13 @@ class RoleInfo(BaseModel):
 
 
 class StatusUpdate(BaseModel):
-    status: str  # 'active' | 'pending'
+    """``active`` oder ``disabled``.
+
+    ``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im
+    App Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau diesen
+    Wert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.
+    """
+    status: str  # 'active' | 'disabled' (| 'pending' als Alt-Schreibweise)
 
 
 class LimitsUpdate(BaseModel):

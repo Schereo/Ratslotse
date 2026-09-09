@@ -1613,7 +1613,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                         {rollenKatalog.find((k) => k.key === r)?.label ?? r}
                       </span>
                     ))}
-                    {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">wartet</span>}
+                    {u.status !== "active" && <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-500">{u.status === "disabled" ? "gesperrt" : "wartet"}</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {womit && (
@@ -1663,7 +1663,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
     onError: () => toast.error("Rollen konnten nicht geändert werden."),
   });
   const statusMutation = useMutation({
-    mutationFn: (status: "active" | "pending") => api.put(`/admin/users/${userId}/status`, { status }),
+    mutationFn: (status: "active" | "disabled") => api.put(`/admin/users/${userId}/status`, { status }),
     onSuccess: (_, status) => { toast.success(status === "active" ? "Freigeschaltet." : "Gesperrt."); invalidate(); },
     onError: () => toast.error("Status konnte nicht geändert werden."),
   });
@@ -1810,7 +1810,7 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
       {!isSelf && (
         <div className="mt-4 flex gap-2 border-t border-border pt-4">
           <Button variant="secondary" size="sm"
-            onClick={() => statusMutation.mutate(data.status === "active" ? "pending" : "active")}>
+            onClick={() => statusMutation.mutate(data.status === "active" ? "disabled" : "active")}>
             {data.status === "active" ? "Sperren" : "Freischalten"}
           </Button>
         </div>

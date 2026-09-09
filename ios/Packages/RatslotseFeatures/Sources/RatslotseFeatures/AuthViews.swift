@@ -606,3 +606,54 @@ private struct AuthWaves: Shape {
         return path
     }
 }
+
+/// Die Kontaktadresse des Betreibers.
+///
+/// Eigene Kopie, weil Swift aus `web/frontend/lib/kontakt.ts` nichts
+/// importieren kann. Wer eine der beiden ändert, ändert beide;
+/// `tests/test_kontaktadresse.py` hält sie zusammen.
+enum RatslotseKontakt {
+    static let email = "ratslotse@timsigl.de"
+}
+
+/// Das Konto wurde von einem Admin abgeschaltet.
+///
+/// Eigener Bildschirm, weil hier vorher `VerificationPendingView` stand: Die
+/// App forderte eine gesperrte Person auf, ihre E-Mail-Adresse zu bestätigen —
+/// die sie längst bestätigt hatte. Der Knopf „Erneut senden" meldete dann
+/// „Der Link ist unterwegs" und verschickte nichts, weil der Endpunkt für ein
+/// bestätigtes Konto folgenlos zurückkehrt.
+///
+/// Anders als dort wird hier NICHT im Hintergrund gepollt: Eine Freischaltung
+/// hängt an einem Menschen, nicht an einer Mail, die in Sekunden ankommt.
+struct AccountDisabledView: View {
+    let model: AppModel
+    let user: User
+
+    var body: some View {
+        AuthScaffold(
+            scene: .wave,
+            title: "Konto ist deaktiviert",
+            subtitle: "Dieses Konto wurde vorübergehend abgeschaltet. Melde dich gern bei uns, wenn das ein Irrtum ist."
+        ) {
+            VStack(spacing: 16) {
+                RatsLabel(user.email, .shieldCheck)
+                    .font(RatsFont.body(14, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                Button { Task { await model.refreshAccount() } } label: {
+                    Text("Erneut prüfen").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .frame(maxWidth: .infinity)
+                // Die Adresse direkt statt eines Verweises aufs Impressum: Wer
+                // gesperrt ist, sieht nur noch diesen Bildschirm.
+                Link(destination: URL(string: "mailto:\(RatslotseKontakt.email)")!) {
+                    Text(RatslotseKontakt.email)
+                        .font(RatsFont.body(13, weight: .semibold))
+                        .foregroundStyle(RatsColor.primary)
+                }
+                Button("Abmelden", role: .destructive) { Task { await model.logout() } }
+            }
+        }
+    }
+}
