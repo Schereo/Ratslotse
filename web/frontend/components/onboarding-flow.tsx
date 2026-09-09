@@ -1556,18 +1556,20 @@ const SCHRITT_NAMEN = ["Gremien", "Stadtteile", "Themen"] as const;
  */
 function HakenStep({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [gewaehlt, setGewaehlt] = useState<string[]>([]);
   const stadt = useQuery({
     queryKey: ["topic-suggestions", "city"],
     queryFn: () => api.get<VorschlagsAntwort>("/topics/suggestions?citywide=0&city=1").then((d) => d.city),
   });
   // Drei, nicht alle: Dies ist der letzte Schirm vor dem Schluss, und eine
-  // Wand aus Kacheln ist hier das Gegenteil von „ein Handgriff".
+  // Wand aus Kacheln ist hier das Gegenteil von „ein Handgriff". Aber drei
+  // KARTEN mit Einordnung und Zahl, keine drei Chips — auf einer Fläche, die
+  // sonst zu vier Fünfteln leer stünde (Tims Rückmeldung 09.09.).
   const vorschlaege = (stadt.data ?? []).slice(0, 3);
 
   const waehlen = async (v: Vorschlag) => {
-    setBusy(true);
+    setBusy(v.name);
     try {
       await api.post("/topics", { name: v.name, description: v.description });
       setGewaehlt((g) => [...g, v.name]);
@@ -1575,7 +1577,7 @@ function HakenStep({ onDone }: { onDone: () => void }) {
     } catch {
       toast.error("Das Thema ließ sich gerade nicht anlegen.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -1585,48 +1587,76 @@ function HakenStep({ onDone }: { onDone: () => void }) {
       lead="Ohne ein Thema oder ein Gremium hat Lotti keinen Anlass, sich je bei dir zu melden — dann bleibt Ratslotse eine Seite, an die du selbst denken musst."
       pose="point"
       footer={
-        // EIN Weg hinaus, nicht zwei. Der erste Entwurf hatte „Später" als
-        // Textlink UND „Ohne Thema weiter" als gefüllten Hauptknopf daneben —
-        // zwei Knöpfe für dieselbe Handlung, und der auffälligere von beiden
-        // empfahl ausgerechnet den Weg ohne Haken. Solange nichts gewählt ist,
-        // gibt es deshalb nur den stillen Ausgang; der Hauptknopf erscheint,
-        // sobald es etwas zu bestätigen gibt.
-        <div className="flex items-center justify-end gap-3">
+        // EIN Weg hinaus, nicht zwei. Solange nichts gewählt ist, gibt es nur
+        // den stillen Ausgang; der Hauptknopf erscheint, sobald es etwas zu
+        // bestätigen gibt — und sagt dann, was er bestätigt.
+        <div className="flex items-center justify-between gap-6">
+          <span className="min-w-0 text-[12px] text-muted-foreground">
+            {gewaehlt.length === 0
+              ? "Kein Zwang — unter „Meine Themen“ geht es jederzeit."
+              : gewaehlt.length === 1
+                ? `„${gewaehlt[0]}“ ist angelegt.`
+                : `${gewaehlt.length} Themen sind angelegt.`}
+          </span>
           {gewaehlt.length === 0 ? (
             <button type="button" onClick={onDone}
-              className="py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              className="shrink-0 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground">
               Später, ohne Thema
             </button>
           ) : (
-            <Button onClick={onDone} disabled={busy}>Fertig</Button>
+            <Button onClick={onDone} disabled={busy !== null}>Fertig — Lotti meldet sich</Button>
           )}
         </div>
       }
     >
       <p className="text-[13px] text-muted-foreground">
-        Drei Vorschläge aus dem, was gerade wirklich im Rat läuft — ein Tipp genügt:
+        Drei Themen, in denen der Rat gerade wirklich entscheidet. Ein Tipp legt eines an — mit
+        einer Beschreibung, die am Bestand geprüft ist.
       </p>
       {stadt.isPending ? (
-        <div className="mt-2.5 flex items-center gap-2 text-[13px] text-muted-foreground">
+        <div className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Vorschläge werden geladen …
         </div>
       ) : vorschlaege.length === 0 ? (
-        // Keine Vorschläge (leerer Bestand): dann nicht mit leerer Fläche
-        // dastehen, sondern den Weg nennen, den es trotzdem gibt.
-        <p className="mt-2.5 text-[13px] text-muted-foreground">
+        <p className="mt-3 text-[13px] text-muted-foreground">
           Unter „Meine Themen" legst du jederzeit eines an.
         </p>
       ) : (
-        <VorschlagsChips vorschlaege={vorschlaege} vorhanden={gewaehlt.map((name) => ({ name }))}
-          busy={busy} betont alle zahl onWaehlen={(v) => void waehlen(v)} />
-      )}
-      {gewaehlt.length > 0 && (
-        <p className="mt-3 flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
-          {gewaehlt.length === 1
-            ? `„${gewaehlt[0]}" ist angelegt — Lotti meldet sich, sobald der Rat dazu entscheidet.`
-            : `${gewaehlt.length} Themen angelegt — Lotti meldet sich, sobald der Rat dazu entscheidet.`}
-        </p>
+        <ul className="mt-3 flex flex-col gap-2">
+          {vorschlaege.map((v) => {
+            const dran = gewaehlt.includes(v.name);
+            const laeuft = busy === v.name;
+            return (
+              <li key={v.name} className={cn(
+                "flex items-center gap-3 rounded-[12px] border px-3.5 py-3 transition-colors",
+                dran ? "border-primary/30 bg-primary/[0.05]" : "border-border bg-card",
+              )}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-[14px] font-semibold text-foreground">{v.name}</span>
+                    {v.n > 0 && (
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
+                        {v.n} {v.n === 1 ? "Beschluss" : "Beschlüsse"} im letzten Jahr
+                      </span>
+                    )}
+                  </div>
+                  {v.context && <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">{v.context}</p>}
+                </div>
+                {dran ? (
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-medium text-primary">
+                    <Check className="h-3.5 w-3.5" aria-hidden /> angelegt
+                  </span>
+                ) : (
+                  <button type="button" disabled={busy !== null} onClick={() => void waehlen(v)}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[10px] border border-primary/30 bg-primary/[0.04] px-3 text-[12.5px] font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
+                    {laeuft ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Plus className="h-3.5 w-3.5" aria-hidden />}
+                    Verfolgen
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </StepShell>
   );

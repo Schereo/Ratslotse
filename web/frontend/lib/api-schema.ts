@@ -4735,6 +4735,8 @@ export interface components {
             label: string;
             /** N */
             n: number;
+            /** Previous */
+            previous: number;
             /** Users */
             users: number;
         };
@@ -4748,6 +4750,10 @@ export interface components {
             empty_share: number | null;
             /** Events */
             events: components["schemas"]["AdminEreignis"][];
+            /** Previous Chip Share */
+            previous_chip_share: number | null;
+            /** Previous Empty Share */
+            previous_empty_share: number | null;
         };
         /** AdminFeedbackList */
         AdminFeedbackList: {
@@ -4904,15 +4910,51 @@ export interface components {
         };
         /** AdminKohorten */
         AdminKohorten: {
+            basis: components["schemas"]["AdminKohortenBasis"];
             /** Cohorts */
             cohorts: components["schemas"]["AdminKohorte"][];
             /** Excluded */
             excluded: number;
             kennzahlen: components["schemas"]["AdminKennzahlen"];
+            previous: components["schemas"]["AdminKennzahlen"];
             /** Total */
             total: components["schemas"]["AdminKohortenStufe"][];
             /** Weeks */
             weeks: number;
+        };
+        /**
+         * AdminKohortenBasis
+         * @description Zähler und Nenner hinter den Quoten — „43 %" allein sagt nicht, ob es
+         *     3 von 7 oder 43 von 100 sind.
+         */
+        AdminKohortenBasis: {
+            /** Haken */
+            haken: [
+                number,
+                number
+            ];
+            /** Sackgassen */
+            sackgassen: [
+                number,
+                number
+            ];
+            /** Tag2 */
+            tag2: [
+                number,
+                number
+            ];
+            /** Tag30 */
+            tag30: [
+                number,
+                number
+            ];
+            /** Tag7 */
+            tag7: [
+                number,
+                number
+            ];
+            /** Vorher N */
+            vorher_n: number;
         };
         /**
          * AdminKohortenStufe
@@ -5266,6 +5308,10 @@ export interface components {
             days: number;
             /** Pages */
             pages: components["schemas"]["AdminSeite"][];
+            /** Previous Sessions */
+            previous_sessions: number;
+            /** Previous Total */
+            previous_total: number;
             /** Series */
             series: components["schemas"]["AdminSeitenTag"][];
             /** Sessions */
@@ -16834,4 +16880,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5a7ecfc63a9f15ccdd524b3d96f5b5d1a4e01ed64789a8eb21c2675e8da0c127
+// vertrag-sha256: 96a895eaee5f72ad0c43f0da3ad81ffb55edaa4b80bcf909aa9ba189b647bdf2

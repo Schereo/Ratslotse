@@ -211,6 +211,10 @@
             "title": "N",
             "type": "integer"
           },
+          "previous": {
+            "title": "Previous",
+            "type": "integer"
+          },
           "users": {
             "title": "Users",
             "type": "integer"
@@ -220,7 +224,8 @@
           "key",
           "label",
           "n",
-          "users"
+          "users",
+          "previous"
         ],
         "title": "AdminEreignis",
         "type": "object"
@@ -251,13 +256,29 @@
             },
             "title": "Events",
             "type": "array"
+          },
+          "previous_chip_share": {
+            "title": "Previous Chip Share",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "previous_empty_share": {
+            "title": "Previous Empty Share",
+            "type": [
+              "number",
+              "null"
+            ]
           }
         },
         "required": [
           "days",
           "events",
           "chip_share",
-          "empty_share"
+          "empty_share",
+          "previous_chip_share",
+          "previous_empty_share"
         ],
         "title": "AdminEreignisse",
         "type": "object"
@@ -646,6 +667,9 @@
       },
       "AdminKohorten": {
         "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/AdminKohortenBasis"
+          },
           "cohorts": {
             "items": {
               "$ref": "#/components/schemas/AdminKohorte"
@@ -658,6 +682,9 @@
             "type": "integer"
           },
           "kennzahlen": {
+            "$ref": "#/components/schemas/AdminKennzahlen"
+          },
+          "previous": {
             "$ref": "#/components/schemas/AdminKennzahlen"
           },
           "total": {
@@ -677,9 +704,100 @@
           "excluded",
           "cohorts",
           "total",
-          "kennzahlen"
+          "kennzahlen",
+          "previous",
+          "basis"
         ],
         "title": "AdminKohorten",
+        "type": "object"
+      },
+      "AdminKohortenBasis": {
+        "description": "Zähler und Nenner hinter den Quoten — „43 %\" allein sagt nicht, ob es\n3 von 7 oder 43 von 100 sind.",
+        "properties": {
+          "haken": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Haken",
+            "type": "array"
+          },
+          "sackgassen": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Sackgassen",
+            "type": "array"
+          },
+          "tag2": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Tag2",
+            "type": "array"
+          },
+          "tag30": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Tag30",
+            "type": "array"
+          },
+          "tag7": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Tag7",
+            "type": "array"
+          },
+          "vorher_n": {
+            "title": "Vorher N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "haken",
+          "tag2",
+          "tag7",
+          "tag30",
+          "sackgassen",
+          "vorher_n"
+        ],
+        "title": "AdminKohortenBasis",
         "type": "object"
       },
       "AdminKohortenStufe": {
@@ -1533,6 +1651,14 @@
             "title": "Pages",
             "type": "array"
           },
+          "previous_sessions": {
+            "title": "Previous Sessions",
+            "type": "integer"
+          },
+          "previous_total": {
+            "title": "Previous Total",
+            "type": "integer"
+          },
           "series": {
             "items": {
               "$ref": "#/components/schemas/AdminSeitenTag"
@@ -1554,6 +1680,8 @@
           "total",
           "sessions",
           "anonymous",
+          "previous_total",
+          "previous_sessions",
           "series",
           "pages",
           "clients"

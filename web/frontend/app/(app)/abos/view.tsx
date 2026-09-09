@@ -44,9 +44,10 @@ function terminText(d: CommitteeDetail): { kurz: string; lang: string } | null {
  */
 function meldungenText(sitzungen: number): string {
   if (sitzungen >= 12) {
-    return `≈ ${Math.round(sitzungen / 12)} Meldungen im Monat`;
+    const n = Math.round(sitzungen / 12);
+    return `≈ ${n} ${n === 1 ? "Meldung" : "Meldungen"} im Monat`;
   }
-  return sitzungen === 1 ? "1 Sitzung im Jahr" : `${sitzungen} Sitzungen im Jahr`;
+  return sitzungen === 1 ? "1 Meldung im Jahr" : `≈ ${sitzungen} Meldungen im Jahr`;
 }
 
 function GremiumZeichen({ committee, aktiv }: { committee: string; aktiv: boolean }) {
@@ -122,17 +123,23 @@ function Kachel({ d, abonniert, onToggle, busy, laeutet }: {
             </p>
           )}
           {(d.decisions_year > 0 || d.sessions_year > 0) && (
-            <p className="mt-1 truncate text-[11px] text-muted-foreground">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
               {d.decisions_year > 0 && (
-                <>{d.decisions_year} {d.decisions_year === 1 ? "Beschluss" : "Beschlüsse"} {new Date().getFullYear()}</>
+                <span>{d.decisions_year} {d.decisions_year === 1 ? "Beschluss" : "Beschlüsse"} {new Date().getFullYear()}</span>
               )}
               {/* Die MENGE, nicht nur der Ertrag: je Sitzung eine
                   Tagesordnungs-Meldung. Am 08.09.2026 hatten vier Konten
                   binnen fünfzehn Sekunden alle sechzehn Ausschüsse abonniert;
                   zwei davon bekamen rund zwanzig Mails und waren nie wieder
-                  da. Wer abonniert, soll vorher wissen, was er bestellt. */}
-              {d.decisions_year > 0 && d.sessions_year > 0 && " · "}
-              {d.sessions_year > 0 && <>{meldungenText(d.sessions_year)}</>}
+                  da. Wer abonniert, soll vorher wissen, was er bestellt — und
+                  zwar als eigenes Stück mit Glocke, nicht als Halbsatz hinter
+                  der Beschlusszahl (Tims Rückmeldung 09.09.). */}
+              {d.sessions_year > 0 && (
+                <span className={"inline-flex items-center gap-1 rounded-full px-1.5 py-px font-mono text-[10px] " + (abonniert ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                  <Bell className="h-2.5 w-2.5" aria-hidden />
+                  {meldungenText(d.sessions_year)}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -387,15 +394,21 @@ export function AbosView() {
     <div className="@container">
       <PageHeader title="Ausschuss-Abos" description={HEADER_DESC} />
 
-      {sitzungenGesamt >= 12 && (
-        <p className="mt-3 rounded-[12px] border border-border bg-card px-3.5 py-2.5 text-[13px] text-muted-foreground">
-          Deine {anzahlAbos === 1 ? "Auswahl" : `${anzahlAbos} Abos`} bedeuten zurzeit{" "}
-          <span className="font-semibold text-foreground">
-            ≈ {Math.round(sitzungenGesamt / 12)} Tagesordnungs-Meldungen im Monat
-          </span>{" "}
-          — gerechnet aus den Sitzungen der letzten zwölf Monate. Höchstens zwei am Tag,
-          zwischen 21 und 7 Uhr keine.
-        </p>
+      {anzahlAbos > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-[14px] border border-primary/20 bg-primary/[0.04] px-4 py-3">
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+              {sitzungenGesamt >= 12 ? `≈ ${Math.round(sitzungenGesamt / 12)}` : "< 1"}
+            </span>
+            <span className="text-[13px] font-medium text-foreground">
+              {sitzungenGesamt >= 12 && Math.round(sitzungenGesamt / 12) === 1 ? "Meldung" : "Meldungen"} im Monat
+            </span>
+          </div>
+          <p className="min-w-0 flex-1 text-[12px] leading-snug text-muted-foreground">
+            aus {anzahlAbos === 1 ? "einem Abo" : `${anzahlAbos} Abos`} · gerechnet aus den Sitzungen der letzten zwölf Monate ·
+            höchstens zwei am Tag, zwischen 21 und 7 Uhr keine
+          </p>
+        </div>
       )}
 
       <KalenderAboKarte anzahlAbos={anzahlAbos} />

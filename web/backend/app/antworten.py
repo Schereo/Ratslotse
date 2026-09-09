@@ -1538,6 +1538,18 @@ class AdminKennzahlen(TypedDict):
     fragen_median: float | None
 
 
+class AdminKohortenBasis(TypedDict):
+    """Zähler und Nenner hinter den Quoten — „43 %" allein sagt nicht, ob es
+    3 von 7 oder 43 von 100 sind."""
+    haken: tuple[int, int]
+    tag2: tuple[int, int]
+    tag7: tuple[int, int]
+    tag30: tuple[int, int]
+    sackgassen: tuple[int, int]
+    #: Wie viele Konten der Vorzeitraum hatte — die Grundlage der Veränderung.
+    vorher_n: int
+
+
 class AdminKohorten(TypedDict):
     weeks: int
     #: Wie viele Konten als Betreiber-/Testkonten aus der Statistik fielen.
@@ -1545,6 +1557,10 @@ class AdminKohorten(TypedDict):
     cohorts: list[AdminKohorte]
     total: list[AdminKohortenStufe]
     kennzahlen: AdminKennzahlen
+    #: Dieselben Kennzahlen für die Spanne davor — daraus zeigt die Oberfläche
+    #: die Veränderung. Ein Stand allein sagt nicht, ob etwas gewirkt hat.
+    previous: AdminKennzahlen
+    basis: AdminKohortenBasis
 
 
 class AdminSeitenTag(TypedDict):
@@ -1576,6 +1592,9 @@ class AdminSeitenaufrufe(TypedDict):
     sessions: int
     #: Aufrufe ohne Anmeldung — die Gruppe, die vorher gar nicht sichtbar war.
     anonymous: int
+    #: Dieselbe Spanne unmittelbar davor — für die Veränderung.
+    previous_total: int
+    previous_sessions: int
     series: list[AdminSeitenTag]
     pages: list[AdminSeite]
     clients: list[AdminSeitenClient]
@@ -1588,6 +1607,8 @@ class AdminEreignis(TypedDict):
     #: Wie viele verschiedene Konten — eine hohe Zahl aus einem Konto ist
     #: etwas anderes als dieselbe Zahl aus zwanzig.
     users: int
+    #: Dieselbe Spanne davor.
+    previous: int
 
 
 class AdminEreignisse(TypedDict):
@@ -1597,6 +1618,8 @@ class AdminEreignisse(TypedDict):
     chip_share: float | None
     #: Anteil der Antworten ohne eine einzige Quelle.
     empty_share: float | None
+    previous_chip_share: float | None
+    previous_empty_share: float | None
 
 
 class AdminSackgasse(TypedDict):
