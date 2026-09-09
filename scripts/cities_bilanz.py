@@ -153,12 +153,44 @@ def spitze(zeilen: list[dict], peers: dict[str, int], wie_viele: int) -> None:
               f"{(z['date'] or '')[:7]}  {(z['instrument'] or z['name'] or '')[:66]}")
 
 
+def rueckmeldungen(main: CitiesStore, version: str) -> None:
+    """Was Menschen zu den Urteilen gesagt haben — das billigste Golden Set.
+
+    Die vierzig Handfälle von `fit` haben mich viermal eines Besseren
+    belehrt; dreimal war MEIN Urteil falsch. Ein Ratsmitglied, das die Karte
+    liest, weiß es besser als ich — es muss nur gefragt werden, und das tut
+    die Karte seit dem Rückkanal.
+
+    Ab rund fünfzig Rückmeldungen lohnt es, die umstrittensten in
+    `eval/cases_cities_fit.json` zu übernehmen. Das Golden Set WÄCHST, es
+    wird nicht ersetzt (Regel 16 der Pläne).
+    """
+    zeilen = main.feedback_stats("fit", version)
+    if not zeilen:
+        print("\nKeine Rückmeldungen. Die Karte fragt danach, sobald die "
+              "Schalter `andere-staedte` und `ideen-anderswo` auf Prod stehen.")
+        return
+    falsch = [z for z in zeilen if (z["falsch"] or 0) > 0]
+    print(f"\n{len(zeilen)} Urteile mit Rückmeldung, {len(falsch)} davon "
+          f"mindestens einmal als falsch bezeichnet.")
+    print("\nDie umstrittensten:")
+    for z in sorted(zeilen, key=lambda x: -(x["falsch"] or 0))[:10]:
+        print(f"  {z['richtig'] or 0:2}× richtig  {z['falsch'] or 0:2}× falsch   "
+              f"{z['body_id'][:11]:12} {(z['name'] or '')[:48]}")
+    if len(zeilen) >= 50:
+        print("\nAb hier lohnt die Übernahme ins Golden Set "
+              "(eval/cases_cities_fit.json).")
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     p.add_argument("--version", default=None,
                    help="Fassung des Annotators (Vorgabe: die aktuelle)")
     p.add_argument("--ab", type=int, default=2,
                    help="ab wie vielen ANDEREN Städten eine Idee zählt (Vorgabe 2)")
+    p.add_argument("--rueckmeldungen", action="store_true",
+                   help="was Menschen zu den Urteilen gesagt haben — die "
+                        "Grundlage des nächsten Golden Sets")
     p.add_argument("--alle-arten", action="store_true",
                    help="auch Antworten, Mitteilungen und Berichte zählen. Die "
                         "Karte zeigt sie nicht — dort schlägt niemand etwas vor.")
@@ -174,6 +206,9 @@ def main() -> int:
     db, _f, _r = default_paths()
     store = CitiesStore(db)
     try:
+        if a.rueckmeldungen:
+            rueckmeldungen(store, version)
+            return 0
         zeilen = urteile(store, version, a.alle_arten)
         roh = len(zeilen)
         if not a.vorlagen:

@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 """Wöchentlich: Ratsdokumente der Vergleichsstädte holen — und Oldenburg dazu.
 
-Crontab (Server): ``0 3 * * 0  …/scripts/check_cities.py``
+Crontab (Prod)::
+
+    0 5 * * 0  cd ~/app && .venv/bin/python scripts/check_cities.py \\
+                 >> ~/app/data/check_cities.log 2>&1
+
+**Fünf Uhr und nicht drei**, weil ``weekly_enrich.py`` sonntags um drei läuft
+und zwei Läufe, die beide ein Embedding-Modell laden, nicht auf dieselbe
+Stunde einer VM mit zwei Kernen gehören.
+
+**Nur auf Prod.** Auf dev laufen per Entscheidung keine Crons; sie bekommt
+den Stand über ``scripts/lokale_daten.py schieb --staedte --nach dev``.
 
 **Warum 60 Tage Rückschau und nicht „seit dem letzten Lauf".** Ergebnisse und
 Beschlussausfertigungen werden Wochen nach der Sitzung nachgetragen; wer nur

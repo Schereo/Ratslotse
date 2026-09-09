@@ -1,144 +1,73 @@
-"""Der Abzug für die lokale Arbeit darf keine Personendaten mitnehmen.
+"""Der Sync des Städte-Speichers auf einen Server.
 
-``scripts/lokale_daten.py`` holt die Ratsdaten von dev, damit Agenten und
-Menschen gegen echte Mengen bauen statt gegen eine leere Datenbank. Zwei
-Dinge müssen dabei stimmen, und beide sind still, wenn sie es nicht tun:
-
-1. **Die nutzerbezogenen Tabellen bleiben draußen.** Das Skript liest die
-   Liste aus ``council.store``, statt sie abzuschreiben — dieselbe, die das
-   Konto-Löschen benutzt. Ein Abschreiben veraltete beim nächsten neuen
-   Feature, und niemand würde es merken: Der Abzug sähe genauso aus.
-2. **Die Konten werden gebaut, nicht geholt.** ``scripts/saat_konten.py`` legt
-   erfundene Konten an; einen Abzug der echten Konten-Datenbank gibt es
-   bewusst nicht, und dieser Test hält fest, dass keiner dazukommt.
+Der Plan sah zuerst einen Backfill auf der dev-VM vor — dort neu ernten und
+neu beurteilen. Tims Einwand am 09.09.2026: „können wir nicht die
+Arbeitsdaten von hier syncen?" Gemessen am selben Abend: Die dev-VM hat gar
+keine `cities.sqlite`, Prod eine 270-KB-Hülle. Es gibt nichts zusammen-
+zuführen, also ist es eine Kopie — und 14 GB PDFs neu zu holen wäre Arbeit
+für nichts gewesen.
 """
 from __future__ import annotations
 
-import ast
 import sys
 from pathlib import Path
 
+import pytest
+
 WURZEL = Path(__file__).resolve().parents[1]
-SKRIPT = WURZEL / "scripts" / "lokale_daten.py"
-SAAT = WURZEL / "scripts" / "saat_konten.py"
+sys.path.insert(0, str(WURZEL / "scripts"))
+
+import lokale_daten  # noqa: E402
 
 
-def test_die_nutzertabellen_kommen_aus_dem_code():
-    """Nicht abgeschrieben — sonst veraltet die Liste lautlos."""
-    sys.path.insert(0, str(WURZEL))
-    from council.store import COUNCIL_USER_OWNED_TABLES
+@pytest.fixture()
+def keine_kopie(monkeypatch, tmp_path):
+    """Eine ECHTE, leere Städte-Datenbank; kopiert wird nichts.
 
-    quelle = SKRIPT.read_text()
-    assert "COUNCIL_USER_OWNED_TABLES" in quelle, (
-        "scripts/lokale_daten.py liest die nutzerbezogenen Tabellen nicht mehr "
-        "aus council.store. Eine abgeschriebene Liste veraltet, und der Abzug "
-        "trüge dann Personendaten, ohne dass es jemandem auffällt."
-    )
-    namen = {t for t, _ in COUNCIL_USER_OWNED_TABLES}
-    fest = {n for n in namen if f'"{n}"' in quelle}
-    assert not fest, (
-        "Diese Tabellennamen stehen im Skript fest verdrahtet, obwohl sie aus "
-        "der Liste kommen sollen: " + ", ".join(sorted(fest))
-    )
-
-
-def test_die_konten_datenbank_wird_nirgends_geholt():
-    """Sie trägt Adressen, Tokens und Gespräche — sie bleibt auf dem Server."""
-    quelle = SKRIPT.read_text()
-    baum = ast.parse(quelle)
-    pfade: list[str] = []
-    for k in ast.walk(baum):
-        if isinstance(k, ast.Constant) and isinstance(k.value, str):
-            if k.value.endswith(".sqlite") and "/" in k.value:
-                pfade.append(k.value)
-    verboten = [p for p in pfade
-                if any(n in p for n in ("ratslotse.sqlite", "nwz.sqlite"))]
-    assert not verboten, (
-        "Das Hol-Skript nennt eine Konten-Datenbank:\n  " + "\n  ".join(verboten)
-        + "\n\nDie wird gebaut (scripts/saat_konten.py), nicht geholt."
-    )
-
-
-def test_die_saat_benutzt_nur_erfundene_adressen():
-    """Beispieladressen, keine echten — dieselbe Regel wie im ganzen Repo."""
-    quelle = SAAT.read_text()
-    import re
-
-    adressen = set(re.findall(r"[\w.+-]+@[\w.-]+\.\w+", quelle))
-    erlaubt = {"admin@test.de"}
-    fremd = sorted(a for a in adressen - erlaubt
-                   if not a.endswith(("@example.org", "@example.com", "@test.de")))
-    assert not fremd, (
-        "Die Saat nennt Adressen, die jemandem gehören könnten: "
-        + ", ".join(fremd)
-    )
-    assert adressen, "Die Saat legt gar keine Konten mehr an?"
-
-
-def test_nur_lesen_kommt_an_eine_wal_datenbank(tmp_path):
-    """``kern.dbfehler.nur_lesen`` liest, wo ``mode=ro`` aufgeben kann.
-
-    Der Rückfall steht dort NICHT auf Verdacht: ``file:…?mode=ro`` ist am
-    02.09.2026 zweimal an einer laufenden WAL-Datenbank gescheitert (in der
-    Rauchprobe an der Konten-Datei, hier am frisch geklonten Abzug), jedes Mal
-    mit „unable to open database file" — einer Meldung, die nach fehlender
-    Datei klingt und keine ist.
-
-    Nachstellen lässt sich das hier nur halb: Der Fehler braucht eine WAL, die
-    ein anderer Prozess offen hält. Was der Test hält, ist die Zusage, die
-    zählt — dass diese Verbindung eine WAL-Datenbank liest.
+    Echt, weil `schieb_staedte` sie mit `VACUUM INTO` kompaktiert — gegen
+    eine erfundene Datei liefe der Test am Kern vorbei. Gezählt wird, welche
+    Befehle abgesetzt WÜRDEN.
     """
-    import sqlite3
+    from council.cities.store import CitiesStore
 
-    from kern.dbfehler import nur_lesen
-
-    pfad = tmp_path / "wal.sqlite"
-    auf = sqlite3.connect(pfad)
-    auf.execute("PRAGMA journal_mode=WAL")
-    auf.execute("CREATE TABLE t (a INTEGER)")
-    auf.execute("INSERT INTO t VALUES (1)")
-    auf.commit()
-    try:
-        # Verbindung bleibt offen: So liegen `-wal` und `-shm` daneben, und
-        # die Datei ist der Fall, um den es geht.
-        verbindung = nur_lesen(pfad)
-        try:
-            assert verbindung.execute("SELECT a FROM t").fetchone()[0] == 1
-        finally:
-            verbindung.close()
-    finally:
-        auf.close()
+    laeufe: list[list[str]] = []
+    monkeypatch.setattr(lokale_daten, "_lauf", lambda b, *a, **k: laeufe.append(b))
+    monkeypatch.setattr(lokale_daten, "WURZEL", tmp_path)
+    monkeypatch.setattr(lokale_daten, "SPEICHER", tmp_path / "cache")
+    (tmp_path / "data").mkdir()
+    CitiesStore(tmp_path / "data" / "cities.sqlite").close()
+    return laeufe
 
 
-def test_der_staedte_speicher_kommt_nur_auf_zuruf():
-    """Er ist rund 600 MB groß und für die Arbeit an einer Oberfläche ohne
-    Belang. Wer ihn ohne Schalter mitzöge, zwänge ihn allen auf."""
-    quelle = SKRIPT.read_text()
-    assert "--mit-staedten" in quelle, "der Schalter fehlt"
-    baum = ast.parse(quelle)
-    # `hol` und `setz` selbst dürfen den Städte-Speicher nicht anfassen —
-    # dafür gibt es die beiden eigenen Funktionen.
-    for k in ast.walk(baum):
-        if isinstance(k, ast.FunctionDef) and k.name in ("hol", "setz"):
-            namen = {n.id for n in ast.walk(k) if isinstance(n, ast.Name)}
-            assert "STAEDTE_ABZUG" not in namen, (
-                f"`{k.name}` fasst den Städte-Speicher an — er gehört in "
-                f"`{k.name}_staedte`, das nur mit --mit-staedten läuft.")
+def test_weigert_sich_wenn_auf_dem_ziel_schon_daten_liegen(keine_kopie, monkeypatch):
+    """Eine Rückmeldung eines Ratsmitglieds darf kein lokaler Stand
+    überschreiben — und sobald der Cron dort läuft, ist der Server frischer."""
+    monkeypatch.setattr(lokale_daten, "_fernbestand",
+                        lambda host: {"papers": 30673, "feedback": 4})
+    assert lokale_daten.schieb_staedte("prod", ja=False) == 1
+    assert not keine_kopie, "es darf nichts kopiert worden sein"
 
 
-def test_der_staedte_speicher_wird_nicht_abgespeckt():
-    """Anders als die Rats-Datenbank: In ihm stehen ausschließlich
-    öffentliche Ratsdokumente anderer Städte — keine Konten, keine
-    Personendaten. Eine Abspeckung wäre eine zweite Wahrheit neben der
-    Löschliste, die niemand pflegt."""
-    quelle = SKRIPT.read_text()
-    baum = ast.parse(quelle)
-    for k in ast.walk(baum):
-        if isinstance(k, ast.FunctionDef) and k.name == "hol_staedte":
-            quelltext = ast.get_source_segment(quelle, k) or ""
-            assert "scp" in quelltext, "hol_staedte lädt die Datei unverändert"
-            assert "DROP" not in quelltext.upper(), (
-                "hol_staedte speckt ab — dann bräuchte es eine gepflegte Liste")
-            break
-    else:
-        raise AssertionError("hol_staedte fehlt")
+def test_ja_ueberstimmt_die_weigerung(keine_kopie, monkeypatch):
+    """Die Gegenrichtung: Wer wirklich ersetzen will, kann es sagen."""
+    monkeypatch.setattr(lokale_daten, "_fernbestand",
+                        lambda host: {"papers": 30673, "feedback": 0})
+    assert lokale_daten.schieb_staedte("prod", ja=True) == 0
+    assert any(b[0] == "scp" for b in keine_kopie)
+
+
+def test_leeres_ziel_wird_nicht_geschuetzt(keine_kopie, monkeypatch):
+    """Eine 270-KB-Hülle ohne Vorlagen ist kein Bestand, den man schützt —
+    genau so sah Prod am 09.09.2026 aus."""
+    monkeypatch.setattr(lokale_daten, "_fernbestand", lambda host: None)
+    assert lokale_daten.schieb_staedte("dev", ja=False) == 0
+    ziele = [b[-1] for b in keine_kopie if b[0] == "scp"]
+    assert ziele and ziele[0].endswith("cities.sqlite")
+
+
+def test_die_pdfs_bleiben_hier(keine_kopie, monkeypatch):
+    """14 GB Dateien, deren Text längst in `texts` steht und die der
+    Web-Dienst nie liest — sie zu kopieren wäre Arbeit für nichts."""
+    monkeypatch.setattr(lokale_daten, "_fernbestand", lambda host: None)
+    lokale_daten.schieb_staedte("dev", ja=False)
+    assert not any("cities-files" in " ".join(b) for b in keine_kopie)

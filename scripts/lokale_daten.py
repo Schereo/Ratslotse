@@ -78,6 +78,9 @@ STAND = SPEICHER / "stand.json"
 #: Oberfläche nicht gebraucht. Wer am Städtevergleich arbeitet, nimmt ihn mit.
 STAEDTE_ABZUG = SPEICHER / "cities.sqlite"
 STAEDTE_FERN = "/home/tim/app/data/cities.sqlite"
+#: Die Rohernte je Stadt. Sie kommt beim `schieb` mit, damit der erste
+#: Cron-Lauf auf dem Server dedupliziert statt sechs Städte neu zu holen.
+STAEDTE_ROH_FERN = "/home/tim/app/data/cities-raw"
 
 #: Quellen. Die Namen sind SSH-Hosts aus ``~/.ssh/config``.
 QUELLEN = {
@@ -220,6 +223,103 @@ def hol_staedte(quelle: str) -> int:
     print(f"✓ {STAEDTE_ABZUG}  ({STAEDTE_ABZUG.stat().st_size / 1e6:.0f} MB, "
           f"{time.monotonic() - t0:.0f}s)")
     return 0
+
+
+def schieb_staedte(ziel: str, ja: bool) -> int:
+    """Den Städte-Speicher von HIER auf einen Server legen — das Gegenstück zu ``hol``.
+
+    **Warum kein Backfill auf dem Server.** Die naheliegende Antwort wäre, dort
+    neu zu ernten und zu beurteilen. Das hieße 14 GB PDFs aus sechs Städten,
+    Stunden Rechenzeit und rund 16 $ — um zu reproduzieren, was hier schon
+    liegt. Und es gibt nichts zusammenzuführen: Gemessen am 09.09.2026 hat die
+    dev-VM gar keine ``cities.sqlite``, Prod eine 270-KB-Hülle, die der
+    Web-Dienst beim ersten Öffnen angelegt hat.
+
+    **Was mitkommt und was nicht.** Die Datenbank (rund 1,4 GB) und die
+    Rohernte (rund 500 MB); die 14 GB PDFs nicht. Ihre Texte stehen längst
+    extrahiert in ``texts``, und der Web-Dienst liest nie eine Datei. Neue
+    Vorlagen bringen ihre PDFs mit dem Wochen-Cron mit.
+
+    **Warum ohne Dienst-Neustart.** Das Backend öffnet die Städte-Datenbank je
+    Anfrage (``web/backend/app/deps.py``); ein Dateitausch darunter ist damit
+    sicher.
+
+    **Die Weigerung ist der wichtigere Teil.** Liegen auf dem Ziel schon
+    Vorlagen oder Rückmeldungen, bricht der Lauf ab: Eine Rückmeldung eines
+    Ratsmitglieds darf kein lokaler Stand überschreiben, und sobald der Cron
+    dort läuft, ist der Server der frischere. ``--ja`` überstimmt das für den
+    Fall, dass jemand wirklich ersetzen will.
+    """
+    quelle = WURZEL / "data" / "cities.sqlite"
+    if not quelle.exists():
+        print(f"{quelle.relative_to(WURZEL)} gibt es nicht.", file=sys.stderr)
+        return 1
+    host, _ = QUELLEN[ziel]
+
+    bestand = _fernbestand(host)
+    if bestand and not ja:
+        print(f"Auf {ziel} liegen schon {bestand['papers']} Vorlagen und "
+              f"{bestand['feedback']} Rückmeldungen.", file=sys.stderr)
+        print("Ein Sync würde sie überschreiben. --ja überstimmt das.",
+              file=sys.stderr)
+        return 1
+
+    SPEICHER.mkdir(parents=True, exist_ok=True)
+    kompakt = SPEICHER / "cities-schieb.sqlite"
+    if kompakt.exists():
+        kompakt.unlink()
+    print("Kompakte Kopie schreiben (VACUUM INTO) …")
+    # Über den Store, nicht per Dateikopie: Der WAL muss eingecheckt sein,
+    # sonst fehlt dem Ziel alles seit dem letzten Checkpoint.
+    sys.path.insert(0, str(WURZEL))
+    from council.cities.store import CitiesStore
+
+    store = CitiesStore(quelle)
+    try:
+        store._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        store._conn.execute("VACUUM INTO ?", (str(kompakt),))
+    finally:
+        store.close()
+    print(f"  {kompakt.stat().st_size / 1e6:.0f} MB")
+
+    t0 = time.monotonic()
+    print(f"Datenbank nach {ziel} kopieren …")
+    _lauf(["scp", str(kompakt), f"{host}:{STAEDTE_FERN}"])
+    roh = WURZEL / "data" / "cities-raw"
+    if roh.exists():
+        print("Rohernte kopieren (damit der erste Cron dedupliziert) …")
+        _lauf(["ssh", host, f"mkdir -p {STAEDTE_ROH_FERN}"])
+        _lauf(["rsync", "-a", "--delete", f"{roh}/", f"{host}:{STAEDTE_ROH_FERN}/"])
+    print(f"✓ {ziel} hat den Stand von hier ({time.monotonic() - t0:.0f}s).")
+    print("  Kein Dienst-Neustart nötig — das Backend öffnet die Datei je Anfrage.")
+    return 0
+
+
+def _fernbestand(host: str) -> dict | None:
+    """Was auf dem Ziel schon liegt — oder ``None``, wenn dort nichts ist."""
+    ergebnis = subprocess.run(
+        ["ssh", host, "python3 - <<'EOF'\n"
+         "import sqlite3, json, os\n"
+         "p = '/home/tim/app/data/cities.sqlite'\n"
+         "if not os.path.exists(p):\n"
+         "    print('{}')\n"
+         "else:\n"
+         "    c = sqlite3.connect('file:' + p + '?mode=ro', uri=True)\n"
+         "    def n(t):\n"
+         "        try: return c.execute('SELECT count(*) FROM ' + t).fetchone()[0]\n"
+         "        except Exception: return 0\n"
+         "    print(json.dumps({'papers': n('papers'), 'feedback': n('feedback')}))\n"
+         "EOF"],
+        capture_output=True, text=True)
+    if ergebnis.returncode != 0:
+        return None
+    try:
+        daten = json.loads(ergebnis.stdout.strip() or "{}")
+    except json.JSONDecodeError:
+        return None
+    if daten.get("papers") or daten.get("feedback"):
+        return daten
+    return None
 
 
 def setz(ueberschreiben: bool) -> int:
@@ -369,6 +469,14 @@ def main() -> int:
     s.add_argument("--ueberschreiben", action="store_true")
     s.add_argument("--mit-staedten", action="store_true",
                    help="den Städte-Speicher mitlegen")
+    sch = unter.add_parser(
+        "schieb", help="den Städte-Speicher von HIER auf einen Server legen")
+    sch.add_argument("--nach", default="dev", choices=sorted(QUELLEN))
+    sch.add_argument("--staedte", action="store_true", required=True,
+                     help="bislang der einzige Speicher, der so wandert — die "
+                          "Rats-Datenbank trägt Konten und geht nie von hier weg")
+    sch.add_argument("--ja", action="store_true",
+                     help="auch schieben, wenn auf dem Ziel schon Daten liegen")
     unter.add_parser("stand", help="Was liegt da, und wie alt?")
     args = p.parse_args()
 
@@ -377,6 +485,8 @@ def main() -> int:
         if code == 0 and args.mit_staedten:
             code = hol_staedte(args.von)
         return code
+    if args.was == "schieb":
+        return schieb_staedte(args.nach, args.ja)
     if args.was == "setz":
         code = setz(args.ueberschreiben)
         if code == 0 and args.mit_staedten:
