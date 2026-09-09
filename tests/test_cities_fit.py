@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
+import threading
+
 import pytest
 
 from council.cities import fit as fit_modul
@@ -260,6 +262,59 @@ def test_suchbegriffe_werden_je_vorlage_genau_einmal_geholt(cities, rats, monkey
     assert geholt.count("os:p:1") == 1, (
         "die Suchwörter wurden zweimal geholt — `begriffe` kommt nicht "
         "mehr aus dem Vorlauf in `evidence_for` an")
+
+
+class _MitwissendeVerbindung:
+    """Reicht alles an die echte Verbindung durch und merkt sich den Thread.
+
+    Kein Ersatz für die Verbindung, sondern ein Mithörer: `__getattr__`
+    reicht durch, die beiden Kontext-Haken müssen ausgeschrieben stehen
+    (Python sucht Dunder-Methoden am TYP, nicht über `__getattr__`).
+    """
+
+    def __init__(self, conn):
+        self._conn = conn
+        self.threads: set[str] = set()
+
+    def execute(self, *a, **kw):
+        self.threads.add(threading.current_thread().name)
+        return self._conn.execute(*a, **kw)
+
+    def executemany(self, *a, **kw):
+        self.threads.add(threading.current_thread().name)
+        return self._conn.executemany(*a, **kw)
+
+    def __enter__(self):
+        return self._conn.__enter__()
+
+    def __exit__(self, *a):
+        return self._conn.__exit__(*a)
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+def test_arbeiter_fassen_die_datenbank_nicht_an(cities, rats, monkeypatch):
+    """Eine SQLite-Verbindung gehört einem Thread — auch beim LESEN.
+
+    Bis 09.09.2026 stand im Modulkopf nur „geschrieben wird im Hauptthread",
+    und der Prompt holte sich den Vorlagentext mit `text_for_paper` aus dem
+    Arbeiter. Bei vier Arbeitern fiel das nie auf; beim Bestandslauf mit
+    vierzig warf SQLite `InterfaceError: bad parameter or other API misuse`.
+    Der Fehler wurde als „eine Vorlage gescheitert" gezählt und
+    VERSCHLUCKT — der Lauf lief weiter, die Stimme fehlte.
+
+    Deshalb die schärfere Regel: Was aus der Datenbank kommt, wird vorher
+    eingesammelt. Der Arbeiter rechnet und ruft das Modell, sonst nichts.
+    """
+    horcher = _MitwissendeVerbindung(cities._conn)
+    monkeypatch.setattr(cities, "_conn", horcher)
+    monkeypatch.setattr(fit_modul.llm, "chat_complete", lambda **kw: _antwort(URTEIL))
+    fit_modul.run(cities, rats, get("fit"), MODELL, workers=4)
+    fremde = {t for t in horcher.threads if t != threading.main_thread().name}
+    assert not fremde, (
+        f"die Datenbank wurde aus {sorted(fremde)} gelesen — alles, was aus "
+        "ihr kommt, gehört VOR den Lauf der Arbeiter")
 
 
 def test_erfundene_kennung_wird_nicht_gespeichert(cities, rats, monkeypatch):
