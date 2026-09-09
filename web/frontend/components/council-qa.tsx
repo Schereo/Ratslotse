@@ -22,7 +22,7 @@ import Link from "next/link";
 import { Sparkles, ArrowUp, Loader2, ChevronDown, ChevronRight, ChevronUp, ArrowRight, Plus,
   Square, CircleSlash, ExternalLink, FlaskConical, History, Pencil, RotateCcw, ChevronLeft,
   MessageSquarePlus, MoreHorizontal, Share2, ThumbsDown, ThumbsUp, Trash2, Volume2, X,
-  BookOpen, Check, MapPin, SearchX } from "lucide-react";
+  BookOpen, Check, MapPin, SearchX, Bell } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Mascot } from "@/components/mascot";
 import type { QaOrtPin } from "@/components/qa-orte-karte";
@@ -591,25 +591,36 @@ function ThemenBruecke({ frage }: { frage: string }) {
     }
   };
 
+  // Eine Zeile, zwei Teile: links die Handlung als Chip, rechts das, was sie
+  // bedeutet — beim Stadtthema dessen Einordnung („Radwege, Fahrradstraßen,
+  // Abstellanlagen"), sonst der Hinweis auf das vorbefüllte Formular. Der
+  // frühere Satz „Dann meldet sich Lotti …" stand unter jeder Antwort gleich
+  // und sagte nichts über DIESES Thema.
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
       {m ? (
-        <button type="button" onClick={() => void anlegen()} disabled={busy}
-          title={m.description}
-          className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
-          <Plus className="h-3 w-3" aria-hidden />
-          Thema „{m.name}" verfolgen
-        </button>
+        <>
+          <button type="button" onClick={() => void anlegen()} disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50">
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Bell className="h-3 w-3" aria-hidden />}
+            Thema „{m.name}" verfolgen
+          </button>
+          <span className="text-[11.5px] text-muted-foreground">
+            {m.context ? <>{m.context} — </> : null}Lotti meldet sich, sobald der Rat dazu entscheidet.
+          </span>
+        </>
       ) : (
-        <Link href={`/topics?neu=${encodeURIComponent(frage)}`}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          <Plus className="h-3 w-3" aria-hidden />
-          Daraus ein Thema machen
-        </Link>
+        <>
+          <Link href={`/topics?neu=${encodeURIComponent(frage)}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            <Plus className="h-3 w-3" aria-hidden />
+            Daraus ein Thema machen
+          </Link>
+          <span className="text-[11.5px] text-muted-foreground">
+            Name ist vorbefüllt, die Beschreibung schreibt Lotti — dann meldet sie sich bei Neuem.
+          </span>
+        </>
       )}
-      <span className="text-[11px] text-muted-foreground">
-        Dann meldet sich Lotti, sobald der Rat dazu entscheidet.
-      </span>
     </div>
   );
 }

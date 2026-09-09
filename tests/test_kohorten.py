@@ -189,3 +189,41 @@ def test_fragen_median_ignoriert_den_ausreisser(tmp_path):
 
     assert store.fragen_median_je_konto() == 1.0
     store.close()
+
+
+def test_vorzeitraum_und_basis_liegen_bei(tmp_path):
+    """Die Oberfläche zeigt Veränderung und „n von m" — beides kommt vom Server.
+
+    Ein Stand allein („43 %") sagt weder, ob das 3 von 7 sind, noch ob es im
+    Zeitraum davor 60 % waren (Tims Rückmeldung 09.09.2026).
+    """
+    store = Store(tmp_path / "r.sqlite")
+    # Eine Anmeldung in der Spanne davor (vor mehr als acht Wochen), zwei jetzt.
+    _konto(store, 1, tage_her=70, email="alt@example.org")
+    _konto(store, 2, tage_her=3, email="neu@example.org")
+    _konto(store, 3, tage_her=4, email="neuer@example.org")
+
+    daten = store.admin_kohorten(wochen=8)
+
+    assert set(daten["previous"]) == set(daten["kennzahlen"])
+    assert daten["basis"]["vorher_n"] == 1
+    assert daten["basis"]["haken"] == (0, 2)
+    store.close()
+
+
+def test_sackgassen_basis_mit_versatz_trennt_die_zeitraeume(tmp_path):
+    from datetime import date, timedelta
+    store = Store(tmp_path / "r.sqlite")
+    heute = date.today()
+    with store._conn:
+        store._conn.execute("INSERT INTO qa_conversations (id, user_id, title, created, updated)"
+                            " VALUES (1, 1, 't', ?, ?)", (heute.isoformat(), heute.isoformat()))
+        for tage, quellen in ((2, '{"cited": []}'), (2, '{"cited": [1]}'), (100, '{"cited": []}')):
+            store._conn.execute(
+                "INSERT INTO qa_conversation_turns (conversation_id, user_id, question, answer,"
+                " sources, created) VALUES (1, 1, 'f', 'a', ?, ?)",
+                (quellen, (heute - timedelta(days=tage)).isoformat() + "T10:00:00"))
+
+    assert store.sackgassen_basis(90) == (1, 2)
+    assert store.sackgassen_basis(90, versatz=90) == (1, 1)
+    store.close()

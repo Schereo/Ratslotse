@@ -3295,9 +3295,17 @@ class Store:
 
         eimer: dict[str, list[dict]] = {}
         grenze = montag(heute) - timedelta(days=7 * (max(1, wochen) - 1))
+        # Der Vorzeitraum: dieselbe Spanne unmittelbar davor. Ohne ihn ist jede
+        # Zahl nur ein Stand — erst der Vergleich sagt, ob eine Maßnahme etwas
+        # bewegt hat, und genau dafür wurde der Trichter gebaut.
+        vor_grenze = grenze - timedelta(days=7 * max(1, wochen))
+        vorher: list[dict] = []
         for k in konten:
             reg = date.fromisoformat(k["created_at"][:10])
+            if reg < vor_grenze:
+                continue
             if reg < grenze:
+                vorher.append(k)
                 continue
             eimer.setdefault(montag(reg).isoformat(), []).append(k)
 
@@ -3339,40 +3347,59 @@ class Store:
                     for woche, gruppe in sorted(eimer.items())]
         alle = [k for g in eimer.values() for k in g]
         gesamt = stufen_fuer(alle)
+        davor = stufen_fuer(vorher)
 
-        def quote(key: str) -> float | None:
-            s = next((x for x in gesamt if x["key"] == key), None)
+        def quote(stufen: list[dict], key: str) -> float | None:
+            s = next((x for x in stufen if x["key"] == key), None)
             return round(s["n"] / s["eligible"], 3) if s and s["eligible"] else None
 
+        def basis(key: str) -> tuple[int, int]:
+            s = next((x for x in gesamt if x["key"] == key), None)
+            return (s["n"], s["eligible"]) if s else (0, 0)
+
+        tage_sack = 90
         return {
             "weeks": wochen,
             "excluded": len(raus),
             "cohorts": kohorten,
             "total": gesamt,
             "kennzahlen": {
-                "haken_quote": quote("haken"),
-                "tag2": quote("tag2"),
-                "tag7": quote("tag7"),
-                "tag30": quote("tag30"),
-                "sackgassen_quote": self.sackgassen_quote(),
+                "haken_quote": quote(gesamt, "haken"),
+                "tag2": quote(gesamt, "tag2"),
+                "tag7": quote(gesamt, "tag7"),
+                "tag30": quote(gesamt, "tag30"),
+                "sackgassen_quote": self.sackgassen_quote(tage_sack),
                 "fragen_median": self.fragen_median_je_konto(),
+            },
+            # Dieselben Zahlen für den Zeitraum davor — die Oberfläche zeigt
+            # daraus die Veränderung. `None`, wo es nichts zu vergleichen gibt.
+            "previous": {
+                "haken_quote": quote(davor, "haken"),
+                "tag2": quote(davor, "tag2"),
+                "tag7": quote(davor, "tag7"),
+                "tag30": quote(davor, "tag30"),
+                "sackgassen_quote": self.sackgassen_quote(tage_sack, versatz=tage_sack),
+                "fragen_median": self.fragen_median_je_konto(versatz=7),
+            },
+            # Zähler und Nenner hinter den Quoten: „43 %" allein sagt nicht,
+            # ob es 3 von 7 oder 43 von 100 sind.
+            "basis": {
+                "haken": basis("haken"), "tag2": basis("tag2"),
+                "tag7": basis("tag7"), "tag30": basis("tag30"),
+                "sackgassen": self.sackgassen_basis(tage_sack),
+                "vorher_n": len(vorher),
             },
         }
 
-    def sackgassen_quote(self, tage: int = 90) -> float | None:
-        """Anteil der Antworten, die keine einzige Quelle nennen.
-
-        Gerechnet auf den GESPEICHERTEN Gesprächen — das ist die einzige
-        Quelle, die es heute gibt, und sie deckt nur Konten mit eingeschaltetem
-        Speichern ab (am 08.09.2026: 124 von 169 Fragen). Der vollständige
-        Zähler kommt mit ``ai_answer_empty`` in ``user_activity``; bis dahin ist
-        diese Zahl eine Untergrenze der Wahrheit, keine Schätzung.
-        """
-        seit = (datetime.now(timezone.utc) - timedelta(days=tage)).date().isoformat()
+    def sackgassen_basis(self, tage: int = 90, versatz: int = 0) -> tuple[int, int]:
+        """(Antworten ohne Quelle, Antworten gesamt) im Fenster — ``versatz``
+        Tage zurückgeschoben für den Vorzeitraum."""
+        ende = datetime.now(timezone.utc) - timedelta(days=versatz)
+        seit = (ende - timedelta(days=tage)).date().isoformat()
+        bis = ende.date().isoformat()
         rows = self._conn.execute(
-            "SELECT sources FROM qa_conversation_turns WHERE created >= ?", (seit,)).fetchall()
-        if not rows:
-            return None
+            "SELECT sources FROM qa_conversation_turns WHERE created >= ? AND created < ?",
+            (seit, bis + "T99")).fetchall()
         leer = 0
         for r in rows:
             try:
@@ -3381,9 +3408,21 @@ class Store:
                 zitiert = None
             if not zitiert:
                 leer += 1
-        return round(leer / len(rows), 3)
+        return (leer, len(rows))
 
-    def fragen_median_je_konto(self, tage: int = 7) -> float | None:
+    def sackgassen_quote(self, tage: int = 90, versatz: int = 0) -> float | None:
+        """Anteil der Antworten, die keine einzige Quelle nennen.
+
+        Gerechnet auf den GESPEICHERTEN Gesprächen — das ist die einzige
+        Quelle, die es heute gibt, und sie deckt nur Konten mit eingeschaltetem
+        Speichern ab (am 08.09.2026: 124 von 169 Fragen). Der vollständige
+        Zähler kommt mit ``ai_answer_empty`` in ``user_activity``; bis dahin ist
+        diese Zahl eine Untergrenze der Wahrheit, keine Schätzung.
+        """
+        leer, gesamt = self.sackgassen_basis(tage, versatz)
+        return round(leer / gesamt, 3) if gesamt else None
+
+    def fragen_median_je_konto(self, tage: int = 7, versatz: int = 0) -> float | None:
         """Median der Fragen je Konto, das im Zeitraum überhaupt aktiv war.
 
         Der Median und nicht der Mittelwert: Ein einzelnes Konto mit 108 Fragen
@@ -3391,14 +3430,17 @@ class Store:
         niemanden mehr etwas sagt.
         """
         from datetime import date
-        seit = (date.today() - timedelta(days=tage - 1)).isoformat()
+        bis = date.today() - timedelta(days=versatz)
+        seit = (bis - timedelta(days=tage - 1)).isoformat()
         aktiv = {r["owner_id"] for r in self._conn.execute(
-            "SELECT DISTINCT owner_id FROM user_activity WHERE day >= ?", (seit,)).fetchall()}
+            "SELECT DISTINCT owner_id FROM user_activity WHERE day >= ? AND day <= ?",
+            (seit, bis.isoformat())).fetchall()}
         if not aktiv:
             return None
         fragen = {r["owner_id"]: r["c"] for r in self._conn.execute(
             "SELECT owner_id, SUM(count) c FROM user_activity "
-            "WHERE day >= ? AND feature = 'ai_question' GROUP BY owner_id", (seit,)).fetchall()}
+            "WHERE day >= ? AND day <= ? AND feature = 'ai_question' GROUP BY owner_id",
+            (seit, bis.isoformat())).fetchall()}
         werte = sorted(fragen.get(o, 0) for o in aktiv)
         mitte = len(werte) // 2
         if len(werte) % 2:
@@ -3454,11 +3496,18 @@ class Store:
             "SELECT COALESCE(SUM(count), 0) n, COALESCE(SUM(sessions), 0) s, "
             "COALESCE(SUM(CASE WHEN logged_in = 0 THEN count ELSE 0 END), 0) anon "
             "FROM page_views WHERE day >= ?", (seit,)).fetchone()
+        # Dieselbe Spanne unmittelbar davor — sonst ist jede Zahl nur ein Stand.
+        vor_seit = (date.today() - timedelta(days=2 * max(1, tage) - 1)).isoformat()
+        davor = self._conn.execute(
+            "SELECT COALESCE(SUM(count), 0) n, COALESCE(SUM(sessions), 0) s "
+            "FROM page_views WHERE day >= ? AND day < ?", (vor_seit, seit)).fetchone()
         return {
             "days": tage,
             "total": summe["n"],
             "sessions": summe["s"],
             "anonymous": summe["anon"],
+            "previous_total": davor["n"],
+            "previous_sessions": davor["s"],
             "series": verlauf,
             "pages": seiten,
             "clients": clients,
@@ -3496,19 +3545,28 @@ class Store:
         roh = {r["feature"]: (r["n"], r["k"]) for r in self._conn.execute(
             "SELECT feature, SUM(count) n, COUNT(DISTINCT owner_id) k FROM user_activity "
             "WHERE day >= ? GROUP BY feature", (seit,)).fetchall()}
+        vor_seit = (date.today() - timedelta(days=2 * max(1, tage) - 1)).isoformat()
+        davor = {r["feature"]: r["n"] for r in self._conn.execute(
+            "SELECT feature, SUM(count) n FROM user_activity "
+            "WHERE day >= ? AND day < ? GROUP BY feature", (vor_seit, seit)).fetchall()}
         zeilen = [{"key": key, "label": label,
-                   "n": roh.get(key, (0, 0))[0], "users": roh.get(key, (0, 0))[1]}
+                   "n": roh.get(key, (0, 0))[0], "users": roh.get(key, (0, 0))[1],
+                   "previous": davor.get(key, 0)}
                   for key, label in self.EREIGNISSE]
 
-        def anteil(zaehler: str, nenner: str) -> float | None:
-            oben, unten = roh.get(zaehler, (0, 0))[0], roh.get(nenner, (0, 0))[0]
+        def anteil(quelle: dict, zaehler: str, nenner: str) -> float | None:
+            o = quelle.get(zaehler, (0, 0)); u = quelle.get(nenner, (0, 0))
+            oben = o[0] if isinstance(o, tuple) else o
+            unten = u[0] if isinstance(u, tuple) else u
             return round(oben / unten, 3) if unten else None
 
         return {
             "days": tage,
             "events": zeilen,
-            "chip_share": anteil("ai_question_chip", "ai_question"),
-            "empty_share": anteil("ai_answer_empty", "ai_question"),
+            "chip_share": anteil(roh, "ai_question_chip", "ai_question"),
+            "empty_share": anteil(roh, "ai_answer_empty", "ai_question"),
+            "previous_chip_share": anteil(davor, "ai_question_chip", "ai_question"),
+            "previous_empty_share": anteil(davor, "ai_answer_empty", "ai_question"),
         }
 
     def sackgassen(self, tage: int = 30, limit: int = 40) -> list[dict]:

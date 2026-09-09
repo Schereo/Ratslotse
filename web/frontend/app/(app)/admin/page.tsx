@@ -32,6 +32,7 @@ type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
+import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
 import type { OrtsbereichCatalog } from "@/lib/districts";
 import { clientFarbe, clientKurz, clientLabel, hauptClient } from "@/lib/clients";
@@ -227,13 +228,77 @@ function fetchAge(hours: number): string {
   return `${Math.round(hours / 24)} Tagen`;
 }
 
+/** Die vier neuen Statistik-Abschnitte (Plan „Sehen und Zurückholen", Teil A).
+ *
+ *  Gemeinsamer Grundsatz nach Tims Rückmeldung vom 09.09.: Jede Zahl sagt,
+ *  **woraus** sie besteht (Zähler und Nenner) und **wie sie sich verändert**
+ *  hat (gegen dieselbe Spanne davor). Ein Stand allein — „43 %" — sagt weder,
+ *  ob das 3 von 7 sind, noch ob es letzte Woche 60 % waren. Die Veränderung
+ *  trägt Signal-Orange, wie jedes Delta in der Designsprache (§ 2, § 5 RG-04);
+ *  Ampelfarben auf Balken sind raus, sie beantworteten eine andere Frage als
+ *  die Balkenlänge und brauchten eine Legende, um nicht falsch gelesen zu werden.
+ */
+
+/** Zähler und Nenner in Mono — „6 von 14". */
+function Basis({ n, von, was }: { n: number; von: number; was?: string }) {
+  return (
+    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+      {n.toLocaleString("de-DE")} von {von.toLocaleString("de-DE")}{was ? ` ${was}` : ""}
+    </span>
+  );
+}
+
+/** Die Veränderung gegen den Vorzeitraum — als Chip in Signal-Orange.
+ *
+ *  `prozent`: beide Werte sind Anteile, die Differenz steht in Punkten.
+ *  `invers`: klein ist gut (Antworten ohne Quelle). Die Farbe sagt nicht
+ *  „gut/schlecht", sondern nur „hat sich bewegt" — die Richtung trägt der
+ *  Pfeil, die Bewertung der Kontext. Ohne Vergleichswert: „kein Vergleich",
+ *  nie eine erfundene Null. */
+function Veraenderung({ jetzt, vorher, prozent, invers, klein }: {
+  jetzt: number | null; vorher: number | null | undefined; prozent?: boolean; invers?: boolean; klein?: boolean;
+}) {
+  const groesse = klein ? "text-[10.5px] px-1.5 py-px" : "text-[11px] px-2 py-0.5";
+  if (jetzt == null || vorher == null) {
+    return <span className={cn("inline-flex items-center rounded-full border border-dashed border-border font-mono text-muted-foreground/70", groesse)}>kein Vergleich</span>;
+  }
+  const d = prozent ? Math.round((jetzt - vorher) * 100) : jetzt - vorher;
+  if (d === 0) {
+    return <span className={cn("inline-flex items-center rounded-full bg-muted font-mono text-muted-foreground", groesse)}>unverändert</span>;
+  }
+  const besser = invers ? d < 0 : d > 0;
+  const text = prozent ? `${d > 0 ? "+" : "−"}${Math.abs(d)} Pkt.` : `${d > 0 ? "+" : "−"}${Math.abs(d).toLocaleString("de-DE")}`;
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full bg-signal/[0.10] font-mono font-semibold text-signal", groesse)}
+      title={besser ? "besser als im Zeitraum davor" : "schlechter als im Zeitraum davor"}>
+      <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        {d > 0 ? <path d="M12 19V5M5 12l7-7 7 7" /> : <path d="M12 5v14M19 12l-7 7-7-7" />}
+      </svg>
+      {text}
+    </span>
+  );
+}
+
+function AbschnittKopf({ titel, rechts, children }: { titel: string; rechts?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-x-6 gap-y-1">
+      <div className="min-w-0">
+        <h3 className="font-display text-[15px] font-bold text-foreground">{titel}</h3>
+        {children && <p className="mt-0.5 max-w-[62ch] text-[12px] text-muted-foreground">{children}</p>}
+      </div>
+      {rechts && <span className="shrink-0 pt-1 text-right font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">{rechts}</span>}
+    </div>
+  );
+}
+
 /** Der Trichter je Registrierungswoche — wo neue Konten abreißen.
  *
  *  Die eine Regel, die diese Ansicht trägt: **erreicht IMMER gegen erreichbar**.
  *  Ein Konto von gestern kann „kam binnen 30 Tagen wieder" noch nicht geschafft
  *  haben; zeigte man nur die erreichte Zahl, läse sich jede frische Woche als
- *  Totalausfall. Stufen, für die noch niemand alt genug ist, stehen deshalb als
- *  „noch offen" da und nicht als 0.
+ *  Totalausfall. Der Balken hat deshalb drei Lagen: alle Anmeldungen (Spur),
+ *  die schon alt genug sind (heller Teil), die es geschafft haben (dunkler
+ *  Teil) — dieselbe Skala für alle drei, keine Farbe, die etwas anderes meint.
  */
 function KohortenSection() {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -251,50 +316,52 @@ function KohortenSection() {
   }
 
   const k = data.kennzahlen;
+  const v = data.previous;
+  const b = data.basis;
   const start = data.total.find((s) => s.key === "registriert")?.n ?? 0;
 
   return (
     <div className="space-y-3 pt-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-[15px] font-bold text-foreground">Neue Konten: was daraus wird</h3>
-        <span className="text-[11.5px] text-muted-foreground">
-          letzte {data.weeks} Wochen ·{" "}
-          {data.excluded === 1
-            ? "ein Betreiber-/Testkonto nicht gezählt"
-            : `${data.excluded} Betreiber-/Testkonten nicht gezählt`}
-        </span>
-      </div>
+      <AbschnittKopf titel="Neue Konten: was daraus wird"
+        rechts={`${data.weeks} Wochen · davor ${b.vorher_n} ${b.vorher_n === 1 ? "Konto" : "Konten"}`}>
+        {data.excluded === 1 ? "Ein Betreiber-/Testkonto ist nicht gezählt." : `${data.excluded} Betreiber-/Testkonten sind nicht gezählt.`}
+        {" "}Veränderung jeweils gegen dieselbe Spanne davor.
+      </AbschnittKopf>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KennzahlCard label="Haken-Quote" hint="Thema oder Gremium am 1. Tag" wert={k.haken_quote} anteil />
-        <KennzahlCard label="Kam wieder" hint="binnen 7 Tagen" wert={k.tag7} anteil />
-        <KennzahlCard label="Ohne Quelle" hint="Antworten der letzten 90 Tage" wert={k.sackgassen_quote} anteil invers />
-        <KennzahlCard label="Fragen je Konto" hint="Median, aktive Konten, 7 Tage" wert={k.fragen_median} />
+        <KennzahlCard label="Haken-Quote" hint="Thema oder Gremium am ersten Tag" wert={k.haken_quote} vorher={v.haken_quote} basis={b.haken} anteil vergleichbar={b.vorher_n >= 3} />
+        <KennzahlCard label="Kam wieder" hint="binnen sieben Tagen" wert={k.tag7} vorher={v.tag7} basis={b.tag7} anteil vergleichbar={b.vorher_n >= 3} />
+        <KennzahlCard label="Ohne Quelle" hint="Antworten, 90 Tage" wert={k.sackgassen_quote} vorher={v.sackgassen_quote} basis={b.sackgassen} anteil invers />
+        <KennzahlCard label="Fragen je Konto" hint="Median aktiver Konten, 7 Tage" wert={k.fragen_median} vorher={v.fragen_median} />
       </div>
 
       <Card className="p-4">
-        <StatKicker>Trichter</StatKicker>
-        <div className="mt-3.5 flex flex-col gap-1.5">
-          {data.total.map((stufe) => (
-            <TrichterZeile key={stufe.key} stufe={stufe} start={start} />
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Trichter</StatKicker>
+          <span className="font-mono text-[10.5px] text-muted-foreground">{start} Anmeldungen</span>
+        </div>
+        <div className="mt-3.5 flex flex-col gap-2">
+          {data.total.map((stufe, i) => (
+            <TrichterZeile key={stufe.key} stufe={stufe} start={start} davor={i > 0 ? data.total[i - 1] : null} />
           ))}
         </div>
-        {/* Die Legende ist nicht Zierrat: Balken und Farbe beantworten zwei
-            verschiedene Fragen, und ohne diesen Satz läse man die Farbe als
-            Aussage über die Balkenlänge. */}
-        <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
-          Balkenlänge: Anteil an allen Anmeldungen. Farbe: Anteil derer, die die Stufe
-          überhaupt schon erreichen konnten.
-        </p>
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-primary" /> hat die Stufe erreicht</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-primary/25" /> ist alt genug, um sie zu erreichen</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-5 rounded-sm bg-muted" /> alle Anmeldungen</span>
+        </div>
       </Card>
 
       {data.cohorts.length > 0 && (
         <Card className="p-4">
-          <StatKicker>Je Registrierungswoche</StatKicker>
+          <div className="flex items-baseline justify-between">
+            <StatKicker>Je Registrierungswoche</StatKicker>
+            <span className="font-mono text-[10.5px] text-muted-foreground">erreicht / alt genug</span>
+          </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
               <thead>
-                <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
                   <th className="pb-2 pr-3 font-medium">Woche ab</th>
                   <th className="pb-2 pr-3 text-right font-medium">Neu</th>
                   <th className="pb-2 pr-3 text-right font-medium">Haken</th>
@@ -304,23 +371,21 @@ function KohortenSection() {
                 </tr>
               </thead>
               <tbody>
-                {[...data.cohorts].reverse().map((kohorte) => (
-                  <tr key={kohorte.week} className="border-b border-border/60 last:border-0">
-                    <td className="py-2 pr-3 text-foreground">{formatDate(kohorte.week)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums text-foreground">{kohorte.n}</td>
+                {[...data.cohorts].reverse().map((kohorte, i) => (
+                  <tr key={kohorte.week} className={cn("border-b border-border/60 last:border-0", i === 0 && "bg-primary/[0.04]")}>
+                    <td className="py-2 pr-3 text-foreground">
+                      {formatDate(kohorte.week)}
+                      {i === 0 && <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.08em] text-primary">läuft</span>}
+                    </td>
+                    <td className="py-2 pr-3 text-right font-semibold tabular-nums text-foreground">{kohorte.n}</td>
                     {(["haken", "tag2", "tag7", "tag30"] as const).map((key) => {
                       const st = kohorte.stages.find((x) => x.key === key);
                       return (
-                        <td key={key} className="py-2 pr-3 text-right tabular-nums last:pr-0">
+                        <td key={key} className="py-2 pr-3 text-right font-mono tabular-nums last:pr-0">
                           {!st || st.eligible === 0 ? (
-                            <span className="text-muted-foreground/60" title="Noch keine dieser Anmeldungen ist alt genug">
-                              –
-                            </span>
+                            <span className="text-muted-foreground/50" title="Noch keine dieser Anmeldungen ist alt genug">–</span>
                           ) : (
-                            <span className="text-foreground">
-                              {st.n}
-                              <span className="text-muted-foreground"> / {st.eligible}</span>
-                            </span>
+                            <ZellenAnteil n={st.n} von={st.eligible} />
                           )}
                         </td>
                       );
@@ -339,29 +404,43 @@ function KohortenSection() {
   );
 }
 
-/** Eine Stufe als Balken: erreicht gegen erreichbar, Breite gegen den Start. */
-function TrichterZeile({ stufe, start }: { stufe: AdminKohorten["total"][number]; start: number }) {
+/** Eine Tabellenzelle „2 / 4" mit einem Füllstand dahinter — so liest man die
+ *  Spalte auf einen Blick, statt jeden Bruch im Kopf zu rechnen. */
+function ZellenAnteil({ n, von }: { n: number; von: number }) {
+  const anteil = von > 0 ? n / von : 0;
+  return (
+    <span className="inline-flex items-center justify-end gap-2">
+      <span className="hidden h-1.5 w-10 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.round(anteil * 100)}%` }} />
+      </span>
+      <span className="text-foreground">{n}<span className="text-muted-foreground"> / {von}</span></span>
+    </span>
+  );
+}
+
+/** Eine Stufe als dreilagiger Balken — alle, alt genug, erreicht. */
+function TrichterZeile({ stufe, start, davor }: {
+  stufe: AdminKohorten["total"][number]; start: number; davor: AdminKohorten["total"][number] | null;
+}) {
   const offen = stufe.eligible === 0;
-  const breite = start > 0 ? Math.round((stufe.n / start) * 100) : 0;
-  // Ampel nach Anteil DER ERREICHBAREN — nicht gegen den Start: Eine Stufe,
-  // die 4 von 4 möglichen Konten hält, ist grün, auch wenn nur 4 von 11
-  // überhaupt so weit sind.
-  const anteil = offen ? null : stufe.n / stufe.eligible;
-  const ton = anteil == null ? "bg-muted" : anteil >= 0.6 ? "bg-green-500" : anteil >= 0.3 ? "bg-amber-500" : "bg-red-500";
+  const pct = (x: number) => (start > 0 ? Math.round((x / start) * 100) : 0);
+  // Der Abriss zur Stufe davor — die Zahl, die man wissen will: WO reißt es?
+  const abriss = davor && !offen && davor.n > stufe.n ? davor.n - stufe.n : 0;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[13rem_minmax(0,1fr)_auto]">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[13.5rem_minmax(0,1fr)_7.5rem]">
       <span className="truncate text-[13px] text-foreground">{stufe.label}</span>
-      <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block">
-        <div className={cn("h-full rounded-full transition-[width]", ton)} style={{ width: `${breite}%` }} />
+      <div className="relative hidden h-3 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+        <div className="absolute inset-y-0 left-0 rounded-full bg-primary/25" style={{ width: `${pct(stufe.eligible)}%` }} />
+        <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${pct(stufe.n)}%` }} />
       </div>
-      <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums">
+      <span className="flex items-baseline justify-end gap-2 whitespace-nowrap text-right tabular-nums">
         {offen ? (
-          <span className="text-muted-foreground/70">noch offen</span>
+          <span className="font-mono text-[11px] text-muted-foreground/70">noch offen</span>
         ) : (
           <>
-            <span className="font-semibold text-foreground">{stufe.n}</span>
-            <span className="text-muted-foreground"> von {stufe.eligible}</span>
+            {abriss > 0 && <span className="font-mono text-[10.5px] text-signal">−{abriss}</span>}
+            <span className="text-[12.5px]"><span className="font-semibold text-foreground">{stufe.n}</span><span className="text-muted-foreground"> von {stufe.eligible}</span></span>
           </>
         )}
       </span>
@@ -369,28 +448,71 @@ function TrichterZeile({ stufe, start }: { stufe: AdminKohorten["total"][number]
   );
 }
 
-/** Eine der vier Kennzahlen. `null` heißt „keine Aussage", nicht „0 %". */
-function KennzahlCard({ label, hint, wert, anteil, invers }: {
-  label: string; hint: string; wert: number | null; anteil?: boolean; invers?: boolean;
+/** Eine Kennzahl: die Zahl, woraus sie besteht, und wie sie sich bewegt hat.
+ *  `null` heißt „keine Aussage", nicht „0 %". */
+function KennzahlCard({ label, hint, wert, vorher, basis, anteil, invers, vergleichbar = true }: {
+  label: string; hint: string; wert: number | null; vorher: number | null;
+  basis?: [number, number] | readonly [number, number]; anteil?: boolean; invers?: boolean;
+  /** Ein Vorzeitraum mit ein, zwei Konten ist kein Vergleich, sondern Rauschen —
+   *  dann steht „kein Vergleich" da, nicht „−57 Pkt.". */
+  vergleichbar?: boolean;
 }) {
-  const text = wert == null
-    ? "–"
-    : anteil ? `${Math.round(wert * 100)} %` : wert.toLocaleString("de-DE");
-  // Bei „Ohne Quelle" ist klein gut — deshalb die umgekehrte Ampel.
-  const gut = wert == null ? null : invers ? wert <= 0.1 : wert >= 0.5;
+  const text = wert == null ? "–" : anteil ? `${Math.round(wert * 100)} %` : wert.toLocaleString("de-DE");
   return (
     <Card className="p-3.5">
       <StatKicker>{label}</StatKicker>
-      <p className={cn(
-        "mt-1.5 font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums",
-        gut == null ? "text-muted-foreground" : gut ? "text-foreground" : "text-amber-600 dark:text-amber-500",
-      )}>
+      <p className={cn("mt-1.5 whitespace-nowrap font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", wert == null ? "text-muted-foreground" : "text-foreground")}>
         {text}
       </p>
-      <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-        {wert == null ? "noch keine Grundlage" : hint}
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <Veraenderung jetzt={wert} vorher={vergleichbar ? vorher : null} prozent={anteil} invers={invers} klein />
+        {basis && wert != null && <Basis n={basis[0]} von={basis[1]} />}
+      </div>
+      <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">{wert == null ? "noch keine Grundlage" : hint}</p>
     </Card>
+  );
+}
+
+/** Lesbare Namen für die Seitenmuster — der Pfad bleibt als Zweitzeile stehen,
+ *  weil er die Wahrheit ist; der Name ist die Übersetzung. Die vier Reiter der
+ *  Ratsinfo-Seite tragen ihren Bereich, sonst sähen sie aus wie vier Seiten. */
+const SEITEN_NAMEN: Record<string, string> = {
+  "/": "Startseite", "/login": "Anmelden", "/register": "Registrieren", "/forgot-password": "Passwort vergessen",
+  "/reset-password": "Passwort zurücksetzen", "/verify-email": "E-Mail bestätigen", "/hilfe": "Hilfe",
+  "/impressum": "Impressum", "/datenschutz": "Datenschutz", "/barrierefreiheit": "Barrierefreiheit",
+  "/changelog": "Changelog", "/g": "Geteilte Antwort", "/kommunalwahl": "Kommunalwahl", "/wahlabend": "Wahlabend",
+  "/council": "Ratsinfo", "/council?tab=decisions": "Ratsinfo · Suche", "/council?tab=sessions": "Ratsinfo · Sitzungen",
+  "/council?tab=themen": "Ratsinfo · Themen", "/council?tab=analysis": "Ratsinfo · Analyse",
+  "/council/decision": "Beschluss-Seite", "/council/sitzung": "Sitzungs-Seite", "/council/thema": "Themen-Seite",
+  "/council/person": "Personen-Seite", "/council/ort": "Orts-Seite", "/council/ideen": "Ideen",
+  "/dashboard": "Heute", "/fragen": "Fragen", "/karte": "Stadtkarte", "/viertel": "Mein Viertel",
+  "/topics": "Meine Themen", "/abos": "Abos", "/bookmarks": "Merkliste", "/quiz": "Quiz", "/quiz/stats": "Quiz-Statistik",
+  "/account": "Konto", "/admin": "Admin", "/haushalt": "Haushalt", "/andere": "Sonstiges",
+};
+function seitenName(route: string): string {
+  if (SEITEN_NAMEN[route]) return SEITEN_NAMEN[route];
+  if (route.startsWith("/haushalt/")) return "Haushalt · " + route.slice("/haushalt/".length);
+  if (route.startsWith("/kommunalwahl/")) return "Kommunalwahl · " + route.slice("/kommunalwahl/".length).replace("/{slug}", "");
+  return route;
+}
+
+/** Zwei Anteile als EIN Balken — ergibt zusammen immer die ganze Breite. */
+function AnteilBalken({ teile }: { teile: { label: string; n: number; ton: string }[] }) {
+  const summe = Math.max(1, teile.reduce((a, t) => a + t.n, 0));
+  return (
+    <div>
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+        {teile.map((t) => <span key={t.label} className={t.ton} style={{ width: `${(t.n / summe) * 100}%` }} />)}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+        {teile.map((t) => (
+          <span key={t.label} className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <span className={cn("h-2 w-2 rounded-full", t.ton)} />
+            {t.label} <span className="font-mono tabular-nums text-foreground">{Math.round((t.n / summe) * 100)} %</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -418,8 +540,9 @@ function SeitenaufrufeSection() {
   if (data.total === 0) {
     return (
       <div className="space-y-3 pt-2">
-        <h3 className="font-display text-[15px] font-bold text-foreground">Seitenaufrufe</h3>
-        <Card className="p-4">
+        <AbschnittKopf titel="Seitenaufrufe" rechts="anonym · ohne Kennung" />
+        <Card className="flex items-center gap-4 p-4">
+          <Mascot pose="search" className="h-14 w-14 shrink-0" />
           <p className="text-[13px] text-muted-foreground">
             Noch nichts gezählt. Die Zählung läuft ab dem Deploy dieser Version — vorher
             aufgerufene Seiten lassen sich nicht nachtragen.
@@ -429,82 +552,83 @@ function SeitenaufrufeSection() {
     );
   }
 
-  const anteilAnonym = Math.round((data.anonymous / data.total) * 100);
+  const angemeldet = data.total - data.anonymous;
   const spitze = data.pages[0]?.n ?? 1;
 
   return (
     <div className="space-y-3 pt-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-[15px] font-bold text-foreground">Seitenaufrufe</h3>
-        <span className="text-[11.5px] text-muted-foreground">
-          letzte {data.days} Tage · anonym, ohne Kennung
-        </span>
-      </div>
+      <AbschnittKopf titel="Seitenaufrufe" rechts={`${data.days} Tage · anonym, ohne Kennung`}>
+        Ein „Besuch" ist der erste Aufruf in einem Browser-Tab. Wiedererkennung gibt es nicht — deshalb steht hier nirgends eine Zahl von Besucher*innen.
+      </AbschnittKopf>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
         <Card className="p-4">
-          <div className="flex items-baseline justify-between">
-            <StatKicker>Aufrufe je Tag</StatKicker>
-            <span className="text-[11.5px] text-muted-foreground">
-              {data.total.toLocaleString("de-DE")} gesamt · {data.sessions.toLocaleString("de-DE")} Besuche
-            </span>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <StatKicker>Aufrufe je Tag</StatKicker>
+              <div className="mt-1.5 flex items-end gap-2">
+                <p className="font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">{data.total.toLocaleString("de-DE")}</p>
+                <Veraenderung jetzt={data.total} vorher={data.previous_total} />
+              </div>
+            </div>
+            <div className="text-right">
+              <StatKicker>Besuche</StatKicker>
+              <div className="mt-1.5 flex items-end justify-end gap-2">
+                <p className="font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">{data.sessions.toLocaleString("de-DE")}</p>
+                <Veraenderung jetzt={data.sessions} vorher={data.previous_sessions} klein />
+              </div>
+            </div>
           </div>
-          <MiniBars
-            values={data.series.length ? data.series.map((d) => d.n) : [0]}
-            days={data.series.map((d) => d.day)}
-            height={70}
-            className="mt-3.5"
-          />
-          <p className="mt-2.5 text-[11.5px] leading-snug text-muted-foreground">
-            Ein „Besuch" ist der erste Aufruf in einem Browser-Tab. Wiedererkennung gibt es
-            nicht — deshalb steht hier nirgends eine Zahl von Besucher*innen.
-          </p>
+          <MiniBars values={data.series.length ? data.series.map((d) => d.n) : [0]} days={data.series.map((d) => d.day)} height={64} className="mt-4" />
         </Card>
-        <Card className="p-4">
-          <StatKicker>Ohne Anmeldung</StatKicker>
-          <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
-            {anteilAnonym} %
-          </p>
-          <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-            {data.anonymous.toLocaleString("de-DE")} von {data.total.toLocaleString("de-DE")} Aufrufen.
-            Genau diese Gruppe war vorher unsichtbar.
-          </p>
-          {data.clients.length > 0 && (
-            <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-              {data.clients.map((c) => (
-                <div key={c.client} className="flex items-baseline justify-between">
-                  <span className="text-[13px] text-foreground">{clientLabel(c.client)}</span>
-                  <span className="text-[13px] tabular-nums text-muted-foreground">
-                    {c.n.toLocaleString("de-DE")}
-                  </span>
-                </div>
-              ))}
+        <Card className="flex flex-col gap-4 p-4">
+          <div>
+            <StatKicker>Angemeldet oder nicht</StatKicker>
+            <div className="mt-2.5">
+              <AnteilBalken teile={[
+                { label: "ohne Anmeldung", n: data.anonymous, ton: "bg-primary/30" },
+                { label: "angemeldet", n: angemeldet, ton: "bg-primary" },
+              ]} />
+            </div>
+          </div>
+          {data.clients.length > 1 && (
+            <div>
+              <StatKicker>Womit</StatKicker>
+              <div className="mt-2.5">
+                <AnteilBalken teile={data.clients.map((c, i) => ({
+                  label: clientLabel(c.client), n: c.n, ton: i === 0 ? "bg-primary" : i === 1 ? "bg-signal/70" : "bg-primary/30",
+                }))} />
+              </div>
             </div>
           )}
         </Card>
       </div>
 
       <Card className="p-4">
-        <StatKicker>Meistgesehene Seiten</StatKicker>
-        <div className="mt-3.5 flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between">
+          <StatKicker>Meistgesehene Seiten</StatKicker>
+          <span className="font-mono text-[10.5px] text-muted-foreground">Aufrufe · Anteil</span>
+        </div>
+        <div className="mt-3.5 flex flex-col gap-2">
           {data.pages.map((seite) => (
-            <div key={seite.route} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[14rem_minmax(0,1fr)_auto]">
-              <span className="truncate font-mono text-[12.5px] text-foreground">{seite.route}</span>
-              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block">
-                <div
-                  className="h-full rounded-full bg-primary"
-                  style={{ width: `${Math.max(2, Math.round((seite.n / spitze) * 100))}%` }}
-                />
+            <div key={seite.route} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[15rem_minmax(0,1fr)_7rem]">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] text-foreground">{seitenName(seite.route)}</p>
+                <p className="truncate font-mono text-[10.5px] text-muted-foreground">{seite.route}</p>
               </div>
-              <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums text-foreground">
-                {seite.n.toLocaleString("de-DE")}
+              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+                <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(2, Math.round((seite.n / spitze) * 100))}%` }} />
+              </div>
+              <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums">
+                <span className="font-semibold text-foreground">{seite.n.toLocaleString("de-DE")}</span>
+                <span className="font-mono text-[10.5px] text-muted-foreground"> · {Math.round((seite.n / data.total) * 100)} %</span>
               </span>
             </div>
           ))}
         </div>
         <p className="mt-3 text-[11.5px] leading-snug text-muted-foreground">
           Detailseiten tragen ihre Kennung in der Query, und die wird nicht gemeldet —
-          „/council/decision" heißt also „irgendein Beschluss", nie welcher.
+          „Beschluss-Seite" heißt also „irgendein Beschluss", nie welcher.
         </p>
       </Card>
     </div>
@@ -513,10 +637,10 @@ function SeitenaufrufeSection() {
 
 /** Welche Handlungen wie oft vorkommen — und die zwei Anteile dahinter.
  *
- *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt. Das ist der
- *  Unterschied zwischen „hundert Fragen" und „hundert Fragen von einer
- *  Person"; ohne diese zweite Spalte hätte man die Prod-Zahlen vom 08.09.
- *  glatt falsch gelesen.
+ *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt, und wie sie sich
+ *  gegen die Spanne davor bewegt hat. Das ist der Unterschied zwischen
+ *  „hundert Fragen" und „hundert Fragen von einer Person, halb so viele wie
+ *  im Monat davor".
  */
 function EreignisSection() {
   const { data, isPending, isError, refetch, isFetching } = useQuery({
@@ -533,57 +657,63 @@ function EreignisSection() {
     );
   }
 
-  const spitze = Math.max(1, ...data.events.filter((e) => e.key !== "session").map((e) => e.n));
+  const zugriffe = data.events.find((e) => e.key === "session");
+  const fragen = data.events.find((e) => e.key === "ai_question");
+  const zeilen = data.events.filter((e) => e.key !== "session");
+  const spitze = Math.max(1, ...zeilen.map((e) => e.n));
+  const chipN = data.events.find((e) => e.key === "ai_question_chip")?.n ?? 0;
+  const leerN = data.events.find((e) => e.key === "ai_answer_empty")?.n ?? 0;
 
   return (
     <div className="space-y-3 pt-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-[15px] font-bold text-foreground">Was gemacht wird</h3>
-        <span className="text-[11.5px] text-muted-foreground">letzte {data.days} Tage</span>
-      </div>
+      <AbschnittKopf titel="Was gemacht wird"
+        rechts={zugriffe ? `${zugriffe.n.toLocaleString("de-DE")} Zugriffe · ${zugriffe.users} Konten · ${data.days} Tage` : `${data.days} Tage`}>
+        Jede Zeile mit Konten-Zahl und Veränderung gegen die {data.days} Tage davor.
+      </AbschnittKopf>
 
       <div className="grid grid-cols-2 gap-3">
         <Card className="p-3.5">
           <StatKicker>Fragen aus einem Vorschlag</StatKicker>
-          <p className="mt-1.5 font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
-            {data.chip_share == null ? "–" : `${Math.round(data.chip_share * 100)} %`}
-          </p>
-          <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-            {data.chip_share == null
-              ? "noch keine Fragen im Zeitraum"
-              : "Der Rest wurde ins Feld getippt."}
-          </p>
+          <div className="mt-1.5 flex items-end justify-between gap-2">
+            <p className={cn("font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", data.chip_share == null ? "text-muted-foreground" : "text-foreground")}>
+              {data.chip_share == null ? "–" : `${Math.round(data.chip_share * 100)} %`}
+            </p>
+            <Veraenderung jetzt={data.chip_share} vorher={data.previous_chip_share} prozent />
+          </div>
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2">
+            <span className="text-[11.5px] text-muted-foreground">{data.chip_share == null ? "noch keine Fragen im Zeitraum" : "der Rest wurde ins Feld getippt"}</span>
+            {fragen && data.chip_share != null && <Basis n={chipN} von={fragen.n} was="Fragen" />}
+          </div>
         </Card>
         <Card className="p-3.5">
           <StatKicker>Antworten ohne Quelle</StatKicker>
-          <p className={cn(
-            "mt-1.5 font-display text-[26px] font-extrabold leading-none tracking-tight tabular-nums",
-            data.empty_share != null && data.empty_share > 0.1 ? "text-amber-600 dark:text-amber-500" : "text-foreground",
-          )}>
-            {data.empty_share == null ? "–" : `${Math.round(data.empty_share * 100)} %`}
-          </p>
-          <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-            {data.empty_share == null ? "noch keine Fragen im Zeitraum" : "Jede davon ist eine Sackgasse."}
-          </p>
+          <div className="mt-1.5 flex items-end justify-between gap-2">
+            <p className={cn("font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums", data.empty_share == null ? "text-muted-foreground" : "text-foreground")}>
+              {data.empty_share == null ? "–" : `${Math.round(data.empty_share * 100)} %`}
+            </p>
+            <Veraenderung jetzt={data.empty_share} vorher={data.previous_empty_share} prozent invers />
+          </div>
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2">
+            <span className="text-[11.5px] text-muted-foreground">{data.empty_share == null ? "noch keine Fragen im Zeitraum" : "jede davon ist eine Sackgasse"}</span>
+            {fragen && data.empty_share != null && <Basis n={leerN} von={fragen.n} was="Antworten" />}
+          </div>
         </Card>
       </div>
 
       <Card className="p-4">
-        <div className="flex flex-col gap-1.5">
-          {data.events.map((e) => (
-            <div key={e.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[15rem_minmax(0,1fr)_auto]">
-              <span className="truncate text-[13px] text-foreground">{e.label}</span>
-              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block">
-                <div
-                  className={cn("h-full rounded-full", e.n === 0 ? "bg-transparent" : "bg-primary")}
-                  style={{ width: e.key === "session" ? "100%" : `${Math.min(100, Math.round((e.n / spitze) * 100))}%` }}
-                />
+        <div className="flex flex-col gap-2">
+          {zeilen.map((e) => (
+            <div key={e.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[15rem_minmax(0,1fr)_11rem]">
+              <span className={cn("truncate text-[13px]", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>{e.label}</span>
+              <div className="hidden h-2.5 overflow-hidden rounded-full bg-muted sm:block" aria-hidden>
+                <div className={cn("h-full rounded-full", e.n === 0 ? "bg-transparent" : "bg-primary")} style={{ width: `${Math.min(100, Math.round((e.n / spitze) * 100))}%` }} />
               </div>
-              <span className="whitespace-nowrap text-right text-[12.5px] tabular-nums">
-                <span className={cn("font-semibold", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>
-                  {e.n.toLocaleString("de-DE")}
+              <span className="flex items-baseline justify-end gap-2 whitespace-nowrap text-right tabular-nums">
+                <Veraenderung jetzt={e.n} vorher={e.previous} klein />
+                <span className="text-[12.5px]">
+                  <span className={cn("font-semibold", e.n === 0 ? "text-muted-foreground" : "text-foreground")}>{e.n.toLocaleString("de-DE")}</span>
+                  <span className="font-mono text-[10.5px] text-muted-foreground"> · {e.users} {e.users === 1 ? "Konto" : "Konten"}</span>
                 </span>
-                <span className="text-muted-foreground"> · {e.users} {e.users === 1 ? "Konto" : "Konten"}</span>
               </span>
             </div>
           ))}
@@ -621,38 +751,35 @@ function SackgassenSection() {
 
   return (
     <div className="space-y-3 pt-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-[15px] font-bold text-foreground">Fragen ohne Antwort</h3>
-        <span className="text-[11.5px] text-muted-foreground">letzte 30 Tage · aus gespeicherten Gesprächen</span>
-      </div>
+      <AbschnittKopf titel="Fragen ohne Antwort"
+        rechts={`${data.length} ${data.length === 1 ? "Frage" : "Fragen"} · 30 Tage · gespeicherte Gespräche`}>
+        Woran es scheitert — ohne Konto und ohne Gesprächs-id, denn eine Liste mit Kennung neben der Frage wäre ein Leseprotokoll.
+      </AbschnittKopf>
 
       {data.length === 0 ? (
-        <Card className="p-4">
+        <Card className="flex items-center gap-4 p-4">
+          <Mascot pose="wave" className="h-14 w-14 shrink-0" />
           <p className="text-[13px] text-muted-foreground">
-            Keine. Entweder fand alles etwas — oder es gab keine gespeicherten Gespräche
-            im Zeitraum.
+            Keine in den letzten 30 Tagen. Entweder fand alles etwas — oder es gab keine gespeicherten Gespräche im Zeitraum.
           </p>
         </Card>
       ) : (
         <Card className="divide-y divide-border p-0">
           {data.map((s, i) => (
-            <div key={`${s.created}-${i}`} className="p-4">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[14px] font-medium text-foreground">{s.question}</p>
-                <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
-                  {formatDate(s.created.slice(0, 10))}
-                </span>
+            <div key={`${s.created}-${i}`} className="grid gap-x-4 gap-y-1 p-4 sm:grid-cols-[5.5rem_minmax(0,1fr)]">
+              <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground sm:pt-1">
+                {formatDate(s.created.slice(0, 10))}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold leading-snug text-foreground">{s.question}</p>
+                <p className="mt-1 text-[12.5px] italic leading-snug text-muted-foreground">{s.answer}</p>
               </div>
-              <p className="mt-1.5 text-[12.5px] leading-snug text-muted-foreground">{s.answer}</p>
             </div>
           ))}
         </Card>
       )}
       <p className="text-[11.5px] leading-snug text-muted-foreground">
-        Ohne Konto und ohne Gesprächs-id: Für „woran ist es gescheitert?" ist beides ohne
-        Belang, und eine Liste mit Kennung neben der Frage wäre ein Leseprotokoll. Die
-        vollständige Zahl steht im Zähler „Antworten ohne Quelle" — diese Liste zeigt nur
-        die Fälle, die ohnehin gespeichert sind.
+        Die vollständige Zahl steht oben unter „Antworten ohne Quelle" — diese Liste zeigt nur die Fälle, die ohnehin gespeichert sind.
       </p>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Sparkles, Loader2, ListChecks, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import { vertrag } from "@/lib/vertrag";
@@ -237,27 +237,39 @@ export function TopicsView() {
               /* Kein Verbot, ein Angebot: Der Cross-Encoder bewertet gegen
                  EINEN Text, und eine Aufzählung hat kein Zentrum. Getrennt
                  bekommt jeder Teil seine eigene, saubere Meldung. */
-              <div className="rounded-[12px] border border-signal/30 bg-signal/[0.04] p-3">
-                <p className="text-[12.5px] text-foreground">
-                  Das sind {teile.length} Themen in einem Feld. Getrennt bekommst du zu jedem
-                  eine eigene Meldung — zusammen findet Lotti kaum etwas, weil der Text kein
-                  Zentrum hat.
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {teile.map((t) => (
-                    <span key={t} className="rounded-full border border-border bg-card px-2.5 py-1 text-[12px] text-foreground">
-                      {t}
-                    </span>
-                  ))}
+              <div className="rounded-[12px] border border-primary/25 bg-primary/[0.04] p-3.5">
+                {/* Primär-Tint, nicht Signal-Orange: Das ist ein Angebot des
+                    Produkts, keine Warnung — und Signal-Orange ist nie eine
+                    Flächenfarbe (Designsprache § 8). */}
+                <div className="flex items-start gap-2.5">
+                  <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-foreground">
+                      Das sieht nach {teile.length} Themen in einem Feld aus.
+                    </p>
+                    <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                      Getrennt bekommst du zu jedem eine eigene Meldung. Zusammen findet Lotti
+                      kaum etwas — der Text hat kein Zentrum.
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-2.5 flex flex-wrap gap-2">
+                <ol className="mt-2.5 flex flex-wrap gap-1.5">
+                  {teile.map((t, i) => (
+                    <li key={t} className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-card px-2.5 py-1 text-[12px] text-foreground">
+                      <span className="font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                      {t}
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button type="button" disabled={aufteilenLaeuft}
                     onClick={() => void aufteilen()}
-                    className="rounded-full border border-signal/40 bg-card px-3 py-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-signal/10 disabled:opacity-50">
+                    className="inline-flex h-8 items-center gap-1.5 rounded-[10px] bg-primary px-3 text-[12.5px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50">
+                    {aufteilenLaeuft ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Check className="h-3.5 w-3.5" aria-hidden />}
                     {aufteilenLaeuft ? "Lege an …" : `Als ${teile.length} Themen anlegen`}
                   </button>
                   <button type="button" onClick={() => setTeile([])}
-                    className="rounded-full px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground">
+                    className="rounded-[10px] px-2.5 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     Als ein Thema lassen
                   </button>
                 </div>
