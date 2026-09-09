@@ -868,7 +868,13 @@ export interface paths {
         get?: never;
         /**
          * Set Status
-         * @description Approve ('active') or suspend ('pending') a web account. Emails the user on first approval.
+         * @description Ein Konto freischalten ('active') oder abschalten ('disabled').
+         *
+         *     ``pending`` wird als ``disabled`` gelesen: Die im App Store ausgelieferte
+         *     Admin-Ansicht schickt beim „Sperren" noch den alten Wert, und ein 400 dort
+         *     hieße, dass Sperren aus der App nicht mehr geht. Gespeichert wird immer der
+         *     neue Wert — sonst entstünde genau der Zustand wieder, den die Trennung
+         *     beseitigt: ein bestätigtes Konto auf ``pending``.
          */
         put: operations["set_status_api_admin_users__user_id__status_put"];
         post?: never;
@@ -10456,7 +10462,14 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** StatusUpdate */
+        /**
+         * StatusUpdate
+         * @description ``active`` oder ``disabled``.
+         *
+         *     ``pending`` wird weiter angenommen und als ``disabled`` gelesen: Die im
+         *     App Store ausgelieferte Admin-Ansicht schickt beim „Sperren" genau diesen
+         *     Wert, und ein 400 dort hieße, dass Sperren aus der App nicht mehr geht.
+         */
         StatusUpdate: {
             /** Status */
             status: string;
@@ -10975,7 +10988,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "pending" | "active" | "blocked";
+            status: "pending" | "active" | "disabled";
         };
         /** UserQuizAnswerIn */
         UserQuizAnswerIn: {
@@ -11139,7 +11152,7 @@ export interface components {
              * @default pending
              * @enum {string}
              */
-            status: "pending" | "active" | "blocked";
+            status: "pending" | "active" | "disabled";
         };
         /**
          * WeekPreview
@@ -16880,4 +16893,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 96a895eaee5f72ad0c43f0da3ad81ffb55edaa4b80bcf909aa9ba189b647bdf2
+// vertrag-sha256: 3e3d9e3d3f08eb9bd7cf2d43843ba20182cc5e9cc93cb1ff8d8c1cf05cc3ecc9

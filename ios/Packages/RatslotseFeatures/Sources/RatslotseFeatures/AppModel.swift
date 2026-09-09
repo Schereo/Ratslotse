@@ -8,7 +8,11 @@ import UserNotifications
 public enum SessionState: Sendable, Equatable {
     case loading
     case loggedOut
+    /// Wartet auf die eigene E-Mail-Bestätigung.
     case pending(User)
+    /// Von einem Admin abgeschaltet. Eigener Fall, weil die App sonst zum
+    /// Bestätigen einer längst bestätigten Adresse auffordert.
+    case disabled(User)
     case active(User)
 }
 
@@ -509,7 +513,7 @@ public final class AppModel {
                 defaults.removeObject(forKey: conversationKey)
             }
         }
-        session = user.isActive ? .active(user) : .pending(user)
+        session = user.isActive ? .active(user) : (user.isDisabled ? .disabled(user) : .pending(user))
     }
 
     func cacheUserForOffline(_ user: User) {

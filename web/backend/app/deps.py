@@ -98,10 +98,15 @@ def require_active(user: dict = Depends(get_current_user)) -> dict:
     """Account must be active: email confirmed and not suspended by an admin
     (admins are always active)."""
     if not ist_admin(user) and user.get("status") != "active":
+        # Der Text hängt am STATUS, nicht mehr am Umkehrschluss über
+        # `email_verified`: `disabled` sagt selbst, dass ein Admin
+        # abgeschaltet hat. Ein Konto aus der Zeit vor dieser Trennung, das
+        # die Migration nicht erwischt hat, fällt in den zweiten Zweig — auch
+        # dann steht dort nicht die falsche Aufforderung.
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Bitte bestätige zuerst deine E-Mail-Adresse."
-            if not user.get("email_verified")
+            if user.get("status") == "pending" and not user.get("email_verified")
             else "Dein Konto ist derzeit deaktiviert.",
         )
     return user

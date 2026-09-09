@@ -34,15 +34,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const oeffentlich = istOeffentlich(pathname);
 
   const needsVerify = !!user && !user.email_verified && !darfAdmin(user);
-  const pending = !!user && user.status === "pending" && !darfAdmin(user);
-  const gated = needsVerify || pending;
+  // Alles, was nicht `active` ist und nicht auf die eigene Bestätigung wartet,
+  // ist abgeschaltet. Bewusst über „nicht aktiv" statt über `status ===
+  // "disabled"`: Ein Konto, das die Migration auf den eigenen Status nicht
+  // erwischt hat, bliebe sonst ungesperrt sichtbar — ein unbekannter Wert
+  // gehört auf die Sperrseite, nicht in die App.
+  const gesperrt = !!user && !needsVerify && user.status !== "active" && !darfAdmin(user);
+  const gated = needsVerify || gesperrt;
 
   // Solange das Konto gesperrt ist, hier auf die Bestätigung warten, statt eine
   // Seite neu laden zu lassen. Beim Warten auf die E-Mail im Sekundentakt: Das
   // ist der Tab, in dem registriert wurde, und die Bestätigung passiert in
   // aller Regel binnen einer Minute im Nachbartab. Die 30 s von früher hießen,
   // dass dieser Screen nach der Bestätigung noch eine halbe Minute stehenblieb.
-  // Für ein deaktiviertes Konto (`pending`) bleibt der ruhige Takt.
+  // Für ein deaktiviertes Konto bleibt der ruhige Takt.
   const queryClient = useQueryClient();
   useQuery({
     queryKey: ["me-poll"],
@@ -55,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
       return u;
     }),
-    refetchInterval: needsVerify ? 3_000 : pending ? 30_000 : false,
+    refetchInterval: needsVerify ? 3_000 : gesperrt ? 30_000 : false,
     enabled: gated,
   });
 
@@ -277,8 +282,10 @@ function VerifyNotice({ email }: { email: string }) {
   );
 }
 
-/** Nach der Auto-Aktivierung bedeutet `pending` bei verifizierter Adresse:
-    von einem Admin deaktiviert (Moderation). */
+/** Das Konto wurde von einem Admin abgeschaltet (`status: "disabled"`).
+
+    Bis 09/2026 war das ein Umkehrschluss — `pending` trotz bestätigter
+    Adresse. Jetzt sagt der Status es selbst. */
 function PendingNotice({ email }: { email: string }) {
   return (
     <Card className="mx-auto mt-10 max-w-md p-8 text-center">
