@@ -420,16 +420,14 @@ import Testing
        "summary": "Ein Plan gegen Hitze.", "transfer": "adaptable",
        "competence": "council", "originator": "SPD-Fraktion",
        "status": "partial", "reason": "Oldenburg hat den Wärmeplan, nicht den Hitzeplan.",
-       "worth": "yes", "why_worth": "Der Hitzeplan ist der nächste Schritt.",
-       "obstacles": null, "confidence": "high",
+       "confidence": "high",
        "evidence": [{"decision_id": 8525, "kvonr": 4711, "title": "Kommunale Wärmeplanung",
                      "date": "2025-11-20", "outcome": "accepted"}]},
       {"paper_id": "md:p:2", "body_id": "magdeburg", "body_name": "Magdeburg",
        "name": "Hundewanderweg", "date": null, "kind": "motion",
        "web": null, "outcome": "none", "field": "klima_umwelt", "instrument": null,
        "summary": null, "transfer": "adaptable", "competence": null, "originator": null,
-       "status": "missing", "reason": "Kein Beleg.", "worth": "yes",
-       "why_worth": "Grünflächen liegen bei der Stadt.", "obstacles": null,
+       "status": "missing", "reason": "Kein Beleg.",
        "confidence": "medium", "evidence": []}]}
     """#
     let antwort = try JSONDecoder().decode(IdeasResponse.self, from: Data(json.utf8))
@@ -437,8 +435,8 @@ import Testing
     #expect(antwort.counts["missing"] == 39)
     #expect(antwort.items.count == 2)
     let erste = antwort.items[0]
-    #expect(erste.status == "partial" && erste.worth == "yes")
-    #expect(erste.whyWorth.hasPrefix("Der Hitzeplan"))
+    #expect(erste.status == "partial")
+    #expect(erste.reason.hasPrefix("Oldenburg"))
     #expect(erste.evidence.first?.decisionID == 8525)
     // Ohne Beschluss dahinter keine Zeigerhand — und ohne Beleg keine Liste.
     #expect(antwort.items[1].evidence.isEmpty)
@@ -451,9 +449,9 @@ import Testing
     #expect(leer.fields.isEmpty)
     let felder = try JSONDecoder().decode(IdeaFields.self, from: Data(#"""
     {"fields": [{"field": "verkehr", "total": 60, "missing": 40, "partial": 6,
-                 "present": 8, "worth_yes": 35}]}
+                 "present": 8, "multi_city": 12}]}
     """#.utf8))
-    #expect(felder.fields.first?.worthYes == 35)
+    #expect(felder.fields.first?.multiCity == 12)
     #expect(felder.fields.first?.id == "verkehr")
 }
 
