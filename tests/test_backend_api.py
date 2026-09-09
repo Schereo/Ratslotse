@@ -2926,6 +2926,61 @@ def test_apple_login_links_existing_account_by_email(client, apple_jwks):
     assert body["apple_linked"] is True and body["has_password"] is True
 
 
+def test_apple_login_reaktiviert_kein_gesperrtes_konto(client, apple_jwks):
+    """Ein deaktiviertes Konto darf sich über „Mit Apple anmelden" NICHT selbst
+    freischalten.
+
+    `web_users.status` kennt nur `pending` und `active`, und `pending` heißt
+    zweierlei: „E-Mail noch nicht bestätigt" und „von einem Admin deaktiviert".
+    Der Verknüpfungspfad las es als Ersteres und setzte auf `active` — die
+    Moderationsentscheidung war damit aushebelbar, sobald die Apple-ID dieselbe
+    bestätigte Adresse trug. Gemessen am 09.09.2026: pending → active.
+    """
+    _register(client)                       # Admin
+    _register(client, "gesperrt@example.org")
+    store = Store(RATSLOTSE_DB)
+    try:
+        konto = store.get_web_user_by_email("gesperrt@example.org")
+        uid = konto["id"]
+        store.set_email_verified(uid, True)
+        store.set_web_user_status(uid, "pending")      # Admin deaktiviert
+    finally:
+        store.close()
+
+    fremd = TestClient(app)
+    r = fremd.post("/api/auth/apple", json={
+        "identity_token": _apple_token(sub="sub-gesperrt", email="gesperrt@example.org")})
+    assert r.status_code == 200
+    assert r.json()["status"] == "pending", "gesperrtes Konto wurde freigeschaltet"
+
+    store = Store(RATSLOTSE_DB)
+    try:
+        assert store.get_web_user_by_id(uid)["status"] == "pending"
+    finally:
+        store.close()
+    # Und die Sperre wirkt auch wirklich weiter.
+    assert fremd.get("/api/topics").status_code == 403
+
+
+def test_apple_login_schaltet_ein_unbestaetigtes_konto_weiter_frei(client, apple_jwks):
+    """Die Gegenprobe: Der eigentliche Zweck des Pfades bleibt erhalten —
+    Apple bestätigt die Mailbox, das Konto wird aktiv."""
+    _register(client)
+    store = Store(RATSLOTSE_DB)
+    try:
+        uid = store.create_web_user("neu@example.org", "x", "user", "pending",
+                                    email_verified=False)
+    finally:
+        store.close()
+
+    fremd = TestClient(app)
+    r = fremd.post("/api/auth/apple", json={
+        "identity_token": _apple_token(sub="sub-neu", email="neu@example.org")})
+    assert r.status_code == 200
+    assert r.json()["status"] == "active" and r.json()["email_verified"] is True
+    assert r.json()["id"] == uid
+
+
 def test_apple_login_rejects_foreign_audience_and_bad_signature(client, apple_jwks):
     bad_aud = _apple_token(aud="com.evil.app")
     assert client.post("/api/auth/apple", json={"identity_token": bad_aud}).status_code == 401
