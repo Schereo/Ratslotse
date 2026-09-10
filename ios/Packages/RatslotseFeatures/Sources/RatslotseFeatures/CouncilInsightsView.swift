@@ -13,35 +13,6 @@ private enum InsightSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-private struct TrendResponse: Decodable, Sendable {
-    let quarters: [String]
-    let fields: [String]
-    let byField: [String: [Int]]
-    let money: [Double]
-    let moneyDrivers: [MoneyDriver?]
-    let emerging: [EmergingTopic]
-    let fieldLabels: [String: String]
-
-    enum CodingKeys: String, CodingKey {
-        case quarters, fields, money, emerging
-        case moneyDrivers = "money_drivers"
-        case byField = "by_field"
-        case fieldLabels = "field_labels"
-    }
-}
-
-private struct MoneyDriver: Decodable, Sendable {
-    let id: Int
-    let title: String
-    let eur: Double
-}
-
-private struct EmergingTopic: Decodable, Sendable, Identifiable {
-    var id: String { tag }
-    let tag: String
-    let n: Int
-}
-
 private struct PartyAnalysisResponse: Decodable, Sendable {
     let coverage: Coverage
     let topicMatrix: TopicMatrix
@@ -260,7 +231,6 @@ struct CouncilInsightsView: View {
         default: .trends
         }
     }()
-    @State private var trends: TrendResponse?
     @State private var parties: PartyAnalysisResponse?
     @State private var members: [CouncilMember] = []
     @State private var finance: FinanceResponse?
@@ -363,39 +333,19 @@ struct CouncilInsightsView: View {
         dynamicTypeSize.isAccessibilitySize ? 520 : 260
     }
 
+    /// „Trends" ist seit 09/2026 nur noch der Rückblick je Themenfeld: Die
+    /// Quartalsgrafiken und die Schlagwort-Wolke „Neue Themen" zeigten einen
+    /// veralteten Stand und sind raus (gleicher Schnitt wie im Web).
     @ViewBuilder
     private var trendsView: some View {
-        if let trends, !trends.quarters.isEmpty {
+        if !fieldRecaps.isEmpty {
             analysisIntro(
                 title: "Was bewegt den Rat?",
-                detail: "Rückblicke und neue Themen zeigen, womit sich der Rat zuletzt beschäftigt hat – ohne daraus automatisch Wirkung abzuleiten."
+                detail: "Die Rückblicke zeigen, womit sich der Rat zuletzt beschäftigt hat – ohne daraus automatisch Wirkung abzuleiten."
             )
-            if !fieldRecaps.isEmpty { fieldRecapsView }
-            if !trends.emerging.isEmpty {
-                RatsSectionPanel("Neue Themen", detail: "Begriffe, die zuletzt häufiger auftauchen.", symbol: nil) {
-                    FlowLayout(spacing: 7) {
-                        ForEach(trends.emerging) { topic in
-                            Button {
-                                drilldown = AnalysisDrilldown(
-                                    title: topic.tag,
-                                    query: [.init(name: "q", value: topic.tag)]
-                                )
-                            } label: {
-                                RatsLabel("\(topic.tag) · \(topic.n)", .arrowUpRight)
-                                .font(RatsFont.body(11, weight: .semibold))
-                                .foregroundStyle(RatsColor.primary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(RatsColor.primary.opacity(0.08))
-                                .clipShape(Capsule())
-                            }
-                            .buttonStyle(RatsPlainButtonStyle())
-                        }
-                    }
-                }
-            }
+            fieldRecapsView
         } else {
-            empty("Noch keine Trends", "Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden.")
+            empty("Noch keine Trends", "Die Rückblicke je Themenfeld entstehen, sobald genug klassifizierte Beschlüsse vorliegen.")
         }
     }
 
@@ -843,19 +793,6 @@ struct CouncilInsightsView: View {
         defer { isLoading = false }
 #if DEBUG
         if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_ANALYSIS_FIXTURE"] == "1" {
-            trends = TrendResponse(
-                quarters: ["2026-Q1", "2026-Q2", "2026-Q3"],
-                fields: ["verkehr", "soziales"],
-                byField: ["verkehr": [4, 7, 9], "soziales": [3, 5, 4]],
-                money: [1_200_000, 2_800_000, 4_100_000],
-                moneyDrivers: [
-                    MoneyDriver(id: 1, title: "Neue Busspuren für Oldenburg", eur: 1_200_000),
-                    MoneyDriver(id: 2, title: "Umbau der Alten Fleiwa", eur: 2_800_000),
-                    MoneyDriver(id: 3, title: "Schulbauprogramm", eur: 4_100_000),
-                ],
-                emerging: [EmergingTopic(tag: "Velorouten", n: 5)],
-                fieldLabels: ["verkehr": "Verkehr", "soziales": "Soziales"]
-            )
             parties = PartyAnalysisResponse(
                 coverage: Coverage(withFactions: 38, total: 44),
                 topicMatrix: TopicMatrix(
@@ -911,21 +848,19 @@ struct CouncilInsightsView: View {
         }
 #endif
         do {
-            async let trendRequest: TrendResponse = model.api.get("/api/council/trends")
             async let partyRequest: PartyAnalysisResponse = model.api.get("/api/council/analysis")
             async let memberRequest: MembersResponse = model.api.get("/api/council/members")
             async let financeRequest: FinanceResponse = model.api.get("/api/council/finance")
             async let goalRequest: GoalsResponse = model.api.get("/api/council/goals")
             async let recapRequest: FieldRecapsResponse = model.api.get("/api/council/field-recaps")
             async let peopleRequest: PeopleLexiconResponse = model.api.get("/api/council/people-directory")
-            let responses = try await (trendRequest, partyRequest, memberRequest, financeRequest, goalRequest, recapRequest, peopleRequest)
-            trends = responses.0
-            parties = responses.1
-            members = responses.2.members
-            finance = responses.3
-            goals = responses.4.goals
-            fieldRecaps = responses.5.recaps
-            administrationPeople = responses.6.people.filter { $0.art == "city" && $0.role != nil }
+            let responses = try await (partyRequest, memberRequest, financeRequest, goalRequest, recapRequest, peopleRequest)
+            parties = responses.0
+            members = responses.1.members
+            finance = responses.2
+            goals = responses.3.goals
+            fieldRecaps = responses.4.recaps
+            administrationPeople = responses.5.people.filter { $0.art == "city" && $0.role != nil }
             error = nil
         } catch { self.error = error.localizedDescription }
     }
