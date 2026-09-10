@@ -336,7 +336,7 @@ funktionierende Schnittstelle, und deshalb ist jede ein anderer Weg:
 |---|---:|---|---|---|
 | **Hannover** | 548 k | Eigenbau, Notes/Domino | keine — aber RSS + iCal | **PR 39**: eigener Adapter, die Feeds als Einstieg |
 | **Göttingen** | 131 k | ALLRIS classic (HTML) | keine; **sperrt uns per Cloudflare aus** | PR 36 — nur, wenn die Stadt die Sperre öffnet; sonst Anfrage (Anhang B) |
-| **Wolfsburg** | 127 k | ALLRIS 4 | **die ganze Instanz ist kaputt** — OParl 500, und der Kalender wirft auch im Browser `internalerrorpage` | PR 36c, sobald die Instanz wieder läuft; bis dahin die Nachricht an die Stadt (Anhang B) — sie ist jetzt einfacher: „Ihr Ratsinformationssystem ist defekt" |
+| **Wolfsburg** | 127 k | ALLRIS 4 | OParl liefert nur `/system`, alles dahinter 500 — **die Oberfläche ist in Ordnung** (s. Nachtrag zu PR 36c) | **PR 36c, erledigt**: 43 Gremien, 652 Sitzungen, 1.570 Vorlagen. Keine Anfrage an die Stadt nötig |
 | **Salzgitter** | 105 k | ALLRIS net 3.9 (HTML) | keine; **antwortete von hier nicht** | PR 36 — nach einer Probe von einem anderen Netz; sonst Anfrage |
 | **Hildesheim** | 102 k | ALLRIS classic (HTML) | keine | **PR 36**, gemessen lesbar — die Stadt, an der der Adapter gebaut wird |
 
@@ -679,14 +679,9 @@ aus PR 36. Gemessen an Wolfsburg und Laatzen (10.09.2026):
   Das ist der Weg: Playwright (liegt im Frontend schon), keine nachgebaute
   Wicket-Sitzung — die Seitenversionen und der `sectoken` sind genau das,
   was ein Nachbau falsch macht.
-- **Wolfsburg selbst ist heute nicht lesbar, für niemanden.** Derselbe Klick
-  führt dort auf `/internalerrorpage` (HTTP 500); jedes OParl-Objekt
-  antwortet 500. Die Stadt verlinkt genau diese Instanz (`ratsinfob`, die
-  Bürger-Instanz; `ratsinfor` ist der Login der Ratsmitglieder). Der
-  Adapter wird deshalb **an Laatzen gebaut und gemessen**, und Wolfsburg wird
-  ein Registry-Eintrag, sobald die Instanz wieder läuft. Die Nachricht an die
-  Stadt (Anhang B) ist damit einfacher geworden: nicht „schalten Sie OParl
-  frei", sondern „Ihr Ratsinformationssystem ist defekt".
+- ~~**Wolfsburg selbst ist heute nicht lesbar, für niemanden.**~~ **Falsch,
+  s. Nachtrag unten.** Der Befund war gegen einen Host gemessen, den es nicht
+  gibt.
 
 **`robots.txt` sagt `Disallow: /` — und das ist die Voreinstellung des
 Produkts.** Osnabrück und Braunschweig (deren OParl wir lesen) tragen dieselbe
@@ -719,6 +714,54 @@ Messung am Tag, an dem `si010` wieder antwortet.
 
 **Kosten.** Zwei bis drei Tage (Browser-Steuerung und Wicket-Eigenheiten),
 Laatzen < $3, Wolfsburg später ~$5.
+
+### Nachtrag 10.09.2026 — PR 36c ist gebaut, und zwei Annahmen waren falsch
+
+Umgesetzt in [#1272](https://github.com/Schereo/Ratslotse/pull/1272).
+
+**Erstens: Wolfsburg ist nicht kaputt, der Host war geraten.** Alles oben über
+`/internalerrorpage` und „null AJAX-Ziele" ist gegen `ratsinfo.wolfsburg.de`
+gemessen worden — einen Host, **der nicht einmal im DNS steht**. Die Stadt
+verlinkt von `wolfsburg.de/politik` auf `ratsinfob.stadt.wolfsburg.de`, ohne
+`/public`; dort hat `si010` 32 AJAX-Ziele und die Anwendung ist vollständig
+lesbar. Dieselbe Falle bei Lüneburg: nicht `ratsinfo.lueneburg.de` (existiert
+nicht), sondern `buergerinfo.stadt.lueneburg.de/public` — und obwohl
+„buergerinfo" sonst die Handschrift von Somacos ist, läuft dort ALLRIS 4.
+
+Daraus ist eine Regel geworden (`council/cities/CLAUDE.md`, Schritt 0):
+**Host von der Rathaus-Seite holen, Produkt am Seiteninhalt messen. Nie
+raten.** Ein nicht auflösender Host wirft `ConnectionError`, ein falsch
+geratener liefert irgendeine fremde Seite mit HTTP 200 — beides sieht aus wie
+„die Anwendung ist defekt", und man diagnostiziert minutenlang ein System,
+das man gar nicht vor sich hat.
+
+**Zweitens: Es braucht keinen Browser.** Der Plan verlangt Playwright, weil
+der Kalender ohne Wicket-Zustand leer bleibt. Das stimmt für den Kalender —
+aber der Kalender ist der falsche Index. `si018` („Sitzungen Übersicht") ist
+eine Liste, deren Blätterung sich selbst beschreibt: Jede Antwort nennt das
+Ziel für „weiter". Gemessen: **Wolfsburg 652 Sitzungen in 28 Abrufen,
+Lüneburg 778 in 33 — mit `requests` und einem Cookie.** Dasselbe für die
+Gremien über `gr010` (Wolfsburg 43, Lüneburg 66, Laatzen 15).
+
+Damit entfällt die teuerste Annahme des PRs: keine Browser-Abhängigkeit, kein
+Wächter für eine Playwright-Schicht, und die Testfixtures sind die schlichten
+HTTP-Antworten statt gerenderter Seiten. Die Kostenschätzung „zwei bis drei
+Tage" ist damit hinfällig.
+
+Drei Eigenheiten muss der Index trotzdem kennen, jede für sich genug, ihn
+leer aussehen zu lassen: Die **Seitenversion wird gelesen, nicht gesetzt**
+(Wicket zählt sie je Sitzung hoch — ein festes `si018?0-1.0-` gab bei
+Wolfsburg „0 Sitzungen" statt 652); die **Kennung steht in zwei Formen** da
+(`id="silink_<n>"` bei Wolfsburg, `SILFDNR=` bei Laatzen); und das
+**„weiter"-Ziel ist mal absolut, mal relativ**. Bei den Gremien liegen die
+Namen zusätzlich **in CDATA** — als HTML gelesen findet man dort kein
+einziges `<a>`.
+
+**Was offen bleibt.** Wolfsburgs OParl-Modul ist eingebaut und liefert
+`/system` (OParl 1.1, CC BY 4.0), während `bodies` und alles dahinter mit
+HTTP 500 antwortet. Das ist weiterhin ein Defekt auf ihrer Seite und wäre
+eine Anfrage wert — aber keine dringende: Über die Oberfläche liegen die
+Daten bereits vor.
 
 ## PR 37 — Bonn
 
