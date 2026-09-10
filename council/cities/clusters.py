@@ -204,7 +204,7 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
 
 
 def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
-    """Alle drei Schritte — für den Wochen-Cron und den Backfill.
+    """Alle vier Schritte — für den Wochen-Cron und den Backfill.
 
     Der Prüflauf gehört dazu und nicht daneben: Eine frisch gerechnete Gruppe
     ist ungeprüft, und ungeprüft steht sie auf der Karte als „auch in vier
@@ -216,6 +216,12 @@ def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
     zahlen["embedded"] = eingebettet
     for name, wert in check_clusters(main, model).items():
         zahlen[f"check_{name}"] = wert
+    # Vierter Schritt, seit 10.09.2026: die Haltung je Vorlage. Sie hing bis
+    # dahin an einem Handaufruf — der Cron hätte neue Vorlagen gruppiert und
+    # geprüft, aber nie gefragt, ob der Rat die Sache wollte. Auf der Karte
+    # stünde dann für alles Neue keine Zeile „In den anderen Räten".
+    for name, wert in stance_all(main, model).items():
+        zahlen[f"stance_{name}"] = wert
     return zahlen
 
 
