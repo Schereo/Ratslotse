@@ -348,7 +348,7 @@ function FirstStepsBar() {
       <Mascot pose={allDone ? "celebrate" : "wave"} decorative className="h-10 w-10 shrink-0" />
       <div className="min-w-0 flex-1 basis-48">
         <p className="text-sm font-medium text-foreground">
-          {allDone ? "Kurs gehalten — alles erkundet!" : "Erste Schritte mit Lotti"}
+          {allDone ? "Geschafft — du hast alles erkundet!" : "Erste Schritte mit Lotti"}
         </p>
         <div className="mt-1 flex items-center gap-2">
           <div className="h-1.5 w-full max-w-56 overflow-hidden rounded-full bg-primary/15">

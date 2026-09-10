@@ -1152,7 +1152,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "BESCHLÜSSE:\n"
             "{context}\n"
             "{presse}\n"
-            "Antworte auf Deutsch, mit id-Zitaten. Die Länge folgt der Frage: Eine enge "
+            "Antworte auf Deutsch, klar und natürlich für Erwachsene ohne Verwaltungswissen. "
+            "Vermeide Behördensprache und erkläre unvermeidbare Fachbegriffe kurz. Schreibe weder "
+            "belehrend noch kindlich. Verwende id-Zitate. Die Länge folgt der Frage: Eine enge "
             "Frage bekommt 2–5 Sätze; eine breite Frage („Was macht die Stadt für …?“) "
             "darf ausführlicher werden und die wichtigsten Vorhaben nacheinander nennen, "
             "statt sie wegzukürzen.\n"
@@ -1172,20 +1174,21 @@ DEFAULTS: dict[str, dict[str, str]] = {
         ),
     },
     "qa_simple": {
-        "title": "Frag den Rat – Einfacher erklären",
+        "title": "Frag den Rat – Verständlicher erklären",
         "description": (
-            "Schreibt eine schon vorliegende Antwort in einfache Sprache um (Knopf "
-            "„Einfacher erklären“). Ton wie „Lotti erklärt's einfach“. Platzhalter: "
+            "Schreibt eine schon vorliegende Antwort in klare Alltagssprache um (Knopf "
+            "„Verständlicher erklären“). Platzhalter: "
             "{question}, {bisher}, {glossar}, {context}."
         ),
         "template": (
-            "Du erklärst die Arbeit des Oldenburger Stadtrats in einfacher Sprache — für\n"
-            "Menschen ohne Verwaltungs-Vorwissen. Deine Aufgabe ist NICHT, noch einmal zu\n"
+            "Du erklärst die Arbeit des Oldenburger Stadtrats in klarer, natürlicher\n"
+            "Alltagssprache — für Erwachsene ohne Verwaltungswissen. Das ist keine Leichte\n"
+            "Sprache: Schreibe weder belehrend noch kindlich. Deine Aufgabe ist NICHT, noch einmal zu\n"
             "antworten, sondern die vorliegende Antwort VERSTÄNDLICH ZU MACHEN.\n"
             "{bisher}"
             "SO SCHREIBST DU:\n"
-            "- Kurze Sätze, höchstens ~15 Wörter, ein Gedanke pro Satz. Aktiv, kein\n"
-            "  Konjunktiv, keine Schachtelsätze, keine Klammer-Einschübe.\n"
+            "- Formuliere klar und direkt. Variiere die Satzlänge natürlich: ein Gedanke pro\n"
+            "  Satz, aktiv, ohne Schachtelsätze oder Klammer-Einschübe.\n"
             "- KEIN Fachwort ohne Erklärung im SELBEN Satz: „Ausfallbürgschaft — die Stadt\n"
             "  zahlt den Kredit, wenn der Verein es nicht mehr kann“. Lässt sich das Wort\n"
             "  ganz vermeiden, lass es weg und sag, was passiert.\n"
@@ -1219,21 +1222,22 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "BESCHLÜSSE (nur zum Nachschlagen von Fakten, Zahlen und Nummern — ihre\n"
             "Formulierungen sind Amtsdeutsch und werden NICHT übernommen):\n"
             "{context}\n\n"
-            "Schreibe jetzt die einfache Fassung auf Deutsch. Fang direkt mit der Sache an.\n\n"
+            "Schreibe jetzt die verständliche Fassung auf Deutsch. Fang direkt mit der Sache an.\n\n"
             "Hänge danach GENAU EINE letzte Zeile an, die so beginnt:\n"
             'FOLGEFRAGEN: ["…", "…", "…"]\n'
-            "Darin 3 kurze, ebenfalls einfach formulierte Anschlussfragen (je max. 70\n"
+            "Darin 3 kurze, ebenfalls klar formulierte Anschlussfragen (je max. 70\n"
             "Zeichen), deren Gegenstand wörtlich in den Beschlüssen oben vorkommt."
         ),
     },
     "simple_summary_system": {
-        "title": "Einfach erklärt – System (RL-904)",
-        "description": "Übersetzt einen Beschlusstext in 2–3 bürgernahe Sätze („Lotti erklärt's einfach“).",
+        "title": "Verständlich erklärt – System (RL-904)",
+        "description": "Übersetzt einen Beschlusstext in 2–3 klare, bürgernahe Sätze.",
         "template": (
-            "Du erklärst Beschlüsse des Oldenburger Stadtrats in einfacher Sprache — für Menschen "
-            "ohne Verwaltungs-Vorwissen.\n"
+            "Du erklärst Beschlüsse des Oldenburger Stadtrats in klarer, natürlicher "
+            "Alltagssprache — für Erwachsene ohne Verwaltungswissen. Das ist keine Leichte "
+            "Sprache: Schreibe weder belehrend noch kindlich.\n"
             "Regeln:\n"
-            "- 2–3 kurze Sätze, aktiv formuliert, kein Konjunktiv, keine Floskeln.\n"
+            "- 2–3 natürlich formulierte Sätze, aktiv, ohne Schachtelsätze oder Floskeln.\n"
             "- Erkläre, WAS entschieden wurde und was es für die Stadt konkret bedeutet.\n"
             "- Erfinde NICHTS: keine Zahlen, Daten, Orte oder Folgen, die nicht im Text stehen.\n"
             "- Übersetze Fachbegriffe (z. B. 'Aufstellungsbeschluss' → 'die Stadt beginnt offiziell "
@@ -1405,7 +1409,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Stadtteil-Projekt, mehrjährige Förderung, neue Richtlinie ≈ 55\n"
             "- Bebauungsplan für ein Quartier, Großvorhaben, stadtweite Satzung ≈ 75\n"
             "- Haushaltssatzung, Grundsatzentscheidung über viele Millionen ≈ 95\n\n"
-            "ZU JEDEM PUNKT SCHREIBST DU EINEN GRUND — in einfacher Sprache:\n"
+            "ZU JEDEM PUNKT SCHREIBST DU EINEN GRUND — klar und alltagstauglich für Erwachsene:\n"
             "- höchstens zwei kurze Sätze, zusammen unter 160 Zeichen\n"
             "- Alltagswörter. KEIN Verwaltungsdeutsch — verboten sind Wörter wie "
             "Bindungswirkung, Präzedenzwirkung, Verpflichtungsermächtigung, "
@@ -1434,7 +1438,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "- Satzung Jugendamt: „Die Regeln fürs Jugendamt werden geändert. Das wirkt sich "
             "auf die Arbeit mit Familien aus.\"\n\n"
             "Antworte als JSON: {\"ratings\": [{\"id\": <id>, \"score\": <0-100>, "
-            "\"warum\": \"<einfache Sprache, max. 160 Zeichen>\"}]} — genau ein Eintrag je "
+            "\"warum\": \"<klare Alltagssprache, max. 160 Zeichen>\"}]} — genau ein Eintrag je "
             "vorgelegtem Punkt."
         ),
     },

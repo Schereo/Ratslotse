@@ -365,7 +365,7 @@ export function TrendsView() {
 
   if (loading) return <div className="py-4"><ChartSkeleton bars={10} /></div>;
   if (!data || data.quarters.length === 0) {
-    return <EmptyState mascot="sleep" title="Noch keine Trends" hint="Es sind noch nicht genug datierte, klassifizierte Beschlüsse vorhanden." />;
+    return <EmptyState mascot="sleep" title="Noch keine Trends" hint="Für diese Auswertung gibt es noch nicht genügend eingeordnete Beschlüsse mit Datum." />;
   }
   const onQuarter = (q: string) => {
     const { from, to } = quarterRange(q);
@@ -375,8 +375,8 @@ export function TrendsView() {
     <div className="space-y-4">
       <FieldRecaps />
       <Block
-        title="Beschlüsse je Quartal"
-        hint="Wie viel der Rat entscheidet — und in welchen Themenfeldern. Balken anklicken für das Quartal."
+        title="Beschlüsse nach Quartal"
+        hint="Wie viele Beschlüsse der Rat in jedem Quartal gefasst hat und worum es dabei ging."
         explain={
           <>
             Jede Säule ist ein Quartal, die Farben stapeln die Themenfelder. Hohe Säulen sind
@@ -388,8 +388,8 @@ export function TrendsView() {
         <StackedDecisions d={data} onQuarter={onQuarter} />
       </Block>
       <Block
-        title="Erkanntes Finanzvolumen je Quartal"
-        hint="Summe der im Beschlusstext genannten Beträge (ohne Jahresabschlüsse/Haushaltspläne — grobe Größenordnung)."
+        title="Beträge in Beschlüssen nach Quartal"
+        hint="Summe der genannten Beträge, ohne Jahresabschlüsse und Haushaltspläne. Die Werte sind eine grobe Größenordnung."
         explain={
           <>
             Wie viel Geld die Beschlüsse eines Quartals bewegt haben — summiert aus den im Text erkannten
@@ -401,7 +401,7 @@ export function TrendsView() {
         <MoneyBars d={data} onQuarter={onQuarter} />
       </Block>
       {data.emerging.length > 0 && (
-        <Block title="Aktuell aufkommende Themen" hint="Häufigste Schlagworte der letzten zwei Quartale.">
+        <Block title="Themen, die häufiger vorkommen" hint="Die häufigsten Schlagworte der letzten zwei Quartale.">
           <div className="flex flex-wrap gap-2">
             {data.emerging.map((e) => (
               <button key={e.tag} onClick={() => router.push(`/council?tab=decisions&q=${encodeURIComponent(e.tag)}`)}

@@ -95,8 +95,8 @@ export default function BarrierefreiheitPage() {
           <Section title="Barriere melden">
             <p>
               Wenn dir etwas begegnet, das du nicht bedienen oder nicht lesen kannst, schreib mir — mit einem Satz,
-              worum es ging und womit du unterwegs warst (Screenreader, Vergrößerung, Tastatur, Gerät). Das ist die
-              schnellste Art, diese Seite kürzer zu machen.
+              worum es ging und womit du unterwegs warst (Screenreader, Vergrößerung, Tastatur, Gerät). So hilfst du
+              mir am schnellsten, Barrieren zu beseitigen.
             </p>
             <p>
               <a href={KONTAKT_MAILTO} className="text-primary hover:underline">{KONTAKT_EMAIL}</a>
