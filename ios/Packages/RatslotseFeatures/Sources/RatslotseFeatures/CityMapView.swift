@@ -166,16 +166,16 @@ struct CityMapView: View {
         // mehr als den Rand, und das Blatt endete 9 pt über dem Schirmrand.
         let bottomInset = geo.safeAreaInsets.bottom
         // Die Kamera weicht der Schublade nur bis zur halben Höhe aus: Ganz
-        // ausgefahren bliebe ihr sonst ein 8-pt-Streifen, und MapKit zoomte
-        // die Stadt darin auf ganz Deutschland heraus (gemessen 10.09.2026).
-        let cameraInset = min(drawerHeight, geo.size.height * 0.5)
+        // ausgefahren bliebe ihr sonst ein schmaler Streifen, und MapKit
+        // zoomte die Stadt darin auf ganz Deutschland heraus (gemessen
+        // 10.09.2026). Die Luft unter dem Blatt zählt mit.
+        let cameraInset = min(drawerHeight + MapDrawerMetrics.gap, geo.size.height * 0.5)
         return ZStack(alignment: .bottom) {
             stage(width: geo.size.width, bottomInset: cameraInset + bottomInset, compact: true)
                 .ignoresSafeArea(.container, edges: .bottom)
             MapDrawer(
                 position: $drawer,
                 available: geo.size.height,
-                bottomInset: bottomInset,
                 onHeight: { drawerHeight = $0 },
                 header: { drawerHeader },
                 content: { panel(compact: true) }

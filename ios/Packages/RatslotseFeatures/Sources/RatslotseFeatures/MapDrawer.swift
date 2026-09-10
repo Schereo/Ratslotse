@@ -21,19 +21,18 @@ enum MapDrawerPosition: Equatable {
     case peek, half, full
 }
 
+/// Maße des schwebenden Blatts — außerhalb der generischen View, weil ein
+/// generischer Typ keine statischen Werte tragen darf.
+enum MapDrawerMetrics {
+    static let sideInset: CGFloat = 12
+    static let gap: CGFloat = 10
+}
+
 struct MapDrawer<Header: View, Content: View>: View {
     @Binding var position: MapDrawerPosition
     /// Die Höhe des Bereichs, in dem das Blatt fährt (die Karte darunter,
     /// bis zur Oberkante der Tab-Leiste).
     let available: CGFloat
-    /// Was unter dem Bereich noch liegt: Tab-Leiste und Home-Indikator. In
-    /// den unteren Stellungen endet das Blatt an der Leiste, und die Karte
-    /// scheint durch deren Glas. Ganz ausgefahren legt es eine Schürze in
-    /// Seitenfarbe darunter — wie eine gewöhnliche Seite, deren Ende die
-    /// Leiste überlagert; sonst schiene dort Karte durch, wo gar keine Karte
-    /// mehr zu sehen ist. Der Inhalt bekommt unten so viel Luft, dass die
-    /// letzte Zeile unter der Leiste hervorscrollt.
-    var bottomInset: CGFloat = 0
     /// Wie hoch das Blatt in seiner Stellung ist — die Karte liest das, um
     /// ihre Kamera in den freien Teil zu legen.
     let onHeight: (CGFloat) -> Void
@@ -44,7 +43,11 @@ struct MapDrawer<Header: View, Content: View>: View {
     @State private var headHeight: CGFloat = 96
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var fullHeight: CGFloat { max(200, available - 8) }
+    /// Das Blatt schwebt: seitlich so breit wie die Tab-Leiste eingerückt,
+    /// mit Luft nach unten zur Leiste und nach oben zum Kopf der Seite. Ein
+    /// Blatt, das bündig an der Leiste endete, sah aus, als schnitte sie es
+    /// ab (Tim, 10.09.2026).
+    private var fullHeight: CGFloat { max(200, available - MapDrawerMetrics.gap * 2) }
     private var halfHeight: CGFloat { min(max(280, available * 0.46), 440) }
     private var peekHeight: CGFloat { headHeight }
 
@@ -72,7 +75,7 @@ struct MapDrawer<Header: View, Content: View>: View {
                 content()
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
-                    .padding(.bottom, 24 + bottomInset)
+                    .padding(.bottom, 24)
             }
             .scrollDisabled(position != .full)
             // In den unteren Stellungen zieht der ganze Körper das Blatt;
@@ -82,17 +85,16 @@ struct MapDrawer<Header: View, Content: View>: View {
         // Das Blatt ist so hoch wie sein sichtbarer Teil — kein Versatz nach
         // unten, der unter der Tab-Leiste durchschiene.
         .frame(height: liveHeight, alignment: .top)
-        .clipped()
         .background(RatsColor.page)
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: RatsRadius.panel, topTrailingRadius: RatsRadius.panel, style: .continuous))
-        .overlay(alignment: .top) {
-            UnevenRoundedRectangle(topLeadingRadius: RatsRadius.panel, topTrailingRadius: RatsRadius.panel, style: .continuous)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(RatsColor.border, lineWidth: 1)
         }
-        .shadow(color: .black.opacity(0.14), radius: 18, y: -4)
-        .background(alignment: .top) {
-            RatsColor.page.frame(height: liveHeight + (position == .full ? bottomInset : 0))
-        }
+        .shadow(color: RatsColor.primary.opacity(0.14), radius: 22, y: 8)
+        .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
+        .padding(.horizontal, MapDrawerMetrics.sideInset)
+        .padding(.bottom, MapDrawerMetrics.gap)
         .animation(reduceMotion ? nil : RatsMotion.travel, value: position)
         .animation(reduceMotion ? nil : RatsMotion.travel, value: drag == 0)
         .onChange(of: liveHeight, initial: true) { _, value in
