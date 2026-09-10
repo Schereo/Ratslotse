@@ -88,6 +88,17 @@ def _attr(knoten, name: str) -> str:
     return str(wert) if wert is not None else ""
 
 
+def _cdata(antwort: str) -> list[str]:
+    """Die HTML-Stücke einer Wicket-AJAX-Antwort.
+
+    Sie liegen als ``<![CDATA[…]]>`` in einem XML-Umschlag. Wer das Ganze als
+    HTML parst, bekommt eine Seite ohne ein einziges ``<a>`` — der Inhalt gilt
+    dem Parser als Text. Ist gar kein CDATA da, ist die Antwort schon HTML.
+    """
+    stuecke = re.findall(r"<!\[CDATA\[(.*?)\]\]>", antwort, re.S)
+    return stuecke or [antwort]
+
+
 def _kopfzeile(tabelle) -> list[str]:
     """Die Beschriftungen der ersten Zeile, kleingeschrieben.
 
@@ -150,23 +161,45 @@ class Allris4HtmlAdapter:
     # -------------------------------------------------------------- Gremien
 
     def iter_organizations(self, client: OParlClient, body: dict) -> Iterator[dict]:
-        """Die Ausschüsse aus ``gr020`` — zustandslos erreichbar."""
+        """Die Ausschüsse aus der Gremienübersicht ``gr010``.
+
+        **Nicht aus ``gr020``.** Das ist die Seite EINES Gremiums und
+        antwortet ohne ``GRLFDNR`` mit HTTP 500 — bei allen drei gemessenen
+        Städten. Die Liste steht in ``gr010``, und wie bei den Sitzungen kommt
+        sie erst auf den Selbstaufruf hin: Die Hülle ist leer, die Namen
+        stecken in der AJAX-Antwort (in CDATA, weshalb sie ein XML-Parser
+        braucht — als HTML gelesen findet man dort kein einziges ``<a>``).
+        Gemessen an Wolfsburg: 43 Gremien.
+        """
         wurzel = body["id"]
         try:
-            html = client.get_text(f"{wurzel}/gr020")
+            huelle = client.get_text(f"{wurzel}/gr010")
+            version = re.search(r"gr010\?(\d+-\d+)\.\d+-", huelle)
+            if not version:
+                logger.info("%s: Gremienübersicht ohne Selbstaufruf", client.body_id)
+                return
+            antwort = client.get_text(
+                f"{wurzel}/gr010?{version.group(1)}.0-",
+                headers={"Wicket-Ajax": "true", "Wicket-Ajax-BaseURL": "gr010",
+                         "Accept": "text/xml"})
         except Exception as e:  # noqa: BLE001 — ohne Gremienliste läuft der Rest
             logger.info("%s: Gremienliste nicht lesbar (%s)", client.body_id,
                         type(e).__name__)
             return
-        suppe = BeautifulSoup(html, "html.parser")
-        for a in suppe.find_all("a", href=re.compile(r"gr0\d\d\?.*GRLFDNR=\d+")):
-            nr = _zahl(_attr(a, "href"), "GRLFDNR")
-            name = _text(a)
-            if not nr or not name:
-                continue
-            obj = {"id": f"{wurzel}/gr020?GRLFDNR={nr}", "name": name}
-            client.raw.put_raw_object(client.body_id, "organization", obj["id"], obj)
-            yield obj
+        gesehen: set[str] = set()
+        for stueck in _cdata(antwort):
+            suppe = BeautifulSoup(stueck, "html.parser")
+            for a in suppe.find_all("a", href=re.compile(r"gr0\d\d\?.*GRLFDNR=\d+")):
+                nr = _zahl(_attr(a, "href"), "GRLFDNR")
+                name = _text(a)
+                if not nr or not name or nr in gesehen:
+                    continue
+                gesehen.add(nr)
+                obj = {"id": f"{wurzel}/gr020?GRLFDNR={nr}", "name": name}
+                client.raw.put_raw_object(client.body_id, "organization",
+                                          obj["id"], obj)
+                yield obj
+        logger.info("%s: %s Gremien in der Übersicht", client.body_id, len(gesehen))
 
     # ------------------------------------------------------------ Sitzungen
 

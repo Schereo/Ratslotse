@@ -65,6 +65,13 @@ lassen:
 - **Das „weiter"-Ziel ist mal absolut, mal relativ.** Wolfsburg schreibt die
   volle Adresse, Lüneburg ``./si018?…``.
 
+**Die Gremien kommen aus ``gr010``, nicht aus ``gr020``.** ``gr020`` ist die
+Seite EINES Gremiums und antwortet ohne ``GRLFDNR`` mit HTTP 500 — bei allen
+drei gemessenen Städten. Dieselbe Selbstaufruf-Mechanik wie beim Index, plus
+eine eigene Falle: **Die Namen liegen in CDATA.** Wer die AJAX-Antwort als
+HTML parst, findet dort kein einziges ``<a>`` und hält die Stadt für
+gremienlos. Gemessen: Wolfsburg 43, Lüneburg 66, Laatzen 15.
+
 **Ohne Sitzungs-Cookie antwortet der Selbstaufruf mit einer leeren Hülle.**
 Der Client hält eine ``requests.Session``, das genügt — aber der erste Abruf
 auf ``si018`` muss trotzdem passieren.

@@ -215,3 +215,50 @@ def test_ohne_uebersicht_bleibt_der_index_leer_statt_zu_stuerzen():
     """Eine Stadt ohne ``si018`` darf den Lauf nicht mitnehmen."""
     client = _Antworten({})
     assert Allris4HtmlAdapter.sitzungsindex(client, "https://x.example.org") == set()
+
+
+# --------------------------------------------------- Die Gremien (gr010)
+
+class _MitAblage(_Antworten):
+    """Wie ``_Antworten``, aber mit einer Rohablage, in die der Adapter legt."""
+
+    def __init__(self, seiten: dict[str, str], store: CitiesStore):
+        super().__init__(seiten)
+        self.raw = store
+        self.body_id = "teststadt"
+
+
+def test_die_gremien_stehen_in_gr010_und_zwar_in_cdata(tmp_path):
+    """``gr020`` ohne Kennung antwortet bei allen drei Städten mit HTTP 500.
+
+    Die Liste steht in ``gr010``, kommt erst auf den Selbstaufruf hin, und
+    ihre Namen liegen in CDATA — als HTML gelesen findet man dort kein
+    einziges ``<a>``.
+    """
+    W = "https://beispiel.example.org/public"
+    ajax = (
+        '<?xml version="1.0" encoding="UTF-8"?><ajax-response>'
+        '<component id="id7"><![CDATA['
+        f'<a href="{W}/gr020?GRLFDNR=3" id="gr_3">Rat der Stadt</a>'
+        f'<a href="{W}/to010?SILFDNR=99" id="grLast_3">Sitzung öffnen</a>'
+        f'<a href="{W}/gr020?GRLFDNR=5" id="gr_5">Verwaltungsausschuss</a>'
+        ']]></component></ajax-response>')
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    client = _MitAblage({
+        f"{W}/gr010": '<script>Wicket.Ajax.ajax({"u":"./gr010?2-1.0-"});</script>',
+        f"{W}/gr010?2-1.0-": ajax,
+    }, store)
+    gremien = list(Allris4HtmlAdapter().iter_organizations(
+        client, {"id": W}))
+    assert [g["name"] for g in gremien] == ["Rat der Stadt", "Verwaltungsausschuss"]
+    # Der „Sitzung öffnen"-Verweis daneben ist keins.
+    assert all("GRLFDNR=" in g["id"] for g in gremien)
+    store.close()
+
+
+def test_ohne_cdata_wird_die_antwort_direkt_gelesen():
+    """Nicht jede Fassung packt ihre Stücke ein — beides muss gehen."""
+    from council.cities.adapters.allris4_html import _cdata
+    assert _cdata("<a>x</a>") == ["<a>x</a>"]
+    assert _cdata("<r><![CDATA[<a>x</a>]]><![CDATA[<b>y</b>]]></r>") == [
+        "<a>x</a>", "<b>y</b>"]
