@@ -137,9 +137,9 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
 
         # 3. Keine Personennamen.
         text = " ".join([nutzlast.discussed, nutzlast.decided, nutzlast.why])
-        if _NAME_RE.search(text):
-            namen.append({"item": f["item"],
-                          "stelle": _NAME_RE.search(text).group(0)})
+        treffer = _NAME_RE.search(text)
+        if treffer:
+            namen.append({"item": f["item"], "stelle": treffer.group(0)})
 
         saetze.append({"item": f["item"], "grounded": nutzlast.grounded,
                        "vote": nutzlast.vote, "why": nutzlast.why,
