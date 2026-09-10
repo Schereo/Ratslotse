@@ -36,6 +36,43 @@ waren nur falsch:
 | Magdeburg und Münster vergeben eine Beratungs-Kennung mehrfach | Stationen überschreiben sich: 575 bzw. 467 verloren | `eindeutige_beratungen` |
 | Die ALLRIS-Rückwärtsblätterung fragt Sitzungen nach `date` statt `start` | jede Sitzung gilt als undatiert und damit als alt, Abbruch nach zwei Seiten: Osnabrück 137 Sitzungen zu 2.864 Vorlagen | `_datum_von` |
 | „nicht empfohlen" enthält „empfohlen" | 275-mal stand das Gegenteil des Protokolls da | `_ABLEHNUNG_RE` |
+| Die Übernahme des Probelaufs erfand Punkt-Kennungen | 22.152 Punkte lagen doppelt, ein Fünftel des Bestands | `zwillinge_zusammenfuehren`, Migration 7 |
+
+Am 10.09.2026 kam ein fünfter dazu, und er stand nicht in den Daten der
+Städte, sondern in unseren eigenen: **22.152 Tagesordnungspunkte lagen
+doppelt** — ein Fünftel des Bestands, in fünf von sechs Städten (Oldenburg,
+das aus `council.sqlite` liest, in keiner einzigen Zeile).
+
+`scripts/cities_import_phase0.py` hat den Probelauf vom 07.09. in die
+Rohablage übernommen und dabei je Punkt eine Kennung **erfunden**:
+`<sitzung>#top-<nummer>`. Kein Ratsinformationssystem vergibt so etwas —
+gegen die Schnittstellen geprüft, liefern alle fünf Städte ausschließlich
+`…/agendaitems/<n>`. Die echte Ernte brachte dieselben Punkte danach unter
+ihrer eigenen Kennung, und weil `upsert_batch` auf der Kennung aufsetzt,
+blieben beide liegen: 4.507 in Braunschweig, 9.416 in Magdeburg, 2.788 in
+Münster, 2.194 in Osnabrück, 3.247 in Potsdam.
+
+**Das Tückische daran ist, wo es NICHT auffiel.** `stats()` zählt Zeilen, und
+Zeilen gab es ja; `papers_with_outcome` zählt `DISTINCT paper_id` und blieb
+deshalb richtig. Alle vier Bänder oben messen Anteile *je Vorlage* — sie
+konnten gar nicht anschlagen. Was falsch war, waren `agenda_items` und
+`agenda_items_with_outcome` im Admin-Panel (Magdeburg 35.226 statt 25.810),
+und die Reihenfolge, in der `agenda_items(meeting_id)` die Punkte einer
+Sitzung liefert: Bei den ALLRIS-Städten sortierte die erfundene Zeile vor die
+echte, und wer den ersten Treffer nahm — der Niederschriften-Schnitt tut das
+—, bekam die Zeile ohne Ergebnis.
+
+Zwei Stellen halten das jetzt: `zwillinge_zusammenfuehren` in
+[`adapters/_common.py`](adapters/_common.py) (damit keine neuen entstehen)
+und Migration 7 (die 22.152, die schon lagen). Und `pruefung.py` hat ein
+fünftes Band, `anteil_doppelter_punkte` — vorher 31 bis 53 % je Stadt,
+nachher 0,0 bis 0,1 %.
+
+**Was dabei herauskam und nicht in den Zahlen steht:** Auch
+`link_within_meeting` war eine Antwort auf diesen Rest. Sein Docstring
+behauptete, Magdeburgs Schnittstelle führe zwei Kennungsräume; sie tut es
+nicht. Gemessen bindet die Funktion heute **null** Beratungen. Sie steht
+weiter da — wer sie anfasst, prüfe zuerst, ob sie noch gebraucht wird.
 
 Daraus folgt die Regel, die hier am meisten wert ist: **Nach jeder Ernte die
 Plausibilität prüfen, nicht nur die Zahlen ansehen.**

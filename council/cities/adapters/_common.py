@@ -25,6 +25,14 @@ logger = logging.getLogger("council.cities.normalize")
 #: Bestand auf denselben Tag.
 ALLRIS_LEERDATUM = "2000-01-01"
 
+#: Kennungen der Form ``<sitzung>#top-<nummer>``. **Kein
+#: Ratsinformationssystem vergibt sie** — sie stammen aus
+#: ``scripts/cities_import_phase0.py``, das den Probelauf vom 07.09.2026 in
+#: die Rohablage übernommen und dabei je Punkt eine Kennung erfunden hat.
+#: Die echte Ernte brachte dieselben Punkte danach unter ihrer eigenen
+#: ``agendaItems``-Kennung, und beide blieben liegen.
+SYNTHETISCHE_KENNUNG = "#top-"
+
 
 def obj_id(o: Any) -> str | None:
     """Die ``id``-URL eines Objekts — egal ob eingebettet oder als Verweis."""
@@ -255,6 +263,71 @@ def eindeutige_beratungen(consultations: list[Consultation]) -> int:
     return geaendert
 
 
+def zwillinge_zusammenfuehren(batch: Batch) -> int:
+    """Denselben Punkt unter zwei Kennungen zu EINER Zeile machen.
+
+    Ein Tagesordnungspunkt lag im Bestand zweimal: einmal unter der Kennung,
+    die ``cities_import_phase0.py`` beim Übernehmen des Probelaufs erfunden
+    hat (``…/meetings/14460#top-1``), einmal unter der eigenen des Punktes
+    (``…/agendaitems/284259``). Gleiche Nummer, gleicher Titel, verschiedene
+    Zeile — gemessen am 10.09.2026 **22.152 Paare** in fünf Städten, also gut
+    ein Fünftel aller Punkte. Oldenburg, das aus ``council.sqlite`` liest,
+    hatte keinen einzigen.
+
+    **Gewinnt immer die eigene Kennung des Punktes.** Sie ist die, auf die
+    die Beratungsfolge zeigt, und sie ist die vollständigere: In 92 Paaren
+    trug nur sie ein Ergebnis, in keinem einzigen nur die erfundene. Wo beide
+    eines tragen und sie sich widersprechen (44-mal), gilt die Schnittstelle,
+    nicht der abgeschriebene Probelauf.
+
+    **Zwei Zeilen desselben Raums werden nie zusammengelegt.** Es gibt sie:
+    Potsdam führt „Informationen des Jugendamtes" zweimal in einer Sitzung,
+    und in Magdeburg stehen Vorlage und Änderungsantrag unter demselben Titel
+    mit **verschiedenem** Ergebnis (``rejected`` neben ``accepted``). Das sind
+    verschiedene Punkte, keine Dubletten — 16 Fälle, die eine Zusammenlegung
+    nach Titel allein zerstört hätte.
+
+    Gibt zurück, wie viele Zeilen verschwunden sind.
+    """
+    je_punkt: dict[tuple[str, str | None, str], list[AgendaItem]] = {}
+    for a in batch.agenda_items:
+        je_punkt.setdefault((a.meeting_id, a.number, a.name), []).append(a)
+
+    umleitung: dict[str, str] = {}
+    ersetzt: dict[str, AgendaItem] = {}
+    for gruppe in je_punkt.values():
+        erfunden = [a for a in gruppe if SYNTHETISCHE_KENNUNG in a.id]
+        echte = [a for a in gruppe if SYNTHETISCHE_KENNUNG not in a.id]
+        # Genau eine echte Zeile, sonst wäre das Ziel geraten.
+        if not erfunden or len(echte) != 1:
+            continue
+        gewinner = echte[0]
+        for a in erfunden:
+            umleitung[a.id] = gewinner.id
+            # Nur füllen, was der Gewinner nicht hat — sein Wert gilt.
+            if gewinner.outcome == "none" and a.outcome != "none":
+                gewinner = replace(gewinner, result_raw=a.result_raw, outcome=a.outcome)
+            if not gewinner.resolution_text and a.resolution_text:
+                gewinner = replace(gewinner, resolution_text=a.resolution_text)
+        if gewinner is not echte[0]:
+            ersetzt[echte[0].id] = gewinner
+
+    if not umleitung:
+        return 0
+
+    batch.agenda_items = [ersetzt.get(a.id, a) for a in batch.agenda_items
+                          if a.id not in umleitung]
+    for i, c in enumerate(batch.consultations):
+        ziel = umleitung.get(c.agenda_item_id or "")
+        if ziel:
+            batch.consultations[i] = replace(c, agenda_item_id=ziel)
+    for i, f in enumerate(batch.files):
+        ziel = umleitung.get(f.agenda_item_id or "")
+        if ziel:
+            batch.files[i] = replace(f, agenda_item_id=ziel)
+    return len(umleitung)
+
+
 def normalize_common(body_id: str, raw: CitiesStore, url_fix=None) -> Batch:
     """Rohablage → Batch. Der Teil, der bei allen Dialekten gleich ist."""
     meetings, items, m_files = meetings_from(raw, body_id, url_fix)
@@ -263,23 +336,41 @@ def normalize_common(body_id: str, raw: CitiesStore, url_fix=None) -> Batch:
     if getrennt:
         logger.info("%s: %s mehrfach vergebene Beratungs-Kennungen getrennt",
                     body_id, getrennt)
-    return Batch(
+    batch = Batch(
         organizations=organizations_from(raw, body_id),
         meetings=meetings, agenda_items=items,
         papers=papers, files=m_files + p_files, consultations=consultations)
+    # Vor allem anderen: doppelt abgelegte Punkte auf eine Zeile bringen.
+    # Danach hat jeder Punkt genau eine Kennung, und die Abgleiche unten
+    # arbeiten auf einer Tagesordnung statt auf anderthalb.
+    doppelt = zwillinge_zusammenfuehren(batch)
+    if doppelt:
+        logger.info("%s: %s doppelt abgelegte Tagesordnungspunkte zusammengeführt",
+                    body_id, doppelt)
+    return batch
 
 
 def link_within_meeting(batch: Batch) -> int:
     """Beratungen an ihren Tagesordnungspunkt binden, wenn die Kennung ins Leere zeigt.
 
-    **Magdeburgs Schnittstelle führt zwei Kennungsräume für denselben Punkt.**
-    Die Sitzung listet ihn als ``…/meetings/123890#top-4.1``, die
-    Beratungsfolge eines Papiers nennt ihn ``…/agendaitems/480969``. Beide
-    kommen vom selben Server, und keine Kennung des einen Raums taucht im
-    anderen auf (gemessen: 0 von 307 Sitzungen nennen je eine
-    ``agendaitems``-Kennung). Über die Kennung sind sie nicht zu verbinden —
-    und ohne Verbindung hatte kein Magdeburger Papier je ein Ergebnis, obwohl
-    5.982 Tagesordnungspunkte eines tragen.
+    **Achtung, der Grund von damals stimmt nicht mehr.** Bis 10.09.2026 stand
+    hier, Magdeburgs Schnittstelle führe zwei Kennungsräume für denselben
+    Punkt: die Sitzung nenne ihn ``…/meetings/123890#top-4.1``, die
+    Beratungsfolge ``…/agendaitems/480969``. Der erste Raum war nie ein Raum
+    der Schnittstelle, sondern eine Erfindung von
+    ``scripts/cities_import_phase0.py`` (s. ``SYNTHETISCHE_KENNUNG``). Gegen
+    den Server geprüft, nennen Sitzung **und** Beratungsfolge in Magdeburg
+    dieselben ``agendaitems``-Kennungen; dasselbe gilt für die vier anderen
+    Städte.
+
+    **Was heißt das für diese Funktion? Gemessen bindet sie null.** Von
+    Magdeburgs 4.547 Beratungen ohne auffindbaren Punkt liegt bei 4.518 die
+    **Sitzung gar nicht im Batch** (sie fällt aus dem Erntefenster), bei 29
+    ist sie da und der Punkt fehlt trotzdem. Ein Titelabgleich innerhalb einer
+    Sitzung, die es nicht gibt, hat nichts zu vergleichen. Sie steht hier
+    weiter, weil sie für den Fall richtig bleibt, für den sie geschrieben ist
+    — aber wer sie das nächste Mal anfasst, sollte zuerst prüfen, ob sie noch
+    gebraucht wird, statt ihre Zahlen von unten zu glauben.
 
     Was die Beratung aber **immer** mitliefert, ist die Sitzung. Innerhalb
     einer Sitzung ist der Titel eindeutig genug: Der Punkt heißt wie die
@@ -293,9 +384,11 @@ def link_within_meeting(batch: Batch) -> int:
     fällt auf die kürzeste Nummer — den Hauptpunkt. Tragen sie verschiedene,
     wäre jede Wahl geraten; dann bleibt die Beratung ohne Punkt.
 
-    Gemessen an Magdeburg (08.09.2026): 1.230 von 2.004 Beratungen gebunden,
-    588 wegen Uneinigkeit übersprungen, 186 ohne Kandidaten — **696 von 700
-    Papieren** bekommen so ihr Ergebnis.
+    Die alte Messung (Magdeburg, 08.09.2026: 1.230 von 2.004 Beratungen
+    gebunden, 588 wegen Uneinigkeit übersprungen, 186 ohne Kandidaten —
+    696 von 700 Papieren mit Ergebnis) steht hier nur noch als Geschichte:
+    Sie zählte auf dem Bestand mit den erfundenen Kennungen, wo jede Sitzung
+    ihre Punkte doppelt trug. Der Zustand ist weg, die Zahl gilt nicht mehr.
     """
     bekannte = {a.id for a in batch.agenda_items}
     je_sitzung: dict[str, list[AgendaItem]] = {}

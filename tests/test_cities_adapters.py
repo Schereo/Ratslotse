@@ -14,7 +14,8 @@ import pytest
 
 from council.cities.adapters import get_adapter
 from council.cities.adapters._common import (
-    link_by_title, link_within_meeting, normalize_title, parse_date, promote_main,
+    SYNTHETISCHE_KENNUNG, link_by_title, link_within_meeting, normalize_title,
+    parse_date, promote_main, zwillinge_zusammenfuehren,
 )
 from council.cities.adapters.allris4 import _datum_von
 from council.cities.adapters.session import _magdeburg_url, url_fix_for
@@ -364,3 +365,179 @@ def test_listendatum_kennt_vorlage_und_sitzung(objekt, erwartet):
     Vorlagen; ohne Sitzung gibt es keinen Tagesordnungspunkt und kein Ergebnis.
     """
     assert _datum_von(objekt) == erwartet
+
+
+# --------------------------------------------------------------------------
+# Derselbe Punkt unter zwei Kennungen (der phase0-Rest)
+# --------------------------------------------------------------------------
+
+def _batch_mit_zwillingen() -> Batch:
+    """Ein Punkt, zwei Zeilen — genau wie 22.152-mal im Bestand.
+
+    Links die Kennung, die ``scripts/cities_import_phase0.py`` erfunden hat,
+    rechts die echte des Punktes. Gleiche Nummer, gleicher Titel; das Ergebnis
+    trägt nur die echte, so lag es bei 92 Paaren.
+    """
+    return Batch(
+        papers=[Paper("p1", "muenster", "Smart City Münster", reference="V/0815/2026")],
+        meetings=[Meeting("https://x/meetings/1", "muenster", None, "Rat", "2026-03-01")],
+        agenda_items=[
+            AgendaItem("https://x/meetings/1#top-1", "https://x/meetings/1",
+                       "Eingänge und Mitteilungen", number="1", position=0),
+            AgendaItem("https://x/agendaitems/284259", "https://x/meetings/1",
+                       "Eingänge und Mitteilungen", number="1", position=1,
+                       result_raw="beschlossen", outcome=outcome("beschlossen")),
+        ],
+        consultations=[Consultation("c1", "p1", meeting_id="https://x/meetings/1",
+                                    agenda_item_id="https://x/meetings/1#top-1")],
+        files=[File("f1", "muenster", role=FileRole.RESOLUTION,
+                    agenda_item_id="https://x/meetings/1#top-1")],
+    )
+
+
+def test_zwillinge_werden_zu_einer_zeile():
+    """Die eigene Kennung des Punktes gewinnt, alles Fremde zeigt auf sie."""
+    batch = _batch_mit_zwillingen()
+    assert zwillinge_zusammenfuehren(batch) == 1
+    assert [a.id for a in batch.agenda_items] == ["https://x/agendaitems/284259"], \
+        "die erfundene Kennung ist weg, die echte bleibt"
+    assert batch.consultations[0].agenda_item_id == "https://x/agendaitems/284259"
+    assert batch.files[0].agenda_item_id == "https://x/agendaitems/284259"
+
+
+def test_ergebnis_der_echten_kennung_gilt():
+    """Wo beide ein Ergebnis tragen und sich widersprechen, gilt die Schnittstelle.
+
+    43-mal stand im übernommenen Probelauf „beschlossen", wo die Schnittstelle
+    „vertagt" sagt. Der Probelauf war abgeschrieben, die Schnittstelle ist die
+    Quelle.
+    """
+    batch = _batch_mit_zwillingen()
+    batch.agenda_items[0] = AgendaItem(
+        "https://x/meetings/1#top-1", "https://x/meetings/1",
+        "Eingänge und Mitteilungen", number="1", position=0,
+        result_raw="beschlossen", outcome=outcome("beschlossen"))
+    batch.agenda_items[1] = AgendaItem(
+        "https://x/agendaitems/284259", "https://x/meetings/1",
+        "Eingänge und Mitteilungen", number="1", position=1,
+        result_raw="vertagt", outcome=outcome("vertagt"))
+    assert zwillinge_zusammenfuehren(batch) == 1
+    assert batch.agenda_items[0].outcome == Outcome.POSTPONED
+    assert batch.agenda_items[0].result_raw == "vertagt"
+
+
+def test_leere_echte_zeile_erbt_das_ergebnis():
+    """Was der Gewinner nicht hat, darf der Verlierer beisteuern — nur das."""
+    batch = _batch_mit_zwillingen()
+    batch.agenda_items[0] = AgendaItem(
+        "https://x/meetings/1#top-1", "https://x/meetings/1",
+        "Eingänge und Mitteilungen", number="1", position=0,
+        result_raw="beschlossen", outcome=outcome("beschlossen"),
+        resolution_text="Der Rat beschließt.")
+    batch.agenda_items[1] = AgendaItem(
+        "https://x/agendaitems/284259", "https://x/meetings/1",
+        "Eingänge und Mitteilungen", number="1", position=1)
+    assert zwillinge_zusammenfuehren(batch) == 1
+    gewinner = batch.agenda_items[0]
+    assert gewinner.id == "https://x/agendaitems/284259"
+    assert gewinner.outcome == Outcome.ACCEPTED
+    assert gewinner.resolution_text == "Der Rat beschließt."
+
+
+def test_zwei_echte_punkte_bleiben_zwei():
+    """Der Fall, an dem eine Zusammenlegung nach Titel Daten zerstört hätte.
+
+    Potsdam führt „Informationen des Jugendamtes" wirklich zweimal in einer
+    Sitzung, und in Magdeburg stehen Vorlage und Änderungsantrag unter
+    demselben Titel mit VERSCHIEDENEM Ergebnis. 16 solcher Fälle liegen im
+    Bestand — zusammengelegt wäre einer der beiden Beschlüsse verschwunden.
+    """
+    batch = _batch_mit_zwillingen()
+    batch.agenda_items = [
+        AgendaItem("https://x/agendaitems/505237", "https://x/meetings/1",
+                   "Kostenfreier Eintritt für Familien", number="6",
+                   position=17, result_raw="abgelehnt", outcome=outcome("abgelehnt")),
+        AgendaItem("https://x/agendaitems/505241", "https://x/meetings/1",
+                   "Kostenfreier Eintritt für Familien", number="6",
+                   position=18, result_raw="beschlossen", outcome=outcome("beschlossen")),
+    ]
+    assert zwillinge_zusammenfuehren(batch) == 0
+    assert len(batch.agenda_items) == 2
+
+
+def test_zwei_erfundene_ohne_echte_bleiben_stehen():
+    """Ohne Ziel wird nicht zusammengelegt — lieber doppelt als verloren.
+
+    Eine Sitzung, die nur aus dem übernommenen Probelauf stammt und nie
+    nachgeerntet wurde, hat keinen Gewinner. Ihre Punkte bleiben, wie sie sind.
+    """
+    batch = _batch_mit_zwei_kennungsraeumen()
+    vorher = [a.id for a in batch.agenda_items]
+    assert zwillinge_zusammenfuehren(batch) == 0
+    assert [a.id for a in batch.agenda_items] == vorher
+
+
+@pytest.mark.parametrize("stadt,dialekt", sorted(STAEDTE.items()))
+def test_keine_erfundenen_kennungen_aus_dem_normalisieren(store, stadt, dialekt):
+    """Kein Dialekt darf eine ``#top-``-Kennung erzeugen.
+
+    Sie kam nie von einer Schnittstelle, sondern aus
+    ``scripts/cities_import_phase0.py``. Taucht sie wieder auf, liegt der
+    Bestand ein zweites Mal doppelt — und das sieht man keiner Kennzahl an.
+    """
+    lade(store, stadt)
+    batch = get_adapter(dialekt).normalize(stadt, store)
+    erfunden = [a.id for a in batch.agenda_items if SYNTHETISCHE_KENNUNG in a.id]
+    assert not erfunden, f"{stadt}: {len(erfunden)} erfundene Kennungen"
+
+
+def test_migration_fuehrt_den_bestand_zusammen(tmp_path):
+    """Die Reparatur des gewachsenen Bestands — Schema und Migration sind zwei Stellen.
+
+    Der Batch-Weg oben hält nur, dass keine NEUEN entstehen. Die 22.152 Zeilen,
+    die schon liegen, holt kein Normalisieren mehr ab: `upsert_batch` schreibt
+    und ersetzt, es löscht nichts.
+    """
+    pfad = tmp_path / "alt.sqlite"
+    s = CitiesStore(pfad)
+    s.upsert_batch(_batch_mit_zwillingen())
+    s._conn.execute("INSERT INTO bodies (id, name, state, ris_vendor) "
+                    "VALUES ('muenster', 'Münster', 'NW', 'session')")
+    s._conn.commit()
+    # Auf den Stand VOR der Reparatur zurückdrehen und neu öffnen.
+    s._conn.execute("UPDATE meta SET value='6' WHERE key='schema_version'")
+    s._conn.commit()
+    s.close()
+
+    s = CitiesStore(pfad)
+    punkte = s.agenda_items("https://x/meetings/1")
+    assert [p["id"] for p in punkte] == ["https://x/agendaitems/284259"]
+    assert s.duplicate_agenda_items() == {}
+    beratung = s._conn.execute("SELECT agenda_item_id FROM consultations").fetchone()
+    assert beratung["agenda_item_id"] == "https://x/agendaitems/284259", \
+        "die Beratung hängt jetzt am überlebenden Punkt"
+    s.close()
+
+
+def test_normalisieren_ruft_die_zusammenfuehrung(store):
+    """Der Weg, den ein Lauf geht — nicht nur die Funktion für sich.
+
+    Eine Sitzung, deren Rohobjekt beide Kennungen desselben Punktes führt.
+    Ohne den Aufruf in ``normalize_common`` kämen hier zwei Zeilen an, und
+    jede Zählung über ``agenda_items`` wäre um den Faktor zwei daneben.
+    """
+    store.put_raw_object("muenster", "meeting", "https://x/meetings/1", {
+        "id": "https://x/meetings/1",
+        "name": "Rat",
+        "start": "2026-03-01T16:00:00+02:00",
+        "agendaItem": [
+            {"id": "https://x/meetings/1#top-1", "number": "1",
+             "name": "Eingänge und Mitteilungen", "public": True},
+            {"id": "https://x/agendaitems/284259", "number": "1",
+             "name": "Eingänge und Mitteilungen", "public": True,
+             "result": "beschlossen"},
+        ],
+    })
+    batch = get_adapter("session").normalize("muenster", store)
+    assert [a.id for a in batch.agenda_items] == ["https://x/agendaitems/284259"]
+    assert batch.agenda_items[0].outcome == Outcome.ACCEPTED

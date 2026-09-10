@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -347,6 +347,94 @@ CREATE TABLE IF NOT EXISTS meta (
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
 MIGRATIONS: list[tuple[int, str]] = [
+    # 7 — Doppelt abgelegte Tagesordnungspunkte zusammenführen (10.09.2026).
+    #
+    # **Die einzige Migration ohne Gegenstück im SCHEMA, und das ist richtig
+    # so:** Sie ändert keine Tabelle, sie räumt Zeilen weg, die eine frische
+    # Datenbank gar nicht erst bekommt. Das Gegenstück zum SCHEMA ist hier
+    # ``zwillinge_zusammenfuehren`` in ``adapters/_common.py`` — es sorgt
+    # dafür, dass beim Normalisieren keine neuen entstehen.
+    #
+    # **Woher sie kamen.** ``scripts/cities_import_phase0.py`` hat den
+    # Probelauf vom 07.09.2026 in die Rohablage übernommen und dabei je Punkt
+    # eine Kennung erfunden: ``<sitzung>#top-<nummer>``. Kein
+    # Ratsinformationssystem vergibt so etwas — gegen die Schnittstellen
+    # geprüft, liefern Münster, Magdeburg, Braunschweig, Osnabrück und
+    # Potsdam ausschließlich ``…/agendaitems/<n>``. Die echte Ernte brachte
+    # dieselben Punkte danach unter ihrer eigenen Kennung, und weil
+    # ``upsert_batch`` auf der Kennung aufsetzt, blieben beide liegen:
+    # **22.152 Zeilen**, 21 % des Bestands, in fünf von sechs Städten.
+    #
+    # Das Zusammenlegen läuft über ``meeting_id`` + ``number`` + ``name``,
+    # exakt und ohne Vereinheitlichung. Gemessen: jede der 22.152 erfundenen
+    # Zeilen hat damit **genau einen** Partner, keine hat mehrere, keine
+    # bleibt übrig. Wo doch einmal keiner zu finden wäre, bleibt die Zeile
+    # stehen — lieber eine doppelte als eine verlorene.
+    #
+    # Reihenfolge: erst umhängen, was auf die erfundene Kennung zeigt, dann
+    # löschen. ``OR IGNORE`` bei ``annotations`` und ``protocol_sections``,
+    # weil dort die Kennung im Primärschlüssel steht und der Zwilling seinen
+    # Eintrag schon haben kann; was danach noch am toten Punkt hängt, fällt
+    # weg (beide Schichten sind aus Schicht 1 neu berechenbar).
+    (7, """
+    CREATE TEMP TABLE IF NOT EXISTS _zwillinge AS
+    SELECT t.id AS erfunden, a.id AS echt
+      FROM agenda_items t
+      JOIN agenda_items a
+        ON a.meeting_id = t.meeting_id
+       AND a.name = t.name
+       AND a.number IS t.number
+       AND a.id NOT LIKE '%#top-%'
+     WHERE t.id LIKE '%#top-%'
+     GROUP BY t.id
+    HAVING COUNT(*) = 1;
+
+    UPDATE consultations
+       SET agenda_item_id = (SELECT echt FROM _zwillinge WHERE erfunden = agenda_item_id)
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    UPDATE files
+       SET agenda_item_id = (SELECT echt FROM _zwillinge WHERE erfunden = agenda_item_id)
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    -- Danach zeigen zwei Beratungen desselben Papiers auf denselben Punkt:
+    -- der Titelabgleich hat in der phase0-Zeit einen gegen die erfundene
+    -- Kennung angelegt und nach der echten Ernte einen zweiten gegen die
+    -- richtige. Die erste trägt die erfundene Kennung in ihrer eigenen id und
+    -- ist damit erkennbar; sie fällt weg, sobald ein Partner bleibt. 1.686
+    -- Zeilen, und kein Papier verliert dadurch seine Beratung oder ihr
+    -- Ergebnis (beides gemessen). Was schon vorher doppelt lag (821 Gruppen,
+    -- vom Ratsinformationssystem so geliefert), bleibt unangetastet: Das ist
+    -- ein anderer Befund und gehört nicht in diese Reparatur.
+    DELETE FROM consultations
+     WHERE id LIKE '%#top-%'
+       AND EXISTS (SELECT 1 FROM consultations o
+                    WHERE o.paper_id = consultations.paper_id
+                      AND o.agenda_item_id = consultations.agenda_item_id
+                      AND o.id <> consultations.id
+                      AND o.id NOT LIKE '%#top-%');
+
+    UPDATE OR IGNORE annotations
+       SET object_id = (SELECT echt FROM _zwillinge WHERE erfunden = object_id)
+     WHERE object_kind = 'agenda_item'
+       AND object_id IN (SELECT erfunden FROM _zwillinge);
+
+    UPDATE OR IGNORE protocol_sections
+       SET agenda_item_id = (SELECT echt FROM _zwillinge WHERE erfunden = agenda_item_id)
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    DELETE FROM annotations
+     WHERE object_kind = 'agenda_item'
+       AND object_id IN (SELECT erfunden FROM _zwillinge);
+
+    DELETE FROM protocol_sections
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    DELETE FROM agenda_items
+     WHERE id IN (SELECT erfunden FROM _zwillinge);
+
+    DROP TABLE _zwillinge;
+    """),
     # 6 — Die Niederschrift je Tagesordnungspunkt (10.09.2026). Der Absatz am
     # SCHEMA sagt, warum eine Tabelle mit Fassung und keine Spalte.
     (6, """
