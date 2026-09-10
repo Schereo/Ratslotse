@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Ratslotse trägt von dir gewählte Ratssitzungen in deinen Kalender ein.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ratslotse zeigt dir damit den Ortsbereich, in dem du gerade bist — einmalig beim Tippen auf den Standort-Knopf der Stadtkarte.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Inter-Variable.ttf</string>

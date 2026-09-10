@@ -445,17 +445,26 @@ struct CouncilBrowserView: View {
     /// Der Abschnitt „Stadtkarte": seit Schritt 6 des Plans dieselbe Karte
     /// wie „Mein Viertel" (`CityMapView`), hier mit der Ebene „Themen-Orte"
     /// an — das war die Karte, die man an dieser Stelle kannte.
+    ///
+    /// Auf dem Telefon ist die Karte die ganze Bühne — randlos, bis unter die
+    /// Tab-Leiste, die Tafel als Schublade darüber (das regelt `CityMapView`
+    /// selbst). Bis 09/2026 stand sie hier in einer Karte mit 18 pt Rand und
+    /// 72 pt Luft nach unten: ein Fenster, in dem man wenig sah. Auf iPad
+    /// bleibt der Rahmen, dort hat sie neben der Sidebar Platz.
+    @ViewBuilder
     private var councilMapStage: some View {
-        CityMapView(model: model, placeID: nil, topicsFirst: true)
-            .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous)
-                    .stroke(RatsColor.border, lineWidth: 1)
-            }
-            .padding(.horizontal, 18)
-            // Auch unter der schwebenden Phone-Navigation bleibt die Tafel
-            // erreichbar; auf iPad übernimmt die Sidebar.
-            .padding(.bottom, horizontalSizeClass == .regular ? 10 : 72)
+        if horizontalSizeClass == .regular {
+            CityMapView(model: model, placeID: nil, topicsFirst: true)
+                .clipShape(RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: RatsRadius.card, style: .continuous)
+                        .stroke(RatsColor.border, lineWidth: 1)
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 10)
+        } else {
+            CityMapView(model: model, placeID: nil, topicsFirst: true)
+        }
     }
 
     private func isFirstSessionInYear(at index: Int) -> Bool {

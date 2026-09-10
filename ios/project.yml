@@ -67,6 +67,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSCalendarsFullAccessUsageDescription: Ratslotse trägt von dir gewählte Ratssitzungen in deinen Kalender ein.
+        NSLocationWhenInUseUsageDescription: Ratslotse zeigt dir damit den Ortsbereich, in dem du gerade bist — einmalig beim Tippen auf den Standort-Knopf der Stadtkarte.
         UIAppFonts:
           - Inter-Variable.ttf
           - BricolageGrotesque-Variable.ttf
