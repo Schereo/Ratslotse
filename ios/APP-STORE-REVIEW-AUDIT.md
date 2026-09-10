@@ -91,18 +91,19 @@ Repository geschlossen. Die App war noch nie im Store.
 | Prod-Backend | `main`, `APP_MIN_BUILD=19` |
 | Apple-Revoke-Secrets (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`), APNs | auf Prod gesetzt |
 | Support-, Datenschutz- und Barrierefreiheits-URL | eingetragen |
-| Review-Konto `appreview@ratslotse.de` | auf Prod vorhanden, aktiv, bestätigt, 3 Themen, kein gespeichertes Gespräch, keine Rollen |
-| Altersfreigabe | „User Generated Content = nein" — **widerspricht diesem Audit** |
-| Review-Notizen | behaupten „keine öffentlichen nutzergenerierten Inhalte", „Offline-Zugriff auf zuletzt gelesene Beschlüsse" und „Termin-Export ins Share-Sheet" — alle drei stimmen nicht (s. u.) |
+| Review-Konto `appreview@ratslotse.de` | auf Prod vorhanden, aktiv, bestätigt, 3 Themen, 3 Gespräche, Abo Verkehrsausschuss, keine Rollen |
+| Altersfreigabe | seit 10.09. „User Generated Content = ja" (vorher nein) |
+| Review-Notizen | am 10.09. neu geschrieben; vorher drei falsche Behauptungen (s. u.) |
 | Screenshots | je 6 für iPhone 6,7" und iPad 12,9", Stand v1.10.0 |
 | „Neu in dieser Version" | leer |
 | Privacy Labels, EU-DSA-Trader-Status | per API nicht prüfbar, in der Weboberfläche nachsehen |
 
 **Was die Review-Notizen falsch beschreiben.** Geteilte KI-Antworten sind
 öffentlich abrufbar und damit nutzergenerierter Inhalt (Abschnitt 1.2 oben).
-Ohne Netz kennt die App nur das zuletzt angemeldete Konto
-(`AppModel.cacheUserForOffline`), gelesene Beschlüsse werden nicht
-vorgehalten. Termine gehen über EventKit direkt in den Kalender
+Ohne Netz startet die App mit dem gepufferten Konto
+(`AppModel.cacheUserForOffline`); die Liste „Zuletzt angesehen“ auf der
+Startseite liegt lokal (`RecentDecisionStore`, UserDefaults), Details
+brauchen Netz und zeigen sonst „Noch einmal versuchen“. Termine gehen über EventKit direkt in den Kalender
 (`CouncilViews.swift`, `EKEventEditViewController`), nicht über das
 Share-Sheet. Eine Notiz, die mehr verspricht als die App kann, ist ein
 Ablehnungsgrund nach 2.3.
@@ -126,9 +127,9 @@ Store-Build daraus bleiben eine eigene Entscheidung.
 
 ### In App Store Connect (nur der Account Holder)
 
-- [ ] Altersfreigabe-Fragebogen: **User Generated Content = ja** speichern,
-      resultierende Freigabe akzeptieren.
-- [ ] Review-Notizen berichtigen: geteilte Antworten als UGC mit Meldeweg
+- [x] Altersfreigabe-Fragebogen: **User Generated Content = ja** (10.09. per
+      API gesetzt, Freigabe bleibt 4+).
+- [x] Review-Notizen berichtigt (10.09. per API): geteilte Antworten als UGC mit Meldeweg
       nennen; „Offline-Zugriff" auf „Start ohne Netz mit gepuffertem Konto"
       zurücknehmen; „Termin-Export ins Share-Sheet" durch „Termin in den
       Kalender (EventKit, Abfrage erst beim Antippen)" ersetzen. Push, Sign
@@ -139,25 +140,39 @@ Store-Build daraus bleiben eine eigene Entscheidung.
       Fragen/Shares, Push-Token; alles verknüpft, App-Funktionalität, kein
       Tracking.
 - [ ] EU-DSA-Trader-Status abschließen.
-- [ ] Rechte an Lotti, Logo, Schriften und 3D-Assets schriftlich
-      dokumentieren; `contentRightsDeclaration` steht auf „nutzt
+- [x] Rechte an Lotti, Logo, Schriften und 3D-Assets dokumentiert in
+      `RECHTE-AN-ASSETS.md`; `contentRightsDeclaration` steht auf „nutzt
       Drittinhalte" (amtliche Dokumente) und passt.
-- [ ] Review-Konto mit einem gespeicherten Gespräch und einem Ausschuss-Abo
-      füllen; keine vertraulichen oder erfundenen Daten.
+- [x] Review-Konto gefüllt (10.09.): drei Themen, Abo Verkehrsausschuss,
+      drei gespeicherte Gespräche.
 
 ### Nachweise auf echter Hardware (Release-Build aus `dev`, gegen dev-Backend)
 
-- [ ] iPhone und iPad, Hoch- und Querformat, Split View / Stage Manager.
-- [ ] VoiceOver, größte Dynamic-Type-Stufe, „Bewegung reduzieren",
-      Dunkelmodus.
-- [ ] Schwaches Netz und offline: Start ohne Netz, Fehlerzustände, kein
-      Absturz.
+Im Simulator am 10.09. mit dem dev-Stand (Build 22) gegen Prod und dem
+Review-Konto vorgeprüft; was der Simulator nicht kann, bleibt offen:
+
+- [x] iPhone und iPad, Hoch- und Querformat (Simulator: beide Geräte, beide
+      Ausrichtungen, Layout hält; iPad-Seitenleiste bleibt im Querformat).
+- [ ] Split View / Stage Manager auf dem iPad (nur Gerät).
+- [x] Größte Dynamic-Type-Stufe (Simulator: Text bricht sauber um; die
+      Tab-Leiste kürzt Beschriftungen auf „Fra…“, „Sitz…“, „The…“ — kein
+      Ablehnungsgrund, aber ein Schönheitsfehler).
+- [x] Dunkelmodus (Simulator, In-App-Einstellung).
+- [ ] VoiceOver und „Bewegung reduzieren“ (nur Gerät).
+- [x] Offline: Start ohne Netz zeigt die Startseite mit „Zuletzt angesehen“
+      aus dem lokalen Vorrat; ein Beschluss zeigt „Das hat nicht geklappt“
+      mit „Noch einmal versuchen“; kein Absturz.
+- [ ] Schwaches Netz (nur Gerät oder Network Link Conditioner).
+- Befund dabei: Die Heute-Karte „Zuletzt angesehen“ nannte die Abstimmung
+  auf Englisch („unanimous“) — Fix in PR #1259 gegen `dev`.
 - [ ] Sign in with Apple, Push-Empfang, Kalender-Abfrage, Kontolöschung mit
       Apple-Konto (Token-Widerruf) durchspielen.
 - [ ] Aus dem Build heraus: Support, Datenschutz, Impressum, AASA und ein
       amtlicher Deep Link öffnen sich.
-- [ ] Signiertes Archiv: `aps-environment=production`, Associated Domains,
-      Sign in with Apple, Privacy Manifest enthalten.
+- [x] Signiertes Archiv (Build 21, 10.09. am IPA geprüft):
+      `aps-environment=production`, Associated Domains, Sign in with Apple,
+      Privacy Manifest enthalten. Die Quelldatei sagt `development`, der
+      Export setzt es um.
 
 ### Betrieb
 
