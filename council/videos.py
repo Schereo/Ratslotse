@@ -47,6 +47,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from kern import llm
+from kern.proxy import proxy_for
 
 log = logging.getLogger(__name__)
 
@@ -138,6 +139,11 @@ def _run_yt_dlp(args: list[str], timeout: int = 300) -> str | None:
         log.warning("yt-dlp nicht installiert — Video-Ergebnisse übersprungen "
                     "(.venv/bin/pip install yt-dlp)")
         return None
+    # YouTube sperrt Rechenzentrums-Adressen; mit RATSLOTSE_PROXY_* geht der
+    # Abruf über das NAS (kern/proxy.py). Ohne die Variablen: wie bisher.
+    proxy = proxy_for("https://www.youtube.com/")
+    if proxy:
+        args = ["--proxy", proxy, *args]
     try:
         p = subprocess.run([exe, *args], capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:

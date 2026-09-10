@@ -745,3 +745,38 @@ Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für
 echte LLM-Aufrufe, `WEB_JWT_SECRET` plus `COOKIE_SECURE=false` fürs Backend
 über HTTP. Alles andere hat brauchbare Defaults.
 :::
+
+## Heim-Proxy gegen Adress-Sperren
+
+Manche Ziele sperren den ganzen Hetzner-Adressbereich: das Geoportal der
+Stadt (`gisportal4ol.oldenburg.de`) schließt Verbindungen ohne Antwort,
+YouTube blockt Rechenzentrums-Bereiche generell. Beides trifft jeden
+Hetzner-Kunden, nicht diesen Server, und beides löst sich, sobald die
+Anfrage von einem Privatanschluss kommt.
+
+Dafür hängen Prod und Dev seit 09/2026 in einem Tailscale-Netz zusammen mit
+einem Synology-NAS, auf dem ein SOCKS5-Proxy als Container läuft — erreichbar
+nur über das Tailnet, nicht aus dem Internet. Zwei Variablen in der `.env`
+schalten den Umweg ein:
+
+```
+RATSLOTSE_PROXY_URL=socks5h://nutzer:passwort@100.118.52.13:1080
+RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com
+```
+
+Nur die genannten Hosts und ihre Subdomains nehmen den Umweg (`kern/proxy.py`);
+alles andere bleibt direkt. Ohne die Variablen ändert sich nichts. Es gibt
+**keinen** stillen Rückfall auf „direkt": Antwortet der Proxy nicht, scheitert
+der Abruf laut, wie vorher an der Sperre — und der Wochenlauf meldet den
+Schritt.
+
+Wer den Umweg braucht: `scripts/fetch_bplan_outlines.py` (Bebauungsplan-
+Umringe, wöchentlich) und der Video-Abruf per yt-dlp in `council/videos.py`.
+Ein neues Ziel kommt in `RATSLOTSE_PROXY_HOSTS` und ruft an der Aufrufstelle
+`proxies_for(url)` (requests) bzw. `proxy_for(url)` (Kommandozeile) auf.
+
+Fallen: Der Geräteschlüssel eines Tailscale-Geräts läuft nach 180 Tagen ab —
+in der Tailscale-Verwaltung für jedes Gerät „Disable key expiry" setzen. Das
+NAS war genau daran vier Wochen lang aus dem Netz gefallen. Die Tailscale-
+Paketoberfläche auf dem NAS ist über QuickConnect gesperrt; Neuanmelden geht
+über den Aufgabenplaner als root mit `tailscale up --reset --authkey=…`.
