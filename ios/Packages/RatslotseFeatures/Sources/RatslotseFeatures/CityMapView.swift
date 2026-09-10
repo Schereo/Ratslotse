@@ -5,9 +5,9 @@ import SwiftUI
 
 // Die vereinte Stadtkarte — Richtung A aus STADTKARTE-PLAN.md, Schritt 6:
 // EINE MapKit-Karte mit zwei Stufen (Stadt ↔ Ortsbereich), Ebenen als Chips
-// über der Karte, die Tafel daneben (iPad) oder darunter (iPhone), das
-// Vorhaben als Sheet. Die Routen `.district(id)` und der Abschnitt
-// „Stadtkarte" im Rats-Tab zeigen beide hierher.
+// über der Karte, die Tafel daneben (iPad) oder als Schublade darüber
+// (iPhone), das Vorhaben als Sheet. Die Routen `.district(id)` und der
+// Abschnitt „Stadtkarte" im Rats-Tab zeigen beide hierher.
 //
 // Stadt-Stufe: die 31 Ortsbereiche als Flächen, getönt nach Zahl der
 // Vorhaben (Wärme), ein Zahlen-Pin je Fläche; ein Tipp zoomt hinein.
@@ -16,6 +16,12 @@ import SwiftUI
 // teilt. Die Ebene „Themen-Orte" (die Punkte der alten Stadtkarte) liegt auf
 // beiden Stufen; SwiftUIs `Map` bündelt nicht selbst, deshalb ein einfaches
 // Raster nach Zoom (`clusters`).
+//
+// Auf dem Telefon ist die Karte seit 09/2026 die ganze Bühne: Sie füllt
+// den Schirm bis unter die Tab-Leiste, die Tafel liegt als Schublade
+// (`MapDrawer`) darüber und rastet in drei Stellungen. Vorher stand sie in
+// einem 46-%-Fenster über einer scrollenden Tafel — „man kann auf der
+// Stadtkarte wenig sehen, unten ist ein Teil abgeschnitten" (Tim, 10.09.).
 //
 // Alles additiv: kein `APP_MIN_BUILD`, die ausgelieferte App läuft weiter.
 
@@ -85,6 +91,10 @@ struct CityMapView: View {
     @State private var visibleRegion: MKCoordinateRegion = CityMapView.cityRegion
     @State private var mapPoints: [CouncilMapPoint] = []
     @State private var mapPointsLoaded = false
+    @State private var drawer: MapDrawerPosition = .peek
+    @State private var drawerHeight: CGFloat = 96
+    @State private var stageWidth: CGFloat = 390
+    @State private var finder = LocationFinder()
 
     static let cityRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 53.1435, longitude: 8.2146),
@@ -105,32 +115,20 @@ struct CityMapView: View {
     var body: some View {
         // Breit genug für zwei Spalten (iPad quer, Sidebar abgezogen): Karte
         // und Tafel nebeneinander. Sonst — Telefon UND iPad hochkant, wo die
-        // Sidebar schon ein Drittel nimmt — Karte oben, Tafel darunter, Detail
-        // als Sheet, wie im Web. Ein ständiges Sheet als Tafel läge sonst über
-        // jeder Seite, die ein Tipp öffnet. Gemessen: bei 834 pt Breite blieb
-        // der Karte neben einer 400-pt-Tafel ein Streifen von 350 pt.
+        // Sidebar schon ein Drittel nimmt — die Karte als ganze Bühne, die
+        // Tafel als Schublade darüber. Gemessen: bei 834 pt Breite blieb der
+        // Karte neben einer 400-pt-Tafel ein Streifen von 350 pt.
         GeometryReader { geo in
             if geo.size.width >= 900 {
                 HStack(spacing: 0) {
-                    stage
+                    stage(width: geo.size.width - 401, bottomInset: 0, compact: false)
                     Divider().overlay(RatsColor.border)
-                    ScrollView { panel.padding(.horizontal, 18).padding(.vertical, 20) }
+                    ScrollView { panel(compact: false).padding(.horizontal, 18).padding(.vertical, 20) }
                         .frame(width: 400)
                         .background(RatsColor.page)
                 }
             } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // 0,46 der Höhe waren auf dem Telefon gut 300 pt —
-                        // „sehr klein, schwer was zu erkennen“ (Tim, 09.09.).
-                        // Jetzt gut zwei Drittel; die Tafel folgt beim Scrollen.
-                        stage
-                            .frame(height: max(440, geo.size.height * 0.66))
-                        panel
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 18)
-                    }
-                }
+                phoneStage(geo)
             }
         }
         .background(RatsColor.page)
@@ -141,11 +139,53 @@ struct CityMapView: View {
         .task(id: placeID) { await enterStage() }
         .task(id: layers.contains(.topicPlaces)) { await loadPoints() }
         .onChange(of: board?.selected?.id) { _, _ in focusSelected() }
+        .onChange(of: finder.arrivals) { _, _ in arrivedAtLocation() }
+        .onChange(of: finder.denied) { _, denied in
+            guard denied else { return }
+            model.alertMessage = "Ratslotse darf deinen Standort nicht lesen. Du kannst das in den Einstellungen unter Datenschutz ändern."
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: placeID)
+    }
+
+    /// Telefon und iPad hochkant: Die Karte füllt den Bereich bis unter die
+    /// Tab-Leiste, die Schublade sitzt darüber und rastet in drei Stellungen.
+    /// Die Karte legt ihre Kamera in den Teil, den die Schublade frei lässt —
+    /// ein Umriss oder ein Vorhaben landet also nie hinter dem Blatt.
+    private func phoneStage(_ geo: GeometryProxy) -> some View {
+        // Der Rand unten trägt Home-Indikator UND die schwebende Tab-Leiste:
+        // Seit #1248 reicht `MainTabsView` deren gemessene Höhe als
+        // `safeAreaPadding` an jede Seite weiter (die TabView selbst erbte
+        // den `safeAreaInset` nicht). Eine gestapelte Seite (Deep-Link,
+        // „Mein Viertel" aus dem Menü) hat keine Leiste und damit nur den
+        // Indikator — derselbe Wert, ohne Sonderfall.
+        //
+        // Nur die KARTE greift unter den Rand (sie füllt den Schirm bis unter
+        // die Leiste); der ZStack selbst bleibt im Container, damit die
+        // Schublade sicher an dessen Unterkante — der Oberkante der Leiste —
+        // sitzt. Ein `ignoresSafeArea` am ZStack streckte ihn gemessen um
+        // mehr als den Rand, und das Blatt endete 9 pt über dem Schirmrand.
+        let bottomInset = geo.safeAreaInsets.bottom
+        // Die Kamera weicht der Schublade nur bis zur halben Höhe aus: Ganz
+        // ausgefahren bliebe ihr sonst ein schmaler Streifen, und MapKit
+        // zoomte die Stadt darin auf ganz Deutschland heraus (gemessen
+        // 10.09.2026). Die Luft unter dem Blatt zählt mit.
+        let cameraInset = min(drawerHeight + MapDrawerMetrics.gap, geo.size.height * 0.5)
+        return ZStack(alignment: .bottom) {
+            stage(width: geo.size.width, bottomInset: cameraInset + bottomInset, compact: true)
+                .ignoresSafeArea(.container, edges: .bottom)
+            MapDrawer(
+                position: $drawer,
+                available: geo.size.height,
+                onHeight: { drawerHeight = $0 },
+                header: { drawerHeader },
+                content: { panel(compact: true) }
+            )
+        }
     }
 
     // MARK: Karte
 
-    private var stage: some View {
+    private func stage(width: CGFloat, bottomInset: CGFloat, compact: Bool) -> some View {
         ZStack(alignment: .topLeading) {
             MapReader { proxy in
                 Map(position: $camera, interactionModes: [.pan, .zoom]) {
@@ -153,6 +193,10 @@ struct CityMapView: View {
                 }
                 .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
                 .mapControlVisibility(.hidden)
+                // Der freie Teil über der Schublade (und der Tab-Leiste) ist
+                // die Bühne der Kamera: Regionen werden dort hinein gepasst,
+                // die Apple-Zeile rückt mit hoch.
+                .safeAreaPadding(.bottom, bottomInset)
                 .onMapCameraChange(frequency: .onEnd) { context in visibleRegion = context.region }
                 .onTapGesture { point in
                     // Ein Tipp auf eine Fläche der Stadt-Stufe zoomt ins Viertel —
@@ -164,12 +208,20 @@ struct CityMapView: View {
                     select(entry.placeID)
                 }
             }
-            layerChips
-                .padding(10)
-            breadcrumb
-                .padding(10)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            HStack(alignment: .top, spacing: 8) {
+                layerChips
+                Spacer(minLength: 0)
+                mapButtons
+            }
+            .padding(10)
+            if !compact {
+                breadcrumb
+                    .padding(10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            }
         }
+        .onAppear { stageWidth = width }
+        .onChange(of: width) { _, value in stageWidth = value }
         .accessibilityHint(placeID == nil
             ? "Tippe einen Ortsbereich, um hineinzuzoomen."
             : "Tippe einen Pin für das Vorhaben. Nahe Themen-Orte werden gebündelt.")
@@ -184,6 +236,9 @@ struct CityMapView: View {
         }
         if layers.contains(.topicPlaces) {
             topicContent
+        }
+        if finder.isAuthorized {
+            UserAnnotation()
         }
     }
 
@@ -338,15 +393,20 @@ struct CityMapView: View {
         let members: [CouncilMapPoint]
     }
 
-    /// Bündel nach Raster: Je weiter herausgezoomt, desto größer die Zelle.
-    /// Ab einem Zoom nahe an den Straßen steht jeder Punkt für sich.
+    /// Bündel nach Raster: eine Zelle ist rund 64 pt breit, egal wie breit
+    /// der Schirm ist — vorher waren es neun Zellen je Breite, und auf einem
+    /// Telefon lagen die Kreise damit übereinander. Ab einem Zoom nahe an
+    /// den Straßen steht jeder Punkt für sich.
     private var clusters: [PointCluster] {
         let points = stagePoints
         let span = visibleRegion.span.longitudeDelta
         guard span > 0.02 else {
             return points.map { PointCluster(id: $0.id, coordinate: CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude), members: [$0]) }
         }
-        let cell = span / 9
+        // Ausgeschrieben, weil der CI-Compiler `64 / CGFloat` als mehrdeutig
+        // abwies, den Xcode 26.6 hier anstandslos baut.
+        let cellPoints: Double = 64
+        let cell = span * (cellPoints / Double(max(200, stageWidth)))
         var buckets: [String: [CouncilMapPoint]] = [:]
         for p in points {
             let key = "\(Int((p.latitude / cell).rounded(.down)))|\(Int((p.longitude / cell).rounded(.down)))"
@@ -415,7 +475,7 @@ struct CityMapView: View {
         }
     }
 
-    // MARK: Chips und Brotkrumen
+    // MARK: Chips, Knöpfe und Brotkrumen
 
     private var layerChips: some View {
         let onStage = MapLayer.allCases.filter { placeID != nil || !$0.districtOnly }
@@ -452,9 +512,55 @@ struct CityMapView: View {
                     .accessibilityLabel("Ebene \(layer.label), \(on ? "an" : "aus")")
                 }
             }
-            .padding(.trailing, 60)
+            .padding(.vertical, 8)
+            .padding(.trailing, 24)
         }
+        .padding(.vertical, -8)
+        // Am rechten Rand laufen die Chips unter die Knöpfe — ein Verlauf
+        // statt einer harten Kante sagt, dass dort mehr ist.
+        .mask(
+            HStack(spacing: 0) {
+                Color.black
+                LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                    .frame(width: 24)
+            }
+        )
         .sensoryFeedback(.selection, trigger: layers)
+    }
+
+    /// Die Knöpfe rechts oben: mein Standort (holt den Ortsbereich, in dem
+    /// man steht) und — im Viertel — zurück in die Stadt.
+    private var mapButtons: some View {
+        VStack(spacing: 8) {
+            Button { finder.locate() } label: {
+                ZStack {
+                    if finder.isSearching {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        RatsIcon(.navigation, size: 15)
+                            .foregroundStyle(finder.isAuthorized ? RatsColor.primary : RatsColor.text)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .councilMapGlassSurface(cornerRadius: 18)
+            }
+            .buttonStyle(RatsPlainButtonStyle())
+            .disabled(finder.isSearching)
+            .accessibilityLabel("Meinen Standort zeigen")
+            .accessibilityHint("Öffnet den Ortsbereich, in dem du gerade bist.")
+            if placeID != nil {
+                Button { select(nil) } label: {
+                    RatsIcon(.map, size: 15)
+                        .foregroundStyle(RatsColor.text)
+                        .frame(width: 36, height: 36)
+                        .councilMapGlassSurface(cornerRadius: 18)
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+                .accessibilityLabel("Ganze Stadt zeigen")
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
+        }
+        .animation(RatsMotion.flow, value: placeID)
     }
 
     /// Der Zähler eines Chips: was gerade auf dieser Stufe liegt.
@@ -495,15 +601,73 @@ struct CityMapView: View {
         .accessibilityLabel(districtName.map { "Stufe: \($0). Stadt zeigen." } ?? "Stufe: Stadt")
     }
 
+    // MARK: Schublade
+
+    /// Der Kopf der Schublade: immer sichtbar, auch wenn nur er aus der
+    /// Unterkante ragt — er sagt, wo man ist, wie viel es dort gibt, und
+    /// führt aus dem Viertel zurück.
+    private var drawerHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            if placeID != nil {
+                Button { select(nil) } label: {
+                    RatsIcon(.chevronLeft, size: 16)
+                        .foregroundStyle(RatsColor.text)
+                        .frame(width: 34, height: 34)
+                        .background(RatsColor.card)
+                        .overlay(Circle().stroke(RatsColor.border))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(RatsPlainButtonStyle())
+                .accessibilityLabel("Zurück zur Stadt")
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                MonoKicker(placeID == nil ? "Mein Viertel" : "Ortsbereich")
+                Text(districtName ?? "Oldenburg")
+                    .font(RatsFont.title(20))
+                    .foregroundStyle(RatsColor.text)
+                    .lineLimit(1)
+                    .contentTransition(.opacity)
+                Text(drawerSubtitle)
+                    .font(RatsFont.body(12.5))
+                    .foregroundStyle(RatsColor.secondary)
+                    .lineLimit(1)
+                    .contentTransition(.opacity)
+            }
+            Spacer(minLength: 8)
+            MapDrawerToggle(position: $drawer)
+        }
+        .animation(RatsMotion.flow, value: placeID)
+    }
+
+    private var drawerSubtitle: String {
+        if placeID == nil {
+            guard let overview else { return overviewError ?? "Ortsbereiche werden geladen …" }
+            if let total = overview.total, total > 0 {
+                let occupied = overview.districts.filter { $0.count > 0 }.count
+                return "\(total) Vorhaben in \(occupied) von \(overview.districts.count) Ortsbereichen"
+            }
+            return "\(overview.districts.count) Ortsbereiche"
+        }
+        guard let board, board.data != nil else { return board?.error ?? "Vorhaben werden geladen …" }
+        let n = board.projects.count
+        if n == 0 { return "Noch kein Vorhaben aus den Beschlüssen" }
+        if let stage = board.stage {
+            return "\(board.visible.count) von \(n) Vorhaben · \(stage.label)"
+        }
+        return "\(n) Vorhaben · letzte zwei Jahre"
+    }
+
     // MARK: Tafel
 
     @ViewBuilder
-    private var panel: some View {
+    private func panel(compact: Bool) -> some View {
         if let board, placeID != nil {
-            DistrictBoardPanel(model: model, board: board)
+            DistrictBoardPanel(model: model, board: board, compact: compact, open: { select($0) })
         } else {
             DistrictChooserPanel(
                 model: model, overview: overview, topics: topics, error: overviewError,
+                compact: compact,
                 retry: { Task { await loadOverview() } },
                 open: { select($0) }
             )
@@ -519,10 +683,17 @@ struct CityMapView: View {
         }
         if topicsFirst { set.insert(.topicPlaces) }
         layers = set
+        // Wer mit einem Viertel startet (Deep-Link, „Mein Viertel" im Menü),
+        // sieht die Liste gleich; die Stadt beginnt mit der Karte als Bühne.
+        if placeID != nil { drawer = .half }
     }
 
     private func select(_ id: String?) {
         withAnimation(RatsMotion.flow) { placeID = id }
+        // Ins Viertel: die Liste kommt hoch. Zurück in die Stadt aus dem
+        // Vollbild: halb, damit die Karte wieder zu sehen ist.
+        if id != nil, drawer == .peek { drawer = .half }
+        if id == nil, drawer == .full { drawer = .half }
     }
 
     private func loadOverview() async {
@@ -582,6 +753,27 @@ struct CityMapView: View {
         }
         guard let region = regionAround(points, minSpan: 0.012) else { return }
         withAnimation(.easeInOut(duration: 0.45)) { camera = .region(region) }
+    }
+
+    /// Der Standort ist da: den Ortsbereich öffnen, in dem er liegt — oder
+    /// sagen, dass man außerhalb der Stadt steht.
+    private func arrivedAtLocation() {
+        guard let coordinate = finder.coordinate else { return }
+        guard let shape = DistrictShapes.containing(coordinate),
+              let entry = overview?.districts.first(where: { $0.name == shape.name }) else {
+            model.alertMessage = "Dein Standort liegt außerhalb von Oldenburg — die Karte kennt nur die 31 Ortsbereiche der Stadt."
+            withAnimation(.easeInOut(duration: 0.45)) {
+                camera = .region(MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.07)))
+            }
+            return
+        }
+        if entry.placeID == placeID {
+            withAnimation(.easeInOut(duration: 0.45)) {
+                camera = .region(MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.012, longitudeDelta: 0.018)))
+            }
+        } else {
+            select(entry.placeID)
+        }
     }
 }
 
