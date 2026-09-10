@@ -175,6 +175,17 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
                    version: str = CLUSTER_VERSION) -> dict:
     """Ideen zu Clustern zusammenfassen und die Fassung ersetzen.
 
+    **Einfach-Verknüpfung, und das bleibt so — gemessen.** Sie kettet: Cluster 1
+    hat 72 Mitglieder von Sportstättensanierung über Baudenkmäler bis
+    Spielstraßen (Kohäsion 0,79 gegen 0,91 im Median). Der naheliegende Fix —
+    innerhalb jeder Kette streng nachclustern, mittlere oder vollständige
+    Verknüpfung, ohne neue Schwelle — zerlegt ihn (72 → 6). Aber genauso die
+    GUTEN großen Gruppen: Wärmeplanung 33 → 13, Verpackungssteuer 25 → 14,
+    Parkgebühren 50 → 8; 247 von 1.180 Gruppen zerfielen (10.09.2026). Das
+    Signal „in fünf Städten", der Kern des Features, bräche überall weg. Ein
+    verketteter Cluster (3 % der Dubletten) ist der Preis für 246 richtige.
+    Wer das anfasst, misst vorher die drei Genannten.
+
     Der Wert je Zeile ist die Nähe zum Cluster-Mittel — damit eine Oberfläche
     das typischste Mitglied zuerst zeigen kann und nicht das zufällig erste.
     """
@@ -204,7 +215,7 @@ def build_clusters(main: CitiesStore, model: str = EMBED_MODEL,
 
 
 def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
-    """Alle vier Schritte — für den Wochen-Cron und den Backfill.
+    """Alle fünf Schritte — für den Wochen-Cron und den Backfill.
 
     Der Prüflauf gehört dazu und nicht daneben: Eine frisch gerechnete Gruppe
     ist ungeprüft, und ungeprüft steht sie auf der Karte als „auch in vier
@@ -222,6 +233,12 @@ def run(main: CitiesStore, model: str = EMBED_MODEL) -> dict:
     # stünde dann für alles Neue keine Zeile „In den anderen Räten".
     for name, wert in stance_all(main, model).items():
         zahlen[f"stance_{name}"] = wert
+    # Fünfter Schritt (10.09.2026): der Mehrheits-Status je Stadt und Gruppe.
+    # Er MUSS nach dem Gruppieren laufen und nach jedem `fit`-Lauf noch
+    # einmal — `check_cities.py` ruft ihn deshalb auch dort.
+    from council.cities.annotators import get as get_annotator
+    zahlen["group_status"] = main.rebuild_group_status(
+        model, CLUSTER_VERSION, get_annotator("fit").version)
     return zahlen
 
 

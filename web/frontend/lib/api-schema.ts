@@ -8529,6 +8529,8 @@ export interface components {
             summary: string | null;
             /** Transfer */
             transfer: string;
+            /** Votes */
+            votes: string;
             /** Web */
             web: string | null;
         };
@@ -17140,4 +17142,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 13d77c9682cb1001a4a023918e24bad296c9562b65aa550215f1b167f44b1b77
+// vertrag-sha256: 18c264586a2f426249e0cafd96143e6d597bd56b253188b963b4e75826fdeaef

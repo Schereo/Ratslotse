@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -255,6 +255,34 @@ CREATE INDEX IF NOT EXISTS idx_idea_clusters ON idea_clusters(model, version, cl
 -- Millisekunden. Ein Endpunkt, der 14 Sekunden braucht, ist kaputt.
 CREATE INDEX IF NOT EXISTS idx_idea_clusters_paper ON idea_clusters(paper_id);
 
+-- Der Status einer IDEE je Stadt — die Mehrheit ihrer Vorlagen, nicht die
+-- jüngste. `fit` urteilt je Vorlage, und dieselbe Stadt bekommt für dieselbe
+-- Sache zweimal „fehlt" und einmal „vorhanden": Gemessen am 10.09.2026 waren
+-- 119 von 1.062 Gruppen uneinheitlich, und bei 14 davon widersprach die
+-- jüngste Vorlage der Mehrheit. Als lebende Abfrage kostete die Mehrheit
+-- 0,65 s je Seitenaufruf — deshalb liegt sie hier, geschrieben vom
+-- Cluster-Schritt, gelesen von den Ideen-Abfragen.
+CREATE TABLE IF NOT EXISTS idea_group_status (
+    model         TEXT NOT NULL,
+    version       TEXT NOT NULL,
+    body_id       TEXT NOT NULL,
+    cluster_id    INTEGER NOT NULL,
+    fit_version   TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    members       INTEGER NOT NULL,
+    agreeing      INTEGER NOT NULL,
+    -- Die Aggregate über die ANDEREN Städte derselben Gruppe. Sie standen als
+    -- Unterabfragen in der Zeilen-Abfrage und kosteten 0,7 s je Seite, weil
+    -- die Sortierung sie für jede Kandidatin rechnet, nicht nur für die
+    -- dreißig gezeigten (gemessen 10.09.2026). Hier einmal je Cron-Lauf.
+    peers         INTEGER NOT NULL DEFAULT 0,
+    peer_for      INTEGER NOT NULL DEFAULT 0,
+    peer_against  INTEGER NOT NULL DEFAULT 0,
+    peer_review   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (model, version, body_id, cluster_id, fit_version)
+);
+
+
 -- ---------------------------------------------------------------- Schicht 5
 -- Was MENSCHEN zu einem Urteil sagen. Die einzige Tabelle hier, die weder aus
 -- einer Quelle noch aus einem Modell entsteht.
@@ -294,6 +322,29 @@ CREATE TABLE IF NOT EXISTS meta (
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
 MIGRATIONS: list[tuple[int, str]] = [
+    # 5 — Der Mehrheits-Status je Stadt und Ideen-Gruppe (10.09.2026). Der
+    # Absatz am SCHEMA sagt, warum eine Tabelle und keine Abfrage.
+    (5, """
+    CREATE TABLE IF NOT EXISTS idea_group_status (
+        model         TEXT NOT NULL,
+        version       TEXT NOT NULL,
+        body_id       TEXT NOT NULL,
+        cluster_id    INTEGER NOT NULL,
+        fit_version   TEXT NOT NULL,
+        status        TEXT NOT NULL,
+        members       INTEGER NOT NULL,
+        agreeing      INTEGER NOT NULL,
+        -- Die Aggregate über die ANDEREN Städte derselben Gruppe. Sie standen als
+        -- Unterabfragen in der Zeilen-Abfrage und kosteten 0,7 s je Seite, weil
+        -- die Sortierung sie für jede Kandidatin rechnet, nicht nur für die
+        -- dreißig gezeigten (gemessen 10.09.2026). Hier einmal je Cron-Lauf.
+        peers         INTEGER NOT NULL DEFAULT 0,
+        peer_for      INTEGER NOT NULL DEFAULT 0,
+        peer_against  INTEGER NOT NULL DEFAULT 0,
+        peer_review   INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (model, version, body_id, cluster_id, fit_version)
+    );
+    """),
     # 4 — Der Weg von der Vorlage zu ihrer Ideen-Gruppe (09.09.2026). Die
     # Ideen-Liste zieht Dubletten je Stadt zusammen und fragt dafür je Zeile
     # „liegt eine jüngere Schwester im selben Cluster?". Ohne Index wählt

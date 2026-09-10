@@ -9280,6 +9280,10 @@
             "title": "Transfer",
             "type": "string"
           },
+          "votes": {
+            "title": "Votes",
+            "type": "string"
+          },
           "web": {
             "title": "Web",
             "type": [
@@ -9304,6 +9308,7 @@
           "competence",
           "originator",
           "status",
+          "votes",
           "reason",
           "confidence",
           "evidence",

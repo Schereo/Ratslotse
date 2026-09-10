@@ -1414,6 +1414,10 @@ class Idea(TypedDict):
     #: hier bewusst niemand mehr — das hängt an Mehrheiten und Haushaltslage,
     #: und das Modell traf es zu 46–58 %, den Status dagegen zu 62–69 %.
     status: str
+    #: „3/2": drei Vorlagen dieser Stadt zu dieser Idee, zwei tragen den
+    #: Status. Leer, wenn die Idee in keiner Gruppe liegt. Aus
+    #: `idea_group_status`; das Urteil je Vorlage bleibt in `reason`.
+    votes: str
     reason: str
     confidence: str
     evidence: list[IdeaEvidence]

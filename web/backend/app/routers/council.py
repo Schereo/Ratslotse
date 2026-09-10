@@ -1973,15 +1973,24 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "summary": klasse.get("summary"), "transfer": klasse.get("transfer") or "",
         "competence": klasse.get("competence"),
         "originator": display_originator(klasse.get("originator"), r.get("kind")),
-        "status": urteil.get("status") or "", "reason": urteil.get("reason") or "",
+        # Der Status der IDEE (Mehrheit der Vorlagen dieser Stadt, `idea_group_status`),
+        # nicht der dieser einen Vorlage — sonst zeigte die Karte „fehlt" für eine
+        # Sache, die zwei von drei Urteilen als vorhanden ansahen.
+        "status": r.get("group_status") or urteil.get("status") or "",
+        "votes": r.get("group_votes") or "",
+        "reason": urteil.get("reason") or "",
         "confidence": urteil.get("confidence") or "",
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
         "siblings": _geschwister(r.get("siblings_json")),
         "stance": r.get("stance") or "",
-        "peer_stances": _richtungen(r.get("peer_stances_json")),
-        "peers": (peers or {}).get(r["id"], 0),
+        "peer_stances": {k[5:]: int(r[k]) for k in ("peer_for", "peer_against", "peer_review")
+                         if r.get(k)} if "peer_for" in r.keys() else {},
+        # Aus der Zeile (`idea_group_status`), wenn die Abfrage sie liefert; die
+        # Suche kennt die Spalte nicht und bringt das Dict mit.
+        "peers": int(r["peers"]) if "peers" in r.keys() and r["peers"] is not None
+                 else (peers or {}).get(r["id"], 0),
         "feedback": (feedback or {}).get(r["id"], ""),
     }
 
