@@ -1741,6 +1741,18 @@ struct DecisionDetailView: View {
     }
 }
 
+/// Die drei Aktionen unter dem Kopf — und die Zeile, die sie auseinanderhält.
+///
+/// Folgen und Merken sehen nebeneinander aus wie zweimal dasselbe, sind aber
+/// zwei verschiedene Dinge: **Merken** ist eine stille Ablage zum
+/// Wiederfinden, **Folgen** ein Abo, das sich von selbst meldet, sobald der
+/// Vorgang eine Station weiterkommt (`scripts/check_vorlage_follows.py`).
+/// Genau so steht es auch im Schema: „`notify_result` ist bewusst getrennt vom
+/// Merken: Eine Ablage ist noch kein Benachrichtigungs-Abo."
+///
+/// Der Unterschied stand nirgends — der eine Knopf trug ein Wort, der andere
+/// ein Symbol, und beide dasselbe Grau (Tims Befund 10.09.2026). Deshalb die
+/// Zeile darunter: zwei Halbsätze, die sagen, was jeder von beiden tut.
 private struct DecisionActionBar: View {
     let isBookmarked: Bool
     let follow: FollowStatus?
@@ -1749,17 +1761,44 @@ private struct DecisionActionBar: View {
     let toggleBookmark: () -> Void
     let toggleFollow: (FollowStatus) -> Void
 
+    private var explanation: String? {
+        guard let follow else {
+            return isBookmarked ? nil : "Merken legt den Beschluss auf deine Merkliste — still, zum Wiederfinden."
+        }
+        return follow.following
+            ? "Du bekommst Bescheid, sobald der Vorgang eine Station weiterkommt. Merken legt ihn nur still auf deine Liste."
+            : "Folgen meldet dir jede neue Station im Rat. Merken legt den Beschluss nur still auf deine Liste."
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            actions
+            if let explanation {
+                Text(explanation)
+                    .font(RatsFont.body(11))
+                    .foregroundStyle(RatsColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: 560, alignment: .leading)
+        .animation(.snappy(duration: 0.2), value: follow?.following)
+    }
+
+    private var actions: some View {
         HStack(spacing: 10) {
             if let follow {
                 Button { toggleFollow(follow) } label: {
+                    // Symbol und Beschriftung zusammen in der Mitte. Vorher
+                    // standen sie links und ein „+" ganz rechts am Rand — bei
+                    // 12 pt neben einer 16-pt-Glocke, mit einem Loch dazwischen,
+                    // das mit der Titellänge wuchs (Tims Befund 10.09.2026).
+                    // 17 pt ist die Größe der beiden Nachbarknöpfe.
                     HStack(spacing: 9) {
-                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 16)
+                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 17)
                         Text(follow.following ? "Wird verfolgt" : "Vorgang folgen")
-                            .font(RatsFont.body(14, weight: .semibold))
+                            .font(RatsFont.body(15, weight: .semibold))
                             .lineLimit(1)
-                        Spacer(minLength: 0)
-                        RatsIcon(follow.following ? .check : .plus, size: 12)
+                            .minimumScaleFactor(0.85)
                     }
                     .foregroundStyle(follow.following ? RatsColor.primary : RatsColor.primaryText)
                     .padding(.horizontal, 16)
@@ -1795,7 +1834,6 @@ private struct DecisionActionBar: View {
                 .accessibilityLabel("Beschluss teilen")
             }
         }
-        .frame(maxWidth: 560, alignment: .leading)
     }
 }
 
