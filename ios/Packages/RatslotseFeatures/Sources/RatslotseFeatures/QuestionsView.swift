@@ -2453,48 +2453,95 @@ private struct QuestionAnswerActions: View {
     let model: AppModel
     @StateObject private var speaker = AnswerSpeaker()
     @State private var rating: String?
+    @State private var askReason = false
     @State private var shareItem: SharedAnswer?
     @State private var isSharing = false
 
+    /// Ein Symbol allein ist 16 pt groß — als Tippfläche gut ein Drittel
+    /// dessen, was Apple verlangt (44 pt). Wer danebentippt, hält den Knopf
+    /// für kaputt; genau so „funktionierte" die Bewertung nicht (Tims Befund
+    /// 10.09.2026). Die Fläche wächst, das Symbol bleibt.
+    private func tapTarget<Inhalt: View>(@ViewBuilder _ inhalt: () -> Inhalt) -> some View {
+        inhalt()
+            .frame(width: 34, height: 34)
+            .contentShape(Rectangle())
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            Text("Aus Ratsunterlagen zusammengefasst")
-            Spacer()
+        HStack(spacing: 0) {
+            // Nach der Bewertung steht hier der Dank: Die Zeile war ohnehin
+            // Beiwerk, und ein eigener Streifen für zwei Wörter wäre zu viel.
+            Text(rating == nil ? "Aus Ratsunterlagen zusammengefasst" : "Danke für die Rückmeldung!")
+                .foregroundStyle(rating == nil ? RatsColor.muted : RatsColor.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 8)
             Button {
                 speaker.toggle(text: turn.answer)
             } label: {
-                RatsIcon(speaker.isSpeaking ? .square : .volume2, size: 16)
+                tapTarget {
+                    RatsIcon(speaker.isSpeaking ? .square : .volume2, size: 16)
+                        .foregroundStyle(speaker.isSpeaking ? RatsColor.primary : RatsColor.muted)
+                }
             }
             .accessibilityLabel(speaker.isSpeaking ? "Vorlesen stoppen" : "Antwort vorlesen")
 
+            // Beide Daumen bleiben anklickbar — wer sich vertippt, muss die
+            // Bewertung ändern können (Tims Befund, so hält es auch das Web).
+            // Der nicht gewählte tritt nur zurück, statt zu erstarren.
             Button { rate("up") } label: {
-                RatsIcon(rating == "up" ? .thumbsUp : .thumbsUp, size: 16)
+                tapTarget {
+                    RatsIcon(.thumbsUp, size: 16)
+                        .foregroundStyle(rating == "up" ? RatsColor.primary : RatsColor.muted)
+                        .opacity(rating == "down" ? 0.4 : 1)
+                }
             }
             .accessibilityLabel("Antwort war hilfreich")
+            .accessibilityAddTraits(rating == "up" ? [.isSelected] : [])
 
             Button { rate("down") } label: {
-                RatsIcon(rating == "down" ? .thumbsDown : .thumbsDown, size: 16)
+                tapTarget {
+                    RatsIcon(.thumbsDown, size: 16)
+                        .foregroundStyle(rating == "down" ? RatsColor.signal : RatsColor.muted)
+                        .opacity(rating == "up" ? 0.4 : 1)
+                }
             }
             .accessibilityLabel("Antwort war nicht hilfreich")
+            .accessibilityAddTraits(rating == "down" ? [.isSelected] : [])
 
             Button { Task { await createShare() } } label: {
-                if isSharing { ProgressView().controlSize(.mini) }
-                else { RatsIcon(.share, size: 11) }
+                tapTarget {
+                    if isSharing { ProgressView().controlSize(.mini) }
+                    else { RatsIcon(.share, size: 13) }
+                }
             }
             .disabled(isSharing)
             .accessibilityLabel("Antwort als Link teilen")
         }
         .font(RatsFont.body(11))
         .foregroundStyle(RatsColor.muted)
+        .animation(.snappy(duration: 0.2), value: rating)
+        .animation(.snappy(duration: 0.2), value: speaker.isSpeaking)
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])
+        }
+        .sheet(isPresented: $askReason) {
+            AnswerFeedbackReasonSheet { reason in send(rating: "down", reason: reason) }
         }
         .onDisappear { speaker.stop() }
     }
 
+    /// Der Daumen zählt sofort — auch wenn der Grund nie kommt. Beim Daumen
+    /// runter fragt danach ein Blatt nach dem Grund; die Grund-Zeile ersetzt
+    /// beim Auswerten den nackten Daumen (gleiche Frage, jüngerer Zeitstempel).
     private func rate(_ value: String) {
         guard rating != value else { return }
         rating = value
+        send(rating: value, reason: nil)
+        if value == "down" { askReason = true }
+    }
+
+    private func send(rating value: String, reason: String?) {
         struct Body: Codable, Sendable {
             let question: String
             let answer_excerpt: String?
@@ -2508,7 +2555,7 @@ private struct QuestionAnswerActions: View {
                     question: String(turn.question.prefix(300)),
                     answer_excerpt: String(turn.answer.prefix(500)),
                     rating: value,
-                    reason: nil
+                    reason: reason
                 )
             )
         }
@@ -2586,6 +2633,20 @@ private struct QuestionAnswerActions: View {
     }
 }
 
+/// „Antwort vorlesen" — `AVSpeechSynthesizer` mit der Audio-Sitzung, ohne die
+/// er stumm bleibt.
+///
+/// Ohne eigene Kategorie spricht iOS in `.soloAmbient`, und die **gehorcht dem
+/// Klingelschalter**: Wer sein Telefon auf lautlos stehen hat — die meisten —
+/// drückte auf den Lautsprecher, sah das Symbol umspringen und hörte nichts.
+/// Kein Fehler, keine Meldung, nichts zu suchen (Tims Befund 10.09.2026).
+/// `.playback` ist die Kategorie für Inhalt, den man ABSICHTLICH hört; sie
+/// ignoriert den Schalter. `.spokenAudio` sagt dem System, dass es gesprochenes
+/// Wort ist (Podcast-Verhalten statt Musik), `.duckOthers` dreht laufende Musik
+/// leiser, statt sie abzuwürgen.
+///
+/// Am Ende wird die Sitzung wieder abgegeben — sonst bleibt fremde Musik
+/// dauerhaft heruntergeregelt, auch wenn hier längst niemand mehr spricht.
 private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
     @Published private(set) var isSpeaking = false
     private let synthesizer = AVSpeechSynthesizer()
@@ -2603,6 +2664,8 @@ private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesiz
         let cleaned = text
             .replacingOccurrences(of: #"\[(\d+|A\d+)\]"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: #"[*_#`]"#, with: "", options: .regularExpression)
+        guard !cleaned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        beginAudioSession()
         let utterance = AVSpeechUtterance(string: cleaned)
         utterance.voice = AVSpeechSynthesisVoice(language: "de-DE")
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
@@ -2613,14 +2676,84 @@ private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesiz
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
+        endAudioSession()
+    }
+
+    private func beginAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        try? session.setActive(true)
+    }
+
+    private func endAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         isSpeaking = false
+        endAudioSession()
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         isSpeaking = false
+        endAudioSession()
+    }
+}
+
+/// Nach dem Daumen runter: „Was war falsch?" — optional.
+///
+/// Der Daumen selbst ist schon gezählt, wenn dieses Blatt aufgeht; wer es
+/// wegschiebt, hat trotzdem bewertet. Der Grund ist das, was die Bewertung
+/// auswertbar macht — ein nackter Daumen sagt nur DASS etwas nicht stimmte.
+private struct AnswerFeedbackReasonSheet: View {
+    let send: (String) -> Void
+    @State private var reason = ""
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Was war an der Antwort falsch oder unvollständig? Das hilft uns, die Auskunft zu verbessern.")
+                    .font(RatsFont.body(13))
+                    .foregroundStyle(RatsColor.secondary)
+
+                RatsLabeledField(label: "Grund", hint: "optional") {
+                    TextField("Zum Beispiel: falsches Datum, fehlender Beschluss …",
+                              text: $reason, axis: .vertical)
+                        .lineLimit(2...5)
+                        .focused($focused)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RatsColor.page)
+            .navigationTitle("Rückmeldung")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Später") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Senden") {
+                        let text = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !text.isEmpty { send(String(text.prefix(500))) }
+                        dismiss()
+                    }
+                    .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.height(270)])
+        .presentationDragIndicator(.visible)
+        // Erst wenn das Blatt steht — ein Fokus im selben Takt wie die
+        // Präsentation setzt die Tastatur nicht, das Feld bleibt kalt.
+        .task {
+            try? await Task.sleep(for: .milliseconds(350))
+            focused = true
+        }
     }
 }
 
