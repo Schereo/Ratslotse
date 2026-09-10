@@ -336,7 +336,7 @@ funktionierende Schnittstelle, und deshalb ist jede ein anderer Weg:
 |---|---:|---|---|---|
 | **Hannover** | 548 k | Eigenbau, Notes/Domino | keine — aber RSS + iCal | **PR 39**: eigener Adapter, die Feeds als Einstieg |
 | **Göttingen** | 131 k | ALLRIS classic (HTML) | keine; **sperrt uns per Cloudflare aus** | PR 36 — nur, wenn die Stadt die Sperre öffnet; sonst Anfrage (Anhang B) |
-| **Wolfsburg** | 127 k | ALLRIS 4 | **da, kaputt** (HTTP 500 hinter `system`) | eine Nachricht an die Stadt (Anhang B); danach ein Registry-Eintrag |
+| **Wolfsburg** | 127 k | ALLRIS 4 | **die ganze Instanz ist kaputt** — OParl 500, und der Kalender wirft auch im Browser `internalerrorpage` | PR 36c, sobald die Instanz wieder läuft; bis dahin die Nachricht an die Stadt (Anhang B) — sie ist jetzt einfacher: „Ihr Ratsinformationssystem ist defekt" |
 | **Salzgitter** | 105 k | ALLRIS net 3.9 (HTML) | keine; **antwortete von hier nicht** | PR 36 — nach einer Probe von einem anderen Netz; sonst Anfrage |
 | **Hildesheim** | 102 k | ALLRIS classic (HTML) | keine | **PR 36**, gemessen lesbar — die Stadt, an der der Adapter gebaut wird |
 
@@ -661,6 +661,65 @@ klassifizieren: < $5. Göttingen und Salzgitter danach je ein halber Tag und
 < $5, Delmenhorst und Celle ebenso — aber je einzeln zu entscheiden, in
 eigenen PRs.
 
+## PR 36c — ALLRIS 4 über die Oberfläche: Wicket, also ein Browser
+
+**Warum ein eigener PR und nicht Teil von 36.** Tims Entscheidung vom
+10.09.2026, spät: *„lass uns fürs Wolfsburg OParl umgehen und einfach auch
+HTML scrapen."* Gemeint ist die kaputte Schnittstelle, nicht eine Sperre —
+die Oberfläche ist öffentlich. Nur ist ALLRIS 4 **nicht** das ALLRIS classic
+aus PR 36. Gemessen an Wolfsburg und Laatzen (10.09.2026):
+
+- Die Seiten sind eine **Apache-Wicket-Anwendung**: Formulare per POST mit
+  Seitenversion (`si010?0-1.-form`), ein `sectoken`, 32 `Wicket.Ajax`-Aufrufe
+  je Seite. Das ausgelieferte HTML des Kalenders enthält **keine Tabelle**,
+  und eine Einzelseite wie `vo020?VOLFDNR=…` ist für jede Kennung dieselbe
+  13.701-Byte-Hülle — der Inhalt kommt erst per AJAX.
+- Mit einem **echten Browser** und einem Klick auf „Anzeigen" liefert
+  Laatzen den Kalender: 32 Tabellenzeilen, 8 Sitzungen für September 2026.
+  Das ist der Weg: Playwright (liegt im Frontend schon), keine nachgebaute
+  Wicket-Sitzung — die Seitenversionen und der `sectoken` sind genau das,
+  was ein Nachbau falsch macht.
+- **Wolfsburg selbst ist heute nicht lesbar, für niemanden.** Derselbe Klick
+  führt dort auf `/internalerrorpage` (HTTP 500); jedes OParl-Objekt
+  antwortet 500. Die Stadt verlinkt genau diese Instanz (`ratsinfob`, die
+  Bürger-Instanz; `ratsinfor` ist der Login der Ratsmitglieder). Der
+  Adapter wird deshalb **an Laatzen gebaut und gemessen**, und Wolfsburg wird
+  ein Registry-Eintrag, sobald die Instanz wieder läuft. Die Nachricht an die
+  Stadt (Anhang B) ist damit einfacher geworden: nicht „schalten Sie OParl
+  frei", sondern „Ihr Ratsinformationssystem ist defekt".
+
+**`robots.txt` sagt `Disallow: /` — und das ist die Voreinstellung des
+Produkts.** Osnabrück und Braunschweig (deren OParl wir lesen) tragen dieselbe
+Zeile, Oldenburgs SessionNet ebenfalls. Es ist also dieselbe Lage wie bei
+allem, was Ratslotse heute schon liest, und **nicht** die Göttingen-Sperre
+(HTTP 403, aktiv gegen Abrufe). Es steht hier, damit es niemand später als
+neuen Befund entdeckt; die Regel aus PR 36 bleibt: ehrlicher Absender,
+gedrosselt, nie gegen eine aktive Sperre.
+
+**Was sich ändert.** `council/cities/adapters/allris4_html.py`, Dialekt
+`"allris4_html"`, mit Playwright: Kalender je Monat („Anzeigen"),
+Sitzungsseite → Tagesordnung, Vorlagenseite → Beratungsfolge, PDFs über die
+Datei-Links. Alles **roh** abgelegt (die HTML nach dem Rendern), wie in
+PR 36. Derselbe `Batch` wie überall. Ein Browser je Stadt und Lauf, nicht je
+Seite — und `--max-files` gilt.
+
+**Wen es noch betrifft.** Lüneburg und Laatzen (OParl-Route mit HTTP 500,
+Regel 25 nicht, aber Niedersachsen), und als **Rückfallebene** Braunschweig
+und Osnabrück, falls deren OParl einmal so aussieht wie Wolfsburgs.
+
+**Test.** Kein Browser in der Testsuite: Die Fixtures sind die **gerenderten**
+Seiten von Laatzen (gekürzt, ohne Personennamen), der Parser wird daran
+geprüft; die Playwright-Schicht bekommt einen Wächter, der nur prüft, dass sie
+die Fixture-Seiten unverändert durchreicht.
+
+**Messung.** An Laatzen: Sitzungen je Monat gegen die Kalenderanzeige von
+Hand, Vorlagen mit Beratungsfolge, mit Ergebnis — Fertig bei `--pruefen`
+ohne Befund und ≥ 60 % Vorlagen mit Ergebnis. Für Wolfsburg: dieselbe
+Messung am Tag, an dem `si010` wieder antwortet.
+
+**Kosten.** Zwei bis drei Tage (Browser-Steuerung und Wicket-Eigenheiten),
+Laatzen < $3, Wolfsburg später ~$5.
+
 ## PR 37 — Bonn
 
 **Warum.** §3, Rang 3. Und weil Bonn Niederschriften an sechs von acht
@@ -781,6 +840,7 @@ aus den Stadtbezirksräten → classify ~$3, `fit` < $10.
 | **35** | **Langenhagen + Peine (NI, OParl)** | — (parallel) | **½ Tag + Laufzeit** | **< $3** |
 | **36** | **Adapter `allris_html`, Hildesheim (NI)** | 35 | **2–3 Tage** | **< $5** |
 | **36b** | **Göttingen, Salzgitter** (nach Probe von anderem Netz) | 36 | je ½ Tag | je < $5 |
+| **36c** | **ALLRIS 4 über die Oberfläche** (Wicket/Playwright), an Laatzen; Wolfsburg sobald heil | — | **2–3 Tage** | < $8 |
 | 37 | Bonn | — (parallel) | 1 Tag + Laufzeit | < $10 |
 | 38 | Darmstadt / `rubin.py` | 37 | 1–2 Tage | < $10 |
 | **39** | **Hannover, Eigenbau (Feeds + Domino-HTML)** | — | **3–4 Tage** | < $15 |
@@ -795,7 +855,7 @@ zu einer niedersächsischen Stadt in Oldenburgs Größe. 38 erst nach 37.
 (Hildesheim) und 36b, dann 39 (Hannover), dann 37/38. Die Anfrage an
 Wolfsburg (Anhang B) kostet keine Entwicklungszeit und gehört an den Anfang.
 
-Zusammen: fünfzehn bis achtzehn Arbeitstage, unter $50.
+Zusammen: achtzehn bis einundzwanzig Arbeitstage, unter $60.
 
 ## Anhang B — Was NICHT in diesem Plan liegt, und was Tim selbst tun müsste
 
@@ -827,7 +887,7 @@ sollte die Probe aus einem anderen Netz ebenfalls scheitern.
 
 | Stadt | Einw. | Was zu sagen wäre |
 |---|---:|---|
-| **Wolfsburg** | **125 k** | „Ihr OParl-System antwortet auf `/oparl/system` sauber, auf `/oparl/bodies` aber mit HTTP 500 — dadurch ist die Schnittstelle unbenutzbar." |
+| **Wolfsburg** | **127 k** | „Ihr Ratsinformationssystem `ratsinfob.stadt.wolfsburg.de` ist defekt: Der Sitzungskalender führt auf eine Fehlerseite (HTTP 500), und jede OParl-Adresse antwortet mit HTTP 500 — gemessen am 10.09.2026." Das ist ein Fehlerbericht, keine Bestellung; er hilft der Stadt selbst. |
 | Lüneburg | 75 k | dasselbe für `/public/oparl/system` |
 | Laatzen | 43 k | dasselbe |
 | Lingen | 58 k | „Ihr SD.NET RIM meldet: *Webservice „OParl" ist nicht aktiviert*. Könnten Sie ihn freischalten?" |
