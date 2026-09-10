@@ -232,7 +232,7 @@ export default function BookmarksPage() {
   };
 
   if (query.isPending) return <><PageHeader title="Merkliste" description="Deine gespeicherten Ratsinhalte an einem Ort." /><div className="mt-6"><CardListSkeleton rows={4} /></div></>;
-  if (query.isError) return <><PageHeader title="Merkliste" description="Deine gespeicherten Ratsinhalte an einem Ort." /><div className="mt-6"><ErrorState title="Die Merkliste kam nicht durch" onRetry={() => void query.refetch()} busy={query.isFetching} /></div></>;
+  if (query.isError) return <><PageHeader title="Merkliste" description="Deine gespeicherten Ratsinhalte an einem Ort." /><div className="mt-6"><ErrorState title="Merkliste konnte nicht geladen werden" onRetry={() => void query.refetch()} busy={query.isFetching} /></div></>;
 
   return (
     <div className="mx-auto max-w-5xl">

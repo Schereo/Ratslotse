@@ -1001,7 +1001,7 @@ export function ParteienListe({ parties, ohneBeitraege = [], onFrageStellen }: {
           Aus den Ratsdebatten
         </p>
         <p className="text-[10.5px] text-muted-foreground/70">
-          {parties === null ? "Positionen werden verdichtet …"
+          {parties === null ? "Positionen werden zusammengefasst …"
             : `${parties.length} ${nurFraktionen ? "Fraktionen" : "Fraktionen und Verbände"}`
               + (daten.length === 1 ? ` · Sitzung ${daten[0]}` : "")}
         </p>

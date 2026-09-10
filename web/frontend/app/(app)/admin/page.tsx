@@ -310,7 +310,7 @@ function KohortenSection() {
   if (isError || !data) {
     return (
       <div className="pt-2">
-        <ErrorState title="Der Trichter kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+        <ErrorState title="Der Trichter konnte nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
       </div>
     );
   }
@@ -532,7 +532,7 @@ function SeitenaufrufeSection() {
   if (isError || !data) {
     return (
       <div className="pt-2">
-        <ErrorState title="Die Seitenaufrufe kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+        <ErrorState title="Die Seitenaufrufe konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
       </div>
     );
   }
@@ -652,7 +652,7 @@ function EreignisSection() {
   if (isError || !data) {
     return (
       <div className="pt-2">
-        <ErrorState title="Die Ereignisse kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+        <ErrorState title="Die Ereignisse konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
       </div>
     );
   }
@@ -744,7 +744,7 @@ function SackgassenSection() {
   if (isError || !data) {
     return (
       <div className="pt-2">
-        <ErrorState title="Die Liste kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />
+        <ErrorState title="Die Liste konnte nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
       </div>
     );
   }
@@ -793,7 +793,7 @@ function StatsTab() {
   });
 
   if (isPending) return <Spinner />;
-  if (isError || !data) return <ErrorState title="Die Statistiken kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
+  if (isError || !data) return <ErrorState title="Die Statistiken konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />;
 
   const c = data.council;
   return (
@@ -899,7 +899,7 @@ function JobsSection() {
   if (isError || !data) {
     return (
       <div className="pt-2">
-        <ErrorState title="Die Cron-Übersicht kam nicht durch"
+        <ErrorState title="Die Cron-Übersicht konnte nicht geladen werden"
           onRetry={() => void refetch()} busy={isFetching} />
       </div>
     );
@@ -1082,7 +1082,7 @@ const FEATURE_LABELS: Record<string, string> = {
   qa_analysis: "Frag den Rat — Analyse",
   qa_answer: "Frag den Rat — Antwort",
   qa_query_expansion: "Frag den Rat — Suchbegriffe",
-  qa_simple: "Frag den Rat — einfach erklärt",
+  qa_simple: "Frag den Rat — verständlicher erklärt",
   quality_judge: "Eval: Qualitätsurteil",
   quiz_generation: "Quiz-Fragen erzeugen",
   quiz_verify: "Quiz-Fragen prüfen",
@@ -1188,7 +1188,7 @@ function FehlerTab() {
 
   if (isLoading) return <CardListSkeleton rows={3} />;
   if (isError || !data) {
-    return <ErrorState title="Die Fehlerliste kam nicht durch"
+    return <ErrorState title="Die Fehlerliste konnte nicht geladen werden"
       onRetry={() => void refetch()} busy={isFetching} />;
   }
 
@@ -1440,7 +1440,7 @@ function LlmUsageTab() {
   });
 
   if (isPending) return <Spinner />;
-  if (isError || !data) return <ErrorState title="Die LLM-Nutzung kam nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
+  if (isError || !data) return <ErrorState title="Die LLM-Nutzung konnte nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />;
   if (data.features.length === 0) {
     return <p className="text-sm text-muted-foreground">Noch keine LLM-Nutzung erfasst — die Erfassung beginnt mit dem nächsten Lauf (Klassifikation, Entitäten, Frag den Rat …).</p>;
   }
@@ -1569,7 +1569,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <ErrorState title="Die Nutzer*innen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
+  if (isError) return <ErrorState title="Die Nutzer*innen konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />;
 
   const needle = q.trim().toLowerCase();
   const filtered = needle ? users.filter((u) => u.email.toLowerCase().includes(needle)) : users;
@@ -1899,7 +1899,7 @@ function QuizModerationTab() {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <ErrorState title="Die Bewertungen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
+  if (isError) return <ErrorState title="Die Bewertungen konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />;
   const flagged = data?.flagged ?? [];
   const stats = statsQuery.data;
   const low = stats?.weak_categories ?? [];
@@ -2156,7 +2156,7 @@ function PlaceCandidatesTab() {
   });
 
   if (query.isPending || !catalog) return <Spinner />;
-  if (query.isError) return <ErrorState title="Die Ortskandidaten kamen nicht durch"
+  if (query.isError) return <ErrorState title="Die Ortskandidaten konnten nicht geladen werden"
     onRetry={() => void query.refetch()} busy={query.isFetching} />;
   const candidates = query.data?.candidates ?? [];
   const tabs: [PlaceReviewStatus, string][] = [
@@ -2210,7 +2210,7 @@ function EntityAliasTab() {
   });
 
   if (isPending) return <Spinner />;
-  if (isError) return <ErrorState title="Die Zusammenführungen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
+  if (isError) return <ErrorState title="Die Zusammenführungen konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />;
 
   const aliases = data?.aliases ?? [];
   const byLlm = aliases.filter((a) => a.source === "llm").length;
@@ -2498,7 +2498,7 @@ function NewsTab() {
 
   if (isLoading) return <CardListSkeleton rows={2} />;
   if (isError || !data) {
-    return <ErrorState title="Die Ausgaben kamen nicht durch"
+    return <ErrorState title="Die Ausgaben konnten nicht geladen werden"
       onRetry={() => void refetch()} busy={isFetching} />;
   }
 

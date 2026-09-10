@@ -40,19 +40,17 @@ const fmt = (n: number | null | undefined) => (n == null ? "?" : nf.format(Math.
 // (Bewerten, „Mehr dazu") stabil bleibt.
 const LOTTI_RIGHT = [
   "Volltreffer — du kennst dich aus!",
-  "Sauber, das saß!",
   "Genau richtig. Weiter so!",
-  "Stark — nichts zu lotsen, du kennst den Kurs.",
+  "Stark — das sitzt.",
 ];
 const LOTTI_CLOSE = [
   "Fast! Das war richtig knapp.",
   "Nah dran — gutes Gespür!",
 ];
 const LOTTI_WRONG = [
-  "Macht nichts — jetzt weißt du's!",
-  "Kein Ding, daraus lernt man.",
-  "Knifflige Frage! Beim nächsten Mal sitzt sie.",
-  "Halb so wild — die nächste holst du dir.",
+  "Macht nichts — jetzt kennst du die Antwort.",
+  "Knifflige Frage. Beim nächsten Mal weißt du es.",
+  "Knapp daneben — weiter geht’s.",
 ];
 const lottiSays = (pool: string[], seed: number) => pool[seed % pool.length];
 
@@ -175,10 +173,10 @@ export function QuizPlay({ questions, onExit, onComplete, title, answerPath = "/
     // aber sie ist IMMER auf deiner Seite (nie enttäuscht). Ab 90 % tanzt sie.
     const pose = quote >= 80 ? "celebrate" : quote >= 50 ? "wave" : "point";
     const cheer =
-      quote >= 90 ? "Sensationell — fast fehlerfrei! Da tanzt die Möwe!"
-      : quote >= 80 ? "Stark — du kennst dich richtig gut aus! Ich bin beeindruckt."
-      : quote >= 50 ? "Gut gemacht! Da geht noch mehr — ich zeig dir gern Neues."
-      : "Kopf hoch — jede Runde macht dich schlauer. Ich bleib an deiner Seite!";
+      quote >= 90 ? "Sensationell — fast fehlerfrei!"
+      : quote >= 80 ? "Stark — du kennst dich richtig gut aus!"
+      : quote >= 50 ? "Gut gemacht! In der nächsten Runde kannst du noch etwas entdecken."
+      : "Keine Sorge — mit jeder Runde kennst du Oldenburg ein bisschen besser.";
     return (
       <Card className="relative mx-auto max-w-xl overflow-hidden p-8 text-center">
         {correct > 0 && <ConfettiBurst />}
