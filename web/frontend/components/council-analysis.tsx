@@ -370,7 +370,7 @@ function FinanceView() {
 }
 
 type AnalysisSub = "parties" | "finanzen" | "trends" | "ziele" | "personen";
-// Trends zuerst und als Default: Rückblicke + Quartals-Trends sind der
+// Trends zuerst und als Default: Die Themenfeld-Rückblicke sind der
 // zugänglichste Einstieg in die Analyse — Parteien/Personen sind die Vertiefung.
 const SUB_TABS: [AnalysisSub, string, typeof Users][] = [
   ["trends", "Trends", TrendingUp],
