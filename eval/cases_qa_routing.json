@@ -195,5 +195,51 @@
     "expected_facets": [],
     "required_channels": ["decisions"],
     "forbidden_channels": ["budget", "debates", "documents"]
+  },
+  {
+    "id": "unclear-smalltalk",
+    "question": "Was hast du?",
+    "note": "Der Anlassfall vom 10.09.2026 — bekam eine belegte Auskunft über die Arbeit des Rates.",
+    "expect_unclear": true,
+    "allowed_types": ["topic"],
+    "expected_facets": []
+  },
+  {
+    "id": "unclear-about-lotti",
+    "question": "Was kannst du?",
+    "note": "Frage über den Assistenten, nicht über die Stadt — die Rückfrage ist hier die Antwort.",
+    "expect_unclear": true,
+    "allowed_types": ["topic"],
+    "expected_facets": []
+  },
+  {
+    "id": "unclear-greeting",
+    "question": "Hallo, wie geht es dir?",
+    "expect_unclear": true,
+    "allowed_types": ["topic"],
+    "expected_facets": []
+  },
+  {
+    "id": "unclear-dangling-reference",
+    "question": "Und was ist damit?",
+    "note": "Rückbezug ohne Gesprächsverlauf — es gibt nichts aufzulösen.",
+    "expect_unclear": true,
+    "allowed_types": ["topic"],
+    "expected_facets": []
+  },
+  {
+    "id": "unclear-gibberish",
+    "question": "asdfgh qwertz",
+    "expect_unclear": true,
+    "allowed_types": ["topic"],
+    "expected_facets": []
+  },
+  {
+    "id": "broad-but-answerable",
+    "question": "Was macht der Rat gerade?",
+    "note": "Die Gegenprobe: sehr breit, aber ein Gegenstand ist genannt — muss beantwortet werden.",
+    "allowed_types": ["topic", "history"],
+    "expected_facets": [],
+    "required_channels": ["decisions"]
   }
 ]

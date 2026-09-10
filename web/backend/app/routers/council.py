@@ -3548,7 +3548,8 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
                     anlagen_rows: list[dict] | None = None,
                     planungen: list[dict] | None = None,
                     grafik: dict | None = None,
-                    sitzungen: list[dict] | None = None) -> int | None:
+                    sitzungen: list[dict] | None = None,
+                    unclear: bool = False) -> int | None:
     """„Meine Gespräche" (6a): Turn ins laufende Gespräch hängen (oder eines
     eröffnen) — nur mit ausdrücklicher Einwilligung, nie als Blocker.
 
@@ -3596,7 +3597,10 @@ def _turn_speichern(ratslotse: Store, user: dict, body: AskBody, q_suche: str,
              # soll aussehen wie das Gespräch, aus dem es stammt.
              "chart": grafik,
              # Der Tagesordnungs-Baustein ebenso (Sitzungs-Fragetyp).
-             "sessions": _sitzungen_kompakt(sitzungen or [])}, ensure_ascii=False)
+             "sessions": _sitzungen_kompakt(sitzungen or []),
+             # Und die Marke der Rückfrage: Ohne sie sähe der Turn beim
+             # Wiederöffnen aus wie eine Antwort ohne Treffer.
+             **({"unclear": True} if unclear else {})}, ensure_ascii=False)
         if not ratslotse.qa_turn_speichern(conversation_id, user["id"],
                                      body.question, answer_text, quellen_json):
             if neu:
@@ -3692,6 +3696,49 @@ def ask(body: AskBody, request: Request, user: dict = Depends(require_active),
             sitzung_ids = [i for s in sitzungen for i in s.get("decision_ids") or []]
             if sitzungen and typ not in ("party", "money"):
                 typ = "session"
+            # Nennt die Frage überhaupt einen Gegenstand? Wenn nicht, wird hier
+            # ZURÜCKGEFRAGT statt geantwortet — die Begründung steht bei
+            # `qa.RUECKFRAGE_TEXT`. Die Stelle ist bewusst diese: nach den drei
+            # deterministischen Erkennungen und VOR der Suche.
+            #
+            # Nach ihnen, weil sie das Urteil des Modells überstimmen: Wer eine
+            # Ratsperson, einen Ort aus dem Katalog oder eine konkrete Sitzung
+            # nennt, hat einen Gegenstand genannt — Punkt. Ein Fehlurteil des
+            # Modells darf keine beantwortbare Frage abweisen, und das ist der
+            # teurere der beiden Fehler.
+            #
+            # Vor der Suche, weil danach nichts mehr zu holen ist: Retrieval,
+            # Reranker, Haushalts-Bausteine und Antwort-Modell kosten zusammen
+            # ein Vielfaches des einen Analyse-Calls, der das Urteil ohnehin
+            # schon mitgebracht hat.
+            #
+            # „Einfacher erklären" ist ausgenommen: Der Knopf schickt einen
+            # Wunsch, keine Frage („Erklär mir das einfacher") — der sieht
+            # gegenstandslos aus und meint die vorige Antwort.
+            if analyse.get("unklar") and not einfach and not (person or ort or sitzungen):
+                yield _sse({"type": "token", "text": qa.RUECKFRAGE_TEXT})
+                try:
+                    vorschlaege = qa.rueckfrage_vorschlaege(store, q)
+                except Exception:  # noqa: BLE001 — ein Ausweg darf nie die Rückfrage brechen
+                    vorschlaege = []
+                if vorschlaege:
+                    yield _sse({"type": "suggestions", "questions": vorschlaege})
+                conversation_id = _turn_speichern(ratslotse, user, body, q_suche,
+                                                  qa.RUECKFRAGE_TEXT, [], [],
+                                                  unclear=True)
+                # Eigener Zähler, NICHT `ai_answer_empty`: Dort geht es um
+                # Fragen, die nichts gefunden haben. Hier wurde gar nicht erst
+                # gesucht — die beiden zusammenzuzählen verdürbe beide Zahlen.
+                ratslotse.record_activity(user["id"], "ai_question_unclear",
+                                          client_kind(request))
+                # `unclear` sagt den Clients, dass hier NICHT gesucht wurde.
+                # Ohne die Marke sähe die Rückfrage aus wie eine Antwort ohne
+                # Treffer — und bekäme deren Angebote: „Als Thema anlegen" mit
+                # „Was hast du?" als Themennamen und darunter den Vermerk
+                # „Automatische Antwort aus den gefundenen Beschlüssen".
+                yield _sse({"type": "done", "cited": [], "unclear": True,
+                            "conversation_id": conversation_id})
+                return
             latest_place = bool(ort and typ == "place"
                                 and (qa.latest_intent(q_suche) or qa.latest_intent(q)))
             shadow_plan = qa.research_plan_with_mandatory(

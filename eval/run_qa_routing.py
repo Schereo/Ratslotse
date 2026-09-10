@@ -27,11 +27,18 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
     tp = fp = fn = 0
     details: list[dict] = []
     mistakes: list[dict] = []
-    rates = {"type": 0, "valid_plan": 0, "channels": 0, "facets": 0, "all": 0}
+    rates = {"type": 0, "valid_plan": 0, "channels": 0, "facets": 0, "clarity": 0,
+             "all": 0}
 
     for case in cases:
         analysed = analyse_fn(case["question"])
         typ = analysed.get("kind", "topic")
+        # Klarheits-Urteil: Fragt Lotti zurück, statt zu antworten? Für die
+        # Gold-Fragen ist die Erwartung IMMER „nein" — eine beantwortbare
+        # Frage abzuweisen ist der teurere der beiden Fehler, und genau davor
+        # schützt diese Spalte, wenn jemand den Analyse-Prompt anfasst.
+        unklar_erwartet = bool(case.get("expect_unclear"))
+        clarity_ok = bool(analysed.get("unklar")) is unklar_erwartet
         signal = case.get("signals") or {}
         plan = qa.research_plan_with_mandatory(
             analysed.get("rechercheplan") or {}, typ=typ,
@@ -49,6 +56,11 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
 
         type_ok = typ in set(case["allowed_types"])
         valid_ok = bool(plan.get("valid"))
+        if unklar_erwartet:
+            # Für eine unklare Frage läuft die Recherche gar nicht erst —
+            # Kanäle und Facetten zu benoten hieße, eine nie gelaufene Suche
+            # zu bewerten. Es zählt allein, ob zurückgefragt wird.
+            required = forbidden = expected_facets = actual_facets = set()
         missing_channels = required - channels
         forbidden_channels = forbidden & channels
         channel_ok = not missing_channels and not forbidden_channels
@@ -57,8 +69,8 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
         facet_ok = not missing_facets and not extra_facets
 
         # Typ und strukturell valider Plan sind je ein Gold-Kriterium.
-        tp += int(type_ok) + int(valid_ok)
-        fn += int(not type_ok) + int(not valid_ok)
+        tp += int(type_ok) + int(valid_ok) + int(clarity_ok)
+        fn += int(not type_ok) + int(not valid_ok) + int(not clarity_ok)
         # Positive Kanal- und Facettenlabels bilden Recall ab; unerwünschte
         # Kanäle bzw. zusätzliche Facetten sind echte False Positives.
         tp += len(required & channels) + len(expected_facets & actual_facets)
@@ -69,13 +81,15 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
         rates["valid_plan"] += int(valid_ok)
         rates["channels"] += int(channel_ok)
         rates["facets"] += int(facet_ok)
-        all_ok = type_ok and valid_ok and channel_ok and facet_ok
+        rates["clarity"] += int(clarity_ok)
+        all_ok = type_ok and valid_ok and channel_ok and facet_ok and clarity_ok
         rates["all"] += int(all_ok)
 
         detail = {
             "id": case["id"], "type": typ, "type_ok": type_ok,
             "plan_valid": valid_ok, "channels": sorted(channels),
             "facets": sorted(actual_facets), "all_ok": all_ok,
+            "unclear": bool(analysed.get("unklar")), "clarity_ok": clarity_ok,
             "missing_channels": sorted(missing_channels),
             "forbidden_channels": sorted(forbidden_channels),
             "missing_facets": sorted(missing_facets),
@@ -85,6 +99,9 @@ def evaluate_routing(cases: list[dict], analyse_fn=qa.analyse_query) -> dict:
         if not all_ok:
             missed = (["valid_plan"] if not valid_ok else [])
             missed += ([f"type∈{case['allowed_types']}"] if not type_ok else [])
+            missed += ([] if clarity_ok else
+                       ["clarity:abgewiesen" if not unklar_erwartet
+                        else "clarity:beantwortet"])
             missed += [f"channel:{x}" for x in sorted(missing_channels)]
             missed += [f"facet:{x}" for x in sorted(missing_facets)]
             spurious = [f"channel:{x}" for x in sorted(forbidden_channels)]
@@ -109,7 +126,8 @@ def print_routing_report(result: dict) -> None:
     harness.print_report(result)
     rates = result["pass_rates"]
     print("  Case-Passraten: " + ", ".join(
-        f"{k}={rates[k]:.1%}" for k in ("type", "valid_plan", "channels", "facets", "all")))
+        f"{k}={rates[k]:.1%}"
+        for k in ("type", "valid_plan", "channels", "facets", "clarity", "all")))
 
 
 def main() -> None:

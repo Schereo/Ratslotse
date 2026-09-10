@@ -34,10 +34,11 @@ def test_analyse_parst_sauberes_json(monkeypatch):
     calls = _llm_antwort(monkeypatch, json.dumps(
         {"terms": "Radverkehr Fahrrad Radweg", "kind": "history", "party": None}))
     a = qa.analyse_query("Wie lief das mit dem Radweg?")
-    # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.).
+    # `eng` kam mit den Kurzantworten für Punktfragen dazu (12.08.),
+    # `unklar` mit der Rückfrage bei gegenstandslosen Fragen (10.09.).
     assert a == {"question": "Wie lief das mit dem Radweg?",
                  "terms": "Radverkehr Fahrrad Radweg", "kind": "history", "party": None,
-                 "variants": [], "eng": False,
+                 "variants": [], "eng": False, "unklar": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
     # Zweiter Aufruf kommt aus dem Cache — kein weiterer LLM-Call.
@@ -133,7 +134,7 @@ def test_analyse_fehler_liefert_fallback(monkeypatch):
     monkeypatch.setattr(qa.llm, "chat_complete", boom)
     a = qa.analyse_query("Frage?")
     assert a == {"question": "Frage?", "terms": "Frage?", "kind": "topic", "party": None,
-                 "variants": [], "eng": False,
+                 "variants": [], "eng": False, "unklar": False,
                  "rechercheplan": {"intent": "overview", "channels": ["decisions"],
                                     "sort": "relevance", "needs": [], "valid": False}}
 

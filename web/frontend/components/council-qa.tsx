@@ -190,6 +190,10 @@ type Turn = {
   followups: string[];
   fehler?: "netz" | "limit" | null;
   abgebrochen?: boolean;
+  /** Die Frage nannte keinen Gegenstand — Lotti hat zurückgefragt, statt zu
+   *  antworten, und dafür GAR NICHT gesucht. Ohne diese Marke sähe der Turn
+   *  aus wie eine Antwort ohne Treffer und bekäme deren Angebote. */
+  unclear?: boolean;
   /** 5a/I-06: die vom Backend kondensierte Frage — der Kontext-Chip zeigt,
    *  worauf sich Anschlussfragen beziehen. */
   context?: string | null;
@@ -929,7 +933,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
           else if (msg.type === "abbruch") patchLast({ abgebrochen: true });
           else if (msg.type === "suggestions") patchLast({ followups: (msg.questions as string[]) ?? [] });
           else if (msg.type === "done") {
-            patchLast({ cited: (msg.cited as number[]) ?? [] });
+            patchLast({ cited: (msg.cited as number[]) ?? [],
+                        unclear: Boolean(msg.unclear) });
             // null heißt: Server konnte/durfte nicht (mehr) in dieses Gespräch
             // speichern (z. B. auf anderem Gerät gelöscht) — die tote id nicht
             // weiter mitschicken, die nächste Frage eröffnet frisch (F3).
@@ -1463,7 +1468,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         sources?: QaSource[]; cited?: number[]; press_releases?: PresseHinweis[];
         debates?: DebattenHinweis[]; attachments?: AnlagenHinweis[];
         planning_procedures?: Planung[]; sessions?: SitzungsInfo[];
-        research?: boolean; context?: string | null;
+        research?: boolean; context?: string | null; unclear?: boolean;
         documents_read?: number; period?: string;
         chart?: QaGrafik | null } | null };
       setTurns((g.turns as DbTurn[]).map((t) => ({
@@ -1483,6 +1488,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         // jedem Tab-Wechsel neu (Tims Befund 21.08.2026). Turns von vor
         // diesem Fix tragen sie nicht; für die bleibt es wie bisher.
         followups: [], context: t.sources?.context ?? t.question,
+        unclear: Boolean(t.sources?.unclear),
         ...(t.sources?.research ? {
           research: true, deepStatus: "fertig" as const,
           documents_read: t.sources?.documents_read, period: t.sources?.period,
@@ -2267,9 +2273,15 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
   const abschnitte = useMemo(
     () => (turn.research ? berichtAbschnitte(turn.answer) : []),
     [turn.research, turn.answer]);
+  // Die Rückfrage („deine Frage nennt keinen Gegenstand") ist hier
+  // ausgenommen: Sie hat nichts gefunden, weil sie nichts gesucht hat. „Als
+  // Thema anlegen" trüge sonst „Was hast du?" als Themennamen, und die
+  // Fußzeile behauptete eine „Automatische Antwort aus den gefundenen
+  // Beschlüssen", die es nicht gibt. Den Weg weiter zeigen stattdessen die
+  // Vorschlags-Chips, die der Server mitschickt.
   const nichtsGefunden = !beschaeftigt && hatAntwort && turn.sources.length === 0
     && turn.press_releases.length === 0 && (turn.debates?.length ?? 0) === 0
-    && (turn.attachments?.length ?? 0) === 0 && !turn.fehler;
+    && (turn.attachments?.length ?? 0) === 0 && !turn.fehler && !turn.unclear;
   // Einspaltig zeigt der jüngste Turn seine Belege inline; sobald die
   // Belege-Spalte danebensteht (`breit`, also auch iPad quer), übernimmt sie —
   // sonst stünden dieselben Quellen zweimal auf dem Schirm. Ältere Turns
@@ -2526,7 +2538,8 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               08.09.2026 hatten fünf von neun neuen Konten weder Thema noch
               Gremium; für die gibt es keinen Anlass, sie je wieder
               anzusprechen. */}
-          {!beschaeftigt && hatAntwort && !turn.fehler && !nichtsGefunden && (
+          {!beschaeftigt && hatAntwort && !turn.fehler && !nichtsGefunden
+            && !turn.unclear && (
             <ThemenBruecke frage={turn.question} />
           )}
 
@@ -2546,7 +2559,9 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               {turn.answer && !turn.fehler && <FeedbackDaumen turn={turn} />}
               <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
                 {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
-                {turn.research && turn.documents_read
+                {turn.unclear
+                  ? null
+                  : turn.research && turn.documents_read
                   ? <>Bericht aus {turn.documents_read} gelesenen Dokumenten{turn.period ? ` (${turn.period})` : ""}{zitierte.length > 0 ? `, ${zitierte.length} zitiert` : ""} — kann unvollständig sein. Quellen prüfen.</>
                   : <>Automatische Antwort{zitierte.length > 0 ? `, ${stuetztAuf(zitierte)}` : " aus den gefundenen Beschlüssen"} — kann unvollständig sein. Quellen prüfen.</>}
               </span>

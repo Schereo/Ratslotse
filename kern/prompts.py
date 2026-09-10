@@ -975,7 +975,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "qa_analysis": {
         "title": "Frag den Rat – Frage-Analyse",
-        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
+        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp, Klarheits-Urteil und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
             '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
@@ -991,6 +991,18 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Aussagen …?\"). Im Zweifel false.\n", '
             '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
             ', "kind": "topic|history|party|money", "party": "Fraktionsname oder null", '
+            '"unklar": true/false — true NUR, wenn die Frage GAR KEINEN Gegenstand '
+            'nennt, den ein Stadtrats-Archiv durchsuchen könnte. Das sind: Begrüßungen '
+            'und Geplauder („Hallo“, „Wie geht es dir?“, „Was hast du?“), Fragen über '
+            'DICH statt über die Stadt („Wer bist du?“, „Was kannst du?“), '
+            'Test- und Unsinnseingaben, sowie Rückbezüge („Und dazu?“, „Was ist damit?“), '
+            'die sich ohne Gesprächsverlauf auf nichts beziehen. '
+            'false, sobald IRGENDEIN Gegenstand vorkommt — ein Thema, ein Vorhaben, ein '
+            'Ort, eine Einrichtung, eine Person, ein Gremium, ein Geldbetrag —, auch wenn '
+            'die Frage sehr breit, schief formuliert oder ohne Fragezeichen ist. '
+            'Eine Frage, die du nicht beantworten kannst, ist NICHT unklar: „Was macht der '
+            'Rat gerade?“ und „Gibt es Beschlüsse zu Kita-Plätzen?“ sind beide false. '
+            'Im Zweifel IMMER false.\n", '
             '"variants": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
             'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '

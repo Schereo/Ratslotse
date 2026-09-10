@@ -311,7 +311,8 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
     Reranker arbeiten mit dieser Fassung. Robust: bei kaputtem JSON oder
     LLM-Fehler kommt das Verhalten von vor dem Routing zurück."""
     fallback = {"question": question, "terms": question, "kind": "topic", "party": None,
-                "variants": [], "eng": False, "rechercheplan": _research_plan({})}
+                "variants": [], "eng": False, "unklar": False,
+                "rechercheplan": _research_plan({})}
     vtext = _verlauf_zeilen(verlauf)
     key = f"{model}|{hash(vtext)}|{' '.join(question.split()).lower()[:300]}"
     hit = _ANALYSE_CACHE.get(key)
@@ -340,6 +341,10 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
         # knapp statt mit Verlauf + Debatten-Absatz. Reist im ohnehin laufenden
         # Analyse-Call mit, kostet also keine zusätzliche Latenz.
         eng = bool(data.get("eng") is True)
+        # Nennt die Frage überhaupt einen Gegenstand? Auch dieses Urteil reist
+        # im Analyse-Call mit. Der Router fragt danach ZURÜCK, statt zu raten
+        # (siehe RUECKFRAGE_TEXT) — was es damit auf sich hat, steht dort.
+        unklar = bool(data.get("unklar") is True)
         if typ not in QUERY_TYPES or typ in ("person", "session", "place"):
             # „person"/„session"/„place" setzt ausschließlich der Router
             # (deterministische Erkennung) — behauptet das Modell den Typ,
@@ -349,7 +354,7 @@ def analyse_query(question: str, model: str = EXPAND_MODEL,
             party = None
         out = {"question": umgeschrieben or question, "terms": begriffe or question,
                "kind": typ, "party": party, "variants": varianten, "eng": eng,
-               "rechercheplan": _research_plan(data)}
+               "unklar": unklar, "rechercheplan": _research_plan(data)}
         if begriffe:  # nur brauchbare Analysen cachen
             if len(_ANALYSE_CACHE) >= _EXPAND_CACHE_MAX:
                 _ANALYSE_CACHE.pop(next(iter(_ANALYSE_CACHE)))
@@ -817,6 +822,100 @@ def alternativ_fragen(store, frage: str, limit: int = ALTERNATIVEN) -> list[str]
         if len(fragen) >= limit:
             break
     return fragen
+
+
+#: Was Lotti antwortet, wenn die Frage gar keinen Gegenstand nennt.
+#:
+#: **Warum eine Rückfrage und keine Antwort.** Am 10.09.2026 tippte Tim „Was
+#: hast du?" in Frag den Rat und bekam eine ordentlich belegte Auskunft
+#: darüber, woran der Stadtrat gerade arbeitet. Die Pipeline kann gar nicht
+#: anders: Die Suche findet IMMER etwas, der Reranker sortiert es, und das
+#: Antwort-Modell sieht zwanzig Beschlüsse und eine Frage — es schreibt daraus
+#: etwas Plausibles. Nur hat niemand danach gefragt. Eine Antwort auf eine
+#: nicht gestellte Frage ist teurer als keine Antwort: Sie sieht richtig aus.
+#:
+#: Der Text nennt deshalb die vier Bereiche, in denen der Bestand wirklich
+#: trägt — das ist zugleich die Antwort auf „Was kannst du?", die dieselbe
+#: Erkennung mit einfängt.
+RUECKFRAGE_TEXT = (
+    "Diese Frage kann ich nicht einordnen — mir fehlt, worum es gehen soll. "
+    "Ich beantworte Fragen zur Oldenburger Kommunalpolitik: zu Beschlüssen des "
+    "Rates und seiner Ausschüsse, zu Sitzungen und Tagesordnungen, zum Haushalt "
+    "der Stadt und zu einzelnen Stadtteilen. Worum soll es gehen?"
+)
+
+
+#: Ab wie vielen Beschlüssen eine Sitzung als Vorschlagsquelle taugt.
+RUECKFRAGE_MINDEST_TOPS = 5
+
+#: „Stadt Oldenburg (Oldb)" — der amtliche Zusatz steht in jedem zweiten Titel
+#: und trägt in einer Frage an Ratslotse null Information.
+_OLDB_RE = re.compile(r"\s*\(Oldb\.?\)", re.IGNORECASE)
+#: Ein Klammerzusatz am ENDE ist Verwaltungsapparat („(Fraktionen SPD, …
+#: vom 31.03.2026)"), kein Gegenstand.
+_NACHKLAMMER_RE = re.compile(r"\s*\([^()]*\)\s*$")
+
+
+def vorschlags_gegenstand(titel: str, grenze: int = 60) -> str:
+    """Aus einem Beschlusstitel den Gegenstand, den man jemandem hinhält.
+
+    Amtliche Titel tragen ihren Vorgang mit: den Verfahrensstand hinter einem
+    Gedankenstrich, die antragstellenden Fraktionen samt Datum in Klammern,
+    das „(Oldb)" hinter dem Stadtnamen. In einer Frage ist davon nichts
+    hilfreich — und weil ein Vorschlags-Chip nur eine Zeile hat, verdrängt
+    jedes Wort Apparat ein Wort Inhalt. Aus „Bebauungsplan 810 (Krugweg) …
+    - Prüfung der Stellungnahmen - Satzungsbeschluss" wird so wieder ein Ding,
+    nach dem man fragen kann.
+    """
+    t = _OLDB_RE.sub("", " ".join((titel or "").split()))
+    # Erst den Verfahrensstand hinter dem Gedankenstrich abschneiden, dann den
+    # Klammerzusatz — und erst DANN kürzen. Andersherum kappt die Länge die
+    # schließende Klammer weg, und der Apparat bleibt genau dort stehen, wo er
+    # weg sollte („… Kennedystraße (Fraktionen…").
+    t = _NACHKLAMMER_RE.sub("", re.split(r"\s+[—–-]\s+|:\s+", t)[0]).strip(" -–—:,")
+    return (t[:grenze].rstrip(" -–—:,") + "…") if len(t) > grenze else t
+
+
+def rueckfrage_vorschlaege(store, frage: str, limit: int = 3) -> list[str]:
+    """Konkrete Fragen zur Rückfrage — nichts Erfundenes, nur Belegtes.
+
+    Zwei Quellen in dieser Reihenfolge: Trägt ein Wort der Frage doch einen
+    Anker in den Beschluss-Titeln, gewinnt der (:func:`alternativ_fragen`) —
+    dann hat die Person das Thema ja getroffen und nur die Frage verfehlt.
+    Sonst die jüngsten Sitzungen mit Beschlüssen: aktuell, konkret und
+    garantiert beantwortbar, weil der Beschluss dahinter nachweislich
+    existiert. Eine erfundene Beispielfrage wäre die zweite Sackgasse in
+    Folge.
+
+    Leer bei Fehlern — die Rückfrage steht auch ohne Vorschläge.
+    """
+    fragen: list[str] = []
+    try:
+        fragen = alternativ_fragen(store, frage, limit=limit)
+    except Exception:  # noqa: BLE001 — Vorschläge sind Zusatz, nie Blocker
+        fragen = []
+    if len(fragen) >= limit:
+        return fragen[:limit]
+    try:
+        # Sitzungen mit SUBSTANZ, nicht bloß die jüngsten: Eine Sitzung mit
+        # einem einzigen Punkt hat als „wichtigsten Beschluss" zwangsläufig
+        # Verfahrenskram — lokal gemessen war das „Beratung von
+        # nichtöffentlichen Tagesordnungspunkten im Verwaltungsausschuss".
+        # Als Einladung zum Weiterfragen ist so ein Titel wertlos.
+        for sitzung in store.juengste_sitzungen_mit_beschluessen(limit=limit * 5):
+            if (sitzung.get("n") or 0) < RUECKFRAGE_MINDEST_TOPS:
+                continue
+            kurz = vorschlags_gegenstand(sitzung.get("top_titel") or "")
+            if len(kurz) < 8:
+                continue
+            satz = f'Was wurde zu „{kurz}“ entschieden?'
+            if satz not in fragen:
+                fragen.append(satz)
+            if len(fragen) >= limit:
+                break
+    except Exception:  # noqa: BLE001 — dito
+        pass
+    return fragen[:limit]
 
 
 def anker_ids_fuer(store, question: str) -> list[int]:
