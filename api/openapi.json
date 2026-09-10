@@ -304,6 +304,35 @@
         "title": "AdminFeedbackList",
         "type": "object"
       },
+      "AdminFeedbackNotified": {
+        "description": "Antwort auf „Bescheid geben\" — inklusive der Adresse, an die es ging.\n\nDie Oberfläche sagt danach nicht „gesendet\", sondern *wohin* gesendet\nwurde. Bei einer Mail an eine fremde Person ist das der Unterschied\nzwischen einer Bestätigung und einer Behauptung.",
+        "properties": {
+          "notified_at": {
+            "title": "Notified At",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "unread": {
+            "title": "Unread",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "recipient",
+          "notified_at",
+          "unread"
+        ],
+        "title": "AdminFeedbackNotified",
+        "type": "object"
+      },
       "AdminFeedbackRead": {
         "properties": {
           "ok": {
@@ -348,6 +377,13 @@
             "title": "Message",
             "type": "string"
           },
+          "notified_at": {
+            "title": "Notified At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "owner_id": {
             "title": "Owner Id",
             "type": "integer"
@@ -367,7 +403,8 @@
           "kind",
           "message",
           "created_at",
-          "read_at"
+          "read_at",
+          "notified_at"
         ],
         "title": "AdminFeedbackRow",
         "type": "object"
@@ -8440,6 +8477,19 @@
           "message"
         ],
         "title": "FeedbackIn",
+        "type": "object"
+      },
+      "FeedbackNotifyIn": {
+        "description": "Die optionale Zeile, die wir der absendenden Person mitschicken.\n\nOptional heißt hier wirklich optional: Ohne Text geht die Karte mit dem\nKernsatz zur jeweiligen Art raus. Die Obergrenze ist dieselbe Größenordnung\nwie beim Feedback selbst — es ist eine Nachricht, kein Newsletter.",
+        "properties": {
+          "message": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "FeedbackNotifyIn",
         "type": "object"
       },
       "Finances": {
@@ -16802,6 +16852,59 @@
           }
         },
         "summary": "Feedback Unread Count",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/feedback/{feedback_id}/notify": {
+      "post": {
+        "description": "Der absendenden Person Bescheid geben, dass ihre Sache erledigt ist.\n\nBewusst ein eigener Aufruf und nicht ein Nebeneffekt von „Erledigt\":\nVieles wird abgehakt, ohne dass es etwas zu berichten gäbe, und eine\ngemeldete Share-Verletzung darf nie Post auslösen. Die Oberfläche fragt\ndeshalb nach dem Abhaken, statt selbst zu entscheiden.",
+        "operationId": "notify_feedback_author_api_admin_feedback__feedback_id__notify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "title": "Feedback Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackNotifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminFeedbackNotified"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Notify Feedback Author",
         "tags": [
           "admin"
         ]

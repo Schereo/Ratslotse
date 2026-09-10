@@ -1147,6 +1147,10 @@ class AdminFeedbackRow(TypedDict):
     message: str
     created_at: str
     read_at: str | None
+    #: Wann eine Rückmeldung an die absendende Person rausging (null = keine).
+    #: Getrennt von ``read_at``: Abhaken und Bescheid geben sind zwei
+    #: Entscheidungen.
+    notified_at: str | None
 
 
 class AdminEntityAlias(TypedDict):
@@ -1750,6 +1754,19 @@ class AdminUnread(TypedDict):
 
 class AdminFeedbackRead(TypedDict):
     ok: bool
+    unread: int
+
+
+class AdminFeedbackNotified(TypedDict):
+    """Antwort auf „Bescheid geben" — inklusive der Adresse, an die es ging.
+
+    Die Oberfläche sagt danach nicht „gesendet", sondern *wohin* gesendet
+    wurde. Bei einer Mail an eine fremde Person ist das der Unterschied
+    zwischen einer Bestätigung und einer Behauptung.
+    """
+    ok: bool
+    recipient: str
+    notified_at: str
     unread: int
 
 
