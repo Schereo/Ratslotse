@@ -74,6 +74,46 @@ tausendfache Lücke macht die halbe Beschlusslage einer Stadt unsichtbar.
    die Eigenheiten nicht, an denen der Probelauf scheitert.
 6. Erst dann `active=True` und die volle Historie holen.
 
+## Die Niederschrift ist die einzige Quelle für das „Warum"
+
+Was ein fremder Rat beschlossen hat, steht in der Beratungsfolge. **Warum** er
+so entschieden hat, steht nur in der Niederschrift der Sitzung — und die
+liegt als PDF **an der Sitzung**, nicht am Papier (`files.role='protocol'`,
+`meeting_id` gesetzt, `paper_id` leer).
+
+Drei Regeln, alle aus Messungen vom 10.09.2026:
+
+1. **Geschnitten wird entlang der Tagesordnung, die schon da ist.**
+   `protocol.py` sucht zu jedem bekannten Punkt *seine* Überschrift im Text.
+   Der erste Entwurf suchte nur nach Überschriften und fand in Braunschweig
+   Beschlussaufzählungen („1. Die Verwaltung setzt SAP …") für
+   Tagesordnungspunkte. Gemessen: 5 statt 7 Punkte, mit Beschlusssätzen als
+   Titel. Mit dem Abgleich gegen die Tagesordnung: **82 %** der Punkte
+   bekommen ihren Abschnitt (929 von 1.134, 38 Niederschriften, fünf Städte).
+2. **Das Layout steht im Text, nicht im Herstellernamen.** Osnabrück und
+   Braunschweig sprechen beide ALLRIS 4 und schreiben verschieden (`Zu 4
+   Titel` gegen `4. Titel`); Münster schreibt `Punkt 4 der Tagesordnung`.
+   `detect_layout` entscheidet am Text — ein Herstellerwechsel ändert daran
+   nichts.
+3. **Jede Niederschrift enthält ihre Tagesordnung zweimal**, erst als
+   Verzeichnis, dann als Protokolltext. Bei mehreren Fundstellen derselben
+   Nummer gewinnt die **hintere** mit passendem Titel.
+4. **Zwei Fallen, die beide unsichtbar zuschlagen.** Osnabrück rückt seine
+   Nummern seit 2024 um ein Leerzeichen ein (`` 3.1. Titel``) — eine Regel
+   auf `^\d` fand dort 0 von 194 Punkten, während dieselbe Stadt 2026 zu
+   82 % traf. Und die Textextraktion hat einen Deckel: 5 von 38 Protokollen
+   liefen gegen die 80.000 Zeichen, die für **Vorlagen** gewählt sind.
+   Abgeschnitten werden die HINTEREN Tagesordnungspunkte, und niemand
+   vermisst, was nie dastand — deshalb haben Niederschriften seit 09/2026
+   eigene Deckel (`MAX_*_PROTOKOLL`).
+
+**Und die Regel, die über allem steht:** Ein Modell darf wiedergeben, was im
+Protokoll steht. Es darf nicht erschließen, warum ein Rat entschieden hat.
+Der Annotator `reason` trägt dafür `grounded` — seine eigene Auskunft, ob im
+Abschnitt überhaupt eine Begründung steht. Ist sie falsch, zeigt die Karte
+eine erfundene Begründung für einen echten Ratsbeschluss; im Prüfstand steht
+diese Zahl deshalb bei **null**, wie die erfundenen Beleg-Kennungen bei `fit`.
+
 ## Die fünf Schichten und ihre Grenze
 
 `raw_objects` → `papers`/`meetings`/… → `texts` → `annotations` → `neighbors`

@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -310,6 +310,31 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 CREATE INDEX IF NOT EXISTS feedback_verdict ON feedback(annotator, version, verdict);
 
+-- Der Abschnitt der Niederschrift, der zu EINEM Tagesordnungspunkt gehört
+-- (Schicht 2: was in der Quelle steht, nicht was ein Modell daraus liest).
+--
+-- Warum eine eigene Tabelle und keine Spalte an `agenda_items`: Der
+-- Schnitt hat eine Fassung (`splitter`). Wird die Regel besser, liegt die
+-- neue Zerlegung neben der alten, und beide lassen sich messen — dieselbe
+-- Regel wie bei `texts` und `annotations`. Eine Spalte könnte das nicht.
+--
+-- `agenda_item_id` ist Teil des Schlüssels und nicht optional: Ein
+-- Abschnitt ohne Punkt ist für die Auswertung wertlos, und ihn trotzdem
+-- abzulegen hieße, ihn später wieder herausfiltern zu müssen.
+CREATE TABLE IF NOT EXISTS protocol_sections (
+    file_id         TEXT NOT NULL,
+    meeting_id      TEXT NOT NULL,
+    agenda_item_id  TEXT NOT NULL,
+    splitter        TEXT NOT NULL,
+    ord             INTEGER NOT NULL,
+    number          TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    text            TEXT NOT NULL,
+    PRIMARY KEY (agenda_item_id, splitter)
+);
+CREATE INDEX IF NOT EXISTS idx_protocol_sections_meeting
+    ON protocol_sections(meeting_id, splitter);
+
 CREATE TABLE IF NOT EXISTS meta (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
@@ -322,6 +347,23 @@ CREATE TABLE IF NOT EXISTS meta (
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
 MIGRATIONS: list[tuple[int, str]] = [
+    # 6 — Die Niederschrift je Tagesordnungspunkt (10.09.2026). Der Absatz am
+    # SCHEMA sagt, warum eine Tabelle mit Fassung und keine Spalte.
+    (6, """
+    CREATE TABLE IF NOT EXISTS protocol_sections (
+        file_id         TEXT NOT NULL,
+        meeting_id      TEXT NOT NULL,
+        agenda_item_id  TEXT NOT NULL,
+        splitter        TEXT NOT NULL,
+        ord             INTEGER NOT NULL,
+        number          TEXT NOT NULL,
+        title           TEXT NOT NULL,
+        text            TEXT NOT NULL,
+        PRIMARY KEY (agenda_item_id, splitter)
+    );
+    CREATE INDEX IF NOT EXISTS idx_protocol_sections_meeting
+        ON protocol_sections(meeting_id, splitter);
+    """),
     # 5 — Der Mehrheits-Status je Stadt und Ideen-Gruppe (10.09.2026). Der
     # Absatz am SCHEMA sagt, warum eine Tabelle und keine Abfrage.
     (5, """

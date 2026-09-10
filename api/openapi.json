@@ -9250,6 +9250,62 @@
             "title": "Peers",
             "type": "integer"
           },
+          "protocol": {
+            "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decided": {
+                "title": "Decided",
+                "type": "string"
+              },
+              "discussed": {
+                "title": "Discussed",
+                "type": "string"
+              },
+              "grounded": {
+                "title": "Grounded",
+                "type": "boolean"
+              },
+              "organization": {
+                "title": "Organization",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "why": {
+                "title": "Why",
+                "type": "string"
+              }
+            },
+            "required": [
+              "discussed",
+              "decided",
+              "vote",
+              "why",
+              "grounded",
+              "organization",
+              "date"
+            ],
+            "title": "IdeaProtocol",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -9312,6 +9368,7 @@
           "reason",
           "confidence",
           "evidence",
+          "protocol",
           "effort",
           "siblings",
           "stance",
@@ -9422,6 +9479,59 @@
           "fields"
         ],
         "title": "IdeaFields",
+        "type": "object"
+      },
+      "IdeaProtocol": {
+        "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decided": {
+            "title": "Decided",
+            "type": "string"
+          },
+          "discussed": {
+            "title": "Discussed",
+            "type": "string"
+          },
+          "grounded": {
+            "title": "Grounded",
+            "type": "boolean"
+          },
+          "organization": {
+            "title": "Organization",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "discussed",
+          "decided",
+          "vote",
+          "why",
+          "grounded",
+          "organization",
+          "date"
+        ],
+        "title": "IdeaProtocol",
         "type": "object"
       },
       "IdeaSearchResponse": {

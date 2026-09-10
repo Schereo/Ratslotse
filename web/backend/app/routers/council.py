@@ -50,7 +50,8 @@ from ..antworten import (AnalysisData, BudgetAmendmentLists, BudgetAuditReports,
                          DecisionDetail, DecisionList, DiscoveryOfTheDay, Districts, Entities,
                          ElsewhereItem, ElsewhereResponse, EntitiesMap, EntityDetail,
                          FeedbackAck,
-                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaSibling,
+                         Idea, IdeaEvidence, IdeaFields, IdeaFieldSummary, IdeaProtocol,
+                         IdeaSibling,
                          IdeaSearchResponse, IdeasResponse,
                          EventStreamResponse, Finances, GoalDetail,
                          Goals, JpegResponse, NumberOfTheWeek, Ok,
@@ -1983,6 +1984,7 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "evidence": _belege_aufloesen(store, urteil.get("evidence") or []),
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
+        "protocol": _protokoll(cities, r["id"]),
         "siblings": _geschwister(r.get("siblings_json")),
         "stance": r.get("stance") or "",
         "peer_stances": {k[5:]: int(r[k]) for k in ("peer_for", "peer_against", "peer_review")
@@ -2008,6 +2010,32 @@ def _richtungen(roh: str | None) -> dict[str, int]:
         if x:
             zaehler[x] = zaehler.get(x, 0) + 1
     return zaehler
+
+
+def _protokoll(cities: CitiesStore, paper_id: str) -> IdeaProtocol | None:
+    """Das „Warum" aus der Niederschrift — oder nichts.
+
+    **Ohne Begründung im Text wird nichts gezeigt.** Das ist keine
+    Vorsichtsmaßnahme, sondern der Zweck: Ein „Warum", das ein Modell aus dem
+    Ergebnis erschließt, ist eine Behauptung über einen echten Ratsbeschluss.
+    Der Annotator sagt mit ``grounded``, ob eine dasteht; steht keine, gibt es
+    hier ``None`` und auf der Karte eine Leerstelle statt einer Erfindung.
+    """
+    zeile = cities.reason_for_paper(paper_id)
+    if not zeile:
+        return None
+    nutzlast = zeile["payload"]
+    if not nutzlast.get("grounded") or not (nutzlast.get("why") or "").strip():
+        return None
+    return {
+        "discussed": nutzlast.get("discussed") or "",
+        "decided": nutzlast.get("decided") or "",
+        "vote": nutzlast.get("vote"),
+        "why": nutzlast.get("why") or "",
+        "grounded": True,
+        "organization": zeile.get("organization_name") or zeile.get("meeting_name"),
+        "date": (zeile.get("start") or "")[:10] or None,
+    }
 
 
 def _geschwister(roh: str | None) -> list[IdeaSibling]:

@@ -240,6 +240,63 @@ Bericht ist dort das Mittel, nicht der Zweck.
 
 
 
+
+PROMPT_CITIES_REASON = """Du liest den Abschnitt einer Sitzungs-Niederschrift, der zu
+EINEM Tagesordnungspunkt gehört, und gibst wieder, was dort steht.
+
+Antworte NUR mit diesem JSON:
+{{"discussed": "<worum die Debatte ging, max. 400 Zeichen>",
+  "decided":   "<was beschlossen wurde, nah am Wortlaut, max. 200 Zeichen>",
+  "vote":      "<das Abstimmungsergebnis, wie es dasteht — oder null>",
+  "why":       "<die Begründung, WIE SIE IM TEXT STEHT, max. 300 Zeichen>",
+  "grounded":  true|false}}
+
+DU GIBST WIEDER, DU ERKLÄRST NICHT. Das ist die wichtigste Regel und der
+Unterschied zwischen brauchbar und wertlos. Warum ein Rat so entschieden hat,
+weißt du nicht — es sei denn, es steht da. Steht im Abschnitt keine
+Begründung, ist `why` ein leerer String und `grounded` ist false. Das ist die
+richtige Antwort, kein Versagen.
+
+`grounded` heißt: Im Abschnitt steht ein Grund, ein Argument, eine
+Wortmeldung, ein Einwand — irgendetwas, das sagt, WARUM. Ein reines Ergebnis
+(„einstimmig beschlossen") ist keine Begründung.
+
+`vote` ist das, was dasteht: „einstimmig", „mehrheitlich", „12 dafür, 8
+dagegen, 1 Enthaltung", „bei 2 Enthaltungen angenommen". Nichts umrechnen,
+nichts ergänzen. Steht kein Ergebnis da, ist `vote` null.
+
+`decided` bleibt nah am Wortlaut des Beschlusses. Kürzen ja, umdeuten nein.
+Wurde nichts beschlossen (Bericht, Kenntnisnahme, Vertagung), steht genau das
+da: „zur Kenntnis genommen", „vertagt".
+
+`discussed` fasst die Debatte zusammen: wer welche Position vertrat, welche
+Einwände kamen. Ohne Debatte im Text ein leerer String.
+
+KEINE PERSONENNAMEN. Fraktionen, Rollen und Ämter ja („die CDU-Fraktion", „die
+Verwaltung", „der Ausschussvorsitzende"), Namen nein. Der Text ist öffentlich,
+unsere Wiedergabe muss es nicht sein.
+
+BEISPIELE (erfunden):
+
+Abschnitt: „Die Verwaltung stellte das Konzept vor. Die Fraktion A kritisierte
+die Kosten von 400.000 Euro und beantragte Vertagung. Die Fraktion B verwies
+auf die Fristen des Landesprogramms, die eine Entscheidung noch in diesem Jahr
+verlangen. Der Vertagungsantrag wurde abgelehnt. Beschluss: Das Konzept wird
+beschlossen. Abstimmungsergebnis: 12 dafür, 8 dagegen."
+-> {{"discussed": "Die Verwaltung stellte das Konzept vor. Eine Fraktion
+kritisierte die Kosten von 400.000 Euro und beantragte Vertagung, eine andere
+verwies auf Fristen des Landesprogramms.", "decided": "Das Konzept wird
+beschlossen.", "vote": "12 dafür, 8 dagegen", "why": "Fristen des
+Landesprogramms verlangen eine Entscheidung noch in diesem Jahr; der
+Vertagungsantrag wurde abgelehnt.", "grounded": true}}
+
+Abschnitt: „Beschluss: Der Bericht wird zur Kenntnis genommen.
+Abstimmungsergebnis: einstimmig."
+-> {{"discussed": "", "decided": "Der Bericht wird zur Kenntnis genommen.",
+"vote": "einstimmig", "why": "", "grounded": false}}
+
+Der zweite Fall ist der HÄUFIGERE. Erfinde für ihn nichts."""
+
 PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
 von der bloßen Frage bis zum Haushaltsposten.
 
@@ -426,6 +483,25 @@ DEFAULTS: dict[str, dict[str, str]] = {
             "-budget“. Ein falscher Bezugspunkt macht die Richtungsfrage "
             "wertlos; die Mitglieder selbst sind die Wahrheit.",
         "template": "DIE GRUPPE:\n{gruppe}\n\nDIE VORLAGE:\n{paper}",
+    },
+    "cities_reason_system": {
+        "title": "Was stand in der Niederschrift zu diesem Punkt?",
+        "description":
+            "Der Annotator `reason`. Keine Platzhalter — der Abschnitt steht "
+            "in der Nutzer-Nachricht. Die Beispiele sind ERFUNDEN, nicht aus "
+            "dem Prüfstand (die Lehre aus PR 10, wo der Eval sich selbst maß). "
+            "`grounded` ist die Sicherung gegen das Erfinden: Das Modell muss "
+            "sagen, ob es eine Begründung GEFUNDEN hat.",
+        "template": PROMPT_CITIES_REASON,
+    },
+    "cities_reason_user": {
+        "title": "Der Abschnitt der Niederschrift",
+        "description":
+            "Platzhalter: {stadt}, {datum}, {gremium}, {punkt} (Nummer und "
+            "Titel), {abschnitt} (der Text). Die Sitzungsdaten stehen dabei, "
+            "weil ein Abschnitt ohne sie oft nicht sagt, wer da tagt.",
+        "template": ("STADT: {stadt}\nGREMIUM: {gremium}\nDATUM: {datum}\n"
+                     "TAGESORDNUNGSPUNKT: {punkt}\n\nDER ABSCHNITT:\n{abschnitt}"),
     },
     "cities_effort_system": {
         "title": "Was würde diese Idee den Rat kosten?",

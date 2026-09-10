@@ -19,6 +19,15 @@ VERSION = "1"
 
 MAX_PAGES = 60
 MAX_CHARS = 80_000
+
+#: Niederschriften sind ein anderes Format als Vorlagen, und die Deckel oben
+#: sind für Vorlagen gewählt. Gemessen am 10.09.2026: **5 von 38** geholten
+#: Protokollen liefen gegen die 80.000 Zeichen, zwei gegen die 60 Seiten — und
+#: was abgeschnitten wird, sind die HINTEREN Tagesordnungspunkte. In einer
+#: Münsteraner Ratssitzung fehlten dadurch die Punkte 22 bis 28, ohne dass
+#: irgendwo etwas rot geworden wäre.
+MAX_PAGES_PROTOKOLL = 140
+MAX_CHARS_PROTOKOLL = 260_000
 #: Ab so vielen Zeichen je Seite gilt eine Textebene als brauchbar. Darunter
 #: ist es meist ein Scan mit ein paar Kopfzeilen.
 MIN_CHARS_PER_PAGE = 200
@@ -59,8 +68,13 @@ def _entkoppelte_ersatzzeichen(text: str) -> str:
     return "".join(z for z in text if not ("\ud800" <= z <= "\udfff"))
 
 
-def extract(pdf_bytes: bytes) -> tuple[str, int | None, str]:
-    """``(text, seiten, qualität)`` — ``qualität`` ist ok | thin | empty | error."""
+def extract(pdf_bytes: bytes, max_pages: int = MAX_PAGES,
+            max_chars: int = MAX_CHARS) -> tuple[str, int | None, str]:
+    """``(text, seiten, qualität)`` — ``qualität`` ist ok | thin | empty | error.
+
+    Die Deckel sind Vorgaben für **Vorlagen**; Niederschriften bekommen die
+    größeren aus ``MAX_*_PROTOKOLL`` (s. dort, warum).
+    """
     try:
         import pypdf
     except ImportError:  # pragma: no cover — pypdf steht in requirements.txt
@@ -69,17 +83,17 @@ def extract(pdf_bytes: bytes) -> tuple[str, int | None, str]:
         leser = pypdf.PdfReader(io.BytesIO(pdf_bytes))
         seiten = len(leser.pages)
         stuecke = []
-        for seite in leser.pages[:MAX_PAGES]:
+        for seite in leser.pages[:max_pages]:
             try:
                 stuecke.append(seite.extract_text() or "")
             except Exception:  # noqa: BLE001 — eine kaputte Seite, nicht das Dokument
                 continue
-        text = clean("\n".join(stuecke))[:MAX_CHARS]
+        text = clean("\n".join(stuecke))[:max_chars]
     except Exception as e:  # noqa: BLE001 — ein kaputtes PDF ist kein Laufabbruch
         logger.info("PDF nicht lesbar: %s", type(e).__name__)
         return "", None, "error"
 
-    gelesen = min(seiten, MAX_PAGES) or 1
+    gelesen = min(seiten, max_pages) or 1
     if not text:
         return "", seiten, "empty"
     return text, seiten, "ok" if len(text) / gelesen >= MIN_CHARS_PER_PAGE else "thin"
