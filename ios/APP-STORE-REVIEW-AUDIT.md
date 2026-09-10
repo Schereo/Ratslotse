@@ -1,6 +1,6 @@
 # App-Store-Review-Audit der nativen Ratslotse-App
 
-Stand: 29. August 2026. Geprüft gegen die App Review Guidelines vom 8. Juni 2026, Apples Human Interface Guidelines und den aktuellen nativen Code.
+Stand: 29. August 2026 (Audit), Checkliste nachgeführt am 10. September 2026. Geprüft gegen die App Review Guidelines vom 8. Juni 2026, Apples Human Interface Guidelines und den aktuellen nativen Code.
 
 ## Ergebnis
 
@@ -79,24 +79,104 @@ Repository heraus bestätigen.
 - Das Kommunalwahl-Dev-Feature wird nicht beworben oder in die App übernommen.
 - Es gibt kein Tracking, keine Werbung und keine In-App-Käufe.
 
+## Stand 10. September 2026
+
+Per App-Store-Connect-API und auf dem Prod-Server nachgesehen, nicht aus dem
+Repository geschlossen. Die App war noch nie im Store.
+
+| Punkt | Stand |
+|---|---|
+| Store-Version in App Store Connect | **1.10.0** mit Build 11 vom 15.08., „Prepare for Submission" |
+| Neuester hochgeladener Build | 22 vom 10.09., aus `dev`, VALID |
+| Prod-Backend | `main`, `APP_MIN_BUILD=19` |
+| Apple-Revoke-Secrets (`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`), APNs | auf Prod gesetzt |
+| Support-, Datenschutz- und Barrierefreiheits-URL | eingetragen |
+| Review-Konto `appreview@ratslotse.de` | auf Prod vorhanden, aktiv, bestätigt, 3 Themen, kein gespeichertes Gespräch, keine Rollen |
+| Altersfreigabe | „User Generated Content = nein" — **widerspricht diesem Audit** |
+| Review-Notizen | behaupten „keine öffentlichen nutzergenerierten Inhalte", „Offline-Zugriff auf zuletzt gelesene Beschlüsse" und „Termin-Export ins Share-Sheet" — alle drei stimmen nicht (s. u.) |
+| Screenshots | je 6 für iPhone 6,7" und iPad 12,9", Stand v1.10.0 |
+| „Neu in dieser Version" | leer |
+| Privacy Labels, EU-DSA-Trader-Status | per API nicht prüfbar, in der Weboberfläche nachsehen |
+
+**Was die Review-Notizen falsch beschreiben.** Geteilte KI-Antworten sind
+öffentlich abrufbar und damit nutzergenerierter Inhalt (Abschnitt 1.2 oben).
+Ohne Netz kennt die App nur das zuletzt angemeldete Konto
+(`AppModel.cacheUserForOffline`), gelesene Beschlüsse werden nicht
+vorgehalten. Termine gehen über EventKit direkt in den Kalender
+(`CouncilViews.swift`, `EKEventEditViewController`), nicht über das
+Share-Sheet. Eine Notiz, die mehr verspricht als die App kann, ist ein
+Ablehnungsgrund nach 2.3.
+
 ## Harte Freigabe-Checkliste
 
-- [ ] App-Store-Connect Privacy Labels gespeichert und gegengelesen.
-- [ ] Neuer Altersfreigabe-Fragebogen mit UGC = ja gespeichert; resultierende
-      Altersfreigabe akzeptiert und Store-Texte angepasst.
-- [ ] EU-DSA-Trader-Status abgeschlossen.
-- [ ] Production: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, APNs
-      und Mailzustellung getestet.
-- [ ] Signiertes Release-Archiv: Production Push, Associated Domains, Sign in
-      with Apple, Privacy Manifest und Export-Compliance geprüft.
-- [ ] Review-Konto mit realen, nicht vertraulichen Beispieldaten funktioniert.
-- [ ] Jeder aktuelle iPhone-/iPad-Store-Screenshot stammt aus genau diesem
-      Build und zeigt keine Testkonten oder erfundene Beschlüsse.
-- [ ] Echter-Gerät-Matrix: iPhone/iPad, Hoch/Querformat, VoiceOver, großes
-      Dynamic Type, Reduce Motion, Dark Mode, schwaches Netz und Offline.
-- [ ] Support, Datenschutz, Impressum, AASA und amtliche Deep Links aus dem
-      Production-Build erreichbar.
-- [ ] Lotti/Logo/Schriften/3D-Assets und verwendete Drittinhalte rechtlich
-      dokumentiert.
-- [ ] Moderationspostfach wird überwacht; Testmeldung kann in Web und iOS
-      entfernt werden, zugehöriges Konto kann gesperrt werden.
+Reihenfolge nach Abhängigkeit. Alles bis auf den letzten Block ist **vor**
+dem Release `dev` → `main` zu erledigen; das Release selbst und der
+Store-Build daraus bleiben eine eigene Entscheidung.
+
+### Erledigt
+
+- [x] Production: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` und
+      APNs gesetzt (10.09. auf dem Server nachgesehen).
+- [x] Support-URL `https://ratslotse.de/hilfe`, Datenschutz-URL und
+      Barrierefreiheits-URL in App Store Connect eingetragen.
+- [x] Review-Konto auf Prod angelegt, bestätigt und in den Review-Angaben
+      hinterlegt.
+- [x] Store-Beschreibung beginnt mit dem Unabhängigkeitshinweis.
+- [x] Export-Compliance: `usesNonExemptEncryption=false` am Build.
+
+### In App Store Connect (nur der Account Holder)
+
+- [ ] Altersfreigabe-Fragebogen: **User Generated Content = ja** speichern,
+      resultierende Freigabe akzeptieren.
+- [ ] Review-Notizen berichtigen: geteilte Antworten als UGC mit Meldeweg
+      nennen; „Offline-Zugriff" auf „Start ohne Netz mit gepuffertem Konto"
+      zurücknehmen; „Termin-Export ins Share-Sheet" durch „Termin in den
+      Kalender (EventKit, Abfrage erst beim Antippen)" ersetzen. Push, Sign
+      in with Apple, Gesprächsspeicherung und Kontolöschung als prüfbare
+      Schritte beschreiben.
+- [ ] App-Privacy-Formular exakt wie `PrivacyInfo.xcprivacy` ausfüllen und
+      gegenlesen: E-Mail, Name, Nutzer-ID, Nutzerinhalte einschließlich
+      Fragen/Shares, Push-Token; alles verknüpft, App-Funktionalität, kein
+      Tracking.
+- [ ] EU-DSA-Trader-Status abschließen.
+- [ ] Rechte an Lotti, Logo, Schriften und 3D-Assets schriftlich
+      dokumentieren; `contentRightsDeclaration` steht auf „nutzt
+      Drittinhalte" (amtliche Dokumente) und passt.
+- [ ] Review-Konto mit einem gespeicherten Gespräch und einem Ausschuss-Abo
+      füllen; keine vertraulichen oder erfundenen Daten.
+
+### Nachweise auf echter Hardware (Release-Build aus `dev`, gegen dev-Backend)
+
+- [ ] iPhone und iPad, Hoch- und Querformat, Split View / Stage Manager.
+- [ ] VoiceOver, größte Dynamic-Type-Stufe, „Bewegung reduzieren",
+      Dunkelmodus.
+- [ ] Schwaches Netz und offline: Start ohne Netz, Fehlerzustände, kein
+      Absturz.
+- [ ] Sign in with Apple, Push-Empfang, Kalender-Abfrage, Kontolöschung mit
+      Apple-Konto (Token-Widerruf) durchspielen.
+- [ ] Aus dem Build heraus: Support, Datenschutz, Impressum, AASA und ein
+      amtlicher Deep Link öffnen sich.
+- [ ] Signiertes Archiv: `aps-environment=production`, Associated Domains,
+      Sign in with Apple, Privacy Manifest enthalten.
+
+### Betrieb
+
+- [ ] Moderationspostfach `ratslotse@timsigl.de` wird gelesen; wer es liest,
+      ist festgelegt.
+- [ ] Testmeldung auf einen geteilten Link absetzen, im Admin löschen und das
+      zugehörige Konto sperren — in Web und iOS geprüft.
+
+### Erst mit dem Release (eigene Entscheidung, nicht Teil dieser Liste)
+
+- [ ] `python3 scripts/ios_vertrag.py --ausgeliefert` ohne Befund; sonst
+      `APP_MIN_BUILD` auf den neuen Build.
+- [ ] Release-PR `dev` → `main` als Merge-Commit, Versionsschnitt mit
+      Neuigkeiten-Karte.
+- [ ] Store-Build aus `main` archivieren, hochladen; Build 22 stammt aus
+      `dev` und passt nicht zum Prod-Vertrag.
+- [ ] Neue Store-Version anlegen (1.10.0 umbenennen), Build anhängen,
+      „Neu in dieser Version" aus dem Changelog.
+- [ ] Screenshots iPhone/iPad aus genau diesem Build, ohne Testkonten und
+      erfundene Beschlüsse.
+- [ ] Nach dem Merge `APP_MIN_BUILD` auf Prod auf die eingereichte
+      Build-Nummer setzen.
