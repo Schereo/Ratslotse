@@ -792,7 +792,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <EmptyState
             mascot="search"
             title={`Keine ${isReport ? "Berichte" : "Beschlüsse"} gefunden`}
-            hint="Andere Suche/Filter — oder frag die KI: Sie sucht semantisch statt wortwörtlich."
+            hint="Probiere andere Suchbegriffe oder Filter. Oder frag den Rat — dort werden auch ähnlich formulierte Beschlüsse gefunden."
             action={
               <Button
                 variant="signal"

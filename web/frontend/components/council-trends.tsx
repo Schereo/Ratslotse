@@ -232,7 +232,7 @@ export function TrendsView() {
 
   if (loading) return <CardListSkeleton rows={4} />;
   if (recaps.length === 0) {
-    return <EmptyState mascot="sleep" title="Noch keine Trends" hint="Die Rückblicke je Themenfeld werden erstellt, sobald genug klassifizierte Beschlüsse vorliegen." />;
+    return <EmptyState mascot="sleep" title="Noch keine Rückblicke" hint="Für die Rückblicke gibt es noch nicht genügend eingeordnete Beschlüsse." />;
   }
   return (
     <div className="space-y-4">

@@ -153,7 +153,7 @@ const PLAYFUL = [
 ];
 
 const MODE_LABEL: Record<string, string> = {
-  semantisch: "semantische Suche",
+  semantisch: "ähnliche Beschlüsse suchen",
   keyword: "Stichwortsuche",
   chronologisch: "neueste zuerst",
   research: "gründliche Recherche",
@@ -1793,8 +1793,8 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                     <p className="text-sm font-semibold text-foreground">Soll ich mir deine Gespräche merken?</p>
                     <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
                       Wenn du magst, speichere ich deine Verläufe in deinem Konto — du findest
-                      sie dann auf allen Geräten oben unter „Gespräche". Wenn nicht, lebt ein
-                      Gespräch nur, bis du es schließt.
+                      sie dann auf allen Geräten oben unter „Gespräche". Wenn nicht, wird das
+                      Gespräch gelöscht, sobald du es schließt.
                     </p>
                     <div className="mt-2.5 flex gap-2">
                       <button type="button" onClick={() => void einwilligen(true)}
@@ -1829,7 +1829,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               <Mascot pose="wave" className={hatVerlauf ? "h-14 w-14" : "h-[88px] w-[88px]"} />
               <h2 className={cn("font-bold tracking-tight", hatVerlauf ? "mt-2 text-xl" : "mt-3 text-[22px]")}>Frag den Rat</h2>
               <p className="mt-1 max-w-[36ch] text-[13px] leading-relaxed text-muted-foreground">
-                In normaler Sprache — die Antwort entsteht aus den echten
+                In deinen eigenen Worten — die Antwort entsteht aus den echten
                 Ratsbeschlüssen, mit Quellen.
               </p>
             </div>
@@ -2065,9 +2065,9 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
               {/* 5a/I-09: feste Register — dieselbe Antwort, andere Flughöhe. */}
               {!loading && letzter && !letzter.fehler && letzter.answer && (
                 <>
-                  <button type="button" onClick={() => void ask("Erkläre das bitte einfacher, ohne Fachbegriffe.", true)}
+                  <button type="button" onClick={() => void ask("Erkläre das bitte verständlicher, ohne Fachbegriffe.", true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                    Einfacher erklären
+                    Verständlicher erklären
                   </button>
                   <button type="button" onClick={() => void ask("Bitte ausführlicher — was gehört noch zum Bild?", true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
@@ -2511,7 +2511,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             <div className="flex flex-wrap gap-2">
               <Link href={`/topics?neu=${encodeURIComponent(turn.question)}`}
                 className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
-                Als Thema anlegen — wir melden uns bei Neuem
+                Als Thema anlegen — bei Neuem Bescheid bekommen
               </Link>
               <button type="button" onClick={onEigeneFrage}
                 className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
@@ -3252,7 +3252,7 @@ function DuenneBeleglage({ onGruendlich, mitSteckbrief }: {
             /* Mit Steckbrief ist die EINORDNUNG belegt, nur die Beschlusslage
                dünn — dann wäre ein pauschales „mit Vorsicht" schlicht falsch. */
             ? "Der Rat hat zu dieser Frage wenig entschieden — die Einordnung oben stammt aus den Ratsunterlagen, die Beschlusslage darunter ist dünn."
-            : "Zu dieser Frage geben die Ratsunterlagen wenig her — die Antwort steht auf wenigen, nur schwach passenden Beschlüssen. Nimm sie mit Vorsicht."}
+            : "Zu dieser Frage habe ich nur wenige passende Beschlüsse gefunden. Die Antwort kann deshalb unsicher sein — prüfe bitte die Quellen."}
         </span>
       </p>
       {onGruendlich && (

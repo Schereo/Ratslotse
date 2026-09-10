@@ -3236,9 +3236,9 @@ def _bisher_block(bisher: str | None) -> str:
     text = " ".join((bisher or "").split())
     if not text:
         return ("\nEs liegt keine frühere Antwort vor: Beantworte die Frage unten direkt "
-                "in einfacher Sprache, nach denselben Regeln.\n\n")
-    return ("\nDAS IST DIE ANTWORT, DIE DU VEREINFACHEN SOLLST (Inhalt und Belege bleiben, "
-            "die Sprache wird einfach):\n---\n"
+                "in klarer Alltagssprache, nach denselben Regeln.\n\n")
+    return ("\nDAS IST DIE ANTWORT, DIE DU VERSTÄNDLICHER MACHEN SOLLST (Inhalt und Belege bleiben, "
+            "die Sprache wird klarer):\n---\n"
             f"{text[:VEREINFACHEN_MAX_CHARS]}\n---\n\n")
 
 

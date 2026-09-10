@@ -43,7 +43,7 @@ def test_prompt_enthaelt_die_zu_vereinfachende_antwort():
         [{"id": 8679, "title": "Ausfallbürgschaft", "session_date": "2026-06-01"}])
     prompt = msgs[0]["content"]
     assert bisher in prompt
-    assert "VEREINFACHEN" in prompt
+    assert "VERSTÄNDLICHER MACHEN" in prompt
     # Kein Debatten-/Presse-Block: deren „ergänze IMMER einen Absatz zum
     # Meinungsbild" arbeitet gegen die Kürze — genau daran ist die beiläufige
     # Bitte im normalen Antwort-Prompt gescheitert.

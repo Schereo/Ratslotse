@@ -268,7 +268,7 @@ function KalenderAboKarte({ anzahlAbos }: { anzahlAbos: number }) {
       {abo.isPending && <p className="mt-4 text-[12px] text-muted-foreground">Kalender-Adresse wird geholt …</p>}
       {abo.isError && (
         <p className="mt-4 text-[12px] text-muted-foreground">
-          Die Adresse kam nicht durch.{" "}
+          Die Kalender-Adresse konnte nicht geladen werden.{" "}
           <button type="button" className="font-medium text-primary hover:underline" onClick={() => void abo.refetch()}>Noch einmal</button>
         </p>
       )}
@@ -353,7 +353,7 @@ export function AbosView() {
       <div>
         <PageHeader title="Ausschuss-Abos" description={HEADER_DESC} />
         <div className="mt-6">
-          <ErrorState title="Die Gremien kamen nicht durch"
+          <ErrorState title="Ausschüsse konnten nicht geladen werden"
             onRetry={() => void gremienQuery.refetch()} busy={gremienQuery.isFetching} />
         </div>
       </div>

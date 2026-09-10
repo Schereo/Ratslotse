@@ -137,7 +137,7 @@ export function CommandPalette() {
 
     const actions: Item[] = [
       {
-        key: "act-question", section: "Aktionen", label: "Frag den Rat", sub: "Stell deine Frage in normaler Sprache",
+        key: "act-question", section: "Aktionen", label: "Frag den Rat", sub: "Stell deine Frage in eigenen Worten",
         icon: Sparkles, run: () => go("/fragen"),
       },
       {

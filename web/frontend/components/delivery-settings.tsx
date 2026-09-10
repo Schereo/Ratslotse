@@ -58,7 +58,7 @@ export function DeliverySettings() {
     onSuccess: (d) =>
       d.sent.length > 0
         ? toast.success(`Test unterwegs: ${d.sent.map((s) => (s === "email" ? "E-Mail" : "Push")).join(" + ")}.`)
-        : toast.error("Kein Kanal konnte zustellen — Push braucht die App, E-Mail den Versand-Dienst."),
+        : toast.error("Die Test-Mitteilung konnte nicht gesendet werden. Prüfe bitte, ob E-Mail oder Push aktiviert ist."),
     onError: (err) =>
       toast.error(err instanceof ApiError ? err.message : "Test konnte nicht gesendet werden."),
   });

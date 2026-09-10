@@ -210,13 +210,13 @@ function PartiesView() {
   const { data, loading } = useFetch<PartyAnalysis>("/council/analysis");
   if (loading) return <div className="py-4"><ChartSkeleton bars={8} /></div>;
   if (!data || data.coverage.with_factions === 0) {
-    return <EmptyState mascot="sleep" title="Noch keine Analyse möglich" hint="Es sind noch keine Beschlüsse mit benannter antragstellender Person klassifiziert." />;
+    return <EmptyState mascot="sleep" title="Noch keine Analyse möglich" hint="Für diese Auswertung gibt es noch nicht genügend Beschlüsse, bei denen Antragstellende genannt sind." />;
   }
   return (
     <div className="space-y-4">
-      <AnalysisIntro summary={<>Wer bringt welche Anträge ein — aus <strong className="font-semibold text-foreground">{data.coverage.with_factions}</strong> Beschlüssen mit benannter Person.</>}>
+      <AnalysisIntro summary={<>Diese Auswertung zeigt anhand von <strong className="font-semibold text-foreground">{data.coverage.with_factions}</strong> Beschlüssen, wer welche Anträge einbringt.</>}>
         Protokolle nennen namentliche Einzelstimmen nur selten. Diese Analyse zeigt daher,{" "}
-        <strong className="font-semibold text-foreground">wer welche Anträge einbringt</strong> und wie sie ausgehen —
+        <strong className="font-semibold text-foreground">wer welche Anträge einbringt</strong> und wie darüber entschieden wird —
         nicht das Stimmverhalten jeder Fraktion bei jeder Abstimmung. Grundlage: {data.coverage.with_factions} von{" "}
         {data.coverage.total} Beschlüssen (ab 2018).
       </AnalysisIntro>
@@ -237,12 +237,12 @@ function PartiesView() {
       {data.antrag_stats && data.antrag_stats.parties.some((r) => r.n >= 5) ? (
         <Block
           title="Erfolgsquote der Anträge"
-          hint="Wie die eingereichten Anträge der Fraktionen ausgehen — aus den Original-Antragsdokumenten."
+          hint="Wie über die eingereichten Anträge der Fraktionen entschieden wurde."
           explain={
             <>
-              Gezählt werden die im Ratsinformationssystem eingereichten Antrags-Dokumente der Fraktionen
-              (inkl. Änderungsanträge) und der klare Endstand der zugehörigen Vorlage — bevorzugt der Beschluss
-              des Rats selbst: grün angenommen, rot abgelehnt. Vertagte/offene Anträge zählen nicht mit.
+              Gezählt werden die im Ratsinformationssystem eingereichten Anträge der Fraktionen,
+              einschließlich Änderungsanträgen. Maßgeblich ist die endgültige Entscheidung zur Vorlage,
+              möglichst die des Rats selbst: grün angenommen, rot abgelehnt. Vertagte oder offene Anträge zählen nicht mit.
               Vorsicht beim Deuten: Eine hohe Quote kann „mehrheitsfähig“ heißen — oder dass eine Fraktion vor
               allem stellt, was sicher durchgeht.
             </>
@@ -266,8 +266,8 @@ function PartiesView() {
         </Block>
       )}
       <Block
-        title="Streitgrad nach Themenfeld"
-        hint="Welche Themen den Rat spalten, welche Konsens sind."
+        title="Uneinigkeit nach Themenfeld"
+        hint="Bei welchen Themen der Rat häufig nicht einstimmig entscheidet."
         explain={
           <>
             Der Balken misst, wie oft Abstimmungen in diesem Themenfeld <em>nicht</em> einstimmig waren — es
@@ -278,7 +278,7 @@ function PartiesView() {
       >
         <Contention a={data} />
       </Block>
-      <Block title="Häufige Allianzen" hint="Parteien, die Anträge gemeinsam einbringen.">
+      <Block title="Gemeinsame Anträge" hint="Parteien, die häufig zusammen Anträge einbringen.">
         <Alliances a={data} />
       </Block>
     </div>
@@ -307,8 +307,8 @@ function MoneyByField({ data }: { data: FinanceData }) {
         </button>
       ))}
       <p className="pt-1.5 text-xs leading-relaxed text-muted-foreground/70">
-        Summe automatisch erkannter Beträge je Themenfeld (ohne Jahresabschlüsse/Haushaltspläne).
-        Zahl = Beschlüsse mit Betrag. Anklicken öffnet die Beschlüsse des Felds.
+        Summe der automatisch erkannten Beträge je Themenfeld. Jahresabschlüsse und Haushaltspläne sind
+        ausgenommen. Die Zahl zeigt, in wie vielen Beschlüssen ein Betrag vorkommt. Antippen öffnet die Beschlüsse.
       </p>
     </div>
   );
@@ -317,11 +317,11 @@ function MoneyByField({ data }: { data: FinanceData }) {
 function FinanceHeadline({ total, count }: { total: number; count: number }) {
   return (
     <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-transparent p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Erkanntes Finanzvolumen</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Genannte Gesamtsumme</p>
       <p className="mt-1 font-display text-[2rem] font-extrabold leading-none tracking-tight text-emerald-700 dark:text-emerald-400">≈ {formatEuro(total)}</p>
       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-        über <strong className="font-semibold text-foreground">{count} {count === 1 ? "Beschluss" : "Beschlüsse"}</strong> mit
-        Betrag · ohne Jahresabschlüsse/Haushaltspläne (grobe Größenordnung)
+        aus <strong className="font-semibold text-foreground">{count} {count === 1 ? "Beschluss" : "Beschlüssen"}</strong> mit
+        Beträgen · ohne Jahresabschlüsse und Haushaltspläne · grobe Größenordnung
       </p>
     </div>
   );
@@ -338,8 +338,8 @@ function FinanceView() {
   return (
     <div className="space-y-4">
       <Block
-        title="Wofür fließt das Geld?"
-        hint="Erkanntes Finanzvolumen je Themenfeld — welche Felder die größten Summen bewegen."
+        title="Welche Summen nennt der Rat?"
+        hint="In welchen Themenfeldern die größten Beträge in Beschlüssen vorkommen."
         explain={
           <>
             Summiert die Euro-Beträge, die in den Beschlusstexten automatisch erkannt wurden — das ist{" "}
