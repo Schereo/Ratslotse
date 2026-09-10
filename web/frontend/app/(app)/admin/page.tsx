@@ -1655,7 +1655,11 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   if (isError) return <ErrorState title="Die Nutzer*innen kamen nicht durch" onRetry={() => void refetch()} busy={isFetching} />;
 
   const needle = q.trim().toLowerCase();
-  const filtered = needle ? users.filter((u) => u.email.toLowerCase().includes(needle)) : users;
+  // Nach dem Namen zu suchen ist der Normalfall: Man erinnert sich an „Anne",
+  // nicht an ihre Adresse. Beides durchsuchen, damit keins der beiden fehlt.
+  const filtered = needle
+    ? users.filter((u) => `${u.display_name ?? ""} ${u.email}`.toLowerCase().includes(needle))
+    : users;
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[1fr_minmax(0,420px)]">
@@ -1663,7 +1667,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
         <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-3">
           <div className="relative flex-1">
             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="E-Mail suchen…"
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name oder E-Mail suchen…"
               className="h-9 w-full rounded-[9px] border border-input bg-card pl-9 pr-3 text-base maus:text-[12.5px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">{users.length} Nutzer*innen</span>
@@ -1686,7 +1690,15 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                   selected === u.id && "bg-accent")}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-[13.5px] font-semibold text-foreground">{u.email}</span>
+                    {/* Der Name steht vorn, die Adresse blass daneben: Konten
+                        tragen seit 09/2026 einen Namen (Pflicht bei der
+                        Registrierung), und ein Konto ist damit eine Person und
+                        nicht mehr nur eine Adresse. Wer noch keinen hat —
+                        Alt-Bestand —, erscheint weiter unter seiner Adresse. */}
+                    <span className="flex min-w-0 items-baseline gap-1.5">
+                      <span className="truncate text-[13.5px] font-semibold text-foreground">{u.display_name || u.email}</span>
+                      {u.display_name && <span className="truncate text-[11.5px] text-muted-foreground">{u.email}</span>}
+                    </span>
                     {/* Ein Abzeichen JE Rolle: Seit ein Konto mehrere tragen
                         kann, verschwiege ein einzelnes „admin" das Ratsmandat
                         daneben. Die Beschriftung kommt aus dem Katalog, damit
@@ -1774,9 +1786,10 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
   return (
     <Card className="bg-muted/20 p-5">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{data.email[0].toUpperCase()}</span>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{(data.display_name || data.email)[0].toUpperCase()}</span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold text-foreground">{data.email}</p>
+          <p className="truncate text-[15px] font-bold text-foreground">{data.display_name || data.email}</p>
+          {data.display_name && <p className="truncate text-xs text-muted-foreground">{data.email}</p>}
           <p className="text-xs text-muted-foreground">
             seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}
             {woher && <> · über {woher} registriert</>}

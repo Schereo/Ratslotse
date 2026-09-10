@@ -11,8 +11,8 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName?: string) => Promise<void>;
-  loginWithApple: (cred: AppleCredential) => Promise<void>;
+  register: (email: string, password: string, displayName: string) => Promise<void>;
+  loginWithApple: (cred: AppleCredential) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -57,8 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const register = async (email: string, password: string, displayName?: string) => {
-    const u = await api.post<User>("/auth/register", { email, password, display_name: displayName || null });
+  const register = async (email: string, password: string, displayName: string) => {
+    // Der Name ist Pflicht (Backend weist einen leeren ab) — deshalb kein
+    // `|| null` mehr, das die Prüfung nur zum Server verschöbe.
+    const u = await api.post<User>("/auth/register", { email, password, display_name: displayName.trim() });
     await setToken(u.access_token ?? null);
     setUser(u);
   };
@@ -73,6 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     await setToken(u.access_token ?? null);
     setUser(u);
+    // Zurückgegeben, damit der Knopf sofort sehen kann, ob Apple einen Namen
+    // mitgeliefert hat — `user` aus dem Context steht erst im nächsten Rendern.
+    return u;
   };
 
   const logout = async () => {

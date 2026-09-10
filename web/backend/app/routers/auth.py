@@ -21,6 +21,7 @@ from ..antworten import Ok
 from ..deps import get_current_user, get_store
 from ..ratelimit import forgot_password_limiter, login_limiter, register_limiter, verify_email_limiter
 from ..schemas import (
+    NAME_FEHLT,
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
@@ -197,6 +198,15 @@ def register(
     register_limiter.check(request)
     settings = get_settings()
     email = str(body.email).lower().strip()
+    # Der Name ist Pflicht — geprüft HIER und nicht als `min_length` im Schema:
+    # Eine Pydantic-Verletzung käme als englischer Text („String should have at
+    # least 1 character") aus dem Vertrag, und die ausgelieferte App zeigt genau
+    # diesen `msg` an. Ein eigener Abbruch liefert stattdessen einen deutschen
+    # Satz, den jeder Client unverändert anzeigen kann — auch die App im Store,
+    # deren Feld noch „optional" heißt.
+    display_name = (body.display_name or "").strip()
+    if not display_name:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
     if store.get_web_user_by_email(email):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
     # Registration hands out no role at all: everything it could decide on comes
@@ -212,7 +222,7 @@ def register(
     user_status = "active" if verified else "pending"
     user_id = store.create_web_user(
         email, hash_password(body.password), role, user_status, email_verified=verified,
-        display_name=body.display_name,
+        display_name=display_name,
         # Womit dieses Konto entstanden ist — Browser oder App (Admin 20a).
         signup_client=client_kind(request),
     )
@@ -238,7 +248,7 @@ def register(
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         expires = (datetime.utcnow() + timedelta(hours=_VERIFY_TTL_HOURS)).isoformat(timespec="seconds")
         store.create_email_verification(user_id, token_hash, expires)
-        background.add_task(_send_verification_email, email, raw, body.display_name)
+        background.add_task(_send_verification_email, email, raw, display_name)
     elif email == _configured_admin_email(settings) and not _has_admin(store):
         # Ohne E-Mail-Versand gibt es keinen Link zum Bestätigen — der Weg über
         # verify_email() kann dieses Konto also nicht zum Admin machen. Laut sagen,

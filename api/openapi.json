@@ -1805,6 +1805,13 @@
             "title": "Delivery Channel",
             "type": "string"
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1892,6 +1899,7 @@
         "required": [
           "id",
           "email",
+          "display_name",
           "role",
           "roles",
           "status",
@@ -1973,6 +1981,13 @@
               "null"
             ]
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -2030,6 +2045,7 @@
         "required": [
           "id",
           "email",
+          "display_name",
           "role",
           "roles",
           "status",
@@ -16540,7 +16556,7 @@
     },
     "/api/account/display-name": {
       "post": {
-        "description": "Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,\ndie bei der Registrierung keinen angeben konnten.",
+        "description": "Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,\ndie bei der Registrierung keinen angeben konnten.\n\nLeeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,\nwäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne\nNamen dasteht — und die Anrede in Mails und Übersicht fiele still auf\n„Moin!\" zurück.",
         "operationId": "set_display_name_api_account_display_name_post",
         "requestBody": {
           "content": {

@@ -3820,7 +3820,7 @@ class Store:
         Abo-, Quiz- und KI-Frage-Zahl + letzter Aktivitätstag. Alles in
         ratslotse.sqlite, ein Query."""
         rows = self._conn.execute(
-            """SELECT u.id, u.email, u.role, u.status, u.created_at, u.apple_sub, u.signup_client,
+            """SELECT u.id, u.email, u.display_name, u.role, u.status, u.created_at, u.apple_sub, u.signup_client,
                       (SELECT COUNT(*) FROM topics t WHERE t.owner_id = u.id) n_topics,
                       (SELECT COUNT(*) FROM committee_subscriptions s WHERE s.owner_id = u.id) n_subscriptions,
                       (SELECT COUNT(DISTINCT question_id) FROM quiz_answers q WHERE q.owner_id = u.id) n_quiz,
@@ -3841,7 +3841,8 @@ class Store:
         ).fetchall():
             nutzung.setdefault(r["owner_id"], {})[r["client"]] = r["c"]
         rollen = self.web_user_roles_map()
-        return [{"id": r["id"], "email": r["email"], "role": r["role"], "status": r["status"],
+        return [{"id": r["id"], "email": r["email"], "display_name": r["display_name"],
+                 "role": r["role"], "status": r["status"],
                  "roles": rollen.get(r["id"], []),
                  "created_at": r["created_at"], "apple_linked": bool(r["apple_sub"]),
                  "n_topics": r["n_topics"], "n_subscriptions": r["n_subscriptions"],
@@ -3871,7 +3872,8 @@ class Store:
         history_days = [(date.today() - timedelta(days=29 - i)).isoformat() for i in range(30)]
         verlauf = [by_day.get(d, 0) for d in history_days]
         return {
-            "id": u["id"], "email": u["email"], "role": u["role"], "status": u["status"],
+            "id": u["id"], "email": u["email"], "display_name": u.get("display_name"),
+            "role": u["role"], "status": u["status"],
             # `roles` ist die Wahrheit, `role` daneben nur die stärkste davon —
             # das Admin-Panel bearbeitet die Liste, nicht die Spalte.
             "roles": u.get("roles", []),

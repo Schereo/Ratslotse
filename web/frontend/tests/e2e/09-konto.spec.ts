@@ -150,7 +150,7 @@ test.describe("E-Mail-Adresse ändern", () => {
   async function frischesKonto(page: import("@playwright/test").Page) {
     const adresse = `wechsel-${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.org`;
     const antwort = await page.request.post("/api/auth/register", {
-      data: { email: adresse, password: PASSWORT },
+      data: { email: adresse, password: PASSWORT, display_name: "Testkonto" },
     });
     expect(antwort.ok(), await antwort.text()).toBeTruthy();
     await page.goto("/login");

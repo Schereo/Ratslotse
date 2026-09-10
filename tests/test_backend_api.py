@@ -50,7 +50,7 @@ def _register(client, email="admin@test.de", password="password123"):
     den sich das konfigurierte Admin-Konto selbst freischalten könnte — deshalb
     hier derselbe Weg wie im Betrieb: ``scripts/grant_admin.py``.
     """
-    r = client.post("/api/auth/register", json={"email": email, "password": password})
+    r = client.post("/api/auth/register", json={"display_name": "Testkonto", "email": email, "password": password})
     if r.status_code == 201 and email == "admin@test.de":
         grant_admin(email, RATSLOTSE_DB)
     return r
@@ -294,7 +294,7 @@ def test_register_never_grants_admin(client):
     Adresse zuerst ins Formular tippt, ganz ohne Zugriff auf ihr Postfach.
     """
     r = client.post("/api/auth/register",
-                    json={"email": "admin@test.de", "password": "password123"})
+                    json={"display_name": "Testkonto", "email": "admin@test.de", "password": "password123"})
     assert r.status_code == 201
     assert r.json()["role"] == "user"
     # Der Admin-Bereich bleibt zu (die Registrierung hat direkt eingeloggt).
@@ -315,12 +315,12 @@ def test_registrierung_im_browser_belegt_keinen_zustellweg(client):
     sonst stünde ein Konto ohne jeden Weg da, wenn jemand die
     System-Nachfrage ablehnt."""
     im_browser = client.post("/api/auth/register",
-                             json={"email": "browser@test.de", "password": "password123"})
+                             json={"display_name": "Testkonto", "email": "browser@test.de", "password": "password123"})
     assert im_browser.status_code == 201
     assert im_browser.json()["delivery_channel"] == "off"
 
     in_der_app = client.post("/api/auth/register", headers={"X-Client": "ios"},
-                             json={"email": "app@test.de", "password": "password123"})
+                             json={"display_name": "Testkonto", "email": "app@test.de", "password": "password123"})
     assert in_der_app.status_code == 201
     assert in_der_app.json()["delivery_channel"] == "email"
 
@@ -329,7 +329,7 @@ def test_first_registrant_on_empty_db_is_not_admin(client):
     """Der frühere „erstes Konto = Admin"-Bootstrap ist weg: eine beliebige
     fremde Adresse kann sich das leere Deployment nicht mehr aneignen."""
     r = client.post("/api/auth/register",
-                    json={"email": "fremd@test.de", "password": "password123"})
+                    json={"display_name": "Testkonto", "email": "fremd@test.de", "password": "password123"})
     assert r.status_code == 201
     assert r.json()["role"] == "user"
     assert client.get("/api/admin/users").status_code == 403
@@ -356,7 +356,7 @@ def test_configured_admin_gets_role_only_after_email_confirmation(client):
     with patch("app.routers.auth.send_email", side_effect=fake_send), \
          patch("app.routers.auth.get_settings", return_value=fake_settings):
         r = client.post("/api/auth/register",
-                        json={"email": "admin@test.de", "password": "password123"})
+                        json={"display_name": "Testkonto", "email": "admin@test.de", "password": "password123"})
     assert r.status_code == 201
     assert r.json()["role"] == "user" and r.json()["status"] == "pending"
     assert r.json()["email_verified"] is False
@@ -396,7 +396,7 @@ def test_configured_admin_not_re_promoted_when_an_admin_exists(client):
 def test_grant_admin_cli_promotes_only_existing_accounts(client):
     """Der Ops-Weg für Deployments ohne E-Mail-Versand: befördert ein
     vorhandenes Konto, legt keines an, und ein zweiter Lauf ändert nichts."""
-    client.post("/api/auth/register", json={"email": "ops@test.de", "password": "password123"})
+    client.post("/api/auth/register", json={"display_name": "Testkonto", "email": "ops@test.de", "password": "password123"})
     assert client.get("/api/admin/users").status_code == 403
 
     ok, _ = grant_admin("OPS@test.de", RATSLOTSE_DB)  # Adresse wird normalisiert
@@ -582,14 +582,14 @@ def test_admin_jobs_zeigt_letzten_lauf(client):
 def test_admin_endpoints_forbidden_for_regular_user(client):
     _register(client)  # admin
     bob = TestClient(app)
-    bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
+    bob.post("/api/auth/register", json={"display_name": "Testkonto", "email": "bob@test.de", "password": "password123"})
     assert bob.get("/api/admin/users").status_code == 403
 
 
 def test_admin_can_change_role(client):
     _register(client)  # `client` stays logged in as admin
     # Register bob on a separate client so the admin cookie on `client` is kept.
-    TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
+    TestClient(app).post("/api/auth/register", json={"display_name": "Testkonto", "email": "bob@test.de", "password": "password123"})
     users = client.get("/api/admin/users").json()
     bob = next(u for u in users if u["email"] == "bob@test.de")
     r = client.put(f"/api/admin/users/{bob['id']}/role", json={"role": "admin"})
@@ -673,7 +673,7 @@ def test_activation_emails_user_on_approve(client):
     Bestätigung selbst aktivieren."""
     from types import SimpleNamespace
     _register(client)  # admin
-    TestClient(app).post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})  # aktiv (kein Mail-Versand konfiguriert)
+    TestClient(app).post("/api/auth/register", json={"display_name": "Testkonto", "email": "bob@test.de", "password": "password123"})  # aktiv (kein Mail-Versand konfiguriert)
     bob = next(u for u in client.get("/api/admin/users").json() if u["email"] == "bob@test.de")
     assert bob["status"] == "active"
     # Admin sperrt bob — damit es wieder einen Übergang nach 'active' gibt.
@@ -1936,7 +1936,7 @@ def test_unverified_user_blocked_until_email_confirmed(client):
     bob = TestClient(app)
     with patch("app.routers.auth.send_email", side_effect=fake_send), \
          patch("app.routers.auth.get_settings", return_value=fake_settings):
-        r = bob.post("/api/auth/register", json={"email": "bob@test.de", "password": "password123"})
+        r = bob.post("/api/auth/register", json={"display_name": "Testkonto", "email": "bob@test.de", "password": "password123"})
     assert r.status_code == 201 and r.json()["status"] == "pending"
     assert sent.get("to") == "bob@test.de"  # Bestätigungs-Mail ging raus
 
@@ -1996,7 +1996,7 @@ def test_change_password_wrong_current(client):
 def test_app_change_password_returns_replacement_bearer(client):
     registered = client.post(
         "/api/auth/register",
-        json={"email": "native-password@test.de", "password": "password123"},
+        json={"display_name": "Testkonto", "email": "native-password@test.de", "password": "password123"},
         headers={"X-Client": "app"},
     )
     old_token = registered.json()["access_token"]
@@ -2608,7 +2608,7 @@ def test_app_register_returns_bearer_token(client):
     app_client = TestClient(app)
     r2 = app_client.post(
         "/api/auth/register",
-        json={"email": "appuser@test.de", "password": "password123"},
+        json={"display_name": "Testkonto", "email": "appuser@test.de", "password": "password123"},
         headers={"X-Client": "app"},
     )
     token = r2.json()["access_token"]
@@ -2633,7 +2633,7 @@ def test_app_login_returns_bearer_token(client):
 def test_app_flow_bearer_registers_push_device(client):
     """End-to-end app path: register (app) → bearer token → register a device token."""
     r = client.post("/api/auth/register",
-                    json={"email": "admin@test.de", "password": "password123"},
+                    json={"display_name": "Testkonto", "email": "admin@test.de", "password": "password123"},
                     headers={"X-Client": "app"})
     token = r.json()["access_token"]
     bearer = {"Authorization": f"Bearer {token}"}
@@ -2774,7 +2774,7 @@ def test_app_me_erneuert_das_token(client):
     """Das Gegenstück für die App: Jeder Start holt an /me ein frisch
     datiertes Token, das die App wegschreibt."""
     r = client.post("/api/auth/register",
-                    json={"email": "admin@test.de", "password": "password123"},
+                    json={"display_name": "Testkonto", "email": "admin@test.de", "password": "password123"},
                     headers={"X-Client": "app"})
     token = r.json()["access_token"]
     bare = TestClient(app)  # ohne Cookies, nur Bearer
@@ -3023,7 +3023,7 @@ def test_push_unregister_is_scoped_to_owner(client):
     # Register bob on a separate client so `client` keeps the admin session cookie
     # (TestClient persists Set-Cookie, so registering bob here would clobber it).
     bob = TestClient(app).post("/api/auth/register",
-                               json={"email": "bob@test.de", "password": "password123"}).json()
+                               json={"display_name": "Testkonto", "email": "bob@test.de", "password": "password123"}).json()
     assert client.put(f"/api/admin/users/{bob['id']}/status",
                       json={"status": "active"}).status_code == 200
     bob_client = TestClient(app)
@@ -3092,13 +3092,46 @@ def test_display_name_register_change_and_greeting(client):
 
     client.post("/api/account/display-name", json={"display_name": "Timo"})
     assert client.get("/api/auth/me").json()["display_name"] == "Timo"
-    # Leeren = Ansprache wieder neutral.
-    client.post("/api/account/display-name", json={"display_name": "  "})
-    assert client.get("/api/auth/me").json()["display_name"] is None
+    # Leeren geht NICHT mehr (der Name ist Pflicht) — und der Name, der schon
+    # dranhing, bleibt stehen. Ohne diese Sperre wäre dieser Endpunkt die
+    # Hintertür zurück in ein namenloses Konto.
+    leer = client.post("/api/account/display-name", json={"display_name": "  "})
+    assert leer.status_code == 422 and leer.json()["detail"] == "Bitte trage deinen Namen ein."
+    assert client.get("/api/auth/me").json()["display_name"] == "Timo"
 
     from kern.digest_email import render_html_email
     assert "Moin Timo," in render_html_email("Betreff", "Inhalt", greeting_name="Timo")
     assert "Moin" not in render_html_email("Betreff", "Inhalt").split("Ratslotse")[1][:40]
+
+
+def test_registrierung_verlangt_einen_namen(client):
+    """Der Anzeigename ist Pflicht (Tims Entscheidung 10.09.2026).
+
+    Geprüft wird auch die MELDUNG, nicht nur der Status: Sie steht deutsch im
+    Router und nicht als `min_length` im Schema, weil die im Store
+    ausgelieferte App den Pydantic-`msg` unverändert anzeigt — dort stünde
+    sonst „String should have at least 1 character".
+    """
+    for koerper in ({"email": "ohne@test.de", "password": "password123"},
+                    {"email": "leer@test.de", "password": "password123", "display_name": ""},
+                    {"email": "blank@test.de", "password": "password123", "display_name": "   "}):
+        r = client.post("/api/auth/register", json=koerper)
+        assert r.status_code == 422, koerper
+        assert r.json()["detail"] == "Bitte trage deinen Namen ein."
+    # …und kein halbes Konto zurückgelassen.
+    assert client.post("/api/auth/login",
+                       json={"email": "ohne@test.de", "password": "password123"}).status_code == 401
+
+
+def test_admin_nutzerliste_zeigt_den_namen(client):
+    """Die Liste trug bis 09/2026 nur die Adresse — 18 von 23 Konten auf Prod
+    hatten einen Namen, das Panel zeigte ihn bloß nicht. Sowohl Liste als auch
+    Detail führen ihn jetzt."""
+    _register(client, "admin@test.de")
+    zeilen = client.get("/api/admin/users").json()
+    ich = next(z for z in zeilen if z["email"] == "admin@test.de")
+    assert ich["display_name"] == "Testkonto"
+    assert client.get(f"/api/admin/users/{ich['id']}").json()["display_name"] == "Testkonto"
 
 
 def test_topic_suggestions_dedupe_similar(client):
@@ -6255,7 +6288,7 @@ def test_admin_verwaltet_rollen_und_sperrt_sich_nicht_selbst_aus(client):
     SSH-Zugang plus ``scripts/grant_admin.py``."""
     _register(client)  # admin@test.de, per grant_admin zum Admin gemacht
     ziel = client.post("/api/auth/register",
-                       json={"email": "rat@example.org", "password": "password123"})
+                       json={"display_name": "Testkonto", "email": "rat@example.org", "password": "password123"})
     ziel_id = ziel.json()["id"]
     client.post("/api/auth/login", json={"email": "admin@test.de", "password": "password123"})
 

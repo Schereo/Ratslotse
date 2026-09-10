@@ -549,7 +549,8 @@ struct AccountView: View {
                             .contentTransition(.opacity)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
-                        .disabled(isSavingDisplayName)
+                        .disabled(isSavingDisplayName || displayName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .opacity(displayName.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
                         .accessibilityLabel(displayNameSaved ? "Anzeigename wurde gespeichert" : "Anzeigename speichern")
                         .animation(.spring(response: 0.36, dampingFraction: 0.76), value: displayNameSaved)
 
@@ -838,17 +839,15 @@ struct AccountView: View {
     }
 
     private func saveDisplayName() {
-        struct Body: Codable, Sendable { let display_name: String? }
         guard !isSavingDisplayName else { return }
+        // Leeren geht nicht mehr: Der Name ist Pflicht, der Endpunkt weist
+        // einen leeren ab — der Knopf ist deshalb schon vorher gesperrt.
+        guard !displayName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSavingDisplayName = true
         withAnimation(.easeOut(duration: 0.16)) { displayNameSaved = false }
         Task {
             do {
-                let _: JSONValue = try await model.api.send(
-                    "/api/account/display-name",
-                    body: Body(display_name: displayName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : displayName)
-                )
-                await model.refreshAccount()
+                try await model.setDisplayName(displayName)
                 isSavingDisplayName = false
                 withAnimation(.spring(response: 0.36, dampingFraction: 0.74)) {
                     displayNameSaved = true
