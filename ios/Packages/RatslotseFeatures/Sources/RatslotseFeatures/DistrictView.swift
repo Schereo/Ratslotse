@@ -435,7 +435,7 @@ struct DistrictBoardPanel: View {
     // MARK: Weitere Quellen
 
     private func upcomingCard(_ items: [DistrictUpcomingItem]) -> some View {
-        RatsWidget("Demnächst im Rat", accent: .buoy, glyph: .calendarDays, note: "hier wird entschieden") {
+        RatsWidget("Demnächst im Rat", accent: .buoy, glyph: .calendarDays, note: "Termine") {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(items) { item in
                     Button {
@@ -461,7 +461,7 @@ struct DistrictBoardPanel: View {
     private var closureColor: Color { Color(red: 0.71, green: 0.33, blue: 0.04) }
 
     private func closuresCard(_ items: [DistrictClosure]) -> some View {
-        RatsWidget("Gesperrt und im Bau", accent: .buoy, glyph: .triangleAlert, note: "Stand der Verkehrsbehörde") {
+        RatsWidget("Gesperrt und im Bau", accent: .buoy, glyph: .triangleAlert, note: "Verkehrsbehörde") {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 2) {
@@ -511,7 +511,7 @@ struct DistrictBoardPanel: View {
     }
 
     private func pressCard(_ items: [DistrictPressItem]) -> some View {
-        RatsWidget("Aktuelles von der Stadt", accent: .marsh, glyph: .newspaper, note: "Pressemitteilungen · 4 Monate") {
+        RatsWidget("Aktuelles von der Stadt", accent: .marsh, glyph: .newspaper, note: "4 Monate") {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(items) { item in
                     if let url = URL(string: item.url) {
@@ -537,7 +537,7 @@ struct DistrictBoardPanel: View {
 
     private func investmentsCard(_ items: [DistrictInvestment]) -> some View {
         RatsWidget("Im Investitionsprogramm \(items[0].programmeYear)", accent: .marsh, glyph: .hammer,
-                   note: "Summe über die Programmjahre") {
+                   note: "alle Jahre") {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(items, id: \.label) { item in
                     HStack(alignment: .firstTextBaseline) {
