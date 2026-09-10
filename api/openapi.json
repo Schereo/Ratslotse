@@ -5172,10 +5172,7 @@
           },
           "note": {
             "title": "Note",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "until": {
             "title": "Until",
@@ -11825,10 +11822,46 @@
         "title": "PushUnregisterRequest",
         "type": "object"
       },
+      "QaExampleSession": {
+        "description": "Eine Sitzung als Anlass für eine frische Beispielfrage.\n\n``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits\nauf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die\nSitzung überhaupt hat.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "top_titel": {
+            "title": "Top Titel",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "committee",
+          "session_date",
+          "n",
+          "top_titel"
+        ],
+        "title": "QaExampleSession",
+        "type": "object"
+      },
       "QaExamples": {
         "properties": {
           "sessions": {
-            "title": "Sessions"
+            "items": {
+              "$ref": "#/components/schemas/QaExampleSession"
+            },
+            "title": "Sessions",
+            "type": "array"
           }
         },
         "required": [
@@ -21442,7 +21475,7 @@
     },
     "/api/council/qa-beispiele": {
       "get": {
-        "description": "Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):\ndie jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus\n„Was hat der <Ausschuss> am <Datum> beschlossen?\".",
+        "description": "Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):\ndie jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus\n„Was hat der <Ausschuss> am <Datum> beschlossen?\" und „Was wurde zu\n‚<top_titel>' entschieden?\".\n\nZwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares\nherauskommt — beide gehören hierher und nicht in zwei Clients:\n\n* **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem\n  einzigen Punkt liefert als „wichtigsten Beschluss\" Verfahrenskram; am\n  10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen\n  Tagesordnungspunkten im …' entschieden?\" auf der leeren Seite.\n* **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):\n  ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-\n  Klammer, ohne „(Oldb)\". Vorher schnitt jeder Client selbst — das Web an\n  der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.",
         "operationId": "qa_beispiele_api_council_qa_beispiele_get",
         "responses": {
           "200": {

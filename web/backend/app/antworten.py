@@ -1941,7 +1941,14 @@ class CouncilRecess(TypedDict):
     active: bool
     label: str | None
     until: str | None
-    note: str | None
+    #: IMMER ein String, notfalls leer — `sitzungspause()` setzt ihn auf jedem
+    #: seiner fünf Rückgabewege. Hier stand `str | None`, und das war nicht
+    #: bloß ungenau: Die App deklariert `let note: String` (nicht optional),
+    #: und ein `null` ließe `JSONDecoder` werfen — die Pausen-Karte auf „Heute
+    #: im Rat" bliebe leer statt falsch. Gefunden am 10.09.2026, nachdem
+    #: `scripts/ios_vertrag.py` gelernt hatte, auch `try?`-Aufrufstellen zu
+    #: lesen.
+    note: str
     next_session_date: str | None
 
 
@@ -3016,8 +3023,28 @@ class ResearchStopped(TypedDict):
     partial_report_possible: bool
 
 
+class QaExampleSession(TypedDict):
+    """Eine Sitzung als Anlass für eine frische Beispielfrage.
+
+    ``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits
+    auf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die
+    Sitzung überhaupt hat.
+    """
+    committee: str
+    session_date: str
+    n: int
+    top_titel: str | None
+
+
 class QaExamples(TypedDict):
-    sessions: Any
+    #: Ausgeschrieben statt ``Any``, und das ist kein Schönheitsdienst: Die App
+    #: las die Liste unter dem Namen ``sitzungen`` statt ``sessions`` — seit
+    #: der Einführung des Endpunkts (#950). Der Aufruf steht unter ``try?``,
+    #: das Decodieren scheiterte also still, und die App zeigte immer nur ihre
+    #: eingebauten Beispiele. `scripts/ios_vertrag.py` rechnet die Bindung aus
+    #: der Aufrufstelle aus — aber nur, wenn der Vertrag etwas über den Inhalt
+    #: behauptet. Gegen ``Any`` kann es nichts prüfen.
+    sessions: list[QaExampleSession]
 
 
 class TemplateFollow(TypedDict):

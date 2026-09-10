@@ -3692,6 +3692,7 @@ class Store:
         ("ai_question", "Fragen gestellt"),
         ("ai_question_chip", "davon aus einem Vorschlag"),
         ("ai_answer_empty", "Antworten ohne Quelle"),
+        ("ai_question_unclear", "Rückfragen statt Antwort"),
         ("search", "Suchbegriffe eingegeben"),
         ("research", "Tiefen-Recherchen"),
         ("analysis", "Auswertungen geöffnet"),

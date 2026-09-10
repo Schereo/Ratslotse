@@ -3343,8 +3343,21 @@ export interface paths {
         /**
          * Qa Beispiele
          * @description Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-         *     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
-         *     „Was hat der <Ausschuss> am <Datum> beschlossen?".
+         *     die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+         *     „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
+         *     ‚<top_titel>' entschieden?".
+         *
+         *     Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
+         *     herauskommt — beide gehören hierher und nicht in zwei Clients:
+         *
+         *     * **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem
+         *       einzigen Punkt liefert als „wichtigsten Beschluss" Verfahrenskram; am
+         *       10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen
+         *       Tagesordnungspunkten im …' entschieden?" auf der leeren Seite.
+         *     * **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):
+         *       ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-
+         *       Klammer, ohne „(Oldb)". Vorher schnitt jeder Client selbst — das Web an
+         *       der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.
          */
         get: operations["qa_beispiele_api_council_qa_beispiele_get"];
         put?: never;
@@ -6927,7 +6940,7 @@ export interface components {
             /** Next Session Date */
             next_session_date: string | null;
             /** Note */
-            note: string | null;
+            note: string;
             /** Until */
             until: string | null;
         };
@@ -9608,10 +9621,28 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * QaExampleSession
+         * @description Eine Sitzung als Anlass für eine frische Beispielfrage.
+         *
+         *     ``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits
+         *     auf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die
+         *     Sitzung überhaupt hat.
+         */
+        QaExampleSession: {
+            /** Committee */
+            committee: string;
+            /** N */
+            n: number;
+            /** Session Date */
+            session_date: string;
+            /** Top Titel */
+            top_titel: string | null;
+        };
         /** QaExamples */
         QaExamples: {
             /** Sessions */
-            sessions: unknown;
+            sessions: components["schemas"]["QaExampleSession"][];
         };
         /** QaFeedbackBody */
         QaFeedbackBody: {
@@ -17202,4 +17233,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 6016fc9667b475186dbfcafd2a02f1bb2bd55efdcdaa41f5b89c387c002c7f47
+// vertrag-sha256: b0fdce07ef261d9d55e92fad8cfb5e0bf7b4e4ef79401c2eacf841c554e0207c
