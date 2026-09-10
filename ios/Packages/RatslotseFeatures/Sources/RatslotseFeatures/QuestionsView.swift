@@ -2740,6 +2740,10 @@ private struct AnswerFeedbackReasonSheet: View {
             // Anfang an sichtbarer, toter Knopf sähe aus, als wäre das Blatt
             // kaputt; deshalb blendet der Platz ein statt zu erstarren.
             .animation(.easeOut(duration: 0.16), value: getrimmt.isEmpty)
+            // Der Kopf trägt selbst nur 10 pt nach oben — das reicht in einem
+            // Blatt ohne Griff. Hier liegt der Ziehgriff darüber, und Titel
+            // wie Knöpfe stießen fast an ihn (Tims Befund 10.09.2026).
+            .padding(.top, 12)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -2802,9 +2806,9 @@ private struct AnswerFeedbackReasonSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RatsColor.page)
-        // 360 pt trägt Kopf, Frage, fünf Zeilen Feld und die Datenzeile ohne
+        // 372 pt trägt Kopf, Frage, fünf Zeilen Feld und die Datenzeile ohne
         // Leerlauf darunter; „groß" bleibt für eine lange Begründung offen.
-        .presentationDetents([.height(360), .large])
+        .presentationDetents([.height(372), .large])
         .presentationDragIndicator(.visible)
         // Erst wenn das Blatt steht — ein Fokus im selben Takt wie die
         // Präsentation setzt die Tastatur nicht, das Feld bleibt kalt.
