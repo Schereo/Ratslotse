@@ -182,7 +182,21 @@ class OParlClient:
                     logger.info("Datei nicht abrufbar (%s): %s", r.status_code, url)
                     return None
                 r.raise_for_status()
-                return r.content, (r.headers.get("content-type") or "").split(";")[0].strip()
+                mime = (r.headers.get("content-type") or "").split(";")[0].strip()
+                # **Eine Webseite ist nie das Dokument.** ALLRIS antwortet für
+                # die Anlage einer nichtöffentlichen Vorlage mit HTTP 200 und
+                # der Seite „Keine Information verfügbar" — kein Fehler, kein
+                # 403, nur HTML statt PDF. Gemessen an Wolfsburg: **444 von
+                # 1.798**. Ungeprüft landen sie als ``.pdf`` im Dateispeicher,
+                # und die Textstufe meldet bei jedem Lauf aufs Neue „invalid
+                # pdf header" — 444 Fehler, die wie ein Parserproblem aussehen
+                # und in Wahrheit eine Zugangsbeschränkung sind.
+                kopf = r.content[:64].lstrip().lower()
+                if mime.startswith("text/html") or kopf.startswith(
+                        (b"<!doctype", b"<html")):
+                    logger.info("Dokument-Adresse liefert eine Webseite: %s", url)
+                    return None
+                return r.content, mime
             except requests.RequestException as e:
                 if versuch == tries - 1:
                     logger.info("Datei-Abruf gescheitert: %s (%s)", url, type(e).__name__)
