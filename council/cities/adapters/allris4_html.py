@@ -58,6 +58,12 @@ MAX_MONATE = 24
 #: 25 Sitzungen je Seite — Wolfsburg hat 652 auf 27 Seiten.
 MAX_INDEXSEITEN = 200
 
+#: Was ALLRIS ausliefert, wenn eine Sitzung nicht öffentlich ist. Die Seite
+#: antwortet mit HTTP 200 und einer 13.701-Byte-Hülle; der einzige Unterschied
+#: zu einem technischen Fehler ist dieser Satz. Gemessen an Wolfsburg:
+#: 77 von 255 Sitzungen, stabil dieselben.
+_VERSCHLOSSEN = "Keine Information verfügbar"
+
 _DATUM = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 _UHRZEIT = re.compile(r"(\d{1,2}):(\d{2})")
 #: ``Ö 6.1``, ``N 17``, ``6.1`` — die Nummer eines Tagesordnungspunkts.
@@ -207,6 +213,7 @@ class Allris4HtmlAdapter:
                       since: str) -> Iterator[dict]:
         """Kalender → Sitzungsseiten. Der Index kommt aus ``kalender_ids``."""
         wurzel = body["id"]
+        verschlossen = 0
         for nr in sorted(self.kalender_ids(client, wurzel), reverse=True):
             kennung = f"{wurzel}/to010?SILFDNR={nr}"
             try:
@@ -215,9 +222,16 @@ class Allris4HtmlAdapter:
                 logger.info("%s: Sitzung %s nicht lesbar (%s)", client.body_id, nr,
                             type(e).__name__)
                 continue
+            # Abgelegt wird auch die Absage — die Rohschicht hält fest, was
+            # der Server gesagt hat. Aussortiert wird beim Normalisieren.
+            if _VERSCHLOSSEN in html:
+                verschlossen += 1
             obj = {"id": kennung, "silfdnr": nr, "html": html}
             client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
             yield obj
+        if verschlossen:
+            logger.info("%s: %s Sitzungen sind nicht öffentlich", client.body_id,
+                        verschlossen)
 
     def kalender_ids(self, client: OParlClient, wurzel: str) -> set[str]:
         """Welche Sitzungen gibt es?
@@ -369,9 +383,20 @@ class Allris4HtmlAdapter:
             if isinstance(o, dict) and o.get("id")]
         gremien = {normalize_title(o.name): o.id for o in organizations}
 
+        verschlossen = 0
         for roh in raw.raw_objects(body_id, "meeting"):
             html = roh.get("html")
             if not html:
+                continue
+            # **Eine nichtöffentliche Sitzung wird kein Objekt.** ALLRIS
+            # antwortet für sie mit HTTP 200 und einer Hülle, die sagt: „Keine
+            # Information verfügbar … oder Sie sind nicht berechtigt". Daraus
+            # eine Sitzung zu bauen hieße, je Fall einen Geist anzulegen —
+            # namens „Sitzung", ohne Datum, ohne Tagesordnung. Der zählt in
+            # jeder Kennzahl mit, als fehlten UNS die Daten, statt dass es sie
+            # öffentlich gar nicht gibt. Gemessen an Wolfsburg: 77 von 255.
+            if _VERSCHLOSSEN in html:
+                verschlossen += 1
                 continue
             m_id = roh["id"]
             suppe = BeautifulSoup(html, "html.parser")
@@ -384,6 +409,10 @@ class Allris4HtmlAdapter:
                 state_raw=kopf.get("Status")))
             files += self._dateien(suppe, m_id, body_id, meeting_id=m_id)
             items += self._punkte(suppe, m_id, body_id, consultations)
+
+        if verschlossen:
+            logger.info("%s: %s nichtöffentliche Sitzungen übersprungen",
+                        body_id, verschlossen)
 
         beratungen_je_vorlage: dict[str, list[dict]] = {}
         for roh in raw.raw_objects(body_id, "paper"):
@@ -506,7 +535,12 @@ class Allris4HtmlAdapter:
             return vorgabe
 
         i_top, i_betreff = spalte("top", 1), spalte("betreff", 2)
-        i_ergebnis = spalte("zuständigkeit", 7)
+        # **Dieselbe Spalte heißt je Stadt anders.** Laatzen schreibt
+        # „Zuständigkeit", Wolfsburg „Beschlussart" — und ein Rückfall auf
+        # eine feste Nummer trifft dort ins Leere (die Tabelle hat sechs
+        # Spalten, der Rückfall stand auf 7). Gemessen: 0 von 1.358
+        # Beratungen mit Ergebnis, ohne Fehler und ohne Auffälligkeit.
+        i_ergebnis = spalte("zuständigkeit", spalte("beschlussart", -1))
         raus: list[AgendaItem] = []
         oeffentlich = True
         for pos, tr in enumerate(tabelle.find_all("tr")[1:]):
@@ -526,7 +560,8 @@ class Allris4HtmlAdapter:
             betreff = werte[i_betreff] if i_betreff < len(werte) else ""
             if not betreff:
                 continue
-            ergebnis = werte[i_ergebnis] if i_ergebnis < len(werte) else ""
+            ergebnis = (werte[i_ergebnis]
+                        if 0 <= i_ergebnis < len(werte) else "")
             # **Die echte Kennung ist eine Adresse, keine Erfindung.** ALLRIS
             # vergibt einem Punkt mit Inhalt eine ``TOLFDNR``; die Seite dazu
             # steht unter ``to020``. Nur reine Formalpunkte („Feststellung der

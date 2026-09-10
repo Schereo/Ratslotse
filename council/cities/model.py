@@ -280,8 +280,12 @@ _OUTCOME_RULES: tuple[tuple[tuple[str, ...], Outcome], ...] = (
     # dastand, weil „beschlussfassung" in der Zustimmungsliste steht. Dieselbe
     # Falle wie „nicht empfohlen", nur mit einem anderen Wort davor: Der
     # Zustimmungs-Zweig ist der letzte, also fängt ihn jede frühere Regel ab.
+    # „weitere Lesung erforderlich" ist Wolfsburgs Wort für vertagt: Die Sache
+    # ist nicht entschieden und kommt wieder. 58-mal in 255 Sitzungen
+    # (10.09.2026); ohne die Regel steht sie als „kein Ergebnis" da, was das
+    # Gegenteil dessen behauptet, was passiert ist — die Beratung geht weiter.
     (("vertagt", "zurückgestellt", "zurueckgestellt", "abgesetzt", "geschoben",
-      "verschoben"), Outcome.POSTPONED),
+      "verschoben", "weitere lesung"), Outcome.POSTPONED),
     (("verwiesen", "überwiesen", "ueberwiesen", "weitergeleitet"), Outcome.REFERRED),
     (("zurückgezogen", "zurueckgezogen", "erledigt", "zurückgenommen"), Outcome.WITHDRAWN),
     (("kenntnis",), Outcome.NOTED),

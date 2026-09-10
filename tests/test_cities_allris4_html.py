@@ -262,3 +262,44 @@ def test_ohne_cdata_wird_die_antwort_direkt_gelesen():
     assert _cdata("<a>x</a>") == ["<a>x</a>"]
     assert _cdata("<r><![CDATA[<a>x</a>]]><![CDATA[<b>y</b>]]></r>") == [
         "<a>x</a>", "<b>y</b>"]
+
+
+def test_nichtoeffentliche_sitzungen_werden_kein_objekt(tmp_path):
+    """ALLRIS antwortet für sie mit HTTP 200 und einer Absage-Hülle.
+
+    Daraus eine Sitzung zu bauen hieße, einen Geist anzulegen: namens
+    „Sitzung", ohne Datum, ohne Tagesordnung — und der zählt in jeder
+    Kennzahl mit, als fehlten UNS die Daten. Gemessen an Wolfsburg: 77 von
+    255 Sitzungen sind so.
+    """
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    zu = f"{WURZEL}/to010?SILFDNR=1003196"
+    store.put_raw_object("wolfsburg", "meeting", zu, {
+        "id": zu,
+        "html": "<main><h1>Keine Information verfügbar</h1><p>Zu den von Ihnen "
+                "gewählten Elementen ist keine weiterführende Information "
+                "verfügbar, oder Sie sind nicht berechtigt.</p></main>"})
+    store.put_raw_object("wolfsburg", "meeting", SITZUNG, {
+        "id": SITZUNG,
+        "html": (FIXTURES / "laatzen_to010.html").read_text(encoding="utf-8")})
+    batch = get_adapter("allris4_html").normalize("wolfsburg", store)
+    assert [m.id for m in batch.meetings] == [SITZUNG]
+    store.close()
+
+
+def test_die_ergebnisspalte_heisst_je_stadt_anders():
+    """Laatzen schreibt „Zuständigkeit", Wolfsburg „Beschlussart".
+
+    Ein Rückfall auf eine feste Spaltennummer traf bei Wolfsburg ins Leere:
+    0 von 1.358 Beratungen mit Ergebnis, ohne Fehler und ohne Auffälligkeit.
+    """
+    suppe = BeautifulSoup(
+        '<table id="toTreeTable">'
+        '<tr><th>+/-</th><th>TOP</th><th>Betreff</th><th>Vorlage</th>'
+        '<th>Beschlussart</th></tr>'
+        '<tr><td></td><td>Ö 1</td><td>Ein Antrag</td><td></td>'
+        '<td>ungeändert beschlossen</td></tr>'
+        "</table>", "html.parser")
+    punkte = Allris4HtmlAdapter()._punkte(suppe, "m1", "wolfsburg", [])
+    assert [p.result_raw for p in punkte] == ["ungeändert beschlossen"]
+    assert punkte[0].outcome is Outcome.ACCEPTED

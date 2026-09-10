@@ -72,6 +72,23 @@ eine eigene Falle: **Die Namen liegen in CDATA.** Wer die AJAX-Antwort als
 HTML parst, findet dort kein einziges ``<a>`` und hält die Stadt für
 gremienlos. Gemessen: Wolfsburg 43, Lüneburg 66, Laatzen 15.
 
+**Eine nichtöffentliche Sitzung sieht aus wie ein Fehler.** ALLRIS antwortet
+für sie mit HTTP 200 und einer 13.701-Byte-Hülle; der einzige Unterschied zu
+einem technischen Fehler ist der Satz „Keine Information verfügbar … oder Sie
+sind nicht berechtigt". Wer ihn nicht liest, baut je Fall einen Geist: eine
+Sitzung namens „Sitzung", ohne Datum, ohne Tagesordnung — und die zählt in
+jeder Kennzahl mit, als fehlten UNS die Daten, statt dass es sie öffentlich
+gar nicht gibt. Gemessen an Wolfsburg: **77 von 255**. Abgelegt wird die
+Absage trotzdem (die Rohschicht hält fest, was der Server gesagt hat);
+aussortiert wird beim Normalisieren.
+
+**Dieselbe Spalte heißt je Stadt anders.** Die Ergebnisspalte der
+Tagesordnung heißt bei Laatzen „Zuständigkeit", bei Wolfsburg
+„Beschlussart" — und ein Rückfall auf eine feste Spaltennummer trifft dort
+ins Leere, weil die Tabelle sechs Spalten hat. Gemessen: **0 von 1.358**
+Beratungen mit Ergebnis, ohne Fehler und ohne Auffälligkeit. Nach der
+Reparatur 1.344.
+
 **Ohne Sitzungs-Cookie antwortet der Selbstaufruf mit einer leeren Hülle.**
 Der Client hält eine ``requests.Session``, das genügt — aber der erste Abruf
 auf ``si018`` muss trotzdem passieren.
