@@ -72,6 +72,22 @@ eine eigene Falle: **Die Namen liegen in CDATA.** Wer die AJAX-Antwort als
 HTML parst, findet dort kein einziges ``<a>`` und hält die Stadt für
 gremienlos. Gemessen: Wolfsburg 43, Lüneburg 66, Laatzen 15.
 
+**Und eine nichtöffentliche ANLAGE auch.** Derselbe Satz kommt mit HTTP 200
+statt einer PDF-Datei zurück, wenn eine Vorlage nicht öffentlich ist.
+Ungeprüft landet die Seite als ``.pdf`` im Dateispeicher, und die Textstufe
+meldet bei jedem Lauf aufs Neue „invalid pdf header" — Fehler, die wie ein
+Parserproblem aussehen und in Wahrheit eine Zugangsbeschränkung sind.
+Gemessen an Wolfsburg: **444 von 1.798**. `get_file` weist deshalb ab, was
+als Webseite zurückkommt: **Ein Dokument-Abruf, der HTML liefert, ist nie das
+Dokument.**
+
+**Normalisieren löscht nicht.** ``upsert_batch`` legt an und aktualisiert; ein
+Objekt, das der Adapter nicht mehr baut, bleibt liegen. Nach der Reparatur
+der Geister oben standen die 199 immer noch in ``cities.sqlite`` und
+drückten „Vorlagen je Sitzung" von 3,5 auf 2,4 — die Kennzahl, an der die
+Plausibilitätsprüfung hängt. Wer eine Regel ändert, die entscheidet, ob ein
+Objekt überhaupt entsteht, muss den Altbestand von Hand aufräumen.
+
 **Eine nichtöffentliche Sitzung sieht aus wie ein Fehler.** ALLRIS antwortet
 für sie mit HTTP 200 und einer 13.701-Byte-Hülle; der einzige Unterschied zu
 einem technischen Fehler ist der Satz „Keine Information verfügbar … oder Sie
