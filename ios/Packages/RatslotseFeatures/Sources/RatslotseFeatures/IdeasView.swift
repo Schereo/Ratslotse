@@ -308,6 +308,29 @@ private struct IdeaCard: View {
                 .font(RatsFont.body(14, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
                 .multilineTextAlignment(.leading)
+            // Wie die ANDEREN Räte zu derselben Sache stehen. Ohne diese Zeile
+            // zählte die Karte eine Stadt für eine Idee, die sie gerade
+            // gestoppt hat: Die Verpackungssteuer wurde in zwei von fünf Räten
+            // nicht eingeführt, sondern die Prüfung eingestellt.
+            // Die eigene Haltung, aber nur wenn sie GEGEN die Sache geht.
+            // „Dafür" ist der Normalfall und steht schon im Titel; „dagegen"
+            // dreht die Bedeutung der ganzen Karte um.
+            //
+            // Ein Wort und kein Satz, weil `against` von „abschaffen" bis
+            // „verschieben" reicht. Was die Vorlage genau bremst, sagt die
+            // Zusammenfassung darunter.
+            if idee.stance == "against" {
+                Text("Gegenrichtung")
+                    .font(RatsFont.body(11, weight: .medium))
+                    .foregroundStyle(RatsColor.text)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(RatsColor.muted.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+            }
+            if !haltungen.isEmpty {
+                Text(haltungen)
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted)
+            }
             if let summary = idee.summary, !summary.isEmpty {
                 Text(summary)
                     .font(RatsFont.body(12))
@@ -338,6 +361,27 @@ private struct IdeaCard: View {
                 .padding(.top, 2)
             }
 
+            if !idee.siblings.isEmpty {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(idee.siblings) { g in
+                            Text([Self.datum(g.date), g.name].compactMap { $0 }.joined(separator: " · "))
+                                .font(RatsFont.body(10.5))
+                                .foregroundStyle(RatsColor.muted.opacity(0.85))
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 3)
+                } label: {
+                    Text("\(idee.bodyName) hat die Sache "
+                         + "\(idee.siblings.count + 1)-mal behandelt")
+                        .font(RatsFont.body(11, weight: .medium))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                .tint(RatsColor.muted)
+            }
+
             if let raw = idee.web, let url = URL(string: raw) {
                 Link(destination: url) {
                     RatsLabel("Im Ratsinformationssystem von \(idee.bodyName)", .externalLink)
@@ -360,7 +404,29 @@ private struct IdeaCard: View {
         } else if idee.peers > 1 {
             teile.append("auch in \(idee.peers) anderen Städten")
         }
+        if idee.siblings.count == 1 {
+            teile.append("1 weitere Vorlage dazu")
+        } else if idee.siblings.count > 1 {
+            teile.append("\(idee.siblings.count) weitere Vorlagen dazu")
+        }
         return teile.joined(separator: " · ")
+    }
+
+    /// Wie die anderen Räte zu derselben Sache stehen — dieselbe Zeile wie im
+    /// Web. Drei Klassen und nicht fünf: `introduce` gegen `expand` war weder
+    /// für das Modell noch für einen Menschen entscheidbar (72 % gegen 87 %,
+    /// s. `council/cities/annotators.py::IdeaStance`).
+    private var haltungen: String {
+        let reihenfolge = ["for", "against", "review"]
+        let teile = reihenfolge.compactMap { wert -> String? in
+            guard let n = idee.peerStances[wert], n > 0 else { return nil }
+            switch wert {
+            case "for": return "\(n) dafür"
+            case "against": return "\(n) dagegen"
+            default: return "\(n) prüfen erst"
+            }
+        }
+        return teile.isEmpty ? "" : "In den anderen Räten: " + teile.joined(separator: ", ")
     }
 
     /// „Stimmt das?" — dieselben zwei Wörter wie im Web.

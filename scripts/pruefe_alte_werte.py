@@ -167,7 +167,10 @@ ERLAUBT_ZEILE = {
     # Das Feld hieß bis 01.09.2026 `haltung`; seit dem OpenAPI-Schnitt heißt es
     # `stance`. Der WERT bleibt deutsch — er ist die Partei-Haltung der
     # KI-Antwort und steht so im Prompt.
-    "dagegen": re.compile(r'haltung|stance|dafür|label: "dagegen"'),
+    # `kurz: "dagegen"` ist die Beschriftungstabelle des Städtevergleichs
+    # (`HALTUNG` in ideen/view.tsx). Der gespeicherte Wert heißt `against`,
+    # daneben steht das deutsche Wort — „10 dafür, 4 prüfen erst, 2 dagegen".
+    "dagegen": re.compile(r'haltung|stance|dafür|label: "dagegen"|kurz: "dagegen"'),
     # `belegt` ist daneben das Urteil der Themen-Prüfung
     # (belegt|plausibel|ungeeignet) und die Beleglage einer Kernzahl.
     "belegt": re.compile(r'verdict|plausibel|beleglage|belegt:\s*Kasten'),
