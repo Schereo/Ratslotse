@@ -121,8 +121,11 @@ struct CityMapView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 0) {
+                        // 0,46 der Höhe waren auf dem Telefon gut 300 pt —
+                        // „sehr klein, schwer was zu erkennen“ (Tim, 09.09.).
+                        // Jetzt gut zwei Drittel; die Tafel folgt beim Scrollen.
                         stage
-                            .frame(height: max(300, geo.size.height * 0.46))
+                            .frame(height: max(440, geo.size.height * 0.66))
                         panel
                             .padding(.horizontal, 18)
                             .padding(.vertical, 18)

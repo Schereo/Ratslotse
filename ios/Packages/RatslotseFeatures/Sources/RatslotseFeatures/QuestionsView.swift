@@ -121,13 +121,11 @@ struct QuestionsView: View {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
     }
     private var composerBottomPadding: CGFloat {
-        // Die Bottom-Navigation reserviert bereits ihren eigenen Safe-Area-
-        // Bereich. 82 pt lassen die beiden Glasflächen optisch zusammenstehen,
-        // ohne Schatten oder Trefferflächen überlappen zu lassen. Steht die
-        // Tastatur, weicht die Leiste (NativeRootView) — dann rückt das Feld
-        // direkt an die Tasten.
-        guard horizontalSizeClass == .compact else { return 18 }
-        return composerFocused ? 10 : 82
+        // Die Tab-Leiste kommt seit dem 09.09.2026 als Safe-Area-Rand aus
+        // NativeRootView (gemessen, bei Tastatur null) — die früheren 82 pt
+        // hier waren der Ersatz dafür. Übrig bleibt der optische Abstand
+        // zwischen den beiden Glasflächen.
+        horizontalSizeClass == .compact ? 10 : 18
     }
     private var shouldAutoScroll: Bool {
 #if DEBUG
@@ -137,9 +135,11 @@ struct QuestionsView: View {
 #endif
     }
     private var showsJumpToEnd: Bool {
-        // 40 pt Toleranz: Das Ende darf knapp unter der Kante liegen, ohne
-        // dass der Pfeil beim Lesen der letzten Zeilen schon flackert.
-        !turns.isEmpty && chatEndY > composerTopY + 40
+        // 220 pt Toleranz — gut ein Viertel Bildschirm. Mit 40 pt stand der
+        // Pfeil schon, sobald die letzte Karte einen Fingerbreit nach oben
+        // gewischt war: „gefühlt immer“ (Tim, 09.09.2026). Er soll erst
+        // kommen, wenn man wirklich im Gespräch unterwegs ist.
+        !turns.isEmpty && chatEndY > composerTopY + 220
     }
 
     var body: some View {
@@ -177,6 +177,7 @@ struct QuestionsView: View {
                 input = model.questionPrefill
                 model.questionPrefill = ""
             }
+            askPendingQuestionIfNeeded()
 #if DEBUG
             if turns.isEmpty,
                ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") == "1",
@@ -193,6 +194,7 @@ struct QuestionsView: View {
         // die Wiederherstellung noch einmal, statt einmalig ins Leere zu gehen.
         .task(id: model.activeConversationID) { await restoreActiveConversationIfNeeded() }
         .task(id: model.questionShareToken) { await loadPendingSharedAnswer() }
+        .onChange(of: model.pendingQuestion) { _, _ in askPendingQuestionIfNeeded() }
         .task { await loadPersonLexicon() }
         .task { await loadQuestionExamples() }
         .onChange(of: scenePhase) { _, phase in
@@ -371,7 +373,6 @@ struct QuestionsView: View {
             .padding(.top, 8)
             .padding(.bottom, composerBottomPadding)
             .frame(maxWidth: .infinity)
-            .animation(RatsMotion.flow, value: composerFocused)
             .background {
                 GeometryReader { geometry in
                     Color.clear.onChange(of: geometry.frame(in: .global).minY, initial: true) { _, y in
@@ -391,6 +392,19 @@ struct QuestionsView: View {
 
     private func scrollToEnd(_ proxy: ScrollViewProxy) {
         withAnimation(RatsMotion.travel) { proxy.scrollTo(Self.chatEndAnchor, anchor: .bottom) }
+    }
+
+    /// Von der Heute-Seite abgeschickt: sofort fragen, nicht erst ins Feld
+    /// legen. Läuft in `onAppear` UND bei Änderung, weil die Ansicht im
+    /// TabView schon leben kann, wenn die Frage gesetzt wird.
+    private func askPendingQuestionIfNeeded() {
+        guard let question = model.pendingQuestion else { return }
+        model.pendingQuestion = nil
+        guard model.conversationSavingPreference != nil else {
+            input = question
+            return
+        }
+        ask(question)
     }
 
     /// Lange drücken auf die eigene Frage → „Bearbeiten“: Der Text steht
