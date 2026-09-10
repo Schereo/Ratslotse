@@ -123,6 +123,39 @@ def test_allris_blaettert_rueckwaerts_und_haelt_bei_alten_an(client):
 
 
 @responses.activate
+def test_allris_erkennt_wenn_das_neue_vorn_steht(client):
+    """Peine sortiert andersherum als Osnabrück — und sagt es niemandem.
+
+    Gemessen am 10.09.2026: Peines Sitzungsliste hat auf Seite 1 den
+    17.12.2026 und auf der letzten Seite den 13.09.2006; bei Osnabrück,
+    Braunschweig, Potsdam und Langenhagen ist es umgekehrt. Wer die Richtung
+    ANNIMMT, erntet dort den Jahrgang 2006 — ohne Fehler, ohne rote Zahl, und
+    die Stadt steht mit zwanzig Jahre alten Beschlüssen im Vergleich. Genau so
+    ist es passiert.
+    """
+    def antwort(request):
+        seite = int(parse_qs(urlparse(request.url).query).get("page", ["1"])[0])
+        # Neu vorn, alt hinten — die Peine-Reihenfolge.
+        datum = "2026-09-01" if seite <= 3 else "2006-01-01"
+        objekte = [{"id": f"https://x.de/m/{seite}-{i}", "name": "S", "start": datum}
+                   for i in range(10)]
+        return 200, {"Content-Type": "application/json"}, json.dumps(
+            _liste(objekte, seite, 40, "https://x.de/meetings"))
+
+    responses.add_callback(responses.GET, "https://x.de/meetings", callback=antwort)
+    geholt = list(_seiten_rueckwaerts(client, "https://x.de/meetings", "meeting",
+                                      "2025-01-01"))
+
+    seiten = [int(parse_qs(urlparse(c.request.url).query).get("page", ["1"])[0])
+              for c in responses.calls]
+    assert seiten[:2] == [1, 40], "erst Seite 1, dann die letzte — zum Vergleich"
+    assert seiten[2] == 1, "danach VORWÄRTS, weil das Neue vorn steht"
+    assert len([o for o in geholt if o["start"] == "2026-09-01"]) == 30
+    # Und der Altbestand wird nicht durchblättert.
+    assert len(responses.calls) <= 14
+
+
+@responses.activate
 def test_allris_zaehlt_undatierte_papiere_als_alt(client):
     """Osnabrücks Altbestand trägt kein ``date``.
 

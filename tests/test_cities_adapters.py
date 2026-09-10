@@ -30,6 +30,10 @@ STAEDTE = {
     "osnabrueck": "allris4",
     "braunschweig": "allris4",
     "potsdam": "allris4",
+    "langenhagen": "allris4",
+    # Peine ist die Stadt, die zeigt, dass „ALLRIS 4" kein Verhalten
+    # garantiert: Ihre Listen sortieren neu-zuerst, alle anderen alt-zuerst.
+    "peine": "allris4",
     "muenster": "session",
     "magdeburg": "session",
 }

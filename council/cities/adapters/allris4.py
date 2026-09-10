@@ -66,9 +66,48 @@ def _datum_von(o: dict) -> str:
     return parse_date(o.get("date") or o.get("start")) or "0000-00-00"
 
 
+def _juengstes(objekte: list) -> str:
+    """Das jüngste Datum einer Seite — ``""``, wenn keins dasteht."""
+    daten = [_datum_von(o) for o in objekte if isinstance(o, dict)]
+    return max(daten) if daten else ""
+
+
+def _neueste_zuerst(client: OParlClient, listen_url: str, erste: dict,
+                    letzte_url: str, merker: dict) -> bool:
+    """Steht das Neue auf der ERSTEN Seite? Gemessen, nicht angenommen.
+
+    **Nicht jede ALLRIS-4-Instanz sortiert gleich.** Osnabrück, Braunschweig,
+    Potsdam und Langenhagen legen das Neueste ans Ende — deshalb blättert
+    dieser Adapter rückwärts. **Peine legt es an den Anfang** (gemessen
+    10.09.2026: Seite 1 vom 17.12.2026, letzte Seite vom 13.09.2006). Wer die
+    Richtung annimmt statt sie zu messen, erntet dort den Jahrgang 2006 und
+    merkt es an nichts: Der Lauf ist grün, die Zahlen sehen plausibel aus, und
+    die Stadt steht mit zwanzig Jahre alten Beschlüssen im Vergleich.
+
+    Kostet **nichts**: Die dafür geholte letzte Seite ist beim
+    Rückwärtsblättern ohnehin die erste, die gebraucht wird.
+    """
+    vorn = _juengstes(as_list(erste.get("data")))
+    try:
+        letzte = client.get_json(letzte_url, kind="list_page")
+    except Exception:  # noqa: BLE001 — im Zweifel bei der bisherigen Annahme
+        return False
+    # Die letzte Seite ist beim Rückwärtsblättern gleich die erste, die
+    # gebraucht wird — sie wird gemerkt und nicht zweimal geholt.
+    merker["letzte"] = letzte
+    hinten = _juengstes(as_list(letzte.get("data")))
+    if not vorn or not hinten:
+        return False
+    return vorn > hinten
+
+
 def _seiten_rueckwaerts(client: OParlClient, listen_url: str, kind: str,
                         since: str, max_pages: int = MAX_PAGES) -> Iterator[dict]:
-    """Von der letzten Seite rückwärts, bis das Zeitfenster verlassen ist."""
+    """Vom neuen Ende her blättern, bis das Zeitfenster verlassen ist.
+
+    Welches Ende das neue ist, sagt ``_neueste_zuerst`` — es hängt an der
+    Instanz, nicht am Hersteller.
+    """
     erste = client.get_json(listen_url, kind="list_page")
     links = erste.get("links") or {}
     letzte_url = links.get("last")
@@ -89,12 +128,21 @@ def _seiten_rueckwaerts(client: OParlClient, listen_url: str, kind: str,
             seiten += 1
         return
 
+    merker: dict = {}
+    vorwaerts = _neueste_zuerst(client, listen_url, erste, letzte_url, merker)
+    if vorwaerts:
+        logger.info("%s: Diese Instanz führt das Neueste auf Seite 1 — vorwärts",
+                    kind)
+    seiten = (range(1, int(gesamt_seiten) + 1) if vorwaerts
+              else range(int(gesamt_seiten), 0, -1))
+
     alte = 0
-    for n in range(int(gesamt_seiten), 0, -1):
-        if int(gesamt_seiten) - n >= max_pages:
+    for i, n in enumerate(seiten):
+        if i >= max_pages:
             logger.warning("%s: Seitendeckel erreicht (%s Seiten)", kind, max_pages)
             break
-        d = client.get_json(_page(letzte_url, n), kind="list_page")
+        gemerkt = merker.pop("letzte", None) if n == int(gesamt_seiten) else None
+        d = gemerkt or client.get_json(_page(letzte_url, n), kind="list_page")
         objekte = as_list(d.get("data"))
         if not objekte:
             break

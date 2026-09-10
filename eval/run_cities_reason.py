@@ -67,9 +67,12 @@ SCHWELLE_VOTE = 0.90
 #: Personennamen in der Ausgabe: keine.
 SCHWELLE_NAMEN = 0
 
-#: „Herr Meyer", „Frau Dr. Schulz-Braun" — grob, aber für einen Wächter reicht
-#: es: Der Prompt verbietet die Anrede samt Namen vollständig.
-_NAME_RE = re.compile(r"\b(Herr|Frau)\s+(Dr\.\s+)?[A-ZÄÖÜ][a-zäöüß]{2,}")
+#: **Dieselbe Regel, die der Annotator anwendet** — nicht eine zweite. Ein
+#: Prüfstand mit eigenem Namensmuster misst sein Muster, nicht die Ausgabe:
+#: Die erste Fassung hier kannte nur „Herr/Frau" und hätte „Sachkundiger
+#: Einwohner Fassl" durchgewinkt, also genau den Fall, für den es die Regel
+#: gibt.
+from council.cities.annotators import _NAMEN_RE as _NAME_RE  # noqa: E402
 
 
 def lade() -> list[dict]:
@@ -95,6 +98,7 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
     erfunden: list[dict] = []
     namen: list[dict] = []
     vote_treffer = vote_gesamt = 0
+    vote_daneben: list[dict] = []
     gefunden = verpasst = 0
     kosten = 0.0
     saetze: list[dict] = []
@@ -133,7 +137,11 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
         # 2. Das Abstimmungsergebnis.
         if f.get("vote") is not None:
             vote_gesamt += 1
-            vote_treffer += _gleich(nutzlast.vote, f["vote"])
+            if _gleich(nutzlast.vote, f["vote"]):
+                vote_treffer += 1
+            else:
+                vote_daneben.append({"item": f["item"], "erwartet": f["vote"],
+                                     "bekommen": nutzlast.vote})
 
         # 3. Keine Personennamen.
         text = " ".join([nutzlast.discussed, nutzlast.decided, nutzlast.why])
@@ -146,6 +154,7 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
                        "decided": nutzlast.decided})
 
     return {"erfunden": erfunden, "namen": namen, "saetze": saetze,
+            "vote_daneben": vote_daneben,
             "vote_quote": vote_treffer / max(vote_gesamt, 1), "vote_gesamt": vote_gesamt,
             "gefunden": gefunden, "verpasst": verpasst, "cost_usd": kosten}
 
@@ -183,6 +192,12 @@ def main() -> int:
             print(f"    {d['item'][:50]}  ({d['warum']})")
             if d.get("why"):
                 print(f"        „{d['why'][:80]}“")
+    if letzter["vote_daneben"]:
+        print("\n  Abstimmungsergebnis daneben (erwartet | bekommen):")
+        for d in letzter["vote_daneben"][:8]:
+            print(f"    {d['item'][:44]:46}")
+            print(f"        {d['erwartet'][:56]!r}")
+            print(f"        {str(d['bekommen'])[:56]!r}")
     if letzter["namen"]:
         print("\n  Personennamen in der Ausgabe:")
         for d in letzter["namen"][:8]:

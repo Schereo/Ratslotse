@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import threading
 import time
@@ -32,8 +33,12 @@ USER_AGENT = ("Ratslotse/1.0 (+https://ratslotse.de; Kontakt siehe Impressum) "
               "Staedtevergleich kommunaler Ratsbeschluesse")
 HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
-#: Mindestabstand zwischen zwei Anfragen an denselben Host.
-RATE_SECONDS = 1.0
+#: Mindestabstand zwischen zwei Anfragen an denselben Host. Eine Sekunde ist
+#: die Vorgabe und bleibt es für den Cron. Ein Bestandslauf über Tausende
+#: Seiten darf enger fahren — ``CITIES_RATE_SECONDS`` setzt das für einen
+#: Lauf, nach unten begrenzt auf 0,2 s, damit ein Tippfehler in der Umgebung
+#: kein fremdes Ratsinformationssystem umwirft.
+RATE_SECONDS = max(0.2, float(os.environ.get("CITIES_RATE_SECONDS") or 1.0))
 TIMEOUT_JSON = 60
 TIMEOUT_FILE = 120
 
@@ -107,6 +112,43 @@ class OParlClient:
         self.raw.put_raw_object(self.body_id, kind, store_as or daten.get("id") or r.url, daten)
         return daten
 
+    def get_text(self, url: str, headers: dict | None = None,
+                 tries: int = 3) -> str:
+        """GET einer HTML-Seite — für die Adapter, die keine Schnittstelle haben.
+
+        Dieselbe Drosselung und dieselbe Wiederholungsregel wie ``get_json``;
+        nur wird nichts abgelegt, denn was roh gespeichert wird, entscheidet
+        der Adapter (er legt die Seite mit seiner eigenen Kennung ab).
+
+        **Die Kodierung kommt aus dem Dokument, nicht aus dem Kopf.** ALLRIS
+        classic liefert ISO-8859-1 und sagt es im Meta-Tag statt im
+        ``Content-Type``; wer sich auf den Kopf verlässt, bekommt „Ausschuß"
+        als „AusschuÃŸ" — und merkt es erst, wenn ein Titel nicht mehr
+        zusammenpasst.
+        """
+        kopf = {**HEADERS, "Accept": "text/html,application/xhtml+xml"}
+        kopf.update(headers or {})
+        letzte: Exception | None = None
+        for versuch in range(tries):
+            throttle(url)
+            try:
+                r = self.session.get(url, headers=kopf, timeout=TIMEOUT_JSON)
+                self.requests_made += 1
+                r.raise_for_status()
+                if not r.encoding or r.encoding.lower() in ("iso-8859-1", "latin-1"):
+                    r.encoding = r.apparent_encoding or r.encoding
+                return r.text
+            except requests.HTTPError as e:
+                status = e.response.status_code if e.response is not None else 0
+                if 400 <= status < 500:
+                    raise
+                letzte = e
+            except (requests.ConnectionError, requests.Timeout) as e:
+                letzte = e
+            if versuch < tries - 1:
+                time.sleep(2 * (versuch + 1))
+        raise letzte or RuntimeError(f"kein Ergebnis für {url}")
+
     # --------------------------------------------------------------- Dateien
 
     def get_file(self, url: str, tries: int = 2) -> tuple[bytes, str] | None:
@@ -115,7 +157,21 @@ class OParlClient:
         Ein 404 auf eine Datei ist kein Grund, den Lauf abzubrechen: Magdeburgs
         Schnittstelle nennt Adressen, die es nicht gibt, und andere Städte
         entfernen Anlagen nachträglich.
+
+        **Und eine kaputte Adresse erst recht nicht.** Am 10.09.2026 stand in
+        einer Wolfsburger Vorlage statt eines Dokumentlinks ein lokaler
+        Windows-Pfad (``file:///C:\…``) — jemand hat beim Einpflegen das
+        falsche Feld kopiert. ``requests`` wirft dafür ``InvalidSchema``, und
+        das ist **keine** der drei Ausnahmen unten: Der Fehler ging durch,
+        und mit ihm der ganze Dateiabruf der Stadt. 4.793 Dateien, davon
+        369 Niederschriften, wurden wegen einer einzigen Zeile nicht geholt.
+        Deshalb wird das Schema vorab geprüft (ein anderes wird nie gut, ein
+        erneuter Versuch also sinnlos) und unten auf ``RequestException``
+        gefangen — eine Datei darf niemals eine Stadt kosten.
         """
+        if not url.lower().startswith(("http://", "https://")):
+            logger.info("Datei-Adresse ist keine Netzadresse: %s", url[:60])
+            return None
         for versuch in range(tries):
             throttle(url)
             try:
@@ -127,7 +183,7 @@ class OParlClient:
                     return None
                 r.raise_for_status()
                 return r.content, (r.headers.get("content-type") or "").split(";")[0].strip()
-            except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
+            except requests.RequestException as e:
                 if versuch == tries - 1:
                     logger.info("Datei-Abruf gescheitert: %s (%s)", url, type(e).__name__)
                     return None

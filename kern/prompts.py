@@ -257,9 +257,22 @@ weißt du nicht — es sei denn, es steht da. Steht im Abschnitt keine
 Begründung, ist `why` ein leerer String und `grounded` ist false. Das ist die
 richtige Antwort, kein Versagen.
 
-`grounded` heißt: Im Abschnitt steht ein Grund, ein Argument, eine
-Wortmeldung, ein Einwand — irgendetwas, das sagt, WARUM. Ein reines Ergebnis
-(„einstimmig beschlossen") ist keine Begründung.
+`grounded` heißt: Im Abschnitt steht ein Grund, den du als „weil …"
+wiedergeben könntest — ein Argument für oder gegen die Sache, ein Einwand,
+ein genannter Umstand, der die Entscheidung trägt.
+
+Diese drei sind KEINE Begründung, und sie sind die häufigsten Verwechslungen:
+- Die bloße Feststellung, dass jemand begründet hat. „Ratsfrau A. bringt den
+  Antrag ein und begründet diesen" sagt nicht, WOMIT. -> false.
+- Sachinformation ohne Bezug zur Entscheidung. Ein Bericht darüber, wie ein
+  Verfahren läuft, ist kein Grund für einen Beschluss. -> false.
+- Ein reines Ergebnis („einstimmig beschlossen") oder eine Formalie
+  (Beschlussfähigkeit, Tagesordnung, Wahlverfahren). -> false.
+
+Dagegen IST eine Begründung: „auf Grund der kurzfristigen Einreichung der
+Vorlage sehen die Mitglieder von einer Empfehlung ab", „er sieht keine
+gesetzliche Möglichkeit für ein Verbot", „die Entscheidung soll auf Grundlage
+der neuen Prognose neu getroffen werden".
 
 `vote` ist das, was dasteht: „einstimmig", „mehrheitlich", „12 dafür, 8
 dagegen, 1 Enthaltung", „bei 2 Enthaltungen angenommen". Nichts umrechnen,
