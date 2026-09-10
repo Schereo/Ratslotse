@@ -16,6 +16,7 @@ Fassung im Schlüssel und wird gegen ein Golden Set gemessen
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import ClassVar, Literal
 
@@ -103,6 +104,41 @@ class IdeaStance(BaseModel):
     reason: str = Field(default="", max_length=200)
 
 
+#: Anrede oder Funktion, dahinter ein Name. Der Name fällt weg, die Funktion
+#: bleibt. Bewusst großzügig: Ein zu viel entfernter Nachname kostet nichts,
+#: ein stehengebliebener bricht eine Zusage.
+_FUNKTIONEN = ("Stadtrat", "Stadträtin", "Ratsherr", "Ratsfrau", "Ratsmitglied",
+               "Oberbürgermeister", "Oberbürgermeisterin", "Bürgermeister",
+               "Bürgermeisterin", "Bezirksbürgermeister", "Ausschussvorsitzender",
+               "Ausschussvorsitzende", "Ratsvorsitzender", "Ratsvorsitzende",
+               "Beigeordneter", "Beigeordnete", "Dezernent", "Dezernentin",
+               "Erster Stadtrat", "Ortsvorsteherin", "Ortsvorsteher",
+               # Die riskanteste Gruppe steht zuerst im Sinn, nicht zuletzt:
+               # Ratsmitglieder dürften genannt werden, diese nicht.
+               "Sachkundiger Einwohner", "Sachkundige Einwohnerin",
+               "Sachkundiger Bürger", "Sachkundige Bürgerin",
+               "Bürgermitglied", "Einwohnerin", "Einwohner", "Gast",
+               "Bezirksbürgermeisterin", "Ortsbürgermeister", "Ortsbürgermeisterin",
+               "Fachbereichsleiter", "Fachbereichsleiterin", "Amtsleiter",
+               "Amtsleiterin", "Protokollführer", "Protokollführerin")
+_NAMEN_RE = re.compile(
+    r"\b(?:(" + "|".join(sorted(_FUNKTIONEN, key=len, reverse=True)) + r")|Herr|Frau)"
+    r"\s+(?:Dr\.\s+|Prof\.\s+)*"
+    r"[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?"
+    r"(?:\s+[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?)?")
+
+
+def _ohne_name(m: re.Match) -> str:
+    """``Frau Schiller`` -> ``Frau N.``, ``Stadtrat Rohne`` -> ``Stadtrat N.``
+
+    Anrede und Funktion bleiben stehen, der Name fällt weg. Das ist der
+    einzige Ersatz, der die Grammatik heil lässt: „von Frau N." liest sich,
+    „von eine Person" nicht — und ein Satz, den niemand lesen mag, ist auf
+    einer Vergleichskarte nichts wert.
+    """
+    return f"{m.group(1) or m.group(0).split()[0]} N."
+
+
 class OutcomeReason(BaseModel):
     """Was in der Niederschrift zu diesem Tagesordnungspunkt steht.
 
@@ -157,6 +193,30 @@ class OutcomeReason(BaseModel):
     def _vote_kuerzen(cls, v) -> str | None:
         text = " ".join(str(v or "").split())
         return text[:cls.GRENZEN["vote"]] or None
+
+    @field_validator("discussed", "decided", "why")
+    @classmethod
+    def _ohne_namen(cls, v: str) -> str:
+        """Personennamen aus der Ausgabe nehmen — im CODE, nicht im Prompt.
+
+        Der Prompt verlangt Fraktionen und Rollen statt Namen, und das Modell
+        hält sich meistens daran. **Meistens reicht nicht:** Gemessen am
+        10.09.2026 standen in 2 von 36 Antworten trotzdem Namen („Frau
+        Schiller", „Frau Tabea"). Eine Zusage, die bei null liegen soll, darf
+        nicht an einer Bitte hängen — dieselbe Bauweise wie bei ``fit``, das
+        erfundene Beleg-Kennungen nicht erbittet, sondern verwirft.
+
+        Anrede und Funktion bleiben stehen, der Name fällt weg: „Stadtrat
+        Rohne fragt" wird „Stadtrat N. fragt". Für die Karte zählt das
+        Argument, nicht wer es vorgetragen hat.
+
+        **Strenger als die Projektregel, und mit Absicht.** Ratsmitglieder
+        dürften genannt werden — private Personen nicht. Nur steht in einem
+        Protokoll beides nebeneinander („Sachkundiger Einwohner Fassl
+        erkundigt sich …"), und weder ein Modell noch eine Regel unterscheidet
+        das verlässlich. Also fällt jeder Name weg.
+        """
+        return _NAMEN_RE.sub(_ohne_name, v)
 
 
 class IdeaEffort(BaseModel):

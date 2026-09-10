@@ -107,6 +107,43 @@ class OParlClient:
         self.raw.put_raw_object(self.body_id, kind, store_as or daten.get("id") or r.url, daten)
         return daten
 
+    def get_text(self, url: str, headers: dict | None = None,
+                 tries: int = 3) -> str:
+        """GET einer HTML-Seite — für die Adapter, die keine Schnittstelle haben.
+
+        Dieselbe Drosselung und dieselbe Wiederholungsregel wie ``get_json``;
+        nur wird nichts abgelegt, denn was roh gespeichert wird, entscheidet
+        der Adapter (er legt die Seite mit seiner eigenen Kennung ab).
+
+        **Die Kodierung kommt aus dem Dokument, nicht aus dem Kopf.** ALLRIS
+        classic liefert ISO-8859-1 und sagt es im Meta-Tag statt im
+        ``Content-Type``; wer sich auf den Kopf verlässt, bekommt „Ausschuß"
+        als „AusschuÃŸ" — und merkt es erst, wenn ein Titel nicht mehr
+        zusammenpasst.
+        """
+        kopf = {**HEADERS, "Accept": "text/html,application/xhtml+xml"}
+        kopf.update(headers or {})
+        letzte: Exception | None = None
+        for versuch in range(tries):
+            throttle(url)
+            try:
+                r = self.session.get(url, headers=kopf, timeout=TIMEOUT_JSON)
+                self.requests_made += 1
+                r.raise_for_status()
+                if not r.encoding or r.encoding.lower() in ("iso-8859-1", "latin-1"):
+                    r.encoding = r.apparent_encoding or r.encoding
+                return r.text
+            except requests.HTTPError as e:
+                status = e.response.status_code if e.response is not None else 0
+                if 400 <= status < 500:
+                    raise
+                letzte = e
+            except (requests.ConnectionError, requests.Timeout) as e:
+                letzte = e
+            if versuch < tries - 1:
+                time.sleep(2 * (versuch + 1))
+        raise letzte or RuntimeError(f"kein Ergebnis für {url}")
+
     # --------------------------------------------------------------- Dateien
 
     def get_file(self, url: str, tries: int = 2) -> tuple[bytes, str] | None:

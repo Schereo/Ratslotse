@@ -14,10 +14,37 @@ Systems zugute — auch denen, die noch niemand angeschlossen hat.
 | Datei | Zeilen | angeschlossen | wartet in der Registry |
 |---|---:|---|---|
 | `adapters/_common.py` | 411 | alle | alle |
-| `adapters/allris4.py` | 181 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn |
+| `adapters/allris4.py` | 229 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn, Langenhagen, Peine |
+| `adapters/allris4_html.py` | 459 | — | Laatzen, Lüneburg, Wolfsburg |
 | `adapters/session.py` | 167 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
 | `adapters/rubin.py` | 90 | — | Freiburg, Darmstadt |
 | `adapters/oldenburg.py` | 313 | Oldenburg (liest `council.sqlite`) | — |
+
+**Derselbe Hersteller kann zwei Adapter brauchen.** ALLRIS 4 hat ein
+OParl-Modul; wo es antwortet, liest `allris4.py` die Schnittstelle. Wo es
+eingebaut ist und mit HTTP 500 antwortet — gemessen bei Laatzen, Lüneburg und
+Wolfsburg —, liest `allris4_html.py` dieselbe Anwendung über ihre Oberfläche.
+Der Unterschied ist die Quelle, nicht die Stadt, deshalb sind es zwei
+Dialekte und keine Bedingung im einen.
+
+**Beim HTML-Lesen sind drei Fallen gemessen worden**, alle am 10.09.2026 an
+Laatzen:
+
+1. **Spalten über die Kopfzeile suchen, nie über feste Nummern.** Eine
+   verschobene Spalte liefert sonst stumm den falschen Wert — die
+   „Zuständigkeit" landete als Titel.
+2. **Das Feld heißt `Vorlageart`, nicht `Vorlagenart`.** Ein Buchstabe, und
+   jede Vorlage der Stadt steht ohne Art da; der Vergleich hält sie dann
+   ausnahmslos für „other", ohne Fehler und ohne Auffälligkeit.
+3. **Eine erfundene Kennung muss als solche erkennbar bleiben.** `#top-` ist
+   projektweit die Marke dafür (`SYNTHETISCHE_KENNUNG`). Ein Punkt mit
+   `TOLFDNR` hat eine echte Adresse und bekommt sie; nur Formalpunkte ohne
+   eigene Seite tragen die Marke. Stünde sie an allen, hielte
+   `zwillinge_zusammenfuehren` jeden Punkt des Dialekts für erfunden.
+
+**Und die Beratungsfolge steht über zwei Zeilen je Station** — Status,
+Gremium, Beschluss in der ersten, Datum und Sitzungsname in der zweiten. Wer
+Zeile für Zeile liest, bekommt lauter halbe Stationen.
 
 **Eine Eigenheit gehört in den Adapter, nie in eine Stadt-Bedingung.** Ein
 `if body_id == "magdeburg"` im Normalisieren heißt: Die nächste Somacos-Stadt

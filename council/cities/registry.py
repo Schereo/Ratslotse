@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 #: Die Dialekte, für die es einen Adapter gibt.
-DIALECTS = ("allris4", "session", "rubin", "oldenburg")
+DIALECTS = ("allris4", "allris4_html", "session", "rubin", "oldenburg")
 
 
 @dataclass(frozen=True)
@@ -95,6 +95,47 @@ BODIES: dict[str, BodySpec] = {
                          active=False, notes="OParl 1.0: Volltext liegt im Dateiobjekt."),
     "darmstadt": BodySpec("darmstadt", "Darmstadt", "HE", "rubin",
                           "https://darmstadt.gremien.info/oparl/system", active=False),
+    # Die einzigen zwei weiteren niedersächsischen Städte mit einer
+    # OParl-Schnittstelle, die antwortet — von 340 geprüften Kommunen ab 5.000
+    # Einwohnern (Erhebung 10.09.2026). Beide ALLRIS 4, also derselbe Adapter
+    # wie Osnabrück und Braunschweig, beide CC BY 4.0.
+    "langenhagen": BodySpec(
+        "langenhagen", "Langenhagen", "NI", "allris4",
+        "https://www.langenhagen.sitzung-online.de/oparl/system",
+        active=False,
+        notes="CC BY 4.0. Niederschriften an 4 von 8 geprüften Sitzungen — "
+              "die einzige weitere NI-Stadt, die zum „Warum“ etwas beiträgt."),
+    "peine": BodySpec(
+        "peine", "Peine", "NI", "allris4",
+        "https://ratsinfo.stadt-peine.de/public/oparl/system",
+        active=False,
+        notes="CC BY 4.0, 2.579 Vorlagen seit 2024. Keine Niederschriften an "
+              "den Sitzungen. Die Schnittstelle liegt unter /public/."),
+
+    # --- ALLRIS 4 ohne OParl: dieselbe Anwendung, Modul aus oder kaputt.
+    #     Gelesen wird dann die Oberflaeche (Dialekt ``allris4_html``); die
+    #     Adresse ist die Wurzel der Anwendung, nicht ein ``/oparl/system``.
+    "laatzen": BodySpec(
+        "laatzen", "Laatzen", "NI", "allris4_html",
+        "https://ratsinfo.laatzen.de/public",
+        active=False,
+        notes="OParl antwortet mit HTTP 500. Gemessen 10.09.2026: 8 Sitzungen, "
+              "154 Punkte, 74 Vorlagen, 241 Dateien, 83 Beratungen."),
+    "lueneburg": BodySpec(
+        "lueneburg", "Lüneburg", "NI", "allris4_html",
+        "https://ratsinfo.lueneburg.de/public",
+        active=False,
+        notes="OParl antwortet mit HTTP 500. Gemessen 10.09.2026: 6 Sitzungen, "
+              "98 Punkte."),
+    "wolfsburg": BodySpec(
+        "wolfsburg", "Wolfsburg", "NI", "allris4_html",
+        "https://ratsinfo.wolfsburg.de/public",
+        active=False,
+        notes="Zweitgrößte NI-Stadt ohne Anschluss. Die Inhaltsseiten "
+              "antworten (to010/vo020), der Index NICHT: si010 und vo040 "
+              "liefern Hüllen ohne ein einziges AJAX-Ziel (Laatzen: 28 bzw. "
+              "7), der Kalender endet auf /internalerrorpage. Ohne Index gibt "
+              "es keine Sitzungskennungen — s. docs/plan-cities-phase5.md."),
 }
 
 

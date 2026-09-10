@@ -1,0 +1,120 @@
+[
+ {
+  "id": "http://ratsinfo.stadt-peine.de/public/oparl/papers?id=4416",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Sitzverlust und Sitzübergang im Rat der Stadt Peine",
+  "reference": "466/2021",
+  "date": "2024-08-13",
+  "paperType": "Beschlussvorlage Rat",
+  "web": "http://ratsinfo.stadt-peine.de/public/vo020?VOLFDNR=4416",
+  "created": "2026-09-10T05:48:15+02:00",
+  "modified": "2026-09-10T05:48:15+02:00",
+  "consultation": [
+   {
+    "id": "http://ratsinfo.stadt-peine.de/public/oparl/consultations?id=20130&bi=20130",
+    "meeting": "http://ratsinfo.stadt-peine.de/public/oparl/meetings?id=1569",
+    "agendaItem": "http://ratsinfo.stadt-peine.de/public/oparl/agendaItems?id=20130",
+    "authoritative": true,
+    "role": "Entscheidung"
+   }
+  ],
+  "mainFile": {
+   "id": "http://ratsinfo.stadt-peine.de/public/oparl/files?id=1006799&dtyp=130",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "http://ratsinfo.stadt-peine.de/public/doc?DOLFDNR=1006799&DOCTYP=130&OTYP=41&ANNOTS=1",
+   "mimeType": "pdf"
+  }
+ },
+ {
+  "id": "http://ratsinfo.stadt-peine.de/public/oparl/papers?id=4415",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Freiwillige Feuerwehr der Stadt Peine;hier: Zusammenschluss der Ortsfeuerwehren Essinghausen und Duttenstedt",
+  "reference": "1. Ergänzung zu 431/2021",
+  "date": "2024-06-20",
+  "paperType": "Beschlussvorlage Rat",
+  "web": "http://ratsinfo.stadt-peine.de/public/vo020?VOLFDNR=4415",
+  "created": "2026-09-10T05:48:15+02:00",
+  "modified": "2026-09-10T05:48:15+02:00",
+  "consultation": [
+   {
+    "id": "http://ratsinfo.stadt-peine.de/public/oparl/consultations?id=19994&bi=19994",
+    "meeting": "http://ratsinfo.stadt-peine.de/public/oparl/meetings?id=1562",
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   },
+   {
+    "id": "http://ratsinfo.stadt-peine.de/public/oparl/consultations?id=138201&bi=138201",
+    "meeting": "http://ratsinfo.stadt-peine.de/public/oparl/meetings?id=1561",
+    "agendaItem": "http://ratsinfo.stadt-peine.de/public/oparl/agendaItems?id=138201",
+    "authoritative": true,
+    "role": "Entscheidung"
+   }
+  ],
+  "mainFile": {
+   "id": "http://ratsinfo.stadt-peine.de/public/oparl/files?id=1010054&dtyp=130",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "http://ratsinfo.stadt-peine.de/public/doc?DOLFDNR=1010054&DOCTYP=130&OTYP=41&ANNOTS=1",
+   "mimeType": "pdf"
+  }
+ },
+ {
+  "id": "http://ratsinfo.stadt-peine.de/public/oparl/papers?id=4414",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Verteilung der Ausschussvorsitze in der Wahlperiode ab 01.11.2021",
+  "reference": "3. Ergänzung zu 32/2021",
+  "date": "2024-06-19",
+  "paperType": "Beschlussvorlage Rat",
+  "web": "http://ratsinfo.stadt-peine.de/public/vo020?VOLFDNR=4414",
+  "created": "2026-09-10T05:48:15+02:00",
+  "modified": "2026-09-10T05:48:15+02:00",
+  "consultation": [
+   {
+    "id": "http://ratsinfo.stadt-peine.de/public/oparl/consultations?id=138200&bi=138200",
+    "meeting": "http://ratsinfo.stadt-peine.de/public/oparl/meetings?id=1561",
+    "agendaItem": "http://ratsinfo.stadt-peine.de/public/oparl/agendaItems?id=138200",
+    "authoritative": true,
+    "role": "Entscheidung"
+   }
+  ],
+  "mainFile": {
+   "id": "http://ratsinfo.stadt-peine.de/public/oparl/files?id=1006796&dtyp=130",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "http://ratsinfo.stadt-peine.de/public/doc?DOLFDNR=1006796&DOCTYP=130&OTYP=41&ANNOTS=1",
+   "mimeType": "pdf"
+  }
+ },
+ {
+  "id": "http://ratsinfo.stadt-peine.de/public/oparl/papers?id=4412",
+  "type": "https://schema.oparl.org/1.1/Paper",
+  "name": "Annahme oder Vermittlung von Spenden, Schenkungen und ähnlichen Zuwendungen bis zum 12.06.2024",
+  "reference": "453/2021",
+  "date": "2024-06-13",
+  "paperType": "Beschlussvorlage Rat",
+  "web": "http://ratsinfo.stadt-peine.de/public/vo020?VOLFDNR=4412",
+  "created": "2026-09-10T05:48:15+02:00",
+  "modified": "2026-09-10T05:48:15+02:00",
+  "consultation": [
+   {
+    "id": "http://ratsinfo.stadt-peine.de/public/oparl/consultations?id=19992&bi=19992",
+    "meeting": "http://ratsinfo.stadt-peine.de/public/oparl/meetings?id=1562",
+    "agendaItem": null,
+    "authoritative": false,
+    "role": "Vorberatung"
+   },
+   {
+    "id": "http://ratsinfo.stadt-peine.de/public/oparl/consultations?id=138195&bi=138195",
+    "meeting": "http://ratsinfo.stadt-peine.de/public/oparl/meetings?id=1561",
+    "agendaItem": "http://ratsinfo.stadt-peine.de/public/oparl/agendaItems?id=138195",
+    "authoritative": true,
+    "role": "Entscheidung"
+   }
+  ],
+  "mainFile": {
+   "id": "http://ratsinfo.stadt-peine.de/public/oparl/files?id=1010051&dtyp=130",
+   "name": "Sammeldokument öffentlich",
+   "accessUrl": "http://ratsinfo.stadt-peine.de/public/doc?DOLFDNR=1010051&DOCTYP=130&OTYP=41&ANNOTS=1",
+   "mimeType": "pdf"
+  }
+ }
+]
