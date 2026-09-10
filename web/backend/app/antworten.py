@@ -1195,6 +1195,7 @@ class AdminUserDetail(TypedDict):
     der Aktivität, ``history_days`` nennt die zugehörigen Tage."""
     id: int
     email: str
+    display_name: str | None
     role: str
     roles: list[str]
     status: str
@@ -1811,6 +1812,10 @@ class AdminFeedbackNotified(TypedDict):
 class AdminUserRow(TypedDict):
     id: int
     email: str
+    #: Der selbst gewählte Name. Stand bis 09/2026 nicht in dieser Antwort —
+    #: das Panel zeigte und durchsuchte nur die Adresse, obwohl 18 von 23
+    #: Konten einen Namen trugen. Optional bleibt er wegen des Alt-Bestands.
+    display_name: str | None
     #: Die stärkste Rolle (Abkürzung fürs Abzeichen in der Liste).
     role: str
     #: Alle Rollen — die Wahrheit; das Detail bearbeitet diese Liste.

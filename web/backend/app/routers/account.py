@@ -19,8 +19,8 @@ from ..config import get_settings
 from ..antworten import NotifySettings, Ok, TestDelivery
 from ..deps import get_council_store, get_current_user, get_store, ist_admin, require_active
 from ..ratelimit import change_email_limiter
-from ..schemas import (ChangeEmailRequest, ChangePasswordRequest, DeleteAccountRequest,
-                       DeliveryUpdate, NotifyPrefsIn, UserOut)
+from ..schemas import (NAME_FEHLT, ChangeEmailRequest, ChangePasswordRequest,
+                       DeleteAccountRequest, DeliveryUpdate, NotifyPrefsIn, UserOut)
 from ..security import hash_password, verify_password
 from .auth import (_VERIFY_TTL_HOURS, _app_access_token, _send_email_change_link,
                    _send_email_change_notice, _set_auth_cookie, _to_out)
@@ -105,6 +105,9 @@ def _reauth(user: dict, current_password: str, apple_identity_token: str) -> Non
 
 
 class DisplayNameIn(BaseModel):
+    #: Weiter ``str | None`` wie bei der Registrierung, damit ein leeres Feld
+    #: aus einem älteren Client unseren deutschen Satz zurückbekommt und keine
+    #: englische Pydantic-Meldung.
     display_name: str | None = Field(default=None, max_length=60)
 
 
@@ -115,8 +118,17 @@ def set_display_name(
     store: Store = Depends(get_store),
 ) -> Ok:
     """Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
-    die bei der Registrierung keinen angeben konnten."""
-    store.set_display_name(user["id"], body.display_name)
+    die bei der Registrierung keinen angeben konnten.
+
+    Leeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,
+    wäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne
+    Namen dasteht — und die Anrede in Mails und Übersicht fiele still auf
+    „Moin!" zurück.
+    """
+    name = (body.display_name or "").strip()
+    if not name:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
+    store.set_display_name(user["id"], name)
     return {"ok": True}
 
 

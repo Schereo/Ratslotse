@@ -22,6 +22,10 @@ export default function RegisterPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!displayName.trim()) {
+      setError("Bitte trage deinen Namen ein.");
+      return;
+    }
     if (password.length < 8) {
       setError("Das Passwort muss mindestens 8 Zeichen lang sein.");
       return;
@@ -54,12 +58,14 @@ export default function RegisterPage() {
               einspaltig, dort wäre nebeneinander unbedienbar. */}
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              {/* Freiwillig — und zwar überall sonst auch schon: der Server nimmt
-                  null, „Mit Apple registrieren" liefert gar keinen Namen, und
-                  jede Anzeige kommt ohne aus („Moin!“ statt „Moin, X!“). Nur
-                  dieses Feld verlangte ihn und ließ sonst niemanden vorbei. */}
+              {/* Pflicht seit 09/2026 (Tims Entscheidung): Die Ansprache in Mails
+                  und auf „Heute" fiel sonst still auf „Moin!" zurück, und im
+                  Admin-Panel war ein Konto nur eine Adresse. Wer über Apple
+                  kommt, liefert oft keinen Namen mit — den fragt der
+                  Namens-Riegel gleich nach der Anmeldung nach
+                  (components/apple-sign-in-button.tsx). */}
               <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-foreground">
-                Anzeigename <span className="font-normal text-muted-foreground">(optional)</span>
+                Anzeigename
               </label>
               {/* Kein autoFocus — dieselbe Lehre wie auf der Anmeldung: Das
                   statische HTML trägt das Attribut, iOS klappt die Tastatur schon
@@ -67,7 +73,7 @@ export default function RegisterPage() {
                   ganze Karte nach oben und Lotti über ihrer Kante in die Dynamic
                   Island (Tims Befund 14.08.). Ohne Autofokus bleibt der Screen
                   stehen, wie er gebaut ist. */}
-              <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={60} autoComplete="name" placeholder="Dein Vorname genügt" />
+              <Input id="display-name" className="h-11" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={60} autoComplete="name" placeholder="Dein Vorname genügt" />
             </div>
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">E-Mail</label>

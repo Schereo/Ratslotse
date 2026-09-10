@@ -122,6 +122,11 @@ export interface paths {
          * Set Display Name
          * @description Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
          *     die bei der Registrierung keinen angeben konnten.
+         *
+         *     Leeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,
+         *     wäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne
+         *     Namen dasteht — und die Anrede in Mails und Übersicht fiele still auf
+         *     „Moin!" zurück.
          */
         post: operations["set_display_name_api_account_display_name_post"];
         delete?: never;
@@ -5463,6 +5468,8 @@ export interface components {
             deep_limit: number | null;
             /** Delivery Channel */
             delivery_channel: string;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             features: components["schemas"]["AdminUserFeatures"];
@@ -5528,6 +5535,8 @@ export interface components {
             };
             /** Created At */
             created_at: string | null;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             /** Id */
@@ -17233,4 +17242,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b0fdce07ef261d9d55e92fad8cfb5e0bf7b4e4ef79401c2eacf841c554e0207c
+// vertrag-sha256: 8393a31bf3fcfdb60d3b59469314a1ae677372bb100e9365ca641d7a5dd50f8f

@@ -101,17 +101,22 @@ struct AuthFlowView: View {
                         .font(RatsFont.title(20))
                         .foregroundStyle(RatsColor.text)
                     Spacer()
-                    Button { model.authPresentation = nil } label: {
-                        Text("×")
-                            .font(RatsFont.body(23, weight: .medium))
-                            .foregroundStyle(RatsColor.bodyText)
-                            .frame(width: 38, height: 38)
-                            .background(RatsColor.card)
-                            .overlay(Circle().stroke(RatsColor.border))
-                            .clipShape(Circle())
+                    // Kein Ausgang, solange der Name fehlt: Der Nachtrag hat
+                    // genau einen Weg nach vorn, sonst stünde das Konto doch
+                    // wieder namenlos da.
+                    if mode != .displayName {
+                        Button { model.authPresentation = nil } label: {
+                            Text("×")
+                                .font(RatsFont.body(23, weight: .medium))
+                                .foregroundStyle(RatsColor.bodyText)
+                                .frame(width: 38, height: 38)
+                                .background(RatsColor.card)
+                                .overlay(Circle().stroke(RatsColor.border))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(AuthCloseButtonStyle())
+                        .accessibilityLabel("Anmeldung schließen")
                     }
-                    .buttonStyle(AuthCloseButtonStyle())
-                    .accessibilityLabel("Anmeldung schließen")
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
@@ -124,9 +129,11 @@ struct AuthFlowView: View {
                     case .register: CredentialsView(model: model, mode: .register, switchMode: { mode = $0 })
                     case .forgotPassword: ForgotPasswordView(model: model, switchMode: { mode = $0 })
                     case .resetPassword(let token): ResetPasswordView(model: model, token: token)
+                    case .displayName: DisplayNameGateView(model: model)
                     }
                 }
             }
+            .interactiveDismissDisabled(mode == .displayName)
             .toolbar(.hidden, for: .navigationBar)
         }
     }
@@ -175,7 +182,10 @@ private struct CredentialsView: View {
                 AuthDivider()
 
                 if mode == .register {
-                    AuthLabeledField(label: "Anzeigename", hint: "optional") {
+                    // Pflicht seit 09/2026 (Tims Entscheidung): Ohne Namen
+                    // fiel jede Anrede still auf „Moin!" zurück, und im
+                    // Admin-Panel war ein Konto nur eine Adresse.
+                    AuthLabeledField(label: "Anzeigename") {
                         TextField("Dein Vorname genügt", text: $name)
                             .textContentType(.name)
                             .textFieldStyle(.plain)
@@ -236,8 +246,8 @@ private struct CredentialsView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .disabled(isWorking || email.isEmpty || password.count < 8)
-                .opacity(isWorking || email.isEmpty || password.count < 8 ? 0.5 : 1)
+                .disabled(isWorking || unvollstaendig)
+                .opacity(isWorking || unvollstaendig ? 0.5 : 1)
 
                 if mode == .register {
                     VStack(spacing: 6) {
@@ -270,13 +280,20 @@ private struct CredentialsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// Fehlt noch etwas? Beim Registrieren gehört der Name dazu — der Server
+    /// weist ein leeres Feld ab, der Knopf muss das also vorher wissen.
+    private var unvollstaendig: Bool {
+        if email.isEmpty || password.count < 8 { return true }
+        return mode == .register && name.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private func submit() {
         isWorking = true
         error = nil
         Task {
             do {
                 if mode == .login { try await model.login(email: email, password: password) }
-                else { try await model.register(email: email, password: password, displayName: name.isEmpty ? nil : name) }
+                else { try await model.register(email: email, password: password, displayName: name.trimmingCharacters(in: .whitespaces)) }
             } catch { self.error = error.localizedDescription }
             isWorking = false
         }
@@ -300,6 +317,70 @@ private struct CredentialsView: View {
                     givenName: credential.fullName?.givenName,
                     familyName: credential.fullName?.familyName
                 )
+            } catch { self.error = error.localizedDescription }
+            isWorking = false
+        }
+    }
+}
+
+/// „Wie sollen wir dich nennen?" — der Nachtrag nach einer Apple-Anmeldung.
+///
+/// Apple liefert den Namen **nur bei der allerersten Autorisierung**, und auch
+/// dann nur, wenn man ihn nicht verbirgt. Das Pflichtfeld im Registrierungs-
+/// formular erreicht diese Konten also nie; gefragt wird deshalb hier, direkt
+/// nachdem die Anmeldung durch ist. Am 10.09.2026 gemessen: Auf Prod trägt
+/// jedes bestehende Apple-Konto einen Namen — „Apple-Konto ohne Namen" heißt
+/// also „gerade eben entstanden", der Alt-Bestand wird nicht behelligt.
+///
+/// Ohne Ausgang: kein „Überspringen", kein × in der Kopfzeile, kein Wegwischen
+/// (`interactiveDismissDisabled` in `AuthFlowView`).
+private struct DisplayNameGateView: View {
+    let model: AppModel
+    @State private var name = ""
+    @State private var error: String?
+    @State private var isWorking = false
+
+    private var leer: Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    var body: some View {
+        AuthScaffold(
+            scene: .wave,
+            title: "Wie sollen wir dich nennen?",
+            subtitle: "Apple gibt uns deinen Namen nicht mit. Er steht in der Anrede auf „Heute“ und in deinen E-Mails – dein Vorname genügt."
+        ) {
+            VStack(spacing: 16) {
+                AuthLabeledField(label: "Anzeigename") {
+                    TextField("Dein Vorname genügt", text: $name)
+                        .textContentType(.name)
+                        .textFieldStyle(.plain)
+                }
+
+                if let error {
+                    RatsLabel(error, .triangleAlert)
+                        .font(RatsFont.body(12))
+                        .foregroundStyle(RatsColor.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Button(action: submit) {
+                    Text(isWorking ? "Einen Moment …" : "Weiter").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SignalButtonStyle())
+                .frame(maxWidth: .infinity)
+                .disabled(isWorking || leer)
+                .opacity(isWorking || leer ? 0.5 : 1)
+            }
+        }
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func submit() {
+        isWorking = true
+        error = nil
+        Task {
+            do {
+                try await model.setDisplayName(name)
+                model.authPresentation = nil
             } catch { self.error = error.localizedDescription }
             isWorking = false
         }

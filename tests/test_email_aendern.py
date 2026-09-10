@@ -93,7 +93,7 @@ def _mit_mailversand(postfach):
 
 
 def _registrieren(client, email=ALT, passwort=PASSWORT):
-    r = client.post("/api/auth/register", json={"email": email, "password": passwort})
+    r = client.post("/api/auth/register", json={"display_name": "Testkonto", "email": email, "password": passwort})
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -269,7 +269,7 @@ def test_unbestaetigtes_konto_darf_den_tippfehler_korrigieren(client, postfach):
     versand, s_auth, s_account = _mit_mailversand(postfach)
     with versand, s_auth, s_account:
         r = client.post("/api/auth/register",
-                        json={"email": ALT, "password": PASSWORT})
+                        json={"display_name": "Testkonto", "email": ALT, "password": PASSWORT})
     assert r.status_code == 201
     assert r.json()["email_verified"] is False
     alter_link = _token_aus(_an(postfach, ALT))

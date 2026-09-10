@@ -23,7 +23,7 @@ test.describe("Dashboard", () => {
   });
 
   test("begrüßt und zeigt die Signal-Handlung", async ({ page }) => {
-    // Ohne Anzeigenamen bleibt es beim bloßen „Moin!".
+    // Mit Anzeigenamen „Moin, X!", ohne bloß „Moin!" — beides fängt gleich an.
     await expect(page.getByRole("heading", { name: /^Moin/ })).toBeVisible();
     // DIE eine Handlung des Screens steht als Signal-Knopf daneben.
     await expect(page.locator("main").getByRole("link", { name: "Frag den Rat" })).toBeVisible();

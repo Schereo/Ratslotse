@@ -48,7 +48,7 @@ def client():
 
 
 def _registrieren(client, email, passwort=PASSWORT):
-    r = client.post("/api/auth/register", json={"email": email, "password": passwort})
+    r = client.post("/api/auth/register", json={"display_name": "Testkonto", "email": email, "password": passwort})
     assert r.status_code == 201, r.text
     return r.json()
 
