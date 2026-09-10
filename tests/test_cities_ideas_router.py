@@ -17,6 +17,12 @@ from fastapi.testclient import TestClient
 from council.cities.index import EMBED_MODEL
 from council.cities.model import Batch, Body, Paper
 from council.cities.store import CitiesStore
+
+#: Die Fassung, aus der die Ideen-Seite liest. Als Konstante und nicht
+#: als Literal: Am 09.09.2026 stand die Oberfläche noch auf Fassung 1,
+#: während 9.484 Urteile in Fassung 3 danebenlagen — sechs Testzeilen
+#: hielten die alte Zahl fest, ohne dass jemand sie suchte.
+FIT_FASSUNG = CitiesStore.IDEEN_FIT
 from council.store import CouncilStore
 from web.backend.app.deps import get_cities_store, get_council_store
 from web.backend.app.main import app
@@ -72,11 +78,11 @@ def cities_db(tmp_path):
                          {"field": feld, "transfer": transfer, "competence": "council",
                           "instrument": "Instrument", "summary": "Zusammenfassung.",
                           "originator": "SPD-Fraktion"}, "h" + pid)
-    s.put_annotation("paper", "os:p:1", "fit", "1", _urteil("missing"), "f1")
-    s.put_annotation("paper", "os:p:2", "fit", "1", _urteil("partial"), "f2")
-    s.put_annotation("paper", "os:p:3", "fit", "1",
+    s.put_annotation("paper", "os:p:1", *FIT_FASSUNG, _urteil("missing"), "f1")
+    s.put_annotation("paper", "os:p:2", *FIT_FASSUNG, _urteil("partial"), "f2")
+    s.put_annotation("paper", "os:p:3", *FIT_FASSUNG,
                      _urteil("present", evidence=["oldenburg:paper:4711"]), "f3")
-    s.put_annotation("paper", "os:p:9", "fit", "1", _urteil("missing"), "f9")
+    s.put_annotation("paper", "os:p:9", *FIT_FASSUNG, _urteil("missing"), "f9")
     # Der Volltextindex entsteht sonst erst im Cron; die Suche braucht ihn.
     for pid, titel in (("os:p:1", "Hitzeaktionsplan aufstellen"),
                        ("os:p:2", "Wärmenetz erweitern"),
@@ -173,7 +179,7 @@ def test_ein_beleg_ohne_beschluss_faellt_weg(client, cities_db):
     """Anträge aus Anlagen und der Themenfeld-Rückblick tragen keine
     Vorlagen-Id. Auf der Karte stünde sonst eine Zeile ohne Ziel."""
     cities_db.put_annotation(
-        "paper", "os:p:2", "fit", "1",
+        "paper", "os:p:2", *FIT_FASSUNG,
         _urteil("partial", evidence=["recap:klima_umwelt",
                                             "oldenburg:paper:att:99"]), "f2b")
     daten = client.get("/api/council/cities/ideas?field=klima_umwelt").json()
@@ -226,7 +232,7 @@ def test_oldenburg_taucht_nicht_als_idee_auf(client, cities_db):
     """Es ist die Stadt, gegen die verglichen wird — nicht eine unter ihnen."""
     cities_db.put_annotation("paper", "oldenburg:paper:4711", "classify", "2",
                              {"field": "klima_umwelt", "transfer": "direct"}, "hol")
-    cities_db.put_annotation("paper", "oldenburg:paper:4711", "fit", "1",
+    cities_db.put_annotation("paper", "oldenburg:paper:4711", *FIT_FASSUNG,
                              _urteil("missing"), "fol")
     daten = client.get(
         "/api/council/cities/ideas?field=klima_umwelt&status=").json()

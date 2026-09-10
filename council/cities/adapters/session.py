@@ -22,7 +22,7 @@ import re
 from collections.abc import Iterator
 
 from council.cities.adapters._common import (
-    link_by_title, link_within_meeting, normalize_common)
+    link_by_title, normalize_common)
 from council.cities.model import Batch
 from council.cities.oparl import OParlClient, as_list
 from council.cities.registry import BodySpec
@@ -148,17 +148,16 @@ class SessionAdapter:
             fix = url_fix_for({"id": obj.get("body") or obj.get("id") or ""})
             break
         batch = normalize_common(body_id, raw, url_fix=fix)
-        # Zuerst innerhalb der Sitzung, die die Beratung selbst nennt: Das ist
-        # die engste Menge und damit der genaueste Abgleich. Magdeburg braucht
-        # ihn zwingend — seine Beratungen nennen Tagesordnungspunkte aus einem
-        # zweiten Kennungsraum, den die Sitzungen nicht kennen.
-        in_sitzung = link_within_meeting(batch)
-        if in_sitzung:
-            logger.info("%s: %s Beratungen innerhalb ihrer Sitzung gebunden",
-                        body_id, in_sitzung)
-        # Danach der grobe Abgleich für alles, was noch gar keinen Punkt hat —
-        # derselbe Notnagel wie bei ALLRIS. Er überspringt, was schon
-        # verbunden ist, und kostet deshalb nichts, wo er nicht gebraucht wird.
+        # **Somacos verweist sauber.** Hier stand bis 10.09.2026 ein
+        # Titelabgleich innerhalb der Sitzung (`link_within_meeting`), weil
+        # Magdeburgs Beratungen angeblich auf einen zweiten Kennungsraum
+        # zeigten. Der Raum war nie einer der Schnittstelle, sondern der Rest
+        # des phase0-Imports; gemessen band die Funktion in beiden Städten
+        # **null** Beratungen. Sie ist weg — was hier bleibt, ist der grobe
+        # Abgleich für Papiere, die gar keinen Punkt nennen. Auch der bindet
+        # bei Somacos nichts (Magdeburg 0, Münster 0; bei ALLRIS dagegen
+        # 2.198 bis 5.304), kostet aber nichts und deckt den Fall ab, dass
+        # eine Instanz die Verbindung einmal nicht mitliefert.
         ergaenzt = link_by_title(batch)
         if ergaenzt:
             logger.info("%s: %s Papier-Ergebnisse über den Titel verbunden", body_id, ergaenzt)

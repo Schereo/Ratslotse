@@ -16,6 +16,20 @@ Sprachmodell beantworten — in Sekunden statt Minuten, für 0 $ statt 0,03 $.
    Was das Modell nie sieht, kann es nicht zitieren.
 2. *Auf welchem Rang.* Weiter unten heißt: Es steht Rauschen davor, und das
    Rauschen lädt ein, „vorhanden" zu sagen, wo nichts ist.
+
+   **Gemessen wird der MEDIAN, und das ist eine Korrektur am Maßstab.** Bis
+   09.09.2026 stand hier der Mittelwert — über die Fälle, die GEFUNDEN
+   wurden. Zwei Einstellungen, die verschieden viele Fälle finden, mitteln
+   damit über verschiedene Mengen, und die bessere sieht schlechter aus:
+   Beim Sprung von zwölf auf zwanzig Beleg-Plätze stieg der Mittelwert von
+   2,22 auf 4,73 — obwohl sich die Reihenfolge der vorher gefundenen Fälle
+   um KEINEN Platz änderte (die Fusion ordnet unabhängig von der
+   Listenlänge, diese schneidet nur ab). Die vier neu gewonnenen Fälle
+   standen schlicht auf den Rängen 14, 15, 16 und 19 und zogen den Schnitt
+   hoch. Der Median blieb in beiden Fällen bei 1.
+
+   Der Mittelwert steht weiter da — er sagt, wie weit der Schwanz reicht.
+   Entscheiden darf er nicht.
 3. *Wie einig sich die vier Arme sind.* Nachbarschaft, Textabschnitt,
    Volltext und Beschluss irren auf verschiedene Weise; dass sie **dasselbe**
    Papier finden, ist deshalb eine eigene Aussage. Gemessen trennt sie
@@ -43,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -64,7 +79,10 @@ FAELLE = WURZEL / "eval" / "cases_cities_fit.json"
 #: Was der Ausbau erreichen soll. Vorher (nur Nachbarn + Volltext auf die
 #: Instrumentwörter): 19 von 23 gefunden, mittlerer Rang 1,9.
 SCHWELLE_GEFUNDEN = 22
-SCHWELLE_RANG = 2.5
+#: Der MEDIAN-Rang, nicht der Mittelwert — die Begründung steht oben im
+#: Modulkopf. Gemessen liegt er bei 1: Der typische Fall hat den richtigen
+#: Beleg an erster Stelle. Zwei wäre schon eine Verschlechterung.
+SCHWELLE_RANG = 2.0
 #: Wo Oldenburg etwas hat, müssen sich die Arme in mindestens so vielen
 #: Fällen einig sein. Gemessen: 92 % (present), 64 % (partial), 18 % (missing).
 SCHWELLE_EINIGKEIT = 0.80
@@ -96,7 +114,8 @@ def messen(faelle: list[dict], heute: dict[str, list]) -> dict:
     mit_beleg = [f for f in faelle if f["expected"]["evidence"] and f["id"] in heute]
     ohne = [f for f in faelle if f["expected"]["status"] == "missing" and f["id"] in heute]
 
-    gefunden = raenge = 0
+    gefunden = 0
+    raenge: list[int] = []
     verfehlt: list[str] = []
     for f in mit_beleg:
         erwartet = set(f["expected"]["evidence"])
@@ -104,7 +123,7 @@ def messen(faelle: list[dict], heute: dict[str, list]) -> dict:
         for rang, kennung in enumerate(kennungen, 1):
             if kennung in erwartet:
                 gefunden += 1
-                raenge += rang
+                raenge.append(rang)
                 break
         else:
             verfehlt.append(f["name"][:60])
@@ -120,7 +139,8 @@ def messen(faelle: list[dict], heute: dict[str, list]) -> dict:
     return {
         "faelle_mit_beleg": len(mit_beleg),
         "gefunden": gefunden,
-        "mittlerer_rang": raenge / max(gefunden, 1),
+        "median_rang": statistics.median(raenge) if raenge else 0.0,
+        "mittlerer_rang": statistics.fmean(raenge) if raenge else 0.0,
         "faelle_ohne": len(ohne),
         "einigkeit": anteil,
         "verfehlt": verfehlt,
@@ -131,8 +151,10 @@ def zeigen(name: str, z: dict) -> None:
     print(f"\n=== {name} ===")
     print(f"  erwarteter Beleg gefunden: {z['gefunden']}/{z['faelle_mit_beleg']}"
           f"   (Schwelle {SCHWELLE_GEFUNDEN})")
-    print(f"  mittlerer Rang:            {z['mittlerer_rang']:.2f}"
+    print(f"  Median-Rang:               {z['median_rang']:.2f}"
           f"        (Schwelle {SCHWELLE_RANG})")
+    print(f"  mittlerer Rang:            {z['mittlerer_rang']:.2f}"
+          f"        (nur Diagnose — s. Modulkopf)")
     e = z["einigkeit"]
     print(f"  zwei Arme einig:           vorhanden {e['present']:.0%}, "
           f"teilweise {e['partial']:.0%}, fehlt {e['missing']:.0%}"
@@ -169,7 +191,7 @@ def main() -> int:
     if len(schwellen) > 1:
         return 0        # ein Suchlauf entscheidet nichts, er zeigt nur
     schlecht = (letzte["gefunden"] < SCHWELLE_GEFUNDEN
-                or letzte["mittlerer_rang"] > SCHWELLE_RANG
+                or letzte["median_rang"] > SCHWELLE_RANG
                 or letzte["einigkeit"]["present"] < SCHWELLE_EINIGKEIT)
     print("\n" + ("NICHT bestanden." if schlecht else "Bestanden."))
     return 1 if schlecht else 0

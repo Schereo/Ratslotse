@@ -55,6 +55,16 @@ const STATUS: Record<string, { text: string; ton: string }> = {
  * stellen" ist eine andere Sorte Vorschlag als „ein Darlehensprogramm
  * einführen", und wer die Liste liest, will das auf einen Blick sehen.
  */
+// Wie die Haltung anderer Räte auf der Karte heißt. Drei Klassen und nicht
+// fünf: `introduce` gegen `expand` war weder für das Modell noch für einen
+// Menschen entscheidbar (gemessen 72 % gegen 87 %, s. `council/cities/
+// annotators.py::IdeaStance`).
+const HALTUNG: Record<string, { kurz: string; viele: (n: number) => string }> = {
+  for: { kurz: "dafür", viele: (n) => `${n} dafür` },
+  against: { kurz: "dagegen", viele: (n) => `${n} dagegen` },
+  review: { kurz: "prüft erst", viele: (n) => `${n} prüfen erst` },
+};
+
 const AUFWAND: Record<string, string> = {
   inquiry: "Anfrage",
   review: "Prüfauftrag",
@@ -192,6 +202,39 @@ function Rueckmeldung({ idee }: { idee: Idee }) {
   );
 }
 
+/** „3/2" → „2 von 3 Vorlagen"; leer, wenn es nur eine gibt oder keine Gruppe. */
+function stimmen(votes: string | undefined): string {
+  const [alle, dafuer] = (votes ?? "").split("/").map(Number);
+  if (!alle || alle < 2 || !dafuer) return "";
+  return `${dafuer} von ${alle} Vorlagen`;
+}
+
+function Haltungen({ idee }: { idee: Idee }) {
+  // Wie die ANDEREN Räte zu derselben Sache stehen. Ohne diese Zeile zählte
+  // die Karte eine Stadt für eine Idee, die sie gerade gestoppt hat: Die
+  // Verpackungssteuer wurde in zwei von fünf Räten nicht eingeführt,
+  // sondern die Prüfung eingestellt.
+  const zaehler = Object.entries(idee.peer_stances ?? {})
+    .filter(([wert, n]) => HALTUNG[wert] && n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  if (zaehler.length === 0) return null;
+  const dagegen = (idee.peer_stances ?? {}).against ?? 0;
+  return (
+    <p className="mt-1 text-xs text-muted-foreground">
+      In den anderen Räten:{" "}
+      {zaehler.map(([wert, n], i) => (
+        <span key={wert}>
+          {i > 0 && ", "}
+          <span className={wert === "against" ? "font-medium text-foreground" : undefined}>
+            {HALTUNG[wert].viele(n)}
+          </span>
+        </span>
+      ))}
+      {dagegen > 0 && "."}
+    </p>
+  );
+}
+
 function IdeenKarte({ idee }: { idee: Idee }) {
   const status = STATUS[idee.status];
   const kopf = [ART[idee.kind] ?? null, datum(idee.date)].filter(Boolean).join(" · ");
@@ -219,9 +262,32 @@ function IdeenKarte({ idee }: { idee: Idee }) {
             {idee.peers === 1 ? "auch in 1 anderen Stadt" : `auch in ${idee.peers} anderen Städten`}
           </span>
         )}
+        {(idee.siblings ?? []).length > 0 && (
+          <span className="text-[11px] text-muted-foreground/80">
+            {(idee.siblings ?? []).length === 1
+              ? "1 weitere Vorlage dazu"
+              : `${(idee.siblings ?? []).length} weitere Vorlagen dazu`}
+          </span>
+        )}
       </div>
 
       <h3 className="mt-1.5 text-sm font-semibold text-foreground">{idee.name}</h3>
+      {/* Die eigene Haltung, aber nur wenn sie GEGEN die Sache geht. „Dafür"
+          ist der Normalfall und steht schon im Titel; „dagegen" dreht die
+          Bedeutung der ganzen Karte um: Magdeburgs „Einwegverpackungsabgabe
+          nicht umsetzen!" ist keine Idee, die Oldenburg fehlt.
+ 
+          Ein Wort und kein Satz, weil `against` von „abschaffen" bis
+          „verschieben" reicht. „Diese Vorlage will die Sache nicht" stand
+          hier zuerst und war für Potsdams Verschiebung der Verpackungssteuer
+          schlicht falsch — sie will die Steuer, nur später. Was die Vorlage
+          genau bremst, sagt die Zusammenfassung darunter. */}
+      {idee.stance === "against" && (
+        <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+          Gegenrichtung
+        </span>
+      )}
+      <Haltungen idee={idee} />
       {idee.summary && (
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{idee.summary}</p>
       )}
@@ -233,6 +299,12 @@ function IdeenKarte({ idee }: { idee: Idee }) {
             <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${status.ton}`}>
               {status.text}
             </span>
+          )}
+          {/* „3/2": drei Vorlagen dieser Stadt, zwei tragen den Status. Das Urteil
+              ist die MEHRHEIT, nicht das der einen gezeigten Vorlage — gemessen
+              widersprach bei 14 Gruppen die jüngste ihrer Mehrheit. */}
+          {stimmen(idee.votes) && (
+            <span className="text-xs text-muted-foreground/70">{stimmen(idee.votes)}</span>
           )}
           {idee.confidence === "low" && (
             <span className="text-xs text-muted-foreground/70">unsicher</span>
@@ -248,6 +320,59 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         )}
         <Rueckmeldung idee={idee} />
       </div>
+
+      {/* Das „Warum" aus der Niederschrift. Steht nur da, wenn im Protokoll
+          wirklich eine Begründung steht — der Annotator sagt das mit
+          `grounded`, und das Backend gibt sonst `null`. Ein „Warum", das aus
+          dem Ergebnis erschlossen wäre, ist eine Behauptung über einen echten
+          Ratsbeschluss; lieber eine Leerstelle. */}
+      {idee.protocol && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            Warum es in {idee.body_name} so ausging
+          </summary>
+          <div className="mt-1.5 space-y-1.5 border-l-2 border-border pl-3">
+            {idee.protocol.decided && (
+              <p className="text-xs leading-relaxed text-foreground">
+                {idee.protocol.decided}
+                {idee.protocol.vote && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                    {idee.protocol.vote}
+                  </span>
+                )}
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {idee.protocol.why}
+            </p>
+            {idee.protocol.discussed && (
+              <p className="text-xs leading-relaxed text-muted-foreground/80">
+                {idee.protocol.discussed}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground/70">
+              aus der Niederschrift
+              {idee.protocol.organization ? ` des ${idee.protocol.organization}` : ""}
+              {idee.protocol.date ? ` vom ${datum(idee.protocol.date)}` : ""}
+            </p>
+          </div>
+        </details>
+      )}
+
+      {(idee.siblings ?? []).length > 0 && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            {idee.body_name} hat die Sache {(idee.siblings ?? []).length + 1}-mal behandelt
+          </summary>
+          <ul className="mt-1.5 space-y-1">
+            {(idee.siblings ?? []).map((g) => (
+              <li key={g.paper_id} className="text-xs text-muted-foreground/80">
+                {datum(g.date)} · {g.name}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {idee.evidence.length > 0 && (
         <div className="mt-3">

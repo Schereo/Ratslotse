@@ -63,6 +63,8 @@ messen, sondern die Qualität einer **Bewertung**:
 | `scripts/eval_impact.py` | Tragweite-Score gegen `scripts/golden_impact.json` | Rangkorrelation + Band-Trefferquote; unterschritten → kein Rollout |
 | `eval/run_cities_transfer.py` | Einordnung fremder Ratsvorlagen (`cities_classify`) | „taugt/taugt nicht" unter 80 % → Regression |
 | `eval/run_cities_fit.py` | Urteil über Oldenburg (`cities_fit`) | Beleg-Disziplin unter 100 % → Regression |
+| `eval/run_cities_sections.py` | Schnitt der Niederschriften (ohne Modell) | unter 75 % der Tagesordnungspunkte mit Abschnitt → Regression |
+| `eval/run_cities_reason.py` | Das „Warum" aus der Niederschrift (`cities_reason`) | **eine** erfundene Begründung → Regression |
 
 ### Warum der Städtevergleich zwei Prüfstände hat
 
@@ -82,6 +84,20 @@ deshalb als einziges Maß mit Schwelle 100 %. Im Betrieb verwirft
 Beide Prüfstände tragen ihre Fälle **samt Belegen** bei sich und brauchen keine
 Datenbank. Das ist keine Bequemlichkeit: Oldenburgs Bestand wächst, und ein
 Maßstab, der sich unter der Hand ändert, misst nichts.
+
+### Die dritte harte Zusage: kein erfundenes „Warum"
+
+`cities_reason` gibt wieder, was in der Niederschrift einer fremden Sitzung
+steht — warum ein Rat so entschieden hat. Das ist das Wertvollste, was der
+Vergleich zu bieten hat, und deshalb ist eine **erfundene** Begründung der
+teuerste Fehler des ganzen Features: Sie sieht aus wie die beste Information
+auf der Seite und ist eine Behauptung über einen echten Ratsbeschluss.
+
+Die Nutzlast trägt dafür ein eigenes Feld: `grounded` — die Selbstauskunft des
+Modells, ob im Abschnitt überhaupt eine Begründung steht. Der häufigere Fall
+ist „nein"; die meisten Beschlüsse fallen ohne Aussprache. Dann zeigt die
+Karte an dieser Stelle nichts. Der Prüfstand zählt `grounded=true` ohne
+Begründung im Text wie eine erfundene Beleg-Kennung: Schwelle null.
 
 **Eine Falle, in die ich selbst getappt bin:** Die ersten durchgerechneten
 Beispiele im `fit`-Prompt waren Fälle aus dem Prüfstand. Die Trefferquote stieg

@@ -304,6 +304,35 @@
         "title": "AdminFeedbackList",
         "type": "object"
       },
+      "AdminFeedbackNotified": {
+        "description": "Antwort auf „Bescheid geben\" — inklusive der Adresse, an die es ging.\n\nDie Oberfläche sagt danach nicht „gesendet\", sondern *wohin* gesendet\nwurde. Bei einer Mail an eine fremde Person ist das der Unterschied\nzwischen einer Bestätigung und einer Behauptung.",
+        "properties": {
+          "notified_at": {
+            "title": "Notified At",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "unread": {
+            "title": "Unread",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "recipient",
+          "notified_at",
+          "unread"
+        ],
+        "title": "AdminFeedbackNotified",
+        "type": "object"
+      },
       "AdminFeedbackRead": {
         "properties": {
           "ok": {
@@ -348,6 +377,13 @@
             "title": "Message",
             "type": "string"
           },
+          "notified_at": {
+            "title": "Notified At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "owner_id": {
             "title": "Owner Id",
             "type": "integer"
@@ -367,7 +403,8 @@
           "kind",
           "message",
           "created_at",
-          "read_at"
+          "read_at",
+          "notified_at"
         ],
         "title": "AdminFeedbackRow",
         "type": "object"
@@ -1768,6 +1805,13 @@
             "title": "Delivery Channel",
             "type": "string"
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1855,6 +1899,7 @@
         "required": [
           "id",
           "email",
+          "display_name",
           "role",
           "roles",
           "status",
@@ -1936,6 +1981,13 @@
               "null"
             ]
           },
+          "display_name": {
+            "title": "Display Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -1993,6 +2045,7 @@
         "required": [
           "id",
           "email",
+          "display_name",
           "role",
           "roles",
           "status",
@@ -5135,10 +5188,7 @@
           },
           "note": {
             "title": "Note",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "until": {
             "title": "Until",
@@ -8442,6 +8492,19 @@
         "title": "FeedbackIn",
         "type": "object"
       },
+      "FeedbackNotifyIn": {
+        "description": "Die optionale Zeile, die wir der absendenden Person mitschicken.\n\nOptional heißt hier wirklich optional: Ohne Text geht die Karte mit dem\nKernsatz zur jeweiligen Art raus. Die Obergrenze ist dieselbe Größenordnung\nwie beim Feedback selbst — es ist eine Nachricht, kein Newsletter.",
+        "properties": {
+          "message": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "FeedbackNotifyIn",
+        "type": "object"
+      },
       "Finances": {
         "properties": {
           "by_field": {
@@ -9102,7 +9165,7 @@
         "type": "object"
       },
       "Idea": {
-        "description": "Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.",
+        "description": "Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.\n\nEine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das\nKonzept für bürgerschaftliches Engagement in der Denkmalpflege\ndreimal beantragt, Münster den Jugendrat zweimal. Gemessen am\n09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.\nGezeigt wird die jüngste, die übrigen stehen in ``siblings``.",
         "properties": {
           "addressee": {
             "title": "Addressee",
@@ -9189,12 +9252,86 @@
             "title": "Paper Id",
             "type": "string"
           },
+          "peer_stances": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Peer Stances",
+            "type": "object"
+          },
           "peers": {
             "title": "Peers",
             "type": "integer"
           },
+          "protocol": {
+            "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decided": {
+                "title": "Decided",
+                "type": "string"
+              },
+              "discussed": {
+                "title": "Discussed",
+                "type": "string"
+              },
+              "grounded": {
+                "title": "Grounded",
+                "type": "boolean"
+              },
+              "organization": {
+                "title": "Organization",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "vote": {
+                "title": "Vote",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "why": {
+                "title": "Why",
+                "type": "string"
+              }
+            },
+            "required": [
+              "discussed",
+              "decided",
+              "vote",
+              "why",
+              "grounded",
+              "organization",
+              "date"
+            ],
+            "title": "IdeaProtocol",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "reason": {
             "title": "Reason",
+            "type": "string"
+          },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/IdeaSibling"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
+          "stance": {
+            "title": "Stance",
             "type": "string"
           },
           "status": {
@@ -9210,6 +9347,10 @@
           },
           "transfer": {
             "title": "Transfer",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
             "type": "string"
           },
           "web": {
@@ -9236,10 +9377,15 @@
           "competence",
           "originator",
           "status",
+          "votes",
           "reason",
           "confidence",
           "evidence",
+          "protocol",
           "effort",
+          "siblings",
+          "stance",
+          "peer_stances",
           "addressee",
           "feedback",
           "peers"
@@ -9348,6 +9494,59 @@
         "title": "IdeaFields",
         "type": "object"
       },
+      "IdeaProtocol": {
+        "description": "Was die Niederschrift der Sitzung zu dieser Vorlage sagt.\n\nDas „Warum\" — der Grund, aus dem der Städtevergleich überhaupt gebaut\nwurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt\ndie Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger\nFraktion in ihrer eigenen Sitzung braucht.\n\n**``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im\nAbschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,\nist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser\nStelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decided": {
+            "title": "Decided",
+            "type": "string"
+          },
+          "discussed": {
+            "title": "Discussed",
+            "type": "string"
+          },
+          "grounded": {
+            "title": "Grounded",
+            "type": "boolean"
+          },
+          "organization": {
+            "title": "Organization",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vote": {
+            "title": "Vote",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "discussed",
+          "decided",
+          "vote",
+          "why",
+          "grounded",
+          "organization",
+          "date"
+        ],
+        "title": "IdeaProtocol",
+        "type": "object"
+      },
       "IdeaSearchResponse": {
         "description": "Freie Suche über die Vorlagen anderer Städte.",
         "properties": {
@@ -9373,6 +9572,33 @@
           "items"
         ],
         "title": "IdeaSearchResponse",
+        "type": "object"
+      },
+      "IdeaSibling": {
+        "description": "Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "paper_id": {
+            "title": "Paper Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paper_id",
+          "name",
+          "date"
+        ],
+        "title": "IdeaSibling",
         "type": "object"
       },
       "IdeasResponse": {
@@ -11612,10 +11838,46 @@
         "title": "PushUnregisterRequest",
         "type": "object"
       },
+      "QaExampleSession": {
+        "description": "Eine Sitzung als Anlass für eine frische Beispielfrage.\n\n``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits\nauf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die\nSitzung überhaupt hat.",
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          },
+          "top_titel": {
+            "title": "Top Titel",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "committee",
+          "session_date",
+          "n",
+          "top_titel"
+        ],
+        "title": "QaExampleSession",
+        "type": "object"
+      },
       "QaExamples": {
         "properties": {
           "sessions": {
-            "title": "Sessions"
+            "items": {
+              "$ref": "#/components/schemas/QaExampleSession"
+            },
+            "title": "Sessions",
+            "type": "array"
           }
         },
         "required": [
@@ -16294,7 +16556,7 @@
     },
     "/api/account/display-name": {
       "post": {
-        "description": "Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,\ndie bei der Registrierung keinen angeben konnten.",
+        "description": "Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,\ndie bei der Registrierung keinen angeben konnten.\n\nLeeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,\nwäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne\nNamen dasteht — und die Anrede in Mails und Übersicht fiele still auf\n„Moin!\" zurück.",
         "operationId": "set_display_name_api_account_display_name_post",
         "requestBody": {
           "content": {
@@ -16754,6 +17016,59 @@
           }
         },
         "summary": "Feedback Unread Count",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/feedback/{feedback_id}/notify": {
+      "post": {
+        "description": "Der absendenden Person Bescheid geben, dass ihre Sache erledigt ist.\n\nBewusst ein eigener Aufruf und nicht ein Nebeneffekt von „Erledigt\":\nVieles wird abgehakt, ohne dass es etwas zu berichten gäbe, und eine\ngemeldete Share-Verletzung darf nie Post auslösen. Die Oberfläche fragt\ndeshalb nach dem Abhaken, statt selbst zu entscheiden.",
+        "operationId": "notify_feedback_author_api_admin_feedback__feedback_id__notify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "title": "Feedback Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackNotifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminFeedbackNotified"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Notify Feedback Author",
         "tags": [
           "admin"
         ]
@@ -21176,7 +21491,7 @@
     },
     "/api/council/qa-beispiele": {
       "get": {
-        "description": "Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):\ndie jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus\n„Was hat der <Ausschuss> am <Datum> beschlossen?\".",
+        "description": "Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):\ndie jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus\n„Was hat der <Ausschuss> am <Datum> beschlossen?\" und „Was wurde zu\n‚<top_titel>' entschieden?\".\n\nZwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares\nherauskommt — beide gehören hierher und nicht in zwei Clients:\n\n* **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem\n  einzigen Punkt liefert als „wichtigsten Beschluss\" Verfahrenskram; am\n  10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen\n  Tagesordnungspunkten im …' entschieden?\" auf der leeren Seite.\n* **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):\n  ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-\n  Klammer, ohne „(Oldb)\". Vorher schnitt jeder Client selbst — das Web an\n  der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.",
         "operationId": "qa_beispiele_api_council_qa_beispiele_get",
         "responses": {
           "200": {

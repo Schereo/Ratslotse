@@ -467,6 +467,22 @@ Der Zustellkanal sagt **wo**, die Anlässe sagen **wofür**. Beides steht in
 | `n5_vorabend` | morgen tagt ein Gremium, das dich betrifft | **aus** | `scripts/abendmeldungen.py` (18 Uhr) |
 | `n6_woche` | Wochenüberblick | an | dasselbe Skript, nur sonntags |
 
+**Nicht jede Mail ist eine Benachrichtigung.** Die sechs Anlässe oben laufen
+über `kern.notify.einreihen` und hängen damit an Aus-Schalter, Nachtruhe und
+Tagesgrenze. Daneben gibt es **Service-Mails zum eigenen Konto**, die direkt
+verschickt werden: Bestätigungslink, Passwort-Reset, Freischaltung durch einen
+Admin, die Abschieds-Mail bei der Löschung, die Hinweise beim Adresswechsel —
+und seit 10.09.2026 die **Rückmeldung auf eigenes Feedback** („Dein Vorschlag
+ist umgesetzt"). Der Unterschied ist nicht formal: Wer uns schreibt, bekommt
+eine Antwort, und eine Antwort an einer Nachtruhe scheitern zu lassen wäre die
+falsche Sparsamkeit.
+
+Die Rückmeldung löst ein Admin im Panel unter *Feedback* aus, mit optionalen
+eigenen Zeilen dazu. Vier Riegel sitzen davor: gemeldete Inhalte (`qa_share`)
+lösen nie Post aus, ohne hinterlegte Adresse geht nichts, ein zweites Mal gibt
+es nicht (`feedback.notified_at`), und scheitert der Versand, wird weder der
+Vermerk gesetzt noch abgehakt.
+
 **Vorgaben nach Nutzerart (seit 06.09.2026).** Ein gewöhnliches Konto bekommt
 die Tagesordnung je Gremium nur, wenn es den Schalter ausdrücklich
 einschaltet — ein Abo ohne Sofort-Meldung ist kein Widerspruch, das Gremium

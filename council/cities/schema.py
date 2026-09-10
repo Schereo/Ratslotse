@@ -25,7 +25,7 @@ frische Datenbank entsteht aus ``SCHEMA``, eine gewachsene aus
 """
 from __future__ import annotations
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 7
 
 SCHEMA = """
 -- ---------------------------------------------------------------- Schicht 0
@@ -247,6 +247,41 @@ CREATE TABLE IF NOT EXISTS idea_clusters (
     PRIMARY KEY (model, version, paper_id)
 );
 CREATE INDEX IF NOT EXISTS idx_idea_clusters ON idea_clusters(model, version, cluster_id);
+-- Die Gegenrichtung: von der VORLAGE zu ihrer Gruppe. Der Primärschlüssel
+-- führt model, version, paper_id — paper_id steht hinten und ist allein
+-- nicht benutzbar. Ohne diesen Index wählt SQLite für die Dubletten-Prüfung
+-- der Ideen-Liste `SCAN k2` über alle Cluster-Zeilen: EIN Zähler brauchte
+-- damit 14,3 Sekunden (gemessen 09.09.2026, 3.641 Zeilen), mit Index
+-- Millisekunden. Ein Endpunkt, der 14 Sekunden braucht, ist kaputt.
+CREATE INDEX IF NOT EXISTS idx_idea_clusters_paper ON idea_clusters(paper_id);
+
+-- Der Status einer IDEE je Stadt — die Mehrheit ihrer Vorlagen, nicht die
+-- jüngste. `fit` urteilt je Vorlage, und dieselbe Stadt bekommt für dieselbe
+-- Sache zweimal „fehlt" und einmal „vorhanden": Gemessen am 10.09.2026 waren
+-- 119 von 1.062 Gruppen uneinheitlich, und bei 14 davon widersprach die
+-- jüngste Vorlage der Mehrheit. Als lebende Abfrage kostete die Mehrheit
+-- 0,65 s je Seitenaufruf — deshalb liegt sie hier, geschrieben vom
+-- Cluster-Schritt, gelesen von den Ideen-Abfragen.
+CREATE TABLE IF NOT EXISTS idea_group_status (
+    model         TEXT NOT NULL,
+    version       TEXT NOT NULL,
+    body_id       TEXT NOT NULL,
+    cluster_id    INTEGER NOT NULL,
+    fit_version   TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    members       INTEGER NOT NULL,
+    agreeing      INTEGER NOT NULL,
+    -- Die Aggregate über die ANDEREN Städte derselben Gruppe. Sie standen als
+    -- Unterabfragen in der Zeilen-Abfrage und kosteten 0,7 s je Seite, weil
+    -- die Sortierung sie für jede Kandidatin rechnet, nicht nur für die
+    -- dreißig gezeigten (gemessen 10.09.2026). Hier einmal je Cron-Lauf.
+    peers         INTEGER NOT NULL DEFAULT 0,
+    peer_for      INTEGER NOT NULL DEFAULT 0,
+    peer_against  INTEGER NOT NULL DEFAULT 0,
+    peer_review   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (model, version, body_id, cluster_id, fit_version)
+);
+
 
 -- ---------------------------------------------------------------- Schicht 5
 -- Was MENSCHEN zu einem Urteil sagen. Die einzige Tabelle hier, die weder aus
@@ -275,6 +310,31 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 CREATE INDEX IF NOT EXISTS feedback_verdict ON feedback(annotator, version, verdict);
 
+-- Der Abschnitt der Niederschrift, der zu EINEM Tagesordnungspunkt gehört
+-- (Schicht 2: was in der Quelle steht, nicht was ein Modell daraus liest).
+--
+-- Warum eine eigene Tabelle und keine Spalte an `agenda_items`: Der
+-- Schnitt hat eine Fassung (`splitter`). Wird die Regel besser, liegt die
+-- neue Zerlegung neben der alten, und beide lassen sich messen — dieselbe
+-- Regel wie bei `texts` und `annotations`. Eine Spalte könnte das nicht.
+--
+-- `agenda_item_id` ist Teil des Schlüssels und nicht optional: Ein
+-- Abschnitt ohne Punkt ist für die Auswertung wertlos, und ihn trotzdem
+-- abzulegen hieße, ihn später wieder herausfiltern zu müssen.
+CREATE TABLE IF NOT EXISTS protocol_sections (
+    file_id         TEXT NOT NULL,
+    meeting_id      TEXT NOT NULL,
+    agenda_item_id  TEXT NOT NULL,
+    splitter        TEXT NOT NULL,
+    ord             INTEGER NOT NULL,
+    number          TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    text            TEXT NOT NULL,
+    PRIMARY KEY (agenda_item_id, splitter)
+);
+CREATE INDEX IF NOT EXISTS idx_protocol_sections_meeting
+    ON protocol_sections(meeting_id, splitter);
+
 CREATE TABLE IF NOT EXISTS meta (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
@@ -287,6 +347,142 @@ CREATE TABLE IF NOT EXISTS meta (
 #: ``ALTER TABLE`` nur nach Prüfung per ``PRAGMA table_info``).
 #:
 MIGRATIONS: list[tuple[int, str]] = [
+    # 7 — Doppelt abgelegte Tagesordnungspunkte zusammenführen (10.09.2026).
+    #
+    # **Die einzige Migration ohne Gegenstück im SCHEMA, und das ist richtig
+    # so:** Sie ändert keine Tabelle, sie räumt Zeilen weg, die eine frische
+    # Datenbank gar nicht erst bekommt. Das Gegenstück zum SCHEMA ist hier
+    # ``zwillinge_zusammenfuehren`` in ``adapters/_common.py`` — es sorgt
+    # dafür, dass beim Normalisieren keine neuen entstehen.
+    #
+    # **Woher sie kamen.** ``scripts/cities_import_phase0.py`` hat den
+    # Probelauf vom 07.09.2026 in die Rohablage übernommen und dabei je Punkt
+    # eine Kennung erfunden: ``<sitzung>#top-<nummer>``. Kein
+    # Ratsinformationssystem vergibt so etwas — gegen die Schnittstellen
+    # geprüft, liefern Münster, Magdeburg, Braunschweig, Osnabrück und
+    # Potsdam ausschließlich ``…/agendaitems/<n>``. Die echte Ernte brachte
+    # dieselben Punkte danach unter ihrer eigenen Kennung, und weil
+    # ``upsert_batch`` auf der Kennung aufsetzt, blieben beide liegen:
+    # **22.152 Zeilen**, 21 % des Bestands, in fünf von sechs Städten.
+    #
+    # Das Zusammenlegen läuft über ``meeting_id`` + ``number`` + ``name``,
+    # exakt und ohne Vereinheitlichung. Gemessen: jede der 22.152 erfundenen
+    # Zeilen hat damit **genau einen** Partner, keine hat mehrere, keine
+    # bleibt übrig. Wo doch einmal keiner zu finden wäre, bleibt die Zeile
+    # stehen — lieber eine doppelte als eine verlorene.
+    #
+    # Reihenfolge: erst umhängen, was auf die erfundene Kennung zeigt, dann
+    # löschen. ``OR IGNORE`` bei ``annotations`` und ``protocol_sections``,
+    # weil dort die Kennung im Primärschlüssel steht und der Zwilling seinen
+    # Eintrag schon haben kann; was danach noch am toten Punkt hängt, fällt
+    # weg (beide Schichten sind aus Schicht 1 neu berechenbar).
+    (7, """
+    CREATE TEMP TABLE IF NOT EXISTS _zwillinge AS
+    SELECT t.id AS erfunden, a.id AS echt
+      FROM agenda_items t
+      JOIN agenda_items a
+        ON a.meeting_id = t.meeting_id
+       AND a.name = t.name
+       AND a.number IS t.number
+       AND a.id NOT LIKE '%#top-%'
+     WHERE t.id LIKE '%#top-%'
+     GROUP BY t.id
+    HAVING COUNT(*) = 1;
+
+    UPDATE consultations
+       SET agenda_item_id = (SELECT echt FROM _zwillinge WHERE erfunden = agenda_item_id)
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    UPDATE files
+       SET agenda_item_id = (SELECT echt FROM _zwillinge WHERE erfunden = agenda_item_id)
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    -- Danach zeigen zwei Beratungen desselben Papiers auf denselben Punkt:
+    -- der Titelabgleich hat in der phase0-Zeit einen gegen die erfundene
+    -- Kennung angelegt und nach der echten Ernte einen zweiten gegen die
+    -- richtige. Die erste trägt die erfundene Kennung in ihrer eigenen id und
+    -- ist damit erkennbar; sie fällt weg, sobald ein Partner bleibt. 1.686
+    -- Zeilen, und kein Papier verliert dadurch seine Beratung oder ihr
+    -- Ergebnis (beides gemessen). Was schon vorher doppelt lag (821 Gruppen,
+    -- vom Ratsinformationssystem so geliefert), bleibt unangetastet: Das ist
+    -- ein anderer Befund und gehört nicht in diese Reparatur.
+    DELETE FROM consultations
+     WHERE id LIKE '%#top-%'
+       AND EXISTS (SELECT 1 FROM consultations o
+                    WHERE o.paper_id = consultations.paper_id
+                      AND o.agenda_item_id = consultations.agenda_item_id
+                      AND o.id <> consultations.id
+                      AND o.id NOT LIKE '%#top-%');
+
+    UPDATE OR IGNORE annotations
+       SET object_id = (SELECT echt FROM _zwillinge WHERE erfunden = object_id)
+     WHERE object_kind = 'agenda_item'
+       AND object_id IN (SELECT erfunden FROM _zwillinge);
+
+    UPDATE OR IGNORE protocol_sections
+       SET agenda_item_id = (SELECT echt FROM _zwillinge WHERE erfunden = agenda_item_id)
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    DELETE FROM annotations
+     WHERE object_kind = 'agenda_item'
+       AND object_id IN (SELECT erfunden FROM _zwillinge);
+
+    DELETE FROM protocol_sections
+     WHERE agenda_item_id IN (SELECT erfunden FROM _zwillinge);
+
+    DELETE FROM agenda_items
+     WHERE id IN (SELECT erfunden FROM _zwillinge);
+
+    DROP TABLE _zwillinge;
+    """),
+    # 6 — Die Niederschrift je Tagesordnungspunkt (10.09.2026). Der Absatz am
+    # SCHEMA sagt, warum eine Tabelle mit Fassung und keine Spalte.
+    (6, """
+    CREATE TABLE IF NOT EXISTS protocol_sections (
+        file_id         TEXT NOT NULL,
+        meeting_id      TEXT NOT NULL,
+        agenda_item_id  TEXT NOT NULL,
+        splitter        TEXT NOT NULL,
+        ord             INTEGER NOT NULL,
+        number          TEXT NOT NULL,
+        title           TEXT NOT NULL,
+        text            TEXT NOT NULL,
+        PRIMARY KEY (agenda_item_id, splitter)
+    );
+    CREATE INDEX IF NOT EXISTS idx_protocol_sections_meeting
+        ON protocol_sections(meeting_id, splitter);
+    """),
+    # 5 — Der Mehrheits-Status je Stadt und Ideen-Gruppe (10.09.2026). Der
+    # Absatz am SCHEMA sagt, warum eine Tabelle und keine Abfrage.
+    (5, """
+    CREATE TABLE IF NOT EXISTS idea_group_status (
+        model         TEXT NOT NULL,
+        version       TEXT NOT NULL,
+        body_id       TEXT NOT NULL,
+        cluster_id    INTEGER NOT NULL,
+        fit_version   TEXT NOT NULL,
+        status        TEXT NOT NULL,
+        members       INTEGER NOT NULL,
+        agreeing      INTEGER NOT NULL,
+        -- Die Aggregate über die ANDEREN Städte derselben Gruppe. Sie standen als
+        -- Unterabfragen in der Zeilen-Abfrage und kosteten 0,7 s je Seite, weil
+        -- die Sortierung sie für jede Kandidatin rechnet, nicht nur für die
+        -- dreißig gezeigten (gemessen 10.09.2026). Hier einmal je Cron-Lauf.
+        peers         INTEGER NOT NULL DEFAULT 0,
+        peer_for      INTEGER NOT NULL DEFAULT 0,
+        peer_against  INTEGER NOT NULL DEFAULT 0,
+        peer_review   INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (model, version, body_id, cluster_id, fit_version)
+    );
+    """),
+    # 4 — Der Weg von der Vorlage zu ihrer Ideen-Gruppe (09.09.2026). Die
+    # Ideen-Liste zieht Dubletten je Stadt zusammen und fragt dafür je Zeile
+    # „liegt eine jüngere Schwester im selben Cluster?". Ohne Index wählt
+    # SQLite `SCAN k2` über alle Cluster-Zeilen — ein Zähler brauchte 14,3
+    # Sekunden statt Millisekunden.
+    (4, """
+    CREATE INDEX IF NOT EXISTS idx_idea_clusters_paper ON idea_clusters(paper_id);
+    """),
     # 3 — Rückmeldungen von Menschen zu einem Urteil (09.09.2026). Der Absatz
     # am SCHEMA sagt, warum: Der Maßstab für jedes Urteil sind vierzig
     # handgeurteilte Fälle, und der war viermal der Fehler.

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
-import { api, apiUrl, authHeaders } from "@/lib/api";
+import { ApiError, api, apiUrl, authHeaders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { AdminUserDetail, AdminGrowth, AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
@@ -30,7 +30,7 @@ type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
-import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
+import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, EmptyState, ErrorState, Input, Label, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
@@ -1055,6 +1055,8 @@ const FEATURE_LABELS: Record<string, string> = {
   cities_fit: "Hat Oldenburg das schon?",
   cities_evidence_terms: "Städtevergleich: Oldenburger Suchwörter",
   cities_effort: "Städtevergleich: Was kostet die Idee?",
+  cities_stance: "Städtevergleich: Wollte der Rat die Idee?",
+  cities_reason: "Städtevergleich: Warum ging es so aus?",
   cities_cluster_check: "Städtevergleich: Gehört das zusammen?",
   eval_cities_effort: "Prüfstand: Was kostet die Idee?",
   eval_cities_transfer: "Prüfstand: Einordnung fremder Vorlagen",
@@ -1326,9 +1328,18 @@ function FehlerTab() {
 }
 
 
+/** Arten, zu denen es eine Rückmeldung gibt — dieselbe Liste wie im Backend
+ *  (`_RUECKMELDBAR` in routers/admin.py). Eine gemeldete Share-Verletzung ist
+ *  eine Meldung ÜBER fremde Inhalte und bekommt nie Post; das Backend weist
+ *  sie ohnehin ab, hier bleibt der Knopf gleich ganz weg. */
+const RUECKMELDBAR = new Set(["feature", "bug", "other", "konto"]);
+
 function FeedbackTab() {
   const qc = useQueryClient();
   const [onlyUnread, setOnlyUnread] = useState(false);
+  // Die Rückmeldung, die gerade verfasst wird (null = kein Dialog offen).
+  const [antwortZu, setAntwortZu] = useState<AdminFeedback | null>(null);
+  const [antwortText, setAntwortText] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-feedback", onlyUnread],
@@ -1345,6 +1356,22 @@ function FeedbackTab() {
       qc.invalidateQueries({ queryKey: ["admin-feedback-unread"] });
     },
     onError: () => toast.error("Konnte nicht gespeichert werden."),
+  });
+
+  const benachrichtigen = useMutation({
+    mutationFn: ({ id, message }: { id: number; message: string }) =>
+      api.post<{ recipient: string }>(`/admin/feedback/${id}/notify`, { message }),
+    onSuccess: (antwort) => {
+      // Sagt WOHIN, nicht nur „gesendet": Bei einer Mail an eine fremde
+      // Person ist das der Unterschied zwischen Bestätigung und Behauptung.
+      toast.success(`Rückmeldung an ${antwort.recipient} verschickt.`);
+      setAntwortZu(null);
+      setAntwortText("");
+      qc.invalidateQueries({ queryKey: ["admin-feedback"] });
+      qc.invalidateQueries({ queryKey: ["admin-feedback-unread"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Die Rückmeldung ging nicht raus."),
   });
 
   const removeShare = useMutation({
@@ -1396,14 +1423,32 @@ function FeedbackTab() {
                       {f.email}
                     </a>
                   )}
-                  <Button
-                    variant="secondary"
-                    className="ml-auto"
-                    disabled={mark.isPending}
-                    onClick={() => mark.mutate({ id: f.id, read: open })}
-                  >
-                    {open ? "Erledigt" : "Wieder öffnen"}
-                  </Button>
+                  {f.notified_at && (
+                    <span className="text-xs text-muted-foreground">
+                      benachrichtigt {formatDate(f.notified_at.slice(0, 10))}
+                    </span>
+                  )}
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {/* „Bescheid geben" steht neben „Erledigt" und nicht darin:
+                        Vieles wird abgehakt, ohne dass es etwas zu berichten
+                        gäbe. Der Knopf erscheint nur, wenn es überhaupt geht —
+                        passende Art, Adresse da, noch nicht benachrichtigt. */}
+                    {RUECKMELDBAR.has(f.kind) && f.email && !f.notified_at && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => { setAntwortZu(f); setAntwortText(""); }}
+                      >
+                        Erledigt & Bescheid geben
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      disabled={mark.isPending}
+                      onClick={() => mark.mutate({ id: f.id, read: open })}
+                    >
+                      {open ? "Erledigt" : "Wieder öffnen"}
+                    </Button>
+                  </div>
                   {shareToken && (
                     <Button variant="danger" disabled={removeShare.isPending}
                       onClick={() => removeShare.mutate(shareToken)}>
@@ -1419,6 +1464,44 @@ function FeedbackTab() {
           })}
         </ul>
       )}
+
+      <Dialog open={!!antwortZu} onOpenChange={(offen) => !offen && setAntwortZu(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bescheid geben</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Geht an <span className="font-medium text-foreground">{antwortZu?.email}</span>.
+            Die Mail nennt je nach Art den passenden Kernsatz und zitiert die
+            ursprüngliche Nachricht.
+          </p>
+          <div>
+            <Label htmlFor="rueckmeldung">Deine Nachricht (optional)</Label>
+            <Textarea
+              id="rueckmeldung"
+              className="mt-1"
+              rows={4}
+              maxLength={2000}
+              value={antwortText}
+              onChange={(e) => setAntwortText(e.target.value)}
+              placeholder="z. B. „Seit heute unter „Mein Konto“ zu finden.“"
+            />
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" onClick={() => setAntwortZu(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              disabled={benachrichtigen.isPending}
+              onClick={() => antwortZu && benachrichtigen.mutate({
+                id: antwortZu.id, message: antwortText,
+              })}
+            >
+              {benachrichtigen.isPending ? "Wird verschickt…" : "Verschicken & erledigen"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1572,7 +1655,11 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
   if (isError) return <ErrorState title="Die Nutzer*innen konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />;
 
   const needle = q.trim().toLowerCase();
-  const filtered = needle ? users.filter((u) => u.email.toLowerCase().includes(needle)) : users;
+  // Nach dem Namen zu suchen ist der Normalfall: Man erinnert sich an „Anne",
+  // nicht an ihre Adresse. Beides durchsuchen, damit keins der beiden fehlt.
+  const filtered = needle
+    ? users.filter((u) => `${u.display_name ?? ""} ${u.email}`.toLowerCase().includes(needle))
+    : users;
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[1fr_minmax(0,420px)]">
@@ -1580,7 +1667,7 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
         <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-3">
           <div className="relative flex-1">
             <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="E-Mail suchen…"
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name oder E-Mail suchen…"
               className="h-9 w-full rounded-[9px] border border-input bg-card pl-9 pr-3 text-base maus:text-[12.5px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">{users.length} Nutzer*innen</span>
@@ -1603,7 +1690,15 @@ function UsersTab({ currentUserId }: { currentUserId: number }) {
                   selected === u.id && "bg-accent")}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-[13.5px] font-semibold text-foreground">{u.email}</span>
+                    {/* Der Name steht vorn, die Adresse blass daneben: Konten
+                        tragen seit 09/2026 einen Namen (Pflicht bei der
+                        Registrierung), und ein Konto ist damit eine Person und
+                        nicht mehr nur eine Adresse. Wer noch keinen hat —
+                        Alt-Bestand —, erscheint weiter unter seiner Adresse. */}
+                    <span className="flex min-w-0 items-baseline gap-1.5">
+                      <span className="truncate text-[13.5px] font-semibold text-foreground">{u.display_name || u.email}</span>
+                      {u.display_name && <span className="truncate text-[11.5px] text-muted-foreground">{u.email}</span>}
+                    </span>
                     {/* Ein Abzeichen JE Rolle: Seit ein Konto mehrere tragen
                         kann, verschwiege ein einzelnes „admin" das Ratsmandat
                         daneben. Die Beschriftung kommt aus dem Katalog, damit
@@ -1691,9 +1786,10 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
   return (
     <Card className="bg-muted/20 p-5">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{data.email[0].toUpperCase()}</span>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-display text-base font-bold text-primary">{(data.display_name || data.email)[0].toUpperCase()}</span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold text-foreground">{data.email}</p>
+          <p className="truncate text-[15px] font-bold text-foreground">{data.display_name || data.email}</p>
+          {data.display_name && <p className="truncate text-xs text-muted-foreground">{data.email}</p>}
           <p className="text-xs text-muted-foreground">
             seit {formatDate(data.created_at.slice(0, 10))} · {sig.label} · {login}
             {woher && <> · über {woher} registriert</>}

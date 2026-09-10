@@ -28,7 +28,7 @@ setup("Sitzungen für alle Identitäten anlegen", async ({ playwright, baseURL }
       // dieselbe Datenbank soll nicht daran scheitern. Die Anmeldung darunter
       // ist ohnehin der Schritt, der zählt.
       await ctx.post("/api/auth/register", {
-        data: { email: konto.email, password: PASSWORT },
+        data: { email: konto.email, password: PASSWORT, display_name: "Testkonto" },
       });
     }
 

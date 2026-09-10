@@ -122,6 +122,11 @@ export interface paths {
          * Set Display Name
          * @description Anzeigename setzen/ändern — auch für Apple-Konten und Alt-Bestand,
          *     die bei der Registrierung keinen angeben konnten.
+         *
+         *     Leeren geht nicht mehr: Seit der Name bei der Registrierung Pflicht ist,
+         *     wäre dieser Endpunkt sonst die Hintertür, durch die ein Konto wieder ohne
+         *     Namen dasteht — und die Anrede in Mails und Übersicht fiele still auf
+         *     „Moin!" zurück.
          */
         post: operations["set_display_name_api_account_display_name_post"];
         delete?: never;
@@ -353,6 +358,31 @@ export interface paths {
         get: operations["feedback_unread_count_api_admin_feedback_unread_count_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/feedback/{feedback_id}/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Notify Feedback Author
+         * @description Der absendenden Person Bescheid geben, dass ihre Sache erledigt ist.
+         *
+         *     Bewusst ein eigener Aufruf und nicht ein Nebeneffekt von „Erledigt":
+         *     Vieles wird abgehakt, ohne dass es etwas zu berichten gäbe, und eine
+         *     gemeldete Share-Verletzung darf nie Post auslösen. Die Oberfläche fragt
+         *     deshalb nach dem Abhaken, statt selbst zu entscheiden.
+         */
+        post: operations["notify_feedback_author_api_admin_feedback__feedback_id__notify_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3318,8 +3348,21 @@ export interface paths {
         /**
          * Qa Beispiele
          * @description Frische Beispiel-Anlässe für den Empty State der KI-Frage (5a/I-07):
-         *     die jüngsten Sitzungen mit Beschlüssen — das Frontend formuliert daraus
-         *     „Was hat der <Ausschuss> am <Datum> beschlossen?".
+         *     die jüngsten Sitzungen mit Beschlüssen — die Clients formulieren daraus
+         *     „Was hat der <Ausschuss> am <Datum> beschlossen?" und „Was wurde zu
+         *     ‚<top_titel>' entschieden?".
+         *
+         *     Zwei Dinge stellt der Server sicher, damit dabei etwas Brauchbares
+         *     herauskommt — beide gehören hierher und nicht in zwei Clients:
+         *
+         *     * **Nur Sitzungen mit Substanz** (``mindest_tops``). Eine Sitzung mit einem
+         *       einzigen Punkt liefert als „wichtigsten Beschluss" Verfahrenskram; am
+         *       10.09.2026 stand so „Was wurde zu ‚Beratung von nichtöffentlichen
+         *       Tagesordnungspunkten im …' entschieden?" auf der leeren Seite.
+         *     * **Der Titel kommt schon als Gegenstand** (``qa.vorschlags_gegenstand``):
+         *       ohne Verfahrensstand hinter dem Gedankenstrich, ohne Antragsteller-
+         *       Klammer, ohne „(Oldb)". Vorher schnitt jeder Client selbst — das Web an
+         *       der Wortgrenze, die App hart bei 69 Zeichen mitten im Wort.
          */
         get: operations["qa_beispiele_api_council_qa_beispiele_get"];
         put?: never;
@@ -4813,6 +4856,24 @@ export interface components {
             /** Unread */
             unread: number;
         };
+        /**
+         * AdminFeedbackNotified
+         * @description Antwort auf „Bescheid geben" — inklusive der Adresse, an die es ging.
+         *
+         *     Die Oberfläche sagt danach nicht „gesendet", sondern *wohin* gesendet
+         *     wurde. Bei einer Mail an eine fremde Person ist das der Unterschied
+         *     zwischen einer Bestätigung und einer Behauptung.
+         */
+        AdminFeedbackNotified: {
+            /** Notified At */
+            notified_at: string;
+            /** Ok */
+            ok: boolean;
+            /** Recipient */
+            recipient: string;
+            /** Unread */
+            unread: number;
+        };
         /** AdminFeedbackRead */
         AdminFeedbackRead: {
             /** Ok */
@@ -4839,6 +4900,8 @@ export interface components {
             kind: string;
             /** Message */
             message: string;
+            /** Notified At */
+            notified_at: string | null;
             /** Owner Id */
             owner_id: number;
             /** Read At */
@@ -5405,6 +5468,8 @@ export interface components {
             deep_limit: number | null;
             /** Delivery Channel */
             delivery_channel: string;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             features: components["schemas"]["AdminUserFeatures"];
@@ -5470,6 +5535,8 @@ export interface components {
             };
             /** Created At */
             created_at: string | null;
+            /** Display Name */
+            display_name: string | null;
             /** Email */
             email: string;
             /** Id */
@@ -6882,7 +6949,7 @@ export interface components {
             /** Next Session Date */
             next_session_date: string | null;
             /** Note */
-            note: string | null;
+            note: string;
             /** Until */
             until: string | null;
         };
@@ -8135,6 +8202,21 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * FeedbackNotifyIn
+         * @description Die optionale Zeile, die wir der absendenden Person mitschicken.
+         *
+         *     Optional heißt hier wirklich optional: Ohne Text geht die Karte mit dem
+         *     Kernsatz zur jeweiligen Art raus. Die Obergrenze ist dieselbe Größenordnung
+         *     wie beim Feedback selbst — es ist eine Nachricht, kein Newsletter.
+         */
+        FeedbackNotifyIn: {
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
         /** Finances */
         Finances: {
             /** By Field */
@@ -8410,7 +8492,13 @@ export interface components {
         };
         /**
          * Idea
-         * @description Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat.
+         * @description Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
+         *
+         *     Eine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das
+         *     Konzept für bürgerschaftliches Engagement in der Denkmalpflege
+         *     dreimal beantragt, Münster den Jugendrat zweimal. Gemessen am
+         *     09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.
+         *     Gezeigt wird die jüngste, die übrigen stehen in ``siblings``.
          */
         Idea: {
             /** Addressee */
@@ -8445,16 +8533,56 @@ export interface components {
             outcome: string;
             /** Paper Id */
             paper_id: string;
+            /** Peer Stances */
+            peer_stances: {
+                [key: string]: number;
+            };
             /** Peers */
             peers: number;
+            /**
+             * IdeaProtocol
+             * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+             *
+             *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+             *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+             *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+             *     Fraktion in ihrer eigenen Sitzung braucht.
+             *
+             *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+             *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+             *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+             *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+             */
+            protocol: {
+                /** Date */
+                date: string | null;
+                /** Decided */
+                decided: string;
+                /** Discussed */
+                discussed: string;
+                /** Grounded */
+                grounded: boolean;
+                /** Organization */
+                organization: string | null;
+                /** Vote */
+                vote: string | null;
+                /** Why */
+                why: string;
+            } | null;
             /** Reason */
             reason: string;
+            /** Siblings */
+            siblings: components["schemas"]["IdeaSibling"][];
+            /** Stance */
+            stance: string;
             /** Status */
             status: string;
             /** Summary */
             summary: string | null;
             /** Transfer */
             transfer: string;
+            /** Votes */
+            votes: string;
             /** Web */
             web: string | null;
         };
@@ -8498,6 +8626,36 @@ export interface components {
             fields: components["schemas"]["IdeaFieldSummary"][];
         };
         /**
+         * IdeaProtocol
+         * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+         *
+         *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+         *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+         *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+         *     Fraktion in ihrer eigenen Sitzung braucht.
+         *
+         *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+         *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+         *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+         *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+         */
+        IdeaProtocol: {
+            /** Date */
+            date: string | null;
+            /** Decided */
+            decided: string;
+            /** Discussed */
+            discussed: string;
+            /** Grounded */
+            grounded: boolean;
+            /** Organization */
+            organization: string | null;
+            /** Vote */
+            vote: string | null;
+            /** Why */
+            why: string;
+        };
+        /**
          * IdeaSearchResponse
          * @description Freie Suche über die Vorlagen anderer Städte.
          */
@@ -8508,6 +8666,18 @@ export interface components {
             query: string;
             /** Total */
             total: number;
+        };
+        /**
+         * IdeaSibling
+         * @description Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee.
+         */
+        IdeaSibling: {
+            /** Date */
+            date: string | null;
+            /** Name */
+            name: string;
+            /** Paper Id */
+            paper_id: string;
         };
         /** IdeasResponse */
         IdeasResponse: {
@@ -9460,10 +9630,28 @@ export interface components {
             /** Token */
             token: string;
         };
+        /**
+         * QaExampleSession
+         * @description Eine Sitzung als Anlass für eine frische Beispielfrage.
+         *
+         *     ``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits
+         *     auf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die
+         *     Sitzung überhaupt hat.
+         */
+        QaExampleSession: {
+            /** Committee */
+            committee: string;
+            /** N */
+            n: number;
+            /** Session Date */
+            session_date: string;
+            /** Top Titel */
+            top_titel: string | null;
+        };
         /** QaExamples */
         QaExamples: {
             /** Sessions */
-            sessions: unknown;
+            sessions: components["schemas"]["QaExampleSession"][];
         };
         /** QaFeedbackBody */
         QaFeedbackBody: {
@@ -11835,6 +12023,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUnread"];
+                };
+            };
+        };
+    };
+    notify_feedback_author_api_admin_feedback__feedback_id__notify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackNotifyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFeedbackNotified"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -17019,4 +17242,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: de56e6f805ce8ca65c445f872fa5363ef5fef6bb2f8a372c2ed1ee9ef0dbcbca
+// vertrag-sha256: 8393a31bf3fcfdb60d3b59469314a1ae677372bb100e9365ca641d7a5dd50f8f

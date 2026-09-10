@@ -7,6 +7,7 @@ Wirkung zu schwer abzuschätzen (Tims Entscheidung, 31.08.2026).
 """
 from __future__ import annotations
 
+import html as _html
 import logging
 from datetime import datetime
 from typing import cast
@@ -34,10 +35,12 @@ from ..antworten import (CityStats, EventStreamResponse, SSE_LIVE_PROBE,
                          AdminEreignisse, AdminKohorten, AdminPlaceCandidates,
                          AdminQuizStats, AdminRequestFehler, AdminSackgasse,
                          AdminSeitenaufrufe,
+                         AdminFeedbackNotified,
                          AdminUnread, AdminUserDetail, AdminUserRow, Ok)
 from ..deps import get_cities_store, get_council_store, get_store, require_admin
-from ..schemas import (EntityAliasIn, EntityAliasOut, LimitsUpdate, PlaceReviewIn,
-                       RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate, WebUserOut)
+from ..schemas import (EntityAliasIn, EntityAliasOut, FeedbackNotifyIn, LimitsUpdate,
+                       PlaceReviewIn, RoleInfo, RolesUpdate, RoleUpdate, StatusUpdate,
+                       WebUserOut)
 
 logger = logging.getLogger("ratslotse.web.admin")
 
@@ -363,6 +366,139 @@ def mark_feedback_read(
     if not store.set_feedback_read(feedback_id, read):
         raise HTTPException(status_code=404, detail="Feedback nicht gefunden.")
     return {"ok": True, "unread": store.count_unread_feedback()}
+
+
+#: Rückmeldung anbieten — aber nicht für alles.
+#:
+#: ``qa_share`` ist eine **Meldung über fremde Inhalte**, keine Anregung. Wer
+#: einen Verstoß meldet, bekommt keine Post „dein Vorschlag ist umgesetzt";
+#: das wäre im besten Fall verwirrend und im schlechteren ein Hinweis darauf,
+#: dass die Meldung ankam — an jemanden, der das nicht wissen soll.
+_RUECKMELDBAR = {"feature", "bug", "other", "konto"}
+
+#: Je Art ein eigener Kernsatz. Ein „Vorschlag umgesetzt" auf eine
+#: Fehlermeldung liest sich falsch, und die Karte ist zu kurz, um das
+#: wegzuerklären.
+_RUECKMELDUNG_TEXTE = {
+    "feature": ("Dein Vorschlag ist umgesetzt",
+                "Du hattest uns etwas vorgeschlagen — das gibt es jetzt in Ratslotse."),
+    "bug": ("Der gemeldete Fehler ist behoben",
+            "Du hattest uns einen Fehler gemeldet — er ist behoben."),
+    "konto": ("Deine Anfrage ist erledigt",
+              "Du hattest uns wegen deines Kontos geschrieben — die Sache ist erledigt."),
+    "other": ("Deine Nachricht ist erledigt",
+              "Du hattest uns geschrieben — die Sache ist erledigt."),
+}
+
+
+def _send_feedback_reply(empfaenger: str, kind: str, nachricht: str,
+                         original: str) -> None:
+    """Die Rückmeldung an die absendende Person.
+
+    Läuft NICHT über ``kern.notify.einreihen``: Das ist der Weg für
+    Ratsmeldungen, die an Aus-Schalter, Nachtruhe und Tagesgrenze hängen. Hier
+    antwortet ein Mensch auf eine Nachricht, die dieselbe Person uns geschickt
+    hat — wie die Freischalt-Mail darüber und die Abschieds-Mail bei der
+    Löschung. Eine Antwort auf die eigene Zuschrift an einer Nachtruhe
+    scheitern zu lassen, wäre die falsche Sparsamkeit.
+
+    Wirft bei einem Mailfehler weiter: Der Aufrufer darf ``notified_at`` dann
+    nicht setzen, und die Oberfläche soll es sagen statt Erfolg zu behaupten.
+    """
+    settings = get_settings()
+    titel, einleitung = _RUECKMELDUNG_TEXTE.get(kind, _RUECKMELDUNG_TEXTE["other"])
+    zitat = original.strip()
+    if len(zitat) > 600:
+        zitat = zitat[:600].rstrip() + " …"
+
+    teile = [f"<p style='margin:0'>{_html.escape(einleitung)}</p>"]
+    if nachricht.strip():
+        teile.append(
+            "<div style='white-space:pre-wrap;margin:14px 0 0;border-left:3px solid #e2e8f0;"
+            f"padding-left:12px;color:#334155;line-height:1.6'>"
+            f"{_html.escape(nachricht.strip())}</div>")
+    if zitat:
+        teile.append(
+            "<p style='margin:18px 0 4px;font-size:13px;color:#64748b'>Deine Nachricht damals:</p>"
+            "<div style='white-space:pre-wrap;font-size:13px;color:#64748b;"
+            f"line-height:1.5'>{_html.escape(zitat)}</div>")
+    teile.append(knopf(settings.app_base_url.rstrip("/") + "/dashboard", "Ratslotse öffnen"))
+
+    body = render_html_email(
+        titel, "".join(teile),
+        held="freigeschaltet",
+        kicker="Danke für deinen Hinweis",
+        title=titel,
+        fusszeile="Du bekommst diese E-Mail, weil du uns über Ratslotse "
+                  "geschrieben hast. Antworten geht direkt.",
+    )
+    text_teile = [einleitung]
+    if nachricht.strip():
+        text_teile.append(nachricht.strip())
+    if zitat:
+        text_teile.append(f"Deine Nachricht damals:\n{zitat}")
+    send_email(
+        # Titel unverändert übernehmen: `.lower()` machte aus „Dein Vorschlag"
+        # ein „dein vorschlag" — im Deutschen wird das Substantiv großgeschrieben.
+        empfaenger, f"Ratslotse – {titel}", body,
+        text="\n\n".join(text_teile) + "\n",
+        reply_to=settings.feedback_email or settings.web_admin_email or None,
+        api_key=settings.resend_api_key, sender=settings.email_from,
+    )
+
+
+@router.post("/feedback/{feedback_id}/notify")
+def notify_feedback_author(
+    feedback_id: int,
+    body: FeedbackNotifyIn,
+    _admin: dict = Depends(require_admin),
+    store: Store = Depends(get_store),
+) -> AdminFeedbackNotified:
+    """Der absendenden Person Bescheid geben, dass ihre Sache erledigt ist.
+
+    Bewusst ein eigener Aufruf und nicht ein Nebeneffekt von „Erledigt":
+    Vieles wird abgehakt, ohne dass es etwas zu berichten gäbe, und eine
+    gemeldete Share-Verletzung darf nie Post auslösen. Die Oberfläche fragt
+    deshalb nach dem Abhaken, statt selbst zu entscheiden.
+    """
+    eintrag = store.get_feedback(feedback_id)
+    if not eintrag:
+        raise HTTPException(status_code=404, detail="Feedback nicht gefunden.")
+    empfaenger = (eintrag.get("email") or "").strip()
+    if "@" not in empfaenger or empfaenger.endswith("@local"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Zu dieser Rückmeldung ist keine E-Mail-Adresse hinterlegt.")
+    if eintrag.get("kind") not in _RUECKMELDBAR:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Für diese Art von Meldung gibt es keine Rückmeldung.")
+    if eintrag.get("notified_at"):
+        # Kein zweites Mal. „Wieder öffnen" und erneut „Erledigt" ist ein
+        # üblicher Handgriff im Panel; er darf niemandem dieselbe Mail
+        # nachschicken.
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "Diese Person wurde bereits benachrichtigt.")
+    settings = get_settings()
+    if not settings.resend_api_key:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
+                            "E-Mail-Versand ist nicht konfiguriert.")
+
+    # Bewusst NICHT als Hintergrund-Aufgabe: Der Admin soll erfahren, ob die
+    # Mail wirklich rausging. Ein „unterwegs", das nie ankommt, ist bei einer
+    # Antwort an eine fremde Person die schlechtere Auskunft.
+    try:
+        _send_feedback_reply(empfaenger, str(eintrag["kind"]), body.message,
+                             str(eintrag["message"]))
+    except Exception as fehler:  # noqa: BLE001 — dem Admin sagen, was war
+        logger.exception("Rückmeldung an %s fehlgeschlagen", empfaenger)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY,
+                            "Die E-Mail ließ sich nicht versenden.") from fehler
+
+    store.mark_feedback_notified(feedback_id)
+    store.set_feedback_read(feedback_id, True)
+    frisch = store.get_feedback(feedback_id) or {}
+    return {"ok": True, "recipient": empfaenger,
+            "notified_at": str(frisch.get("notified_at") or ""),
+            "unread": store.count_unread_feedback()}
 
 
 @router.delete("/qa-shares/{token}", status_code=status.HTTP_204_NO_CONTENT)

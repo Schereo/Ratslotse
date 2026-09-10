@@ -14,6 +14,7 @@ einen Schreiber. ``fetch`` füllt also ``data/cities-raw/<slug>.sqlite``,
 from __future__ import annotations
 
 import logging
+from datetime import date
 from pathlib import Path
 
 from council.cities.adapters import get_adapter
@@ -21,7 +22,8 @@ from council.cities.model import Body
 from council.cities.oparl import OParlClient, file_path
 from council.cities.registry import BodySpec
 from council.cities.store import CitiesStore
-from council.cities.text import EXTRACTOR, VERSION, extract as extract_text
+from council.cities.text import (EXTRACTOR, MAX_CHARS, MAX_CHARS_PROTOKOLL, MAX_PAGES,
+                                 MAX_PAGES_PROTOKOLL, VERSION, extract as extract_text)
 
 logger = logging.getLogger("council.cities.pipeline")
 
@@ -32,9 +34,65 @@ STAGES = ("fetch", "normalize", "extract", "annotate", "index")
 #: Verweis stehen und lassen sich später nachladen.
 FETCH_ROLES = ("main",)
 
+#: Die Niederschrift hängt an der **Sitzung**, nicht am Papier, und sie ist
+#: das Einzige, worin steht, WARUM ein Rat so entschieden hat. Sie wird
+#: getrennt geholt, weil zwei Dinge anders sind als bei der Vorlage: Es gibt
+#: sie nur für ein Zeitfenster (s. ``PROTOCOL_MONTHS``), und eine Stadt kann
+#: sie in ihrer Schnittstelle nennen, ohne sie auszuliefern (s.
+#: ``PROTOCOL_NIETEN``).
+PROTOCOL_ROLE = "protocol"
+
+#: Wie weit zurück Niederschriften geholt werden. 24 Monate ist der Zeitraum,
+#: in dem die Ideen auf der Karte liegen; alles davor kostet Abrufe und
+#: Plattenplatz für Vergleiche, die niemand zieht.
+PROTOCOL_MONTHS = 24
+
+#: Nach so vielen Fehlschlägen in Folge hört der Lauf mit den Niederschriften
+#: EINER Stadt auf. Magdeburg nennt 606 Protokoll-Adressen, von denen jede
+#: einzelne mit 404 antwortet — das sind 606 sinnlose Abrufe bei einer Stadt,
+#: die uns nichts getan hat. Die Registry weiß es, aber der Code soll es
+#: messen und nicht wissen: Eine Stadt, die morgen repariert, wird morgen
+#: wieder geholt.
+PROTOCOL_NIETEN = 3
+
 
 def raw_path_for(raw_dir: str | Path, body_id: str) -> Path:
     return Path(raw_dir) / f"{body_id}.sqlite"
+
+
+def protokoll_fenster(monate: int = PROTOCOL_MONTHS, heute: date | None = None) -> str:
+    """Ab welchem Sitzungsdatum Niederschriften geholt werden (``JJJJ-MM-TT``)."""
+    tag = heute or date.today()
+    jahre, monat = divmod(tag.month - 1 - monate, 12)
+    return f"{tag.year + jahre:04d}-{monat + 1:02d}-01"
+
+
+def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dict,
+          was: str, nieten_max: int | None = None,
+          schluessel: tuple[str, str] = ("files_fetched", "files_failed")) -> dict:
+    """Bytes zu einer Arbeitsliste holen. Bricht nach ``nieten_max`` Nieten ab."""
+    gut, schlecht = schluessel
+    nieten = 0
+    for i, datei in enumerate(offen, 1):
+        antwort = client.get_file(datei["access_url"])
+        if not antwort:
+            zahlen[schlecht] = zahlen.get(schlecht, 0) + 1
+            raw.mark_stage("file", datei["id"], "fetch", "1", "error", "nicht abrufbar")
+            nieten += 1
+            if nieten_max and nieten >= nieten_max:
+                logger.warning("%s: %s nach %s Fehlschlägen in Folge abgebrochen "
+                               "(%s von %s offen)", body_id, was, nieten,
+                               len(offen) - i, len(offen))
+                break
+            continue
+        nieten = 0
+        daten, mime = antwort
+        sha = client.store_file(daten, mime)
+        raw.set_file_sha(datei["id"], sha)
+        zahlen[gut] = zahlen.get(gut, 0) + 1
+        if i % 50 == 0:
+            logger.info("%s: %s/%s %s", body_id, i, len(offen), was)
+    return zahlen
 
 
 # ------------------------------------------------------------------- fetch
@@ -47,7 +105,8 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
     adapter = get_adapter(spec.dialect)
     raw = CitiesStore(raw_path_for(raw_dir, spec.id))
     zahlen = {"organizations": 0, "meetings": 0, "papers": 0,
-              "files_fetched": 0, "files_failed": 0, "requests": 0}
+              "files_fetched": 0, "files_failed": 0,
+              "protocols_fetched": 0, "protocols_failed": 0, "requests": 0}
     try:
         client = OParlClient(raw, spec.id, files_dir)
         gefunden = adapter.discover(client, spec)
@@ -73,18 +132,17 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
             batch = adapter.normalize(spec.id, raw)
             raw.upsert_batch(batch)
             offen = raw.files_without_bytes(spec.id, FETCH_ROLES, limit=max_files)
-            for i, datei in enumerate(offen, 1):
-                antwort = client.get_file(datei["access_url"])
-                if not antwort:
-                    zahlen["files_failed"] += 1
-                    raw.mark_stage("file", datei["id"], "fetch", "1", "error", "nicht abrufbar")
-                    continue
-                daten, mime = antwort
-                sha = client.store_file(daten, mime)
-                raw.set_file_sha(datei["id"], sha)
-                zahlen["files_fetched"] += 1
-                if i % 50 == 0:
-                    logger.info("%s: %s/%s Dateien", spec.id, i, len(offen))
+            _hole(client, raw, spec.id, offen, zahlen, "Dateien")
+
+            # Die Niederschriften bekommen ein EIGENES Budget, keinen Rest:
+            # Vorlagen gibt es zehnmal so viele, und ein geteiltes Budget
+            # hieße, dass ein gedrosselter Lauf nie zu den Protokollen kommt.
+            protokolle = raw.files_without_bytes(
+                spec.id, (PROTOCOL_ROLE,), limit=max_files,
+                meeting_since=protokoll_fenster())
+            _hole(client, raw, spec.id, protokolle, zahlen, "Niederschriften",
+                  nieten_max=PROTOCOL_NIETEN,
+                  schluessel=("protocols_fetched", "protocols_failed"))
         zahlen["requests"] = client.requests_made
     finally:
         raw.close()
@@ -132,13 +190,43 @@ def extract(main: CitiesStore, files_dir: str | Path, body_id: str | None = None
         if not pfad.exists():
             zahlen["missing_bytes"] += 1
             continue
-        text, seiten, qualitaet = extract_text(pfad.read_bytes())
+        # Niederschriften bekommen die größeren Deckel: Was abgeschnitten
+        # wird, sind die HINTEREN Tagesordnungspunkte (s. council/cities/text.py).
+        protokoll = datei.get("role") == PROTOCOL_ROLE
+        text, seiten, qualitaet = extract_text(
+            pfad.read_bytes(),
+            max_pages=MAX_PAGES_PROTOKOLL if protokoll else MAX_PAGES,
+            max_chars=MAX_CHARS_PROTOKOLL if protokoll else MAX_CHARS)
         main.put_text(datei["id"], EXTRACTOR, VERSION, text, seiten, qualitaet)
         main.mark_stage("file", datei["id"], "extract", VERSION,
                         "done" if qualitaet in ("ok", "thin") else "error", qualitaet)
         zahlen[qualitaet] = zahlen.get(qualitaet, 0) + 1
         if i % 100 == 0:
             logger.info("Text: %s/%s", i, len(offen))
+    return zahlen
+
+
+def split_protocols(main: CitiesStore, body_id: str | None = None,
+                    limit: int | None = None) -> dict:
+    """Geholte Niederschriften in ihre Tagesordnungspunkte schneiden.
+
+    Regelarbeit: kein Modell, kein Netz. Läuft direkt nach ``extract``, damit
+    die Abschnitte dastehen, bevor jemand nach dem „Warum" fragt.
+    """
+    from council.cities.protocol import SPLITTER_VERSION, split_meeting
+
+    offen = main.protocols_with_text(EXTRACTOR, VERSION, SPLITTER_VERSION,
+                                     body_id, limit)
+    zahlen = {"protocols": 0, "sections": 0, "empty": 0}
+    for zeile in offen:
+        n = split_meeting(main, zeile["meeting_id"], zeile["file_id"], zeile["text"])
+        zahlen["protocols"] += 1
+        zahlen["sections"] += n
+        zahlen["empty"] += not n
+    if zahlen["protocols"]:
+        logger.info("%s: %s Niederschriften geschnitten, %s Abschnitte, "
+                    "%s ohne Treffer", body_id or "alle", zahlen["protocols"],
+                    zahlen["sections"], zahlen["empty"])
     return zahlen
 
 

@@ -1147,6 +1147,10 @@ class AdminFeedbackRow(TypedDict):
     message: str
     created_at: str
     read_at: str | None
+    #: Wann eine Rückmeldung an die absendende Person rausging (null = keine).
+    #: Getrennt von ``read_at``: Abhaken und Bescheid geben sind zwei
+    #: Entscheidungen.
+    notified_at: str | None
 
 
 class AdminEntityAlias(TypedDict):
@@ -1191,6 +1195,7 @@ class AdminUserDetail(TypedDict):
     der Aktivität, ``history_days`` nennt die zugehörigen Tage."""
     id: int
     email: str
+    display_name: str | None
     role: str
     roles: list[str]
     status: str
@@ -1375,8 +1380,52 @@ class IdeaEvidence(TypedDict):
     outcome: str | None
 
 
+class IdeaProtocol(TypedDict):
+    """Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+
+    Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+    wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+    die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+    Fraktion in ihrer eigenen Sitzung braucht.
+
+    **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+    Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+    ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+    Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+    """
+    #: Worum die Debatte ging. Leer, wenn ohne Aussprache entschieden wurde.
+    discussed: str
+    #: Was beschlossen wurde, nah am Wortlaut.
+    decided: str
+    #: Das Abstimmungsergebnis, wie es dasteht („einstimmig", „12 dafür, 8
+    #: dagegen"). ``None``, wenn keines im Protokoll steht.
+    vote: str | None
+    #: Die Begründung, wie sie im Text steht. Leer, wenn keine dasteht.
+    why: str
+    #: Steht im Abschnitt wirklich eine Begründung?
+    grounded: bool
+    #: Das Gremium, das getagt hat, und wann — die Herkunftsangabe unter dem
+    #: Absatz („aus der Niederschrift des Kulturausschusses vom 18.06.2026").
+    organization: str | None
+    date: str | None
+
+
+class IdeaSibling(TypedDict):
+    """Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee."""
+    paper_id: str
+    name: str
+    date: str | None
+
+
 class Idea(TypedDict):
-    """Eine fremde Vorlage samt Urteil, ob Oldenburg sie schon hat."""
+    """Eine fremde IDEE samt Urteil, ob Oldenburg sie schon hat.
+
+    Eine Zeile je Stadt und Idee, nicht je Vorlage: Potsdam hat das
+    Konzept für bürgerschaftliches Engagement in der Denkmalpflege
+    dreimal beantragt, Münster den Jugendrat zweimal. Gemessen am
+    09.09.2026 waren 195 von 262 Einträgen solche Wiederholungen.
+    Gezeigt wird die jüngste, die übrigen stehen in ``siblings``.
+    """
     paper_id: str
     body_id: str
     body_name: str
@@ -1396,13 +1445,32 @@ class Idea(TypedDict):
     #: hier bewusst niemand mehr — das hängt an Mehrheiten und Haushaltslage,
     #: und das Modell traf es zu 46–58 %, den Status dagegen zu 62–69 %.
     status: str
+    #: „3/2": drei Vorlagen dieser Stadt zu dieser Idee, zwei tragen den
+    #: Status. Leer, wenn die Idee in keiner Gruppe liegt. Aus
+    #: `idea_group_status`; das Urteil je Vorlage bleibt in `reason`.
+    votes: str
     reason: str
     confidence: str
     evidence: list[IdeaEvidence]
+    #: Was in der Niederschrift dieser Sitzung stand — das „Warum".
+    #: ``None``, solange keine Niederschrift vorliegt oder ihr Abschnitt keine
+    #: Begründung trägt. Das ist der Regelfall und kein Fehler.
+    protocol: IdeaProtocol | None
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
     #: Annotator `effort`): inquiry < review < resolution < decision < budget.
     #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.
     effort: str
+    #: Die weiteren Vorlagen derselben Stadt zu derselben Idee, älteste
+    #: zuerst. Leer, wenn die Stadt die Sache nur einmal behandelt hat.
+    siblings: list[IdeaSibling]
+    #: Wohin DIESE Vorlage die gemeinsame Sache bewegen will: introduce,
+    #: expand, restrict, stop, review. Leer, solange der Cron sie nicht
+    #: vergeben hat oder die Idee in keiner Gruppe liegt.
+    stance: str
+    #: Wie viele ANDERE Städte in welche Richtung wollen — „4 Räte führen
+    #: ein, 1 stellt die Prüfung ein". Ohne das zählte die Karte eine Stadt
+    #: für eine Idee, die sie gerade abgelehnt hat.
+    peer_stances: dict[str, int]
     #: Wer sie in Oldenburg TUN müsste, wenn nicht die Stadt selbst — „VWG",
     #: „Eigenbetrieb Gebäudewirtschaft", „Land Niedersachsen". `None`, wenn
     #: die Stadt selbst entscheidet, und das ist der Normalfall.
@@ -1728,9 +1796,26 @@ class AdminFeedbackRead(TypedDict):
     unread: int
 
 
+class AdminFeedbackNotified(TypedDict):
+    """Antwort auf „Bescheid geben" — inklusive der Adresse, an die es ging.
+
+    Die Oberfläche sagt danach nicht „gesendet", sondern *wohin* gesendet
+    wurde. Bei einer Mail an eine fremde Person ist das der Unterschied
+    zwischen einer Bestätigung und einer Behauptung.
+    """
+    ok: bool
+    recipient: str
+    notified_at: str
+    unread: int
+
+
 class AdminUserRow(TypedDict):
     id: int
     email: str
+    #: Der selbst gewählte Name. Stand bis 09/2026 nicht in dieser Antwort —
+    #: das Panel zeigte und durchsuchte nur die Adresse, obwohl 18 von 23
+    #: Konten einen Namen trugen. Optional bleibt er wegen des Alt-Bestands.
+    display_name: str | None
     #: Die stärkste Rolle (Abkürzung fürs Abzeichen in der Liste).
     role: str
     #: Alle Rollen — die Wahrheit; das Detail bearbeitet diese Liste.
@@ -1861,7 +1946,14 @@ class CouncilRecess(TypedDict):
     active: bool
     label: str | None
     until: str | None
-    note: str | None
+    #: IMMER ein String, notfalls leer — `sitzungspause()` setzt ihn auf jedem
+    #: seiner fünf Rückgabewege. Hier stand `str | None`, und das war nicht
+    #: bloß ungenau: Die App deklariert `let note: String` (nicht optional),
+    #: und ein `null` ließe `JSONDecoder` werfen — die Pausen-Karte auf „Heute
+    #: im Rat" bliebe leer statt falsch. Gefunden am 10.09.2026, nachdem
+    #: `scripts/ios_vertrag.py` gelernt hatte, auch `try?`-Aufrufstellen zu
+    #: lesen.
+    note: str
     next_session_date: str | None
 
 
@@ -2936,8 +3028,28 @@ class ResearchStopped(TypedDict):
     partial_report_possible: bool
 
 
+class QaExampleSession(TypedDict):
+    """Eine Sitzung als Anlass für eine frische Beispielfrage.
+
+    ``top_titel`` ist der wichtigste Beschluss der Sitzung, vom Server bereits
+    auf den Gegenstand eingedampft; ``n`` sagt, wie viele Beschlüsse die
+    Sitzung überhaupt hat.
+    """
+    committee: str
+    session_date: str
+    n: int
+    top_titel: str | None
+
+
 class QaExamples(TypedDict):
-    sessions: Any
+    #: Ausgeschrieben statt ``Any``, und das ist kein Schönheitsdienst: Die App
+    #: las die Liste unter dem Namen ``sitzungen`` statt ``sessions`` — seit
+    #: der Einführung des Endpunkts (#950). Der Aufruf steht unter ``try?``,
+    #: das Decodieren scheiterte also still, und die App zeigte immer nur ihre
+    #: eingebauten Beispiele. `scripts/ios_vertrag.py` rechnet die Bindung aus
+    #: der Aufrufstelle aus — aber nur, wenn der Vertrag etwas über den Inhalt
+    #: behauptet. Gegen ``Any`` kann es nichts prüfen.
+    sessions: list[QaExampleSession]
 
 
 class TemplateFollow(TypedDict):

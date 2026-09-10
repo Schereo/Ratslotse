@@ -259,3 +259,35 @@ def test_die_gruppierung_selbst_bleibt_unangetastet(monkeypatch, store):
         "SELECT COUNT(*) FROM idea_clusters WHERE version='1'").fetchone()[0]
     assert roh == 9, "die gerechnete Gruppe verliert kein Mitglied"
     assert store.annotation("cluster", "1:1", "cluster_check", "1") is not None
+
+
+def test_der_cron_schritt_rechnet_alle_fuenf_stufen(monkeypatch):
+    """Einbetten, gruppieren, prüfen, die Haltung — und der Mehrheits-Status.
+
+    Bis 10.09.2026 fehlte die vierte: `stance_all` hing an einem Handaufruf.
+    Der Cron hätte neue Vorlagen gruppiert und geprüft, aber nie gefragt, ob
+    der Rat die Sache wollte — und kein Test hat `run()` je gerufen, also
+    fiel es nicht auf. Hier wird nicht gerechnet, nur gezählt, WAS gerufen
+    wird: Ein Schritt, der stumm herausfällt, ist der Fehler, den dieser Test
+    verhindert.
+    """
+    from council.cities import clusters
+
+    gerufen: list[str] = []
+    monkeypatch.setattr(clusters, "embed_ideas", lambda *a, **k: gerufen.append("embed") or 3)
+    monkeypatch.setattr(clusters, "build_clusters",
+                        lambda *a, **k: gerufen.append("build") or {"clusters": 1})
+    monkeypatch.setattr(clusters, "check_clusters",
+                        lambda *a, **k: gerufen.append("check") or {"checked": 1})
+    monkeypatch.setattr(clusters, "stance_all",
+                        lambda *a, **k: gerufen.append("stance") or {"annotated": 2})
+
+    class Store:
+        def rebuild_group_status(self, *a, **k):
+            gerufen.append("group_status"); return 7
+
+    zahlen = clusters.run(main=Store())
+    assert gerufen == ["embed", "build", "check", "stance", "group_status"], gerufen
+    assert zahlen["stance_annotated"] == 2, "die Kennzahlen des vierten Schritts fehlen"
+    assert zahlen["group_status"] == 7, "der fünfte Schritt meldet nichts"
+    assert zahlen["embedded"] == 3 and zahlen["check_checked"] == 1

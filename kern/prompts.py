@@ -190,6 +190,113 @@ leere Liste die richtige Antwort. Das ist der Normalfall.
 """
 
 
+PROMPT_CITIES_STANCE = """Eine Gruppe von Ratsvorlagen aus mehreren Städten behandelt
+DIESELBE Sache. Du liest die Gruppe, erkennst daran die gemeinsame Sache, und
+sagst dann für EINE Vorlage, wie sie zu dieser Sache steht.
+
+Antworte NUR mit diesem JSON:
+{{"stance": "for|against|review",
+  "reason": "<ein Satz, max. 200 Zeichen>"}}
+
+DIE DREI
+- for:     Die Vorlage WILL die Sache. Einführen, erlassen, ausweiten,
+           fortschreiben, umsetzen, verstetigen — alles, was sie voranbringt.
+- against: Sie will sie NICHT. Verhindern, einstellen, aufheben, beenden,
+           zurücknehmen, verschieben, einschränken.
+- review:  Sie will erst prüfen, berichten, eine Machbarkeit klären. Noch
+           keine Festlegung, ob die Sache kommen soll.
+
+ERST DIE SACHE, DANN DIE HALTUNG. Was die MEHRHEIT der Gruppe behandelt, ist
+die Sache; die Reihenfolge in der Liste bedeutet nichts.
+
+DER HÄUFIGSTE FEHLER IST, DAS VERB DER ÜBERSCHRIFT ZU LESEN statt die Haltung
+zur Sache. Heißt die Sache der Gruppe „Straßenausbaubeiträge abschaffen",
+dann ist „Straßenausbaubeitragssatzung aufheben" ein `for` — die Abschaffung
+IST die Sache, und die Vorlage will sie. Ein `against` wäre dort ein Antrag,
+der die Abschaffung verhindert.
+
+BEISPIELE, alle zur Sache „Verpackungssteuer einführen" (erfunden):
+- „Verpackungssteuersatzung erlassen"             -> for
+- „Verpackungssteuer auf Einwegbecher ausweiten"  -> for
+- „Prüfauftrag Verpackungssteuer einstellen"      -> against
+- „Einführung der Verpackungssteuer verschieben"  -> against
+- „Verpackungssteuer für Kleinbetriebe aussetzen" -> against
+- „Machbarkeit einer Verpackungssteuer prüfen"    -> review
+
+Zwischen `for` und `review` entscheidet, ob die Vorlage eine ENTSCHEIDUNG
+verlangt oder erst Wissen beschaffen will. „Der Rat beschließt das Konzept"
+ist `for`; „die Verwaltung möge ein Konzept vorlegen" ist `review`.
+
+DER ZWEITHÄUFIGSTE FEHLER: Prüfaufträge als `for` lesen, weil der
+Antragsteller die Sache erkennbar WILL. Das zählt nicht. Steht im Titel
+oder Instrument „prüfen", „Prüfauftrag", „Prüfung", „Machbarkeit",
+„untersuchen", „Halbzeitbilanz", „Bericht vorlegen" — und verlangt die
+Vorlage KEINEN Beschluss in der Sache selbst —, dann ist es `review`. Ein
+Rat, der „Verkehrsberuhigte Bereiche prüfen" beschließt, hat noch keinen
+verkehrsberuhigten Bereich beschlossen. Nur wenn die Vorlage beides tut —
+eine Maßnahme fordert UND dafür einen Bericht verlangt — ist sie `for`; der
+Bericht ist dort das Mittel, nicht der Zweck.
+"""
+
+
+
+
+PROMPT_CITIES_REASON = """Du liest den Abschnitt einer Sitzungs-Niederschrift, der zu
+EINEM Tagesordnungspunkt gehört, und gibst wieder, was dort steht.
+
+Antworte NUR mit diesem JSON:
+{{"discussed": "<worum die Debatte ging, max. 400 Zeichen>",
+  "decided":   "<was beschlossen wurde, nah am Wortlaut, max. 200 Zeichen>",
+  "vote":      "<das Abstimmungsergebnis, wie es dasteht — oder null>",
+  "why":       "<die Begründung, WIE SIE IM TEXT STEHT, max. 300 Zeichen>",
+  "grounded":  true|false}}
+
+DU GIBST WIEDER, DU ERKLÄRST NICHT. Das ist die wichtigste Regel und der
+Unterschied zwischen brauchbar und wertlos. Warum ein Rat so entschieden hat,
+weißt du nicht — es sei denn, es steht da. Steht im Abschnitt keine
+Begründung, ist `why` ein leerer String und `grounded` ist false. Das ist die
+richtige Antwort, kein Versagen.
+
+`grounded` heißt: Im Abschnitt steht ein Grund, ein Argument, eine
+Wortmeldung, ein Einwand — irgendetwas, das sagt, WARUM. Ein reines Ergebnis
+(„einstimmig beschlossen") ist keine Begründung.
+
+`vote` ist das, was dasteht: „einstimmig", „mehrheitlich", „12 dafür, 8
+dagegen, 1 Enthaltung", „bei 2 Enthaltungen angenommen". Nichts umrechnen,
+nichts ergänzen. Steht kein Ergebnis da, ist `vote` null.
+
+`decided` bleibt nah am Wortlaut des Beschlusses. Kürzen ja, umdeuten nein.
+Wurde nichts beschlossen (Bericht, Kenntnisnahme, Vertagung), steht genau das
+da: „zur Kenntnis genommen", „vertagt".
+
+`discussed` fasst die Debatte zusammen: wer welche Position vertrat, welche
+Einwände kamen. Ohne Debatte im Text ein leerer String.
+
+KEINE PERSONENNAMEN. Fraktionen, Rollen und Ämter ja („die CDU-Fraktion", „die
+Verwaltung", „der Ausschussvorsitzende"), Namen nein. Der Text ist öffentlich,
+unsere Wiedergabe muss es nicht sein.
+
+BEISPIELE (erfunden):
+
+Abschnitt: „Die Verwaltung stellte das Konzept vor. Die Fraktion A kritisierte
+die Kosten von 400.000 Euro und beantragte Vertagung. Die Fraktion B verwies
+auf die Fristen des Landesprogramms, die eine Entscheidung noch in diesem Jahr
+verlangen. Der Vertagungsantrag wurde abgelehnt. Beschluss: Das Konzept wird
+beschlossen. Abstimmungsergebnis: 12 dafür, 8 dagegen."
+-> {{"discussed": "Die Verwaltung stellte das Konzept vor. Eine Fraktion
+kritisierte die Kosten von 400.000 Euro und beantragte Vertagung, eine andere
+verwies auf Fristen des Landesprogramms.", "decided": "Das Konzept wird
+beschlossen.", "vote": "12 dafür, 8 dagegen", "why": "Fristen des
+Landesprogramms verlangen eine Entscheidung noch in diesem Jahr; der
+Vertagungsantrag wurde abgelehnt.", "grounded": true}}
+
+Abschnitt: „Beschluss: Der Bericht wird zur Kenntnis genommen.
+Abstimmungsergebnis: einstimmig."
+-> {{"discussed": "", "decided": "Der Bericht wird zur Kenntnis genommen.",
+"vote": "einstimmig", "why": "", "grounded": false}}
+
+Der zweite Fall ist der HÄUFIGERE. Erfinde für ihn nichts."""
+
 PROMPT_CITIES_EFFORT = """Du schätzt ein, was eine Idee den Oldenburger Stadtrat kosten würde —
 von der bloßen Frage bis zum Haushaltsposten.
 
@@ -356,6 +463,45 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "title": "Die Mitglieder einer Ideen-Gruppe",
         "description": "Platzhalter: {items}.",
         "template": "VORLAGEN DIESER GRUPPE:\n{items}",
+    },
+    "cities_stance_system": {
+        "title": "Wohin will diese Vorlage die gemeinsame Sache bewegen?",
+        "description":
+            "Der Annotator `stance`. Keine Platzhalter — die Sache der Gruppe "
+            "und die Vorlage stehen in der Nutzer-Nachricht. Die Beispiele "
+            "sind ERFUNDEN, nicht aus dem Prüfstand (die Lehre aus PR 10, wo "
+            "der Eval sich selbst maß).",
+        "template": PROMPT_CITIES_STANCE,
+    },
+    "cities_stance_user": {
+        "title": "Die Sache der Gruppe und die eine Vorlage",
+        "description":
+            "Platzhalter: {gruppe} (die Instrumente der Mitglieder), {paper}. "
+            "Bewusst NICHT das Label aus `cluster_check`: Gemessen am "
+            "09.09.2026 trug Cluster 10 — achtzehnmal „Straßenausbaubeiträge "
+            "abschaffen“, völlig homogen — das Label „Integrationsfonds und "
+            "-budget“. Ein falscher Bezugspunkt macht die Richtungsfrage "
+            "wertlos; die Mitglieder selbst sind die Wahrheit.",
+        "template": "DIE GRUPPE:\n{gruppe}\n\nDIE VORLAGE:\n{paper}",
+    },
+    "cities_reason_system": {
+        "title": "Was stand in der Niederschrift zu diesem Punkt?",
+        "description":
+            "Der Annotator `reason`. Keine Platzhalter — der Abschnitt steht "
+            "in der Nutzer-Nachricht. Die Beispiele sind ERFUNDEN, nicht aus "
+            "dem Prüfstand (die Lehre aus PR 10, wo der Eval sich selbst maß). "
+            "`grounded` ist die Sicherung gegen das Erfinden: Das Modell muss "
+            "sagen, ob es eine Begründung GEFUNDEN hat.",
+        "template": PROMPT_CITIES_REASON,
+    },
+    "cities_reason_user": {
+        "title": "Der Abschnitt der Niederschrift",
+        "description":
+            "Platzhalter: {stadt}, {datum}, {gremium}, {punkt} (Nummer und "
+            "Titel), {abschnitt} (der Text). Die Sitzungsdaten stehen dabei, "
+            "weil ein Abschnitt ohne sie oft nicht sagt, wer da tagt.",
+        "template": ("STADT: {stadt}\nGREMIUM: {gremium}\nDATUM: {datum}\n"
+                     "TAGESORDNUNGSPUNKT: {punkt}\n\nDER ABSCHNITT:\n{abschnitt}"),
     },
     "cities_effort_system": {
         "title": "Was würde diese Idee den Rat kosten?",
@@ -829,7 +975,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     "qa_analysis": {
         "title": "Frag den Rat – Frage-Analyse",
-        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
+        "description": "Ein Call vor der Suche: eigenständige Frage, Suchbegriffe, Fragetyp, Klarheits-Urteil und Rechercheplan im Shadow-Mode als JSON. Platzhalter: {question}, {verlauf}.",
         "template": (
             "Analysiere die Nutzerfrage an ein Stadtrats-Archiv (Oldenburg).{verlauf} Antworte NUR als JSON:\n"
             '{{"question": "die Frage als EIGENSTÄNDIGE Suchfrage — löse Rückbezüge wie „dazu“, '
@@ -845,6 +991,18 @@ DEFAULTS: dict[str, dict[str, str]] = {
             'Aussagen …?\"). Im Zweifel false.\n", '
             '"terms": "4-8 deutsche Suchbegriffe, Substantive und nahe Synonyme, durch Leerzeichen"'
             ', "kind": "topic|history|party|money", "party": "Fraktionsname oder null", '
+            '"unklar": true/false — true NUR, wenn die Frage GAR KEINEN Gegenstand '
+            'nennt, den ein Stadtrats-Archiv durchsuchen könnte. Das sind: Begrüßungen '
+            'und Geplauder („Hallo“, „Wie geht es dir?“, „Was hast du?“), Fragen über '
+            'DICH statt über die Stadt („Wer bist du?“, „Was kannst du?“), '
+            'Test- und Unsinnseingaben, sowie Rückbezüge („Und dazu?“, „Was ist damit?“), '
+            'die sich ohne Gesprächsverlauf auf nichts beziehen. '
+            'false, sobald IRGENDEIN Gegenstand vorkommt — ein Thema, ein Vorhaben, ein '
+            'Ort, eine Einrichtung, eine Person, ein Gremium, ein Geldbetrag —, auch wenn '
+            'die Frage sehr breit, schief formuliert oder ohne Fragezeichen ist. '
+            'Eine Frage, die du nicht beantworten kannst, ist NICHT unklar: „Was macht der '
+            'Rat gerade?“ und „Gibt es Beschlüsse zu Kita-Plätzen?“ sind beide false. '
+            'Im Zweifel IMMER false.\n", '
             '"variants": ["bis zu 2 UMFORMULIERUNGEN der Frage aus anderem Blickwinkel — z. B. die '
             "Sachstands-Frage zusätzlich als Finanzierungs- oder Planungs-Frage, die vage Frage "
             'konkretisiert aufs wahrscheinlich gemeinte Vorhaben; jeweils ein kurzer Suchsatz"], '

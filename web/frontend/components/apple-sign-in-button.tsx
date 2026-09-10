@@ -7,6 +7,7 @@ import { toast } from "@/components/ui";
 import { appleCredential, appleSignInAvailable } from "@/lib/apple";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { NamensRiegel } from "@/components/namens-riegel";
 
 /** Apple-Logo als Inline-Pfad (das offizielle Glyph, HIG-konform in Weiß). */
 function AppleLogo() {
@@ -26,6 +27,9 @@ export function AppleSignInButton({ label = "Mit Apple fortfahren" }: { label?: 
   const router = useRouter();
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Angemeldet, aber ohne Namen — dann steht der Riegel davor (s.
+   *  components/namens-riegel.tsx). Erst danach geht es weiter. */
+  const [nameFehlt, setNameFehlt] = useState(false);
   useEffect(() => setAvailable(appleSignInAvailable()), []);
 
   if (!available) return null;
@@ -35,7 +39,15 @@ export function AppleSignInButton({ label = "Mit Apple fortfahren" }: { label?: 
     try {
       const cred = await appleCredential();
       if (!cred) return; // abgebrochen — kein Fehler-Toast
-      await loginWithApple(cred);
+      const u = await loginWithApple(cred);
+      // Kein eigenes Vertragsfeld für „ist neu": Ein Apple-Konto OHNE Namen
+      // ist heute genau ein frisch entstandenes (auf Prod trägt jedes
+      // bestehende einen), und wer abbricht, wird beim nächsten Mal wieder
+      // gefragt — beides fällt mit dieser einen Bedingung zusammen.
+      if (!u.display_name) {
+        setNameFehlt(true);
+        return;
+      }
       router.replace(zielNachAnmeldung());
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Apple-Anmeldung fehlgeschlagen.");
@@ -59,6 +71,14 @@ export function AppleSignInButton({ label = "Mit Apple fortfahren" }: { label?: 
         <span className="text-xs text-muted-foreground">oder mit E-Mail</span>
         <span className="h-px flex-1 bg-border" />
       </div>
+      {nameFehlt && (
+        <NamensRiegel
+          onFertig={() => {
+            setNameFehlt(false);
+            router.replace(zielNachAnmeldung());
+          }}
+        />
+      )}
     </>
   );
 }

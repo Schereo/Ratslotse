@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 """Wöchentlich: Ratsdokumente der Vergleichsstädte holen — und Oldenburg dazu.
 
-Crontab (Server): ``0 3 * * 0  …/scripts/check_cities.py``
+Crontab (Prod)::
+
+    0 5 * * 0  cd ~/app && .venv/bin/python scripts/check_cities.py \\
+                 >> ~/app/data/check_cities.log 2>&1
+
+**Fünf Uhr und nicht drei**, weil ``weekly_enrich.py`` sonntags um drei läuft
+und zwei Läufe, die beide ein Embedding-Modell laden, nicht auf dieselbe
+Stunde einer VM mit zwei Kernen gehören.
+
+**Nur auf Prod.** Auf dev laufen per Entscheidung keine Crons; sie bekommt
+den Stand über ``scripts/lokale_daten.py schieb --staedte --nach dev``.
 
 **Warum 60 Tage Rückschau und nicht „seit dem letzten Lauf".** Ergebnisse und
 Beschlussausfertigungen werden Wochen nach der Sitzung nachgetragen; wer nur
@@ -41,6 +51,12 @@ RUECKSCHAU_TAGE = int(os.environ.get("CITIES_SINCE_DAYS", "60"))
 #: Gemessen: 0,31 $ je 1.000 Vorlagen.
 ANNOTATE_MAX = int(os.environ.get("CITIES_ANNOTATE_MAX", "3000"))
 
+#: Wie viele Niederschrift-Abschnitte je Lauf ein „Warum" bekommen. Der Deckel
+#: ist niedriger als bei den Vorlagen, weil ein Abschnitt sechsmal so lang ist
+#: — und weil nur Punkte gefragt werden, deren Idee mindestens eine andere
+#: Stadt teilt: Nur dort zeigt die Karte das „Warum" überhaupt an.
+REASON_MAX = int(os.environ.get("CITIES_REASON_MAX", "400"))
+
 
 def main() -> dict:
     from datetime import date, timedelta
@@ -66,10 +82,17 @@ def main() -> dict:
                 pipeline.normalize(spec, raw_dir, main_store)
                 pipeline.extract_inline(main_store, spec, raw_dir)
                 text = pipeline.extract(main_store, files_dir, spec.id)
+                # Die frisch geholten Niederschriften gleich schneiden: Der
+                # Schnitt ist Regelarbeit ohne Modell und ohne Netz, und der
+                # `reason`-Lauf weiter unten braucht die Abschnitte.
+                schnitt = pipeline.split_protocols(main_store, spec.id)
                 zaehler["bodies"] += 1
                 zaehler["files_fetched"] += ernte.get("files_fetched", 0)
                 zaehler["files_failed"] += ernte.get("files_failed", 0)
+                zaehler["protocols_fetched"] = (zaehler.get("protocols_fetched", 0)
+                                                + ernte.get("protocols_fetched", 0))
                 zaehler["texts_new"] += text.get("ok", 0) + text.get("thin", 0)
+                zaehler["sections"] = zaehler.get("sections", 0) + schnitt["sections"]
             except Exception as e:  # noqa: BLE001 — eine Stadt kippt nicht den Lauf
                 zaehler["errors"] += 1
                 gruende[f"error_{spec.id}"] = f"{type(e).__name__}: {e}"
@@ -121,6 +144,38 @@ def main() -> dict:
         except Exception as e:  # noqa: BLE001
             zaehler["errors"] += 1
             gruende["error_fit"] = f"{type(e).__name__}: {e}"
+        # Nach jedem `fit`-Lauf noch einmal: Die Mehrheit je Gruppe hängt an den
+        # Urteilen, und die sind gerade neu. Der Cluster-Schritt hat sie schon
+        # einmal geschrieben — aber VOR `fit`, mit dem Stand der Vorwoche.
+        try:
+            from council.cities.annotators import get as get_annotator
+            from council.cities.clusters import CLUSTER_VERSION
+            from council.cities.index import EMBED_MODEL
+            zaehler["group_status"] = main_store.rebuild_group_status(
+                EMBED_MODEL, CLUSTER_VERSION, get_annotator("fit").version)
+        except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
+            gruende["error_group_status"] = f"{type(e).__name__}: {e}"
+
+        # Das „Warum": Was stand in der Niederschrift zu den Punkten, die eine
+        # Idee mit mindestens einer anderen Stadt teilen? Läuft NACH
+        # `group_status`, weil die Arbeitsliste genau daran hängt — vorher
+        # gefragt, wüsste sie noch nicht, welche Punkte auf der Karte landen.
+        try:
+            from council.cities import reasons
+            from council.cities.annotators import get as get_annotator
+            # Der Annotator steht auf `active=False`, solange sein Prüfstand
+            # keinen belastbaren Maßstab hat (s. dort). Ein Cron, der Geld
+            # ausgibt, ohne dass jemand die Qualität messen kann, ist genau
+            # das, was `gut_wenn` verhindern soll.
+            ergebnis = (reasons.run(main_store, limit=REASON_MAX)
+                        if get_annotator("reason").active
+                        else {"annotated": 0, "grounded": 0, "cost_usd": 0.0})
+            zaehler["reasons"] = ergebnis["annotated"]
+            zaehler["reasons_grounded"] = ergebnis["grounded"]
+            gruende["cost_reason"] = f"${ergebnis['cost_usd']:.4f}"
+        except Exception as e:  # noqa: BLE001
+            zaehler["errors"] += 1
+            gruende["error_reason"] = f"{type(e).__name__}: {e}"
 
         # Zuletzt: Ist der Bestand je Stadt überhaupt plausibel? Am 08.09.2026
         # lagen vier Ernte-Fehler gleichzeitig darin, und keiner hat sich

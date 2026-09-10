@@ -92,20 +92,30 @@ struct DistrictChooserPanel: View {
     let overview: DistrictProjectsOverview?
     let topics: [Topic]
     let error: String?
+    /// In der Schublade des Telefons trägt deren Kopf Titel und Zahl —
+    /// die Tafel beginnt dann direkt mit dem Inhalt.
+    var compact = false
     let retry: () -> Void
     let open: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: RatsSpacing.lg) {
-            VStack(alignment: .leading, spacing: 6) {
-                MonoKicker("Mein Viertel")
-                Text("Was sich bei dir ändert")
-                    .font(RatsFont.title(26))
-                Text("Vorhaben aus den Beschlüssen des Stadtrats, je Ortsbereich gebündelt und gegengeprüft — tippe eine Fläche auf der Karte oder wähle unten.")
-                    .font(RatsFont.body(14))
+            if !compact {
+                VStack(alignment: .leading, spacing: 6) {
+                    MonoKicker("Mein Viertel")
+                    Text("Was sich bei dir ändert")
+                        .font(RatsFont.title(26))
+                    Text("Vorhaben aus den Beschlüssen des Stadtrats, je Ortsbereich gebündelt und gegengeprüft — tippe eine Fläche auf der Karte oder wähle unten.")
+                        .font(RatsFont.body(14))
+                        .foregroundStyle(RatsColor.secondary)
+                }
+                .ratsStaggered(0)
+            } else {
+                Text("Tippe eine Fläche auf der Karte oder wähle unten einen Ortsbereich.")
+                    .font(RatsFont.body(13))
                     .foregroundStyle(RatsColor.secondary)
+                    .ratsStaggered(0)
             }
-            .ratsStaggered(0)
 
             if let error {
                 ErrorCard(message: error, retry: retry)
@@ -268,6 +278,11 @@ private struct DistrictRow: View {
 struct DistrictBoardPanel: View {
     let model: AppModel
     @Bindable var board: DistrictBoardState
+    /// In der Schublade des Telefons trägt deren Kopf Namen und Zahl.
+    var compact = false
+    /// Ein Nachbar wechselt das Viertel auf DERSELBEN Karte — ohne das
+    /// stapelte jeder Tipp eine neue Karte auf die alte.
+    var open: ((String) -> Void)? = nil
 
     private var projects: [DistrictProject] { board.projects }
     private var visible: [DistrictProject] { board.visible }
@@ -277,7 +292,7 @@ struct DistrictBoardPanel: View {
             if let error = board.error {
                 ErrorCard(message: error) { Task { await board.load() } }
             } else if let data = board.data {
-                header(data)
+                if !compact { header(data) }
                 if !projects.isEmpty {
                     stageBar
                         .ratsStaggered(1)
@@ -420,7 +435,7 @@ struct DistrictBoardPanel: View {
     // MARK: Weitere Quellen
 
     private func upcomingCard(_ items: [DistrictUpcomingItem]) -> some View {
-        RatsWidget("Demnächst im Rat", accent: .buoy, glyph: .calendarDays, note: "hier wird entschieden") {
+        RatsWidget("Demnächst im Rat", accent: .buoy, glyph: .calendarDays, note: "Termine") {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(items) { item in
                     Button {
@@ -446,7 +461,7 @@ struct DistrictBoardPanel: View {
     private var closureColor: Color { Color(red: 0.71, green: 0.33, blue: 0.04) }
 
     private func closuresCard(_ items: [DistrictClosure]) -> some View {
-        RatsWidget("Gesperrt und im Bau", accent: .buoy, glyph: .triangleAlert, note: "Stand der Verkehrsbehörde") {
+        RatsWidget("Gesperrt und im Bau", accent: .buoy, glyph: .triangleAlert, note: "Verkehrsbehörde") {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 2) {
@@ -496,7 +511,7 @@ struct DistrictBoardPanel: View {
     }
 
     private func pressCard(_ items: [DistrictPressItem]) -> some View {
-        RatsWidget("Aktuelles von der Stadt", accent: .marsh, glyph: .newspaper, note: "Pressemitteilungen · 4 Monate") {
+        RatsWidget("Aktuelles von der Stadt", accent: .marsh, glyph: .newspaper, note: "4 Monate") {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(items) { item in
                     if let url = URL(string: item.url) {
@@ -522,7 +537,7 @@ struct DistrictBoardPanel: View {
 
     private func investmentsCard(_ items: [DistrictInvestment]) -> some View {
         RatsWidget("Im Investitionsprogramm \(items[0].programmeYear)", accent: .marsh, glyph: .hammer,
-                   note: "Summe über die Programmjahre") {
+                   note: "alle Jahre") {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(items, id: \.label) { item in
                     HStack(alignment: .firstTextBaseline) {
@@ -544,7 +559,9 @@ struct DistrictBoardPanel: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(items) { neighbour in
-                        Button { model.navigation.append(.district(id: neighbour.placeID)) } label: {
+                        Button {
+                            if let open { open(neighbour.placeID) } else { model.navigation.append(.district(id: neighbour.placeID)) }
+                        } label: {
                             HStack(spacing: 6) {
                                 Text(neighbour.name).font(RatsFont.body(13, weight: .semibold))
                                 Text("\(neighbour.count)").font(RatsFont.body(12)).monospacedDigit()

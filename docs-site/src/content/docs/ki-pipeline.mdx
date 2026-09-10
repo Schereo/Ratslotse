@@ -311,6 +311,41 @@ optionalen **Tipp** geben (vor dem Auflösen einblendbar), und Fachbegriffe in d
 Erklärung (z. B. „Vergnügungsstätte", „Bebauungsplan") unterlegt das Frontend mit
 einem Hover-Glossar.
 
+## Frag den Rat: wenn die Frage keinen Gegenstand nennt
+
+„Was hast du?" bekam am 10.09.2026 eine ordentlich belegte Auskunft darüber,
+woran der Stadtrat gerade arbeitet. Die Pipeline konnte gar nicht anders: Die
+Suche findet **immer** etwas, der Reranker sortiert es, und das Antwort-Modell
+sieht zwanzig Beschlüsse und eine Frage — es schreibt daraus etwas Plausibles.
+Nur hatte niemand danach gefragt. Eine Antwort auf eine nicht gestellte Frage
+ist teurer als keine Antwort: Sie sieht richtig aus.
+
+Seit 09/2026 urteilt der Analyse-Call deshalb mit, ob die Frage überhaupt einen
+Gegenstand nennt (Feld `unklar`, `council/qa.py`). Der Router fragt dann
+**zurück**, statt zu antworten — mit `qa.RUECKFRAGE_TEXT` und, über das
+vorhandene `suggestions`-Ereignis, mit konkreten Fragen zum Weitermachen
+(`qa.rueckfrage_vorschlaege`: der Titel-Anker der Frage, sonst die jüngsten
+Sitzungen mit Beschlüssen — nichts Erfundenes).
+
+Zwei Dinge halten den teureren der beiden Fehler klein, nämlich eine
+beantwortbare Frage abzuweisen:
+
+- **Die deterministische Erkennung überstimmt das Modell.** Wer eine Ratsperson,
+  einen Katalogort oder eine konkrete Sitzung nennt, hat einen Gegenstand
+  genannt — dann wird gesucht, egal was das Urteil sagt. „Einfacher erklären"
+  ist aus demselben Grund ausgenommen: Der Knopf schickt einen Wunsch, keine
+  Frage.
+- **Der Prompt sagt „im Zweifel false".** Gemessen an den 30 Gold-Fragen der
+  Routing-Suite und an den 26 kuratierten Beispielfragen des Empty States wurde
+  keine einzige abgewiesen; die Suite führt die Klarheit seither als eigene
+  Spalte (`clarity`, `eval/run_qa_routing.py`).
+
+Der Kurzschluss steht **vor** der Suche: Retrieval, Reranker, Haushalts-Bausteine
+und Antwort-Modell kosten zusammen ein Vielfaches des einen Analyse-Calls, der
+das Urteil ohnehin schon mitbringt. Gezählt wird die Rückfrage getrennt
+(`ai_question_unclear`) — `ai_answer_empty` misst Fragen, die nichts *gefunden*
+haben; hier wurde gar nicht erst gesucht.
+
 ## Frag den Rat: die Fachwörter
 
 „Was ist eine Ausfallbürgschaft?" beantwortete die KI-Frage bis 09/2026 mal so

@@ -18,8 +18,8 @@ settings:
     DEVELOPMENT_TEAM: YM87689GUY
     SWIFT_VERSION: 5.0
     TARGETED_DEVICE_FAMILY: "1,2"
-    CURRENT_PROJECT_VERSION: 19
-    MARKETING_VERSION: 2.3.0
+    CURRENT_PROJECT_VERSION: 22
+    MARKETING_VERSION: 2.4.0
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
 targets:
@@ -67,6 +67,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSCalendarsFullAccessUsageDescription: Ratslotse trägt von dir gewählte Ratssitzungen in deinen Kalender ein.
+        NSLocationWhenInUseUsageDescription: Ratslotse zeigt dir damit den Ortsbereich, in dem du gerade bist — einmalig beim Tippen auf den Standort-Knopf der Stadtkarte.
         UIAppFonts:
           - Inter-Variable.ttf
           - BricolageGrotesque-Variable.ttf

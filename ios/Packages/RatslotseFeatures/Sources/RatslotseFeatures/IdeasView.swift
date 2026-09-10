@@ -308,6 +308,29 @@ private struct IdeaCard: View {
                 .font(RatsFont.body(14, weight: .semibold))
                 .foregroundStyle(RatsColor.text)
                 .multilineTextAlignment(.leading)
+            // Wie die ANDEREN Räte zu derselben Sache stehen. Ohne diese Zeile
+            // zählte die Karte eine Stadt für eine Idee, die sie gerade
+            // gestoppt hat: Die Verpackungssteuer wurde in zwei von fünf Räten
+            // nicht eingeführt, sondern die Prüfung eingestellt.
+            // Die eigene Haltung, aber nur wenn sie GEGEN die Sache geht.
+            // „Dafür" ist der Normalfall und steht schon im Titel; „dagegen"
+            // dreht die Bedeutung der ganzen Karte um.
+            //
+            // Ein Wort und kein Satz, weil `against` von „abschaffen" bis
+            // „verschieben" reicht. Was die Vorlage genau bremst, sagt die
+            // Zusammenfassung darunter.
+            if idee.stance == "against" {
+                Text("Gegenrichtung")
+                    .font(RatsFont.body(11, weight: .medium))
+                    .foregroundStyle(RatsColor.text)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(RatsColor.muted.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+            }
+            if !haltungen.isEmpty {
+                Text(haltungen)
+                    .font(RatsFont.body(10.5))
+                    .foregroundStyle(RatsColor.muted)
+            }
             if let summary = idee.summary, !summary.isEmpty {
                 Text(summary)
                     .font(RatsFont.body(12))
@@ -338,6 +361,73 @@ private struct IdeaCard: View {
                 .padding(.top, 2)
             }
 
+            // Das „Warum" aus der Niederschrift. Steht nur da, wenn im Protokoll
+            // wirklich eine Begründung steht — das Backend liefert sonst `nil`.
+            // Ein erschlossenes „Warum" wäre eine Behauptung über einen echten
+            // Ratsbeschluss; lieber eine Leerstelle.
+            if let protokoll = idee.protocolNote {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 5) {
+                        if !protokoll.decided.isEmpty {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(protokoll.decided)
+                                    .font(RatsFont.body(11.5))
+                                    .foregroundStyle(RatsColor.primary)
+                                if let vote = protokoll.vote, !vote.isEmpty {
+                                    Text(vote)
+                                        .font(RatsFont.body(10.5))
+                                        .foregroundStyle(RatsColor.muted)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1.5)
+                                        .background(RatsColor.muted.opacity(0.12),
+                                                    in: RoundedRectangle(cornerRadius: 4))
+                                }
+                            }
+                        }
+                        Text(protokoll.why)
+                            .font(RatsFont.body(11.5))
+                            .foregroundStyle(RatsColor.secondary)
+                        if !protokoll.discussed.isEmpty {
+                            Text(protokoll.discussed)
+                                .font(RatsFont.body(11))
+                                .foregroundStyle(RatsColor.muted)
+                        }
+                        Text(Self.herkunft(protokoll))
+                            .font(RatsFont.body(10.5))
+                            .foregroundStyle(RatsColor.muted.opacity(0.85))
+                    }
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 3)
+                } label: {
+                    Text("Warum es in \(idee.bodyName) so ausging")
+                        .font(RatsFont.body(11, weight: .medium))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                .tint(RatsColor.muted)
+            }
+
+            if !idee.siblings.isEmpty {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(idee.siblings) { g in
+                            Text([Self.datum(g.date), g.name].compactMap { $0 }.joined(separator: " · "))
+                                .font(RatsFont.body(10.5))
+                                .foregroundStyle(RatsColor.muted.opacity(0.85))
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 3)
+                } label: {
+                    Text("\(idee.bodyName) hat die Sache "
+                         + "\(idee.siblings.count + 1)-mal behandelt")
+                        .font(RatsFont.body(11, weight: .medium))
+                        .foregroundStyle(RatsColor.muted)
+                }
+                .tint(RatsColor.muted)
+            }
+
             if let raw = idee.web, let url = URL(string: raw) {
                 Link(destination: url) {
                     RatsLabel("Im Ratsinformationssystem von \(idee.bodyName)", .externalLink)
@@ -350,6 +440,15 @@ private struct IdeaCard: View {
         .ratsCard()
     }
 
+    /// „aus der Niederschrift des Kulturausschusses vom 18.06.2026" — was
+    /// davon fehlt, fällt weg, statt als leere Klammer dazustehen.
+    static func herkunft(_ p: IdeaProtocol) -> String {
+        var text = "aus der Niederschrift"
+        if let gremium = p.organization, !gremium.isEmpty { text += " des \(gremium)" }
+        if let tag = datum(p.date) { text += " vom \(tag)" }
+        return text
+    }
+
     /// Das Urteil. Anzeigetafel-Tönung, nie eine dunkle Karte im Hellmodus.
     /// Was die Idee kostet und wie verbreitet sie ist — eine Zeile.
     private var aufwandUndVerbreitung: String {
@@ -360,7 +459,39 @@ private struct IdeaCard: View {
         } else if idee.peers > 1 {
             teile.append("auch in \(idee.peers) anderen Städten")
         }
+        if idee.siblings.count == 1 {
+            teile.append("1 weitere Vorlage dazu")
+        } else if idee.siblings.count > 1 {
+            teile.append("\(idee.siblings.count) weitere Vorlagen dazu")
+        }
         return teile.joined(separator: " · ")
+    }
+
+    /// „3/2" → „2 von 3 Vorlagen"; leer, wenn es nur eine gibt oder keine Gruppe.
+    /// Das Urteil ist die MEHRHEIT der Vorlagen dieser Stadt, nicht das der
+    /// einen gezeigten — gemessen widersprach bei 14 Gruppen die jüngste ihrer
+    /// Mehrheit.
+    private var stimmen: String {
+        let teile = idee.votes.split(separator: "/").compactMap { Int($0) }
+        guard teile.count == 2, teile[0] >= 2, teile[1] > 0 else { return "" }
+        return "\(teile[1]) von \(teile[0]) Vorlagen"
+    }
+
+    /// Wie die anderen Räte zu derselben Sache stehen — dieselbe Zeile wie im
+    /// Web. Drei Klassen und nicht fünf: `introduce` gegen `expand` war weder
+    /// für das Modell noch für einen Menschen entscheidbar (72 % gegen 87 %,
+    /// s. `council/cities/annotators.py::IdeaStance`).
+    private var haltungen: String {
+        let reihenfolge = ["for", "against", "review"]
+        let teile = reihenfolge.compactMap { wert -> String? in
+            guard let n = idee.peerStances[wert], n > 0 else { return nil }
+            switch wert {
+            case "for": return "\(n) dafür"
+            case "against": return "\(n) dagegen"
+            default: return "\(n) prüfen erst"
+            }
+        }
+        return teile.isEmpty ? "" : "In den anderen Räten: " + teile.joined(separator: ", ")
     }
 
     /// „Stimmt das?" — dieselben zwei Wörter wie im Web.
@@ -428,6 +559,11 @@ private struct IdeaCard: View {
                         .background(idee.status == "missing"
                                     ? RatsColor.primary.opacity(0.1) : RatsColor.separator)
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                }
+                if !stimmen.isEmpty {
+                    Text(stimmen)
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.muted.opacity(0.8))
                 }
                 if idee.confidence == "low" {
                     Text("unsicher")

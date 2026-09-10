@@ -7,12 +7,21 @@ from pydantic import BaseModel, EmailStr, Field
 from kern import roles as rollen
 
 
+#: Antwort auf einen leeren Namen — an einer Stelle, weil Registrierung und
+#: Konto-Seite dieselbe Regel durchsetzen und dieselben Worte benutzen sollen.
+NAME_FEHLT = "Bitte trage deinen Namen ein."
+
+
 # ---- auth ----
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    # Anzeigename für die persönliche Ansprache — serverseitig optional
-    # (Apple-Konten und Alt-Bestand haben keinen).
+    #: Anzeigename für die persönliche Ansprache — **Pflicht**, geprüft aber im
+    #: Router (s. ``register``) statt hier per ``min_length``: Das Feld bleibt
+    #: darum ``str | None``, damit die im Store ausgelieferte App, die es noch
+    #: weglässt, unseren deutschen Satz zu sehen bekommt statt einer englischen
+    #: Pydantic-Meldung. Apple-Konten entstehen ohne dieses Schema; sie werden
+    #: nach der Anmeldung gefragt.
     display_name: str | None = Field(default=None, max_length=60)
 
 
@@ -372,6 +381,16 @@ class NotifyPrefsIn(BaseModel):
 
 
 # ---- feedback ----
+class FeedbackNotifyIn(BaseModel):
+    """Die optionale Zeile, die wir der absendenden Person mitschicken.
+
+    Optional heißt hier wirklich optional: Ohne Text geht die Karte mit dem
+    Kernsatz zur jeweiligen Art raus. Die Obergrenze ist dieselbe Größenordnung
+    wie beim Feedback selbst — es ist eine Nachricht, kein Newsletter.
+    """
+    message: str = Field(default="", max_length=2000)
+
+
 class FeedbackIn(BaseModel):
     kind: str = Field(pattern="^(feature|bug|other)$")
     message: str = Field(min_length=3, max_length=4000)

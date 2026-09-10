@@ -470,6 +470,8 @@ export type AdminRequestFehler = S["AdminRequestFehler"];
 export interface AdminUserDetail {
   id: number;
   email: string;
+  /** Der selbst gewählte Name. Pflicht seit 09/2026, beim Alt-Bestand leer. */
+  display_name: string | null;
   /** Die stärkste Rolle. `roles` daneben ist die Wahrheit — das Panel
    *  bearbeitet die Liste, nicht diesen Wert. */
   role: string;

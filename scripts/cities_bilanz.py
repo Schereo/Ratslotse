@@ -34,6 +34,7 @@ from council.cities import default_paths  # noqa: E402
 from council.cities.annotators import get as get_annotator  # noqa: E402
 from council.cities.clusters import CLUSTER_VERSION  # noqa: E402
 from council.cities.index import EMBED_MODEL  # noqa: E402
+from council.cities.model import IDEA_KINDS  # noqa: E402
 from council.cities.store import CitiesStore  # noqa: E402
 
 #: Wie ein Status auf Deutsch heißt, und was er für die Liste bedeutet.
@@ -44,18 +45,21 @@ STATUS = {
 }
 
 
-def urteile(main: CitiesStore, version: str) -> list[dict]:
+def urteile(main: CitiesStore, version: str,
+            alle_arten: bool = False) -> list[dict]:
     """Jede fremde Vorlage mit einem Urteil dieser Fassung, samt Themenfeld.
 
     Ganze statische Anweisung (``tests/test_sql_spalten.py``).
     """
     rows = main._conn.execute(
-        "SELECT p.id, p.body_id, p.name, p.date, "
+        "SELECT p.id, p.body_id, p.name, p.date, p.kind, "
         "       json_extract(f.payload, '$.status') AS status, "
         "       json_extract(f.payload, '$.confidence') AS confidence, "
         "       json_extract(c.payload, '$.field') AS field, "
         "       json_extract(c.payload, '$.instrument') AS instrument, "
-        "       json_extract(e.payload, '$.effort') AS effort "
+        "       json_extract(e.payload, '$.effort') AS effort, "
+        "       (SELECT k.cluster_id FROM idea_clusters k "
+        "        WHERE k.paper_id = p.id AND k.model = ? AND k.version = ?) AS cluster_id "
         "FROM annotations f "
         "JOIN papers p ON p.id = f.object_id "
         "LEFT JOIN annotations c ON c.object_kind='paper' AND c.object_id=p.id "
@@ -63,8 +67,40 @@ def urteile(main: CitiesStore, version: str) -> list[dict]:
         "LEFT JOIN annotations e ON e.object_kind='paper' AND e.object_id=p.id "
         "  AND e.annotator='effort' AND e.version='1' "
         "WHERE f.object_kind='paper' AND f.annotator='fit' AND f.version=?",
-        (version,))
-    return [dict(r) for r in rows]
+        (EMBED_MODEL, CLUSTER_VERSION, version))
+    zeilen = [dict(r) for r in rows]
+    if alle_arten:
+        return zeilen
+    # Dieselbe Auswahl wie die Karte (`CitiesStore._IDEEN_*`): nur, was jemand
+    # VORGESCHLAGEN hat. Gefiltert wird hier in Python und nicht im SQL, damit
+    # die Anweisung eine GANZE statische bleibt — zusammengesetztes SQL
+    # überspringt `tests/test_sql_spalten.py`, und dann prüft es gar nichts.
+    erlaubt = {k.value for k in IDEA_KINDS}
+    return [z for z in zeilen if z["kind"] in erlaubt]
+
+
+def ohne_dubletten(zeilen: list[dict]) -> list[dict]:
+    """Je Stadt und Idee eine Zeile — dieselbe Regel wie `CitiesStore.ideas`.
+
+    **Die Abfrage im Store ist die Wahrheit**, nicht diese Funktion: Dort
+    entscheidet SQL, hier Python, und zwei Fassungen laufen auseinander. Sie
+    steht trotzdem hier, weil dieser Bericht über ALLE Themenfelder auf
+    einmal rechnet und die Ideen-Abfrage je Feld einzeln antwortet.
+
+    Es bleibt die jüngste; bei gleichem Datum entscheidet die Kennung.
+    """
+    beste: dict[tuple, dict] = {}
+    frei: list[dict] = []
+    for z in zeilen:
+        if z.get("cluster_id") is None:
+            frei.append(z)
+            continue
+        k = (z["body_id"], z["cluster_id"])
+        vorher = beste.get(k)
+        schluessel = (z.get("date") or "", z["id"])
+        if vorher is None or schluessel > (vorher.get("date") or "", vorher["id"]):
+            beste[k] = z
+    return frei + list(beste.values())
 
 
 def bilanz(zeilen: list[dict], peers: dict[str, int], ab: int) -> None:
@@ -117,12 +153,51 @@ def spitze(zeilen: list[dict], peers: dict[str, int], wie_viele: int) -> None:
               f"{(z['date'] or '')[:7]}  {(z['instrument'] or z['name'] or '')[:66]}")
 
 
+def rueckmeldungen(main: CitiesStore, version: str) -> None:
+    """Was Menschen zu den Urteilen gesagt haben — das billigste Golden Set.
+
+    Die vierzig Handfälle von `fit` haben mich viermal eines Besseren
+    belehrt; dreimal war MEIN Urteil falsch. Ein Ratsmitglied, das die Karte
+    liest, weiß es besser als ich — es muss nur gefragt werden, und das tut
+    die Karte seit dem Rückkanal.
+
+    Ab rund fünfzig Rückmeldungen lohnt es, die umstrittensten in
+    `eval/cases_cities_fit.json` zu übernehmen. Das Golden Set WÄCHST, es
+    wird nicht ersetzt (Regel 16 der Pläne).
+    """
+    zeilen = main.feedback_stats("fit", version)
+    if not zeilen:
+        print("\nKeine Rückmeldungen. Die Karte fragt danach, sobald die "
+              "Schalter `andere-staedte` und `ideen-anderswo` auf Prod stehen.")
+        return
+    falsch = [z for z in zeilen if (z["falsch"] or 0) > 0]
+    print(f"\n{len(zeilen)} Urteile mit Rückmeldung, {len(falsch)} davon "
+          f"mindestens einmal als falsch bezeichnet.")
+    print("\nDie umstrittensten:")
+    for z in sorted(zeilen, key=lambda x: -(x["falsch"] or 0))[:10]:
+        print(f"  {z['richtig'] or 0:2}× richtig  {z['falsch'] or 0:2}× falsch   "
+              f"{z['body_id'][:11]:12} {(z['name'] or '')[:48]}")
+    if len(zeilen) >= 50:
+        print("\nAb hier lohnt die Übernahme ins Golden Set "
+              "(eval/cases_cities_fit.json).")
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     p.add_argument("--version", default=None,
                    help="Fassung des Annotators (Vorgabe: die aktuelle)")
     p.add_argument("--ab", type=int, default=2,
                    help="ab wie vielen ANDEREN Städten eine Idee zählt (Vorgabe 2)")
+    p.add_argument("--rueckmeldungen", action="store_true",
+                   help="was Menschen zu den Urteilen gesagt haben — die "
+                        "Grundlage des nächsten Golden Sets")
+    p.add_argument("--alle-arten", action="store_true",
+                   help="auch Antworten, Mitteilungen und Berichte zählen. Die "
+                        "Karte zeigt sie nicht — dort schlägt niemand etwas vor.")
+    p.add_argument("--vorlagen", action="store_true",
+                   help="je VORLAGE zählen statt je Idee. Die Karte zeigt Ideen "
+                        "(eine Zeile je Stadt und Gruppe); dieser Schalter macht "
+                        "sichtbar, wie viele Wiederholungen dahinterstehen.")
     p.add_argument("--zeigen", type=int, default=0,
                    help="zusätzlich die obersten N Ideen auflisten")
     a = p.parse_args()
@@ -131,12 +206,21 @@ def main() -> int:
     db, _f, _r = default_paths()
     store = CitiesStore(db)
     try:
-        zeilen = urteile(store, version)
+        if a.rueckmeldungen:
+            rueckmeldungen(store, version)
+            return 0
+        zeilen = urteile(store, version, a.alle_arten)
+        roh = len(zeilen)
+        if not a.vorlagen:
+            zeilen = ohne_dubletten(zeilen)
         if not zeilen:
             print(f"Kein Urteil in Fassung {version}. Läuft der Bestandslauf noch?")
             return 1
         peers = store.peers_by_paper(EMBED_MODEL, CLUSTER_VERSION)
         print(f"fit-Fassung {version}, Cluster-Fassung {CLUSTER_VERSION}")
+        if not a.vorlagen:
+            print(f"Je Stadt und Idee eine Zeile: {roh} Vorlagen → {len(zeilen)} Ideen "
+                  f"({roh - len(zeilen)} Wiederholungen). --vorlagen zeigt die rohe Zahl.")
         bilanz(zeilen, peers, a.ab)
         if a.zeigen:
             spitze(zeilen, peers, a.zeigen)

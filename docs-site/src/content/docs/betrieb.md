@@ -377,6 +377,18 @@ Jede Stufe braucht die vorige: Die Einordnung sagt, was eine *Idee* ist; der
 Index rechnet Nachbarschaften über alle Städte; die Cluster fassen zusammen,
 was dieselbe Idee ist; und `fit` urteilt erst, wenn es beides hat.
 
+**Die Niederschriften laufen daneben her.** Seit 09/2026 holt `fetch` auch die
+Sitzungsprotokolle (`role='protocol'`, nur Sitzungen der letzten 24 Monate),
+`pipeline.split_protocols` schneidet sie in ihre Tagesordnungspunkte, und
+`council.cities.reasons.run` liest daraus, warum ein Rat so entschieden hat —
+gedeckelt über `CITIES_REASON_MAX` (Vorgabe 400 Abschnitte je Lauf, unter
+0,10 $). Gefragt werden nur Punkte, deren Idee mindestens eine andere Stadt
+teilt; nur dort zeigt die Karte das „Warum" überhaupt.
+
+Eine Stadt, die Protokoll-Adressen nennt, aber keine ausliefert, wird nach
+drei Fehlversuchen übersprungen — Magdeburg nennt 606 Adressen, von denen
+jede einzelne mit 404 antwortet.
+
 **Nach jeder Ernte die Plausibilität prüfen.** Am 08.09.2026 lagen vier
 Ernte-Fehler gleichzeitig im Bestand, und kein einziger hat sich gemeldet —
 kein Absturz, kein roter Test, keine auffällige Zahl:
@@ -714,7 +726,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `RESEND_API_KEY` | Versand über Resend; fehlt er, wird E-Mail still übersprungen | nein | leer |
 | `EMAIL_FROM` | Absender der Mails | nein | `Ratslotse <noreply@ratslotse.de>` |
 | `APP_BASE_URL` | Basis-URL in Mail-Links | nein | `https://ratslotse.de` |
-| `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks | nein | leer → `WEB_ADMIN_EMAIL` |
+| `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks; zugleich die Antwortadresse der Rückmeldungen an die absendende Person | nein | leer → `WEB_ADMIN_EMAIL` |
 | `ALERT_EMAIL` | Empfänger*in der Cron-Alarme | nein | nicht gesetzt → `WEB_ADMIN_EMAIL` |
 
 ### Push (APNs / FCM)
@@ -745,3 +757,38 @@ Wer nur lokal entwickelt, braucht davon fast nichts: `OPENROUTER_API_KEY` für
 echte LLM-Aufrufe, `WEB_JWT_SECRET` plus `COOKIE_SECURE=false` fürs Backend
 über HTTP. Alles andere hat brauchbare Defaults.
 :::
+
+## Heim-Proxy gegen Adress-Sperren
+
+Manche Ziele sperren den ganzen Hetzner-Adressbereich: das Geoportal der
+Stadt (`gisportal4ol.oldenburg.de`) schließt Verbindungen ohne Antwort,
+YouTube blockt Rechenzentrums-Bereiche generell. Beides trifft jeden
+Hetzner-Kunden, nicht diesen Server, und beides löst sich, sobald die
+Anfrage von einem Privatanschluss kommt.
+
+Dafür hängen Prod und Dev seit 09/2026 in einem Tailscale-Netz zusammen mit
+einem Synology-NAS, auf dem ein SOCKS5-Proxy als Container läuft — erreichbar
+nur über das Tailnet, nicht aus dem Internet. Zwei Variablen in der `.env`
+schalten den Umweg ein:
+
+```
+RATSLOTSE_PROXY_URL=socks5h://nutzer:passwort@100.118.52.13:1080
+RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com
+```
+
+Nur die genannten Hosts und ihre Subdomains nehmen den Umweg (`kern/proxy.py`);
+alles andere bleibt direkt. Ohne die Variablen ändert sich nichts. Es gibt
+**keinen** stillen Rückfall auf „direkt": Antwortet der Proxy nicht, scheitert
+der Abruf laut, wie vorher an der Sperre — und der Wochenlauf meldet den
+Schritt.
+
+Wer den Umweg braucht: `scripts/fetch_bplan_outlines.py` (Bebauungsplan-
+Umringe, wöchentlich) und der Video-Abruf per yt-dlp in `council/videos.py`.
+Ein neues Ziel kommt in `RATSLOTSE_PROXY_HOSTS` und ruft an der Aufrufstelle
+`proxies_for(url)` (requests) bzw. `proxy_for(url)` (Kommandozeile) auf.
+
+Fallen: Der Geräteschlüssel eines Tailscale-Geräts läuft nach 180 Tagen ab —
+in der Tailscale-Verwaltung für jedes Gerät „Disable key expiry" setzen. Das
+NAS war genau daran vier Wochen lang aus dem Netz gefallen. Die Tailscale-
+Paketoberfläche auf dem NAS ist über QuickConnect gesperrt; Neuanmelden geht
+über den Aufgabenplaner als root mit `tailscale up --reset --authkey=…`.

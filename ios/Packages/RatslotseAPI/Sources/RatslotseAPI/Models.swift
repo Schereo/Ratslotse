@@ -524,6 +524,51 @@ public struct IdeaEvidence: Codable, Sendable, Hashable, Identifiable {
 /// Lehre wie bei ``ElsewhereItem``: Die Ratsinformationssysteme füllen sehr
 /// unterschiedlich viel aus, und ein nicht-optionales Feld hieße,
 /// `JSONDecoder` wirft und die ganze Liste bleibt leer statt unvollständig.
+/// Was die Niederschrift der Sitzung zu dieser Vorlage sagt — das „Warum".
+///
+/// `nil`, solange keine Niederschrift vorliegt oder ihr Abschnitt keine
+/// Begründung trägt. Das ist der Regelfall: Die meisten Beschlüsse fallen
+/// ohne Aussprache. Eine erfundene Begründung wäre schlimmer als keine.
+public struct IdeaProtocol: Codable, Sendable, Hashable {
+    /// Worum die Debatte ging. Leer, wenn ohne Aussprache entschieden wurde.
+    public let discussed: String
+    /// Was beschlossen wurde, nah am Wortlaut.
+    public let decided: String
+    /// Das Abstimmungsergebnis im Wortlaut („einstimmig", „12 dafür, 8 dagegen").
+    public let vote: String?
+    /// Die Begründung, wie sie im Protokoll steht.
+    public let why: String
+    /// Das Gremium und der Tag — die Herkunftsangabe unter dem Absatz.
+    public let organization: String?
+    public let date: String?
+
+    enum CodingKeys: String, CodingKey {
+        case discussed, decided, vote, why, organization, date
+    }
+
+    public init(from decoder: Decoder) throws {
+        let v = try decoder.container(keyedBy: CodingKeys.self)
+        discussed = try v.decodeIfPresent(String.self, forKey: .discussed) ?? ""
+        decided = try v.decodeIfPresent(String.self, forKey: .decided) ?? ""
+        vote = try v.decodeIfPresent(String.self, forKey: .vote)
+        why = try v.decodeIfPresent(String.self, forKey: .why) ?? ""
+        organization = try v.decodeIfPresent(String.self, forKey: .organization)
+        date = try v.decodeIfPresent(String.self, forKey: .date)
+    }
+}
+
+public struct IdeaSibling: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { paperID }
+    public let paperID: String
+    public let name: String
+    public let date: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, date
+        case paperID = "paper_id"
+    }
+}
+
 public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public var id: String { paperID }
     public let paperID: String
@@ -540,8 +585,11 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public let transfer: String
     public let competence: String?
     public let originator: String?
-    /// Das Urteil aus `council/cities/fit.py`.
+    /// Das Urteil aus `council/cities/fit.py` — je Idee die Mehrheit der
+    /// Vorlagen dieser Stadt, nicht das einzelne Urteil.
     public let status: String
+    /// „3/2": drei Vorlagen, zwei tragen den Status. Leer ohne Gruppe.
+    public let votes: String
     public let reason: String
     public let confidence: String
     public let evidence: [IdeaEvidence]
@@ -555,11 +603,26 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public let peers: Int
     /// Was DIESES Konto zum Urteil gesagt hat: "right", "wrong" oder leer.
     public let feedback: String
+    /// Die weiteren Vorlagen DERSELBEN Stadt zu derselben Idee, älteste
+    /// zuerst. Potsdam hat das Denkmalpflege-Konzept dreimal beantragt;
+    /// gezeigt wird die jüngste, hier stehen die übrigen.
+    public let siblings: [IdeaSibling]
+    /// Wohin DIESE Vorlage die gemeinsame Sache bewegen will: introduce,
+    /// expand, restrict, stop, review. Leer, solange der Cron sie nicht
+    /// vergeben hat oder die Idee in keiner Gruppe liegt.
+    public let stance: String
+    /// Wie viele ANDERE Städte in welche Richtung wollen.
+    public let peerStances: [String: Int]
+    /// Das „Warum" aus der Niederschrift — `nil`, wenn keines dasteht.
+    public let protocolNote: IdeaProtocol?
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
-        case transfer, competence, originator, status, reason
-        case confidence, evidence, effort, addressee, peers, feedback
+        case transfer, competence, originator, status, votes, reason
+        case confidence, evidence, effort, addressee, peers, feedback, siblings
+        case stance
+        case peerStances = "peer_stances"
+        case protocolNote = "protocol"
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
@@ -582,6 +645,7 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         competence = try v.decodeIfPresent(String.self, forKey: .competence)
         originator = try v.decodeIfPresent(String.self, forKey: .originator)
         status = try v.decodeIfPresent(String.self, forKey: .status) ?? ""
+        votes = try v.decodeIfPresent(String.self, forKey: .votes) ?? ""
         reason = try v.decodeIfPresent(String.self, forKey: .reason) ?? ""
         confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
         evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []
@@ -591,6 +655,10 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         addressee = try v.decodeIfPresent(String.self, forKey: .addressee)
         peers = try v.decodeIfPresent(Int.self, forKey: .peers) ?? 0
         feedback = try v.decodeIfPresent(String.self, forKey: .feedback) ?? ""
+        siblings = try v.decodeIfPresent([IdeaSibling].self, forKey: .siblings) ?? []
+        stance = try v.decodeIfPresent(String.self, forKey: .stance) ?? ""
+        peerStances = try v.decodeIfPresent([String: Int].self, forKey: .peerStances) ?? [:]
+        protocolNote = try v.decodeIfPresent(IdeaProtocol.self, forKey: .protocolNote)
     }
 }
 

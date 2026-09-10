@@ -54,6 +54,9 @@ private struct QuestionTurn: Identifiable {
     var status: String?
     var error: String?
     var research: ResearchState?
+    /// Die Verbindung riss, während die App im Hintergrund lag. Beim nächsten
+    /// Aktivwerden fragt die Ansicht genau einmal von selbst noch einmal.
+    var interruptedInBackground = false
 }
 
 struct QuestionPerson: Decodable, Sendable, Hashable {
@@ -71,7 +74,14 @@ private struct QuestionPeopleEnvelope: Decodable, Sendable {
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
-    let sitzungen: [QuestionExampleSession]
+    /// Der Server nennt die Liste `sessions`. Hier stand bis zum 10.09.2026
+    /// `sitzungen` — seit der Einführung des Endpunkts (#950), also von Anfang
+    /// an. Der Aufruf steht unter `try?`: Das Decodieren scheiterte still, die
+    /// App zeigte immer nur ihre eingebauten Beispiele, und weil die gut sind,
+    /// fiel niemandem etwas auf. Dieselbe Klasse Fehler wie #913 beim
+    /// Tagesordnungs-Baustein — nur auf einem REST-Endpunkt, den der
+    /// Strom-Vertrag (`scripts/sse_vertrag.py`) nicht abdeckt.
+    let sessions: [QuestionExampleSession]
 }
 
 private struct QuestionExampleSession: Decodable, Sendable {
@@ -102,15 +112,27 @@ struct QuestionsView: View {
     @State private var conversationPreferenceError: String?
     @State private var personLexicon: [QuestionPerson] = []
     @State private var questionExamples: [String] = Self.fallbackQuestionExamples
+    @FocusState private var composerFocused: Bool
+    /// Unterkante des Gesprächs und Oberkante des Eingabefelds, beide in
+    /// Bildschirmkoordinaten. Liegt das Ende unter dem Eingabefeld, ist die
+    /// Leserin hochgescrollt — dann erscheint der Sprung-Pfeil.
+    @State private var chatEndY: CGFloat = 0
+    @State private var composerTopY: CGFloat = .infinity
+    /// Die App lag im Hintergrund, während eine schnelle Frage lief. Reißt
+    /// der Stream danach, ist das der Grund — nicht der Server.
+    @State private var backgroundedWhileStreaming = false
+
+    private static let chatEndAnchor = "chat-end"
 
     private var isSending: Bool {
         streamTask != nil || turns.contains { $0.research?.status == "laeuft" }
     }
     private var composerBottomPadding: CGFloat {
-        // Die Bottom-Navigation reserviert bereits ihren eigenen Safe-Area-
-        // Bereich. 82 pt lassen die beiden Glasflächen optisch zusammenstehen,
-        // ohne Schatten oder Trefferflächen überlappen zu lassen.
-        horizontalSizeClass == .compact ? 82 : 18
+        // Die Tab-Leiste kommt seit dem 09.09.2026 als Safe-Area-Rand aus
+        // NativeRootView (gemessen, bei Tastatur null) — die früheren 82 pt
+        // hier waren der Ersatz dafür. Übrig bleibt der optische Abstand
+        // zwischen den beiden Glasflächen.
+        horizontalSizeClass == .compact ? 10 : 18
     }
     private var shouldAutoScroll: Bool {
 #if DEBUG
@@ -118,6 +140,13 @@ struct QuestionsView: View {
 #else
         true
 #endif
+    }
+    private var showsJumpToEnd: Bool {
+        // 220 pt Toleranz — gut ein Viertel Bildschirm. Mit 40 pt stand der
+        // Pfeil schon, sobald die letzte Karte einen Fingerbreit nach oben
+        // gewischt war: „gefühlt immer“ (Tim, 09.09.2026). Er soll erst
+        // kommen, wenn man wirklich im Gespräch unterwegs ist.
+        !turns.isEmpty && chatEndY > composerTopY + 220
     }
 
     var body: some View {
@@ -155,6 +184,7 @@ struct QuestionsView: View {
                 input = model.questionPrefill
                 model.questionPrefill = ""
             }
+            askPendingQuestionIfNeeded()
 #if DEBUG
             if turns.isEmpty,
                ratsDebugValue("RATSLOTSE_DEBUG_QUESTION_FIXTURE") == "1",
@@ -166,13 +196,23 @@ struct QuestionsView: View {
 #endif
         }
         .task { await restoreCurrentResearch() }
-        .task { await restoreActiveConversationIfNeeded() }
+        // Mit Kennung als Schlüssel: Kommt das Konto erst nach dem Erscheinen
+        // der Ansicht aus dem Speicher (Kaltstart direkt auf diesem Tab), läuft
+        // die Wiederherstellung noch einmal, statt einmalig ins Leere zu gehen.
+        .task(id: model.activeConversationID) { await restoreActiveConversationIfNeeded() }
         .task(id: model.questionShareToken) { await loadPendingSharedAnswer() }
+        .onChange(of: model.pendingQuestion) { _, _ in askPendingQuestionIfNeeded() }
         .task { await loadPersonLexicon() }
         .task { await loadQuestionExamples() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { reconnectRunningResearchIfNeeded() }
-            else { researchStreamTask?.cancel(); researchStreamTask = nil }
+            if phase == .active {
+                reconnectRunningResearchIfNeeded()
+                resumeInterruptedQuestionIfNeeded()
+            } else {
+                if streamTask != nil { backgroundedWhileStreaming = true }
+                researchStreamTask?.cancel()
+                researchStreamTask = nil
+            }
         }
         .onDisappear {
             streamTask?.cancel()
@@ -180,7 +220,7 @@ struct QuestionsView: View {
             researchStreamTask?.cancel()
             researchStreamTask = nil
         }
-        .sheet(isPresented: $showConversations) {
+        .sheet(isPresented: $showConversations, onDismiss: dismissStrayKeyboard) {
             ConversationsView(
                 model: model,
                 activeConversationID: model.activeConversationID,
@@ -242,6 +282,11 @@ struct QuestionsView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
+                    // Der äußere VStack ist bewusst nicht lazy: Die Endmarke
+                    // darunter muss ihre Lage auch dann melden, wenn sie weit
+                    // unter dem sichtbaren Ausschnitt liegt — in einem
+                    // LazyVStack gäbe es sie dort gar nicht.
+                    VStack(spacing: 0) {
                     LazyVStack(alignment: .leading, spacing: 26) {
                         if turns.isEmpty {
                             if model.conversationSavingPreference == nil {
@@ -265,6 +310,7 @@ struct QuestionsView: View {
                                 model: model,
                                 people: personLexicon,
                                 ask: askUsingSelectedMode,
+                                editQuestion: editQuestion,
                                 stopResearch: stopResearch,
                                 requestPartialResearch: requestPartialResearch,
                                 reconnectResearch: reconnectResearch,
@@ -276,7 +322,32 @@ struct QuestionsView: View {
                     .frame(maxWidth: 780, alignment: .leading)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 24)
+                    Color.clear
+                        .frame(height: 1)
+                        .id(Self.chatEndAnchor)
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.onChange(of: geometry.frame(in: .global).minY, initial: true) { _, y in
+                                    chatEndY = y
+                                }
+                            }
+                        }
+                    }
                 }
+                // Einmal ins Feld getippt, blieb die Tastatur bis zum Senden
+                // stehen — auf dem iPhone blieb vom Gespräch ein Drittel
+                // übrig. Ziehen am Gespräch schiebt sie mit weg, ein Tipp
+                // daneben ebenso; die Knöpfe im Gespräch reagieren weiter.
+                .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(TapGesture().onEnded { composerFocused = false })
+                .overlay(alignment: .bottom) {
+                    if showsJumpToEnd {
+                        JumpToEndButton { scrollToEnd(proxy) }
+                            .padding(.bottom, 10)
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                }
+                .animation(RatsMotion.flow, value: showsJumpToEnd)
                 .onChange(of: turns.count) { _, _ in
                     guard shouldAutoScroll else { return }
                     if let id = turns.last?.id { withAnimation { proxy.scrollTo(id, anchor: .bottom) } }
@@ -297,6 +368,7 @@ struct QuestionsView: View {
                 RatsQuestionComposer(
                     text: $input,
                     researchMode: $researchMode,
+                    focus: $composerFocused,
                     researchRemaining: researchRemaining,
                     isSending: isSending,
                     isEnabled: model.conversationSavingPreference != nil,
@@ -308,7 +380,58 @@ struct QuestionsView: View {
             .padding(.top, 8)
             .padding(.bottom, composerBottomPadding)
             .frame(maxWidth: .infinity)
+            .background {
+                GeometryReader { geometry in
+                    Color.clear.onChange(of: geometry.frame(in: .global).minY, initial: true) { _, y in
+                        composerTopY = y
+                    }
+                }
+            }
         }
+    }
+
+    /// Zweite Sicherung gegen die Geister-Tastatur: Was nach dem Blatt noch
+    /// Erstantwortender ist, gibt ab — das Gespräch fokussiert danach nichts.
+    private func dismissStrayKeyboard() {
+        composerFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    private func scrollToEnd(_ proxy: ScrollViewProxy) {
+        withAnimation(RatsMotion.travel) { proxy.scrollTo(Self.chatEndAnchor, anchor: .bottom) }
+    }
+
+    /// Von der Heute-Seite abgeschickt: sofort fragen, nicht erst ins Feld
+    /// legen. Läuft in `onAppear` UND bei Änderung, weil die Ansicht im
+    /// TabView schon leben kann, wenn die Frage gesetzt wird.
+    private func askPendingQuestionIfNeeded() {
+        guard let question = model.pendingQuestion else { return }
+        model.pendingQuestion = nil
+        guard model.conversationSavingPreference != nil else {
+            input = question
+            return
+        }
+        ask(question)
+    }
+
+    /// Lange drücken auf die eigene Frage → „Bearbeiten“: Der Text steht
+    /// wieder im Feld, die Tastatur kommt — zum schnellen Umformulieren.
+    private func editQuestion(_ question: String) {
+        input = question
+        composerFocused = true
+    }
+
+    /// Riss die schnelle Frage, weil die App im Hintergrund lag, wird sie
+    /// beim Zurückkommen genau einmal von selbst neu gestellt. Sonst stünde
+    /// dort „Noch einmal versuchen“ für etwas, das die Leserin gar nicht
+    /// verursacht hat — die Frage lief ja, als sie kurz die App wechselte.
+    private func resumeInterruptedQuestionIfNeeded() {
+        guard streamTask == nil,
+              let last = turns.last, last.interruptedInBackground, last.research == nil
+        else { return }
+        if let rateLimitUntil, rateLimitUntil > .now { return }
+        turns.removeLast()
+        ask(last.question)
     }
 
     private func loadPersonLexicon() async {
@@ -321,7 +444,7 @@ struct QuestionsView: View {
 
     private func loadQuestionExamples() async {
         guard let response: QuestionExamplesEnvelope = try? await model.api.get("/api/council/qa-beispiele"),
-              let latest = response.sitzungen.first
+              let latest = response.sessions.first
         else { return }
 
         var fresh = ["Was hat \(questionCommittee(latest.committee)) am \(questionDate(latest.sessionDate)) beschlossen?"]
@@ -343,12 +466,20 @@ struct QuestionsView: View {
         RatsDate.short(iso) ?? iso
     }
 
+    /// Der Server liefert `top_titel` seit dem 10.09.2026 bereits als
+    /// Gegenstand — ohne Verfahrensstand, Antragsteller-Klammer und „(Oldb)".
+    /// Hier bleibt nur die Notbremse gegen eine übermäßig lange Zeile, und die
+    /// schneidet an der WORTGRENZE: Der harte Schnitt bei 69 Zeichen trennte
+    /// mitten im Wort.
     private func shortQuestionTopic(_ title: String) -> String {
         let cleaned = title
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard cleaned.count > 72 else { return cleaned }
-        return String(cleaned.prefix(69)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+        let kurz = String(cleaned.prefix(69))
+        guard let luecke = kurz.lastIndex(of: " "), kurz.distance(from: kurz.startIndex, to: luecke) >= 20
+        else { return String(kurz).trimmingCharacters(in: .whitespacesAndNewlines) + "…" }
+        return String(kurz[..<luecke]).trimmingCharacters(in: .whitespacesAndNewlines) + " …"
     }
 
     private static let fallbackQuestionExamples = [
@@ -477,14 +608,25 @@ struct QuestionsView: View {
         guard question.count >= 4 else { return }
         if let rateLimitUntil, rateLimitUntil > .now { return }
         input = ""
+        composerFocused = false
+        backgroundedWhileStreaming = false
         Task { await model.reportBadgeEvent("frage") }
         let history = turns.suffix(4).map {
             AskRound(question: $0.question, answer: String($0.answer.prefix(600)))
         }
         turns.append(QuestionTurn(question: question, status: "Beschlüsse durchsuchen …"))
         let index = turns.count - 1
+        // Wer während der Antwort kurz die App wechselt, bekommt sie trotzdem:
+        // iOS friert die App sonst nach wenigen Sekunden ein, der Socket stirbt
+        // mit, und beim Zurückkommen stand „Noch einmal versuchen“. Die
+        // Schonfrist hält den Prozess für die üblichen ~30 s am Leben, die
+        // eine Antwort braucht.
+        let grace = BackgroundGrace(name: "ratslotse.frage")
         streamTask = Task {
-            defer { streamTask = nil }
+            defer {
+                streamTask = nil
+                grace.end()
+            }
             do {
                 let request = try await model.api.makeStreamingRequest(
                     "/api/council/ask",
@@ -531,9 +673,14 @@ struct QuestionsView: View {
                 input = question
                 if let retry = error.retryAfter { rateLimitUntil = .now.addingTimeInterval(retry) }
             } catch {
-                turns[index].error = error.localizedDescription
                 turns[index].status = nil
                 input = question
+                if backgroundedWhileStreaming || scenePhase != .active {
+                    turns[index].interruptedInBackground = true
+                    turns[index].error = "Die Verbindung riss ab, während die App im Hintergrund lag. Sobald du zurück bist, fragt Ratslotse von selbst noch einmal."
+                } else {
+                    turns[index].error = error.localizedDescription
+                }
             }
         }
     }
@@ -542,6 +689,7 @@ struct QuestionsView: View {
         let question = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard question.count >= 4, researchRemaining != 0 else { return }
         input = ""
+        composerFocused = false
         researchMode = false
         let turn = QuestionTurn(
             question: question,
@@ -1087,9 +1235,56 @@ private struct ConversationMemoryConsentCard: View {
     }
 }
 
+/// Schwebt über dem Eingabefeld, sobald das Gesprächsende unter der Kante
+/// liegt. Absichtlich mittig und nicht am Rand: Im Web schwebten zwei
+/// Pfeile genau über dem Senden-Knopf, und Tim hat sie dort 08/2026
+/// rausgeworfen. Hier trifft der Daumen die Pille, nie den Pfeil daneben.
+private struct JumpToEndButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                RatsIcon(.chevronDown, size: 13)
+                Text("Zum Ende")
+            }
+            .font(RatsFont.body(12, weight: .semibold))
+            .foregroundStyle(RatsColor.bodyText)
+            .padding(.horizontal, 13)
+            .frame(height: 36)
+            .questionHeaderActionSurface()
+            .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
+        }
+        .buttonStyle(QuestionHeaderActionButtonStyle())
+        .accessibilityLabel("Zum Ende des Gesprächs springen")
+    }
+}
+
+/// Hält die App am Leben, während eine Antwort noch läuft und die Leserin
+/// kurz woanders ist. iOS gewährt dafür rund 30 Sekunden; läuft die Frist
+/// ab, endet die Aufgabe sauber — der Stream-Fehler danach erklärt sich dann
+/// über `interruptedInBackground`.
+@MainActor
+private final class BackgroundGrace {
+    private var identifier: UIBackgroundTaskIdentifier = .invalid
+
+    init(name: String) {
+        identifier = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in
+            MainActor.assumeIsolated { self?.end() }
+        }
+    }
+
+    func end() {
+        guard identifier != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(identifier)
+        identifier = .invalid
+    }
+}
+
 private struct RatsQuestionComposer: View {
     @Binding var text: String
     @Binding var researchMode: Bool
+    var focus: FocusState<Bool>.Binding
     let researchRemaining: Int?
     let isSending: Bool
     let isEnabled: Bool
@@ -1113,6 +1308,7 @@ private struct RatsQuestionComposer: View {
                 )
                 .font(RatsFont.body())
                 .lineLimit(1...4)
+                .focused(focus)
                 .submitLabel(.send)
                 .onSubmit(action)
                 .disabled(!isEnabled)
@@ -1370,6 +1566,7 @@ private struct QuestionTurnView: View {
     let model: AppModel
     let people: [QuestionPerson]
     let ask: (String) -> Void
+    let editQuestion: (String) -> Void
     let stopResearch: (UUID) -> Void
     let requestPartialResearch: (UUID) -> Void
     let reconnectResearch: (UUID) -> Void
@@ -1385,6 +1582,14 @@ private struct QuestionTurnView: View {
                     .background(RatsColor.primary.opacity(0.08))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(RatsColor.primary.opacity(0.18)))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                    // Lange drücken: dieselbe Frage noch einmal, abgewandelt
+                    // oder kopiert — wer Antworten vergleicht, tippt sie
+                    // sonst dreimal ab.
+                    .contextMenu {
+                        Button { ask(turn.question) } label: { RatsLabel("Noch einmal fragen", .rotateCcw) }
+                        Button { editQuestion(turn.question) } label: { RatsLabel("Frage bearbeiten", .pencil) }
+                        Button { UIPasteboard.general.string = turn.question } label: { RatsLabel("Frage kopieren", .copy) }
+                    }
                 if turn.research != nil {
                     HStack(spacing: 5) {
                         RatsGlyphView(glyph: .research, color: RatsColor.primary)
@@ -1435,7 +1640,7 @@ private struct QuestionTurnView: View {
                 }
             }
             if showsEvidenceInline, !turn.sources.isEmpty {
-                QuestionSourcesCard(turn: turn, model: model)
+                QuestionSourcesCard(turn: turn, model: model, collapsible: true)
             }
             if evidenceVisibility.showsPartyOpinions {
                 PartyOpinionsView(turn: turn, model: model)
@@ -1446,7 +1651,7 @@ private struct QuestionTurnView: View {
                 placement: showsEvidenceInline ? .all : .answer
             )
             if !mapPins.isEmpty {
-                QuestionEvidenceMap(pins: mapPins)
+                QuestionEvidenceMap(pins: mapPins, collapsible: showsEvidenceInline)
             }
             if !turn.suggestions.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -1699,25 +1904,48 @@ private struct QuestionTypeInsight: View {
 private struct QuestionSourcesCard: View {
     let turn: QuestionTurn
     let model: AppModel
+    /// Im Gespräch auf dem iPhone zeigt die Karte zuerst nur ihre Kopfzeile
+    /// mit den Zahlen; die Liste kommt auf Tipp (Tims Wunsch 09.09.2026:
+    /// Quellen und Karte drückten den Antworttext aus dem Bild). In der
+    /// iPad-Belegspalte und der geteilten Antwort bleibt sie offen.
+    var collapsible = false
+    @State private var isExpanded: Bool
     @State private var showsSearchResults = false
+
+    init(turn: QuestionTurn, model: AppModel, collapsible: Bool = false) {
+        self.turn = turn
+        self.model = model
+        self.collapsible = collapsible
+        _isExpanded = State(initialValue: !collapsible)
+    }
 
     private var index: QuestionCitationIndex {
         QuestionCitationIndex(text: turn.answer, sources: turn.sources)
     }
 
+    private var summary: String {
+        "\(index.citedSources.count) zitiert · \(index.citedSources.count + index.uncitedSources.count) gefunden"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            MonoKicker(
-                "Amtliche Quellen",
-                trailing: "\(index.citedSources.count) zitiert · \(index.citedSources.count + index.uncitedSources.count) gefunden"
-            )
+            if collapsible {
+                CollapsibleKicker(
+                    title: "Amtliche Quellen",
+                    trailing: summary,
+                    isExpanded: $isExpanded,
+                    accessibilityHint: "Quellenliste"
+                )
+            } else {
+                MonoKicker("Amtliche Quellen", trailing: summary)
+            }
 
-            if index.citedSources.isEmpty {
+            if isExpanded, index.citedSources.isEmpty {
                 Text("Die Suche hat Ratsunterlagen gefunden, aber die Antwort zitiert noch keine davon direkt.")
                     .font(RatsFont.body(11.5))
                     .foregroundStyle(RatsColor.secondary)
                     .lineSpacing(2)
-            } else {
+            } else if isExpanded {
                 ForEach(Array(index.citedSources.enumerated()), id: \.element.id) { position, source in
                     Button { model.navigation.append(.decision(id: source.id)) } label: {
                         SourceRow(
@@ -1733,7 +1961,7 @@ private struct QuestionSourcesCard: View {
                 }
             }
 
-            if !index.uncitedSources.isEmpty {
+            if isExpanded, !index.uncitedSources.isEmpty {
                 DisclosureGroup(isExpanded: $showsSearchResults) {
                     VStack(spacing: 10) {
                         Text("Diese Unterlagen wurden gefunden, im Antworttext aber nicht als Beleg verwendet.")
@@ -1810,20 +2038,72 @@ struct QuestionMapPin: Identifiable {
 
 private struct QuestionEvidenceMap: View {
     let pins: [QuestionMapPin]
+    var collapsible = false
+    @State private var isExpanded: Bool
+
+    init(pins: [QuestionMapPin], collapsible: Bool = false) {
+        self.pins = pins
+        self.collapsible = collapsible
+        _isExpanded = State(initialValue: !collapsible)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MonoKicker("Orte aus zitierten Quellen", trailing: "\(pins.count)")
-            Map(initialPosition: .region(questionMapRegion(for: pins))) {
-                ForEach(pins) { pin in
-                    Marker(pin.name, coordinate: pin.coordinate).tint(RatsColor.signal)
-                }
+            if collapsible {
+                CollapsibleKicker(
+                    title: "Orte aus zitierten Quellen",
+                    trailing: "\(pins.count)",
+                    isExpanded: $isExpanded,
+                    accessibilityHint: "Karte"
+                )
+            } else {
+                MonoKicker("Orte aus zitierten Quellen", trailing: "\(pins.count)")
             }
-            .frame(height: 190)
-            .clipShape(RoundedRectangle(cornerRadius: 11))
-            .accessibilityLabel("Karte der in der Antwort genannten Orte")
+            if isExpanded {
+                Map(initialPosition: .region(questionMapRegion(for: pins))) {
+                    ForEach(pins) { pin in
+                        Marker(pin.name, coordinate: pin.coordinate).tint(RatsColor.signal)
+                    }
+                }
+                .frame(height: 190)
+                .clipShape(RoundedRectangle(cornerRadius: 11))
+                .accessibilityLabel("Karte der in der Antwort genannten Orte")
+            }
         }
         .ratsCard()
+    }
+}
+
+/// Kopfzeile einer Karte, die sich auf Tipp öffnet: derselbe Mono-Kicker wie
+/// überall, dazu der Chevron als Zustand. Die ganze Zeile ist die
+/// Trefferfläche — nicht nur der Pfeil.
+private struct CollapsibleKicker: View {
+    let title: String
+    let trailing: String
+    @Binding var isExpanded: Bool
+    let accessibilityHint: String
+
+    var body: some View {
+        Button {
+            withAnimation(RatsMotion.flow) { isExpanded.toggle() }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(title.uppercased())
+                Spacer(minLength: 8)
+                Text(trailing)
+                RatsIcon(.chevronRight, size: 14)
+                    .foregroundStyle(RatsColor.text)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 5 }
+            }
+            .font(RatsFont.mono())
+            .tracking(1.05)
+            .foregroundStyle(RatsColor.muted)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(RatsPlainButtonStyle())
+        .accessibilityLabel("\(title): \(trailing)")
+        .accessibilityHint(isExpanded ? "\(accessibilityHint) einklappen" : "\(accessibilityHint) aufklappen")
     }
 }
 

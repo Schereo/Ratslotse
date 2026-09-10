@@ -50,9 +50,9 @@ TIMEOUT = (5, 10)
 #: Was hinter dem letzten „ - " einer Zeile stehen kann. Der Wortlaut 2026 darf
 #: leicht abweichen, deshalb wird auf Wortbestandteile geprüft, nicht auf
 #: Gleichheit.
-_TOTAL = "total"
-_LIST = "list"
-_CANDIDATES = "candidates"
+TOTAL = "total"
+LIST = "list"
+CANDIDATES = "candidates"
 
 #: Slug -> Wörter, an denen die Liste in der Votemanager-Schreibweise zu
 #: erkennen ist. Ein Wort genügt. Groß/klein zählt (s. Modul-Docstring).
@@ -128,7 +128,7 @@ def _table_rows(payload: Any) -> list[Any]:
     return []
 
 
-def _label_of(row: Any) -> str | None:
+def label_of(row: Any) -> str | None:
     if not isinstance(row, dict):
         return None
     label = row.get("label")
@@ -142,14 +142,14 @@ def _label_of(row: Any) -> str | None:
     return None
 
 
-def _suffix_kind(suffix: str) -> str | None:
+def suffix_kind(suffix: str) -> str | None:
     low = suffix.lower()
     if "summe" in low and "partei" in low and "kandidaten" in low:
-        return _TOTAL
+        return TOTAL
     if "summe" in low and "kandidaten" in low:
-        return _CANDIDATES
+        return CANDIDATES
     if "partei" in low and "stimmen" in low:
-        return _LIST
+        return LIST
     return None
 
 
@@ -163,25 +163,25 @@ def columns(payload: Any) -> list[str]:
     """
     out: list[str] = []
     for row in _table_rows(payload):
-        label = _label_of(row)
+        label = label_of(row)
         if not label:
             continue
         # Von HINTEN trennen: „Bürger Bündnis Oldenburg (BB - OL) - Summe …"
         # trägt den Bindestrich schon im Namen.
         name, sep, suffix = label.rpartition(" - ")
         if sep:
-            kind = _suffix_kind(suffix)
-            if kind == _TOTAL:
+            kind = suffix_kind(suffix)
+            if kind == TOTAL:
                 out.append(name.strip())
                 continue
-            if kind in (_LIST, _CANDIDATES):
+            if kind in (LIST, CANDIDATES):
                 continue
         if "einzelwahlvorschlag" in label.lower():
             out.append(label)
     return out
 
 
-def _slugs_for(name: str) -> set[str]:
+def slugs_for(name: str) -> set[str]:
     return {slug for slug, words in KEYWORDS.items() if any(w in name for w in words)}
 
 
@@ -200,7 +200,7 @@ def check_columns(names: Sequence[str], reg: Register | None = None) -> list[str
         out.append(f"Der Votemanager listet {len(names)} Wahlvorschläge, das Register {len(parties)} "
                    f"— Zuordnung prüfen!")
     for party, name in zip(parties, names):
-        if party.slug in _slugs_for(name):
+        if party.slug in slugs_for(name):
             continue
         out.append(f"Spalte D{party.index} heißt beim Votemanager ‚{name}‘, im Register ‚{party.short}‘ "
                    f"— Zuordnung prüfen!")
@@ -224,14 +224,19 @@ def fetch_table(session: requests.Session, base: str) -> Any | None:
         return None
 
 
-def run(session: requests.Session, base: str, header: Sequence[str] | None, *, counted: bool) -> list[str]:
-    """Beide Proben. Gibt Hinweise zurück und wirft nie."""
+def run(session: requests.Session, base: str, header: Sequence[str] | None, *, counted: bool,
+        payload: Any | None = None) -> list[str]:
+    """Beide Proben. Gibt Hinweise zurück und wirft nie.
+
+    ``payload`` ist die Ergebnistabelle der Stadt, falls der Ersatzpfad
+    (``presentation``) sie in dieser Runde schon geholt hat — dann wird sie
+    nicht ein zweites Mal abgerufen."""
     reg = load_register()
     out: list[str] = []
     if header:
         out += check_header(header, reg)
-    if counted:
+    if payload is None and counted:
         payload = fetch_table(session, base)
-        if payload is not None:
-            out += check_columns(columns(payload), reg)
+    if payload is not None:
+        out += check_columns(columns(payload), reg)
     return out

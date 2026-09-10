@@ -21,6 +21,12 @@ public enum AuthPresentation: Sendable, Equatable, Identifiable {
     case register
     case forgotPassword
     case resetPassword(token: String)
+    /// Der Nachtrag nach „Mit Apple anmelden": Apple liefert den Namen nur bei
+    /// der allerersten Autorisierung und nur, wenn man ihn nicht verbirgt —
+    /// das Pflichtfeld der Registrierung erreicht diese Konten also nie.
+    /// Steht hier und nicht als eigener Schirm, weil es dieselbe Bühne ist:
+    /// Man ist gerade angekommen und noch nicht durch.
+    case displayName
 
     public var id: String {
         switch self {
@@ -28,6 +34,7 @@ public enum AuthPresentation: Sendable, Equatable, Identifiable {
         case .register: "register"
         case .forgotPassword: "forgot"
         case .resetPassword: "reset"
+        case .displayName: "name"
         }
     }
 }
@@ -83,6 +90,11 @@ public final class AppModel {
     var pendingLocationFilter: LocationFilter?
     public var authPresentation: AuthPresentation?
     public var questionPrefill = ""
+    /// Eine Frage, die auf der Heute-Seite getippt und abgeschickt wurde:
+    /// „Frag den Rat“ stellt sie beim Öffnen sofort, statt sie nur ins Feld
+    /// zu legen (Tim, 09.09.2026 — vorher wechselte ein Tipp in die Kachel
+    /// nur die Ansicht).
+    public var pendingQuestion: String?
     public var questionShareToken: String?
     public var isOffline = false
     public var updateRequired = false
@@ -235,7 +247,26 @@ public final class AppModel {
             body: Body(identity_token: identityToken, given_name: givenName, family_name: familyName)
         )
         try await accept(user: user)
-        authPresentation = nil
+        // Ohne Namen ist die Anmeldung noch nicht fertig: Der Name ist seit
+        // 09/2026 Pflicht, und dieser Weg führt an dem Formular vorbei, das
+        // ihn verlangt. Ein Apple-Konto OHNE Namen ist dabei praktisch immer
+        // ein frisch entstandenes — der Alt-Bestand trägt einen.
+        authPresentation = (user.displayName ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+            ? .displayName
+            : nil
+    }
+
+    /// Anzeigename setzen. Eine Stelle für beide Aufrufer (Konto-Seite und der
+    /// Nachtrag nach der Apple-Anmeldung) — der Endpunkt weist einen leeren
+    /// Namen ab, also wird hier gar nicht erst einer geschickt.
+    public func setDisplayName(_ name: String) async throws {
+        struct Body: Codable, Sendable { let display_name: String }
+        let sauber = name.trimmingCharacters(in: .whitespaces)
+        guard !sauber.isEmpty else { return }
+        let _: JSONValue = try await api.send(
+            "/api/account/display-name", body: Body(display_name: sauber)
+        )
+        await refreshAccount()
     }
 
     public func forgotPassword(email: String) async throws {
