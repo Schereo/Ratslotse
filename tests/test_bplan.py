@@ -160,7 +160,8 @@ def test_fetch_outlines_liest_beide_ebenen_seitenweise(monkeypatch):
               19: [[feature("999"), feature("871")]]}
     aufrufe: list[tuple[int, int]] = []
 
-    def get(url, params=None, timeout=None):
+    def get(url, params=None, timeout=None, proxies=None):
+        assert proxies == {}  # ohne RATSLOTSE_PROXY_* geht der Abruf direkt
         layer = int(url.rstrip("/query").rsplit("/", 1)[1])
         aufrufe.append((layer, params["resultOffset"]))
         return _Antwort(seiten[layer][params["resultOffset"] // bplan.SEITE])

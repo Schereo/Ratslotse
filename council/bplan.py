@@ -50,6 +50,8 @@ from datetime import datetime, timezone
 
 import requests
 
+from kern.proxy import proxies_for
+
 #: Der Kartendienst des städtischen Geoportals (ArcGIS Server 10.7). Zwei
 #: Ebenen desselben Dienstes, gleiche Felder: 18 = rechtsverbindlich,
 #: 19 = in Aufstellung. Seitenweise (der Dienst deckelt bei 1.000), als
@@ -225,7 +227,9 @@ def _ebene(layer: int, timeout: int) -> list[dict]:
     out: list[dict] = []
     offset = 0
     while True:
-        r = _session.get(f"{MAPSERVER}/{layer}/query", params={
+        # Der Umweg über das NAS: Das Portal sperrt Hetzner-Adressen
+        # (kern/proxy.py) — ohne RATSLOTSE_PROXY_* bleibt das ein leeres dict.
+        r = _session.get(f"{MAPSERVER}/{layer}/query", proxies=proxies_for(MAPSERVER), params={
             "where": "1=1", "outFields": "*", "outSR": "4326", "f": "geojson",
             "orderByFields": "OBJECTID", "resultOffset": offset, "resultRecordCount": SEITE,
         }, timeout=timeout)
