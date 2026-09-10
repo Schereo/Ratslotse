@@ -600,7 +600,17 @@ class Allris4HtmlAdapter:
         raus: list[File] = []
         wurzel = objekt_id.split("/to010")[0].split("/vo020")[0]
         for a in suppe.find_all("a", href=re.compile(r"\.pdf(\?|$)", re.I)):
-            url = urljoin(f"{wurzel}/", _attr(a, "href").lstrip("./"))
+            href = _attr(a, "href")
+            # **Was keine Netzadresse ist, wird keine Datei.** In einer
+            # Wolfsburger Vorlage stand ein lokaler Windows-Pfad
+            # (``file:///C:\Users\…``) statt eines Dokumentlinks. Ihn als
+            # Datei zu führen hieße zweierlei: ein Abruf, der nie gelingt,
+            # und ein Benutzername aus der Stadtverwaltung in unserer
+            # Datenbank und auf jeder Beleg-Anzeige.
+            if re.match(r"[a-z][a-z0-9+.-]*:", href, re.I) and not re.match(
+                    r"https?:", href, re.I):
+                continue
+            url = urljoin(f"{wurzel}/", href.lstrip("./"))
             name = _text(a) or url.rsplit("/", 1)[-1]
             rolle = FileRole.MAIN
             klein = name.lower()

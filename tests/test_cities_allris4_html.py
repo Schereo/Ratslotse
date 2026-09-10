@@ -303,3 +303,19 @@ def test_die_ergebnisspalte_heisst_je_stadt_anders():
     punkte = Allris4HtmlAdapter()._punkte(suppe, "m1", "wolfsburg", [])
     assert [p.result_raw for p in punkte] == ["ungeändert beschlossen"]
     assert punkte[0].outcome is Outcome.ACCEPTED
+
+
+def test_ein_lokaler_pfad_wird_keine_datei():
+    """In einer Wolfsburger Vorlage stand `file:///C:\\Users\\…` als Dokumentlink.
+
+    Zwei Gründe, ihn gar nicht erst aufzunehmen: Der Abruf gelingt nie, und
+    der Pfad trägt einen Benutzernamen aus der Stadtverwaltung, der dann in
+    unserer Datenbank und auf jeder Beleg-Anzeige stünde.
+    """
+    suppe = BeautifulSoup(
+        '<a href="file:///C:/Users/vorname-n/Downloads/Strategie.pdf">Anlage</a>'
+        '<a href="./wicket/resource/x/doc42.pdf">Vorlage</a>', "html.parser")
+    dateien = Allris4HtmlAdapter._dateien(
+        suppe, f"{WURZEL}/vo020?VOLFDNR=1", "wolfsburg", paper_id="p1")
+    assert [f.name for f in dateien] == ["Vorlage"]
+    assert all(f.access_url.startswith("https://") for f in dateien)

@@ -157,7 +157,21 @@ class OParlClient:
         Ein 404 auf eine Datei ist kein Grund, den Lauf abzubrechen: Magdeburgs
         Schnittstelle nennt Adressen, die es nicht gibt, und andere Städte
         entfernen Anlagen nachträglich.
+
+        **Und eine kaputte Adresse erst recht nicht.** Am 10.09.2026 stand in
+        einer Wolfsburger Vorlage statt eines Dokumentlinks ein lokaler
+        Windows-Pfad (``file:///C:\…``) — jemand hat beim Einpflegen das
+        falsche Feld kopiert. ``requests`` wirft dafür ``InvalidSchema``, und
+        das ist **keine** der drei Ausnahmen unten: Der Fehler ging durch,
+        und mit ihm der ganze Dateiabruf der Stadt. 4.793 Dateien, davon
+        369 Niederschriften, wurden wegen einer einzigen Zeile nicht geholt.
+        Deshalb wird das Schema vorab geprüft (ein anderes wird nie gut, ein
+        erneuter Versuch also sinnlos) und unten auf ``RequestException``
+        gefangen — eine Datei darf niemals eine Stadt kosten.
         """
+        if not url.lower().startswith(("http://", "https://")):
+            logger.info("Datei-Adresse ist keine Netzadresse: %s", url[:60])
+            return None
         for versuch in range(tries):
             throttle(url)
             try:
@@ -169,7 +183,7 @@ class OParlClient:
                     return None
                 r.raise_for_status()
                 return r.content, (r.headers.get("content-type") or "").split(";")[0].strip()
-            except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
+            except requests.RequestException as e:
                 if versuch == tries - 1:
                     logger.info("Datei-Abruf gescheitert: %s (%s)", url, type(e).__name__)
                     return None
