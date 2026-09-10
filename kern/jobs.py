@@ -71,7 +71,9 @@ JOBS: list[dict] = [
         "key": "check_cities",
         "label": "Andere Städte",
         "description": "Vorlagen, Sitzungen und Ergebnisse der Vergleichsstädte über OParl — "
-                       "plus Oldenburg aus der eigenen Rats-Datenbank.",
+                       "plus Oldenburg aus der eigenen Rats-Datenbank. Holt und "
+                       "schneidet auch die Sitzungs-Niederschriften und liest daraus, "
+                       "warum ein fremder Rat so entschieden hat.",
         # Fünf Uhr und nicht drei: `weekly_enrich` läuft sonntags um drei, und
         # zwei Läufe, die beide ein Embedding-Modell laden, gehören nicht auf
         # dieselbe Stunde einer VM mit zwei Kernen.

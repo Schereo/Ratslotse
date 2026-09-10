@@ -17,7 +17,8 @@ import responses
 from council.cities.adapters.allris4 import _seiten_rueckwaerts
 from council.cities.adapters.session import _seiten_vorwaerts
 from council.cities.oparl import OParlClient
-from council.cities.pipeline import extract, normalize, raw_path_for
+from council.cities.pipeline import (PROTOCOL_NIETEN, _hole, extract, normalize,
+                                     protokoll_fenster, raw_path_for)
 from council.cities.registry import BodySpec
 from council.cities.store import CitiesStore
 from council.cities.text import EXTRACTOR, VERSION
@@ -254,5 +255,95 @@ def test_extract_meldet_fehlende_bytes_statt_zu_scheitern(tmp_path):
     try:
         main.upsert_batch(Batch(files=[File("f1", "x", FileRole.MAIN, sha256="0" * 64)]))
         assert extract(main, tmp_path / "files")["missing_bytes"] == 1
+    finally:
+        main.close()
+
+
+# ------------------------------------------------------ Niederschriften (PR 31)
+
+def _sitzung_mit_protokoll(store: CitiesStore, stadt: str, kennung: str,
+                           start: str | None, url: str) -> None:
+    """Eine Sitzung samt Niederschrift, wie sie nach dem Normalisieren dasteht."""
+    from council.cities.model import Batch, File, FileRole, Meeting
+    store.upsert_batch(Batch(
+        meetings=[Meeting(kennung, stadt, None, "Sitzung", start)],
+        files=[File(f"{kennung}-prot", stadt, FileRole.PROTOCOL,
+                    meeting_id=kennung, access_url=url)]))
+
+
+def test_protokoll_fenster_rechnet_monate_zurueck():
+    from datetime import date
+    assert protokoll_fenster(24, date(2026, 9, 10)) == "2024-09-01"
+    assert protokoll_fenster(24, date(2026, 1, 5)) == "2024-01-01"
+    # Über die Jahresgrenze in die andere Richtung: Januar minus 2 Monate.
+    assert protokoll_fenster(2, date(2026, 1, 31)) == "2025-11-01"
+
+
+def test_alte_sitzungen_bleiben_liegen(tmp_path):
+    """Potsdam führt 663 Niederschriften; die Karte reicht keine zehn Jahre zurück."""
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    try:
+        _sitzung_mit_protokoll(store, "potsdam", "m-neu", "2026-05-05", "https://x.de/p/neu")
+        _sitzung_mit_protokoll(store, "potsdam", "m-alt", "2019-05-05", "https://x.de/p/alt")
+        _sitzung_mit_protokoll(store, "potsdam", "m-ohne", None, "https://x.de/p/ohne")
+
+        offen = store.files_without_bytes("potsdam", ("protocol",), meeting_since="2024-09-01")
+        assert [d["id"] for d in offen] == ["m-neu-prot"]
+        # Ohne Fenster ist alles dabei — der Vorlagen-Pfad bleibt unberührt.
+        assert len(store.files_without_bytes("potsdam", ("protocol",))) == 3
+    finally:
+        store.close()
+
+
+@responses.activate
+def test_drei_nieten_beenden_die_protokolle_einer_stadt(client, tmp_path):
+    """Magdeburg nennt 606 Adressen, die alle mit 404 antworten.
+
+    Ohne Abbruch wären das 606 sinnlose Abrufe bei einer Stadt, die uns nichts
+    getan hat — und der Lauf sähe dabei völlig gesund aus.
+    """
+    for i in range(10):
+        responses.add(responses.GET, f"https://x.de/prot/{i}", status=404)
+    offen = [{"id": f"f{i}", "access_url": f"https://x.de/prot/{i}"} for i in range(10)]
+    zahlen = {"protocols_fetched": 0, "protocols_failed": 0}
+
+    _hole(client, client.raw, "magdeburg", offen, zahlen, "Niederschriften",
+          nieten_max=PROTOCOL_NIETEN,
+          schluessel=("protocols_fetched", "protocols_failed"))
+
+    assert zahlen["protocols_failed"] == PROTOCOL_NIETEN
+    assert len(responses.calls) == PROTOCOL_NIETEN
+
+
+@responses.activate
+def test_eine_niete_zwischendrin_beendet_nichts(client):
+    """Nur FOLGENDE Fehlschläge zählen — eine kaputte Datei ist kein Ausfall."""
+    responses.add(responses.GET, "https://x.de/prot/0", status=404)
+    for i in (1, 2, 3):
+        responses.add(responses.GET, f"https://x.de/prot/{i}", body=b"%PDF-1.4 x",
+                      content_type="application/pdf")
+    offen = [{"id": f"f{i}", "access_url": f"https://x.de/prot/{i}"} for i in range(4)]
+    zahlen = {"protocols_fetched": 0, "protocols_failed": 0}
+
+    _hole(client, client.raw, "muenster", offen, zahlen, "Niederschriften",
+          nieten_max=PROTOCOL_NIETEN,
+          schluessel=("protocols_fetched", "protocols_failed"))
+
+    assert (zahlen["protocols_fetched"], zahlen["protocols_failed"]) == (3, 1)
+
+
+def test_stats_zaehlt_protokolle_und_ihren_text(tmp_path):
+    """Ohne diese Zahl merkt niemand, dass eine Stadt nur Adressen liefert."""
+    from council.cities.model import Body
+    main = CitiesStore(tmp_path / "cities.sqlite")
+    try:
+        main.upsert_body(Body("muenster", "Münster", "NW", "session"))
+        _sitzung_mit_protokoll(main, "muenster", "m1", "2026-05-05", "https://x.de/p/1")
+        _sitzung_mit_protokoll(main, "muenster", "m2", "2026-05-06", "https://x.de/p/2")
+        main.put_text("m1-prot", EXTRACTOR, VERSION, "Punkt 1 der Tagesordnung …", 4, "ok")
+        main.put_text("m2-prot", EXTRACTOR, VERSION, "", 0, "empty")
+
+        zeile = next(z for z in main.stats() if z["id"] == "muenster")
+        assert (zeile["protocols"], zeile["protocols_with_text"]) == (2, 1)
     finally:
         main.close()

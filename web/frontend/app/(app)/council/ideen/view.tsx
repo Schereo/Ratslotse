@@ -321,6 +321,44 @@ function IdeenKarte({ idee }: { idee: Idee }) {
         <Rueckmeldung idee={idee} />
       </div>
 
+      {/* Das „Warum" aus der Niederschrift. Steht nur da, wenn im Protokoll
+          wirklich eine Begründung steht — der Annotator sagt das mit
+          `grounded`, und das Backend gibt sonst `null`. Ein „Warum", das aus
+          dem Ergebnis erschlossen wäre, ist eine Behauptung über einen echten
+          Ratsbeschluss; lieber eine Leerstelle. */}
+      {idee.protocol && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            Warum es in {idee.body_name} so ausging
+          </summary>
+          <div className="mt-1.5 space-y-1.5 border-l-2 border-border pl-3">
+            {idee.protocol.decided && (
+              <p className="text-xs leading-relaxed text-foreground">
+                {idee.protocol.decided}
+                {idee.protocol.vote && (
+                  <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                    {idee.protocol.vote}
+                  </span>
+                )}
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {idee.protocol.why}
+            </p>
+            {idee.protocol.discussed && (
+              <p className="text-xs leading-relaxed text-muted-foreground/80">
+                {idee.protocol.discussed}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground/70">
+              aus der Niederschrift
+              {idee.protocol.organization ? ` des ${idee.protocol.organization}` : ""}
+              {idee.protocol.date ? ` vom ${datum(idee.protocol.date)}` : ""}
+            </p>
+          </div>
+        </details>
+      )}
+
       {(idee.siblings ?? []).length > 0 && (
         <details className="mt-3">
           <summary className="cursor-pointer text-xs font-medium text-muted-foreground">

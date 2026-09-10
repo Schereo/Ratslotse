@@ -8517,6 +8517,36 @@ export interface components {
             };
             /** Peers */
             peers: number;
+            /**
+             * IdeaProtocol
+             * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+             *
+             *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+             *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+             *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+             *     Fraktion in ihrer eigenen Sitzung braucht.
+             *
+             *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+             *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+             *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+             *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+             */
+            protocol: {
+                /** Date */
+                date: string | null;
+                /** Decided */
+                decided: string;
+                /** Discussed */
+                discussed: string;
+                /** Grounded */
+                grounded: boolean;
+                /** Organization */
+                organization: string | null;
+                /** Vote */
+                vote: string | null;
+                /** Why */
+                why: string;
+            } | null;
             /** Reason */
             reason: string;
             /** Siblings */
@@ -8572,6 +8602,36 @@ export interface components {
         IdeaFields: {
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
+        };
+        /**
+         * IdeaProtocol
+         * @description Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+         *
+         *     Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+         *     wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+         *     die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+         *     Fraktion in ihrer eigenen Sitzung braucht.
+         *
+         *     **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+         *     Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+         *     ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+         *     Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+         */
+        IdeaProtocol: {
+            /** Date */
+            date: string | null;
+            /** Decided */
+            decided: string;
+            /** Discussed */
+            discussed: string;
+            /** Grounded */
+            grounded: boolean;
+            /** Organization */
+            organization: string | null;
+            /** Vote */
+            vote: string | null;
+            /** Why */
+            why: string;
         };
         /**
          * IdeaSearchResponse
@@ -17142,4 +17202,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 18c264586a2f426249e0cafd96143e6d597bd56b253188b963b4e75826fdeaef
+// vertrag-sha256: 6016fc9667b475186dbfcafd2a02f1bb2bd55efdcdaa41f5b89c387c002c7f47

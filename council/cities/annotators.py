@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -101,6 +101,62 @@ class IdeaStance(BaseModel):
 
     stance: Literal[STANCE_VALUES]  # type: ignore[valid-type]
     reason: str = Field(default="", max_length=200)
+
+
+class OutcomeReason(BaseModel):
+    """Was in der Niederschrift zu diesem Tagesordnungspunkt steht.
+
+    **Das ist eine Wiedergabe, keine Erklärung** — und dieser Unterschied ist
+    der ganze Zweck der Klasse. Warum ein fremder Rat so entschieden hat, ist
+    für die Diskussion in Oldenburg das Wertvollste, was der Vergleich zu
+    bieten hat; ein Modell, das es *erfindet*, ist zugleich das Schädlichste.
+    Deshalb trägt die Antwort ein Feld, das die Frage selbst beantwortet:
+
+    ``grounded`` sagt, ob im Abschnitt eine **Begründung** steht — ein
+    Argument, ein Einwand, eine Wortmeldung — oder nur ein Ergebnis. Der
+    häufigere Fall ist „nur Ergebnis": Die meisten Beschlüsse fallen ohne
+    Aussprache. Dann bleibt ``why`` leer, ``grounded`` ist ``False``, und die
+    Karte zeigt an dieser Stelle nichts. Ein falsches ``True`` — Begründung
+    behauptet, wo keine steht — zählt im Prüfstand wie eine erfundene
+    Beleg-Kennung bei ``fit``: als harter Fehler, Schranke null.
+
+    ``vote`` ist das Abstimmungsergebnis im Wortlaut („einstimmig",
+    „12 dafür, 8 dagegen"), nicht umgerechnet. Es steht fast immer wörtlich
+    da und ist damit die verlässlichste der vier Angaben.
+
+    **Keine Personennamen.** Der Prompt verlangt Fraktionen und Rollen statt
+    Namen. Die Protokolle sind öffentlich, unsere Wiedergabe muss es nicht
+    sein — und ein Satz wie „Herr X hielt das für zu teuer" ist auf einer
+    Vergleichskarte etwas anderes als in einer Niederschrift.
+    """
+
+    discussed: str = ""
+    decided: str = ""
+    vote: str | None = None
+    why: str = ""
+    grounded: bool = False
+
+    #: Wie lang die Felder auf der Karte höchstens werden. **Gekürzt, nicht
+    #: abgewiesen** — und das ist gemessen: Mit ``max_length`` warf die
+    #: Prüfung fünf von 36 Antworten komplett weg, weil eine gute
+    #: Zusammenfassung 417 statt 400 Zeichen lang war. Eine Längengrenze ist
+    #: eine Anzeigefrage, keine inhaltliche; sie darf eine richtige Antwort
+    #: nicht in einen Totalausfall verwandeln.
+    GRENZEN: ClassVar[dict[str, int]] = {
+        "discussed": 600, "decided": 300, "vote": 140, "why": 400}
+
+    @field_validator("discussed", "decided", "why", mode="before")
+    @classmethod
+    def _kuerzen(cls, v, info: ValidationInfo) -> str:
+        text = " ".join(str(v or "").split())
+        grenze = cls.GRENZEN.get(info.field_name or "", 400)
+        return text if len(text) <= grenze else text[:grenze - 1].rstrip() + "…"
+
+    @field_validator("vote", mode="before")
+    @classmethod
+    def _vote_kuerzen(cls, v) -> str | None:
+        text = " ".join(str(v or "").split())
+        return text[:cls.GRENZEN["vote"]] or None
 
 
 class IdeaEffort(BaseModel):
@@ -427,6 +483,50 @@ ANNOTATORS: dict[str, Annotator] = {
                  "Entscheidung oder erst Wissen?); steht die Verwechslungs-"
                  "matrix voll davon, ist der Prompt an dieser Stelle zu "
                  "unscharf und nicht das Modell zu schlecht.",
+    ),
+    "reason": Annotator(
+        key="reason", version="1", applies_to=("agenda_item",),
+        prompt_system="cities_reason_system", prompt_user="cities_reason_user",
+        model=os.environ.get("CITIES_REASON_MODEL", "deepseek/deepseek-v4-flash"),
+        payload=OutcomeReason,
+        # Ein Abschnitt je Aufruf: Zwei Niederschriften in einem Aufruf laden
+        # dazu ein, die Begründung der einen an den Beschluss der anderen zu
+        # hängen — dieselbe Verwechslung, die `fit` und `stance` zu je einem
+        # Objekt gezwungen hat.
+        # 6.000 Zeichen, weil ein Abschnitt so lang wird; 4.000 Tokens, weil
+        # ein knappes Budget keine Fehlermeldung liefert, sondern eine
+        # ABGESCHNITTENE Antwort mit Status 200.
+        batch_size=1, input_chars=6000, max_tokens=4000,
+        # AUS, und zwar nicht wegen des Modells. Der erste Messlauf am
+        # 10.09.2026 gegen 36 echte Abschnitte hat den Prüfstand widerlegt,
+        # nicht den Annotator: Der einzige gemeldete „erfundene" Fall war
+        # richtig — das Modell zitierte „auf Grund der kurzfristigen
+        # Einreichung der Vorlage" aus dem Text, und mein Label war falsch,
+        # weil ich beim Setzen nur die ersten Zeilen des Abschnitts gelesen
+        # hatte. Ein Golden Set, das man per Regel setzt, misst die Regel.
+        #
+        # Was das Modell wirklich tut, sah in allen durchgesehenen Antworten
+        # sauber aus: gute Zusammenfassungen der Beratung, konservatives
+        # `grounded` (1 von 16 — es behauptet lieber keinen Grund als einen
+        # falschen). Genau die richtige Richtung. Aber solange der Maßstab
+        # nicht steht, läuft hier kein bezahlter Cron.
+        #
+        # Was fehlt: 40 Abschnitte, ganz gelesen, `has_reason` und `vote` von
+        # Hand gesetzt. `eval/build_cities_reason_cases.py` zieht die
+        # Stichprobe; das Urteil muss ein Mensch fällen.
+        active=False,
+        gut_wenn="eval/run_cities_reason.py gegen Handfälle aus echten "
+                 "Niederschriften. Drei Schranken, und die erste ist eine "
+                 "harte Zusage bei NULL: `grounded=true`, wo im Abschnitt gar "
+                 "keine Begründung steht. Das ist derselbe Fehler wie eine "
+                 "erfundene Beleg-Kennung bei `fit` — die Karte behauptet "
+                 "dann ein „Warum“, das es nicht gibt, und genau dafür ist "
+                 "das Feature da.\n\n"
+                 "Die zweite: `vote` über 90 %. Es steht wörtlich im Text; "
+                 "wer es nicht trifft, hat den Abschnitt falsch geschnitten "
+                 "und nicht falsch gelesen. Die dritte ist eine Handdurchsicht "
+                 "von `why` — trifft der Satz die Begründung? — mit Schranke "
+                 "80 %.",
     ),
     "effort": Annotator(
         key="effort", version="1", applies_to=("paper",),

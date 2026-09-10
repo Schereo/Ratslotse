@@ -1379,6 +1379,36 @@ class IdeaEvidence(TypedDict):
     outcome: str | None
 
 
+class IdeaProtocol(TypedDict):
+    """Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
+
+    Das „Warum" — der Grund, aus dem der Städtevergleich überhaupt gebaut
+    wurde: Dass Magdeburg die Verpackungssteuer-Prüfung eingestellt hat, sagt
+    die Karte schon; *warum* der Rat das tat, ist das, was eine Oldenburger
+    Fraktion in ihrer eigenen Sitzung braucht.
+
+    **``grounded`` entscheidet, ob überhaupt etwas gezeigt wird.** Steht im
+    Abschnitt nur ein Ergebnis und keine Begründung — der häufigere Fall —,
+    ist es ``False``, ``why`` bleibt leer, und die Oberfläche zeigt an dieser
+    Stelle nichts. Eine erfundene Begründung wäre schlimmer als gar keine.
+    """
+    #: Worum die Debatte ging. Leer, wenn ohne Aussprache entschieden wurde.
+    discussed: str
+    #: Was beschlossen wurde, nah am Wortlaut.
+    decided: str
+    #: Das Abstimmungsergebnis, wie es dasteht („einstimmig", „12 dafür, 8
+    #: dagegen"). ``None``, wenn keines im Protokoll steht.
+    vote: str | None
+    #: Die Begründung, wie sie im Text steht. Leer, wenn keine dasteht.
+    why: str
+    #: Steht im Abschnitt wirklich eine Begründung?
+    grounded: bool
+    #: Das Gremium, das getagt hat, und wann — die Herkunftsangabe unter dem
+    #: Absatz („aus der Niederschrift des Kulturausschusses vom 18.06.2026").
+    organization: str | None
+    date: str | None
+
+
 class IdeaSibling(TypedDict):
     """Eine weitere Vorlage DERSELBEN Stadt zu derselben Idee."""
     paper_id: str
@@ -1421,6 +1451,10 @@ class Idea(TypedDict):
     reason: str
     confidence: str
     evidence: list[IdeaEvidence]
+    #: Was in der Niederschrift dieser Sitzung stand — das „Warum".
+    #: ``None``, solange keine Niederschrift vorliegt oder ihr Abschnitt keine
+    #: Begründung trägt. Das ist der Regelfall und kein Fehler.
+    protocol: IdeaProtocol | None
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
     #: Annotator `effort`): inquiry < review < resolution < decision < budget.
     #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.

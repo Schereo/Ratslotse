@@ -59,25 +59,31 @@ def _fetch_one(args: tuple) -> tuple[str, dict | str]:
 def bericht(main: CitiesStore, specs: list[BodySpec]) -> None:
     """Was da ist — und was fehlt.
 
-    Die beiden rechten Spalten sind der Rückstand: Ein Papier ohne Einordnung
+    ``Protokolle`` ist „mit Text / vorhanden": Die Niederschrift je Sitzung
+    ist das Einzige, worin steht, WARUM ein Rat so entschieden hat. Steht dort
+    ``0/606``, nennt die Stadt Adressen, die sie nicht ausliefert (Magdeburg).
+
+    Die beiden mittleren Rückstands-Spalten sind der Rückstand: Ein Papier ohne Einordnung
     ist für den Vergleich unsichtbar, eines ohne Vektor hat keine Nachbarn.
     Sie stehen hier, weil sie sonst nirgends stehen — und weil ein Backfill
     der Historie sie um eine Größenordnung wachsen lässt, ohne dass der
     Wochen-Cron das je aufholt.
     """
     print(f"{'Stadt':15} {'Dialekt':9} {'Papiere':>8} {'m. Text':>8} {'m. Ergebnis':>12} "
-          f"{'o. Einordn.':>12} {'o. Vektor':>10} {'zuletzt geholt':>17}")
-    print("-" * 98)
+          f"{'o. Einordn.':>12} {'o. Vektor':>10} {'Protokolle':>13} {'zuletzt geholt':>17}")
+    print("-" * 112)
     stand = {z["id"]: z for z in main.stats(EMBED_MODEL)}
     for spec in specs:
         z = stand.get(spec.id)
         if not z:
             print(f"{spec.name[:14]:15} {spec.dialect:9} {'—':>8} {'—':>8} {'—':>12} "
-                  f"{'—':>12} {'—':>10} {'noch nie':>17}")
+                  f"{'—':>12} {'—':>10} {'—':>13} {'noch nie':>17}")
             continue
+        protokolle = f"{z['protocols_with_text']}/{z['protocols']}" if z["protocols"] else "—"
         print(f"{z['name'][:14]:15} {spec.dialect:9} {z['papers']:8} {z['papers_with_text']:8} "
               f"{z['papers_with_outcome']:12} {z['papers_unclassified']:12} "
-              f"{z['papers_unembedded']:10} {(z['last_fetched'] or '')[:16]:>17}")
+              f"{z['papers_unembedded']:10} {protokolle:>13} "
+              f"{(z['last_fetched'] or '')[:16]:>17}")
 
 
 def pruefbericht(main: CitiesStore, specs: list[BodySpec]) -> int:
