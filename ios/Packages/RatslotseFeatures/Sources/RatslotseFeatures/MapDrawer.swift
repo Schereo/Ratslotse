@@ -27,10 +27,12 @@ struct MapDrawer<Header: View, Content: View>: View {
     /// bis zur Oberkante der Tab-Leiste).
     let available: CGFloat
     /// Was unter dem Bereich noch liegt: Tab-Leiste und Home-Indikator. In
-    /// den unteren Stellungen bleibt das Blatt darüber, ganz ausgefahren
-    /// wächst es darunter — wie eine gewöhnliche Seite, deren Ende die
-    /// Leiste überlagert. Sonst schiene zwischen Blatt und Leiste die Karte
-    /// durch, wenn gar keine Karte mehr zu sehen ist.
+    /// den unteren Stellungen endet das Blatt an der Leiste, und die Karte
+    /// scheint durch deren Glas. Ganz ausgefahren legt es eine Schürze in
+    /// Seitenfarbe darunter — wie eine gewöhnliche Seite, deren Ende die
+    /// Leiste überlagert; sonst schiene dort Karte durch, wo gar keine Karte
+    /// mehr zu sehen ist. Der Inhalt bekommt unten so viel Luft, dass die
+    /// letzte Zeile unter der Leiste hervorscrollt.
     var bottomInset: CGFloat = 0
     /// Wie hoch das Blatt in seiner Stellung ist — die Karte liest das, um
     /// ihre Kamera in den freien Teil zu legen.
@@ -42,7 +44,7 @@ struct MapDrawer<Header: View, Content: View>: View {
     @State private var headHeight: CGFloat = 96
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var fullHeight: CGFloat { max(200, available - 8) + bottomInset }
+    private var fullHeight: CGFloat { max(200, available - 8) }
     private var halfHeight: CGFloat { min(max(280, available * 0.46), 440) }
     private var peekHeight: CGFloat { headHeight }
 
@@ -62,9 +64,6 @@ struct MapDrawer<Header: View, Content: View>: View {
         if raw < peekHeight { return peekHeight - (peekHeight - raw) * 0.15 }
         return raw
     }
-
-    /// Wie weit das Blatt schon in den Rand unter dem Bereich hineinreicht.
-    private var eaten: CGFloat { min(bottomInset, max(0, liveHeight - (fullHeight - bottomInset))) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -91,11 +90,13 @@ struct MapDrawer<Header: View, Content: View>: View {
                 .stroke(RatsColor.border, lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.14), radius: 18, y: -4)
-        .padding(.bottom, bottomInset - eaten)
+        .background(alignment: .top) {
+            RatsColor.page.frame(height: liveHeight + (position == .full ? bottomInset : 0))
+        }
         .animation(reduceMotion ? nil : RatsMotion.travel, value: position)
         .animation(reduceMotion ? nil : RatsMotion.travel, value: drag == 0)
         .onChange(of: liveHeight, initial: true) { _, value in
-            onHeight(min(fullHeight, max(peekHeight, value)) - eaten)
+            onHeight(min(fullHeight, max(peekHeight, value)))
         }
         .accessibilityAction(named: position == .full ? "Blatt einklappen" : "Blatt ausklappen") {
             step(position == .full ? .down : .up)

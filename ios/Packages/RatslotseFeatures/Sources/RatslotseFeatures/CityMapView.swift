@@ -158,9 +158,16 @@ struct CityMapView: View {
         // den `safeAreaInset` nicht). Eine gestapelte Seite (Deep-Link,
         // „Mein Viertel" aus dem Menü) hat keine Leiste und damit nur den
         // Indikator — derselbe Wert, ohne Sonderfall.
+        //
+        // Nur die KARTE greift unter den Rand (sie füllt den Schirm bis unter
+        // die Leiste); der ZStack selbst bleibt im Container, damit die
+        // Schublade sicher an dessen Unterkante — der Oberkante der Leiste —
+        // sitzt. Ein `ignoresSafeArea` am ZStack streckte ihn gemessen um
+        // mehr als den Rand, und das Blatt endete 9 pt über dem Schirmrand.
         let bottomInset = geo.safeAreaInsets.bottom
         return ZStack(alignment: .bottom) {
             stage(width: geo.size.width, bottomInset: drawerHeight + bottomInset, compact: true)
+                .ignoresSafeArea(.container, edges: .bottom)
             MapDrawer(
                 position: $drawer,
                 available: geo.size.height,
@@ -170,7 +177,6 @@ struct CityMapView: View {
                 content: { panel(compact: true) }
             )
         }
-        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     // MARK: Karte
