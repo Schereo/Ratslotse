@@ -372,6 +372,12 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
     public let accessToken: String?
     public let displayName: String?
     public let savesConversations: Int?
+    /// Ein SCHWEBENDER Adresswechsel: die Adresse, an die ein Bestätigungslink
+    /// unterwegs ist (`nil` = keiner). Optional, weil ein Backend im Stand vor
+    /// 09/2026 den Schlüssel nicht mitschickt — ein nicht-optionales Feld
+    /// ließe den `JSONDecoder` dort werfen und die App käme nicht über die
+    /// Anmeldung hinaus (die Falle steht in ios/CLAUDE.md).
+    public let pendingEmail: String?
 
     public var isActive: Bool { status == "active" && emailVerified }
 
@@ -409,6 +415,7 @@ public struct User: Codable, Sendable, Equatable, Identifiable {
         case accessToken = "access_token"
         case displayName = "display_name"
         case savesConversations = "saves_conversations"
+        case pendingEmail = "pending_email"
     }
 }
 

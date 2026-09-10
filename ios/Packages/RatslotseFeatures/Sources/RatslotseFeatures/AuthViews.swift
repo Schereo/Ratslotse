@@ -414,6 +414,16 @@ struct VerificationPendingView: View {
     let model: AppModel
     let user: User
     @State private var feedback: String?
+    // Der Ausweg beim Tippfehler. Er steht HIER, weil dieser Bildschirm die
+    // ganze App ersetzt: Ein unbestätigtes Konto kommt gar nicht bis zur
+    // Konto-Ansicht. Ohne ihn wäre eine vertippte Adresse eine Sackgasse.
+    @State private var aendern = false
+    @State private var neu = ""
+    @State private var passwort = ""
+    @State private var busy = false
+
+    /// Wohin der Link zuletzt ging — die neue Adresse, sobald einer schwebt.
+    private var zieladresse: String { model.user?.pendingEmail ?? user.email }
 
     var body: some View {
         AuthScaffold(
@@ -422,7 +432,7 @@ struct VerificationPendingView: View {
             subtitle: "Bestätige deine E-Mail-Adresse. Sobald der Link geöffnet ist, geht es hier automatisch weiter."
         ) {
             VStack(spacing: 16) {
-                RatsLabel(user.email, .mailWarning)
+                RatsLabel(zieladresse, .mailWarning)
                     .font(RatsFont.body(14, weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
                 Button {
@@ -440,6 +450,45 @@ struct VerificationPendingView: View {
                 }
                     .buttonStyle(SecondaryButtonStyle())
                     .frame(maxWidth: .infinity)
+
+                if aendern {
+                    VStack(spacing: 10) {
+                        TextField("name@example.org", text: $neu)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        SecureField("Dein Passwort", text: $passwort)
+                            .textContentType(.password)
+                        Button {
+                            busy = true
+                            Task {
+                                do {
+                                    try await model.changeEmail(
+                                        newEmail: neu.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        password: passwort)
+                                    feedback = model.user?.pendingEmail.map {
+                                        "Bestätigungslink an \($0) unterwegs."
+                                    } ?? "Deine E-Mail-Adresse wurde geändert."
+                                    aendern = false
+                                    neu = ""
+                                    passwort = ""
+                                } catch { feedback = error.localizedDescription }
+                                busy = false
+                            }
+                        } label: {
+                            Text(busy ? "Wird geändert …" : "Adresse ändern").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .disabled(busy || !neu.contains("@") || passwort.isEmpty)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    Button("Falsche Adresse? Ändern") { aendern = true }
+                        .font(RatsFont.body(13, weight: .semibold))
+                        .foregroundStyle(RatsColor.primary)
+                }
+
                 if let feedback { Text(feedback).font(RatsFont.body(12)).foregroundStyle(RatsColor.secondary) }
                 Button("Abmelden", role: .destructive) { Task { await model.logout() } }
             }

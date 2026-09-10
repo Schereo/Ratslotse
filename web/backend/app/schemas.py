@@ -116,6 +116,13 @@ class UserOut(BaseModel):
     # cookie and leave this null.
     access_token: str | None = None
     display_name: str | None = None
+    # Ein SCHWEBENDER Adresswechsel: die Adresse, an die ein Bestätigungslink
+    # unterwegs ist (null = keiner). Optional mit Vorgabe, anders als die
+    # Pflichtfelder oben — gefüllt wird es nur von `/auth/me` und den beiden
+    # Konto-Endpunkten, damit `get_current_user` nicht bei JEDEM Request eine
+    # zweite Abfrage fährt. Die im App Store ausgelieferte App kennt den
+    # Schlüssel nicht und überliest ihn.
+    pending_email: str | None = None
     # Einwilligung „Gespräche merken" (null = nie gefragt). Reist mit dem
     # Konto mit, damit die Frage-Seite beim Öffnen sofort weiß, ob die
     # Erstnutzungs-Karte steht — sonst erscheint sie erst nach der Antwort von
@@ -325,6 +332,18 @@ class LimitsUpdate(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class ChangeEmailRequest(BaseModel):
+    """Adresswechsel verlangt eine frische Bestätigung — wie
+    ``DeleteAccountRequest``, und aus demselben Grund: Eine offen liegende
+    Sitzung (Laptop im Café, gestohlenes Cookie) darf die Adresse nicht
+    wechseln können, sonst übernimmt, wer die Sitzung hat, per „Passwort
+    vergessen" gleich das ganze Konto. Konten mit Passwort bestätigen mit dem
+    Passwort, Apple-only-Konten mit einem frischen Apple-Identity-Token."""
+    new_email: EmailStr
+    current_password: str = Field(default="", max_length=128)
+    apple_identity_token: str = Field(default="", max_length=4096)
 
 
 class DeleteAccountRequest(BaseModel):

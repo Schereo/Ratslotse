@@ -139,3 +139,67 @@ test.describe("Abmelden", () => {
     await page.waitForURL(/\/login/, { timeout: 15_000 });
   });
 });
+
+test.describe("E-Mail-Adresse ändern", () => {
+  // EIGENE Sitzung statt der geteilten „nutzerin": Dieser Block schreibt die
+  // Adresse des Kontos um. An der geteilten Identität getan, könnte sich
+  // danach keine andere Spec mehr anmelden.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  /** Ein frisches Konto anlegen und angemeldet zurückgeben. */
+  async function frischesKonto(page: import("@playwright/test").Page) {
+    const adresse = `wechsel-${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.org`;
+    const antwort = await page.request.post("/api/auth/register", {
+      data: { email: adresse, password: PASSWORT },
+    });
+    expect(antwort.ok(), await antwort.text()).toBeTruthy();
+    await page.goto("/login");
+    await page.locator("#email").fill(adresse);
+    await page.locator("#password").fill(PASSWORT);
+    await page.getByRole("button", { name: "Anmelden" }).click();
+    await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
+    await page.request.post("/api/onboarding/setup", { data: { step: 3, done: true } });
+    return adresse;
+  }
+
+  test("die neue Adresse gilt — und die alte trägt nicht mehr", async ({ page }) => {
+    const alt = await frischesKonto(page);
+    const neu = `neu-${Date.now()}-${Math.floor(Math.random() * 1e4)}@example.org`;
+
+    await page.goto("/account");
+    // Über die IDs, nicht über die Beschriftung: „Aktuelles Passwort" steht
+    // zweimal auf der Seite (hier und in der Passwort-Karte darunter).
+    await page.locator("#neue-email").fill(neu);
+    await page.locator("#email-passwort").fill(PASSWORT);
+    await page.getByRole("button", { name: "Adresse ändern" }).click();
+
+    // Das Test-Backend hat keinen Resend-Key — der Wechsel gilt also sofort
+    // (dieselbe Regel wie bei der Registrierung).
+    await expectToast(page, /geändert/i);
+    await expect(page.getByText(neu).first()).toBeVisible();
+
+    // Die eigentliche Prüfung: Womit man sich ab jetzt anmeldet.
+    await page.request.post("/api/auth/logout");
+    await page.goto("/login");
+    await page.locator("#email").fill(alt);
+    await page.locator("#password").fill(PASSWORT);
+    await page.getByRole("button", { name: "Anmelden" }).click();
+    await expect(page.getByText(/E-Mail oder Passwort/i)).toBeVisible();
+
+    await page.locator("#email").fill(neu);
+    await page.locator("#password").fill(PASSWORT);
+    await page.getByRole("button", { name: "Anmelden" }).click();
+    await page.waitForURL(/\/(link|dashboard)/, { timeout: 15_000 });
+  });
+
+  test("das falsche Passwort ändert nichts", async ({ page }) => {
+    const alt = await frischesKonto(page);
+    await page.goto("/account");
+    await page.locator("#neue-email").fill("egal@example.org");
+    await page.locator("#email-passwort").fill("falsches-passwort");
+    await page.getByRole("button", { name: "Adresse ändern" }).click();
+    await expectToast(page, /Passwort/i);
+    await page.reload();
+    await expect(page.getByText(alt).first()).toBeVisible();
+  });
+});
