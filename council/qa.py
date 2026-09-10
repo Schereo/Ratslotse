@@ -848,6 +848,26 @@ RUECKFRAGE_TEXT = (
 #: Ab wie vielen Beschlüssen eine Sitzung als Vorschlagsquelle taugt.
 RUECKFRAGE_MINDEST_TOPS = 5
 
+
+def rueckfrage_noetig(analyse: dict, *, einfach: bool = False,
+                      person=None, ort=None, sitzungen=None) -> bool:
+    """Wird auf diese Frage zurückgefragt, statt sie zu beantworten?
+
+    Die Regel steht hier und nicht in den Endpunkten, weil sie ZWEI Wege
+    betrifft — die schnelle Frage und die gründliche Recherche. Zwei Fassungen
+    liefen unweigerlich auseinander, und die Abweichung fiele niemandem auf:
+    Beide Wege würden ja weiter antworten, nur eben verschieden.
+
+    Was das Urteil des Modells ÜBERSTIMMT, ist der wichtigere Teil. Wer eine
+    Ratsperson, einen Katalogort oder eine konkrete Sitzung nennt, hat einen
+    Gegenstand genannt — Punkt; das sind deterministische Stammdaten-Treffer,
+    kein Sprachmodell-Urteil. Eine beantwortbare Frage abzuweisen ist der
+    teurere der beiden Fehler. ``einfach`` ist aus demselben Grund dabei: Der
+    Knopf „Einfacher erklären" schickt einen Wunsch, keine Frage — der sieht
+    gegenstandslos aus und meint die vorige Antwort.
+    """
+    return bool(analyse.get("unklar")) and not einfach and not (person or ort or sitzungen)
+
 #: „Stadt Oldenburg (Oldb)" — der amtliche Zusatz steht in jedem zweiten Titel
 #: und trägt in einer Frage an Ratslotse null Information.
 _OLDB_RE = re.compile(r"\s*\(Oldb\.?\)", re.IGNORECASE)
@@ -897,14 +917,8 @@ def rueckfrage_vorschlaege(store, frage: str, limit: int = 3) -> list[str]:
     if len(fragen) >= limit:
         return fragen[:limit]
     try:
-        # Sitzungen mit SUBSTANZ, nicht bloß die jüngsten: Eine Sitzung mit
-        # einem einzigen Punkt hat als „wichtigsten Beschluss" zwangsläufig
-        # Verfahrenskram — lokal gemessen war das „Beratung von
-        # nichtöffentlichen Tagesordnungspunkten im Verwaltungsausschuss".
-        # Als Einladung zum Weiterfragen ist so ein Titel wertlos.
-        for sitzung in store.juengste_sitzungen_mit_beschluessen(limit=limit * 5):
-            if (sitzung.get("n") or 0) < RUECKFRAGE_MINDEST_TOPS:
-                continue
+        for sitzung in store.juengste_sitzungen_mit_beschluessen(
+                limit=limit * 2, mindest_tops=RUECKFRAGE_MINDEST_TOPS):
             kurz = vorschlags_gegenstand(sitzung.get("top_titel") or "")
             if len(kurz) < 8:
                 continue

@@ -74,7 +74,14 @@ private struct QuestionPeopleEnvelope: Decodable, Sendable {
 }
 
 private struct QuestionExamplesEnvelope: Decodable, Sendable {
-    let sitzungen: [QuestionExampleSession]
+    /// Der Server nennt die Liste `sessions`. Hier stand bis zum 10.09.2026
+    /// `sitzungen` — seit der Einführung des Endpunkts (#950), also von Anfang
+    /// an. Der Aufruf steht unter `try?`: Das Decodieren scheiterte still, die
+    /// App zeigte immer nur ihre eingebauten Beispiele, und weil die gut sind,
+    /// fiel niemandem etwas auf. Dieselbe Klasse Fehler wie #913 beim
+    /// Tagesordnungs-Baustein — nur auf einem REST-Endpunkt, den der
+    /// Strom-Vertrag (`scripts/sse_vertrag.py`) nicht abdeckt.
+    let sessions: [QuestionExampleSession]
 }
 
 private struct QuestionExampleSession: Decodable, Sendable {
@@ -437,7 +444,7 @@ struct QuestionsView: View {
 
     private func loadQuestionExamples() async {
         guard let response: QuestionExamplesEnvelope = try? await model.api.get("/api/council/qa-beispiele"),
-              let latest = response.sitzungen.first
+              let latest = response.sessions.first
         else { return }
 
         var fresh = ["Was hat \(questionCommittee(latest.committee)) am \(questionDate(latest.sessionDate)) beschlossen?"]
@@ -459,12 +466,20 @@ struct QuestionsView: View {
         RatsDate.short(iso) ?? iso
     }
 
+    /// Der Server liefert `top_titel` seit dem 10.09.2026 bereits als
+    /// Gegenstand — ohne Verfahrensstand, Antragsteller-Klammer und „(Oldb)".
+    /// Hier bleibt nur die Notbremse gegen eine übermäßig lange Zeile, und die
+    /// schneidet an der WORTGRENZE: Der harte Schnitt bei 69 Zeichen trennte
+    /// mitten im Wort.
     private func shortQuestionTopic(_ title: String) -> String {
         let cleaned = title
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard cleaned.count > 72 else { return cleaned }
-        return String(cleaned.prefix(69)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+        let kurz = String(cleaned.prefix(69))
+        guard let luecke = kurz.lastIndex(of: " "), kurz.distance(from: kurz.startIndex, to: luecke) >= 20
+        else { return String(kurz).trimmingCharacters(in: .whitespacesAndNewlines) + "…" }
+        return String(kurz[..<luecke]).trimmingCharacters(in: .whitespacesAndNewlines) + " …"
     }
 
     private static let fallbackQuestionExamples = [

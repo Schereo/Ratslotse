@@ -1698,11 +1698,21 @@ class SitzungenMixin(StoreBasis):
         return {(r[0] or "").strip().lower()
                 for r in self._conn.execute("SELECT name FROM committees") if r[0]}
 
-    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2) -> list[dict]:
+    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2,
+                                            mindest_tops: int = 1) -> list[dict]:
         """Die jüngsten vergangenen Sitzungen, zu denen Beschlüsse extrahiert
         sind — Futter für frische KI-Beispielfragen (5a/I-07). ``top_titel``
         nennt den wichtigsten Beschluss der Sitzung, damit ein Vorschlag
-        konkret nach dem Inhalt fragen kann statt nur nach dem Datum."""
+        konkret nach dem Inhalt fragen kann statt nur nach dem Datum.
+
+        ``mindest_tops`` hält dünne Sitzungen heraus, und das ist keine
+        Kosmetik: Eine Sitzung mit einem einzigen Punkt hat als „wichtigsten
+        Beschluss" zwangsläufig den, der da ist — und das ist typischerweise
+        Verfahrenskram. Am 10.09.2026 stand deshalb „Was wurde zu ‚Beratung
+        von nichtöffentlichen Tagesordnungspunkten im …' entschieden?" als
+        Beispielfrage auf der leeren Seite. Kein Titel-Putz repariert das; die
+        Zeile ist untruncated genauso wertlos. Die Auswahl muss stimmen.
+        """
         rows = self._conn.execute(
             """SELECT cs.committee, cs.session_date, COUNT(*) AS n,
                       (SELECT d2.title FROM council_decisions d2
@@ -1712,7 +1722,8 @@ class SitzungenMixin(StoreBasis):
                FROM council_decisions d
                JOIN council_sessions cs ON cs.ksinr = d.ksinr
                WHERE d.kind = 'decision'
-               GROUP BY d.ksinr ORDER BY cs.session_date DESC LIMIT ?""",
-            (int(limit),),
+               GROUP BY d.ksinr HAVING COUNT(*) >= ?
+               ORDER BY cs.session_date DESC LIMIT ?""",
+            (max(1, int(mindest_tops)), int(limit)),
         ).fetchall()
         return [dict(r) for r in rows]

@@ -123,8 +123,8 @@ class FakeStore:
     def get_decisions_by_ids(self, ids):
         return [{"id": i, "title": self._zeilen[i]} for i in ids if i in self._zeilen]
 
-    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2):
-        return self._sitzungen[:limit]
+    def juengste_sitzungen_mit_beschluessen(self, limit: int = 2, mindest_tops: int = 1):
+        return [s for s in self._sitzungen if (s.get("n") or 0) >= mindest_tops][:limit]
 
 
 def test_traegt_ein_wort_der_frage_einen_anker_gewinnt_der():
@@ -154,16 +154,39 @@ def test_ohne_anker_kommen_die_juengsten_sitzungen():
                       "Was wurde zu „Gebührensatzung für die Abfallwirtschaft“ entschieden?"]
 
 
-def test_eine_sitzung_mit_einem_einzigen_punkt_taugt_nicht():
-    """Ihr „wichtigster Beschluss" ist zwangsläufig Verfahrenskram — lokal
-    gemessen „Beratung von nichtöffentlichen Tagesordnungspunkten im
-    Verwaltungsausschuss". Als Einladung zum Weiterfragen ist das wertlos."""
-    store = FakeStore(sitzungen=[
-        {"top_titel": "Beratung von nichtöffentlichen Tagesordnungspunkten", "n": 1},
-        {"top_titel": "Sanierung der Cäcilienbrücke", "n": 14},
-    ])
-    assert qa.rueckfrage_vorschlaege(store, "Was hast du?") == [
-        "Was wurde zu „Sanierung der Cäcilienbrücke“ entschieden?"]
+def test_eine_sitzung_mit_einem_einzigen_punkt_taugt_nicht(tmp_path):
+    """Ihr „wichtigster Beschluss" ist zwangsläufig der, der da ist — und das
+    ist typischerweise Verfahrenskram. Am 10.09.2026 stand deshalb „Was wurde
+    zu ‚Beratung von nichtöffentlichen Tagesordnungspunkten im …' entschieden?"
+    als Beispielfrage auf der leeren Seite. Kein Titel-Putz repariert das; die
+    Zeile ist ungekürzt genauso wertlos. Die AUSWAHL muss stimmen.
+
+    Deshalb gegen eine echte Datenbank: Die Schranke sitzt im SQL, und ein
+    Attrappen-Store prüfte nur die Attrappe."""
+    from council.scraper import CouncilSession
+    from council.store import CouncilStore
+
+    cs = CouncilStore(tmp_path / "council.sqlite")
+    cs.save_session(CouncilSession(1, "Ausschuss für Allgemeine Angelegenheiten",
+                                   "2026-08-17", "17:00", "Rathaus"))
+    cs.save_session(CouncilSession(2, "Rat", "2026-06-29", "17:00", "Rathaus"))
+    with cs._conn:
+        cs._conn.execute(
+            "INSERT INTO council_decisions (id,ksinr,position,item_number,title,kind,importance)"
+            " VALUES (1,1,1,'1','Beratung von nichtöffentlichen Tagesordnungspunkten',"
+            "'decision',10)")
+        for i in range(5):
+            cs._conn.execute(
+                "INSERT INTO council_decisions (id,ksinr,position,item_number,title,kind,importance)"
+                " VALUES (?,2,?,?,?,'decision',?)",
+                (10 + i, i, str(i), f"Sanierung der Cäcilienbrücke {i}", 50 - i))
+
+    ohne = cs.juengste_sitzungen_mit_beschluessen(limit=2)
+    mit = cs.juengste_sitzungen_mit_beschluessen(limit=2, mindest_tops=5)
+    cs.close()
+
+    assert ohne[0]["top_titel"].startswith("Beratung von nichtöffentlichen")
+    assert [z["top_titel"] for z in mit] == ["Sanierung der Cäcilienbrücke 0"]
 
 
 def test_der_gegenstand_wird_vom_verwaltungsapparat_befreit():
@@ -208,6 +231,21 @@ def test_ein_kaputter_bestand_laesst_die_rueckfrage_stehen():
             raise RuntimeError("DB weg")
 
     assert qa.rueckfrage_vorschlaege(Kaputt(), "Was hast du?") == []
+
+
+# ---- Die Regel selbst --------------------------------------------------------
+
+def test_ein_harter_anker_ueberstimmt_das_urteil():
+    """Person, Katalogort und Sitzung sind Stammdaten-Treffer, kein
+    Modell-Urteil. Wer einen nennt, hat einen Gegenstand genannt."""
+    unklar = {"unklar": True}
+    assert qa.rueckfrage_noetig(unklar) is True
+    assert qa.rueckfrage_noetig(unklar, person={"nachname": "Ellberg"}) is False
+    assert qa.rueckfrage_noetig(unklar, ort={"id": "eversten"}) is False
+    assert qa.rueckfrage_noetig(unklar, sitzungen=[{"ksinr": 1}]) is False
+    assert qa.rueckfrage_noetig(unklar, einfach=True) is False
+    assert qa.rueckfrage_noetig({"unklar": False}) is False
+    assert qa.rueckfrage_noetig({}) is False
 
 
 # ---- Der Kurzschluss im Router ----------------------------------------------
@@ -329,3 +367,68 @@ def test_der_turn_landet_im_gespraech(client, monkeypatch):
     # Auch im Schnappschuss: Sonst sähe der Turn beim Wiederöffnen aus wie
     # eine Antwort ohne Treffer und bekäme wieder deren Angebote.
     assert turn["sources"]["unclear"] is True
+
+
+# ---- Und derselbe Riegel vor der gründlichen Recherche -----------------------
+
+def test_die_recherche_startet_auf_eine_unklare_frage_gar_nicht(client, monkeypatch):
+    """Ein Job zerlegt die Frage in Facetten, sucht zu jeder, liest Dokumente
+    und schreibt einen Bericht — eine halbe Minute und ein Vielfaches einer
+    normalen Antwort, für eine Frage, die niemand gestellt hat."""
+    from council import qa as qa_mod
+    from app import deepresearch
+
+    monkeypatch.setattr(qa_mod, "analyse_query",
+                        lambda *a, **k: _analyse("Was hast du?", unklar=True))
+    monkeypatch.setattr(deepresearch, "start_job", _nie_starten)
+    antwort = client.post("/api/council/deep-research", json={"question": "Was hast du?"})
+
+    assert antwort.status_code == 400
+    leib = antwort.json()
+    # Ein STRING, kein Objekt: Die ausgelieferte App zeigt genau dieses Feld
+    # als Fehlertext des Turns — sie bekommt so die Rückfrage im Wortlaut.
+    assert leib["detail"] == qa.RUECKFRAGE_TEXT
+    assert leib["unclear"] is True
+    assert isinstance(leib["questions"], list)
+
+
+def _nie_starten(*args, **kwargs):
+    raise AssertionError("Für eine unklare Frage darf kein Job starten.")
+
+
+def test_die_abgewiesene_recherche_kostet_kein_kontingent(client, monkeypatch):
+    """Das Kontingent zählt ANGELEGTE Jobs — eine Rückfrage darf also gar
+    keinen anlegen, sonst kostet das Nichtstun eine der fünf Recherchen."""
+    from council import qa as qa_mod
+    from app import deepresearch
+
+    monkeypatch.setattr(qa_mod, "analyse_query",
+                        lambda *a, **k: _analyse("Was hast du?", unklar=True))
+    monkeypatch.setattr(deepresearch, "start_job", _nie_starten)
+    client.post("/api/council/deep-research", json={"question": "Was hast du?"})
+
+    store = Store(RATSLOTSE_DB)
+    uid = store._conn.execute("SELECT id FROM web_users LIMIT 1").fetchone()["id"]
+    heute = store.deep_jobs_heute(uid)
+    zaehler = {z["key"]: z["n"] for z in store.ereignisse()["events"]}
+    store.close()
+    assert heute == 0
+    # Und sie zählt auch nicht als Recherche.
+    assert zaehler["research"] == 0
+    assert zaehler["ai_question_unclear"] == 1
+
+
+def test_eine_klare_frage_startet_die_recherche_weiterhin(client, monkeypatch):
+    from council import qa as qa_mod
+    from app import deepresearch
+
+    gestartet: list = []
+    monkeypatch.setattr(qa_mod, "analyse_query", lambda *a, **k: _analyse(
+        "Wie ist der Stand bei der Cäcilienbrücke?", unklar=False))
+    monkeypatch.setattr(deepresearch, "start_job", lambda *a, **k: gestartet.append(a))
+    antwort = client.post("/api/council/deep-research",
+                          json={"question": "Wie ist der Stand bei der Cäcilienbrücke?"})
+
+    assert antwort.status_code == 201
+    assert antwort.json()["job_id"]
+    assert gestartet

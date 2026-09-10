@@ -517,7 +517,15 @@ function derAusschuss(committee: string): string {
  *  („…; außerplanmäßige Bewilligung von Mehrausgaben"), Antragsteller-Klammern,
  *  „ - Beschluss", und vorneweg gern die Firmierung des Vorhabenträgers. Ohne
  *  das entsteht der Stummel „Stadion Oldenburg GmbH & Co. KG: Stadionneubau
- *  Maastrichter " — mitten im Wort abgeschnitten. Leerer String = unbrauchbar. */
+ *  Maastrichter " — mitten im Wort abgeschnitten. Leerer String = unbrauchbar.
+ *
+ *  Seit dem 10.09.2026 macht der Server den ersten Teil der Arbeit schon
+ *  (`qa.vorschlags_gegenstand`), und vor allem wählt er die Sitzung nach
+ *  Substanz aus — kein Titel-Putz rettet „Beratung von nichtöffentlichen
+ *  Tagesordnungspunkten im Verwaltungsausschuss", die Zeile ist ungekürzt
+ *  genauso wertlos. Das hier bleibt als Sicherheitsnetz für die Fälle, die
+ *  der Server nicht kennt (Firmierungen, Semikolon-Ketten) und für ältere
+ *  Server-Stände. */
 function kurzerGegenstand(roh: string): string {
   // „(Oldb)" ist der amtliche Namenszusatz und steht mitten im Titel — als
   // Klammer-Trenner behandelt würde er „Satzung der Stadt Oldenburg" übrig
@@ -1196,7 +1204,22 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
       }
       if (!res.ok) {
         let msg = "Recherche konnte nicht gestartet werden.";
-        try { const b = await res.json(); if (typeof b?.detail === "string") msg = b.detail; } catch { /* egal */ }
+        let leib: { detail?: unknown; unclear?: unknown; questions?: unknown } | null = null;
+        try { leib = await res.json(); } catch { /* egal */ }
+        if (typeof leib?.detail === "string") msg = leib.detail;
+        // Die Frage nennt keinen Gegenstand: Der Server hat gar keinen Job
+        // angelegt (es kostet also auch keine Recherche). Das ist kein Fehler,
+        // sondern dieselbe Rückfrage wie auf dem schnellen Weg — der optimistisch
+        // angelegte Turn wird dazu umgewidmet, statt ihn zu entfernen und die
+        // Antwort in einen Toast zu verbannen.
+        if (leib?.unclear) {
+          patchTurn(key, {
+            research: false, deepStatus: undefined, deepPhase: undefined,
+            qtype: null, mode: null, unclear: true, answer: msg,
+            followups: Array.isArray(leib.questions) ? (leib.questions as string[]) : [],
+          });
+          return;
+        }
         throw new Error(msg);
       }
       const b = await res.json();

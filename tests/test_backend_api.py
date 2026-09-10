@@ -5276,7 +5276,11 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     """Anschlussfrage im Recherche-Modus: „Nochmal bitte ausführlich" trägt ihr
     Thema nicht im Text. Mit Gesprächsverlauf löst der Job sie — wie /ask — zu
     einer eigenständigen Frage auf und zerlegt, sucht und berichtet damit.
-    Ohne Verlauf bleibt alles wie zuvor (kein zusätzlicher Analyse-Call).
+    Seit dem 10.09.2026 läuft die Analyse bei JEDEM Start, auch ohne Verlauf:
+    Sie bringt das Klarheits-Urteil mit, und ohne das startete eine gründliche
+    Recherche auch auf „Was hast du?" — eine halbe Minute, ein Vielfaches einer
+    normalen Antwort und eine der fünf Recherchen des Tages. Der zweite Aufruf
+    im Job kostet nichts: `analyse_query` cached auf Modell, Verlauf und Frage.
 
     Angezeigt und gespeichert bleibt in beiden Fällen die getippte Frage; die
     aufgelöste Fassung reist als ``kontext`` mit, damit ein aus der DB
@@ -5330,12 +5334,22 @@ def test_deep_research_loest_anschlussfrage_auf(client, monkeypatch):
     assert snap["question"] == "Nochmal bitte ausführlich"
     assert snap["sources"]["context"] == "Wichtigste Themen in Krusenbusch in den letzten Jahren"
 
-    # Erste Frage eines Gesprächs (kein Verlauf): keine Auflösung, kein Call.
+    # Erste Frage eines Gesprächs (kein Verlauf): analysiert wird trotzdem —
+    # das Klarheits-Urteil hängt daran. Aufgelöst wird nichts, es gibt ja
+    # nichts aufzulösen: Recherchiert wird die getippte Frage.
     gesehen.clear()
     zerlegt.clear()
+
+    def _analyse_ohne_verlauf(question, **k):
+        gesehen["question"] = question
+        gesehen["verlauf"] = k.get("verlauf")
+        return {"question": question, "terms": "stadion", "kind": "topic", "party": None}
+
+    monkeypatch.setattr(qa_mod, "analyse_query", _analyse_ohne_verlauf)
     r2 = client.post("/api/council/deep-research", json={"question": "Wie ist der Stand beim Stadionneubau?"})
     _deep_events(client, r2.json()["job_id"])
-    assert gesehen == {}
+    assert gesehen["question"] == "Wie ist der Stand beim Stadionneubau?"
+    assert gesehen["verlauf"] == []
     assert zerlegt == ["Wie ist der Stand beim Stadionneubau?"]
 
 
