@@ -14,8 +14,8 @@ import pytest
 
 from council.cities.adapters import get_adapter
 from council.cities.adapters._common import (
-    SYNTHETISCHE_KENNUNG, link_by_title, link_within_meeting, normalize_title,
-    parse_date, promote_main, zwillinge_zusammenfuehren,
+    SYNTHETISCHE_KENNUNG, link_by_title, normalize_title, parse_date,
+    promote_main, zwillinge_zusammenfuehren,
 )
 from council.cities.adapters.allris4 import _datum_von
 from council.cities.adapters.session import _magdeburg_url, url_fix_for
@@ -276,69 +276,20 @@ def test_einzelne_ersatzzeichen_fliegen_aus_dem_text():
     assert clean("Ganz normaler Text") == "Ganz normaler Text"
 
 
-# --------------------------------------------------------------------------
-# Zwei Kennungsräume für denselben Punkt (Magdeburg)
-# --------------------------------------------------------------------------
+def test_magdeburg_bindet_ueber_die_kennung_allein(store):
+    """Somacos verweist sauber — es braucht keinen Titelabgleich.
 
-def _batch_mit_zwei_kennungsraeumen(ergebnisse=("beschlossen", "beschlossen")) -> Batch:
-    """Magdeburgs Fall, auf das Nötigste gekürzt.
+    Bis 10.09.2026 stand hier das Gegenteil: Magdeburgs Beratungen zeigten
+    angeblich auf einen zweiten Kennungsraum, den die Sitzungen nicht kennen,
+    und `link_within_meeting` verband sie über den Titel. Beides war der Rest
+    des phase0-Imports — die Sitzungs-Fixture trug erfundene `#top-`-Kennungen
+    statt der echten. Gegen die richtigen Rohobjekte gehalten nennt die
+    Beratungsfolge genau die Punkte, die auch in der Sitzung stehen.
 
-    Die Sitzung nennt ihre Punkte ``…/meetings/1#top-4`` und ``…#top-4.1``,
-    die Beratungsfolge des Papiers nennt ``…/agendaitems/999`` — eine Kennung,
-    die in keiner Sitzung vorkommt.
+    Dieser Test ist der Wächter, der die entfernte Funktion ersetzt: Fällt er,
+    verweist eine Somacos-Instanz doch wieder ins Leere, und dann braucht es
+    einen Notnagel — aber einen, der zu dem passt, was dann wirklich schiefgeht.
     """
-    return Batch(
-        papers=[Paper("p1", "magdeburg", "Investitionen in den Messeplatz fördern",
-                      reference="DS0123/26")],
-        meetings=[Meeting("https://x/meetings/1", "magdeburg", None, "Stadtrat", "2026-03-01")],
-        agenda_items=[
-            AgendaItem("https://x/meetings/1#top-4", "https://x/meetings/1",
-                       "Investitionen in den Messeplatz fördern", number="4",
-                       result_raw=ergebnisse[0], outcome=outcome(ergebnisse[0])),
-            AgendaItem("https://x/meetings/1#top-4.1", "https://x/meetings/1",
-                       "Investitionen in den Messeplatz fördern", number="4.1",
-                       result_raw=ergebnisse[1], outcome=outcome(ergebnisse[1])),
-        ],
-        consultations=[Consultation("c1", "p1", meeting_id="https://x/meetings/1",
-                                    agenda_item_id="https://x/agendaitems/999")],
-    )
-
-
-def test_beratung_findet_ihren_punkt_trotz_fremder_kennung():
-    """Ohne das hatte kein Magdeburger Papier je ein Ergebnis (0 von 700)."""
-    batch = _batch_mit_zwei_kennungsraeumen()
-    assert link_within_meeting(batch) == 1
-    assert batch.consultations[0].agenda_item_id == "https://x/meetings/1#top-4", \
-        "bei gleichem Ergebnis gewinnt die kürzeste Nummer — der Hauptpunkt"
-
-
-def test_uneinige_punkte_binden_gar_nicht():
-    """Hauptpunkt angenommen, Änderungsantrag abgelehnt: jede Wahl wäre geraten."""
-    batch = _batch_mit_zwei_kennungsraeumen(("beschlossen", "abgelehnt"))
-    assert link_within_meeting(batch) == 0
-    assert batch.consultations[0].agenda_item_id == "https://x/agendaitems/999", \
-        "die ursprüngliche Kennung bleibt stehen, auch wenn sie ins Leere zeigt"
-
-
-def test_gueltige_kennung_wird_nicht_angefasst():
-    """Wo der Dialekt sauber verweist, hat der Notnagel nichts zu suchen."""
-    batch = _batch_mit_zwei_kennungsraeumen()
-    batch.consultations[0] = Consultation(
-        "c1", "p1", meeting_id="https://x/meetings/1",
-        agenda_item_id="https://x/meetings/1#top-4.1")
-    assert link_within_meeting(batch) == 0
-    assert batch.consultations[0].agenda_item_id == "https://x/meetings/1#top-4.1"
-
-
-def test_ohne_sitzung_kein_abgleich():
-    """ALLRIS nennt weder Punkt noch Sitzung — dafür gibt es `link_by_title`."""
-    batch = _batch_mit_zwei_kennungsraeumen()
-    batch.consultations[0] = Consultation("c1", "p1")
-    assert link_within_meeting(batch) == 0
-
-
-def test_magdeburg_normalisiert_bindet_seine_beratungen(store):
-    """Der Adapter ruft den Abgleich — nicht nur die Funktion kann es."""
     lade(store, "magdeburg")
     sitzungen = json.loads(
         (FIXTURES / "magdeburg_meetings.json").read_text(encoding="utf-8"))
@@ -347,8 +298,14 @@ def test_magdeburg_normalisiert_bindet_seine_beratungen(store):
     batch = get_adapter("session").normalize("magdeburg", store)
 
     punkte = {a.id for a in batch.agenda_items}
-    gebunden = [c for c in batch.consultations if c.agenda_item_id in punkte]
+    mit_punkt = [c for c in batch.consultations if c.agenda_item_id]
+    gebunden = [c for c in mit_punkt if c.agenda_item_id in punkte]
     assert gebunden, "keine einzige Beratung hat ihren Tagesordnungspunkt gefunden"
+    assert len(gebunden) == len(mit_punkt), \
+        "eine Beratung nennt einen Punkt, den ihre Sitzung nicht kennt"
+    # Und die Verbindung entsteht wirklich aus der Kennung, nicht aus einem
+    # Notnagel: Kein `#title-match#` unter den gebundenen.
+    assert not [c for c in gebunden if "#title-match#" in c.id]
 
 
 @pytest.mark.parametrize("objekt,erwartet", [
@@ -465,13 +422,28 @@ def test_zwei_echte_punkte_bleiben_zwei():
     assert len(batch.agenda_items) == 2
 
 
-def test_zwei_erfundene_ohne_echte_bleiben_stehen():
+def test_nur_erfundene_kennungen_bleiben_stehen():
     """Ohne Ziel wird nicht zusammengelegt — lieber doppelt als verloren.
 
     Eine Sitzung, die nur aus dem übernommenen Probelauf stammt und nie
     nachgeerntet wurde, hat keinen Gewinner. Ihre Punkte bleiben, wie sie sind.
     """
-    batch = _batch_mit_zwei_kennungsraeumen()
+    batch = Batch(
+        papers=[Paper("p1", "magdeburg", "Investitionen in den Messeplatz fördern",
+                      reference="DS0123/26")],
+        meetings=[Meeting("https://x/meetings/1", "magdeburg", None, "Stadtrat",
+                          "2026-03-01")],
+        agenda_items=[
+            AgendaItem("https://x/meetings/1#top-4", "https://x/meetings/1",
+                       "Investitionen in den Messeplatz fördern", number="4",
+                       result_raw="beschlossen", outcome=outcome("beschlossen")),
+            AgendaItem("https://x/meetings/1#top-4.1", "https://x/meetings/1",
+                       "Investitionen in den Messeplatz fördern", number="4.1",
+                       result_raw="beschlossen", outcome=outcome("beschlossen")),
+        ],
+        consultations=[Consultation("c1", "p1", meeting_id="https://x/meetings/1",
+                                    agenda_item_id="https://x/agendaitems/999")],
+    )
     vorher = [a.id for a in batch.agenda_items]
     assert zwillinge_zusammenfuehren(batch) == 0
     assert [a.id for a in batch.agenda_items] == vorher

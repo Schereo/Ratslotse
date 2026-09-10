@@ -13,9 +13,9 @@ Systems zugute — auch denen, die noch niemand angeschlossen hat.
 
 | Datei | Zeilen | angeschlossen | wartet in der Registry |
 |---|---:|---|---|
-| `adapters/_common.py` | 366 | alle | alle |
+| `adapters/_common.py` | 411 | alle | alle |
 | `adapters/allris4.py` | 181 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn |
-| `adapters/session.py` | 168 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
+| `adapters/session.py` | 167 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
 | `adapters/rubin.py` | 90 | — | Freiburg, Darmstadt |
 | `adapters/oldenburg.py` | 313 | Oldenburg (liest `council.sqlite`) | — |
 
@@ -32,7 +32,7 @@ waren nur falsch:
 
 | Fehler | Wirkung | jetzt |
 |---|---|---|
-| Magdeburgs Beratungen zeigen auf Punkte aus einem zweiten Kennungsraum | **0 von 700** Vorlagen mit Ergebnis, bei 5.982 Punkten mit einem | `link_within_meeting` |
+| ~~Magdeburgs Beratungen zeigen auf Punkte aus einem zweiten Kennungsraum~~ | **0 von 700** Vorlagen mit Ergebnis, bei 5.982 Punkten mit einem | war eine Fehldiagnose, s. u. |
 | Magdeburg und Münster vergeben eine Beratungs-Kennung mehrfach | Stationen überschreiben sich: 575 bzw. 467 verloren | `eindeutige_beratungen` |
 | Die ALLRIS-Rückwärtsblätterung fragt Sitzungen nach `date` statt `start` | jede Sitzung gilt als undatiert und damit als alt, Abbruch nach zwei Seiten: Osnabrück 137 Sitzungen zu 2.864 Vorlagen | `_datum_von` |
 | „nicht empfohlen" enthält „empfohlen" | 275-mal stand das Gegenteil des Protokolls da | `_ABLEHNUNG_RE` |
@@ -68,11 +68,30 @@ und Migration 7 (die 22.152, die schon lagen). Und `pruefung.py` hat ein
 fünftes Band, `anteil_doppelter_punkte` — vorher 31 bis 53 % je Stadt,
 nachher 0,0 bis 0,1 %.
 
-**Was dabei herauskam und nicht in den Zahlen steht:** Auch
-`link_within_meeting` war eine Antwort auf diesen Rest. Sein Docstring
-behauptete, Magdeburgs Schnittstelle führe zwei Kennungsräume; sie tut es
-nicht. Gemessen bindet die Funktion heute **null** Beratungen. Sie steht
-weiter da — wer sie anfasst, prüfe zuerst, ob sie noch gebraucht wird.
+**Und der erste der vier Fehler oben war gar keiner.** „Magdeburgs
+Beratungen zeigen auf einen zweiten Kennungsraum" beschrieb denselben
+phase0-Rest von der anderen Seite: Die *Sitzungen* trugen die erfundenen
+Kennungen, die Beratungen die echten. Die Reparatur von damals
+(`link_within_meeting`, ein Titelabgleich innerhalb der Sitzung) ist deshalb
+mit ausgebaut. Gemessen band sie **null**, und zwar aus einem strukturellen
+Grund, nicht zufällig: Sie greift nur, wenn eine Beratung einen Punkt nennt,
+den ihre Sitzung nicht kennt — mit **einem** Kennungsraum heißt das, dass die
+Sitzung ihre Tagesordnung gar nicht mitliefert (Magdeburg 29 Fälle, alle 29
+mit leerer Tagesordnung; die vier anderen Städte 0). Ein Titelabgleich gegen
+eine leere Tagesordnung hat nichts zu vergleichen.
+
+Was seine Stelle einnimmt, ist ein Wächter statt einer Reparatur:
+`test_magdeburg_bindet_ueber_die_kennung_allein` hält fest, dass jede
+Somacos-Beratung ihren Punkt über die Kennung findet. Fällt er, verweist eine
+Instanz doch wieder ins Leere — und dann gehört ein Notnagel gebaut, der zu
+dem passt, was dann wirklich schiefgeht.
+
+**Die Sitzungs-Fixture war selbst betroffen.** `magdeburg_meetings.json` trug
+erfundene `#top-`-Kennungen und einen Gremien-Link als Sitzungsnamen — sie war
+nachgebaut, nicht geholt, und bewies deshalb genau den Fehler, den sie prüfen
+sollte. Sie ist jetzt ein gekürzter, aber unveränderter Abzug der beiden
+echten Sitzungen. Das ist der Grund für Schritt 5 im Rezept oben, und hier hat
+er gefehlt.
 
 Daraus folgt die Regel, die hier am meisten wert ist: **Nach jeder Ernte die
 Plausibilität prüfen, nicht nur die Zahlen ansehen.**

@@ -7,7 +7,11 @@ falsch.
 
 1. Magdeburgs Beratungen zeigten auf Tagesordnungspunkte aus einem zweiten
    Kennungsraum — **0 von 700** Vorlagen hatten ein Ergebnis, obwohl fast
-   6.000 Punkte eines tragen.
+   6.000 Punkte eines tragen. (Der zweite Raum kam nicht von Magdeburg,
+   sondern aus unserem eigenen phase0-Import; s. den Absatz unten. Die
+   Reparatur von damals ist deshalb am 10.09.2026 wieder ausgebaut.) (Der zweite Raum kam nicht von Magdeburg,
+   sondern aus unserem eigenen phase0-Import; s. Punkt 5. Die Reparatur von
+   damals ist deshalb am 10.09.2026 wieder ausgebaut.)
 2. Magdeburg und Münster vergaben dieselbe Beratungs-Kennung mehrfach; die
    Stationen überschrieben sich gegenseitig (575 bzw. 467 verloren).
 3. Die Rückwärts-Blätterung von ALLRIS las bei Sitzungen das Feld ``date``,
