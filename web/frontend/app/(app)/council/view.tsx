@@ -449,7 +449,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // ausgeblendet (Kontext am Ursprungsbeschluss). Rechercheure blenden sie
   // optional wieder einzeln ein.
   const showSubvotes = sp.get("subvotes") === "1";
-  // Date range also lives in the URL so the Trends quarter bars can deep-link here.
+  // Date range also lives in the URL so the Themenfeld-Rückblicke can deep-link here.
   const dateFrom = sp.get("date_from") ?? "";
   const dateTo = sp.get("date_to") ?? "";
   // Beschlüsse (votes) / Berichte (reports) / Alle (both) — in the URL so the
