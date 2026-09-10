@@ -57,6 +57,15 @@ Daraus folgen drei Regeln, die zu 1–20 dazukommen:
     könnten, wäre das ganz super."* Bei gleichem Nutzen gewinnt die
     niedersächsische Stadt — gleiches Landesrecht heißt, die Entscheidung
     ist im Oldenburger Ratssaal zitierfähig.
+25. **Mindestens die fünf größten niedersächsischen Städte** (Tim,
+    10.09.2026, spät): *„Falls du meinst, dass Inhalte fehlen, also andere
+    Städte, würde ich mir wünschen, mindestens die fünf größten Städte noch
+    in Niedersachsen mit dazuzunehmen."* Nach Braunschweig, Oldenburg und
+    Osnabrück sind das **Hannover, Göttingen, Wolfsburg, Salzgitter und
+    Hildesheim**. Keine davon hat eine funktionierende Schnittstelle — §2.3
+    und §3 sagen, was das je Stadt heißt. Der Wunsch ändert die Reihenfolge
+    des Plans, nicht seine Regeln: kein Umweg um eine Sperre, kein Adapter
+    ohne Fixture.
 
 ## 1. Zielbild
 
@@ -225,6 +234,47 @@ Für Garbsen, Wolfenbüttel, Goslar, Stade, Melle, Uelzen und Neustadt a. Rbge.
 war auf der Rathaus-Seite kein RIS-Host zu finden; sie sind nicht geprüft,
 nicht ausgeschlossen.
 
+**D — die Vollerhebung, 340 Kommunen ab 5.000 Einwohnern** (10.09.2026,
+spät). Jede einzeln über ihre Website nachgesehen — Startseite, bis zu zwanzig
+Politik-Unterseiten, ein Dutzend direkter Adressen auf der eigenen Domain —
+und jeder Fund einmal aufgerufen. Das Bild kippt gegenüber der
+Domain-Suche:
+
+| Befund | Kommunen | Einwohner |
+|---|---:|---:|
+| OParl antwortet | **11** | 355.000 |
+| OParl da, aber abgeschaltet | 39 | 642.000 |
+| keine Schnittstelle | 154 | 2.900.000 |
+| kein System gefunden | 136 | 2.700.000 |
+
+| Programm | Kommunen | davon OParl an |
+|---|---:|---:|
+| SessionNet (SOMACOS) | **140** | 5 |
+| ALLRIS (CC e-gov) | 27 + 7 (ALLRIS 4) | 4 |
+| SD.NET RIM (STERNBERG) | 21 | 2 |
+| more! rubin, regisafe, Provox | 4 / 3 / 1 | — |
+| SIM, Eigenbau auf Notes/Domino (nur Hannover) | 1 | — |
+
+**145 von 203 Systemen laufen auf einer eigenen Domain der Kommune** — für
+jede domainbasierte Suche unsichtbar. SessionNet beherrscht Niedersachsen mit
+69 %, war in Gruppe A–C aber massiv unterzählt. Zwei regionale Betreiber, die
+in keiner Herstellerliste stehen: **ITEBO Osnabrück** (`<gemeinde>ris.itebo.
+de`, 12 Kommunen, zwei davon mit OParl an: Twist, Norderney) und **OWL-IT**
+(7). Die elf mit funktionierendem OParl sind entweder schon im Vergleich oder
+unter 56.000 Einwohnern.
+
+**„Abgeschaltet" heißt nicht „gesperrt".** Nachgemessen an fünf Systemen
+(Lingen, Nordhorn, Wolfsburg, Lüneburg, Laatzen): **kein einziges** schickt
+eine Anmelde-Aufforderung (`WWW-Authenticate`). SD.NET antwortet HTTP 400 —
+„ungültige Anfrage", nicht 401/403 — mit dem Satz, das Modul sei nicht
+aktiviert; ALLRIS 4 antwortet HTTP 500, ein Serverfehler auf einer Route, die
+es gibt. Ein Zugang würde nichts ändern, und er ist auch nicht vorgesehen:
+OParl ist per Spezifikation *anonymer, lesender* Zugriff auf **öffentliche**
+Inhalte. Was fehlt, ist eine Entscheidung der Kommune, das Modul beim
+Hersteller freizuschalten — und was das kostet, sagen weder Sternberg noch das
+OParl-Projekt öffentlich; dessen FAQ verweist auf die Verträge. Die Anfrage ist
+also eine E-Mail, die Antwort kann ein Angebot sein.
+
 **Was daraus folgt.** Vergleichbarkeit über das Landesrecht ist zu haben —
 nur nicht geschenkt. Es gibt drei Wege, und dieser Plan geht zwei davon:
 Langenhagen und Peine sofort (PR 35), einen HTML-Adapter für die
@@ -278,11 +328,25 @@ Sechs Kriterien, in der Reihenfolge, in der sie für Tims Frage zählen:
 | 8 | Freiburg | BW | 235 k, Beratung 5/5, 13.959 Vorlagen. | RUBIN, keine Protokolle, keine Lizenz, 11 s. Erst nach Darmstadt. |
 | 9–12 | Köln, Dresden, Wuppertal, Düsseldorf | NW/SN | SessionNet, Adapter vorhanden, Beratung 5/5. | Keine Protokolle, 360 k–1,1 Mio., 2–13 s. Bringen dieser Phase nichts. |
 
-**Empfehlung: Langenhagen und Peine sofort (PR 35), Hildesheim über den
-neuen HTML-Adapter (PR 36), Bonn parallel für die Protokolle (PR 37).**
-Damit kommen drei niedersächsische Städte dazu, davon eine in Oldenburgs
-Größenklasse — und der Adapter aus PR 36 macht Göttingen, Salzgitter und
-Delmenhorst zu Registry-Einträgen statt zu Projekten.
+**Das Ziel ist mit Regel 25 gesetzt: die fünf größten niedersächsischen
+Städte nach den dreien, die schon drin sind.** Keine von ihnen hat eine
+funktionierende Schnittstelle, und deshalb ist jede ein anderer Weg:
+
+| Stadt | Einw. | System | Schnittstelle | Weg |
+|---|---:|---|---|---|
+| **Hannover** | 548 k | Eigenbau, Notes/Domino | keine — aber RSS + iCal | **PR 39**: eigener Adapter, die Feeds als Einstieg |
+| **Göttingen** | 131 k | ALLRIS classic (HTML) | keine; **sperrt uns per Cloudflare aus** | PR 36 — nur, wenn die Stadt die Sperre öffnet; sonst Anfrage (Anhang B) |
+| **Wolfsburg** | 127 k | ALLRIS 4 | **da, kaputt** (HTTP 500 hinter `system`) | eine Nachricht an die Stadt (Anhang B); danach ein Registry-Eintrag |
+| **Salzgitter** | 105 k | ALLRIS net 3.9 (HTML) | keine; **antwortete von hier nicht** | PR 36 — nach einer Probe von einem anderen Netz; sonst Anfrage |
+| **Hildesheim** | 102 k | ALLRIS classic (HTML) | keine | **PR 36**, gemessen lesbar — die Stadt, an der der Adapter gebaut wird |
+
+**Empfehlung, in dieser Reihenfolge:** Langenhagen und Peine (PR 35, ein
+halber Tag, sie sind die einzigen mit funktionierendem OParl); dann
+**Hildesheim über PR 36** und mit demselben Adapter Göttingen und Salzgitter,
+sobald die beiden Sperren geklärt sind; parallel die Anfrage an Wolfsburg;
+zuletzt **Hannover (PR 39)**, weil es die meiste eigene Arbeit ist und
+zugleich die am wenigsten mit Oldenburg vergleichbare Stadt. Bonn (PR 37) und
+Darmstadt (PR 38) bleiben im Plan, rücken aber hinter die fünf.
 
 ## PR 31 — Die Niederschriften holen
 
@@ -583,10 +647,19 @@ eine **von Hand gezählte** Sitzung (Regel: kein Test gegen die eigene
 Fixture). Fertig, wenn `--pruefen` schweigt und der Anteil Vorlagen mit
 Ergebnis ≥ 60 % liegt.
 
+**Göttingen und Salzgitter gehören dazu — mit einer Bedingung.** Beide
+fahren ALLRIS classic und sind mit Regel 25 gesetzt; beide haben sich in der
+Messung aber verweigert: Göttingen mit HTTP 403 (Cloudflare), Salzgitter mit
+Zeitüberschreitungen. Bevor einer der beiden in die Registry kommt, braucht es
+eine **Probe von einem anderen Netz** (die Sperre kann gegen das Netz gerichtet
+sein, aus dem wir messen, nicht gegen uns). Antwortet die Stadt dann, ist sie
+ein Registry-Eintrag mit `html_suffix` und eine Fixture. Antwortet sie nicht,
+steht sie in Anhang B — als Anfrage, nicht als Umgehung.
+
 **Kosten.** Der Adapter: zwei bis drei Tage. Hildesheim ernten und
-klassifizieren: < $5. Göttingen, Salzgitter, Delmenhorst und Celle danach:
-je ein Registry-Eintrag, eine Probe und < $5 — aber je einzeln zu
-entscheiden, nicht in diesem PR.
+klassifizieren: < $5. Göttingen und Salzgitter danach je ein halber Tag und
+< $5, Delmenhorst und Celle ebenso — aber je einzeln zu entscheiden, in
+eigenen PRs.
 
 ## PR 37 — Bonn
 
@@ -637,6 +710,66 @@ Darmstädter Rohobjekten trägt und `--pruefen` schweigt.
 
 **Kosten.** < $10.
 
+## PR 39 — Hannover, der Eigenbau
+
+**Warum.** Regel 25, und weil Hannover mit 548.000 Einwohnern die Hälfte
+aller Ratsvorlagen Niedersachsens beisteuern dürfte. Es fährt **keines der
+vier Programme**, sondern ein eigenes „Sitzungsmanagement" (SIM) auf
+Notes/Domino unter `e-government.hannover-stadt.de/lhhsimwebre.nsf`. Der
+Website-Suche ist es komplett entgangen — `hannover.de` baut seine Verweise
+per JavaScript, im ausgelieferten Quelltext steht kein Link darauf.
+
+**Zwei Fallen, beide gemessen (10.09.2026).** Erstens: `/oparl/system`
+antwortet dort mit **Status 200** — und liefert die Startseite der Stadt.
+Eine weiche 404; wer nur den Statuscode prüft, zählt Hannover als
+„Schnittstelle vorhanden". Nur die Prüfung auf `oparlVersion` im Rumpf
+entlarvt das. Zweitens: Die Seiten tragen eine `SessionID` in der Adresse
+(`TermineAktuell.xsp?SessionID=…`) — der Adapter darf sie nicht in Kennungen
+übernehmen.
+
+**Was Hannover hat, das sonst niemand hat.** Vier maschinenlesbare Feeds
+ohne OParl, alle unter `…/lhhsimwebre.nsf/`:
+
+| Feed | Inhalt | gemessen |
+|---|---|---|
+| `RSS_Sitzungen.xml` | Sitzungen mit Tagesordnung, rollendes Zwei-Wochen-Fenster | 5 kB |
+| `RSS_Drucksachen_Rat.xml` | neue Vorlagen des Rates: Titel, Nummer, Einreicher, beratende Gremien | 7 Einträge |
+| `RSS_Drucksachen_STBR.xml` | dasselbe für die 13 Stadtbezirksräte | — |
+| `Sitzungen.ics` | alle Termine als iCal, je mit stabiler Dokumentadresse | **276 Termine**, 194 kB |
+
+Die Dokumentschlüssel sind lesbar und stabil: `/TM/20260907_AGleich` ist die
+Sitzung des Gleichstellungsausschusses vom 7.9.2026. Dazu die Seiten
+`DrucksachenAktuell.xsp` (neue Vorlagen mit Nummer, Typ, Gremium),
+`Ausschuesse.xsp`, `Kalender.xsp`, `Suche.xsp`.
+
+**Was sich ändert.** Neues Modul `council/cities/adapters/sim_hannover.py`,
+Dialekt `"sim"`. Der Einstieg sind die Feeds, nicht die Oberfläche: `Sitzungen.
+ics` liefert die Sitzungen samt Dokumentadresse, `RSS_Drucksachen_*` die neuen
+Vorlagen; von dort folgt der Adapter den Dokumentadressen und legt die
+HTML-Seiten **roh** ab (dieselbe Regel wie in PR 36). Die Beratungsfolge steht
+auf der Drucksachen-Seite („Gremien: Ausschuss für …, Sozialausschuss,
+Verwaltungsausschuss") und muss gegen die Sitzungen aufgelöst werden — das ist
+die Arbeit, die den Adapter von einem Feed-Leser unterscheidet.
+
+**Was vorher zu klären ist.** Ob die Feeds auch den **Bestand** hergeben oder
+nur das Neue: Der Sitzungs-RSS ist ein Zwei-Wochen-Fenster, das iCal führt 276
+Termine — wie weit zurück, sagt die Messung noch nicht. Reicht es nicht,
+braucht die Historie `Kalender.xsp` und `Suche.xsp`, und die sind XPages mit
+Sitzungsstatus — der teuerste Teil. **Erst messen, dann bauen.**
+
+**Test.** Fixture aus einem echten RSS-Eintrag und einer gekürzten
+Drucksachen-Seite (ohne Personennamen; Einreicher sind Fraktionen, die
+dürfen stehen). Der Test prüft die Auflösung „Gremien"-Zeile → Sitzungen.
+
+**Messung.** Vorlagen mit Beratungsfolge, Vorlagen mit Ergebnis, Anteil
+Sitzungen mit Protokoll — dieselben Größen wie überall, gegen eine von Hand
+gezählte Sitzung. Fertig, wenn `--pruefen` schweigt und Hannover in
+`cities_bilanz.py` steht.
+
+**Kosten.** Drei bis vier Tage — der größte Einzelposten des Plans, für eine
+Stadt. Ernte und Einordnung: rund 10.000 Vorlagen im Jahr, davon der Großteil
+aus den Stadtbezirksräten → classify ~$3, `fit` < $10.
+
 ## Anhang A — Reihenfolge, Aufwand, Kosten
 
 | PR | Was | hängt an | Aufwand | Modellkosten |
@@ -647,8 +780,10 @@ Darmstädter Rohobjekten trägt und `--pruefen` schweigt.
 | 34 | Oldenburgs Seite | 33 | 1 Tag | < $1 |
 | **35** | **Langenhagen + Peine (NI, OParl)** | — (parallel) | **½ Tag + Laufzeit** | **< $3** |
 | **36** | **Adapter `allris_html`, Hildesheim (NI)** | 35 | **2–3 Tage** | **< $5** |
+| **36b** | **Göttingen, Salzgitter** (nach Probe von anderem Netz) | 36 | je ½ Tag | je < $5 |
 | 37 | Bonn | — (parallel) | 1 Tag + Laufzeit | < $10 |
 | 38 | Darmstadt / `rubin.py` | 37 | 1–2 Tage | < $10 |
+| **39** | **Hannover, Eigenbau (Feeds + Domino-HTML)** | — | **3–4 Tage** | < $15 |
 
 31 → 32 → 33 → 34 ist die Kette, die das „Warum" liefert. 35 und 37 hängen an
 nichts und sollten parallel laufen: Beide bringen Protokollquellen, die 32
@@ -657,9 +792,10 @@ zu einer niedersächsischen Stadt in Oldenburgs Größe. 38 erst nach 37.
 
 **Wenn die Zeit nicht für alles reicht**, ist die Reihenfolge nach Nutzen:
 35 (ein halber Tag für zwei NI-Städte), dann 31–33 (das „Warum"), dann 36
-(Hildesheim), dann 37/38.
+(Hildesheim) und 36b, dann 39 (Hannover), dann 37/38. Die Anfrage an
+Wolfsburg (Anhang B) kostet keine Entwicklungszeit und gehört an den Anfang.
 
-Zusammen: zehn bis zwölf Arbeitstage, unter $30.
+Zusammen: fünfzehn bis achtzehn Arbeitstage, unter $50.
 
 ## Anhang B — Was NICHT in diesem Plan liegt, und was Tim selbst tun müsste
 
@@ -669,10 +805,6 @@ Zusammen: zehn bis zwölf Arbeitstage, unter $30.
 - **Ein „Warum" ohne Text.** Wo kein Abschnitt vorliegt — Magdeburg
   vollständig, Peine, Darmstadt, Freiburg, alle SessionNet-Kandidaten außer
   Münster — bleibt die Karte, wie sie ist. Kein Modell füllt die Lücke.
-- **Hannover.** 535 k, aber ein Lotus-Notes-System
-  (`lhhsimwebre.nsf`) mit eigener Logik. Ein sechster Adapter für eine
-  einzige Stadt — und die am wenigsten mit Oldenburg vergleichbare in
-  Niedersachsen. Erst, wenn alles andere steht.
 - **Städte, die uns aussperren.** Göttingen antwortet mit HTTP 403
   (Cloudflare), Salzgitter und Wilhelmshaven gar nicht. Kein Umweg über den
   Heim-Proxy, kein getarnter User-Agent — siehe PR 36.
@@ -682,10 +814,16 @@ Zusammen: zehn bis zwölf Arbeitstage, unter $30.
   Oldenburg, also gut lesbar — aber klein, und ein sechster Adapter. Nach
   PR 36 neu bewerten.
 
-**Was nur Tim tun kann — sieben Anfragen, sieben mögliche Städte.** Die
-Messung in §2.3 hat sieben niedersächsische Städte gefunden, bei denen der
-OParl-Dienst **vorhanden, aber abgeschaltet oder kaputt** ist. Das ist keine
-Programmieraufgabe, das ist eine E-Mail an die richtige Stelle:
+**Was nur Tim tun kann — Anfragen, keine Zugänge.** Die Messung in §2.3 hat
+in Niedersachsen 39 Kommunen gefunden, bei denen der OParl-Dienst
+**vorhanden, aber abgeschaltet oder kaputt** ist; sieben davon sind groß
+genug für den Vergleich. Ein Zugang hilft nicht — keiner dieser Endpunkte
+fordert einen an (kein `WWW-Authenticate`, HTTP 400 bzw. 500, nie 401), und
+OParl kennt per Spezifikation keinen. Was hilft, ist eine E-Mail an die
+richtige Stelle — mit der ehrlichen Erwartung, dass bei SD.NET ein
+kostenpflichtiges Modul dahinterstehen kann. Für die Städte aus Regel 25
+kommt dazu: Göttingen und Salzgitter um Freigabe unserer Abrufe bitten,
+sollte die Probe aus einem anderen Netz ebenfalls scheitern.
 
 | Stadt | Einw. | Was zu sagen wäre |
 |---|---:|---|
