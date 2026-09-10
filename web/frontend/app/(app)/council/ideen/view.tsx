@@ -202,6 +202,13 @@ function Rueckmeldung({ idee }: { idee: Idee }) {
   );
 }
 
+/** „3/2" → „2 von 3 Vorlagen"; leer, wenn es nur eine gibt oder keine Gruppe. */
+function stimmen(votes: string | undefined): string {
+  const [alle, dafuer] = (votes ?? "").split("/").map(Number);
+  if (!alle || alle < 2 || !dafuer) return "";
+  return `${dafuer} von ${alle} Vorlagen`;
+}
+
 function Haltungen({ idee }: { idee: Idee }) {
   // Wie die ANDEREN Räte zu derselben Sache stehen. Ohne diese Zeile zählte
   // die Karte eine Stadt für eine Idee, die sie gerade gestoppt hat: Die
@@ -292,6 +299,12 @@ function IdeenKarte({ idee }: { idee: Idee }) {
             <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${status.ton}`}>
               {status.text}
             </span>
+          )}
+          {/* „3/2": drei Vorlagen dieser Stadt, zwei tragen den Status. Das Urteil
+              ist die MEHRHEIT, nicht das der einen gezeigten Vorlage — gemessen
+              widersprach bei 14 Gruppen die jüngste ihrer Mehrheit. */}
+          {stimmen(idee.votes) && (
+            <span className="text-xs text-muted-foreground/70">{stimmen(idee.votes)}</span>
           )}
           {idee.confidence === "low" && (
             <span className="text-xs text-muted-foreground/70">unsicher</span>

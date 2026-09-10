@@ -541,7 +541,14 @@ class CitiesStore:
         "LEFT JOIN bodies b ON b.id = p.body_id "
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
-        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
+        # Der WIRKSAME Status ist der der Gruppe (`idea_group_status`, die
+        # Mehrheit der Vorlagen dieser Stadt zu dieser Idee), und erst ohne
+        # Gruppe das Einzelurteil. Gemessen am 10.09.2026 widersprach bei 14
+        # Gruppen die jüngste Vorlage ihrer Mehrheit — die Karte zeigte dann
+        # „fehlt" für eine Sache, die zwei von drei Urteilen als vorhanden
+        # ansahen. Filter, Zähler und Auswahl der Vertreterin lesen dieselbe
+        # Größe, sonst springt das Blättern.
+        "  AND (? = '' OR instr(?, ',' || COALESCE((SELECT g.status FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), json_extract(f.payload,'$.status')) || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?) "
         # Nur, was jemand VORGESCHLAGEN hat. Eine Antwort der Verwaltung auf
@@ -572,7 +579,33 @@ class CitiesStore:
         "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
         "                    AND p2.id != p.id "
         "                    AND p2.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
-        "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
+        # Nur eine Schwester MIT DEM GRUPPEN-STATUS verdrängt: Trägt die jüngste
+        # ein abweichendes Urteil, vertritt die jüngste MIT Mehrheitsurteil.
+        "                    AND EXISTS (SELECT 1 FROM annotations f2 "
+        "                                WHERE f2.object_kind = 'paper' AND f2.object_id = p2.id "
+        "                                  AND f2.annotator = f.annotator AND f2.version = f.version "
+        # Ohne Gruppen-Zeile (Tabelle noch nicht gefüllt) gilt das Urteil der
+        # Vorlage selbst — derselbe Rückfall wie beim wirksamen Status oben.
+        "                                  AND json_extract(f2.payload,'$.status') = "
+        "                                      COALESCE((SELECT g1.status FROM idea_group_status g1 "
+        "                                       WHERE g1.model = k.model AND g1.version = k.version "
+        "                                         AND g1.cluster_id = k.cluster_id "
+        "                                         AND g1.body_id = p.body_id "
+        "                                         AND g1.fit_version = f.version), "
+        "                                       json_extract(f.payload,'$.status'))) "
+        # … UND entweder p weicht selbst vom Gruppen-Status ab (dann kann p nie
+        # vertreten, jede Schwester mit Mehrheitsurteil verdrängt) oder p2 ist
+        # jünger. Die Vertreterin ist damit die JÜNGSTE unter denen mit dem
+        # Mehrheitsurteil — und die jüngste abweichende verschwindet, statt als
+        # eigene Zeile mit falschem Status aufzutauchen.
+        "                    AND (json_extract(f.payload,'$.status') != "
+        "                             COALESCE((SELECT g3.status FROM idea_group_status g3 "
+        "                                       WHERE g3.model = k.model AND g3.version = k.version "
+        "                                         AND g3.cluster_id = k.cluster_id "
+        "                                         AND g3.body_id = p.body_id "
+        "                                         AND g3.fit_version = f.version), "
+        "                                      json_extract(f.payload,'$.status')) "
+        "                         OR COALESCE(p2.date,'') > COALESCE(p.date,'') "
         "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
         "                             AND p2.id > p.id)) "
         "                    AND NOT EXISTS (SELECT 1 FROM annotations ck, "
@@ -584,7 +617,7 @@ class CitiesStore:
     )
 
     _IDEEN_JE_STATUS = (
-        "SELECT json_extract(f.payload, '$.status') AS status, COUNT(*) AS n "
+        "SELECT COALESCE((SELECT g.status FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), json_extract(f.payload,'$.status')) AS status, COUNT(*) AS n "
         "FROM papers p "
         "JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
         "  AND f.annotator=? AND f.version=? "
@@ -595,7 +628,14 @@ class CitiesStore:
         "LEFT JOIN bodies b ON b.id = p.body_id "
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
-        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
+        # Der WIRKSAME Status ist der der Gruppe (`idea_group_status`, die
+        # Mehrheit der Vorlagen dieser Stadt zu dieser Idee), und erst ohne
+        # Gruppe das Einzelurteil. Gemessen am 10.09.2026 widersprach bei 14
+        # Gruppen die jüngste Vorlage ihrer Mehrheit — die Karte zeigte dann
+        # „fehlt" für eine Sache, die zwei von drei Urteilen als vorhanden
+        # ansahen. Filter, Zähler und Auswahl der Vertreterin lesen dieselbe
+        # Größe, sonst springt das Blättern.
+        "  AND (? = '' OR instr(?, ',' || COALESCE((SELECT g.status FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), json_extract(f.payload,'$.status')) || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?) "
         # Nur, was jemand VORGESCHLAGEN hat. Eine Antwort der Verwaltung auf
@@ -626,7 +666,33 @@ class CitiesStore:
         "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
         "                    AND p2.id != p.id "
         "                    AND p2.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
-        "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
+        # Nur eine Schwester MIT DEM GRUPPEN-STATUS verdrängt: Trägt die jüngste
+        # ein abweichendes Urteil, vertritt die jüngste MIT Mehrheitsurteil.
+        "                    AND EXISTS (SELECT 1 FROM annotations f2 "
+        "                                WHERE f2.object_kind = 'paper' AND f2.object_id = p2.id "
+        "                                  AND f2.annotator = f.annotator AND f2.version = f.version "
+        # Ohne Gruppen-Zeile (Tabelle noch nicht gefüllt) gilt das Urteil der
+        # Vorlage selbst — derselbe Rückfall wie beim wirksamen Status oben.
+        "                                  AND json_extract(f2.payload,'$.status') = "
+        "                                      COALESCE((SELECT g1.status FROM idea_group_status g1 "
+        "                                       WHERE g1.model = k.model AND g1.version = k.version "
+        "                                         AND g1.cluster_id = k.cluster_id "
+        "                                         AND g1.body_id = p.body_id "
+        "                                         AND g1.fit_version = f.version), "
+        "                                       json_extract(f.payload,'$.status'))) "
+        # … UND entweder p weicht selbst vom Gruppen-Status ab (dann kann p nie
+        # vertreten, jede Schwester mit Mehrheitsurteil verdrängt) oder p2 ist
+        # jünger. Die Vertreterin ist damit die JÜNGSTE unter denen mit dem
+        # Mehrheitsurteil — und die jüngste abweichende verschwindet, statt als
+        # eigene Zeile mit falschem Status aufzutauchen.
+        "                    AND (json_extract(f.payload,'$.status') != "
+        "                             COALESCE((SELECT g3.status FROM idea_group_status g3 "
+        "                                       WHERE g3.model = k.model AND g3.version = k.version "
+        "                                         AND g3.cluster_id = k.cluster_id "
+        "                                         AND g3.body_id = p.body_id "
+        "                                         AND g3.fit_version = f.version), "
+        "                                      json_extract(f.payload,'$.status')) "
+        "                         OR COALESCE(p2.date,'') > COALESCE(p.date,'') "
         "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
         "                             AND p2.id > p.id)) "
         "                    AND NOT EXISTS (SELECT 1 FROM annotations ck, "
@@ -647,25 +713,18 @@ class CitiesStore:
         # „Potsdam · 3 Vorlagen 2024–2025" sagen kann statt dreimal
         # dasselbe zu zeigen. Sie kommen als JSON mit, weil ein zweiter
         # Rundgang je Zeile dreißig Abfragen je Seite wären.
-        # Die Richtungen der ANDEREN Städte zu derselben Idee: „4 Räte führen
-        # ein, 1 stellt die Prüfung ein". Ohne sie zählt die Karte eine Stadt
-        # für eine Idee, die sie gerade abgelehnt hat — gemessen an der
-        # Verpackungssteuer, die in zwei von fünf Räten gestoppt wurde.
-        # Ausgeschlossene Mitglieder zählen nicht mit.
-        "       (SELECT json_group_array(json_extract(st.payload, '$.stance')) "
-        "        FROM idea_clusters k5 "
-        "          JOIN idea_clusters k6 ON k6.model = k5.model "
-        "            AND k6.version = k5.version AND k6.cluster_id = k5.cluster_id "
-        "          JOIN papers p5 ON p5.id = k6.paper_id "
-        "          JOIN annotations st ON st.object_kind = 'paper' "
-        "            AND st.object_id = p5.id AND st.annotator = 'stance' "
-        "        WHERE k5.paper_id = p.id AND p5.body_id != p.body_id "
-        "          AND NOT EXISTS (SELECT 1 FROM annotations ck3, "
-        "                              json_each(ck3.payload, '$.drop') d3 "
-        "                          WHERE ck3.object_kind = 'cluster' "
-        "                            AND ck3.annotator = 'cluster_check' "
-        "                            AND ck3.object_id = k5.version || ':' || k5.cluster_id "
-        "                            AND d3.value IN (p.id, p5.id))) AS peer_stances_json, "
+        # Die Haltungen der ANDEREN Städte — aus `idea_group_status`, einmal je
+        # Cron-Lauf gerechnet. Als Unterabfrage kostete das 0,7 s je Seite.
+        "       COALESCE((SELECT g.peer_for FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), 0) AS peer_for, "
+        "       COALESCE((SELECT g.peer_against FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), 0) AS peer_against, "
+        "       COALESCE((SELECT g.peer_review FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), 0) AS peer_review, "
+        "       COALESCE((SELECT g.peers FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), 0) AS peers, "
+        "       COALESCE((SELECT g.status FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), json_extract(f.payload,'$.status')) AS group_status, "
+        "       (SELECT g2.members || '/' || g2.agreeing FROM idea_clusters k9 "
+        "          JOIN idea_group_status g2 ON g2.model = k9.model AND g2.version = k9.version "
+        "            AND g2.cluster_id = k9.cluster_id AND g2.body_id = p.body_id "
+        "            AND g2.fit_version = f.version "
+        "        WHERE k9.paper_id = p.id) AS group_votes, "
         "       (SELECT json_extract(st2.payload, '$.stance') FROM annotations st2 "
         "        WHERE st2.object_kind = 'paper' AND st2.object_id = p.id "
         "          AND st2.annotator = 'stance') AS stance, "
@@ -694,7 +753,14 @@ class CitiesStore:
         "LEFT JOIN bodies b ON b.id = p.body_id "
         "WHERE json_extract(c.payload, '$.field') = ? "
         "  AND p.body_id != 'oldenburg' "
-        "  AND (? = '' OR instr(?, ',' || json_extract(f.payload,'$.status') || ',') > 0) "
+        # Der WIRKSAME Status ist der der Gruppe (`idea_group_status`, die
+        # Mehrheit der Vorlagen dieser Stadt zu dieser Idee), und erst ohne
+        # Gruppe das Einzelurteil. Gemessen am 10.09.2026 widersprach bei 14
+        # Gruppen die jüngste Vorlage ihrer Mehrheit — die Karte zeigte dann
+        # „fehlt" für eine Sache, die zwei von drei Urteilen als vorhanden
+        # ansahen. Filter, Zähler und Auswahl der Vertreterin lesen dieselbe
+        # Größe, sonst springt das Blättern.
+        "  AND (? = '' OR instr(?, ',' || COALESCE((SELECT g.status FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), json_extract(f.payload,'$.status')) || ',') > 0) "
         "  AND (? = '' OR instr(?, ',' || COALESCE(json_extract(e.payload,'$.effort'), '') || ',') > 0) "
         "  AND (? = '' OR p.body_id = ?) "
         # Nur, was jemand VORGESCHLAGEN hat. Eine Antwort der Verwaltung auf
@@ -725,7 +791,33 @@ class CitiesStore:
         "                  WHERE k.paper_id = p.id AND p2.body_id = p.body_id "
         "                    AND p2.id != p.id "
         "                    AND p2.kind IN ('motion', 'proposal', 'inquiry', 'amendment') "
-        "                    AND (COALESCE(p2.date,'') > COALESCE(p.date,'') "
+        # Nur eine Schwester MIT DEM GRUPPEN-STATUS verdrängt: Trägt die jüngste
+        # ein abweichendes Urteil, vertritt die jüngste MIT Mehrheitsurteil.
+        "                    AND EXISTS (SELECT 1 FROM annotations f2 "
+        "                                WHERE f2.object_kind = 'paper' AND f2.object_id = p2.id "
+        "                                  AND f2.annotator = f.annotator AND f2.version = f.version "
+        # Ohne Gruppen-Zeile (Tabelle noch nicht gefüllt) gilt das Urteil der
+        # Vorlage selbst — derselbe Rückfall wie beim wirksamen Status oben.
+        "                                  AND json_extract(f2.payload,'$.status') = "
+        "                                      COALESCE((SELECT g1.status FROM idea_group_status g1 "
+        "                                       WHERE g1.model = k.model AND g1.version = k.version "
+        "                                         AND g1.cluster_id = k.cluster_id "
+        "                                         AND g1.body_id = p.body_id "
+        "                                         AND g1.fit_version = f.version), "
+        "                                       json_extract(f.payload,'$.status'))) "
+        # … UND entweder p weicht selbst vom Gruppen-Status ab (dann kann p nie
+        # vertreten, jede Schwester mit Mehrheitsurteil verdrängt) oder p2 ist
+        # jünger. Die Vertreterin ist damit die JÜNGSTE unter denen mit dem
+        # Mehrheitsurteil — und die jüngste abweichende verschwindet, statt als
+        # eigene Zeile mit falschem Status aufzutauchen.
+        "                    AND (json_extract(f.payload,'$.status') != "
+        "                             COALESCE((SELECT g3.status FROM idea_group_status g3 "
+        "                                       WHERE g3.model = k.model AND g3.version = k.version "
+        "                                         AND g3.cluster_id = k.cluster_id "
+        "                                         AND g3.body_id = p.body_id "
+        "                                         AND g3.fit_version = f.version), "
+        "                                      json_extract(f.payload,'$.status')) "
+        "                         OR COALESCE(p2.date,'') > COALESCE(p.date,'') "
         "                         OR (COALESCE(p2.date,'') = COALESCE(p.date,'') "
         "                             AND p2.id > p.id)) "
         "                    AND NOT EXISTS (SELECT 1 FROM annotations ck, "
@@ -740,18 +832,8 @@ class CitiesStore:
         # Jetzt entscheidet zuerst, in wie vielen ANDEREN Städten dieselbe
         # Idee liegt: Was fünf Räte beschlossen haben und Oldenburg nicht, ist
         # ein Argument; was einer beschlossen hat, eine Beobachtung.
-        " ORDER BY (SELECT COUNT(DISTINCT p2.body_id) FROM idea_clusters k "
-        "             JOIN idea_clusters k2 ON k2.model = k.model "
-        "               AND k2.version = k.version AND k2.cluster_id = k.cluster_id "
-        "             JOIN papers p2 ON p2.id = k2.paper_id "
-        "           WHERE k.paper_id = p.id AND p2.body_id != p.body_id "
-        "             AND NOT EXISTS (SELECT 1 FROM annotations ck, "
-        "                                 json_each(ck.payload, '$.drop') d "
-        "                             WHERE ck.object_kind = 'cluster' "
-        "                               AND ck.annotator = 'cluster_check' "
-        "                               AND ck.object_id = k.version || ':' || k.cluster_id "
-        "                               AND d.value IN (p.id, p2.id))) DESC, "
-        "          CASE json_extract(f.payload, '$.status') "
+        " ORDER BY COALESCE((SELECT g.peers FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), 0) DESC, "
+        "          CASE COALESCE((SELECT g.status FROM idea_clusters k0           JOIN idea_group_status g ON g.model = k0.model AND g.version = k0.version             AND g.cluster_id = k0.cluster_id AND g.body_id = p.body_id AND g.fit_version = f.version           WHERE k0.paper_id = p.id), json_extract(f.payload,'$.status')) "
         "            WHEN 'missing' THEN 0 WHEN 'partial' THEN 1 ELSE 2 END, "
         "          CASE json_extract(f.payload, '$.confidence') "
         "            WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, "
@@ -1072,6 +1154,84 @@ class CitiesStore:
             "                       AND o.model=?)) AS ideas_unembedded",
             (model, model, model)).fetchone()
         return dict(row)
+
+    def rebuild_group_status(self, model: str, version: str, fit_version: str) -> int:
+        """Den Mehrheits-Status je Stadt und Ideen-Gruppe neu schreiben.
+
+        Die Mehrheit über die Vorlagen derselben Stadt in derselben Gruppe —
+        nur die Arten, die eine Idee tragen (``model.IDEA_KINDS``), ohne die
+        von ``cluster_check`` Ausgeschlossenen. Bei Gleichstand gewinnt der
+        Status der JÜNGSTEN Vorlage; das ist dieselbe Regel, die auch die
+        Vertreterin der Gruppe wählt, und zwei Regeln liefen auseinander.
+
+        Alles oder nichts, wie ``replace_idea_clusters``: Eine halb
+        geschriebene Tabelle sähe aus wie eine Meinung des Modells.
+        """
+        with self._write() as conn:
+            conn.execute(
+                "DELETE FROM idea_group_status WHERE model=? AND version=? AND fit_version=?",
+                (model, version, fit_version))
+            conn.execute(
+                "WITH m AS ("
+                "  SELECT p.body_id, k.cluster_id, json_extract(f.payload,'$.status') AS st, "
+                "         COUNT(*) AS n, MAX(COALESCE(p.date,'') || p.id) AS juengste "
+                "  FROM idea_clusters k JOIN papers p ON p.id = k.paper_id "
+                "  JOIN annotations f ON f.object_kind='paper' AND f.object_id=p.id "
+                "    AND f.annotator='fit' AND f.version=? "
+                "  WHERE k.model=? AND k.version=? "
+                "    AND p.kind IN ('motion','proposal','inquiry','amendment') "
+                "    AND NOT EXISTS (SELECT 1 FROM annotations ck, json_each(ck.payload,'$.drop') d "
+                "                    WHERE ck.object_kind='cluster' AND ck.annotator='cluster_check' "
+                "                      AND ck.object_id = k.version || ':' || k.cluster_id "
+                "                      AND d.value = p.id) "
+                "  GROUP BY 1,2,3"
+                "), summe AS ("
+                "  SELECT body_id, cluster_id, SUM(n) AS members FROM m GROUP BY 1,2"
+                ") "
+                # Die anderen Städte derselben Gruppe: wie viele, und wie sie stehen.
+                # Ausgeschlossene Mitglieder zählen nicht; Vorlagen ohne Haltung
+                # zählen bei `peers`, aber in keiner Richtung.
+                ", andere AS ("
+                "  SELECT eig.body_id AS body_id, eig.cluster_id AS cluster_id, "
+                "         COUNT(DISTINCT p2.body_id) AS peers, "
+                "         SUM(json_extract(st.payload,'$.stance') = 'for') AS peer_for, "
+                "         SUM(json_extract(st.payload,'$.stance') = 'against') AS peer_against, "
+                "         SUM(json_extract(st.payload,'$.stance') = 'review') AS peer_review "
+                # Die EIGENE Seite je (Stadt, Gruppe) genau einmal — sonst zählt
+                # jede fremde Vorlage einmal je eigener Vorlage: fünf Potsdamer
+                # Anläufe, fünffache Summe (gemessen: peer_for 90 bei 5 Städten).
+                "  FROM (SELECT DISTINCT p.body_id, k.model, k.version, k.cluster_id "
+                "        FROM idea_clusters k JOIN papers p ON p.id = k.paper_id "
+                "        WHERE k.model=? AND k.version=?) eig "
+                "  JOIN idea_clusters k2 ON k2.model = eig.model AND k2.version = eig.version "
+                "    AND k2.cluster_id = eig.cluster_id "
+                "  JOIN papers p2 ON p2.id = k2.paper_id AND p2.body_id != eig.body_id "
+                "  LEFT JOIN annotations st ON st.object_kind='paper' AND st.object_id = p2.id "
+                "    AND st.annotator='stance' "
+                "  WHERE NOT EXISTS (SELECT 1 FROM annotations ck, json_each(ck.payload,'$.drop') d "
+                "                    WHERE ck.object_kind='cluster' AND ck.annotator='cluster_check' "
+                "                      AND ck.object_id = eig.version || ':' || eig.cluster_id "
+                "                      AND d.value = p2.id) "
+                "  GROUP BY 1,2"
+                ") "
+                "INSERT INTO idea_group_status "
+                "  (model, version, body_id, cluster_id, fit_version, status, members, agreeing, "
+                "   peers, peer_for, peer_against, peer_review) "
+                "SELECT ?, ?, m1.body_id, m1.cluster_id, ?, m1.st, s.members, m1.n, "
+                "       COALESCE(a.peers, 0), COALESCE(a.peer_for, 0), "
+                "       COALESCE(a.peer_against, 0), COALESCE(a.peer_review, 0) "
+                "FROM m m1 JOIN summe s ON s.body_id=m1.body_id AND s.cluster_id=m1.cluster_id "
+                "LEFT JOIN andere a ON a.body_id=m1.body_id AND a.cluster_id=m1.cluster_id "
+                "WHERE m1.n = (SELECT MAX(n) FROM m m2 "
+                "              WHERE m2.body_id=m1.body_id AND m2.cluster_id=m1.cluster_id) "
+                "  AND m1.juengste = (SELECT MAX(juengste) FROM m m3 "
+                "                     WHERE m3.body_id=m1.body_id AND m3.cluster_id=m1.cluster_id "
+                "                       AND m3.n = m1.n)",
+                (fit_version, model, version, model, version, model, version, fit_version))
+            # `rowcount` ist bei INSERT … SELECT mit CTE -1 — zählen statt raten.
+            return int(conn.execute(
+                "SELECT COUNT(*) FROM idea_group_status WHERE model=? AND version=? AND fit_version=?",
+                (model, version, fit_version)).fetchone()[0])
 
     def paper_matrix(self, model: str, body_id: str) -> tuple[list[str], bytes]:
         """Alle Papier-Vektoren einer Stadt am Stück — Kennung und Rohbytes.

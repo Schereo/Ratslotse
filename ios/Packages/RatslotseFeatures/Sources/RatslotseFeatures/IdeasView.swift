@@ -412,6 +412,16 @@ private struct IdeaCard: View {
         return teile.joined(separator: " · ")
     }
 
+    /// „3/2" → „2 von 3 Vorlagen"; leer, wenn es nur eine gibt oder keine Gruppe.
+    /// Das Urteil ist die MEHRHEIT der Vorlagen dieser Stadt, nicht das der
+    /// einen gezeigten — gemessen widersprach bei 14 Gruppen die jüngste ihrer
+    /// Mehrheit.
+    private var stimmen: String {
+        let teile = idee.votes.split(separator: "/").compactMap { Int($0) }
+        guard teile.count == 2, teile[0] >= 2, teile[1] > 0 else { return "" }
+        return "\(teile[1]) von \(teile[0]) Vorlagen"
+    }
+
     /// Wie die anderen Räte zu derselben Sache stehen — dieselbe Zeile wie im
     /// Web. Drei Klassen und nicht fünf: `introduce` gegen `expand` war weder
     /// für das Modell noch für einen Menschen entscheidbar (72 % gegen 87 %,
@@ -494,6 +504,11 @@ private struct IdeaCard: View {
                         .background(idee.status == "missing"
                                     ? RatsColor.primary.opacity(0.1) : RatsColor.separator)
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                }
+                if !stimmen.isEmpty {
+                    Text(stimmen)
+                        .font(RatsFont.body(10.5))
+                        .foregroundStyle(RatsColor.muted.opacity(0.8))
                 }
                 if idee.confidence == "low" {
                     Text("unsicher")

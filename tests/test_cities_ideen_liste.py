@@ -47,6 +47,8 @@ def cities(tmp_path):
     s.replace_idea_clusters(MODELL, "1", [
         (MODELL, "1", 7, "po:1", 0.9), (MODELL, "1", 7, "po:2", 0.9),
         (MODELL, "1", 7, "po:3", 0.9), (MODELL, "1", 7, "ms:1", 0.9)])
+    # Der fünfte Cluster-Schritt: Mehrheits-Status je Stadt und Gruppe.
+    s.rebuild_group_status(MODELL, "1", "3")
     yield s
     s.close()
 
@@ -75,6 +77,7 @@ def test_antworten_und_mitteilungen_stehen_nicht_auf_der_liste(cities):
         (MODELL, "1", 7, "po:1", 0.9), (MODELL, "1", 7, "po:2", 0.9),
         (MODELL, "1", 7, "po:3", 0.9), (MODELL, "1", 7, "ms:1", 0.9),
         (MODELL, "1", 7, "po:9", 0.9)])
+    cities.rebuild_group_status(MODELL, "1", "3")
     zeilen, _, _ = cities.ideas("kultur_sport", status=("missing",))
     assert "po:9" not in {z["id"] for z in zeilen}
     assert {z["id"] for z in zeilen} == {"po:3", "ms:1"}, (
@@ -113,6 +116,7 @@ def test_ein_ausgeschlossenes_mitglied_verdraengt_nichts(cities):
     cities.put_annotation("cluster", "1:7", "cluster_check", "1",
                           {"label": "Denkmalpflege", "drop": ["po:3"],
                            "reason": "."}, "c7")
+    cities.rebuild_group_status(MODELL, "1", "3")
     zeilen, gesamt, _ = cities.ideas("kultur_sport", status=("missing",))
     kennungen = {z["id"] for z in zeilen}
     assert gesamt == 3
@@ -120,9 +124,34 @@ def test_ein_ausgeschlossenes_mitglied_verdraengt_nichts(cities):
         "po:2 vertritt jetzt die Gruppe, po:3 steht für sich")
 
 
+def test_die_mehrheit_entscheidet_nicht_die_juengste(cities):
+    """Zwei von drei Potsdamer Urteilen sagen „fehlt", das jüngste sagt
+    „vorhanden" — die Idee fehlt, und vertreten wird sie von der jüngsten
+    Vorlage MIT dem Mehrheitsurteil.
+
+    Gemessen am 10.09.2026: 119 von 1.062 Gruppen uneinheitlich, bei 14
+    davon widersprach die jüngste ihrer Mehrheit. Als lebende Abfrage 0,65 s
+    je Seite — deshalb liegt die Mehrheit in `idea_group_status`.
+    """
+    cities.put_annotation("paper", "po:3", "fit", "3",
+                          {"status": "present", "evidence": [], "reason": ".",
+                           "confidence": "high"}, "fpo3b")
+    cities.rebuild_group_status(MODELL, "1", "3")
+    fehlt, gesamt, zaehler = cities.ideas("kultur_sport", status=("missing",))
+    potsdam = [z for z in fehlt if z["body_id"] == "potsdam"]
+    assert potsdam and potsdam[0]["id"] == "po:2", (
+        "die jüngste MIT Mehrheitsurteil vertritt — nicht po:3, das abweicht")
+    assert potsdam[0]["group_status"] == "missing" and potsdam[0]["group_votes"] == "3/2"
+    vorhanden, _, _ = cities.ideas("kultur_sport", status=("present",))
+    assert not [z for z in vorhanden if z["body_id"] == "potsdam"], (
+        "die abweichende Vorlage darf nicht als eigene ‚vorhanden'-Zeile auftauchen")
+    assert zaehler.get("missing") == 2, "Statusleiste zählt Ideen, nicht Vorlagen"
+
+
 def test_ohne_cluster_bleibt_jede_vorlage_eine_zeile(cities):
     """Die Gegenrichtung: Ohne Gruppierung darf nichts verschwinden."""
     cities.replace_idea_clusters(MODELL, "1", [])
+    cities.rebuild_group_status(MODELL, "1", "3")
     _, gesamt, _ = cities.ideas("kultur_sport", status=("missing",))
     assert gesamt == 4
 

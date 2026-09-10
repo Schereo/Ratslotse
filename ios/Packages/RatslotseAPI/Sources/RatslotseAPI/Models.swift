@@ -552,8 +552,11 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public let transfer: String
     public let competence: String?
     public let originator: String?
-    /// Das Urteil aus `council/cities/fit.py`.
+    /// Das Urteil aus `council/cities/fit.py` — je Idee die Mehrheit der
+    /// Vorlagen dieser Stadt, nicht das einzelne Urteil.
     public let status: String
+    /// „3/2": drei Vorlagen, zwei tragen den Status. Leer ohne Gruppe.
+    public let votes: String
     public let reason: String
     public let confidence: String
     public let evidence: [IdeaEvidence]
@@ -580,7 +583,7 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
-        case transfer, competence, originator, status, reason
+        case transfer, competence, originator, status, votes, reason
         case confidence, evidence, effort, addressee, peers, feedback, siblings
         case stance
         case peerStances = "peer_stances"
@@ -606,6 +609,7 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         competence = try v.decodeIfPresent(String.self, forKey: .competence)
         originator = try v.decodeIfPresent(String.self, forKey: .originator)
         status = try v.decodeIfPresent(String.self, forKey: .status) ?? ""
+        votes = try v.decodeIfPresent(String.self, forKey: .votes) ?? ""
         reason = try v.decodeIfPresent(String.self, forKey: .reason) ?? ""
         confidence = try v.decodeIfPresent(String.self, forKey: .confidence) ?? ""
         evidence = try v.decodeIfPresent([IdeaEvidence].self, forKey: .evidence) ?? []

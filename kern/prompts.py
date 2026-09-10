@@ -225,9 +225,17 @@ BEISPIELE, alle zur Sache „Verpackungssteuer einführen" (erfunden):
 
 Zwischen `for` und `review` entscheidet, ob die Vorlage eine ENTSCHEIDUNG
 verlangt oder erst Wissen beschaffen will. „Der Rat beschließt das Konzept"
-ist `for`; „die Verwaltung möge ein Konzept vorlegen" ist `review`. Ein
-Antrag, der eine Maßnahme fordert und dafür einen Bericht verlangt, ist
-`for` — der Bericht ist dort das Mittel, nicht der Zweck.
+ist `for`; „die Verwaltung möge ein Konzept vorlegen" ist `review`.
+
+DER ZWEITHÄUFIGSTE FEHLER: Prüfaufträge als `for` lesen, weil der
+Antragsteller die Sache erkennbar WILL. Das zählt nicht. Steht im Titel
+oder Instrument „prüfen", „Prüfauftrag", „Prüfung", „Machbarkeit",
+„untersuchen", „Halbzeitbilanz", „Bericht vorlegen" — und verlangt die
+Vorlage KEINEN Beschluss in der Sache selbst —, dann ist es `review`. Ein
+Rat, der „Verkehrsberuhigte Bereiche prüfen" beschließt, hat noch keinen
+verkehrsberuhigten Bereich beschlossen. Nur wenn die Vorlage beides tut —
+eine Maßnahme fordert UND dafür einen Bericht verlangt — ist sie `for`; der
+Bericht ist dort das Mittel, nicht der Zweck.
 """
 
 

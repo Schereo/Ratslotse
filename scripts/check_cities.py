@@ -131,6 +131,17 @@ def main() -> dict:
         except Exception as e:  # noqa: BLE001
             zaehler["errors"] += 1
             gruende["error_fit"] = f"{type(e).__name__}: {e}"
+        # Nach jedem `fit`-Lauf noch einmal: Die Mehrheit je Gruppe hängt an den
+        # Urteilen, und die sind gerade neu. Der Cluster-Schritt hat sie schon
+        # einmal geschrieben — aber VOR `fit`, mit dem Stand der Vorwoche.
+        try:
+            from council.cities.annotators import get as get_annotator
+            from council.cities.clusters import CLUSTER_VERSION
+            from council.cities.index import EMBED_MODEL
+            zaehler["group_status"] = main_store.rebuild_group_status(
+                EMBED_MODEL, CLUSTER_VERSION, get_annotator("fit").version)
+        except Exception as e:  # noqa: BLE001 — Kennzahl, nicht der Lauf
+            gruende["error_group_status"] = f"{type(e).__name__}: {e}"
 
         # Zuletzt: Ist der Bestand je Stadt überhaupt plausibel? Am 08.09.2026
         # lagen vier Ernte-Fehler gleichzeitig darin, und keiner hat sich
