@@ -7,7 +7,11 @@ falsch.
 
 1. Magdeburgs Beratungen zeigten auf Tagesordnungspunkte aus einem zweiten
    Kennungsraum — **0 von 700** Vorlagen hatten ein Ergebnis, obwohl fast
-   6.000 Punkte eines tragen.
+   6.000 Punkte eines tragen. (Der zweite Raum kam nicht von Magdeburg,
+   sondern aus unserem eigenen phase0-Import; s. den Absatz unten. Die
+   Reparatur von damals ist deshalb am 10.09.2026 wieder ausgebaut.) (Der zweite Raum kam nicht von Magdeburg,
+   sondern aus unserem eigenen phase0-Import; s. Punkt 5. Die Reparatur von
+   damals ist deshalb am 10.09.2026 wieder ausgebaut.)
 2. Magdeburg und Münster vergaben dieselbe Beratungs-Kennung mehrfach; die
    Stationen überschrieben sich gegenseitig (575 bzw. 467 verloren).
 3. Die Rückwärts-Blätterung von ALLRIS las bei Sitzungen das Feld ``date``,
@@ -16,6 +20,14 @@ falsch.
    Vorlagen, Potsdam 222 zu 5.994.
 4. „nicht empfohlen" wurde als Zustimmung gezählt (275-mal das Gegenteil
    dessen, was im Protokoll steht).
+
+Am 10.09.2026 kam ein fünfter dazu, und er zeigt, dass diese Datei selbst
+mitwachsen muss: **22.152 Tagesordnungspunkte lagen doppelt** — jeder einmal
+unter der Kennung, die die Übernahme des Probelaufs erfunden hatte, und
+einmal unter seiner eigenen. Ein Fünftel des Bestands, in fünf von sechs
+Städten, und keine der vier Regeln oben schlug an: Sie messen Anteile *je
+Vorlage*, und Vorlagen zählten weiter richtig. Dagegen steht jetzt
+``anteil_doppelter_punkte``.
 
 Ein Adapter je Ratsinformationssystem sorgt dafür, dass eine Reparatur allen
 Städten desselben Herstellers zugutekommt — Leipzig und Bonn erben die vier
@@ -79,12 +91,22 @@ REGELN: dict[str, tuple[tuple[float, float], str]] = {
         "Vorlagen ganz ohne Beratungsfolge: Entweder liefert die "
         "Schnittstelle sie nicht, oder ihre Kennungen kollidieren und "
         "überschreiben sich beim Schreiben."),
+    "anteil_doppelter_punkte": (
+        (0.0, 0.02),
+        "Derselbe Tagesordnungspunkt liegt unter zwei Kennungen. So sah der "
+        "phase0-Rest aus: 31 bis 53 % der Punkte jeder Stadt, ein Fünftel des "
+        "ganzen Bestands, und keine andere Kennzahl hat es gezeigt — "
+        "``agenda_items`` zählt Zeilen, und Zeilen gab es ja. Ein paar "
+        "Promille sind normal (ein Punkt kommt in einer Sitzung wirklich "
+        "zweimal vor), ein Prozentwert ist ein zweiter Kennungsraum."),
 }
 
 
 def pruefe(main: CitiesStore, embed_model: str = "") -> list[Befund]:
     """Jede Stadt gegen die Bänder halten. Leere Liste heißt: unauffällig."""
     befunde: list[Befund] = []
+    # Einmal für alle Städte: die Abfrage geht über den ganzen Bestand.
+    doppelt = main.duplicate_agenda_items()
     for z in main.stats(embed_model):
         if (z["papers"] or 0) < MIN_PAPIERE:
             continue
@@ -93,6 +115,7 @@ def pruefe(main: CitiesStore, embed_model: str = "") -> list[Befund]:
             "anteil_mit_ergebnis": _anteil(z["papers_with_outcome"], z["papers"]),
             "anteil_mit_text": _anteil(z["papers_with_text"], z["papers"]),
             "anteil_mit_beratung": _anteil(z["papers_with_consultation"], z["papers"]),
+            "anteil_doppelter_punkte": _anteil(doppelt.get(z["id"], 0), z["agenda_items"]),
         }
         for regel, (band, text) in REGELN.items():
             wert = werte[regel]

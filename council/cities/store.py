@@ -1691,6 +1691,27 @@ class CitiesStore:
                 "  status=excluded.status, error=excluded.error, at=excluded.at",
                 (object_kind, object_id, stage, version, status, error, now()))
 
+    def duplicate_agenda_items(self) -> dict[str, int]:
+        """Punkte, die in ihrer Sitzung ein zweites Mal unter anderer Kennung liegen.
+
+        Die Zahl, an der die phase0-Zwillinge aufgefallen wären: Bis zum
+        10.09.2026 lagen **31 bis 53 %** der Punkte jeder Stadt doppelt, ohne
+        dass irgendeine Kennzahl das gezeigt hätte (``stats`` zählt Zeilen,
+        und Zeilen gab es ja). Sauber bleiben ein paar Promille übrig —
+        Potsdam führt „Informationen des Jugendamtes" wirklich zweimal in
+        einer Sitzung, und in Magdeburg stehen Vorlage und Änderungsantrag
+        unter demselben Titel. Deshalb ist das Band nicht null.
+        """
+        rows = self._conn.execute(
+            "SELECT m.body_id AS body_id, COUNT(*) AS n "
+            "FROM agenda_items a JOIN meetings m ON m.id = a.meeting_id "
+            "WHERE EXISTS (SELECT 1 FROM agenda_items o "
+            "              WHERE o.meeting_id = a.meeting_id "
+            "                AND o.number IS a.number AND o.name = a.name "
+            "                AND o.id <> a.id) "
+            "GROUP BY m.body_id")
+        return {r["body_id"]: r["n"] for r in rows}
+
     def unmapped_outcomes(self, body_id: str, limit: int = 10) -> list[dict]:
         """Ergebnistexte einer Stadt, die auf ``none`` fallen — häufigste zuerst.
 
