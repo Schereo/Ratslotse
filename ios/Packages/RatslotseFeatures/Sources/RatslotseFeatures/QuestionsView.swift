@@ -2703,50 +2703,108 @@ private final class AnswerSpeaker: NSObject, ObservableObject, AVSpeechSynthesiz
 /// Nach dem Daumen runter: „Was war falsch?" — optional.
 ///
 /// Der Daumen selbst ist schon gezählt, wenn dieses Blatt aufgeht; wer es
-/// wegschiebt, hat trotzdem bewertet. Der Grund ist das, was die Bewertung
-/// auswertbar macht — ein nackter Daumen sagt nur DASS etwas nicht stimmte.
+/// zumacht, hat trotzdem bewertet. Deshalb steht dort ein × und kein
+/// „Abbrechen" — es gibt nichts abzubrechen. Der Grund ist das, was die
+/// Bewertung auswertbar macht: Ein nackter Daumen sagt nur, DASS etwas nicht
+/// stimmte.
+///
+/// Das Feld hält von Anfang an fünf Zeilen offen (`reservesSpace`), statt aus
+/// einer Zeile zu wachsen — ein einzeiliges Feld fragt nach einem Stichwort,
+/// und Stichworte kann man nicht auswerten.
 private struct AnswerFeedbackReasonSheet: View {
     let send: (String) -> Void
     @State private var reason = ""
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focused: Bool
 
+    /// Dieselbe Grenze wie im Backend (`QaFeedbackBody.reason`) und im Web.
+    private static let maxZeichen = 500
+
+    private var getrimmt: String {
+        reason.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Was war an der Antwort falsch oder unvollständig? Das hilft uns, die Auskunft zu verbessern.")
-                    .font(RatsFont.body(13))
-                    .foregroundStyle(RatsColor.secondary)
-
-                RatsLabeledField(label: "Grund", hint: "optional") {
-                    TextField("Zum Beispiel: falsches Datum, fehlender Beschluss …",
-                              text: $reason, axis: .vertical)
-                        .lineLimit(2...5)
-                        .focused($focused)
+        VStack(spacing: 0) {
+            RatsSheetHeader(
+                "Rückmeldung",
+                leadingGlyph: .x,
+                leadingAction: { dismiss() },
+                trailingTitle: "Senden",
+                trailingAction: getrimmt.isEmpty ? nil : {
+                    send(String(getrimmt.prefix(Self.maxZeichen)))
+                    dismiss()
                 }
+            )
+            // „Senden" taucht auf, sobald es etwas zu senden gibt. Ein von
+            // Anfang an sichtbarer, toter Knopf sähe aus, als wäre das Blatt
+            // kaputt; deshalb blendet der Platz ein statt zu erstarren.
+            .animation(.easeOut(duration: 0.16), value: getrimmt.isEmpty)
 
-                Spacer(minLength: 0)
-            }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RatsColor.page)
-            .navigationTitle("Rückmeldung")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Später") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Senden") {
-                        let text = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !text.isEmpty { send(String(text.prefix(500))) }
-                        dismiss()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("Was hat gefehlt?")
+                            .font(RatsFont.title(21))
+                            .foregroundStyle(RatsColor.text)
+                        Text("Dein Daumen ist schon gezählt. Was falsch oder unvollständig war, hilft uns, die Auskunft zu verbessern — freiwillig.")
+                            .font(RatsFont.body(13))
+                            .foregroundStyle(RatsColor.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    VStack(alignment: .trailing, spacing: 6) {
+                        TextField(
+                            "Zum Beispiel: falsches Datum, ein Beschluss fehlt, Frage nicht verstanden …",
+                            text: $reason,
+                            axis: .vertical
+                        )
+                        .lineLimit(5, reservesSpace: true)
+                        .font(RatsFont.body(15))
+                        .foregroundStyle(RatsColor.text)
+                        .focused($focused)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 11)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .background(RatsColor.stage)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(focused ? RatsColor.primary.opacity(0.55) : RatsColor.border,
+                                        lineWidth: focused ? 1.5 : 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .animation(.easeOut(duration: 0.14), value: focused)
+                        .onChange(of: reason) { _, neu in
+                            if neu.count > Self.maxZeichen { reason = String(neu.prefix(Self.maxZeichen)) }
+                        }
+
+                        // Erst ab der zweiten Hälfte — vorher zählt niemand mit,
+                        // und eine Zahl, die nur dasteht, ist Beiwerk.
+                        if reason.count > Self.maxZeichen / 2 {
+                            Text("\(reason.count)/\(Self.maxZeichen)")
+                                .font(RatsFont.mono(10))
+                                .foregroundStyle(reason.count >= Self.maxZeichen
+                                                 ? RatsColor.signal : RatsColor.muted)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.14), value: reason.count > Self.maxZeichen / 2)
+
+                    Text("Wir speichern deine Frage, einen Auszug der Antwort und diesen Text — sonst nichts.")
+                        .font(RatsFont.body(11))
+                        .foregroundStyle(RatsColor.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .padding(18)
+                .frame(maxWidth: 560, alignment: .leading)
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .presentationDetents([.height(270)])
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RatsColor.page)
+        // 360 pt trägt Kopf, Frage, fünf Zeilen Feld und die Datenzeile ohne
+        // Leerlauf darunter; „groß" bleibt für eine lange Begründung offen.
+        .presentationDetents([.height(360), .large])
         .presentationDragIndicator(.visible)
         // Erst wenn das Blatt steht — ein Fokus im selben Takt wie die
         // Präsentation setzt die Tastatur nicht, das Feld bleibt kalt.
