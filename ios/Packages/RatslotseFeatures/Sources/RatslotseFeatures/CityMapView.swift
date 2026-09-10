@@ -403,7 +403,10 @@ struct CityMapView: View {
         guard span > 0.02 else {
             return points.map { PointCluster(id: $0.id, coordinate: CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude), members: [$0]) }
         }
-        let cell = span * (64 / max(200, stageWidth))
+        // Ausgeschrieben, weil der CI-Compiler `64 / CGFloat` als mehrdeutig
+        // abwies, den Xcode 26.6 hier anstandslos baut.
+        let cellPoints: Double = 64
+        let cell = span * (cellPoints / Double(max(200, stageWidth)))
         var buckets: [String: [CouncilMapPoint]] = [:]
         for p in points {
             let key = "\(Int((p.latitude / cell).rounded(.down)))|\(Int((p.longitude / cell).rounded(.down)))"
