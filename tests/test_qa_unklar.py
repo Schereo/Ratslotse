@@ -44,7 +44,7 @@ def fresh_dbs():
 @pytest.fixture
 def client():
     c = TestClient(app)
-    c.post("/api/auth/register", json={"email": "admin@test.de", "password": "password123"})
+    c.post("/api/auth/register", json={"display_name": "Testkonto", "email": "admin@test.de", "password": "password123"})
     grant_admin("admin@test.de", RATSLOTSE_DB)
     return c
 

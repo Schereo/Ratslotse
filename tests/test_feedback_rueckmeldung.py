@@ -50,7 +50,8 @@ def fresh_dbs():
 @pytest.fixture
 def admin_client():
     c = TestClient(app)
-    r = c.post("/api/auth/register", json={"email": "admin@test.de", "password": PASSWORT})
+    r = c.post("/api/auth/register",
+              json={"display_name": "Testkonto", "email": "admin@test.de", "password": PASSWORT})
     assert r.status_code == 201, r.text
     grant_admin("admin@test.de", RATSLOTSE_DB)
     return c
@@ -220,7 +221,8 @@ def test_ohne_mailversand_sagt_der_endpunkt_das(admin_client):
 def test_nur_admins(admin_client):
     fid = _feedback_anlegen()
     fremd = TestClient(app)
-    fremd.post("/api/auth/register", json={"email": "fremd@example.org", "password": PASSWORT})
+    fremd.post("/api/auth/register",
+               json={"display_name": "Testkonto", "email": "fremd@example.org", "password": PASSWORT})
     r = fremd.post(f"/api/admin/feedback/{fid}/notify", json={"message": ""})
     assert r.status_code == 403
 
