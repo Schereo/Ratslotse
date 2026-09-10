@@ -139,3 +139,79 @@ def test_die_registry_nennt_die_wurzel_nicht_ein_oparl_system(stadt):
     assert spec.dialect == "allris4_html"
     assert spec.system_url and not spec.system_url.endswith("/oparl/system")
     assert not spec.active, "erst nach einem Probelauf einschalten"
+
+
+# --------------------------------------------------------- Der Index (si018)
+
+class _Antworten:
+    """Ein Client-Ersatz, der vorbereitete Seiten liefert und mitschreibt."""
+
+    def __init__(self, seiten: dict[str, str]):
+        self.seiten = seiten
+        self.body_id = "teststadt"
+        self.gerufen: list[str] = []
+
+    def get_text(self, url: str, headers: dict | None = None) -> str:
+        self.gerufen.append(url)
+        if url not in self.seiten:
+            raise LookupError(url)
+        return self.seiten[url]
+
+
+def _huelle(version: str) -> str:
+    return f'<script>Wicket.Ajax.ajax({{"u":"./si018?{version}.0-form-searchPanel-search"}});</script>'
+
+
+def _seite(silinks: list[str], weiter: str | None) -> str:
+    zeilen = "".join(f'<tr><td><a id="silink_{n}">Sitzung {n}</a></td></tr>' for n in silinks)
+    nav = f'<script>Wicket.Ajax.ajax({{"u":"{weiter}"}});</script>' if weiter else ""
+    return f"<table>{zeilen}</table>{nav}"
+
+
+def test_der_index_blaettert_bis_zum_ende():
+    W = "https://beispiel.example.org/public"
+    client = _Antworten({
+        f"{W}/si018": _huelle("0-1"),
+        f"{W}/si018?0-1.0-": _seite(
+            ["11", "12"], f"{W}/si018?0-1.1-navigator-next"),
+        f"{W}/si018?0-1.1-navigator-next": _seite(
+            ["13"], f"{W}/si018?0-1.2-navigator-next"),
+        # Die letzte Seite wiederholt, was schon da ist — so hört ALLRIS auf.
+        f"{W}/si018?0-1.2-navigator-next": _seite(["13"], None),
+    })
+    assert Allris4HtmlAdapter.sitzungsindex(client, W) == {"11", "12", "13"}
+
+
+def test_die_seitenversion_wird_gelesen_nicht_gesetzt():
+    """Wicket zählt sie je Sitzung hoch — festgeschrieben liefert sie nichts.
+
+    Genau daran ist die erste Fassung gescheitert: Nach einem
+    vorangegangenen Abruf stand die Übersicht bei Seite 6, der fest
+    verdrahtete Aufruf `si018?0-1.0-` bekam eine leere Antwort, und
+    Wolfsburg galt mit „0 Sitzungen" als nicht erntbar statt mit 652.
+    """
+    W = "https://beispiel.example.org/public"
+    client = _Antworten({
+        f"{W}/si018": _huelle("6-1"),
+        f"{W}/si018?6-1.0-": _seite(["99"], None),
+    })
+    assert Allris4HtmlAdapter.sitzungsindex(client, W) == {"99"}
+    assert f"{W}/si018?0-1.0-" not in client.gerufen
+
+
+def test_der_index_liest_beide_kennungsformen():
+    """Wolfsburg setzt ``silink_<n>``, Laatzen echte ``SILFDNR=<n>``-Adressen."""
+    W = "https://beispiel.example.org/public"
+    gemischt = ('<a id="silink_11">a</a>'
+                '<a href="to010?SILFDNR=22">b</a>')
+    client = _Antworten({
+        f"{W}/si018": _huelle("0-1"),
+        f"{W}/si018?0-1.0-": gemischt,
+    })
+    assert Allris4HtmlAdapter.sitzungsindex(client, W) == {"11", "22"}
+
+
+def test_ohne_uebersicht_bleibt_der_index_leer_statt_zu_stuerzen():
+    """Eine Stadt ohne ``si018`` darf den Lauf nicht mitnehmen."""
+    client = _Antworten({})
+    assert Allris4HtmlAdapter.sitzungsindex(client, "https://x.example.org") == set()

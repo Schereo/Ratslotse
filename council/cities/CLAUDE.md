@@ -42,6 +42,33 @@ Laatzen:
    eigene Seite tragen die Marke. Stünde sie an allen, hielte
    `zwillinge_zusammenfuehren` jeden Punkt des Dialekts für erfunden.
 
+**Der Index ist ``si018``, nicht der Kalender.** ``si010`` ist ein
+Monatsraster: Seine Zellen tragen keine Sitzungskennung, und die
+Monatsnavigation hängt an einer Seitenversion, die der Server hochzählt.
+``si018`` („Sitzungen Übersicht") ist eine Liste, deren Blätterung sich
+selbst beschreibt — jede Antwort nennt das Ziel für „weiter". Gemessen am
+10.09.2026: Wolfsburg 652 Sitzungen in 28 Abrufen, Lüneburg 778 in 33,
+**ohne einen Browser**.
+
+Drei Eigenheiten, die dabei jede für sich den ganzen Index leer aussehen
+lassen:
+
+- **Die Seitenversion wird gelesen, nicht gesetzt.** Wicket zählt sie je
+  Sitzung hoch. Ein fest verdrahtetes ``si018?0-1.0-`` funktioniert nur,
+  solange davor nichts anderes geholt wurde — nach dem (bei Wolfsburg
+  ohnehin scheiternden) Gremien-Abruf stand die Seite bei 6, und die
+  Antwort war leer. Ergebnis: „0 Sitzungen" statt 652, ohne Fehler.
+- **Die Kennung steht in zwei Formen da.** Wolfsburg setzt Wicket-Verweise
+  ohne ``href`` und identifiziert sie über ``id="silink_1003198"``; Laatzen
+  setzt in derselben Tabelle echte ``SILFDNR=``-Adressen. Wer nur eine Form
+  sucht, hält den Index der anderen Stadt für leer.
+- **Das „weiter"-Ziel ist mal absolut, mal relativ.** Wolfsburg schreibt die
+  volle Adresse, Lüneburg ``./si018?…``.
+
+**Ohne Sitzungs-Cookie antwortet der Selbstaufruf mit einer leeren Hülle.**
+Der Client hält eine ``requests.Session``, das genügt — aber der erste Abruf
+auf ``si018`` muss trotzdem passieren.
+
 **Und die Beratungsfolge steht über zwei Zeilen je Station** — Status,
 Gremium, Beschluss in der ersten, Datum und Sitzungsname in der zweiten. Wer
 Zeile für Zeile liest, bekommt lauter halbe Stationen.
@@ -142,8 +169,18 @@ tausendfache Lücke macht die halbe Beschlusslage einer Stadt unsichtbar.
 
 ## Eine neue Stadt anschließen
 
+0. **Den Host von der Rathaus-Seite holen, nie raten.** Am 10.09.2026 galt
+   Wolfsburg eine Stunde als technisch nicht erntbar — gemessen gegen
+   `ratsinfo.wolfsburg.de`, einen Host, der **nicht einmal im DNS steht**.
+   Die Stadt verlinkt von `wolfsburg.de/politik` auf
+   `ratsinfob.stadt.wolfsburg.de`, ohne `/public`; dort ist alles in
+   Ordnung. Dieselbe Falle bei Lüneburg
+   (`buergerinfo.stadt.lueneburg.de/public`) — und dort trägt der Name
+   „buergerinfo" obendrein die Handschrift von Somacos, während gemessen
+   ALLRIS 4 läuft. **Das Produkt steht im Seiteninhalt, nicht im Domainnamen.**
 1. **Eintrag in [`registry.py`](registry.py)**, `active=False`. ALLRIS-4-
-   Instanzen laufen fast immer unter `<stadt>.sitzung-online.de/oparl/system`.
+   Instanzen laufen oft, aber längst nicht immer unter
+   `<stadt>.sitzung-online.de/oparl/system`.
 2. **Ernten und normalisieren**, erst mit kurzem Fenster:
    `--run --body <stadt> --since 2025-01-01 --stage fetch --stage normalize`.
 3. **`--pruefen`.** Das ist der Schritt, den man nicht auslassen darf: Alle

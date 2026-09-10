@@ -54,6 +54,10 @@ logger = logging.getLogger("council.cities.adapters.allris4_html")
 #: mehr holt der Bestandslauf über ``--since``.
 MAX_MONATE = 24
 
+#: Wie viele Seiten der Sitzungsübersicht ein Lauf höchstens blättert.
+#: 25 Sitzungen je Seite — Wolfsburg hat 652 auf 27 Seiten.
+MAX_INDEXSEITEN = 200
+
 _DATUM = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 _UHRZEIT = re.compile(r"(\d{1,2}):(\d{2})")
 #: ``Ö 6.1``, ``N 17``, ``6.1`` — die Nummer eines Tagesordnungspunkts.
@@ -183,15 +187,83 @@ class Allris4HtmlAdapter:
             yield obj
 
     def kalender_ids(self, client: OParlClient, wurzel: str) -> set[str]:
-        """Welche Sitzungen gibt es? — der einzige Schritt, der einen Browser braucht.
+        """Welche Sitzungen gibt es?
 
-        Wird von ``fetch`` gesetzt (``client.kalender``); ohne Browser bleibt
-        der laufende Monat, den die Wicket-Antwort auch ohne Zustand hergibt.
+        Drei Wege, in dieser Reihenfolge: ein Browser, falls einer gesetzt ist
+        (``client.kalender``); sonst die Sitzungsübersicht, die **ohne**
+        Browser auskommt; sonst der laufende Monat als letzter Rest.
         """
         holen = getattr(client, "kalender", None)
         if holen is not None:
             return set(holen(wurzel))
-        return self.kalender_laufender_monat(client, wurzel)
+        return (self.sitzungsindex(client, wurzel)
+                or self.kalender_laufender_monat(client, wurzel))
+
+    @staticmethod
+    def sitzungsindex(client: OParlClient, wurzel: str) -> set[str]:
+        """Die Sitzungsübersicht ``si018`` — der Index ohne Browser.
+
+        **Warum nicht der Kalender.** ``si010`` ist ein Monatsraster; seine
+        Zellen tragen keine Sitzungskennung, und die Monatsnavigation hängt an
+        einer Seitenversion, die der Server hochzählt. ``si018`` dagegen ist
+        eine Liste mit einer Blätterung, die sich selbst beschreibt: Jede
+        Antwort nennt das Ziel für „weiter". Gemessen an Wolfsburg am
+        10.09.2026: 652 Sitzungen auf 27 Seiten, ohne einen Browser.
+
+        **Die Kennung steht in zwei verschiedenen Formen da.** Wolfsburg
+        setzt die Zeilen als Wicket-Verweise ohne ``href``; was sie
+        identifiziert, ist ``id="silink_1003198"``. Laatzen setzt in derselben
+        Tabelle echte Adressen mit ``SILFDNR=``. Gelesen werden beide — wer
+        nur eine Form kennt, hält den Index der anderen Stadt für leer, und
+        genau das ist am 10.09.2026 passiert.
+        """
+        kopf = {"Wicket-Ajax": "true", "Wicket-Ajax-BaseURL": "si018",
+                "Accept": "text/xml"}
+        try:
+            # Der erste Abruf holt das Sitzungs-Cookie; ohne das antwortet der
+            # Selbstaufruf mit einer leeren Hülle.
+            huelle = client.get_text(f"{wurzel}/si018")
+        except Exception as e:  # noqa: BLE001 — dann bleibt der Kalender
+            logger.info("%s: Sitzungsübersicht nicht lesbar (%s)", client.body_id,
+                        type(e).__name__)
+            return set()
+        # **Die Seitenversion NICHT setzen, sondern lesen.** Wicket zählt sie
+        # je Sitzung hoch: Wer vorher andere Seiten geholt hat, steht nicht
+        # mehr bei 0. Genau daran ist die erste Fassung gescheitert — sie
+        # schrieb ``si018?0-1.0-`` fest und bekam nach dem (bei Wolfsburg
+        # ohnehin scheiternden) Gremien-Abruf eine leere Antwort, also
+        # „0 Sitzungen" statt 652. Die Hülle nennt ihre eigene Adresse.
+        selbst = re.search(r"si018\?(\d+-\d+)\.\d+-", huelle)
+        if not selbst:
+            logger.info("%s: Sitzungsübersicht ohne Selbstaufruf", client.body_id)
+            return set()
+        try:
+            antwort = client.get_text(
+                f"{wurzel}/si018?{selbst.group(1)}.0-", headers=kopf)
+        except Exception as e:  # noqa: BLE001 — dann bleibt der Kalender
+            logger.info("%s: Sitzungsübersicht antwortet nicht (%s)",
+                        client.body_id, type(e).__name__)
+            return set()
+        ids: set[str] = set()
+        for _ in range(MAX_INDEXSEITEN):
+            neue = (set(re.findall(r"silink_(\d+)", antwort))
+                    | set(re.findall(r"SILFDNR=(\d+)", antwort)))
+            weiter = re.search(r'"u":"([^"]*navigator-next)"', antwort)
+            if not neue - ids or not weiter:
+                ids |= neue
+                break
+            ids |= neue
+            # Wolfsburg schreibt das Ziel absolut, Lüneburg relativ
+            # (``./si018?…``) — ``urljoin`` macht aus beidem dasselbe.
+            naechste = urljoin(f"{wurzel}/", weiter.group(1).lstrip("./"))
+            try:
+                antwort = client.get_text(naechste, headers=kopf)
+            except Exception as e:  # noqa: BLE001 — was bis hier steht, gilt
+                logger.info("%s: Index bricht nach %s Sitzungen ab (%s)",
+                            client.body_id, len(ids), type(e).__name__)
+                break
+        logger.info("%s: %s Sitzungen im Index", client.body_id, len(ids))
+        return ids
 
     @staticmethod
     def kalender_laufender_monat(client: OParlClient, wurzel: str) -> set[str]:

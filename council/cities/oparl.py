@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import threading
 import time
@@ -32,8 +33,12 @@ USER_AGENT = ("Ratslotse/1.0 (+https://ratslotse.de; Kontakt siehe Impressum) "
               "Staedtevergleich kommunaler Ratsbeschluesse")
 HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
-#: Mindestabstand zwischen zwei Anfragen an denselben Host.
-RATE_SECONDS = 1.0
+#: Mindestabstand zwischen zwei Anfragen an denselben Host. Eine Sekunde ist
+#: die Vorgabe und bleibt es für den Cron. Ein Bestandslauf über Tausende
+#: Seiten darf enger fahren — ``CITIES_RATE_SECONDS`` setzt das für einen
+#: Lauf, nach unten begrenzt auf 0,2 s, damit ein Tippfehler in der Umgebung
+#: kein fremdes Ratsinformationssystem umwirft.
+RATE_SECONDS = max(0.2, float(os.environ.get("CITIES_RATE_SECONDS") or 1.0))
 TIMEOUT_JSON = 60
 TIMEOUT_FILE = 120
 

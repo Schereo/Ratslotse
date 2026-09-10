@@ -121,21 +121,30 @@ BODIES: dict[str, BodySpec] = {
         active=False,
         notes="OParl antwortet mit HTTP 500. Gemessen 10.09.2026: 8 Sitzungen, "
               "154 Punkte, 74 Vorlagen, 241 Dateien, 83 Beratungen."),
+    # **Der Domainname sagt nichts über das Produkt.** „buergerinfo" ist
+    # sonst die Handschrift von Somacos; gemessen läuft dort ALLRIS 4
+    # („ALLRIS - Sitzungen Kalender" auf si010). Dieselbe Falle wie
+    # ``sitzung-online.de``, das nicht Somacos gehört, sondern CC e-gov.
     "lueneburg": BodySpec(
         "lueneburg", "Lüneburg", "NI", "allris4_html",
-        "https://ratsinfo.lueneburg.de/public",
+        "https://buergerinfo.stadt.lueneburg.de/public",
         active=False,
-        notes="OParl antwortet mit HTTP 500. Gemessen 10.09.2026: 6 Sitzungen, "
-              "98 Punkte."),
+        notes="OParl antwortet mit HTTP 500. Verlinkt von "
+              "hansestadt-lueneburg.de/rathaus/politik."),
+    # **Der Host steht NICHT nach dem üblichen Muster.** Weder
+    # ``ratsinfo.wolfsburg.de`` noch ``wolfsburg.sitzung-online.de`` lösen
+    # überhaupt auf; die Stadt verlinkt von wolfsburg.de/politik auf
+    # ``ratsinfob.stadt.wolfsburg.de``, ohne ``/public``. Ein geratener Host
+    # hat am 10.09.2026 eine Stunde gekostet und zu dem Schluss geführt, die
+    # Anwendung sei kaputt — sie ist es nicht.
     "wolfsburg": BodySpec(
         "wolfsburg", "Wolfsburg", "NI", "allris4_html",
-        "https://ratsinfo.wolfsburg.de/public",
+        "https://ratsinfob.stadt.wolfsburg.de",
         active=False,
-        notes="Zweitgrößte NI-Stadt ohne Anschluss. Die Inhaltsseiten "
-              "antworten (to010/vo020), der Index NICHT: si010 und vo040 "
-              "liefern Hüllen ohne ein einziges AJAX-Ziel (Laatzen: 28 bzw. "
-              "7), der Kalender endet auf /internalerrorpage. Ohne Index gibt "
-              "es keine Sitzungskennungen — s. docs/plan-cities-phase5.md."),
+        notes="CC BY 4.0 (laut /oparl/system). OParl ist eingebaut, liefert "
+              "aber nur /system — bodies und alles dahinter antworten mit "
+              "HTTP 500. Gelesen wird deshalb die Oberfläche. 652 Sitzungen "
+              "im Index (si018), gemessen 10.09.2026."),
 }
 
 
