@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
-import { api, apiUrl, authHeaders } from "@/lib/api";
+import { ApiError, api, apiUrl, authHeaders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { AdminUserDetail, AdminGrowth, AdminRequestFehler, QuizFlagged, EntityAlias, AdminFeedback, PlaceCandidate } from "@/lib/types";
@@ -30,7 +30,7 @@ type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
-import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, EmptyState, ErrorState, Input, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
+import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, EmptyState, ErrorState, Input, Label, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
 import { AreaSparkline, MiniBars, StatKicker } from "@/components/admin-charts";
 import { Mascot } from "@/components/mascot";
 import { cn } from "@/lib/utils";
@@ -1327,9 +1327,18 @@ function FehlerTab() {
 }
 
 
+/** Arten, zu denen es eine Rückmeldung gibt — dieselbe Liste wie im Backend
+ *  (`_RUECKMELDBAR` in routers/admin.py). Eine gemeldete Share-Verletzung ist
+ *  eine Meldung ÜBER fremde Inhalte und bekommt nie Post; das Backend weist
+ *  sie ohnehin ab, hier bleibt der Knopf gleich ganz weg. */
+const RUECKMELDBAR = new Set(["feature", "bug", "other", "konto"]);
+
 function FeedbackTab() {
   const qc = useQueryClient();
   const [onlyUnread, setOnlyUnread] = useState(false);
+  // Die Rückmeldung, die gerade verfasst wird (null = kein Dialog offen).
+  const [antwortZu, setAntwortZu] = useState<AdminFeedback | null>(null);
+  const [antwortText, setAntwortText] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-feedback", onlyUnread],
@@ -1346,6 +1355,22 @@ function FeedbackTab() {
       qc.invalidateQueries({ queryKey: ["admin-feedback-unread"] });
     },
     onError: () => toast.error("Konnte nicht gespeichert werden."),
+  });
+
+  const benachrichtigen = useMutation({
+    mutationFn: ({ id, message }: { id: number; message: string }) =>
+      api.post<{ recipient: string }>(`/admin/feedback/${id}/notify`, { message }),
+    onSuccess: (antwort) => {
+      // Sagt WOHIN, nicht nur „gesendet": Bei einer Mail an eine fremde
+      // Person ist das der Unterschied zwischen Bestätigung und Behauptung.
+      toast.success(`Rückmeldung an ${antwort.recipient} verschickt.`);
+      setAntwortZu(null);
+      setAntwortText("");
+      qc.invalidateQueries({ queryKey: ["admin-feedback"] });
+      qc.invalidateQueries({ queryKey: ["admin-feedback-unread"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Die Rückmeldung ging nicht raus."),
   });
 
   const removeShare = useMutation({
@@ -1397,14 +1422,32 @@ function FeedbackTab() {
                       {f.email}
                     </a>
                   )}
-                  <Button
-                    variant="secondary"
-                    className="ml-auto"
-                    disabled={mark.isPending}
-                    onClick={() => mark.mutate({ id: f.id, read: open })}
-                  >
-                    {open ? "Erledigt" : "Wieder öffnen"}
-                  </Button>
+                  {f.notified_at && (
+                    <span className="text-xs text-muted-foreground">
+                      benachrichtigt {formatDate(f.notified_at.slice(0, 10))}
+                    </span>
+                  )}
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {/* „Bescheid geben" steht neben „Erledigt" und nicht darin:
+                        Vieles wird abgehakt, ohne dass es etwas zu berichten
+                        gäbe. Der Knopf erscheint nur, wenn es überhaupt geht —
+                        passende Art, Adresse da, noch nicht benachrichtigt. */}
+                    {RUECKMELDBAR.has(f.kind) && f.email && !f.notified_at && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => { setAntwortZu(f); setAntwortText(""); }}
+                      >
+                        Erledigt & Bescheid geben
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      disabled={mark.isPending}
+                      onClick={() => mark.mutate({ id: f.id, read: open })}
+                    >
+                      {open ? "Erledigt" : "Wieder öffnen"}
+                    </Button>
+                  </div>
                   {shareToken && (
                     <Button variant="danger" disabled={removeShare.isPending}
                       onClick={() => removeShare.mutate(shareToken)}>
@@ -1420,6 +1463,44 @@ function FeedbackTab() {
           })}
         </ul>
       )}
+
+      <Dialog open={!!antwortZu} onOpenChange={(offen) => !offen && setAntwortZu(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bescheid geben</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Geht an <span className="font-medium text-foreground">{antwortZu?.email}</span>.
+            Die Mail nennt je nach Art den passenden Kernsatz und zitiert die
+            ursprüngliche Nachricht.
+          </p>
+          <div>
+            <Label htmlFor="rueckmeldung">Deine Nachricht (optional)</Label>
+            <Textarea
+              id="rueckmeldung"
+              className="mt-1"
+              rows={4}
+              maxLength={2000}
+              value={antwortText}
+              onChange={(e) => setAntwortText(e.target.value)}
+              placeholder="z. B. „Seit heute unter „Mein Konto“ zu finden.“"
+            />
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" onClick={() => setAntwortZu(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              disabled={benachrichtigen.isPending}
+              onClick={() => antwortZu && benachrichtigen.mutate({
+                id: antwortZu.id, message: antwortText,
+              })}
+            >
+              {benachrichtigen.isPending ? "Wird verschickt…" : "Verschicken & erledigen"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

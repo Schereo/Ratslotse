@@ -359,6 +359,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/feedback/{feedback_id}/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Notify Feedback Author
+         * @description Der absendenden Person Bescheid geben, dass ihre Sache erledigt ist.
+         *
+         *     Bewusst ein eigener Aufruf und nicht ein Nebeneffekt von „Erledigt":
+         *     Vieles wird abgehakt, ohne dass es etwas zu berichten gäbe, und eine
+         *     gemeldete Share-Verletzung darf nie Post auslösen. Die Oberfläche fragt
+         *     deshalb nach dem Abhaken, statt selbst zu entscheiden.
+         */
+        post: operations["notify_feedback_author_api_admin_feedback__feedback_id__notify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/feedback/{feedback_id}/read": {
         parameters: {
             query?: never;
@@ -4813,6 +4838,24 @@ export interface components {
             /** Unread */
             unread: number;
         };
+        /**
+         * AdminFeedbackNotified
+         * @description Antwort auf „Bescheid geben" — inklusive der Adresse, an die es ging.
+         *
+         *     Die Oberfläche sagt danach nicht „gesendet", sondern *wohin* gesendet
+         *     wurde. Bei einer Mail an eine fremde Person ist das der Unterschied
+         *     zwischen einer Bestätigung und einer Behauptung.
+         */
+        AdminFeedbackNotified: {
+            /** Notified At */
+            notified_at: string;
+            /** Ok */
+            ok: boolean;
+            /** Recipient */
+            recipient: string;
+            /** Unread */
+            unread: number;
+        };
         /** AdminFeedbackRead */
         AdminFeedbackRead: {
             /** Ok */
@@ -4839,6 +4882,8 @@ export interface components {
             kind: string;
             /** Message */
             message: string;
+            /** Notified At */
+            notified_at: string | null;
             /** Owner Id */
             owner_id: number;
             /** Read At */
@@ -8133,6 +8178,21 @@ export interface components {
             /** Kind */
             kind: string;
             /** Message */
+            message: string;
+        };
+        /**
+         * FeedbackNotifyIn
+         * @description Die optionale Zeile, die wir der absendenden Person mitschicken.
+         *
+         *     Optional heißt hier wirklich optional: Ohne Text geht die Karte mit dem
+         *     Kernsatz zur jeweiligen Art raus. Die Obergrenze ist dieselbe Größenordnung
+         *     wie beim Feedback selbst — es ist eine Nachricht, kein Newsletter.
+         */
+        FeedbackNotifyIn: {
+            /**
+             * Message
+             * @default
+             */
             message: string;
         };
         /** Finances */
@@ -11861,6 +11921,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUnread"];
+                };
+            };
+        };
+    };
+    notify_feedback_author_api_admin_feedback__feedback_id__notify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feedback_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackNotifyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFeedbackNotified"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -17045,4 +17140,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: f600e8492532dab8b6aaa5b4c15c911d8bf916daae49c449e3e86aedcc85d445
+// vertrag-sha256: 13d77c9682cb1001a4a023918e24bad296c9562b65aa550215f1b167f44b1b77

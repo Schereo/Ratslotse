@@ -372,6 +372,16 @@ class NotifyPrefsIn(BaseModel):
 
 
 # ---- feedback ----
+class FeedbackNotifyIn(BaseModel):
+    """Die optionale Zeile, die wir der absendenden Person mitschicken.
+
+    Optional heißt hier wirklich optional: Ohne Text geht die Karte mit dem
+    Kernsatz zur jeweiligen Art raus. Die Obergrenze ist dieselbe Größenordnung
+    wie beim Feedback selbst — es ist eine Nachricht, kein Newsletter.
+    """
+    message: str = Field(default="", max_length=2000)
+
+
 class FeedbackIn(BaseModel):
     kind: str = Field(pattern="^(feature|bug|other)$")
     message: str = Field(min_length=3, max_length=4000)

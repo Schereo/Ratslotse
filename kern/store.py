@@ -547,7 +547,15 @@ CREATE TABLE IF NOT EXISTS feedback (
     kind       TEXT NOT NULL,         -- feature | bug | other
     message    TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    read_at    TEXT                   -- NULL = ungelesen
+    read_at    TEXT,                  -- NULL = ungelesen
+    -- Wann die absendende Person eine Rückmeldung bekommen hat („dein
+    -- Vorschlag ist umgesetzt"). NULL = noch keine. Eigene Spalte und nicht
+    -- aus `read_at` abgeleitet: Abhaken und Bescheid geben sind zwei
+    -- Entscheidungen — vieles wird erledigt, ohne dass es etwas zu berichten
+    -- gäbe, und eine gemeldete Share-Verletzung bekommt gar nie Post. Sie ist
+    -- zugleich die Sperre gegen ein zweites Mal: „Wieder öffnen" und erneut
+    -- „Erledigt" darf niemandem dieselbe Mail ein zweites Mal schicken.
+    notified_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 """
@@ -1399,6 +1407,14 @@ class Store:
             with self._conn:
                 self._conn.execute(
                     "ALTER TABLE email_verification_tokens ADD COLUMN new_email TEXT")
+        # Rückmeldung an die absendende Person (09/2026). Die Spalte prüft sich
+        # SELBST — s. tests/test_web_users_spalten.py. Bestandszeilen bleiben
+        # NULL: Für alles, was vor dieser Möglichkeit erledigt wurde, ist
+        # nichts rausgegangen, und das ist die richtige Auskunft.
+        fb_cols = self._table_cols("feedback")
+        if fb_cols and "notified_at" not in fb_cols:
+            with self._conn:
+                self._conn.execute("ALTER TABLE feedback ADD COLUMN notified_at TEXT")
         self._kontostand_disabled_nachziehen()
         # Die Rollen ziehen aus der Spalte in die Tabelle um (09/2026).
         # `web_user_roles` legt das SCHEMA selbst an (CREATE TABLE IF NOT
@@ -3082,7 +3098,7 @@ class Store:
         """Neueste zuerst — so steht Unerledigtes oben."""
         where = "WHERE read_at IS NULL" if only_unread else ""
         rows = self._conn.execute(
-            f"SELECT id, owner_id, email, kind, message, created_at, read_at"
+            f"SELECT id, owner_id, email, kind, message, created_at, read_at, notified_at"
             f" FROM feedback {where} ORDER BY created_at DESC, id DESC LIMIT ?",
             (limit,),
         ).fetchall()
@@ -3091,6 +3107,25 @@ class Store:
     def count_unread_feedback(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) FROM feedback WHERE read_at IS NULL").fetchone()
         return int(row[0]) if row else 0
+
+    def get_feedback(self, feedback_id: int) -> dict | None:
+        """Eine einzelne Rückmeldung — für den Versand der Antwort."""
+        row = self._conn.execute(
+            "SELECT id, owner_id, email, kind, message, created_at, read_at, notified_at"
+            " FROM feedback WHERE id = ?", (feedback_id,)).fetchone()
+        return dict(row) if row else None
+
+    def mark_feedback_notified(self, feedback_id: int) -> None:
+        """Festhalten, dass eine Rückmeldung rausgegangen ist.
+
+        Wird **nach** dem erfolgreichen Versand gesetzt, nicht davor: Ein
+        Vermerk ohne Mail wäre die schlechtere Lüge — er nähme der Person die
+        Antwort und uns die Möglichkeit, es noch einmal zu versuchen.
+        """
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "UPDATE feedback SET notified_at = ? WHERE id = ?", (now, feedback_id))
 
     def set_feedback_read(self, feedback_id: int, read: bool) -> bool:
         """Als erledigt markieren (oder zurücksetzen). False = es gab die id nicht."""

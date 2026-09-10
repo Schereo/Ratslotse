@@ -714,7 +714,7 @@ Alle optional — greift keine Variable, gilt der Default aus dem Code.
 | `RESEND_API_KEY` | Versand über Resend; fehlt er, wird E-Mail still übersprungen | nein | leer |
 | `EMAIL_FROM` | Absender der Mails | nein | `Ratslotse <noreply@ratslotse.de>` |
 | `APP_BASE_URL` | Basis-URL in Mail-Links | nein | `https://ratslotse.de` |
-| `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks | nein | leer → `WEB_ADMIN_EMAIL` |
+| `FEEDBACK_EMAIL` | Empfänger*in des Nutzer-Feedbacks; zugleich die Antwortadresse der Rückmeldungen an die absendende Person | nein | leer → `WEB_ADMIN_EMAIL` |
 | `ALERT_EMAIL` | Empfänger*in der Cron-Alarme | nein | nicht gesetzt → `WEB_ADMIN_EMAIL` |
 
 ### Push (APNs / FCM)
