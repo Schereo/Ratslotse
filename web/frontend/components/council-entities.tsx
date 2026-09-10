@@ -94,7 +94,7 @@ export function EntitiesTab() {
 
   if (loading) return <div className="py-4"><TableSkeleton rows={8} cols={3} /></div>;
   if (all.length === 0) {
-    return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Es wurden noch keine wiederkehrenden Eigennamen aus den Beschlüssen extrahiert." />;
+    return <EmptyState mascot="sleep" title="Noch keine Themen" hint="Hier gibt es noch keine Themen aus den Beschlüssen." />;
   }
 
   const needle = q.trim().toLowerCase();

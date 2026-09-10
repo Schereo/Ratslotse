@@ -54,10 +54,10 @@ Ratslotse ist ein unabhängiges Bürgerprojekt und wird nicht von der Stadt Olde
 
 Was beschließt eigentlich der Rat? Ratslotse macht die Arbeit des Oldenburger Stadtrats verständlich — für alle.
 
-Kein PDF-Wälzen mehr: Frag in normaler Sprache, was der Rat zu einem Thema beschlossen hat, und bekomme eine verständliche Antwort mit Quellen. Durchsuche acht Jahre Beschlüsse, folge deinen Themen und behalte den Überblick, ohne jede Sitzung zu verfolgen.
+Du musst keine langen PDFs durchsuchen: Frag in eigenen Worten, was der Rat zu einem Thema beschlossen hat, und erhalte eine verständliche Antwort mit Quellen. Durchsuche acht Jahre Beschlüsse, folge deinen Themen und behalte den Überblick, ohne jede Sitzung selbst zu verfolgen.
 
 FRAG DEN RAT
-Stell eine Frage in deinen Worten. Die Antwort nennt Fußnoten und verlinkt jedes Original — nachprüfbar, nicht geraten.
+Stell eine Frage in eigenen Worten. Die Antwort nennt ihre Quellen und verlinkt die Originaldokumente. So kannst du jede Aussage nachprüfen.
 
 JEDER BESCHLUSS, DURCHSUCHBAR
 Volltextsuche mit Filtern nach Thema, Ausschuss, Ergebnis und Zeitraum. Mit einem Blick sehen, ob etwas angenommen, abgelehnt oder vertagt wurde.
@@ -66,10 +66,10 @@ DEINE THEMEN IM AUGE
 Lege Themen wie „Radwege" oder „Kitas" an oder abonniere einen Ausschuss. Ratslotse meldet sich, wenn etwas dazu auf der Tagesordnung steht — höchstens zweimal am Tag, nachts nie.
 
 ZAHLEN UND ZUSAMMENHÄNGE
-Wer bringt welche Anträge ein, wohin fließt das Geld, wo in der Stadt ist der Rat gerade aktiv.
+Sieh, wer welche Anträge stellt, welche Summen in den Beschlüssen stehen und wo in der Stadt der Rat gerade aktiv ist.
 
 UND EIN QUIZ
-Wie gut kennst du deine Stadt? Zehn Fragen, ehrlich schwerer als gedacht.
+Wie gut kennst du deine Stadt? Zehn Fragen zeigen dir, was du schon weißt — und was du noch entdecken kannst.
 
 Alle Daten stammen aus dem offiziellen Ratsinformationssystem der Stadt Oldenburg und verlinken auf die Originaldokumente. Es besteht keine Verbindung zur Stadtverwaltung oder zum Stadtrat.
 
@@ -79,7 +79,7 @@ KI-Antworten können unvollständig sein — jede Antwort nennt ihre Quellen zum
 **Werbetext** (max. 170, jederzeit ohne neue Version änderbar):
 
 ```
-Verstehe, was dein Stadtrat beschließt — frag in normaler Sprache, folge deinen Themen und verpasse keine Entscheidung mehr. Aus der amtlichen Quelle.
+Verstehe, was dein Stadtrat beschließt: Frag in eigenen Worten, folge deinen Themen und verpasse keine Entscheidung mehr. Alle Angaben stammen aus der amtlichen Quelle.
 ```
 
 **Neue Funktionen (v1.0):**

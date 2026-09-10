@@ -194,8 +194,8 @@ export default function MethodikSeite() {
               </table>
             </div>
             <p className="mt-2 text-[11.5px] text-muted-foreground">
-              Ausgewertet am {m.abgerufen}. Die extrahierten Volltexte (mit Seitenmarkern) liegen offen im
-              Ratslotse-Repository — die PDFs selbst hosten wir nicht, sie gehören den Parteien.
+              Ausgewertet am {m.abgerufen}. Die ausgelesenen Volltexte mit Seitenmarkern liegen offen im
+              Ratslotse-Repository. Die PDFs selbst speichert Ratslotse nicht; sie gehören den Parteien.
             </p>
           </div>
         </div>

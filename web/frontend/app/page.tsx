@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Ratslotse — Oldenburger Ratsinformationen verständlich",
   description:
-    "Beschlüsse des Oldenburger Stadtrats durchsuchen, Fragen in normaler Sprache stellen, Themen auf der Karte sehen und Parteien, Personen und Finanzen analysieren. Aus dem amtlichen Ratsinformationssystem, verständlich aufbereitet.",
+    "Beschlüsse des Oldenburger Stadtrats durchsuchen, Fragen in eigenen Worten stellen, Themen auf der Karte entdecken und den Rat besser verstehen. Aus dem amtlichen Ratsinformationssystem, verständlich aufbereitet.",
 };
 
 // Bento-Anordnung statt drei gleicher Spalten: `wide`-Karten spannen auf
@@ -28,11 +28,11 @@ export const metadata: Metadata = {
 // Killerfeature farblich heraus. RL-U08: jede Karte verlinkt auf ihr Ziel —
 // der Login-Gate der App übernimmt, wenn noch kein Konto da ist.
 const FEATURES = [
-  { icon: Sparkles, title: "Frag den Rat", desc: "Stell eine Frage in normaler Sprache; Ratslotse findet die passenden Beschlüsse und antwortet mit Quellen und Fußnoten.", href: "/fragen", wide: true, hero: true },
+  { icon: Sparkles, title: "Frag den Rat", desc: "Stell deine Frage in eigenen Worten. Ratslotse findet passende Beschlüsse und antwortet mit Quellen.", href: "/fragen", wide: true, hero: true },
   { icon: Search, title: "Beschlüsse durchsuchen", desc: "Volltextsuche mit Filtern nach Fraktion, Themenfeld und Geldbeträgen — statt PDF-Wälzen.", href: "/council" },
   { icon: MapPin, title: "Themen & Karte", desc: "Orte, Straßen und Projekte verständlich beschrieben — und auf einer Stadtkarte, wo der Rat aktiv ist.", href: "/karte" },
-  { icon: BarChart3, title: "Analyse", desc: "Wer ist im Rat präsent, wo fließt das Geld, welche Themen bewegen — Parteien, Personen, Finanzen, Trends.", href: "/council?tab=analysis", wide: true },
-  { icon: Landmark, title: "Amtliche Quelle", desc: "Direkt aus dem Ratsinformationssystem der Stadt Oldenburg, verlinkt zu den Originaldokumenten.", href: "/docs" },
+  { icon: BarChart3, title: "Analyse", desc: "Sieh, wer Anträge stellt, wie oft der Rat uneinig ist, welche Summen beschlossen werden und welche Themen häufig vorkommen.", href: "/council?tab=analysis", wide: true },
+  { icon: Landmark, title: "Amtliche Quelle", desc: "Alle Angaben stammen aus dem Ratsinformationssystem der Stadt. Zu jedem Eintrag findest du das Originaldokument.", href: "/docs" },
   { icon: Bell, title: "Benachrichtigungen", desc: "Lege Themen an und werde bei neuen Beschlüssen informiert — per Push oder E-Mail, sobald der Rat entscheidet.", href: "/topics", wide: true },
 ];
 
@@ -81,8 +81,9 @@ export default function LandingPage() {
                 Was beschließt eigentlich der Rat?
               </h1>
               <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
-                Ratslotse macht die Beschlüsse des Oldenburger Stadtrats durchsuchbar, vergleichbar und verständlich —
-                Fragen stellen in normaler Sprache, Themen-Karten, Analysen. Aus der amtlichen Quelle, ohne PDF-Wälzen.
+                Mit Ratslotse kannst du Beschlüsse des Oldenburger Stadtrats durchsuchen, vergleichen und besser
+                verstehen. Stell Fragen in eigenen Worten, entdecke Themen auf der Karte und sieh dir Analysen an —
+                direkt aus der amtlichen Quelle, ohne dich durch PDFs zu arbeiten.
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
                 {/* DIE eine Signal-Handlung der Landing (RL-101). */}

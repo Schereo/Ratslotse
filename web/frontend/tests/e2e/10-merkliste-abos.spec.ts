@@ -153,6 +153,6 @@ test.describe("Ausschuss-Abos", () => {
     await page.route("**/api/council/committees**", (r) =>
       r.fulfill({ status: 500, json: { detail: "kaputt" } }));
     await page.goto("/abos");
-    await expect(page.getByText("Die Gremien kamen nicht durch")).toBeVisible();
+    await expect(page.getByText("Ausschüsse konnten nicht geladen werden")).toBeVisible();
   });
 });
