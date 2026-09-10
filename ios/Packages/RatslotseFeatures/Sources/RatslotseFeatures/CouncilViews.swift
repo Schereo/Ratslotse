@@ -1779,13 +1779,17 @@ private struct DecisionActionBar: View {
         HStack(spacing: 10) {
             if let follow {
                 Button { toggleFollow(follow) } label: {
+                    // Symbol und Beschriftung zusammen in der Mitte. Vorher
+                    // standen sie links und ein „+" ganz rechts am Rand — bei
+                    // 12 pt neben einer 16-pt-Glocke, mit einem Loch dazwischen,
+                    // das mit der Titellänge wuchs (Tims Befund 10.09.2026).
+                    // 17 pt ist die Größe der beiden Nachbarknöpfe.
                     HStack(spacing: 9) {
-                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 16)
+                        RatsIcon(follow.following ? .bellRing : .bellDot, size: 17)
                         Text(follow.following ? "Wird verfolgt" : "Vorgang folgen")
-                            .font(RatsFont.body(14, weight: .semibold))
+                            .font(RatsFont.body(15, weight: .semibold))
                             .lineLimit(1)
-                        Spacer(minLength: 0)
-                        RatsIcon(follow.following ? .check : .plus, size: 12)
+                            .minimumScaleFactor(0.85)
                     }
                     .foregroundStyle(follow.following ? RatsColor.primary : RatsColor.primaryText)
                     .padding(.horizontal, 16)
