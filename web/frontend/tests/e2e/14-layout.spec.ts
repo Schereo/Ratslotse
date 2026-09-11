@@ -30,9 +30,10 @@ const OFFEN = ["/", "/login", "/register", "/hilfe", "/impressum", "/datenschutz
   // Kopf — und der ist auf dem Handy die enge Stelle. Die Tafel mit Zahlen
   // prüft `15-wahlabend.spec.ts`, dort mit gemockter Antwort.
   "/wahlabend",
-  // Der Beamer ohne Schalter: derselbe Hinweis-Zustand wie beim Wahlabend.
-  // Mit Schalter und echten Daten prüft ihn `17-tippspiel-live.spec.ts`.
-  "/tipp/live"];
+  // Dasselbe Muster fürs Tippspiel: ohne Schalter nur der Hinweis, mit
+  // gemockten Antworten prüft `16-tippspiel.spec.ts` die Handy-Screens und
+  // `17-tippspiel-live.spec.ts` den Beamer.
+  "/tipp", "/tipp/live"];
 
 /** Um wie viel ist die Seite breiter als das Fenster? 0 = gar nicht. */
 async function ueberbreite(page: Page): Promise<number> {

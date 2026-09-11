@@ -97,12 +97,11 @@ FEATURES: dict[str, Feature] = {
     ),
     "tippspiel": Feature(
         key="tippspiel",
-        description="Das Tippspiel zur Ratswahl 2026 (docs/plan-tippspiel-ratswahl.md): "
-                    "Sitze je Liste und OB-Prozente tippen, live gegen die Hochrechnung "
-                    "vergleichen, Beamer-Scoreboard mit Rangliste.",
-        fertig_wenn="Der Wahlabend ist vorbei und der Endstand steht (analog "
-                    "`wahlabend`); eine Weile danach als Rückblick stehen lassen, "
-                    "dann braucht die Seite keinen Schalter mehr.",
+        description="Das Tippspiel zur Ratswahl am 13.09.2026: Sitze je Liste tippen, "
+                    "optional die OB-Prozente, Live-Vergleich und Scoreboard "
+                    "(docs/plan-tippspiel-ratswahl.md) — ohne Konto, per QR-Link.",
+        fertig_wenn="Der Wahlabend ist vorbei und das Scoreboard ein Rückblick statt "
+                    "eines laufenden Spiels.",
     ),
 }
 

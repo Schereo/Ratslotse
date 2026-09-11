@@ -10,14 +10,23 @@ public struct MonoKicker: View {
     }
 
     public var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(text.uppercased())
-            Spacer(minLength: 8)
-            if let trailing { Text(trailing) }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(text.uppercased())
+                    .fixedSize()
+                Spacer(minLength: 8)
+                if let trailing { Text(trailing).fixedSize() }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(text.uppercased())
+                if let trailing { Text(trailing) }
+            }
         }
-        .font(RatsFont.mono())
-        .tracking(1.05)
+        .font(RatsFont.metadata())
+        .tracking(0.6)
         .foregroundStyle(RatsColor.muted)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -113,15 +122,19 @@ public struct SourceRow: View {
     }
 
     public var body: some View {
-        HStack(spacing: RatsSpacing.sm) {
+        HStack(alignment: .top, spacing: RatsSpacing.sm) {
             FootnoteChip(number: number)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(RatsFont.body(13, weight: .semibold)).lineLimit(2)
-                if let meta { Text(meta).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) }
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).font(RatsFont.sourceTitle())
+                if let meta { Text(meta).font(RatsFont.metadata()).foregroundStyle(RatsColor.muted) }
             }
-            Spacer(minLength: 0)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
             RatsIcon(.chevronRight, size: 12).foregroundStyle(RatsColor.muted)
         }
+        .multilineTextAlignment(.leading)
+        .lineLimit(nil)
+        .frame(minHeight: 44)
         .foregroundStyle(RatsColor.text)
         .contentShape(Rectangle())
     }
@@ -130,6 +143,7 @@ public struct SourceRow: View {
 public struct FootnoteChip: View {
     private let number: Int
     private let active: Bool
+    @ScaledMetric(relativeTo: .caption) private var minimumSize: CGFloat = 24
 
     public init(number: Int, active: Bool = false) {
         self.number = number
@@ -138,9 +152,10 @@ public struct FootnoteChip: View {
 
     public var body: some View {
         Text("\(number)")
-            .font(RatsFont.body(10, weight: .bold))
-            .foregroundStyle(active ? Color.white : RatsColor.primary)
-            .frame(width: 18, height: 18)
+            .font(RatsFont.mono(13, weight: .bold))
+            .foregroundStyle(active ? RatsColor.primaryText : RatsColor.primary)
+            .padding(.horizontal, 3)
+            .frame(minWidth: minimumSize, minHeight: minimumSize)
             .background(active ? RatsColor.primary : RatsColor.primary.opacity(0.10))
             .clipShape(RoundedRectangle(cornerRadius: 4))
     }

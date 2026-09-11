@@ -63,7 +63,7 @@ ROUTEN: frozenset[str] = frozenset({
     "/kommunalwahl", "/kommunalwahl/check", "/kommunalwahl/methodik",
     "/kommunalwahl/naehe", f"/kommunalwahl/liste/{PLATZHALTER}",
     f"/kommunalwahl/thema/{PLATZHALTER}",
-    "/wahlabend", "/tipp/live",
+    "/wahlabend", "/tipp", "/tipp/live",
     # Ratsinhalte (die vier geteilten Detailseiten und das Stöbern)
     "/council", "/council/decision", "/council/sitzung", "/council/thema",
     "/council/person", "/council/ort", "/council/ideen",
@@ -72,7 +72,7 @@ ROUTEN: frozenset[str] = frozenset({
     # sie sind /council mit einem ?tab=, siehe COUNCIL_TABS.
     "/dashboard", "/fragen", "/karte", "/viertel",
     "/topics", "/abos", "/bookmarks", "/quiz", "/quiz/stats",
-    "/account", "/admin",
+    "/account", "/admin", "/tipp/admin",
     # Haushalt
     "/haushalt", "/haushalt/bereich", "/haushalt/einnahmen",
     "/haushalt/investitionen", "/haushalt/konzern", "/haushalt/labor",

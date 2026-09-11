@@ -9875,11 +9875,34 @@ export interface components {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
         };
+        /**
+         * PredictionAdminPlayer
+         * @description Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden
+         *     und Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel
+         *     zeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der
+         *     Admin wiederfinden können.
+         */
+        PredictionAdminPlayer: {
+            /** Has Mayor Tip */
+            has_mayor_tip: boolean;
+            /** Has Tip */
+            has_tip: boolean;
+            /** Hidden */
+            hidden: boolean;
+            /** Id */
+            id: number;
+            /** Late At */
+            late_at: string | null;
+            /** Name */
+            name: string;
+        };
         /** PredictionAdminStand */
         PredictionAdminStand: {
             game: components["schemas"]["PredictionGame"];
             /** Log */
             log: string[];
+            /** Players */
+            players: components["schemas"]["PredictionAdminPlayer"][];
             /** Results */
             results: components["schemas"]["PredictionResultRow"][];
         };
@@ -11965,7 +11988,7 @@ export interface components {
              * Outcome
              * @enum {string}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
             /** Quote */
             quote: string;
             /** Video Id */
@@ -17536,7 +17559,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ok"];
+                    "application/json": components["schemas"]["PredictionAdminStand"];
                 };
             };
             /** @description Validation Error */
@@ -18202,4 +18225,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: aa9962638bd9837498158a8704b9b9fa2cca337486fed36bda7c94be4a4224dc
+// vertrag-sha256: 2c5e809521e82d42803c316534162957791fbd6b21659f16f2b4acbf6f3e5b5e

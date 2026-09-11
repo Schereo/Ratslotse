@@ -1157,7 +1157,7 @@ private struct ConversationMemoryConsentCard: View {
     let choose: (Bool) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        VStack(alignment: .leading, spacing: 14) {
             Lotti3DView(scene: .wave, animated: false)
                 .frame(width: 62, height: 62)
                 .accessibilityHidden(true)
@@ -1168,7 +1168,7 @@ private struct ConversationMemoryConsentCard: View {
                     .font(RatsFont.title(19))
                     .foregroundStyle(RatsColor.text)
                 Text("Wenn du möchtest, speichert Ratslotse deine Verläufe im Konto. Dann findest du sie auf all deinen Geräten unter „Gespräche“. Ohne Speicherung bleibt ein Gespräch nur geöffnet, bis du es schließt.")
-                    .font(RatsFont.body(13))
+                    .font(RatsFont.notice())
                     .foregroundStyle(RatsColor.secondary)
                     .lineSpacing(2)
 
@@ -1185,22 +1185,22 @@ private struct ConversationMemoryConsentCard: View {
                     RatsIcon(.sparkles, size: 10)
                         .foregroundStyle(RatsColor.signal)
                 }
-                .font(RatsFont.body(10))
+                .font(RatsFont.notice())
                 .foregroundStyle(RatsColor.muted)
                 .lineSpacing(2)
 
                 Link("Datenschutz zur KI-Verarbeitung", destination: URL(string: "https://ratslotse.de/datenschutz")!)
-                    .font(RatsFont.body(10, weight: .semibold))
+                    .font(RatsFont.notice(weight: .semibold))
                     .foregroundStyle(RatsColor.primary)
 
                 Text("Mit einer Auswahl erlaubst du die beschriebene Übermittlung an OpenRouter. Ohne diese Verarbeitung kann „Frag den Rat“ keine Antwort erzeugen. Ob Lotti den Verlauf zusätzlich in deinem Konto speichert, entscheidest du mit den beiden Optionen getrennt davon.")
-                    .font(RatsFont.body(9.5))
+                    .font(RatsFont.notice())
                     .foregroundStyle(RatsColor.muted)
                     .lineSpacing(2)
 
                 if let error {
                     RatsLabel(error, .triangleAlert)
-                        .font(RatsFont.body(11, weight: .medium))
+                        .font(RatsFont.notice(weight: .medium))
                         .foregroundStyle(RatsColor.danger)
                 }
             }
@@ -1626,7 +1626,7 @@ private struct QuestionTurnView: View {
                     evidence: turn.evidence,
                     people: people
                 )
-                    .font(RatsFont.body(15))
+                    .font(RatsFont.reading())
                     .foregroundStyle(RatsColor.bodyText)
                     .lineSpacing(6)
             }
@@ -1942,7 +1942,7 @@ private struct QuestionSourcesCard: View {
 
             if isExpanded, index.citedSources.isEmpty {
                 Text("Die Suche hat Ratsunterlagen gefunden, aber die Antwort zitiert noch keine davon direkt.")
-                    .font(RatsFont.body(11.5))
+                    .font(RatsFont.notice())
                     .foregroundStyle(RatsColor.secondary)
                     .lineSpacing(2)
             } else if isExpanded {
@@ -1965,7 +1965,7 @@ private struct QuestionSourcesCard: View {
                 DisclosureGroup(isExpanded: $showsSearchResults) {
                     VStack(spacing: 10) {
                         Text("Diese Unterlagen wurden gefunden, im Antworttext aber nicht als Beleg verwendet.")
-                            .font(RatsFont.body(10.5))
+                            .font(RatsFont.notice())
                             .foregroundStyle(RatsColor.muted)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         ForEach(Array(index.uncitedSources.enumerated()), id: \.element.id) { position, source in
@@ -1994,23 +1994,26 @@ private struct UncitedQuestionSourceRow: View {
     let source: DecisionSummary
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Circle()
                 .fill(RatsColor.border)
                 .frame(width: 6, height: 6)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(source.title)
-                    .font(RatsFont.body(12.5, weight: .medium))
+                    .font(RatsFont.sourceTitle(weight: .medium))
                     .foregroundStyle(RatsColor.text)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(questionSourceMeta(source))
-                    .font(RatsFont.mono(9))
+                    .font(RatsFont.metadata())
                     .foregroundStyle(RatsColor.muted)
             }
-            Spacer(minLength: 0)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
             RatsIcon(.chevronRight, size: 12)
                 .foregroundStyle(RatsColor.muted)
         }
+        .multilineTextAlignment(.leading)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
 }
@@ -2516,7 +2519,7 @@ struct SharedAnswerView: View {
             evidence: snapshot.evidenceFields,
             people: people
         )
-        .font(RatsFont.body(15))
+        .font(RatsFont.reading())
         .foregroundStyle(RatsColor.bodyText)
         .lineSpacing(6)
 
@@ -2753,8 +2756,8 @@ private struct QuestionAnswerActions: View {
             // Beiwerk, und ein eigener Streifen für zwei Wörter wäre zu viel.
             Text(rating == nil ? "Aus Ratsunterlagen zusammengefasst" : "Danke für die Rückmeldung!")
                 .foregroundStyle(rating == nil ? RatsColor.muted : RatsColor.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+                .font(RatsFont.notice())
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             Button {
                 speaker.toggle(text: turn.answer)
@@ -3368,20 +3371,22 @@ private struct EvidenceTextRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 if let party, !party.isEmpty {
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                        Text(title).font(RatsFont.sourceTitle()).foregroundStyle(RatsColor.text)
                         PartyChip(party: party, label: questionPartyAbbreviation(party))
                             .fixedSize()
                     }
                 } else {
-                    Text(title).font(RatsFont.body(12.5, weight: .semibold)).foregroundStyle(RatsColor.text)
+                    Text(title).font(RatsFont.sourceTitle()).foregroundStyle(RatsColor.text)
                 }
                 if let detail, !detail.isEmpty {
-                    Text(detail).font(RatsFont.body(11.5)).foregroundStyle(RatsColor.secondary).lineLimit(5)
+                    Text(detail).font(RatsFont.notice()).foregroundStyle(RatsColor.secondary).lineLimit(5)
                 }
-                if let meta, !meta.isEmpty { Text(meta).font(RatsFont.mono(9)).foregroundStyle(RatsColor.muted) }
+                if let meta, !meta.isEmpty { Text(meta).font(RatsFont.metadata()).foregroundStyle(RatsColor.muted) }
             }
+            .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .multilineTextAlignment(.leading)
         .contentShape(Rectangle())
     }
 }
@@ -3810,9 +3815,9 @@ struct CitedAnswerText: View {
     private func blockView(_ block: AnswerBlock) -> some View {
         switch block {
         case .heading(let line):
-            Text(styled(line)).font(RatsFont.body(15, weight: .bold))
+            Text(styled(line)).font(RatsFont.reading(weight: .bold))
         case .subheading(let line):
-            Text(styled(line)).font(RatsFont.body(13.5, weight: .bold))
+            Text(styled(line)).font(RatsFont.reading(weight: .semibold))
         case .paragraph(let line):
             Text(styled(line))
         case .list(let items):
