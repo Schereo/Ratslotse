@@ -11,11 +11,13 @@ Routen** — wie beim Wahlabend antworten sie ohne ihn mit 404. Die
 Admin-Routen bleiben davon unberührt: Tim soll das Spiel vorbereiten können,
 bevor der Schalter fällt.
 
-**Der Entwurf ist die Sperre.** ``PUT …/admin/ergebnis`` und
-``POST …/admin/abfragen`` schreiben nur den ENTWURF (``prediction_result``,
+**Der Entwurf ist die Sperre für die Handeingabe.** ``PUT …/admin/ergebnis``
+und ``POST …/admin/abfragen`` schreiben nur den ENTWURF (``prediction_result``,
 Spalten ohne ``published_``); erst ``POST …/admin/veroeffentlichen`` macht
-eine Zeile für ``GET /api/tipp/stand`` sichtbar. Ein Tippfehler beim
-Eintragen landet damit nie unbeaufsichtigt auf dem Beamer.
+eine Zeile für ``GET /api/tipp/stand`` wirksam. Ein Tippfehler beim
+Eintragen landet damit nie unbeaufsichtigt auf dem Beamer. Die Tafel selbst
+folgt dem Wahlabend auch ohne Admin — eine veröffentlichte Handeingabe
+überschreibt ihn je Liste (s. ``prediction/service.py``).
 """
 from __future__ import annotations
 
@@ -332,7 +334,7 @@ def jetzt_abfragen(_admin: dict = Depends(require_admin), store: Store = Depends
     night = election_service.live()
     zeilen: list[dict] = []
     for p in night["parties"]:
-        wert = p["seats"] if p["seats"] is not None else p["projected_seats"]
+        wert = service.night_seats(p)
         if wert is not None:
             zeilen.append({"slug": p["slug"], "seats": wert})
     ob = mayor.fetch()
