@@ -45,6 +45,9 @@ def get_adapter(dialect: str) -> Adapter:
     if dialect == "allris4_html":
         from council.cities.adapters.allris4_html import Allris4HtmlAdapter
         return Allris4HtmlAdapter()
+    if dialect == "allris_classic":
+        from council.cities.adapters.allris_classic import AllrisClassicAdapter
+        return AllrisClassicAdapter()
     if dialect == "rubin":
         from council.cities.adapters.rubin import RubinAdapter
         return RubinAdapter()

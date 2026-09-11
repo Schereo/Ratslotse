@@ -13,12 +13,57 @@ Systems zugute — auch denen, die noch niemand angeschlossen hat.
 
 | Datei | Zeilen | angeschlossen | wartet in der Registry |
 |---|---:|---|---|
-| `adapters/_common.py` | 411 | alle | alle |
+| `adapters/_common.py` | 418 | alle | alle |
 | `adapters/allris4.py` | 226 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn, Langenhagen, Peine |
-| `adapters/allris4_html.py` | 633 | — | Laatzen, Lüneburg, Wolfsburg |
+| `adapters/allris4_html.py` | 627 | Wolfsburg | Laatzen, Lüneburg |
+| `adapters/allris_classic.py` | 511 | — | Hildesheim |
 | `adapters/session.py` | 164 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
 | `adapters/rubin.py` | 87 | — | Freiburg, Darmstadt |
 | `adapters/oldenburg.py` | 310 | Oldenburg (liest `council.sqlite`) | — |
+
+**Derselbe Hersteller kann DREI Adapter brauchen.** Neben ALLRIS 4 (mit und
+ohne Schnittstelle) gibt es die ältere Generation **ALLRIS classic**:
+statische `.asp`-Seiten, ISO-8859-1, kein Seitenzustand, kein OParl. Sie ist
+die einfachere Welt — der Index ist ein schlichter GET
+(`si010_e.asp?YY=2026&MM=09`, 10 bis 18 Sitzungen je Monat, Historie ab etwa
+2007), es gibt keine Wicket-Selbstaufrufe und keine CDATA. Gemessen an
+Hildesheim (11.09.2026).
+
+Zwei Eigenheiten, die es sonst nirgends gibt:
+
+- **Der Vorlagentext steht IN der Seite.** An Hildesheims Vorlagen hängt kein
+  einziger Datei-Verweis; der Sachverhalt ist der Seiteninhalt. Deshalb
+  `fetch_files=False` und der Text über `inline_texts` — dieselbe Bahn, die
+  Oldenburg und more! rubin schon benutzen.
+- **Zu jedem beratenen Punkt gibt es einen „Auszug"** (`to020.asp?TOLFDNR=…`)
+  mit Wortprotokoll, Beschluss und Abstimmungsergebnis, je Punkt schon
+  getrennt. Gemessen: **2.075 von 3.728** Punkten haben einen. Das ist das
+  „Warum" ohne das Schneiden einer Niederschrift — und es ist zugleich die
+  echte Kennung des Punktes, denn die Tagesordnung selbst vergibt keine
+  (ihr `TOLFDNR` ist auf jeder Zeile dieselbe Zahl).
+
+**Und zwei Fallen, die es nur hier gibt:**
+
+- **Die Stadt-Website ist um ALLRIS herumgebaut.** 105 der 280 kB jeder Seite
+  sind Navigation, und die verlinkt dieselben `au020.asp`-Adressen unter
+  **generischen** Namen: „Der Ortsrat" unter dem Menüpunkt „Achtum / Uppen".
+  Ungefiltert gewinnen diese über die echten — und 42 von 198 Sitzungen
+  finden ihr Gremium nicht mehr. `_inhalt()` schneidet den Rahmen weg, bevor
+  irgendetwas gelesen wird; danach 175 von 198.
+- **Ein weggelassenes Feld verschwindet nicht, es wandert ins Nachbarfeld.**
+  `Verfasser:` und `Bearbeiter/-in:` nennen Namen von
+  Verwaltungsmitarbeitenden und werden bewusst nicht gespeichert. Sie standen
+  deshalb im ersten Entwurf gar nicht in der Feldliste — und damit lief der
+  Wert des Feldes DAVOR bis zum nächsten bekannten Wort weiter: Jede Vorlage
+  bekam als Art „Mitteilungsvorlage Verfasser: …" samt Namen. Ein Feld, das
+  man nicht will, muss trotzdem als **Grenze** in der Regel stehen
+  (`_GRENZEN`).
+
+**Was Hildesheim nicht hat:** den Rat in der Gremienliste. `au010.asp` führt
+Ausschüsse, Beiräte und Aufsichtsräte, aber nicht den Rat selbst — seine
+Sitzungen bleiben ohne Gremium, und das ist richtig so. Ein Gremium zu
+erfinden, damit eine Zahl schöner aussieht, wäre derselbe Fehler wie die
+erfundenen Punkt-Kennungen aus phase0.
 
 **Derselbe Hersteller kann zwei Adapter brauchen.** ALLRIS 4 hat ein
 OParl-Modul; wo es antwortet, liest `allris4.py` die Schnittstelle. Wo es
