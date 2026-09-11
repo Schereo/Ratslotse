@@ -947,6 +947,22 @@ class OrteMixin(StoreBasis):
     # aus und kannte die Ingest-Skripte nicht.
     # ----------------------------------------------------------------
 
+    #: Der Vorlagentext eines Beschlusses — über die Kvonr, sonst über die
+    #: Vorlagennummer, sonst über deren Stamm vor dem Schrägstrich.
+    #: Als Baustein herausgezogen, weil ihn beide Abfragen unten brauchen und
+    #: eine Kopie davon unweigerlich auseinanderliefe.
+    _VORLAGE_QUELLEN = """COALESCE(
+                        (SELECT v.{spalte} FROM council_templates v
+                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
+                        (SELECT v.{spalte} FROM council_templates v
+                         WHERE v.status = 'ok' AND v.template_number = d.template_number
+                         ORDER BY v.kvonr DESC LIMIT 1),
+                        (SELECT v.{spalte} FROM council_templates v
+                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
+                           AND instr(d.template_number, v.template_number || '/') = 1
+                         ORDER BY v.kvonr DESC LIMIT 1){rest}
+                      )"""
+
     def decision_location_batches(self, *, batch_size: int = 12,
                                   pending_only: bool = True,
                                   limit: int | None = None):
@@ -955,37 +971,37 @@ class OrteMixin(StoreBasis):
         Im Tageslauf kommen nur ungescannte Vorgänge oder solche mit einer
         später geladenen Vorlage zurück. ``pending_only=False`` ist der
         bewusste Voll-Backfill nach dem Leeren der Scan-Tabelle.
+
+        **Erst die Kennungen, dann je Batch eine eigene Abfrage — bewusst
+        nicht ein Cursor, der über die ganze Aufrufer-Schleife offen bleibt.**
+        ``scripts/extract_decision_locations.py`` arbeitet IN dieser Schleife:
+        Es fragt je Batch ein Sprachmodell und schreibt die Zuordnungen
+        anschließend über dieselbe Verbindung. Ein offener Lese-Cursor hält in
+        SQLites WAL-Modus einen Snapshot fest, und solange der steht, darf die
+        WAL nicht eingecheckt werden — sie wächst unbegrenzt, und mit ihr die
+        Kosten jedes weiteren Zugriffs.
+
+        Gemessen an derselben Bauform im Städte-Speicher (11.09.2026): 362 MB
+        WAL nach elf Stunden, Durchsatz von 343 auf 8 Objekte je Stunde
+        gefallen. Kein Fehler im Log, kein roter Test — der Lauf wurde nur
+        immer langsamer, und ein Prozess-Neustart heilte es sprunghaft.
+
+        Die Kennungen sind Ganzzahlen; die ganze Liste zu halten kostet
+        nichts. Die Zeilen tragen ganze Vorlagentexte — sie bleiben deshalb
+        batchweise. Und weil die Kennungen EINMAL am Anfang feststehen, ändert
+        das Schreiben in der Schleife die Auswahl nicht mehr: Ein gerade
+        gespeicherter Scanstand ließe eine nachgeladene Seite sonst schrumpfen.
         """
-        inner = """SELECT d.id, d.title, d.official_text, d.template_number,
-                      COALESCE(
-                        (SELECT v.raw_text FROM council_templates v
-                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
-                        (SELECT v.raw_text FROM council_templates v
-                         WHERE v.status = 'ok' AND v.template_number = d.template_number
-                         ORDER BY v.kvonr DESC LIMIT 1),
-                        (SELECT v.raw_text FROM council_templates v
-                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
-                           AND instr(d.template_number, v.template_number || '/') = 1
-                         ORDER BY v.kvonr DESC LIMIT 1)
-                      ) AS vorlage_text,
-                      COALESCE(
-                        (SELECT v.fetched_at FROM council_templates v
-                         WHERE v.kvonr = d.kvonr AND v.status = 'ok' LIMIT 1),
-                        (SELECT v.fetched_at FROM council_templates v
-                         WHERE v.status = 'ok' AND v.template_number = d.template_number
-                         ORDER BY v.kvonr DESC LIMIT 1),
-                        (SELECT v.fetched_at FROM council_templates v
-                         WHERE v.status = 'ok' AND d.template_number IS NOT NULL
-                           AND instr(d.template_number, v.template_number || '/') = 1
-                         ORDER BY v.kvonr DESC LIMIT 1),
-                        ''
-                      ) AS vorlage_fetched_at,
+        vorlage_fetched = self._VORLAGE_QUELLEN.format(
+            spalte="fetched_at", rest=",\n                        ''")
+        auswahl = f"""SELECT d.id AS id,
+                      {vorlage_fetched} AS vorlage_fetched_at,
                       s.source_hash AS existing_source_hash,
-                      s.scanned_at
+                      s.scanned_at AS scanned_at
                FROM council_decisions d
                LEFT JOIN council_decision_location_scans s ON s.decision_id = d.id
                WHERE d.kind = 'decision'"""
-        sql = f"SELECT * FROM ({inner}) q"
+        sql = f"SELECT id FROM ({auswahl}) q"
         if pending_only:
             sql += (" WHERE existing_source_hash IS NULL OR "
                     "(vorlage_fetched_at != '' AND "
@@ -993,12 +1009,24 @@ class OrteMixin(StoreBasis):
         sql += " ORDER BY id DESC"
         if limit is not None:
             sql += f" LIMIT {max(0, int(limit))}"
-        cursor = self._conn.execute(sql)
-        while True:
-            rows = cursor.fetchmany(max(1, int(batch_size)))
-            if not rows:
-                break
-            yield [dict(r) for r in rows]
+        kennungen = [row["id"] for row in self._conn.execute(sql).fetchall()]
+
+        groesse = max(1, int(batch_size))
+        for start in range(0, len(kennungen), groesse):
+            teil = kennungen[start:start + groesse]
+            ph = ",".join("?" * len(teil))
+            rows = self._conn.execute(
+                f"""SELECT d.id, d.title, d.official_text, d.template_number,
+                      {self._VORLAGE_QUELLEN.format(spalte="raw_text", rest="")} AS vorlage_text,
+                      {vorlage_fetched} AS vorlage_fetched_at,
+                      s.source_hash AS existing_source_hash,
+                      s.scanned_at
+               FROM council_decisions d
+               LEFT JOIN council_decision_location_scans s ON s.decision_id = d.id
+               WHERE d.id IN ({ph})
+               ORDER BY d.id DESC""", teil).fetchall()
+            if rows:
+                yield [dict(r) for r in rows]
 
     def place_observations_for_decisions(self, ids: list[int]) -> dict[int, list[dict]]:
         """Einmalige alte NER-Orte als günstige Startbasis übernehmen."""
