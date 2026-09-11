@@ -25,6 +25,8 @@ export type TippReihe = TippTafel["rows"][number];
  * sie, der Abruf dahinter nicht — man sähe den Live-Stand und hielte ihn
  * für die Probe. `counted` muss eine Zahl sein, sonst fliegt es raus (der
  * Server antwortet auf alles andere mit 422).
+ *
+ * Benutzt von der Handy-Seite UND vom Beamer (`components/tipp/live.tsx`).
  */
 export function probePfad(basis: string, probe: string | null, counted: string | null): string {
   const q = new URLSearchParams();
@@ -152,7 +154,10 @@ export function punkteText(n: number): string {
   return `${n} Punkt${n === 1 ? "" : "e"}`;
 }
 
-/** „HH:MM" aus einem ISO-Zeitstempel, deutsche Zeit — fürs „Nachgetippt …"-Etikett. */
+/** „HH:MM" aus einem ISO-Zeitstempel, deutsche Zeit — fürs „Nachgetippt …"-
+ *  Etikett auf dem Handy, dieselben Etiketten auf dem Beamer und die Zeiten
+ *  im Admin-Protokoll. Eine Fassung für alle drei: Sie standen bis zum
+ *  11.09.2026 dreimal im Baum, weil die drei PRs unabhängig bleiben mussten. */
 export function uhrzeitKurz(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);

@@ -15,7 +15,7 @@ import { apiUrl } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { BrandMark } from "@/components/brand";
 import { Lotti } from "@/components/lotti";
-import { uhrzeitKurz } from "./zeit";
+import { uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 

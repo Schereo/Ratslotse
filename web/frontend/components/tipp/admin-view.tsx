@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { api } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
+import { uhrzeitKurz } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand";
 import { Button, Segmented, Spinner } from "@/components/ui";
@@ -34,16 +35,6 @@ type Beamer = "auto" | "vergleich" | "rangliste";
 
 async function holeAdminStand(): Promise<AdminStand> {
   return api.get<AdminStand>("/tipp/admin/stand");
-}
-
-/** „HH:MM" aus einem ISO-Zeitstempel, deutsche Zeit. Bewusst hier lokal
- *  gehalten statt aus `lib/tipp.ts` (Handy-Screens, ein anderer PR desselben
- *  Plans) — diese Seite soll unabhängig davon fertig werden. */
-function uhrzeitKurz(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 }
 
 function dezimal(n: number): string {
