@@ -321,6 +321,24 @@ einmal gerechnet und dann behalten — ihre Zahlen ändern sich ja nicht.
 Beide Caches leben im Prozess: Ein Neustart des Dienstes setzt sie zurück, ein
 zweiter Worker hätte seine eigenen.
 
+## Die OB-Wahl (`GET /api/wahlabend/ob`)
+
+Die Wahl der Oberbürgermeisterin/des Oberbürgermeisters läuft am selben Tag,
+hat aber **keine Open-Data-CSV** — gemessen am 11.09.2026: acht probierte
+Namensmuster, alle 404, auch im Archiv von 2021. `election/mayor.py` liest die
+Zahlen deshalb ausschließlich aus der Ergebnisdarstellung (derselbe
+JSON-Ersatzpfad wie oben, andere Wahl-Id, eine flache Tabelle: jede Zeile ist
+eine Kandidatur, nicht drei wie bei der Ratswahl). Die neun Kandidaturen selbst
+kommen aus `kommunalwahl/wahl-fakten.json`, nicht aus einer zweiten
+Handschrift; ein Slug wird aus dem Nachnamen abgeleitet (`slug_of`). Die
+Antwortform ist `MayorNight`: `phase` (`before`/`counting`/`complete`),
+Wahlbeteiligung, gültige/ungültige Stimmen, je Kandidatur Stimmen und Anteil,
+und `runoff` — die beiden Slugs einer Stichwahl, sobald der Votemanager sie
+meldet. Hängt am Schalter `wahlabend` (nicht `tippspiel`) — sie ist Teil des
+Wahlabends, auch wenn das Tippspiel sie für seinen OB-Vergleich mitliest.
+Dieselbe `probe(counted)`-Generalprobe wie bei der Ratswahl, mit der Fixture
+`tests/fixtures/wahlabend/ob-2021.json`.
+
 ## Die Seite `/wahlabend`
 
 Die Seite liegt wie `/kommunalwahl` und `/changelog` **außerhalb** von
