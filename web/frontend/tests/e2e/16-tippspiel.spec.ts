@@ -86,7 +86,7 @@ test.describe("Schalter aus", () => {
     await page.route("**/api/tipp/**", (route) => { rufe += 1; return route.fulfill({ status: 404, body: "{}" }); });
 
     await page.goto("/tipp");
-    await expect(page.getByRole("heading", { name: /schläft noch/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /noch nicht freigeschaltet/ })).toBeVisible();
     await page.waitForTimeout(1000);
     expect(rufe, "/api/tipp/… wurde trotz ausgeschaltetem Schalter abgefragt").toBe(0);
   });
@@ -100,8 +100,8 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
   test("Einstieg zeigt Name-Feld, Regeln und einen deaktivierten Knopf", async ({ page }) => {
     tippMocks(page, meins());
     await page.goto("/tipp");
-    await expect(page.getByRole("heading", { name: /Wer tippt den Rat am besten/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Los geht's/ })).toBeDisabled();
+    await expect(page.getByRole("heading", { name: /Wie geht die Ratswahl aus/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Jetzt mitmachen/ })).toBeDisabled();
     await expect(page.getByText("5 · 3 · 1")).toBeVisible();
   });
 
@@ -109,7 +109,7 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     tippMocks(page, meins());
     await page.goto("/tipp");
     await page.getByLabel(/Dein Name/).fill("Testperson");
-    await page.getByRole("button", { name: /Los geht's/ }).click();
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
 
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
     // Die Startverteilung nach 2021 summiert schon auf die Sitzzahl —
@@ -122,7 +122,7 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     tippMocks(page, meins());
     await page.goto("/tipp");
     await page.getByLabel(/Dein Name/).fill("Testperson");
-    await page.getByRole("button", { name: /Los geht's/ }).click();
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
 
     await page.getByRole("button", { name: "Grüne: einen Sitz mehr" }).click();
@@ -134,7 +134,7 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     tippMocks(page, meins());
     await page.goto("/tipp");
     await page.getByLabel(/Dein Name/).fill("Testperson");
-    await page.getByRole("button", { name: /Los geht's/ }).click();
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
 
     await expect(page.getByText("Jascha Rohr")).not.toBeVisible();
@@ -172,7 +172,7 @@ test.describe("Spätstarter", () => {
     }), { setupOverrides: { locked: true, phase: "locked", locked_at: "2026-09-13T18:41:00+00:00" }, bereitsBeigetreten: true });
     await page.goto("/tipp");
     await expect(page.getByRole("button", { name: "Tipp abgeben" })).toBeVisible();
-    await expect(page.getByText("nachgetippt")).toBeVisible();
+    await expect(page.getByText("später abgegeben")).toBeVisible();
   });
 
   test("Mein Tipp trägt das Nachgetippt-Etikett mit Uhrzeit", async ({ page }) => {
@@ -182,8 +182,8 @@ test.describe("Spätstarter", () => {
       seats: PARTEIEN.map((p, i) => ({ slug: p.slug, tip: 15 - i, actual: null, avg_tip: null, points: 0, exact: false })),
     }), { setupOverrides: { locked: true, phase: "locked" }, bereitsBeigetreten: true });
     await page.goto("/tipp");
-    await expect(page.getByText("Nachgetippt 20:41")).toBeVisible();
-    await expect(page.getByText("außer Konkurrenz")).toBeVisible();
+    await expect(page.getByText("Später Tipp 20:41")).toBeVisible();
+    await expect(page.getByText(/Du bekommst Punkte, aber keinen Platz in der Rangliste/)).toBeVisible();
   });
 });
 
@@ -211,7 +211,7 @@ test.describe("Abgeben ist ein Moment", () => {
     tippMocks(page, meins());
     await page.goto("/tipp");
     await page.getByLabel(/Dein Name/).fill("Testperson");
-    await page.getByRole("button", { name: /Los geht's/ }).click();
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
 
     await page.getByRole("button", { name: "Tipp abgeben" }).click();

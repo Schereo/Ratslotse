@@ -135,7 +135,7 @@ export function TippLive() {
         <Lotti regung="schlaeft" className="h-28 w-28" decorative />
         <h1 className="mt-4 font-display text-[22px] font-bold tracking-tight">Das Tippspiel ist noch nicht freigeschaltet</h1>
         <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-          Am 13. September 2026 ab 18 Uhr zeigt diese Seite den Auszählungsstand der Ratswahl gegen die Tipps der Runde.
+          Am 13. September 2026 ab 18 Uhr kannst du hier den Wahlabend verfolgen und die Ergebnisse mit den Tipps vergleichen.
         </p>
       </div>
     );

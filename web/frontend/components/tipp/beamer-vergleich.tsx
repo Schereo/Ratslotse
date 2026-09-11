@@ -49,8 +49,8 @@ function Halbkreis({ zeilen, gesamt }: { zeilen: Zeile[]; gesamt: number }) {
 
 const QUELLE: Record<string, string> = {
   votemanager: "votemanager Oldenburg",
-  manuell: "Handeingabe",
-  gemischt: "votemanager + Handeingabe",
+  manuell: "Manuell eingetragen",
+  gemischt: "votemanager + manuelle Eingaben",
 };
 
 const OB_STATUS: Record<string, string> = { before: "noch nicht ausgezählt", counting: "Auszählung", complete: "Ergebnis" };
@@ -72,7 +72,7 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
   return (
     <div className="flex h-full flex-col px-20 py-14 text-foreground">
       <BeamerKopf
-        untertitel="Tippspiel · Ergebnis gegen Tipps"
+        untertitel="Tippspiel · Tipps im Vergleich"
         rechts={mitSitz.length ? (
           <>
             <LivePunkt endstand={endstand} />
@@ -87,7 +87,7 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
             )}
           </>
         ) : (
-          <span>{stand.phase === "open" ? "Tippen läuft" : "Warten auf die erste Hochrechnung"}</span>
+          <span>{stand.phase === "open" ? "Tippen möglich" : "Warten auf die erste Hochrechnung"}</span>
         )}
       />
 
@@ -108,7 +108,7 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
             <Lotti regung="sucht" className="h-24 w-24 flex-none" decorative />
             <div>
               <p className="text-[24px] leading-[1.45] text-foreground/85">{stand.compare_sentence}</p>
-              <p className="mt-1.5 text-[22px] text-muted-foreground">Ø-Tipp = Mittel aller {rechtzeitig} Tipps vor Tipp-Schluss.</p>
+              <p className="mt-1.5 text-[22px] text-muted-foreground">Ø-Tipp = Durchschnitt der {rechtzeitig} rechtzeitig abgegebenen Tipps.</p>
             </div>
           </div>
         </div>
@@ -116,8 +116,8 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
         {/* Rechts: Tabelle + OB */}
         <div className="flex min-h-0 flex-col">
           <div className="grid grid-cols-[1fr_90px_110px_90px] gap-5 pb-3 font-mono text-[22px] uppercase tracking-[0.11em] text-muted-foreground">
-            <span>Liste · Sitze Ist ▮ / Ø-Tipp ◇</span>
-            <span className="text-right">Ist</span>
+            <span>Liste · Stand ▮ / Ø-Tipp ◇</span>
+            <span className="text-right">Stand</span>
             <span className="text-right">Ø-Tipp</span>
             <span className="text-right">Exakt</span>
           </div>

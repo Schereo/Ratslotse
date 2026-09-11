@@ -103,7 +103,7 @@ def _validate_seats(seats: dict[str, int], reg: register.Register) -> None:
         if unbekannt:
             teile.append(f"unbekannt: {', '.join(unbekannt)}")
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            f"Der Tipp muss genau die {len(erwartet)} Listen tragen ({'; '.join(teile)}).")
+                            f"Bitte gib für alle {len(erwartet)} Wahllisten eine Sitzzahl an ({'; '.join(teile)}).")
     for slug, wert in seats.items():
         if not isinstance(wert, int) or not (0 <= wert <= reg.seats):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -111,7 +111,7 @@ def _validate_seats(seats: dict[str, int], reg: register.Register) -> None:
     summe = sum(seats.values())
     if summe != reg.seats:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            f"Die Sitze müssen sich auf {reg.seats} summieren — dein Tipp ergibt {summe}.")
+                            f"Verteile insgesamt {reg.seats} Sitze. Du hast bisher {summe} Sitze vergeben.")
 
 
 def _validate_mayor(tip: dict[str, float] | None) -> None:
@@ -121,7 +121,7 @@ def _validate_mayor(tip: dict[str, float] | None) -> None:
     unbekannt = sorted(set(tip) - bekannt)
     if unbekannt:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            f"Unbekannte OB-Kandidatur im Tipp: {', '.join(unbekannt)}.")
+                            f"Diese Person steht nicht zur OB-Wahl: {', '.join(unbekannt)}.")
     for slug, wert in tip.items():
         if not (0 <= wert <= 100):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -129,7 +129,7 @@ def _validate_mayor(tip: dict[str, float] | None) -> None:
     summe = sum(tip.values())
     if summe > 100.5:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
-                            f"Die OB-Prozente dürfen zusammen nicht mehr als 100 % ergeben "
+                            f"Die Stimmenanteile bei der OB-Wahl dürfen zusammen nicht mehr als 100 % ergeben "
                             f"(dein Tipp ergibt {summe:.1f} %).")
 
 
@@ -175,7 +175,7 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
         game = store.prediction_game()
         if player["late_at"] is None and game["phase"] != "open":
             raise HTTPException(status.HTTP_409_CONFLICT,
-                                "Die Tippabgabe ist seit dem Tipp-Schluss geschlossen.")
+                                "Die Tippfrist ist vorbei. Du kannst deinen Tipp nicht mehr ändern.")
         _validate_seats(payload.seats, reg)
         _validate_mayor(payload.mayor)
         prediction_tip_limiter.check(request)
@@ -198,10 +198,10 @@ def meins(request: Request, probe: str | None = Query(default=None),
     _frei()
     token_hash = _token_hash(request)
     if token_hash is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Du bist noch nicht dabei — erst beitreten.")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Gib zuerst deinen Namen ein, um mitzumachen.")
     ergebnis = service.mine(store, token_hash, probe=probe, counted=counted)
     if ergebnis is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Dieser Tipp gehört zu niemandem mehr — bitte neu beitreten.")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Deine Teilnahme wurde nicht gefunden. Gib deinen Namen bitte noch einmal ein.")
     return ergebnis
 
 
@@ -348,7 +348,7 @@ def jetzt_abfragen(_admin: dict = Depends(require_admin), store: Store = Depends
         store.prediction_result_set(zeilen, source="votemanager")
         listen = sum(1 for z in zeilen if "seats" in z)
         store.prediction_log_add(f"Votemanager abgefragt · {listen} Listen, {len(zeilen) - listen} "
-                                 f"OB-Kandidaturen in den Entwurf übernommen.")
+                                 f"Personen bei der OB-Wahl in den Entwurf übernommen.")
         service.reset()
     return _admin_stand(store)
 
@@ -356,7 +356,7 @@ def jetzt_abfragen(_admin: dict = Depends(require_admin), store: Store = Depends
 @router.post("/api/tipp/admin/veroeffentlichen")
 def veroeffentlichen(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> PredictionAdminStand:
     n = store.prediction_result_publish()
-    store.prediction_log_add(f"Entwurf veröffentlicht · {n} Zeilen live.")
+    store.prediction_log_add(f"Entwurf veröffentlicht · {n} Ergebnisse sind jetzt sichtbar.")
     service.reset()
     return _admin_stand(store)
 
@@ -381,7 +381,7 @@ def phase_setzen(payload: PredictionPhaseIn, _admin: dict = Depends(require_admi
     if payload.late_scored is not None:
         felder["late_scored"] = 1 if payload.late_scored else 0
     store.prediction_game_set(**felder)
-    text = {"open": "Spiel wieder geöffnet", "locked": "Tippen manuell geschlossen", "final": "Endstand gesetzt"}[payload.phase]
+    text = {"open": "Spiel wieder geöffnet", "locked": "Tippfrist manuell beendet", "final": "Endstand gesetzt"}[payload.phase]
     store.prediction_log_add(text)
     service.reset()
     return _admin_stand(store)

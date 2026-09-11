@@ -14,7 +14,7 @@
 // „Eintragen"-Knopf: Ein Feld verlassen (oder Enter) speichert genau diese
 // Zeile als Handeingabe — und nur, wenn sich der Wert geändert hat, denn eine
 // veröffentlichte Handeingabe schlägt den Wahlabend für diese Liste
-// (prediction/service.py). „Veröffentlichen → Live" bleibt der eine Schritt,
+// (prediction/service.py). „Veröffentlichen" bleibt der eine Schritt,
 // an dem etwas auf den Beamer kommt.
 
 import { useEffect, useState } from "react";
@@ -177,7 +177,7 @@ export function TippAdminView() {
   const schluss = uhrzeitKurz(setup.locked_at);
 
   function speichern(slug: string, feld: "seats" | "pct", neu: number) {
-    void aktion(`feld:${slug}`, () => api.put("/tipp/admin/ergebnis", [{ slug, [feld]: neu }]), "In den Entwurf übernommen.");
+    void aktion(`feld:${slug}`, () => api.put("/tipp/admin/ergebnis", [{ slug, [feld]: neu }]), "Im Entwurf gespeichert.");
   }
 
   return (
@@ -204,7 +204,7 @@ export function TippAdminView() {
               </span>
             )}
             <span className="rounded-full border border-border px-3 py-1.5 text-muted-foreground">
-              {tipps} {tipps === 1 ? "Tipp" : "Tipps"}{nachgetippt > 0 && ` · ${nachgetippt} nachgetippt`}
+              {tipps} {tipps === 1 ? "Tipp" : "Tipps"}{nachgetippt > 0 && ` · ${nachgetippt} später dabei`}
             </span>
           </div>
         </div>
@@ -221,14 +221,14 @@ export function TippAdminView() {
               </div>
               <Button
                 variant="secondary" size="sm" disabled={laeuft === "abfragen"}
-                onClick={() => void aktion("abfragen", () => api.post("/tipp/admin/abfragen"), "Votemanager abgefragt — Zahlen im Entwurf.")}
+                onClick={() => void aktion("abfragen", () => api.post("/tipp/admin/abfragen"), "Aktuelle Zahlen von votemanager im Entwurf gespeichert.")}
               >
                 {laeuft === "abfragen" ? "Fragt ab …" : "Jetzt abfragen"}
               </Button>
             </div>
 
             <div className="mt-3.5 grid grid-cols-[1fr_80px_120px_140px] gap-2.5 border-b border-muted px-1.5 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-              <span>Liste</span><span className="text-right">Sitze</span><span>Quelle</span><span>Ø-Tipp · exakt</span>
+              <span>Liste</span><span className="text-right">Sitze</span><span>Quelle</span><span>Ø-Tipp · richtig</span>
             </div>
             {ratswahlZeilen.map((r) => {
               const p = parteiVon[r.slug];
@@ -242,7 +242,7 @@ export function TippAdminView() {
                         onSpeichern={(neu) => speichern(r.slug, "seats", neu)} />
                   <Quelle r={r} />
                   <span className="font-mono text-xs text-muted-foreground">
-                    Ø {r.avg_tip !== null ? dezimal(r.avg_tip) : "–"} · {r.exact_count} exakt
+                    Ø {r.avg_tip !== null ? dezimal(r.avg_tip) : "–"} · {r.exact_count} richtig
                   </span>
                 </div>
               );
@@ -254,7 +254,7 @@ export function TippAdminView() {
                 {" · "}
                 {entwurfIstLive
                   ? (veroeffentlichtAm ? `live seit ${uhrzeitKurz(veroeffentlichtAm)}` : "noch nichts veröffentlicht")
-                  : "Entwurf, noch nicht live"}
+                  : "Entwurf noch nicht veröffentlicht"}
               </span>
               <div className="flex gap-2">
                 <Button variant="secondary" size="sm" disabled={laeuft === "verwerfen" || entwurfIstLive}
@@ -263,7 +263,7 @@ export function TippAdminView() {
                 </Button>
                 <Button variant="primary" size="sm" disabled={laeuft === "veroeffentlichen" || entwurfIstLive}
                         onClick={() => void aktion("veroeffentlichen", () => api.post("/tipp/admin/veroeffentlichen"), "Veröffentlicht — der Beamer zeigt den Stand.")}>
-                  {laeuft === "veroeffentlichen" ? "Veröffentlicht …" : "Veröffentlichen → Live"}
+                  {laeuft === "veroeffentlichen" ? "Veröffentlicht …" : "Veröffentlichen"}
                 </Button>
               </div>
             </div>
@@ -289,7 +289,7 @@ export function TippAdminView() {
               })}
             </div>
             <p className="mt-2.5 text-xs text-muted-foreground">
-              Summe {dezimal(obSumme)} %. Stichwahl 27.09. ist kein Teil des Tippspiels.
+              Insgesamt {dezimal(obSumme)} %. Die Stichwahl am 27. September gehört nicht zum Tippspiel.
             </p>
           </Karte>
         </div>
@@ -297,16 +297,16 @@ export function TippAdminView() {
         <div className="flex flex-col gap-5">
           {/* ── Phase ────────────────────────────────────────────────── */}
           <Karte>
-            <Kicker>Phase</Kicker>
+            <Kicker>Spielstatus</Kicker>
             <div className="mt-2.5 flex flex-col gap-1.5 text-[13px]">
-              <PhaseZeile zustand={phase === "open" ? "aktiv" : "erledigt"} titel="Tippen offen"
+              <PhaseZeile zustand={phase === "open" ? "aktiv" : "erledigt"} titel="Tippen möglich"
                 rechts={phase === "open"
                   ? <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" disabled={laeuft === "schliessen"}
-                            onClick={() => void aktion("schliessen", () => api.put("/tipp/admin/phase", { phase: "locked" }), "Tippen geschlossen.")}>
-                      {laeuft === "schliessen" ? "Schließt …" : "Jetzt schließen"}
+                            onClick={() => void aktion("schliessen", () => api.put("/tipp/admin/phase", { phase: "locked" }), "Tippfrist beendet.")}>
+                      {laeuft === "schliessen" ? "Schließt …" : "Tippen beenden"}
                     </Button>
                   : <span className="font-mono text-[11px] text-muted-foreground">{schluss ? `bis ${schluss}` : ""}</span>} />
-              <PhaseZeile zustand={phase === "open" ? "offen" : "erledigt"} titel="Tipp-Schluss"
+              <PhaseZeile zustand={phase === "open" ? "offen" : "erledigt"} titel="Ende der Tippfrist"
                 rechts={<span className="font-mono text-[11px] text-muted-foreground">{schluss ? `${schluss} Uhr` : "mit der 1. Hochrechnung"}</span>} />
               <PhaseZeile zustand={phase === "locked" ? "aktiv" : phase === "final" ? "erledigt" : "offen"} titel="Live · Hochrechnungen"
                 rechts={<span className="font-mono text-[11px] text-primary">{phase === "locked" && veroeffentlichtAm ? `Stand ${uhrzeitKurz(veroeffentlichtAm)}` : ""}</span>} />
@@ -316,7 +316,7 @@ export function TippAdminView() {
                     <span className="flex items-center gap-1.5">
                       <Button size="sm" variant="signal" className="h-7 px-2.5 text-xs" disabled={laeuft === "final"}
                               onClick={() => { void aktion("final", () => api.put("/tipp/admin/phase", { phase: "final" }), "Endstand gesetzt."); setEndstandBestaetigen(false); }}>
-                        Ja, einfrieren
+                        Ja, bestätigen
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEndstandBestaetigen(false)}>Abbrechen</Button>
                     </span>
@@ -326,7 +326,7 @@ export function TippAdminView() {
                 )} />
             </div>
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              Der Tipp-Schluss fällt von selbst mit der ersten Hochrechnung der Ratswahl. „Endstand setzen" fragt inline nach — kein Dialog.
+              Die Tippfrist endet automatisch mit der ersten Hochrechnung der Ratswahl. Mit „Endstand setzen“ kennzeichnest du den aktuellen Stand als Endergebnis.
             </p>
           </Karte>
 
@@ -335,12 +335,12 @@ export function TippAdminView() {
             <Kicker>Beamer</Kicker>
             <div className="mt-2.5">
               <Segmented tone="primary" value={beamer} onChange={setBeamer} options={[
-                { value: "auto", label: "Automatik 45 s" },
+                { value: "auto", label: "Wechsel alle 45 s" },
                 { value: "vergleich", label: "Vergleich" },
                 { value: "rangliste", label: "Rangliste" },
               ]} />
             </div>
-            <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">Bei neuem Stand springt der Beamer für 60 s auf die Rangliste.</p>
+            <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">Im automatischen Wechsel zeigt der Beamer nach einer neuen Hochrechnung eine Minute lang die Rangliste.</p>
             <Button asChild variant="secondary" size="sm" className="mt-3 w-full">
               <a href={beamer === "auto" ? "/tipp/live" : `/tipp/live?ansicht=${beamer}`} target="_blank" rel="noreferrer">
                 Beamer öffnen <ExternalLink />
@@ -358,7 +358,7 @@ export function TippAdminView() {
                     <span className={cn("truncate font-medium", p.hidden && "text-muted-foreground line-through")} title={p.name}>{p.name}</span>
                     {p.late_at && (
                       <span className="flex-none rounded-full border border-amber-200 px-1.5 font-mono text-[9px] uppercase tracking-[0.06em] text-amber-800 dark:border-amber-500/40 dark:text-amber-200">
-                        nachgetippt {uhrzeitKurz(p.late_at)}
+                        später Tipp {uhrzeitKurz(p.late_at)}
                       </span>
                     )}
                     {!p.has_tip && !p.hidden && <span className="flex-none text-[11px] text-muted-foreground">kein Tipp</span>}
@@ -378,7 +378,7 @@ export function TippAdminView() {
                   </div>
                 </div>
               ))}
-              {stand.players.length === 0 && <p className="text-muted-foreground">Noch niemand beigetreten.</p>}
+              {stand.players.length === 0 && <p className="text-muted-foreground">Noch niemand dabei.</p>}
             </div>
           </Karte>
 
@@ -386,7 +386,7 @@ export function TippAdminView() {
           <Karte>
             <Kicker>Protokoll</Kicker>
             <div className="mt-2 flex flex-col gap-1.5 text-[12.5px] text-muted-foreground tabular-nums">
-              {stand.log.length === 0 && <span>Noch nichts protokolliert.</span>}
+              {stand.log.length === 0 && <span>Noch keine Änderungen.</span>}
               {stand.log.map((zeile, i) => {
                 const [zeit, ...rest] = zeile.split(" · ");
                 return (

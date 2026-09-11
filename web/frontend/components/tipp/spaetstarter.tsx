@@ -67,20 +67,19 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
       </div>
 
       <h1 className="mt-3 text-balance font-display text-2xl font-bold leading-[1.1] tracking-tight">
-        Die erste Hochrechnung ist schon da.
+        Die Tippfrist ist schon vorbei.
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Tipp-Schluss war um <strong className="text-foreground">{schlussZeit ?? "bei der ersten Hochrechnung"}</strong>. Du
-        kannst trotzdem mitspielen — dein Tipp wird für alle sichtbar als{" "}
-        <strong className="text-foreground">nachgetippt</strong> markiert.{spaetSatz}
+        Die Tippfrist endete <strong className="text-foreground">{schlussZeit ? `um ${schlussZeit} Uhr` : "bereits"}</strong>. Du
+        kannst trotzdem mitspielen. Dein Tipp wird als <strong className="text-foreground">später abgegeben</strong> gekennzeichnet.{spaetSatz}
       </p>
 
       <div className="mt-4.5 flex w-full items-start gap-2.5 rounded-[14px] border border-amber-200 bg-amber-50 p-3.5 text-left dark:border-amber-900/50 dark:bg-amber-900/20">
         <span className="mt-0.5 flex-none rounded-full border border-amber-200 bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/50 dark:text-amber-200">
-          Nachgetippt {jetzt}
+          Später Tipp {jetzt}
         </span>
         <p className="text-[12.5px] leading-relaxed text-amber-800 dark:text-amber-200">
-          So erscheint dein Name auf dem Scoreboard und in deinem Tipp. Fair für alle, die vor Tipp-Schluss geraten haben.
+          Dieser Hinweis steht neben deinem Namen in der Rangliste und bei deinem Tipp. {setup.late_scored ? "Dein Tipp zählt bei der Platzierung mit." : "Dein Tipp bekommt Punkte, aber keinen Platz in der Rangliste."}
         </p>
       </div>
 
@@ -108,7 +107,7 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
       </form>
 
       <Button asChild variant="ghost" className="mt-2 h-11 w-full text-sm">
-        <Link href="/tipp/live">Nur zuschauen — zur Rangliste</Link>
+        <Link href="/tipp/live">Rangliste ansehen</Link>
       </Button>
     </div>
   );

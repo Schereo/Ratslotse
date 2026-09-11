@@ -45,7 +45,7 @@ export function RangChip({ rank, rankBefore, className, hell }: {
         bewegt && "animate-chip-verblasst",
         className,
       )}
-      aria-label={bewegt ? (auf ? `${differenz} Plätze vorgerückt` : `${differenz} Plätze zurückgefallen`) : "unverändert"}
+      aria-label={bewegt ? (auf ? `${differenz} ${differenz === 1 ? "Platz" : "Plätze"} vorgerückt` : `${differenz} ${differenz === 1 ? "Platz" : "Plätze"} zurückgefallen`) : "unverändert"}
     >
       {!bewegt ? <Minus className="h-5 w-5" /> : auf ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
       {bewegt && (auf ? `+${differenz}` : `−${differenz}`)}
@@ -120,7 +120,7 @@ export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
           {p1 ? <Punkte z={p1} groesse={56} hell /> : <span className="font-display text-[56px]">–</span>}
           {p1?.score && (
             <span className="text-[24px] text-white/80">
-              Punkte · {p1.score.exact_lists} Listen exakt{p1.score.mayor_points > 0 && ` · OB +${p1.score.mayor_points}`}
+              Punkte · {p1.score.exact_lists} richtig{p1.score.mayor_points > 0 && ` · OB +${p1.score.mayor_points}`}
             </span>
           )}
         </div>
@@ -150,7 +150,7 @@ function Nebenplatz({ z, rang, hoehe, nameGroesse, punkteGroesse }: {
       </p>
       <div className="mt-1.5 flex items-baseline gap-2.5">
         {z ? <Punkte z={z} groesse={punkteGroesse} /> : <span className="font-display text-[40px] text-muted-foreground">–</span>}
-        {z?.score && <span className="text-[22px] text-muted-foreground">Punkte · {z.score.exact_lists} exakt</span>}
+        {z?.score && <span className="text-[22px] text-muted-foreground">Punkte · {z.score.exact_lists} richtig</span>}
       </div>
     </div>
   );
