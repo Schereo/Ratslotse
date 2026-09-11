@@ -13,7 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 #: Die Dialekte, für die es einen Adapter gibt.
-DIALECTS = ("allris4", "allris4_html", "session", "rubin", "oldenburg")
+DIALECTS = ("allris4", "allris4_html", "allris_classic", "session",
+            "rubin", "oldenburg")
 
 
 @dataclass(frozen=True)
@@ -137,6 +138,21 @@ BODIES: dict[str, BodySpec] = {
     # ``ratsinfob.stadt.wolfsburg.de``, ohne ``/public``. Ein geratener Host
     # hat am 10.09.2026 eine Stunde gekostet und zu dem Schluss geführt, die
     # Anwendung sei kaputt — sie ist es nicht.
+    # --- ALLRIS classic: die ältere `.asp`-Bauform. Eigener Dialekt, weil sie
+    #     mit ALLRIS 4 den Hersteller teilt und keine einzige Adresse.
+    #     Der Host stammt von hildesheim.de (Schritt 0 im Rezept): Er heißt
+    #     `stadt-hildesheim.de`, nicht `hildesheim.de` — und `bi.`, `ris.`
+    #     und `allris.hildesheim.de` lösen alle auf dieselbe Platzhalter-IP
+    #     auf, beweisen also nichts.
+    "hildesheim": BodySpec(
+        "hildesheim", "Hildesheim", "NI", "allris_classic",
+        "https://www.stadt-hildesheim.de/allris",
+        since="2018-01-01", active=False, fetch_files=False,
+        notes="Kein OParl. Der Vorlagentext steht IN der Seite, es gibt keine "
+              "Anlagen — deshalb fetch_files=False und Text über inline_texts. "
+              "Zu jedem beratenen Punkt gibt es einen Auszug (to020.asp) mit "
+              "Wortprotokoll und Beschluss - das Warum ohne PDF-Schnitt."),
+
     "wolfsburg": BodySpec(
         "wolfsburg", "Wolfsburg", "NI", "allris4_html",
         "https://ratsinfob.stadt.wolfsburg.de",

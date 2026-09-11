@@ -33,6 +33,13 @@ ALLRIS_LEERDATUM = "2000-01-01"
 #: ``agendaItems``-Kennung, und beide blieben liegen.
 SYNTHETISCHE_KENNUNG = "#top-"
 
+#: Was ALLRIS ausliefert, wenn ein Objekt nicht öffentlich ist — **mit HTTP
+#: 200**. Weder ein Fehler noch ein 403; der einzige Unterschied zu einer
+#: echten Seite ist dieser Satz. Gemessen an Wolfsburg (ALLRIS 4) und
+#: Hildesheim (ALLRIS classic), also über beide Bauformen hinweg: 77 von 255
+#: Sitzungen und 444 von 1.798 Dateien. Wer ihn nicht liest, legt Geister an.
+VERSCHLOSSEN = "Keine Information verfügbar"
+
 
 def obj_id(o: Any) -> str | None:
     """Die ``id``-URL eines Objekts — egal ob eingebettet oder als Verweis."""

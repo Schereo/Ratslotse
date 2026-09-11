@@ -39,8 +39,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import (eindeutige_beratungen, normalize_title,
-                                             zwillinge_zusammenfuehren)
+from council.cities.adapters._common import (VERSCHLOSSEN, eindeutige_beratungen,
+                                             normalize_title, zwillinge_zusammenfuehren)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
                                   Meeting, Organization, Paper, org_kind,
                                   outcome, paper_kind)
@@ -57,12 +57,6 @@ MAX_MONATE = 24
 #: Wie viele Seiten der Sitzungsübersicht ein Lauf höchstens blättert.
 #: 25 Sitzungen je Seite — Wolfsburg hat 652 auf 27 Seiten.
 MAX_INDEXSEITEN = 200
-
-#: Was ALLRIS ausliefert, wenn eine Sitzung nicht öffentlich ist. Die Seite
-#: antwortet mit HTTP 200 und einer 13.701-Byte-Hülle; der einzige Unterschied
-#: zu einem technischen Fehler ist dieser Satz. Gemessen an Wolfsburg:
-#: 77 von 255 Sitzungen, stabil dieselben.
-_VERSCHLOSSEN = "Keine Information verfügbar"
 
 _DATUM = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
 _UHRZEIT = re.compile(r"(\d{1,2}):(\d{2})")
@@ -224,7 +218,7 @@ class Allris4HtmlAdapter:
                 continue
             # Abgelegt wird auch die Absage — die Rohschicht hält fest, was
             # der Server gesagt hat. Aussortiert wird beim Normalisieren.
-            if _VERSCHLOSSEN in html:
+            if VERSCHLOSSEN in html:
                 verschlossen += 1
             obj = {"id": kennung, "silfdnr": nr, "html": html}
             client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
@@ -395,7 +389,7 @@ class Allris4HtmlAdapter:
             # namens „Sitzung", ohne Datum, ohne Tagesordnung. Der zählt in
             # jeder Kennzahl mit, als fehlten UNS die Daten, statt dass es sie
             # öffentlich gar nicht gibt. Gemessen an Wolfsburg: 77 von 255.
-            if _VERSCHLOSSEN in html:
+            if VERSCHLOSSEN in html:
                 verschlossen += 1
                 continue
             m_id = roh["id"]
