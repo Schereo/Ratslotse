@@ -42,8 +42,8 @@ from datetime import date, timedelta
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import (VERSCHLOSSEN, eindeutige_beratungen,
-                                             normalize_title,
+from council.cities.adapters._common import (VERSCHLOSSEN, attr,
+                                             eindeutige_beratungen, normalize_title,
                                              zwillinge_zusammenfuehren)
 from council.cities.model import (AgendaItem, Batch, Consultation, Meeting,
                                   Organization, Paper, org_kind, outcome,
@@ -115,14 +115,6 @@ def _text(knoten) -> str:
     return " ".join(knoten.get_text(" ", strip=True).split()) if knoten else ""
 
 
-def _attr(knoten, name: str) -> str:
-    """Ein Attribut als Zeichenkette — auch wenn BeautifulSoup eine Liste gibt."""
-    if knoten is None:
-        return ""
-    wert = knoten.get(name)
-    if isinstance(wert, (list, tuple)):
-        return " ".join(str(x) for x in wert)
-    return str(wert) if wert is not None else ""
 
 
 #: Die Bereiche der städtischen Seite, die um ALLRIS herumgebaut sind. Sie
@@ -237,7 +229,7 @@ class AllrisClassicAdapter:
         suppe = _inhalt(html)
         gesehen: set[str] = set()
         for a in suppe.find_all("a", href=re.compile(r"au020\.asp\?.*AULFDNR=\d+")):
-            nr = _zahl(_attr(a, "href"), "AULFDNR")
+            nr = _zahl(attr(a, "href"), "AULFDNR")
             name = _text(a)
             if not nr or not name or nr in gesehen:
                 continue
@@ -493,7 +485,7 @@ class AllrisClassicAdapter:
             # Punkte ohne Auszug brauchen eine gebaute, und die trägt dann
             # richtigerweise die Marke ``#top-`` (SYNTHETISCHE_KENNUNG).
             auszug = tr.find("a", href=re.compile(r"to020\.asp\?.*TOLFDNR=\d+"))
-            tol = _zahl(_attr(auszug, "href"), "TOLFDNR")
+            tol = _zahl(attr(auszug, "href"), "TOLFDNR")
             wurzel = meeting_id.split("/to010.asp")[0]
             kennung = (f"{wurzel}/to020.asp?TOLFDNR={tol}" if tol
                        else f"{meeting_id}#top-{m.group(2)}")
@@ -504,7 +496,7 @@ class AllrisClassicAdapter:
             # Verbindung ist damit nie zu raten. Ihr Ergebnis trägt sie noch
             # nicht; das steht nur in der Beratungsfolge der Vorlage.
             vo = tr.find("a", href=re.compile(r"vo020\.asp\?.*VOLFDNR=\d+"))
-            vol = _zahl(_attr(vo, "href"), "VOLFDNR")
+            vol = _zahl(attr(vo, "href"), "VOLFDNR")
             if vol:
                 consultations.append(Consultation(
                     f"{kennung}:vo{vol}", f"{wurzel}/vo020.asp?VOLFDNR={vol}",
@@ -542,7 +534,7 @@ class AllrisClassicAdapter:
             if offen is None:
                 continue
             offen["datum"] = _iso(werte[0] if werte else None)
-            offen["sitzung"] = _zahl(_attr(sitzung, "href"), "SILFDNR") or ""
+            offen["sitzung"] = _zahl(attr(sitzung, "href"), "SILFDNR") or ""
             offen["ergebnis"] = werte[2] if len(werte) > 2 else None
             raus.append(offen)
             offen = None

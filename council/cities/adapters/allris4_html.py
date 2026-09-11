@@ -39,8 +39,9 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import (VERSCHLOSSEN, eindeutige_beratungen,
-                                             normalize_title, zwillinge_zusammenfuehren)
+from council.cities.adapters._common import (VERSCHLOSSEN, attr,
+                                             eindeutige_beratungen, normalize_title,
+                                             zwillinge_zusammenfuehren)
 from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
                                   Meeting, Organization, Paper, org_kind,
                                   outcome, paper_kind)
@@ -73,19 +74,6 @@ def _text(knoten) -> str:
     return " ".join(knoten.get_text(" ", strip=True).split()) if knoten else ""
 
 
-def _attr(knoten, name: str) -> str:
-    """Ein Attribut als Zeichenkette — auch wenn BeautifulSoup eine Liste gibt.
-
-    ``get`` liefert bei mehrwertigen Attributen (``class``) eine Liste; wer
-    das Ergebnis blind wie eine Zeichenkette behandelt, bekommt an genau
-    einer Stelle einen Absturz, den kein Test sieht.
-    """
-    if knoten is None:
-        return ""
-    wert = knoten.get(name)
-    if isinstance(wert, (list, tuple)):
-        return " ".join(str(x) for x in wert)
-    return str(wert) if wert is not None else ""
 
 
 def _cdata(antwort: str) -> list[str]:
@@ -190,7 +178,7 @@ class Allris4HtmlAdapter:
         for stueck in _cdata(antwort):
             suppe = BeautifulSoup(stueck, "html.parser")
             for a in suppe.find_all("a", href=re.compile(r"gr0\d\d\?.*GRLFDNR=\d+")):
-                nr = _zahl(_attr(a, "href"), "GRLFDNR")
+                nr = _zahl(attr(a, "href"), "GRLFDNR")
                 name = _text(a)
                 if not nr or not name or nr in gesehen:
                     continue
@@ -566,7 +554,7 @@ class Allris4HtmlAdapter:
             # dieses Dialekts für erfunden.
             pfad = meeting_id.split("/to010")[0]
             top_link = tr.find("a", href=re.compile(r"to020|TOLFDNR=\d+"))
-            nr = _zahl(_attr(top_link, "href"), "TOLFDNR")
+            nr = _zahl(attr(top_link, "href"), "TOLFDNR")
             kennung = (f"{pfad}/to020?TOLFDNR={nr}" if nr
                        else f"{meeting_id}#top-{m.group(2)}")
             raus.append(AgendaItem(
@@ -574,7 +562,7 @@ class Allris4HtmlAdapter:
                 public=oeffentlich, result_raw=ergebnis or None,
                 outcome=outcome(ergebnis)))
             vo = tr.find("a", href=re.compile(r"vo020|VOLFDNR=\d+"))
-            v = _zahl(_attr(vo, "href"), "VOLFDNR")
+            v = _zahl(attr(vo, "href"), "VOLFDNR")
             if v:
                 consultations.append(Consultation(
                     f"{kennung}:vo{v}", f"{pfad}/vo020?VOLFDNR={v}",
@@ -590,7 +578,7 @@ class Allris4HtmlAdapter:
         raus: list[File] = []
         wurzel = objekt_id.split("/to010")[0].split("/vo020")[0]
         for a in suppe.find_all("a", href=re.compile(r"\.pdf(\?|$)", re.I)):
-            href = _attr(a, "href")
+            href = attr(a, "href")
             # **Was keine Netzadresse ist, wird keine Datei.** In einer
             # Wolfsburger Vorlage stand ein lokaler Windows-Pfad
             # (``file:///C:\Users\…``) statt eines Dokumentlinks. Ihn als
