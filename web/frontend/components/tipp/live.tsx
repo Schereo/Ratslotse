@@ -18,6 +18,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import { applyTheme, getTheme } from "@/lib/theme";
+import { probePfad } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Lotti } from "@/components/lotti";
@@ -40,23 +41,6 @@ const ANSICHTEN = [
   ["rangliste", "Rangliste"],
 ] as const;
 
-/** `?probe=2021&counted=N` an den Abruf weiterreichen — dasselbe, was
- *  `wahlabend.abfragePfad` für `/wahlabend` tut. Ohne das trüge die URL des
- *  Beamers die Generalprobe, der Abruf dahinter aber nicht: Man sähe den
- *  Live-Stand und hielte ihn für die Probe. Die Generalprobe ist der einzige
- *  Weg, den Abend vor dem Abend durchzuspielen (Plan, Abnahme von PR 4:
- *  `counted=0 → 40 → 90 → 133` zeigt Rangwechsel).
- *
- *  Die getestete Zwillingsfunktion steht als `probePfad` in `lib/tipp.ts`
- *  (PR 2) — sind beide Zweige auf `main`, ersetzt sie diese Kopie. */
-function mitProbe(basis: string, probe: string | null, counted: string | null): string {
-  const q = new URLSearchParams();
-  if (probe) q.set("probe", probe);
-  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
-  const s = q.toString();
-  return s ? `${basis}?${s}` : basis;
-}
-
 async function holeStand(pfad: string): Promise<PredictionStand> {
   return api.get<PredictionStand>(pfad);
 }
@@ -71,7 +55,7 @@ export function TippLive() {
   const erzwungen = params.get("ansicht") as Ansicht | null;
   const probe = params.get("probe");
   const counted = params.get("counted");
-  const standPfad = mitProbe("/tipp/stand", probe, counted);
+  const standPfad = probePfad("/tipp/stand", probe, counted);
 
   // Erstbesuch: dunkles Theme (Regel 3). Merkt sich danach die Wahl des
   // Geräts wie überall sonst — kein zweites, seiteneigenes Theme-System,
