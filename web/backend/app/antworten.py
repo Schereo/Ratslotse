@@ -3947,7 +3947,21 @@ class PredictionResultRow(TypedDict):
     published_at: str | None
 
 
+class PredictionAdminPlayer(TypedDict):
+    """Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden
+    und Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel
+    zeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der
+    Admin wiederfinden können."""
+    id: int
+    name: str
+    late_at: str | None
+    hidden: bool
+    has_tip: bool
+    has_mayor_tip: bool
+
+
 class PredictionAdminStand(TypedDict):
     game: PredictionGame
     results: list[PredictionResultRow]
+    players: list[PredictionAdminPlayer]
     log: list[str]
