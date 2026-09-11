@@ -558,6 +558,70 @@ CREATE TABLE IF NOT EXISTS feedback (
     notified_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
+
+-- Tippspiel zur Ratswahl 13.09.2026 (docs/plan-tippspiel-ratswahl.md).
+-- EIN Spiel — kein Code, keine mehreren Runden; die Zeile trägt den Zustand
+-- des Abends. Kein `owner_id`: Mitspielen geht ohne Konto, die Identität ist
+-- der Cookie-Token (Hash), nicht `web_users.id`. Deshalb auch NICHT in
+-- `USER_OWNED_TABLES` — es gibt kein Konto, das etwas löschen könnte.
+CREATE TABLE IF NOT EXISTS prediction_game (
+    id            INTEGER PRIMARY KEY CHECK (id = 1),
+    title         TEXT NOT NULL,
+    phase         TEXT NOT NULL,      -- open | locked | final
+    locked_at     TEXT,               -- Tipp-Schluss (1. Hochrechnung oder Admin)
+    locked_reason TEXT,               -- 'admin' | 'projection'
+    late_scored   INTEGER NOT NULL DEFAULT 0,  -- Spätstarter mitgewertet? (0/1)
+    created_at    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS prediction_players (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,        -- Anzeigename; Doppelte werden „Merle (2)"
+    token_hash  TEXT NOT NULL UNIQUE, -- sha256 des Cookie-Geheimnisses
+    created_at  TEXT NOT NULL,
+    late_at     TEXT,                 -- gesetzt, wenn nach dem Tipp-Schluss (neu) getippt
+    hidden_at   TEXT                  -- Moderation im Admin: NULL = sichtbar
+);
+CREATE TABLE IF NOT EXISTS prediction_tips (
+    player_id   INTEGER PRIMARY KEY REFERENCES prediction_players(id),
+    seats_json  TEXT NOT NULL,        -- {"gruene": 14, …} alle 16 Slugs, Summe 52
+    mayor_json  TEXT,                 -- {"rohr": 31.5, …} oder NULL (nicht mitgetippt)
+    updated_at  TEXT NOT NULL
+);
+-- Das Ergebnis je Zeile: eine Liste ('gruene') oder eine OB-Kandidatur
+-- ('ob:rohr'). ZWEI Stände je Zeile, nicht einer mit einem Flag — sonst ließe
+-- sich „Entwurf verwerfen" nicht auf den zuletzt veröffentlichten Stand
+-- zurücksetzen, der wäre beim Überschreiben schon weg. `seats`/`pct`/`source`
+-- ist der ENTWURF (Admin bearbeitet oder „Jetzt abfragen" füllt ihn);
+-- `published_*` ist, was die öffentliche Tafel zeigt. „Veröffentlichen"
+-- kopiert Entwurf → published, „Verwerfen" kopiert published → Entwurf.
+CREATE TABLE IF NOT EXISTS prediction_result (
+    slug             TEXT PRIMARY KEY,
+    seats            INTEGER,         -- Entwurf: Sitze (Listen) — NULL bei OB-Zeilen
+    pct              REAL,            -- Entwurf: Prozent (OB) bzw. Stimmenanteil
+    source           TEXT NOT NULL DEFAULT 'manuell',  -- 'votemanager' | 'manuell'
+    updated_at       TEXT NOT NULL,
+    published_seats  INTEGER,
+    published_pct    REAL,
+    published_source TEXT,
+    published_at     TEXT
+);
+-- Ein Rang je Person je veröffentlichtem Stand — Grundlage der ▲▼-Chips
+-- (Vergleich mit dem VORHERIGEN Stand, nicht mit „vor 20 Sekunden").
+CREATE TABLE IF NOT EXISTS prediction_standings (
+    stand_at    TEXT NOT NULL,
+    player_id   INTEGER NOT NULL,
+    rank        INTEGER NOT NULL,
+    points      INTEGER NOT NULL,
+    PRIMARY KEY (stand_at, player_id)
+);
+-- Das Protokoll im Admin-Panel (1h): jede Abfrage, jede Veröffentlichung,
+-- jede Handkorrektur — damit am Wahlabend nachvollziehbar bleibt, was wann
+-- eingetragen wurde.
+CREATE TABLE IF NOT EXISTS prediction_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    at         TEXT NOT NULL,
+    text       TEXT NOT NULL
+);
 """
 
 # Alle Tabellen, die an einem Konto hängen — Grundlage von `delete_web_user`
@@ -4619,3 +4683,185 @@ class Store:
                 "UPDATE template_follows SET stations = ?, notified_at = ? WHERE id = ?",
                 (stations, now, follow_id),
             )
+
+    # ------------------------------------------------------------------ Tippspiel
+    # docs/plan-tippspiel-ratswahl.md — EIN Spiel, kein Konto. Reine Speicher-
+    # methoden; was daraus ein Ergebnis macht, steht in
+    # ``web/backend/app/prediction/service.py``.
+
+    def prediction_game(self) -> dict:
+        """Die eine Spielzeile — wird beim ersten Zugriff angelegt (Phase 'open')."""
+        row = self._conn.execute("SELECT * FROM prediction_game WHERE id = 1").fetchone()
+        if row is None:
+            now = datetime.utcnow().isoformat(timespec="seconds")
+            with self._conn:
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO prediction_game (id, title, phase, late_scored, created_at) "
+                    "VALUES (1, 'Tippspiel zur Ratswahl', 'open', 0, ?)",
+                    (now,),
+                )
+            row = self._conn.execute("SELECT * FROM prediction_game WHERE id = 1").fetchone()
+        return dict(row)
+
+    #: Spalten, die ``prediction_game_set`` schreiben darf — eine Positivliste,
+    #: damit ein Tippfehler im Feldnamen nicht zu beliebigem SQL wird.
+    _PREDICTION_GAME_FELDER = ("title", "phase", "locked_at", "locked_reason", "late_scored")
+
+    def prediction_game_set(self, **felder: object) -> None:
+        """Einzelne Spalten der Spielzeile setzen — legt sie bei Bedarf zuerst an."""
+        self.prediction_game()
+        setzen = {k: v for k, v in felder.items() if k in self._PREDICTION_GAME_FELDER}
+        if not setzen:
+            return
+        spalten = ", ".join(f"{k} = ?" for k in setzen)
+        with self._conn:
+            self._conn.execute(f"UPDATE prediction_game SET {spalten} WHERE id = 1", tuple(setzen.values()))
+
+    def prediction_name_frei(self, name: str) -> str:
+        """``name`` — oder ``name (2)``, ``name (3)`` …, falls schon vergeben.
+
+        Auch ausgeblendete Namen zählen als vergeben, sonst könnte sich ein
+        ausgeblendeter Störer denselben Namen sofort zurückholen."""
+        vorhandene = {r[0].lower() for r in self._conn.execute("SELECT name FROM prediction_players").fetchall()}
+        if name.lower() not in vorhandene:
+            return name
+        n = 2
+        while f"{name} ({n})".lower() in vorhandene:
+            n += 1
+        return f"{name} ({n})"
+
+    def prediction_player_add(self, name: str, token_hash: str, late_at: str | None) -> dict:
+        endgueltig = self.prediction_name_frei(name)
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "INSERT INTO prediction_players (name, token_hash, created_at, late_at) VALUES (?,?,?,?)",
+                (endgueltig, token_hash, now, late_at),
+            )
+        return {"id": cur.lastrowid, "name": endgueltig, "token_hash": token_hash,
+                "created_at": now, "late_at": late_at, "hidden_at": None}
+
+    def prediction_player_by_token(self, token_hash: str) -> dict | None:
+        """Wie ``prediction_players()``, aber EINE Zeile über den Token —
+        MIT demselben LEFT JOIN auf den Tipp, sonst sähe „meins" nie den
+        eigenen Tipp (``seats_json``/``mayor_json`` fehlten sonst ganz)."""
+        row = self._conn.execute(
+            "SELECT p.id, p.name, p.token_hash, p.created_at, p.late_at, p.hidden_at, "
+            "       t.seats_json, t.mayor_json, t.updated_at AS tip_updated_at "
+            "FROM prediction_players p LEFT JOIN prediction_tips t ON t.player_id = p.id "
+            "WHERE p.token_hash = ?", (token_hash,)).fetchone()
+        return dict(row) if row else None
+
+    def prediction_player_update(self, player_id: int, *, name: str | None = None, hidden: bool | None = None) -> None:
+        felder: dict[str, object] = {}
+        if name is not None:
+            felder["name"] = name
+        if hidden is not None:
+            felder["hidden_at"] = datetime.utcnow().isoformat(timespec="seconds") if hidden else None
+        if not felder:
+            return
+        spalten = ", ".join(f"{k} = ?" for k in felder)
+        with self._conn:
+            self._conn.execute(f"UPDATE prediction_players SET {spalten} WHERE id = ?",
+                               (*felder.values(), player_id))
+
+    def prediction_player_delete_own(self, player_id: int) -> None:
+        """Selbstlöschung (``DELETE /api/tipp/me``) — keine FK-Erzwingung in
+        SQLite hier, also von Hand in der richtigen Reihenfolge."""
+        with self._conn:
+            self._conn.execute("DELETE FROM prediction_tips WHERE player_id = ?", (player_id,))
+            self._conn.execute("DELETE FROM prediction_standings WHERE player_id = ?", (player_id,))
+            self._conn.execute("DELETE FROM prediction_players WHERE id = ?", (player_id,))
+
+    def prediction_players(self, include_hidden: bool = False) -> list[dict]:
+        """Alle Spieler*innen mit ihrem Tipp (falls vorhanden), nach Namen sortiert."""
+        where = "" if include_hidden else "WHERE p.hidden_at IS NULL"
+        rows = self._conn.execute(
+            f"SELECT p.id, p.name, p.token_hash, p.created_at, p.late_at, p.hidden_at, "
+            f"       t.seats_json, t.mayor_json, t.updated_at AS tip_updated_at "
+            f"FROM prediction_players p LEFT JOIN prediction_tips t ON t.player_id = p.id "
+            f"{where} ORDER BY p.name COLLATE NOCASE"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def prediction_tip_set(self, player_id: int, seats_json: str, mayor_json: str | None) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO prediction_tips (player_id, seats_json, mayor_json, updated_at) VALUES (?,?,?,?) "
+                "ON CONFLICT(player_id) DO UPDATE SET seats_json = excluded.seats_json, "
+                "mayor_json = excluded.mayor_json, updated_at = excluded.updated_at",
+                (player_id, seats_json, mayor_json, now),
+            )
+
+    def prediction_result(self) -> list[dict]:
+        """Jede Zeile mit Entwurf UND veröffentlichtem Stand nebeneinander."""
+        return [dict(r) for r in self._conn.execute("SELECT * FROM prediction_result").fetchall()]
+
+    def prediction_result_set(self, rows: list[dict], *, source: str) -> None:
+        """Zeilen in den ENTWURF schreiben — der veröffentlichte Stand bleibt
+        unberührt, bis ``prediction_result_publish`` ihn übernimmt."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            for r in rows:
+                self._conn.execute(
+                    "INSERT INTO prediction_result (slug, seats, pct, source, updated_at) VALUES (?,?,?,?,?) "
+                    "ON CONFLICT(slug) DO UPDATE SET seats = excluded.seats, pct = excluded.pct, "
+                    "source = excluded.source, updated_at = excluded.updated_at",
+                    (r["slug"], r.get("seats"), r.get("pct"), source, now),
+                )
+
+    def prediction_result_publish(self) -> int:
+        """Entwurf → veröffentlicht, für ALLE Zeilen. Gibt die Zahl der
+        Zeilen zurück, die dabei tatsächlich einen Entwurf trugen."""
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE prediction_result SET published_seats = seats, published_pct = pct, "
+                "published_source = source, published_at = ? WHERE seats IS NOT NULL OR pct IS NOT NULL",
+                (now,),
+            )
+        return cur.rowcount
+
+    def prediction_result_discard(self) -> None:
+        """Veröffentlicht → Entwurf: einen unveröffentlichten Tippfehler
+        zurücknehmen, ohne den öffentlichen Stand anzutasten."""
+        with self._conn:
+            self._conn.execute(
+                "UPDATE prediction_result SET seats = published_seats, pct = published_pct, "
+                "source = COALESCE(published_source, 'manuell')"
+            )
+
+    def prediction_standings_record(self, stand_at: str, rows: list[tuple[int, int, int]]) -> None:
+        """``[(player_id, rank, points), …]`` unter ``stand_at`` ablegen —
+        ``INSERT OR IGNORE``, ein Stand wird nie zweimal geschrieben."""
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR IGNORE INTO prediction_standings (stand_at, player_id, rank, points) VALUES (?,?,?,?)",
+                [(stand_at, pid, rank, points) for pid, rank, points in rows],
+            )
+
+    def prediction_standings_previous(self, before: str) -> dict[int, int]:
+        """``{player_id: rank}`` des letzten Standes VOR ``before`` — leer,
+        wenn es noch keinen gibt (dann bleibt ``rank_before`` ``None``)."""
+        letzter = self._conn.execute(
+            "SELECT stand_at FROM prediction_standings WHERE stand_at < ? ORDER BY stand_at DESC LIMIT 1",
+            (before,),
+        ).fetchone()
+        if letzter is None:
+            return {}
+        rows = self._conn.execute(
+            "SELECT player_id, rank FROM prediction_standings WHERE stand_at = ?", (letzter[0],)
+        ).fetchall()
+        return {r[0]: r[1] for r in rows}
+
+    def prediction_log_add(self, text: str) -> None:
+        now = datetime.utcnow().isoformat(timespec="seconds")
+        with self._conn:
+            self._conn.execute("INSERT INTO prediction_log (at, text) VALUES (?, ?)", (now, text))
+
+    def prediction_log(self, limit: int = 20) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT at, text FROM prediction_log ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]

@@ -38,6 +38,7 @@ KEIN_JSON = {
     ("get", "/api/calendar/{token}.ics"),
     ("get", "/api/admin/live-probe"),
     ("get", "/api/wahlabend/bild.png"),
+    ("get", "/api/tipp/qr.png"),
 }
 
 #: Welchen Medientyp diese Endpunkte liefern MÜSSEN.
@@ -48,6 +49,7 @@ KEIN_JSON_MEDIENTYP = {
     ("get", "/api/calendar/{token}.ics"): "text/calendar",
     ("get", "/api/admin/live-probe"): "text/event-stream",
     ("get", "/api/wahlabend/bild.png"): "image/png",
+    ("get", "/api/tipp/qr.png"): "image/png",
 }
 
 
