@@ -5,13 +5,12 @@
 // stehen in eigenen Dateien (beamer-mitmachen/-vergleich, scoreboard).
 //
 // Der Seiten-Hintergrund bleibt das GEWÖHNLICHE `bg-background` — gemessen
-// stimmen dessen `:root`/`.dark`-Werte bereits exakt mit der Design-Tabelle
-// für „Seite" überein (Hell 204 45% 97.5 %, Dunkel 213 50% 7 %). Nur die
-// hervorgehobene „Anzeigetafel" je Screen (Countdown-Rahmen, Vergleichs-Satz)
-// trägt zusätzlich `.hh-tafel` — dieselbe Klasse, mit der auch der Haushalt
-// seine Tafel absetzt, und deren Werte ebenso exakt zur Tabellenzeile
-// „Karte" passen. Kein einziger Hex-/HSL-Wert musste dafür neu eingetragen
-// werden.
+// stimmen dessen `:root`/`.dark`-Werte exakt mit der Design-Tabelle für
+// „Seite" überein (Hell 204 45% 97.5 %, Dunkel 213 50% 7 %), die Karten mit
+// der Zeile „Karte". Kein einziger Hex-/HSL-Wert musste dafür neu
+// eingetragen werden; die Screens folgen damit dem Theme, und im Hellmodus
+// steht keine dunkle Kachel (Tims stehende Regel, geprüft in
+// `17-tippspiel-live.spec.ts`).
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";

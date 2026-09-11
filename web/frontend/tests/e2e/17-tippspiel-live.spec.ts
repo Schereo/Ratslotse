@@ -107,7 +107,7 @@ test.describe("Schalter an", () => {
     test.use({ reducedMotion: "no-preference" });
 
     test("rückt die neue Nummer eins ins Podium-Zentrum, ihr Chip sagt +2 und Konfetti läuft", async ({ page }) => {
-      test.setTimeout(60_000);
+      test.setTimeout(90_000);
       standMock(page, STAND_A, STAND_B);
       await page.goto("/tipp/live?ansicht=rangliste");
       await expect(page.getByTestId("podium").locator("> div").nth(1)).toContainText("Anna");
@@ -115,16 +115,17 @@ test.describe("Schalter an", () => {
       // Eine echte Hochrechnung wechselt den Stand NIE per Reload — die Seite
       // bleibt offen und pollt weiter. Ein Reload würde Podiums eigene „nicht
       // beim ersten Rendern"-Sperre zurücksetzen und nie feiern — genau die
-      // Sperre, die verhindert, dass jeder Seitenaufruf Konfetti zeigt. Deshalb
-      // hier auf die zweite Antwort von `/api/tipp/stand` warten (den echten
-      // Poll-Takt, 30 s bei vorliegendem Ergebnis) statt neu zu laden.
-      await page.waitForResponse((r) => r.url().includes("/api/tipp/stand") && r.status() === 200, { timeout: 40_000 });
-
-      // Ab hier läuft `ConfettiBurst` nur 3,2 s (components/confetti.tsx) — eng
-      // pollen (50 ms), nicht über `expect()`s eigenen, gröberen Rhythmus,
-      // sonst ist das Fenster beim Prüfen manchmal schon vorbei.
+      // Sperre, die verhindert, dass jeder Seitenaufruf Konfetti zeigt.
+      //
+      // Der zweite Stand kommt also erst mit dem nächsten Poll (30 s, sobald
+      // ein Ergebnis vorliegt), und das Konfetti fliegt danach nur 3,2 s
+      // (components/confetti.tsx). Deshalb EIN Warten, das beides abdeckt:
+      // eng pollen (50 ms) über den ganzen Zeitraum, statt erst auf die
+      // Antwort und dann aufs Konfetti zu warten — zwei Fenster
+      // hintereinander waren unter Last zu knapp (gemessen 11.09., einmal rot
+      // bei vier parallelen Spec-Dateien).
       const konfettiGesehen = await page
-        .waitForFunction(() => document.querySelector(".animate-confetti-fall") !== null, null, { timeout: 3500, polling: 50 })
+        .waitForFunction(() => document.querySelector(".animate-confetti-fall") !== null, null, { timeout: 60_000, polling: 50 })
         .then(() => true)
         .catch(() => false);
       expect(konfettiGesehen, "Konfetti wurde nach dem Führungswechsel nie im DOM gefunden").toBe(true);
