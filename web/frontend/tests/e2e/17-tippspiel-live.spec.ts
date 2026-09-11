@@ -233,7 +233,7 @@ test.describe("Umschalten", () => {
 
     await page.getByRole("button", { name: "Rangliste" }).click();
     await expect(page.getByText("Anna")).toBeVisible();
-    await expect(page.getByText(/Mitspielende/)).toBeVisible();
+    await expect(page.getByText(/Tippspiel · \d+ dabei/)).toBeVisible();
     await expect(page.getByRole("img", { name: /QR-Code/ })).toBeHidden();
 
     await page.getByRole("button", { name: "QR-Code" }).click();
