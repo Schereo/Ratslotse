@@ -28,8 +28,11 @@ const LISTEN_HOEHE = 1080 - 48 - 40 - 44 - 36 - 300 - 34 - 22 - 30;
 const ZEILE_VOLL = 74;
 const ABSTAND = 14;
 
-function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe }: {
+function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
   z: Zeile; index: number; proSpalte: number; spalten: number; hoehe: number;
+  /** Steht schon ein Ergebnis? Sonst ist die Liste nur „wer mitspielt" —
+   *  dann ohne Rang, Chip und Punkte, denn die gibt es noch nicht. */
+  gewertet: boolean;
 }) {
   const i = index % proSpalte;
   const spalte = Math.floor(index / proSpalte);
@@ -45,15 +48,21 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe }: {
       style={{ top: i * (hoehe + ABSTAND), left, width: breite, height: hoehe }}
       className={cn(
         "absolute grid items-center gap-4 rounded-[18px] border border-border bg-card pl-5 pr-6",
-        kompakt ? "grid-cols-[52px_1fr_auto_150px]" : "grid-cols-[70px_1fr_auto_190px]",
+        gewertet
+          ? (kompakt ? "grid-cols-[52px_1fr_auto_150px]" : "grid-cols-[70px_1fr_auto_190px]")
+          : (kompakt ? "grid-cols-[34px_1fr]" : "grid-cols-[44px_1fr]"),
         "transition-[top,left,background-color] duration-[900ms] ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none",
         frisch && "animate-zeile-frisch",
         ohneTipp && "opacity-50",
       )}
     >
-      <span className={cn("font-display font-semibold text-muted-foreground tabular-nums", kompakt ? "text-[26px]" : "text-[36px]")}>
-        {z.rank ?? "–"}
-      </span>
+      {gewertet ? (
+        <span className={cn("font-display font-semibold text-muted-foreground tabular-nums", kompakt ? "text-[26px]" : "text-[36px]")}>
+          {z.rank ?? "–"}
+        </span>
+      ) : (
+        <span aria-hidden className="h-3 w-3 rounded-full bg-primary/40" />
+      )}
       <span className="flex min-w-0 items-center gap-3.5">
         <span className={cn("truncate font-semibold", kompakt ? "text-[22px]" : "text-[30px]")} title={z.name}>{z.name}</span>
         {z.late_at && (
@@ -62,50 +71,66 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe }: {
           </span>
         )}
       </span>
-      <RangChip rank={z.rank} rankBefore={z.rank_before} className={cn(kompakt && "h-[28px] text-[18px]")} />
-      <span className="flex items-baseline justify-end gap-2 whitespace-nowrap">
-        <span className={cn("font-display font-semibold tabular-nums text-primary", kompakt ? "text-[26px]" : "text-[36px]")}>
-          {ohneTipp ? "–" : punkte}
-        </span>
-        {!ohneTipp && z.score && (
-          <span className={cn("text-muted-foreground", kompakt ? "text-[16px]" : "text-[20px]")}>{z.score.exact_lists} ex.</span>
-        )}
-      </span>
+      {gewertet && (
+        <>
+          <RangChip rank={z.rank} rankBefore={z.rank_before} className={cn(kompakt && "h-[28px] text-[18px]")} />
+          <span className="flex items-baseline justify-end gap-2 whitespace-nowrap">
+            <span className={cn("font-display font-semibold tabular-nums text-primary", kompakt ? "text-[26px]" : "text-[36px]")}>
+              {ohneTipp ? "–" : punkte}
+            </span>
+            {!ohneTipp && z.score && (
+              <span className={cn("text-muted-foreground", kompakt ? "text-[16px]" : "text-[20px]")}>{z.score.exact_lists} ex.</span>
+            )}
+          </span>
+        </>
+      )}
     </div>
   );
 }
 
 export function Scoreboard({ stand }: { stand: PredictionStand }) {
+  // Vor dem ersten Ergebnis hat niemand einen Rang: Dann ist diese Seite die
+  // Liste der Mitspielenden — kein Podium, keine Punkte, keine Striche, wo
+  // Zahlen stehen sollten.
+  const gewertet = stand.rows.some((r) => r.rank !== null);
   const rest = stand.rows.filter((r) => !(r.rank !== null && r.rank <= 3));
   const spalten = rest.length > 12 ? 3 : 2;
   const proSpalte = Math.max(1, Math.ceil(rest.length / spalten));
-  const hoehe = Math.max(44, Math.min(ZEILE_VOLL, Math.floor(LISTEN_HOEHE / proSpalte) - ABSTAND));
+  const platz = gewertet ? LISTEN_HOEHE : LISTEN_HOEHE + 300 + 34;
+  const hoehe = Math.max(44, Math.min(ZEILE_VOLL, Math.floor(platz / proSpalte) - ABSTAND));
   const endstand = stand.phase === "final";
 
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(900px_500px_at_50%_-10%,hsl(205_92%_34%/0.12),transparent_70%)] px-20 pb-10 pt-12 text-foreground dark:bg-[radial-gradient(900px_500px_at_50%_-10%,hsl(205_92%_34%/0.35),transparent_70%)]">
       <BeamerKopf
-        untertitel="Tippspiel · Rangliste"
-        rechts={
+        untertitel={gewertet ? "Tippspiel · Rangliste" : `Tippspiel · ${rest.length} Mitspielende`}
+        rechts={gewertet ? (
           <>
             <LivePunkt endstand={endstand} />
             {stand.area_label && <span>{stand.area_label}</span>}
             <span>·</span>
             <span className="font-mono">{stand.stand_label || "–"}</span>
           </>
-        }
+        ) : (
+          // Ohne Ergebnis wäre „Live · –" eine Zusage, die keine Zahl deckt.
+          <span>{stand.phase === "open" ? "Tippen läuft" : "Warten auf die erste Hochrechnung"}</span>
+        )}
       />
 
-      <Podium rows={stand.rows} phase={stand.phase} />
+      {gewertet && <Podium rows={stand.rows} phase={stand.phase} />}
 
-      <div className="relative mt-[34px] flex-1">
+      <div className={cn("relative flex-1", gewertet ? "mt-[34px]" : "mt-10")}>
         {rest.map((z, index) => (
-          <Ranglistenzeile key={z.player_id} z={z} index={index} proSpalte={proSpalte} spalten={spalten} hoehe={hoehe} />
+          <Ranglistenzeile key={z.player_id} z={z} index={index} proSpalte={proSpalte} spalten={spalten} hoehe={hoehe} gewertet={gewertet} />
         ))}
       </div>
 
       <div className="mt-[22px] flex items-center justify-between text-[22px] text-muted-foreground">
-        <span>Punkte je Liste: exakt 5 · ±1 Sitz 3 · ±2 Sitze 1 — OB-Bonus je Kandidatur bis 6.</span>
+        <span>
+          {gewertet
+            ? "Punkte je Liste: exakt 5 · ±1 Sitz 3 · ±2 Sitze 1 — OB-Bonus je Kandidatur bis 6."
+            : "Sobald die erste Hochrechnung da ist, wird aus dieser Liste die Rangliste."}
+        </span>
         <span className="font-mono">ratslotse.de/tipp</span>
       </div>
     </div>

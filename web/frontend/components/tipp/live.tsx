@@ -19,6 +19,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import { applyTheme, getTheme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Lotti } from "@/components/lotti";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
@@ -30,6 +31,15 @@ import { Buehne, useSchmal } from "./buehne";
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 type Ansicht = "qr" | "vergleich" | "rangliste";
+
+//: Die Wahl in der Ecke — „Automatik" ist der Abend-Betrieb, die drei
+//: anderen halten je einen Screen fest.
+const ANSICHTEN = [
+  ["auto", "Automatik"],
+  ["qr", "QR-Code"],
+  ["vergleich", "Vergleich"],
+  ["rangliste", "Rangliste"],
+] as const;
 
 /** `?probe=2021&counted=N` an den Abruf weiterreichen — dasselbe, was
  *  `wahlabend.abfragePfad` für `/wahlabend` tut. Ohne das trüge die URL des
@@ -87,6 +97,29 @@ export function TippLive() {
   const hatErgebnis = stand?.compare.some((c) => c.actual !== null) ?? false;
 
   const [auto, setAuto] = useState<"vergleich" | "rangliste">("vergleich");
+  // Was der Raum gerade sehen soll. `auto` ist der Abend-Betrieb (QR bis zum
+  // ersten Ergebnis, danach der 45-s-Wechsel); jede andere Wahl hält den
+  // Screen fest — auch VOR dem ersten Ergebnis, damit Tim nach der
+  // Tipprunde auf die Hochrechnung umschalten kann (sein Wunsch 11.09.).
+  const [wahl, setWahl] = useState<Ansicht | "auto">(erzwungen ?? "auto");
+  // Die Steuerung gehört nicht dauerhaft auf eine Leinwand: Sie kommt bei
+  // Mausbewegung und geht nach vier Sekunden Ruhe wieder — wie bei einem
+  // Videoplayer. Das Generalprobe-Schild bleibt davon unberührt.
+  const [steuerungWach, setSteuerungWach] = useState(true);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    const wach = () => {
+      setSteuerungWach(true);
+      clearTimeout(t);
+      t = setTimeout(() => setSteuerungWach(false), 4000);
+    };
+    wach();
+    for (const e of ["mousemove", "keydown", "touchstart"] as const) window.addEventListener(e, wach);
+    return () => {
+      clearTimeout(t);
+      for (const e of ["mousemove", "keydown", "touchstart"] as const) window.removeEventListener(e, wach);
+    };
+  }, []);
   const computedAtRef = useRef<string | null>(null);
   const erzwingenBisRef = useRef(0);
 
@@ -133,20 +166,46 @@ export function TippLive() {
     );
   }
 
-  const ansicht: Ansicht = erzwungen ?? (!hatErgebnis ? "qr" : auto);
+  const ansicht: Ansicht = wahl === "auto" ? (!hatErgebnis ? "qr" : auto) : wahl;
 
   return (
     <div className="relative min-h-[100dvh] bg-background text-foreground">
-      <div className="absolute right-5 top-5 z-10 flex items-center gap-3">
+      {/* Steuerung und Schild stehen OBEN MITTE: Der Kopf jedes Screens hat
+          dort nichts stehen (links die Marke, rechts die Live-Zeile) — an der
+          rechten Ecke lagen sie übereinander. */}
+      <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 flex-col items-center gap-2">
         {probe && !schmal && (
           // Auf einem Beamer im vollen Raum darf die Generalprobe keine
           // Sekunde wie das echte Ergebnis aussehen (dieselbe Zusage wie im
-          // Wahlabend, der seine Probe ebenfalls ausschildert).
+          // Wahlabend, der seine Probe ebenfalls ausschildert) — das Schild
+          // bleibt deshalb stehen, auch wenn die Steuerung verschwindet.
           <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 font-mono text-[12px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
             Generalprobe · Zahlen von 2021
           </span>
         )}
-        <WebThemeSwitch />
+        <div className={cn(
+          "flex items-center gap-3 transition-opacity duration-500",
+          steuerungWach ? "opacity-100" : "opacity-0",
+          !steuerungWach && "pointer-events-none",
+        )}>
+          {!schmal && (
+            <div role="group" aria-label="Was der Beamer zeigt" className="flex items-center gap-0.5 rounded-full border border-border bg-card/90 p-1 backdrop-blur">
+              {ANSICHTEN.map(([wert, label]) => (
+                <button
+                  key={wert} type="button" aria-pressed={wahl === wert}
+                  onClick={() => setWahl(wert)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-150",
+                    wahl === wert ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          <WebThemeSwitch />
+        </div>
       </div>
       {schmal ? (
         // Handy und Tablet hochkant: statt der skalierten Leinwand die

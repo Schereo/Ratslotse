@@ -73,7 +73,7 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
     <div className="flex h-full flex-col px-20 py-14 text-foreground">
       <BeamerKopf
         untertitel="Tippspiel · Ergebnis gegen Tipps"
-        rechts={
+        rechts={mitSitz.length ? (
           <>
             <LivePunkt endstand={endstand} />
             {stand.area_label && <span>{stand.area_label}</span>}
@@ -86,13 +86,17 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
               </>
             )}
           </>
-        }
+        ) : (
+          <span>{stand.phase === "open" ? "Tippen läuft" : "Warten auf die erste Hochrechnung"}</span>
+        )}
       />
 
       <div className="mt-10 grid min-h-0 flex-1 grid-cols-[700px_1fr] gap-20">
         {/* Links: Halbkreis + Satz */}
         <div className="flex flex-col">
-          <p className="font-mono text-[22px] uppercase tracking-[0.11em] text-muted-foreground">Sitzverteilung · Hochrechnung</p>
+          <p className="font-mono text-[22px] uppercase tracking-[0.11em] text-muted-foreground">
+            {mitSitz.length ? "Sitzverteilung · Hochrechnung" : "Sitzverteilung · noch keine Zahlen"}
+          </p>
           <div className="relative mt-[22px] h-[340px] w-[640px]">
             <Halbkreis zeilen={stand.compare} gesamt={stand.seats_total} />
             <div data-testid="sitze-gesamt" className="absolute inset-x-0 bottom-[-14px] text-center">

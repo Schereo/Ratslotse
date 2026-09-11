@@ -218,3 +218,24 @@ test.describe("Generalprobe", () => {
     expect(gesehen[0]).toBe("");
   });
 });
+
+test.describe("Umschalten", () => {
+  test("vor dem ersten Ergebnis lässt sich von QR auf die Mitspielenden schalten", async ({ page }) => {
+    // Tims Wunsch (11.09.): Wenn die Runde fertig getippt hat, will er auf
+    // dem Beamer umschalten können — auch bevor die erste Hochrechnung da
+    // ist. Vorher hielt die Automatik den QR-Code fest.
+    await appConfig(page, ["tippspiel"]);
+    await setupMock(page);
+    standMock(page, STAND_OPEN);
+    await page.goto("/tipp/live");
+    await expect(page.getByRole("img", { name: /QR-Code/ })).toBeVisible();
+
+    await page.getByRole("button", { name: "Rangliste" }).click();
+    await expect(page.getByText("Anna")).toBeVisible();
+    await expect(page.getByText(/Mitspielende/)).toBeVisible();
+    await expect(page.getByRole("img", { name: /QR-Code/ })).toBeHidden();
+
+    await page.getByRole("button", { name: "QR-Code" }).click();
+    await expect(page.getByRole("img", { name: /QR-Code/ })).toBeVisible();
+  });
+});
