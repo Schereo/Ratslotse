@@ -43,7 +43,7 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
             {/* Gremium und Datum können fehlen — ein Beschluss ohne Sitzung im
                 Bestand hat beides nicht. Dann steht die Zeile eben leer, statt
                 „undefined" zu zeigen. */}
-            <span className="text-xs text-muted-foreground" title={committee ?? undefined}>
+            <span className="text-meta text-muted-foreground" title={committee ?? undefined}>
               {[committee && shortCommittee(committee), session_date && formatDate(session_date)]
                 .filter(Boolean).join(" · ")}
             </span>
@@ -58,8 +58,8 @@ export function DecisionLinkCard({ id, title, committee, session_date, field, le
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm font-medium text-foreground">{title}</p>
-          {sub && <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{sub}</p>}
+          <p className="mt-1 break-words text-quelle font-medium text-foreground">{title}</p>
+          {sub && <p className="mt-0.5 line-clamp-2 text-hinweis text-muted-foreground">{sub}</p>}
         </div>
         <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary" />
       </Card>
