@@ -11895,6 +11895,48 @@
         "title": "PolicyFields",
         "type": "object"
       },
+      "PredictionAdminPlayer": {
+        "description": "Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden\nund Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel\nzeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der\nAdmin wiederfinden können.",
+        "properties": {
+          "has_mayor_tip": {
+            "title": "Has Mayor Tip",
+            "type": "boolean"
+          },
+          "has_tip": {
+            "title": "Has Tip",
+            "type": "boolean"
+          },
+          "hidden": {
+            "title": "Hidden",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "late_at": {
+            "title": "Late At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "late_at",
+          "hidden",
+          "has_tip",
+          "has_mayor_tip"
+        ],
+        "title": "PredictionAdminPlayer",
+        "type": "object"
+      },
       "PredictionAdminStand": {
         "properties": {
           "game": {
@@ -11905,6 +11947,13 @@
               "type": "string"
             },
             "title": "Log",
+            "type": "array"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionAdminPlayer"
+            },
+            "title": "Players",
             "type": "array"
           },
           "results": {
@@ -11918,6 +11967,7 @@
         "required": [
           "game",
           "results",
+          "players",
           "log"
         ],
         "title": "PredictionAdminStand",
@@ -24915,7 +24965,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Ok"
+                  "$ref": "#/components/schemas/PredictionAdminStand"
                 }
               }
             },

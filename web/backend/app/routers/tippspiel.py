@@ -35,6 +35,7 @@ from kern.store import Store
 from ..antworten import (
     MayorNight,
     Ok,
+    PredictionAdminPlayer,
     PredictionAdminStand,
     PredictionGame,
     PredictionMine,
@@ -277,13 +278,17 @@ def _admin_stand(store: Store) -> PredictionAdminStand:
     reg = register.load()
     results = {r["slug"]: r for r in store.prediction_result()}
     tips = service._parsed(store.prediction_players(include_hidden=True))  # noqa: SLF001
+    # Ø-Tipp und „exakt" zählen wie auf der öffentlichen Tafel: ohne
+    # ausgeblendete Personen. Die Teilnehmerliste unten zeigt sie dagegen
+    # ausdrücklich — der Admin will sie wiederfinden.
+    sichtbare = [t for t in tips if t["hidden_at"] is None]
 
     rows: list[PredictionResultRow] = []
     for p in reg.parties:
         r = results.get(p.slug, {})
-        avg = service._avg(tips, "seats", p.slug)  # noqa: SLF001
+        avg = service._avg(sichtbare, "seats", p.slug)  # noqa: SLF001
         veroeffentlicht = r.get("published_seats")
-        exakt = sum(1 for t in tips if t["seats"] and t["seats"].get(p.slug) is not None
+        exakt = sum(1 for t in sichtbare if t["seats"] and t["seats"].get(p.slug) is not None
                    and veroeffentlicht is not None and t["seats"][p.slug] == veroeffentlicht)
         rows.append(PredictionResultRow(
             slug=p.slug, seats=r.get("seats"), pct=None, source=r.get("source") or "manuell",
@@ -293,14 +298,21 @@ def _admin_stand(store: Store) -> PredictionAdminStand:
     for c in mayor.candidates():
         slug = f"ob:{c.slug}"
         r = results.get(slug, {})
-        avg = service._avg(tips, "mayor", c.slug)  # noqa: SLF001
+        avg = service._avg(sichtbare, "mayor", c.slug)  # noqa: SLF001
         rows.append(PredictionResultRow(
             slug=slug, seats=None, pct=r.get("pct"), source=r.get("source") or "manuell",
             avg_tip=avg, exact_count=0, published_seats=None, published_pct=r.get("published_pct"),
             published_source=r.get("published_source"), published_at=r.get("published_at"),
         ))
-    log = [f"{eintrag['at']} · {eintrag['text']}" for eintrag in store.prediction_log(limit=30)]
-    return PredictionAdminStand(game=service.setup(store), results=rows, log=log)
+    spieler = [PredictionAdminPlayer(
+        id=t["id"], name=t["name"], late_at=t["late_at"], hidden=t["hidden_at"] is not None,
+        has_tip=t["seats"] is not None, has_mayor_tip=t["mayor"] is not None,
+    ) for t in sorted(tips, key=lambda t: t["name"].casefold())]
+    # Uhrzeit in Berliner Zeit statt des rohen UTC-Zeitstempels aus dem Store
+    # („2026-09-11T12:06:18" las sich am Nachmittag wie ein Fehler).
+    log = [f"{service._uhrzeit(eintrag['at'])} · {eintrag['text']}"  # noqa: SLF001
+           for eintrag in store.prediction_log(limit=30)]
+    return PredictionAdminStand(game=service.setup(store), results=rows, players=spieler, log=log)
 
 
 @router.get("/api/tipp/admin/stand")
@@ -377,8 +389,8 @@ def phase_setzen(payload: PredictionPhaseIn, _admin: dict = Depends(require_admi
 
 @router.put("/api/tipp/admin/spieler/{player_id}")
 def spieler_bearbeiten(player_id: int, payload: PredictionPlayerIn, _admin: dict = Depends(require_admin),
-                       store: Store = Depends(get_store)) -> Ok:
+                       store: Store = Depends(get_store)) -> PredictionAdminStand:
     name = _clean_name(payload.name) if payload.name is not None else None
     store.prediction_player_update(player_id, name=name, hidden=payload.hidden)
     service.reset()
-    return Ok(ok=True)
+    return _admin_stand(store)

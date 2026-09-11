@@ -9898,11 +9898,34 @@ export interface components {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
         };
+        /**
+         * PredictionAdminPlayer
+         * @description Eine Zeile der Teilnehmerliste im Admin-Panel (1h) — zum Ausblenden
+         *     und Umbenennen. Anders als ``PredictionRow`` auf der öffentlichen Tafel
+         *     zeigt diese Liste AUCH ausgeblendete Personen, denn genau die will der
+         *     Admin wiederfinden können.
+         */
+        PredictionAdminPlayer: {
+            /** Has Mayor Tip */
+            has_mayor_tip: boolean;
+            /** Has Tip */
+            has_tip: boolean;
+            /** Hidden */
+            hidden: boolean;
+            /** Id */
+            id: number;
+            /** Late At */
+            late_at: string | null;
+            /** Name */
+            name: string;
+        };
         /** PredictionAdminStand */
         PredictionAdminStand: {
             game: components["schemas"]["PredictionGame"];
             /** Log */
             log: string[];
+            /** Players */
+            players: components["schemas"]["PredictionAdminPlayer"][];
             /** Results */
             results: components["schemas"]["PredictionResultRow"][];
         };
@@ -17561,7 +17584,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Ok"];
+                    "application/json": components["schemas"]["PredictionAdminStand"];
                 };
             };
             /** @description Validation Error */
@@ -18259,4 +18282,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 7b9a0f56c3dd4fbec894fd87e5f0740e26c7560718a2097b558d24006d9ee2f7
+// vertrag-sha256: 38b61729aac3864fa79695d1ae49eb5cb499721f3370fe9e7429fdb790ca3484
