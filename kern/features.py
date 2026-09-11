@@ -95,13 +95,14 @@ FEATURES: dict[str, Feature] = {
                     "in der Woche nach dem 13.09.2026); danach ist die Seite ein "
                     "Rückblick und braucht keinen Schalter mehr.",
     ),
-    # `tippspiel` (docs/plan-tippspiel-ratswahl.md) kommt erst mit PR 2 hierher
-    # dazu: Diese Registry verlangt eine tatsächliche `useFeature("…")`-Stelle
-    # im Frontend (`tests/test_features.py::test_kein_schalter_ohne_nutzung`),
-    # und die gibt es erst, sobald die Handy-Seiten (1c–1f) gebaut sind. Der
-    # Router prüft `features.an("tippspiel")` schon jetzt — ohne Registry-
-    # Eintrag ergibt das „aus" (s. `aktive()`); PR 1s eigene Tests patchen
-    # `FEATURES` deshalb selbst (s. `tests/test_prediction_api.py`).
+    "tippspiel": Feature(
+        key="tippspiel",
+        description="Das Tippspiel zur Ratswahl am 13.09.2026: Sitze je Liste tippen, "
+                    "optional die OB-Prozente, Live-Vergleich und Scoreboard "
+                    "(docs/plan-tippspiel-ratswahl.md) — ohne Konto, per QR-Link.",
+        fertig_wenn="Der Wahlabend ist vorbei und das Scoreboard ein Rückblick statt "
+                    "eines laufenden Spiels.",
+    ),
 }
 
 
