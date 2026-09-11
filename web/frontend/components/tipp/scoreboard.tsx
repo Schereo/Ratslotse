@@ -145,10 +145,16 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
   const ohne = stand.rows.filter((r) => r.rank === null);
   return (
     <div className="mx-auto max-w-md px-4 pb-8 pt-[calc(env(safe-area-inset-top)+14px)]">
-      <div className="flex items-center justify-between pr-16">
-        <span className="font-display text-[15px] font-bold">Tippspiel · Rangliste</span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
-          <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal" />
+      {/* Die rechte obere Ecke gehört dem Erscheinungsbild-Schalter
+          (`live.tsx`): 56 px breit, 16 px vom Rand. 72 px Freiraum lassen
+          dazwischen noch 16 px Luft — bei 56 px stießen Abzeichen und
+          Schalter auf 0 px aneinander (gemessen bei 390 und 320 px). */}
+      <div className="flex items-center justify-between gap-2 pr-[72px]">
+        <span className="truncate font-display text-[15px] font-bold">Tippspiel · Rangliste</span>
+        <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
+          {/* Der pulsierende Punkt sagt „hier bewegt sich etwas" — ohne Stand
+              bewegt sich nichts, dann bleibt er weg. */}
+          {stand.stand_label && <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal motion-reduce:animate-none" />}
           {stand.stand_label ? `${endstand ? "Endstand" : "Live"} · ${stand.stand_label}` : "Noch kein Ergebnis"}
         </span>
       </div>
