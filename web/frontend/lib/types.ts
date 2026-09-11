@@ -167,19 +167,15 @@ export type Attendee = S["Attendance"];
 
 /** Vorläufiges Abstimmungsergebnis aus der O1-Videoaufzeichnung — LLM-gelesen
  *  aus den YouTube-Untertiteln, ausdrücklich unter Vorbehalt. Erscheint nur
- *  an TOPs, die noch keinen Protokoll-Beschluss haben. */
-export interface VideoResult {
-  item_number: string;
-  outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
-  /** Nur gesetzt, wo der Wortlaut es trägt — sonst offen (null). */
-  vote: "unanimous" | "majority" | null;
-  no_votes: number | null;
-  abstentions: number | null;
-  quote: string;
-  video_id: string;
-  /** Fundstelle des Belegs im Video (Sekunden) — für den Sprung-Link. */
-  video_seconds: number | null;
-}
+ *  an TOPs, die noch keinen Protokoll-Beschluss haben.
+ *
+ *  Aus dem Vertrag, nicht von Hand: Die Abschrift hier kannte `removed`, der
+ *  Vertrag nicht — und weil beide nie gegeneinander gehalten wurden, fiel bis
+ *  zum 11.09.2026 niemandem auf, dass der Server jede Sitzung mit einem
+ *  abgesetzten TOP mit einem 500er beantwortete. `vote` ist im Vertrag
+ *  `string | null`; die beiden belegten Werte sind "unanimous" und
+ *  "majority", alles andere heißt offen. */
+export type VideoResult = S["VideoResult"];
 
 export interface SessionDetail extends CouncilSession {
   agenda_items: AgendaItem[];
