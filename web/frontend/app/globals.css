@@ -1408,4 +1408,22 @@ lotti-figur {
 .viertel-popup .wann { font-weight: 600; color: hsl(var(--signal)); font-size: 12px; }
 .viertel-popup b { font-family: var(--font-display, inherit); font-size: 14px; line-height: 1.25; }
 .viertel-popup button { justify-self: start; margin-top: 4px; font: 600 12px/1 inherit; color: hsl(var(--primary)); background: transparent; border: 1px solid hsl(var(--primary) / 0.4); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
+
+/* ── Tippspiel: Beamer (PR 4, Screens 1b/1g/1i) ───────────────────────────
+   Die Rangliste bewegt sich über `top`/`left` (siehe scoreboard.tsx) statt
+   über eine JS-FLIP-Messung — dieselbe `transition`-Idee wie sonst im Motion-
+   Paket, nur dass React hier direkt die Zielposition schreibt. Alles unten
+   ruht deshalb korrekt bei prefers-reduced-motion, wenn die auslösende Klasse
+   erst gar nicht gesetzt wird (Komponenten prüfen das selbst) ODER über den
+   globalen Media-Block wie die übrigen Pakete. */
+@keyframes zeile-frisch { from { background-color: hsl(var(--primary) / 0.14); } to { background-color: transparent; } }
+@keyframes chip-verblasst { 0%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes podium-schweben { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes podium-glanz { 0%, 78% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(220%) skewX(-18deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  .animate-zeile-frisch { animation: zeile-frisch 1.6s ease-out both; }
+  .animate-chip-verblasst { animation: chip-verblasst 20.6s ease-out both; }
+  .animate-podium-schweben { animation: podium-schweben 3.6s ease-in-out infinite; }
+  .animate-podium-glanz { animation: podium-glanz 4.5s ease-in-out infinite; }
+}
 .viertel-popup button:hover { background: hsl(var(--primary) / 0.08); }
