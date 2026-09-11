@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS council_protocols (
     page_offsets  TEXT,
     model         TEXT,
     extracted_at  TEXT NOT NULL,
+    available_at  TEXT,
     status        TEXT NOT NULL DEFAULT 'ok'   -- ok | failed
 );
 
@@ -3734,6 +3735,12 @@ class SchemaMixin(StoreBasis):
         # leeres Ergebnis (Formalien-Niederschrift) zählt als erledigt — ohne
         # den Marker fräße jedes davon dauerhaft einen nächtlichen LLM-Call.
         wcols = {r[1] for r in self._conn.execute("PRAGMA table_info(council_protocols)").fetchall()}
+        if "available_at" not in wcols:
+            self._conn.execute("ALTER TABLE council_protocols ADD COLUMN available_at TEXT")
+            # Im Altbestand kennen wir nur den letzten erfolgreichen Import.
+            # Künftige Wiederholungen dürfen daraus keine Neuigkeit machen.
+            self._conn.execute(
+                "UPDATE council_protocols SET available_at = extracted_at WHERE status = 'ok'")
         if "contributions_extracted_at" not in wcols:
             self._conn.execute(
                 "ALTER TABLE council_protocols ADD COLUMN contributions_extracted_at TEXT")

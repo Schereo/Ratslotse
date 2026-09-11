@@ -1,122 +1,113 @@
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { zustandsDatei } from "./konten";
 
-test.use({ storageState: zustandsDatei("nutzerin") });
-
-const hit = {
-  id: 8699, topic_id: 1, topic_name: "Kitas und Kindertagespflege in Oldenburg",
-  title: "Verwendung von Investitionsmitteln für die Kindertagesstätten und Kindertagespflege – Bericht",
-  summary: "Der Bericht über die Verwendung von Investitionsmitteln für Kitas und Kindertagespflege wird zur Kenntnis genommen.",
-  committee: "Jugendhilfeausschuss", session_date: "2026-06-17", outcome: "noted", is_new: true,
-};
-const full = { hits: [hit], topic_count: 3, total: 24, unread_total: 2, unread_decisions: 1 };
-const widget = (page: Page) => page.getByRole("region", { name: "Neu zu deinen Themen" });
-
-async function stub(page: Page, data: typeof full) {
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill({ json: data }));
+test.use({ storageState: zustandsDatei("admin") });
+const first = { since: "2026-05-11T10:00:00Z", until: "2026-09-11T10:00:00Z", first_visit: false };
+const item = { id: "protocol:4675", kind: "protocol" as const, ksinr: 4675,
+  arrived: "2026-09-05T07:16:38", committee: "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit",
+  session_date: "2026-06-01", decision_count: 12 };
+const groups = Array.from({ length: 17 }, (_, i) => ({ kind: "protocol" as const,
+  committee: i === 0 ? item.committee : `Gremium ${i}`, count: i === 16 ? 49 : 50,
+  first_session_date: "2026-01-01", last_session_date: item.session_date,
+  latest: { ...item, committee: i === 0 ? item.committee : `Gremium ${i}` },
+}));
+const full = { ...first, total: 849, counts: { protocol: 849 }, groups, items: [item] };
+const widget = (page: Page) => page.locator('[data-heute-widget="seit-besuch"]');
+async function stub(page: Page, data = full) {
+  await page.route("**/api/today/visit", route => route.fulfill({ json: first }));
+  await page.route("**/api/today/updates**", route => {
+    const params = new URL(route.request().url()).searchParams;
+    if (params.has("committee")) {
+      const offset = Number(params.get("offset") || 0);
+      expect(params.get("since")).toBe(first.since);
+      expect(params.get("until")).toBe(first.until);
+      expect(params.get("kind")).toBe("protocol");
+      expect(params.get("committee")).toBe(item.committee);
+      return route.fulfill({ json: { ...data, total: 6, groups: [groups[0]],
+        items: Array.from({ length: 3 }, (_, i) => ({ ...item, id: `protocol:${4675 + offset + i}`, ksinr: 4675 + offset + i })),
+      } });
+    }
+    return route.fulfill({ json: data });
+  });
+}
+async function openGroup(page: Page) {
+  await widget(page).getByRole("button", { name: /849 Protokolle/ }).click();
+  await widget(page).getByRole("button", { name: /Wirtschaft.*50 Protokolle/ }).click();
+  await expect(widget(page).getByRole("link")).toHaveCount(3);
 }
 
-test("öffnet den richtigen Beschluss und markiert ihn themenübergreifend", async ({ page }) => {
-  await stub(page, full);
-  let marked = false;
-  await page.route("**/api/topics/decisions/8699/seen", route => {
-    marked = route.request().method() === "POST";
-    return route.fulfill({ json: { marked: 2 } });
-  });
+test("vier Monate bleiben gebündelt; Gremien und Sitzungen öffnen sich schrittweise", async ({ page }) => {
+  await stub(page);
   await page.goto("/dashboard");
-  await expect(widget(page)).toContainText("1 ungelesen");
-  await expect(widget(page)).toContainText(`Zu deinem Thema ${hit.topic_name}`);
-  const link = widget(page).getByRole("link", { name: /Zu deinem Thema/ });
-  await expect(link).toHaveAttribute("href", "/council/decision?id=8699");
+  await expect(widget(page)).toContainText("17 Gremien");
+  await expect(widget(page).getByRole("link")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Neu zu deinen Themen" })).toHaveCount(0);
+  await widget(page).getByRole("button", { name: /849 Protokolle/ }).click();
+  await expect(widget(page).getByRole("button", { name: /50 Protokolle/ })).toHaveCount(4);
+  await widget(page).getByRole("button", { name: "Weitere Gremien (13)" }).click();
+  await expect(widget(page).getByRole("button", { name: /50 Protokolle/ })).toHaveCount(8);
+  await widget(page).getByRole("button", { name: /Wirtschaft.*50 Protokolle/ }).click();
+  const link = widget(page).getByRole("link").first();
+  await expect(link).toHaveAttribute("href", "/council/sitzung?ksinr=4675");
   await link.click();
-  await expect(page).toHaveURL(/\/council\/decision\?id=8699/);
-  await expect.poll(() => marked).toBe(true);
+  await expect(page).toHaveURL(/sitzung\?ksinr=4675/);
 });
 
-test("gelesener Treffer verschwindet erst nach Bestätigung, Fokus bleibt im Widget", async ({ page }) => {
-  let seen = false;
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill({ json: seen
-    ? { ...full, hits: [], unread_total: 0, unread_decisions: 0 } : full }));
-  await page.route("**/api/topics/decisions/8699/seen", route => {
-    seen = true;
-    return route.fulfill({ json: { marked: 2 } });
-  });
+test("Nachladen bleibt im Gremium und Besuchszeitraum; Fokus folgt erster neuer Sitzung", async ({ page }) => {
+  await stub(page);
   await page.goto("/dashboard");
-  await widget(page).getByRole("button", { name: /^Als gelesen markieren:/ }).click();
-  await expect(widget(page)).toContainText("Alles gelesen");
-  await expect(widget(page).getByRole("link", { name: /Zu deinem Thema/ })).toHaveCount(0);
-  await expect(widget(page).getByRole("heading", { name: "Neu zu deinen Themen" })).toBeFocused();
-  await expect(widget(page).getByRole("link", { name: "Meine Themen" })).toHaveAttribute("href", "/topics");
+  await openGroup(page);
+  await widget(page).getByRole("button", { name: "Weitere Sitzungen (3)" }).click();
+  await expect(widget(page).getByRole("link")).toHaveCount(6);
+  await expect(widget(page).getByRole("link").nth(3)).toBeFocused();
+  await expect(widget(page).getByRole("button", { name: /Weitere Sitzungen/ })).toHaveCount(0);
 });
 
-test("Fehler beim Markieren behält den Treffer und erlaubt einen neuen Versuch", async ({ page }) => {
-  await stub(page, full);
-  await page.route("**/api/topics/decisions/8699/seen", route => route.fulfill({ status: 503, json: { detail: "Offline" } }));
+test("Ladefehler erhält Sitzungen und erlaubt Wiederholen", async ({ page }) => {
+  await stub(page);
   await page.goto("/dashboard");
-  await widget(page).getByRole("button", { name: /^Als gelesen markieren:/ }).click();
-  await expect(widget(page).getByRole("alert")).toContainText("nicht gespeichert");
-  await expect(widget(page)).toContainText("1 ungelesen");
-  await expect(widget(page).getByRole("button", { name: /^Als gelesen markieren:/ })).toBeEnabled();
-  await expect(widget(page)).not.toContainText("Alles gelesen");
-});
-
-test("Ladefehler wird nicht als leer ausgegeben und lässt sich im Widget beheben", async ({ page }) => {
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill({ status: 503, json: { detail: "Offline" } }));
-  await page.goto("/dashboard");
-  await expect(widget(page).getByRole("alert")).toContainText("nicht geladen");
-  await expect(widget(page)).not.toContainText("Alles gelesen");
-  await expect(widget(page)).not.toContainText("Erstes Thema anlegen");
-  await stub(page, full);
-  await widget(page).getByRole("button", { name: "Erneut versuchen" }).click();
-  await expect(widget(page)).toContainText("1 ungelesen");
-  await expect(widget(page).getByRole("alert")).toHaveCount(0);
-});
-
-test("erfolgreich gelesen bleibt gelesen, wenn das Nachladen ausfällt", async ({ page }) => {
-  let seen = false;
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill(seen
-    ? { status: 503, json: { detail: "Offline" } } : { json: full }));
-  await page.route("**/api/topics/decisions/8699/seen", route => {
-    seen = true;
-    return route.fulfill({ json: { marked: 2 } });
-  });
-  await page.goto("/dashboard");
-  await widget(page).getByRole("button", { name: /^Als gelesen markieren:/ }).click();
-  await expect(widget(page)).toContainText("Alles gelesen");
+  await openGroup(page);
+  await page.route("**/api/today/updates**", route => route.fulfill({ status: 503, json: { detail: "Offline" } }));
+  await widget(page).getByRole("button", { name: /Weitere Sitzungen/ }).click();
   await expect(widget(page).getByRole("alert")).toContainText("nicht aktualisiert");
-  await expect(widget(page).getByRole("link", { name: /Zu deinem Thema/ })).toHaveCount(0);
+  await expect(widget(page).getByRole("link")).toHaveCount(3);
+  await stub(page);
+  await widget(page).getByRole("button", { name: "Erneut versuchen" }).click();
+  await expect(widget(page).getByRole("link")).toHaveCount(6);
 });
 
-for (const [name, topic_count, total, text] of [
-  ["ohne Themen", 0, 0, "Erstes Thema anlegen"],
-  ["ohne Treffer", 3, 0, "Noch keine passenden Beschlüsse"],
-  ["alles gelesen", 3, 24, "Alles gelesen"],
-] as const) {
-  test(`ehrlicher Zustand ${name}`, async ({ page }) => {
-    await stub(page, { ...full, hits: [], topic_count, total, unread_total: 0, unread_decisions: 0 });
-    await page.goto("/dashboard");
-    await expect(widget(page)).toContainText(text);
-    await expect(widget(page).getByRole("link", { name: /Zu deinem Thema/ })).toHaveCount(0);
-  });
-}
+test("einzelne Sitzung braucht keine zusätzliche Gremium-Ebene", async ({ page }) => {
+  await stub(page, { ...full, total: 1, counts: { protocol: 1 }, groups: [{ ...groups[0], count: 1 }] });
+  await page.goto("/dashboard");
+  await widget(page).getByRole("button", { name: /1 Protokolle/ }).click();
+  await expect(widget(page).getByRole("link")).toHaveCount(1);
+  await expect(widget(page).getByRole("link")).toHaveAttribute("href", "/council/sitzung?ksinr=4675");
+});
+
+test("erster Besuch und leerer Zeitraum werden ehrlich benannt", async ({ page }) => {
+  await stub(page, { ...full, first_visit: true, total: 0, counts: { protocol: 0 }, groups: [], items: [] });
+  await page.goto("/dashboard");
+  await expect(widget(page).getByRole("heading")).toHaveText("Neu bei Ratslotse");
+  await expect(widget(page)).toContainText("die letzten sieben Tage");
+  await expect(widget(page)).toContainText("Keine neuen relevanten Ratsunterlagen");
+  await expect(widget(page).getByRole("button")).toHaveCount(0);
+});
 
 for (const width of [320, 390]) {
-  test(`große Schrift bei ${width}px: lesbare Metadaten und erreichbare Aktionen`, async ({ page }) => {
+  test(`große Schrift bei ${width}px und reduzierte Bewegung`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await stub(page, full);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await stub(page);
     await page.goto("/dashboard");
-    await expect(widget(page)).toContainText("1 ungelesen");
+    await openGroup(page);
     await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
-    const bounds = await widget(page).evaluate(el => {
-      const r = el.getBoundingClientRect();
-      return { right: r.right, width: window.innerWidth,
-        overflow: Array.from(el.querySelectorAll("h2,p,button")).filter(child => child.scrollWidth > child.clientWidth + 1).map(child => child.textContent) };
-    });
-    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
-    expect(bounds.overflow).toEqual([]);
-    const mark = widget(page).getByRole("button", { name: /^Als gelesen markieren:/ });
-    await expect(mark).toBeVisible();
-    expect((await mark.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const result = await widget(page).evaluate(el => ({
+      overflow: Array.from(el.querySelectorAll("p,button,h2")).filter(c => c.scrollWidth > c.clientWidth + 1).map(c => c.textContent),
+      transitions: Array.from(el.querySelectorAll("button[aria-expanded] svg")).map(c => getComputedStyle(c).transitionDuration),
+    }));
+    expect(result.overflow).toEqual([]);
+    expect(result.transitions.every(t => parseFloat(t) <= 0.00001)).toBe(true);
+    expect((await widget(page).getByRole("button", { name: /Weitere Sitzungen/ }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 }
 

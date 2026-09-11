@@ -14,7 +14,7 @@ import { Mascot } from "@/components/mascot";
 import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
-import { NeueTrefferKarte } from "@/components/neue-treffer-karte";
+import { SeitBesuchWidget } from "@/components/seit-besuch-widget";
 import { HeuteWidget } from "@/components/heute-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
@@ -135,7 +135,7 @@ export default function DashboardPage() {
           den unterschiedlich hohen Karten; die Containerbreite entscheidet. */}
       <div className={cn("@container/raster mt-6", STAFFEL)} style={staffelStil(2)}>
         <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <NeueTrefferKarte />
+          <SeitBesuchWidget />
           <div className="min-w-0 space-y-4">
             {vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />}
 

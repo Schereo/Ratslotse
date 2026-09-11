@@ -1,0 +1,21 @@
+.row { transition: background-color 160ms ease; }
+.row:hover { background: hsl(var(--primary) / 0.045); }
+.arrow { transition: transform 160ms ease, color 160ms ease; }
+.row:hover .arrow { transform: translateX(2px); color: hsl(var(--primary)); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .arrival { animation: arrive 220ms ease-out both; }
+  .arrival:nth-child(2) { animation-delay: 35ms; }
+  .arrival:nth-child(3) { animation-delay: 70ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row, .arrow { transition: none; }
+  .row:hover .arrow { transform: none; }
+}
+@keyframes arrive {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.chevron { transition: transform 180ms ease; }
+.expanded { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }

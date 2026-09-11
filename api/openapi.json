@@ -16046,6 +16046,148 @@
         "title": "TodaySession",
         "type": "object"
       },
+      "TodayUpdate": {
+        "properties": {
+          "arrived": {
+            "title": "Arrived",
+            "type": "string"
+          },
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "decision_count": {
+            "title": "Decision Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ksinr": {
+            "title": "Ksinr",
+            "type": "integer"
+          },
+          "session_date": {
+            "title": "Session Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ksinr",
+          "arrived",
+          "committee",
+          "session_date",
+          "decision_count"
+        ],
+        "title": "TodayUpdate",
+        "type": "object"
+      },
+      "TodayUpdateGroup": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "first_session_date": {
+            "title": "First Session Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_session_date": {
+            "title": "Last Session Date",
+            "type": "string"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/TodayUpdate"
+          }
+        },
+        "required": [
+          "kind",
+          "committee",
+          "count",
+          "first_session_date",
+          "last_session_date",
+          "latest"
+        ],
+        "title": "TodayUpdateGroup",
+        "type": "object"
+      },
+      "TodayUpdates": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "first_visit": {
+            "title": "First Visit",
+            "type": "boolean"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdateGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "first_visit",
+          "total",
+          "counts",
+          "items",
+          "groups"
+        ],
+        "title": "TodayUpdates",
+        "type": "object"
+      },
       "TopicDecision": {
         "properties": {
           "committee": {
@@ -17137,6 +17279,29 @@
           "created_at"
         ],
         "title": "VideoResult",
+        "type": "object"
+      },
+      "VisitWindow": {
+        "properties": {
+          "first_visit": {
+            "title": "First Visit",
+            "type": "boolean"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "first_visit"
+        ],
+        "title": "VisitWindow",
         "type": "object"
       },
       "WebUserOut": {
@@ -25223,6 +25388,139 @@
         "summary": "Stand",
         "tags": [
           "tippspiel"
+        ]
+      }
+    },
+    "/api/today/updates": {
+      "get": {
+        "operationId": "updates_api_today_updates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "title": "Since",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "title": "Until",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "protocol",
+                "agenda",
+                "agenda_change"
+              ],
+              "title": "Kind",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "committee",
+            "required": false,
+            "schema": {
+              "maxLength": 300,
+              "title": "Committee",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayUpdates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Updates",
+        "tags": [
+          "today"
+        ]
+      }
+    },
+    "/api/today/visit": {
+      "post": {
+        "operationId": "visit_api_today_visit_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisitWindow"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Visit",
+        "tags": [
+          "today"
         ]
       }
     },

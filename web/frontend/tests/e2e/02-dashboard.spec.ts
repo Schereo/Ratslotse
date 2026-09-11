@@ -64,7 +64,7 @@ test.describe("Dashboard", () => {
 
   test("die beiden kurzen Karten stehen da", async ({ page }) => {
     const main = page.locator("main");
-    await expect(main.getByRole("heading", { name: "Neu zu deinen Themen" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: /Neu bei Ratslotse|Seit deinem letzten Besuch/ })).toBeVisible();
     await expect(main.getByRole("heading", { name: "Zahl der Woche" })).toBeVisible();
   });
 

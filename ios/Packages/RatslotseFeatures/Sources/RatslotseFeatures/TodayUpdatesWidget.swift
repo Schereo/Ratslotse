@@ -1,324 +1,287 @@
+import Foundation
 import RatslotseAPI
 import RatslotseDesign
 import SwiftUI
 
-/// Eigenständiger Heute-Baustein: Daten, Fehler und Aktionen bleiben hier.
-/// Die Heute-Seite bestimmt nur die Position und stößt beim Ziehen neu an.
+/// Ein kompakter Rückblick, auch nach Monaten: Arten → Gremien → Sitzungen.
 struct TodayUpdatesWidget: View {
     let model: AppModel
     let refreshID: Int
-    @State private var state: DashboardTopicHits?
-    @State private var loading = true
-    @State private var loadError = false
-    @State private var markError = false
-    @State private var marking: Int?
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var state: TodayUpdates?
+    @State private var failed = false
+    @State private var loading = false
     @State private var requestID = UUID()
-    @AccessibilityFocusState private var headerFocused: Bool
 
     var body: some View {
-        RatsWidget("Neu zu deinen Themen", accent: .buoy, glyph: .tag) {
+        RatsWidget(state?.firstVisit == true ? "Neu bei Ratslotse" : "Seit deinem letzten Besuch", accent: .buoy, glyph: .history) {
             VStack(alignment: .leading, spacing: 12) {
-                if loading && state == nil {
+                if state == nil && !failed {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("Deine Neuigkeiten werden geladen.")
-                            .font(RatsFont.notice())
-                            .foregroundStyle(RatsColor.secondary)
-                    }
-                    .padding(.vertical, 16)
+                        Text("Dein Rückblick wird geladen.").font(RatsFont.notice())
+                    }.foregroundStyle(RatsColor.secondary).padding(.vertical, 16)
                 }
-                if loadError {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(state == nil ? "Deine Neuigkeiten konnten nicht geladen werden."
-                             : "Deine Neuigkeiten konnten nicht aktualisiert werden.")
-                            .font(RatsFont.notice())
-                            .foregroundStyle(RatsColor.secondary)
-                        Button("Erneut versuchen") { Task { await load() } }
-                            .font(RatsFont.notice(weight: .semibold))
-                            .frame(minHeight: 44)
-                            .disabled(loading)
-                    }
-                    .accessibilityElement(children: .contain)
+                if failed {
+                    Text("Der Rückblick konnte nicht \(state == nil ? "geladen" : "aktualisiert") werden.")
+                        .font(RatsFont.notice()).foregroundStyle(RatsColor.secondary)
+                    Button("Erneut versuchen") { Task { await load() } }
+                        .frame(minHeight: 44).disabled(loading)
                 }
                 if let state {
-                    let hits = state.hits.filter(\.isNew)
-                    let unread = state.unreadDecisions ?? state.unreadTotal
-                    if !hits.isEmpty {
-                        Text("\(hits.count < unread ? "\(hits.count) von \(unread)" : "\(unread)") ungelesen · \(state.topicCount) \(state.topicCount == 1 ? "Thema" : "Themen")")
-                            .font(RatsFont.notice(weight: .semibold))
-                            .foregroundStyle(RatsColor.secondary)
-                            .accessibilityFocused($headerFocused)
+                    Text(state.firstVisit ? "Dein erster Rückblick: die letzten sieben Tage."
+                         : "Seit \(dateLabel(state.since)) – auch außerhalb deiner Themen.")
+                        .font(RatsFont.notice()).foregroundStyle(RatsColor.secondary)
+                    if state.total > 0 {
                         VStack(spacing: 0) {
-                            ForEach(Array(hits.enumerated()), id: \.element.id) { index, hit in
-                                if index > 0 { Divider().overlay(RatsColor.separator) }
-                                hitRow(hit)
+                            let kinds = ["agenda", "agenda_change", "protocol"].filter { kind in state.groups.contains { $0.kind == kind } }
+                            ForEach(kinds, id: \.self) { kind in
+                                if kind != kinds.first { Divider().overlay(RatsColor.separator) }
+                                TodayUpdateSection(model: model, window: state, kind: kind, groups: state.groups.filter { $0.kind == kind })
+                                    .id("\(state.until)-\(kind)")
                             }
                         }
-                    } else if state.topicCount == 0 {
-                        Text("Was interessiert dich in Oldenburg?")
-                            .font(RatsFont.sourceTitle())
-                        Text("Lege ein Thema an. Passende Beschlüsse findest du dann hier.")
-                            .font(RatsFont.notice())
-                            .foregroundStyle(RatsColor.secondary)
-                        Button("Erstes Thema anlegen", action: openTopics)
-                            .font(RatsFont.notice(weight: .semibold))
-                            .frame(minHeight: 44)
                     } else {
-                        HStack(alignment: .top, spacing: 10) {
-                            RatsIcon(.check, size: 20)
-                                .foregroundStyle(RatsColor.primary)
-                                .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(unread > 0 ? "Weitere Treffer in deinen Themen" : state.total > 0 ? "Alles gelesen" : "Noch keine passenden Beschlüsse")
-                                    .font(RatsFont.sourceTitle())
-                                Text(unread > 0 ? "Öffne deine Themen, um die übrigen ungelesenen Treffer zu sehen."
-                                     : "Sobald neue Treffer zu deinen Themen dazukommen, stehen sie hier.")
-                                    .font(RatsFont.notice())
-                                    .foregroundStyle(RatsColor.secondary)
-                            }
-                            .accessibilityElement(children: .combine)
-                            .accessibilityFocused($headerFocused)
-                        }
-                    }
-                    if markError {
-                        Text("Der Gelesen-Status konnte nicht gespeichert werden. Versuche es erneut.")
-                            .font(RatsFont.notice())
-                            .foregroundStyle(RatsColor.danger)
-                    }
-                    if state.topicCount > 0 {
-                        Divider().overlay(RatsColor.separator)
-                        Button(action: openTopics) {
-                            HStack(spacing: 7) {
-                                Text("Meine Themen")
-                                RatsIcon(.arrowRight, size: 15)
-                            }
-                            .font(RatsFont.notice(weight: .semibold))
-                            .frame(minHeight: 44, alignment: .leading)
-                        }
-                        .buttonStyle(RatsPlainButtonStyle())
-                        .foregroundStyle(RatsColor.primary)
+                        Text("Keine neuen relevanten Ratsunterlagen in diesem Zeitraum.")
+                            .font(RatsFont.sourceTitle(weight: .semibold))
+                        Text("Hier erscheinen Tagesordnungen für Sitzungen ab heute und ergänzte Protokolle mit ihren Ergebnissen.")
+                            .font(RatsFont.notice()).foregroundStyle(RatsColor.secondary)
                     }
                 }
             }
-            .fixedSize(horizontal: false, vertical: true)
         }
-        .accessibilityIdentifier("heute-themen-neuigkeiten")
-        .task(id: refreshID) { await load() }
-    }
-
-    private func hitRow(_ hit: DashboardTopicHit) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button {
-                model.navigation.append(.decision(id: hit.id))
-                Task { await markRead(hit, focus: false) }
-            } label: {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Zu deinem Thema \(hit.topicName)")
-                        .font(RatsFont.body(13, weight: .medium))
-                        .foregroundStyle(RatsColor.primary)
-                    Text(hit.title)
-                        .font(RatsFont.sourceTitle())
-                        .foregroundStyle(RatsColor.text)
-                        .lineLimit(2)
-                    if let summary = hit.summary, !summary.isEmpty {
-                        Text(summary)
-                            .font(RatsFont.notice())
-                            .foregroundStyle(RatsColor.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(RatsPlainButtonStyle())
-            .ratsZoomSource(RatsZoomID.decision(hit.id))
-            Text([hit.outcome.map { OutcomeBadge.label(for: $0) }, RatsDate.short(hit.sessionDate), Committee.short(hit.committee)]
-                .compactMap { $0 }.joined(separator: " · "))
-                .font(RatsFont.body(13))
-                .foregroundStyle(RatsColor.secondary)
-            Button {
-                Task { await markRead(hit, focus: true) }
-            } label: {
-                HStack(spacing: 6) {
-                    RatsIcon(.check, size: 15)
-                    Text(marking == hit.id ? "Wird gespeichert…" : "Als gelesen markieren")
-                }
-                .font(RatsFont.body(13))
-                .frame(minHeight: 44)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .contentShape(Rectangle())
-            }
-            .foregroundStyle(RatsColor.secondary)
-            .buttonStyle(RatsPlainButtonStyle())
-            .disabled(marking != nil)
-            .accessibilityLabel("Als gelesen markieren: \(hit.title)")
+        .task(id: "\(refreshID)-\(scenePhase)") {
+            guard scenePhase == .active else { return }
+            await load()
         }
-        .padding(.top, 8)
-    }
-
-    private func openTopics() {
-        model.navigation.removeAll()
-        model.selectedTab = .topics
     }
 
     private func load() async {
-#if DEBUG
-        if ProcessInfo.processInfo.environment["RATSLOTSE_DEBUG_TODAY_LIVE"] == "1" {
-            installPreview()
-            loading = false
-            return
-        }
-#endif
-        let current = UUID()
-        requestID = current
+        let request = UUID()
+        requestID = request
         loading = true
-        loadError = false
+        failed = false
         do {
-            let data: DashboardTopicHits = try await model.api.get(
-                "/api/topics/latest-hits",
-                query: [.init(name: "limit", value: "3"), .init(name: "unread_only", value: "true")]
-            )
-            guard !Task.isCancelled, requestID == current else { return }
-            state = data
+            try await model.api.sendVoid("/api/today/visit")
+            let result: TodayUpdates = try await model.api.get("/api/today/updates")
+            guard !Task.isCancelled, requestID == request else { return }
+            state = result
         } catch {
-            guard !Task.isCancelled, requestID == current else { return }
-            loadError = true
+            guard !Task.isCancelled, requestID == request else { return }
+            failed = true
         }
         loading = false
     }
+}
 
-    private func markRead(_ hit: DashboardTopicHit, focus: Bool) async {
-        guard marking == nil else { return }
-        marking = hit.id
-        markError = false
-        do {
-            try await model.api.sendVoid("/api/topics/decisions/\(hit.id)/seen")
-            // Erst nach Bestätigung entfernen. Auch wenn das Nachladen danach
-            // scheitert, bleibt dieser erfolgreich gelesene Treffer gelesen.
-            state?.hits.removeAll { $0.id == hit.id }
-            if let current = state {
-                state?.unreadDecisions = max(0, (current.unreadDecisions ?? current.unreadTotal) - 1)
+private struct TodayUpdateSection: View {
+    let model: AppModel
+    let window: TodayUpdates
+    let kind: String
+    let groups: [TodayUpdateGroup]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var expanded = false
+    @State private var visible = 4
+    @ScaledMetric(relativeTo: .title) private var countWidth: CGFloat = 54
+    private var count: Int { groups.reduce(0) { $0 + $1.count } }
+    private var firstDate: String { groups.map(\.firstSessionDate).min() ?? "" }
+    private var lastDate: String { groups.map(\.lastSessionDate).max() ?? "" }
+    private var title: String {
+        kind == "protocol" ? "Protokolle & Ergebnisse" : kind == "agenda" ? "Neue Tagesordnungen" : "Tagesordnungen geändert"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 12) {
+                    Text("\(count)").font(RatsFont.title(28)).monospacedDigit().foregroundStyle(RatsColor.primary)
+                        .frame(minWidth: countWidth, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title).font(RatsFont.sourceTitle(weight: .semibold)).foregroundStyle(RatsColor.text)
+                        Text(kind == "protocol" ? "\(groups.count) \(groups.count == 1 ? "Gremium" : "Gremien") · \(dateRange(firstDate, lastDate))"
+                             : "Für Sitzungen ab heute · nächster Termin \(dateLabel(firstDate))")
+                            .font(RatsFont.metadata()).foregroundStyle(RatsColor.secondary)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    RatsIcon(.chevronDown, size: 15).rotationEffect(.degrees(expanded ? 180 : 0))
+                        .foregroundStyle(RatsColor.secondary).accessibilityHidden(true)
+                }.padding(.vertical, 16).contentShape(Rectangle())
+            }.buttonStyle(UpdateButtonStyle()).accessibilityValue(expanded ? "Geöffnet" : "Geschlossen")
+            if expanded {
+                VStack(spacing: 0) {
+                    ForEach(Array(groups.prefix(visible).enumerated()), id: \.element.committee) { index, group in
+                        if index > 0 { Divider().overlay(RatsColor.separator) }
+                        TodayUpdateGroupRow(model: model, window: window, group: group)
+                    }
+                    if visible < groups.count {
+                        Button("Weitere Gremien (\(groups.count - visible))") { visible += 4 }
+                            .font(RatsFont.notice(weight: .semibold)).frame(minHeight: 44)
+                    }
+                }.padding(.bottom, 10).transition(reduceMotion ? .identity : .opacity)
             }
-            await load()
-            if focus { headerFocused = true }
-        } catch {
-            markError = true
+        }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: expanded)
+    }
+}
+
+private struct TodayUpdateGroupRow: View {
+    let model: AppModel
+    let window: TodayUpdates
+    let group: TodayUpdateGroup
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var expanded = false
+
+    var body: some View {
+        if group.count == 1 {
+            TodayUpdateLink(model: model, item: group.latest)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                Button { expanded.toggle() } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(RatsCommittee.short(group.committee)).font(RatsFont.sourceTitle(weight: .semibold)).foregroundStyle(RatsColor.text)
+                            Text("\(group.count) \(group.kind == "protocol" ? "Protokolle" : "Sitzungen") · \(dateRange(group.firstSessionDate, group.lastSessionDate))")
+                                .font(RatsFont.metadata()).foregroundStyle(RatsColor.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                        RatsIcon(.chevronDown, size: 15).rotationEffect(.degrees(expanded ? 180 : 0))
+                            .foregroundStyle(RatsColor.secondary).accessibilityHidden(true)
+                    }.padding(.vertical, 12).contentShape(Rectangle())
+                }.buttonStyle(UpdateButtonStyle()).accessibilityValue(expanded ? "Geöffnet" : "Geschlossen")
+                    .accessibilityLabel("\(group.committee), \(group.count) \(group.kind == "protocol" ? "Protokolle" : "Sitzungen"), \(dateRange(group.firstSessionDate, group.lastSessionDate))")
+                if expanded {
+                    TodayGroupEntries(model: model, window: window, group: group)
+                        .padding(.leading, 12).transition(reduceMotion ? .identity : .opacity)
+                }
+            }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: expanded)
         }
-        marking = nil
     }
-
-#if DEBUG
-    private func installPreview() {
-        state = .init(
-            hits: [
-                .init(
-                    topicID: 1,
-                    topicName: "Sichere Schulwege",
-                    id: 99111,
-                    title: "Neue Querung an der Cloppenburger Straße",
-                    committee: "Verkehrsausschuss",
-                    sessionDate: "2026-09-11",
-                    outcome: "accepted",
-                    summary: "Die Verwaltung plant eine Mittelinsel mit Zebrastreifen auf Höhe der Grundschule.",
-                    isNew: true
-                ),
-                .init(
-                    topicID: 2,
-                    topicName: "Wohnen in Oldenburg",
-                    id: 99112,
-                    title: "Nördlich Eßkamp: nächster Planungsschritt",
-                    committee: "Stadtplanung & Bauen",
-                    sessionDate: "2026-09-11",
-                    outcome: "noted",
-                    summary: "Der Ausschuss nimmt den Stand der Rahmenplanung zur Kenntnis.",
-                    isNew: true
-                ),
-            ],
-            topicCount: 2, total: 2, unreadTotal: 2
-        )
-    }
-#endif
 }
 
-private struct DashboardTopicHits: Codable, Sendable {
-    var hits: [DashboardTopicHit]
-    /// Der neue Zähler zählt eindeutige Beschlüsse. Ältere Server kennen nur
-    /// unreadTotal (Treffer je Thema); das zusätzliche Feld bleibt optional.
-    let topicCount: Int
+private struct TodayGroupEntries: View {
+    let model: AppModel
+    let window: TodayUpdates
+    let group: TodayUpdateGroup
+    @State private var items: [TodayUpdate] = []
+    @State private var total = 0
+    @State private var loading = true
+    @State private var failed = false
+    @AccessibilityFocusState private var focusedUpdate: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if loading && items.isEmpty {
+                HStack { ProgressView(); Text("Sitzungen werden geladen.").font(RatsFont.notice()) }.padding(.vertical, 12)
+            }
+            if failed {
+                Text("Die Sitzungen konnten nicht geladen werden.").font(RatsFont.notice()).foregroundStyle(RatsColor.secondary)
+                Button("Erneut versuchen") { Task { await load() } }.frame(minHeight: 44).disabled(loading)
+            }
+            ForEach(items) { item in
+                TodayUpdateLink(model: model, item: item, inGroup: true)
+                    .accessibilityFocused($focusedUpdate, equals: item.id)
+                if item.id != items.last?.id { Divider().overlay(RatsColor.separator) }
+            }
+            if items.count < total {
+                Button(loading ? "Wird geladen …" : "Weitere Sitzungen (\(total - items.count))") { Task { await load() } }
+                    .font(RatsFont.notice(weight: .semibold)).frame(minHeight: 44).disabled(loading)
+            }
+        }.task { await load() }
+    }
+
+    private func load() async {
+        loading = true
+        failed = false
+        do {
+            let result: TodayUpdates = try await model.api.get("/api/today/updates", query: [
+                .init(name: "since", value: window.since), .init(name: "until", value: window.until),
+                .init(name: "kind", value: group.kind), .init(name: "committee", value: group.committee),
+                .init(name: "offset", value: "\(items.count)"), .init(name: "limit", value: "3"),
+            ])
+            guard !Task.isCancelled else { return }
+            let firstNew = items.isEmpty ? nil : result.items.first?.id
+            items += result.items
+            total = result.total
+            if let firstNew { focusedUpdate = firstNew }
+        } catch {
+            guard !Task.isCancelled else { return }
+            failed = true
+        }
+        loading = false
+    }
+}
+
+private struct TodayUpdateLink: View {
+    let model: AppModel
+    let item: TodayUpdate
+    var inGroup = false
+    var body: some View {
+        Button { model.navigation.append(.sessions(ksinr: item.ksinr, tops: [])) } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(inGroup ? "Sitzung vom \(dateLabel(item.sessionDate))" : RatsCommittee.short(item.committee))
+                        .font(RatsFont.sourceTitle(weight: .semibold)).foregroundStyle(RatsColor.text)
+                    Text((inGroup ? "Ergänzt am \(dateLabel(item.arrived))" : "Sitzung vom \(dateLabel(item.sessionDate))") +
+                         (item.kind == "protocol" && item.decisionCount > 0 ? " · \(item.decisionCount) \(item.decisionCount == 1 ? "Ergebnis" : "Ergebnisse")" : ""))
+                        .font(RatsFont.metadata()).foregroundStyle(RatsColor.secondary)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                RatsIcon(.chevronRight, size: 15).foregroundStyle(RatsColor.secondary).accessibilityHidden(true)
+            }.padding(.vertical, 12).contentShape(Rectangle())
+        }.buttonStyle(UpdateButtonStyle())
+            .accessibilityLabel("\(item.committee). Sitzung vom \(dateLabel(item.sessionDate)). \(item.decisionCount > 0 ? "\(item.decisionCount) Ergebnisse. " : "")Bei Ratslotse ergänzt am \(dateLabel(item.arrived)).")
+            .accessibilityHint("Öffnet die Sitzung mit ihren Unterlagen.")
+    }
+}
+
+private struct UpdateButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.background(RatsColor.primary.opacity(configuration.isPressed ? 0.045 : 0))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.99 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+private func dateLabel(_ value: String) -> String { RatsDate.short(value) ?? value }
+private func dateRange(_ first: String, _ last: String) -> String {
+    first == last ? dateLabel(first) : "\(dateLabel(first)) – \(dateLabel(last))"
+}
+
+private struct TodayUpdates: Decodable, Sendable {
+    let since: String
+    let until: String
+    let firstVisit: Bool
     let total: Int
-    let unreadTotal: Int
-    var unreadDecisions: Int?
-
+    let counts: [String: Int]
+    let items: [TodayUpdate]
+    let groups: [TodayUpdateGroup]
     enum CodingKeys: String, CodingKey {
-        case hits, total
-        case topicCount = "topic_count"
-        case unreadTotal = "unread_total"
-        case unreadDecisions = "unread_decisions"
-    }
-
-    init(hits: [DashboardTopicHit], topicCount: Int, total: Int, unreadTotal: Int) {
-        self.hits = hits
-        self.topicCount = topicCount
-        self.total = total
-        self.unreadTotal = unreadTotal
-        self.unreadDecisions = nil
-    }
-
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        hits = try values.decode([DashboardTopicHit].self, forKey: .hits)
-        topicCount = try values.decodeIfPresent(Int.self, forKey: .topicCount) ?? 0
-        total = try values.decodeIfPresent(Int.self, forKey: .total) ?? 0
-        unreadTotal = try values.decodeIfPresent(Int.self, forKey: .unreadTotal) ?? 0
-        unreadDecisions = try values.decodeIfPresent(Int.self, forKey: .unreadDecisions)
+        case since, until, total, counts, items, groups
+        case firstVisit = "first_visit"
     }
 }
-
-/// Ein Treffer samt Themenbezug. Optionale Angaben bleiben auch gegen ältere
-/// Server lesbar; der Gelesen-Ruf verwendet die Beschluss-ID.
-private struct DashboardTopicHit: Codable, Sendable, Identifiable {
-    let topicID: Int?
-    let topicName: String
-    let id: Int
-    let title: String
+private struct TodayUpdateGroup: Decodable, Sendable {
+    let kind: String
+    let committee: String
+    let count: Int
+    let firstSessionDate: String
+    let lastSessionDate: String
+    let latest: TodayUpdate
+    enum CodingKeys: String, CodingKey {
+        case kind, committee, count, latest
+        case firstSessionDate = "first_session_date"
+        case lastSessionDate = "last_session_date"
+    }
+}
+private struct TodayUpdate: Decodable, Sendable, Identifiable {
+    let id: String
+    let kind: String
+    let ksinr: Int
+    let arrived: String
     let committee: String
     let sessionDate: String
-    let outcome: String?
-    let summary: String?
-    let isNew: Bool
-
+    let decisionCount: Int
     enum CodingKeys: String, CodingKey {
-        case id, title, committee, outcome, summary
-        case topicID = "topic_id"
-        case topicName = "topic_name"
+        case id, kind, ksinr, arrived, committee
         case sessionDate = "session_date"
-        case isNew = "is_new"
-    }
-
-    init(topicID: Int?, topicName: String, id: Int, title: String, committee: String, sessionDate: String,
-         outcome: String?, summary: String?, isNew: Bool) {
-        self.topicID = topicID
-        self.topicName = topicName
-        self.id = id
-        self.title = title
-        self.committee = committee
-        self.sessionDate = sessionDate
-        self.outcome = outcome
-        self.summary = summary
-        self.isNew = isNew
-    }
-
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        id = try values.decode(Int.self, forKey: .id)
-        title = try values.decode(String.self, forKey: .title)
-        committee = try values.decode(String.self, forKey: .committee)
-        sessionDate = try values.decode(String.self, forKey: .sessionDate)
-        topicName = try values.decode(String.self, forKey: .topicName)
-        topicID = try values.decodeIfPresent(Int.self, forKey: .topicID)
-        outcome = try values.decodeIfPresent(String.self, forKey: .outcome)
-        summary = try values.decodeIfPresent(String.self, forKey: .summary)
-        isNew = try values.decodeIfPresent(Bool.self, forKey: .isNew) ?? false
+        case decisionCount = "decision_count"
     }
 }
