@@ -1976,6 +1976,12 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Ab so vielen Einträgen startet die Liste zugeklappt. Darunter passt sie in
+ *  ein, zwei Zeilen und kostet offen nichts; ein Konto mit fünfzehn Abos
+ *  schöbe offen alles darunter — Zustellung, Verlauf, Rollen, Limits — aus dem
+ *  Blick, und das sind die Dinge, wegen derer man das Detail aufmacht. */
+const DETAIL_LISTE_ZU_AB = 8;
+
 /** Angelegtes als VOLLSTÄNDIGE Liste — Themen und Ausschuss-Abos.
  *
  *  Bis 09/2026 stand hier eine `DetailRow`: die ersten vier Namen,
@@ -1983,28 +1989,43 @@ function DetailRow({ label, value }: { label: string; value: string }) {
  *  zwei zu sehen, und nichts deutete darauf hin, dass mehr da sind. Wer wissen
  *  wollte, WELCHE Themen ein Konto angelegt hat, musste in die Datenbank
  *  (gemessen an Konto 37: 10 Themen, 15 Abos, im Panel sichtbar 2 bzw. 1).
- *  Die Zahl im Label bleibt, die Namen stehen vollständig darunter — bei
- *  vielen wächst die Karte, statt zu unterschlagen. */
+ *  Die Zahl im Label bleibt, die Namen stehen vollständig darunter.
+ *
+ *  Natives `<details>` wie bei den Cron-Schritten weiter oben: Tastatur und
+ *  Screenreader können das ohne Zutun, und der Zustand gehört dem Element, es
+ *  braucht keinen React-State. `open` steht nur für den ERSTEN Aufbau — danach
+ *  führt das DOM den Zustand, React fasst ihn nicht wieder an, solange der Wert
+ *  derselbe bleibt. Der Wechsel auf ein anderes Konto baut die Karte neu auf
+ *  (eigener Query-Key), die Vorgabe greift also je Konto frisch. */
 function DetailList({ label, entries, empty }: { label: string; entries: string[]; empty: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2">
-      <p className="text-[12.5px] text-foreground">{label}</p>
-      {entries.length ? (
-        // Themen dürfen doppelt heißen (zwei Konten, ein Wort — und auch
-        // innerhalb eines Kontos verbietet es niemand), der Index gehört
-        // deshalb in den Key.
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {entries.map((eintrag, i) => (
-            <span key={`${i}-${eintrag}`}
-              className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11.5px] text-muted-foreground">
-              {eintrag}
-            </span>
-          ))}
-        </div>
-      ) : (
+  // Nichts da, nichts zum Aufklappen: ein Satz, kein Pfeil, der ins Leere führt.
+  if (!entries.length) {
+    return (
+      <div className="rounded-lg border border-border bg-card px-3 py-2">
+        <p className="text-[12.5px] text-foreground">{label}</p>
         <p className="mt-1 text-[11.5px] text-muted-foreground">{empty}</p>
-      )}
-    </div>
+      </div>
+    );
+  }
+  return (
+    <details className="group rounded-lg border border-border bg-card px-3 py-2"
+      open={entries.length < DETAIL_LISTE_ZU_AB}>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] text-foreground [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-fluss ease-out-strong group-open:rotate-180" />
+        {label}
+      </summary>
+      {/* Themen dürfen doppelt heißen (zwei Konten, ein Wort — und auch
+          innerhalb eines Kontos verbietet es niemand), der Index gehört
+          deshalb in den Key. */}
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {entries.map((eintrag, i) => (
+          <span key={`${i}-${eintrag}`}
+            className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11.5px] text-muted-foreground">
+            {eintrag}
+          </span>
+        ))}
+      </div>
+    </details>
   );
 }
 
