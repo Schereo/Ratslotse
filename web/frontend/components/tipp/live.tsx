@@ -156,7 +156,15 @@ export function TippLive() {
       {/* Steuerung und Schild stehen OBEN MITTE: Der Kopf jedes Screens hat
           dort nichts stehen (links die Marke, rechts die Live-Zeile) — an der
           rechten Ecke lagen sie übereinander. */}
-      <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 flex-col items-center gap-2">
+      <div className={cn(
+        "absolute top-4 z-10 flex flex-col items-center gap-2",
+        // Auf der Leinwand oben MITTE (der Kopf trägt links die Marke, rechts
+        // die Live-Zeile). Auf dem Handy gibt es die Bühne nicht, sondern die
+        // kompakte Rangliste — und deren Abzeichen steht genau in der Mitte
+        // oben. Dort lagen Schalter und Abzeichen übereinander (Tims Bild vom
+        // 11.09.); auf schmalen Geräten geht der Schalter deshalb nach rechts.
+        schmal ? "right-4" : "left-1/2 -translate-x-1/2",
+      )}>
         {probe && !schmal && (
           // Auf einem Beamer im vollen Raum darf die Generalprobe keine
           // Sekunde wie das echte Ergebnis aussehen (dieselbe Zusage wie im
