@@ -235,7 +235,9 @@ def test_der_verwaltungsausschuss_findet_kein_gremium():
 def test_der_inhalt_der_drucksache_steht_in_der_seite(tmp_path):
     """An Hannovers Vorlagen hängt eine PDF, aber der Text steht schon da —
 
-    dieselbe Bahn wie bei Hildesheim.
+    dieselbe Bahn wie bei Hildesheim. Die Kennung ist die der synthetischen
+    Hauptdatei (``{paper_id}#text``), nicht die Vorlage selbst — ``put_text``
+    erwartet eine Datei-Kennung.
     """
     store = CitiesStore(tmp_path / "raw.sqlite")
     store.put_raw_object("hannover", "paper", VORLAGE, {
@@ -244,10 +246,25 @@ def test_der_inhalt_der_drucksache_steht_in_der_seite(tmp_path):
     texte = list(HannoverSimAdapter().inline_texts(store, "hannover"))
     assert len(texte) == 1
     kennung, text = texte[0]
-    assert kennung == VORLAGE
+    assert kennung == f"{VORLAGE}#text"
     assert len(text) > 2000
     assert "Kita Gethsemane" in text
     store.close()
+
+
+def test_der_text_haengt_an_einer_datei_die_die_vorlage_kennt(batch):
+    """`papers_with_text` verbindet über ``files.paper_id`` — ohne diese
+
+    synthetische Hauptdatei bliebe der über ``inline_texts`` geschriebene
+    Text für jede Auswertung unsichtbar, obwohl er in ``texts`` steht.
+    Gemessen an Hannover: 25.729 Vorlagen, 0 % „mit Text" trotz
+    erfolgreichem ``extract_inline`` — bis diese Datei dazukam (11.09.2026).
+    """
+    (vorlage,) = batch.papers
+    (datei,) = batch.files
+    assert datei.id == f"{vorlage.id}#text"
+    assert datei.paper_id == vorlage.id
+    assert datei.role.value == "main"
 
 
 def test_die_ausschussliste_liest_kuerzel_und_namen():

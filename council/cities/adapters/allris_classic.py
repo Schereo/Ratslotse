@@ -45,14 +45,24 @@ from bs4 import BeautifulSoup
 from council.cities.adapters._common import (VERSCHLOSSEN, attr,
                                              eindeutige_beratungen, normalize_title,
                                              zwillinge_zusammenfuehren)
-from council.cities.model import (AgendaItem, Batch, Consultation, Meeting,
-                                  Organization, Paper, org_kind, outcome,
+from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
+                                  Meeting, Organization, Paper, org_kind, outcome,
                                   paper_kind)
 from council.cities.oparl import OParlClient
 from council.cities.registry import BodySpec
 from council.cities.store import CitiesStore
 
 logger = logging.getLogger("council.cities.adapters.allris_classic")
+
+#: Der Quelle-Name, unter dem ``inline_texts`` seine Texte in ``texts``
+#: ablegt (``put_text(file_id, EXTRACTOR, …)``). Ohne einen eigenen Namen
+#: bräuchte ``pipeline.extract_inline`` einen, den es schon fest kennt —
+#: **und genau das fehlte**: Der Dispatcher dort kannte nur ``rubin`` und
+#: ``oldenburg``, `allris_classic` lief still ins Leere. 25.729 Vorlagen bei
+#: Hannover (derselbe Fehler) standen deshalb ohne einen einzigen Satz Text
+#: da, obwohl ``inline_texts`` die ganze Zeit funktionierte — niemand rief
+#: sie nur auf. Gemessen 11.09.2026.
+EXTRACTOR = "allris-classic-inline"
 
 #: Wie viele Kalendermonate ein Lauf höchstens ansieht. 18 Jahre Historie sind
 #: 216 Monate; die Kappe schützt nur gegen ein unsinniges ``since``.
@@ -378,6 +388,7 @@ class AllrisClassicAdapter:
         # Punkt ergeben hat, sagt allein die Beratungsfolge seiner Vorlage.
         ergebnis_je_station: dict[tuple[str, str], str] = {}
 
+        files: list[File] = []
         for roh in raw.raw_objects(body_id, "paper"):
             html = roh.get("html")
             if not html or VERSCHLOSSEN in html:
@@ -393,6 +404,14 @@ class AllrisClassicAdapter:
                 reference=self._kennzeichen(suppe),
                 date=daten[0] if daten else None,
                 paper_type_raw=art, kind=paper_kind(art), web=p_id))
+            # **Der Text hängt in `texts` an einer Datei, nicht an der
+            # Vorlage selbst.** `papers_with_text` verbindet über
+            # `files.paper_id` — ohne eine synthetische Hauptdatei bliebe der
+            # über `inline_texts` geschriebene Text unsichtbar, obwohl er in
+            # der Datenbank steht. Derselbe Fehler, dieselbe Reparatur wie
+            # bei Hannover (gemessen 11.09.2026).
+            files.append(File(f"{p_id}#text", body_id, FileRole.MAIN,
+                              paper_id=p_id, mime="text/html", access_url=p_id))
             for s in stationen:
                 if s["sitzung"] and s["ergebnis"]:
                     ergebnis_je_station[(p_id, s["sitzung"])] = s["ergebnis"]
@@ -421,7 +440,7 @@ class AllrisClassicAdapter:
                         aus_auszug)
 
         batch = Batch(organizations=organizations, meetings=meetings,
-                      agenda_items=items, papers=papers, files=[],
+                      agenda_items=items, papers=papers, files=files,
                       consultations=consultations)
         zwillinge = zwillinge_zusammenfuehren(batch)
         getrennt = eindeutige_beratungen(batch.consultations)
@@ -644,8 +663,10 @@ class AllrisClassicAdapter:
         """Der Sachverhalt einer Vorlage — er steht in der Seite, nicht im PDF.
 
         An Hildesheims Vorlagen hängt **kein einziger** Datei-Verweis; der
-        Text ist der Seiteninhalt. Geliefert wird er unter der Kennung der
-        Vorlage selbst, so wie Oldenburg und more! rubin es tun.
+        Text ist der Seiteninhalt. Die Kennung ist die der synthetischen
+        Hauptdatei aus ``normalize`` (``{paper_id}#text``), nicht die
+        Vorlage selbst — ``put_text`` erwartet eine Datei-Kennung, und
+        ``papers_with_text`` verbindet über ``files.paper_id``.
         """
         for roh in raw.raw_objects(body_id, "paper"):
             html = roh.get("html")
@@ -653,7 +674,7 @@ class AllrisClassicAdapter:
                 continue
             text = self._sachverhalt(_inhalt(html))
             if text:
-                yield roh["id"], text
+                yield f"{roh['id']}#text", text
 
     @staticmethod
     def _sachverhalt(suppe: BeautifulSoup) -> str:

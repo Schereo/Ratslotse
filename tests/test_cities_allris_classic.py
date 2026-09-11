@@ -154,12 +154,27 @@ def test_der_vorlagentext_steht_in_der_seite(tmp_path):
     texte = list(AllrisClassicAdapter().inline_texts(store, "hildesheim"))
     assert len(texte) == 1
     kennung, text = texte[0]
-    assert kennung == VORLAGE
+    assert kennung == f"{VORLAGE}#text"
     assert len(text) > 2000
     assert text.startswith("Mit der Vorlage")
     # Der Formularblock am Ende gehört nicht zum Sachverhalt.
     assert "Finanzielle Auswirkungen" not in text
     store.close()
+
+
+def test_der_text_haengt_an_einer_datei_die_die_vorlage_kennt(batch):
+    """`papers_with_text` verbindet über ``files.paper_id`` — ohne diese
+
+    synthetische Hauptdatei bliebe der über ``inline_texts`` geschriebene
+    Text für jede Auswertung unsichtbar, obwohl er in ``texts`` steht.
+    Gemessen an Hannover: 25.729 Vorlagen, 0 % „mit Text" trotz
+    erfolgreichem ``extract_inline`` — bis diese Datei dazukam (11.09.2026).
+    """
+    (vorlage,) = batch.papers
+    (datei,) = batch.files
+    assert datei.id == f"{vorlage.id}#text"
+    assert datei.paper_id == vorlage.id
+    assert datei.role.value == "main"
 
 
 def test_der_kalender_wird_monat_fuer_monat_rueckwaerts_gelesen():
