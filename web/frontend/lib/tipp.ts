@@ -18,6 +18,23 @@ export type TippTafel = ApiAntwort<"/tipp/stand">;
 export type TippReihe = TippTafel["rows"][number];
 
 /**
+ * Generalprobe durchreichen: `?probe=2021&counted=N` an einen Abrufpfad
+ * hängen — dasselbe, was `wahlabend.abfragePfad` für `/wahlabend` tut.
+ *
+ * Ohne das käme die Probe nie hinter der Oberfläche an: Die Adresse trüge
+ * sie, der Abruf dahinter nicht — man sähe den Live-Stand und hielte ihn
+ * für die Probe. `counted` muss eine Zahl sein, sonst fliegt es raus (der
+ * Server antwortet auf alles andere mit 422).
+ */
+export function probePfad(basis: string, probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams();
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  const s = q.toString();
+  return s ? `${basis}?${s}` : basis;
+}
+
+/**
  * Sitze auf 52 verteilen, proportional zu den 2021er Ergebnissen — der
  * Ausgangspunkt, den das Formular zeigt, bevor jemand etwas ändert.
  * Listen ohne 2021er Sitz starten bei 0. Hare/Niemeyer: erst abrunden,

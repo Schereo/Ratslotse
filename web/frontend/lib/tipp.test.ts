@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  probePfad,
   punkteText,
   rangDeltaText,
   rangPfeil,
@@ -130,5 +131,19 @@ describe("Kleinkram", () => {
     expect(uhrzeitKurz("2026-09-13T18:02:00Z")).toMatch(/^20:02/);
     expect(uhrzeitKurz(null)).toBeNull();
     expect(uhrzeitKurz("kaputt")).toBeNull();
+  });
+});
+
+describe("probePfad", () => {
+  it("lässt den Pfad in Ruhe, wenn keine Generalprobe läuft", () => {
+    expect(probePfad("/tipp/me", null, null)).toBe("/tipp/me");
+  });
+
+  it("hängt probe und counted an", () => {
+    expect(probePfad("/tipp/me", "2021", "90")).toBe("/tipp/me?probe=2021&counted=90");
+  });
+
+  it("verwirft ein counted, das keine Zahl ist — der Server antwortete sonst mit 422", () => {
+    expect(probePfad("/tipp/me", "2021", "viele")).toBe("/tipp/me?probe=2021");
   });
 });

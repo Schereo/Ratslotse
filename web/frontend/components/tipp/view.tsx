@@ -15,9 +15,11 @@
 // dieselbe Ausnahme wie bei Streams (web/frontend/CLAUDE.md).
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
+import { probePfad } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
@@ -33,8 +35,8 @@ async function holeSetup(): Promise<TippSetup> {
 }
 
 /** `null` heißt „nicht beigetreten" — ein ganz normaler Zustand, kein Fehler. */
-async function holeMeins(): Promise<TippMeins | null> {
-  const res = await fetch(apiUrl("/tipp/me"), { credentials: "include" });
+async function holeMeins(pfad: string): Promise<TippMeins | null> {
+  const res = await fetch(apiUrl(pfad), { credentials: "include" });
   if (res.status === 401) return null;
   if (!res.ok) throw new Error("me");
   return res.json();
@@ -93,9 +95,15 @@ export function TippView() {
   const [lottiAnimiert, setLottiAnimiert] = useState(false);
   useEffect(() => setLottiAnimiert(true), []);
 
+  // `?probe=2021&counted=N` wie beim Wahlabend und auf dem Beamer: Damit
+  // lässt sich der eigene Tipp (1e) gegen die Zahlen von 2021 durchspielen,
+  // bevor es echte gibt.
+  const params = useSearchParams();
+  const meinPfad = probePfad("/tipp/me", params.get("probe"), params.get("counted"));
+
   const setupQuery = useQuery({ queryKey: ["tipp", "setup"], queryFn: holeSetup, enabled: !!tippspielAn });
   const meinsQuery = useQuery({
-    queryKey: ["tipp", "me"], queryFn: holeMeins, enabled: !!tippspielAn,
+    queryKey: ["tipp", "me", meinPfad], queryFn: () => holeMeins(meinPfad), enabled: !!tippspielAn,
     // Erst nach dem Tipp-Schluss lohnt sich das Nachfragen — vorher ändert
     // sich am eigenen Stand nichts, solange niemand tippt.
     refetchInterval: (query) => (query.state.data?.locked ? 30_000 : false),
