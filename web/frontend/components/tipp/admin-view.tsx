@@ -96,11 +96,28 @@ export function TippAdminView() {
   }
 
   async function eintragenSenden() {
+    // Nur die Zeilen, die sich gegenüber dem Entwurf vom Server unterscheiden.
+    // Jede Zeile, die hier ankommt, wird zur HANDEINGABE (`source = manuell`)
+    // — und eine veröffentlichte Handeingabe schlägt den Wahlabend für genau
+    // diese Liste. Alle 25 Felder zu schicken hieße: Ein einziger korrigierter
+    // Tippfehler friert alle anderen Listen auf dem Stand von jetzt ein.
+    const bisher = standQuery.data?.results ?? [];
+    const seatsVorher = Object.fromEntries(bisher.filter((r) => !r.slug.startsWith("ob:")).map((r) => [r.slug, r.seats]));
+    const obVorher = Object.fromEntries(bisher.filter((r) => r.slug.startsWith("ob:")).map((r) => [r.slug.slice(3), r.pct]));
     const zeilen = [
-      ...Object.entries(seatsEntwurf).filter(([, v]) => v !== "").map(([slug, v]) => ({ slug, seats: Number(v) })),
-      ...Object.entries(obEntwurf).filter(([, v]) => v !== "").map(([slug, v]) => ({ slug: `ob:${slug}`, pct: Number(v) })),
+      ...Object.entries(seatsEntwurf)
+        .filter(([slug, v]) => v !== "" && Number(v) !== seatsVorher[slug])
+        .map(([slug, v]) => ({ slug, seats: Number(v) })),
+      ...Object.entries(obEntwurf)
+        .filter(([slug, v]) => v !== "" && Number(v) !== obVorher[slug])
+        .map(([slug, v]) => ({ slug: `ob:${slug}`, pct: Number(v) })),
     ];
-    await aktion(() => api.put("/tipp/admin/ergebnis", zeilen));
+    if (zeilen.length === 0) {
+      setMeldung("Nichts geändert.");
+      setTimeout(() => setMeldung(null), 3000);
+      return;
+    }
+    await aktion(() => api.put("/tipp/admin/ergebnis", zeilen), `${zeilen.length} Zeile${zeilen.length === 1 ? "" : "n"} in den Entwurf übernommen.`);
   }
 
   if (authLaedt) return <Spinner />;
@@ -120,7 +137,10 @@ export function TippAdminView() {
 
   const entwurfSumme = Object.values(seatsEntwurf).reduce((s, v) => s + (Number(v) || 0), 0);
   const obSumme = Object.values(obEntwurf).reduce((s, v) => s + (Number(v) || 0), 0);
-  const nachgetippt = stand.players.filter((p) => p.late_at).length;
+  const nachgetippt = stand.players.filter((p) => p.late_at && !p.hidden).length;
+  // „N Tipps" zählt Tipps, nicht Beitritte: `player_count` zählt jeden, der
+  // seinen Namen eingegeben hat — auch ohne Tipp, auch ausgeblendet.
+  const tipps = stand.players.filter((p) => p.has_tip && !p.hidden).length;
 
   const phaseSchritte: { title: string; erledigt: boolean; aktiv?: boolean; rechts: string }[] = [
     { title: "Tippen offen", erledigt: stand.game.phase !== "open" || false, aktiv: stand.game.phase === "open", rechts: stand.game.phase === "open" ? "läuft" : "" },
@@ -148,7 +168,7 @@ export function TippAdminView() {
             </span>
           </div>
           <div className="flex items-center gap-2.5 text-[12.5px]">
-            <Badge color="green">{stand.game.player_count} Tipps</Badge>
+            <Badge color="green">{tipps} {tipps === 1 ? "Tipp" : "Tipps"}</Badge>
             {nachgetippt > 0 && <Badge color="amber">{nachgetippt} nachgetippt</Badge>}
             {meldung && <span className="text-muted-foreground">{meldung}</span>}
           </div>

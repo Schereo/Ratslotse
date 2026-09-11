@@ -386,3 +386,28 @@ def test_stand_liefert_304_beim_zweiten_abruf_mit_etag(client):
     etag = erster.headers["etag"]
     zweiter = client.get("/api/tipp/stand", headers={"if-none-match": etag})
     assert zweiter.status_code == 304
+
+
+def test_admin_durchschnitt_zaehlt_ausgeblendete_nicht(client):
+    """Ø-Tipp und „exakt" im Admin-Panel wie auf der Tafel: ohne Ausgeblendete
+    — die Teilnehmerliste zeigt sie trotzdem, zum Wiederfinden."""
+    reg = register.load()
+    slug = reg.parties[0].slug
+    a = {p.slug: 0 for p in reg.parties}
+    a[slug] = reg.seats
+    b = {p.slug: 0 for p in reg.parties}
+    b[reg.parties[1].slug] = reg.seats
+    d = beitreten(client, "Sichtbar", seats=a)
+    zweiter = TestClient(app)
+    versteckt = zweiter.post("/api/tipp", json={"name": "Versteckt", "seats": b}).json()
+    assert d["player_id"] != versteckt["player_id"]
+
+    app.dependency_overrides[require_active] = lambda: ADMIN
+    try:
+        client.put(f"/api/tipp/admin/spieler/{versteckt['player_id']}", json={"hidden": True})
+        stand = client.get("/api/tipp/admin/stand").json()
+    finally:
+        app.dependency_overrides.pop(require_active, None)
+    zeile = next(r for r in stand["results"] if r["slug"] == slug)
+    assert zeile["avg_tip"] == reg.seats, "nur der sichtbare Tipp zählt in den Schnitt"
+    assert [p["name"] for p in stand["players"] if p["hidden"]] == ["Versteckt"]

@@ -276,13 +276,17 @@ def _admin_stand(store: Store) -> PredictionAdminStand:
     reg = register.load()
     results = {r["slug"]: r for r in store.prediction_result()}
     tips = service._parsed(store.prediction_players(include_hidden=True))  # noqa: SLF001
+    # Ø-Tipp und „exakt" zählen wie auf der öffentlichen Tafel: ohne
+    # ausgeblendete Personen. Die Teilnehmerliste unten zeigt sie dagegen
+    # ausdrücklich — der Admin will sie wiederfinden.
+    sichtbare = [t for t in tips if t["hidden_at"] is None]
 
     rows: list[PredictionResultRow] = []
     for p in reg.parties:
         r = results.get(p.slug, {})
-        avg = service._avg(tips, "seats", p.slug)  # noqa: SLF001
+        avg = service._avg(sichtbare, "seats", p.slug)  # noqa: SLF001
         veroeffentlicht = r.get("published_seats")
-        exakt = sum(1 for t in tips if t["seats"] and t["seats"].get(p.slug) is not None
+        exakt = sum(1 for t in sichtbare if t["seats"] and t["seats"].get(p.slug) is not None
                    and veroeffentlicht is not None and t["seats"][p.slug] == veroeffentlicht)
         rows.append(PredictionResultRow(
             slug=p.slug, seats=r.get("seats"), pct=None, source=r.get("source") or "manuell",
@@ -292,7 +296,7 @@ def _admin_stand(store: Store) -> PredictionAdminStand:
     for c in mayor.candidates():
         slug = f"ob:{c.slug}"
         r = results.get(slug, {})
-        avg = service._avg(tips, "mayor", c.slug)  # noqa: SLF001
+        avg = service._avg(sichtbare, "mayor", c.slug)  # noqa: SLF001
         rows.append(PredictionResultRow(
             slug=slug, seats=None, pct=r.get("pct"), source=r.get("source") or "manuell",
             avg_tip=avg, exact_count=0, published_seats=None, published_pct=r.get("published_pct"),
