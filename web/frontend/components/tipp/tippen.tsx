@@ -126,7 +126,11 @@ export function Tippen({ setup, meins, onGespeichert }: {
               aria-label={`Sitze für ${p.short}`}
               value={seats[p.slug] ?? 0}
               onChange={(e) => setzeSitz(p.slug, Number(e.target.value))}
-              className="h-11 w-[46px] flex-none rounded-[10px] border border-border bg-card text-center font-display text-lg font-bold text-foreground"
+              // `appearance-none` nimmt die nativen Auf/Ab-Pfeile weg — ohne
+              // sie bleibt bei `type="number"` rechts ihr Platz reserviert,
+              // und die Zahl sitzt trotz `text-center` sichtbar links davon
+              // (Tims Befund an genau diesem Feld, 11.09.).
+              className="h-11 w-[46px] flex-none appearance-none rounded-[10px] border border-border bg-card text-center font-display text-lg font-bold text-foreground [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
             <button
               type="button"
@@ -170,7 +174,7 @@ export function Tippen({ setup, meins, onGespeichert }: {
                     aria-label={`Prozent für ${o.name}`}
                     value={ob[o.slug] ?? 0}
                     onChange={(e) => setzeOb(o.slug, Number(e.target.value))}
-                    className="h-10 w-[58px] rounded-[10px] border border-border bg-card px-2 text-right font-display text-base font-bold text-foreground"
+                    className="h-10 w-[58px] appearance-none rounded-[10px] border border-border bg-card px-2 text-right font-display text-base font-bold text-foreground [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   <span className="text-[13px] text-muted-foreground">%</span>
                 </div>
