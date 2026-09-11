@@ -142,14 +142,23 @@ export function Scoreboard({ stand }: { stand: PredictionStand }) {
 export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe?: boolean }) {
   const endstand = stand.phase === "final";
   const mitRang = stand.rows.filter((r) => r.rank !== null);
+  const gewertet = mitRang.length > 0;
   const ohne = stand.rows.filter((r) => r.rank === null);
   return (
     <div className="mx-auto max-w-md px-4 pb-8 pt-[calc(env(safe-area-inset-top)+14px)]">
-      <div className="flex items-center justify-between pr-16">
-        <span className="font-display text-[15px] font-bold">Tippspiel · Rangliste</span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
-          <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal" />
-          {endstand ? "Endstand" : "Live"} · {stand.stand_label || "wartet"}
+      {/* Die rechte obere Ecke gehört dem Erscheinungsbild-Schalter
+          (`live.tsx`): 56 px breit, 16 px vom Rand. 72 px Freiraum lassen
+          dazwischen noch 16 px Luft — bei 56 px stießen Abzeichen und
+          Schalter auf 0 px aneinander (gemessen bei 390 und 320 px). */}
+      <div className="flex items-center justify-between gap-2 pr-[72px]">
+        <span className="truncate font-display text-[15px] font-bold">Tippspiel · Rangliste</span>
+        <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
+          {/* Dieselbe Ehrlichkeit wie auf der Leinwand: „Live" ohne eine
+              einzige Zahl wäre eine Zusage, die nichts deckt. */}
+          {gewertet && <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal motion-reduce:animate-none" />}
+          {gewertet
+            ? `${endstand ? "Endstand" : "Live"} · ${stand.stand_label || "–"}`
+            : stand.phase === "open" ? "Tippen läuft" : "Warten auf Zahlen"}
         </span>
       </div>
       {probe && (
