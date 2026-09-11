@@ -1,38 +1,60 @@
 """Das Tippspiel als Antworten: Spiel-Setup, Tafel, „meins" (docs/plan-tippspiel-ratswahl.md).
 
-**Die Trennlinie, die den ganzen Abend hält.** Die Ratswahl (``election.service``)
-und die OB-Wahl (``election.mayor``) werden hier NUR für Menschentext gelesen
-— den Auszählungsstand im Kopf des Beamers, die Phase der OB-Wahl, und um zu
-erkennen, dass die erste Hochrechnung da ist (Tipp-Schluss, automatisch).
+**Woher der Vergleich kommt** (Plan §3 Zeile 9, §4 Regel 6). Grundlage ist
+der **Wahlabend**: ``election.service.live()`` für die Sitze je Liste,
+``election.mayor.fetch()`` für die OB-Prozente — in der Generalprobe die
+beiden ``probe``-Fassungen. Der Beamer folgt damit dem Votemanager von
+selbst, ohne dass am Abend jemand „Jetzt abfragen" und „Veröffentlichen"
+klickt. **Darüber liegt je Liste die veröffentlichte Handeingabe** aus dem
+Admin (1h): Eine Zeile mit ``published_source = "manuell"`` schlägt den
+Wahlabend für genau diese Liste — sie ist die Zusage, der Abruf die
+Bequemlichkeit. Eine veröffentlichte Zeile aus „Jetzt abfragen"
+(``published_source = "votemanager"``) friert dagegen nichts ein: Sie ist
+nur der Rückfall, wenn der Wahlabend für die Liste gerade keine Zahl nennt.
 
-**Was tatsächlich verglichen wird, kommt AUSSCHLIESSLICH aus
-``prediction_result``** — Zeilen, die der Admin im Panel (1h) veröffentlicht
-hat. Das ist Absicht: Ein Tippfehler beim Eintragen oder ein Aussetzer beim
-automatischen Abruf soll nie unbeaufsichtigt auf dem Beamer landen. „Jetzt
-abfragen" holt die Live-Zahlen NUR in den Entwurf; erst „Veröffentlichen"
-macht sie hier sichtbar.
+**Warum nicht „nur veröffentlicht"?** So stand es hier bis zum 11.09.2026,
+und es hätte den Abend still ausgehebelt: Die Generalprobe
+``?probe=2021&counted=N`` hätte nie einen Rang gezeigt (das Abnahmekriterium
+von PR 4), und am Abend hätte JEDE Hochrechnung erst durch zwei Admin-Klicks
+gemusst. Der Entwurf bleibt trotzdem die Sperre für die HANDEINGABE: Was ein
+Mensch eintippt, erscheint erst nach „Veröffentlichen".
+
+**Ein Stand ist ein Ist, nicht ein Abruf.** Die Ränge werden unter einem
+Stand-Zeitstempel abgelegt, und ``rank_before`` ist der Rang im letzten
+ANDEREN Stand. Der Zeitstempel wechselt deshalb nur, wenn sich die
+verglichenen Zahlen ändern (Hash über Ist-Sitze und Ist-Prozente) — sonst
+bekäme jeder Abruf nach Ablauf des Caches einen neuen Stand, und die
+▲▼-Chips zeigten immer nur den vorigen Abruf. Die Generalprobe schreibt
+NICHTS in die Datenbank (kein Auto-Lock, keine Ränge); ihr „vorheriger
+Rang" lebt im Prozess, damit die Folge ``counted=0 → 40 → 90 → 133``
+trotzdem Rangwechsel zeigt.
 
 **Der Abend darf an nichts sterben** — dieselbe Regel wie in
 ``election/service.py``: Scheitert der Blick auf die Ratswahl oder die
-OB-Wahl (Netzfehler, kaputte Antwort), bleiben die informativen Felder leer
-oder auf ihrem letzten Stand; die Tafel selbst antwortet immer.
+OB-Wahl (Netzfehler, kaputte Antwort), rechnet die Tafel mit dem, was sie
+hat — den veröffentlichten Zeilen — und antwortet immer.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import threading
 import time
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from statistics import mean
+from zoneinfo import ZoneInfo
 
 from kern.store import Store
 
 from ..antworten import (
     ElectionNight,
+    ElectionParty,
     PredictionCompareLine,
     PredictionGame,
     PredictionMayorCandidate,
+    PredictionMayorCompareLine,
     PredictionMayorLine,
     PredictionMine,
     PredictionParty,
@@ -51,8 +73,25 @@ _log = logging.getLogger("ratslotse.web.tippspiel")
 #: Abend nicht 30-mal neu rechnen (Muster: ``votemanager.TTL_SECONDS``).
 STAND_TTL = 20.0
 
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+@dataclass(frozen=True)
+class _Bundle:
+    """Tafel plus die Ist-Werte, aus denen sie gerechnet wurde — ``mine()``
+    braucht dieselben Zahlen je Zeile, und zwar GENAU dieselben, sonst
+    zeigt „Mein Tipp" andere Punkte als die Rangliste."""
+    stand: PredictionStand
+    actual_seats: dict[str, int | None]
+    actual_mayor: dict[str, float | None]
+
+
 _lock = threading.Lock()
-_cache: tuple[float, PredictionStand] | None = None
+_cache: tuple[float, _Bundle] | None = None
+#: Stand-Zeitstempel je Pfad (``"live"`` bzw. ``"probe"``): (Hash des Ist, stand_at).
+_marker: dict[str, tuple[str, str]] = {}
+#: Generalprobe: (Ränge des aktuellen Standes, Ränge des Standes davor).
+_probe_ranks: tuple[dict[int, int], dict[int, int]] = ({}, {})
 
 
 # ------------------------------------------------------------------ Bausteine
@@ -61,36 +100,72 @@ def _reg():
     return register.load()
 
 
+def _uhrzeit(iso: str) -> str:
+    """„18:07" in Europe/Berlin aus einem ISO-Zeitstempel. Naiv heißt UTC
+    (so schreibt der Store), sonst zählt die mitgeführte Zone. Vorher stand
+    hier ``iso[11:16]`` — die UTC-Stunde, am Wahlabend zwei Stunden daneben."""
+    try:
+        dt = datetime.fromisoformat(iso)
+    except ValueError:
+        return iso[11:16]
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(BERLIN).strftime("%H:%M")
+
+
+def night_seats(party: ElectionParty) -> int | None:
+    """Die Sitzzahl, die der Wahlabend für eine Liste gerade nennt: die
+    Hochrechnung, sobald es eine gibt, sonst der ausgezählte Stand — am Ende
+    sind beide gleich. Auch „Jetzt abfragen" im Admin nimmt diese Zeile,
+    damit Entwurf und Tafel dieselbe Zahl meinen."""
+    if party["projected_seats"] is not None:
+        return party["projected_seats"]
+    return party["seats"]
+
+
 def _has_any_result(night: ElectionNight) -> bool:
     """Zeigt die Ratswahl schon IRGENDEINE Zahl — Sitz oder Hochrechnung?"""
     return any((p["seats"] or p["projected_seats"]) for p in night["parties"])
 
 
-def _check_auto_lock(store: Store) -> None:
+def _read_night(probe: str | None, counted: int | None) -> ElectionNight | None:
+    try:
+        return election_service.probe(counted) if probe == "2021" else election_service.live()
+    except Exception:
+        _log.exception("Tippspiel: Auszählungsstand der Ratswahl nicht zu lesen.")
+        return None
+
+
+def _read_mayor(probe: str | None, counted: int | None) -> mayor.MayorResult | None:
+    try:
+        return mayor.probe(counted) if probe == "2021" else mayor.fetch()
+    except Exception:
+        _log.exception("Tippspiel: Blick auf die OB-Wahl fehlgeschlagen.")
+        return None
+
+
+def _check_auto_lock(store: Store, night: ElectionNight | None = None) -> None:
     """Setzt den Tipp-Schluss, sobald die erste Hochrechnung der ECHTEN
-    Ratswahl da ist — NIE aus der Generalprobe (der Aufrufer ruft das nur im
-    Live-Pfad auf, s. ``stand``/``mine``)."""
+    Ratswahl da ist — NIE aus der Generalprobe (``_build`` ruft das nur im
+    Live-Pfad auf; der Router bei jedem ``POST /api/tipp``, ohne ``night``,
+    dann liest die Funktion selbst)."""
     game = store.prediction_game()
     if game["phase"] != "open":
         return
-    try:
-        night = election_service.live()
-    except Exception:
-        _log.exception("Tippspiel: Blick auf die Ratswahl für den Auto-Lock fehlgeschlagen.")
-        return
-    if not _has_any_result(night):
+    if night is None:
+        night = _read_night(None, None)
+    if night is None or not _has_any_result(night):
         return
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     store.prediction_game_set(phase="locked", locked_at=now, locked_reason="projection")
-    store.prediction_log_add(f"Erste Hochrechnung erkannt · Tipp-Schluss automatisch gesetzt ({now})")
+    store.prediction_log_add(f"Erste Hochrechnung erkannt · Tipp-Schluss automatisch gesetzt ({_uhrzeit(now)} Uhr)")
 
 
 def _deadline_hint(game: dict) -> str:
     if game["phase"] == "open":
         return "bis zur ersten Hochrechnung (ca. 20 Uhr)"
     if game["locked_at"]:
-        uhrzeit = game["locked_at"][11:16] if len(game["locked_at"]) >= 16 else game["locked_at"]
-        return f"Tipp-Schluss war um {uhrzeit} Uhr."
+        return f"Tipp-Schluss war um {_uhrzeit(game['locked_at'])} Uhr."
     return "Die Tippabgabe ist geschlossen."
 
 
@@ -117,24 +192,73 @@ def _avg(tips: list[dict], key: str, slug: str) -> float | None:
     return round(mean(werte), 2) if werte else None
 
 
-def _actual_from_results(results: dict[str, dict]) -> tuple[dict[str, int | None], dict[str, float | None]]:
+def _actuals(results: dict[str, dict], night: ElectionNight | None,
+             ob: mayor.MayorResult | None) -> tuple[dict[str, int | None], dict[str, float | None], str]:
+    """Das Ist je Liste und je OB-Kandidatur, plus das ``source_label``.
+
+    Reihenfolge je Schlüssel: veröffentlichte HANDEINGABE > Wahlabend >
+    veröffentlichter Votemanager-Schnappschuss (Rückfall). Die OB-Prozente
+    zählen erst, wenn dort etwas ausgezählt ist — ``probe(0)`` trägt die
+    Endprozente von 2021 bei ``phase == "before"``, und die wären sonst vor
+    der ersten Stimme schon Punkte wert."""
     seats: dict[str, int | None] = {}
-    mayor_actual: dict[str, float | None] = {}
+    pct: dict[str, float | None] = {}
+    quellen: set[str] = set()
+    if night is not None:
+        for p in night["parties"]:
+            wert = night_seats(p)
+            if wert is not None:
+                seats[p["slug"]] = wert
+    if ob is not None and ob.phase != "before":
+        for c in ob.candidates:
+            if c.share_pct is not None:
+                pct[c.slug] = c.share_pct
+    if seats or pct:
+        quellen.add("votemanager")
     for slug, r in results.items():
+        if not r.get("published_at"):
+            continue
         if slug.startswith("ob:"):
-            mayor_actual[slug[3:]] = r["published_pct"]
+            ziel, key, wert = pct, slug[3:], r["published_pct"]
         else:
-            seats[slug] = r["published_seats"]
-    return seats, mayor_actual
-
-
-def _source_label(results: dict[str, dict]) -> str:
-    quellen = {r["published_source"] for r in results.values() if r.get("published_at")}
+            ziel, key, wert = seats, slug, r["published_seats"]
+        if wert is None:
+            continue
+        manuell = (r.get("published_source") or "manuell") == "manuell"
+        if manuell or key not in ziel:
+            ziel[key] = wert
+            quellen.add("manuell" if manuell else "votemanager")
     if not quellen:
-        return ""
-    if len(quellen) > 1:
-        return "gemischt"
-    return next(iter(quellen)) or "manuell"
+        label = ""
+    elif len(quellen) > 1:
+        label = "gemischt"
+    else:
+        label = next(iter(quellen))
+    return seats, pct, label
+
+
+def _digest(actual_seats: dict, actual_mayor: dict, late_scored: bool) -> str:
+    """Was einen Stand vom nächsten unterscheidet: die verglichenen Zahlen
+    (und ob Spätstarter zählen — das ordnet die Liste um)."""
+    roh = json.dumps([sorted(actual_seats.items()), sorted(actual_mayor.items()), late_scored])
+    return hashlib.sha1(roh.encode()).hexdigest()  # noqa: S324 — kein Sicherheitszweck
+
+
+def _stand_at(key: str, digest: str) -> tuple[str, bool]:
+    """Der Stand-Zeitstempel zu diesem Ist — derselbe, solange sich das Ist
+    nicht ändert. Gibt mit, ob es ein NEUER Stand ist. Streng steigend, auch
+    wenn zwei Stände in dieselbe Millisekunde fallen (Tests)."""
+    alt = _marker.get(key)
+    if alt and alt[0] == digest:
+        return alt[1], False
+    jetzt = datetime.now(timezone.utc)
+    if alt:
+        vorher = datetime.fromisoformat(alt[1])
+        if jetzt <= vorher:
+            jetzt = vorher + timedelta(milliseconds=1)
+    stamp = jetzt.isoformat(timespec="milliseconds")
+    _marker[key] = (digest, stamp)
+    return stamp, True
 
 
 def _compare_sentence(compare: list[PredictionCompareLine]) -> str:
@@ -159,15 +283,6 @@ def _compare_sentence(compare: list[PredictionCompareLine]) -> str:
 def _score_dict(s: scoring.Score) -> PredictionScore:
     return PredictionScore(total=s.total, seat_points=s.seat_points, mayor_points=s.mayor_points,
                            exact_lists=s.exact_lists, deviation=s.deviation)
-
-
-def _mayor_status(counted: int | None) -> tuple[str, int, int]:
-    try:
-        m = mayor.probe(counted) if counted is not None else mayor.fetch()
-    except Exception:
-        _log.exception("Tippspiel: Blick auf die OB-Wahl fehlgeschlagen.")
-        return "before", 0, 0
-    return m.phase, m.reports_received, m.reports_expected
 
 
 def _area_label(night: ElectionNight) -> str:
@@ -202,14 +317,17 @@ def setup(store: Store) -> PredictionGame:
     )
 
 
-def _build_stand(store: Store, *, probe: str | None, counted: int | None) -> PredictionStand:
+def _build(store: Store, *, probe: str | None, counted: int | None) -> _Bundle:
+    global _probe_ranks
+    night = _read_night(probe, counted)
+    ob = _read_mayor(probe, counted)
     if probe is None:
-        _check_auto_lock(store)
+        _check_auto_lock(store, night)
     game = store.prediction_game()
     reg = _reg()
     results = {r["slug"]: r for r in store.prediction_result()}
-    published = any(r.get("published_at") for r in results.values())
-    actual_seats, actual_mayor = _actual_from_results(results)
+    actual_seats, actual_mayor, source_label = _actuals(results, night, ob)
+    vergleichbar = bool(actual_seats or actual_mayor)
 
     tips = _parsed(store.prediction_players(include_hidden=False))
     sichtbare_mit_tipp = [t for t in tips if t["seats"] is not None]
@@ -224,19 +342,18 @@ def _build_stand(store: Store, *, probe: str | None, counted: int | None) -> Pre
         compare.append(PredictionCompareLine(slug=p.slug, short=p.short, color=p.color, color_dark=p.color_dark,
                                              actual=actual, avg_tip=avg, exact_count=exakt))
 
-    mayor_lines: list[PredictionMayorLine] = []
+    mayor_compare: list[PredictionMayorCompareLine] = []
     for c in mayor.candidates():
-        avg = _avg(sichtbare_mit_tipp, "mayor", c.slug)
-        mayor_lines.append(PredictionMayorLine(slug=c.slug, tip=avg or 0.0, actual_pct=actual_mayor.get(c.slug),
-                                              avg_tip=avg, points=0))
-
-    mayor_phase, mayor_received, mayor_expected = _mayor_status(counted if probe == "2021" else None)
+        mayor_compare.append(PredictionMayorCompareLine(
+            slug=c.slug, name=c.name, party=c.party,
+            actual_pct=actual_mayor.get(c.slug), avg_tip=_avg(sichtbare_mit_tipp, "mayor", c.slug),
+        ))
 
     rows: list[PredictionRow] = []
     leader: int | None = None
-    computed_at = max((r["published_at"] for r in results.values() if r.get("published_at")), default=None)
+    computed_at: str | None = None
 
-    if not published:
+    if not vergleichbar:
         alle = sorted(tips, key=lambda t: t["name"].casefold())
         rows = [PredictionRow(player_id=t["id"], name=t["name"], late_at=t["late_at"],
                               scored=t["late_at"] is None or bool(game["late_scored"]),
@@ -251,7 +368,18 @@ def _build_stand(store: Store, *, probe: str | None, counted: int | None) -> Pre
         ]
         geordnet = scoring.order(standings)
         rang = {s.id: i for i, s in enumerate(geordnet, start=1)}
-        vorher = store.prediction_standings_previous(computed_at) if computed_at else {}
+        pfad = "probe" if probe is not None else "live"
+        computed_at, neu = _stand_at(pfad, _digest(actual_seats, actual_mayor, bool(game["late_scored"])))
+        if probe is not None:
+            # Kein Datenbank-Schreiben in der Generalprobe — der vorige Rang
+            # lebt im Prozess und wechselt mit jedem neuen Ist.
+            if neu:
+                _probe_ranks = (rang, _probe_ranks[0])
+            vorher = _probe_ranks[1]
+        else:
+            vorher = store.prediction_standings_previous(computed_at)
+            store.prediction_standings_record(
+                computed_at, [(s.id, rang[s.id], s.score.total) for s in geordnet])
         by_id = {t["id"]: t for t in sichtbare_mit_tipp}
         for s in geordnet:
             t = by_id[s.id]
@@ -263,44 +391,46 @@ def _build_stand(store: Store, *, probe: str | None, counted: int | None) -> Pre
                               has_tip=False, score=None, rank=None, rank_before=None) for t in fuer_ohne]
         if geordnet:
             leader = geordnet[0].id
-        if computed_at:
-            store.prediction_standings_record(computed_at, [(pid, rang[pid], 0) for pid in rang])
 
-    try:
-        night = election_service.probe(counted) if probe == "2021" else election_service.live()
+    if night is not None:
         area_label = _area_label(night)
         notes = list(night.get("notes", []))
-    except Exception:
-        _log.exception("Tippspiel: Auszählungsstand der Ratswahl nicht zu lesen.")
+    else:
         area_label = ""
         notes = ["Der Auszählungsstand der Ratswahl ist gerade nicht abrufbar."]
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    return PredictionStand(
-        title=game["title"], phase=game["phase"], stand_label=(computed_at or "")[11:16],
-        area_label=area_label, source_label=_source_label(results), seats_total=reg.seats,
+    tafel = PredictionStand(
+        title=game["title"], phase=game["phase"], stand_label=_uhrzeit(computed_at) if computed_at else "",
+        area_label=area_label, source_label=source_label, seats_total=reg.seats,
         player_count=len(tips), tip_count=len(sichtbare_mit_tipp),
-        compare=compare, mayor=mayor_lines, mayor_status=mayor_phase,
+        compare=compare, mayor=mayor_compare, mayor_status=ob.phase if ob is not None else "before",
         rows=rows, leader_player_id=leader, compare_sentence=_compare_sentence(compare),
         computed_at=computed_at or now, notes=notes,
     )
+    return _Bundle(stand=tafel, actual_seats=actual_seats, actual_mayor=actual_mayor)
 
 
-def stand(store: Store, *, probe: str | None = None, counted: int | None = None) -> PredictionStand:
-    """Die öffentliche Tafel (1g/1i) — gecacht, damit ein voller Raum den
-    Abend nicht bei jedem Aufruf neu rechnet. Die Generalprobe (``probe``)
-    wird NICHT gecacht: Sie ist selten und soll ``counted`` sofort zeigen."""
+def _bundle(store: Store, *, probe: str | None, counted: int | None) -> _Bundle:
+    """Tafel samt Ist — gecacht, damit ein voller Raum den Abend nicht bei
+    jedem Aufruf neu rechnet. Die Generalprobe (``probe``) wird NICHT
+    gecacht: Sie ist selten und soll ``counted`` sofort zeigen."""
     if probe is not None:
-        return _build_stand(store, probe=probe, counted=counted)
+        return _build(store, probe=probe, counted=counted)
     global _cache
     with _lock:
         cached = _cache
         if cached and time.monotonic() - cached[0] < STAND_TTL:
             return cached[1]
-    result = _build_stand(store, probe=None, counted=None)
+    result = _build(store, probe=None, counted=None)
     with _lock:
         _cache = (time.monotonic(), result)
     return result
+
+
+def stand(store: Store, *, probe: str | None = None, counted: int | None = None) -> PredictionStand:
+    """Die öffentliche Tafel (1g/1i)."""
+    return _bundle(store, probe=probe, counted=counted).stand
 
 
 def mine(store: Store, token_hash: str, *, probe: str | None = None, counted: int | None = None) -> PredictionMine | None:
@@ -311,9 +441,8 @@ def mine(store: Store, token_hash: str, *, probe: str | None = None, counted: in
         return None
     game = store.prediction_game()
     reg = _reg()
-    tafel = stand(store, probe=probe, counted=counted)
-    results = {r["slug"]: r for r in store.prediction_result()}
-    actual_seats, actual_mayor = _actual_from_results(results)
+    b = _bundle(store, probe=probe, counted=counted)
+    tafel = b.stand
 
     seats_tip = json.loads(player["seats_json"]) if player.get("seats_json") else None
     mayor_tip = json.loads(player["mayor_json"]) if player.get("mayor_json") else None
@@ -327,7 +456,7 @@ def mine(store: Store, token_hash: str, *, probe: str | None = None, counted: in
     if seats_tip is not None:
         for p in reg.parties:
             tip = seats_tip.get(p.slug, 0)
-            actual = actual_seats.get(p.slug)
+            actual = b.actual_seats.get(p.slug)
             seat_lines.append(PredictionSeatLine(
                 slug=p.slug, tip=tip, actual=actual, avg_tip=avg_tips_seats.get(p.slug),
                 points=scoring.seat_points(tip, actual), exact=actual is not None and tip == actual,
@@ -336,9 +465,10 @@ def mine(store: Store, token_hash: str, *, probe: str | None = None, counted: in
     if mayor_tip is not None:
         for c in mayor.candidates():
             tip = mayor_tip.get(c.slug, 0.0)
+            actual_pct = b.actual_mayor.get(c.slug)
             mayor_lines.append(PredictionMayorLine(
-                slug=c.slug, tip=tip, actual_pct=actual_mayor.get(c.slug),
-                avg_tip=avg_tips_mayor.get(c.slug), points=scoring.mayor_points(tip, actual_mayor.get(c.slug)),
+                slug=c.slug, tip=tip, actual_pct=actual_pct,
+                avg_tip=avg_tips_mayor.get(c.slug), points=scoring.mayor_points(tip, actual_pct),
             ))
 
     return PredictionMine(
@@ -355,7 +485,18 @@ def mine(store: Store, token_hash: str, *, probe: str | None = None, counted: in
 
 
 def reset() -> None:
-    """Den Tafel-Cache verwerfen (für Tests)."""
+    """Den Tafel-Cache verwerfen (nach jedem Admin-Schreiben und für Tests).
+    Die Stand-Marker bleiben: Ein neues Ist bekommt seinen Zeitstempel beim
+    nächsten Aufbau von selbst, ein unverändertes behält seinen."""
     global _cache
     with _lock:
         _cache = None
+
+
+def reset_all() -> None:
+    """Auch Stand-Marker und Generalproben-Ränge vergessen (für Tests)."""
+    global _cache, _probe_ranks
+    with _lock:
+        _cache = None
+        _marker.clear()
+        _probe_ranks = ({}, {})
