@@ -174,10 +174,14 @@ export function TippLive() {
             Generalprobe · Zahlen von 2021
           </span>
         )}
+        {/* Auf der Leinwand verschwindet die Bedienung nach vier Sekunden
+            Ruhe — dort hat sie nichts verloren. Auf dem Handy bleibt sie
+            stehen: Ein Telefon ist keine Leinwand, und ein Schalter, den man
+            erst durch Antippen irgendwo hervorholt, findet niemand. */}
         <div className={cn(
           "flex items-center gap-3 transition-opacity duration-500",
-          steuerungWach ? "opacity-100" : "opacity-0",
-          !steuerungWach && "pointer-events-none",
+          steuerungWach || schmal ? "opacity-100" : "opacity-0",
+          !steuerungWach && !schmal && "pointer-events-none",
         )}>
           {!schmal && (
             <div role="group" aria-label="Was der Beamer zeigt" className="flex items-center gap-0.5 rounded-full border border-border bg-card/90 p-1 backdrop-blur">
