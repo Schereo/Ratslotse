@@ -11965,7 +11965,7 @@ export interface components {
              * Outcome
              * @enum {string}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
             /** Quote */
             quote: string;
             /** Video Id */
@@ -18202,4 +18202,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: aa9962638bd9837498158a8704b9b9fa2cca337486fed36bda7c94be4a4224dc
+// vertrag-sha256: 6206bcc7aa38d26548cf7bc2713ab02220cca2d37a663443f3b18c8f8f10e504
