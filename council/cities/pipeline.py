@@ -230,6 +230,38 @@ def split_protocols(main: CitiesStore, body_id: str | None = None,
     return zahlen
 
 
+def inline_sections(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> int:
+    """Abschnitte übernehmen, die schon getrennt vorliegen.
+
+    **Nicht jede Stadt legt das „Warum" in eine Niederschrift.** ALLRIS
+    classic gibt zu jedem beratenen Punkt einen eigenen „Auszug" heraus, mit
+    Wortprotokoll, Beschluss und Abstimmungsergebnis — schon getrennt, als
+    HTML, ohne PDF. Es gibt dort also nichts zu schneiden, und
+    ``split_protocols`` fände nichts: Sie sucht Dateien mit der Rolle
+    ``protocol``, und Hildesheim hat keine.
+
+    Das Ergebnis ist dasselbe wie beim Schnitt — Zeilen in
+    ``protocol_sections``, die der Annotator ``reason`` liest.
+    """
+    if spec.dialect != "allris_classic":
+        return 0
+    from council.cities.adapters.allris_classic import AllrisClassicAdapter
+    from council.cities.protocol import SPLITTER_VERSION
+
+    pfad = raw_path_for(raw_dir, spec.id)
+    if not pfad.exists():
+        return 0
+    raw = CitiesStore(pfad)
+    try:
+        zeilen = AllrisClassicAdapter().auszug_abschnitte(raw, spec.id)
+        if zeilen:
+            main.put_protocol_sections(SPLITTER_VERSION, zeilen)
+        logger.info("%s: %s Abschnitte aus Auszügen", spec.id, len(zeilen))
+        return len(zeilen)
+    finally:
+        raw.close()
+
+
 def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> int:
     """Texte übernehmen, die schon vorliegen — statt dieselben PDFs erneut zu holen.
 
@@ -351,6 +383,9 @@ def run(spec: BodySpec, main: CitiesStore, raw_dir: str | Path, files_dir: str |
         inline = extract_inline(main, spec, raw_dir)
         if inline:
             zahlen["inline_texts"] = inline
+        abschnitte = inline_sections(main, spec, raw_dir)
+        if abschnitte:
+            zahlen["inline_sections"] = abschnitte
     if "extract" in stages:
         zahlen["extract"] = extract(main, files_dir, spec.id)
     return zahlen

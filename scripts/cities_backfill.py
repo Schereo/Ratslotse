@@ -220,6 +220,9 @@ def main() -> int:
                     inline = pipeline.extract_inline(main_store, spec, raw_dir)
                     if inline:
                         ergebnisse[spec.id]["inline_texts"] = inline
+                    abschnitte = pipeline.inline_sections(main_store, spec, raw_dir)
+                    if abschnitte:
+                        ergebnisse[spec.id]["inline_sections"] = abschnitte
                     print(f"  {spec.id} normalisiert: {zahlen}", flush=True)
                 if "extract" in stages:
                     zahlen = pipeline.extract(main_store, files_dir, spec.id)

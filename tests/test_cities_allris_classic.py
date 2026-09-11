@@ -186,3 +186,108 @@ def test_die_registry_nennt_die_wurzel_und_holt_keine_dateien():
     assert spec.system_url and spec.system_url.endswith("/allris")
     assert not spec.fetch_files
     assert not spec.active, "erst nach einem Probelauf einschalten"
+
+
+# ------------------------------------------------------- Der Auszug je Punkt
+
+AUSZUG = f"{WURZEL}/to020.asp?TOLFDNR=76127"
+
+
+@pytest.fixture()
+def mit_auszug(tmp_path):
+    """Sitzung, Vorlage **und** der Auszug eines ihrer Punkte."""
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    for kind, kennung, datei in (
+            ("meeting", SITZUNG, "hildesheim_to010.html"),
+            ("paper", VORLAGE, "hildesheim_vo020.html"),
+            ("excerpt", AUSZUG, "hildesheim_to020.html")):
+        store.put_raw_object("hildesheim", kind, kennung, {
+            "id": kennung,
+            "html": (FIXTURES / datei).read_text(encoding="utf-8")})
+    yield store
+    store.close()
+
+
+def test_der_auszug_zerfaellt_in_seine_drei_abschnitte():
+    """ALLRIS bettet sie als eigene, aus RTF konvertierte Dokumente ein.
+
+    Verschachtelte ``<html>``-Bäume mitten in der Seite — ein einzelner
+    Parser-Lauf über das Ganze verlöre die Grenzen zwischen ihnen.
+    """
+    html = (FIXTURES / "hildesheim_to020.html").read_text(encoding="utf-8")
+    teile = AllrisClassicAdapter.zerlege_auszug(html)
+    assert set(teile) == {"WP", "BS", "AE"}
+    assert teile["WP"].endswith("referierte die Vorlage.")
+    assert teile["BS"].startswith("Beschluss:")
+    assert teile["AE"] == "Abstimmungsergebnis: einstimmig mit zwei Enthaltungen"
+
+
+def test_der_seitenfuss_haengt_nicht_am_letzten_abschnitt():
+    """Ohne Schnitt endet die Abstimmung auf „zurück Nach oben Seite drucken"."""
+    html = (FIXTURES / "hildesheim_to020.html").read_text(encoding="utf-8")
+    teile = AllrisClassicAdapter.zerlege_auszug(html)
+    for text in teile.values():
+        assert "Nach oben" not in text and "Seite drucken" not in text
+
+
+def test_der_auszug_traegt_ergebnis_und_beschlusstext(mit_auszug):
+    """Er ist die bessere Quelle als die Beratungsfolge der Vorlage.
+
+    Er nennt die Beschlussart des Punktes selbst — und gilt auch für Punkte,
+    an denen gar keine Vorlage hängt.
+    """
+    batch = get_adapter("allris_classic").normalize("hildesheim", mit_auszug)
+    (punkt,) = [a for a in batch.agenda_items if a.id == AUSZUG]
+    assert punkt.result_raw == "ungeändert beschlossen"
+    assert punkt.outcome.value == "accepted"
+    # Die Beschriftung gehört nicht in den Beschlusstext.
+    assert punkt.resolution_text == "Der Annahme der Zuwendungen wird zugestimmt."
+
+
+def test_offen_ist_kein_ergebnis(tmp_path):
+    """„(offen)" ist ALLRIS' Wort für „noch nichts entschieden".
+
+    Als Ergebnis geführt wäre es die Behauptung, es gäbe eines.
+    """
+    html = (FIXTURES / "hildesheim_to020.html").read_text(encoding="utf-8")
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    store.put_raw_object("hildesheim", "meeting", SITZUNG, {
+        "id": SITZUNG,
+        "html": (FIXTURES / "hildesheim_to010.html").read_text(encoding="utf-8")})
+    store.put_raw_object("hildesheim", "excerpt", AUSZUG, {
+        "id": AUSZUG,
+        "html": html.replace("ungeändert beschlossen", "(offen)")})
+    batch = get_adapter("allris_classic").normalize("hildesheim", store)
+    (punkt,) = [a for a in batch.agenda_items if a.id == AUSZUG]
+    assert punkt.result_raw is None
+    assert punkt.outcome.value == "none"
+    store.close()
+
+
+def test_ein_abschnitt_ist_alles_was_zu_dem_punkt_passierte(mit_auszug):
+    """Beratung, Beschluss und Abstimmung zusammen.
+
+    So liefert ihn der Schnitt einer Niederschrift bei den anderen Städten
+    auch. Getrennt abgelegt läse das Modell zum „Warum" die halbe Geschichte.
+    """
+    zeilen = AllrisClassicAdapter().auszug_abschnitte(mit_auszug, "hildesheim")
+    assert len(zeilen) == 1
+    file_id, meeting_id, _ord, punkt_id, nummer, titel, text = zeilen[0]
+    # Die Auszugs-Adresse IST das Dokument.
+    assert file_id == AUSZUG and punkt_id == AUSZUG
+    assert meeting_id == SITZUNG
+    assert nummer and titel
+    assert "referierte die Vorlage" in text
+    assert "Der Annahme der Zuwendungen wird zugestimmt" in text
+    assert "einstimmig mit zwei Enthaltungen" in text
+
+
+def test_das_fenster_schuetzt_vor_zehntausend_abrufen():
+    """Ein Auszug je beratenem Punkt heißt seit 2007 über 10.000 Seiten."""
+    from datetime import date
+
+    from council.cities.adapters.allris_classic import AUSZUG_MONATE, _fenster
+    assert AUSZUG_MONATE == 24
+    assert _fenster(24, date(2026, 9, 11)) == "2024-09-01"
+    # Über den Jahreswechsel hinweg darf nicht Monat 0 herauskommen.
+    assert _fenster(24, date(2026, 1, 15)) == "2024-01-01"

@@ -42,6 +42,28 @@ Zwei Eigenheiten, die es sonst nirgends gibt:
   echte Kennung des Punktes, denn die Tagesordnung selbst vergibt keine
   (ihr `TOLFDNR` ist auf jeder Zeile dieselbe Zahl).
 
+  Drei Dinge daran sind nicht offensichtlich:
+
+  - **Die drei Abschnitte sind eingebettete Dokumente.** ALLRIS hängt sie als
+    eigene, aus RTF konvertierte `<html>`-Bäume hinter Sprungmarken
+    (`<a name="allrisWP">`) mitten in die Seite. Geschnitten wird deshalb am
+    Rohtext und jedes Stück für sich geparst; ein Parser-Lauf über das Ganze
+    verliert die Grenzen zwischen ihnen.
+  - **Ein Abschnitt ist alles drei zusammen.** Beratung, Beschluss und
+    Abstimmung — so liefert ihn der Schnitt einer Niederschrift bei den
+    anderen Städten auch. Getrennt abgelegt läse das Modell zum „Warum" die
+    halbe Geschichte.
+  - **„(offen)" ist kein Ergebnis.** Es ist ALLRIS' Wort für „noch nichts
+    entschieden"; als `result_raw` geführt wäre es die Behauptung, es gäbe
+    eines.
+
+  Geschrieben werden sie über `pipeline.inline_sections` — dieselbe Tabelle
+  `protocol_sections`, die der Schnitt füllt, nur ohne Schnitt.
+  `split_protocols` fände hier nichts: Sie sucht Dateien mit der Rolle
+  `protocol`, und Hildesheim hat keine. Geholt wird nur im Fenster von
+  **24 Monaten** (`AUSZUG_MONATE`, wie `PROTOCOL_MONTHS`) — ein Auszug je
+  beratenem Punkt wären seit 2007 über 10.000 Abrufe.
+
 **Und zwei Fallen, die es nur hier gibt:**
 
 - **Die Stadt-Website ist um ALLRIS herumgebaut.** 105 der 280 kB jeder Seite
