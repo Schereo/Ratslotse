@@ -26,9 +26,14 @@ dann ``False`` und ``Snapshot.error`` nennt die Datei beim Namen.
 des Votemanagers lädt ihre Zahlen aus JSON-Dateien (``presentation.py``); je
 Wahlbereich stehen dort dieselben Größen samt Personenstimmen in
 Listenreihenfolge. Fehlt einem Wahlbereich in der CSV noch die
-Personenstimme (oder die Datei ganz), wird die JSON-Fassung geholt und
-übernommen, wo sie weiter ist. Die CSV bleibt die erste Quelle: Ihre Spalten
-sind nummeriert, die JSON-Listen tragen nur Namen.
+Personenstimme, ist er dort noch nicht fertig ausgezählt, oder fehlt die
+Datei ganz, wird die JSON-Fassung geholt und übernommen, wo sie WEITER ist
+(mehr Schnellmeldungen — nicht nur „hat Personenstimmen, die der CSV
+fehlen"). Das ist Absicht: Eine Open-Data-CSV, die am Wahlabend nicht mehr
+nachzieht, soll nicht für den ganzen Abend als „aktuell genug" gelten, nur
+weil sie einmal für alle Bereiche Personenstimmen trug. Die CSV bleibt bei
+Gleichstand die erste Quelle: Ihre Spalten sind nummeriert, die JSON-Listen
+tragen nur Namen.
 
 **Status 200 heißt nicht, dass es die Datei ist.** Ein Reverse-Proxy antwortet
 im Zweifel mit einer HTML-Wartungsseite, ein halb geschriebener Export mit
@@ -263,20 +268,40 @@ def _has_persons(row: AreaRow) -> bool:
 
 
 def _needs_presentation(areas: list[AreaRow] | None) -> bool:
-    """Fehlt die Wahlbereichsdatei, oder fehlt einem Wahlbereich noch die
-    Personenstimme? Dann lohnt der Blick in die Ergebnisdarstellung."""
+    """Fehlt die Wahlbereichsdatei, fehlt einem Wahlbereich noch die
+    Personenstimme, oder ist ein Wahlbereich einfach nicht fertig
+    ausgezählt? Dann lohnt der Blick in die Ergebnisdarstellung.
+
+    Der dritte Fall ist der wichtigere: Eine Open-Data-CSV, die am Abend
+    nicht mehr nachzieht, sähe sonst für immer wie „unvollständig, aber
+    genug" aus, sobald sie einmal für alle Bereiche Personenstimmen trug —
+    ``_needs_presentation`` würde dann nie wieder ins JSON schauen, obwohl
+    die Website der Stadt längst weiter ist."""
     if not areas:
         return True
-    return any(not _has_persons(r) for r in areas)
+    return any(not _has_persons(r) or r.reports_received < r.reports_expected for r in areas)
 
 
 def _better(csv_row: AreaRow | None, json_row: AreaRow) -> bool:
-    """Übernommen wird die JSON-Fassung, wo die CSV-Zeile fehlt — oder wo
-    sie weiter ist: ausgezählt mit Personenstimmen, während die CSV-Zeile
-    keine trägt."""
+    """Die JSON-Zeile ersetzt die CSV-Zeile, wenn sie WEITER ist: mehr
+    Schnellmeldungen als die CSV — oder, bei Gleichstand, wenn sie zusätzlich
+    Personenstimmen trägt, die der CSV fehlen. Fehlt die CSV-Zeile ganz, gilt
+    die JSON-Zeile immer als besser (unverändert gegenüber vorher).
+
+    Vorher entschied allein, ob die JSON-Zeile Personenstimmen trug: Eine
+    Zeile ohne ``sub_zeilen`` wurde nie übernommen, selbst wenn sie 120
+    ausgezählte Bezirke zeigte und die CSV-Zeile nur 40 (mit oder ohne
+    Personen) — der Auszählungsstand wurde nie verglichen. Zählt die Stadt am
+    Sonntag zunächst nur Listensummen, trägt auch die Ergebnisdarstellung
+    keine ``sub_zeilen``, und die alte Prüfung hätte die CSV für immer
+    bevorzugt, selbst wenn sie längst nicht mehr nachzieht."""
     if csv_row is None:
         return True
-    return json_row.counted and _has_persons(json_row) and not _has_persons(csv_row)
+    if json_row.reports_received > csv_row.reports_received:
+        return True
+    if json_row.reports_received < csv_row.reports_received:
+        return False
+    return _has_persons(json_row) and not _has_persons(csv_row)
 
 
 @dataclass(frozen=True)
@@ -406,13 +431,13 @@ def _merge_presentation(snap: Snapshot) -> list[str]:
         snap.areas = [by_number[n] for n in sorted(by_number)] + untouched
     city_json = _pres.get(0)
     city_csv = snap.city[0] if snap.city else None
-    if city_json is not None and (city_csv is None or (not city_csv.counted and city_json.counted)):
+    if city_json is not None and _better(city_csv, city_json):
         snap.city = [city_json]
         taken.append("Stadt")
     if not taken:
         return []
-    return [f"{', '.join(taken)}: Zahlen aus der Ergebnisdarstellung des Votemanagers — die Open-Data-CSV "
-            f"trägt dort noch keine Personenstimmen."]
+    return [f"{', '.join(taken)}: Zahlen aus der Ergebnisdarstellung des Votemanagers — sie ist "
+            f"weiter als die Open-Data-CSV."]
 
 
 def fetch(force: bool = False) -> Snapshot:
