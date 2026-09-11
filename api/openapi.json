@@ -17089,7 +17089,7 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "removed"
             ],
             "title": "Outcome",
             "type": "string"

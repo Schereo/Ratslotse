@@ -1,6 +1,6 @@
 # Ratslotse — Designsprache
 
-Stand: 10.08.2026 · destilliert aus allen Design-Artboards dieses Projekts
+Stand: 11.09.2026 · destilliert aus allen Design-Artboards dieses Projekts
 (Ist-Screens, Kommunalwahl, Ratsgespräch 1a–8d). Referenz für Claude Code:
 Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendung.
 
@@ -32,14 +32,14 @@ Bei jedem neuen Screen gegen diese Datei bauen; die Artboards zeigen die Anwendu
 | Trennlinie (in Karten) | hsl(206 40% 94%) |
 | Text | hsl(212 55% 11%) |
 | Fließtext lange Antworten | hsl(212 55% 20%) |
-| Sekundär | hsl(209 18% 42%) |
-| Muted/Labels | hsl(209 18% 55%) |
+| Sekundär / Muted / Labels | hsl(207 18% 38.5%) · iOS #506474 |
 | **Primär „Hafenblau"** | hsl(205 92% 34%) |
 | **Signal-Orange** (nur Akzent: KI-Funken, Deltas, Marker) | hsl(19 92% 55%) |
 
 ### Dunkel
 Seite hsl(213 50% 7%) · Karte hsl(212 42% 11%) · Rahmen hsl(211 36% 17%)
-(interaktiv 21%) · Text hsl(204 40% 96%) · Sekundär hsl(208 22% 65%) ·
+(interaktiv 21%) · Text hsl(204 40% 96%) · Muted hsl(206 23% 72.5%)
+(iOS #A9BBC9) ·
 Primär hsl(202 90% 60%) (Text darauf dunkel!) · Signal hsl(19 95% 60%).
 
 ### Semantik (Tints, nie Vollfarben-Flächen)
@@ -56,14 +56,43 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 
 ## 3. Typografie
 
-- **Inter** 400/500/600/700 — UI und Fließtext. Antworten 14,5–15 / 1.7–1.75;
-  UI-Labels 12–13,5; Meta 10–11.
+- **Inter** 400/500/600/700 — UI und Fließtext. Die Leserollen unten gelten
+  für Beschlussdetails, Antworten, Quellen und Verarbeitungshinweise.
 - **Bricolage Grotesque** 600/700 — nur Titel, Abschnittsüberschriften (15–16),
   große Beträge (22–30, tabular-nums). Nie im Fließtext.
-- **IBM Plex Mono** 400/500 — Kicker-Labels (9–11 px, VERSAL, letter-spacing
-  0.10–0.11em), Datum · GREMIUM-Zeilen, Attributionen, Scores.
+- **IBM Plex Mono** 400/500 — Kicker, Datum · GREMIUM-Zeilen, Attributionen,
+  Scores. Inhaltliche Metadaten 13; Kicker mit zurückhaltender Laufweite
+  (etwa 0.06–0.08em), lange Angaben dürfen umbrechen.
 - Fußnote [n]: 16×16 Chip, Radius 4, bg primary/10, Text primary 10/700;
   zitiert-aktiv: gefüllt primary, Text weiß.
+
+### Leserollen (Web und iOS)
+
+| Zweck | Web-Utility | iOS `RatsFont` | Grundgröße / Zeilenhöhe Web |
+|---|---|---|---|
+| Kurzfassung, amtlicher Wortlaut, Antwort, Begründung | `text-lese` | `reading()` | 17 / 1.6 |
+| Quellentitel, Dokumentnamen | `text-quelle` | `sourceTitle()` | 16 / 1.5 |
+| Datum, Gremium, Vorlagennummer | `text-meta` | `metadata()` | 13 / 1.5 |
+| KI-, Verarbeitungs- und Quellenhinweis | `text-hinweis` | `notice()` | 14 / 1.6 |
+
+Die Webgrößen stehen in `tailwind.config.ts` in **rem**; iOS verwendet
+skalierende Custom Fonts mit Dynamic Type. Kein Schrumpfen per
+`minimumScaleFactor`, um Inhalt in eine zu kleine Zeile zu pressen.
+
+**Weniger wichtig heißt nicht schlechter lesbar.** Relevanter Text trägt
+deckende Farbe; kein zusätzliches `/60`, `/70` oder `opacity` auf Hinweis,
+Metadaten oder ganzer Quellenzeile. Der gedämpfte Text hält auf Karte,
+Seite und Tonfläche in beiden Themes mindestens 4,5:1; #506474 auf Weiß
+liegt bei etwa 6,15:1. Orange Beschriftung braucht die dunklere Textfarbe
+(Web `orange-800` / dunkel `orange-300`, iOS `signalInk`).
+
+**Mehr Schrift braucht Höhe.** Quellentitel und ihre Metadaten werden
+vollständig umbrochen, auch in schmalen Belegespalten. Textauszüge dürfen
+eine Vorschau bleiben, wenn die Quelle erreichbar ist; ein langer
+Begründungstext behält „Mehr anzeigen“. Hinweise werden nie abgeschnitten.
+Auswahlknöpfe umbrechen oder stapeln sich, Text-Dialoge scrollen bei Bedarf.
+Abnahme: echte lange Titel, Hell/Dunkel, doppelte Web-Schriftgröße und große
+iOS-Schrift.
 
 ## 4. Flächen & Abstände
 
@@ -288,8 +317,15 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - **Mono-Kicker** über jedem Block: QUELLEN · AKTUELLES VON DER STADT · EXTERN ·
   AUS DEN RATSDEBATTEN · WIE ES WEITERGEHT · ZUM BEISPIEL — plus rechts eine
   ehrliche Zähl-/Zeitraum-Angabe („12 zitiert · 40 gefunden", „2019–2026").
-- **Quellen-Pill/-Zeile** (RG-02): n-Badge 16 ⌀ + Titel ellipsiert (+ Jahr mobil /
-  GREMIUM · DATUM Desktop); Rest hinter „Alle N Quellen".
+- **Quellen-Zeile** (RG-02): n-Badge + vollständiger Titel in Leserolle
+  `quelle`, darunter Gremium · Datum in `meta`; in allen Breiten mehrzeilig.
+  Nicht zitierte Treffer bleiben hinter „Alle N Quellen“ / „Weitere“.
+  Die kleinen Zitat-Chips im Antworttext bleiben Verweise auf diese Zeilen.
+- **Stichwörter am Beschluss:** Themenfeld, Schlagwörter und verknüpfte Themen
+  stehen auf dem Handy zunächst hinter einer neutralen Zeile „6 Stichwörter“
+  (Web unter 640 px, iOS bei kompakter Breite). Ein Tippen zeigt alle Einträge;
+  Themenlinks bleiben bedienbar. Auf großen Displays bleiben die kleinen Tags
+  sichtbar. Die Zeile hat mindestens 44 px/pt Bedienfläche, Schriftrolle `meta`.
 - **Ergebnis-Badges** (RG-03): Angenommen / Abgelehnt / Vertagt / Zur Kenntnis
   in Semantik-Tints, Radius 9999, 10,5/600. **Badge oder Punkt hängt an der
   Länge der Liste, nicht am Seitentyp** (Tim, 28.08.2026): Die lange, zum
@@ -309,7 +345,8 @@ Dot hsl(209 18% 65%), kombiniertes Label.
 - **Presse-Block** (RG-06): max 3 Zeilen, gestrichelt, External-Link-Icon,
   nie Fußnoten-Ziel.
 - **Composer**: h 48–52, Radius 16, Funken-Icon (Signal-Orange) links, Senden
-  36–38 ⌀ primary (disabled: primary/35); Datenschutz-Zeile 10 px darunter, immer.
+  36–38 ⌀ primary (disabled: primary/35); ein Verarbeitungshinweis verwendet
+  die Leserolle `hinweis`.
 - **Composer als Andock-Panel (`tab`)**: Auf breiten Touch-Geräten ist der
   fixierte Balken kein durchgehender Riegel mehr. Er wird durchsichtig und
   klick-durchlässig; sichtbar ist nur ein Panel genau auf der Lesespalte —
@@ -321,7 +358,7 @@ Dot hsl(209 18% 65%), kombiniertes Label.
   anschneiden (Tims iPad-Befund 16.08.: „der ganze Bereich wird von dieser
   Fläche verdeckt"). Die Andockkante ist `TABLEISTE_HOEHE` aus
   `components/nav.tsx` — nie eine eigene Zahl.
-- **Turn-Fußzeile**: KI-Disclaimer 10,5–11 px + stille Icon-Aktionen 15 px
+- **Turn-Fußzeile**: KI-Hinweis 14 px + stille Icon-Aktionen 15 px
   (Teilen, Drucken, Vorlesen, 👍/👎) — keine gerahmten Buttons.
 - **Schritt-Zeichen (Haushalt)**: Jeder Schritt des Haushalts-Wegs trägt ein
   festes Lucide-Zeichen, definiert EINMAL am Schritt selbst

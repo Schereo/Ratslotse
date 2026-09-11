@@ -93,6 +93,18 @@ class Attendance(TypedDict):
     note: str | None
 
 
+#: Was ein vorläufiges Videoergebnis sagen kann.
+#:
+#: Ein EIGENES Vokabular, nicht ``Beschlussergebnis``: ``removed`` gibt es nur
+#: hier (ein abgesetzter Punkt hinterlässt im Protokoll gar keinen Beschluss),
+#: ``no_decision`` nur dort. Bis zum 11.09.2026 stand hier trotzdem die
+#: Beschluss-Aufzählung — die Ratssitzung vom 29.06. hatte fünf abgesetzte
+#: TOPs, und ``/council/session/4695`` antwortete seitdem mit einem 500er.
+#: Quelle ist ``CouncilStore._VIDEO_OUTCOMES``; ein Wächter in
+#: ``tests/test_api_vertrag.py`` hält beide zusammen.
+Videoergebnis = Literal["accepted", "rejected", "postponed", "noted", "removed"]
+
+
 class VideoResult(TypedDict):
     """Ein vorläufiges Ergebnis aus der Videoaufzeichnung.
 
@@ -103,7 +115,7 @@ class VideoResult(TypedDict):
     id: int
     ksinr: int
     item_number: str
-    outcome: Beschlussergebnis
+    outcome: Videoergebnis
     vote: str | None
     no_votes: int | None
     abstentions: int | None

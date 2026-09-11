@@ -27,14 +27,7 @@ from app.election import register  # noqa: E402
 from app.election import service as election_service  # noqa: E402
 from app.main import app  # noqa: E402
 from app.prediction import service as prediction_service  # noqa: E402
-from kern import features  # noqa: E402
 from kern.store import Store  # noqa: E402
-
-#: `tippspiel` kommt erst mit PR 2 (Handy-Seiten) in die echte Registry — sie
-#: verlangt eine tatsächliche Frontend-Verwendung (`test_features.py`). Bis
-#: dahin patchen diese Tests die Registry selbst, s. `kern/features.py`.
-_TIPPSPIEL_FEATURE = features.Feature(
-    key="tippspiel", description="Test-Registrierung für PR 1.", fertig_wenn="PR 2 trägt den echten Eintrag ein.")
 
 ADMIN = {"id": 1, "role": "admin", "roles": ["admin"], "status": "active"}
 NUTZERIN = {"id": 2, "role": "user", "roles": [], "status": "active"}
@@ -57,7 +50,6 @@ def keine_echten_netzaufrufe(monkeypatch):
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "tippspiel,wahlabend")
-    monkeypatch.setitem(features.FEATURES, "tippspiel", _TIPPSPIEL_FEATURE)
     store = Store(tmp_path / "tippspiel-test.sqlite")
     app.dependency_overrides[get_store] = lambda: store
     prediction_service.reset_all()
