@@ -133,22 +133,29 @@ export function TippAdminView() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-6 py-4 sm:px-8">
-        <div className="flex items-center gap-2.5">
-          <BrandMark className="h-7 w-7" />
-          <span className="font-display text-[17px] font-bold">Ratslotse</span>
-          <span className="text-[13px] text-muted-foreground">
-            <span className="font-medium text-primary">Tippspiel</span> / Verwaltung
-          </span>
-        </div>
-        <div className="flex items-center gap-2.5 text-[12.5px]">
-          <Badge color="green">{stand.game.player_count} Tipps</Badge>
-          {nachgetippt > 0 && <Badge color="amber">{nachgetippt} nachgetippt</Badge>}
-          {meldung && <span className="text-muted-foreground">{meldung}</span>}
+      {/* Volle Breite nur fürs Band (Rand/Hintergrund) — der Inhalt bleibt wie
+          im Rest der App (Wahlabend, (app)-Layout) auf `max-w-7xl` begrenzt
+          und zentriert. Ohne das lief die Seite auf einem breiten Schirm bis
+          an beide Ränder, mit nur den paar Pixeln `px-8` dazwischen (Tims
+          Befund: „bis zum Rand gar kein Platz"). */}
+      <div className="border-b border-border bg-card">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2.5">
+            <BrandMark className="h-7 w-7" />
+            <span className="font-display text-[17px] font-bold">Ratslotse</span>
+            <span className="text-[13px] text-muted-foreground">
+              <span className="font-medium text-primary">Tippspiel</span> / Verwaltung
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 text-[12.5px]">
+            <Badge color="green">{stand.game.player_count} Tipps</Badge>
+            {nachgetippt > 0 && <Badge color="amber">{nachgetippt} nachgetippt</Badge>}
+            {meldung && <span className="text-muted-foreground">{meldung}</span>}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 p-6 sm:px-8 lg:grid-cols-[1fr_400px]">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_400px] lg:px-8">
         <div className="flex flex-col gap-5">
           <Kachel
             kicker="Ratswahl · Sitze" titel="Hochrechnung eintragen"
