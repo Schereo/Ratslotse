@@ -38,6 +38,7 @@ KEIN_JSON = {
     ("get", "/api/calendar/{token}.ics"),
     ("get", "/api/admin/live-probe"),
     ("get", "/api/wahlabend/bild.png"),
+    ("get", "/api/tipp/qr.png"),
 }
 
 #: Welchen Medientyp diese Endpunkte liefern MÜSSEN.
@@ -48,6 +49,7 @@ KEIN_JSON_MEDIENTYP = {
     ("get", "/api/calendar/{token}.ics"): "text/calendar",
     ("get", "/api/admin/live-probe"): "text/event-stream",
     ("get", "/api/wahlabend/bild.png"): "image/png",
+    ("get", "/api/tipp/qr.png"): "image/png",
 }
 
 
@@ -449,4 +451,25 @@ def test_die_aufzaehlungen_stehen_nur_einmal():
     assert set(schemas.Beschlussergebnis.__args__) == im_vertrag, (
         "antworten.Beschlussergebnis und schemas.Beschlussergebnis sind "
         "auseinandergelaufen — zwei Aufzählungen für dieselbe Sache."
+    )
+
+    # Das vorläufige Videoergebnis führt ein EIGENES Vokabular: `removed` gibt
+    # es nur dort, `no_decision` nur beim Protokoll. Genau diese Verwechslung
+    # war der Fehler — `VideoResult.outcome` trug bis zum 11.09.2026 die
+    # Beschluss-Aufzählung, und die Ratssitzung vom 29.06. mit ihren fünf
+    # abgesetzten TOPs war über `/council/session/{ksinr}` nicht mehr
+    # erreichbar. Ein 500er, den niemand sah: Die Beschluss-Seite holt die
+    # Sitzung nur nebenbei.
+    video_aus_dem_store = set(CouncilStore._VIDEO_OUTCOMES)
+    video_im_vertrag = set(antworten.Videoergebnis.__args__)
+    assert video_im_vertrag == video_aus_dem_store, (
+        "Die Videoergebnis-Aufzählung im Vertrag passt nicht zu "
+        "CouncilStore._VIDEO_OUTCOMES.\n"
+        f"  Vertrag: {sorted(video_im_vertrag)}\n"
+        f"  Store:   {sorted(video_aus_dem_store)}"
+    )
+    assert "removed" in video_im_vertrag and "removed" not in im_vertrag, (
+        "Die beiden Aufzählungen sind zusammengefallen. Sie beschreiben "
+        "Verschiedenes: `removed` ist ein abgesetzter TOP (kein Beschluss im "
+        "Protokoll), `no_decision` ein Punkt ohne Beschlussfassung."
     )

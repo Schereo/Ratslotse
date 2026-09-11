@@ -93,6 +93,18 @@ class Attendance(TypedDict):
     note: str | None
 
 
+#: Was ein vorläufiges Videoergebnis sagen kann.
+#:
+#: Ein EIGENES Vokabular, nicht ``Beschlussergebnis``: ``removed`` gibt es nur
+#: hier (ein abgesetzter Punkt hinterlässt im Protokoll gar keinen Beschluss),
+#: ``no_decision`` nur dort. Bis zum 11.09.2026 stand hier trotzdem die
+#: Beschluss-Aufzählung — die Ratssitzung vom 29.06. hatte fünf abgesetzte
+#: TOPs, und ``/council/session/4695`` antwortete seitdem mit einem 500er.
+#: Quelle ist ``CouncilStore._VIDEO_OUTCOMES``; ein Wächter in
+#: ``tests/test_api_vertrag.py`` hält beide zusammen.
+Videoergebnis = Literal["accepted", "rejected", "postponed", "noted", "removed"]
+
+
 class VideoResult(TypedDict):
     """Ein vorläufiges Ergebnis aus der Videoaufzeichnung.
 
@@ -103,7 +115,7 @@ class VideoResult(TypedDict):
     id: int
     ksinr: int
     item_number: str
-    outcome: Beschlussergebnis
+    outcome: Videoergebnis
     vote: str | None
     no_votes: int | None
     abstentions: int | None
@@ -3749,3 +3761,205 @@ class ElectionNight(TypedDict):
     computed_at: str
     #: Der Verlauf des Abends, ältester Punkt zuerst; leer vor der Auszählung.
     history: list[ElectionHistoryPoint]
+
+
+# ------------------------------------------------------------------ OB-Wahl (election/mayor.py)
+
+class MayorCandidate(TypedDict):
+    slug: str
+    name: str
+    #: Kurzform der vorschlagenden Partei/Wählergruppe; leer bei einem
+    #: Namen, den die Ergebnisdarstellung nicht zuordnen konnte.
+    party: str
+    votes: int | None
+    share_pct: float | None
+
+
+class MayorNight(TypedDict):
+    #: "before" (nichts ausgezählt) | "counting" | "complete".
+    phase: str
+    reports_expected: int
+    reports_received: int
+    turnout_pct: float | None
+    valid_votes: int | None
+    invalid_ballots: int | None
+    candidates: list[MayorCandidate]
+    #: Slugs der beiden Kandidaturen einer Stichwahl — leer ohne Stichwahl-Satz.
+    runoff: list[str]
+    fetched_at: str | None
+    ok: bool
+    error: str | None
+    notes: list[str]
+
+
+# ------------------------------------------------------------------ Tippspiel (docs/plan-tippspiel-ratswahl.md)
+#
+# EIN Spiel, kein Konto: Wer mitspielt, trägt einen Namen und bekommt einen
+# Cookie-Token — die Identität IST der Token, nicht ``web_users.id``. Die
+# Formen hier tragen deshalb nirgends eine Konto-Kennung.
+
+class PredictionParty(TypedDict):
+    slug: str
+    short: str
+    name: str
+    color: str
+    color_dark: str
+    seats_2021: int | None
+
+
+class PredictionMayorCandidate(TypedDict):
+    slug: str
+    name: str
+    party: str
+
+
+class PredictionGame(TypedDict):
+    title: str
+    #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
+    phase: str
+    seats_total: int
+    locked: bool
+    locked_at: str | None
+    late_scored: bool
+    player_count: int
+    #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis zur
+    #: ersten Hochrechnung (ca. 20 Uhr)" — der Server nennt keine feste Uhrzeit,
+    #: solange der Tipp-Schluss noch nicht gesetzt ist.
+    deadline_hint: str
+    parties: list[PredictionParty]
+    mayor_candidates: list[PredictionMayorCandidate]
+
+
+class PredictionJoin(TypedDict):
+    player_id: int
+    name: str
+    #: Nur in DIESER Antwort — der Klartext-Token, den der Cookie sonst trägt.
+    #: Das Web braucht ihn nicht (der Cookie reicht), eine spätere native App
+    #: schon (Bearer-Header statt Cookie, wie beim übrigen Vertrag).
+    token: str
+
+
+class PredictionSeatLine(TypedDict):
+    slug: str
+    tip: int
+    actual: int | None
+    avg_tip: float | None
+    points: int
+    exact: bool
+
+
+class PredictionMayorLine(TypedDict):
+    slug: str
+    tip: float
+    actual_pct: float | None
+    avg_tip: float | None
+    points: int
+
+
+class PredictionScore(TypedDict):
+    total: int
+    seat_points: int
+    mayor_points: int
+    exact_lists: int
+    #: Summe der absoluten Sitz-Abweichungen — Tie-Breaker bei Punktgleichstand.
+    #: ``None``, solange kein Sitz feststeht.
+    deviation: int | None
+
+
+class PredictionMine(TypedDict):
+    player_id: int
+    name: str
+    late_at: str | None
+    #: Zählt der Tipp mit, oder ist die Person „außer Konkurrenz" (Spätstarter,
+    #: solange ``late_scored`` beim Spiel aus ist)?
+    scored: bool
+    has_tip: bool
+    has_mayor_tip: bool
+    locked: bool
+    seats: list[PredictionSeatLine]
+    mayor: list[PredictionMayorLine]
+    score: PredictionScore | None
+    rank: int | None
+    rank_before: int | None
+    #: "open" | "locked" | "final" — wie ``PredictionGame.phase``.
+    phase: str
+    stand_label: str
+    source_label: str
+    notes: list[str]
+
+
+class PredictionRow(TypedDict):
+    player_id: int
+    name: str
+    late_at: str | None
+    scored: bool
+    has_tip: bool
+    score: PredictionScore | None
+    rank: int | None
+    rank_before: int | None
+
+
+class PredictionCompareLine(TypedDict):
+    slug: str
+    short: str
+    color: str
+    color_dark: str
+    actual: int | None
+    avg_tip: float | None
+    exact_count: int
+
+
+class PredictionMayorCompareLine(TypedDict):
+    """Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als
+    ``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins" in 1e/1f)
+    gibt es hier keine einzelne Person, deren Tipp „der" Tipp wäre."""
+    slug: str
+    name: str
+    party: str
+    actual_pct: float | None
+    avg_tip: float | None
+
+
+class PredictionStand(TypedDict):
+    title: str
+    #: "open" | "locked" | "final".
+    phase: str
+    stand_label: str
+    #: „4/6 Wahlbereiche" — Menschentext für den Kopf des Beamers.
+    area_label: str
+    #: "votemanager" | "manuell" | "gemischt" | "" (noch kein Ergebnis).
+    source_label: str
+    seats_total: int
+    player_count: int
+    tip_count: int
+    compare: list[PredictionCompareLine]
+    mayor: list[PredictionMayorCompareLine]
+    #: "before" | "counting" | "complete" — wie ``MayorNight.phase``.
+    mayor_status: str
+    rows: list[PredictionRow]
+    leader_player_id: int | None
+    #: Der Satz neben Lotti auf dem Vergleichs-Beamer („Die Runde hat die
+    #: CDU im Schnitt um 2 Sitze zu stark getippt.").
+    compare_sentence: str
+    computed_at: str
+    notes: list[str]
+
+
+class PredictionResultRow(TypedDict):
+    """Eine Zeile der Admin-Tabelle (1h) — Entwurf UND veröffentlichter Stand."""
+    slug: str
+    seats: int | None
+    pct: float | None
+    source: str
+    avg_tip: float | None
+    exact_count: int
+    published_seats: int | None
+    published_pct: float | None
+    published_source: str | None
+    published_at: str | None
+
+
+class PredictionAdminStand(TypedDict):
+    game: PredictionGame
+    results: list[PredictionResultRow]
+    log: list[str]

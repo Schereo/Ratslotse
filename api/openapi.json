@@ -10513,6 +10513,137 @@
         "title": "MatchedAgendaItem",
         "type": "object"
       },
+      "MayorCandidate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "votes",
+          "share_pct"
+        ],
+        "title": "MayorCandidate",
+        "type": "object"
+      },
+      "MayorNight": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MayorCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "error": {
+            "title": "Error",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fetched_at": {
+            "title": "Fetched At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invalid_ballots": {
+            "title": "Invalid Ballots",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "reports_expected": {
+            "title": "Reports Expected",
+            "type": "integer"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          },
+          "runoff": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Runoff",
+            "type": "array"
+          },
+          "turnout_pct": {
+            "title": "Turnout Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "phase",
+          "reports_expected",
+          "reports_received",
+          "turnout_pct",
+          "valid_votes",
+          "invalid_ballots",
+          "candidates",
+          "runoff",
+          "fetched_at",
+          "ok",
+          "error",
+          "notes"
+        ],
+        "title": "MayorNight",
+        "type": "object"
+      },
       "MediaUpload": {
         "properties": {
           "count": {
@@ -11762,6 +11893,899 @@
           "fields"
         ],
         "title": "PolicyFields",
+        "type": "object"
+      },
+      "PredictionAdminStand": {
+        "properties": {
+          "game": {
+            "$ref": "#/components/schemas/PredictionGame"
+          },
+          "log": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Log",
+            "type": "array"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionResultRow"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "game",
+          "results",
+          "log"
+        ],
+        "title": "PredictionAdminStand",
+        "type": "object"
+      },
+      "PredictionCompareLine": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "exact_count": {
+            "title": "Exact Count",
+            "type": "integer"
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "color",
+          "color_dark",
+          "actual",
+          "avg_tip",
+          "exact_count"
+        ],
+        "title": "PredictionCompareLine",
+        "type": "object"
+      },
+      "PredictionGame": {
+        "properties": {
+          "deadline_hint": {
+            "title": "Deadline Hint",
+            "type": "string"
+          },
+          "late_scored": {
+            "title": "Late Scored",
+            "type": "boolean"
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "locked_at": {
+            "title": "Locked At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mayor_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionMayorCandidate"
+            },
+            "title": "Mayor Candidates",
+            "type": "array"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "seats_total": {
+            "title": "Seats Total",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "phase",
+          "seats_total",
+          "locked",
+          "locked_at",
+          "late_scored",
+          "player_count",
+          "deadline_hint",
+          "parties",
+          "mayor_candidates"
+        ],
+        "title": "PredictionGame",
+        "type": "object"
+      },
+      "PredictionJoinIn": {
+        "description": "``POST /api/tipp`` legt an ODER aktualisiert — beides derselbe Endpunkt\n(ohne Cookie: Beitritt, ``name`` Pflicht; mit gültigem Cookie: nur der\nTipp wird aktualisiert, ``name`` bleibt unbeachtet — umbenennen kann nur\nder Admin, s. 1h). ``seats``/``mayor`` fehlen beim ersten Anruf aus 1c oft\nnoch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da\nist, wird ein Tipp gespeichert.",
+        "properties": {
+          "mayor": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Mayor",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 2,
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Seats",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionJoinIn",
+        "type": "object"
+      },
+      "PredictionMayorCandidate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party"
+        ],
+        "title": "PredictionMayorCandidate",
+        "type": "object"
+      },
+      "PredictionMayorCompareLine": {
+        "description": "Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als\n``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins\" in 1e/1f)\ngibt es hier keine einzelne Person, deren Tipp „der\" Tipp wäre.",
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "actual_pct",
+          "avg_tip"
+        ],
+        "title": "PredictionMayorCompareLine",
+        "type": "object"
+      },
+      "PredictionMayorLine": {
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "tip": {
+            "title": "Tip",
+            "type": "number"
+          }
+        },
+        "required": [
+          "slug",
+          "tip",
+          "actual_pct",
+          "avg_tip",
+          "points"
+        ],
+        "title": "PredictionMayorLine",
+        "type": "object"
+      },
+      "PredictionMine": {
+        "properties": {
+          "has_mayor_tip": {
+            "title": "Has Mayor Tip",
+            "type": "boolean"
+          },
+          "has_tip": {
+            "title": "Has Tip",
+            "type": "boolean"
+          },
+          "late_at": {
+            "title": "Late At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locked": {
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "mayor": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionMayorLine"
+            },
+            "title": "Mayor",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rank_before": {
+            "title": "Rank Before",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "score": {
+            "properties": {
+              "deviation": {
+                "title": "Deviation",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exact_lists": {
+                "title": "Exact Lists",
+                "type": "integer"
+              },
+              "mayor_points": {
+                "title": "Mayor Points",
+                "type": "integer"
+              },
+              "seat_points": {
+                "title": "Seat Points",
+                "type": "integer"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "seat_points",
+              "mayor_points",
+              "exact_lists",
+              "deviation"
+            ],
+            "title": "PredictionScore",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "scored": {
+            "title": "Scored",
+            "type": "boolean"
+          },
+          "seats": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionSeatLine"
+            },
+            "title": "Seats",
+            "type": "array"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "stand_label": {
+            "title": "Stand Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "late_at",
+          "scored",
+          "has_tip",
+          "has_mayor_tip",
+          "locked",
+          "seats",
+          "mayor",
+          "score",
+          "rank",
+          "rank_before",
+          "phase",
+          "stand_label",
+          "source_label",
+          "notes"
+        ],
+        "title": "PredictionMine",
+        "type": "object"
+      },
+      "PredictionParty": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "seats_2021": {
+            "title": "Seats 2021",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "name",
+          "color",
+          "color_dark",
+          "seats_2021"
+        ],
+        "title": "PredictionParty",
+        "type": "object"
+      },
+      "PredictionPhaseIn": {
+        "properties": {
+          "late_scored": {
+            "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "phase": {
+            "enum": [
+              "open",
+              "locked",
+              "final"
+            ],
+            "title": "Phase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase"
+        ],
+        "title": "PredictionPhaseIn",
+        "type": "object"
+      },
+      "PredictionPlayerIn": {
+        "properties": {
+          "hidden": {
+            "title": "Hidden",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 2,
+            "title": "Name",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionPlayerIn",
+        "type": "object"
+      },
+      "PredictionResultLineIn": {
+        "properties": {
+          "pct": {
+            "title": "Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "PredictionResultLineIn",
+        "type": "object"
+      },
+      "PredictionResultRow": {
+        "description": "Eine Zeile der Admin-Tabelle (1h) — Entwurf UND veröffentlichter Stand.",
+        "properties": {
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "exact_count": {
+            "title": "Exact Count",
+            "type": "integer"
+          },
+          "pct": {
+            "title": "Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "published_at": {
+            "title": "Published At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_pct": {
+            "title": "Published Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "published_seats": {
+            "title": "Published Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "published_source": {
+            "title": "Published Source",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "seats",
+          "pct",
+          "source",
+          "avg_tip",
+          "exact_count",
+          "published_seats",
+          "published_pct",
+          "published_source",
+          "published_at"
+        ],
+        "title": "PredictionResultRow",
+        "type": "object"
+      },
+      "PredictionRow": {
+        "properties": {
+          "has_tip": {
+            "title": "Has Tip",
+            "type": "boolean"
+          },
+          "late_at": {
+            "title": "Late At",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "player_id": {
+            "title": "Player Id",
+            "type": "integer"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rank_before": {
+            "title": "Rank Before",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "score": {
+            "properties": {
+              "deviation": {
+                "title": "Deviation",
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exact_lists": {
+                "title": "Exact Lists",
+                "type": "integer"
+              },
+              "mayor_points": {
+                "title": "Mayor Points",
+                "type": "integer"
+              },
+              "seat_points": {
+                "title": "Seat Points",
+                "type": "integer"
+              },
+              "total": {
+                "title": "Total",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "seat_points",
+              "mayor_points",
+              "exact_lists",
+              "deviation"
+            ],
+            "title": "PredictionScore",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "scored": {
+            "title": "Scored",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "player_id",
+          "name",
+          "late_at",
+          "scored",
+          "has_tip",
+          "score",
+          "rank",
+          "rank_before"
+        ],
+        "title": "PredictionRow",
+        "type": "object"
+      },
+      "PredictionScore": {
+        "properties": {
+          "deviation": {
+            "title": "Deviation",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "exact_lists": {
+            "title": "Exact Lists",
+            "type": "integer"
+          },
+          "mayor_points": {
+            "title": "Mayor Points",
+            "type": "integer"
+          },
+          "seat_points": {
+            "title": "Seat Points",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "seat_points",
+          "mayor_points",
+          "exact_lists",
+          "deviation"
+        ],
+        "title": "PredictionScore",
+        "type": "object"
+      },
+      "PredictionSeatLine": {
+        "properties": {
+          "actual": {
+            "title": "Actual",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "exact": {
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "tip": {
+            "title": "Tip",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "tip",
+          "actual",
+          "avg_tip",
+          "points",
+          "exact"
+        ],
+        "title": "PredictionSeatLine",
+        "type": "object"
+      },
+      "PredictionStand": {
+        "properties": {
+          "area_label": {
+            "title": "Area Label",
+            "type": "string"
+          },
+          "compare": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionCompareLine"
+            },
+            "title": "Compare",
+            "type": "array"
+          },
+          "compare_sentence": {
+            "title": "Compare Sentence",
+            "type": "string"
+          },
+          "computed_at": {
+            "title": "Computed At",
+            "type": "string"
+          },
+          "leader_player_id": {
+            "title": "Leader Player Id",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mayor": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionMayorCompareLine"
+            },
+            "title": "Mayor",
+            "type": "array"
+          },
+          "mayor_status": {
+            "title": "Mayor Status",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "seats_total": {
+            "title": "Seats Total",
+            "type": "integer"
+          },
+          "source_label": {
+            "title": "Source Label",
+            "type": "string"
+          },
+          "stand_label": {
+            "title": "Stand Label",
+            "type": "string"
+          },
+          "tip_count": {
+            "title": "Tip Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "phase",
+          "stand_label",
+          "area_label",
+          "source_label",
+          "seats_total",
+          "player_count",
+          "tip_count",
+          "compare",
+          "mayor",
+          "mayor_status",
+          "rows",
+          "leader_player_id",
+          "compare_sentence",
+          "computed_at",
+          "notes"
+        ],
+        "title": "PredictionStand",
         "type": "object"
       },
       "ProjectReportIn": {
@@ -16015,7 +17039,7 @@
               "rejected",
               "postponed",
               "noted",
-              "no_decision"
+              "removed"
             ],
             "title": "Outcome",
             "type": "string"
@@ -23707,6 +24731,446 @@
         ]
       }
     },
+    "/api/tipp": {
+      "post": {
+        "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).",
+        "operationId": "beitreten_oder_tippen_api_tipp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionJoinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionMine"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Beitreten Oder Tippen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/abfragen": {
+      "post": {
+        "description": "„Jetzt abfragen\": die Live-Zahlen der Ratswahl UND der OB-Wahl in den\nEntwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.",
+        "operationId": "jetzt_abfragen_api_tipp_admin_abfragen_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Jetzt Abfragen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/ergebnis": {
+      "put": {
+        "operationId": "ergebnis_eintragen_api_tipp_admin_ergebnis_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/PredictionResultLineIn"
+                },
+                "title": "Zeilen",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ergebnis Eintragen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/phase": {
+      "put": {
+        "operationId": "phase_setzen_api_tipp_admin_phase_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionPhaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Phase Setzen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/spieler/{player_id}": {
+      "put": {
+        "operationId": "spieler_bearbeiten_api_tipp_admin_spieler__player_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "player_id",
+            "required": true,
+            "schema": {
+              "title": "Player Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionPlayerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Spieler Bearbeiten",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/stand": {
+      "get": {
+        "operationId": "admin_stand_api_tipp_admin_stand_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Stand",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/veroeffentlichen": {
+      "post": {
+        "operationId": "veroeffentlichen_api_tipp_admin_veroeffentlichen_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Veroeffentlichen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/verwerfen": {
+      "post": {
+        "operationId": "verwerfen_api_tipp_admin_verwerfen_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Verwerfen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/me": {
+      "delete": {
+        "operationId": "austreten_api_tipp_me_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Austreten",
+        "tags": [
+          "tippspiel"
+        ]
+      },
+      "get": {
+        "operationId": "meins_api_tipp_me_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionMine"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Meins",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/qr.png": {
+      "get": {
+        "operationId": "qr_code_api_tipp_qr_png_get",
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Qr Code",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/setup": {
+      "get": {
+        "operationId": "setup_api_tipp_setup_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionGame"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Setup",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/stand": {
+      "get": {
+        "operationId": "stand_api_tipp_stand_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stand",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
     "/api/topics": {
       "get": {
         "operationId": "list_topics_api_topics_get",
@@ -24387,6 +25851,66 @@
         "summary": "Wahlabend Bild",
         "tags": [
           "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/ob": {
+      "get": {
+        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.",
+        "operationId": "ob_wahl_api_wahlabend_ob_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ob Wahl",
+        "tags": [
+          "tippspiel"
         ]
       }
     }

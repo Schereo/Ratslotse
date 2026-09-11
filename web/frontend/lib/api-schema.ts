@@ -4412,6 +4412,220 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tipp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Beitreten Oder Tippen
+         * @description Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem
+         *     Cookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —
+         *     umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).
+         */
+        post: operations["beitreten_oder_tippen_api_tipp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/abfragen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Jetzt Abfragen
+         * @description „Jetzt abfragen": die Live-Zahlen der Ratswahl UND der OB-Wahl in den
+         *     Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.
+         */
+        post: operations["jetzt_abfragen_api_tipp_admin_abfragen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/ergebnis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Ergebnis Eintragen */
+        put: operations["ergebnis_eintragen_api_tipp_admin_ergebnis_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/phase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Phase Setzen */
+        put: operations["phase_setzen_api_tipp_admin_phase_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/spieler/{player_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Spieler Bearbeiten */
+        put: operations["spieler_bearbeiten_api_tipp_admin_spieler__player_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/stand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Stand */
+        get: operations["admin_stand_api_tipp_admin_stand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/veroeffentlichen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Veroeffentlichen */
+        post: operations["veroeffentlichen_api_tipp_admin_veroeffentlichen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/verwerfen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verwerfen */
+        post: operations["verwerfen_api_tipp_admin_verwerfen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Meins */
+        get: operations["meins_api_tipp_me_get"];
+        put?: never;
+        post?: never;
+        /** Austreten */
+        delete: operations["austreten_api_tipp_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/qr.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Qr Code */
+        get: operations["qr_code_api_tipp_qr_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Setup */
+        get: operations["setup_api_tipp_setup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/stand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stand */
+        get: operations["stand_api_tipp_stand_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics": {
         parameters: {
             query?: never;
@@ -4738,6 +4952,27 @@ export interface paths {
          *     ausgezählten Stand.
          */
         get: operations["wahlabend_bild_api_wahlabend_bild_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/ob": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ob Wahl
+         * @description Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
+         *     ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.
+         */
+        get: operations["ob_wahl_api_wahlabend_ob_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9029,6 +9264,46 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** MayorCandidate */
+        MayorCandidate: {
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
+        };
+        /** MayorNight */
+        MayorNight: {
+            /** Candidates */
+            candidates: components["schemas"]["MayorCandidate"][];
+            /** Error */
+            error: string | null;
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Invalid Ballots */
+            invalid_ballots: number | null;
+            /** Notes */
+            notes: string[];
+            /** Ok */
+            ok: boolean;
+            /** Phase */
+            phase: string;
+            /** Reports Expected */
+            reports_expected: number;
+            /** Reports Received */
+            reports_received: number;
+            /** Runoff */
+            runoff: string[];
+            /** Turnout Pct */
+            turnout_pct: number | null;
+            /** Valid Votes */
+            valid_votes: number | null;
+        };
         /** MediaUpload */
         MediaUpload: {
             /** Count */
@@ -9599,6 +9874,321 @@ export interface components {
         PolicyFields: {
             /** Fields */
             fields: components["schemas"]["PolicyField"][];
+        };
+        /** PredictionAdminStand */
+        PredictionAdminStand: {
+            game: components["schemas"]["PredictionGame"];
+            /** Log */
+            log: string[];
+            /** Results */
+            results: components["schemas"]["PredictionResultRow"][];
+        };
+        /** PredictionCompareLine */
+        PredictionCompareLine: {
+            /** Actual */
+            actual: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Exact Count */
+            exact_count: number;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PredictionGame */
+        PredictionGame: {
+            /** Deadline Hint */
+            deadline_hint: string;
+            /** Late Scored */
+            late_scored: boolean;
+            /** Locked */
+            locked: boolean;
+            /** Locked At */
+            locked_at: string | null;
+            /** Mayor Candidates */
+            mayor_candidates: components["schemas"]["PredictionMayorCandidate"][];
+            /** Parties */
+            parties: components["schemas"]["PredictionParty"][];
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Seats Total */
+            seats_total: number;
+            /** Title */
+            title: string;
+        };
+        /**
+         * PredictionJoinIn
+         * @description ``POST /api/tipp`` legt an ODER aktualisiert — beides derselbe Endpunkt
+         *     (ohne Cookie: Beitritt, ``name`` Pflicht; mit gültigem Cookie: nur der
+         *     Tipp wird aktualisiert, ``name`` bleibt unbeachtet — umbenennen kann nur
+         *     der Admin, s. 1h). ``seats``/``mayor`` fehlen beim ersten Anruf aus 1c oft
+         *     noch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da
+         *     ist, wird ein Tipp gespeichert.
+         */
+        PredictionJoinIn: {
+            /** Mayor */
+            mayor?: {
+                [key: string]: number;
+            } | null;
+            /** Name */
+            name?: string | null;
+            /** Seats */
+            seats?: {
+                [key: string]: number;
+            } | null;
+        };
+        /** PredictionMayorCandidate */
+        PredictionMayorCandidate: {
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PredictionMayorCompareLine
+         * @description Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als
+         *     ``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins" in 1e/1f)
+         *     gibt es hier keine einzelne Person, deren Tipp „der" Tipp wäre.
+         */
+        PredictionMayorCompareLine: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PredictionMayorLine */
+        PredictionMayorLine: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Points */
+            points: number;
+            /** Slug */
+            slug: string;
+            /** Tip */
+            tip: number;
+        };
+        /** PredictionMine */
+        PredictionMine: {
+            /** Has Mayor Tip */
+            has_mayor_tip: boolean;
+            /** Has Tip */
+            has_tip: boolean;
+            /** Late At */
+            late_at: string | null;
+            /** Locked */
+            locked: boolean;
+            /** Mayor */
+            mayor: components["schemas"]["PredictionMayorLine"][];
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string[];
+            /** Phase */
+            phase: string;
+            /** Player Id */
+            player_id: number;
+            /** Rank */
+            rank: number | null;
+            /** Rank Before */
+            rank_before: number | null;
+            /** PredictionScore */
+            score: {
+                /** Deviation */
+                deviation: number | null;
+                /** Exact Lists */
+                exact_lists: number;
+                /** Mayor Points */
+                mayor_points: number;
+                /** Seat Points */
+                seat_points: number;
+                /** Total */
+                total: number;
+            } | null;
+            /** Scored */
+            scored: boolean;
+            /** Seats */
+            seats: components["schemas"]["PredictionSeatLine"][];
+            /** Source Label */
+            source_label: string;
+            /** Stand Label */
+            stand_label: string;
+        };
+        /** PredictionParty */
+        PredictionParty: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Name */
+            name: string;
+            /** Seats 2021 */
+            seats_2021: number | null;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /** PredictionPhaseIn */
+        PredictionPhaseIn: {
+            /** Late Scored */
+            late_scored?: boolean | null;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "open" | "locked" | "final";
+        };
+        /** PredictionPlayerIn */
+        PredictionPlayerIn: {
+            /** Hidden */
+            hidden?: boolean | null;
+            /** Name */
+            name?: string | null;
+        };
+        /** PredictionResultLineIn */
+        PredictionResultLineIn: {
+            /** Pct */
+            pct?: number | null;
+            /** Seats */
+            seats?: number | null;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PredictionResultRow
+         * @description Eine Zeile der Admin-Tabelle (1h) — Entwurf UND veröffentlichter Stand.
+         */
+        PredictionResultRow: {
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Exact Count */
+            exact_count: number;
+            /** Pct */
+            pct: number | null;
+            /** Published At */
+            published_at: string | null;
+            /** Published Pct */
+            published_pct: number | null;
+            /** Published Seats */
+            published_seats: number | null;
+            /** Published Source */
+            published_source: string | null;
+            /** Seats */
+            seats: number | null;
+            /** Slug */
+            slug: string;
+            /** Source */
+            source: string;
+        };
+        /** PredictionRow */
+        PredictionRow: {
+            /** Has Tip */
+            has_tip: boolean;
+            /** Late At */
+            late_at: string | null;
+            /** Name */
+            name: string;
+            /** Player Id */
+            player_id: number;
+            /** Rank */
+            rank: number | null;
+            /** Rank Before */
+            rank_before: number | null;
+            /** PredictionScore */
+            score: {
+                /** Deviation */
+                deviation: number | null;
+                /** Exact Lists */
+                exact_lists: number;
+                /** Mayor Points */
+                mayor_points: number;
+                /** Seat Points */
+                seat_points: number;
+                /** Total */
+                total: number;
+            } | null;
+            /** Scored */
+            scored: boolean;
+        };
+        /** PredictionScore */
+        PredictionScore: {
+            /** Deviation */
+            deviation: number | null;
+            /** Exact Lists */
+            exact_lists: number;
+            /** Mayor Points */
+            mayor_points: number;
+            /** Seat Points */
+            seat_points: number;
+            /** Total */
+            total: number;
+        };
+        /** PredictionSeatLine */
+        PredictionSeatLine: {
+            /** Actual */
+            actual: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Exact */
+            exact: boolean;
+            /** Points */
+            points: number;
+            /** Slug */
+            slug: string;
+            /** Tip */
+            tip: number;
+        };
+        /** PredictionStand */
+        PredictionStand: {
+            /** Area Label */
+            area_label: string;
+            /** Compare */
+            compare: components["schemas"]["PredictionCompareLine"][];
+            /** Compare Sentence */
+            compare_sentence: string;
+            /** Computed At */
+            computed_at: string;
+            /** Leader Player Id */
+            leader_player_id: number | null;
+            /** Mayor */
+            mayor: components["schemas"]["PredictionMayorCompareLine"][];
+            /** Mayor Status */
+            mayor_status: string;
+            /** Notes */
+            notes: string[];
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Rows */
+            rows: components["schemas"]["PredictionRow"][];
+            /** Seats Total */
+            seats_total: number;
+            /** Source Label */
+            source_label: string;
+            /** Stand Label */
+            stand_label: string;
+            /** Tip Count */
+            tip_count: number;
+            /** Title */
+            title: string;
         };
         /** ProjectReportIn */
         ProjectReportIn: {
@@ -11375,7 +11965,7 @@ export interface components {
              * Outcome
              * @enum {string}
              */
-            outcome: "accepted" | "rejected" | "postponed" | "noted" | "no_decision";
+            outcome: "accepted" | "rejected" | "postponed" | "noted" | "removed";
             /** Quote */
             quote: string;
             /** Video Id */
@@ -16806,6 +17396,344 @@ export interface operations {
             };
         };
     };
+    beitreten_oder_tippen_api_tipp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionJoinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionMine"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    jetzt_abfragen_api_tipp_admin_abfragen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+        };
+    };
+    ergebnis_eintragen_api_tipp_admin_ergebnis_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionResultLineIn"][];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phase_setzen_api_tipp_admin_phase_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionPhaseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    spieler_bearbeiten_api_tipp_admin_spieler__player_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionPlayerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_stand_api_tipp_admin_stand_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+        };
+    };
+    veroeffentlichen_api_tipp_admin_veroeffentlichen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+        };
+    };
+    verwerfen_api_tipp_admin_verwerfen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+        };
+    };
+    meins_api_tipp_me_get: {
+        parameters: {
+            query?: {
+                probe?: string | null;
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionMine"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    austreten_api_tipp_me_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+        };
+    };
+    qr_code_api_tipp_qr_png_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": unknown;
+                };
+            };
+        };
+    };
+    setup_api_tipp_setup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionGame"];
+                };
+            };
+        };
+    };
+    stand_api_tipp_stand_get: {
+        parameters: {
+            query?: {
+                probe?: string | null;
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_topics_api_topics_get: {
         parameters: {
             query?: never;
@@ -17240,6 +18168,38 @@ export interface operations {
             };
         };
     };
+    ob_wahl_api_wahlabend_ob_get: {
+        parameters: {
+            query?: {
+                probe?: string | null;
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorNight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }
 
-// vertrag-sha256: 8393a31bf3fcfdb60d3b59469314a1ae677372bb100e9365ca641d7a5dd50f8f
+// vertrag-sha256: 6206bcc7aa38d26548cf7bc2713ab02220cca2d37a663443f3b18c8f8f10e504
