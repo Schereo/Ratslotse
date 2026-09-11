@@ -20,6 +20,19 @@ import type { TippMeins, TippSetup } from "@/lib/tipp";
 import { Aufklapp } from "@/components/aufklapp";
 import { Switch } from "@/components/ui/switch";
 
+/** Ein `type="number"`-Feld ohne die nativen Auf/Ab-Pfeile.
+ *
+ *  `appearance-none` allein reicht NICHT — im Gegenteil: Safari zeichnet
+ *  seinen Stepper gerade dann (Tims Bild vom 11.09.: die Pfeile standen
+ *  neben der 17, in Chromium war dieselbe Seite sauber). Chromium blendet
+ *  ihn über die beiden `-webkit-…-spin-button`-Pseudos aus, Firefox und
+ *  Safari erst bei `appearance: textfield`. Deshalb alle Wege zusammen.
+ *  `m-0` nimmt den Platz, den der Stepper auch unsichtbar noch reserviert
+ *  — sonst steht die Zahl nicht mittig (der Befund vom 11.09. im Admin). */
+const OHNE_PFEILE =
+  "[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+  + " [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none";
+
 export function Tippen({ setup, meins, onGespeichert }: {
   setup: TippSetup;
   meins: TippMeins;
@@ -131,11 +144,7 @@ export function Tippen({ setup, meins, onGespeichert }: {
               aria-label={`Sitze für ${p.short}`}
               value={seats[p.slug] ?? 0}
               onChange={(e) => setzeSitz(p.slug, Number(e.target.value))}
-              // `appearance-none` nimmt die nativen Auf/Ab-Pfeile weg — ohne
-              // sie bleibt bei `type="number"` rechts ihr Platz reserviert,
-              // und die Zahl sitzt trotz `text-center` sichtbar links davon
-              // (Tims Befund an genau diesem Feld, 11.09.).
-              className="h-11 w-[46px] flex-none appearance-none rounded-[10px] border border-border bg-card text-center font-display text-lg font-bold text-foreground [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              className={`h-11 w-[46px] flex-none rounded-[10px] border border-border bg-card text-center font-display text-lg font-bold text-foreground ${OHNE_PFEILE}`}
             />
             <button
               type="button"
@@ -179,7 +188,7 @@ export function Tippen({ setup, meins, onGespeichert }: {
                     aria-label={`Prozent für ${o.name}`}
                     value={ob[o.slug] ?? 0}
                     onChange={(e) => setzeOb(o.slug, Number(e.target.value))}
-                    className="h-10 w-[58px] appearance-none rounded-[10px] border border-border bg-card px-2 text-right font-display text-base font-bold text-foreground [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className={`h-10 w-[58px] rounded-[10px] border border-border bg-card px-2 text-right font-display text-base font-bold text-foreground ${OHNE_PFEILE}`}
                   />
                   <span className="text-[13px] text-muted-foreground">%</span>
                 </div>
