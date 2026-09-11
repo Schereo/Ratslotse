@@ -1,0 +1,33 @@
+{
+  "title": "Tippspiel zur Ratswahl 2026",
+  "phase": "open",
+  "stand_label": "",
+  "area_label": "0/133 Wahlbezirken",
+  "source_label": "",
+  "seats_total": 52,
+  "player_count": 5,
+  "tip_count": 5,
+  "compare": [
+    { "slug": "gruene", "short": "Grüne", "color": "#4C9F38", "color_dark": "#6DBE5A", "actual": null, "avg_tip": 13.2, "exact_count": 0 },
+    { "slug": "spd", "short": "SPD", "color": "#E3000F", "color_dark": "#F2394A", "actual": null, "avg_tip": 11.8, "exact_count": 0 },
+    { "slug": "cdu", "short": "CDU", "color": "#000000", "color_dark": "#4A4A4A", "actual": null, "avg_tip": 9.4, "exact_count": 0 },
+    { "slug": "linke", "short": "Linke", "color": "#BE3075", "color_dark": "#D95C9B", "actual": null, "avg_tip": 8.0, "exact_count": 0 },
+    { "slug": "fdp", "short": "FDP", "color": "#FFED00", "color_dark": "#FFF066", "actual": null, "avg_tip": 8.6, "exact_count": 0 }
+  ],
+  "mayor": [
+    { "slug": "rohr", "name": "Jascha Rohr", "party": "Grüne", "actual_pct": null, "avg_tip": 28.4 },
+    { "slug": "prange", "name": "Ulf Prange", "party": "SPD", "actual_pct": null, "avg_tip": 32.1 }
+  ],
+  "mayor_status": "before",
+  "rows": [
+    { "player_id": 1, "name": "Anna", "late_at": null, "scored": true, "has_tip": true, "score": null, "rank": null, "rank_before": null },
+    { "player_id": 2, "name": "Ben", "late_at": null, "scored": true, "has_tip": true, "score": null, "rank": null, "rank_before": null },
+    { "player_id": 3, "name": "Clara", "late_at": null, "scored": true, "has_tip": true, "score": null, "rank": null, "rank_before": null },
+    { "player_id": 4, "name": "David", "late_at": null, "scored": true, "has_tip": true, "score": null, "rank": null, "rank_before": null },
+    { "player_id": 5, "name": "Erik", "late_at": null, "scored": true, "has_tip": true, "score": null, "rank": null, "rank_before": null }
+  ],
+  "leader_player_id": null,
+  "compare_sentence": "",
+  "computed_at": "2026-09-13T17:00:00+00:00",
+  "notes": []
+}

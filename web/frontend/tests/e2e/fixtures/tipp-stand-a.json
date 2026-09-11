@@ -1,0 +1,33 @@
+{
+  "title": "Tippspiel zur Ratswahl 2026",
+  "phase": "locked",
+  "stand_label": "19:42",
+  "area_label": "40/133 Wahlbezirken",
+  "source_label": "votemanager",
+  "seats_total": 52,
+  "player_count": 5,
+  "tip_count": 5,
+  "compare": [
+    { "slug": "gruene", "short": "Grüne", "color": "#4C9F38", "color_dark": "#6DBE5A", "actual": 12, "avg_tip": 13.2, "exact_count": 1 },
+    { "slug": "spd", "short": "SPD", "color": "#E3000F", "color_dark": "#F2394A", "actual": 11, "avg_tip": 11.8, "exact_count": 2 },
+    { "slug": "cdu", "short": "CDU", "color": "#000000", "color_dark": "#4A4A4A", "actual": 10, "avg_tip": 9.4, "exact_count": 0 },
+    { "slug": "linke", "short": "Linke", "color": "#BE3075", "color_dark": "#D95C9B", "actual": 8, "avg_tip": 8.0, "exact_count": 3 },
+    { "slug": "fdp", "short": "FDP", "color": "#FFED00", "color_dark": "#FFF066", "actual": 8, "avg_tip": 8.6, "exact_count": 1 }
+  ],
+  "mayor": [
+    { "slug": "rohr", "name": "Jascha Rohr", "party": "Grüne", "actual_pct": 27.9, "avg_tip": 28.4 },
+    { "slug": "prange", "name": "Ulf Prange", "party": "SPD", "actual_pct": 31.5, "avg_tip": 32.1 }
+  ],
+  "mayor_status": "counting",
+  "rows": [
+    { "player_id": 1, "name": "Anna", "late_at": null, "scored": true, "has_tip": true, "score": { "total": 90, "seat_points": 78, "mayor_points": 12, "exact_lists": 2, "deviation": 4 }, "rank": 1, "rank_before": null },
+    { "player_id": 2, "name": "Ben", "late_at": null, "scored": true, "has_tip": true, "score": { "total": 75, "seat_points": 63, "mayor_points": 12, "exact_lists": 1, "deviation": 6 }, "rank": 2, "rank_before": null },
+    { "player_id": 3, "name": "Clara", "late_at": null, "scored": true, "has_tip": true, "score": { "total": 60, "seat_points": 54, "mayor_points": 6, "exact_lists": 1, "deviation": 7 }, "rank": 3, "rank_before": null },
+    { "player_id": 4, "name": "David", "late_at": null, "scored": true, "has_tip": true, "score": { "total": 45, "seat_points": 39, "mayor_points": 6, "exact_lists": 0, "deviation": 9 }, "rank": 4, "rank_before": null },
+    { "player_id": 5, "name": "Erik", "late_at": null, "scored": true, "has_tip": true, "score": { "total": 30, "seat_points": 24, "mayor_points": 6, "exact_lists": 0, "deviation": 12 }, "rank": 5, "rank_before": null }
+  ],
+  "leader_player_id": 1,
+  "compare_sentence": "Die Runde hat die CDU im Schnitt um 1 Sitz zu stark getippt.",
+  "computed_at": "2026-09-13T19:42:00+00:00",
+  "notes": []
+}
