@@ -58,6 +58,19 @@ function Karte({ className, children }: { className?: string; children: React.Re
   return <div className={cn("rounded-2xl border border-border bg-card px-5 py-[18px]", className)}>{children}</div>;
 }
 
+/** Ein `type="number"`-Feld ohne die nativen Auf/Ab-Pfeile.
+ *
+ *  `appearance-none` allein reicht NICHT — im Gegenteil: Safari zeichnet
+ *  seinen Stepper gerade dann (Tims Bild vom 11.09.: die Pfeile standen
+ *  neben der 17, in Chromium war dieselbe Seite sauber). Chromium blendet
+ *  ihn über die beiden `-webkit-…-spin-button`-Pseudos aus, Firefox und
+ *  Safari erst bei `appearance: textfield`. Deshalb alle Wege zusammen.
+ *  `m-0` nimmt den Platz, den der Stepper auch unsichtbar noch reserviert
+ *  — sonst steht die Zahl nicht mittig (der Befund vom 11.09. im Admin). */
+const OHNE_PFEILE =
+  "[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+  + " [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none";
+
 /** Ein Sitz- oder Prozentfeld: speichert beim Verlassen, wenn sich der Wert
  *  gegenüber dem Entwurf des Servers geändert hat. Handeingaben stehen auf
  *  Warn-Tönung (Artboard: „manuell" gelb), damit man sieht, welche Liste der
@@ -82,9 +95,9 @@ function Feld({ wert, manuell, label, breit, dezimalstellen, onSpeichern }: {
       onBlur={abgeben}
       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
       className={cn(
-        "h-[34px] appearance-none rounded-lg border px-2 text-right font-display text-sm font-bold text-foreground",
+        "h-[34px] rounded-lg border px-2 text-right font-display text-sm font-bold text-foreground",
         "transition-[border-color,box-shadow,background-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        "[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+        OHNE_PFEILE,
         manuell ? "border-amber-200 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-input bg-card",
         breit ? "w-[62px]" : "w-full",
       )}
