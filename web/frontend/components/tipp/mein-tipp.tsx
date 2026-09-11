@@ -10,6 +10,7 @@ import { useState } from "react";
 import { rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
 import { Aufklapp } from "@/components/aufklapp";
+import { BrandMark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 
 function punktTon(punkte: number, hoechst: number): string {
@@ -34,7 +35,10 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md pb-8">
       <div className="flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+10px)]">
-        <span className="font-display text-[15px] font-bold">Tippspiel</span>
+        <span className="flex items-center gap-2">
+          <BrandMark className="h-6 w-6" />
+          <span className="font-display text-[15px] font-bold">Tippspiel</span>
+        </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
           <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal" />
           {meins.phase === "final" ? "Endstand" : "Live"} · {meins.stand_label || "wartet"}
@@ -68,7 +72,8 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
           <div className="mt-1.5 flex items-end gap-3.5">
             <span className="font-display text-[64px] leading-[0.9] tracking-tight">{meins.rank ?? "–"}</span>
             <div className="flex-1 pb-1.5">
-              {pfeil && <p className="text-sm font-semibold">{rangDeltaText(pfeil)}</p>}
+              <p className="text-sm opacity-85">von {setup.player_count}</p>
+              {pfeil && <p className="mt-0.5 text-sm font-semibold">{rangDeltaText(pfeil)}</p>}
             </div>
             <div className="pb-1 text-right">
               <p className="font-display text-[34px] leading-none">{score.total}</p>
@@ -87,7 +92,7 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
           <span>{meins.stand_label || "wartet"}</span>
         </div>
         <div className="mt-2 overflow-hidden rounded-[14px] border border-border bg-card">
-          {meins.seats.map((s) => {
+          {meins.seats.filter((s) => !(s.tip === 0 && s.actual === 0)).map((s) => {
             const p = parteiVon[s.slug];
             return (
               <div
@@ -99,7 +104,7 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
                 <span className="text-right font-mono text-muted-foreground">{s.tip}</span>
                 <span className="text-right font-display text-[15px] font-bold">{s.actual ?? "–"}</span>
                 <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(s.points, 5)}`}>
-                  {s.points}
+                  {s.actual === null ? "–" : s.points > 0 ? `+${s.points}` : "0"}
                 </span>
               </div>
             );
@@ -140,7 +145,7 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
                       {m.actual_pct !== null ? `${m.actual_pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %` : "–"}
                     </span>
                     <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(m.points, 6)}`}>
-                      {m.points}
+                      {m.actual_pct === null ? "–" : m.points > 0 ? `+${m.points}` : "0"}
                     </span>
                   </div>
                 );

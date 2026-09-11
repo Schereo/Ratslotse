@@ -24,6 +24,8 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
   const [sendet, setSendet] = useState(false);
 
   const schlussZeit = uhrzeitKurz(setup.locked_at);
+  // Die Uhrzeit, die auf dem Scoreboard stehen wird — jetzt, beim Beitritt.
+  const [jetzt] = useState(() => uhrzeitKurz(new Date().toISOString()));
   const spaetSatz = setup.player_count > 0
     ? ` Schon ${setup.player_count} ${setup.player_count === 1 ? "Person hat" : "Leute haben"} mitgetippt.`
     : "";
@@ -75,7 +77,7 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
 
       <div className="mt-4.5 flex w-full items-start gap-2.5 rounded-[14px] border border-amber-200 bg-amber-50 p-3.5 text-left dark:border-amber-900/50 dark:bg-amber-900/20">
         <span className="mt-0.5 flex-none rounded-full border border-amber-200 bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/50 dark:text-amber-200">
-          Nachgetippt
+          Nachgetippt {jetzt}
         </span>
         <p className="text-[12.5px] leading-relaxed text-amber-800 dark:text-amber-200">
           So erscheint dein Name auf dem Scoreboard und in deinem Tipp. Fair für alle, die vor Tipp-Schluss geraten haben.
