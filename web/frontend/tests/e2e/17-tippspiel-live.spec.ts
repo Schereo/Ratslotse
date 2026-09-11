@@ -83,7 +83,7 @@ test.describe("Schalter an", () => {
   test("ab dem ersten Stand erscheint das Podium mit allen drei Namen", async ({ page }) => {
     standMock(page, STAND_A);
     await page.goto("/tipp/live?ansicht=rangliste");
-    const podium = page.locator(".grid.grid-cols-3 > div");
+    const podium = page.getByTestId("podium").locator("> div");
     await expect(podium).toHaveCount(3);
     await expect(podium.nth(1)).toContainText("Anna"); // Mitte = Platz 1
     await expect(podium.nth(0)).toContainText("Ben"); // links = Platz 2
@@ -96,7 +96,7 @@ test.describe("Schalter an", () => {
     await expect(page.getByText(/Die Runde hat die CDU/)).toBeVisible();
     // exact:true — sonst matcht auch die SVG-<title> "… Mehrheit ab 27 von 52
     // Sitzen." (Playwright-Textsuche ist standardmäßig ein Teilstring-Test).
-    await expect(page.getByText("52 Sitze", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("sitze-gesamt")).toContainText("52");
   });
 
   // Das Projekt fährt Playwright global mit `reducedMotion: "reduce"`
@@ -110,7 +110,7 @@ test.describe("Schalter an", () => {
       test.setTimeout(60_000);
       standMock(page, STAND_A, STAND_B);
       await page.goto("/tipp/live?ansicht=rangliste");
-      await expect(page.locator(".grid.grid-cols-3 > div").nth(1)).toContainText("Anna");
+      await expect(page.getByTestId("podium").locator("> div").nth(1)).toContainText("Anna");
 
       // Eine echte Hochrechnung wechselt den Stand NIE per Reload — die Seite
       // bleibt offen und pollt weiter. Ein Reload würde Podiums eigene „nicht
@@ -129,8 +129,8 @@ test.describe("Schalter an", () => {
         .catch(() => false);
       expect(konfettiGesehen, "Konfetti wurde nach dem Führungswechsel nie im DOM gefunden").toBe(true);
 
-      await expect(page.locator(".grid.grid-cols-3 > div").nth(1)).toContainText("Clara");
-      await expect(page.locator(".grid.grid-cols-3 > div").nth(1)).toContainText("+2");
+      await expect(page.getByTestId("podium").locator("> div").nth(1)).toContainText("Clara");
+      await expect(page.getByTestId("podium").locator("> div").nth(1)).toContainText("+2");
     });
   });
 
@@ -173,10 +173,10 @@ test.describe("Schalter an", () => {
     await page.reload({ waitUntil: "networkidle" });
     expect(await page.evaluate(() => document.documentElement.classList.contains("dark"))).toBe(false);
 
-    // Die `.hh-tafel`-Fläche (Server-Satz-Kachel) darf im Hellen nicht dunkel
+    // Die Satz-Kachel (Lotti + Server-Satz) darf im Hellen nicht dunkel
     // sein — Tims stehende Regel „Anzeigetafel-Tönung, nie Tiefsee im Hellen".
     const helligkeit = await page.evaluate(() => {
-      const el = document.querySelector(".hh-tafel");
+      const el = document.querySelector("[data-testid=vergleich-satz]");
       if (!el) return null;
       const bg = getComputedStyle(el).backgroundColor;
       const [r, g, b] = bg.match(/[\d.]+/g)!.map(Number);

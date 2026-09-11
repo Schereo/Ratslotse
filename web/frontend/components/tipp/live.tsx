@@ -24,7 +24,8 @@ import { Lotti } from "@/components/lotti";
 import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { BeamerMitmachen } from "./beamer-mitmachen";
 import { BeamerVergleich } from "./beamer-vergleich";
-import { Scoreboard } from "./scoreboard";
+import { HandyRangliste, Scoreboard } from "./scoreboard";
+import { Buehne, useSchmal } from "./buehne";
 
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type PredictionGame = ApiAntwort<"/tipp/setup">;
@@ -56,6 +57,7 @@ async function holeSetup(): Promise<PredictionGame> {
 
 export function TippLive() {
   const schalterAn = useFeature("tippspiel");
+  const schmal = useSchmal();
   const params = useSearchParams();
   const erzwungen = params.get("ansicht") as Ansicht | null;
   const probe = params.get("probe");
@@ -123,7 +125,7 @@ export function TippLive() {
     );
   }
 
-  if (!stand || !setupQuery.data) {
+  if (!stand || !setupQuery.data || schmal === null) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-background">
         <span className="text-sm text-muted-foreground">Lädt …</span>
@@ -136,7 +138,7 @@ export function TippLive() {
   return (
     <div className="relative min-h-[100dvh] bg-background text-foreground">
       <div className="absolute right-5 top-5 z-10 flex items-center gap-3">
-        {probe && (
+        {probe && !schmal && (
           // Auf einem Beamer im vollen Raum darf die Generalprobe keine
           // Sekunde wie das echte Ergebnis aussehen (dieselbe Zusage wie im
           // Wahlabend, der seine Probe ebenfalls ausschildert).
@@ -146,13 +148,21 @@ export function TippLive() {
         )}
         <WebThemeSwitch />
       </div>
-      {/* `key={ansicht}` baut den Screen beim Wechsel neu auf — der
-          Wechsel BLENDET nur (Designsprache: nichts schiebt sich). */}
-      <div key={ansicht} className="animate-fade-up min-h-[100dvh]">
-        {ansicht === "qr" && <BeamerMitmachen game={setupQuery.data} tipCount={stand.tip_count} />}
-        {ansicht === "vergleich" && <BeamerVergleich stand={stand} />}
-        {ansicht === "rangliste" && <Scoreboard stand={stand} />}
-      </div>
+      {schmal ? (
+        // Handy und Tablet hochkant: statt der skalierten Leinwand die
+        // kompakte Rangliste — die 1920er-Bühne wäre dort unlesbar klein.
+        <HandyRangliste stand={stand} probe={!!probe} />
+      ) : (
+        // `key={ansicht}` baut den Screen beim Wechsel neu auf — der
+        // Wechsel BLENDET nur (Designsprache: nichts schiebt sich).
+        <div key={ansicht} className="animate-fade-up">
+          <Buehne>
+            {ansicht === "qr" && <BeamerMitmachen game={setupQuery.data} tipCount={stand.tip_count} />}
+            {ansicht === "vergleich" && <BeamerVergleich stand={stand} />}
+            {ansicht === "rangliste" && <Scoreboard stand={stand} />}
+          </Buehne>
+        </div>
+      )}
     </div>
   );
 }

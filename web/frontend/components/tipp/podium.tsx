@@ -1,13 +1,17 @@
 "use client";
 
-// Podium als Treppe (Screen 1i) — Platz 2 / 1 / 3 in einem Raster
-// `1fr 1.25fr 1fr`, nur Platz 1 mit Verlauf, Leucht-Schatten, Glanzband und
-// Lotti. Feuert `ConfettiBurst` bei einem Führungswechsel und noch einmal am
-// Endstand — beides höchstens alle 60 s und nie beim ersten Rendern (sonst
-// feierte die Seite ihren eigenen Seitenaufbau).
+// Podium (Screen 1i) — Platz 2 / 1 / 3 als drei Karten im Raster
+// `1fr 1.25fr 1fr`, Höhen 232 / 300 / 200 wie im Artboard. Nur Platz 1
+// trägt den Verlauf, das Glanzband, den Leucht-Schatten, das FÜHRT-Etikett
+// und Lotti mit dem Pokal. Feuert `ConfettiBurst` bei einem Führungswechsel
+// und noch einmal am Endstand — beides höchstens alle 60 s und nie beim
+// ersten Rendern (sonst feierte die Seite ihren eigenen Seitenaufbau).
+//
+// Alle Maße in px: Das Podium lebt auf der 1920×1080-Bühne (`buehne.tsx`),
+// die als Ganzes skaliert wird.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { ConfettiBurst } from "@/components/confetti";
 import { Lotti } from "@/components/lotti";
@@ -17,50 +21,49 @@ import { useTween } from "./beamer-hooks";
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type Zeile = PredictionStand["rows"][number];
 
-/** ▲▼-Chip zur Rangänderung — grün beim Aufstieg, neutrales Grau beim
- *  Abstieg (Designsprache: nichts Rotes, verlieren ist hier kein Fehler).
- *  Geteilt mit `scoreboard.tsx`. */
-export function RangChip({ rank, rankBefore, className }: {
+/** ▲▼-Chip zur Rangänderung — grün beim Aufstieg, neutral beim Abstieg
+ *  (Designsprache: nichts Rotes, verlieren ist hier kein Fehler) und ein
+ *  ruhiges „–", wenn sich nichts bewegt hat: Der Chip ist im Artboard immer
+ *  da, damit die Zeile nicht springt, wenn er kommt oder geht. */
+export function RangChip({ rank, rankBefore, className, hell }: {
   rank: number | null; rankBefore: number | null; className?: string;
+  /** Auf dem blauen Platz-1-Feld: weiße Tönung statt Karte. */
+  hell?: boolean;
 }) {
-  if (rank === null || rankBefore === null || rank === rankBefore) return null;
-  const auf = rank < rankBefore;
-  const differenz = Math.abs(rank - rankBefore);
+  const bewegt = rank !== null && rankBefore !== null && rank !== rankBefore;
+  const auf = bewegt && rank < rankBefore;
+  const differenz = bewegt ? Math.abs(rank - rankBefore) : 0;
   return (
-    <span className={cn(
-      "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums",
-      auf ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground",
-      className,
-    )}>
-      {auf ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-      {/* Vorzeichen als Text, nicht nur die Pfeilfarbe — auf einem Beamer aus
-          fünf Metern trägt eine Zahl allein die Richtung nicht zuverlässig,
-          und „−" ist bewusst das Minuszeichen (U+2212), nicht der Bindestrich. */}
-      {auf ? `+${differenz}` : `−${differenz}`}
+    <span
+      // `key` an der Änderung: Eine neue fängt das 20-s-Verblassen frisch an.
+      key={`${rank}-${rankBefore}`}
+      className={cn(
+        "inline-flex h-[34px] items-center gap-1 rounded-full px-3 text-[22px] font-semibold tabular-nums",
+        !bewegt && (hell ? "bg-white/15 text-white/80" : "bg-muted text-muted-foreground"),
+        bewegt && auf && (hell ? "bg-emerald-400/25 text-emerald-100" : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"),
+        bewegt && !auf && (hell ? "bg-white/15 text-white/80" : "bg-muted text-muted-foreground"),
+        bewegt && "animate-chip-verblasst",
+        className,
+      )}
+      aria-label={bewegt ? (auf ? `${differenz} Plätze vorgerückt` : `${differenz} Plätze zurückgefallen`) : "unverändert"}
+    >
+      {!bewegt ? <Minus className="h-5 w-5" /> : auf ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
+      {bewegt && (auf ? `+${differenz}` : `−${differenz}`)}
     </span>
   );
 }
 
-function PunktZeile({ z }: { z: Zeile }) {
+function Punkte({ z, groesse, hell }: { z: Zeile; groesse: number; hell?: boolean }) {
   const punkte = useTween(z.score?.total ?? 0);
   return (
-    <>
-      <p className="mt-1 truncate font-display text-[15px] font-bold sm:text-[17px]" title={z.name}>{z.name}</p>
-      <p className="mt-0.5 flex items-center justify-center gap-1.5 font-mono text-[13px] tabular-nums text-muted-foreground sm:text-sm">
-        {punkte} Punkte
-        <RangChip rank={z.rank} rankBefore={z.rank_before} />
-      </p>
-    </>
+    <span
+      style={{ fontSize: groesse }}
+      className={cn("font-display font-semibold leading-none tabular-nums", hell ? "text-white" : "text-primary")}
+    >
+      {punkte}
+    </span>
   );
 }
-
-const SPALTE: Record<number, { hoehe: number; rang: string }> = {
-  0: { hoehe: 232, rang: "2." },
-  1: { hoehe: 300, rang: "1." },
-  2: { hoehe: 200, rang: "3." },
-};
-// Spalte → Rang: Mitte (1) zeigt Platz 1, links (0) Platz 2, rechts (2) Platz 3.
-const RANG_JE_SPALTE = [2, 1, 3];
 
 export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
   const top3 = rows.filter((r) => r.rank !== null && r.rank <= 3).sort((a, b) => a.rank! - b.rank!);
@@ -84,52 +87,71 @@ export function Podium({ rows, phase }: { rows: Zeile[]; phase: string }) {
     phaseRef.current = phase;
   }, [leaderId, phase]);
 
-  if (top3.length === 0) return null;
+  const p1 = top3.find((r) => r.rank === 1);
+  const p2 = top3.find((r) => r.rank === 2);
+  const p3 = top3.find((r) => r.rank === 3);
+  const endstand = phase === "final";
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl grid-cols-3 items-end gap-3 px-4 sm:gap-5">
-      {konfetti && <ConfettiBurst onDone={() => setKonfetti(false)} />}
-      {[0, 1, 2].map((spalte) => {
-        const rang = RANG_JE_SPALTE[spalte];
-        const z = top3.find((r) => r.rank === rang);
-        const { hoehe } = SPALTE[spalte];
-        const istErster = rang === 1;
-        return (
-          <div
-            key={spalte}
-            style={{ height: hoehe }}
-            className={cn(
-              "relative flex flex-col items-center justify-end overflow-hidden rounded-t-2xl border px-3 pb-4 pt-8 text-center",
-              istErster
-                ? "border-primary/30 bg-gradient-to-b from-primary to-primary/70 text-primary-foreground shadow-[0_0_50px_-12px_hsl(var(--primary)/0.65)]"
-                : "border-border bg-card text-foreground",
-            )}
-          >
-            {istErster && (
-              <span
-                aria-hidden
-                className="animate-podium-glanz pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-              />
-            )}
-            {istErster && (
-              <Lotti
-                regung="hebt-pokal"
-                className="animate-podium-schweben absolute -top-14 h-[120px] w-[120px]"
-                decorative
-              />
-            )}
-            <span className={cn(
-              "font-display text-[34px] font-black leading-none sm:text-[40px]",
-              istErster ? "text-primary-foreground" : "text-foreground/25",
-            )}>
-              {rang}
+    <div data-testid="podium" className="mt-9 grid h-[300px] grid-cols-[1fr_1.25fr_1fr] items-end gap-7">
+
+      {/* Platz 2 */}
+      <Nebenplatz z={p2} rang={2} hoehe={232} nameGroesse={44} punkteGroesse={40} />
+
+      {/* Platz 1 */}
+      <div className="relative flex h-[300px] flex-col overflow-hidden rounded-[30px] border border-[hsl(202_90%_60%/0.5)] bg-gradient-to-br from-[hsl(205_92%_34%)] to-[hsl(205_92%_24%)] px-9 py-[30px] text-white shadow-[0_30px_80px_-30px_hsl(202_90%_60%/0.5)]">
+        <span aria-hidden className="animate-podium-glanz pointer-events-none absolute inset-y-[-20%] left-0 w-[26%] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <span className="font-display text-[56px] font-semibold leading-none">1</span>
+            <span className="font-mono text-[22px] uppercase tracking-[0.12em] text-[hsl(19_95%_65%)]">
+              {endstand ? "Gewonnen" : "Führt"}
             </span>
-            {z ? <PunktZeile z={z} /> : (
-              <p className="mt-1 text-[13px] text-muted-foreground/70">–</p>
-            )}
           </div>
-        );
-      })}
+          {p1 && <RangChip rank={p1.rank} rankBefore={p1.rank_before} hell />}
+        </div>
+        <div className="animate-podium-schweben absolute right-[26px] top-[70px]">
+          <Lotti regung="hebt-pokal" className="h-[120px] w-[120px]" decorative />
+        </div>
+        <p className="relative mt-auto truncate font-display text-[64px] font-bold leading-none tracking-[-0.025em]" title={p1?.name}>
+          {p1?.name ?? "–"}
+        </p>
+        <div className="relative mt-2.5 flex items-baseline gap-3">
+          {p1 ? <Punkte z={p1} groesse={56} hell /> : <span className="font-display text-[56px]">–</span>}
+          {p1?.score && (
+            <span className="text-[24px] text-white/80">
+              Punkte · {p1.score.exact_lists} Listen exakt{p1.score.mayor_points > 0 && ` · OB +${p1.score.mayor_points}`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Platz 3 */}
+      <Nebenplatz z={p3} rang={3} hoehe={200} nameGroesse={40} punkteGroesse={36} />
+      {/* Nach den drei Karten, nicht davor: Die Browsertests greifen die
+          Plätze über ihre Reihenfolge im Raster — und ein Konfetti-Regen darf
+          nicht zum „ersten Platz" werden. */}
+      {konfetti && <ConfettiBurst onDone={() => setKonfetti(false)} />}
+    </div>
+  );
+}
+
+function Nebenplatz({ z, rang, hoehe, nameGroesse, punkteGroesse }: {
+  z: Zeile | undefined; rang: number; hoehe: number; nameGroesse: number; punkteGroesse: number;
+}) {
+  return (
+    <div style={{ height: hoehe }} className="flex flex-col rounded-[26px] border border-border bg-card px-[30px] py-[26px]">
+      <div className="flex items-center justify-between">
+        <span className="font-display text-[44px] font-semibold leading-none text-muted-foreground">{rang}</span>
+        {z && <RangChip rank={z.rank} rankBefore={z.rank_before} />}
+      </div>
+      <p style={{ fontSize: nameGroesse }} className="mt-auto truncate font-display font-bold leading-[1.05] tracking-[-0.02em]" title={z?.name}>
+        {z?.name ?? "–"}
+      </p>
+      <div className="mt-1.5 flex items-baseline gap-2.5">
+        {z ? <Punkte z={z} groesse={punkteGroesse} /> : <span className="font-display text-[40px] text-muted-foreground">–</span>}
+        {z?.score && <span className="text-[22px] text-muted-foreground">Punkte · {z.score.exact_lists} exakt</span>}
+      </div>
     </div>
   );
 }
