@@ -1,5 +1,6 @@
 """Der Rückblick auf Ergänzungen seit dem letzten sichtbaren Besuch."""
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -23,6 +24,8 @@ def updates(
     limit: int = Query(3, ge=1, le=50),
     since: datetime | None = None,
     until: datetime | None = None,
+    kind: Literal["protocol", "agenda", "agenda_change"] | None = None,
+    committee: str | None = Query(None, max_length=300),
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
@@ -37,4 +40,5 @@ def updates(
             raise HTTPException(422, "Ungültiger Zeitraum.")
         window["since"] = since.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
         window["until"] = until.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-    return TodayUpdates(**window, **council.updates_since(window["since"], window["until"], offset, limit))
+    return TodayUpdates(**window, **council.updates_since(
+        window["since"], window["until"], offset, limit, kind, committee))

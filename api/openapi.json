@@ -16094,6 +16094,48 @@
         "title": "TodayUpdate",
         "type": "object"
       },
+      "TodayUpdateGroup": {
+        "properties": {
+          "committee": {
+            "title": "Committee",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "first_session_date": {
+            "title": "First Session Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "protocol",
+              "agenda",
+              "agenda_change"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_session_date": {
+            "title": "Last Session Date",
+            "type": "string"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/TodayUpdate"
+          }
+        },
+        "required": [
+          "kind",
+          "committee",
+          "count",
+          "first_session_date",
+          "last_session_date",
+          "latest"
+        ],
+        "title": "TodayUpdateGroup",
+        "type": "object"
+      },
       "TodayUpdates": {
         "properties": {
           "counts": {
@@ -16106,6 +16148,13 @@
           "first_visit": {
             "title": "First Visit",
             "type": "boolean"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TodayUpdateGroup"
+            },
+            "title": "Groups",
+            "type": "array"
           },
           "items": {
             "items": {
@@ -16133,7 +16182,8 @@
           "first_visit",
           "total",
           "counts",
-          "items"
+          "items",
+          "groups"
         ],
         "title": "TodayUpdates",
         "type": "object"
@@ -25388,6 +25438,36 @@
             "schema": {
               "format": "date-time",
               "title": "Until",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "protocol",
+                "agenda",
+                "agenda_change"
+              ],
+              "title": "Kind",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "committee",
+            "required": false,
+            "schema": {
+              "maxLength": 300,
+              "title": "Committee",
               "type": [
                 "string",
                 "null"

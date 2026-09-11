@@ -61,10 +61,20 @@ class TodayUpdate(TypedDict):
     decision_count: int
 
 
+class TodayUpdateGroup(TypedDict):
+    kind: Literal["protocol", "agenda", "agenda_change"]
+    committee: str
+    count: int
+    first_session_date: str
+    last_session_date: str
+    latest: TodayUpdate
+
+
 class TodayUpdates(VisitWindow):
     total: int
     counts: dict[str, int]
     items: list[TodayUpdate]
+    groups: list[TodayUpdateGroup]
 
 
 class OkWithId(TypedDict):

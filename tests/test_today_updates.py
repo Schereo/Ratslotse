@@ -16,10 +16,15 @@ from app.security import create_access_token  # noqa: E402
 
 
 @pytest.fixture
-def stores(tmp_path):
+def stores(tmp_path, monkeypatch):
     users = Store(tmp_path / 'users.sqlite')
     council = CouncilStore(tmp_path / 'council.sqlite')
     uid = users.create_web_user('besuch@example.org', 'unused', status='active', email_verified=True)
+    original = council.updates_since
+    def fixed_today(*args, **kwargs):
+        kwargs.setdefault('today', '2026-09-11')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(council, 'updates_since', fixed_today)
     yield users, council, uid
     users.close()
     council.close()
@@ -85,9 +90,9 @@ def test_arrivals_count_old_sessions_but_not_refreshes_or_duplicate_agenda_chang
     result = council.updates_since('2026-09-01T00:00:00Z', '2026-09-05T00:00:00Z', limit=2)
     assert result['counts'] == {'protocol': 1, 'agenda': 1, 'agenda_change': 1}
     assert result['items'][0]['session_date'] == '2026-05-01'
-    assert result['items'][1]['arrived'] == '2026-09-03T12:00:00'
+    assert result['items'][1]['id'] == 'agenda:2'
     remaining = council.updates_since('2026-09-01T00:00:00Z', '2026-09-05T00:00:00Z', offset=2)
-    assert [i['id'] for i in remaining['items']] == ['agenda:2']
+    assert [i['id'] for i in remaining['items']] == ['agenda_change:3']
     assert council.updates_since('2026-09-04T11:00:00+02:00', '2026-09-05T00:00:00Z')['total'] == 0
     council.save_protocol(1, {}, {}, '', 0, 'test', [], [])
     assert council.updates_since('2026-09-05T00:00:00Z', '2099-01-01')['total'] == 1
@@ -129,7 +134,12 @@ def test_api_requires_account_no_topics_and_keeps_pagination_window(stores):
         page = client.get('/api/today/updates', params={
             'since': result['since'], 'until': result['until'], 'offset': 2, 'limit': 1,
         }).json()
-        assert page['total'] == 3 and page['items'][0]['id'] == 'agenda:2'
+        assert page['total'] == 3 and page['items'][0]['id'] == 'agenda_change:3'
+        group = client.get('/api/today/updates', params={
+            'since': result['since'], 'until': result['until'], 'kind': 'agenda_change', 'committee': 'Finanzausschuss',
+        }).json()
+        assert group['total'] == 1 and group['items'][0]['id'] == 'agenda_change:3'
+        assert client.get('/api/today/updates?kind=invalid').status_code == 422
         assert client.get('/api/today/updates?since=2026-09-01').status_code == 422
         with users._conn:
             users._conn.execute("UPDATE web_users SET status='disabled' WHERE id=?", (uid,))
@@ -166,3 +176,47 @@ def test_chronicle_is_recorded_even_without_any_subscribers(tmp_path, monkeypatc
     assert council.get_latest_agenda_snapshot(77)[1]['title'] == 'Neue Schulwege'
     assert len(council.agenda_changes(77)) == 1
     council.close()
+
+
+def test_agendas_expire_after_meeting_day_but_protocols_remain(stores):
+    _, council, _ = stores
+    seed_updates(council)
+    window = ('2026-09-01T00:00:00Z', '2026-09-05T00:00:00Z')
+    # Dasselbe Besuchsfenster: der Kalendertag bestimmt die Relevanz.
+    assert council.updates_since(*window, today='2026-09-15')['total'] == 3
+    tomorrow = council.updates_since(*window, today='2026-09-16')
+    assert tomorrow['counts'] == {'protocol': 1, 'agenda_change': 1}
+    later = council.updates_since(*window, today='2026-09-17')
+    assert later['counts'] == {'protocol': 1}
+    assert later['items'][0]['session_date'] == '2026-05-01'
+
+
+def test_four_months_bundle_protocols_by_committee_and_page_only_selected_group(stores):
+    _, council, _ = stores
+    with council._conn:
+        for i in range(849):
+            day = (datetime(2026, 1, 1) + timedelta(days=i % 240)).date().isoformat()
+            council._conn.execute(
+                "INSERT INTO council_sessions VALUES (?, ?, ?, '', '', ?)",
+                (i + 1, f'Gremium {i % 17}', day, '2026-09-05'))
+            council._conn.execute(
+                "INSERT INTO council_protocols (ksinr, extracted_at, available_at) VALUES (?, ?, ?)",
+                (i + 1, '2026-06-24T10:00:00', '2026-06-24T10:00:00'))
+    window = ('2026-05-11T00:00:00Z', '2026-09-11T00:00:00Z')
+    result = council.updates_since(*window)
+    assert result['total'] == 849 and len(result['items']) == 3
+    assert len(result['groups']) == 17
+    assert sum(g['count'] for g in result['groups']) == 849
+    group = next(g for g in result['groups'] if g['committee'] == 'Gremium 0')
+    assert group['count'] == 50
+    assert group['latest']['session_date'] == group['last_session_date']
+    page = council.updates_since(*window, kind='protocol', committee='Gremium 0', offset=3)
+    assert page['total'] == 50 and len(page['items']) == 3
+    assert all(i['committee'] == 'Gremium 0' for i in page['items'])
+    assert len(page['groups']) == 1
+    first = council.updates_since(*window, kind='protocol', committee='Gremium 0')
+    assert not {i['id'] for i in first['items']} & {i['id'] for i in page['items']}
+    assert [i['session_date'] for i in first['items'] + page['items']] == sorted(
+        [i['session_date'] for i in first['items'] + page['items']], reverse=True)
+    end = council.updates_since(*window, kind='protocol', committee='Gremium 0', offset=50)
+    assert end['items'] == [] and end['groups'] == first['groups']

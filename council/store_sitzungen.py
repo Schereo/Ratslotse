@@ -1212,7 +1212,9 @@ class SitzungenMixin(StoreBasis):
         echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
         return echte[:limit] if limit is not None else echte
 
-    def updates_since(self, since: str, until: str, offset: int = 0, limit: int = 3) -> dict:
+    def updates_since(self, since: str, until: str, offset: int = 0, limit: int = 3,
+                      kind: str | None = None, committee: str | None = None,
+                      today: str | None = None) -> dict:
         """Öffentliche Ergänzungen nach Eingang, niemals nach Sitzungstag.
 
         Ein Protokoll erscheint einmal, Wiederverarbeitung zählt nicht erneut.
@@ -1220,7 +1222,10 @@ class SitzungenMixin(StoreBasis):
         aus fetched_at (das jeder Abruf überschreibt). Änderungen derselben
         Sitzung bündeln wir; eine gerade erst neue Agenda zählt nicht doppelt.
         """
-        cte = """
+        from zoneinfo import ZoneInfo
+
+        today = today or datetime.now(ZoneInfo("Europe/Berlin")).date().isoformat()
+        query = """
             WITH first_agenda AS (
                 SELECT ksinr, MIN(created_at) arrived FROM agenda_snapshots GROUP BY ksinr
             ), events AS (
@@ -1244,17 +1249,33 @@ class SitzungenMixin(StoreBasis):
                 FROM events e JOIN council_sessions s ON s.ksinr = e.ksinr
                 WHERE julianday(e.arrived) > julianday(:since)
                   AND julianday(e.arrived) <= julianday(:until)
+                  AND (e.kind = 'protocol' OR s.session_date >= :today)
+                  AND (:kind IS NULL OR e.kind = :kind)
+                  AND (:committee IS NULL OR s.committee = :committee)
             )
+            SELECT * FROM visible ORDER BY
+                CASE WHEN kind = 'protocol' THEN session_date END DESC,
+                CASE WHEN kind != 'protocol' THEN session_date END ASC, ksinr DESC
         """
-        params = {"since": since, "until": until, "offset": offset, "limit": limit}
-        counts = {r["kind"]: r["n"] for r in self._conn.execute(
-            cte + "SELECT kind, COUNT(*) n FROM visible GROUP BY kind", params)}
-        rows = self._conn.execute(cte + """
-            SELECT * FROM visible ORDER BY julianday(arrived) DESC, kind, ksinr DESC
-            LIMIT :limit OFFSET :offset
-        """, params).fetchall()
-        return {"counts": counts, "total": sum(counts.values()), "items": [
-            {**dict(row), "id": f"{row['kind']}:{row['ksinr']}"} for row in rows]}
+        rows = self._conn.execute(query, {"since": since, "until": until, "today": today,
+                                         "kind": kind, "committee": committee}).fetchall()
+        counts: dict[str, int] = {}
+        groups: dict[tuple[str, str], dict] = {}
+        for row in rows:
+            counts[row["kind"]] = counts.get(row["kind"], 0) + 1
+            key = (row["kind"], row["committee"])
+            if key not in groups:
+                groups[key] = {
+                    "kind": row["kind"], "committee": row["committee"], "count": 0,
+                    "first_session_date": row["session_date"], "last_session_date": row["session_date"],
+                    "latest": {**dict(row), "id": f"{row['kind']}:{row['ksinr']}"},
+                }
+            group = groups[key]
+            group["count"] += 1
+            group["first_session_date"] = min(group["first_session_date"], row["session_date"])
+            group["last_session_date"] = max(group["last_session_date"], row["session_date"])
+        return {"counts": counts, "groups": list(groups.values()), "total": sum(counts.values()), "items": [
+            {**dict(row), "id": f"{row['kind']}:{row['ksinr']}"} for row in rows[offset:offset + limit]]}
 
     def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
         """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die

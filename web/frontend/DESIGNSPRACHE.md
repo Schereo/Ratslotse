@@ -515,10 +515,17 @@ Beim ersten Besuch heißt er „Neu bei Ratslotse“ und nennt ausdrücklich sie
 Tage. Der Zeitraum bleibt während eines Besuchs stabil, auch beim Nachladen;
 ein neuer Besuch beginnt nach 30 Minuten ohne sichtbare Nutzung.
 
-Hierarchie: Zeitraum → Gesamtzahl mit kurzer Einordnung → drei Neuigkeiten.
-Jede Zeile nennt Art, Gremium, Sitzungstag und Eingang bei Ratslotse getrennt.
-Weitere Einträge werden auf Wunsch nachgeladen, der Fokus folgt dem ersten
-neuen Eintrag. Keine Tags und keine konkurrierende zweite Themen-Karte.
+Hierarchie: Zeitraum → höchstens drei aufklappbare Arten → Gremien → Sitzungen.
+Tagesordnungen erscheinen nur für Sitzungen ab heute; ältere Protokolle bleiben
+relevant. Neue Tagesordnungen und Änderungen derselben Sitzung zählen nicht
+doppelt. Protokolle zeigen die jüngste Sitzung zuerst, Tagesordnungen den
+nächsten Termin. Auch bei monatelanger Abwesenheit bleibt die Übersicht
+eingeklappt. Je Art erscheinen zunächst vier Gremien, je Gremium drei
+Sitzungen; weitere werden auf Wunsch geöffnet bzw. nachgeladen. Bei nur einer
+Sitzung führt das Gremium direkt zum Inhalt. Die Datenspanne hält nachträglich
+importierte Archiv-Protokolle von vermeintlich aktuellen Sitzungen unterscheidbar.
+Der Fokus folgt beim Nachladen der ersten neuen Sitzung. Keine Tags und keine
+konkurrierende zweite Themen-Karte.
 
 Animationen erklären Zustandswechsel: neue Zeilen blenden über 220 ms mit
 vier Pixeln Bewegung ein, Hover hebt die Zeile leicht hervor und bewegt nur

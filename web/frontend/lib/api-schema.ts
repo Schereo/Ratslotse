@@ -11630,6 +11630,23 @@ export interface components {
             /** Session Date */
             session_date: string;
         };
+        /** TodayUpdateGroup */
+        TodayUpdateGroup: {
+            /** Committee */
+            committee: string;
+            /** Count */
+            count: number;
+            /** First Session Date */
+            first_session_date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "protocol" | "agenda" | "agenda_change";
+            /** Last Session Date */
+            last_session_date: string;
+            latest: components["schemas"]["TodayUpdate"];
+        };
         /** TodayUpdates */
         TodayUpdates: {
             /** Counts */
@@ -11638,6 +11655,8 @@ export interface components {
             };
             /** First Visit */
             first_visit: boolean;
+            /** Groups */
+            groups: components["schemas"]["TodayUpdateGroup"][];
             /** Items */
             items: components["schemas"]["TodayUpdate"][];
             /** Since */
@@ -17869,6 +17888,8 @@ export interface operations {
                 limit?: number;
                 since?: string | null;
                 until?: string | null;
+                kind?: "protocol" | "agenda" | "agenda_change" | null;
+                committee?: string | null;
             };
             header?: never;
             path?: never;
@@ -18416,4 +18437,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: fc50982724919f29efe50edda01a0eae405250a7243b1e57fbce579531361554
+// vertrag-sha256: d1e723f74e33aa37fdbc181845b8c7db722de2a7d59988fc300022f1bf8760e2
