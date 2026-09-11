@@ -89,7 +89,7 @@ function LadeSchirm() {
 }
 
 export function TippView() {
-  const { data: config, isLoading: configLaedt } = useAppConfig();
+  const { isLoading: configLaedt } = useAppConfig();
   const tippspielAn = useFeature("tippspiel");
   const queryClient = useQueryClient();
   const [lottiAnimiert, setLottiAnimiert] = useState(false);

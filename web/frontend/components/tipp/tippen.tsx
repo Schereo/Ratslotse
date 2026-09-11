@@ -89,6 +89,11 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         setFehler(typeof body?.detail === "string" ? body.detail : "Das hat nicht geklappt — versuch es noch einmal.");
+        // 409 heißt: Der Tipp-Schluss ist gefallen, während hier noch getippt
+        // wurde (die erste Hochrechnung setzt ihn von selbst). Dann ist das
+        // Formular tot — nach dem Lesen der Meldung zurück auf „Mein Tipp",
+        // wo der zuletzt gespeicherte Tipp steht.
+        if (res.status === 409) setTimeout(onGespeichert, 2500);
         return;
       }
       // Der Bestätigungs-Takt: Der Knopf sagt „Gespeichert" und bleibt einen

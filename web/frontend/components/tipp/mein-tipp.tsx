@@ -1,9 +1,11 @@
 "use client";
 
-// 1e — „Mein Tipp": vor der ersten Zahl eine Bestätigung, danach Rang,
-// Punkte und der Tipp Zeile für Zeile gegen den Stand. Reine Anzeige — wer
-// rechtzeitig getippt hat, kann seinen Tipp nach Tipp-Schluss nicht mehr
-// ändern (das übernimmt Screen 1d, solange offen ist).
+// 1e — „Mein Tipp": vor der ersten Zahl die Bestätigung („gespeichert"),
+// danach Rang, Punkte und der Tipp Zeile für Zeile gegen den Stand.
+//
+// Solange getippt werden darf, führt „Tipp ändern" zurück ins Formular (1d).
+// Nach dem Tipp-Schluss gibt es den Knopf nicht mehr: Dann ist der Tipp fest
+// — für Spätstarter genauso, die ihren einen Tipp abgegeben haben.
 
 import Link from "next/link";
 import { useState } from "react";
@@ -82,7 +84,7 @@ export function MeinTipp({ setup, meins, onAendern }: {
             <p className="mt-1 text-[12.5px] leading-relaxed opacity-90">
               {meins.locked
                 ? "Sobald die erste Zahl da ist, siehst du hier deinen Rang."
-                : `Änderbar ${setup.deadline_hint.replace(/^bis /, "bis ")}. Dann zählen wir aus.`}
+                : `Änderbar ${setup.deadline_hint}. Dann zählen wir aus.`}
             </p>
           </div>
         </div>
