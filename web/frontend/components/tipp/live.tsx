@@ -30,8 +30,25 @@ type PredictionStand = ApiAntwort<"/tipp/stand">;
 type PredictionGame = ApiAntwort<"/tipp/setup">;
 type Ansicht = "qr" | "vergleich" | "rangliste";
 
-async function holeStand(): Promise<PredictionStand> {
-  return api.get<PredictionStand>("/tipp/stand");
+/** `?probe=2021&counted=N` an den Abruf weiterreichen — dasselbe, was
+ *  `wahlabend.abfragePfad` für `/wahlabend` tut. Ohne das trüge die URL des
+ *  Beamers die Generalprobe, der Abruf dahinter aber nicht: Man sähe den
+ *  Live-Stand und hielte ihn für die Probe. Die Generalprobe ist der einzige
+ *  Weg, den Abend vor dem Abend durchzuspielen (Plan, Abnahme von PR 4:
+ *  `counted=0 → 40 → 90 → 133` zeigt Rangwechsel).
+ *
+ *  Die getestete Zwillingsfunktion steht als `probePfad` in `lib/tipp.ts`
+ *  (PR 2) — sind beide Zweige auf `main`, ersetzt sie diese Kopie. */
+function mitProbe(basis: string, probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams();
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  const s = q.toString();
+  return s ? `${basis}?${s}` : basis;
+}
+
+async function holeStand(pfad: string): Promise<PredictionStand> {
+  return api.get<PredictionStand>(pfad);
 }
 async function holeSetup(): Promise<PredictionGame> {
   return api.get<PredictionGame>("/tipp/setup");
@@ -41,6 +58,9 @@ export function TippLive() {
   const schalterAn = useFeature("tippspiel");
   const params = useSearchParams();
   const erzwungen = params.get("ansicht") as Ansicht | null;
+  const probe = params.get("probe");
+  const counted = params.get("counted");
+  const standPfad = mitProbe("/tipp/stand", probe, counted);
 
   // Erstbesuch: dunkles Theme (Regel 3). Merkt sich danach die Wahl des
   // Geräts wie überall sonst — kein zweites, seiteneigenes Theme-System,
@@ -50,8 +70,8 @@ export function TippLive() {
   }, []);
 
   const standQuery = useQuery({
-    queryKey: ["tipp", "stand-live"],
-    queryFn: holeStand,
+    queryKey: ["tipp", "stand-live", standPfad],
+    queryFn: () => holeStand(standPfad),
     enabled: schalterAn,
     placeholderData: keepPreviousData,
     refetchInterval: (q) => {
@@ -115,7 +135,15 @@ export function TippLive() {
 
   return (
     <div className="relative min-h-[100dvh] bg-background text-foreground">
-      <div className="absolute right-5 top-5 z-10">
+      <div className="absolute right-5 top-5 z-10 flex items-center gap-3">
+        {probe && (
+          // Auf einem Beamer im vollen Raum darf die Generalprobe keine
+          // Sekunde wie das echte Ergebnis aussehen (dieselbe Zusage wie im
+          // Wahlabend, der seine Probe ebenfalls ausschildert).
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 font-mono text-[12px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
+            Generalprobe · Zahlen von 2021
+          </span>
+        )}
         <WebThemeSwitch />
       </div>
       {/* `key={ansicht}` baut den Screen beim Wechsel neu auf — der

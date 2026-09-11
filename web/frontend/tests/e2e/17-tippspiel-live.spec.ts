@@ -185,3 +185,36 @@ test.describe("Schalter an", () => {
     expect(helligkeit, "die Anzeigetafel ist im Hellmodus dunkel").toBeGreaterThan(128);
   });
 });
+
+test.describe("Generalprobe", () => {
+  test("reicht probe/counted an den Abruf weiter und schildert sich aus", async ({ page }) => {
+    // Ohne das Weiterreichen trüge nur die Browser-Adresse die Probe, der
+    // Abruf dahinter zeigte den Live-Stand — auf einem Beamer der denkbar
+    // schlechteste Irrtum.
+    await appConfig(page, ["tippspiel"]);
+    await setupMock(page);
+    const gesehen: string[] = [];
+    await page.route("**/api/tipp/stand**", (route) => {
+      gesehen.push(new URL(route.request().url()).search);
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STAND_A) });
+    });
+
+    await page.goto("/tipp/live?probe=2021&counted=40");
+    await expect(page.getByText("Generalprobe · Zahlen von 2021")).toBeVisible();
+    expect(gesehen[0]).toBe("?probe=2021&counted=40");
+  });
+
+  test("ohne Parameter fragt der Beamer den Live-Stand ab", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    await setupMock(page);
+    const gesehen: string[] = [];
+    await page.route("**/api/tipp/stand**", (route) => {
+      gesehen.push(new URL(route.request().url()).search);
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(STAND_A) });
+    });
+
+    await page.goto("/tipp/live");
+    await expect(page.getByText("Generalprobe · Zahlen von 2021")).toBeHidden();
+    expect(gesehen[0]).toBe("");
+  });
+});
