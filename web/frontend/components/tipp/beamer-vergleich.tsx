@@ -76,6 +76,9 @@ function ObZeile({ z }: { z: PredictionStand["mayor"][number] }) {
 }
 
 export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
+  // Der Satz verspricht „vor Tipp-Schluss" — `tip_count` zählt aber ALLE
+  // Tipps, auch nachgetippte, die in den Ø nicht eingehen (service._avg).
+  const rechtzeitig = stand.rows.filter((r) => r.has_tip && r.late_at === null).length;
   // Kein Server-Satz für "ohne Sitz" — im Gegensatz zu `compare_sentence`
   // trägt `PredictionStand.notes` die Hinweise des WAHLABENDS (Losfälle,
   // fehlende Personenstimmen), keinen tippspiel-eigenen Text dafür. Aus
@@ -96,7 +99,7 @@ export function BeamerVergleich({ stand }: { stand: PredictionStand }) {
           <div className="min-w-0">
             <p className="font-display text-[17px] font-bold leading-snug sm:text-lg">{stand.compare_sentence}</p>
             <p className="mt-2 text-[12px] text-muted-foreground">
-              Ø-Tipp = Mittel aller {stand.tip_count} Tipps vor Tipp-Schluss.
+              Ø-Tipp = Mittel aller {rechtzeitig} Tipps vor Tipp-Schluss.
             </p>
           </div>
         </div>
