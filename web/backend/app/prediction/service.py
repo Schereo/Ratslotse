@@ -33,6 +33,7 @@ from ..antworten import (
     PredictionCompareLine,
     PredictionGame,
     PredictionMayorCandidate,
+    PredictionMayorCompareLine,
     PredictionMayorLine,
     PredictionMine,
     PredictionParty,
@@ -161,13 +162,15 @@ def _score_dict(s: scoring.Score) -> PredictionScore:
                            exact_lists=s.exact_lists, deviation=s.deviation)
 
 
-def _mayor_status(counted: int | None) -> tuple[str, int, int]:
+def _mayor_status(counted: int | None) -> str:
+    """Nur der Auszählungsstand der OB-Wahl (für den Kicker der Tafel) —
+    die verglichenen Prozente kommen unverändert aus ``prediction_result``."""
     try:
         m = mayor.probe(counted) if counted is not None else mayor.fetch()
     except Exception:
         _log.exception("Tippspiel: Blick auf die OB-Wahl fehlgeschlagen.")
-        return "before", 0, 0
-    return m.phase, m.reports_received, m.reports_expected
+        return "before"
+    return m.phase
 
 
 def _area_label(night: ElectionNight) -> str:
@@ -224,13 +227,14 @@ def _build_stand(store: Store, *, probe: str | None, counted: int | None) -> Pre
         compare.append(PredictionCompareLine(slug=p.slug, short=p.short, color=p.color, color_dark=p.color_dark,
                                              actual=actual, avg_tip=avg, exact_count=exakt))
 
-    mayor_lines: list[PredictionMayorLine] = []
+    mayor_compare: list[PredictionMayorCompareLine] = []
     for c in mayor.candidates():
-        avg = _avg(sichtbare_mit_tipp, "mayor", c.slug)
-        mayor_lines.append(PredictionMayorLine(slug=c.slug, tip=avg or 0.0, actual_pct=actual_mayor.get(c.slug),
-                                              avg_tip=avg, points=0))
+        mayor_compare.append(PredictionMayorCompareLine(
+            slug=c.slug, name=c.name, party=c.party,
+            actual_pct=actual_mayor.get(c.slug), avg_tip=_avg(sichtbare_mit_tipp, "mayor", c.slug),
+        ))
 
-    mayor_phase, mayor_received, mayor_expected = _mayor_status(counted if probe == "2021" else None)
+    mayor_phase = _mayor_status(counted if probe == "2021" else None)
 
     rows: list[PredictionRow] = []
     leader: int | None = None
@@ -280,7 +284,7 @@ def _build_stand(store: Store, *, probe: str | None, counted: int | None) -> Pre
         title=game["title"], phase=game["phase"], stand_label=(computed_at or "")[11:16],
         area_label=area_label, source_label=_source_label(results), seats_total=reg.seats,
         player_count=len(tips), tip_count=len(sichtbare_mit_tipp),
-        compare=compare, mayor=mayor_lines, mayor_status=mayor_phase,
+        compare=compare, mayor=mayor_compare, mayor_status=mayor_phase,
         rows=rows, leader_player_id=leader, compare_sentence=_compare_sentence(compare),
         computed_at=computed_at or now, notes=notes,
     )

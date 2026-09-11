@@ -9953,6 +9953,24 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /**
+         * PredictionMayorCompareLine
+         * @description Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als
+         *     ``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins" in 1e/1f)
+         *     gibt es hier keine einzelne Person, deren Tipp „der" Tipp wäre.
+         */
+        PredictionMayorCompareLine: {
+            /** Actual Pct */
+            actual_pct: number | null;
+            /** Avg Tip */
+            avg_tip: number | null;
+            /** Name */
+            name: string;
+            /** Party */
+            party: string;
+            /** Slug */
+            slug: string;
+        };
         /** PredictionMayorLine */
         PredictionMayorLine: {
             /** Actual Pct */
@@ -10150,7 +10168,7 @@ export interface components {
             /** Leader Player Id */
             leader_player_id: number | null;
             /** Mayor */
-            mayor: components["schemas"]["PredictionMayorLine"][];
+            mayor: components["schemas"]["PredictionMayorCompareLine"][];
             /** Mayor Status */
             mayor_status: string;
             /** Notes */
@@ -18184,4 +18202,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: bbe73d196483fc2f68b037a50017665a5d2f9a58f9b823671e9a1f23f40da185
+// vertrag-sha256: aa9962638bd9837498158a8704b9b9fa2cca337486fed36bda7c94be4a4224dc
