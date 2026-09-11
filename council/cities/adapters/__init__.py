@@ -34,8 +34,6 @@ class Adapter(Protocol):
         """Rohablage → Batch. **Rein**: liest nie das Netz."""
         ...
 
-    def file_url(self, file_json: dict, url: str | None) -> str | None: ...
-
 
 def get_adapter(dialect: str) -> Adapter:
     if dialect == "allris4":

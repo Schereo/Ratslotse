@@ -588,10 +588,6 @@ class Allris4HtmlAdapter:
                     role_raw=ergebnis or None))
         return raus
 
-    def file_url(self, file_json: dict, url: str | None) -> str | None:
-        """Die Adresse steht schon in der Datei — ALLRIS leitet nicht um."""
-        return url
-
     @staticmethod
     def _dateien(suppe: BeautifulSoup, objekt_id: str, body_id: str,
                  paper_id: str | None = None,
