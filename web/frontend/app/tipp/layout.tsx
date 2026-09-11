@@ -8,13 +8,13 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Tippspiel — Ratswahl Oldenburg 2026 | Ratslotse",
   description:
-    "Wer tippt den Rat am besten? 52 Sitze auf 16 Listen verteilen, optional die OB-Prozente — ohne Konto, per QR-Link. Live-Vergleich und Scoreboard am Wahlabend.",
+    "Wie geht die Ratswahl in Oldenburg aus? Tippe die Sitzverteilung und auf Wunsch die OB-Wahl. Ohne Konto mitmachen und am Wahlabend die Rangliste verfolgen.",
   openGraph: {
     type: "website",
     locale: "de_DE",
     siteName: "Ratslotse",
     title: "Tippspiel — Ratswahl Oldenburg 2026",
-    description: "52 Sitze auf 16 Listen tippen — ohne Konto, per QR-Link.",
+    description: "Wie geht die Ratswahl aus? Verteile 52 Sitze auf 16 Wahllisten und mach ohne Konto mit.",
   },
 };
 

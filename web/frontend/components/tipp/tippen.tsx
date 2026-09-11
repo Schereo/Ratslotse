@@ -140,12 +140,12 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
           ))}
         </div>
         <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-          {setup.seats_total} Sitze insgesamt. Listen, die du bei 0 lässt, tippst du auf „kein Sitz".
+          Verteile insgesamt {setup.seats_total} Sitze. Mit 0 tippst du, dass diese Liste keinen Sitz bekommt.
         </p>
       </div>
       {meins.late_at !== null && (
         <p className="mx-4 mt-3 rounded-[10px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">
-          Tipp-Schluss war schon — dein Tipp läuft als <strong>nachgetippt</strong> und steht außer Konkurrenz.
+          Die Tippfrist ist vorbei. Dein Tipp wird als <strong>später abgegeben</strong> gekennzeichnet. {setup.late_scored ? "Er zählt bei der Platzierung mit." : "Er bekommt Punkte, aber keinen Platz in der Rangliste."}
         </p>
       )}
 
@@ -194,14 +194,14 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
         <div className="flex items-center justify-between gap-2.5">
           <div>
             <p className="font-display text-base font-bold">OB-Wahl mittippen</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Optional · bis 6 Bonuspunkte je Kandidatur</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Freiwillig · bis zu 6 Bonuspunkte pro Person</p>
           </div>
           <Switch checked={obOffen} onCheckedChange={setObOffen} aria-label="OB-Wahl mittippen" />
         </div>
         <Aufklapp offen={obOffen}>
           <div className="mt-3 flex flex-col gap-1.5">
             <div className="flex justify-between text-[11.5px] text-muted-foreground">
-              <span>Prozent je Kandidatur, Summe max. 100</span>
+              <span>Stimmenanteile in %, insgesamt höchstens 100 %</span>
               <span className={`font-mono ${obTon === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
                 {restObText(obRest)}
               </span>
@@ -249,7 +249,7 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
           {knopfText}
         </button>
         <p className="mt-2 text-center text-[11.5px] text-muted-foreground">
-          {meins.late_at !== null ? "Einmal abgeben — danach ist der Tipp fest." : setup.deadline_hint}
+          {meins.late_at !== null ? "Nach dem Abgeben kannst du deinen Tipp nicht mehr ändern." : setup.deadline_hint}
         </p>
       </div>
     </div>
