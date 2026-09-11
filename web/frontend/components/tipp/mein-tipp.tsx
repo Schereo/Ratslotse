@@ -54,8 +54,8 @@ export function MeinTipp({ setup, meins, onAendern }: {
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
           {meins.phase !== "open" && <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal motion-reduce:animate-none" />}
           {meins.phase === "open"
-            ? "Tippen offen"
-            : `${meins.phase === "final" ? "Endstand" : "Live"} · ${meins.stand_label || "wartet"}`}
+            ? "Tippen möglich"
+            : meins.stand_label ? `${meins.phase === "final" ? "Endstand" : "Live"} · ${meins.stand_label}` : "Noch kein Ergebnis"}
         </span>
       </div>
 
@@ -65,10 +65,10 @@ export function MeinTipp({ setup, meins, onAendern }: {
         // Person, warum ihr Rang fehlt oder „außer Konkurrenz" ist.
         <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-[12px] border border-amber-200 bg-amber-50 p-3 text-left dark:border-amber-900/50 dark:bg-amber-900/20">
           <span className="mt-0.5 flex-none rounded-full border border-amber-200 bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/50 dark:text-amber-200">
-            Nachgetippt {nachgetippt}
+            Später Tipp {nachgetippt}
           </span>
           <p className="text-[12px] leading-relaxed text-amber-800 dark:text-amber-200">
-            {meins.scored ? "Dein Tipp kam nach Tipp-Schluss und zählt trotzdem mit." : "Dein Tipp kam nach Tipp-Schluss und läuft außer Konkurrenz."}
+            {meins.scored ? "Du hast nach der Tippfrist getippt. Dein Tipp zählt bei der Platzierung mit." : "Du hast nach der Tippfrist getippt. Du bekommst Punkte, aber keinen Platz in der Rangliste."}
           </p>
         </div>
       )}
@@ -83,8 +83,8 @@ export function MeinTipp({ setup, meins, onAendern }: {
             <p className="mt-0.5 font-display text-lg font-bold">Dein Tipp ist gespeichert.</p>
             <p className="mt-1 text-[12.5px] leading-relaxed opacity-90">
               {meins.locked
-                ? "Sobald die erste Zahl da ist, siehst du hier deinen Rang."
-                : `Änderbar ${setup.deadline_hint}. Dann zählen wir aus.`}
+                ? "Sobald Ergebnisse vorliegen, siehst du hier, wie gut dein Tipp passt."
+                : `Du kannst deinen Tipp ${setup.deadline_hint} ändern.`}
             </p>
           </div>
         </div>
@@ -103,7 +103,7 @@ export function MeinTipp({ setup, meins, onAendern }: {
             </div>
           </div>
           <p className="mt-3 text-[12.5px] opacity-85">
-            Sitze {score.seat_points} · OB-Bonus {score.mayor_points} · {score.exact_lists} Listen exakt
+            Sitze {score.seat_points} · OB-Bonus {score.mayor_points} · {score.exact_lists} Listen richtig getippt
           </p>
         </div>
       )}
@@ -141,13 +141,13 @@ export function MeinTipp({ setup, meins, onAendern }: {
             <span />
             <span />
             <span className="text-right">Tipp</span>
-            {zeigeErgebnis && <><span className="text-right">Ist</span><span className="text-center">Pkt</span></>}
+            {zeigeErgebnis && <><span className="text-right">Stand</span><span className="text-center">Pkt</span></>}
           </div>
         </div>
         {nullAufNullListen.length > 0 && (
           <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted-foreground">
             {nullAufNullListen.length} Liste{nullAufNullListen.length === 1 ? "" : "n"} ohne Sitz:{" "}
-            {nullAufNullListen.map((s) => parteiVon[s.slug]?.short ?? s.slug).join(", ")} — du hattest alle bei 0: je 5 Punkte.
+            {nullAufNullListen.map((s) => parteiVon[s.slug]?.short ?? s.slug).join(", ")} — richtig mit 0 Sitzen getippt: je 5 Punkte.
           </p>
         )}
       </div>
@@ -180,7 +180,7 @@ export function MeinTipp({ setup, meins, onAendern }: {
               <div className="grid grid-cols-[1fr_46px_46px_44px] gap-2.5 px-3.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                 <span>OB-Wahl</span>
                 <span className="text-right">Tipp</span>
-                <span className="text-right">Ist</span>
+                <span className="text-right">Stand</span>
                 <span className="text-center">Pkt</span>
               </div>
             </div>
@@ -202,7 +202,7 @@ export function MeinTipp({ setup, meins, onAendern }: {
         </Button>
         {meins.has_mayor_tip && (
           <Button type="button" variant="secondary" className="h-11 flex-1 text-sm" aria-expanded={obOffen} onClick={() => setObOffen((o) => !o)}>
-            {obOffen ? "OB-Tipp zuklappen" : "OB-Tipp ansehen"}
+            {obOffen ? "OB-Tipp ausblenden" : "OB-Tipp ansehen"}
           </Button>
         )}
       </div>

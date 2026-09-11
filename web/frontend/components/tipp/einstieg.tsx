@@ -61,10 +61,10 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
         Ratswahl Oldenburg · 13.09.2026
       </p>
       <h1 className="mt-2 text-balance font-display text-[28px] font-bold leading-[1.1] tracking-tight">
-        Wer tippt den Rat am besten?
+        Wie geht die Ratswahl aus?
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Verteile 52 Sitze auf 16 Listen. Wenn du magst, tippst du auch, wie viel Prozent die OB-Kandidaturen holen.
+        Verteile {setup.seats_total} Sitze auf {setup.parties.length} Wahllisten. Wenn du magst, tippe auch, wer wie viel Prozent bei der Oberbürgermeisterwahl (OB-Wahl) bekommt.
       </p>
 
       <form
@@ -72,7 +72,7 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
         onSubmit={(e) => { e.preventDefault(); void beitreten(); }}
       >
         <label htmlFor="tipp-name" className="block text-xs font-semibold text-muted-foreground">
-          Dein Name, wie er auf dem Scoreboard stehen soll
+          Dein Name in der Rangliste
         </label>
         <Input
           id="tipp-name"
@@ -84,7 +84,7 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
           className="mt-2 h-[46px] text-base font-semibold"
         />
         <p className="mt-2 text-[11.5px] text-muted-foreground">
-          Öffentlich sichtbar im Raum. Kein Konto, keine E-Mail.
+          Dein Name ist für alle sichtbar. Du brauchst kein Konto und keine E-Mail-Adresse.
         </p>
         {fehler && <p className="mt-2 text-[11.5px] font-medium text-destructive">{fehler}</p>}
 
@@ -94,22 +94,22 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
           disabled={name.trim().length < 2 || sendet}
           className="mt-3.5 h-[50px] w-full text-base"
         >
-          {sendet ? "Einen Moment …" : "Los geht's — tippen"}
+          {sendet ? "Einen Moment …" : "Jetzt mitmachen"}
         </Button>
       </form>
 
       <div className="mt-4 grid w-full grid-cols-3 gap-2 text-left text-[11.5px] text-muted-foreground">
         <div className="rounded-[10px] bg-primary/5 p-2.5">
-          <strong className="block text-[13px] text-foreground">bis ~20 Uhr</strong>
-          Tippen bis zur ersten Hochrechnung, änderbar
+          <strong className="block text-[13px] text-foreground">bis ca. 20 Uhr</strong>
+          Bis zur ersten Hochrechnung kannst du deinen Tipp ändern.
         </div>
         <div className="rounded-[10px] bg-primary/5 p-2.5">
           <strong className="block text-[13px] text-foreground">5 · 3 · 1</strong>
-          Punkte je Liste: exakt, ±1, ±2 Sitze
+          Punkte je Liste: genau richtig, 1 oder 2 Sitze daneben
         </div>
         <div className="rounded-[10px] bg-primary/5 p-2.5">
           <strong className="block text-[13px] text-foreground">OB-Bonus</strong>
-          bis 6 Punkte je Kandidatur
+          bis zu 6 Punkte pro Person
         </div>
       </div>
     </div>

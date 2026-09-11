@@ -68,10 +68,10 @@ function NichtFreigeschaltet() {
         <Mascot pose="sleep" className="h-24 w-24" decorative />
       </div>
       <h1 className="mt-3 text-balance font-display text-2xl font-bold leading-tight tracking-tight">
-        Das Tippspiel schläft noch
+        Das Tippspiel ist noch nicht freigeschaltet
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Es geht rund um den Wahlabend am 13. September los. Komm gern über den Link zurück, den du bekommen hast.
+        Das Tippspiel startet rund um den Wahlabend am 13. September. Schau später noch einmal vorbei.
       </p>
     </Rahmen>
   );

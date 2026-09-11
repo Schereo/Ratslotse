@@ -67,7 +67,7 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
         <span className={cn("truncate font-semibold", kompakt ? "text-[22px]" : "text-[30px]")} title={z.name}>{z.name}</span>
         {z.late_at && (
           <span className="flex-none rounded-full border border-[#92400e] px-2.5 py-0.5 font-mono text-[18px] uppercase tracking-[0.08em] text-[#fcd34d]">
-            Nachgetippt {uhrzeitKurz(z.late_at)}
+            Später Tipp {uhrzeitKurz(z.late_at)}
           </span>
         )}
       </span>
@@ -79,7 +79,7 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
               {ohneTipp ? "–" : punkte}
             </span>
             {!ohneTipp && z.score && (
-              <span className={cn("text-muted-foreground", kompakt ? "text-[16px]" : "text-[20px]")}>{z.score.exact_lists} ex.</span>
+              <span className={cn("text-muted-foreground", kompakt ? "text-[16px]" : "text-[20px]")}>{z.score.exact_lists} richtig</span>
             )}
           </span>
         </>
@@ -103,7 +103,7 @@ export function Scoreboard({ stand }: { stand: PredictionStand }) {
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(900px_500px_at_50%_-10%,hsl(205_92%_34%/0.12),transparent_70%)] px-20 pb-10 pt-12 text-foreground dark:bg-[radial-gradient(900px_500px_at_50%_-10%,hsl(205_92%_34%/0.35),transparent_70%)]">
       <BeamerKopf
-        untertitel={gewertet ? "Tippspiel · Rangliste" : `Tippspiel · ${rest.length} Mitspielende`}
+        untertitel={gewertet ? "Tippspiel · Rangliste" : `Tippspiel · ${rest.length} dabei`}
         rechts={gewertet ? (
           <>
             <LivePunkt endstand={endstand} />
@@ -113,7 +113,7 @@ export function Scoreboard({ stand }: { stand: PredictionStand }) {
           </>
         ) : (
           // Ohne Ergebnis wäre „Live · –" eine Zusage, die keine Zahl deckt.
-          <span>{stand.phase === "open" ? "Tippen läuft" : "Warten auf die erste Hochrechnung"}</span>
+          <span>{stand.phase === "open" ? "Tippen möglich" : "Warten auf die erste Hochrechnung"}</span>
         )}
       />
 
@@ -128,8 +128,8 @@ export function Scoreboard({ stand }: { stand: PredictionStand }) {
       <div className="mt-[22px] flex items-center justify-between text-[22px] text-muted-foreground">
         <span>
           {gewertet
-            ? "Punkte je Liste: exakt 5 · ±1 Sitz 3 · ±2 Sitze 1 — OB-Bonus je Kandidatur bis 6."
-            : "Sobald die erste Hochrechnung da ist, wird aus dieser Liste die Rangliste."}
+            ? "Je Liste: 5 Punkte für die richtige Sitzzahl, 3 bei 1 Sitz daneben, 1 bei 2 Sitzen daneben. OB-Bonus: bis zu 6 pro Person."
+            : "Mit der ersten Hochrechnung siehst du hier, wer vorne liegt."}
         </span>
         <span className="font-mono">ratslotse.de/tipp</span>
       </div>
@@ -142,7 +142,6 @@ export function Scoreboard({ stand }: { stand: PredictionStand }) {
 export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe?: boolean }) {
   const endstand = stand.phase === "final";
   const mitRang = stand.rows.filter((r) => r.rank !== null);
-  const gewertet = mitRang.length > 0;
   const ohne = stand.rows.filter((r) => r.rank === null);
   return (
     <div className="mx-auto max-w-md px-4 pb-8 pt-[calc(env(safe-area-inset-top)+14px)]">
@@ -153,12 +152,10 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
       <div className="flex items-center justify-between gap-2 pr-[72px]">
         <span className="truncate font-display text-[15px] font-bold">Tippspiel · Rangliste</span>
         <span className="inline-flex flex-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
-          {/* Dieselbe Ehrlichkeit wie auf der Leinwand: „Live" ohne eine
-              einzige Zahl wäre eine Zusage, die nichts deckt. */}
-          {gewertet && <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal motion-reduce:animate-none" />}
-          {gewertet
-            ? `${endstand ? "Endstand" : "Live"} · ${stand.stand_label || "–"}`
-            : stand.phase === "open" ? "Tippen läuft" : "Warten auf Zahlen"}
+          {/* Der pulsierende Punkt sagt „hier bewegt sich etwas" — ohne Stand
+              bewegt sich nichts, dann bleibt er weg. */}
+          {stand.stand_label && <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal motion-reduce:animate-none" />}
+          {stand.stand_label ? `${endstand ? "Endstand" : "Live"} · ${stand.stand_label}` : "Noch kein Ergebnis"}
         </span>
       </div>
       {probe && (
@@ -180,7 +177,7 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
             <span className="font-display text-[19px] font-bold text-muted-foreground tabular-nums">{z.rank}</span>
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-[15px] font-semibold">{z.name}</span>
-              {z.late_at && <span className="flex-none rounded-full border border-amber-300 px-1.5 font-mono text-[9px] uppercase text-amber-700 dark:border-amber-500/40 dark:text-amber-300">nachgetippt</span>}
+              {z.late_at && <span className="flex-none rounded-full border border-amber-300 px-1.5 font-mono text-[9px] uppercase text-amber-700 dark:border-amber-500/40 dark:text-amber-300">später Tipp</span>}
             </span>
             <RangChip rank={z.rank} rankBefore={z.rank_before} className="h-6 px-2 text-[12px]" />
             <span className="font-display text-[19px] font-bold tabular-nums text-primary">{z.score?.total ?? "–"}</span>
@@ -194,7 +191,7 @@ export function HandyRangliste({ stand, probe }: { stand: PredictionStand; probe
         ))}
       </div>
       <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
-        Punkte je Liste: exakt 5 · ±1 Sitz 3 · ±2 Sitze 1 — OB-Bonus je Kandidatur bis 6.
+        Je Liste: 5 Punkte für die richtige Sitzzahl, 3 bei 1 Sitz daneben, 1 bei 2 Sitzen daneben. OB-Bonus: bis zu 6 pro Person.
       </p>
     </div>
   );

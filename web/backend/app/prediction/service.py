@@ -165,8 +165,8 @@ def _deadline_hint(game: dict) -> str:
     if game["phase"] == "open":
         return "bis zur ersten Hochrechnung (ca. 20 Uhr)"
     if game["locked_at"]:
-        return f"Tipp-Schluss war um {_uhrzeit(game['locked_at'])} Uhr."
-    return "Die Tippabgabe ist geschlossen."
+        return f"Die Tippfrist endete um {_uhrzeit(game['locked_at'])} Uhr."
+    return "Die Tippfrist ist vorbei."
 
 
 def _parsed(rows: list[dict]) -> list[dict]:
@@ -270,14 +270,14 @@ def _compare_sentence(compare: list[PredictionCompareLine]) -> str:
         for c in compare if c["avg_tip"] is not None and c["actual"] is not None
     ]
     if not kandidaten:
-        return "Sobald die ersten Sitze feststehen, zeigen wir hier, wie gut die Runde getippt hat."
+        return "Sobald die erste Hochrechnung da ist, siehst du hier, wie gut die Tipps zum aktuellen Stand passen."
     short, avg, actual = max(kandidaten, key=lambda k: abs(k[1] - k[2]))
     diff = round(avg - actual)
     if diff == 0:
-        return f"Die Runde hat {short} im Schnitt genau richtig getippt."
-    richtung = "zu stark" if diff > 0 else "zu schwach"
+        return f"Bei {short} liegen die Tipps im Durchschnitt nah am aktuellen Stand."
+    richtung = "mehr" if diff > 0 else "weniger"
     einheit = "Sitz" if abs(diff) == 1 else "Sitze"
-    return f"Die Runde hat {short} im Schnitt um {abs(diff)} {einheit} {richtung} getippt."
+    return f"Für {short} wurden im Durchschnitt rund {abs(diff)} {einheit} {richtung} getippt, als der aktuelle Stand zeigt."
 
 
 def _score_dict(s: scoring.Score) -> PredictionScore:

@@ -31,29 +31,29 @@ export function BeamerMitmachen({ game, tipCount }: { game: PredictionGame; tipC
         </div>
         <p className="mt-14 font-mono text-[26px] uppercase tracking-[0.11em] text-signal">Tippspiel</p>
         <h1 className="mt-3.5 text-balance font-display text-[104px] font-bold leading-none tracking-[-0.03em]">
-          Wer tippt den Rat am besten?
+          Wie geht die Ratswahl aus?
         </h1>
         <p className="mt-[34px] max-w-[26ch] text-[36px] leading-[1.4] text-foreground/80">
-          {game.seats_total} Sitze, {game.parties.length} Listen. Wer will, tippt auch die OB-Prozente. Nur ein Name, kein Konto.
+          {game.seats_total} Sitze, {game.parties.length} Wahllisten. Tippe, wie die Wahl ausgeht. Mitmachen ohne Konto.
         </p>
 
         <div className="mt-14 flex items-center gap-7">
           <div className="rounded-[24px] border-2 border-border px-[30px] py-[22px]">
             <p className="font-mono text-[22px] uppercase tracking-[0.1em] text-muted-foreground">
-              {game.locked ? "Tipp-Schluss" : "Tippen noch"}
+              {game.locked ? "Tippfrist beendet" : "Tippen möglich"}
             </p>
             <p className="mt-1.5 font-display text-[64px] font-bold leading-none tabular-nums">
               {game.locked ? (schluss ?? "vorbei") : "bis ca. 20 Uhr"}
             </p>
             <p className="mt-2 text-[24px] text-muted-foreground">
-              {game.locked ? "Nachtippen läuft außer Konkurrenz" : "bis zur ersten Hochrechnung"}
+              {game.locked ? (game.late_scored ? "Spätere Tipps zählen mit" : "Spätere Tipps ohne Rang") : "bis zur ersten Hochrechnung"}
             </p>
           </div>
           <div className="flex items-center gap-[22px]">
             <Lotti regung="zeigt-rechts" className="h-[150px] w-[150px] flex-none" decorative />
             <p className="max-w-[16ch] text-[28px] leading-[1.45] text-foreground/80">
               <span className="font-semibold text-foreground">{tipCount}</span>{" "}
-              Mitspielende {tipCount === 1 ? "hat" : "haben"} schon getippt.
+              {tipCount === 1 ? "Person hat" : "Leute haben"} schon getippt.
             </p>
           </div>
         </div>
