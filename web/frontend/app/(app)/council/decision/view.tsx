@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, notFound } from "next/navigation";
+import { useSearchParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ExternalLink, FileText, FileDown, GitCompareArrows, Leaf, Newspaper, Tag, Euro } from "lucide-react";
 import { DecisionDetail, CouncilDecision, SessionDetail } from "@/lib/types";
@@ -17,6 +17,7 @@ import { BookmarkButton } from "@/components/bookmark-button";
 import { nwzSearchUrl } from "@/components/nwz-link";
 import { trackRecentDecision } from "@/lib/recent";
 import { useZurueck } from "@/lib/zurueck";
+import { kamDirektAusSuche, suchRueckweg } from "@/lib/suchkontext";
 import { Mascot } from "@/components/mascot";
 import { Elsewhere } from "@/components/elsewhere";
 import { cn } from "@/lib/utils";
@@ -553,7 +554,10 @@ function VorlageExcerpt({ text }: { text: string }) {
 }
 
 function DecisionDetailInner() {
-  const id = useSearchParams().get("id");
+  const sp = useSearchParams();
+  const id = sp.get("id");
+  const suche = suchRueckweg(sp.get("suche"));
+  const router = useRouter();
   const { zeigen: zeigeZurueck, zurueck } = useZurueck();
   const { data, loading } = useFetch<DecisionDetail>(id ? `/council/decision/${id}` : null);
   // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
@@ -595,7 +599,22 @@ function DecisionDetailInner() {
      zeigt der Knopf sein Ziel und fällt auf die Sitzung zurück. Gäste sehen ihn
      gar nicht — für sie führt jedes Ziel entweder aus der Seite heraus oder an
      die Anmeldewand (s. lib/zurueck.ts). */
-  const backToSession = () => zurueck(d.ksinr ? sessionHref(d.ksinr) : "/council");
+  const backToSession = () => {
+    if (!suche) {
+      zurueck(d.ksinr ? sessionHref(d.ksinr) : "/council");
+      return;
+    }
+    // Nur der unmittelbar aus DIESER Liste geöffnete Treffer benutzt History.
+    // Im neuen Tab, nach Weiterblättern oder ohne Speicher ist die geprüfte
+    // Suchadresse der verlässliche Rückweg — nie ein fremder History-Eintrag.
+    if (kamDirektAusSuche(window.location.pathname + window.location.search)) {
+      router.back();
+    } else {
+      router.push(suche, { scroll: false });
+    }
+  };
+  const nachbarHref = (nr: number) => decisionHref(nr)
+    + (suche ? `&suche=${encodeURIComponent(suche)}` : "");
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -604,8 +623,8 @@ function DecisionDetailInner() {
           <button onClick={backToSession} className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 shrink-0" />
             <span className="truncate">
-              Zurück
-              <span className="hidden sm:inline"> zu {shortCommittee(d.committee)} · {formatDate(d.session_date)}</span>
+              {suche ? "Zurück zur Suche" : "Zurück"}
+              {!suche && <span className="hidden sm:inline"> zu {shortCommittee(d.committee)} · {formatDate(d.session_date)}</span>}
             </span>
           </button>
         ) : (
@@ -644,7 +663,7 @@ function DecisionDetailInner() {
       {pos >= 0 && siblings.length > 1 && (
         <nav className="print-hidden mt-2 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2 py-1.5">
           {prev ? (
-            <Link href={decisionHref(prev.id)} title={prev.title ?? ""}
+            <Link href={nachbarHref(prev.id)} title={prev.title ?? ""}
               className="inline-flex min-w-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">TOP {prev.item_number}</span>
@@ -657,7 +676,7 @@ function DecisionDetailInner() {
             {pos + 1} von {siblings.length} Beschlüssen
           </span>
           {next ? (
-            <Link href={decisionHref(next.id)} title={next.title ?? ""}
+            <Link href={nachbarHref(next.id)} title={next.title ?? ""}
               className="inline-flex min-w-0 items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <span className="truncate">TOP {next.item_number}</span>
               <ArrowRight className="h-3.5 w-3.5 shrink-0" />
