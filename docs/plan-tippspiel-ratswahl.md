@@ -1,27 +1,38 @@
 # Umsetzungsplan: Tippspiel zur Ratswahl Oldenburg 2026
 
-Stand: 11.09.2026 (Freitag), mittags. Die Wahl ist am **Sonntag, 13.09.2026,
-8–18 Uhr**; die Auszählung beginnt um 18 Uhr. Alles hier muss bis Samstag
-Abend auf Prod sein, damit am Sonntag getippt und ab 18 Uhr verglichen werden
-kann. Der Plan ist wie [`plan-cities-phase5.md`](plan-cities-phase5.md)
-geschrieben: **ohne das Gespräch dahinter ausführbar**. Jeder Abschnitt in §4
-ist ein Pull Request mit Dateien, Signaturen, Tests, Zeitbedarf und
-Fertig-Kriterium. Was gemessen ist, steht mit Zahl in §2 und mit Befehl in
-Anhang C.
+Stand: 11.09.2026 (Freitag), nachmittags. Die Wahl ist am **Sonntag,
+13.09.2026, 8–18 Uhr**; die Auszählung beginnt um 18 Uhr, die erste
+Rats-Hochrechnung wird gegen 20 Uhr erwartet. Alles hier muss bis Samstag
+Abend auf Prod sein.
+
+Dieser Plan führt **zwei Quellen** zusammen und ersetzt beide:
+
+1. die technische Erhebung vom 11.09. (Datenlage, Votemanager-Robustheit,
+   Wiederverwendbares im Repo) und
+2. das Design-Artboard **„Tippspiel Kommunalwahl"** aus dem Claude-Design-
+   Projekt `2e1e6508-5493-4bff-bfe9-16abab1ed05e` (Artboards `1a`–`1i`:
+   Plan, drei Beamer-Screens, vier Handy-Screens, Admin).
+
+Wo beide etwas anderes sagten, steht die Entscheidung mit Begründung in §3.
+**Das Design gewinnt bei allem Sichtbaren und bei den Spielregeln** — Tim hat
+es durchgesehen. **Die Erhebung gewinnt bei der Datenquelle** — das Design
+wurde geschrieben, ohne dass der bestehende Wahlabend-Code bekannt war.
+
+Der Plan ist wie [`plan-cities-phase5.md`](plan-cities-phase5.md)
+geschrieben: **ohne das Gespräch dahinter ausführbar**. Jeder Abschnitt in §5
+ist ein Pull Request mit Dateien, Signaturen, Tests und Fertig-Kriterium.
 
 Wer das umsetzt, liest **vorher** vollständig: die Wurzel-`CLAUDE.md`,
 `web/backend/CLAUDE.md`, `web/frontend/CLAUDE.md`,
-**`web/frontend/DESIGNSPRACHE.md`** (Farben, Bewegung, Anti-Patterns — die
-Tafel steht und fällt damit), `tests/CLAUDE.md`, die Technik-Doku
+**`web/frontend/DESIGNSPRACHE.md`**, `tests/CLAUDE.md`, die Technik-Doku
 `docs-site/src/content/docs/wahlabend.md` und die Modul-Docstrings von
 `web/backend/app/election/service.py`, `votemanager.py`, `presentation.py`.
-Das Tippspiel ist ein **Aufsatz auf den Wahlabend**: Es baut keinen zweiten
-Abruf der Ratswahl und keine zweite Sitzverteilung, es liest
-`service.live()` und legt Tipps daneben.
+Dazu das Artboard selbst — es ist die Bildvorlage, dieser Text ist die
+Bauanleitung.
 
 ## 0. Was Tim vorgegeben hat
 
-Am 11.09.2026:
+Am 11.09.2026, in drei Nachrichten:
 
 > Tippspiel zur Kommunalwahl in Oldenburg: tippen, welche Parteien wie viele
 > Plätze im Stadtrat bekommen; ein öffentlicher Endpunkt, wo man sich per
@@ -39,332 +50,297 @@ Am 11.09.2026:
 > Check nochmal, ob unser Votemanager-Abruf robust ist; ich glaube nicht,
 > dass die Open-Data-CSV live am Abend aktualisiert wird.
 
+Und zur Zusammenführung mit dem Design:
+
+> Alle dunklen Designs sollten umschaltbar sein in Light Mode.
+
 Daraus die Regeln dieses Plans:
 
 1. **Kein zweites Register.** Listen, Kurznamen, Farben, Sitze 2021 und die
-   OB-Kandidaten kommen aus `kommunalwahl/kandidaten.json`,
+   neun OB-Kandidaturen kommen aus `kommunalwahl/kandidaten.json`,
    `kommunalwahl/parteien-meta.json` und `kommunalwahl/wahl-fakten.json`
    (`ob_kandidaten`) — über `election.register.load()` bzw. eine neue,
-   gleich gebaute Funktion für die OB-Kandidaten. Nichts wird abgetippt.
-2. **Ein neuer Abruf, nicht zwei.** Die Ratswahl liefert `service.live()`
-   fertig (Sitze je Liste, Hochrechnung, Phase). Neu ist nur der Abruf der
-   **OB-Wahl** aus der Ergebnisdarstellung des Votemanagers (§2.3) — nach dem
-   Muster von `presentation.py`.
-3. **Ohne Konto.** Wer den QR-Code scannt, gibt einen Namen ein und tippt.
-   Kein Registrieren, keine Adresse, kein Passwort. Die Identität ist ein
-   Geheimnis im Browser (§3.1).
-4. **Die Punkte rechnet der Server** — `logik-ins-backend`: Web zeigt, Server
-   entscheidet. Die Formel steht in Anhang A und in `prediction/scoring.py`
-   mit Tests, nirgendwo sonst.
-5. **Der Abend darf an nichts sterben.** Dieselbe Regel wie in
-   `service.py`: Die Tafel antwortet immer, notfalls mit dem letzten Stand
-   und einem Vermerk. Ein 500er um 19 Uhr ist die einzige Antwort, die
-   niemand gebrauchen kann.
-6. **Web zuerst, iOS nicht.** Bis Sonntag gibt es keinen App-Store-Release
-   mehr (Review dauert Tage). Der Vertrag wird so geschnitten, dass die App
-   später nachziehen kann; gebaut wird sie in diesem Plan nicht.
-7. **Nach `main`, nicht nach `dev`.** `dev` liegt sieben Commits vor `main`
-   (Städtevergleich, Admin-Panel); die gehören nicht ungeplant auf Prod. Jeder
-   PR dieses Plans zweigt von `origin/main` ab und geht mit `--base main` —
-   wie #1150 (Wahlabend) am 06.09. Danach Rückmerge nach `dev`.
-8. **Bild vor dem Merge.** Jeder UI-PR (2, 3, 4) schickt ein Bild an Tim
+   gleich gebaute Funktion für die OB-Kandidaturen. Nichts wird abgetippt.
+2. **Kein zweiter Scraper für die Ratswahl.** Sie liegt fertig gerechnet in
+   `election.service.live()` (Sitze je Liste, Hochrechnung, Phase, 89 Tests,
+   gestufte Rückfälle). Neu ist nur der Abruf der **OB-Wahl** (§2.4) — nach
+   dem Muster von `presentation.py`.
+3. **Jede dunkle Fläche hat einen Hellmodus.** Die drei Beamer-Screens sind
+   im Entwurf dunkel (`hsl(213 50% 7%)`). Sie werden **nicht** mit festen
+   Farbwerten gebaut, sondern gegen die Design-Token des Repos, und tragen
+   den vorhandenen `LottiThemeSwitch`. Dunkel bleibt die **Vorgabe** auf der
+   Beamer-Route (ein Projektor in einem abgedunkelten Raum), umschaltbar ist
+   sie trotzdem. Im Hellmodus werden die dunklen Karten zur **Anzeigetafel**,
+   nicht zu schwarzen Kacheln — das ist Tims stehende Regel (§3.10).
+4. **Die Punkte rechnet der Server.** Ein Rechenweg für Handy und Beamer;
+   die Formel steht in Anhang A und in `prediction/scoring.py` mit Tests,
+   nirgendwo sonst. (`logik-ins-backend`.)
+5. **Der Abend darf an nichts sterben.** Dieselbe Regel wie in `service.py`:
+   Die Seiten antworten immer, notfalls mit dem letzten Stand und einem
+   Vermerk. Ein 500er um 20 Uhr ist die einzige Antwort, die niemand
+   gebrauchen kann.
+6. **Manuell schlägt automatisch.** Der Votemanager-Abruf ist die Bequemlich-
+   keit, die Handeingabe im Admin ist die Zusage. Veröffentlichen ist ein
+   eigener Schritt (Entwurf → live), damit ein Tippfehler nicht auf dem
+   Beamer landet.
+7. **Web zuerst, iOS nicht.** Bis Sonntag gibt es keinen App-Store-Release
+   mehr. Der Vertrag wird so geschnitten, dass die App später nachziehen
+   kann; gebaut wird sie in diesem Plan nicht.
+8. **Nach `main`, nicht nach `dev`.** `dev` liegt sieben Commits vor `main`
+   (Städtevergleich, Admin-Panel); die gehören nicht ungeplant auf Prod.
+   Jeder PR dieses Plans zweigt von `origin/main` ab und geht mit
+   `--base main` — wie #1150 (Wahlabend) am 06.09. Danach Rückmerge nach
+   `dev`.
+9. **Bild vor dem Merge.** Jeder UI-PR schickt ein Bild an Tim
    (`SendUserFile`) und wartet sein Gegenlesen ab. Stehende Regel.
-9. **Designsprache ist Gesetz, auch für die Feier.** Keine
-   Parteifarben-Flächen (nur 8-px-Dots und 9-px-Tags), keine Emoji im
-   UI-Text, Bewegung nur über `transform`/`opacity`, die vier Takte aus
-   `globals.css`, `prefers-reduced-motion` respektiert. „Cool" heißt hier:
-   Typografie, Podium, gleitende Zahlen, ein Konfetti-Regen aus
-   `components/confetti.tsx` — nicht Neon.
 10. **Feature-Schalter `tippspiel`**, nicht Umgebungs-Gate: Der Code fährt
-    nach Prod, die Seite geht per `.env` an und nach dem amtlichen
-    Endergebnis wieder aus — genau wie `wahlabend`.
+    nach Prod, die Seiten gehen per `.env` an und nach dem Abend wieder aus
+    — genau wie `wahlabend`.
 
-## 1. Zielbild
+## 1. Zielbild — die acht Screens des Artboards
 
 ```
-  ┌────────────────────────────────┐ ┌────────────────────────────────┐
-  │ A  MITMACHEN  /tippspiel       │ │ B  MEIN TIPP LIVE  /tippspiel  │
-  │    ?spiel=CODE (aus dem QR)    │ │    ab So 18 Uhr: je Liste Tipp │
-  │    Name → 16 Listen auf 52     │ │    · Stand · Punkte, OB-Zeile, │
-  │    Sitze verteilen (Start:     │ │    mein Rang und die Bewegung  │
-  │    Ergebnis 2021), optional    │ │    seit dem letzten Stand      │
-  │    OB-Prozente; Autosave bis   │ │    (PR 2)                      │
-  │    So 18:00 (PR 2)             │ │                                │
-  └────────────────────────────────┘ └────────────────────────────────┘
-  ┌────────────────────────────────┐ ┌────────────────────────────────┐
-  │ C  TAFEL  /tippspiel/tafel     │ │ D  BETRIEB                     │
-  │    Podium 1–3, Rangliste mit   │ │    Admin legt das Spiel an,    │
-  │    gleitenden Zeilen (FLIP),   │ │    QR-Ecke zum Ausdrucken,     │
-  │    ▲▼ seit letztem Stand,      │ │    Namen ausblenden/umbenennen │
-  │    Punkte tween, Konfetti bei  │ │    Generalprobe ?probe=2021,   │
-  │    Führungswechsel, TV-Modus   │ │    Runbook für Sonntag         │
-  │    mit QR-Ecke vor 18 Uhr      │ │    (PR 4)                      │
-  │    (PR 3)                      │ │                                │
-  └────────────────────────────────┘ └────────────────────────────────┘
-  ┌───────────────────────────────────────────────────────────────────┐
-  │ 0  UNTERBAU: PR 0 macht den Votemanager-Abruf unabhängig davon,   │
-  │    ob die Open-Data-CSV am Abend lebt (§2.4). PR 1 legt Schema,   │
-  │    Punkte, OB-Abruf und Endpunkte.                                │
-  └───────────────────────────────────────────────────────────────────┘
+ HANDY (hell)                          BEAMER (dunkel, umschaltbar hell)
+ ┌──────────────────────────┐          ┌────────────────────────────────────┐
+ │ 1c  Einstieg nach QR     │          │ 1b  Mitmachen                      │
+ │     Name, Regeln in drei │          │     QR 560×560 + Kurzlink +        │
+ │     Sätzen, „Los geht's" │          │     Countdown bis zur ersten       │
+ ├──────────────────────────┤          │     Hochrechnung + Mitspielerzahl  │
+ │ 1d  Tippen               │          ├────────────────────────────────────┤
+ │     16 Zeilen, Stepper,  │          │ 1g  Live-Vergleich                 │
+ │     Rest-Leiste zählt    │          │     Halbkreis 52 Sitze, Ist gegen  │
+ │     live; OB aufklappbar │          │     Ø-Tipp je Liste, OB-Zeile      │
+ ├──────────────────────────┤          ├────────────────────────────────────┤
+ │ 1e  Mein Tipp            │          │ 1i  SCOREBOARD — das Herzstück     │
+ │     vor 20 Uhr Bestäti-  │          │     Podium als Treppe (2/1/3),     │
+ │     gung, danach Rang,   │          │     Lotti feiert auf Platz 1,      │
+ │     Punkte, Tipp↔Ist     │          │     Rangliste zweispaltig, Zeilen  │
+ ├──────────────────────────┤          │     wandern 900 ms, ▲▼-Chips       │
+ │ 1f  Spätstarter          │          └────────────────────────────────────┘
+ │     „Nachgetippt HH:MM"  │          ┌────────────────────────────────────┐
+ └──────────────────────────┘          │ 1h  Admin (hell, Desktop 1280)     │
+                                       │     Sitze eintragen, Quelle je     │
+                                       │     Liste, Entwurf → Veröffent-    │
+                                       │     lichen, Phase, Beamer-Steuerung│
+                                       │     Protokoll                      │
+                                       └────────────────────────────────────┘
 ```
+
+Der Ablauf am Abend, wie ihn Artboard `1a` festlegt:
+
+| Zeit | Was passiert |
+|---|---|
+| ab jetzt | Link und QR verteilen, Tippen offen (`1c` → `1d`). Der Tipp bleibt bis Tipp-Schluss änderbar. |
+| 18:00 | Wahllokale schließen. Der Beamer zeigt `1b` mit Countdown „bis zur ersten Hochrechnung". |
+| ~20:00 | **Tipp-Schluss = Moment der ersten Rats-Hochrechnung.** Gesetzt durch den Admin („Tippen schließen") oder automatisch, sobald der Votemanager die erste Sitzzahl liefert. |
+| danach | Wer einsteigt, darf **weiter tippen** — sein Tipp wird als „Nachgetippt HH:MM" gekennzeichnet (`1f`). |
+| 20:00–23:00 | Der Beamer wechselt alle **45 s** zwischen `1g` und `1i`; bei jedem neuen Stand springt er für 60 s auf das Scoreboard, damit die Rangwechsel zu sehen sind. |
+| Endergebnis | Admin setzt „Endstand". Das Scoreboard friert ein, Platz 1 bekommt den Endstand-Kicker, auf dem Handy steht der Endrang (`1e`). |
 
 ## 2. Was gemessen ist und den Plan trägt
 
-Alle Zahlen vom 11.09.2026, Befehle in Anhang C.
+Alle Zahlen vom 11.09.2026, Befehle in Anhang D.
 
 ### 2.1 Die internen Daten, die schon da sind
 
 | Quelle | Inhalt | Wer liest sie heute |
 |---|---|---|
-| `kommunalwahl/kandidaten.json` | 16 Wahlvorschläge in Stimmzettel-Reihenfolge (`index` 1–16, `slug`, `short`, `official`, `kind`), 383 Kandidierende je Wahlbereich | `election/register.py::load()` → `Register.parties` |
+| `kommunalwahl/kandidaten.json` | 16 Wahlvorschläge in Stimmzettel-Reihenfolge (`index` 1–16, `slug`, `short`, `official`, `kind`), 383 Kandidierende je Wahlbereich | `election/register.py::load()` |
 | `kommunalwahl/parteien-meta.json` | `farbe` / `farbe_dunkel` / `kurz` je Slug | `register._colors()` → `ElectionParty.color` |
-| `kommunalwahl/referenz-2021/*.csv` | Ergebnis 2021 (Sitze, Anteile) | `election/reference.py` → `seats_2021`, `share_2021_pct` |
-| `kommunalwahl/wahl-fakten.json` → `ob_kandidaten` | **9 OB-Kandidat*innen** mit `name`, `beruf`, `jahrgang`, `vorgeschlagen_von` | noch niemand im Backend |
+| `kommunalwahl/referenz-2021/*.csv` | Ergebnis 2021 (Sitze, Anteile) | `election/reference.py` → `seats_2021` |
+| `kommunalwahl/wahl-fakten.json` → `ob_kandidaten` | **9 OB-Kandidaturen** mit `name`, `beruf`, `jahrgang`, `vorgeschlagen_von` | noch niemand im Backend |
 | `kommunalwahl/wahl-fakten.json` → `wahl` | `sitze: 52`, `termin`, `stichwahl_ob: 2026-09-27` | noch niemand im Backend |
 
-Die Slugs der Listen: `gruene spd cdu linke fdp afd volt piraten bsw dava
-stille partei pgm buergerbuendnis echt-oldenburg fuer-oldenburg`. Genau diese
-16 Schlüssel trägt ein Sitz-Tipp; die Summe ist **52**.
+Die 16 Slugs: `gruene spd cdu linke fdp afd volt piraten bsw dava stille
+partei pgm buergerbuendnis echt-oldenburg fuer-oldenburg`. Genau diese trägt
+ein Sitz-Tipp; die Summe ist **52**.
 
-Die OB-Kandidat*innen (Reihenfolge wie in der Datei): Jascha Rohr (Grüne),
-Ulf Prange (SPD), Heike Boldt (Linke), Sebastian Fröhlich (FDP), Ralf Butzin
-(Einzel), Yakup Castur (DAVA), Byanca Küßner (Einzel), Michael Stille
-(Einzel), Holger Martin Wilkens (BB-OL). Sie haben keinen Slug — PR 1 leitet
-ihn aus dem Nachnamen ab (`rohr prange boldt froehlich butzin castur kuessner
-stille wilkens`); `test_prediction_mayor.py` hält fest, dass die neun Slugs
-verschieden sind.
+Die neun OB-Kandidaturen in Dateireihenfolge: Jascha Rohr (Grüne), Ulf Prange
+(SPD), Heike Boldt (Linke), Sebastian Fröhlich (FDP), Ralf Butzin (Einzel),
+Yakup Castur (DAVA), Byanca Küßner (Einzel), Michael Stille (Einzel), Holger
+Martin Wilkens (BB-OL). Sie haben keinen Slug — PR 1 leitet ihn aus dem
+Nachnamen ab (`rohr prange boldt froehlich butzin castur kuessner stille
+wilkens`); ein Test hält fest, dass die neun verschieden sind.
 
 ### 2.2 Was der Wahlabend heute liefert
 
 `GET /api/wahlabend` (`ElectionNight` in `antworten.py`) trägt alles, was das
 Tippspiel für die Ratswahl braucht:
 
-- `phase`: `before` | `counting` | `complete`.
-- `parties[]` mit `slug`, `short`, `name`, `color`, `color_dark`, `seats`
-  (ausgezählter Stand), `projected_seats` (Hochrechnung, `None` ohne
-  Bezirksdatei), `seats_2021`, `share_pct`.
-- `progress.districts_counted` / `districts_total` (133), `computed_at`,
-  `notes` (Menschentext der Rückfallstufen), `source.ok`.
-- `?probe=2021&counted=N`: die Generalprobe — Zahlen von 2021 im Register von
-  2026. **Damit lässt sich die Tafel vor Sonntag mit echten Bewegungen
-  ansehen** (counted 0 → 40 → 90 → 133 nacheinander).
+- `phase`: `before` | `counting` | `complete`;
+- `parties[]` mit `slug`, `short`, `name`, `color`, `color_dark`, `seats`,
+  `projected_seats`, `seats_2021`, `share_pct`;
+- `progress.districts_counted` / `districts_total` (133), `areas[]` (die
+  sechs Wahlbereiche — daraus der `wbLabel` „4/6 Wahlbereiche" des Designs),
+  `computed_at`, `notes`, `source.ok`;
+- `?probe=2021&counted=N`: die Generalprobe mit den Zahlen von 2021.
+  **Damit lässt sich alles vor Sonntag mit echten Bewegungen ansehen**
+  (`counted` 0 → 40 → 90 → 133 nacheinander).
 
 `service.live()` hält das Bild im Prozess, erneuert im Hintergrund, wirft
 nie. Das Tippspiel ruft **diese Funktion**, nicht den Votemanager.
 
-### 2.3 Die OB-Wahl beim Votemanager
-
-Gemessen gegen `votemanager.kdo.de` (Anhang C.2):
-
-- `20260913/03403000/daten/api/termin.json` nennt beide Wahlen samt
-  Gebiets-Ids: OB-Wahl **`wahl.id 2552`**, Stadt-Gebiet
-  **`ebene_-6360_id_10357`**; Ratswahl 913 / `ebene_-6361_id_10358`.
-- Das Ergebnis-JSON liegt unter
-  `daten/api/wahl_2552/ergebnis_ebene_-6360_id_10357_0.json` — **mit der
-  vollen Gebiets-Id im Namen**, nicht nur der Zahl (`ergebnis_10357_0.json`
-  ist 404). Heute trägt es nur `zeitstempel` und `seitentitel` (247 Bytes),
-  keine `Komponente` — derselbe Vor-Auszählungs-Zustand wie bei der Ratswahl.
-- **Eine Open-Data-CSV für die OB-Wahl gibt es nicht** — acht Namensmuster
-  probiert (Anhang C.2), alle 404, auch für 2021; der Verzeichnis-Index ist
-  403. Die Ratswahl-CSVs heißen `…-Stadtratswahl-{Stadt,Wahlbereiche,
-  Wahlbezirk}.csv`; ein OB-Gegenstück ist nicht auffindbar. **Die OB-Wahl
-  kommt also nur über die Ergebnisdarstellung** (das JSON, das die Website
-  selbst lädt).
-- Die Form ist an **2021** gemessen
-  (`20210912/03403000/api/praesentation/wahl_223/ergebnis_ebene_3_id_513_0.json`,
-  14 KB, `file_version 21.9.8`; 2026 meldet `26.08.03`):
-
-  ```
-  Komponente.tabelle.zeilen[]      je Kandidat*in: label.labelKurz „Krogmann, SPD",
-                                   label.labelLang „Jürgen Krogmann, Sozial…",
-                                   zahl „29.564", prozent „40,92 %", color
-  Komponente.info.hinweis[]        „Alle Schnellmeldungen eingegangen!",
-                                   „133 von 133 Ergebnissen"   ← Auszählungsstand
-  Komponente.info.tabelle.zeilen[] Wahlberechtigte / Wählerinnen/Wähler /
-                                   ungültige Stimmen / gültige Stimmen (zahl, prozent)
-  Komponente.wahlbeteiligung.text.prozent   53.83
-  Komponente.gewaehlte_kandidaten  title „Es findet eine Stichwahl statt zwischen",
-                                   items[].label „Krogmann, Jürgen (SPD)"
-  Komponente.grafik.balken[]       dieselben Zahlen als int (wert, prozentGerundet)
-  ```
-
-  `presentation.py` kann davon schon `_reports` (der „n von 133"-Satz),
-  `_totals` (die Info-Tabelle) und `parse_number` („29.564" → 29564). Neu zu
-  schreiben ist nur die Kandidaten-Zeile: `labelKurz` vor dem Komma ist der
-  Nachname, dahinter die Partei; `zahl` und `prozent` als Text. Die 2021-Datei
-  wird **Fixture** (`tests/fixtures/wahlabend/ob-2021.json`) und
-  zugleich die Generalprobe der OB-Wahl.
-
-### 2.4 Ist der Votemanager-Abruf robust? (Tims Frage)
+### 2.3 Ist der Votemanager-Abruf robust? (Tims Frage)
 
 Kurz: **Der Abruf stirbt an nichts, aber er vertraut der CSV mehr, als sie
-verdient.** Gelesen in `votemanager.py` (Stand main, #1234 enthalten):
+verdient.** Gelesen in `votemanager.py` (Stand `main`, #1234 enthalten):
 
 | Nr. | Befund | Zeile | Folge am Abend |
 |---|---|---|---|
-| a | Der Ersatzpfad (JSON) wird nur geholt, wenn die Wahlbereichs-CSV fehlt oder **ein Wahlbereich keine Personenstimmen** trägt (`_needs_presentation`). | `votemanager.py:265` | Solange die CSV leer bleibt, wird das JSON geholt — gut. Sobald sie einmal Personenstimmen für alle sechs Bereiche hat, nie wieder — auch wenn sie danach einfriert. |
-| b | Eine JSON-Zeile ersetzt die CSV-Zeile nur, wenn sie **Personenstimmen** hat und die CSV keine (`_better`). | `votemanager.py:273` | Zählt die Stadt am Sonntag nur Listensummen (die Personenstimmen kommen nach 2021er Praxis eventuell erst Montag), trägt das JSON keine `sub_zeilen` → `_candidates` gibt `None` → **die JSON-Zeile wird verworfen, die leere CSV-Zeile bleibt.** Die Wahlbereiche blieben dann den ganzen Abend ohne Zahlen, obwohl die Website sie zeigt. |
-| c | Ist die CSV **veraltet, aber nicht leer** (etwa ein einmaliger Export von 40 Bezirken mit Personenstimmen), gewinnt sie gegen ein JSON mit 120 Bezirken — `_better` vergleicht keinen Auszählungsstand. | `votemanager.py:273` | Die Seite zeigt den alten Stand und sagt es nicht. |
-| d | Die **Stadtzeile** wird nur ersetzt, wenn die CSV-Stadt gar nicht `counted` ist. | `votemanager.py:409` | Gleiches Problem wie c auf Stadt-Ebene: Stimmenanteile und Sitze Stufe 1 hängen an ihr. |
-| e | Die 133 **Bezirke** kommen nie aus dem JSON (bewusst, #1234). | `votemanager.py` Docstring | Ohne lebende Bezirks-CSV gibt es keine Hochrechnung — `projected_seats` bleibt `None`. Das ist dokumentiert und für das Tippspiel tragbar (§3.4). |
+| a | Der Ersatzpfad über die Ergebnisdarstellung wird nur geholt, wenn die Wahlbereichs-CSV fehlt oder **ein Wahlbereich keine Personenstimmen** trägt. | `votemanager.py:265` | Solange die CSV leer bleibt, greift er. Sobald sie einmal Personenstimmen für alle sechs Bereiche trägt, nie wieder — auch wenn sie danach einfriert. |
+| b | Eine JSON-Zeile ersetzt die CSV-Zeile nur, wenn sie **Personenstimmen** hat und die CSV keine. | `votemanager.py:273` | Zählt die Stadt am Sonntag nur Listensummen, trägt das JSON keine `sub_zeilen` → die JSON-Zeile wird verworfen, **die leere CSV-Zeile bleibt**. Die Wahlbereiche blieben den Abend über ohne Zahlen, obwohl die Website der Stadt sie zeigt. |
+| c | Der **Auszählungsstand** wird nie verglichen. | `votemanager.py:273` | Eine veraltete, aber gefüllte CSV (40 Bezirke) gewinnt gegen ein JSON mit 120 — und sagt es nicht. |
+| d | Die **Stadtzeile** wird nur ersetzt, wenn die CSV-Stadt gar nicht `counted` ist. | `votemanager.py:409` | Wie c auf Stadt-Ebene; Anteile und Sitze hängen an ihr. |
+| e | Die 133 **Bezirke** kommen nie aus dem JSON (bewusst, #1234). | Docstring | Ohne lebende Bezirks-CSV gibt es keine Hochrechnung; `projected_seats` bleibt `None`. |
 
-Was sich **nicht** messen lässt: ob die Open-Data-CSVs am Abend im
-Minutentakt geschrieben werden. Dafür spricht, dass sie die Spalten
-`max-schnellmeldungen`/`anz-schnellmeldungen` tragen (sinnlos für einen
-Endstand) und `Cache-Control: max-age=60` senden; dagegen spricht Tims
-Erfahrung. Der Plan macht die Frage **unerheblich**: PR 0 lässt die
-Ergebnisdarstellung gewinnen, sobald sie weiter ist als die CSV — nach
-Auszählungsstand, nicht nach Personenstimmen. Das JSON ist die Quelle der
-Website der Stadt; wenn dort etwas steht, steht es auch bei uns.
+Ob die CSVs am Abend im Minutentakt geschrieben werden, lässt sich nicht
+messen. Dafür spricht, dass sie `max-schnellmeldungen`/`anz-schnellmeldungen`
+tragen (sinnlos für einen Endstand) und `Cache-Control: max-age=60` senden;
+dagegen spricht Tims Erfahrung. **Der Plan macht die Frage zweimal
+unerheblich:** PR 0 lässt die Ergebnisdarstellung gewinnen, sobald sie weiter
+ist als die CSV (nach Auszählungsstand, nicht nach Personenstimmen) — und die
+Handeingabe im Admin (`1h`) überschreibt beides. Befund **e** bleibt und ist
+tragbar: Fehlt die Hochrechnung, läuft das Spiel auf dem ausgezählten Stand,
+und der Admin kann die Zahlen vom Fernseher eintippen.
 
-### 2.5 Was im Frontend schon liegt
+### 2.4 Die OB-Wahl beim Votemanager
 
-- `lib/use-tween.ts`: `useTween(zahl, ms)` (gleitende Zahl, 300 ms,
-  reduced-motion-fest) und `useFrisch(wert, ms)` (kurzes Aufleuchten nach
-  einem Anstieg). Beides für Punkte und Rangzahlen.
-- `components/confetti.tsx`: `ConfettiBurst({onDone})`, Markenfarben,
-  3,2 s, ohne Dependency. Für Führungswechsel und `complete`.
-- `components/staffel.tsx` (`STAFFEL`, `staffelStil(i)`, gedeckelt bei
-  sechs), `components/reveal.tsx`, `components/gleit-marker.tsx` (das
-  Muster „eine Fläche fährt von Ziel zu Ziel", Messen per
-  `getBoundingClientRect`).
-- Takte und Kurven in `app/globals.css`: `duration-tipp/-fluss/-weg/-buehne`,
-  `ease-out-strong`, `ease-in-out-strong`, `ease-back-out`.
-- **Keine Animationsbibliothek** (kein framer-motion, kein auto-animate).
-  Die Rangwechsel werden von Hand als FLIP gebaut (§4 PR 3) — 40 Zeilen,
-  nur `transform`, wie es die Designsprache verlangt.
-- `components/wahlabend/view.tsx` als Vorlage für Kopf, Fuß, Polling
-  (`useQuery` mit `refetchInterval`), Countdown (`useWahlabendZeit` aus
-  `components/wahlabend-hinweis.tsx`, MESZ-fest).
-- Seiten außerhalb `app/(app)/` (`/wahlabend`, `/kommunalwahl`) haben keinen
-  Konto-Kopf; Query-Parameter statt dynamischer Segmente (statischer
-  Export). `/tippspiel?spiel=CODE`, nicht `/tippspiel/CODE`.
-- `lib/api.ts`: `api.get(path)` nimmt **keine Header** entgegen. PR 2
-  ergänzt einen optionalen zweiten Parameter `{ headers }` (die Funktion
-  `request` spreadet `options.headers` bereits) — der Teilnehmer-Token geht
-  als `X-Prediction-Token`, nie in die URL.
+- `daten/api/termin.json` nennt beide Wahlen samt Gebiets-Ids: OB-Wahl
+  **`wahl.id 2552`**, Stadt-Gebiet **`ebene_-6360_id_10357`**; Ratswahl 913 /
+  `ebene_-6361_id_10358`.
+- Das Ergebnis-JSON liegt unter
+  `daten/api/wahl_2552/ergebnis_ebene_-6360_id_10357_0.json` — **mit der
+  vollen Gebiets-Id im Namen**; `ergebnis_10357_0.json` ist 404. Heute trägt
+  es nur `zeitstempel` und `seitentitel` (247 Bytes), keine `Komponente` —
+  derselbe Vor-Auszählungs-Zustand wie bei der Ratswahl.
+- **Eine Open-Data-CSV für die OB-Wahl gibt es nicht** — acht Namensmuster
+  probiert, alle 404, auch für 2021; der Verzeichnis-Index ist 403. Die
+  OB-Wahl kommt also nur über die Ergebnisdarstellung.
+- Die Form ist an **2021** gemessen
+  (`20210912/…/wahl_223/ergebnis_ebene_3_id_513_0.json`, 14 KB):
 
-### 2.6 Was im Backend schon liegt
+  ```
+  Komponente.tabelle.zeilen[]      je Kandidatur: label.labelKurz „Krogmann, SPD",
+                                   label.labelLang, zahl „29.564", prozent „40,92 %", color
+  Komponente.info.hinweis[]        „Alle Schnellmeldungen eingegangen!", „133 von 133 Ergebnissen"
+  Komponente.info.tabelle.zeilen[] Wahlberechtigte / Wählerinnen/Wähler / ungültige / gültige Stimmen
+  Komponente.wahlbeteiligung.text.prozent   53.83
+  Komponente.gewaehlte_kandidaten  title „Es findet eine Stichwahl statt zwischen", items[].label
+  Komponente.grafik.balken[]       dieselben Zahlen als int (wert, prozentGerundet)
+  ```
 
-- `kern/features.py`: Registry mit `fertig_wenn`; `tests/test_features.py`
-  verlangt je Schalter eine `useFeature("…")`-Stelle im Frontend.
-- `app/ratelimit.py`: `RateLimiter(max_calls, window_seconds).check(request)`
-  je IP. **Achtung Wahlparty:** 30 Leute im selben WLAN sind EINE Adresse.
-  Die Bremsen des Tippspiels müssen das aushalten (§3.6).
-- `tests/test_endpunkt_schutz.py`: jeder öffentliche Endpunkt steht mit
-  Begründung in der Liste (Muster: `("get", "/api/wahlabend")`, Z. 113).
-- `scripts/rauchprobe.py`: Proben sind handgepflegt (`PROBEN`), nur
-  Endpunkte ohne Pfad-Parameter; die Tippspiel-Routen tragen einen Code und
-  kommen deshalb **nicht** hinein — das gilt schon für `/api/wahlabend`.
-- `kern/store.py`: `SCHEMA` (`CREATE TABLE IF NOT EXISTS`, läuft bei jedem
-  Öffnen) + `_migrate()`; `USER_OWNED_TABLES` mit Wächter gegen jede
-  Tabelle, die an einem Konto hängt. Die Tippspiel-Tabellen hängen an
-  keinem Konto (§3.1) und tragen deshalb **keine** Spalte `owner_id` /
-  `user_id`. `test_migration_bestand.py` migriert die Schema-Auszüge von
-  dev und Prod mit zwei Zeilen je Tabelle — neue Tabellen aus `SCHEMA`
-  brauchen keinen Migrationsschritt, neue Spalten an alten Tabellen schon
-  (hier: keine).
-- `data/ratslotse.sqlite` kommt **nie** auf ein Notebook
-  (`scripts/lokale_daten.py` holt nur die Ratsdatenbank). Die Tippspiel-
-  Tabellen liegen dort — Namen von Gästen bleiben auf dem Server.
+  `presentation.py` kann davon schon `_reports` (den „n von 133"-Satz),
+  `_totals` (die Info-Tabelle) und `parse_number` („29.564" → 29564). Neu ist
+  nur die Kandidaten-Zeile. Die 2021-Datei wird **Fixture** und zugleich die
+  Generalprobe der OB-Wahl.
 
-## 3. Entscheidungen
+### 2.5 Was das Design an Maßen vorgibt
 
-### 3.1 Identität ohne Konto
+Aus dem Artboard abgelesen (die Beamer-Screens sind 1920×1080, im Artboard
+mit `scale(.5)` dargestellt):
 
-Beitritt legt eine Zeile in `prediction_players` an und gibt dem Browser ein
-**Geheimnis** (32 Hex-Zeichen aus `secrets.token_hex(16)`) zurück, das nur
-als SHA-256 in der Datenbank steht (`token_hash`). Der Browser bewahrt es in
-`localStorage["tippspiel.token.<code>"]` und schickt es als Header
-`X-Prediction-Token`. Verliert jemand den Browser, ist der Tipp weg — dann
-tritt die Person mit anderem Namen neu ein; der Admin blendet die Leiche aus
-(§3.5). Kein Passwort-Reset, keine Mail. Das ist die Abwägung: ein Abend,
-eine Party, keine Konten.
-
-Namen sind je Spiel **eindeutig ohne Groß/Klein** (`UNIQUE(game_id, name
-COLLATE NOCASE)`), 2–30 Zeichen, getrimmt, ohne Zeilenumbrüche. Ein
-belegter Name gibt 409 mit dem Rat „nimm z. B. ‚Anna K.'". Kein
-Wortfilter — die Runde ist Tims Umfeld; gegen den Ausreißer gibt es die
-Moderation.
-
-### 3.2 Spiel und Code
-
-Ein **Spiel** hat einen sechsstelligen Code ohne verwechselbare Zeichen
-(`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`), angelegt vom Admin. Der QR-Code trägt
-`https://ratslotse.de/tippspiel?spiel=CODE`. Es kann mehrere Spiele geben
-(Tims Wahlparty, eine zweite Runde im Büro) — die Kosten sind eine Spalte,
-und ohne Code stünde jede Tafel mit Namen offen im Netz. Ohne `?spiel=` sagt
-`/tippspiel`: „Du brauchst den Link aus dem QR-Code." Es gibt bewusst keinen
-Einstieg von der Landing Page.
-
-### 3.3 Sperre
-
-Tipps lassen sich ändern bis **Sonntag 18:00 MESZ** — dieselbe Konstante
-wie der Beginn des Wahlabends (`votemanager.ELECTION_NIGHT_START`, im
-Frontend `useWahlabendZeit`). Der Server prüft die Uhrzeit, das Frontend
-zeigt den Countdown. Beitritt nach 18 Uhr ist erlaubt (man kann zuschauen),
-Tippen nicht: 409 „Die Tippabgabe ist seit 18 Uhr geschlossen." Ein Spiel
-kann der Admin zusätzlich schließen (`closed_at`).
-
-### 3.4 Wogegen live verglichen wird
-
-- **Sitze:** in Phase `counting` gegen `projected_seats` (Hochrechnung),
-  wenn vorhanden, sonst gegen `seats`; in `complete` gegen `seats`. Die
-  Tafel nennt die Basis („Hochrechnung nach 61 von 133 Bezirken" /
-  „ausgezählter Stand" / „Endergebnis"). Ohne lebende Bezirks-CSV (§2.4 e)
-  gibt es keine Hochrechnung; dann läuft die Tafel auf `seats` — die springen
-  stärker, das ist am Abend ehrlich und genau die Bewegung, die Tim sehen will.
-- **OB:** gegen die Prozente aus dem OB-JSON, wie sie stehen (Teilstand).
-- **Vor 18 Uhr** (Phase `before`) gibt es keine Punkte; die Tafel zeigt die
-  Teilnehmer*innen alphabetisch mit „hat getippt / tippt noch", dazu die
-  **Konsens-Zeile** je Liste (Median der Tipps) — das ist der Inhalt, den die
-  Tafel vor der Auszählung tragen kann, und er macht neugierig.
-
-### 3.5 Moderation und Löschung
-
-Admin (Recht `admin`) kann je Teilnehmer*in **ausblenden** (`hidden_at`,
-Tafel und Zähler lassen die Zeile weg, der Tipp bleibt) und **umbenennen**.
-Ein*e Teilnehmer*in kann sich selbst löschen (`DELETE …/me`, Token). Nach dem
-amtlichen Endergebnis: Schalter aus; die Tabellen bleiben als Rückblick bis
-zum Jahresende, dann `DELETE` per Migration (Eintrag in `fertig_wenn`).
-
-### 3.6 Bremsen
-
-| Endpunkt | Bremse | Warum so weit |
+| Screen | Raster | Kernmaße |
 |---|---|---|
-| `POST …/players` | 60 je IP / 10 min | Wahlparty hinter einer Adresse; 500 Zeilen je Spiel als harte Kappe |
-| `PUT …/me/tips` | 240 je IP / 10 min | Autosave beim Tippen, viele Geräte hinter einem NAT |
-| `GET …/board`, `…/me` | keine eigene; Antworten kommen aus dem Prozess-Cache (60 s) | wie `/api/wahlabend` |
+| `1b` Mitmachen | `1fr 620px`, gap 80, padding 96/120 | H1 104 px Bricolage, Countdown 64 px tabular-nums in gerahmtem Kasten, QR-Karte 560×560 weiß mit Radius 32 und 34 px Innenrand, Lotti `pose="point"` 150 px |
+| `1g` Vergleich | `700px 1fr`, gap 80, padding 56/80 | Halbkreis 640×340 mit 52 Punkten à 30 px, `transition: background .6s`; „52 Sitze" 60 px; Lotti `pose="search"` 96 px in einer Karte mit dem Vergleichssatz |
+| `1i` Scoreboard | Podium `1fr 1.25fr 1fr`, gap 28, `align-items:end` | **Treppe:** Platz 2 = 232 px, Platz 1 = 300 px, Platz 3 = 200 px. Platz 1 mit Verlauf, Leucht-Schatten, laufendem Glanzband (`sweep 5 s`) und Lotti `pose="celebrate"` 120 px (`bob 3 s`). Rangziffern 56/44/44 px, Namen 64/44/40 px. |
+| `1i` Rangliste | **zweispaltig**, Zeilen absolut positioniert | Zeile 74 px hoch, `width: calc(50% - 14px)`, Raster `70px 1fr auto 190px`, `transition: top .9s cubic-bezier(.2,.8,.2,1), left .9s …, background .6s` |
+| `1d` Tippen | Handy | Sticky Rest-Kopf mit **segmentierter Leiste** in Parteifarben (`transition: width .25s`), Zeilen mit 8-px-Dot (Inset-Ring `rgba(0,0,0,.15)`), Stepper 44×44, Zahlenfeld 46×44 in Bricolage |
+| `1h` Admin | Desktop 1280, hell | Tabelle Liste / Sitze / Stimmen % / Quelle / Ø-Tipp · exakt; Phase-Leiste; Beamer-Steuerung; Protokoll |
 
-`DISABLE_RATE_LIMIT=1` gilt in Tests wie überall.
+Akzentfarbe der Live-Marke: `hsl(19 95% 60%)` (das Signal-Orange der Marke),
+als 14-px-Punkt mit `pulse 1.6s infinite`.
 
-### 3.7 Was bewusst NICHT gebaut wird
+### 2.6 Was im Repo schon liegt und wiederverwendet wird
 
-- Kein iOS (Regel 6). Der Vertrag ist so geschnitten, dass die App später
-  dieselben Endpunkte spricht.
-- Keine Tipps je **Wahlbereich** oder auf Personen — 16 Zahlen und 9
-  Prozente reichen für einen Abend; mehr tippt niemand am Handy.
-- Keine Push-/Mail-Benachrichtigung — kein Konto, kein Kanal.
-- Kein Wortfilter für Namen, keine Captchas.
-- Keine Karte, kein Verlauf je Person über den Abend (die Standings-Tabelle
-  legt ihn zwar ab — die Ansicht ist Kür nach dem Sonntag).
+- **`components/wahlabend/halbkreis.tsx`** — genau der Halbkreis aus `1g`,
+  mit Mehrheitslinie und Hervorhebung einer Liste. Nimmt
+  `parteien: WahlabendPartei[]`, `gesamt`, `feld`, `titel`. **Nicht neu
+  bauen.**
+- **`components/mascot.tsx`** — `Mascot` mit `pose="celebrate"` /
+  `"point"` / `"search"` existiert; `mascot.jsx` im Design-Projekt ist ein
+  Port davon. **Achtung, andere Schnittstelle als im Design:** die Größe
+  kommt über `className` (`h-32 w-32`), nicht über `size`; statt `bob` gibt
+  es `regie` (`"ruhig" | "lebhaft" | "aus"`).
+- `components/confetti.tsx` (`ConfettiBurst`), `components/staffel.tsx`,
+  `components/reveal.tsx`, `components/aufklapp.tsx`, `components/ui/*`.
+- `lib/use-tween.ts`: `useTween(zahl, ms)` und `useFrisch(wert, ms)` — für
+  gleitende Punktzahlen und das kurze Aufleuchten bewegter Zeilen.
+- `components/web-theme-switch.tsx` → `LottiThemeSwitch`: der fertige
+  Hell/Dunkel-Regler für Seiten ohne Konto-Hülle. **Das ist der Schalter aus
+  Regel 3.**
+- Takte und Kurven in `app/globals.css`: `duration-tipp/-fluss/-weg/-buehne`,
+  `ease-out-strong`, `ease-in-out-strong`, `ease-back-out`; die
+  Anzeigetafel-Fläche `.hh-tafel`.
+- Schriften: **Bricolage Grotesque liegt als `--font-display` / `font-display`
+  vor.** **IBM Plex Mono aus dem Design gibt es nicht** — dafür wird
+  `font-mono` benutzt (so macht es der Wahlabend schon: `KICKER` in
+  `components/wahlabend/view.tsx`). Keine neue Schrift laden.
+- `components/wahlabend/view.tsx` als Vorlage für Kopf, Fuß, Polling
+  (`useQuery` mit `refetchInterval`) und Countdown (`useWahlabendZeit`,
+  MESZ-fest).
+- Seiten außerhalb `app/(app)/` (`/wahlabend`, `/kommunalwahl`) haben keinen
+  Konto-Kopf; **Query-Parameter statt dynamischer Pfadsegmente** (statischer
+  Export).
+- `app/ratelimit.py`: `RateLimiter(max_calls, window).check(request)` je IP.
+  **Achtung Wahlparty:** 30 Leute im selben WLAN sind EINE Adresse.
+- `tests/test_endpunkt_schutz.py`: jeder öffentliche Endpunkt steht mit
+  Begründung in der Liste. `scripts/rauchprobe.py`: handgepflegt, das
+  Tippspiel kommt dort **nicht** hinein (wie `/api/wahlabend`).
+- `kern/store.py`: `SCHEMA` + `_migrate()`; `USER_OWNED_TABLES` mit Wächter.
+  Die Tippspiel-Tabellen hängen an keinem Konto und tragen deshalb **keine**
+  Spalte `owner_id`/`user_id`.
 
-## 4. Die Pull Requests
+## 3. Wo Design und Erhebung auseinanderliefen — und was gilt
 
-Reihenfolge ist Abhängigkeit: 0 → 1 → 2 → 3 → 4. PR 0 ist unabhängig vom
-Rest und sollte **als Erstes** gemergt werden — er nützt dem Wahlabend auch
-ohne Tippspiel.
+| # | Frage | Entwurf aus der Erhebung | Design-Artboard | **Es gilt** |
+|---|---|---|---|---|
+| 1 | Punkte je Liste | 10 / 7 / 4 / 1 / 0 | **5 / 3 / 1 / 0** (exakt, ±1, ±2), max 80 | **Design.** Steht auf drei Screens als Satz; die Kurve ist flacher und macht die 16 Listen gleichgewichtiger. |
+| 2 | Null getippt, null bekommen | nicht geregelt | **zählt als exakt** | **Design.** Ohne die Regel wären die sechs kleinen Listen wertlos, und genau sie trennen die Feldmitte. |
+| 3 | OB-Punkte | 5/4/3/2/1/0 je Prozentpunkt | **6 / 3 / 1** bei ±0,5 / ±1,5 / ±3 Prozentpunkten, max 54 | **Design.** |
+| 4 | Routen | `/tippspiel`, `/tippspiel/tafel` | **`/tipp`, `/tipp/live`, `/tipp/admin`** | **Design.** Kürzer auf dem QR-Code und auf dem Beamer lesbar. |
+| 5 | Identität | Token im `localStorage` + eigener Header | **Cookie-Token**, Doppelname → „Merle (2)" | **Design** für das Web. Der Token kommt zusätzlich im Antwortkörper, damit ein späterer nativer Client ihn als Header schicken kann. Kein Konto, keine Adresse. |
+| 6 | Tipp-Schluss | fest 18:00 | **Moment der ersten Hochrechnung (~20:00)**, gesetzt vom Admin oder automatisch | **Design.** 18:00 ist nur der früheste denkbare Zeitpunkt; der Abend richtet sich nach der ersten Zahl, nicht nach der Uhr. |
+| 7 | Spätstarter | dürfen nicht mehr tippen | **dürfen, werden als „Nachgetippt HH:MM" gekennzeichnet**; Schalter „mitgewertet / außer Konkurrenz" | **Design**, mit der Empfehlung des Artboards: Vorgabe **außer Konkurrenz**, sichtbar am Ende der Liste. |
+| 8 | Mehrere Spiele | Spiel-Code, `?spiel=CODE` | **ein Spiel**, keine Codes | **Design.** Ein Abend, eine Runde; ein Code auf dem Beamer wäre eine Hürde mehr. Namen sind öffentlich sichtbar — das steht so im Einstieg. |
+| 9 | Ergebnisquelle | nur Votemanager, automatisch | **Handeingabe Pflicht, Poller Kür**, neuer `council/wahlergebnis.py` | **Beides, aber anders geschnitten.** Der Poller wird **nicht** neu gebaut: `election.service.live()` gibt es schon, mit Rückfällen und 89 Tests. Die Handeingabe aus `1h` kommt wie entworfen und überschreibt je Liste. Das Design kannte den Wahlabend-Code nicht. |
+| 10 | Dunkle Flächen | nicht behandelt | Beamer dunkel `hsl(213 50% 7%)` | **Design plus Tims Nachtrag:** gegen Token bauen, Vorgabe dunkel auf `/tipp/live`, `LottiThemeSwitch` in der Ecke. Im Hellmodus werden die dunklen Karten zur **Anzeigetafel** (`.hh-tafel`, hell `hsl(205 52% 92%)` mit Rand `hsl(206 38% 82%)`) — nie schwarze Kacheln auf heller Seite. |
+| 11 | Vergleichswert je Liste | Median der Tipps | **Ø-Tipp** (Mittel aller Tipps vor Tipp-Schluss) | **Design.** |
+| 12 | Rang-Animation | FLIP-Messung | **absolute Zeilen, `top`/`left` per Rang, 900 ms** | **Design.** Einfacher und ohne Messung; der Endzustand steht auch ohne JavaScript. |
+| 13 | Polling | 60 s / 30 s | **30 s mit ETag** | **Design.** |
+| 14 | Beamer-Umschaltung | `?tv=1`, manuell | **Automatik 45 s, Sprung auf das Scoreboard bei neuem Stand** | **Design.** |
+
+Bewusst **nicht gebaut** (aus `1a`): Konten, Chat, Preise, Tipps auf die
+Wahlbeteiligung, Tipps je Wahlbereich oder auf Personen, Push und Mail
+(es gibt keinen Kanal ohne Konto), die OB-Stichwahl am 27.09.
+
+## 4. Die Regeln als Sätze (so stehen sie auf den Screens)
+
+- **Sitze:** „Punkte je Liste: exakt 5 · ±1 Sitz 3 · ±2 Sitze 1." Max 80.
+- **OB-Bonus:** „bis 6 Punkte je Kandidatur", ±0,5 % → 6, ±1,5 % → 3,
+  ±3 % → 1. Max 54. Wer nicht mittippt, bekommt 0 — **kein Abzug**.
+- **Gleichstand:** kleinere Summe der Sitz-Abweichungen gewinnt, dann die
+  frühere Abgabe.
+- **Spätstarter:** „Nachgetippt HH:MM", außer Konkurrenz am Ende der Liste.
+- **Vorbehalt** in der Fußzeile beider Beamer-Screens, wie unter der
+  Wahlabend-Tafel: „Die Punkte rechnen wir; maßgeblich ist die amtliche
+  Ergebnisdarstellung der Stadt."
+
+## 5. Die Pull Requests
+
+Reihenfolge ist Abhängigkeit: 0 → 1 → 2 → 3 → 4. **PR 0 ist unabhängig vom
+Rest und sollte als Erstes gemergt werden** — er nützt dem Wahlabend auch
+ohne Tippspiel. Die Reihenfolge 1 → 2 → 3 folgt dem Artboard `1a`: erst
+rechnen, dann das Handy (damit verteilt werden kann), dann der Admin, dann
+der Beamer.
 
 ### PR 0 — Votemanager: die Ergebnisdarstellung gewinnt, wenn sie weiter ist
 
-**Ziel:** Befunde b, c, d aus §2.4 schließen. Danach ist es egal, ob die
-Open-Data-CSV am Abend lebt.
+**Ziel:** Befunde b, c, d aus §2.3 schließen. Danach ist es für die
+Ratszahlen egal, ob die Open-Data-CSV am Abend lebt.
 
 **Dateien:** `web/backend/app/election/votemanager.py`,
-`tests/test_wahlabend_live.py`, `docs-site/src/content/docs/wahlabend.md`
-(Absatz „Wenn die CSV nicht liefert").
-
-**Änderungen:**
+`tests/test_wahlabend_live.py`, `docs-site/src/content/docs/wahlabend.md`.
 
 ```python
 def _needs_presentation(areas: list[AreaRow] | None) -> bool:
@@ -374,6 +350,7 @@ def _needs_presentation(areas: list[AreaRow] | None) -> bool:
         return True
     return any(not _has_persons(r) or r.reports_received < r.reports_expected
                or r.reports_expected == 0 for r in areas)
+
 
 def _better(csv_row: AreaRow | None, json_row: AreaRow) -> bool:
     """Die JSON-Zeile ersetzt die CSV-Zeile, wenn sie WEITER ist: mehr
@@ -388,109 +365,114 @@ def _better(csv_row: AreaRow | None, json_row: AreaRow) -> bool:
 ```
 
 `_merge_presentation` wendet dieselbe `_better`-Regel auf die **Stadtzeile**
-an (statt „nur wenn CSV-Stadt nicht counted"). Der Hinweistext wird
+an (statt „nur wenn die CSV-Stadt nicht `counted` ist"). Der Hinweistext wird
 allgemein: „…: Zahlen aus der Ergebnisdarstellung des Votemanagers — sie ist
-weiter als die Open-Data-CSV." Kosten: bis zu acht kleine JSON-Abrufe je
-Minute, solange nicht alles ausgezählt ist; beim Votemanager cachen sie
-ohnehin 60 s.
+weiter als die Open-Data-CSV."
 
-**Tests** (der Fake-Server `Lage`/`Stoerung` in `test_wahlabend_live.py`
-kann CSV und JSON getrennt legen):
+**Tests** (der Fake-Server `Lage`/`Stoerung` in `test_wahlabend_live.py` legt
+CSV und JSON getrennt):
 
-- `test_json_ohne_personen_ersetzt_leere_csv`: CSV alle Bereiche leer, JSON
-  mit Listensummen ohne `sub_zeilen` → `areas[*].parties[*].votes` gefüllt,
+- `test_json_ohne_personen_ersetzt_leere_csv` — CSV leer, JSON mit
+  Listensummen ohne `sub_zeilen` → Anteile gefüllt,
   `person_votes_available == False`, Hinweis in `notes`.
-- `test_json_weiter_als_csv_gewinnt`: CSV 40/22 Meldungen mit Personen,
-  JSON 22/22 → Anteile aus dem JSON.
-- `test_csv_weiter_als_json_bleibt`: umgekehrt → CSV bleibt, kein Hinweis.
+- `test_json_weiter_als_csv_gewinnt` — CSV 40/22 Meldungen mit Personen,
+  JSON 22/22 → Zahlen aus dem JSON.
+- `test_csv_weiter_als_json_bleibt` — umgekehrt, kein Hinweis.
 - `test_stadtzeile_folgt_derselben_regel`.
-- Bestehende 89 Wahlabend-Tests bleiben grün (`-k wahlabend`).
+- Die bestehenden 89 Wahlabend-Tests bleiben grün (`-k wahlabend`).
 
-**Zeit:** 1,5 h. **Fertig, wenn** die vier Tests grün sind und
-`/wahlabend?probe=2021&counted=60` unverändert aussieht (die Probe läuft
-ohne JSON).
+**Fertig, wenn** die vier Tests grün sind und `/wahlabend?probe=2021&counted=60`
+unverändert aussieht (die Probe läuft ohne JSON). **Zeit: 1,5 h.**
 
 ### PR 1 — Backend: Schema, Punkte, OB-Abruf, Endpunkte
 
 **Ziel:** Alles, was rechnet und speichert. Danach lässt sich mit `curl`
-beitreten, tippen und die Tafel als JSON lesen.
+tippen und der Stand als JSON lesen.
 
-**Dateien (neu):**
+**Neu:** `web/backend/app/prediction/__init__.py`, `scoring.py` (Anhang A),
+`service.py`, `web/backend/app/election/mayor.py`,
+`web/backend/app/routers/tippspiel.py`, `tests/test_prediction_scoring.py`,
+`tests/test_prediction_api.py`, `tests/test_prediction_mayor.py`,
+`tests/fixtures/wahlabend/ob-2021.json`.
 
-- `web/backend/app/prediction/__init__.py`
-- `web/backend/app/prediction/scoring.py` — reine Funktionen (Anhang A)
-- `web/backend/app/prediction/service.py` — Tafel und „meins" aus
-  `election.service.live()/probe()`, `election.mayor`, Store
-- `web/backend/app/election/mayor.py` — OB-Wahl aus der Ergebnisdarstellung
-- `web/backend/app/routers/tippspiel.py` — öffentlicher Router + Admin-Router
-- `tests/test_prediction_scoring.py`, `tests/test_prediction_api.py`,
-  `tests/test_prediction_mayor.py`, `tests/fixtures/wahlabend/ob-2021.json`
-
-**Dateien (geändert):** `kern/store.py` (SCHEMA + Methoden),
-`kern/features.py` (Schalter `tippspiel`), `web/backend/app/antworten.py`
-(Formen), `web/backend/app/schemas.py` (Eingaben), `web/backend/app/main.py`
-(`include_router` ×2), `web/backend/app/ratelimit.py` (zwei Bremsen),
-`web/backend/requirements.txt` + `constraints.txt` (`segno`, s. u.),
-`tests/test_endpunkt_schutz.py` (Ausnahmen), `api/openapi.json` +
+**Geändert:** `kern/store.py` (SCHEMA + Methoden), `kern/features.py`
+(Schalter `tippspiel`), `web/backend/app/antworten.py`, `schemas.py`,
+`main.py` (`include_router`), `ratelimit.py`,
+`web/backend/requirements.txt` + `constraints.txt` (`segno`),
+`tests/test_endpunkt_schutz.py`, `api/openapi.json` +
 `web/frontend/lib/api-schema.ts` (neu geschnitten).
 
 **Schema** (in `kern/store.py::SCHEMA`, englisch, kein `owner_id`):
 
 ```sql
-CREATE TABLE IF NOT EXISTS prediction_games (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    code        TEXT NOT NULL UNIQUE,     -- 6 Zeichen, Alphabet ohne 0/O/1/I
-    title       TEXT NOT NULL,
-    created_at  TEXT NOT NULL,
-    closed_at   TEXT                      -- NULL = offen (Admin kann schließen)
+-- Ein Spiel je Wahl; die Zeile trägt den Zustand des Abends.
+CREATE TABLE IF NOT EXISTS prediction_game (
+    id            INTEGER PRIMARY KEY CHECK (id = 1),   -- es gibt genau eines
+    title         TEXT NOT NULL,
+    phase         TEXT NOT NULL,      -- open | locked | live | final
+    locked_at     TEXT,               -- Tipp-Schluss (1. Hochrechnung)
+    locked_reason TEXT,               -- 'admin' | 'projection'
+    late_scored   INTEGER NOT NULL DEFAULT 0,  -- Spätstarter mitgewertet?
+    created_at    TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS prediction_players (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id     INTEGER NOT NULL REFERENCES prediction_games(id),
-    name        TEXT NOT NULL,
-    token_hash  TEXT NOT NULL UNIQUE,     -- sha256(hex) des Browser-Geheimnisses
+    name        TEXT NOT NULL,        -- Anzeigename, Doppelte als „Merle (2)"
+    token_hash  TEXT NOT NULL UNIQUE, -- sha256 des Cookie-Geheimnisses
     created_at  TEXT NOT NULL,
-    hidden_at   TEXT,                     -- Moderation: NULL = sichtbar
-    UNIQUE (game_id, name COLLATE NOCASE)
+    late_at     TEXT,                 -- gesetzt, wenn nach locked_at getippt
+    hidden_at   TEXT                  -- Moderation: NULL = sichtbar
 );
 CREATE TABLE IF NOT EXISTS prediction_tips (
     player_id   INTEGER PRIMARY KEY REFERENCES prediction_players(id),
-    seats_json  TEXT NOT NULL,            -- {"gruene": 14, …} alle 16 Slugs, Summe 52
-    mayor_json  TEXT,                     -- {"rohr": 31.5, …} oder NULL (nicht getippt)
+    seats_json  TEXT NOT NULL,        -- {"gruene": 14, …} alle 16 Slugs, Summe 52
+    mayor_json  TEXT,                 -- {"rohr": 31.5, …} oder NULL
     updated_at  TEXT NOT NULL
 );
--- Ein Rang je Person je Stand des Abends: Grundlage von rank_before (▲▼)
+-- Der veröffentlichte Stand: je Liste eine Zeile, mit Herkunft.
+CREATE TABLE IF NOT EXISTS prediction_result (
+    slug        TEXT PRIMARY KEY,     -- Listen-Slug oder 'ob:<slug>'
+    seats       INTEGER,              -- Sitze (Listen) — NULL bei OB-Zeilen
+    pct         REAL,                 -- Prozent (OB) bzw. Stimmenanteil
+    source      TEXT NOT NULL,        -- 'votemanager' | 'manuell'
+    draft       INTEGER NOT NULL DEFAULT 1,   -- 1 = Entwurf, 0 = veröffentlicht
+    updated_at  TEXT NOT NULL
+);
+-- Ein Rang je Person je veröffentlichtem Stand: Grundlage der ▲▼-Chips.
 CREATE TABLE IF NOT EXISTS prediction_standings (
-    game_id     INTEGER NOT NULL,
-    computed_at TEXT NOT NULL,            -- ElectionNight.computed_at
+    stand_at    TEXT NOT NULL,
     player_id   INTEGER NOT NULL,
     rank        INTEGER NOT NULL,
     points      INTEGER NOT NULL,
-    PRIMARY KEY (game_id, computed_at, player_id)
+    PRIMARY KEY (stand_at, player_id)
+);
+-- Das Protokoll aus 1h.
+CREATE TABLE IF NOT EXISTS prediction_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    at         TEXT NOT NULL,
+    text       TEXT NOT NULL          -- „20:05 manuell · CDU 13 → 12 korrigiert"
 );
 ```
 
-`prediction_games.created_at` statt einer `created_by`-Spalte: Das Spiel
-gehört niemandem, das Anlegen ist eine Admin-Handlung und steht im Log.
-(Sollte der Wächter `test_delete_web_user_covers_every_user_table` eine der
-Tabellen für nutzerbezogen halten, ist das ein Fehlalarm über den Spaltennamen
-— dann nicht die Tabelle in `USER_OWNED_TABLES`, sondern den Namen ändern.)
-
-**Store-Methoden** (`kern/store.py`, Rückgaben als `dict`/`sqlite3.Row` wie
-die Quiz-Methoden daneben):
+**Store-Methoden** (`kern/store.py`, Stil wie die Quiz-Methoden daneben):
 
 ```python
-def prediction_game_create(self, code: str, title: str) -> dict
-def prediction_game(self, code: str) -> dict | None
-def prediction_games(self) -> list[dict]                          # Admin
-def prediction_player_add(self, game_id: int, name: str, token_hash: str) -> dict   # sqlite3.IntegrityError → Router: 409
-def prediction_player_by_token(self, game_id: int, token_hash: str) -> dict | None
-def prediction_player_update(self, player_id: int, *, name: str | None = None, hidden: bool | None = None) -> None
-def prediction_player_delete(self, player_id: int) -> None        # Tipp + Standings mit
-def prediction_players(self, game_id: int, include_hidden: bool = False) -> list[dict]   # mit Tipp (LEFT JOIN)
-def prediction_tip_set(self, player_id: int, seats: dict[str, int], mayor: dict[str, float] | None) -> None
-def prediction_standings_record(self, game_id: int, computed_at: str, rows: list[tuple[int, int, int]]) -> None  # INSERT OR IGNORE
-def prediction_standings_previous(self, game_id: int, before: str) -> dict[int, int]   # player_id → rank des letzten Stands VOR `before`
+def prediction_game(self) -> dict                      # legt die Zeile beim ersten Zugriff an
+def prediction_game_set(self, **felder) -> None        # phase, locked_at, locked_reason, late_scored
+def prediction_player_add(self, name: str, token_hash: str, late_at: str | None) -> dict
+def prediction_player_by_token(self, token_hash: str) -> dict | None
+def prediction_player_update(self, pid: int, *, name=None, hidden=None) -> None
+def prediction_players(self, include_hidden: bool = False) -> list[dict]   # mit Tipp (LEFT JOIN)
+def prediction_name_frei(self, name: str) -> str       # „Merle" belegt → „Merle (2)"
+def prediction_tip_set(self, pid: int, seats: dict[str,int], mayor: dict[str,float] | None) -> None
+def prediction_result(self, *, draft: bool | None = None) -> list[dict]
+def prediction_result_set(self, rows: list[dict], *, source: str, draft: bool = True) -> None
+def prediction_result_publish(self) -> int             # draft=0 für alle; gibt die Zahl zurück
+def prediction_result_discard(self) -> None            # Entwurf verwerfen
+def prediction_standings_record(self, stand_at: str, rows: list[tuple[int,int,int]]) -> None
+def prediction_standings_previous(self, before: str) -> dict[int,int]
+def prediction_log_add(self, text: str) -> None
+def prediction_log(self, limit: int = 20) -> list[dict]
 ```
 
 **OB-Abruf** (`election/mayor.py`, Muster `presentation.py`):
@@ -506,502 +488,515 @@ class MayorResult:
     reports_expected: int; reports_received: int
     turnout_pct: float | None; valid_votes: int | None
     candidates: tuple[MayorCandidate, ...]
-    runoff: tuple[str, ...]        # Slugs aus gewaehlte_kandidaten, leer ohne Stichwahl-Satz
-    fetched_at: str | None; ok: bool; error: str | None
+    runoff: tuple[str, ...]        # Slugs aus gewaehlte_kandidaten
+    fetched_at: str | None; ok: bool; error: str | None; notes: tuple[str, ...]
 
-def candidates() -> tuple[MayorCandidate, ...]      # aus wahl-fakten.json, votes None; @lru_cache
-def slug_of(name: str) -> str                        # „Sebastian Fröhlich" → „froehlich"; „Küßner" → „kuessner"
-def parse(payload: object, known: tuple[MayorCandidate, ...]) -> MayorResult | None   # None ohne Komponente
-def resolve_ids(session, base) -> tuple[int, str]    # aus termin.json: (2552, "ebene_-6360_id_10357"); Vorgabe bei Fehler
-def fetch(force: bool = False) -> MayorResult        # TTL votemanager.ttl_seconds(), letzter guter Stand, wirft nie
-def probe(counted: int | None) -> MayorResult        # ob-2021.json, Zeilen nach Position auf die 2026er Namen gelegt, Stimmen × counted/133
+def candidates() -> tuple[MayorCandidate, ...]   # aus wahl-fakten.json; @lru_cache
+def slug_of(name: str) -> str                    # „Sebastian Fröhlich" → „froehlich"
+def parse(payload, known) -> MayorResult | None  # None ohne Komponente
+def resolve_ids(session, base) -> tuple[int, str]  # aus termin.json, Vorgabe bei Fehler
+def fetch(force: bool = False) -> MayorResult    # TTL wie votemanager, letzter guter Stand, wirft nie
+def probe(counted: int | None) -> MayorResult    # aus ob-2021.json
 def reset() -> None
 ```
 
 Zuordnung: `labelKurz` vor dem Komma → `slug_of(nachname)`; eine Zeile ohne
-Treffer im Register wird als `notes`-Hinweis gemeldet und **mitgezählt**,
-nicht verworfen (Muster „CSV-Spalten ohne Register-Eintrag zählen mit").
-`phase`: `before` ohne `Komponente` oder `reports_received == 0`,
-`complete` bei `received == expected > 0`, sonst `counting`. Der
-Ratswahl-Router bekommt zusätzlich `GET /api/wahlabend/ob` (Form
-`MayorNight`, hinter `wahlabend`) — die Wahlabend-Seite kann die OB-Zeile
-später zeigen, das Tippspiel braucht sie heute.
+Treffer im Register wird als Hinweis gemeldet und **mitgezählt**, nicht
+verworfen. `phase`: `before` ohne `Komponente` oder `reports_received == 0`,
+`complete` bei `received == expected > 0`, sonst `counting`. Dazu
+`GET /api/wahlabend/ob` (Form `MayorNight`, hinter dem Schalter `wahlabend`).
 
-**Antwortformen** (`antworten.py`, `TypedDict`, nullbar als `| None`):
+**Antwortformen** (`antworten.py`, `TypedDict`, Nullbares als `| None`):
 
 ```python
 class PredictionParty(TypedDict):
     slug: str; short: str; name: str; color: str; color_dark: str; seats_2021: int | None
 class PredictionMayorCandidate(TypedDict):
     slug: str; name: str; party: str
-class PredictionGame(TypedDict):
-    code: str; title: str; seats_total: int; deadline: str        # ISO, 2026-09-13T16:00:00+00:00
-    locked: bool; closed: bool; player_count: int
+class PredictionSetup(TypedDict):            # GET /api/tipp/setup
+    title: str; phase: str; seats_total: int
+    locked: bool; locked_at: str | None; late_scored: bool
+    player_count: int; deadline_hint: str     # „bis zur ersten Hochrechnung"
     parties: list[PredictionParty]; mayor_candidates: list[PredictionMayorCandidate]
-class PredictionJoin(TypedDict):
-    player_id: int; name: str; token: str
 class PredictionSeatLine(TypedDict):
-    slug: str; tip: int; actual: int | None; points: int
+    slug: str; tip: int; actual: int | None; avg_tip: float | None; points: int; exact: bool
 class PredictionMayorLine(TypedDict):
-    slug: str; tip: float; actual_pct: float | None; points: int
+    slug: str; tip: float; actual_pct: float | None; avg_tip: float | None; points: int
 class PredictionScore(TypedDict):
-    total: int; seat_points: int; mayor_points: int; bonus_points: int; deviation: int | None
+    total: int; seat_points: int; mayor_points: int; exact_lists: int; deviation: int | None
 class PredictionMine(TypedDict):
-    player_id: int; name: str; locked: bool; has_tip: bool; has_mayor_tip: bool
+    player_id: int; name: str; late_at: str | None; scored: bool
+    has_tip: bool; has_mayor_tip: bool; locked: bool
     seats: list[PredictionSeatLine]; mayor: list[PredictionMayorLine]
     score: PredictionScore | None; rank: int | None; rank_before: int | None
-    basis: str; phase: str; computed_at: str; notes: list[str]
-class PredictionBoardRow(TypedDict):
-    player_id: int; name: str; has_tip: bool; has_mayor_tip: bool
+    phase: str; stand_label: str; source_label: str; notes: list[str]
+class PredictionRow(TypedDict):
+    player_id: int; name: str; late_at: str | None; scored: bool; has_tip: bool
     score: PredictionScore | None; rank: int | None; rank_before: int | None
-class PredictionConsensus(TypedDict):
-    slug: str; median_tip: int | None; actual: int | None
-class PredictionBoard(TypedDict):
-    code: str; title: str; phase: str            # before | counting | complete
-    basis: str                                   # none | seats | projected_seats
-    districts_counted: int; districts_total: int
-    mayor_phase: str; mayor_reports_received: int; mayor_reports_expected: int
-    computed_at: str; deadline: str; locked: bool
-    rows: list[PredictionBoardRow]               # sortiert nach Rang, dann Name
-    consensus: list[PredictionConsensus]
+class PredictionCompareLine(TypedDict):
+    slug: str; short: str; color: str; color_dark: str
+    actual: int | None; avg_tip: float | None; exact_count: int
+class PredictionStand(TypedDict):             # GET /api/tipp/stand
+    phase: str; stand_label: str              # „20:38"
+    area_label: str                           # „4/6 Wahlbereiche"
+    source_label: str                         # „votemanager" | „manuell" | „gemischt"
+    seats_total: int; player_count: int; tip_count: int
+    compare: list[PredictionCompareLine]
+    mayor: list[PredictionMayorLine]; mayor_status: str
+    rows: list[PredictionRow]                 # nach Rang, dann Name
     leader_player_id: int | None
-    notes: list[str]
-class MayorNight(TypedDict): …                   # MayorResult 1:1, candidates mit votes/share_pct
+    compare_sentence: str                     # der Satz neben Lotti in 1g
+    computed_at: str; notes: list[str]
+class MayorNight(TypedDict): ...
 ```
 
-**Eingaben** (`schemas.py`, pydantic): `PredictionJoinIn(name: str,
-min_length=2, max_length=30)` mit Validator (trim, kein `\n`);
-`PredictionTipIn(seats: dict[str, int], mayor: dict[str, float] | None)` —
-der Router prüft gegen das Register: genau die 16 Slugs, jeder 0–52, Summe
-52; OB: nur bekannte Slugs, jeder 0–100 mit einer Nachkommastelle, Summe
-zwischen 99,5 und 100,5, fehlende Slugs = 0; `mayor: null` = nicht getippt.
-Fehler als 422 mit deutschem Satz (der Wrapper zeigt `detail`).
+**Eingaben** (`schemas.py`): `PredictionJoinIn(name)` — 2–30 Zeichen,
+getrimmt, ohne Zeilenumbrüche. `PredictionTipIn(seats, mayor)` — der Router
+prüft gegen das Register: genau die 16 Slugs, jeder 0–52, **Summe 52**; OB:
+nur bekannte Slugs, jeder 0–100 mit einer Nachkommastelle, **Summe höchstens
+100**, fehlende Slugs = 0; `mayor: null` = nicht mitgetippt. Fehler als 422
+mit deutschem Satz.
 
 **Router** (`routers/tippspiel.py`; alle öffentlichen hinter
 `features.an("tippspiel")` → 404 wie beim Wahlabend):
 
 | Methode/Pfad | Schutz | Antwort |
 |---|---|---|
-| `GET /api/tippspiel/{code}` | offen | `PredictionGame` |
-| `POST /api/tippspiel/{code}/players` | offen, Bremse | `PredictionJoin` (201); 409 Name belegt; 409 Spiel geschlossen; 409 „voll" ab 500 |
-| `GET /api/tippspiel/{code}/me` | Header `X-Prediction-Token` (sonst 401) | `PredictionMine` |
-| `PUT /api/tippspiel/{code}/me/tips` | Token, Bremse | `PredictionMine`; 409 nach 18 Uhr |
-| `DELETE /api/tippspiel/{code}/me` | Token | `Ok` |
-| `GET /api/tippspiel/{code}/board` | offen | `PredictionBoard` |
-| `GET /api/tippspiel/{code}/qr.png` | offen | PNG 600×600, `Cache-Control: public, max-age=3600` |
-| `GET /api/admin/tippspiel` | `require_admin` | `list[PredictionGame]` |
-| `POST /api/admin/tippspiel` | `require_admin` | `PredictionGame` (Body `{title}`) |
-| `PUT /api/admin/tippspiel/{code}` | `require_admin` | `PredictionGame` (Body `{closed: bool}`) |
-| `PUT /api/admin/tippspiel/{code}/players/{player_id}` | `require_admin` | `Ok` (Body `{name?, hidden?}`) |
+| `GET /api/tipp/setup` | offen | `PredictionSetup` |
+| `POST /api/tipp` | offen, Bremse | `PredictionMine` + `Set-Cookie: tipp_token` (HttpOnly, SameSite=Lax, 30 Tage); Body `{name, seats, mayor?}`; legt an oder aktualisiert |
+| `GET /api/tipp/me` | Cookie (sonst 401) | `PredictionMine` |
+| `DELETE /api/tipp/me` | Cookie | `Ok` |
+| `GET /api/tipp/stand` | offen, **ETag** | `PredictionStand` |
+| `GET /api/tipp/qr.png` | offen | PNG 600×600, `Cache-Control: public, max-age=3600` |
+| `GET /api/tipp/admin/stand` | `require_admin` | `PredictionStand` + Entwurfszeilen |
+| `PUT /api/tipp/admin/ergebnis` | `require_admin` | Entwurf setzen (je Liste `{slug, seats}` bzw. `ob:<slug>`, `source: "manuell"`) |
+| `POST /api/tipp/admin/abfragen` | `require_admin` | „Jetzt abfragen": `service.live()` + `mayor.fetch(force=True)` in den Entwurf |
+| `POST /api/tipp/admin/veroeffentlichen` | `require_admin` | Entwurf → live, Standings schreiben, Protokollzeile |
+| `POST /api/tipp/admin/verwerfen` | `require_admin` | Entwurf verwerfen |
+| `PUT /api/tipp/admin/phase` | `require_admin` | `{phase, late_scored?}` — „Tippen schließen", „Endstand setzen" |
+| `PUT /api/tipp/admin/spieler/{id}` | `require_admin` | `{name?, hidden?}` |
 
-`GET …/me` und `…/board` nehmen `?probe=2021&counted=N` wie
-`/api/wahlabend` (Generalprobe: Ratswahl `service.probe`, OB
-`mayor.probe`). `qr.png` nutzt **`segno`** (reines Python, schreibt PNG ohne
-Pillow; `segno.make(url, error="m").save(buf, kind="png", scale=12,
-border=2)`) — eine Zeile in `web/backend/requirements.txt`, eine Fassung in
-`constraints.txt` (aktuell 1.6.x), Ausnahme in `test_api_vertrag.py` wie
-`bild.png`. Der PNG-Endpunkt ist Bequemlichkeit; der Link steht daneben.
+`GET /api/tipp/stand` und `…/me` nehmen `?probe=2021&counted=N` wie
+`/api/wahlabend` (Generalprobe: Ratswahl `service.probe`, OB `mayor.probe`).
+`qr.png` nutzt **`segno`** (reines Python, PNG ohne Pillow:
+`segno.make(url, error="m").save(buf, kind="png", scale=12, border=2)`) —
+eine Zeile in `web/backend/requirements.txt`, eine Fassung in
+`constraints.txt`, Ausnahme in `test_api_vertrag.py` wie `bild.png`.
 
-**Tafel-Rechnung** (`prediction/service.py`):
+**Der automatische Tipp-Schluss.** Beim Bauen des Stands gilt: Ist
+`game.phase == "open"` und liefert der Wahlabend erstmals eine Zahl (ein
+`projected_seats` oder `seats` > 0), setzt `service` `phase = "locked"`,
+`locked_at = jetzt`, `locked_reason = "projection"` und schreibt eine
+Protokollzeile. Das ist der einzige Ort, an dem das passiert — ein zweiter
+Weg wäre eine zweite Wahrheit.
+
+**Stand-Rechnung** (`prediction/service.py`):
 
 ```python
-def board(code: str, *, probe: str | None, counted: int | None, store: Store) -> PredictionBoard
-def mine(code: str, token: str, *, probe, counted, store) -> PredictionMine
-def _basis(night: ElectionNight) -> tuple[str, dict[str, int | None]]   # none|seats|projected_seats → slug → Sitze
-def _mayor_actual(result: MayorResult) -> dict[str, float | None]
+def setup(store) -> PredictionSetup
+def stand(store, *, probe, counted) -> PredictionStand
+def mine(store, token: str, *, probe, counted) -> PredictionMine
+def _actual(store, night, mayor) -> tuple[dict[str,int|None], dict[str,float|None], str]
+    # veröffentlichte Handeingabe schlägt den Wahlabend; gibt auch source_label
+def _avg_tips(tips) -> dict[str, float]        # Ø-Tipp, nur Tipps vor locked_at
+def _compare_sentence(compare) -> str          # „Die Runde hat die CDU im Schnitt um 2 Sitze zu stark getippt."
 ```
 
-`board()` liest `election.service.live()` (bzw. `probe`), `mayor.fetch()`,
-alle sichtbaren Spieler*innen mit Tipp, rechnet je Person
-`scoring.score(...)`, sortiert (Anhang A), schreibt die Ränge in
-`prediction_standings` unter `night["computed_at"]` (nur wenn dieser Stand
-noch nicht abgelegt ist — `INSERT OR IGNORE`) und holt `rank_before` aus
-dem letzten anderen Stand. Vor 18 Uhr (`phase == "before"` **und** Uhrzeit
-vor Deadline) ist `score None`, `rank None`, Reihenfolge alphabetisch.
-Cache: das fertige Board 20 s je Code im Prozess (`threading.Lock`), damit
-30 Handys und der Fernseher nicht 30-mal rechnen. Zwei Spiele gleichzeitig
-sind zwei Einträge.
+`stand()` liest `election.service.live()` (bzw. `probe`), `mayor.fetch()`,
+den veröffentlichten `prediction_result` und alle sichtbaren Spieler*innen,
+rechnet `scoring.score(...)`, sortiert (Anhang A), schreibt die Ränge unter
+dem Stand-Zeitstempel (`INSERT OR IGNORE`) und holt `rank_before` aus dem
+letzten anderen Stand. Vor dem ersten veröffentlichten Ergebnis ist `score`
+`None`, `rank` `None`, Reihenfolge alphabetisch. Das fertige Ergebnis wird
+20 s im Prozess gehalten, und daraus entsteht der **ETag** — 30 Handys und
+der Beamer rechnen den Abend nicht 30-mal nach.
 
 **Tests:**
 
-- `test_prediction_scoring.py`: Anhang A Zeile für Zeile (exakt 10 / ±1 7 /
-  ±2 4 / ±3 1 / ±4 0; OB 5/4/…/0; Bonus; Sortierung mit Gleichstand und
-  Zeitstempel; `deviation`; `None`-Sitze → 0 Punkte, `basis none` → kein
-  Score).
-- `test_prediction_mayor.py`: `parse(ob-2021.json)` → 6 Kandidaten, Krogmann
-  29.564 / 40,92, `reports 133/133`, `phase complete`, `runoff` zwei Slugs;
-  Payload ohne `Komponente` → `None`; `slug_of` für alle neun 2026er Namen
-  verschieden; unbekannter Nachname → Hinweis + mitgezählt.
+- `test_prediction_scoring.py`: Anhang A Zeile für Zeile — 5/3/1/0; **0 auf 0
+  zählt als exakt**; OB 6/3/1 mit den Grenzen 0,5/1,5/3,0 (auch genau auf der
+  Grenze); kein Abzug ohne OB-Tipp; Gleichstand über Abweichung, dann
+  Abgabezeit; Höchstwerte 80 / 54 / 134; `None`-Ergebnis → kein Score.
+- `test_prediction_mayor.py`: `parse(ob-2021.json)` → 6 Kandidaturen,
+  Krogmann 29.564 / 40,92, `133/133`, `phase complete`, `runoff` zwei Slugs;
+  Payload ohne `Komponente` → `None`; die neun 2026er Slugs verschieden;
+  unbekannter Nachname → Hinweis und mitgezählt.
 - `test_prediction_api.py` (TestClient, `FEATURE_FLAGS=tippspiel`,
-  `DISABLE_RATE_LIMIT=1`, `election.service` auf `probe(60)` gepatcht,
-  `mayor.fetch` auf `probe(60)`): Beitritt → Token; doppelter Name 409;
-  Tipp mit Summe 51 → 422; Tipp OK → `me.seats` 16 Zeilen; nach
-  gepatchter Uhr 18:01 → 409; Board sortiert, `rank_before` nach zweitem
-  Stand gesetzt; ausgeblendete Person fehlt im Board; Schalter aus → 404;
-  ohne Token 401; Admin-Routen ohne Admin 403; `qr.png` ist ein PNG.
-- `test_endpunkt_schutz.py`: die sieben offenen Routen mit Begründung
-  („Tippspiel: ohne Konto, Identität ist der Token; hinter Schalter").
-- `test_features.py` verlangt eine `useFeature("tippspiel")`-Stelle — die
-  kommt in PR 2; **PR 1 legt den Schalter deshalb noch nicht in die
-  Registry**, sondern PR 2 (sonst rot). Der Router prüft bis dahin
-  `features.an("tippspiel")`, was ohne Registry-Eintrag „aus" ergibt — für
-  die Tests wird `FEATURES` gepatcht.
+  `DISABLE_RATE_LIMIT=1`, `election.service` und `mayor.fetch` auf `probe(60)`
+  gepatcht): Tipp mit Summe 51 → 422; Tipp OK → Cookie gesetzt, `me.seats`
+  16 Zeilen; zweiter „Merle" → Name „Merle (2)"; nach `phase=locked` neuer
+  Tipp → `late_at` gesetzt und `scored False`; Entwurf setzen ändert den
+  öffentlichen Stand **nicht**, Veröffentlichen schon; `rank_before` nach
+  dem zweiten veröffentlichten Stand gesetzt; ausgeblendete Person fehlt;
+  Schalter aus → 404; ohne Cookie 401; Admin-Routen ohne Admin 403; ETag
+  liefert beim zweiten Abruf 304; `qr.png` ist ein PNG.
+- `test_endpunkt_schutz.py`: die sechs offenen Routen mit Begründung.
+- **Der Schalter `tippspiel` kommt erst in PR 2 in die Registry** — sonst
+  wird `tests/test_features.py` rot, das je Schalter eine
+  `useFeature("…")`-Stelle im Frontend verlangt. PR 1 patcht `FEATURES` in
+  seinen Tests.
 
-**Zeit:** 5 h. **Fertig, wenn** `python scripts/pruefe.py --schnell` grün
-ist (Vertrag geschnitten, Typen erzeugt), die drei Testdateien grün sind
-und dieser Ablauf gegen `scripts/dev.py start` klappt:
+**Fertig, wenn** `python scripts/pruefe.py --schnell` grün ist und der
+Ablauf aus Anhang D.3 gegen `scripts/dev.py start` durchläuft. **Zeit: 6 h.**
 
-```bash
-B=http://127.0.0.1:8600   # Port aus dev.py; Admin-Cookie aus dem Login
-curl -s -X POST $B/api/admin/tippspiel -H 'Content-Type: application/json' -b cookies -d '{"title":"Wahlparty"}'
-curl -s -X POST $B/api/tippspiel/CODE/players -H 'Content-Type: application/json' -d '{"name":"Anna"}'
-curl -s -X PUT  $B/api/tippspiel/CODE/me/tips -H "X-Prediction-Token: …" -H 'Content-Type: application/json' -d @tipp.json
-curl -s "$B/api/tippspiel/CODE/board?probe=2021&counted=60" | python3 -m json.tool | head -40
-```
+### PR 2 — Handy: Einstieg, Tippen, Mein Tipp (`1c`–`1f`)
 
-### PR 2 — Frontend: Mitmachen und „Mein Tipp gegen den Stand"
+**Ziel:** Vom QR-Scan zum abgegebenen Tipp in unter einer Minute. Danach kann
+verteilt werden — das ist der Grund, warum dieser PR vor dem Beamer kommt.
 
-**Ziel:** Vom QR-Scan zum abgegebenen Tipp in unter einer Minute am Handy;
-ab 18 Uhr dieselbe Seite als persönlicher Live-Vergleich.
+**Neu:** `app/tipp/layout.tsx` (wie `app/wahlabend/layout.tsx`: außerhalb
+`(app)`, Metadata, `bg-background`), `app/tipp/page.tsx` (Suspense),
+`components/tipp/view.tsx` (die Weiche: kein Cookie → `1c` bzw. nach
+Tipp-Schluss `1f`; Cookie und offen → `1d`; Cookie und `locked` → `1e`),
+`components/tipp/einstieg.tsx`, `components/tipp/tippen.tsx`,
+`components/tipp/ob-tipp.tsx`, `components/tipp/mein-tipp.tsx`,
+`lib/tipp.ts` + `lib/tipp.test.ts`, `changelog.d/tippspiel.md`.
 
-**Dateien (neu):** `web/frontend/app/tippspiel/layout.tsx` (wie
-`app/wahlabend/layout.tsx`: außerhalb `(app)`, Metadata, `bg-background`),
-`app/tippspiel/page.tsx` (Suspense + `<TippspielView />`),
-`components/tippspiel/view.tsx` (Weiche: kein Code → Hinweis; kein Token →
-Beitritt; Token → Formular oder Vergleich), `components/tippspiel/beitritt.tsx`,
-`components/tippspiel/sitz-verteiler.tsx`, `components/tippspiel/ob-tipp.tsx`,
-`components/tippspiel/mein-vergleich.tsx`, `lib/tippspiel.ts` +
-`lib/tippspiel.test.ts`, `changelog.d/tippspiel.md` (`hinzugefuegt`).
+**Geändert:** `kern/features.py` (Schalter `tippspiel`, `fertig_wenn`: „Der
+Wahlabend ist vorbei und das Scoreboard ein Rückblick"),
+`tests/e2e/14-layout.spec.ts` (`OFFEN` um `/tipp` erweitern).
 
-**Dateien (geändert):** `lib/api.ts` (optionale Header), `kern/features.py`
-(Schalter `tippspiel` mit `fertig_wenn`: „Das amtliche Endergebnis steht;
-danach ist die Tafel ein Rückblick"), `tests/e2e/14-layout.spec.ts`
-(`OFFEN` um `/tippspiel` erweitern — ohne Code zeigt die Seite den
-Hinweis, das reicht der Layout-Probe).
-
-**`lib/api.ts`:**
+**`lib/tipp.ts`** (reine Logik, mit Test):
 
 ```ts
-type Extra = { headers?: Record<string, string> };
-get:  <T>(path: string, extra?: Extra) => request<T>(path, extra),
-put:  <T>(path: string, body?: unknown, extra?: Extra) => request<T>(path, { method: "PUT", body: …, ...extra }),
-del:  <T>(path: string, body?: unknown, extra?: Extra) => …
+export function startverteilung(parties, total = 52): Record<string, number>
+  // Hare/Niemeyer über seats_2021 auf 52 — der Ausgangspunkt des Formulars
+export function rest(tipp: Record<string, number>, total = 52): number
+export function restText(r: number): string          // „Noch 3 Sitze" | „2 zu viel" | „52 von 52 — passt"
+export function restTon(r: number): "warn" | "ok"    // Farbe der Rest-Anzeige
+export function segmente(tipp, parties): {slug; farbe; w: string}[]  // die Leiste aus 1d
+export function obRest(tipp: Record<string, number>): number         // 100 − Summe
+export function rangDelta(rank, rankBefore): {richtung: "auf"|"ab"|"gleich"|"neu"; um: number}
+export function punkteText(n: number): string                        // „12 Punkte" / „1 Punkt"
+export type Setup = ApiAntwort<"/tipp/setup">; export type Meins = ApiAntwort<"/tipp/me">;
 ```
 
-`request` spreadet `options.headers` schon (Z. 69); die drei Signaturen
-bleiben für alle Aufrufer abwärtskompatibel.
+**`1c` Einstieg** (`einstieg.tsx`): Kicker „Ratswahl Oldenburg · 13.09.2026",
+Überschrift „Wer tippt den Rat am besten?" in `font-display`, der Zweisatz
+aus dem Artboard, ein Namensfeld mit der Unterzeile „Öffentlich sichtbar im
+Raum. Kein Konto, keine E-Mail.", Primärknopf „Los geht's — tippen". Darunter
+die drei Merksätze als Zeilen: „bis ~20 Uhr · Tippen bis zur ersten
+Hochrechnung, änderbar", „5 · 3 · 1 Punkte je Liste: exakt, ±1, ±2 Sitze",
+„OB-Bonus bis 6 Punkte je Kandidatur".
 
-**`lib/tippspiel.ts`** (reine Logik, mit Test):
+**`1d` Tippen** (`tippen.tsx`): **Sticky Kopf** mit „Sitze im Rat", dem
+Rest-Text rechts in `font-mono` (Farbe nach `restTon`) und der **segmentierten
+Leiste** (8 px hoch, Radius 99 px, Segmente in Parteifarben, `transition:
+width .25s`). Darunter 16 Zeilen: 8-px-Dot mit Inset-Ring, Kurzname,
+Unterzeile (2021er Sitze), Stepper −/+ 44×44 und Zahlenfeld 46×44 in
+`font-display`. Aufklappbarer OB-Block („Optional · bis 6 Bonuspunkte je
+Kandidatur") mit neun Prozentfeldern und eigener Rest-Anzeige auf 100. Der
+Absende-Knopf ist gesperrt, solange der Rest nicht 0 ist, und sagt warum.
+Fußzeile: „Änderbar bis zur ersten Hochrechnung (ca. 20 Uhr)."
+
+**`1e` Mein Tipp** (`mein-tipp.tsx`): vor dem ersten Ergebnis die
+Bestätigung; danach der Kopf mit Rang („3 von 24"), ▲▼-Chip, Punktzahl groß
+(`useTween`) und der Zeile „Sitze 61 · OB-Bonus 12 · 9 Listen exakt".
+Darunter die Tabelle Tipp / Ist / Pkt je Liste, und der Satz über die Listen
+ohne Sitz („6 Listen ohne Sitz: … — du hattest alle bei 0: je 5 Punkte").
+Links „Rangliste" und „OB-Tipp ansehen". Polling alle 30 s, sobald
+`phase !== "open"`.
+
+**`1f` Spätstarter**: Kopf mit Warn-Tint (`#fffbeb`), „Die erste Hochrechnung
+ist schon da.", der Satz mit dem Tipp-Schluss, das Muster-Etikett
+„Nachgetippt HH:MM" und die Erklärung „Fair für alle, die vor 20 Uhr geraten
+haben." Zwei Wege: „Trotzdem tippen" und „Nur zuschauen — zur Rangliste".
+
+**Tests:** `lib/tipp.test.ts` (Startverteilung summiert 52; `rest`/`restText`
+an den Grenzen; `segmente` summieren auf 100 %; `rangDelta` mit `null`);
+`npx tsc --noEmit`; `npx next lint`. Bild an Tim: `1c`, `1d` mit Rest 0,
+`1e` mit `?probe=2021&counted=90`.
+
+**Fertig, wenn** ein fremdes Handy über den QR-Link auf dev in unter einer
+Minute einen gültigen Tipp abgibt. **Zeit: 5 h.**
+
+### PR 3 — Admin: Ergebnisse, Phase, Beamer (`1h`)
+
+**Ziel:** Tim steuert den Abend ohne Konsole — und kann die Zahlen notfalls
+vom Fernseher abtippen.
+
+**Neu:** `app/tipp/admin/page.tsx` (im Admin-Gate, Recht `admin`),
+`components/tipp/admin.tsx`, `components/tipp/admin-tabelle.tsx`.
+**Geändert:** `app/(app)/admin/page.tsx` (ein Abschnitt „Tippspiel" mit dem
+Weg dorthin und dem QR-Bild zum Ausdrucken).
+
+Aufbau nach Artboard `1h`, hell, Desktop 1280:
+
+1. **Kopf**: „Live-Seite verbunden · N Anzeigen", „N Tipps · N nachgetippt".
+2. **Ratswahl · Sitze**: Tabelle Liste / Sitze / Stimmen % / Quelle / Ø-Tipp ·
+   exakt. Die Sitz-Zelle ist ein Zahlenfeld; wer tippt, setzt die Quelle der
+   Zeile auf „manuell". Darüber die Zeile „votemanager · zuletzt 20:38 ·
+   nächste Abfrage in 41 s" mit dem Knopf **„Jetzt abfragen"**. Unten die
+   Summenzeile („52 von 52") und die zwei Knöpfe **„Entwurf verwerfen"** und
+   **„Veröffentlichen → Live"** (primär).
+3. **OB-Wahl · Prozent**: neun Felder, Summenzeile, Quelle. Dazu der feste
+   Satz „Stichwahl 27.09. ist kein Teil des Tippspiels."
+4. **Phase**: Zeitleiste mit Haken — „Tippen offen bis HH:MM", „Tipp-Schluss
+   HH:MM · automatisch (1. Hochrechnung)", „Live · Hochrechnungen 4/6",
+   „Endergebnis" mit dem Knopf „Endstand setzen". Die Rückfrage steht
+   **inline**, kein Dialog (so das Artboard).
+5. **Beamer**: Automatik 45 s · Vergleich · Rangliste, plus der Hinweis „Bei
+   neuem Stand springt der Beamer für 60 s auf die Rangliste."
+6. **Protokoll**: die letzten Zeilen aus `prediction_log`.
+
+**Der Entwurf ist die ganze Idee dieses Screens.** Nichts, was hier getippt
+oder abgefragt wird, erscheint auf dem Beamer, bevor „Veröffentlichen"
+gedrückt ist. Ein Tippfehler bleibt damit im Admin.
+
+**Tests:** `test_prediction_api.py` um die Admin-Fälle (Entwurf ändert den
+öffentlichen Stand nicht; Veröffentlichen schreibt Standings und Protokoll;
+„Jetzt abfragen" füllt den Entwurf aus der Probe). Bild an Tim.
+**Zeit: 4 h.**
+
+### PR 4 — Beamer: Mitmachen, Vergleich, Scoreboard (`1b`, `1g`, `1i`)
+
+**Ziel:** Das Herzstück. Ein Beamer im Raum, 30 Namen, und man sieht auf
+fünf Meter, wer vorn liegt und wer eben drei Plätze gestiegen ist.
+
+**Neu:** `app/tipp/live/page.tsx`, `components/tipp/live.tsx` (Rahmen,
+Polling, Ansichts-Automatik, Theme), `components/tipp/beamer-mitmachen.tsx`,
+`components/tipp/beamer-vergleich.tsx`, `components/tipp/scoreboard.tsx`,
+`components/tipp/podium.tsx`, `tests/e2e/16-tippspiel.spec.ts` +
+`tests/e2e/fixtures/tipp-stand-*.json`. **Geändert:** `14-layout.spec.ts`.
+
+**Route und Ansichten.** `/tipp/live?ansicht=qr|vergleich|rangliste`; ohne
+Parameter gilt die **Automatik**: vor dem ersten Ergebnis `qr`, danach
+Wechsel alle 45 s zwischen `vergleich` und `rangliste`, und bei einem neuen
+`computed_at` ein Sprung für 60 s auf `rangliste`. Der Wechsel blendet nur
+(`opacity` über `--takt-buehne`), er schiebt nichts.
+
+**Hell und dunkel (Regel 3).** Die Seite setzt beim ersten Aufruf das dunkle
+Theme (Beamer), merkt sich aber die Wahl des Geräts wie überall sonst; oben
+rechts steht der `LottiThemeSwitch`. Gebaut wird gegen Token, nicht gegen
+Farbwerte:
+
+| Design (dunkel) | Token | Hellmodus |
+|---|---|---|
+| Seite `hsl(213 50% 7%)` | `bg-background` | `hsl(204 45% 97.5%)` |
+| Karte `hsl(212 42% 11%)` | die **Anzeigetafel** `.hh-tafel` | `hsl(205 52% 92%)`, Rand `hsl(206 38% 82%)` |
+| Rand `hsl(211 36% 17%)` | `border-border` | wie Tafel-Rand |
+| Text `hsl(204 40% 96%)` | `text-foreground` | `hsl(212 55% 11%)` |
+| Sekundärtext `hsl(208 22% 65%)` | `text-muted-foreground` | wie gehabt |
+| Platz-1-Verlauf `hsl(205 92% 34%) → 24%` | `from-primary to-primary` mit Abdunklung | bleibt — Primärfläche ist in beiden Themes erlaubt, weiße Schrift darauf |
+| Live-Punkt `hsl(19 95% 60%)` | die Akzentfarbe | bleibt |
+
+**Keine schwarze Kachel im Hellen.** Das ist Tims stehende Regel (Memo
+„Anzeigetafel-Tönung, nie Tiefsee im Hellen"); der Entwurf ist im Hellmodus
+als Tafel zu lesen, nicht nachzufragen.
+
+**`1b` Mitmachen**: Raster `1fr 620px`. Links Marke, Kicker „Tippspiel",
+H1 104 px, der Zweisatz, der gerahmte Countdown („Tippen noch · MM:SS · bis
+zur ersten Hochrechnung") und Lotti `pose="point"` mit „N Mitspielende haben
+schon getippt." Rechts die QR-Karte 560×560 (weiß **in beiden Themes** — ein
+QR-Code wird nicht invertiert) mit `qr.png` und darunter der Kurzlink
+`ratslotse.de/tipp`.
+
+**`1g` Vergleich**: Raster `700px 1fr`. Links der **`Halbkreis`** aus
+`components/wahlabend/halbkreis.tsx` mit dem veröffentlichten Stand, darunter
+„52 Sitze", darunter die Tafel mit Lotti `pose="search"` und dem
+`compare_sentence` vom Server, dazu „Ø-Tipp = Mittel aller N Tipps vor
+Tipp-Schluss." Rechts die Tabelle Liste / Ist ▮ / Ø-Tipp ◇ / Exakt, darunter
+die Zeile „Ohne Sitz laut Hochrechnung: …" und der OB-Block.
+
+**`1i` Scoreboard**: Kopf mit Live-Punkt (`pulse`), Wahlbereichs-Label und
+Stand. Dann das **Podium als Treppe**: Raster `1fr 1.25fr 1fr`, `align-items:
+end`, Höhen 232 / 300 / 200. Platz 1 mit Verlauf, Leucht-Schatten, laufendem
+Glanzband und **Lotti `pose="celebrate"`** (120 px, ruhig schwebend). Bei
+einem Führungswechsel läuft einmal `ConfettiBurst` — nicht beim ersten
+Rendern und höchstens einmal je Minute; bei `phase === "final"` noch einmal,
+und der Kicker über Platz 1 sagt „Endstand".
+
+Darunter die **zweispaltige Rangliste**: Zeilen absolut positioniert, `width:
+calc(50% - 14px)`, Höhe 74 px, Raster `70px 1fr auto 190px`, `left`/`top` aus
+dem Rang gerechnet:
 
 ```ts
-export const TOKEN_KEY = (code: string) => `tippspiel.token.${code}`;
-export function tokenLesen(code): string | null      // try/catch um localStorage
-export function tokenMerken(code, token): void
-export function startverteilung(parties: {slug; seats_2021: number|null}[], total = 52): Record<string, number>
-  // Hare/Niemeyer über seats_2021 auf 52 — der Ausgangspunkt des Formulars; Listen ohne 2021er Sitz: 0
-export function sitzeRest(tipp: Record<string, number>, total = 52): number
-export function prozentRest(tipp: Record<string, number>): number     // 100 − Summe, eine Nachkommastelle
-export function rangDelta(rank, rankBefore): { richtung: "auf" | "ab" | "gleich" | "neu"; um: number }
-export function punkteText(n): string                                  // „12 Punkte", „1 Punkt"
-export type Spiel = ApiAntwort<"/tippspiel/{code}">; export type Meins = …; export type Tafel = …
+// Rang 4 … n, zweispaltig: links die obere Hälfte, rechts die untere.
+const proSpalte = Math.ceil(rows.length / 2);
+const i = index % proSpalte, spalte = Math.floor(index / proSpalte);
+const style = { top: `${i * 82}px`, left: spalte === 0 ? "0" : "calc(50% + 14px)" };
 ```
 
-**Beitritt** (`beitritt.tsx`): Titel des Spiels, ein Feld „Wie heißt du?"
-(`components/ui/input`), Knopf „Mitmachen". 409 → Fehlertext unter dem Feld,
-Feld behält den Wert. Erfolg → Token merken, Formular. Vor der ersten Zeile
-`DESIGNSPRACHE.md` §5 (Bausteine) lesen — Karte, Kicker, Primärknopf.
+`transition: top .9s cubic-bezier(.2,.8,.2,1), left .9s …, background .6s`.
+Eine Zeile, die gestiegen ist, leuchtet 1,6 s (`useFrisch` auf `−rank`). Der
+▲▼-Chip trägt die Differenz zum vorherigen Stand und **verblasst nach 20 s**
+(`transition: opacity .6s`). Spätstarter tragen das Etikett „Nachgetippt
+HH:MM" und stehen bei `late_scored = false` am Ende der Liste. Fußzeile: die
+Punkteregel in einem Satz plus `ratslotse.de/tipp`.
 
-**Sitz-Verteiler** (`sitz-verteiler.tsx`): 16 Zeilen, je Zeile 8-px-Dot in
-der Parteifarbe, Kurzname, 2021-Sitze klein („2021: 12"), Stepper −/+
-(44-px-Ziele) und ein Zahlenfeld; oben eine **Rest-Leiste**: „Noch 3 Sitze zu
-verteilen" / „2 Sitze zu viel" / „52 von 52 — passt", als Tint (Warnung gelb,
-Erfolg grün, §2 Semantik). Speichern per Autosave (debounce 800 ms) **nur bei
-Rest 0**; sonst Hinweis. Start: `startverteilung(...)`, sobald ein Tipp vom
-Server kommt, der. `useTween` an der Summe. Reihenfolge = Stimmzettel
-(Register-Index), nicht nach Größe.
+**`prefers-reduced-motion`**: kein Wandern, kein Glanzband, kein Konfetti —
+die Zeilen stehen sofort an der neuen Stelle. Der Endzustand kommt aus
+`top`/`left`, nicht aus einer Animation; er steht also auch ohne Bewegung.
 
-**OB-Tipp** (`ob-tipp.tsx`): aufklappbar („OB-Wahl mittippen — bis zu 45
-Bonuspunkte", `components/aufklapp.tsx`), 9 Zeilen mit Name, Partei als
-9-px-Tag, Prozentfeld (Schritt 0,5), Rest-Leiste zu 100. „Nicht mittippen"
-setzt `mayor: null`.
+**Tests:** `16-tippspiel.spec.ts` mockt `/api/app-config` und
+`/api/tipp/stand` mit **drei** Fixtures nacheinander (`open`, `live` Stand A,
+`live` Stand B mit vertauschten Rängen) und prüft: vor dem ersten Ergebnis
+die QR-Ansicht; Podium ab dem ersten Stand; nach dem Wechsel steht Name X vor
+Name Y in der DOM-Reihenfolge und sein Chip sagt „+2"; ohne Schalter der
+Hinweis; kein seitliches Scrollen; **beide Themes** (Klasse `dark` gesetzt
+und entfernt) ohne dunkle Kachel im Hellen. Bilder an Tim: Scoreboard dunkel,
+Scoreboard hell, Vergleich, Mitmachen — alle auf 1920×1080.
 
-**Mein Vergleich** (`mein-vergleich.tsx`, ab `locked`): Kopf mit
-Rang (groß, `font-display`, `useTween`), Punkte, ▲▼-Chip aus
-`rangDelta`, Basis-Satz („Hochrechnung nach 61 von 133 Bezirken"); darunter
-je Liste: Dot, Kurzname, Tipp → Stand, Punkte als Tint-Pille (10 grün, 7/4
-neutral, 1/0 leise); OB-Block analog mit Prozent. Polling `refetchInterval:
-60_000` nur bei `phase !== "before"` (Muster `wahlabend/view.tsx`), Countdown
-davor. Ein Link „Zur Tafel" → `/tippspiel/tafel?spiel=CODE`. Fußzeile:
-„Die Punkte rechnen wir; maßgeblich ist die amtliche Ergebnisdarstellung
-der Stadt." (derselbe Vorbehalt wie unter der Wahlabend-Tafel).
+**Fertig, wenn** auf dev die Folge `?probe=2021&counted=0 → 40 → 90 → 133`
+Rangwechsel gleitend zeigt und Tim beide Themes abgenickt hat.
+**Zeit: 6 h.**
 
-**Tests:** `lib/tippspiel.test.ts` (Startverteilung summiert 52 und
-reproduziert die 50 Sitze von 2021 proportional; Rest-Rechner; rangDelta
-mit `null`); `npx tsc --noEmit`; `npx next lint`; Bild an Tim: Beitritt,
-Formular mit Rest 0, Vergleich mit `?probe=2021&counted=60`.
-
-**Zeit:** 4 h. **Fertig, wenn** ein fremdes Handy per QR-Link (dev) in
-unter einer Minute einen gültigen Tipp abgibt und die Seite nach
-`?probe=2021&counted=90` Punkte zeigt — und Tim das Bild abgenickt hat.
-
-### PR 3 — Die Tafel
-
-**Ziel:** Das Herzstück. Ein Fernseher im Wohnzimmer, 30 Namen, und man
-sieht auf drei Meter, wer gerade vorn liegt und wer eben drei Plätze
-gestiegen ist.
-
-**Dateien (neu):** `app/tippspiel/tafel/page.tsx`,
-`components/tippspiel/tafel.tsx` (Rahmen, Polling, Modus),
-`components/tippspiel/podium.tsx`, `components/tippspiel/rangliste.tsx`,
-`components/tippspiel/flip.ts` (der FLIP-Hook), `components/tippspiel/
-konsens.tsx`, `components/tippspiel/qr-ecke.tsx`; `tests/e2e/16-tippspiel.spec.ts`
-+ `tests/e2e/fixtures/tippspiel-board-*.json`; `14-layout.spec.ts` um
-`/tippspiel/tafel`.
-
-**Aufbau der Seite** (`/tippspiel/tafel?spiel=CODE`, optional `&tv=1`):
-
-1. **Kopf**: Titel des Spiels, Phase als Kicker („Auszählung läuft ·
-   Hochrechnung nach 61/133 Bezirken · Stand 19:42 Uhr"), vor 18 Uhr der
-   Countdown. Im TV-Modus ohne Ratslotse-Kopf, `max-w-none`, Schriftgrößen
-   über `clamp()`.
-2. **Podium** (ab Phase `counting`): drei Karten, Mitte höher (Platz 1),
-   links 2, rechts 3 — nur `transform: translateY` unterscheidet die Höhen.
-   Große Rangziffer in `font-display`, Name, Punkte mit `useTween`, ▲▼-Chip.
-   Flächen: Karte (`bg-card`) mit Primär-Tint für Platz 1 (`bg-primary/10`,
-   Rahmen `primary/20` — keine Gold-Farbe, die es in der Designsprache nicht
-   gibt). Wechselt `leader_player_id`, läuft einmal `ConfettiBurst` (nicht
-   beim ersten Rendern, nicht öfter als alle 60 s). Bei `phase ===
-   "complete"` noch einmal, und der Kicker sagt „Endergebnis".
-3. **Rangliste**: alle weiteren Zeilen (`rangliste.tsx`), je Zeile Rang,
-   Name, Punkte (tween), Aufschlüsselung klein (Sitze · OB · Bonus), ▲▼-Chip
-   „+3" / „−1" mit `lucide-react` `ArrowUp`/`ArrowDown` (kein Emoji), Chip
-   in Semantik-Tints (auf grün, ab neutral-grau; nichts Rotes — verlieren
-   ist hier kein Fehler). Personen ohne Tipp am Ende, ausgegraut, „kein
-   Tipp". Eine Zeile, die gerade gestiegen ist, leuchtet 1,6 s
-   (`useFrisch` auf `−rank`).
-4. **FLIP** (`flip.ts`): der Hook nimmt eine `Map<player_id,
-   HTMLElement>`; `useLayoutEffect` misst vor dem Commit die alten `top`
-   (aus dem letzten Render, in einem `useRef` gehalten), nach dem Commit die
-   neuen; für jede Zeile mit Differenz `dy`: `style.transform =
-   translateY(dy)`, `transition = none`, dann im nächsten Frame
-   `transition = transform var(--takt-buehne) var(--ease-in-out-strong)`,
-   `transform = ""`. Neue Zeilen kommen mit `fade-up`, gelöschte werden
-   nicht animiert (sie sind einfach weg). `prefers-reduced-motion` → kein
-   Transform. Nur `transform`, kein `top`/`height` — Designsprache §7.
-5. **Konsens** (`konsens.tsx`, vor und während der Auszählung): eine
-   Zeile je Liste: Dot, Kurzname, Median-Tipp → Stand, als schmale
-   Balken-Paare in `bg-muted`/`bg-primary` (keine Parteifarben-Flächen,
-   Dot reicht). Zeigt, wie die Runde tippt, und ist der Inhalt vor 18 Uhr.
-6. **QR-Ecke** (`qr-ecke.tsx`): unten links, `qr.png` + Kurzlink
-   `ratslotse.de/tippspiel?spiel=CODE`, „Mitmachen bis 18 Uhr". Ab `locked`
-   verschwindet sie (opacity → 0).
-7. **TV-Modus**: mehr als 12 Zeilen → Seiten, die alle 20 s wechseln
-   (Podium bleibt stehen; nur die Liste blendet, `opacity` über
-   `--takt-buehne`). `?tv=1` blendet Kopf und Fußleiste aus und setzt den
-   Bildschirmschoner-Hinweis nicht — das macht der Fernseher.
-
-**Polling:** `useQuery(["tippspiel","board",code,probe,counted], …,
-{ refetchInterval: phase === "before" ? 60_000 : 30_000, placeholderData:
-keepPreviousData })` — die alte Liste bleibt stehen, bis die neue da ist
-(§7 „Was schon dasteht, bleibt beim Nachladen stehen").
-
-**Tests:** `16-tippspiel.spec.ts` mockt `/api/app-config` (Schalter an) und
-`/api/tippspiel/CODE/board` mit **drei** Fixtures nacheinander
-(`before`, `counting` Stand A, `counting` Stand B mit vertauschten Rängen);
-prüft: Podium erscheint erst ab `counting`; nach dem Wechsel steht Name X
-über Name Y (DOM-Reihenfolge), sein Chip sagt „+2"; Konfetti-Element
-existiert nach Führungswechsel; ohne Schalter zeigt die Seite den Hinweis;
-kein seitliches Scrollen (14-layout). Fixtures erzeugt aus
-`prediction.service.board(probe=2021, counted=40/90)` mit drei
-Test-Spieler*innen (Anhang C.4). Bild(er) an Tim: Podium mit Konfetti,
-Liste mit ▲▼, TV-Modus auf 1920×1080 (`resize_window`).
-
-**Zeit:** 5 h (FLIP + Podium 3 h, Konsens/QR/TV 2 h). Wird es knapp:
-TV-Seitenwechsel und Konsens sind Kür, Podium + FLIP + Chips sind Pflicht.
-**Fertig, wenn** auf dev die Folge `?probe=2021&counted=0 → 40 → 90 →
-133` (vier Reloads) Rangwechsel gleitend zeigt, kein Layout-Sprung außer
-dem Podium-Eintritt, und Tim das Bild abgenickt hat.
-
-### PR 4 — Betrieb: Admin, Doku, Einstiege, Generalprobe
-
-**Ziel:** Tim legt Samstag das Spiel an, druckt den QR-Code, und Sonntag
-läuft es ohne Konsole.
-
-**Admin-Panel** (`app/(app)/admin/page.tsx` — ein weiterer Abschnitt neben
-*Neuigkeiten*): Liste der Spiele (Code, Titel, Teilnehmer, offen/zu), „Neues
-Spiel" (Titel), je Spiel: Link zur Tafel, Link `/tippspiel?spiel=`,
-QR-Bild groß (zum Ausdrucken, `qr.png`), Teilnehmerliste mit „ausblenden"
-/ „umbenennen" (Inline-Feld, `PUT …/players/{id}`), „Spiel schließen". Kein
-Löschen von Spielen (Rückblick).
+### PR 5 — Betrieb: Doku, Generalprobe, Schalter
 
 **Doku:** `docs-site/src/content/docs/tippspiel.md` (Zweck, Identität ohne
-Konto, Punkte aus Anhang A, Betrieb am Sonntag, Grenzen — Muster
+Konto, Punkte aus Anhang A, Ablauf, Grenzen, Runbook — Muster
 `wahlabend.md`), Sidebar-Eintrag in `docs-site/astro.config.mjs` nach
 `wahlabend`; Absatz in `wahlabend.md` zur OB-Wahl (`/api/wahlabend/ob`).
 
-**Einstiege:** `components/wahlabend-hinweis.tsx`: kein Link (§3.2 — ohne
-Code gibt es nichts zu zeigen). Stattdessen auf `/tippspiel` ohne Code der
-Satz mit dem Hinweis. Der Admin-Abschnitt ist der Einstieg für Tim.
+**Schalter auf Prod:** `FEATURE_FLAGS=wahlabend,tippspiel` in der `.env` von
+tk-nwz (Sicherung `.env.bak-<datum>` wie am 07.09.),
+`sudo systemctl restart nwz-web-api`. Auf dev gilt `*`.
 
-**Generalprobe** (Anhang C.5, am Samstag nach dem Deploy auf dev **und**
-Prod): Spiel anlegen, drei Tipps von drei Geräten, Tafel mit
-`?probe=2021&counted=40` dann `90`, `me` mit Probe, `qr.png` gescannt.
+**Generalprobe** (Anhang D.4) am Samstag nach dem Deploy auf dev **und**
+Prod. **Zeit: 2 h.**
 
-**Schalter auf Prod:** `FEATURE_FLAGS=wahlabend,tippspiel` in der `.env`
-von tk-nwz (Sicherung wie am 07.09.: `.env.bak-<datum>`), `sudo systemctl
-restart nwz-web-api`. Auf dev gilt `*`.
+## 6. Zeitplan
 
-**Runbook Sonntag:** Anhang D — als Abschnitt in `tippspiel.md`, damit es
-am Abend jemand außer dem Modell lesen kann.
+| Wann | Was |
+|---|---|
+| Fr 11.09. nachmittags | PR 0 und PR 1 parallel anfangen (verschiedene Dateien) |
+| Fr abends | PR 2 — danach kann der Link verteilt werden |
+| Sa vormittags | PR 3 (Admin) — die Zusage für den Abend |
+| Sa nachmittags | PR 4 (Beamer), Bilder an Tim |
+| Sa abends | PR 5, Schalter auf Prod, Generalprobe, Rückmerge `main → dev` |
+| So bis 19:45 | QR liegt aus, Gäste tippen |
+| So ab 20:00 | Anhang E |
 
-**Tests:** `tests/test_prediction_api.py` um Admin-Fälle (anlegen,
-schließen, ausblenden → Board ohne die Zeile); Doku-Build (`npm --prefix
-docs-site run build`) grün.
-
-**Zeit:** 3 h. **Fertig, wenn** Tim im Admin-Panel ein Spiel angelegt,
-den QR-Code gescannt und auf dem Handy getippt hat.
-
-## 5. Zeitplan
-
-| Wann | Was | Wer merged |
-|---|---|---|
-| Fr 11.09. nachmittags | PR 0 (Votemanager), PR 1 (Backend) parallel anfangen — sie berühren verschiedene Dateien | `merge_wenn_gruen.py`, `--base main` |
-| Fr abends / Sa früh | PR 2 (Mitmachen) | nach Tims Bild |
-| Sa vormittags | PR 3 (Tafel) | nach Tims Bild |
-| Sa nachmittags | PR 4 (Admin, Doku), Schalter auf Prod, Generalprobe auf Prod mit `?probe=2021` | Tim |
-| Sa abends | Rückmerge `main → dev` (`git merge origin/main`, s. CLAUDE.md) | — |
-| So bis 17 Uhr | QR-Code liegt aus, Gäste tippen; Anhang D Punkt 1–3 | — |
-| So 18:05 | Anhang D Punkt 4 (CSV gegen JSON prüfen) | — |
-
-Zusammen rund **18 Stunden** Bauzeit, davon 9 im Frontend. Fällt etwas weg,
-dann in dieser Reihenfolge: TV-Seitenwechsel, Konsens-Zeile, OB-Probe
-(dann OB erst live ohne Generalprobe), Admin-Umbenennen (dann per SQL).
+Zusammen rund **24 Stunden** Bauzeit. Fällt etwas weg, dann in dieser
+Reihenfolge: Ansichts-Automatik auf dem Beamer (dann von Hand über
+`?ansicht=`), Ø-Tipp-Spalte in `1g`, OB-Generalprobe, Umbenennen im Admin.
+**Nicht** wegfallen dürfen: die Handeingabe (PR 3) und PR 0 — sie sind die
+beiden Antworten auf „was, wenn der Votemanager nicht liefert".
 
 ## Anhang A — Die Punkte
 
-Alle Werte ganze Zahlen; berechnet in `prediction/scoring.py`:
+Alle Werte ganze Zahlen, berechnet in `prediction/scoring.py`:
 
 ```python
-def seat_points(tip: int, actual: int | None) -> int      # None → 0
-    # |Δ| 0 → 10, 1 → 7, 2 → 4, 3 → 1, ≥4 → 0
-def mayor_points(tip_pct: float, actual_pct: float | None) -> int
-    # |Δ| in Prozentpunkten, gerundet: 0 → 5, 1 → 4, 2 → 3, 3 → 2, 4 → 1, ≥5 → 0
-def bonus_points(tip: dict[str, int], actual: dict[str, int | None]) -> int
-    # +10 stärkste Liste richtig (bei Gleichstand: eine davon)
-    # +10 die drei stärksten in richtiger Reihenfolge
-def score(tip_seats, tip_mayor, actual_seats, actual_mayor) -> PredictionScore
-    # total = seat + mayor + bonus; deviation = Σ|Δ Sitze| (None ohne Zahlen)
-def order(rows) -> list[rows]   # total desc, deviation asc, tips updated_at asc, name
+def seat_points(tip: int, actual: int | None) -> int:
+    """5 exakt · 3 bei ±1 · 1 bei ±2 · sonst 0.
+
+    `actual is None` (noch keine Zahl) → 0. Und: 0 getippt auf 0 erhalten
+    IST exakt — ohne diese Regel wären die sechs kleinen Listen wertlos,
+    und genau sie trennen die Feldmitte."""
+
+def mayor_points(tip_pct: float, actual_pct: float | None) -> int:
+    """6 bei ≤0,5 · 3 bei ≤1,5 · 1 bei ≤3,0 Prozentpunkten · sonst 0.
+    Die Grenze gehört zur besseren Stufe (genau 1,5 → 3 Punkte)."""
+
+def score(tip_seats, tip_mayor, actual_seats, actual_mayor) -> PredictionScore:
+    """total = seat_points + mayor_points; exact_lists zählt die exakten
+    Listen; deviation = Σ|Δ Sitze| (None, solange es keine Zahlen gibt).
+    Ohne OB-Tipp sind die Bonuspunkte 0 — kein Abzug."""
+
+def order(rows) -> list:
+    """total absteigend, deviation aufsteigend, updated_at aufsteigend, name.
+    Spätstarter mit `late_at` und `late_scored = False` stehen hinter allen
+    gewerteten Zeilen, untereinander nach derselben Regel."""
 ```
 
-Höchstwerte: Sitze 160 (16 × 10), OB 45 (9 × 5), Bonus 20 — zusammen 225.
-Wer die OB-Wahl nicht tippt, hat dort 0; das ist die Bedeutung von
-„optional, aber Bonus". Ränge sind **dicht** (1, 2, 2, 4 gibt es nicht —
-1, 2, 3 nach der Sortierung; Gleichstand entscheidet die Abweichung, dann
-wer früher fertig war). Solange `basis == "none"` (nichts ausgezählt), gibt
-es keinen Score.
-
-Warum diese Kurve: Ein Sitz daneben ist am Wahlabend ein guter Tipp und soll
-sich lohnen (7 von 10); ab vier Sitzen ist es geraten. Bei den Prozenten sind
-die kleinen Kandidaturen mit 0–2 % für alle leicht — deshalb nur 5 Punkte je
-Kandidat*in, damit die OB-Wahl nicht die Ratswahl übertönt.
+Höchstwerte: Sitze **80** (16 × 5), OB **54** (9 × 6), zusammen **134**. Ränge
+sind dicht (1, 2, 3 …); über einen echten Gleichstand entscheidet erst die
+Abweichung, dann wer früher fertig war.
 
 ## Anhang B — Vertrag und Verhalten am Rand
 
 - Alle Tippspiel-Antworten tragen `notes: list[str]`; die Vermerke des
   Wahlabends (`NOTE_REDUCED`, `NOTE_STALE`, `NOTE_EMPTY`) werden
   durchgereicht, dazu eigene: „OB-Ergebnis gerade nicht abrufbar — Stand von
-  19:40 Uhr", „Ohne Bezirksdatei keine Hochrechnung; Punkte nach
-  ausgezähltem Stand".
-- `board()` wirft nie: Fällt `mayor.fetch()`, bleibt `mayor_phase ==
-  "before"` und die OB-Punkte sind 0 mit Vermerk; fällt der Store (readonly
-  bei voller Platte), kommt der letzte Board-Cache mit `NOTE_STALE`.
-- `computed_at` der Tafel = `computed_at` des Wahlabends; **nur** bei einem
-  neuen Wert werden Standings geschrieben — so bleibt `rank_before` ein
-  echter Vorgänger-Stand und nicht „vor 20 Sekunden".
-- Die Deadline ist eine Konstante des Servers (`ELECTION_NIGHT_START`), im
-  Vertrag als ISO-String; das Frontend rechnet **nicht** selbst, es
-  vergleicht nur gegen `locked`.
-- Der Vertrag ist so geschnitten, dass die iOS-App ihn später mit
-  denselben sechs Formen nachbauen kann; `python3 scripts/ios_vertrag.py
-  --ausgeliefert` bleibt leer, weil die App keinen dieser Endpunkte kennt.
+  19:40 Uhr", „Zahlen von Hand eingetragen".
+- `stand()` wirft nie: Fällt `mayor.fetch()`, bleibt `mayor_status` auf
+  „noch keine Zahlen" und die OB-Punkte sind 0 mit Vermerk; fällt der Store,
+  kommt der letzte Stand aus dem Cache mit `NOTE_STALE`.
+- **Standings nur bei neuem Stand.** Geschrieben wird unter dem Zeitstempel
+  der Veröffentlichung, `INSERT OR IGNORE` — so bleibt `rank_before` ein
+  echter Vorgängerstand und nicht „vor 20 Sekunden".
+- **Der ETag** ist der Hash aus `computed_at` + Spielerzahl + Phase. Der
+  Beamer fragt alle 30 s und bekommt meist 304.
+- Der Vertrag ist so geschnitten, dass die iOS-App später dieselben Formen
+  nachbauen kann; `scripts/ios_vertrag.py --ausgeliefert` bleibt leer.
 
-## Anhang C — Befehle und Messungen
+## Anhang C — Was aus dem Design NICHT eins zu eins übernommen wird
 
-### C.1 Register und OB-Kandidaten
+| Im Artboard | Im Code | Warum |
+|---|---|---|
+| `IBM Plex Mono` für Kicker und Zeitstempel | `font-mono` (Systemschrift) | Die Schrift liegt im Repo nicht; eine vierte Schriftfamilie für Kicker zu laden kostet mehr, als sie bringt. Der Wahlabend macht es schon so. |
+| `<Mascot size={120} bob />` | `<Mascot pose="celebrate" className="h-[120px] w-[120px]" />` | Die echte Komponente nimmt die Größe über `className` und kennt `bob` nicht; die Ruhe-Bewegung steuert `regie`. |
+| Feste Farbwerte `hsl(213 50% 7%)` u. a. | Token (`bg-background`, `.hh-tafel`, `text-muted-foreground`) | Regel 3: Ohne Token gibt es keinen Hellmodus. |
+| Neuer Poller `council/wahlergebnis.py` | `election.service.live()` | Gibt es schon, mit Rückfällen und 89 Tests. Ein zweiter Abruf wäre eine zweite Wahrheit. |
+| Halbkreis als eigene Punktwolke | `components/wahlabend/halbkreis.tsx` | Dieselbe Grafik ist gebaut, samt Mehrheitslinie und Hervorhebung. |
+| `{{ }}`-Platzhalter, `sc-for`, `x-import` | React, `lib/vertrag.ts`-Typen | Das Artboard ist eine Bildvorlage, keine Laufzeit. |
+
+## Anhang D — Befehle und Messungen
+
+**D.1 Register und OB-Kandidaturen**
 
 ```bash
 python3 -c "import json;d=json.load(open('kommunalwahl/kandidaten.json'));print([(l['index'],l['slug']) for l in d['lists']])"
 python3 -c "import json;print(json.load(open('kommunalwahl/wahl-fakten.json'))['ob_kandidaten'])"
 ```
 
-### C.2 Votemanager, OB-Wahl (gemessen 11.09.2026)
+**D.2 Votemanager, OB-Wahl (gemessen 11.09.2026)**
 
 ```bash
 V=https://votemanager.kdo.de/20260913/03403000
-curl -s $V/daten/api/termin.json                     # wahl.id 2552, gebiet ebene_-6360_id_10357
-curl -s $V/daten/api/wahl_2552/ergebnis_ebene_-6360_id_10357_0.json   # vor der Auszählung: nur Zeitstempel
+curl -s $V/daten/api/termin.json                    # wahl.id 2552, ebene_-6360_id_10357
+curl -s $V/daten/api/wahl_2552/ergebnis_ebene_-6360_id_10357_0.json
 curl -s https://votemanager.kdo.de/20210912/03403000/api/praesentation/wahl_223/ergebnis_ebene_3_id_513_0.json \
-  > tests/fixtures/wahlabend/ob-2021.json            # die Fixture (14 KB)
-# kein Open-Data-CSV für die OB-Wahl:
+  > tests/fixtures/wahlabend/ob-2021.json           # die Fixture, 14 KB
 for u in Oberbuergermeisterwahl OB-Wahl Buergermeisterwahl; do
-  curl -s -o /dev/null -w "$u %{http_code}\n" "$V/daten/opendata/Open-Data-03403000-$u-Stadt.csv"; done   # alle 404
+  curl -s -o /dev/null -w "$u %{http_code}\n" "$V/daten/opendata/Open-Data-03403000-$u-Stadt.csv"
+done                                                 # alle 404 — kein OB-CSV
 ```
 
-### C.3 Ratswahl-Stand in der Probe
+**D.3 Durchstich nach PR 1**
 
 ```bash
-cd web/backend && ../../.venv/bin/python -c "
-from app.election import service; n = service.probe(60)
-print(n['phase'], n['progress'], [(p['slug'], p['seats'], p['projected_seats']) for p in n['parties']])"
+B=http://127.0.0.1:8600     # Port aus scripts/dev.py start
+curl -s $B/api/tipp/setup | python3 -m json.tool | head -20
+curl -s -c /tmp/c -X POST $B/api/tipp -H 'Content-Type: application/json' -d @tipp.json
+curl -s -b /tmp/c "$B/api/tipp/me?probe=2021&counted=60" | python3 -m json.tool | head -30
+curl -s "$B/api/tipp/stand?probe=2021&counted=90" | python3 -c "import json,sys;s=json.load(sys.stdin);print(s['phase'],s['stand_label'],[(r['name'],r['rank'],r['score'] and r['score']['total']) for r in s['rows']])"
 ```
 
-### C.4 Board-Fixtures für den Browsertest
-
-```bash
-cd web/backend && FEATURE_FLAGS=tippspiel ../../.venv/bin/python -c "
-import json; from app.prediction import service
-# vorher: Spiel 'TEST01' mit drei Spieler*innen und Tipps in einer Wegwerf-DB (RATSLOTSE_DB=/tmp/t.sqlite)
-for c in (0, 40, 90):
-    open(f'../frontend/tests/e2e/fixtures/tippspiel-board-{c}.json','w').write(
-        json.dumps(service.board('TEST01', probe='2021', counted=c, store=STORE), ensure_ascii=False))"
-```
-
-### C.5 Generalprobe nach dem Deploy
+**D.4 Generalprobe nach dem Deploy**
 
 ```bash
 B=https://ratslotse.de
-curl -s "$B/api/tippspiel/CODE" | python3 -m json.tool | head -20                       # locked false, 16 parties, 9 mayor_candidates
-curl -s "$B/api/tippspiel/CODE/board?probe=2021&counted=90" | python3 -c "import json,sys;b=json.load(sys.stdin);print(b['phase'],b['basis'],[(r['name'],r['rank'],r['score'] and r['score']['total']) for r in b['rows']])"
-curl -s -o /tmp/qr.png -w "%{content_type}\n" "$B/api/tippspiel/CODE/qr.png"
+curl -s $B/api/app-config | python3 -c "import json,sys;print(json.load(sys.stdin)['features'])"
+curl -s -o /tmp/qr.png -w "%{content_type}\n" $B/api/tipp/qr.png
+# Danach im Browser: /tipp von einem fremden Handy, /tipp/live auf dem Beamer
+# (beide Themes durchschalten), /tipp/admin → „Jetzt abfragen" → veröffentlichen.
 ```
 
-## Anhang D — Runbook Sonntag, 13.09.2026
+## Anhang E — Runbook Sonntag, 13.09.2026
 
 1. **Vormittags:** `curl -s https://ratslotse.de/api/app-config` nennt
-   `tippspiel` und `wahlabend`. Tafel im TV-Modus öffnen
-   (`/tippspiel/tafel?spiel=CODE&tv=1`), QR-Ecke sichtbar, Countdown läuft.
-2. **Bis 17:45:** Gäste tippen. Wer keinen Rest 0 hinbekommt, sieht die
-   gelbe Leiste — der Tipp ist dann nicht gespeichert (`has_tip false` in
-   der Tafel: „tippt noch").
-3. **17:55:** Letzter Blick auf `…/board`: alle `has_tip true`, die es sein
-   sollen. Ab 18:00 sagt `locked true`.
-4. **18:05 — die CSV-Frage:** 
+   `tippspiel` und `wahlabend`. `/tipp/live` auf dem Beamer öffnen, Theme
+   wählen, QR-Ansicht steht, Countdown läuft.
+2. **Bis 19:45:** Gäste tippen. Wer den Rest nicht auf 0 bekommt, sieht die
+   gelbe Leiste — der Tipp ist dann nicht gespeichert.
+3. **Um 20:00, wenn die erste Hochrechnung kommt:** Der Tipp-Schluss setzt
+   sich selbst. Kommt keine Zahl, im Admin „Tippen schließen" drücken.
+4. **Die CSV-Frage:**
    ```bash
    V=https://votemanager.kdo.de/20260913/03403000
-   curl -s $V/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbereiche.csv | cut -d';' -f5-7 | head -8   # anz-schnellmeldungen
-   curl -s "https://ratslotse.de/api/wahlabend" | python3 -c "import json,sys;n=json.load(sys.stdin);print(n['phase'],n['progress'],n['source'],n['notes'])"
+   curl -s $V/daten/opendata/Open-Data-03403000-Stadtratswahl-Wahlbereiche.csv | cut -d';' -f5-7 | head -8
+   curl -s https://ratslotse.de/api/wahlabend | python3 -c "import json,sys;n=json.load(sys.stdin);print(n['phase'],n['progress'],n['source'],n['notes'])"
    ```
-   Steht in `notes` „Zahlen aus der Ergebnisdarstellung", greift PR 0 —
-   alles gut. Steht dort nichts und `districts_counted` bleibt bei 0,
-   obwohl die Website der Stadt Zahlen zeigt: `journalctl -u nwz-web-api
-   -n 200 | grep -i wahlabend` — die Hinweise nennen die Datei.
-5. **Alle 20 Minuten:** Tafel zeigt `computed_at` der letzten fünf
-   Minuten; der Chip ▲▼ bewegt sich. Sonst `notes` lesen — stale heißt „der
-   Abruf klemmt", nicht „die Tafel ist kaputt".
-6. **Wenn ein Name stört:** Admin-Panel → Tippspiel → ausblenden. Wirkt
-   beim nächsten Stand (≤ 30 s).
-7. **Nach dem Endergebnis** (`phase complete`, Konfetti): Screenshot der
-   Tafel für Tim (`SendUserFile`). Schalter bleibt an, bis der
-   Wahlausschuss das amtliche Ergebnis festgestellt hat; dann
-   `FEATURE_FLAGS=` ohne `tippspiel`, `wahlabend`, Neustart.
+   Steht in `notes` „Zahlen aus der Ergebnisdarstellung", greift PR 0.
+   Kommt gar nichts, obwohl die Website der Stadt Zahlen zeigt: **Zahlen im
+   Admin eintragen und veröffentlichen.** Dafür ist der Screen da.
+5. **Je neuem Stand:** „Jetzt abfragen" → Zahlen prüfen → „Veröffentlichen".
+   Der Beamer springt von selbst auf das Scoreboard.
+6. **Wenn ein Name stört:** Admin → Spieler → ausblenden. Wirkt beim
+   nächsten Stand.
+7. **Nach dem Endergebnis:** „Endstand setzen". Screenshot des Scoreboards
+   für Tim. Der Schalter bleibt an, bis der Wahlausschuss das amtliche
+   Ergebnis festgestellt hat; dann `FEATURE_FLAGS` ohne `tippspiel` und
+   `wahlabend`, Neustart.
