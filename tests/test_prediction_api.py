@@ -1,12 +1,14 @@
 """``/api/tipp/…`` — Beitritt, Tippen, Tafel, Admin (docs/plan-tippspiel-ratswahl.md).
 
-Die Ratswahl und die OB-Wahl werden hier NUR für Menschentext gelesen (Kopf
-des Beamers, Auszählungsstand) — ersetzt durch die netzfreie Generalprobe
+Die Ratswahl und die OB-Wahl sind die GRUNDLAGE des Vergleichs (Plan §3
+Zeile 9) — hier ersetzt durch die netzfreie Generalprobe
 (``election.service.probe`` / ``election.mayor.probe``, beide lesen nur
-lokale Dateien), damit kein Test ins Netz muss. Was tatsächlich verglichen
-wird, kommt ausschließlich aus ``prediction_result`` (vom Admin
-veröffentlicht) — das ist der Kern der Architektur und wird unten eigens
-geprüft (Entwurf ändert die Tafel NICHT, Veröffentlichen schon).
+lokale Dateien), damit kein Test ins Netz muss, und zwar mit ``counted=0``:
+So nennt der Wahlabend keine Zahl, und die Tests hier sehen nur die
+Handeingabe aus ``prediction_result``. Was der Wahlabend beisteuert und wie
+die Handeingabe ihn je Liste überschreibt, prüft
+``tests/test_prediction_quelle.py``. Der Entwurf bleibt die Sperre für die
+Handeingabe (Entwurf ändert die Tafel NICHT, Veröffentlichen schon).
 """
 from __future__ import annotations
 
@@ -40,8 +42,8 @@ NUTZERIN = {"id": 2, "role": "user", "roles": [], "status": "active"}
 
 @pytest.fixture(autouse=True)
 def keine_echten_netzaufrufe(monkeypatch):
-    """``service.stand``/``mine`` lesen Ratswahl und OB-Wahl nur für
-    Menschentext — hier durch die netzfreie Generalprobe ersetzt.
+    """``service.stand``/``mine`` lesen Ratswahl und OB-Wahl als Grundlage
+    des Vergleichs — hier durch die netzfreie Generalprobe ersetzt.
 
     Vorgabe ist ``counted=0`` (Phase „before", keine Sitze) — NICHT ein
     Teilstand: ``_check_auto_lock`` läuft bei JEDEM ``POST /api/tipp``, und
@@ -58,11 +60,11 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setitem(features.FEATURES, "tippspiel", _TIPPSPIEL_FEATURE)
     store = Store(tmp_path / "tippspiel-test.sqlite")
     app.dependency_overrides[get_store] = lambda: store
-    prediction_service.reset()
+    prediction_service.reset_all()
     yield TestClient(app)
     app.dependency_overrides.pop(get_store, None)
     store.close()
-    prediction_service.reset()
+    prediction_service.reset_all()
 
 
 def voller_tipp(summe_ok: bool = True) -> dict[str, int]:
