@@ -58,6 +58,28 @@ logger = logging.getLogger("council.cities.adapters.allris_classic")
 #: 216 Monate; die Kappe schützt nur gegen ein unsinniges ``since``.
 MAX_MONATE = 400
 
+#: Wie weit zurück Auszüge geholt werden. Derselbe Zeitraum wie bei den
+#: Niederschriften der anderen Städte (``pipeline.PROTOCOL_MONTHS``): Das
+#: „Warum" wird für die Ideen auf der Karte gebraucht, und die liegen in
+#: diesem Fenster. Ohne Grenze wären es über 10.000 Abrufe — ein Auszug je
+#: beratenem Punkt, seit 2007.
+AUSZUG_MONATE = 24
+
+#: Kürzer als das ist kein Wortprotokoll, sondern eine Formel („Kenntnis
+#: genommen."). Ein Abschnitt daraus gäbe dem Modell nichts zu lesen.
+MIN_WORTPROTOKOLL = 40
+
+#: Die drei Abschnitte eines Auszugs. ALLRIS bettet sie als eigene, aus RTF
+#: konvertierte HTML-Dokumente hinter Sprungmarken ein.
+_AUSZUG_MARKEN = re.compile(r'<a\s+name="allris(WP|BS|AE)"\s*>\s*</a>')
+
+#: „Beschluss:" am Anfang des Beschlusstextes ist die Beschriftung, nicht der
+#: Beschluss.
+_OHNE_LABEL = re.compile(r"^\s*(?:Beschluss|Beschlusstext|Abstimmungsergebnis)\s*:\s*")
+
+#: Wo der Seitenfuß anfängt. Er hängt sonst am letzten Abschnitt.
+_FUSS = re.compile(r"\bzur(?:ü|ue)ck\s+Nach\s+oben\b|\bSeite\s+drucken\b")
+
 #: ``Ö 6.1``, ``N 17``, ``6.1`` — die Nummer eines Punktes. Der Buchstabe sagt,
 #: ob der Punkt öffentlich ist: Hildesheim trennt **je Zeile**, nicht über eine
 #: Zwischenüberschrift „Nicht öffentlicher Teil" wie andere Städte.
@@ -159,6 +181,16 @@ def _iso(datum: str | None, zeit: str | None = None) -> str | None:
     return f"{tag}T{int(u.group(1)):02d}:{u.group(2)}:00" if u else tag
 
 
+def _fenster(monate: int, heute: date | None = None) -> str:
+    """Der früheste Tag, für den noch Auszüge geholt werden (ISO)."""
+    h = heute or date.today()
+    jahr, monat = h.year, h.month - monate
+    while monat <= 0:
+        jahr -= 1
+        monat += 12
+    return f"{jahr:04d}-{monat:02d}-01"
+
+
 def _monate(seit: str) -> list[tuple[int, int]]:
     """Jeden Monat von ``seit`` bis heute, neueste zuerst.
 
@@ -222,7 +254,8 @@ class AllrisClassicAdapter:
         """Monatskalender → Sitzungsseiten."""
         wurzel = body["id"]
         gesehen: set[str] = set()
-        verschlossen = 0
+        verschlossen = auszuege = 0
+        grenze = _fenster(AUSZUG_MONATE)
         for jahr, monat in _monate(since):
             try:
                 kalender = client.get_text(
@@ -247,8 +280,38 @@ class AllrisClassicAdapter:
                 obj = {"id": kennung, "silfdnr": nr, "html": html}
                 client.raw.put_raw_object(client.body_id, "meeting", kennung, obj)
                 yield obj
-        logger.info("%s: %s Sitzungen (%s nicht öffentlich)", client.body_id,
-                    len(gesehen), verschlossen)
+                auszuege += self._auszuege(client, wurzel, html, grenze)
+        logger.info("%s: %s Sitzungen (%s nicht öffentlich), %s Auszüge",
+                    client.body_id, len(gesehen), verschlossen, auszuege)
+
+    def _auszuege(self, client: OParlClient, wurzel: str, sitzung_html: str,
+                  grenze: str) -> int:
+        """Die Auszüge einer Sitzung — das „Warum", je Punkt schon getrennt.
+
+        **Nur im Fenster.** Ein Auszug je beratenem Punkt heißt seit 2007 über
+        10.000 Abrufe; gebraucht wird das „Warum" für die Ideen auf der Karte,
+        und die liegen in den letzten zwei Jahren (``AUSZUG_MONATE``).
+        """
+        kopf = _grunddaten(_inhalt(sitzung_html))
+        datum = _iso(kopf.get("Datum"))
+        if not datum or datum < grenze:
+            return 0
+        geholt = 0
+        for nr in sorted(set(re.findall(r"to020\.asp\?[^\"\']*TOLFDNR=(\d+)",
+                                        sitzung_html))):
+            kennung = f"{wurzel}/to020.asp?TOLFDNR={nr}"
+            try:
+                html = client.get_text(kennung)
+            except Exception as e:  # noqa: BLE001 — ein Auszug, nicht der Lauf
+                logger.info("%s: Auszug %s nicht lesbar (%s)", client.body_id,
+                            nr, type(e).__name__)
+                continue
+            if VERSCHLOSSEN in html:
+                continue
+            client.raw.put_raw_object(client.body_id, "excerpt", kennung,
+                                      {"id": kennung, "tolfdnr": nr, "html": html})
+            geholt += 1
+        return geholt
 
     # ------------------------------------------------------------- Vorlagen
 
@@ -356,6 +419,14 @@ class AllrisClassicAdapter:
             j = stelle_punkt.get(c.agenda_item_id or "")
             if j is not None:
                 items[j] = replace(items[j], result_raw=erg, outcome=outcome(erg))
+
+        # **Der Auszug schlägt die Beratungsfolge.** Er nennt die
+        # Beschlussart des Punktes selbst und gilt auch für Punkte ganz ohne
+        # Vorlage — deshalb läuft er NACH dem Ergebnis aus der Vorlage.
+        aus_auszug = self._aus_auszuegen(raw, body_id, items)
+        if aus_auszug:
+            logger.info("%s: %s Punkte aus ihrem Auszug ergänzt", body_id,
+                        aus_auszug)
 
         batch = Batch(organizations=organizations, meetings=meetings,
                       agenda_items=items, papers=papers, files=[],
@@ -476,6 +547,104 @@ class AllrisClassicAdapter:
             raus.append(offen)
             offen = None
         return raus
+
+    # -------------------------------------------------------------- Auszüge
+
+    @staticmethod
+    def zerlege_auszug(html: str) -> dict[str, str]:
+        """``{"WP": Wortprotokoll, "BS": Beschluss, "AE": Abstimmung}``.
+
+        ALLRIS bettet die drei Abschnitte als eigene, **aus RTF konvertierte
+        HTML-Dokumente** hinter Sprungmarken (``<a name="allrisWP">``) ein —
+        verschachtelte ``<html>``-Bäume mitten in der Seite. Deshalb wird am
+        Rohtext geschnitten und jedes Stück für sich geparst; ein einzelner
+        Parser-Lauf über das Ganze verliert die Grenzen.
+        """
+        marken = [(m.group(1), m.end()) for m in _AUSZUG_MARKEN.finditer(html)]
+        aus: dict[str, str] = {}
+        for i, (kenn, start) in enumerate(marken):
+            ende = marken[i + 1][1] if i + 1 < len(marken) else len(html)
+            stueck = BeautifulSoup(html[start:ende], "html.parser")
+            for tag in stueck(["script", "style"]):
+                tag.decompose()
+            text = " ".join(stueck.get_text(" ", strip=True).split())
+            # Der Seitenfuß hängt sonst am letzten Abschnitt.
+            schnitt = _FUSS.search(text)
+            if schnitt:
+                text = text[:schnitt.start()].strip()
+            if text:
+                aus[kenn] = text
+        return aus
+
+    def _aus_auszuegen(self, raw: CitiesStore, body_id: str,
+                       items: list[AgendaItem]) -> int:
+        """Ergebnis und Beschlusstext aus den Auszügen an ihre Punkte schreiben.
+
+        Der Auszug ist die **bessere** Quelle als die Beratungsfolge der
+        Vorlage: Er nennt die ``Beschlussart`` des Punktes selbst und gilt
+        auch für Punkte ganz ohne Vorlage.
+        """
+        stelle = {a.id: i for i, a in enumerate(items)}
+        getroffen = 0
+        for roh in raw.raw_objects(body_id, "excerpt"):
+            html = roh.get("html")
+            i = stelle.get(roh.get("id") or "")
+            if not html or i is None:
+                continue
+            kopf = _grunddaten(_inhalt(html))
+            art = (kopf.get("Beschlussart") or "").strip()
+            teile = self.zerlege_auszug(html)
+            # Die Beschriftung gehört nicht in den Beschlusstext.
+            beschluss = _OHNE_LABEL.sub("", teile.get("BS") or "", count=1).strip()
+            if not art and not beschluss:
+                continue
+            # „(offen)" ist ALLRIS' Wort für „noch nichts entschieden" — als
+            # Ergebnis geführt wäre es die Behauptung, es gäbe eines.
+            echt = art if art and art != "(offen)" else ""
+            items[i] = replace(
+                items[i],
+                result_raw=echt or items[i].result_raw,
+                outcome=outcome(echt) if echt else items[i].outcome,
+                resolution_text=beschluss or items[i].resolution_text)
+            getroffen += 1
+        return getroffen
+
+    def auszug_abschnitte(self, raw: CitiesStore, body_id: str) -> list[tuple]:
+        """Die Wortprotokolle als Abschnitte — das „Warum" ohne PDF-Schnitt.
+
+        Zurück kommen Zeilen für ``put_protocol_sections``:
+        ``(file_id, meeting_id, ord, agenda_item_id, number, title, text)``.
+        ``file_id`` ist die Adresse des Auszugs — er IST das Dokument.
+
+        Die Punkte werden hier **noch einmal** aus der Rohablage gebaut, statt
+        sie aus der Hauptdatenbank zu lesen: Der Adapter kann es ohnehin, und
+        so bleibt die Regel im Adapter, wo sie hingehört.
+        """
+        punkte: dict[str, AgendaItem] = {}
+        for roh in raw.raw_objects(body_id, "meeting"):
+            html = roh.get("html")
+            if not html or VERSCHLOSSEN in html:
+                continue
+            for a in self._punkte(_inhalt(html), roh["id"], []):
+                punkte[a.id] = a
+        zeilen: list[tuple] = []
+        for roh in raw.raw_objects(body_id, "excerpt"):
+            html, kennung = roh.get("html"), roh.get("id") or ""
+            punkt = punkte.get(kennung)
+            if not html or punkt is None:
+                continue
+            # **Ein Abschnitt ist alles, was zu diesem Punkt passiert ist** —
+            # Beratung, Beschluss und Abstimmung, so wie ihn der Schnitt einer
+            # Niederschrift bei den anderen Städten auch liefert. Die drei
+            # getrennt abzulegen hieße, dass das Modell zum „Warum" nur die
+            # halbe Geschichte liest.
+            teile = self.zerlege_auszug(html)
+            wort = "\n\n".join(teile[k] for k in ("WP", "BS", "AE") if teile.get(k))
+            if len(wort) < MIN_WORTPROTOKOLL:
+                continue
+            zeilen.append((kennung, punkt.meeting_id, punkt.position,
+                           punkt.id, punkt.number, punkt.name, wort))
+        return zeilen
 
     # ------------------------------------------------------------ Volltexte
 
