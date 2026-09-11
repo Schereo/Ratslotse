@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ArrowRight, Check, Play } from "lucide-react";
+import { Sparkles, ArrowRight, Check, Play, Hash, MapPinned } from "lucide-react";
 import { api } from "@/lib/api";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
@@ -15,7 +15,7 @@ import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { SeitBesuchWidget } from "@/components/seit-besuch-widget";
-import { HeuteWidget } from "@/components/heute-widget";
+import { HeuteWidget, HeuteWidgetGrid, type WidgetSize } from "@/components/heute-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
@@ -25,7 +25,6 @@ import { ReleaseNewsCard } from "@/components/release-news-card";
 import { formatEuro } from "@/components/decision-ui";
 import { fragenHref, decisionHref, viertelHref } from "@/lib/routes";
 import { useFeature } from "@/lib/features";
-import { MapPinned } from "lucide-react";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
@@ -45,7 +44,7 @@ const lastWeekIso = (days: number) =>
   new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
 
-/** Heute: persönliche Neuigkeiten zuerst, daneben die Woche und ihre Zahl. */
+/** Heute: kompakter Rückblick und Kennzahl, darunter die breite Wochenübersicht. */
 export default function DashboardPage() {
   const { user } = useAuth();
   const heute = useHeute();
@@ -130,75 +129,58 @@ export default function DashboardPage() {
         ]}
       />
 
-      {/* Eigenständige Widgets: mobil zuerst die persönlichen Neuigkeiten,
-          dann die Woche. Zwei unabhängige Spalten vermeiden Leerraum zwischen
-          den unterschiedlich hohen Karten; die Containerbreite entscheidet. */}
-      <div className={cn("@container/raster mt-6", STAFFEL)} style={staffelStil(2)}>
-        <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <SeitBesuchWidget />
-          <div className="min-w-0 space-y-4">
-            {vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />}
-
-          {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
-              wenigsten Breite. */}
-          <HeuteWidget id="zahl-der-woche" title="Zahl der Woche" className="border-signal/30 bg-signal/5">
-            {zahl?.kind === "amount" && (
-              <>
-                <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
-                  <CountUpEuro amount={zahl.amount_eur} /></p>
-                <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                  beschlossen für: {zahl.title}
-                </p>
+      {/* Größe ist eine Layout-Vorgabe. Die Karten entscheiden anhand ihrer
+          eigenen Breite, wie viele Details passen — auch auf dem Telefon. */}
+      <HeuteWidgetGrid className={cn("mt-6", STAFFEL)} style={staffelStil(2)}>
+        <SeitBesuchWidget />
+        {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
+            wenigsten Breite. */}
+        <HeuteWidget id="zahl-der-woche" title="Zahl der Woche" icon={Hash}>
+          {zahl?.kind === "amount" && (
+            <>
+              <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
+                <CountUpEuro amount={zahl.amount_eur} /></p>
+              <p className="mt-2 line-clamp-3 flex-1 text-hinweis text-muted-foreground">
+                beschlossen für: {zahl.title}
+              </p>
+              <Link
+                href={decisionHref(zahl.decision_id)}
+                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </>
+          )}
+          {zahl?.kind === "count" && (
+            <>
+              <p className="font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
+                <CountUpNumber value={zahl.count} />
+              </p>
+              <p className="mt-2 flex-1 text-hinweis text-muted-foreground">
+                {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
+                sammelt sich hier wenig an.
+              </p>
+              {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser
+                  Variante der einzige Inhalt ohne Ziel. Die Suche kennt
+                  date_from längst — es fehlte nur der Link dorthin. */}
+              {zahl.count > 0 && (
                 <Link
-                  href={decisionHref(zahl.decision_id)}
+                  href={`/council?tab=decisions&date_from=${lastWeekIso(zahl.window_days)}`}
                   className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                 >
-                  Zum Beschluss <ArrowRight className="h-3.5 w-3.5" />
+                  Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
-              </>
-            )}
-            {zahl?.kind === "count" && (
-              <>
-                <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
-                  <CountUpNumber value={zahl.count} />
-                </p>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                  {zahl.count === 1 ? "Beschluss" : "Beschlüsse"} in den letzten 7 Tagen — in der Sitzungspause
-                  sammelt sich hier wenig an.
-                </p>
-                {/* Design 28a/S5: Die auffälligste Zahl des Screens war in dieser
-                    Variante der einzige Inhalt ohne Ziel. Die Suche kennt
-                    date_from längst — es fehlte nur der Link dorthin. */}
-                {zahl.count > 0 && (
-                  <Link
-                    href={`/council?tab=decisions&date_from=${lastWeekIso(zahl.window_days)}`}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-                  >
-                    Diese {zahl.count} ansehen <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                )}
-              </>
-            )}
-            {!zahl && <div className="mt-3 h-10 animate-pulse rounded-lg bg-signal/10" />}
-          </HeuteWidget>
-          </div>
-        </div>
-      </div>
+              )}
+            </>
+          )}
+          {!zahl && <div className="h-10 animate-pulse rounded-lg bg-signal/10" />}
+        </HeuteWidget>
+        {vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
+        <MeinViertelKarte topics={topicsQuery.data} size="wide" />
+        <RecentDecisions size="wide" />
+        <FundstueckCard size="wide" />
+      </HeuteWidgetGrid>
 
-      {/* „Mein Viertel" (Feature-Schalter): eine Zeile je gewähltem Stadtteil
-          mit der Zahl seiner Vorhaben — der Weg zur Tafel. Ohne gewählten
-          Stadtteil führt die Karte zur Auswahl. */}
-      <MeinViertelKarte topics={topicsQuery.data} />
-
-      {/* Design 28a/S5: „Zuletzt angesehen" lag fertig im Repo, wurde aber von
-          keiner Seite gerendert. Bei leerer Historie rendert die Komponente
-          ohnehin nichts — sie kostet also keinen Platz, bis es etwas zu zeigen
-          gibt, und schließt den zweiten Sackgassen-Punkt des Dashboards. */}
-      <RecentDecisions className="mt-6" />
-
-      {/* RL-U11: Fundstück des Tages — nach dem Grid; ohne kuratierten Fund
-          entfällt die Karte ersatzlos. */}
-      <FundstueckCard />
     </div>
   );
 }
@@ -207,7 +189,7 @@ export default function DashboardPage() {
  *  IST ein Thema, s. Einrichtungs-Assistent) die Zahl seiner Vorhaben mit dem
  *  Sprung zur Tafel. Hängt am Feature-Schalter `mein-viertel`; ohne ihn
  *  rendert die Karte nichts. */
-function MeinViertelKarte({ topics }: { topics: Topic[] | undefined }) {
+function MeinViertelKarte({ topics, size }: { topics: Topic[] | undefined; size?: WidgetSize }) {
   const an = useFeature("mein-viertel");
   const uebersicht = useQuery({
     queryKey: ["viertel-uebersicht"],
@@ -219,35 +201,35 @@ function MeinViertelKarte({ topics }: { topics: Topic[] | undefined }) {
   const orte = uebersicht.data?.districts ?? [];
   const meine = orte.filter((o) => (topics ?? []).some((t) => t.name.toLowerCase() === o.name.toLowerCase()));
   return (
-    <Card className={cn("mt-6 p-5", STAFFEL)} style={staffelStil(4)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-base font-bold text-foreground">Mein Viertel</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {meine.length > 0
-              ? "Was sich in deinem Stadtteil in den nächsten Jahren ändert."
-              : "Was sich in deinem Stadtteil in den nächsten Jahren ändert — wähle ihn auf der Karte."}
-          </p>
-        </div>
-        <span className="rounded-xl bg-primary/10 p-2 text-primary"><MapPinned className="h-5 w-5" /></span>
-      </div>
-      {meine.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {meine.map((o) => (
-            <li key={o.place_id}>
-              <Link href={viertelHref(o.place_id)} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
-                {o.name}
-                <span className="rounded-full bg-primary/10 px-1.5 text-xs tabular-nums text-primary">{o.count}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <Link href={viertelHref()} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-          Stadtteil wählen <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      )}
-    </Card>
+    <HeuteWidget id="mein-viertel" title="Mein Viertel" icon={MapPinned} size={size}>
+      {detail => <>
+        <p className="text-hinweis text-muted-foreground">
+          {meine.length > 0
+            ? "Was sich in deinem Stadtteil in den nächsten Jahren ändert."
+            : "Was sich in deinem Stadtteil in den nächsten Jahren ändert — wähle ihn auf der Karte."}
+        </p>
+        {meine.length > 0 ? (
+          <ul className={cn("mt-3 gap-3", detail === "expanded" ? "grid grid-cols-3" : "flex flex-wrap")}>
+            {meine.map(o => {
+              const highlight = uebersicht.data?.highlights.find(h => h.place_id === o.place_id);
+              return <li key={o.place_id} className="min-w-0">
+                <Link href={viertelHref(o.place_id)} className="group flex min-h-11 items-start gap-2 rounded-lg px-2 py-2 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                  <span className="min-w-0 flex-1">
+                    <span className="text-quelle font-semibold group-hover:text-primary">{o.name}</span>
+                    {detail === "expanded" && highlight && <span className="mt-1 block text-hinweis text-muted-foreground">{highlight.name}</span>}
+                  </span>
+                  <span className="shrink-0 text-meta leading-6 tabular-nums text-primary">{o.count} <span className={detail === "expanded" ? "" : "sr-only"}>Vorhaben</span></span>
+                </Link>
+              </li>;
+            })}
+          </ul>
+        ) : (
+          <Link href={viertelHref()} className="mt-2 inline-flex min-h-11 items-center gap-1 text-hinweis font-medium text-primary hover:underline">
+            Stadtteil wählen <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </>}
+    </HeuteWidget>
   );
 }
 

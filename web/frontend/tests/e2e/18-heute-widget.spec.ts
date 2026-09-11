@@ -129,3 +129,31 @@ for (const width of [1280, 1600]) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }
+
+test("breite Wochenkarte ergänzt Inhalte; auf dem Handy bleiben alle Punkte erreichbar", async ({ page }) => {
+  await stub(page);
+  await page.route("**/api/council/week-preview", route => route.fulfill({ json: {
+    found: true, from_date: "2026-09-11", to_date: "2026-09-18",
+    sessions: [{ ksinr: 4618, committee: "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit", session_date: "2026-09-14", session_time: "17:00", n_items: 3 }],
+    items: ["Neue Quartiersgarage", "Grundstück für das Stadtteilzentrum", "Sichere Schulwege"].map((title, i) => ({
+      ksinr: 4618, item_number: `Ö ${i + 1}`, committee: "Wirtschaft & Digitales", session_date: "2026-09-14",
+      title, top: i === 0, wichtig_grund: i === 0 ? "Die Entscheidung prägt die Entwicklung des neuen Quartiers." : null,
+      summary: null, template_number: null, kvonr: null,
+    })),
+  } }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/dashboard");
+  const week = page.locator('[data-heute-widget="woche-im-rat"]');
+  await expect(week.getByText("Neue Quartiersgarage", { exact: true })).toBeVisible();
+  await expect(week.getByText("Sichere Schulwege", { exact: true })).toHaveCount(0);
+  await week.getByRole("button", { name: "2 weitere Punkte" }).click();
+  await expect(week.getByText("Sichere Schulwege", { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(week.getByText("Die Entscheidung prägt die Entwicklung des neuen Quartiers.", { exact: true })).toBeVisible();
+  await expect(week.getByText("Sichere Schulwege", { exact: true })).toBeVisible();
+  await expect(week.getByRole("button", { name: /weitere Punkte/ })).toHaveCount(0);
+  // Große Schrift braucht weniger Informationsdichte, keine abgeschnittenen Metadaten.
+  await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+  await expect(week.getByText("Die Entscheidung prägt die Entwicklung des neuen Quartiers.", { exact: true })).toHaveCount(0);
+  await expect.poll(() => week.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+});

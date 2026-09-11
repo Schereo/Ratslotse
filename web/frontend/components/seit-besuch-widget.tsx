@@ -10,7 +10,7 @@ import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { sitzungHref } from "@/lib/routes";
 import { shortCommittee } from "@/lib/committees";
 import { Button, formatDate } from "@/components/ui";
-import { HeuteWidget } from "@/components/heute-widget";
+import { HeuteWidget, useWidgetDetail, type WidgetSize } from "@/components/heute-widget";
 import styles from "./seit-besuch-widget.module.css";
 
 type Updates = ApiAntwort<"/today/updates">;
@@ -24,7 +24,7 @@ function range(first: string, last: string) {
   return first === last ? formatDate(first) : `${formatDate(first)} – ${formatDate(last)}`;
 }
 
-export function SeitBesuchWidget() {
+export function SeitBesuchWidget({ size }: { size?: WidgetSize }) {
   const { user } = useAuth();
   const query = useQuery({
     queryKey: ["today-updates", user?.id],
@@ -37,7 +37,7 @@ export function SeitBesuchWidget() {
   const data = query.data;
   return (
     <HeuteWidget id="seit-besuch" title={data?.first_visit ? "Neu bei Ratslotse" : "Seit deinem letzten Besuch"}
-      icon={<History className="h-5 w-5" />}>
+      icon={History} size={size}>
       {query.isPending && <p role="status" className="text-hinweis text-muted-foreground">Dein Rückblick wird geladen.</p>}
       {query.isError && <div role="alert">
         <p className="text-hinweis text-muted-foreground">Der Rückblick konnte nicht {data ? "aktualisiert" : "geladen"} werden.</p>
@@ -47,7 +47,7 @@ export function SeitBesuchWidget() {
         <p className="text-hinweis text-muted-foreground">
           {data.first_visit ? "Dein erster Rückblick: die letzten sieben Tage." : `Seit ${formatDate(data.since)} – auch außerhalb deiner Themen.`}
         </p>
-        {data.total > 0 ? <div className="mt-3 divide-y divide-border">
+        {data.total > 0 ? <div className="mt-2 divide-y divide-border">
           {order.map(kind => {
             const groups = data.groups.filter(group => group.kind === kind);
             return groups.length > 0 && <UpdateSection key={`${data.until}-${kind}`} kind={kind} groups={groups} window={data} userId={user!.id} />;
@@ -64,14 +64,15 @@ export function SeitBesuchWidget() {
 function UpdateSection({ kind, groups, window, userId }: { kind: Kind; groups: Group[]; window: Updates; userId: number }) {
   const [expanded, setExpanded] = useState(false);
   const [visible, setVisible] = useState(4);
+  const detail = useWidgetDetail();
   const id = useId();
   const count = groups.reduce((n, group) => n + group.count, 0);
   const firstDate = groups.map(group => group.first_session_date).sort()[0];
   const lastDate = groups.map(group => group.last_session_date).sort().at(-1)!;
   return <div>
     <button type="button" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(!expanded)}
-      className={`-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${styles.row}`}>
-      <span className="min-w-[3ch] shrink-0 font-display text-3xl font-bold tabular-nums text-primary" aria-hidden>{count}</span>
+      className={`-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${styles.row}`}>
+      <span className="min-w-[2ch] shrink-0 font-display text-2xl font-bold tabular-nums text-primary" aria-hidden>{count}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-quelle font-semibold"><span className="sr-only">{count} </span>{labels[kind]}</span>
         <span className="mt-1 block text-meta text-muted-foreground">
@@ -80,6 +81,9 @@ function UpdateSection({ kind, groups, window, userId }: { kind: Kind; groups: G
       </span>
       <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground ${styles.chevron} ${expanded ? styles.expanded : ""}`} aria-hidden />
     </button>
+    {!expanded && detail === "expanded" && <div className="grid grid-cols-2 gap-x-6 pb-2">
+      {groups.slice(0, 2).map(group => <UpdateLink key={group.committee} item={group.latest} />)}
+    </div>}
     <div id={id} hidden={!expanded}>
       {expanded && <div className={`pb-3 ${styles.arrival}`}>
         <ul className="divide-y divide-border/60">
