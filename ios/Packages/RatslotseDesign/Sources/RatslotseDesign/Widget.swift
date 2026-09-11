@@ -129,8 +129,8 @@ public struct RatsWidget<Content: View, Trailing: View>: View {
                 .font(RatsFont.body(14, weight: .bold))
                 .tracking(-0.14)
                 .foregroundStyle(RatsColor.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
             if let note {
                 Text(note.uppercased())

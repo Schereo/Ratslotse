@@ -826,6 +826,9 @@ class TopicHitList(TypedDict):
     topic_count: int
     total: int
     unread_total: int
+    # Eindeutige, noch vorhandene Beschlüsse; ein Treffer in zwei Themen
+    # zählt im Heute-Widget nur einmal. unread_total bleibt für ältere Apps.
+    unread_decisions: int
 
 
 class TopicDecision(TypedDict):

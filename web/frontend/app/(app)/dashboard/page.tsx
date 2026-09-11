@@ -15,6 +15,7 @@ import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { NeueTrefferKarte } from "@/components/neue-treffer-karte";
+import { HeuteWidget } from "@/components/heute-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
@@ -44,10 +45,7 @@ const lastWeekIso = (days: number) =>
   new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
 
-/** „Heute"-Briefing (RL-401, Design 2a/4a): Kopf mit Lotti + Signal-CTA,
- *  Pause-Banner, dann die Wochen-Karte (Design 14) und darunter zwei kurze —
- *  Neu zu deinen Themen · Zahl der Woche. Jeder Bereich hat einen definierten
- *  Leerzustand. */
+/** Heute: persönliche Neuigkeiten zuerst, daneben die Woche und ihre Zahl. */
 export default function DashboardPage() {
   const { user } = useAuth();
   const heute = useHeute();
@@ -59,7 +57,6 @@ export default function DashboardPage() {
   }, []);
 
   const topicsQuery = useQuery({ queryKey: ["topics"], queryFn: () => api.get<Topic[]>("/topics") });
-  const topicCount = topicsQuery.data?.length ?? 0;
 
   const zahlQuery = useQuery({
     queryKey: ["zahl-der-woche"],
@@ -133,61 +130,18 @@ export default function DashboardPage() {
         ]}
       />
 
-      {/* Karten-Raster (Tims Befund 12.08.: drei Spalten kamen zu früh).
-
-          Die Stufen zählen die Breite des RASTERS, nicht die des Fensters —
-          dazwischen liegt die Seitenleiste. Bei 1280 px Fenster bleiben dem
-          Raster nur 976 px (im Browser nachgemessen), und die Fenster-Stufe
-          `xl:` schaltete trotzdem auf drei Spalten: 334 / 392 / 218 px. Die
-          dritte Spalte war damit schmaler als ein Telefon. Auf dem Telefon
-          selbst gibt es die Leiste gar nicht — dieselbe Fensterbreite meint
-          also zwei verschiedene Platzangebote, und nur eine Container-Query
-          kann beide auseinanderhalten.
-
-          Die Schwellen richten sich danach, was die TEXTREICHSTE Karte zum
-          Lesen braucht — die Wochen-Ausgabe —, nicht danach, was gerade noch
-          hineinpasst:
-
-            < 768 px   eine Spalte    (Telefon)
-            ≥ 768 px   zwei Spalten   (iPad hoch/quer, kleine Laptops)
-                       die Ausgabe nimmt die erste Zeile ganz ein, die beiden
-                       kurzen Karten teilen sich die zweite
-            ≥ 1152 px  drei Spalten   — erst hier trägt die dritte Spalte
-                       mehr als eine Zahl und drei Wörter
-
-          minmax(0, …fr) statt nacktem fr: Sonst gewinnt die Mindestbreite des
-          Inhalts gegen die Gewichtung — die Sitzungs-Liste mit ihren langen
-          Gremiennamen drückte sich auf 420 px, während die Ausgabe mit 334 px
-          auskommen musste (im Browser nachgemessen).
-
-          items-start: Jede Karte trägt ihre eigene Höhe. Vorher streckte das
-          Raster „Nächste Sitzungen" und „Zahl der Woche" auf die Höhe der
-          Ausgabe — mit einem Feld Leerraum darunter, das nichts sagt. */}
-      {/* Design 14: „Die Woche im Rat" steht über dem Raster und nimmt die
-          volle Breite. Sie ersetzt zwei Karten (Nächste Sitzungen + Diese
-          Woche im Rat) und braucht den Platz für ihre Tages-Rail — je breiter
-          sie ist, desto mehr trägt sie (Ort, Kurzbegründung, dritter Punkt).
-          Darunter bleibt das Raster für die beiden kurzen Karten. */}
-      {vorschau && (
-        <div className={cn("mt-6", STAFFEL)} style={staffelStil(2)}>
-          <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />
-        </div>
-      )}
-
-      {/* Nur noch zwei kurze Karten: „Neu zu deinen Themen" (Rückblick) und
-          „Zahl der Woche". Zwei Spalten reichen — die dritte war für die
-          Sitzungs-Liste da, die jetzt in der Wochen-Karte steckt. */}
-      <div className={cn("@container/raster mt-4", STAFFEL)} style={staffelStil(3)}>
-        <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-          {/* Neu zu deinen Themen — der Rückblick auf entschiedene Beschlüsse.
-              Die Vorschau auf die Woche ist seit Design 14 eine eigene Karte
-              über dem Raster; diese hier trägt nur noch die Treffer. */}
-          <NeueTrefferKarte topicCount={topicCount} topicsLaden={topicsQuery.isLoading} />
+      {/* Eigenständige Widgets: mobil zuerst die persönlichen Neuigkeiten,
+          dann die Woche. Zwei unabhängige Spalten vermeiden Leerraum zwischen
+          den unterschiedlich hohen Karten; die Containerbreite entscheidet. */}
+      <div className={cn("@container/raster mt-6", STAFFEL)} style={staffelStil(2)}>
+        <div className="grid grid-cols-1 items-start gap-4 @3xl/raster:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+          <NeueTrefferKarte />
+          <div className="min-w-0 space-y-4">
+            {vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} />}
 
           {/* Zahl der Woche (RL-905) — eine Zahl und ein Satz, braucht am
               wenigsten Breite. */}
-          <Card className="flex flex-col border-signal/30 bg-signal/5 p-5 @3xl/raster:order-3 @6xl/raster:order-none">
-            <h2 className="font-display text-base font-bold text-foreground">Zahl der Woche</h2>
+          <HeuteWidget id="zahl-der-woche" title="Zahl der Woche" className="border-signal/30 bg-signal/5">
             {zahl?.kind === "amount" && (
               <>
                 <p className="mt-3 font-display text-[40px] font-extrabold leading-none tracking-tight text-signal">
@@ -226,7 +180,8 @@ export default function DashboardPage() {
               </>
             )}
             {!zahl && <div className="mt-3 h-10 animate-pulse rounded-lg bg-signal/10" />}
-          </Card>
+          </HeuteWidget>
+          </div>
         </div>
       </div>
 
