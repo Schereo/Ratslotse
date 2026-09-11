@@ -539,3 +539,40 @@ class ClientErrorIn(BaseModel):
     stack: str = Field(default="", max_length=4000)
     #: Der Pfad OHNE Query — die Query kann Suchbegriffe tragen.
     route: str = Field(default="", max_length=200)
+
+
+# ---- Tippspiel (docs/plan-tippspiel-ratswahl.md) ----
+#
+# Bewusst locker gehalten (nur Länge/Typ) — die eigentliche Prüfung (Name
+# getrimmt und ohne Zeilenumbruch, Sitze summieren auf 52, OB-Prozente auf
+# höchstens 100) läuft im Router mit einem deutschen Satz statt einer
+# Pydantic-Meldung; dieselbe Aufteilung wie bei ``RegisterRequest.display_name``.
+
+class PredictionJoinIn(BaseModel):
+    """``POST /api/tipp`` legt an ODER aktualisiert — beides derselbe Endpunkt
+    (ohne Cookie: Beitritt, ``name`` Pflicht; mit gültigem Cookie: nur der
+    Tipp wird aktualisiert, ``name`` bleibt unbeachtet — umbenennen kann nur
+    der Admin, s. 1h). ``seats``/``mayor`` fehlen beim ersten Anruf aus 1c oft
+    noch (die Namenseingabe kommt vor dem Tippformular); erst wenn beides da
+    ist, wird ein Tipp gespeichert."""
+    name: str | None = Field(default=None, min_length=2, max_length=30)
+    seats: dict[str, int] | None = None
+    #: ``None`` = die OB-Wahl bewusst nicht mitgetippt (kein Abzug dafür).
+    mayor: dict[str, float] | None = None
+
+
+class PredictionResultLineIn(BaseModel):
+    #: Listen-Slug ('gruene') oder OB-Kandidatur ('ob:rohr').
+    slug: str
+    seats: int | None = None
+    pct: float | None = None
+
+
+class PredictionPhaseIn(BaseModel):
+    phase: Literal["open", "locked", "final"]
+    late_scored: bool | None = None
+
+
+class PredictionPlayerIn(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=30)
+    hidden: bool | None = None

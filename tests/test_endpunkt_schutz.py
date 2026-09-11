@@ -115,6 +115,19 @@ OEFFENTLICH = {
     # Seite zeigt, und wird gerade von denen abgeholt, die kein Konto haben:
     # WhatsApp und die sozialen Netze, wenn sie einen Link auspacken.
     ("get", "/api/wahlabend/bild.png"),
+    # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
+    ("get", "/api/wahlabend/ob"),
+
+    # Tippspiel (docs/plan-tippspiel-ratswahl.md): ohne Konto — die Identität
+    # ist der Cookie-Token, nicht `web_users.id`. Hinter dem Schalter
+    # `tippspiel` (404, solange er aus ist). Admin-Routen (`/api/tipp/admin/…`)
+    # brauchen weiterhin `require_admin` und stehen deshalb NICHT hier.
+    ("get", "/api/tipp/setup"),
+    ("post", "/api/tipp"),
+    ("get", "/api/tipp/me"),
+    ("delete", "/api/tipp/me"),
+    ("get", "/api/tipp/stand"),
+    ("get", "/api/tipp/qr.png"),
 
     # Geteilte Antworten: Der Token IST der Zugang — wer den Link hat, darf
     # lesen und melden. Ein Konto zu verlangen machte das Teilen sinnlos.
