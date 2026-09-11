@@ -265,8 +265,17 @@ def inline_sections(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> i
 def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> int:
     """Texte übernehmen, die schon vorliegen — statt dieselben PDFs erneut zu holen.
 
-    Zwei Fälle: **more! rubin** liefert den Volltext im Dateiobjekt mit, und
-    für **Oldenburg** steht er längst geparst in der Rats-Datenbank.
+    Vier Fälle: **more! rubin** liefert den Volltext im Dateiobjekt mit,
+    **Oldenburg** hat ihn längst geparst in der Rats-Datenbank, und
+    **ALLRIS classic** (Hildesheim) sowie **Hannovers Notes/Domino** tragen
+    ihn direkt in der Vorlagenseite.
+
+    **Ein Dialekt hier zu vergessen, geht STUMM schief.** `allris_classic`
+    hatte diesen Eintrag seit seinem ersten PR nie: `inline_texts` funktionierte,
+    wurde aber nie aufgerufen — 25.729 Hannoveraner Vorlagen standen ohne
+    einen einzigen Satz Text da, ohne Fehler, ohne Auffälligkeit (gemessen
+    11.09.2026). Ein neuer Dialekt mit `inline_texts` gehört deshalb IMMER
+    auch hierher, nicht nur in die eigene Adapter-Datei.
     """
     if spec.dialect == "rubin":
         from council.cities.adapters.rubin import OPARL_TEXT, RubinAdapter
@@ -274,6 +283,13 @@ def extract_inline(main: CitiesStore, spec: BodySpec, raw_dir: str | Path) -> in
     elif spec.dialect == "oldenburg":
         from council.cities.adapters.oldenburg import EXTRACTOR, OldenburgAdapter
         adapter, extraktor = OldenburgAdapter(), EXTRACTOR
+    elif spec.dialect == "allris_classic":
+        from council.cities.adapters.allris_classic import (EXTRACTOR,
+                                                             AllrisClassicAdapter)
+        adapter, extraktor = AllrisClassicAdapter(), EXTRACTOR
+    elif spec.dialect == "hannover_sim":
+        from council.cities.adapters.hannover_sim import EXTRACTOR, HannoverSimAdapter
+        adapter, extraktor = HannoverSimAdapter(), EXTRACTOR
     else:
         return 0
 
