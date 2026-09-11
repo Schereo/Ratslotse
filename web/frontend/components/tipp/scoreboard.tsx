@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Podium, RangChip } from "./podium";
 import { useTween, useFrisch } from "./beamer-hooks";
 import { BeamerKopf, LivePunkt } from "./buehne";
-import { uhrzeitKurz } from "./zeit";
+import { uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type Zeile = PredictionStand["rows"][number];
