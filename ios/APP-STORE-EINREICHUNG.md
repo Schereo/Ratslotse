@@ -16,8 +16,11 @@ Review-Konto).
 Apple verlangt, dass die Angaben im Store zu dem passen, was die App an
 den Server schickt. Die Quelle der Wahrheit ist
 [`Resources/PrivacyInfo.xcprivacy`](Resources/PrivacyInfo.xcprivacy). Dort
-stehen genau fünf Datentypen, alle „mit der Identität verknüpft", alle
-„nicht für Tracking", alle mit dem Zweck „App-Funktionalität".
+stehen genau sechs Datentypen, alle „mit der Identität verknüpft", alle
+„nicht für Tracking"; fünf mit dem Zweck „App-Funktionalität", die
+Produktinteraktion zusätzlich mit „Analysen" (das Backend zählt je Konto
+und Tag, welche Funktionen benutzt werden: `user_activity` in
+`kern/store.py`).
 
 1. App Store Connect → **Apps → Ratslotse → App-Datenschutz** (linke
    Spalte, unter „Allgemein").
@@ -33,19 +36,23 @@ stehen genau fünf Datentypen, alle „mit der Identität verknüpft", alle
    | Kennungen | **Benutzer-ID** | Kontonummer im Backend |
    | Kennungen | **Geräte-ID** | Push-Token für APNs |
    | Nutzerinhalte | **Andere Nutzerinhalte** | Fragen, Themen, geteilte Antworten |
+   | Nutzungsdaten | **Produktinteraktion** | Zähler je Konto und Tag: Sitzung, KI-Frage, Recherche, Suche, Analyse, Karte |
 
-4. **Weiter**. Für jeden der fünf Typen erscheinen drei Fragen, immer
-   dieselben Antworten:
-   - Verwendungszweck: nur **App-Funktionalität**.
+4. **Weiter**. Für jeden der sechs Typen erscheinen drei Fragen:
+   - Verwendungszweck: **App-Funktionalität**; bei Produktinteraktion
+     zusätzlich **Analysen**.
    - „Sind die Daten mit der Identität des Nutzers verknüpft?" → **Ja**.
    - „Werden die Daten für Tracking verwendet?" → **Nein**.
 5. Am Ende **Veröffentlichen**. Die Angaben gelten für alle künftigen
    Versionen, bis sie geändert werden.
 
 Nicht anhaken, auch wenn es plausibel klingt: Standort (die Karte zeigt
-Ratsdaten, nie den Nutzerstandort), Nutzungsdaten oder Diagnose (der
-Fehlersammler speichert kein Konto und keine Gerätekennung, siehe
-`kern/fehler.py`), Kaufhistorie.
+Ratsdaten, nie den Nutzerstandort; „Mein Viertel" ist eine Kontoangabe),
+Suchverlauf (gezählt wird, dass gesucht wurde, nicht wonach), Diagnose
+(kein eigenes Crash-Reporting; der Fehlersammler speichert kein Konto und
+keine Gerätekennung, siehe `kern/fehler.py`), Kundendienst (das
+Feedback-Formular fällt unter Apples Ausnahme für optionale Formulare),
+Kaufhistorie.
 
 ## 2. Händlerstatus nach dem Digital Services Act
 
