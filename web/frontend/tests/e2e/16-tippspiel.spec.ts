@@ -202,3 +202,25 @@ test.describe("Mein Tipp: OB-Tipp", () => {
     await expect(page.getByText("40 %")).toBeVisible();
   });
 });
+
+test.describe("Abgeben ist ein Moment", () => {
+  test("der Knopf bestätigt, danach steht die Bestätigung — und zurück geht es auch", async ({ page }) => {
+    // Vorher sprang der Knopf beim Klick sofort auf „Tipp aktualisieren":
+    // Man wusste nicht, ob der Tipp angekommen war (Tims Befund 11.09.).
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins());
+    await page.goto("/tipp");
+    await page.getByLabel(/Dein Name/).fill("Testperson");
+    await page.getByRole("button", { name: /Los geht's/ }).click();
+    await expect(page.getByText("Sitze im Rat")).toBeVisible();
+
+    await page.getByRole("button", { name: "Tipp abgeben" }).click();
+    await expect(page.getByRole("button", { name: "Gespeichert" })).toBeVisible();
+
+    // … und danach die Bestätigung (1e) statt des Formulars.
+    await expect(page.getByText("Dein Tipp ist gespeichert.")).toBeVisible();
+    await page.getByRole("button", { name: "Tipp ändern" }).click();
+    await expect(page.getByText("Sitze im Rat")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Zurück" })).toBeVisible();
+  });
+});

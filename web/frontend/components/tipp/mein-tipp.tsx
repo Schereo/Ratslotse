@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
+import { Lotti } from "@/components/lotti";
 import { Aufklapp } from "@/components/aufklapp";
 import { BrandMark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,11 @@ function punktTon(punkte: number, hoechst: number): string {
   return "bg-muted text-muted-foreground";
 }
 
-export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins }) {
+export function MeinTipp({ setup, meins, onAendern }: {
+  setup: TippSetup; meins: TippMeins;
+  /** Solange getippt werden darf: zurück ins Formular (1d). */
+  onAendern?: () => void;
+}) {
   const parteiVon: Record<string, TippSetup["parties"][number]> = Object.fromEntries(
     setup.parties.map((p) => [p.slug, p]),
   );
@@ -31,6 +36,11 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
   const nullAufNullListen = meins.seats.filter((s) => s.tip === 0 && s.actual === 0);
   const nachgetippt = meins.late_at !== null ? uhrzeitKurz(meins.late_at) : null;
   const [obOffen, setObOffen] = useState(false);
+  // Vor dem ersten Ergebnis ist diese Seite die BESTÄTIGUNG (Plan, 1e): Dann
+  // sind „Ist" und „Pkt" in jeder Zeile leer — die Spalten bleiben weg, statt
+  // eine halbe Tabelle mit Strichen zu zeigen.
+  const zeigeErgebnis = meins.seats.some((s) => s.actual !== null);
+  const spalten = zeigeErgebnis ? "grid-cols-[8px_1fr_34px_34px_44px]" : "grid-cols-[8px_1fr_44px]";
 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md pb-8">
@@ -40,8 +50,10 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
           <span className="font-display text-[15px] font-bold">Tippspiel</span>
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.08] px-2.5 py-1 text-[11.5px] font-semibold text-primary">
-          <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal" />
-          {meins.phase === "final" ? "Endstand" : "Live"} · {meins.stand_label || "wartet"}
+          {meins.phase !== "open" && <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-signal motion-reduce:animate-none" />}
+          {meins.phase === "open"
+            ? "Tippen offen"
+            : `${meins.phase === "final" ? "Endstand" : "Live"} · ${meins.stand_label || "wartet"}`}
         </span>
       </div>
 
@@ -60,11 +72,19 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
       )}
 
       {!score ? (
-        <div className="mx-4 mt-3.5 rounded-2xl bg-primary p-4 text-primary-foreground">
-          <p className="font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">{meins.name} · Dein Tipp</p>
-          <p className="mt-2 text-sm leading-relaxed opacity-90">
-            Dein Tipp ist gespeichert. Sobald die erste Zahl da ist, siehst du hier deinen Rang.
-          </p>
+        <div className="animate-fade-up mx-4 mt-3.5 flex items-center gap-3 rounded-2xl bg-primary p-4 text-primary-foreground">
+          {/* `klatscht` heißt im Katalog „geschafft" — eine Regung, die an
+              genau diesen Zustand gebunden ist (DESIGNSPRACHE §1). */}
+          <Lotti regung="klatscht" className="h-16 w-16 flex-none" decorative />
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">{meins.name}</p>
+            <p className="mt-0.5 font-display text-lg font-bold">Dein Tipp ist gespeichert.</p>
+            <p className="mt-1 text-[12.5px] leading-relaxed opacity-90">
+              {meins.locked
+                ? "Sobald die erste Zahl da ist, siehst du hier deinen Rang."
+                : `Änderbar ${setup.deadline_hint.replace(/^bis /, "bis ")}. Dann zählen wir aus.`}
+            </p>
+          </div>
         </div>
       ) : (
         <div className="mx-4 mt-3.5 overflow-hidden rounded-2xl bg-primary p-4 pb-4 text-primary-foreground">
@@ -88,8 +108,8 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
 
       <div className="mt-4 px-4">
         <div className="flex justify-between font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
-          <span>Dein Tipp · Stand</span>
-          <span>{meins.stand_label || "wartet"}</span>
+          <span>Dein Tipp{zeigeErgebnis ? " · Stand" : ""}</span>
+          <span>{zeigeErgebnis ? meins.stand_label : `${meins.seats.length} Listen`}</span>
         </div>
         <div className="mt-2 overflow-hidden rounded-[14px] border border-border bg-card">
           {meins.seats.filter((s) => !(s.tip === 0 && s.actual === 0)).map((s) => {
@@ -97,24 +117,29 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
             return (
               <div
                 key={s.slug}
-                className="grid grid-cols-[8px_1fr_34px_34px_44px] items-center gap-2.5 border-t border-muted px-3.5 py-2 text-[13px] first:border-t-0"
+                className={`grid ${spalten} items-center gap-2.5 border-t border-muted px-3.5 py-2 text-[13px] first:border-t-0`}
               >
                 <span className="h-2 w-2 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.15)]" style={{ background: p?.color }} />
                 <span className="truncate font-semibold">{p?.short ?? s.slug}</span>
-                <span className="text-right font-mono text-muted-foreground">{s.tip}</span>
-                <span className="text-right font-display text-[15px] font-bold">{s.actual ?? "–"}</span>
-                <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(s.points, 5)}`}>
-                  {s.actual === null ? "–" : s.points > 0 ? `+${s.points}` : "0"}
-                </span>
+                {zeigeErgebnis ? (
+                  <>
+                    <span className="text-right font-mono text-muted-foreground">{s.tip}</span>
+                    <span className="text-right font-display text-[15px] font-bold">{s.actual ?? "–"}</span>
+                    <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(s.points, 5)}`}>
+                      {s.actual === null ? "–" : s.points > 0 ? `+${s.points}` : "0"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-right font-display text-[15px] font-bold tabular-nums">{s.tip}</span>
+                )}
               </div>
             );
           })}
-          <div className="grid grid-cols-[8px_1fr_34px_34px_44px] gap-2.5 px-3.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+          <div className={`grid ${spalten} gap-2.5 px-3.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground`}>
             <span />
             <span />
             <span className="text-right">Tipp</span>
-            <span className="text-right">Ist</span>
-            <span className="text-center">Pkt</span>
+            {zeigeErgebnis && <><span className="text-right">Ist</span><span className="text-center">Pkt</span></>}
           </div>
         </div>
         {nullAufNullListen.length > 0 && (
@@ -161,7 +186,15 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
         </div>
       )}
 
-      <div className="mt-3.5 flex gap-2.5 px-4">
+      {onAendern && (
+        <div className="mt-3.5 px-4">
+          <Button type="button" variant="primary" className="h-11 w-full text-sm" onClick={onAendern}>
+            Tipp ändern
+          </Button>
+        </div>
+      )}
+
+      <div className="mt-2.5 flex gap-2.5 px-4">
         <Button asChild variant="secondary" className="h-11 flex-1 text-sm">
           <Link href="/tipp/live">Rangliste</Link>
         </Button>

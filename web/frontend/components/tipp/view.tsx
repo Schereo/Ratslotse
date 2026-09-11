@@ -93,6 +93,7 @@ export function TippView() {
   const tippspielAn = useFeature("tippspiel");
   const queryClient = useQueryClient();
   const [lottiAnimiert, setLottiAnimiert] = useState(false);
+  const [bearbeiten, setBearbeiten] = useState(false);
   useEffect(() => setLottiAnimiert(true), []);
 
   // `?probe=2021&counted=N` wie beim Wahlabend und auf dem Beamer: Damit
@@ -129,9 +130,19 @@ export function TippView() {
   // und noch keinen Tipp hat (der Server lässt genau das zu, als „nachgetippt").
   // Ohne diese Klausel landete ein Spätstarter direkt bei „Mein Tipp" — mit
   // leerer Tabelle und ohne jeden Weg zum Formular.
-  const darfNochTippen = !meins.locked || (meins.late_at !== null && !meins.has_tip);
-  if (darfNochTippen) {
-    return <Tippen setup={setup} meins={meins} onGespeichert={aufFrisch} />;
+  const darfTippen = !meins.locked || (meins.late_at !== null && !meins.has_tip);
+  // Wer schon getippt hat, sieht die BESTÄTIGUNG (1e) — so sieht der Plan es
+  // vor, und sie ist die Antwort auf „hat das geklappt?". Zurück ins Formular
+  // geht es über „Tipp ändern", solange offen ist (Artboard 1d trägt dafür
+  // seine „‹ Zurück"-Zeile).
+  if (darfTippen && (!meins.has_tip || bearbeiten)) {
+    return (
+      <Tippen
+        setup={setup} meins={meins}
+        onGespeichert={() => { setBearbeiten(false); aufFrisch(); }}
+        onZurueck={meins.has_tip ? () => setBearbeiten(false) : undefined}
+      />
+    );
   }
-  return <MeinTipp setup={setup} meins={meins} />;
+  return <MeinTipp setup={setup} meins={meins} onAendern={darfTippen ? () => setBearbeiten(true) : undefined} />;
 }
