@@ -1697,7 +1697,7 @@ struct DecisionRow: View {
 
     private var voteLine: String {
         var parts = [String]()
-        if let vote = decision.vote, !vote.isEmpty { parts.append(vote) }
+        if let vote = decision.vote, !vote.isEmpty { parts.append(voteLabel(vote).capitalized) }
         if let no = decision.noVotes, no > 0 { parts.append("\(no) dagegen") }
         if let abstentions = decision.abstentions, abstentions > 0 { parts.append("\(abstentions) Enth.") }
         return parts.joined(separator: " · ")
