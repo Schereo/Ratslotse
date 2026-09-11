@@ -308,7 +308,10 @@ def _admin_stand(store: Store) -> PredictionAdminStand:
         id=t["id"], name=t["name"], late_at=t["late_at"], hidden=t["hidden_at"] is not None,
         has_tip=t["seats"] is not None, has_mayor_tip=t["mayor"] is not None,
     ) for t in sorted(tips, key=lambda t: t["name"].casefold())]
-    log = [f"{eintrag['at']} · {eintrag['text']}" for eintrag in store.prediction_log(limit=30)]
+    # Uhrzeit in Berliner Zeit statt des rohen UTC-Zeitstempels aus dem Store
+    # („2026-09-11T12:06:18" las sich am Nachmittag wie ein Fehler).
+    log = [f"{service._uhrzeit(eintrag['at'])} · {eintrag['text']}"  # noqa: SLF001
+           for eintrag in store.prediction_log(limit=30)]
     return PredictionAdminStand(game=service.setup(store), results=rows, players=spieler, log=log)
 
 
