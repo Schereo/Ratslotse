@@ -498,3 +498,25 @@ die Technik-Doku und bleibt dort auch bestehen; auf die Seite gehören die
 Hinweis, wenn eine Zahl **unsere Rechnung** ist, und die **Grenzen** dessen,
 was sie hergibt. Das ist der Unterschied zwischen quellen-ehrlich (§ 1) und
 selbstbezogen.
+
+### Widgets auf „Heute“
+
+Die Seite setzt eigenständige Bausteine zusammen: Web `HeuteWidget`, iOS
+`RatsWidget` geben Kopf, Inhalt und optionalen Abschluss vor. Die Überschrift
+darf umbrechen. Daten, Lade- und Fehlerzustände sowie Aktionen gehören in den
+jeweiligen Baustein; die Seite bestimmt Platz und Reihenfolge. Stabile Kennungen
+(etwa `themen-neuigkeiten`) bereiten eine spätere persönliche Auswahl vor. Eine
+Auswahl oder Sortierung der Widgets gibt es derzeit noch nicht.
+
+„Neu zu deinen Themen“ steht mobil vor der Wochenvorschau. Es zeigt höchstens
+drei ungelesene Beschlüsse, die eindeutige Gesamtzahl und pro Treffer den
+Themenbezug als kurze Textzeile statt als Tag. Vorschautitel und Zusammenfassung
+dürfen auf zwei Zeilen gekürzt werden; der vollständige Beschluss ist direkt
+erreichbar. Datum und Gremium bleiben umbrochener, lesbarer Begleittext.
+
+Gelesen wird ein Beschluss nach dem Öffnen oder mit „Als gelesen markieren“.
+Er verschwindet erst nach Bestätigung des Servers, in allen passenden eigenen
+Themen zugleich. Nach einer manuellen Markierung bleibt der Tastatur- bzw.
+VoiceOver-Fokus im Widget. „Alles gelesen“, keine passenden Beschlüsse, keine
+Themen und ein Ladefehler sind unterschiedliche Zustände. Allgemeine Funde
+werden nicht als Ersatz für persönliche Neuigkeiten eingeschoben.

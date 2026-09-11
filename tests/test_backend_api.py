@@ -1726,6 +1726,54 @@ def _seed_datierte_beschluesse(tage: list[str]) -> list[int]:
     return ids
 
 
+def test_heute_widget_zaehlt_und_liest_eindeutige_ungelesene_beschluesse(client):
+    owner_id = _register(client).json()["id"]
+    ids = _seed_datierte_beschluesse(["2026-09-10", "2026-09-09", "2026-08-01"])
+    st = Store(RATSLOTSE_DB)
+    rad = st.add_topic(owner_id, "Radwege", "Radwege")
+    schule = st.add_topic(owner_id, "Schulwege", "Schulwege")
+    fremd = st.add_topic(owner_id + 1, "Fremdes Thema", "Fremdes Thema")
+    st.save_topic_decision_matches(rad.id, owner_id, [(d, 0.8) for d in ids])
+    # Der ältere ungelesene Treffer passt zu zwei Themen. Der verwaiste
+    # Match ohne Ratsbeschluss darf die Zahl im Widget nicht erhöhen.
+    st.save_topic_decision_matches(schule.id, owner_id, [(ids[-1], 0.9), (987654, 0.8)])
+    st.save_topic_decision_matches(fremd.id, owner_id + 1, [(ids[-1], 0.8)])
+    st.mark_topic_hit_seen(owner_id, rad.id, ids[0])
+    st.mark_topic_hit_seen(owner_id, rad.id, ids[1])
+
+    # Bestehende Apps erhalten weiter die jüngsten, auch gelesenen Treffer.
+    vorher = client.get("/api/topics/latest-hits?limit=1").json()
+    assert vorher["hits"][0]["id"] == ids[0]
+    widget = client.get("/api/topics/latest-hits?limit=1&unread_only=true").json()
+    assert [h["id"] for h in widget["hits"]] == [ids[-1]]
+    assert widget["hits"][0]["is_new"] is True
+    assert widget["topic_count"] == 2
+    assert widget["total"] == 3
+    assert widget["unread_decisions"] == 1
+    assert widget["unread_total"] == 3  # alter Zähler bleibt kompatibel
+
+    url = f"/api/topics/decisions/{ids[-1]}/seen"
+    response = client.post(url)
+    assert response.status_code == 200
+    assert response.json() == {"marked": 2}
+    assert client.post(url).json() == {"marked": 0}
+    assert client.post("/api/topics/decisions/123456/seen").json() == {"marked": 0}
+    assert st.unseen_hit_ids(owner_id + 1) == {fremd.id: {ids[-1]}}
+    nachher = client.get("/api/topics/latest-hits?unread_only=true").json()
+    assert nachher["hits"] == []
+    assert nachher["unread_decisions"] == 0
+    assert nachher["total"] == 3
+    st.close()
+
+
+def test_heute_widget_ohne_themen_und_ohne_anmeldung(client):
+    assert client.get("/api/topics/latest-hits?unread_only=true").status_code == 401
+    assert client.post("/api/topics/decisions/1/seen").status_code == 401
+    _register(client)
+    data = client.get("/api/topics/latest-hits?unread_only=true").json()
+    assert data == {"hits": [], "topic_count": 0, "total": 0, "unread_total": 0, "unread_decisions": 0}
+
+
 def test_sechs_monats_fenster_rechnet_kalendarisch():
     """Das Fenster hinter „n in 6 Monaten" ist ein halbes Jahr, keine 183
     Tage — der Wert steht als Monatsangabe auf der Karte. Am Monatsende, das

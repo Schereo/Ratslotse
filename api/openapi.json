@@ -16302,6 +16302,10 @@
             "title": "Total",
             "type": "integer"
           },
+          "unread_decisions": {
+            "title": "Unread Decisions",
+            "type": "integer"
+          },
           "unread_total": {
             "title": "Unread Total",
             "type": "integer"
@@ -16311,7 +16315,8 @@
           "hits",
           "topic_count",
           "total",
-          "unread_total"
+          "unread_total",
+          "unread_decisions"
         ],
         "title": "TopicHitList",
         "type": "object"
@@ -25285,6 +25290,49 @@
         ]
       }
     },
+    "/api/topics/decisions/{decision_id}/seen": {
+      "post": {
+        "description": "Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.\n\nDas Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss\ndieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.",
+        "operationId": "mark_decision_seen_api_topics_decisions__decision_id__seen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "title": "Decision Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkedHits"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Decision Seen",
+        "tags": [
+          "topics"
+        ]
+      }
+    },
     "/api/topics/describe": {
       "post": {
         "description": "Design 26a / RL-U17: aus einem Themen-*Namen* eine Beschreibung machen.\n\nDer Nutzer tippt nur „Cäcilienbrücke\". Wir suchen die Beschlüsse dazu und\nlassen daraus einen präzisen Satz formulieren — das ist der Text, an dem der\nThemen-Wächter später jeden neuen Beschluss misst, also lohnt die Mühe.\n\nNichts hier blockiert: Wer keinen Rats-Bezug hat oder zu vage schreibt,\nbekommt einen Hinweis und darf trotzdem speichern. Der Endpunkt urteilt,\ner verbietet nicht.\n\nMit ``description`` im Body wird zusätzlich die (bis 26a brachliegende)\nVagheits-Prüfung auf den selbst getippten Text angewandt.\n\n``matches``/``matches_capped`` zählen nach derselben Definition wie die\nThemen-Karte (s. Modul-Kopf), nur eben auf den Text, der gerade im Feld\nsteht: Wer die Beschreibung ändert, soll vorher sehen, was das mit der\nTrefferliste macht. Vorher lief hier eine eigene Suche mit eigener\nSchwelle und einem Deckel von 12 — daher stand unter jedem breiten Thema\n„12 Beschlüsse\", während die Karte „40+\" sagte.",
@@ -25342,6 +25390,16 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unread_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Unread Only",
+              "type": "boolean"
             }
           }
         ],

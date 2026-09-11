@@ -4644,6 +4644,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/topics/decisions/{decision_id}/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Decision Seen
+         * @description Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.
+         *
+         *     Das Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss
+         *     dieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.
+         */
+        post: operations["mark_decision_seen_api_topics_decisions__decision_id__seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics/describe": {
         parameters: {
             query?: never;
@@ -11665,6 +11688,8 @@ export interface components {
             topic_count: number;
             /** Total */
             total: number;
+            /** Unread Decisions */
+            unread_decisions: number;
             /** Unread Total */
             unread_total: number;
         };
@@ -17810,6 +17835,37 @@ export interface operations {
             };
         };
     };
+    mark_decision_seen_api_topics_decisions__decision_id__seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decision_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkedHits"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     describe_topic_api_topics_describe_post: {
         parameters: {
             query?: never;
@@ -17847,6 +17903,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                unread_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -18225,4 +18282,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2c5e809521e82d42803c316534162957791fbd6b21659f16f2b4acbf6f3e5b5e
+// vertrag-sha256: 38b61729aac3864fa79695d1ae49eb5cb499721f3370fe9e7429fdb790ca3484

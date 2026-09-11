@@ -939,9 +939,24 @@ def mark_seen(
     return {"marked": store.mark_topic_hits_seen(user["id"], topic_id)}
 
 
+@router.post("/decisions/{decision_id}/seen")
+def mark_decision_seen(
+    decision_id: int,
+    user: dict = Depends(require_active),
+    store: Store = Depends(get_store),
+) -> MarkedHits:
+    """Ein Heute-Treffer wird in allen passenden EIGENEN Themen gelesen.
+
+    Das Widget fasst gleiche Beschlüsse zusammen. Die Gelesen-Marke muss
+    dieselbe Menge treffen, sonst taucht derselbe Beschluss erneut auf.
+    """
+    return {"marked": store.mark_decision_hits_seen(user["id"], decision_id)}
+
+
 @router.get("/latest-hits")
 def latest_hits(
     limit: int = Query(2, ge=1, le=10),
+    unread_only: bool = False,
     user: dict = Depends(require_active),
     store: Store = Depends(get_store),
     council: CouncilStore = Depends(get_council_store),
@@ -976,12 +991,16 @@ def latest_hits(
     rows.sort(key=lambda r: (r["session_date"] or "", r["is_new"]), reverse=True)
     seen: set[int] = set()
     out = [r for r in rows if not (r["id"] in seen or seen.add(r["id"]))]
+    unread = [r for r in out if r["is_new"]]
     return {
-        "hits": out[:limit],
+        # Vor dem Limit filtern: Auch ein älterer ungelesener Treffer soll
+        # auftauchen, wenn neuere Beschlüsse schon bekannt sind.
+        "hits": (unread if unread_only else out)[:limit],
         "topic_count": len(topics),
         "total": len(out),
         # Dieselbe Zählung wie die „n neue"-Abzeichen der Themen-Karten.
         "unread_total": sum(len(ids) for ids in unseen.values()),
+        "unread_decisions": len(unread),
     }
 
 

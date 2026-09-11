@@ -4190,6 +4190,25 @@ class Store:
             )
         return cur.rowcount > 0
 
+    def mark_decision_hits_seen(self, owner_id: int, decision_id: int) -> int:
+        """Einen Beschluss in allen passenden eigenen Themen lesen.
+
+        Nur vorhandene Treffer eigener Themen werden markiert. Wiederholte
+        Aufrufe sind wirkungslos; fremde Themen bleiben unverändert.
+        """
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._conn:
+            cur = self._conn.execute(
+                """INSERT OR IGNORE INTO topic_hits_seen (owner_id, topic_id, decision_id, seen_at)
+                   SELECT m.owner_id, m.topic_id, m.decision_id, ?
+                   FROM council_topic_matches m
+                   JOIN topics t ON t.id = m.topic_id AND t.owner_id = m.owner_id
+                   WHERE m.owner_id = ? AND m.decision_id = ?""",
+                (now, owner_id, decision_id),
+            )
+        return cur.rowcount
+
     def agenda_classified_hash(self, owner_id: int, ksinr: int) -> str | None:
         """Hash des zuletzt für diese Nutzer*in klassifizierten
         Tagesordnungs-Stands — None, wenn noch nie klassifiziert (RL-902)."""
