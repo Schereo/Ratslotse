@@ -22,6 +22,16 @@ from council.store_basis import StoreBasis
 class WortbeitraegeMixin(StoreBasis):
     """Die Wortbeitrags-Abfragen — nur zum Mitvererben."""
 
+    #: Was ein vorläufiges Videoergebnis sagen kann — die Quelle der
+    #: Aufzählung, an der Prompt, Parser und Vertrag hängen.
+    #:
+    #: NICHT dasselbe Vokabular wie ``council_decisions``: ``removed`` gibt es
+    #: nur hier (ein abgesetzter Punkt hinterlässt im Protokoll gar keinen
+    #: Beschluss), ``no_decision`` nur dort. Bis 09/2026 trug der Vertrag
+    #: trotzdem die Beschluss-Aufzählung, und jede Sitzung mit einem
+    #: abgesetzten TOP antwortete mit einem 500er.
+    _VIDEO_OUTCOMES = ("accepted", "rejected", "postponed", "noted", "removed")
+
     # Sammel-TOPs: Hier landet alles, was sonst nirgends hingehört. Ein Treffer
     # darauf koppelt keine Debatte ZUR SACHE, sondern eine Wundertüte.
     _SAMMEL_TOPS = ("anfragen und anregungen", "einwohnerfragestunde",

@@ -604,8 +604,12 @@ function DecisionDetailInner() {
   // Design 28a/S2: Die Sitzung dazu — sie liefert die Nachbar-TOPs und das Ziel
   // für „Zurück". Zweitrangig, deshalb erst nach dem Beschluss und ohne eigenen
   // Ladezustand: fehlt sie, verhält sich die Seite wie bisher.
+  //
+  // Und deshalb auch `quiet`: „zweitrangig" muss der Hook wissen, sonst meldet
+  // er ein Ausbleiben, das die Seite gerade selbst wegsteckt.
   const ksinr = data?.decision.ksinr;
-  const { data: session } = useFetch<SessionDetail>(ksinr ? `/council/session/${ksinr}` : null);
+  const { data: session } = useFetch<SessionDetail>(
+    ksinr ? `/council/session/${ksinr}` : null, { quiet: true });
 
   // Für „Zuletzt angesehen" (Dashboard) und die Command-Palette merken.
   useEffect(() => {
