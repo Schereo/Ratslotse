@@ -108,8 +108,15 @@ export function restObText(rest: number): string {
   return rest > 0 ? `Noch ${text} %` : `${text} % zu viel`;
 }
 
+/** Blockiert das Abgeben nur dort, wo der Server den Tipp ohnehin ablehnen
+ *  würde — Summe über 100 % (`_validate_mayor` im Backend lässt bis 100,5 %
+ *  Rundungstoleranz durch). Unter 100 % ist ein gültiger Tipp: Die
+ *  OB-Prozente sind bewusst „ohne Summenzwang", niemand muss alle neun
+ *  Kandidaturen ausfüllen. Vorher stand hier `Math.abs(rest) < 0.05`, was
+ *  jeden nicht auf genau 100 % aufgefüllten Tipp blockierte — ein Tipp mit
+ *  nur einer eingetragenen Kandidatur ließ sich dadurch nie abgeben.*/
 export function restObTon(rest: number): "ok" | "warn" {
-  return Math.abs(rest) < 0.05 ? "ok" : "warn";
+  return rest < -0.5 ? "warn" : "ok";
 }
 
 /** Rang-Pfeil gegenüber dem vorherigen Stand — `null` ohne Vergleich (erster

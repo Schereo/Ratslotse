@@ -87,7 +87,13 @@ describe("OB-Prozente", () => {
     expect(restObTon(0)).toBe("ok");
     expect(restObText(5.5)).toBe("Noch 5,5 %");
     expect(restObText(-2)).toBe("2,0 % zu viel");
-    expect(restObTon(3)).toBe("warn");
+    // Unter 100 % ist gültig — der Server verlangt keine Summe (§ „ohne
+    // Summenzwang"), er lehnt nur eine Summe über 100 % ab. Blockiert werden
+    // darf deshalb nur der echte Fehlerfall, nicht „noch nicht ganz voll".
+    expect(restObTon(3)).toBe("ok");
+    expect(restObTon(0)).toBe("ok");
+    expect(restObTon(-0.5)).toBe("ok");
+    expect(restObTon(-2)).toBe("warn");
   });
 
   it("rundet Fließkomma-Reste auf eine Nachkommastelle", () => {
