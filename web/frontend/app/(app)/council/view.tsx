@@ -33,6 +33,7 @@ import { EntitiesTab } from "@/components/council-entities";
 import { cn, relativerTag, wochentagKurz } from "@/lib/utils";
 import { useHeute } from "@/lib/use-heute";
 import { useMerker } from "@/lib/use-merker";
+import { merkeSuchtreffer, useSuchparameter, useSuchposition } from "@/lib/use-suchkontext";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import {
@@ -99,7 +100,9 @@ function subvoteLabel(s: NonNullable<CouncilDecision["subvote_summary"]>): strin
   return parts.join(" · ");
 }
 
-function DecisionCard({ d, query, rang = 0 }: { d: CouncilDecision; query: string; rang?: number }) {
+function DecisionCard({ d, query, rang = 0, suchadresse }: {
+  d: CouncilDecision; query: string; rang?: number; suchadresse: string;
+}) {
   const isSub = d.kind === "subvote";
   const sub = d.subvote_summary;
   const locationMatches = d.location_matches ?? [];
@@ -119,7 +122,12 @@ function DecisionCard({ d, query, rang = 0 }: { d: CouncilDecision; query: strin
     // einer neuen Suche oder einer neuen Seite montiert React sie ohnehin neu
     // (`key` ist die Beschluss-ID), die Bewegung läuft also genau dann, wenn
     // sich die Liste wirklich ändert.
-    <Link href={decisionHref(d.id)} className={cn("block", STAFFEL)} style={staffelStil(rang)}>
+    <Link
+      id={`beschluss-${d.id}`}
+      href={`${decisionHref(d.id)}&suche=${encodeURIComponent(`${suchadresse}#beschluss-${d.id}`)}`}
+      onClick={(e) => merkeSuchtreffer(suchadresse, e.currentTarget)}
+      className={cn("block", STAFFEL)} style={staffelStil(rang)}
+    >
       {/* Design 22a: drei feste Zonen statt verstreuter Elemente — Statuszeile
           (Ergebnis-Punkt + „Wichtig" zusammen, Chevron rechts; Gremium·Datum·TOP
           als ruhige zweite Zeile) → Titel + 2-Zeilen-Auszug → Fußzeile
@@ -389,20 +397,28 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
 }
 
 function DecisionsTab({ committees }: { committees: string[] }) {
-  const [q, setQ] = useMerker("suche:q", "");
-  const [committee, setCommittee] = useMerker("suche:committee", "");
-  const [outcome, setOutcome] = useMerker("suche:result", "");
-  const [sort, setSort] = useState("date_desc");
+  const { parameter: sp, adresse: suchadresse, bereit, setzen: setUrlParams } = useSuchparameter();
+  const q = sp.get("q") ?? "";
+  const committee = sp.get("committee") ?? "";
+  const outcome = sp.get("outcome") ?? "";
+  const sort = sp.get("sort") ?? "date_desc";
+  const page = Number(sp.get("page"));
+  const setUrlParam = (key: string, value: string) => setUrlParams({ [key]: value });
+  const setQ = (value: string) => setUrlParam("q", value);
+  const setCommittee = (value: string) => setUrlParam("committee", value);
+  const setOutcome = (value: string) => setUrlParam("outcome", value);
+  const setSort = (value: string) => setUrlParam("sort", value);
   const [fields, setFields] = useState<PolicyField[]>([]);
   const [districts, setDistricts] = useState<{
     place_id: string; name: string; kind: string; kind_label: string; parent_ids: string[];
     count: number; vote_count: number; report_count: number;
   }[]>([]);
-  const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [decisions, setDecisions] = useState<CouncilDecision[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [geladenFuer, setGeladenFuer] = useState("");
+  useSuchposition(suchadresse, loading || !bereit || geladenFuer !== suchadresse);
   const debouncedQ = useDebounce(q, 350);
 
   // Design 28a/R6: erst die beruhigte Eingabe merken, nicht jeden Tastendruck.
@@ -410,8 +426,6 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // selbst wieder ab (Präfixe des neuen Begriffs fliegen raus).
   useEffect(() => { pushRecentSearch(debouncedQ); }, [debouncedQ]);
 
-  // Field + party live in the URL so the analysis and badges can deep-link to a filtered list.
-  const sp = useSearchParams();
   const router = useRouter();
   /* Design 28a/S4: ?topic= schränkt auf die Treffer eines eigenen Themas ein —
      der Ersatz für den früheren Trefferdialog. Steht in der URL, ist also
@@ -431,13 +445,6 @@ function DecisionsTab({ committees }: { committees: string[] }) {
      behaupten, die keine ist. */
   const topicCapped = !!topicId && !!myTopic?.decision_count_capped;
 
-  // ?q= aus der URL übernehmen (Deep-Link aus der Command-Palette) — einmalig
-  // nach dem Mount, um keinen Hydration-Mismatch im Input zu erzeugen.
-  useEffect(() => {
-    const urlQ = sp.get("q");
-    if (urlQ) setQ(urlQ);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const field = sp.get("field") ?? "";
   const party = sp.get("party") ?? "";
   const district = sp.get("district") ?? "";
@@ -464,18 +471,6 @@ function DecisionsTab({ committees }: { committees: string[] }) {
     catParam === "report" || catParam === "all" ? catParam
       : catParam === "vote" ? "vote"
         : topicId ? "all" : "vote";
-  // Mehrere Params in EINEM replace ändern — zwei Aufrufe nacheinander würden
-  // sich gegenseitig überschreiben (beide bauen auf demselben sp-Snapshot auf).
-  const setUrlParams = (entries: Record<string, string>) => {
-    const params = new URLSearchParams(sp.toString());
-    params.set("tab", "decisions");
-    for (const [key, val] of Object.entries(entries)) {
-      if (val) params.set(key, val); else params.delete(key);
-    }
-    router.replace(`/council?${params.toString()}`, { scroll: false });
-    setPage(1);
-  };
-  const setUrlParam = (key: string, val: string) => setUrlParams({ [key]: val });
 
   useEffect(() => {
     api.get<{ fields: PolicyField[] }>("/council/fields").then((d) => setFields(d.fields)).catch(() => {});
@@ -486,34 +481,32 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       .then((d) => setDistricts(d.districts)).catch(() => {});
   }, []);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      const data = await api.get<{ total: number; decisions: CouncilDecision[] }>(
-        `/council/decisions${qs({
-          q, committee, category: mode === "all" ? "" : mode, sort, field, party,
-          district, location,
-          outcome: mode === "vote" ? outcome : "",
-          date_from: dateFrom, date_to: dateTo,
-          include_subvotes: showSubvotes ? "1" : "",
-          // Design 28a/S4: auf die Treffer eines eigenen Themas eingeschränkt.
-          topic: topicId,
-          limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
-        })}`,
-      );
+    if (!bereit || q !== debouncedQ) return;
+    let verworfen = false;
+    api.get<{ total: number; decisions: CouncilDecision[] }>(
+      `/council/decisions${qs({
+        q: debouncedQ, committee, category: mode === "all" ? "" : mode, sort, field, party,
+        district, location, outcome: mode === "vote" ? outcome : "",
+        date_from: dateFrom, date_to: dateTo, include_subvotes: showSubvotes ? "1" : "",
+        topic: topicId, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE,
+      })}`,
+    ).then((data) => {
+      if (verworfen) return;
       setDecisions(data.decisions);
       setTotal(data.total);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
-    } finally {
-      setLoading(false);
-    }
-  }, [q, committee, mode, outcome, sort, field, party, district, location, dateFrom, dateTo, showSubvotes, page, topicId]);
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ, committee, mode, outcome, sort, field, party, district, location, dateFrom, dateTo, showSubvotes, page, topicId]);
+      setGeladenFuer(suchadresse);
+    }).catch((err) => {
+      if (!verworfen) toast.error(err instanceof ApiError ? err.message : "Laden fehlgeschlagen.");
+    }).finally(() => {
+      if (!verworfen) setLoading(false);
+    });
+    // Eine Antwort für den vorherigen URL-Stand darf die aktuelle Liste nicht
+    // überschreiben — auch beim schnellen Zurück/Vorwärts oder Filterwechsel.
+    return () => { verworfen = true; };
+  }, [bereit, q, debouncedQ, committee, mode, outcome, sort, field, party, district,
+    location, dateFrom, dateTo, showSubvotes, page, topicId, suchadresse]);
 
   // RL-U02: Seitenwechsel führt zurück zum Listenanfang und setzt den Fokus
   // auf den Listen-Container (bleibt über den Ladewechsel gemountet), damit
@@ -526,7 +519,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
   // unter den klebenden Seitenkopf zieht. Der Fokus wandert weiterhin auf die
   // Liste, damit Vorleseprogramme den Wechsel mitbekommen.
   const changePage = (p: number, springen = true) => {
-    setPage(p);
+    setUrlParams({ page: String(p) });
     requestAnimationFrame(() => {
       if (springen) {
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -568,7 +561,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           <Segmented
             className="overflow-x-auto"
             value={outcome}
-            onChange={(o) => { setOutcome(o); setPage(1); }}
+            onChange={(o) => { setOutcome(o); }}
             options={OUTCOME_CHIPS.map((o) => ({ value: o.value, label: o.label }))}
           />
         </FilterField>
@@ -583,7 +576,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </FilterField>
         )}
         <FilterField label="Ausschuss">
-          <Select value={committee} onChange={(e) => { setCommittee(e.target.value); setPage(1); }}>
+          <Select value={committee} onChange={(e) => { setCommittee(e.target.value); }}>
             <option value="">Alle Ausschüsse</option>
             {committees.map((c) => <option key={c} value={c} title={c}>{shortCommittee(c)}</option>)}
           </Select>
@@ -604,7 +597,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           </Select>
         </FilterField>
         <FilterField label="Sortierung">
-          <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
+          <Select value={sort} onChange={(e) => { setSort(e.target.value); }}>
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Select>
         </FilterField>
@@ -620,7 +613,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
       <FilterField label="Teilabstimmungen">
         <button
           type="button"
-          onClick={() => { setUrlParam("subvotes", showSubvotes ? "" : "1"); setPage(1); }}
+          onClick={() => { setUrlParam("subvotes", showSubvotes ? "" : "1"); }}
           aria-pressed={showSubvotes}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
@@ -644,7 +637,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           tour="beschluss-suche"
           placeholder={isReport ? "Berichte durchsuchen…" : "Suchen (z. B. Haushalt, Radwege)…"}
           value={q}
-          onChange={(v) => { setQ(v); setPage(1); }}
+          onChange={(v) => { setQ(v); }}
         />
       </div>
 
@@ -663,7 +656,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             { value: "report", label: "Berichte" },
             { value: "all", label: "Alle Vorgänge" },
           ]}
-          onChange={(m) => { setUrlParam("cat", m === "vote" && !topicId ? "" : m); setOutcome(""); }}
+          onChange={(m) => setUrlParams({ cat: m === "vote" && !topicId ? "" : m, outcome: "" })}
         />
         {fields.length > 0 && (
           <ChipPopover
@@ -693,14 +686,14 @@ function DecisionsTab({ committees }: { committees: string[] }) {
           label="Ausschuss"
           value={committee}
           options={committees.map((c) => ({ value: c, label: shortCommittee(c), sub: hasShortCommittee(c) ? c : undefined }))}
-          onChange={(v) => { setCommittee(v); setPage(1); }}
+          onChange={(v) => { setCommittee(v); }}
         />
         {mode === "vote" && (
           <ChipPopover
             label="Ergebnis"
             value={outcome}
             options={OUTCOME_CHIPS.filter((o) => o.value !== "")}
-            onChange={(v) => { setOutcome(v); setPage(1); }}
+            onChange={(v) => { setOutcome(v); }}
           />
         )}
         <DateRangeChip from={dateFrom} to={dateTo} onChange={(f, t) => setUrlParams({ date_from: f, date_to: t })} />
@@ -712,7 +705,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             value={sort}
             display={SORTS.find((s) => s.value === sort)?.label}
             options={SORTS}
-            onChange={(v) => { setSort(v); setPage(1); }}
+            onChange={(v) => { setSort(v); }}
           />
         </div>
       </div>
@@ -740,7 +733,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
             {outcome && (
               <FilterChip
                 label={`Ergebnis: ${OUTCOME_CHIPS.find((o) => o.value === outcome)?.label ?? outcome}`}
-                onClear={() => { setOutcome(""); setPage(1); }}
+                onClear={() => { setOutcome(""); }}
               />
             )}
             {field && (
@@ -749,7 +742,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
                 onClear={() => setUrlParam("field", "")}
               />
             )}
-            {committee && <FilterChip label={shortCommittee(committee)} onClear={() => { setCommittee(""); setPage(1); }} />}
+            {committee && <FilterChip label={shortCommittee(committee)} onClear={() => { setCommittee(""); }} />}
             {district && <FilterChip label={`Ortsbezug: ${district}`} onClear={() => setUrlParam("district", "")} />}
             {location && <FilterChip label={`Beschlussort: ${locationName}`}
               onClear={() => setUrlParams({ location: "", location_name: "" })} />}
@@ -840,7 +833,7 @@ function DecisionsTab({ committees }: { committees: string[] }) {
               <Pagination compact page={page} totalPages={totalPages}
                 onChange={(p) => changePage(p, false)} className="ml-auto" />
             </div>
-            {decisions.map((d, i) => <DecisionCard key={d.id} d={d} query={query} rang={i} />)}
+            {decisions.map((d, i) => <DecisionCard key={d.id} d={d} query={query} rang={i} suchadresse={suchadresse} />)}
             <Pagination page={page} totalPages={totalPages} onChange={changePage} className="pt-2" />
           </div>
         )}
