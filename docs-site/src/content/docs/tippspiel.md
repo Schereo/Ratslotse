@@ -23,7 +23,7 @@ vorbereiten — Ergebnisse eintragen, die Teilnehmerliste ansehen — bevor es
 
 Wer mitspielt, bekommt keine Zeile in `web_users` — die Identität **ist** ein
 Cookie. `POST /api/tipp` ohne gültigen `tipp_token`-Cookie ist ein Beitritt
-(`name` Pflicht, 2–40 Zeichen, serverseitig getrimmt und auf Mehrfach-
+(`name` Pflicht, 2–30 Zeichen, serverseitig getrimmt und auf Mehrfach-
 Leerzeichen geprüft); mit gültigem Cookie aktualisiert derselbe Endpunkt nur
 den Tipp, `name` wird dann ignoriert — umbenennen kann nur der Admin
 (`PUT /api/tipp/admin/spieler/{id}`). Der Cookie:
@@ -83,19 +83,42 @@ Ränge sind dicht (1, 2, 3, …). Bei Punktgleichstand entscheidet zuerst die
 Summe der absoluten Sitz-Abweichungen (`deviation`, kleiner gewinnt), dann wer
 seinen Tipp zuerst abgegeben hat. Ein echter Gleichstand — beides identisch —
 wird nicht ausgelost, sondern nach Eingabereihenfolge entschieden;
-`prediction_standings_previous` hält je veröffentlichtem Stand fest, wer wo
+`prediction_standings_previous` hält je Stand fest, wer wo
 stand, damit die ▲▼-Chips auf dem Beamer den **vorherigen** Rang kennen.
 
 ## Woher der Vergleich kommt
 
-Der Admin trägt das Ergebnis ein (`PUT /api/tipp/admin/ergebnis`) — von Hand
-oder per „Jetzt abfragen" aus dem Votemanager (`POST /api/tipp/admin/abfragen`,
-liest denselben Auszählungsstand wie `/wahlabend`). Beides landet zunächst nur
-im **Entwurf** (`prediction_result`, Spalten ohne `published_`) — ein
+**Grundlage ist der Wahlabend.** `GET /api/tipp/stand` liest denselben
+Auszählungsstand wie `/wahlabend` (`election.service.live()`, in der
+Generalprobe `?probe=2021&counted=N`) und die OB-Prozente aus
+`election.mayor.fetch()`. Je Liste zählt die **Hochrechnung**, sobald es
+eine gibt, sonst der ausgezählte Stand — der Beamer folgt dem Votemanager
+also von selbst, ohne dass am Abend jemand klickt.
+
+**Darüber liegt je Liste die veröffentlichte Handeingabe.** Der Admin trägt
+Zahlen ein (`PUT /api/tipp/admin/ergebnis`) oder holt sie per „Jetzt
+abfragen" (`POST /api/tipp/admin/abfragen`). Beides landet zunächst nur im
+**Entwurf** (`prediction_result`, Spalten ohne `published_`) — ein
 Tippfehler beim Eintragen erscheint nirgends öffentlich. Erst
-`POST /api/tipp/admin/veroeffentlichen` schreibt die `published_`-Spalten und
-macht die Zeilen für `GET /api/tipp/stand` sichtbar; `POST …/verwerfen` nimmt
-den Entwurf zurück auf den zuletzt veröffentlichten Stand.
+`POST /api/tipp/admin/veroeffentlichen` schreibt die `published_`-Spalten;
+`POST …/verwerfen` nimmt den Entwurf zurück auf den zuletzt veröffentlichten
+Stand. Wirkung je Zeile:
+
+| Veröffentlichte Zeile | Wirkung |
+|---|---|
+| von Hand (`manuell`) | **schlägt den Wahlabend** für genau diese Liste bzw. Kandidatur — die Zusage |
+| aus „Jetzt abfragen" (`votemanager`) | friert nichts ein; zählt nur, wenn der Wahlabend für die Liste gerade keine Zahl nennt — der Rückfall |
+
+`source_label` sagt, was gerade gilt: `votemanager`, `manuell`, `gemischt`
+oder leer (noch kein Ergebnis). Die OB-Prozente zählen erst, wenn dort etwas
+ausgezählt ist (`phase != before`).
+
+**Ein Stand ist ein Ist, nicht ein Abruf.** Die Ränge liegen unter einem
+Stand-Zeitstempel in `prediction_standings`, und `rank_before` ist der Rang
+im letzten *anderen* Stand. Der Zeitstempel wechselt nur, wenn sich die
+verglichenen Zahlen ändern; er ist zugleich der ETag. Die Generalprobe
+schreibt nichts in die Datenbank — kein Tipp-Schluss, keine Ränge — und
+hält ihren vorherigen Rang im Prozess.
 
 ## Der Beamer (`/tipp/live`)
 
