@@ -290,7 +290,7 @@ export function WocheImRat({ vorschau, heuteIso }: {
         <div
           className="mt-3 grid flex-1"
           style={{
-            gridTemplateColumns: `${dichte === "desktop" ? 92 : 74}px 1fr`,
+            gridTemplateColumns: `${dichte === "desktop" ? 92 : 74}px minmax(0, 1fr)`,
             columnGap: dichte === "desktop" ? 16 : 13,
           }}
         >
@@ -356,7 +356,7 @@ function RailTag({ date, heute, letzter, dichte, children }: {
         {/* Die Linie verbindet die Tage; am letzten endet die Rail. */}
         {!letzter && <span className="mt-1.5 w-px flex-1 bg-border/70" style={{ marginLeft: dichte === "desktop" ? 12 : 11 }} />}
       </div>
-      <div className={cn("flex flex-col", letzter ? "" : dichte === "desktop" ? "pb-3.5" : "pb-3", "gap-2")}>
+      <div className={cn("flex min-w-0 flex-col", letzter ? "" : dichte === "desktop" ? "pb-3.5" : "pb-3", "gap-2")}>
         {children}
       </div>
     </>

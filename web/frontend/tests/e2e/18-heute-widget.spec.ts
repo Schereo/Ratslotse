@@ -119,3 +119,22 @@ for (const width of [320, 390]) {
     expect((await mark.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 }
+
+for (const width of [1280, 1600]) {
+  test(`Wochenkarte passt mit langen Titeln in die Widget-Spalte bei ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await stub(page, full);
+    await page.route("**/api/council/week-preview", route => route.fulfill({ json: {
+      found: true, from_date: "2026-09-11", to_date: "2026-09-18",
+      sessions: [{ ksinr: 4618, committee: "Wirtschaft & Digitales", session_date: "2026-09-14", session_time: "17:00", n_items: 6 }],
+      items: [{ ksinr: 4618, item_number: "Ö 6", committee: "Wirtschaft & Digitales", session_date: "2026-09-14",
+        title: "Vermarktung eines städtischen Investorengrundstücks zur Bebauung mit einer Quartiersgarage im Bereich des Bebauungsplanes S-835 (MediTech Oldenburg (MTO))",
+        summary: null, template_number: null, kvonr: null }],
+    } }));
+    await page.goto("/dashboard");
+    const week = page.locator('[data-tour="woche-im-rat"]');
+    await expect(week).toBeVisible();
+    await expect.poll(() => week.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
+}
