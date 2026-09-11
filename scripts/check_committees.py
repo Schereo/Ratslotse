@@ -346,8 +346,6 @@ def main() -> dict:
 
         council_store.save_session(session)
 
-        if not all_subs:
-            continue
         if not session.is_future or not session.agenda_items:
             continue
 
@@ -385,6 +383,11 @@ def main() -> dict:
         except Exception as exc:  # noqa: BLE001 — Chronik ist Zusatz, nie Blocker
             print(f"  ⚠️ Änderungs-Chronik für {ksinr} fehlgeschlagen: {exc!r}")
         council_store.save_agenda_snapshot(ksinr, agenda_hash, snapshot_items)
+
+        # Der allgemeine Rückblick braucht diese Chronik auch ohne Abos.
+        # Erst die Benachrichtigungen hängen an Empfängern.
+        if not all_subs:
+            continue
 
         # Categorise subscribers:
         # - pending_new:    never notified before

@@ -196,6 +196,9 @@ CREATE TABLE IF NOT EXISTS web_users (
     -- Wann die Themen-Übersicht zuletzt offen war. Der Zähler an „Meine
     -- Themen" zeigt nur, was SEITDEM dazukam; NULL = noch nie nachgesehen.
     topics_seen_at   TEXT,
+    visit_started_at TEXT,
+    visit_previous_at TEXT,
+    visit_active_at TEXT,
     -- Womit dieses Konto angelegt wurde: web | ios | android | app. NULL =
     -- vor der Messung registriert. Getrennt von der laufenden Nutzung in
     -- `user_activity`: Woher jemand KOMMT und was er DANN benutzt, sind zwei
@@ -1371,6 +1374,9 @@ class Store:
         self._web_users_spalten_nachziehen()
         wu_cols = {r[1] for r in self._conn.execute("PRAGMA table_info(web_users)").fetchall()}
         if wu_cols:
+            for column in ("visit_started_at", "visit_previous_at", "visit_active_at"):
+                if column not in wu_cols:
+                    self._conn.execute(f"ALTER TABLE web_users ADD COLUMN {column} TEXT")
             with self._conn:
                 if "status" not in wu_cols:
                     # Existing accounts predate approval — treat them as active.
@@ -3319,6 +3325,42 @@ class Store:
         return out
 
     # ---- Aktivitäts-Tracking + Wachstum (Admin 20a) ----
+    def record_visit(self, owner_id: int, now: datetime | None = None) -> None:
+        """Ein Besuch endet nach 30 Minuten ohne sichtbare Nutzung.
+
+        Ein einziges UPDATE hält parallele Tabs/Geräte zusammen. Der Beginn
+        des vorherigen Besuchs bleibt die Untergrenze, damit Ergänzungen
+        WÄHREND jenes Besuchs nicht verloren gehen. Keine Verlaufstabelle.
+        """
+        now = now or datetime.now(timezone.utc)
+        stamp = now.astimezone(timezone.utc).isoformat(timespec="microseconds")
+        cutoff = (now - timedelta(minutes=30)).isoformat()
+        with self._conn:
+            self._conn.execute(
+                "UPDATE web_users SET "
+                "visit_previous_at = CASE WHEN visit_active_at IS NULL OR "
+                "julianday(visit_active_at) <= julianday(?) THEN visit_started_at ELSE visit_previous_at END, "
+                "visit_started_at = CASE WHEN visit_active_at IS NULL OR "
+                "julianday(visit_active_at) <= julianday(?) THEN ? ELSE visit_started_at END, "
+                "visit_active_at = ? WHERE id = ?",
+                (cutoff, cutoff, stamp, stamp, owner_id),
+            )
+
+    def visit_window(self, owner_id: int, now: datetime | None = None) -> dict:
+        """Lesen verschiebt weder Besuch noch Zeitraum."""
+        now = now or datetime.now(timezone.utc)
+        row = self._conn.execute(
+            "SELECT visit_started_at, visit_previous_at FROM web_users WHERE id = ?",
+            (owner_id,),
+        ).fetchone()
+        until = row["visit_started_at"] if row and row["visit_started_at"] else now.isoformat()
+        previous = row["visit_previous_at"] if row else None
+        return {
+            "since": (previous or (datetime.fromisoformat(until) - timedelta(days=7)).isoformat()).replace("+00:00", "Z"),
+            "until": until.replace("+00:00", "Z"),
+            "first_visit": previous is None,
+        }
+
     def record_activity(self, owner_id: int, feature: str = "session",
                         client: str = "unknown") -> None:
         """Ein Feature-Nutzungsereignis je Konto/Tag/Client zählen (best-effort,

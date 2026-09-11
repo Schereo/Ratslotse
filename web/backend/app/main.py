@@ -18,7 +18,7 @@ from pathlib import Path
 from .antworten import Health
 from .config import get_settings
 from .schemas import AppConfigOut
-from .routers import account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, tippspiel, wahlabend
+from .routers import today, account, admin, auth, auth_apple, bookmarks, council, districts, feedback, kommunalwahl, news, onboarding, push, quiz, social, topics, badges, calendar, tippspiel, wahlabend
 from .session import SitzungsVerlaengerung
 
 logger = logging.getLogger("ratslotse.web.main")
@@ -176,6 +176,7 @@ app.include_router(account.router)
 app.include_router(council.router)
 app.include_router(districts.router)
 app.include_router(bookmarks.router)
+app.include_router(today.router)
 app.include_router(topics.router)
 app.include_router(topics.sub_router)
 app.include_router(admin.router)

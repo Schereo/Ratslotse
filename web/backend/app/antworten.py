@@ -45,6 +45,28 @@ class Ok(TypedDict):
     ok: bool
 
 
+class VisitWindow(TypedDict):
+    since: str
+    until: str
+    first_visit: bool
+
+
+class TodayUpdate(TypedDict):
+    id: str
+    kind: Literal["protocol", "agenda", "agenda_change"]
+    ksinr: int
+    arrived: str
+    committee: str
+    session_date: str
+    decision_count: int
+
+
+class TodayUpdates(VisitWindow):
+    total: int
+    counts: dict[str, int]
+    items: list[TodayUpdate]
+
+
 class OkWithId(TypedDict):
     ok: bool
     id: int

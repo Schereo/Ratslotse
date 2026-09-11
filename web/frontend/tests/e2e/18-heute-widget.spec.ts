@@ -1,122 +1,85 @@
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { zustandsDatei } from "./konten";
 
-test.use({ storageState: zustandsDatei("nutzerin") });
-
-const hit = {
-  id: 8699, topic_id: 1, topic_name: "Kitas und Kindertagespflege in Oldenburg",
-  title: "Verwendung von Investitionsmitteln für die Kindertagesstätten und Kindertagespflege – Bericht",
-  summary: "Der Bericht über die Verwendung von Investitionsmitteln für Kitas und Kindertagespflege wird zur Kenntnis genommen.",
-  committee: "Jugendhilfeausschuss", session_date: "2026-06-17", outcome: "noted", is_new: true,
-};
-const full = { hits: [hit], topic_count: 3, total: 24, unread_total: 2, unread_decisions: 1 };
-const widget = (page: Page) => page.getByRole("region", { name: "Neu zu deinen Themen" });
-
-async function stub(page: Page, data: typeof full) {
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill({ json: data }));
+test.use({ storageState: zustandsDatei("admin") });
+const first = { since: "2026-09-01T10:00:00+00:00", until: "2026-09-11T10:00:00+00:00", first_visit: false };
+const item = { id: "protocol:4675", kind: "protocol" as const, ksinr: 4675,
+  arrived: "2026-09-05T07:16:38", committee: "Ausschuss für Wirtschaftsförderung, Digitalisierung und internationale Zusammenarbeit",
+  session_date: "2026-06-01", decision_count: 12 };
+const full = { ...first, total: 4, counts: { protocol: 2, agenda: 1, agenda_change: 1 }, items: [item] };
+const widget = (page: Page) => page.locator('[data-heute-widget="seit-besuch"]');
+async function stub(page: Page, data = full) {
+  await page.route("**/api/today/visit", route => route.fulfill({ json: first }));
+  await page.route("**/api/today/updates?*", route => route.fulfill({ json: data }));
 }
 
-test("öffnet den richtigen Beschluss und markiert ihn themenübergreifend", async ({ page }) => {
-  await stub(page, full);
-  let marked = false;
-  await page.route("**/api/topics/decisions/8699/seen", route => {
-    marked = route.request().method() === "POST";
-    return route.fulfill({ json: { marked: 2 } });
-  });
+test("zeigt allgemeine Ergänzungen und öffnet die richtige Sitzung", async ({ page }) => {
+  await stub(page);
   await page.goto("/dashboard");
-  await expect(widget(page)).toContainText("1 ungelesen");
-  await expect(widget(page)).toContainText(`Zu deinem Thema ${hit.topic_name}`);
-  const link = widget(page).getByRole("link", { name: /Zu deinem Thema/ });
-  await expect(link).toHaveAttribute("href", "/council/decision?id=8699");
+  await expect(widget(page)).toContainText("4");
+  await expect(widget(page)).toContainText("Protokolle ergänzt");
+  await expect(widget(page)).toContainText("Tagesordnung geändert");
+  await expect(page.getByRole("heading", { name: "Neu zu deinen Themen" })).toHaveCount(0);
+  const link = widget(page).getByRole("link");
+  await expect(link).toHaveAttribute("href", "/council/sitzung?ksinr=4675");
   await link.click();
-  await expect(page).toHaveURL(/\/council\/decision\?id=8699/);
-  await expect.poll(() => marked).toBe(true);
+  await expect(page).toHaveURL(/sitzung\?ksinr=4675/);
 });
 
-test("gelesener Treffer verschwindet erst nach Bestätigung, Fokus bleibt im Widget", async ({ page }) => {
-  let seen = false;
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill({ json: seen
-    ? { ...full, hits: [], unread_total: 0, unread_decisions: 0 } : full }));
-  await page.route("**/api/topics/decisions/8699/seen", route => {
-    seen = true;
-    return route.fulfill({ json: { marked: 2 } });
+test("weitere Einträge behalten ihren Zeitraum und erhalten den Fokus", async ({ page }) => {
+  await stub(page);
+  await page.route("**/api/today/updates?*", route => {
+    const p = new URL(route.request().url()).searchParams;
+    if (p.get("offset") === "1") {
+      expect(p.get("since")).toBe(first.since);
+      expect(p.get("until")).toBe(first.until);
+      return route.fulfill({ json: { ...full, items: [{ ...item, id: "agenda:4633", ksinr: 4633, kind: "agenda", committee: "Sozialausschuss" }] } });
+    }
+    return route.fulfill({ json: full });
   });
   await page.goto("/dashboard");
-  await widget(page).getByRole("button", { name: /^Als gelesen markieren:/ }).click();
-  await expect(widget(page)).toContainText("Alles gelesen");
-  await expect(widget(page).getByRole("link", { name: /Zu deinem Thema/ })).toHaveCount(0);
-  await expect(widget(page).getByRole("heading", { name: "Neu zu deinen Themen" })).toBeFocused();
-  await expect(widget(page).getByRole("link", { name: "Meine Themen" })).toHaveAttribute("href", "/topics");
+  await widget(page).getByRole("button", { name: "Weitere Neuigkeiten (3)" }).click();
+  await expect(widget(page).getByRole("link", { name: /Sozialausschuss/ })).toBeFocused();
+  await expect(widget(page).getByRole("link")).toHaveCount(2);
 });
 
-test("Fehler beim Markieren behält den Treffer und erlaubt einen neuen Versuch", async ({ page }) => {
-  await stub(page, full);
-  await page.route("**/api/topics/decisions/8699/seen", route => route.fulfill({ status: 503, json: { detail: "Offline" } }));
+test("Fehler erhält den bisherigen Rückblick und Wiederholen funktioniert", async ({ page }) => {
+  await stub(page);
   await page.goto("/dashboard");
-  await widget(page).getByRole("button", { name: /^Als gelesen markieren:/ }).click();
-  await expect(widget(page).getByRole("alert")).toContainText("nicht gespeichert");
-  await expect(widget(page)).toContainText("1 ungelesen");
-  await expect(widget(page).getByRole("button", { name: /^Als gelesen markieren:/ })).toBeEnabled();
-  await expect(widget(page)).not.toContainText("Alles gelesen");
-});
-
-test("Ladefehler wird nicht als leer ausgegeben und lässt sich im Widget beheben", async ({ page }) => {
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill({ status: 503, json: { detail: "Offline" } }));
-  await page.goto("/dashboard");
-  await expect(widget(page).getByRole("alert")).toContainText("nicht geladen");
-  await expect(widget(page)).not.toContainText("Alles gelesen");
-  await expect(widget(page)).not.toContainText("Erstes Thema anlegen");
-  await stub(page, full);
-  await widget(page).getByRole("button", { name: "Erneut versuchen" }).click();
-  await expect(widget(page)).toContainText("1 ungelesen");
-  await expect(widget(page).getByRole("alert")).toHaveCount(0);
-});
-
-test("erfolgreich gelesen bleibt gelesen, wenn das Nachladen ausfällt", async ({ page }) => {
-  let seen = false;
-  await page.route("**/api/topics/latest-hits?*", route => route.fulfill(seen
-    ? { status: 503, json: { detail: "Offline" } } : { json: full }));
-  await page.route("**/api/topics/decisions/8699/seen", route => {
-    seen = true;
-    return route.fulfill({ json: { marked: 2 } });
-  });
-  await page.goto("/dashboard");
-  await widget(page).getByRole("button", { name: /^Als gelesen markieren:/ }).click();
-  await expect(widget(page)).toContainText("Alles gelesen");
+  await expect(widget(page).getByRole("link")).toHaveCount(1);
+  await page.route("**/api/today/updates?*", route => route.fulfill({ status: 503, json: { detail: "Offline" } }));
+  await widget(page).getByRole("button", { name: /Weitere Neuigkeiten/ }).click();
   await expect(widget(page).getByRole("alert")).toContainText("nicht aktualisiert");
-  await expect(widget(page).getByRole("link", { name: /Zu deinem Thema/ })).toHaveCount(0);
+  await expect(widget(page).getByRole("link")).toHaveCount(1);
+  await stub(page, { ...full, items: [{ ...item, id: "protocol:2", committee: "Jugendhilfeausschuss" }] });
+  await widget(page).getByRole("button", { name: "Erneut versuchen" }).click();
+  await expect(widget(page)).toContainText("Jugendhilfe");
 });
 
-for (const [name, topic_count, total, text] of [
-  ["ohne Themen", 0, 0, "Erstes Thema anlegen"],
-  ["ohne Treffer", 3, 0, "Noch keine passenden Beschlüsse"],
-  ["alles gelesen", 3, 24, "Alles gelesen"],
-] as const) {
-  test(`ehrlicher Zustand ${name}`, async ({ page }) => {
-    await stub(page, { ...full, hits: [], topic_count, total, unread_total: 0, unread_decisions: 0 });
-    await page.goto("/dashboard");
-    await expect(widget(page)).toContainText(text);
-    await expect(widget(page).getByRole("link", { name: /Zu deinem Thema/ })).toHaveCount(0);
-  });
-}
+test("erster Besuch und leerer Zeitraum werden ehrlich benannt", async ({ page }) => {
+  await stub(page, { ...full, first_visit: true, total: 0, counts: { protocol: 0, agenda: 0, agenda_change: 0 }, items: [] });
+  await page.goto("/dashboard");
+  await expect(widget(page).getByRole("heading")).toHaveText("Neu bei Ratslotse");
+  await expect(widget(page)).toContainText("die letzten sieben Tage");
+  await expect(widget(page)).toContainText("Keine neuen Ratsunterlagen");
+  await expect(widget(page).getByRole("button", { name: /Weitere/ })).toHaveCount(0);
+});
 
 for (const width of [320, 390]) {
-  test(`große Schrift bei ${width}px: lesbare Metadaten und erreichbare Aktionen`, async ({ page }) => {
+  test(`große Schrift bei ${width}px und reduzierte Bewegung`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await stub(page, full);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await stub(page);
     await page.goto("/dashboard");
-    await expect(widget(page)).toContainText("1 ungelesen");
+    await expect(widget(page).getByRole("link")).toHaveCount(1);
     await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
-    const bounds = await widget(page).evaluate(el => {
-      const r = el.getBoundingClientRect();
-      return { right: r.right, width: window.innerWidth,
-        overflow: Array.from(el.querySelectorAll("h2,p,button")).filter(child => child.scrollWidth > child.clientWidth + 1).map(child => child.textContent) };
-    });
-    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
-    expect(bounds.overflow).toEqual([]);
-    const mark = widget(page).getByRole("button", { name: /^Als gelesen markieren:/ });
-    await expect(mark).toBeVisible();
-    expect((await mark.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const result = await widget(page).evaluate(el => ({
+      overflow: Array.from(el.querySelectorAll("p,button,h2")).filter(c => c.scrollWidth > c.clientWidth + 1).map(c => c.textContent),
+      animation: getComputedStyle(el.querySelector("li")!).animationName,
+    }));
+    expect(result.overflow).toEqual([]);
+    expect(result.animation).toBe("none");
+    expect((await widget(page).getByRole("button", { name: /Weitere/ }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
   });
 }
 

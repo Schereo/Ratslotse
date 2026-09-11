@@ -1212,6 +1212,50 @@ class SitzungenMixin(StoreBasis):
         echte = [r for r in roh if not self._FORMALIE_RE.search(r["title"] or "")]
         return echte[:limit] if limit is not None else echte
 
+    def updates_since(self, since: str, until: str, offset: int = 0, limit: int = 3) -> dict:
+        """Öffentliche Ergänzungen nach Eingang, niemals nach Sitzungstag.
+
+        Ein Protokoll erscheint einmal, Wiederverarbeitung zählt nicht erneut.
+        Tagesordnungen stammen aus unveränderlichen Snapshots/Änderungen, nicht
+        aus fetched_at (das jeder Abruf überschreibt). Änderungen derselben
+        Sitzung bündeln wir; eine gerade erst neue Agenda zählt nicht doppelt.
+        """
+        cte = """
+            WITH first_agenda AS (
+                SELECT ksinr, MIN(created_at) arrived FROM agenda_snapshots GROUP BY ksinr
+            ), events AS (
+                SELECT 'protocol' kind, ksinr, available_at arrived FROM council_protocols
+                WHERE status = 'ok' AND available_at IS NOT NULL
+                UNION ALL
+                SELECT 'agenda', ksinr, arrived FROM first_agenda
+                UNION ALL
+                SELECT 'agenda_change', c.ksinr, MAX(c.changed_at) FROM agenda_changes c
+                LEFT JOIN first_agenda a ON a.ksinr = c.ksinr
+                WHERE julianday(c.changed_at) > julianday(:since)
+                  AND julianday(c.changed_at) <= julianday(:until)
+                  AND (a.arrived IS NULL OR julianday(a.arrived) <= julianday(:since))
+                GROUP BY c.ksinr
+            ), visible AS (
+                SELECT e.*, s.committee, s.session_date,
+                    CASE WHEN e.kind = 'protocol' THEN (
+                        SELECT COUNT(*) FROM council_decisions d
+                        WHERE d.ksinr = e.ksinr AND d.kind = 'decision'
+                    ) ELSE 0 END decision_count
+                FROM events e JOIN council_sessions s ON s.ksinr = e.ksinr
+                WHERE julianday(e.arrived) > julianday(:since)
+                  AND julianday(e.arrived) <= julianday(:until)
+            )
+        """
+        params = {"since": since, "until": until, "offset": offset, "limit": limit}
+        counts = {r["kind"]: r["n"] for r in self._conn.execute(
+            cte + "SELECT kind, COUNT(*) n FROM visible GROUP BY kind", params)}
+        rows = self._conn.execute(cte + """
+            SELECT * FROM visible ORDER BY julianday(arrived) DESC, kind, ksinr DESC
+            LIMIT :limit OFFSET :offset
+        """, params).fetchall()
+        return {"counts": counts, "total": sum(counts.values()), "items": [
+            {**dict(row), "id": f"{row['kind']}:{row['ksinr']}"} for row in rows]}
+
     def save_agenda_snapshot(self, ksinr: int, agenda_hash: str, items: list[dict]) -> None:
         """Öffentliche Tagesordnungspunkte zu diesem Hash einfrieren — die
         Vergleichsbasis für die Diff-Änderungsmeldung. INSERT OR IGNORE:

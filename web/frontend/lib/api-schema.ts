@@ -4626,6 +4626,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/today/updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Updates */
+        get: operations["updates_api_today_updates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/today/visit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Visit */
+        post: operations["visit_api_today_visit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/topics": {
         parameters: {
             query?: never;
@@ -11576,6 +11610,43 @@ export interface components {
             /** Tops */
             tops: string[];
         };
+        /** TodayUpdate */
+        TodayUpdate: {
+            /** Arrived */
+            arrived: string;
+            /** Committee */
+            committee: string;
+            /** Decision Count */
+            decision_count: number;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "protocol" | "agenda" | "agenda_change";
+            /** Ksinr */
+            ksinr: number;
+            /** Session Date */
+            session_date: string;
+        };
+        /** TodayUpdates */
+        TodayUpdates: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** First Visit */
+            first_visit: boolean;
+            /** Items */
+            items: components["schemas"]["TodayUpdate"][];
+            /** Since */
+            since: string;
+            /** Total */
+            total: number;
+            /** Until */
+            until: string;
+        };
         /** TopicDecision */
         TopicDecision: {
             /** Committee */
@@ -12022,6 +12093,15 @@ export interface components {
             video_seconds: number | null;
             /** Vote */
             vote: string | null;
+        };
+        /** VisitWindow */
+        VisitWindow: {
+            /** First Visit */
+            first_visit: boolean;
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
         };
         /** WebUserOut */
         WebUserOut: {
@@ -17782,6 +17862,60 @@ export interface operations {
             };
         };
     };
+    updates_api_today_updates_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+                since?: string | null;
+                until?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayUpdates"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    visit_api_today_visit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisitWindow"];
+                };
+            };
+        };
+    };
     list_topics_api_topics_get: {
         parameters: {
             query?: never;
@@ -18282,4 +18416,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 38b61729aac3864fa79695d1ae49eb5cb499721f3370fe9e7429fdb790ca3484
+// vertrag-sha256: fc50982724919f29efe50edda01a0eae405250a7243b1e57fbce579531361554

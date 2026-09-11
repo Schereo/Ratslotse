@@ -505,18 +505,24 @@ Die Seite setzt eigenständige Bausteine zusammen: Web `HeuteWidget`, iOS
 `RatsWidget` geben Kopf, Inhalt und optionalen Abschluss vor. Die Überschrift
 darf umbrechen. Daten, Lade- und Fehlerzustände sowie Aktionen gehören in den
 jeweiligen Baustein; die Seite bestimmt Platz und Reihenfolge. Stabile Kennungen
-(etwa `themen-neuigkeiten`) bereiten eine spätere persönliche Auswahl vor. Eine
+(etwa `seit-besuch`) bereiten eine spätere persönliche Auswahl vor. Eine
 Auswahl oder Sortierung der Widgets gibt es derzeit noch nicht.
 
-„Neu zu deinen Themen“ steht mobil vor der Wochenvorschau. Es zeigt höchstens
-drei ungelesene Beschlüsse, die eindeutige Gesamtzahl und pro Treffer den
-Themenbezug als kurze Textzeile statt als Tag. Vorschautitel und Zusammenfassung
-dürfen auf zwei Zeilen gekürzt werden; der vollständige Beschluss ist direkt
-erreichbar. Datum und Gremium bleiben umbrochener, lesbarer Begleittext.
+„Seit deinem letzten Besuch“ ersetzt die frühere Themen-Karte auf Heute.
+Der Rückblick zeigt allgemeine Ergänzungen, unabhängig von Abos: neue und
+geänderte Tagesordnungen sowie erstmals ergänzte Protokolle mit Ergebnissen.
+Beim ersten Besuch heißt er „Neu bei Ratslotse“ und nennt ausdrücklich sieben
+Tage. Der Zeitraum bleibt während eines Besuchs stabil, auch beim Nachladen;
+ein neuer Besuch beginnt nach 30 Minuten ohne sichtbare Nutzung.
 
-Gelesen wird ein Beschluss nach dem Öffnen oder mit „Als gelesen markieren“.
-Er verschwindet erst nach Bestätigung des Servers, in allen passenden eigenen
-Themen zugleich. Nach einer manuellen Markierung bleibt der Tastatur- bzw.
-VoiceOver-Fokus im Widget. „Alles gelesen“, keine passenden Beschlüsse, keine
-Themen und ein Ladefehler sind unterschiedliche Zustände. Allgemeine Funde
-werden nicht als Ersatz für persönliche Neuigkeiten eingeschoben.
+Hierarchie: Zeitraum → Gesamtzahl mit kurzer Einordnung → drei Neuigkeiten.
+Jede Zeile nennt Art, Gremium, Sitzungstag und Eingang bei Ratslotse getrennt.
+Weitere Einträge werden auf Wunsch nachgeladen, der Fokus folgt dem ersten
+neuen Eintrag. Keine Tags und keine konkurrierende zweite Themen-Karte.
+
+Animationen erklären Zustandswechsel: neue Zeilen blenden über 220 ms mit
+vier Pixeln Bewegung ein, Hover hebt die Zeile leicht hervor und bewegt nur
+den Richtungspfeil. Reduzierte Bewegung schaltet diese Effekte aus. Große
+Schrift darf mehr Höhe beanspruchen; Metadaten und Aktionen bleiben lesbar.
+Ein Ladefehler erhält vorhandene Inhalte und bietet Wiederholen; er wird
+niemals als „keine Neuigkeiten“ dargestellt.
