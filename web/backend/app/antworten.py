@@ -3897,6 +3897,17 @@ class PredictionCompareLine(TypedDict):
     exact_count: int
 
 
+class PredictionMayorCompareLine(TypedDict):
+    """Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als
+    ``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins" in 1e/1f)
+    gibt es hier keine einzelne Person, deren Tipp „der" Tipp wäre."""
+    slug: str
+    name: str
+    party: str
+    actual_pct: float | None
+    avg_tip: float | None
+
+
 class PredictionStand(TypedDict):
     title: str
     #: "open" | "locked" | "final".
@@ -3910,7 +3921,7 @@ class PredictionStand(TypedDict):
     player_count: int
     tip_count: int
     compare: list[PredictionCompareLine]
-    mayor: list[PredictionMayorLine]
+    mayor: list[PredictionMayorCompareLine]
     #: "before" | "counting" | "complete" — wie ``MayorNight.phase``.
     mayor_status: str
     rows: list[PredictionRow]
