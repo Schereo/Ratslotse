@@ -3863,8 +3863,12 @@ class Store:
             "SELECT COUNT(DISTINCT question_id) FROM quiz_answers WHERE owner_id = ?", (uid,)).fetchone()[0]
         topics = [r["name"] for r in self._conn.execute(
             "SELECT name FROM topics WHERE owner_id = ? ORDER BY created_at DESC", (uid,)).fetchall()]
+        # Alphabetisch, nicht in Einfüge-Reihenfolge: Das Panel zeigt die Liste
+        # seit 09/2026 vollständig, und fünfzehn Ausschüsse in der Reihenfolge
+        # ihrer Klicks liest niemand.
         abos = [r["committee_name"] for r in self._conn.execute(
-            "SELECT committee_name FROM committee_subscriptions WHERE owner_id = ?", (uid,)).fetchall()]
+            "SELECT committee_name FROM committee_subscriptions WHERE owner_id = ? ORDER BY committee_name",
+            (uid,)).fetchall()]
         since = (date.today() - timedelta(days=29)).isoformat()
         by_day = {r["day"]: r["c"] for r in self._conn.execute(
             "SELECT day, SUM(count) c FROM user_activity WHERE owner_id = ? AND day >= ? GROUP BY day",
