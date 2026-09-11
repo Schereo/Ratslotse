@@ -1848,8 +1848,16 @@ function UserDetailPanel({ userId, isSelf, rollenKatalog, onClose }: {
 
       <StatKickerSpaced>Angelegt</StatKickerSpaced>
       <div className="mt-2 flex flex-col gap-1.5">
-        <DetailRow label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`} value={data.topics.slice(0, 4).join(", ") || "—"} />
-        <DetailRow label={`${data.subscriptions.length} Ausschuss-${data.subscriptions.length === 1 ? "Abo" : "Abos"}`} value={data.subscriptions.slice(0, 4).join(", ") || "—"} />
+        <DetailList
+          label={`${data.topics.length} ${data.topics.length === 1 ? "Thema" : "Themen"}`}
+          entries={data.topics}
+          empty="Noch keins angelegt"
+        />
+        <DetailList
+          label={`${data.subscriptions.length} Ausschuss-${data.subscriptions.length === 1 ? "Abo" : "Abos"}`}
+          entries={data.subscriptions}
+          empty="Keiner abonniert"
+        />
         <DetailRow label="Zustellung" value={data.delivery_channel === "both" ? "Push + E-Mail" : data.delivery_channel === "push" ? "Push" : data.delivery_channel === "off" ? "Aus" : "E-Mail"} />
         <DetailRow label="Gespräche speichern" value={data.saves_conversations === 1 ? "An" : data.saves_conversations === 0 ? "Bewusst aus" : "Nie gefragt"} />
       </div>
@@ -1964,6 +1972,38 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2">
       <span className="shrink-0 text-[12.5px] text-foreground">{label}</span>
       <span className="truncate text-[11.5px] text-muted-foreground">{value}</span>
+    </div>
+  );
+}
+
+/** Angelegtes als VOLLSTÄNDIGE Liste — Themen und Ausschuss-Abos.
+ *
+ *  Bis 09/2026 stand hier eine `DetailRow`: die ersten vier Namen,
+ *  kommagetrennt, in einer Zeile mit `truncate` — je nach Breite waren also
+ *  zwei zu sehen, und nichts deutete darauf hin, dass mehr da sind. Wer wissen
+ *  wollte, WELCHE Themen ein Konto angelegt hat, musste in die Datenbank
+ *  (gemessen an Konto 37: 10 Themen, 15 Abos, im Panel sichtbar 2 bzw. 1).
+ *  Die Zahl im Label bleibt, die Namen stehen vollständig darunter — bei
+ *  vielen wächst die Karte, statt zu unterschlagen. */
+function DetailList({ label, entries, empty }: { label: string; entries: string[]; empty: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2">
+      <p className="text-[12.5px] text-foreground">{label}</p>
+      {entries.length ? (
+        // Themen dürfen doppelt heißen (zwei Konten, ein Wort — und auch
+        // innerhalb eines Kontos verbietet es niemand), der Index gehört
+        // deshalb in den Key.
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {entries.map((eintrag, i) => (
+            <span key={`${i}-${eintrag}`}
+              className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11.5px] text-muted-foreground">
+              {eintrag}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1 text-[11.5px] text-muted-foreground">{empty}</p>
+      )}
     </div>
   );
 }
