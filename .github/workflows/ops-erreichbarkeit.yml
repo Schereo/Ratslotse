@@ -14,6 +14,14 @@
 # Cron-Alarm setzt einen laufenden Cron voraus, `kern/fehler.py` einen
 # laufenden Prozess, und ein roter Actions-Lauf ist kein Alarm, sondern ein
 # Eintrag in einer Liste. Gemerkt wurde es, als eine Anmeldung 500 lieferte.
+#
+# Am 10.09.2026 kam die andere Hälfte dazu: Die Probe fiel in einen LAUFENDEN
+# Release-Deploy (Barriere 20:15:21, drei Versuche bis 20:16:22, Seite wieder
+# oben 20:16:49 — 85 Sekunden, Vor- und Rauchprobe je 49/49 grün). Von außen
+# sieht das aus wie der 07.09. Der Unterschied steht auf dem Server: das ALTER
+# der Wartungsbarriere. Frisch heißt „es deployt gerade", alt heißt „es hängt".
+# Entschieden wird das in `scripts/ops_deploy_window.py` — mit Test, statt als
+# Bedingung in einer YAML-Zeile.
 name: Ops – Erreichbarkeit (Prod)
 
 on:
@@ -44,6 +52,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Dieser Schritt SCHEITERT nicht mehr, er berichtet nur. Rot oder grün
+      # entscheidet der letzte Schritt, denn zwischen beidem liegt erst noch
+      # die Frage, ob gerade deployt wird.
       - name: Prod anpingen
         id: probe
         run: |
@@ -69,46 +80,21 @@ jobs:
             done
             if [ -z "$KAPUTT" ]; then
               echo "Alles erreichbar (Versuch $versuch)."
+              echo "ok=1" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             [ "$versuch" -lt 3 ] && sleep 20
           done
+          echo "ok=0" >> "$GITHUB_OUTPUT"
           echo "befund=$KAPUTT" >> "$GITHUB_OUTPUT"
           echo "NICHT ERREICHBAR:$KAPUTT"
-          exit 1
 
-      # Nur beim ERSTEN Fehlschlag melden. Ein Ausfall dauert selten zehn
-      # Minuten; ohne diese Bremse stünden am Ende zwölf gleiche Mails im
-      # Postfach und die dreizehnte läse niemand mehr. Dieselbe Regel wie in
-      # `kern/fehler.py`: Die erste Begegnung meldet sich, der Rest wird
-      # gezählt. Der rote Lauf bleibt jedes Mal stehen.
-      - name: Erster Fehlschlag?
-        id: erster
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -u
-          vorher=$(gh run list --workflow ops-erreichbarkeit.yml --status completed \
-                     --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
-          echo "Vorheriger Lauf: ${vorher:-keiner}"
-          if [ "$vorher" = "failure" ]; then
-            echo "melden=0" >> "$GITHUB_OUTPUT"
-          else
-            echo "melden=1" >> "$GITHUB_OUTPUT"
-          fi
-
-      # WEG 1 — die Mail über den SERVER. Dort liegen RESEND_API_KEY und
-      # ALERT_EMAIL längst in der .env; es braucht also kein neues Secret,
-      # nur den Deploy-Schlüssel, den dieses Repo ohnehin hat.
-      #
-      # Das deckt den häufigsten Fall vollständig ab, und es ist genau der von
-      # heute: Die Maschine läuft, nur die API nicht (Barriere steht, Dienst
-      # gestoppt, Build kaputt). Bleibt die Maschine als Ganzes stumm, greift
-      # Weg 2.
-      - name: Alarm über den Server
-        id: ueber_server
-        if: failure() && steps.erster.outputs.melden == '1'
+      # Ab hier nur noch, wenn etwas nicht antwortet. Der SSH-Zugang wird
+      # einmal eingerichtet und von den Schritten darunter mitbenutzt: erst
+      # für die Frage nach der Barriere, dann für die Alarm-Mail.
+      - name: Configure deployment SSH
+        id: ssh
+        if: steps.probe.outputs.ok != '1'
         continue-on-error: true
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -133,12 +119,81 @@ jobs:
             '  StrictHostKeyChecking no' \
             > ~/.ssh/config
           chmod 600 ~/.ssh/config
+
+      # Läuft gerade ein Deploy? Gerechnet wird das Alter AUF DEM SERVER —
+      # sonst ginge die Differenz der beiden Uhren mit ein.
+      #
+      # Der Schritt kann nur UNTERDRÜCKEN, nie auslösen: Jeder Weg, der nicht
+      # bei einer frischen Barriere endet (kein Marker, kein SSH, kaputte
+      # Antwort, Absturz des Skripts), lässt `suppressed` leer — und die
+      # Schritte darunter melden dann wie vorher. Ein Fehler hier kostet also
+      # eine überflüssige Mail, nicht eine fehlende.
+      - name: Läuft gerade ein Deploy?
+        id: fenster
+        if: steps.probe.outputs.ok != '1'
+        continue-on-error: true
+        env:
+          BEFUND: ${{ steps.probe.outputs.befund }}
+        run: |
+          set -u
+          alter=$(ssh -o ConnectTimeout=20 target '
+            cd ~/app || exit 1
+            m=data/.release-maintenance
+            if [ -f "$m" ]; then
+              echo $(( $(date +%s) - $(stat -c %Y "$m") ))
+            else
+              echo keine
+            fi' 2>/dev/null | tail -1) || alter=""
+          [ -n "${alter:-}" ] || alter=unerreichbar
+          echo "Alter der Wartungsbarriere: $alter"
+          python3 scripts/ops_deploy_window.py --age "$alter" --findings "$BEFUND"
+
+      # Nur beim ERSTEN Fehlschlag melden. Ein Ausfall dauert selten zehn
+      # Minuten; ohne diese Bremse stünden am Ende zwölf gleiche Mails im
+      # Postfach und die dreizehnte läse niemand mehr. Dieselbe Regel wie in
+      # `kern/fehler.py`: Die erste Begegnung meldet sich, der Rest wird
+      # gezählt. Der rote Lauf bleibt jedes Mal stehen.
+      #
+      # Genau deshalb bleibt ein unterdrückter Lauf GRÜN und nicht rot: Wäre
+      # das Deploy-Fenster ein roter Lauf, gälte ein echter Ausfall zehn
+      # Minuten später als „nicht der erste" — und bekäme keine Mail.
+      - name: Erster Fehlschlag?
+        id: erster
+        if: steps.probe.outputs.ok != '1' && steps.fenster.outputs.suppressed != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          vorher=$(gh run list --workflow ops-erreichbarkeit.yml --status completed \
+                     --limit 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
+          echo "Vorheriger Lauf: ${vorher:-keiner}"
+          if [ "$vorher" = "failure" ]; then
+            echo "melden=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "melden=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      # WEG 1 — die Mail über den SERVER. Dort liegen RESEND_API_KEY und
+      # ALERT_EMAIL längst in der .env; es braucht also kein neues Secret,
+      # nur den Deploy-Schlüssel, den dieses Repo ohnehin hat.
+      #
+      # Das deckt den häufigsten Fall vollständig ab, und es ist genau der von
+      # heute: Die Maschine läuft, nur die API nicht (Barriere steht, Dienst
+      # gestoppt, Build kaputt). Bleibt die Maschine als Ganzes stumm, greift
+      # Weg 2.
+      - name: Alarm über den Server
+        id: ueber_server
+        if: steps.probe.outputs.ok != '1' && steps.fenster.outputs.suppressed != '1' && steps.erster.outputs.melden == '1'
+        continue-on-error: true
+        run: |
+          set -e
           ssh -o ConnectTimeout=20 target 'cd ~/app && .venv/bin/python - --root . \
             --betreff "Ratslotse – ratslotse.de ist nicht erreichbar" \
             --zustand \
             --text "Der Anpinger von ausserhalb erreicht ratslotse.de nicht. Betroffen:${{ steps.probe.outputs.befund }}
 
           Dreimal im Abstand von 20 Sekunden geprueft, alle drei Male erfolglos.
+          Eine laufende Wartungsbarriere war es nicht: ${{ steps.fenster.outputs.reason }}
 
           Lauf: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"' \
             < scripts/alarm.py
@@ -148,7 +203,7 @@ jobs:
       # Dafür (und nur dafür) sind die beiden optionalen Repository-Secrets da.
       # Fehlen sie, bleibt GitHubs eigene Benachrichtigung zum roten Lauf.
       - name: Alarm am Server vorbei
-        if: failure() && steps.erster.outputs.melden == '1' && steps.ueber_server.outcome != 'success'
+        if: steps.probe.outputs.ok != '1' && steps.fenster.outputs.suppressed != '1' && steps.erster.outputs.melden == '1' && steps.ueber_server.outcome != 'success'
         continue-on-error: true
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -175,3 +230,24 @@ jobs:
               -H "Authorization: Bearer $RESEND_API_KEY" \
               -H "Content-Type: application/json" \
               --data @- -o /dev/null -w 'Resend: %{http_code}\n'
+
+      # Erst hier fällt rot oder grün. Ein unterdrücktes Deploy-Fenster ist
+      # kein Ausfall und bekommt deshalb auch keinen roten Lauf — die
+      # Begründung steht im Protokoll.
+      - name: Befund
+        if: always() && steps.probe.outputs.ok != '1'
+        env:
+          BEFUND: ${{ steps.probe.outputs.befund }}
+          GRUND: ${{ steps.fenster.outputs.reason }}
+        run: |
+          set -u
+          if [ "${{ steps.fenster.outputs.suppressed }}" = "1" ]; then
+            echo "Kein Ausfall, sondern ein Deploy: $GRUND"
+            echo "Der Lauf bleibt grün. Wäre er rot, gälte ein echter Ausfall"
+            echo "zehn Minuten später als nicht-der-erste-Fehlschlag und bekäme"
+            echo "keine Mail."
+            exit 0
+          fi
+          echo "NICHT ERREICHBAR:$BEFUND"
+          echo "${GRUND:-Ob gerade deployt wird, war nicht feststellbar.}"
+          exit 1
