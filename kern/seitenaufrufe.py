@@ -72,7 +72,7 @@ ROUTEN: frozenset[str] = frozenset({
     # sie sind /council mit einem ?tab=, siehe COUNCIL_TABS.
     "/dashboard", "/fragen", "/karte", "/viertel",
     "/topics", "/abos", "/bookmarks", "/quiz", "/quiz/stats",
-    "/account", "/admin",
+    "/account", "/admin", "/tipp/admin",
     # Haushalt
     "/haushalt", "/haushalt/bereich", "/haushalt/einnahmen",
     "/haushalt/investitionen", "/haushalt/konzern", "/haushalt/labor",
