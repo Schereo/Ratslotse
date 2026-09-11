@@ -1,24 +1,36 @@
 "use client";
 
 // 1h — Tippspiel-Verwaltung: Ratswahl-Sitze und OB-Prozente eintragen,
-// Entwurf vs. veröffentlicht, Phase steuern, Teilnehmer moderieren.
+// Entwurf vs. veröffentlicht, Phase steuern, Beamer wählen, Teilnehmer
+// moderieren. Gebaut gegen das Artboard 1h (Desktop 1280): Kopfband,
+// links die beiden Eingabe-Karten, rechts Phase / Beamer / Protokoll.
 //
 // Steht AUSSERHALB des Feature-Schalters `tippspiel` (kein `_frei()` in den
 // Backend-Routen) — Tim soll das Spiel vorbereiten können, bevor es live
 // geht. Die Rechteprüfung (`require_admin`) sitzt trotzdem im Backend; hier
 // nur die Höflichkeit, nicht schon eine leere Seite zu zeigen.
+//
+// **Die Felder SIND der Entwurf.** Wie im Artboard gibt es keinen
+// „Eintragen"-Knopf: Ein Feld verlassen (oder Enter) speichert genau diese
+// Zeile als Handeingabe — und nur, wenn sich der Wert geändert hat, denn eine
+// veröffentlichte Handeingabe schlägt den Wahlabend für diese Liste
+// (prediction/service.py). „Veröffentlichen → Live" bleibt der eine Schritt,
+// an dem etwas auf den Beamer kommt.
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { api } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
+import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand";
-import { Badge, Button, Input, Segmented, Spinner } from "@/components/ui";
+import { Button, Segmented, Spinner } from "@/components/ui";
 
 type AdminStand = ApiAntwort<"/tipp/admin/stand">;
-type Ansicht = "vergleich" | "rangliste";
+type Ergebnis = AdminStand["results"][number];
+type Beamer = "auto" | "vergleich" | "rangliste";
 
 async function holeAdminStand(): Promise<AdminStand> {
   return api.get<AdminStand>("/tipp/admin/stand");
@@ -34,20 +46,63 @@ function uhrzeitKurz(iso: string | null | undefined): string | null {
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 }
 
-function Kachel({ kicker, titel, aktion, children }: {
-  kicker: string; titel?: string; aktion?: React.ReactNode; children: React.ReactNode;
+function dezimal(n: number): string {
+  return n.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+function Kicker({ children }: { children: React.ReactNode }) {
+  return <p className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">{children}</p>;
+}
+
+function Karte({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn("rounded-2xl border border-border bg-card px-5 py-[18px]", className)}>{children}</div>;
+}
+
+/** Ein Sitz- oder Prozentfeld: speichert beim Verlassen, wenn sich der Wert
+ *  gegenüber dem Entwurf des Servers geändert hat. Handeingaben stehen auf
+ *  Warn-Tönung (Artboard: „manuell" gelb), damit man sieht, welche Liste der
+ *  Wahlabend nicht mehr überschreibt. */
+function Feld({ wert, manuell, label, breit, dezimalstellen, onSpeichern }: {
+  wert: number | null; manuell: boolean; label: string; breit?: boolean; dezimalstellen?: boolean;
+  onSpeichern: (neu: number) => void;
 }) {
+  const [text, setText] = useState(wert !== null ? String(wert) : "");
+  useEffect(() => { setText(wert !== null ? String(wert) : ""); }, [wert]);
+  function abgeben() {
+    if (text.trim() === "") return;
+    const neu = Number(text.replace(",", "."));
+    if (!Number.isFinite(neu) || neu === wert) return;
+    onSpeichern(neu);
+  }
   return (
-    <div className="rounded-2xl border border-border bg-card p-4.5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">{kicker}</p>
-          {titel && <h2 className="mt-1 font-display text-xl">{titel}</h2>}
-        </div>
-        {aktion}
-      </div>
-      {children}
-    </div>
+    <input
+      type="number" inputMode={dezimalstellen ? "decimal" : "numeric"} step={dezimalstellen ? 0.1 : 1} min={0}
+      aria-label={label} value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={abgeben}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      className={cn(
+        "h-[34px] appearance-none rounded-lg border px-2 text-right font-display text-sm font-bold text-foreground",
+        "transition-[border-color,box-shadow,background-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        "[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+        manuell ? "border-amber-200 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "border-input bg-card",
+        breit ? "w-[62px]" : "w-full",
+      )}
+    />
+  );
+}
+
+function Quelle({ r }: { r: Ergebnis }) {
+  const wert = r.seats ?? r.pct;
+  if (wert === null) return <span />;
+  const manuell = r.source === "manuell";
+  return (
+    <span className={cn(
+      "w-max rounded-full px-2 py-0.5 text-[11px] font-semibold",
+      manuell ? "bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200" : "bg-muted text-muted-foreground",
+    )}>
+      {manuell ? "manuell" : r.source}
+    </span>
   );
 }
 
@@ -65,59 +120,29 @@ export function TippAdminView() {
   const qc = useQueryClient();
   const erlaubt = darfAdmin(user);
 
-  const standQuery = useQuery({ queryKey: ["tipp", "admin-stand"], queryFn: holeAdminStand, enabled: erlaubt });
+  const standQuery = useQuery({ queryKey: ["tipp", "admin-stand"], queryFn: holeAdminStand, enabled: erlaubt, refetchInterval: 30_000 });
 
-  const [seatsEntwurf, setSeatsEntwurf] = useState<Record<string, string>>({});
-  const [obEntwurf, setObEntwurf] = useState<Record<string, string>>({});
-  const [ansicht, setAnsicht] = useState<Ansicht>("vergleich");
+  const [beamer, setBeamer] = useState<Beamer>("auto");
   const [endstandBestaetigen, setEndstandBestaetigen] = useState(false);
-  const [meldung, setMeldung] = useState<string | null>(null);
+  const [meldung, setMeldung] = useState<{ text: string; ton: "ok" | "fehler" } | null>(null);
+  const [laeuft, setLaeuft] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!standQuery.data) return;
-    const seats: Record<string, string> = {};
-    const ob: Record<string, string> = {};
-    for (const r of standQuery.data.results) {
-      if (r.slug.startsWith("ob:")) ob[r.slug.slice(3)] = r.pct !== null ? String(r.pct) : "";
-      else seats[r.slug] = r.seats !== null ? String(r.seats) : "";
-    }
-    setSeatsEntwurf(seats);
-    setObEntwurf(ob);
-  }, [standQuery.data]);
-
-  async function aktion<T>(fn: () => Promise<T>, erfolgstext?: string) {
+  /** Eine Admin-Aktion mit sichtbarem Zustand: der Knopf zeigt `laeuft`,
+   *  danach eine kurze Meldung — Tim soll sehen, dass der Klick ankam. */
+  async function aktion(schluessel: string, fn: () => Promise<unknown>, erfolgstext?: string) {
+    setLaeuft(schluessel);
     try {
       await fn();
       await qc.invalidateQueries({ queryKey: ["tipp"] });
-      if (erfolgstext) { setMeldung(erfolgstext); setTimeout(() => setMeldung(null), 3000); }
+      if (erfolgstext) {
+        setMeldung({ text: erfolgstext, ton: "ok" });
+        setTimeout(() => setMeldung(null), 3500);
+      }
     } catch {
-      setMeldung("Das hat nicht geklappt — bitte noch einmal versuchen.");
+      setMeldung({ text: "Das hat nicht geklappt — bitte noch einmal versuchen.", ton: "fehler" });
+    } finally {
+      setLaeuft(null);
     }
-  }
-
-  async function eintragenSenden() {
-    // Nur die Zeilen, die sich gegenüber dem Entwurf vom Server unterscheiden.
-    // Jede Zeile, die hier ankommt, wird zur HANDEINGABE (`source = manuell`)
-    // — und eine veröffentlichte Handeingabe schlägt den Wahlabend für genau
-    // diese Liste. Alle 25 Felder zu schicken hieße: Ein einziger korrigierter
-    // Tippfehler friert alle anderen Listen auf dem Stand von jetzt ein.
-    const bisher = standQuery.data?.results ?? [];
-    const seatsVorher = Object.fromEntries(bisher.filter((r) => !r.slug.startsWith("ob:")).map((r) => [r.slug, r.seats]));
-    const obVorher = Object.fromEntries(bisher.filter((r) => r.slug.startsWith("ob:")).map((r) => [r.slug.slice(3), r.pct]));
-    const zeilen = [
-      ...Object.entries(seatsEntwurf)
-        .filter(([slug, v]) => v !== "" && Number(v) !== seatsVorher[slug])
-        .map(([slug, v]) => ({ slug, seats: Number(v) })),
-      ...Object.entries(obEntwurf)
-        .filter(([slug, v]) => v !== "" && Number(v) !== obVorher[slug])
-        .map(([slug, v]) => ({ slug: `ob:${slug}`, pct: Number(v) })),
-    ];
-    if (zeilen.length === 0) {
-      setMeldung("Nichts geändert.");
-      setTimeout(() => setMeldung(null), 3000);
-      return;
-    }
-    await aktion(() => api.put("/tipp/admin/ergebnis", zeilen), `${zeilen.length} Zeile${zeilen.length === 1 ? "" : "n"} in den Entwurf übernommen.`);
   }
 
   if (authLaedt) return <Spinner />;
@@ -135,31 +160,29 @@ export function TippAdminView() {
   const ratswahlZeilen = stand.results.filter((r) => !r.slug.startsWith("ob:"));
   const obZeilen = stand.results.filter((r) => r.slug.startsWith("ob:"));
 
-  const entwurfSumme = Object.values(seatsEntwurf).reduce((s, v) => s + (Number(v) || 0), 0);
-  const obSumme = Object.values(obEntwurf).reduce((s, v) => s + (Number(v) || 0), 0);
-  const nachgetippt = stand.players.filter((p) => p.late_at && !p.hidden).length;
+  const entwurfSumme = ratswahlZeilen.reduce((s, r) => s + (r.seats ?? 0), 0);
+  const entwurfVoll = entwurfSumme === setup.seats_total;
+  const obSumme = obZeilen.reduce((s, r) => s + (r.pct ?? 0), 0);
+  const veroeffentlichtAm = ratswahlZeilen.map((r) => r.published_at).filter(Boolean).sort().at(-1) ?? null;
+  const entwurfIstLive = ratswahlZeilen.every((r) => r.seats === r.published_seats) && obZeilen.every((r) => r.pct === r.published_pct);
   // „N Tipps" zählt Tipps, nicht Beitritte: `player_count` zählt jeden, der
   // seinen Namen eingegeben hat — auch ohne Tipp, auch ausgeblendet.
   const tipps = stand.players.filter((p) => p.has_tip && !p.hidden).length;
+  const nachgetippt = stand.players.filter((p) => p.late_at && !p.hidden).length;
+  const phase = setup.phase;
+  const schluss = uhrzeitKurz(setup.locked_at);
 
-  const phaseSchritte: { title: string; erledigt: boolean; aktiv?: boolean; rechts: string }[] = [
-    { title: "Tippen offen", erledigt: stand.game.phase !== "open" || false, aktiv: stand.game.phase === "open", rechts: stand.game.phase === "open" ? "läuft" : "" },
-    { title: "Tipp-Schluss", erledigt: stand.game.phase !== "open",
-      rechts: stand.game.locked_at ? `${uhrzeitKurz(stand.game.locked_at)} Uhr` : "" },
-    { title: "Live · Hochrechnungen", erledigt: stand.game.phase === "final", aktiv: stand.game.phase === "locked",
-      rechts: stand.game.phase === "final" ? "abgeschlossen" : "" },
-    { title: "Endergebnis", erledigt: stand.game.phase === "final", rechts: "" },
-  ];
+  function speichern(slug: string, feld: "seats" | "pct", neu: number) {
+    void aktion(`feld:${slug}`, () => api.put("/tipp/admin/ergebnis", [{ slug, [feld]: neu }]), "In den Entwurf übernommen.");
+  }
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      {/* Volle Breite nur fürs Band (Rand/Hintergrund) — der Inhalt bleibt wie
-          im Rest der App (Wahlabend, (app)-Layout) auf `max-w-7xl` begrenzt
-          und zentriert. Ohne das lief die Seite auf einem breiten Schirm bis
-          an beide Ränder, mit nur den paar Pixeln `px-8` dazwischen (Tims
-          Befund: „bis zum Rand gar kein Platz"). */}
+      {/* Volle Breite nur fürs Band — der Inhalt bleibt wie im Rest der App
+          auf `max-w-7xl` begrenzt und zentriert (Tims Befund: „bis zum Rand
+          gar kein Platz"). */}
       <div className="border-b border-border bg-card">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
           <div className="flex items-center gap-2.5">
             <BrandMark className="h-7 w-7" />
             <span className="font-display text-[17px] font-bold">Ratslotse</span>
@@ -168,80 +191,93 @@ export function TippAdminView() {
             </span>
           </div>
           <div className="flex items-center gap-2.5 text-[12.5px]">
-            <Badge color="green">{tipps} {tipps === 1 ? "Tipp" : "Tipps"}</Badge>
-            {nachgetippt > 0 && <Badge color="amber">{nachgetippt} nachgetippt</Badge>}
-            {meldung && <span className="text-muted-foreground">{meldung}</span>}
+            {meldung && (
+              <span className={cn(
+                "animate-fade-up rounded-full px-3 py-1.5 font-semibold",
+                meldung.ton === "ok" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-destructive/10 text-destructive",
+              )}>
+                {meldung.text}
+              </span>
+            )}
+            <span className="rounded-full border border-border px-3 py-1.5 text-muted-foreground">
+              {tipps} {tipps === 1 ? "Tipp" : "Tipps"}{nachgetippt > 0 && ` · ${nachgetippt} nachgetippt`}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_400px] lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-8 sm:pb-8 lg:grid-cols-[1fr_400px]">
         <div className="flex flex-col gap-5">
-          <Kachel
-            kicker="Ratswahl · Sitze" titel="Hochrechnung eintragen"
-            aktion={<Button variant="secondary" size="sm" onClick={() => void aktion(() => api.post("/tipp/admin/abfragen"), "Votemanager abgefragt.")}>
-              Jetzt abfragen
-            </Button>}
-          >
-            <div className="mt-3.5 grid grid-cols-[1fr_70px_110px_120px] gap-2.5 border-b border-muted pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+          {/* ── Ratswahl · Sitze ─────────────────────────────────────── */}
+          <Karte>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Kicker>Ratswahl · Sitze</Kicker>
+                <h2 className="mt-1 font-display text-xl font-bold">Hochrechnung eintragen</h2>
+              </div>
+              <Button
+                variant="secondary" size="sm" disabled={laeuft === "abfragen"}
+                onClick={() => void aktion("abfragen", () => api.post("/tipp/admin/abfragen"), "Votemanager abgefragt — Zahlen im Entwurf.")}
+              >
+                {laeuft === "abfragen" ? "Fragt ab …" : "Jetzt abfragen"}
+              </Button>
+            </div>
+
+            <div className="mt-3.5 grid grid-cols-[1fr_80px_120px_140px] gap-2.5 border-b border-muted px-1.5 pb-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
               <span>Liste</span><span className="text-right">Sitze</span><span>Quelle</span><span>Ø-Tipp · exakt</span>
             </div>
             {ratswahlZeilen.map((r) => {
               const p = parteiVon[r.slug];
               return (
-                <div key={r.slug} className="grid grid-cols-[1fr_70px_110px_120px] items-center gap-2.5 border-b border-muted py-1.5 text-[13px]">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: p?.color }} />
+                <div key={r.slug} className="grid grid-cols-[1fr_80px_120px_140px] items-center gap-2.5 border-b border-muted px-1.5 py-1.5 text-[13px]">
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-2 w-2 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.15)]" style={{ background: p?.color }} />
                     <span className="font-semibold">{p?.short ?? r.slug}</span>
                   </div>
-                  <Input
-                    type="number" inputMode="numeric" aria-label={`Sitze für ${p?.short}`}
-                    value={seatsEntwurf[r.slug] ?? ""}
-                    onChange={(e) => setSeatsEntwurf((s) => ({ ...s, [r.slug]: e.target.value }))}
-                    className="h-[34px] appearance-none px-2 text-right font-display text-sm font-bold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                  <span>
-                    {r.published_source && (
-                      <Badge color={r.published_source === "votemanager" ? "blue" : "slate"}>{r.published_source}</Badge>
-                    )}
-                  </span>
+                  <Feld wert={r.seats} manuell={r.source === "manuell" && r.seats !== null} label={`Sitze für ${p?.short ?? r.slug}`}
+                        onSpeichern={(neu) => speichern(r.slug, "seats", neu)} />
+                  <Quelle r={r} />
                   <span className="font-mono text-xs text-muted-foreground">
-                    {r.avg_tip !== null ? r.avg_tip.toFixed(1) : "–"} · {r.exact_count}
+                    Ø {r.avg_tip !== null ? dezimal(r.avg_tip) : "–"} · {r.exact_count} exakt
                   </span>
                 </div>
               );
             })}
-            <div className="mt-3 flex items-center justify-between">
-              <span className={`text-[13px] font-semibold ${entwurfSumme === setup.seats_total ? "text-emerald-600 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
-                {entwurfSumme} von {setup.seats_total} Sitzen im Entwurf
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <span className={cn("text-[13px] font-semibold", entwurfVoll ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400")}>
+                Summe {entwurfSumme} von {setup.seats_total} Sitzen{entwurfVoll ? " ✓" : ""}
+                {" · "}
+                {entwurfIstLive
+                  ? (veroeffentlichtAm ? `live seit ${uhrzeitKurz(veroeffentlichtAm)}` : "noch nichts veröffentlicht")
+                  : "Entwurf, noch nicht live"}
               </span>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => void aktion(() => api.post("/tipp/admin/verwerfen"), "Entwurf verworfen.")}>
-                  Entwurf verwerfen
+                <Button variant="secondary" size="sm" disabled={laeuft === "verwerfen" || entwurfIstLive}
+                        onClick={() => void aktion("verwerfen", () => api.post("/tipp/admin/verwerfen"), "Entwurf verworfen.")}>
+                  {laeuft === "verwerfen" ? "Verwirft …" : "Entwurf verwerfen"}
                 </Button>
-                <Button variant="primary" size="sm" onClick={eintragenSenden}>Eintragen</Button>
-                <Button variant="signal" size="sm" onClick={() => void aktion(() => api.post("/tipp/admin/veroeffentlichen"), "Veröffentlicht.")}>
-                  Veröffentlichen → Live
+                <Button variant="primary" size="sm" disabled={laeuft === "veroeffentlichen" || entwurfIstLive}
+                        onClick={() => void aktion("veroeffentlichen", () => api.post("/tipp/admin/veroeffentlichen"), "Veröffentlicht — der Beamer zeigt den Stand.")}>
+                  {laeuft === "veroeffentlichen" ? "Veröffentlicht …" : "Veröffentlichen → Live"}
                 </Button>
               </div>
             </div>
-          </Kachel>
+          </Karte>
 
-          <Kachel kicker="OB-Wahl · Prozent">
-            <div className="mt-3 grid grid-cols-1 gap-x-4.5 gap-y-1.5 sm:grid-cols-3">
+          {/* ── OB-Wahl · Prozent ────────────────────────────────────── */}
+          <Karte>
+            <Kicker>OB-Wahl · Prozent</Kicker>
+            <div className="mt-2.5 grid grid-cols-1 gap-x-[18px] gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
               {obZeilen.map((r) => {
                 const slug = r.slug.slice(3);
                 const kandidatur = setup.mayor_candidates.find((c) => c.slug === slug);
                 return (
                   <div key={r.slug} className="flex items-center justify-between gap-2.5 border-b border-muted py-1.5 text-[13px]">
                     <span className="truncate font-semibold" title={kandidatur?.name ?? slug}>{kandidatur?.name ?? slug}</span>
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="number" inputMode="decimal" step={0.5} aria-label={`Prozent für ${kandidatur?.name}`}
-                        value={obEntwurf[slug] ?? ""}
-                        onChange={(e) => setObEntwurf((s) => ({ ...s, [slug]: e.target.value })) }
-                        className="h-8 w-[62px] appearance-none px-2 text-right text-[13px] font-bold [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
+                    <div className="flex flex-none items-center gap-1">
+                      <Feld wert={r.pct} manuell={r.source === "manuell" && r.pct !== null} label={`Prozent für ${kandidatur?.name ?? slug}`}
+                            breit dezimalstellen onSpeichern={(neu) => speichern(r.slug, "pct", neu)} />
                       <span className="text-xs text-muted-foreground">%</span>
                     </div>
                   </div>
@@ -249,94 +285,137 @@ export function TippAdminView() {
               })}
             </div>
             <p className="mt-2.5 text-xs text-muted-foreground">
-              Summe im Entwurf {obSumme.toFixed(1).replace(".", ",")} %. Stichwahl 27.09. ist kein Teil des Tippspiels.
+              Summe {dezimal(obSumme)} %. Stichwahl 27.09. ist kein Teil des Tippspiels.
             </p>
-          </Kachel>
+          </Karte>
         </div>
 
         <div className="flex flex-col gap-5">
-          <Kachel kicker="Phase">
+          {/* ── Phase ────────────────────────────────────────────────── */}
+          <Karte>
+            <Kicker>Phase</Kicker>
             <div className="mt-2.5 flex flex-col gap-1.5 text-[13px]">
-              {phaseSchritte.map((s) => (
-                <div key={s.title} className={`flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 ${s.aktiv ? "border border-primary/30 bg-primary/5" : "bg-muted/60"}`}>
-                  <span className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[11px] ${
-                    s.erledigt ? "bg-emerald-600 text-white" : s.aktiv ? "border-2 border-primary" : "border-2 border-dotted border-muted-foreground"
-                  }`}>
-                    {s.erledigt ? "✓" : ""}
-                  </span>
-                  <span className={s.aktiv ? "font-semibold" : ""}>{s.title}</span>
-                  {s.rechts && <span className="ml-auto font-mono text-[11px] text-muted-foreground">{s.rechts}</span>}
-                </div>
-              ))}
+              <PhaseZeile zustand={phase === "open" ? "aktiv" : "erledigt"} titel="Tippen offen"
+                rechts={phase === "open"
+                  ? <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" disabled={laeuft === "schliessen"}
+                            onClick={() => void aktion("schliessen", () => api.put("/tipp/admin/phase", { phase: "locked" }), "Tippen geschlossen.")}>
+                      {laeuft === "schliessen" ? "Schließt …" : "Jetzt schließen"}
+                    </Button>
+                  : <span className="font-mono text-[11px] text-muted-foreground">{schluss ? `bis ${schluss}` : ""}</span>} />
+              <PhaseZeile zustand={phase === "open" ? "offen" : "erledigt"} titel="Tipp-Schluss"
+                rechts={<span className="font-mono text-[11px] text-muted-foreground">{schluss ? `${schluss} Uhr` : "mit der 1. Hochrechnung"}</span>} />
+              <PhaseZeile zustand={phase === "locked" ? "aktiv" : phase === "final" ? "erledigt" : "offen"} titel="Live · Hochrechnungen"
+                rechts={<span className="font-mono text-[11px] text-primary">{phase === "locked" && veroeffentlichtAm ? `Stand ${uhrzeitKurz(veroeffentlichtAm)}` : ""}</span>} />
+              <PhaseZeile zustand={phase === "final" ? "aktiv" : "offen"} titel="Endergebnis"
+                rechts={phase === "locked" && (
+                  endstandBestaetigen ? (
+                    <span className="flex items-center gap-1.5">
+                      <Button size="sm" variant="signal" className="h-7 px-2.5 text-xs" disabled={laeuft === "final"}
+                              onClick={() => { void aktion("final", () => api.put("/tipp/admin/phase", { phase: "final" }), "Endstand gesetzt."); setEndstandBestaetigen(false); }}>
+                        Ja, einfrieren
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEndstandBestaetigen(false)}>Abbrechen</Button>
+                    </span>
+                  ) : (
+                    <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" onClick={() => setEndstandBestaetigen(true)}>Endstand setzen</Button>
+                  )
+                )} />
             </div>
-            {stand.game.phase !== "open" && stand.game.phase !== "final" && (
-              endstandBestaetigen ? (
-                <div className="mt-3 flex items-center gap-2 text-[12.5px]">
-                  <span>Endstand jetzt einfrieren?</span>
-                  <Button size="sm" variant="signal" onClick={() => { void aktion(() => api.put("/tipp/admin/phase", { phase: "final" }), "Endstand gesetzt."); setEndstandBestaetigen(false); }}>Ja</Button>
-                  <Button size="sm" variant="secondary" onClick={() => setEndstandBestaetigen(false)}>Abbrechen</Button>
-                </div>
-              ) : (
-                <Button size="sm" variant="secondary" className="mt-3" onClick={() => setEndstandBestaetigen(true)}>Endstand setzen</Button>
-              )
-            )}
-            {stand.game.phase === "open" && (
-              <Button size="sm" variant="secondary" className="mt-3"
-                onClick={() => void aktion(() => api.put("/tipp/admin/phase", { phase: "locked" }), "Tippen geschlossen.")}>
-                Tippen jetzt schließen
-              </Button>
-            )}
-          </Kachel>
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              Der Tipp-Schluss fällt von selbst mit der ersten Hochrechnung der Ratswahl. „Endstand setzen" fragt inline nach — kein Dialog.
+            </p>
+          </Karte>
 
-          <Kachel kicker="Beamer">
+          {/* ── Beamer ───────────────────────────────────────────────── */}
+          <Karte>
+            <Kicker>Beamer</Kicker>
             <div className="mt-2.5">
-              <Segmented value={ansicht} onChange={setAnsicht} options={[
+              <Segmented tone="primary" value={beamer} onChange={setBeamer} options={[
+                { value: "auto", label: "Automatik 45 s" },
                 { value: "vergleich", label: "Vergleich" },
                 { value: "rangliste", label: "Rangliste" },
               ]} />
             </div>
+            <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">Bei neuem Stand springt der Beamer für 60 s auf die Rangliste.</p>
             <Button asChild variant="secondary" size="sm" className="mt-3 w-full">
-              <a href={`/tipp/live?ansicht=${ansicht}`} target="_blank" rel="noreferrer">Beamer in diesem Modus öffnen</a>
+              <a href={beamer === "auto" ? "/tipp/live" : `/tipp/live?ansicht=${beamer}`} target="_blank" rel="noreferrer">
+                Beamer öffnen <ExternalLink />
+              </a>
             </Button>
-          </Kachel>
+          </Karte>
 
-          <Kachel kicker="Teilnehmer">
-            <div className="mt-2.5 flex max-h-72 flex-col gap-1 overflow-y-auto text-[13px]">
+          {/* ── Teilnehmer ───────────────────────────────────────────── */}
+          <Karte>
+            <Kicker>Teilnehmer</Kicker>
+            <div className="mt-2 flex max-h-72 flex-col overflow-y-auto text-[13px]">
               {stand.players.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-2 border-b border-muted py-1.5">
-                  <div className="min-w-0">
-                    <span className={`truncate ${p.hidden ? "text-muted-foreground line-through" : ""}`} title={p.name}>{p.name}</span>
-                    {p.late_at && <span className="ml-1.5 text-[10px] text-amber-700 dark:text-amber-400">nachgetippt</span>}
+                <div key={p.id} className="flex items-center justify-between gap-2 border-b border-muted py-1.5 last:border-b-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={cn("truncate font-medium", p.hidden && "text-muted-foreground line-through")} title={p.name}>{p.name}</span>
+                    {p.late_at && (
+                      <span className="flex-none rounded-full border border-amber-200 px-1.5 font-mono text-[9px] uppercase tracking-[0.06em] text-amber-800 dark:border-amber-500/40 dark:text-amber-200">
+                        nachgetippt {uhrzeitKurz(p.late_at)}
+                      </span>
+                    )}
+                    {!p.has_tip && !p.hidden && <span className="flex-none text-[11px] text-muted-foreground">kein Tipp</span>}
                   </div>
                   <div className="flex flex-none gap-1">
-                    <button type="button"
-                      className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                    <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px]"
                       onClick={() => {
                         const neuerName = window.prompt("Neuer Name", p.name);
-                        if (neuerName && neuerName.trim()) void aktion(() => api.put(`/tipp/admin/spieler/${p.id}`, { name: neuerName.trim() }));
+                        if (neuerName && neuerName.trim()) void aktion(`name:${p.id}`, () => api.put(`/tipp/admin/spieler/${p.id}`, { name: neuerName.trim() }), "Umbenannt.");
                       }}>
                       Umbenennen
-                    </button>
-                    <button type="button"
-                      className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                      onClick={() => void aktion(() => api.put(`/tipp/admin/spieler/${p.id}`, { hidden: !p.hidden }))}>
+                    </Button>
+                    <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px]" disabled={laeuft === `hide:${p.id}`}
+                      onClick={() => void aktion(`hide:${p.id}`, () => api.put(`/tipp/admin/spieler/${p.id}`, { hidden: !p.hidden }), p.hidden ? "Wieder sichtbar." : "Ausgeblendet.")}>
                       {p.hidden ? "Einblenden" : "Ausblenden"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
               {stand.players.length === 0 && <p className="text-muted-foreground">Noch niemand beigetreten.</p>}
             </div>
-          </Kachel>
+          </Karte>
 
-          <Kachel kicker="Protokoll">
-            <div className="mt-2 flex flex-col gap-1 text-[12.5px] text-muted-foreground">
+          {/* ── Protokoll ────────────────────────────────────────────── */}
+          <Karte>
+            <Kicker>Protokoll</Kicker>
+            <div className="mt-2 flex flex-col gap-1.5 text-[12.5px] text-muted-foreground tabular-nums">
               {stand.log.length === 0 && <span>Noch nichts protokolliert.</span>}
-              {stand.log.map((zeile, i) => <span key={i}>{zeile}</span>)}
+              {stand.log.map((zeile, i) => {
+                const [zeit, ...rest] = zeile.split(" · ");
+                return (
+                  <span key={i}>
+                    <span className="font-mono text-foreground">{zeit}</span> {rest.join(" · ")}
+                  </span>
+                );
+              })}
             </div>
-          </Kachel>
+          </Karte>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PhaseZeile({ zustand, titel, rechts }: { zustand: "erledigt" | "aktiv" | "offen"; titel: string; rechts?: React.ReactNode }) {
+  return (
+    <div className={cn(
+      "flex min-h-[38px] items-center gap-2.5 rounded-[10px] px-2.5 py-1.5",
+      zustand === "aktiv" && "border border-primary/30 bg-primary/5",
+      zustand === "erledigt" && "bg-muted/60",
+    )}>
+      <span className={cn(
+        "flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full text-[11px]",
+        zustand === "erledigt" && "bg-emerald-600 text-white",
+        zustand === "aktiv" && "border-2 border-primary",
+        zustand === "offen" && "border-2 border-dotted border-muted-foreground/60",
+      )}>
+        {zustand === "erledigt" ? "✓" : ""}
+      </span>
+      <span className={cn(zustand === "aktiv" && "font-semibold", zustand === "offen" && "text-muted-foreground")}>{titel}</span>
+      <span className="ml-auto flex items-center">{rechts}</span>
     </div>
   );
 }
