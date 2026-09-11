@@ -113,3 +113,11 @@ qa_share_report_limiter = RateLimiter(max_calls=3, window_seconds=600)
 # in derselben Viertelstunde; ein Skript kann so weder die Tabelle aufblähen
 # noch unser Resend-Kontingent leerlaufen lassen.
 support_limiter = RateLimiter(max_calls=5, window_seconds=900)
+
+# Tippspiel zur Ratswahl (docs/plan-tippspiel-ratswahl.md). Öffentlich, ohne
+# Konto — die IP ist alles, was sich zählen lässt, und genau da liegt die
+# Falle: Eine Wahlparty hinter einem WLAN ist EINE Adresse, hinter der
+# 20–30 Leute gleichzeitig beitreten und tippen. Die Grenzen liegen deshalb
+# bewusst hoch — sie sollen ein Skript bremsen, nicht die Runde im Zimmer.
+prediction_join_limiter = RateLimiter(max_calls=60, window_seconds=600)
+prediction_tip_limiter = RateLimiter(max_calls=240, window_seconds=600)
