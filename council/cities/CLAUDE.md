@@ -6,20 +6,29 @@ gehalten. Alles Übrige: [`../CLAUDE.md`](../CLAUDE.md) und
 
 ## Ein Adapter je Ratsinformationssystem, nicht je Stadt
 
-Vier Hersteller bedienen die deutschen Kommunen; Städte desselben Herstellers
-antworten in derselben Sprache, mit denselben Eigenheiten. Deshalb gibt es
-**einen Adapter je System**, und jede Reparatur kommt allen Städten dieses
-Systems zugute — auch denen, die noch niemand angeschlossen hat.
+Vier Hersteller bedienen die meisten deutschen Kommunen; Städte desselben
+Herstellers antworten in derselben Sprache, mit denselben Eigenheiten.
+Deshalb gibt es **einen Adapter je System**, und jede Reparatur kommt allen
+Städten dieses Systems zugute — auch denen, die noch niemand angeschlossen
+hat. Eine Stadt kann auch einen Eigenbau fahren, ohne jeden Hersteller — dann
+bekommt sie trotzdem nur EINEN Adapter, keine Sonderbehandlung in der Mitte.
 
 | Datei | Zeilen | angeschlossen | wartet in der Registry |
 |---|---:|---|---|
-| `adapters/_common.py` | 418 | alle | alle |
+| `adapters/_common.py` | 435 | alle | alle |
 | `adapters/allris4.py` | 226 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn, Langenhagen, Peine |
-| `adapters/allris4_html.py` | 627 | Wolfsburg | Laatzen, Lüneburg |
-| `adapters/allris_classic.py` | 511 | — | Hildesheim |
+| `adapters/allris4_html.py` | 615 | Wolfsburg | Laatzen, Lüneburg |
+| `adapters/allris_classic.py` | 672 | — | Hildesheim |
+| `adapters/hannover_sim.py` | 454 | — | Hannover |
 | `adapters/session.py` | 164 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
 | `adapters/rubin.py` | 87 | — | Freiburg, Darmstadt |
 | `adapters/oldenburg.py` | 310 | Oldenburg (liest `council.sqlite`) | — |
+
+**Ein HTML-Typattribut ist projektweit dasselbe Problem.** BeautifulSoup
+liefert bei mehrwertigen Attributen (`class`) eine Liste statt einer
+Zeichenkette; drei HTML-lesende Dialekte bauten je ihre eigene `_attr()`, bis
+Hannover als dritte Kopie den Ausschlag gab. `attr()` in `_common.py` ist der
+eine Ort dafür — kein Dialekt bekommt seinen eigenen mehr.
 
 **Derselbe Hersteller kann DREI Adapter brauchen.** Neben ALLRIS 4 (mit und
 ohne Schnittstelle) gibt es die ältere Generation **ALLRIS classic**:
@@ -179,6 +188,76 @@ auf ``si018`` muss trotzdem passieren.
 **Und die Beratungsfolge steht über zwei Zeilen je Station** — Status,
 Gremium, Beschluss in der ersten, Datum und Sitzungsname in der zweiten. Wer
 Zeile für Zeile liest, bekommt lauter halbe Stationen.
+
+## Hannover: kein Hersteller, ein Eigenbau — und trotzdem nur EIN Adapter
+
+Hannover (535 k Einwohner, die größte Stadt im Vergleich) fährt keinen der
+vier Standard-Hersteller. Ihr „Sitzungsmanagement" (SIM) ist ein
+IBM-Notes/Domino-Webserver, öffentlich seit 2003, ohne Wicket- oder
+Formular-Zustand — jede Seite ein schlichtes GET. Gemessen 11.09.2026.
+
+**Ein zweiter, verlinkter Host wird bewusst NICHT gelesen.** `ris.hannit.de`
+(ALLRIS net, betrieben vom städtischen IT-Dienstleister hannIT) trägt eine
+ausdrückliche Zugriffssperre gegen automatisierte Zugriffe (ALTCHA-Challenge:
+„Zum Schutz vor automatisierten Zugriffen"). Dieselbe Regel wie bei
+Göttingens Cloudflare-Sperre: **eine bewusste Absage an automatisierten
+Zugriff ist eine Absage, keine Aufgabe** — auch dann, wenn die Technik dahinter
+(ein Rechenrätsel statt Verhaltenserkennung) grundsätzlich lösbar wäre.
+
+**Drei Gremien-Arten, drei Adressmuster**, alle als EINE ungeblätterte Liste
+mit Historie ab 2003: die Ratsversammlung (`Termine.xsp` ohne Parameter),
+33 Ausschüsse (`?view=Termine&grem=<Kürzel>`) und 13 Stadtbezirksräte
+(`?view=Termine<Kürzel>` — kein `grem=`, das Kürzel steht im `view`-Wert
+selbst). Jedes Gremium trägt seine eigene Listen-Adresse aus der Seite, auf
+der es gefunden wurde, statt aus einem nachgebauten Muster — die drei
+Adressformen sind zu verschieden, um sie zu raten.
+
+**Der Verwaltungsausschuss veröffentlicht keine einzige Sitzungsseite.** Er
+steht in keiner der drei Listen und hat kein Kürzel; er taucht ausschließlich
+als unverlinkter Text in der Beratungsfolge von Vorlagen auf. Seine
+Beratungen werden trotzdem erfasst (Datum, Ergebnis), nur ohne Sitzungs- oder
+Gremienbezug — was nicht veröffentlicht ist, bleibt unveröffentlicht, es
+bekommt keinen erfundenen Umweg.
+
+**Die Beratungsfolge verlinkt direkt auf ihre Sitzung, wo die existiert.**
+Das ist der Unterschied zu jedem anderen HTML-Dialekt hier: Beratung und
+Ergebnis lassen sich darüber einer Sitzung zuordnen, ohne einen Titel
+abzugleichen und ohne zu raten.
+
+**Tagesordnungspunkt-Seiten (`TOPS/…`) werden NICHT gelesen — bewusst, nicht
+aus Bequemlichkeit.** Sie dienen nur als Kennung. Gemessen: **22 von 25**
+geprüften Punkten einer Sitzung tragen auf ihrer eigenen Seite den Satz „Die
+zu diesem Tagesordnungspunkt vorliegenden Dokumente und Beratungsergebnisse
+sind vertraulich und daher nicht zur Veröffentlichung im Internet
+freigegeben" — direkt neben dem Ergebnis, das die Seite trotzdem zeigt.
+**Keine** der 39 geprüften Vorlagenseiten (`DS/…`) trägt diesen Satz; ihre
+Beratungsfolge ist ohne Einschränkung öffentlich. Ergebnisse kommen deshalb
+ausschließlich von dort. Punkte ohne Vorlage (Formalpunkte, mündliche
+Berichte) bleiben ohne Ergebnis — eine ehrliche Lücke, keine Vermutung über
+einen Text, den die Seite selbst als vertraulich bezeichnet.
+
+**Eine Ergebnis-Schreibweise ohne Zustimmungs- oder Ablehnungswort:** reine
+Stimmenzahlen wie „6 Stimmen dafür, 5 Stimmen dagegen, 0 Enthaltungen".
+`model.outcome` kennt keine Zahlen; der Adapter vergleicht hier direkt
+(dafür > dagegen → angenommen, dafür < dagegen → abgelehnt, gleich → offen,
+keine Vermutung) — und **nur**, wenn der ganze Ergebnistext exakt diese Form
+hat. Eine erzählende Passage wie „... fand bei 4 Ja-Stimmen, 6 Nein-Stimmen
+... nicht die erforderliche 2/3-Mehrheit" enthält ähnliche Zahlen, ist aber
+eine Verfahrensfrage (Dringlichkeit einer Tagesordnungs-Erweiterung), kein
+Sachbeschluss — ein Teiltreffer würde sie falsch einordnen.
+
+**„Einstimmig" ist Hannovers häufigstes Ergebniswort — ohne ein einziges
+Zustimmungswort daneben.** 64 von rund 250 Beratungen in einer Stichprobe.
+Es steht jetzt in `model._OUTCOME_RULES`, weil es in keinem gemessenen Fall
+für eine Ablehnung stand.
+
+**Ein Klammerzusatz ändert das Gremium nicht — außer bei einer echten
+gemeinsamen Sitzung.** „Ratsversammlung (Sondersitzung)" ist dieselbe
+Ratsversammlung; ohne einen Nachschlag ohne Klammer fanden zwei von 119
+Sitzungen einer Stichprobe ihr Gremium nicht. Eine ECHTE gemeinsame Sitzung
+mehrerer Gremien bleibt dagegen absichtlich ohne Treffer — sie einem der
+beteiligten Gremien zuzuschlagen wäre erfunden, derselbe Fehler wie die
+erfundenen Punkt-Kennungen aus phase0.
 
 **Eine Eigenheit gehört in den Adapter, nie in eine Stadt-Bedingung.** Ein
 `if body_id == "magdeburg"` im Normalisieren heißt: Die nächste Somacos-Stadt

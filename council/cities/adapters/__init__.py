@@ -48,6 +48,9 @@ def get_adapter(dialect: str) -> Adapter:
     if dialect == "allris_classic":
         from council.cities.adapters.allris_classic import AllrisClassicAdapter
         return AllrisClassicAdapter()
+    if dialect == "hannover_sim":
+        from council.cities.adapters.hannover_sim import HannoverSimAdapter
+        return HannoverSimAdapter()
     if dialect == "rubin":
         from council.cities.adapters.rubin import RubinAdapter
         return RubinAdapter()

@@ -41,6 +41,23 @@ SYNTHETISCHE_KENNUNG = "#top-"
 VERSCHLOSSEN = "Keine Information verfügbar"
 
 
+def attr(knoten, name: str) -> str:
+    """Ein HTML-Attribut als Zeichenkette — auch wenn BeautifulSoup eine Liste gibt.
+
+    ``get`` liefert bei mehrwertigen Attributen (``class``) eine Liste; wer
+    das Ergebnis blind wie eine Zeichenkette behandelt, bekommt an genau
+    einer Stelle einen Absturz, den kein Test sieht. Drei HTML-lesende
+    Dialekte (ALLRIS 4, ALLRIS classic, Hannovers Notes/Domino) brauchten
+    denselben Handgriff — hier steht er einmal für alle.
+    """
+    if knoten is None:
+        return ""
+    wert = knoten.get(name)
+    if isinstance(wert, (list, tuple)):
+        return " ".join(str(x) for x in wert)
+    return str(wert) if wert is not None else ""
+
+
 def obj_id(o: Any) -> str | None:
     """Die ``id``-URL eines Objekts — egal ob eingebettet oder als Verweis."""
     if isinstance(o, str):

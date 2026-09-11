@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 #: Die Dialekte, für die es einen Adapter gibt.
 DIALECTS = ("allris4", "allris4_html", "allris_classic", "session",
-            "rubin", "oldenburg")
+            "rubin", "oldenburg", "hannover_sim")
 
 
 @dataclass(frozen=True)
@@ -161,6 +161,24 @@ BODIES: dict[str, BodySpec] = {
               "aber nur /system — bodies und alles dahinter antworten mit "
               "HTTP 500. Gelesen wird deshalb die Oberfläche. 652 Sitzungen "
               "im Index (si018), gemessen 10.09.2026."),
+
+    # --- Hannover: kein Hersteller aus dem Vergleich, Eigenbau auf
+    #     Notes/Domino. Ein zweiter Host (ris.hannit.de/public/, ALLRIS net)
+    #     ist verlinkt, trägt aber eine ausdrückliche Sperre gegen
+    #     automatisierte Zugriffe (ALTCHA) — wird nicht umgangen, dieselbe
+    #     Regel wie bei Göttingens Cloudflare. Gelesen wird SIM.
+    "hannover": BodySpec(
+        "hannover", "Hannover", "NI", "hannover_sim",
+        "https://e-government.hannover-stadt.de/lhhsimwebre.nsf",
+        since="2018-01-01", active=False, fetch_files=False,
+        notes="Kein Lizenzhinweis. Historie ab 2003, ungeblättert. Der "
+              "Verwaltungsausschuss veröffentlicht keine Sitzungsseiten — "
+              "seine Beratungen stehen nur als unverlinkter Text in "
+              "Vorlagen. Ergebnisse kommen ausschließlich aus der "
+              "Beratungsfolge der Vorlage: Tagesordnungspunkt-Seiten "
+              "erklären ihre eigenen Ergebnistexte zu vertraulichen "
+              "Informationen (22 von 25 geprüften), Vorlagenseiten nie "
+              "(0 von 39). Gemessen 11.09.2026."),
 }
 
 
