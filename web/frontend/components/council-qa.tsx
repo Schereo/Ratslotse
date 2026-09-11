@@ -306,19 +306,19 @@ function BelegPeek({ source, nummer, onClose, onListe }: {
   // Viewport wieder; z-[70] schlägt die Nav (z-40), das Bottom-Padding hebt
   // die Karte mobil über sie.
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-end justify-center p-3 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:items-center sm:pb-3 print:hidden"
+    <div className="fixed inset-0 z-[70] flex items-end justify-center overflow-y-auto p-3 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] sm:items-center sm:pb-3 print:hidden"
       role="dialog" aria-modal="true" aria-label={`Quelle ${nummer ?? ""}`}>
       <button type="button" aria-label="Schließen" onClick={onClose}
         className="absolute inset-0 bg-foreground/25 backdrop-blur-[2px]" />
       <div ref={karteRef} tabIndex={-1}
-        className="relative w-full max-w-md animate-fade-up rounded-2xl border border-border bg-card p-4 shadow-xl outline-none">
+        className="relative max-h-[calc(100dvh-8rem)] w-full max-w-md overflow-y-auto animate-fade-up rounded-2xl border border-border bg-card p-4 shadow-xl outline-none">
         <div className="flex items-start gap-2.5">
           <span aria-hidden className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
             {nummer}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-snug text-foreground">{source.title}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="break-words text-quelle font-semibold text-foreground">{source.title}</p>
+            <p className="mt-1 text-meta text-muted-foreground">
               {source.committee} · {fmtDatum(source.session_date)}
               {source.outcome && OUTCOME_LABEL[source.outcome] ? ` · ${OUTCOME_LABEL[source.outcome]}` : ""}
             </p>
@@ -329,7 +329,7 @@ function BelegPeek({ source, nummer, onClose, onListe }: {
           </button>
         </div>
         {source.summary && (
-          <p className="mt-2.5 text-[13px] leading-relaxed text-muted-foreground">{source.summary}</p>
+          <p className="mt-2.5 text-lese text-foreground">{source.summary}</p>
         )}
         {source.location_matches?.[0] && (
           <div className="mt-2.5 rounded-lg bg-muted/60 px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground">
@@ -342,13 +342,13 @@ function BelegPeek({ source, nummer, onClose, onListe }: {
             )}
           </div>
         )}
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => router.push(decisionHref(source.id))}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-hinweis font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
             Beschluss öffnen <ArrowRight className="h-3 w-3" aria-hidden />
           </button>
           <button type="button" onClick={() => { onClose(); onListe(); }}
-            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            className="min-h-11 rounded-full border border-border px-3 py-2 text-hinweis font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             In Quellenliste zeigen
           </button>
         </div>
@@ -1810,28 +1810,28 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
         {showIntro && (
           /* justify-end hielt die Beispiele am Composer — aller freie Raum
              sammelte sich dadurch über Lottis Kopf (Tims Befund 12.08.).
-             justify-center verteilt ihn auf beide Seiten, pt-2 hält den
-             Abstand zum Seitenkopf knapp. */
-          <div className="flex flex-1 flex-col items-center justify-center pb-2 pt-1 text-center">
+             Flexible Abstandhalter verteilen ihn auf beide Seiten; bei großer
+             Schrift schrumpfen sie auf null, damit der Anfang erreichbar bleibt. */
+          <div className="flex flex-1 flex-col items-center pb-2 pt-1 text-center before:flex-1 after:flex-1">
             {/* 6a①: Erstnutzungs-Frage — einmalig, solange nie beantwortet. */}
             {einstellung === null && (
               <div className="mb-5 w-full max-w-md rounded-2xl border border-primary/25 bg-primary/[0.04] p-4 text-left">
-                <div className="flex items-start gap-3">
+                <div className="flex flex-col items-start gap-3 sm:flex-row">
                   <Mascot pose="wave" className="h-10 w-10 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">Soll ich mir deine Gespräche merken?</p>
-                    <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                    <p className="mt-1 text-hinweis text-muted-foreground">
                       Wenn du magst, speichere ich deine Verläufe in deinem Konto — du findest
                       sie dann auf allen Geräten oben unter „Gespräche". Wenn nicht, wird das
                       Gespräch gelöscht, sobald du es schließt.
                     </p>
-                    <div className="mt-2.5 flex gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <button type="button" onClick={() => void einwilligen(true)}
-                        className="rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                        className="min-h-11 rounded-full bg-primary px-3.5 py-2 text-hinweis font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
                         KI nutzen & merken
                       </button>
                       <button type="button" onClick={() => void einwilligen(false)}
-                        className="rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                        className="min-h-11 rounded-full border border-border px-3.5 py-2 text-hinweis font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                         KI nutzen, nicht merken
                       </button>
                     </div>
@@ -1839,7 +1839,7 @@ export function QaTab({ modeToggle }: { modeToggle?: ReactNode }) {
                         Einstellungen (gegen den Dauer-Lärm) — ein Neuling sah ihn
                         damit nie vor seiner ersten Frage. Diese Karte unterbricht
                         ohnehin genau einmal; hier gehört der Satz hin. */}
-                    <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
+                    <p className="mt-3 text-hinweis text-muted-foreground">
                       Frage und passende Ratsauszüge werden über OpenRouter extern verarbeitet;
                       eine Drittlandverarbeitung ist möglich. Mit einer Auswahl erlaubst du
                       diese Übermittlung. Ohne sie kann „Frag den Rat“ keine Antwort erzeugen.
@@ -2409,7 +2409,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
             <SteckbriefBaustein steckbriefe={turn.steckbriefe ?? []} />
           )}
           {/* div statt p: die Antwort darf Listen (ul) enthalten. */}
-          <div className="whitespace-pre-wrap text-[14.5px] leading-[1.7] text-foreground sm:leading-[1.75]">
+          <div className="whitespace-pre-wrap text-lese text-foreground">
             {/* 5a/I-01: Der Chip öffnet erst das Peek — nicht sofort wegspringen. */}
             <AntwortText text={turn.answer} idToNum={idToNum} onJump={(id) => setPeekId(id)}
               anlBuchstaben={anlBuchstaben}
@@ -2571,7 +2571,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               die Bewertung nur unten rechts in der Belege-Spalte wurde nicht
               als zugehörig erkannt (Tims Befund 10.08.). */}
           {!beschaeftigt && (
-            <div className="flex items-center gap-1 border-t border-border/60 pt-1.5 print:hidden">
+            <div className="flex flex-wrap items-center gap-1 border-t border-border/60 pt-1.5 print:hidden">
               {/* Task 31: teilt einen Snapshot GENAU dieser Antwort — der alte
                   ?q=-Link ließ Empfänger eine andere Antwort würfeln. */}
               {turn.answer && !turn.fehler && !turn.abgebrochen && (
@@ -2580,7 +2580,7 @@ function TurnView({ turn, turnIdx, istLetzter, loading, step, word, flashId, onJ
               <PrintButton iconOnly />
               {turn.answer && !turn.fehler && <VorlesenKnopf text={turn.answer} />}
               {turn.answer && !turn.fehler && <FeedbackDaumen turn={turn} />}
-              <span role="status" className="min-w-0 flex-1 text-right text-[10.5px] leading-snug text-muted-foreground/70">
+              <span role="status" className="min-w-0 basis-full text-hinweis text-muted-foreground sm:flex-1 sm:basis-auto sm:text-right">
                 {/* 5a/I-02 bzw. RG-10: ehrlich sagen, worauf die Antwort fußt. */}
                 {turn.unclear
                   ? null
@@ -2918,42 +2918,46 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
     [turn.sources, idToNum]);
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+      <p className="font-mono text-meta uppercase tracking-[0.08em] text-muted-foreground">
         Quellen
-        <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
+        <span className="ml-1.5 normal-case tracking-normal">
           {zitierte.length > 0 ? `${zitierte.length} zitiert · ` : ""}{turn.sources.length} gefunden
           {turn.mode ? ` · ${MODE_LABEL[turn.mode] ?? turn.mode}` : ""}
         </span>
       </p>
-      {/* Zitierte als EINZEILIGE Pills: Titel + Jahr (Design 2④) — Gremium &
-          Datum stehen im Ausklapper und im Beschluss-Detail. */}
+      {/* Titel, Gremium und Datum bleiben vollständig lesbar — gerade der
+          Projektname steht in amtlichen Titeln oft erst am Ende. */}
       {zitierte.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-col gap-2">
           {zitierte.map((s) => (
             <button key={s.id} type="button" id={`${ankerPrefix}-${s.id}`}
               onClick={() => router.push(decisionHref(s.id))}
               title={`${s.title ?? ""} — ${s.committee} · ${fmtDatum(s.session_date)}`}
               className={cn(
-                "inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card py-1 pl-1 pr-2.5 text-left transition-[background-color,box-shadow] hover:bg-muted",
+                "flex w-full items-start gap-2.5 rounded-xl border border-border bg-card p-3 text-left transition-[background-color,box-shadow] hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
-              <span aria-hidden className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+              <span aria-hidden className="mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-primary px-1 text-meta font-bold text-primary-foreground">
                 {idToNum.get(s.id)}
               </span>
-              <span className="max-w-[210px] truncate text-[12px] font-medium leading-none sm:max-w-[240px]">{s.title}</span>
-              {turn.qtype === "party" && s.factions && s.factions.length > 0 && (
-                <span className="rounded-[4px] bg-signal/10 px-1 py-px text-[9px] font-bold leading-none text-signal">
-                  {s.factions[0]}
+              <span className="min-w-0 flex-1">
+                <span className="block break-words text-quelle font-semibold">{s.title}</span>
+                <span className="mt-1 block break-words font-mono text-meta text-muted-foreground">
+                  {[s.committee, fmtDatum(s.session_date)].filter(Boolean).join(" · ")}
                 </span>
-              )}
-              <span className="shrink-0 font-mono text-[9.5px] leading-none text-muted-foreground">{year(s.session_date)}</span>
+                {turn.qtype === "party" && s.factions && s.factions.length > 0 && (
+                  <span className="mt-1 inline-block rounded bg-muted px-1.5 text-meta font-medium text-muted-foreground">
+                    {s.factions[0]}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
       )}
       {/* Partei-Ehrlichkeit (RG-05). */}
       {turn.qtype === "party" && (
-        <p className="mt-2 text-[11px] leading-snug text-muted-foreground/80">
+        <p className="mt-2 text-hinweis text-muted-foreground">
           Abstimmungsergebnisse einzelner Fraktionen erfasst das Ratsinformationssystem nicht —
           deshalb zeigt Ratslotse hier bewusst keine Stimm-Grafik.
         </p>
@@ -2972,26 +2976,26 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
       {showAll && weitere.length > 0 && (
         <div className="mt-2 space-y-1">
           {zitierte.length > 0 && (
-            <p className="px-2 pb-0.5 text-[11px] text-muted-foreground/70">
+            <p className="px-2 pb-0.5 text-hinweis text-muted-foreground">
               Gefunden und documents_read, in der Antwort aber nicht zitiert:
             </p>
           )}
           {weitere.map((s) => (
             <div key={s.id} id={`${ankerPrefix}-alle-${s.id}`}
               className={cn(
-                "group flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted",
+                "group flex w-full flex-wrap items-start gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted",
                 flashId === s.id && "ring-2 ring-primary",
               )}>
               <button type="button" onClick={() => router.push(decisionHref(s.id))}
                 className="flex min-w-0 flex-1 items-baseline gap-2 text-left">
                 <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 self-start rounded-full bg-border" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px]">{s.title}</span>
-                  <span className="block font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
+                  <span className="block break-words text-quelle font-medium">{s.title}</span>
+                  <span className="mt-1 block break-words font-mono text-meta text-muted-foreground">
                     {s.committee} · {fmtDatum(s.session_date)}
                   </span>
                   {s.location_matches?.[0] && (
-                    <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground">
+                    <span className="mt-1 flex items-center gap-1 text-meta text-muted-foreground">
                       <MapPin className="h-3 w-3" aria-hidden />
                       Ortsbezug: {s.location_matches[0].name}
                     </span>
@@ -2999,7 +3003,7 @@ function QuellenBlock({ turn, turnIdx, idToNum, zitierte, showAll, setShowAll, f
                 </span>
               </button>
               {typeof s.score === "number" && (
-                <span className="shrink-0 font-mono text-[9.5px] text-muted-foreground/70">Score {Math.round(s.score * 100)}</span>
+                <span className="font-mono text-meta text-muted-foreground">Score {Math.round(s.score * 100)}</span>
               )}
               {/* 5a/I-08: das Gespräch direkt an einer Quelle weiterführen. */}
               {onDazuFragen && (

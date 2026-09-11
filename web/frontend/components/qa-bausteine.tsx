@@ -647,16 +647,16 @@ export function AntwortText({ text: rohtext, idToNum, onJump, quelleHref,
                   id={ankerPrefix ? `${ankerPrefix}-${++kopfIndex}` : undefined}
                   className={cn("block scroll-mt-16 first:mt-0",
                     berichtKoepfe
-                      ? "mt-4 font-display text-[15.5px] font-bold tracking-tight"
-                      : "mt-3 text-[13.5px] font-bold tracking-tight")}>
+                      ? "mt-4 font-display text-lg font-bold tracking-tight"
+                      : "mt-3 text-lese font-bold tracking-tight")}>
                   {inline(g.zeilen[0].trim().replace(/^##\s+/, ""), `${bi}-${gi}`)}
                 </span>
               ) : g.art === "unterkopf" ? (
                 <span key={gi}
                   className={cn("block first:mt-0",
                     berichtKoepfe
-                      ? "mt-3 font-display text-[14px] font-bold tracking-tight"
-                      : "mt-2.5 text-[13px] font-bold tracking-tight")}>
+                      ? "mt-3 font-display text-lese font-bold tracking-tight"
+                      : "mt-2.5 text-lese font-semibold tracking-tight")}>
                   {inline(g.zeilen[0].trim().replace(/^#{1,6}\s+/, ""), `${bi}-${gi}`)}
                 </span>
               ) : g.art === "liste" ? (
@@ -713,29 +713,25 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
           const b = buchstaben.get(nr);
           return (
           <li key={i} id={`${ankerPrefix}-${nr}`}
-            className={cn("scroll-mt-16 text-[12.5px] leading-snug",
-              // Nicht belegte Anlagen treten zurück, sobald überhaupt eine im
-              // Text auftaucht — sonst sähen gelesene und benutzte Unterlagen
-              // gleich aus.
-              !b && belegt > 0 && "opacity-60")}>
+            className="scroll-mt-16 text-hinweis">
             <a href={a.url ?? undefined} target="_blank" rel="noopener noreferrer"
-              className="group flex items-baseline gap-2">
+              className="group flex flex-wrap items-baseline gap-2">
               {b && (
                 <span aria-hidden
                   className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded border border-primary/25 px-1 text-[10px] font-semibold leading-none text-primary/90">
                   {b}
                 </span>
               )}
-              <span className="min-w-0 flex-1 truncate font-medium group-hover:underline">
+              <span className="min-w-0 flex-1 break-words text-quelle font-medium group-hover:underline">
                 {a.label || "Anlage"}
               </span>
               {a.template_number && (
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{a.template_number}</span>
+                <span className="font-mono text-meta text-muted-foreground">{a.template_number}</span>
               )}
               <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
             </a>
             {a.template_title && (
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">zu: {a.template_title}</p>
+              <p className="mt-1 break-words text-meta text-muted-foreground">zu: {a.template_title}</p>
             )}
             {a.excerpt && (
               <p className="mt-0.5 text-muted-foreground">{a.excerpt}{a.excerpt.length >= 220 ? "…" : ""}</p>
@@ -745,7 +741,7 @@ export function AnlagenBlock({ attachments, ankerPrefix, buchstaben }: {
         })}
       </ul>
       {belegt > 0 && belegt < attachments.length && (
-        <p className="mt-2 text-[10.5px] leading-relaxed text-muted-foreground/70">
+        <p className="mt-2 text-hinweis text-muted-foreground">
           Die übrigen wurden documents_read, aber im Bericht nicht belegt.
         </p>
       )}
@@ -764,16 +760,16 @@ export function PresseBlock({ press_releases }: { press_releases: PresseHinweis[
           <li key={p.url}>
             <a href={p.url} target="_blank" rel="noopener noreferrer"
               className="group block rounded-lg px-1.5 py-1 text-sm transition-colors hover:bg-muted">
-              <span className="flex items-baseline gap-2">
-                <span className="min-w-0 flex-1 truncate text-[12.5px] group-hover:underline">{p.title}</span>
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{fmtDatumKurz(p.date)}</span>
+              <span className="flex flex-wrap items-baseline gap-2">
+                <span className="min-w-0 flex-1 break-words text-quelle group-hover:underline">{p.title}</span>
+                <span className="font-mono text-meta text-muted-foreground">{fmtDatumKurz(p.date)}</span>
                 <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
               </span>
               {/* Die Meldung SELBST, nicht nur ihre Überschrift: Ohne den
                   Anriss war die Karte eine reine Weiterleitung auf die
                   Stadt-Seite (Tims Befund 01.09.2026). */}
               {p.excerpt && (
-                <span className="mt-0.5 line-clamp-3 block text-[11.5px] leading-snug text-muted-foreground">
+                <span className="mt-1 line-clamp-3 block text-hinweis text-muted-foreground">
                   {p.excerpt}
                 </span>
               )}
