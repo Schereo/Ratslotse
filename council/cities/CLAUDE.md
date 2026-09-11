@@ -14,11 +14,11 @@ Systems zugute — auch denen, die noch niemand angeschlossen hat.
 | Datei | Zeilen | angeschlossen | wartet in der Registry |
 |---|---:|---|---|
 | `adapters/_common.py` | 411 | alle | alle |
-| `adapters/allris4.py` | 229 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn, Langenhagen, Peine |
-| `adapters/allris4_html.py` | 459 | — | Laatzen, Lüneburg, Wolfsburg |
-| `adapters/session.py` | 167 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
-| `adapters/rubin.py` | 90 | — | Freiburg, Darmstadt |
-| `adapters/oldenburg.py` | 313 | Oldenburg (liest `council.sqlite`) | — |
+| `adapters/allris4.py` | 226 | Osnabrück, Braunschweig, Potsdam | Leipzig, Bonn, Langenhagen, Peine |
+| `adapters/allris4_html.py` | 633 | — | Laatzen, Lüneburg, Wolfsburg |
+| `adapters/session.py` | 164 | Münster, Magdeburg | Köln, Dresden, Wuppertal, Düsseldorf |
+| `adapters/rubin.py` | 87 | — | Freiburg, Darmstadt |
+| `adapters/oldenburg.py` | 310 | Oldenburg (liest `council.sqlite`) | — |
 
 **Derselbe Hersteller kann zwei Adapter brauchen.** ALLRIS 4 hat ein
 OParl-Modul; wo es antwortet, liest `allris4.py` die Schnittstelle. Wo es

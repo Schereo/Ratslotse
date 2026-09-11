@@ -298,9 +298,6 @@ class OldenburgAdapter:
                 for a in batch.agenda_items]
         return batch
 
-    def file_url(self, file_json: dict, url: str | None) -> str | None:
-        return url
-
     # ------------------------------------------------------------- Texte
 
     def inline_texts(self, raw: CitiesStore, body_id: str) -> list[tuple[str, str]]:
