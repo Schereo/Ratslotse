@@ -2038,9 +2038,9 @@ private struct DecisionTemplateExcerpt: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(text)
-                .font(RatsFont.body(14))
+                .font(RatsFont.reading())
                 .foregroundStyle(RatsColor.bodyText)
-                .lineSpacing(4)
+                .lineSpacing(6)
                 .lineLimit(isExpanded || !isLong ? nil : 5)
             if isLong {
                 Button {
@@ -2063,6 +2063,8 @@ private struct DecisionTemplateExcerpt: View {
 
 private struct DecisionDetailHeader: View {
     let detail: DecisionDetail
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var showsTags = false
 
     var body: some View {
         let decision = detail.decision
@@ -2071,10 +2073,6 @@ private struct DecisionDetailHeader: View {
                 if let outcome = decision.outcome {
                     DecisionDetailOutcome(outcome: outcome)
                 }
-                Text(metadata)
-                    .font(RatsFont.mono(9.5))
-                    .foregroundStyle(RatsColor.muted)
-                    .lineLimit(2)
                 Spacer(minLength: 0)
                 if let score = detail.importance?.score, score >= 55 {
                     RatsLabel("\(score)", .flame)
@@ -2088,6 +2086,11 @@ private struct DecisionDetailHeader: View {
                 }
             }
 
+            Text(metadata)
+                .font(RatsFont.metadata())
+                .foregroundStyle(RatsColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
             Text(decision.title)
                 .font(RatsFont.title(24))
                 .foregroundStyle(RatsColor.text)
@@ -2095,21 +2098,26 @@ private struct DecisionDetailHeader: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if !tags.isEmpty {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
-                    alignment: .leading,
-                    spacing: 7
-                ) {
-                    ForEach(tags, id: \.self) { tag in
-                        RatsLabel(tag, .tag)
-                            .font(RatsFont.body(10.5, weight: .semibold))
-                            .foregroundStyle(RatsColor.primary)
-                            .lineLimit(1)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 6)
-                            .background(RatsColor.primary.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                if horizontalSizeClass == .compact {
+                    Button {
+                        showsTags.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            RatsIcon(.tag, size: 13)
+                            Text("\(tags.count) \(tags.count == 1 ? "Stichwort" : "Stichwörter")")
+                                .font(RatsFont.metadata())
+                            RatsIcon(.chevronDown, size: 12)
+                                .rotationEffect(.degrees(showsTags ? 180 : 0))
+                        }
+                        .foregroundStyle(RatsColor.muted)
+                        .frame(minHeight: 44)
                     }
+                    .buttonStyle(RatsPlainButtonStyle())
+                    .accessibilityValue(showsTags ? "Ausgeklappt" : "Eingeklappt")
+                    .accessibilityHint(showsTags ? "Stichwörter ausblenden" : "Stichwörter anzeigen")
+                }
+                if horizontalSizeClass != .compact || showsTags {
+                    tagGrid
                 }
             }
         }
@@ -2128,6 +2136,25 @@ private struct DecisionDetailHeader: View {
         }
     }
 
+    private var tagGrid: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 145), spacing: 7)],
+            alignment: .leading,
+            spacing: 7
+        ) {
+            ForEach(tags, id: \.self) { tag in
+                RatsLabel(tag, .tag)
+                    .font(RatsFont.body(10.5, weight: .semibold))
+                    .foregroundStyle(RatsColor.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(RatsColor.primary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+    }
+
     private var metadata: String {
         let decision = detail.decision
         let item = decision.itemNumber.map { "TOP \($0)" }
@@ -2142,7 +2169,7 @@ private struct DecisionDetailHeader: View {
         let field = decision.policyField.map {
             $0.replacingOccurrences(of: "_", with: " ").capitalized
         }
-        return Array(([field].compactMap { $0 } + decision.policyTags + detail.entities.map(\.name)).prefix(7))
+        return [field].compactMap { $0 } + decision.policyTags + detail.entities.map(\.name)
     }
 }
 
@@ -2189,21 +2216,22 @@ private struct LottiDecisionSummary: View {
                     .frame(width: 72, height: 64)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("LOTTI ERKLÄRT'S EINFACH")
-                        .font(RatsFont.mono(9.5))
-                        .tracking(1.1)
-                        .foregroundStyle(RatsColor.signal)
+                        .font(RatsFont.metadata())
+                        .tracking(0.6)
+                        .foregroundStyle(RatsColor.signalInk)
                     Text("Das Wichtigste in Kürze")
                         .font(RatsFont.body(16, weight: .bold))
                         .foregroundStyle(RatsColor.text)
                 }
             }
             Text(text)
-                .font(RatsFont.body(15))
+                .font(RatsFont.reading())
                 .foregroundStyle(RatsColor.bodyText)
-                .lineSpacing(5)
+                .lineSpacing(6)
             RatsLabel("Automatische Kurzfassung – verbindlich ist der amtliche Wortlaut.", .sparkles)
-                .font(RatsFont.body(10.5))
+                .font(RatsFont.notice())
                 .foregroundStyle(RatsColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(17)
         .background(RatsColor.signal.opacity(0.065))
@@ -2222,9 +2250,9 @@ private struct DecisionOfficialText: View {
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             Text(text)
-                .font(RatsFont.body(13.5))
-                .foregroundStyle(RatsColor.secondary)
-                .lineSpacing(4)
+                .font(RatsFont.reading())
+                .foregroundStyle(RatsColor.bodyText)
+                .lineSpacing(6)
                 .padding(.top, 10)
         } label: {
             Label {
@@ -2233,7 +2261,7 @@ private struct DecisionOfficialText: View {
                         .font(RatsFont.body(13.5, weight: .semibold))
                         .foregroundStyle(RatsColor.text)
                     Text("Aus dem Sitzungsprotokoll")
-                        .font(RatsFont.body(10.5))
+                        .font(RatsFont.metadata())
                         .foregroundStyle(RatsColor.muted)
                 }
             } icon: {
@@ -2420,19 +2448,20 @@ private struct DecisionDocumentsCard: View {
                                     .foregroundStyle(RatsColor.primary)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(attachment.label)
-                                        .font(RatsFont.body(12.5, weight: .medium))
-                                        .lineLimit(2)
+                                        .font(RatsFont.sourceTitle(weight: .medium))
+                                        .fixedSize(horizontal: false, vertical: true)
                                         .multilineTextAlignment(.leading)
                                     if !attachment.applicants.isEmpty {
                                         Text(attachment.applicants.joined(separator: " · "))
-                                            .font(RatsFont.mono(9.5))
+                                            .font(RatsFont.metadata())
                                             .foregroundStyle(RatsColor.muted)
                                     }
                                 }
                                 Spacer(minLength: 5)
                                 RatsIcon(.eye, size: 16).foregroundStyle(RatsColor.muted)
                             }
-                            .padding(.vertical, 2)
+                            .frame(minHeight: 44)
+                            .padding(.vertical, 4)
                         }
                         .buttonStyle(RatsPlainButtonStyle())
                     }
@@ -2458,11 +2487,14 @@ private struct DecisionDocumentLink: View {
         Link(destination: url) {
             HStack(spacing: 9) {
                 RatsIcon(symbol, size: 14).foregroundStyle(RatsColor.primary)
-                Text(title).font(RatsFont.body(12.5, weight: .medium))
+                Text(title).font(RatsFont.sourceTitle(weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
                 Spacer()
                 RatsIcon(.arrowUpRight, size: 12)
             }
             .foregroundStyle(RatsColor.bodyText)
+            .frame(minHeight: 44)
         }
     }
 }

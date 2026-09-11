@@ -56,7 +56,7 @@ function Section({
   return (
     <div className="mt-6">
       <h2 className="text-sm font-semibold text-muted-foreground">{title}</h2>
-      {subtitle && <p className="text-xs text-muted-foreground/70">{subtitle}</p>}
+      {subtitle && <p className="text-meta text-muted-foreground">{subtitle}</p>}
       <div className={subtitle ? "mt-2" : "mt-2.5"}>{children}</div>
     </div>
   );
@@ -72,14 +72,14 @@ function SimpleSummaryHero({ text }: { text: string }) {
       <div className="flex items-center gap-2.5">
         <Mascot pose="point" decorative className="h-11 w-11 shrink-0" />
         <div className="min-w-0">
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-signal">
+          <p className="font-mono text-meta font-medium uppercase tracking-[0.08em] text-orange-800 dark:text-orange-300">
             Lotti erklärt&rsquo;s einfach
           </p>
           <p className="font-display text-base font-bold leading-tight text-foreground">Das Wichtigste in Kürze</p>
         </div>
       </div>
-      <p className="mt-3 text-[15px] leading-relaxed text-foreground">{text}</p>
-      <p className="mt-2.5 text-xs text-muted-foreground">
+      <p className="mt-3 text-lese text-foreground">{text}</p>
+      <p className="mt-2.5 text-hinweis text-muted-foreground">
         Automatische Kurzfassung — verbindlich ist der amtliche Wortlaut.
       </p>
     </div>
@@ -113,7 +113,7 @@ function OfficialTextCard({ text }: { text: string }) {
       </button>
       {open && (
         <div className="border-t border-border px-4 pb-4">
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{text}</p>
+          <p className="mt-3 text-lese text-foreground">{text}</p>
         </div>
       )}
     </div>
@@ -541,7 +541,7 @@ function VorlageExcerpt({ text }: { text: string }) {
   const long = text.length > 420;
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <p className={cn("whitespace-pre-line text-sm leading-relaxed text-foreground", !open && long && "line-clamp-5")}>
+      <p className={cn("whitespace-pre-line text-lese text-foreground", !open && long && "line-clamp-5")}>
         {text}
       </p>
       {long && (
@@ -549,6 +549,47 @@ function VorlageExcerpt({ text }: { text: string }) {
           {open ? "Weniger anzeigen" : "Mehr anzeigen"}
         </button>
       )}
+    </div>
+  );
+}
+
+/** Die Einordnung ist auf kleinen Displays nachrangig zur Kurzfassung. */
+function DecisionTags({ detail }: { detail: DecisionDetail }) {
+  const [open, setOpen] = useState(false);
+  const d = detail.decision;
+  const count = (d.policy_field ? 1 : 0) + d.policy_tags.length + detail.entities.length;
+  if (!count) return null;
+  const contentId = `stichwoerter-${d.id}`;
+  return (
+    <div>
+      <button type="button" aria-expanded={open} aria-controls={contentId}
+        onClick={() => setOpen((value) => !value)}
+        className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-md text-meta text-muted-foreground transition-colors hover:text-foreground sm:hidden print:hidden">
+        <Tag aria-hidden="true" className="h-3.5 w-3.5" />
+        {count} {count === 1 ? "Stichwort" : "Stichwörter"}
+        <ChevronDown aria-hidden="true" className={cn("h-3.5 w-3.5", open && "rotate-180")} />
+      </button>
+      <div id={contentId} className={cn(open ? "block" : "hidden", "sm:block print:block")}>
+        {(d.policy_field || d.policy_tags.length > 0) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <FieldBadge field={d.policy_field} />
+            {d.policy_tags.map((tag) => (
+              <span key={tag} className="max-w-full break-words rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{tag}</span>
+            ))}
+          </div>
+        )}
+        {detail.entities.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {detail.entities.map((entity) => (
+              <Link key={entity.slug} href={themaHref(entity.slug)}
+                className="inline-flex min-h-11 max-w-full items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-muted sm:min-h-0"
+                title={`Alle Beschlüsse zu „${entity.name}"`}>
+                <Tag aria-hidden="true" className="h-3 w-3 shrink-0 text-muted-foreground" /><span className="min-w-0 break-words">{entity.name}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -618,7 +659,7 @@ function DecisionDetailInner() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="print-hidden flex items-center justify-between gap-3">
+      <div className="print-hidden flex flex-wrap items-center justify-between gap-3">
         {zeigeZurueck ? (
           <button onClick={backToSession} className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4 shrink-0" />
@@ -630,7 +671,7 @@ function DecisionDetailInner() {
         ) : (
           <span />
         )}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <BookmarkButton target={{ kind: "decision", decision_id: d.id }} />
           {/* Design 28a/W3: Das Druck-Stylesheet (globals.css) blendet Navigation
               und Beiwerk längst aus — es gab nur keinen Weg, den Druck aus der
@@ -688,13 +729,13 @@ function DecisionDetailInner() {
       {/* RL-601: Statuszeile (Punkt+Wort · Gremium·Datum·TOP · Mono-Aktenzeichen
           · Wichtig-Chip), H1 32/700, darunter Dokument-Grid 1fr/300px. */}
       <div className="mt-3">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-meta text-muted-foreground">
           <OutcomeDot outcome={d.outcome} />
           <span title={d.committee}>
             {shortCommittee(d.committee)} · {formatDate(d.session_date)}
             {d.item_number ? ` · TOP ${d.item_number}` : ""}
           </span>
-          {d.template_number && <span className="font-mono text-[11px]">{d.template_number}</span>}
+          {d.template_number && <span className="font-mono text-meta">{d.template_number}</span>}
           {d.kind !== "subvote" && (data.importance_breakdown?.score ?? 0) >= 55 && (
             <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
               Wichtig · {data.importance_breakdown!.score}/100
@@ -704,25 +745,7 @@ function DecisionDetailInner() {
         <h1 className="mt-1.5 hyphens-auto font-display text-2xl font-bold leading-tight text-foreground sm:text-[32px] sm:leading-10">
           {d.title}
         </h1>
-        {(d.policy_field || d.policy_tags.length > 0) && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <FieldBadge field={d.policy_field} />
-            {d.policy_tags.map((t) => (
-              <span key={t} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{t}</span>
-            ))}
-          </div>
-        )}
-        {data.entities.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {data.entities.map((e) => (
-              <Link key={e.slug} href={themaHref(e.slug)}
-                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-muted"
-                title={`Alle Beschlüsse zu „${e.name}"`}>
-                <Tag className="h-3 w-3 text-muted-foreground" />{e.name}
-              </Link>
-            ))}
-          </div>
-        )}
+        <DecisionTags key={d.id} detail={data} />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -773,7 +796,7 @@ function DecisionDetailInner() {
                 {data.template?.excerpt && (
                   <div>
                     <p className="text-sm font-semibold text-foreground">Warum es dazu kam</p>
-                    <p className="mb-2 text-xs text-muted-foreground/70">
+                    <p className="mb-2 text-meta text-muted-foreground">
                       Sachverhalt und Begründung aus der {vorlageArt(data.template.kind)} der Verwaltung
                       {data.template.office ? ` — federführend: ${data.template.office}` : ""}
                     </p>
@@ -831,10 +854,10 @@ function DecisionDetailInner() {
                 <div className="mt-1.5 flex flex-col gap-1.5">
                   {data.anlagen!.map((an) => (
                     <a key={an.document_id} href={an.url ?? undefined} target="_blank" rel="noreferrer"
-                      className="group flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm transition-colors hover:bg-muted">
-                      <span className="flex min-w-0 items-center gap-2">
+                      className="group flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-2 text-quelle transition-colors hover:bg-muted">
+                      <span className="flex min-w-0 flex-1 items-start gap-2">
                         <FileDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        <span className="truncate text-foreground">{an.label || "Dokument"}</span>
+                        <span className="min-w-0 break-words text-foreground">{an.label || "Dokument"}</span>
                       </span>
                       {an.is_motion === 1 && an.applicants.length > 0 && (
                         <span className="flex shrink-0 items-center gap-1">
