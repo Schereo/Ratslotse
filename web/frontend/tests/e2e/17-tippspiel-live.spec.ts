@@ -176,9 +176,11 @@ test.describe("Schalter an", () => {
 
     // Die Satz-Kachel (Lotti + Server-Satz) darf im Hellen nicht dunkel
     // sein — Tims stehende Regel „Anzeigetafel-Tönung, nie Tiefsee im Hellen".
-    const helligkeit = await page.evaluate(() => {
-      const el = document.querySelector("[data-testid=vergleich-satz]");
-      if (!el) return null;
+    // Netzwerkruhe garantiert noch keinen fertigen React-Render nach dem
+    // Reload. Erst die sichtbare Karte messen, sonst liefert die CI null.
+    const satz = page.getByTestId("vergleich-satz");
+    await expect(satz).toBeVisible();
+    const helligkeit = await satz.evaluate(el => {
       const bg = getComputedStyle(el).backgroundColor;
       const [r, g, b] = bg.match(/[\d.]+/g)!.map(Number);
       return (r * 299 + g * 587 + b * 114) / 1000; // Wahrgenommene Helligkeit, 0–255.

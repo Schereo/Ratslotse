@@ -508,6 +508,34 @@ jeweiligen Baustein; die Seite bestimmt Platz und Reihenfolge. Stabile Kennungen
 (etwa `seit-besuch`) bereiten eine spätere persönliche Auswahl vor. Eine
 Auswahl oder Sortierung der Widgets gibt es derzeit noch nicht.
 
+Alle sechs Web-Widgets verwenden `HeuteWidget`: Rückblick, Woche, Zahl,
+Viertel, Verlauf und Fundstück. Der Kopf hat links ein Lucide-Icon (20 px),
+daneben Bricolage 16/700, darunter eine durchgezogene Trennlinie. Kopf und
+Inhalt haben 16 px seitlichen und 12 px vertikalen Abstand; der optionale
+Abschluss hat 16 × 8 px. Zwischen Karten liegen 16 px. Keine eigenen
+Kartenfarben, Kopf-Polsterungen oder rechts stehenden Ersatz-Icons; Farbe
+hebt einzelne Informationen hervor, etwa die Kennzahl. Inhalt folgt den
+Leserollen: Titel 16, Hinweis 14, Metadaten 13 — als rem.
+
+`HeuteWidgetGrid` bietet ab ausreichender Rasterbreite zwei Spalten.
+`size="normal"` belegt eine, `size="wide"` beide. Die Größen sind zunächst
+Vorgaben im Seitenlayout; es gibt noch keine persönliche Größenauswahl.
+Die Karte misst ihre **eigene Inhaltsbreite**, relativ zur Schriftgröße:
+unter 28 rem `compact`, ab 28 rem `standard`, ab 56,25 rem `expanded`.
+`useWidgetDetail()` bzw. die Render-Funktion des Inhalts liefert diese Stufe.
+Eine breite Vorgabe auf dem Telefon bleibt kompakt. Kein fester Höhenrahmen,
+der große Schrift abschneidet.
+
+Größe verändert den Inhalt: Die Woche zeigt ein/zwei/drei Punkte je Sitzung
+und breit zusätzliche Erläuterungen; weitere Punkte bleiben aufklappbar.
+Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen,
+der breite Viertel-Baustein ein vorhandenes Vorhaben zum Ortsnamen.
+Der Verlauf zeigt kompakt drei Einträge mit Nachladen, breit bis zu fünf
+mit längeren Titeln. Das Fundstück ergänzt breit die vollständige Erzählung
+und Quellenangaben. Nicht jede Kennzahl braucht künstlich mehr Information,
+nur weil Platz da ist. Die beiden kompakten Überblickskarten stehen vor der
+breiten Woche; weitere Widgets folgen im selben Raster.
+
 „Seit deinem letzten Besuch“ ersetzt die frühere Themen-Karte auf Heute.
 Der Rückblick zeigt allgemeine Ergänzungen, unabhängig von Abos: neue und
 geänderte Tagesordnungen sowie erstmals ergänzte Protokolle mit Ergebnissen.
