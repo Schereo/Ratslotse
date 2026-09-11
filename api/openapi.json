@@ -12098,6 +12098,46 @@
         "title": "PredictionMayorCandidate",
         "type": "object"
       },
+      "PredictionMayorCompareLine": {
+        "description": "Die OB-Zeile auf der ÖFFENTLICHEN Tafel (1g) — anders als\n``PredictionMayorLine`` (die EINEN Tipp beschreibt: „meins\" in 1e/1f)\ngibt es hier keine einzelne Person, deren Tipp „der\" Tipp wäre.",
+        "properties": {
+          "actual_pct": {
+            "title": "Actual Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip": {
+            "title": "Avg Tip",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "party",
+          "actual_pct",
+          "avg_tip"
+        ],
+        "title": "PredictionMayorCompareLine",
+        "type": "object"
+      },
       "PredictionMayorLine": {
         "properties": {
           "actual_pct": {
@@ -12675,7 +12715,7 @@
           },
           "mayor": {
             "items": {
-              "$ref": "#/components/schemas/PredictionMayorLine"
+              "$ref": "#/components/schemas/PredictionMayorCompareLine"
             },
             "title": "Mayor",
             "type": "array"
