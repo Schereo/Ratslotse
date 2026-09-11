@@ -98,6 +98,11 @@ export function Tippen({ setup, meins, onGespeichert }: {
           {setup.seats_total} Sitze insgesamt. Listen, die du bei 0 lässt, tippst du auf „kein Sitz".
         </p>
       </div>
+      {meins.late_at !== null && (
+        <p className="mx-4 mt-3 rounded-[10px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-200">
+          Tipp-Schluss war schon — dein Tipp läuft als <strong>nachgetippt</strong> und steht außer Konkurrenz.
+        </p>
+      )}
 
       <div className="mt-2 flex flex-col gap-1.5 px-4">
         {setup.parties.map((p) => (
@@ -197,7 +202,7 @@ export function Tippen({ setup, meins, onGespeichert }: {
           {sendet ? "Speichert …" : meins.has_tip ? "Tipp aktualisieren" : "Tipp abgeben"}
         </button>
         <p className="mt-2 text-center text-[11.5px] text-muted-foreground">
-          {setup.deadline_hint}
+          {meins.late_at !== null ? "Einmal abgeben — danach ist der Tipp fest." : setup.deadline_hint}
         </p>
       </div>
     </div>

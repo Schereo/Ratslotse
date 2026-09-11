@@ -17,12 +17,6 @@ export type TippObZeile = TippMeins["mayor"][number];
 export type TippTafel = ApiAntwort<"/tipp/stand">;
 export type TippReihe = TippTafel["rows"][number];
 
-/** Schlüssel im localStorage: der geheime Token dieses Geräts. Der Cookie
- *  trägt ihn ohnehin schon (HttpOnly) — dieser Schlüssel ist nur dafür da,
- *  dem Formular OHNE einen Serverblick zu sagen, ob überhaupt schon ein
- *  Cookie gesetzt sein könnte (kein Auslesen des Werts, nur ein Merker). */
-export const BEIGETRETEN_SPEICHER = "tipp.beigetreten";
-
 /**
  * Sitze auf 52 verteilen, proportional zu den 2021er Ergebnissen — der
  * Ausgangspunkt, den das Formular zeigt, bevor jemand etwas ändert.

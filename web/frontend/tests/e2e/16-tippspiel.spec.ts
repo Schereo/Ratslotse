@@ -160,3 +160,45 @@ test.describe("Mein Tipp nach Tipp-Schluss", () => {
     await expect(page.getByText("42")).toBeVisible();
   });
 });
+
+test.describe("Spätstarter", () => {
+  test("wer nach Tipp-Schluss beitritt, kommt trotzdem zum Tippformular", async ({ page }) => {
+    // Der Server lässt genau das zu (Tipp als „nachgetippt"); die
+    // Zustandsmaschine schickte solche Personen vorher direkt zu „Mein
+    // Tipp" — ohne Tipp, ohne Formular.
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins({
+      locked: true, phase: "locked", has_tip: false, late_at: "2026-09-13T18:41:00+00:00", scored: false,
+    }), { setupOverrides: { locked: true, phase: "locked", locked_at: "2026-09-13T18:41:00+00:00" }, bereitsBeigetreten: true });
+    await page.goto("/tipp");
+    await expect(page.getByRole("button", { name: "Tipp abgeben" })).toBeVisible();
+    await expect(page.getByText("nachgetippt")).toBeVisible();
+  });
+
+  test("Mein Tipp trägt das Nachgetippt-Etikett mit Uhrzeit", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins({
+      locked: true, phase: "locked", has_tip: true, late_at: "2026-09-13T18:41:00+00:00", scored: false,
+      seats: PARTEIEN.map((p, i) => ({ slug: p.slug, tip: 15 - i, actual: null, avg_tip: null, points: 0, exact: false })),
+    }), { setupOverrides: { locked: true, phase: "locked" }, bereitsBeigetreten: true });
+    await page.goto("/tipp");
+    await expect(page.getByText("Nachgetippt 20:41")).toBeVisible();
+    await expect(page.getByText("außer Konkurrenz")).toBeVisible();
+  });
+});
+
+test.describe("Mein Tipp: OB-Tipp", () => {
+  test("der eigene OB-Tipp klappt an Ort und Stelle auf", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins({
+      locked: true, phase: "locked", has_tip: true, has_mayor_tip: true,
+      seats: PARTEIEN.map((p, i) => ({ slug: p.slug, tip: 15 - i, actual: null, avg_tip: null, points: 0, exact: false })),
+      mayor: OB_KANDIDATUREN.map((k, i) => ({ slug: k.slug, tip: 40 - i * 10, actual_pct: null, avg_tip: null, points: 0 })),
+    }), { setupOverrides: { locked: true, phase: "locked" }, bereitsBeigetreten: true });
+    await page.goto("/tipp");
+    await expect(page.getByText("Jascha Rohr")).toBeHidden();
+    await page.getByRole("button", { name: "OB-Tipp ansehen" }).click();
+    await expect(page.getByText("Jascha Rohr")).toBeVisible();
+    await expect(page.getByText("40 %")).toBeVisible();
+  });
+});

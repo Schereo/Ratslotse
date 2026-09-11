@@ -68,16 +68,16 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
         Die erste Hochrechnung ist schon da.
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Tipp-Schluss war um <strong className="text-foreground">{schlussZeit ?? "kurz nach 18 Uhr"}</strong>. Du
+        Tipp-Schluss war um <strong className="text-foreground">{schlussZeit ?? "bei der ersten Hochrechnung"}</strong>. Du
         kannst trotzdem mitspielen — dein Tipp wird für alle sichtbar als{" "}
         <strong className="text-foreground">nachgetippt</strong> markiert.{spaetSatz}
       </p>
 
-      <div className="mt-4.5 flex w-full items-start gap-2.5 rounded-[14px] border border-[#fde68a] bg-[#fffbeb] p-3.5 text-left">
-        <span className="mt-0.5 flex-none rounded-full border border-[#fde68a] bg-white px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#92400e]">
+      <div className="mt-4.5 flex w-full items-start gap-2.5 rounded-[14px] border border-amber-200 bg-amber-50 p-3.5 text-left dark:border-amber-900/50 dark:bg-amber-900/20">
+        <span className="mt-0.5 flex-none rounded-full border border-amber-200 bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/50 dark:text-amber-200">
           Nachgetippt
         </span>
-        <p className="text-[12.5px] leading-relaxed text-[#92400e]">
+        <p className="text-[12.5px] leading-relaxed text-amber-800 dark:text-amber-200">
           So erscheint dein Name auf dem Scoreboard und in deinem Tipp. Fair für alle, die vor Tipp-Schluss geraten haben.
         </p>
       </div>

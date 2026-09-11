@@ -6,8 +6,10 @@
 // ändern (das übernimmt Screen 1d, solange offen ist).
 
 import Link from "next/link";
-import { rangDeltaText, rangPfeil } from "@/lib/tipp";
+import { useState } from "react";
+import { rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
+import { Aufklapp } from "@/components/aufklapp";
 import { Button } from "@/components/ui/button";
 
 function punktTon(punkte: number, hoechst: number): string {
@@ -20,9 +22,14 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
   const parteiVon: Record<string, TippSetup["parties"][number]> = Object.fromEntries(
     setup.parties.map((p) => [p.slug, p]),
   );
+  const kandidaturVon: Record<string, TippSetup["mayor_candidates"][number]> = Object.fromEntries(
+    setup.mayor_candidates.map((k) => [k.slug, k]),
+  );
   const pfeil = rangPfeil(meins.rank, meins.rank_before);
   const score = meins.score;
   const nullAufNullListen = meins.seats.filter((s) => s.tip === 0 && s.actual === 0);
+  const nachgetippt = meins.late_at !== null ? uhrzeitKurz(meins.late_at) : null;
+  const [obOffen, setObOffen] = useState(false);
 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md pb-8">
@@ -34,11 +41,25 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
         </span>
       </div>
 
+      {nachgetippt && (
+        // Dasselbe Etikett wie auf dem Scoreboard (1f/1i): Wer nach dem
+        // Tipp-Schluss kam, sieht es auch bei sich — sonst wundert sich die
+        // Person, warum ihr Rang fehlt oder „außer Konkurrenz" ist.
+        <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-[12px] border border-amber-200 bg-amber-50 p-3 text-left dark:border-amber-900/50 dark:bg-amber-900/20">
+          <span className="mt-0.5 flex-none rounded-full border border-amber-200 bg-card px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-amber-800 dark:border-amber-900/50 dark:text-amber-200">
+            Nachgetippt {nachgetippt}
+          </span>
+          <p className="text-[12px] leading-relaxed text-amber-800 dark:text-amber-200">
+            {meins.scored ? "Dein Tipp kam nach Tipp-Schluss und zählt trotzdem mit." : "Dein Tipp kam nach Tipp-Schluss und läuft außer Konkurrenz."}
+          </p>
+        </div>
+      )}
+
       {!score ? (
         <div className="mx-4 mt-3.5 rounded-2xl bg-primary p-4 text-primary-foreground">
           <p className="font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">{meins.name} · Dein Tipp</p>
           <p className="mt-2 text-sm leading-relaxed opacity-90">
-            Dein Tipp ist gespeichert. Sobald die erste Zahl veröffentlicht ist, siehst du hier deinen Rang.
+            Dein Tipp ist gespeichert. Sobald die erste Zahl da ist, siehst du hier deinen Rang.
           </p>
         </div>
       ) : (
@@ -99,13 +120,51 @@ export function MeinTipp({ setup, meins }: { setup: TippSetup; meins: TippMeins 
         )}
       </div>
 
+      {meins.has_mayor_tip && (
+        // Der eigene OB-Tipp gehört zu „Mein Tipp" — vorher führte der Knopf
+        // auf den Beamer-Vergleich, der die Ø-Werte der Runde zeigt, nie den
+        // eigenen Tipp.
+        <div className="mt-3 px-4">
+          <Aufklapp offen={obOffen}>
+            <div className="overflow-hidden rounded-[14px] border border-border bg-card">
+              {meins.mayor.map((m) => {
+                const k = kandidaturVon[m.slug];
+                return (
+                  <div key={m.slug} className="grid grid-cols-[1fr_46px_46px_44px] items-center gap-2.5 border-t border-muted px-3.5 py-2 text-[13px] first:border-t-0">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{k?.name ?? m.slug}</span>
+                      <span className="block text-[11px] text-muted-foreground">{k?.party}</span>
+                    </span>
+                    <span className="text-right font-mono text-muted-foreground">{m.tip.toLocaleString("de-DE")} %</span>
+                    <span className="text-right font-display text-[15px] font-bold">
+                      {m.actual_pct !== null ? `${m.actual_pct.toLocaleString("de-DE", { maximumFractionDigits: 1 })} %` : "–"}
+                    </span>
+                    <span className={`rounded-full py-0.5 text-center text-[11px] font-semibold ${punktTon(m.points, 6)}`}>
+                      {m.points}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="grid grid-cols-[1fr_46px_46px_44px] gap-2.5 px-3.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <span>OB-Wahl</span>
+                <span className="text-right">Tipp</span>
+                <span className="text-right">Ist</span>
+                <span className="text-center">Pkt</span>
+              </div>
+            </div>
+          </Aufklapp>
+        </div>
+      )}
+
       <div className="mt-3.5 flex gap-2.5 px-4">
         <Button asChild variant="secondary" className="h-11 flex-1 text-sm">
           <Link href="/tipp/live">Rangliste</Link>
         </Button>
-        <Button asChild variant="secondary" className="h-11 flex-1 text-sm">
-          <Link href="/tipp/live?ansicht=vergleich">OB-Tipp ansehen</Link>
-        </Button>
+        {meins.has_mayor_tip && (
+          <Button type="button" variant="secondary" className="h-11 flex-1 text-sm" aria-expanded={obOffen} onClick={() => setObOffen((o) => !o)}>
+            {obOffen ? "OB-Tipp zuklappen" : "OB-Tipp ansehen"}
+          </Button>
+        )}
       </div>
     </div>
   );

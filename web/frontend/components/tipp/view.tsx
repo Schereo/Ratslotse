@@ -117,7 +117,12 @@ export function TippView() {
       ? <Spaetstarter setup={setup} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />
       : <Einstieg setup={setup} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />;
   }
-  if (!meins.locked) {
+  // Nach Tipp-Schluss darf noch tippen, wer NACH dem Schluss beigetreten ist
+  // und noch keinen Tipp hat (der Server lässt genau das zu, als „nachgetippt").
+  // Ohne diese Klausel landete ein Spätstarter direkt bei „Mein Tipp" — mit
+  // leerer Tabelle und ohne jeden Weg zum Formular.
+  const darfNochTippen = !meins.locked || (meins.late_at !== null && !meins.has_tip);
+  if (darfNochTippen) {
     return <Tippen setup={setup} meins={meins} onGespeichert={aufFrisch} />;
   }
   return <MeinTipp setup={setup} meins={meins} />;
