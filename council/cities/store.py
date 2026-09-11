@@ -180,13 +180,35 @@ class CitiesStore:
         return json.loads(row["body_json"]) if row else None
 
     def raw_objects(self, body_id: str, kind: str) -> Iterator[dict]:
-        """Je ``oparl_id`` die zuletzt geholte Fassung."""
-        rows = self._conn.execute(
-            "SELECT body_json FROM raw_objects WHERE id IN ("
-            "  SELECT MAX(id) FROM raw_objects WHERE body_id=? AND kind=? GROUP BY oparl_id)"
-            " ORDER BY id", (body_id, kind))
-        for row in rows:
-            yield json.loads(row["body_json"])
+        """Je ``oparl_id`` die zuletzt geholte Fassung.
+
+        **Erst die Kennungen, dann je Zeile eine eigene Abfrage — bewusst
+        nicht ein Cursor, der über die ganze Schleife offen bleibt.** Die
+        Adapter ernten IN dieser Schleife: ``iter_papers`` liest die
+        Sitzungen und holt dabei stundenlang Vorlagen, die es über dieselbe
+        Verbindung schreibt. Ein offener Lese-Cursor hält in WAL-Modus einen
+        Snapshot fest, und solange der steht, darf SQLite die WAL nicht
+        einchecken — sie wächst unbegrenzt, und mit ihr die Kosten jedes
+        weiteren Zugriffs.
+
+        Gemessen an Hildesheim (11.09.2026): 362 MB WAL nach elf Stunden,
+        Durchsatz von 343 auf 8 Vorlagen je Stunde gefallen — bei gleicher
+        Seitenart, also kein Phasen-Artefakt. Ein Prozess-Neustart heilte es
+        sprunghaft und der Verfall begann von vorn. Der Lauf hat keinen
+        Fehler geworfen, er wurde nur immer langsamer.
+
+        Die Kennungen sind Ganzzahlen; die ganze Liste zu halten kostet
+        nichts. Die Zeilen selbst tragen ganze HTML-Seiten — sie bleiben
+        deshalb einzeln und träge.
+        """
+        kennungen = [row["id"] for row in self._conn.execute(
+            "SELECT MAX(id) AS id FROM raw_objects WHERE body_id=? AND kind=?"
+            " GROUP BY oparl_id ORDER BY MAX(id)", (body_id, kind)).fetchall()]
+        for kennung in kennungen:
+            row = self._conn.execute(
+                "SELECT body_json FROM raw_objects WHERE id=?", (kennung,)).fetchone()
+            if row is not None:
+                yield json.loads(row["body_json"])
 
     def raw_count(self, body_id: str, kind: str) -> int:
         row = self._conn.execute(
