@@ -76,14 +76,22 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from council.cities.adapters._common import attr, normalize_title
-from council.cities.model import (AgendaItem, Batch, Consultation, Meeting,
-                                  Organization, Outcome, Paper, org_kind,
+from council.cities.model import (AgendaItem, Batch, Consultation, File, FileRole,
+                                  Meeting, Organization, Outcome, Paper, org_kind,
                                   outcome, paper_kind)
 from council.cities.oparl import OParlClient
 from council.cities.registry import BodySpec
 from council.cities.store import CitiesStore
 
 logger = logging.getLogger("council.cities.adapters.hannover_sim")
+
+#: Der Quelle-Name, unter dem ``inline_texts`` seine Texte in ``texts``
+#: ablegt. ``pipeline.extract_inline`` muss den Dialekt hier NAMENTLICH
+#: kennen (derselbe Fehler traf `allris_classic`: ohne den Eintrag im
+#: Dispatcher lief ``inline_texts`` still ins Leere — 25.729 Vorlagen ohne
+#: einen einzigen Satz Text, gemessen 11.09.2026, trotz funktionierendem
+#: Adapter-Code).
+EXTRACTOR = "hannover-sim-inline"
 
 #: Eine Vorlagen-Nummer wie „1.", „1.1." — echte Tagesordnungspunkte.
 #: Trifft NICHT auf römische Ziffern („I.", Abschnitts-Überschriften wie
@@ -310,6 +318,7 @@ class HannoverSimAdapter:
                     punkt_je_station[(m_id, urljoin(f"{wurzel}/", ziel))] = len(items) - 1
 
         papers: list[Paper] = []
+        files: list[File] = []
         consultations: list[Consultation] = []
         for roh in raw.raw_objects(body_id, "paper"):
             html = roh.get("html")
@@ -323,6 +332,15 @@ class HannoverSimAdapter:
             papers.append(Paper(
                 p_id, body_id, titel or "", reference=nr, date=daten[0] if daten else None,
                 paper_type_raw=art, kind=paper_kind(art), web=p_id))
+            # **Der Text hängt in `texts` an einer Datei, nicht an der
+            # Vorlage selbst.** `papers_with_text` verbindet über
+            # `files.paper_id` — ohne eine synthetische Hauptdatei bliebe der
+            # über `inline_texts` geschriebene Text für jede Auswertung
+            # unsichtbar, obwohl er in der Datenbank steht. Gemessen an
+            # Hannover: 25.729 Vorlagen, 0 % „mit Text" trotz erfolgreichem
+            # `extract_inline` — bis diese Zeile dazukam.
+            files.append(File(f"{p_id}#text", body_id, FileRole.MAIN,
+                              paper_id=p_id, mime="text/html", access_url=p_id))
             for s in stationen:
                 ergebnis = s["ergebnis"]
                 erg = _ergebnis_einordnen(ergebnis) if ergebnis else Outcome.NONE
@@ -337,7 +355,7 @@ class HannoverSimAdapter:
                     role_raw=ergebnis))
 
         return Batch(organizations=organizations, meetings=meetings,
-                     agenda_items=items, papers=papers, files=[],
+                     agenda_items=items, papers=papers, files=files,
                      consultations=consultations)
 
     # ------------------------------------------------------------- Bausteine
@@ -443,7 +461,13 @@ class HannoverSimAdapter:
         return raus
 
     def inline_texts(self, raw: CitiesStore, body_id: str) -> Iterator[tuple[str, str]]:
-        """Der „Inhalt der Drucksache" — er steht in der Seite, nicht im PDF."""
+        """Der „Inhalt der Drucksache" — er steht in der Seite, nicht im PDF.
+
+        Die Kennung ist die der synthetischen Hauptdatei aus ``normalize``
+        (``{paper_id}#text``), nicht die Vorlage selbst — ``put_text``
+        erwartet eine Datei-Kennung, und ``papers_with_text`` verbindet über
+        ``files.paper_id``.
+        """
         for roh in raw.raw_objects(body_id, "paper"):
             html = roh.get("html")
             if not html:
@@ -451,4 +475,4 @@ class HannoverSimAdapter:
             block = BeautifulSoup(html, "html.parser").find(id="a2")
             text = _text(block)
             if text:
-                yield roh["id"], text
+                yield f"{roh['id']}#text", text
