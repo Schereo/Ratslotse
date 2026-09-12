@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ArrowRight, Check, Play, Hash, MapPinned } from "lucide-react";
+import { Sparkles, ArrowRight, Check, Play, Hash } from "lucide-react";
 import { api } from "@/lib/api";
 import { vertrag, type ApiAntwort } from "@/lib/vertrag";
 import { useAuth } from "@/lib/auth";
@@ -15,7 +15,8 @@ import { SitzungspauseBanner } from "@/components/sitzungspause-banner";
 import { LiveBanner } from "@/components/live-banner";
 import { FundstueckCard } from "@/components/fundstueck-card";
 import { SeitBesuchWidget } from "@/components/seit-besuch-widget";
-import { HeuteWidget, HeuteWidgetGrid, type WidgetSize } from "@/components/heute-widget";
+import { HeuteWidget, HeuteWidgetGrid } from "@/components/heute-widget";
+import { MeinViertelWidget } from "@/components/mein-viertel-widget";
 import { RecentDecisions } from "@/components/recent-decisions";
 import { WocheImRat, type Wochenvorschau } from "@/components/woche-im-rat";
 import { HinweisSlot } from "@/components/note-slot";
@@ -23,8 +24,7 @@ import { PushPrimer } from "@/components/push-primer";
 import { WahlabendHinweis } from "@/components/wahlabend-hinweis";
 import { ReleaseNewsCard } from "@/components/release-news-card";
 import { formatEuro } from "@/components/decision-ui";
-import { fragenHref, decisionHref, viertelHref } from "@/lib/routes";
-import { useFeature } from "@/lib/features";
+import { fragenHref, decisionHref } from "@/lib/routes";
 import { startGuidedTour } from "@/components/tour";
 import { ConfettiBurst } from "@/components/confetti";
 import { useOnboarding, type StepId } from "@/components/onboarding";
@@ -176,7 +176,7 @@ export default function DashboardPage() {
           {!zahl && <div className="h-10 animate-pulse rounded-lg bg-signal/10" />}
         </HeuteWidget>
         {vorschau && <WocheImRat vorschau={vorschau} heuteIso={heuteIso} size="wide" />}
-        <MeinViertelKarte topics={topicsQuery.data} size="wide" />
+        <MeinViertelWidget topics={topicsQuery.data} heuteIso={heuteIso} size="wide" />
         <RecentDecisions size="wide" />
         <FundstueckCard size="wide" />
       </HeuteWidgetGrid>
@@ -184,55 +184,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-/** „Mein Viertel" auf der Startseite: je gewähltem Stadtteil (ein Stadtteil
- *  IST ein Thema, s. Einrichtungs-Assistent) die Zahl seiner Vorhaben mit dem
- *  Sprung zur Tafel. Hängt am Feature-Schalter `mein-viertel`; ohne ihn
- *  rendert die Karte nichts. */
-function MeinViertelKarte({ topics, size }: { topics: Topic[] | undefined; size?: WidgetSize }) {
-  const an = useFeature("mein-viertel");
-  const uebersicht = useQuery({
-    queryKey: ["viertel-uebersicht"],
-    queryFn: () => api.get<ApiAntwort<"/districts/projects">>("/districts/projects"),
-    enabled: an,
-    staleTime: 10 * 60_000,
-  });
-  if (!an) return null;
-  const orte = uebersicht.data?.districts ?? [];
-  const meine = orte.filter((o) => (topics ?? []).some((t) => t.name.toLowerCase() === o.name.toLowerCase()));
-  return (
-    <HeuteWidget id="mein-viertel" title="Mein Viertel" icon={MapPinned} size={size}>
-      {detail => <>
-        <p className="text-hinweis text-muted-foreground">
-          {meine.length > 0
-            ? "Was sich in deinem Stadtteil in den nächsten Jahren ändert."
-            : "Was sich in deinem Stadtteil in den nächsten Jahren ändert — wähle ihn auf der Karte."}
-        </p>
-        {meine.length > 0 ? (
-          <ul className={cn("mt-3 gap-3", detail === "expanded" ? "grid grid-cols-3" : "flex flex-wrap")}>
-            {meine.map(o => {
-              const highlight = uebersicht.data?.highlights.find(h => h.place_id === o.place_id);
-              return <li key={o.place_id} className="min-w-0">
-                <Link href={viertelHref(o.place_id)} className="group flex min-h-11 items-start gap-2 rounded-lg px-2 py-2 font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-                  <span className="min-w-0 flex-1">
-                    <span className="text-quelle font-semibold group-hover:text-primary">{o.name}</span>
-                    {detail === "expanded" && highlight && <span className="mt-1 block text-hinweis text-muted-foreground">{highlight.name}</span>}
-                  </span>
-                  <span className="shrink-0 text-meta leading-6 tabular-nums text-primary">{o.count} <span className={detail === "expanded" ? "" : "sr-only"}>Vorhaben</span></span>
-                </Link>
-              </li>;
-            })}
-          </ul>
-        ) : (
-          <Link href={viertelHref()} className="mt-2 inline-flex min-h-11 items-center gap-1 text-hinweis font-medium text-primary hover:underline">
-            Stadtteil wählen <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        )}
-      </>}
-    </HeuteWidget>
-  );
-}
-
 
 /** RL-1104: Zahl der Woche zählt hoch — Betrag über den Roh-Euro-Wert
  *  (formatEuro formatiert jeden Zwischenstand), Anzahl direkt. */
