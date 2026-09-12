@@ -402,12 +402,11 @@ function RailSitzung({ sitzung, punkte, rest, badge, treffer, mehrere, dichte }:
  *  gezeigten und die aufgeklappten, damit beide nicht auseinanderlaufen. */
 function MobilPunkt({ p }: { p: WochenPunkt }) {
   return (
-    <Link href={topHref(p.ksinr, p.item_number)} className="flex items-start gap-1.5">
+    <Link href={topHref(p.ksinr, p.item_number)}
+      className="group flex min-h-11 items-start gap-1.5 rounded-md py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       {/* Matrix 14d: mobil nur der Punkt, kein Antragsteller-Text. */}
-      {p.applicants
-        ? <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>
-        : <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />}
-      <span className="min-w-0 text-hinweis leading-snug text-foreground">
+      {p.applicants && <span className="mt-[5px]"><ParteiPunkte wer={p.applicants} size={6} /></span>}
+      <span className="min-w-0 text-hinweis leading-snug text-foreground transition-colors group-hover:text-primary">
         {p.titel_kurz || p.title}
       </span>
     </Link>
@@ -535,9 +534,9 @@ function RuhigeZeile({ sitzung, dichte }: { sitzung: WochenSitzung; dichte: Dich
 
 /* --------------------------------- Mobile --------------------------------- */
 
-/** Mobil wird die Rail-Spalte zur Zeile: Der Tag steht als Chip VOR dem
- *  Sitzungsnamen und spart damit die 74 px Spaltenbreite. Die Punkte hängen an
- *  einer 2-px-Kante. */
+/** Mobil bilden Datum und Gremium den Kopf. Die Punkte nutzen die ganze
+ *  Breite darunter; horizontale Trenner gliedern die Sitzungen. Eine senkrechte
+ *  Linie würde hier eine Datumsspalte andeuten, die es mobil nicht gibt. */
 function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, mitTrennlinie }: {
   sitzung: WochenSitzung; punkte: WochenPunkt[];
   /** Punkte, die die Karte schon geladen hat, aber mobil erst nach dem
@@ -580,7 +579,7 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
           </span>
         )}
       </div>
-      <div className="ml-[3px] mt-1.5 flex flex-col gap-1.5 border-l-2 border-primary/25 pl-2.5">
+      <div className="mt-2 flex flex-col gap-1.5">
         {punkte.map((p) => <MobilPunkt key={`${p.ksinr}-${p.item_number}`} p={p} />)}
         {/* Aufgefahren statt erschienen. Der Abstand zwischen den Punkten
             gehört hier IN den Aufklapper: Die Zeilen stehen in einem
