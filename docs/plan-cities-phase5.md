@@ -7,6 +7,14 @@ ausführbar**. Jeder Abschnitt ist ein Pull Request, nennt Dateien,
 Signaturen, Tests, Kosten und woran man erkennt, dass er fertig ist. Wo etwas
 gemessen ist, steht die Zahl und in Anhang C der Befehl, der sie liefert.
 
+**Nachtrag vom 10.09.2026, abends.** Tim hat nach dem ersten Entwurf gesagt,
+er hätte gern **auch niedersächsische Städte** dabei — es gebe in
+Niedersachsen ja ohnehin kaum große Städte wie Oldenburg. Daraufhin ist §2.3
+neu gemessen worden, und der erste Befund („in Niedersachsen gibt es nichts
+zu holen") hat sich als **falsch** herausgestellt: Er kam von einer Suche
+über Adressmuster, die die tatsächlich benutzten Hosts nicht kannte. §2.3, §3
+und die PRs 35–38 sind daraufhin neu geschrieben.
+
 Wer das umsetzt, liest **vorher** vollständig: die Wurzel-`CLAUDE.md`,
 `council/CLAUDE.md`, **`council/cities/CLAUDE.md`** (das Rezept für eine
 neue Stadt und die Regel „ein Adapter je Ratsinformationssystem"),
@@ -42,6 +50,22 @@ Daraus folgen drei Regeln, die zu 1–20 dazukommen:
 23. **Eine neue Stadt kommt erst, wenn das Ranking in §3 sie nennt und die
     Probe aus `council/cities/CLAUDE.md` bestanden ist.** Kein Adapter
     ohne Fixture aus echten Rohobjekten.
+24. **Niedersachsen zuerst** (Tims Nachtrag vom selben Abend): *„Ich glaube,
+    es würde sich lohnen, auch noch ein paar Städte aus Niedersachsen
+    dazuzunehmen. Also in Niedersachsen gibt es ja gar nicht so viele andere
+    große Städte wie Oldenburg. Wenn wir dann noch welche dazunehmen
+    könnten, wäre das ganz super."* Bei gleichem Nutzen gewinnt die
+    niedersächsische Stadt — gleiches Landesrecht heißt, die Entscheidung
+    ist im Oldenburger Ratssaal zitierfähig.
+25. **Mindestens die fünf größten niedersächsischen Städte** (Tim,
+    10.09.2026, spät): *„Falls du meinst, dass Inhalte fehlen, also andere
+    Städte, würde ich mir wünschen, mindestens die fünf größten Städte noch
+    in Niedersachsen mit dazuzunehmen."* Nach Braunschweig, Oldenburg und
+    Osnabrück sind das **Hannover, Göttingen, Wolfsburg, Salzgitter und
+    Hildesheim**. Keine davon hat eine funktionierende Schnittstelle — §2.3
+    und §3 sagen, was das je Stadt heißt. Der Wunsch ändert die Reihenfolge
+    des Plans, nicht seine Regeln: kein Umweg um eine Sperre, kein Adapter
+    ohne Fixture.
 
 ## 1. Zielbild
 
@@ -68,10 +92,10 @@ Am Ende dieses Plans:
   │                                │ │    nicht aus dem Modell        │
   └────────────────────────────────┘ └────────────────────────────────┘
   ┌────────────────────────────────┐ ┌────────────────────────────────┐
-  │ C  Oldenburgs eigene Seite     │ │ D  Bonn ist die siebte Stadt — │
-  │    liefert denselben Absatz,   │ │    die einzige mit Nieder-     │
-  │    damit man vergleichen kann  │ │    schriften unter den         │
-  │    (PR 34)                     │ │    Kandidaten (PR 35)          │
+  │ C  Oldenburgs eigene Seite     │ │ D  Drei neue Städte in NIEDER- │
+  │    liefert denselben Absatz,   │ │    SACHSEN — gleiches Recht,   │
+  │    damit man vergleichen kann  │ │    zitierfähig im Ratssaal     │
+  │    (PR 34)                     │ │    (PR 35, 36) + Bonn (37)     │
   └────────────────────────────────┘ └────────────────────────────────┘
 ```
 
@@ -144,29 +168,118 @@ Zum Vergleich die sechs aktiven: Oldenburg 172 k (NI), Osnabrück 165 k (NI),
 Braunschweig 250 k (NI), Münster 320 k (NW), Potsdam 185 k (BB),
 Magdeburg 240 k (ST).
 
-### 2.3 Niedersachsen: es gibt nichts zu holen
+### 2.3 Niedersachsen — die erste Messung war zu pessimistisch
 
-Tims erstes Kriterium ist Vergleichbarkeit — und die beste Vergleichbarkeit
-wäre dieselbe Rechtslage, also Niedersachsen (NKomVG, Straßenausbaubeiträge,
-Verpackungssteuer, alles im selben Landesrecht). Gemessen:
+Tims erstes Kriterium ist Vergleichbarkeit, und die beste Vergleichbarkeit
+ist dieselbe Rechtslage: Niedersachsen. NKomVG, Straßenausbaubeiträge,
+Verpackungssteuer, Ortsräte, die Zuständigkeit des Verwaltungsausschusses —
+alles im selben Landesrecht. Eine Kölner Entscheidung ist interessant, eine
+Lüneburger ist im Ratssaal in Oldenburg **zitierfähig**.
 
-- Die offizielle Endpunktliste (`dev.oparl.org/api/endpoints`) kennt
-  **127 Systeme**. Aus Niedersachsen: **nur Braunschweig.** Osnabrück steht
-  gar nicht drin, obwohl es OParl spricht — die Liste ist für die
-  `sitzung-online`- und `ratsinfomanagement`-Familien unvollständig.
-- Deshalb 26 niedersächsische Städte (Hannover, Göttingen, Wolfsburg,
-  Hildesheim, Salzgitter, Lüneburg, Celle, Emden, Delmenhorst,
-  Wilhelmshaven, Cuxhaven, Lingen, Garbsen, Langenhagen, Nordhorn, Peine,
-  Stade, Goslar, Hameln, Wolfenbüttel, Melle, Aurich, Verden, Nienburg,
-  Gifhorn, Uelzen) gegen acht Adressmuster der vier Hersteller geprüft
-  (`<stadt>.sitzung-online.de`, `ratsinfo.<stadt>.de`,
-  `<stadt>.ratsinfomanagement.net`, SessionNet `bi/oparl/1.0/system.asp`,
-  …): **0 Treffer.**
+Die erste Runde suchte über acht Adressmuster (`<stadt>.sitzung-online.de`,
+`ratsinfo.<stadt>.de`, …) und fand null. Das war ein Fehler der Methode, nicht
+der Wirklichkeit: Die Muster kannten die Hosts nicht, die die Städte
+tatsächlich benutzen. Die zweite Runde ging deshalb über die **Rathaus-Seiten**
+— erst den RIS-Link finden, dann dort OParl probieren. Ergebnis (10.09.2026,
+31 niedersächsische Städte ab 28 k):
 
-Vergleichbarkeit über das Landesrecht ist über OParl also **nicht** zu
-haben. Was bleibt, ist Vergleichbarkeit über Größe und Typ (kreisfreie
-Großstadt, Oberzentrum, Universitätsstadt) — und die eine Option in Anhang
-B, die keinen OParl-Endpunkt braucht.
+**A — OParl läuft und liefert:**
+
+| Stadt | Einw. | RIS | Endpunkt | Vorlagen ≥ 2024 | Beratung | Protokoll | Lizenz |
+|---|---:|---|---|---:|---|---|---|
+| Braunschweig | 250 k | ALLRIS 4 | aktiv im Register | — | — | 218 | — |
+| Osnabrück | 165 k | ALLRIS 4 | aktiv im Register | — | — | 281 | — |
+| **Langenhagen** | 56 k | ALLRIS 4 | `www.langenhagen.sitzung-online.de/oparl/system` | 268 | **5/5** | **4/8** | **CC BY 4.0** |
+| **Peine** | 50 k | ALLRIS 4 | `ratsinfo.stadt-peine.de/public/oparl/system` | 2.579 | 4/5 | 0/8 | **CC BY 4.0** |
+
+Langenhagen antwortet in 1,2 s, führt 3.864 Sitzungen und trägt an vier von
+acht geprüften Sitzungen eine Niederschrift — es ist damit **die einzige
+niedersächsische Stadt außer Braunschweig und Osnabrück, die alles hat, was
+diese Phase braucht.** Peine hat mehr Vorlagen, aber keine Protokolle.
+
+**B — OParl ist da, antwortet aber nicht** (der Betreiber muss einen Schalter
+umlegen; kein Code hilft):
+
+| Stadt | Einw. | RIS | Befund |
+|---|---:|---|---|
+| Wolfsburg | 125 k | ALLRIS 4 | `/oparl/system` liefert sauberes JSON (CC BY 4.0) — `/oparl/bodies` und **jede** Liste dahinter: HTTP 500 |
+| Lüneburg | 75 k | ALLRIS 4 | `/public/oparl/system` → HTTP 500 (die Route gibt es, sie stürzt ab) |
+| Laatzen | 43 k | ALLRIS 4 | ebenso |
+| Lingen | 58 k | SD.NET RIM 4 | `{"error":"Webservice \"OParl\" ist nicht aktiviert!","code":100}` |
+| Nordhorn | 54 k | SD.NET RIM 4 | dieselbe Meldung |
+| Cuxhaven | 48 k | SD.NET RIM 4 | dieselbe Meldung |
+| Verden | 28 k | SD.NET RIM 4 | dieselbe Meldung |
+
+Die SD.NET-Meldung ist wörtlich zitiert und der wichtigste Satz dieses
+Abschnitts: **Der OParl-Dienst ist im Produkt eingebaut und lediglich
+abgeschaltet.** Vier niedersächsische Städte sind eine Anfrage weit entfernt,
+nicht einen Adapter. Bei den drei ALLRIS-4-Fällen sieht es nach einer
+kaputten Konfiguration aus — Wolfsburg (125 k!) wäre der Fang.
+
+**C — nur HTML, kein OParl:**
+
+| Stadt | Einw. | RIS | Bemerkung |
+|---|---:|---|---|
+| Hannover | 535 k | SIM (Lotus Notes) | `e-government.hannover-stadt.de/lhhsimwebre.nsf` — eigene Welt |
+| Göttingen | 120 k | ALLRIS classic | `ris.goettingen.de` hinter Cloudflare, antwortet uns mit 403 |
+| Salzgitter | 105 k | ALLRIS net 3.9 | `sitzungsdienst.salzgitter.de/buergerinfo/si010.asp` |
+| **Hildesheim** | 100 k | ALLRIS classic | `www.stadt-hildesheim.de/allris/si010_e.asp` — **gemessen lesbar**: 13 Sitzungen im Kalender, `to010.asp` liefert 8 Tagesordnungspunkte mit Vorlagen |
+| Delmenhorst | 78 k | ALLRIS classic | `sitzungsdienst-delmenhorst.de/bi-r/si010_r.asp` — Kalender lesbar, `to010_r.asp` braucht die `_r`-Schreibweise |
+| Celle | 70 k | ALLRIS classic | `www.celle.de/allris/` |
+| Hameln | 58 k | SD.NET | `ris.hameln.de/ris` |
+| Wilhelmshaven | 76 k | SD.NET (gehostet) | `ratsinfoservice.de/ris/wilhelmshaven` — von hier aus Zeitüberschreitung |
+| Emden, Aurich, Nienburg | 50/42/32 k | **SessionNet** | dasselbe Produkt wie Oldenburg (`buergerinfo.oldenburg.de/info.php`) |
+
+Für Garbsen, Wolfenbüttel, Goslar, Stade, Melle, Uelzen und Neustadt a. Rbge.
+war auf der Rathaus-Seite kein RIS-Host zu finden; sie sind nicht geprüft,
+nicht ausgeschlossen.
+
+**D — die Vollerhebung, 340 Kommunen ab 5.000 Einwohnern** (10.09.2026,
+spät). Jede einzeln über ihre Website nachgesehen — Startseite, bis zu zwanzig
+Politik-Unterseiten, ein Dutzend direkter Adressen auf der eigenen Domain —
+und jeder Fund einmal aufgerufen. Das Bild kippt gegenüber der
+Domain-Suche:
+
+| Befund | Kommunen | Einwohner |
+|---|---:|---:|
+| OParl antwortet | **11** | 355.000 |
+| OParl da, aber abgeschaltet | 39 | 642.000 |
+| keine Schnittstelle | 154 | 2.900.000 |
+| kein System gefunden | 136 | 2.700.000 |
+
+| Programm | Kommunen | davon OParl an |
+|---|---:|---:|
+| SessionNet (SOMACOS) | **140** | 5 |
+| ALLRIS (CC e-gov) | 27 + 7 (ALLRIS 4) | 4 |
+| SD.NET RIM (STERNBERG) | 21 | 2 |
+| more! rubin, regisafe, Provox | 4 / 3 / 1 | — |
+| SIM, Eigenbau auf Notes/Domino (nur Hannover) | 1 | — |
+
+**145 von 203 Systemen laufen auf einer eigenen Domain der Kommune** — für
+jede domainbasierte Suche unsichtbar. SessionNet beherrscht Niedersachsen mit
+69 %, war in Gruppe A–C aber massiv unterzählt. Zwei regionale Betreiber, die
+in keiner Herstellerliste stehen: **ITEBO Osnabrück** (`<gemeinde>ris.itebo.
+de`, 12 Kommunen, zwei davon mit OParl an: Twist, Norderney) und **OWL-IT**
+(7). Die elf mit funktionierendem OParl sind entweder schon im Vergleich oder
+unter 56.000 Einwohnern.
+
+**„Abgeschaltet" heißt nicht „gesperrt".** Nachgemessen an fünf Systemen
+(Lingen, Nordhorn, Wolfsburg, Lüneburg, Laatzen): **kein einziges** schickt
+eine Anmelde-Aufforderung (`WWW-Authenticate`). SD.NET antwortet HTTP 400 —
+„ungültige Anfrage", nicht 401/403 — mit dem Satz, das Modul sei nicht
+aktiviert; ALLRIS 4 antwortet HTTP 500, ein Serverfehler auf einer Route, die
+es gibt. Ein Zugang würde nichts ändern, und er ist auch nicht vorgesehen:
+OParl ist per Spezifikation *anonymer, lesender* Zugriff auf **öffentliche**
+Inhalte. Was fehlt, ist eine Entscheidung der Kommune, das Modul beim
+Hersteller freizuschalten — und was das kostet, sagen weder Sternberg noch das
+OParl-Projekt öffentlich; dessen FAQ verweist auf die Verträge. Die Anfrage ist
+also eine E-Mail, die Antwort kann ein Angebot sein.
+
+**Was daraus folgt.** Vergleichbarkeit über das Landesrecht ist zu haben —
+nur nicht geschenkt. Es gibt drei Wege, und dieser Plan geht zwei davon:
+Langenhagen und Peine sofort (PR 35), einen HTML-Adapter für die
+Größenklasse von Oldenburg (PR 36), und die Anfragen an die sieben Städte aus
+Gruppe B sind eine Sache für Tim, nicht für Code (Anhang B).
 
 ### 2.4 Was sonst noch gemessen wurde
 
@@ -185,34 +298,55 @@ B, die keinen OParl-Endpunkt braucht.
 
 ## 3. Das Ranking
 
-Fünf Kriterien, in der Reihenfolge, in der sie für Tims Frage zählen:
+Sechs Kriterien, in der Reihenfolge, in der sie für Tims Frage zählen:
 
-1. **Niederschriften erreichbar** — ohne sie gibt es kein „Warum", und das
-   „Warum" ist der Auftrag dieser Phase.
-2. **Beratungsfolge an der Vorlage** — ohne sie kein Ergebnis (Phase 4,
+1. **Dieselbe Rechtslage** — Niedersachsen. Tim am 10.09.: *„Ich glaube, es
+   würde sich lohnen, auch noch ein paar Städte aus Niedersachsen
+   dazuzunehmen. Es gibt ja gar nicht so viele andere große Städte wie
+   Oldenburg."* Eine Entscheidung unter demselben NKomVG ist im Oldenburger
+   Ratssaal zitierfähig; eine Kölner ist es nicht.
+2. **Niederschriften erreichbar** — ohne sie kein „Warum", der Auftrag
+   dieser Phase.
+3. **Beratungsfolge an der Vorlage** — ohne sie kein Ergebnis (Phase 4,
    PR 27: 5.224 Vorlagen hingen daran).
-3. **Vergleichbarkeit** — Größe 150–350 k, kreisfrei, Oberzentrum. Das
-   Landesrecht scheidet aus (§2.3).
-4. **Adapter vorhanden** — ALLRIS 4 und SessionNet sind gebaut und an je
-   zwei bis drei Städten bewährt; RUBIN (`adapters/rubin.py`, 90 Zeilen)
-   hat noch nie eine echte Stadt gesehen.
-5. **Lizenz und Tempo** — eine genannte Lizenz spart die Frage; 12 Sekunden
-   je Aufruf machen aus einer Ernte einen Tag.
+4. **Größe und Typ** — 50–350 k, kreisfrei oder Oberzentrum.
+5. **Adapter vorhanden** — ALLRIS 4 und SessionNet sind gebaut und je an
+   zwei bis drei Städten bewährt; RUBIN (`adapters/rubin.py`, 90 Zeilen) hat
+   noch nie eine echte Stadt gesehen, ALLRIS-**HTML** gibt es gar nicht.
+6. **Lizenz und Tempo** — eine genannte Lizenz spart die Rückfrage;
+   12 Sekunden je Aufruf machen aus einer Ernte einen Tag.
 
-| Rang | Stadt | Warum | Was dagegen spricht |
-|---|---|---|---|
-| **1** | **Bonn** | Als **einziger Kandidat Niederschriften an 6 von 8 Sitzungen** (wie Münster). ALLRIS 4 — Adapter vorhanden, drei Städte bewährt. 330 k, kreisfrei, Bundesstadt. Open-Data-Lizenz. 2 s Antwortzeit. | Die Vorlagen-Abfrage mit `created_since` brach in der Probe — ein Dialekt-Detail, das die Probe aus `council/cities/CLAUDE.md` finden muss, bevor irgendetwas geerntet wird. |
-| **2** | **Darmstadt** | **165 k — die Oldenburg ähnlichste Stadt** unter allen Kandidaten (Wissenschaftsstadt, kreisfrei). Beratung an 5 von 5 Vorlagen. | RUBIN, OParl 1.0: erster Ernstfall für `rubin.py`. Keine Niederschriften an den Sitzungen. Keine Lizenz genannt. 9 s. |
-| 3 | Leipzig | CC BY 4.0, 9.268 Vorlagen seit 2024, ALLRIS 4, Protokolle an 2 von 8. | 620 k — dreieinhalbmal Oldenburg, Landeshauptstadt; Ideen skalieren nicht ohne Weiteres. |
-| 4 | Freiburg | 235 k, Universitätsstadt, Beratung 5/5, 13.959 Vorlagen. | RUBIN (s. Darmstadt), keine Protokolle, keine Lizenz, 11 s. Erst nach Darmstadt, wenn `rubin.py` steht. |
-| 5 | Köln | SessionNet (Adapter da), Beratung 5/5, 2 s. | 1,1 Mio. Einwohner. Keine Protokolle, keine Lizenz. |
-| 6–8 | Dresden, Wuppertal, Düsseldorf | SessionNet, Beratung 5/5. | Keine Protokolle, 8–13 s je Aufruf, Größe 360–640 k. Dresden immerhin DL-DE-Zero. |
+| Rang | Stadt | Land | Warum | Was dagegen spricht |
+|---|---|---|---|---|
+| **1** | **Langenhagen** | **NI** | Die einzige weitere niedersächsische Stadt mit **funktionierendem OParl UND Niederschriften** (4/8). Beratung 5/5, CC BY 4.0, 1,2 s, ALLRIS 4 — der Adapter steht. Kostet fast nichts. | 56 k — ein Drittel von Oldenburg, Umlandstadt von Hannover, kein Oberzentrum. |
+| **2** | **Hildesheim** | **NI** | **100 k, kreisfrei, Oberzentrum — die Oldenburg ähnlichste Stadt in ganz Niedersachsen, die wir haben können.** ALLRIS-HTML ist gemessen lesbar. | Braucht den fünften Adapter (PR 36). Kein Vertrag, keine Lizenz, keine Zusage — HTML kann sich jederzeit ändern. |
+| **3** | **Bonn** | NW | Als **einziger Nicht-NI-Kandidat Niederschriften an 6 von 8 Sitzungen** (wie Münster). ALLRIS 4, Open Data, 2 s, 330 k. Liefert PR 31–33 die dritte Protokollquelle. | Anderes Landesrecht. Die Abfrage mit `created_since` brach in der Probe — Dialekt-Detail, vor der Ernte klären. |
+| **4** | **Peine** | **NI** | OParl läuft, 2.579 Vorlagen seit 2024, Beratung 4/5, CC BY 4.0, ALLRIS 4. Mitgenommen, solange PR 35 ohnehin läuft. | 50 k, Mittelstadt, **keine Protokolle** — trägt zum „Warum" nichts bei. |
+| **5** | **Göttingen / Salzgitter / Delmenhorst** | **NI** | 120 / 105 / 78 k, alle drei ALLRIS classic — mit dem Adapter aus PR 36 kosten sie je einen Registry-Eintrag und eine Probe. | Göttingen sperrt uns per Cloudflare aus (403), Delmenhorst schreibt `_r` an jede Seite, Salzgitter antwortete von hier gar nicht. Je einzeln zu klären. |
+| 6 | Darmstadt | HE | 165 k, exakt Oldenburgs Größe, Beratung 5/5, 20.596 Vorlagen. Prüft `rubin.py` zum ersten Mal an einer echten Stadt und macht Freiburg danach billig. | RUBIN/OParl 1.0, keine Protokolle, keine Lizenz, 9 s. Anderes Landesrecht. |
+| 7 | Leipzig | SN | CC BY 4.0, 9.268 Vorlagen, ALLRIS 4, Protokolle 2/8. | 620 k, Landeshauptstadt-Maßstab. |
+| 8 | Freiburg | BW | 235 k, Beratung 5/5, 13.959 Vorlagen. | RUBIN, keine Protokolle, keine Lizenz, 11 s. Erst nach Darmstadt. |
+| 9–12 | Köln, Dresden, Wuppertal, Düsseldorf | NW/SN | SessionNet, Adapter vorhanden, Beratung 5/5. | Keine Protokolle, 360 k–1,1 Mio., 2–13 s. Bringen dieser Phase nichts. |
 
-**Empfehlung: Bonn, dann Darmstadt.** Bonn, weil es das Einzige ist, was
-diese Phase braucht und die anderen nicht haben. Darmstadt, weil es die
-Frage „was macht eine Stadt wie unsere?" beantwortet — und weil es
-`rubin.py` zum ersten Mal an einer echten Stadt prüft, was Freiburg dann
-billig macht.
+**Das Ziel ist mit Regel 25 gesetzt: die fünf größten niedersächsischen
+Städte nach den dreien, die schon drin sind.** Keine von ihnen hat eine
+funktionierende Schnittstelle, und deshalb ist jede ein anderer Weg:
+
+| Stadt | Einw. | System | Schnittstelle | Weg |
+|---|---:|---|---|---|
+| **Hannover** | 548 k | Eigenbau, Notes/Domino | keine — aber RSS + iCal | **PR 39**: eigener Adapter, die Feeds als Einstieg |
+| **Göttingen** | 131 k | ALLRIS classic (HTML) | keine; **sperrt uns per Cloudflare aus** | PR 36 — nur, wenn die Stadt die Sperre öffnet; sonst Anfrage (Anhang B) |
+| **Wolfsburg** | 127 k | ALLRIS 4 | OParl liefert nur `/system`, alles dahinter 500 — **die Oberfläche ist in Ordnung** (s. Nachtrag zu PR 36c) | **PR 36c, erledigt**: 43 Gremien, 652 Sitzungen, 1.570 Vorlagen. Keine Anfrage an die Stadt nötig |
+| **Salzgitter** | 105 k | ALLRIS net 3.9 (HTML) | keine; **antwortete von hier nicht** | PR 36 — nach einer Probe von einem anderen Netz; sonst Anfrage |
+| **Hildesheim** | 102 k | ALLRIS classic (HTML) | keine | **PR 36**, gemessen lesbar — die Stadt, an der der Adapter gebaut wird |
+
+**Empfehlung, in dieser Reihenfolge:** Langenhagen und Peine (PR 35, ein
+halber Tag, sie sind die einzigen mit funktionierendem OParl); dann
+**Hildesheim über PR 36** und mit demselben Adapter Göttingen und Salzgitter,
+sobald die beiden Sperren geklärt sind; parallel die Anfrage an Wolfsburg;
+zuletzt **Hannover (PR 39)**, weil es die meiste eigene Arbeit ist und
+zugleich die am wenigsten mit Oldenburg vergleichbare Stadt. Bonn (PR 37) und
+Darmstadt (PR 38) bleiben im Plan, rücken aber hinter die fünf.
 
 ## PR 31 — Die Niederschriften holen
 
@@ -395,11 +529,245 @@ vollständiger als jede OParl-Schnittstelle.
 
 **Kosten.** ~500 Aufrufe → < $1.
 
-## PR 35 — Bonn
+## PR 35 — Zwei niedersächsische Städte, die uns schon offenstehen
 
-**Warum.** §3. Und weil Bonn Niederschriften an sechs von acht Sitzungen hat
-— PR 31–33 bekommen damit eine dritte Quelle neben Münster und den drei
-ALLRIS-Städten.
+**Warum.** §3, Kriterium 1. Langenhagen und Peine sprechen OParl 1.1 über
+ALLRIS 4 — **denselben Dialekt, den `adapters/allris4.py` für Osnabrück und
+Braunschweig schon fährt.** Beide nennen CC BY 4.0. Langenhagen trägt
+Niederschriften an vier von acht Sitzungen und ist damit die dritte Quelle
+für PR 31–33 unter niedersächsischem Recht. Das ist der billigste Schritt in
+diesem ganzen Plan.
+
+**Was sich ändert.** Zwei Registry-Einträge in `council/cities/registry.py`
+und sonst — wenn alles gut geht — nichts:
+
+```python
+"langenhagen": BodySpec("langenhagen", "Langenhagen", "NI", "allris4",
+                        "https://www.langenhagen.sitzung-online.de/oparl/system"),
+"peine":       BodySpec("peine", "Peine", "NI", "allris4",
+                        "https://ratsinfo.stadt-peine.de/public/oparl/system"),
+```
+
+Dann Schritt für Schritt das Rezept aus `council/cities/CLAUDE.md`, **kein
+Schritt ausgelassen**:
+
+1. Eintrag mit `active=False`.
+2. Kurzes Fenster ernten: `--run --body langenhagen --since 2025-01-01
+   --stage fetch --stage normalize`.
+3. `cities_backfill.py --pruefen` — Plausibilitätsbänder und unbekanntes
+   Ergebnis-Vokabular.
+4. Was das Vokabular meldet, nach `model._OUTCOME_RULES`. Peines
+   Vorlagenarten sind noch ungemessen (die Probe bekam die Liste nicht
+   vollständig); Langenhagen führt „Beschlussdrucksache",
+   „Informationsdrucksache", „Antrag öffentlich", „Ratsanfrage" — der Abgleich
+   mit `model.IDEA_KINDS` gehört in denselben Schritt.
+5. Fixtures `tests/fixtures/cities/langenhagen_papers.json` und
+   `peine_papers.json` aus echten Rohobjekten, gekürzt, ohne Personen;
+   Eintrag in `STAEDTE` in `tests/test_cities_adapters.py`.
+6. Erst dann `active=True`, volle Historie, Stufen in der Reihenfolge, die
+   `cities_backfill.py --stage fit` seit PR 25 erzwingt.
+
+**Wo es klemmen kann.** Peine liefert seine Vorlagenliste über
+`/public/oparl/…`, Langenhagen ohne das `public`. Beide Male löst der Client
+die Adressen aus `system` → `body` auf, es ist also kein Sonderfall — aber
+falls doch: in `adapters/allris4.py`, nie in eine
+`if body_id == "peine"`-Bedingung.
+
+**Messung.** `--pruefen` ohne Befund; Anteil Vorlagen mit Ergebnis
+(Osnabrück nach PR 27: 80 %, Braunschweig 47 %); für Langenhagen zusätzlich
+Sitzungen mit Protokoll-Text aus PR 31. Fertig, wenn beide in
+`cities_bilanz.py` stehen und die Karte niedersächsische Ideen zeigt, die
+nicht aus Braunschweig oder Osnabrück kommen.
+
+**Kosten.** Langenhagen 268 Vorlagen seit 2024, Peine 2.579 — zusammen
+classify < $1, `fit` über die Übertragbaren < $2. **Unter $3.**
+
+## PR 36 — Der fünfte Adapter: ALLRIS über die Oberfläche, gemessen an Hildesheim
+
+**Warum.** Das ist der Preis für Tims eigentliche Frage. In Niedersachsen
+gibt es außer Braunschweig, Osnabrück, Langenhagen und Peine **keine** Stadt
+mit brauchbarem OParl — aber es gibt Hildesheim (100 k, kreisfrei,
+Oberzentrum), Göttingen (120 k), Salzgitter (105 k), Delmenhorst (78 k) und
+Celle (70 k), und alle fünf fahren **ALLRIS classic** mit denselben
+`.asp`-Seiten. Ein Adapter, fünf Städte, alle unter demselben NKomVG.
+
+Gemessen an Hildesheim (`www.stadt-hildesheim.de/allris/`, 10.09.2026):
+`si010_e.asp` liefert den Sitzungskalender mit 13 Sitzungen,
+`to010.asp?SILFDNR=…` die Tagesordnung mit 8 Punkten und den Vorlagen daran.
+Die Seiten sind serverseitig gerendert, ohne JavaScript, in `windows-1252`.
+
+**Was sich ändert.** Neues Modul `council/cities/adapters/allris_html.py`,
+Dialekt `"allris_html"`. Es hat dieselbe Aufgabe wie die vier vorhandenen
+Adapter und liefert dieselben Objekte (`Batch` aus `model.py`) — nur ist die
+Quelle HTML statt JSON:
+
+```python
+def fetch(spec: BodySpec, client, since: str) -> None
+    # si010_*.asp?YY=<jahr> → Sitzungen; to010*.asp?SILFDNR= → Tagesordnung
+    # vo020*.asp?VOLFDNR=   → Vorlage samt Beratungsfolge
+    # getfile.asp?id=…      → PDF; ROH ablegen wie jeder andere Adapter
+
+def normalize(body_id: str, raw: CitiesStore) -> Batch
+```
+
+Drei Regeln, die aus der Messung kommen:
+
+- **Die Schreibweise ist je Stadt anders.** Hildesheim `si010_e.asp` /
+  `to010.asp`, Delmenhorst `si010_r.asp` / `to010_r.asp`. Das gehört als
+  **Feld in den `BodySpec`** (`html_suffix: str = ""`), nicht in eine
+  Bedingung im Code.
+- **Rohobjekte bleiben roh.** Der Adapter legt die HTML-Seite als
+  `raw_objects`-Zeile ab, genau wie ein OParl-Adapter sein JSON. Sonst ist
+  ein zweiter Lauf nach einer Parser-Korrektur ein zweiter Abruf bei der
+  Stadt — und die Erfahrung aus Phase 1 sagt, dass es mehrere Korrekturen
+  gibt.
+- **Kennungen sind Zahlen, keine URLs.** OParl-Städte haben stabile
+  `id`-URLs; hier gibt es `VOLFDNR=19175`. Die Kennung wird
+  `https://<host>/vo/<n>` — synthetisch, aber stabil und im selben Format wie
+  überall sonst, damit `link_by_title` und die Clusterung nichts merken.
+
+**Test.** `tests/fixtures/cities/hildesheim_si010.html` und
+`hildesheim_to010.html` — echte, gekürzte Seiten **ohne Personennamen**
+(Ratsmitglieder dürften genannt werden, Einwohnerfragestunden nicht; im
+Zweifel schwärzen). Der Test prüft: Anzahl Sitzungen, Anzahl
+Tagesordnungspunkte, die Zuordnung Punkt → Vorlage, und dass zwei Läufe
+dasselbe ergeben (`test_normalize_ist_idempotent` als Vorbild).
+
+**Wo es klemmen kann, und was dann gilt.** Göttingen antwortet uns mit
+HTTP 403 (Cloudflare), Salzgitter und Wilhelmshaven von hier gar nicht.
+Das ist **kein** Fall für einen Umweg über den Heim-Proxy und **kein** Fall
+für einen anderen User-Agent: Wer eine Stadt gegen ihren Willen liest, hat
+das Projekt beschädigt, nicht die Stadt. Wenn eine Stadt uns aussperrt,
+steht sie in der Registry mit `active=False` und einer Notiz, und Tim
+entscheidet, ob er anfragt.
+
+**Messung.** Für Hildesheim: Sitzungen im Fenster, Tagesordnungspunkte je
+Sitzung, Vorlagen mit Beratungsfolge, Vorlagen mit Ergebnis — jeweils gegen
+eine **von Hand gezählte** Sitzung (Regel: kein Test gegen die eigene
+Fixture). Fertig, wenn `--pruefen` schweigt und der Anteil Vorlagen mit
+Ergebnis ≥ 60 % liegt.
+
+**Göttingen und Salzgitter gehören dazu — mit einer Bedingung.** Beide
+fahren ALLRIS classic und sind mit Regel 25 gesetzt; beide haben sich in der
+Messung aber verweigert: Göttingen mit HTTP 403 (Cloudflare), Salzgitter mit
+Zeitüberschreitungen. Bevor einer der beiden in die Registry kommt, braucht es
+eine **Probe von einem anderen Netz** (die Sperre kann gegen das Netz gerichtet
+sein, aus dem wir messen, nicht gegen uns). Antwortet die Stadt dann, ist sie
+ein Registry-Eintrag mit `html_suffix` und eine Fixture. Antwortet sie nicht,
+steht sie in Anhang B — als Anfrage, nicht als Umgehung.
+
+**Kosten.** Der Adapter: zwei bis drei Tage. Hildesheim ernten und
+klassifizieren: < $5. Göttingen und Salzgitter danach je ein halber Tag und
+< $5, Delmenhorst und Celle ebenso — aber je einzeln zu entscheiden, in
+eigenen PRs.
+
+## PR 36c — ALLRIS 4 über die Oberfläche: Wicket, also ein Browser
+
+**Warum ein eigener PR und nicht Teil von 36.** Tims Entscheidung vom
+10.09.2026, spät: *„lass uns fürs Wolfsburg OParl umgehen und einfach auch
+HTML scrapen."* Gemeint ist die kaputte Schnittstelle, nicht eine Sperre —
+die Oberfläche ist öffentlich. Nur ist ALLRIS 4 **nicht** das ALLRIS classic
+aus PR 36. Gemessen an Wolfsburg und Laatzen (10.09.2026):
+
+- Die Seiten sind eine **Apache-Wicket-Anwendung**: Formulare per POST mit
+  Seitenversion (`si010?0-1.-form`), ein `sectoken`, 32 `Wicket.Ajax`-Aufrufe
+  je Seite. Das ausgelieferte HTML des Kalenders enthält **keine Tabelle**,
+  und eine Einzelseite wie `vo020?VOLFDNR=…` ist für jede Kennung dieselbe
+  13.701-Byte-Hülle — der Inhalt kommt erst per AJAX.
+- Mit einem **echten Browser** und einem Klick auf „Anzeigen" liefert
+  Laatzen den Kalender: 32 Tabellenzeilen, 8 Sitzungen für September 2026.
+  Das ist der Weg: Playwright (liegt im Frontend schon), keine nachgebaute
+  Wicket-Sitzung — die Seitenversionen und der `sectoken` sind genau das,
+  was ein Nachbau falsch macht.
+- ~~**Wolfsburg selbst ist heute nicht lesbar, für niemanden.**~~ **Falsch,
+  s. Nachtrag unten.** Der Befund war gegen einen Host gemessen, den es nicht
+  gibt.
+
+**`robots.txt` sagt `Disallow: /` — und das ist die Voreinstellung des
+Produkts.** Osnabrück und Braunschweig (deren OParl wir lesen) tragen dieselbe
+Zeile, Oldenburgs SessionNet ebenfalls. Es ist also dieselbe Lage wie bei
+allem, was Ratslotse heute schon liest, und **nicht** die Göttingen-Sperre
+(HTTP 403, aktiv gegen Abrufe). Es steht hier, damit es niemand später als
+neuen Befund entdeckt; die Regel aus PR 36 bleibt: ehrlicher Absender,
+gedrosselt, nie gegen eine aktive Sperre.
+
+**Was sich ändert.** `council/cities/adapters/allris4_html.py`, Dialekt
+`"allris4_html"`, mit Playwright: Kalender je Monat („Anzeigen"),
+Sitzungsseite → Tagesordnung, Vorlagenseite → Beratungsfolge, PDFs über die
+Datei-Links. Alles **roh** abgelegt (die HTML nach dem Rendern), wie in
+PR 36. Derselbe `Batch` wie überall. Ein Browser je Stadt und Lauf, nicht je
+Seite — und `--max-files` gilt.
+
+**Wen es noch betrifft.** Lüneburg und Laatzen (OParl-Route mit HTTP 500,
+Regel 25 nicht, aber Niedersachsen), und als **Rückfallebene** Braunschweig
+und Osnabrück, falls deren OParl einmal so aussieht wie Wolfsburgs.
+
+**Test.** Kein Browser in der Testsuite: Die Fixtures sind die **gerenderten**
+Seiten von Laatzen (gekürzt, ohne Personennamen), der Parser wird daran
+geprüft; die Playwright-Schicht bekommt einen Wächter, der nur prüft, dass sie
+die Fixture-Seiten unverändert durchreicht.
+
+**Messung.** An Laatzen: Sitzungen je Monat gegen die Kalenderanzeige von
+Hand, Vorlagen mit Beratungsfolge, mit Ergebnis — Fertig bei `--pruefen`
+ohne Befund und ≥ 60 % Vorlagen mit Ergebnis. Für Wolfsburg: dieselbe
+Messung am Tag, an dem `si010` wieder antwortet.
+
+**Kosten.** Zwei bis drei Tage (Browser-Steuerung und Wicket-Eigenheiten),
+Laatzen < $3, Wolfsburg später ~$5.
+
+### Nachtrag 10.09.2026 — PR 36c ist gebaut, und zwei Annahmen waren falsch
+
+Umgesetzt in [#1272](https://github.com/Schereo/Ratslotse/pull/1272).
+
+**Erstens: Wolfsburg ist nicht kaputt, der Host war geraten.** Alles oben über
+`/internalerrorpage` und „null AJAX-Ziele" ist gegen `ratsinfo.wolfsburg.de`
+gemessen worden — einen Host, **der nicht einmal im DNS steht**. Die Stadt
+verlinkt von `wolfsburg.de/politik` auf `ratsinfob.stadt.wolfsburg.de`, ohne
+`/public`; dort hat `si010` 32 AJAX-Ziele und die Anwendung ist vollständig
+lesbar. Dieselbe Falle bei Lüneburg: nicht `ratsinfo.lueneburg.de` (existiert
+nicht), sondern `buergerinfo.stadt.lueneburg.de/public` — und obwohl
+„buergerinfo" sonst die Handschrift von Somacos ist, läuft dort ALLRIS 4.
+
+Daraus ist eine Regel geworden (`council/cities/CLAUDE.md`, Schritt 0):
+**Host von der Rathaus-Seite holen, Produkt am Seiteninhalt messen. Nie
+raten.** Ein nicht auflösender Host wirft `ConnectionError`, ein falsch
+geratener liefert irgendeine fremde Seite mit HTTP 200 — beides sieht aus wie
+„die Anwendung ist defekt", und man diagnostiziert minutenlang ein System,
+das man gar nicht vor sich hat.
+
+**Zweitens: Es braucht keinen Browser.** Der Plan verlangt Playwright, weil
+der Kalender ohne Wicket-Zustand leer bleibt. Das stimmt für den Kalender —
+aber der Kalender ist der falsche Index. `si018` („Sitzungen Übersicht") ist
+eine Liste, deren Blätterung sich selbst beschreibt: Jede Antwort nennt das
+Ziel für „weiter". Gemessen: **Wolfsburg 652 Sitzungen in 28 Abrufen,
+Lüneburg 778 in 33 — mit `requests` und einem Cookie.** Dasselbe für die
+Gremien über `gr010` (Wolfsburg 43, Lüneburg 66, Laatzen 15).
+
+Damit entfällt die teuerste Annahme des PRs: keine Browser-Abhängigkeit, kein
+Wächter für eine Playwright-Schicht, und die Testfixtures sind die schlichten
+HTTP-Antworten statt gerenderter Seiten. Die Kostenschätzung „zwei bis drei
+Tage" ist damit hinfällig.
+
+Drei Eigenheiten muss der Index trotzdem kennen, jede für sich genug, ihn
+leer aussehen zu lassen: Die **Seitenversion wird gelesen, nicht gesetzt**
+(Wicket zählt sie je Sitzung hoch — ein festes `si018?0-1.0-` gab bei
+Wolfsburg „0 Sitzungen" statt 652); die **Kennung steht in zwei Formen** da
+(`id="silink_<n>"` bei Wolfsburg, `SILFDNR=` bei Laatzen); und das
+**„weiter"-Ziel ist mal absolut, mal relativ**. Bei den Gremien liegen die
+Namen zusätzlich **in CDATA** — als HTML gelesen findet man dort kein
+einziges `<a>`.
+
+**Was offen bleibt.** Wolfsburgs OParl-Modul ist eingebaut und liefert
+`/system` (OParl 1.1, CC BY 4.0), während `bodies` und alles dahinter mit
+HTTP 500 antwortet. Das ist weiterhin ein Defekt auf ihrer Seite und wäre
+eine Anfrage wert — aber keine dringende: Über die Oberfläche liegen die
+Daten bereits vor.
+
+## PR 37 — Bonn
+
+**Warum.** §3, Rang 3. Und weil Bonn Niederschriften an sechs von acht
+Sitzungen hat — PR 31–33 bekommen damit eine weitere Quelle neben Münster,
+den drei ALLRIS-Städten und Langenhagen.
 
 **Was sich ändert.** Das Rezept aus `council/cities/CLAUDE.md`, Schritt für
 Schritt, und **kein Schritt ausgelassen**:
@@ -428,21 +796,81 @@ auftaucht und die Karte Ideen aus Bonn zeigt.
 **Kosten.** classify ~$3 (rund 10.000 Vorlagen à $0,31/1.000), `fit` über
 die übertragbaren ~$5, Index Stunden CPU. Zusammen **< $10**.
 
-## PR 36 — Darmstadt, und damit `rubin.py`
+## PR 38 — Darmstadt, und damit `rubin.py`
 
-**Warum.** Die Oldenburg ähnlichste Stadt, und der erste Ernstfall für den
-vierten Adapter. Freiburg wird danach ein Registry-Eintrag.
+**Warum.** Oldenburgs Größe auf den Einwohner genau, und der erste Ernstfall
+für den vierten Adapter. Freiburg wird danach ein Registry-Eintrag.
 
-**Was sich ändert.** Dasselbe Rezept wie PR 35. Dazu, weil OParl 1.0:
+**Was sich ändert.** Dasselbe Rezept wie PR 37. Dazu, weil OParl 1.0:
 `rubin.py` gegen die Abweichungen von 1.1 prüfen (die Registry-Notiz zu
 Freiburg sagt: „Volltext liegt im Dateiobjekt"). Erwartung aus der Probe:
 Beratung an 5 von 5 Vorlagen, keine Protokolle — PR 31 liefert für Darmstadt
 also nichts, und das ist in Ordnung.
 
-**Messung.** Wie PR 35. Fertig, wenn `rubin.py` ein Fixture aus echten
+**Messung.** Wie PR 37. Fertig, wenn `rubin.py` ein Fixture aus echten
 Darmstädter Rohobjekten trägt und `--pruefen` schweigt.
 
 **Kosten.** < $10.
+
+## PR 39 — Hannover, der Eigenbau
+
+**Warum.** Regel 25, und weil Hannover mit 548.000 Einwohnern die Hälfte
+aller Ratsvorlagen Niedersachsens beisteuern dürfte. Es fährt **keines der
+vier Programme**, sondern ein eigenes „Sitzungsmanagement" (SIM) auf
+Notes/Domino unter `e-government.hannover-stadt.de/lhhsimwebre.nsf`. Der
+Website-Suche ist es komplett entgangen — `hannover.de` baut seine Verweise
+per JavaScript, im ausgelieferten Quelltext steht kein Link darauf.
+
+**Zwei Fallen, beide gemessen (10.09.2026).** Erstens: `/oparl/system`
+antwortet dort mit **Status 200** — und liefert die Startseite der Stadt.
+Eine weiche 404; wer nur den Statuscode prüft, zählt Hannover als
+„Schnittstelle vorhanden". Nur die Prüfung auf `oparlVersion` im Rumpf
+entlarvt das. Zweitens: Die Seiten tragen eine `SessionID` in der Adresse
+(`TermineAktuell.xsp?SessionID=…`) — der Adapter darf sie nicht in Kennungen
+übernehmen.
+
+**Was Hannover hat, das sonst niemand hat.** Vier maschinenlesbare Feeds
+ohne OParl, alle unter `…/lhhsimwebre.nsf/`:
+
+| Feed | Inhalt | gemessen |
+|---|---|---|
+| `RSS_Sitzungen.xml` | Sitzungen mit Tagesordnung, rollendes Zwei-Wochen-Fenster | 5 kB |
+| `RSS_Drucksachen_Rat.xml` | neue Vorlagen des Rates: Titel, Nummer, Einreicher, beratende Gremien | 7 Einträge |
+| `RSS_Drucksachen_STBR.xml` | dasselbe für die 13 Stadtbezirksräte | — |
+| `Sitzungen.ics` | alle Termine als iCal, je mit stabiler Dokumentadresse | **276 Termine**, 194 kB |
+
+Die Dokumentschlüssel sind lesbar und stabil: `/TM/20260907_AGleich` ist die
+Sitzung des Gleichstellungsausschusses vom 7.9.2026. Dazu die Seiten
+`DrucksachenAktuell.xsp` (neue Vorlagen mit Nummer, Typ, Gremium),
+`Ausschuesse.xsp`, `Kalender.xsp`, `Suche.xsp`.
+
+**Was sich ändert.** Neues Modul `council/cities/adapters/sim_hannover.py`,
+Dialekt `"sim"`. Der Einstieg sind die Feeds, nicht die Oberfläche: `Sitzungen.
+ics` liefert die Sitzungen samt Dokumentadresse, `RSS_Drucksachen_*` die neuen
+Vorlagen; von dort folgt der Adapter den Dokumentadressen und legt die
+HTML-Seiten **roh** ab (dieselbe Regel wie in PR 36). Die Beratungsfolge steht
+auf der Drucksachen-Seite („Gremien: Ausschuss für …, Sozialausschuss,
+Verwaltungsausschuss") und muss gegen die Sitzungen aufgelöst werden — das ist
+die Arbeit, die den Adapter von einem Feed-Leser unterscheidet.
+
+**Was vorher zu klären ist.** Ob die Feeds auch den **Bestand** hergeben oder
+nur das Neue: Der Sitzungs-RSS ist ein Zwei-Wochen-Fenster, das iCal führt 276
+Termine — wie weit zurück, sagt die Messung noch nicht. Reicht es nicht,
+braucht die Historie `Kalender.xsp` und `Suche.xsp`, und die sind XPages mit
+Sitzungsstatus — der teuerste Teil. **Erst messen, dann bauen.**
+
+**Test.** Fixture aus einem echten RSS-Eintrag und einer gekürzten
+Drucksachen-Seite (ohne Personennamen; Einreicher sind Fraktionen, die
+dürfen stehen). Der Test prüft die Auflösung „Gremien"-Zeile → Sitzungen.
+
+**Messung.** Vorlagen mit Beratungsfolge, Vorlagen mit Ergebnis, Anteil
+Sitzungen mit Protokoll — dieselben Größen wie überall, gegen eine von Hand
+gezählte Sitzung. Fertig, wenn `--pruefen` schweigt und Hannover in
+`cities_bilanz.py` steht.
+
+**Kosten.** Drei bis vier Tage — der größte Einzelposten des Plans, für eine
+Stadt. Ernte und Einordnung: rund 10.000 Vorlagen im Jahr, davon der Großteil
+aus den Stadtbezirksräten → classify ~$3, `fit` < $10.
 
 ## Anhang A — Reihenfolge, Aufwand, Kosten
 
@@ -452,34 +880,68 @@ Darmstädter Rohobjekten trägt und `--pruefen` schweigt.
 | 32 | Niederschriften aufschneiden + Prüfstand | 31 | 2 Tage | 0 |
 | 33 | Das „Warum" + Karte | 32 | 2 Tage | < $1 |
 | 34 | Oldenburgs Seite | 33 | 1 Tag | < $1 |
-| 35 | Bonn | — (parallel zu 31–34) | 1 Tag + Laufzeit | < $10 |
-| 36 | Darmstadt / `rubin.py` | 35 | 1–2 Tage | < $10 |
+| **35** | **Langenhagen + Peine (NI, OParl)** | — (parallel) | **½ Tag + Laufzeit** | **< $3** |
+| **36** | **Adapter `allris_html`, Hildesheim (NI)** | 35 | **2–3 Tage** | **< $5** |
+| **36b** | **Göttingen, Salzgitter** (nach Probe von anderem Netz) | 36 | je ½ Tag | je < $5 |
+| **36c** | **ALLRIS 4 über die Oberfläche** (Wicket/Playwright), an Laatzen; Wolfsburg sobald heil | — | **2–3 Tage** | < $8 |
+| 37 | Bonn | — (parallel) | 1 Tag + Laufzeit | < $10 |
+| 38 | Darmstadt / `rubin.py` | 37 | 1–2 Tage | < $10 |
+| **39** | **Hannover, Eigenbau (Feeds + Domino-HTML)** | — | **3–4 Tage** | < $15 |
 
-31 → 32 → 33 → 34 ist die Kette, die das „Warum" liefert; sie hängt an
-nichts anderem. 35 kann parallel laufen — und sollte es, denn Bonns
-Niederschriften sind die vierte Quelle für 32. 36 erst nach 35.
+31 → 32 → 33 → 34 ist die Kette, die das „Warum" liefert. 35 und 37 hängen an
+nichts und sollten parallel laufen: Beide bringen Protokollquellen, die 32
+zum Messen braucht. 36 ist der einzige größere Brocken — und der einzige Weg
+zu einer niedersächsischen Stadt in Oldenburgs Größe. 38 erst nach 37.
 
-Zusammen: sieben bis acht Arbeitstage, unter $25.
+**Wenn die Zeit nicht für alles reicht**, ist die Reihenfolge nach Nutzen:
+35 (ein halber Tag für zwei NI-Städte), dann 31–33 (das „Warum"), dann 36
+(Hildesheim) und 36b, dann 39 (Hannover), dann 37/38. Die Anfrage an
+Wolfsburg (Anhang B) kostet keine Entwicklungszeit und gehört an den Anfang.
 
-## Anhang B — Was ausdrücklich NICHT in diesem Plan liegt
+Zusammen: achtzehn bis einundzwanzig Arbeitstage, unter $60.
+
+## Anhang B — Was NICHT in diesem Plan liegt, und was Tim selbst tun müsste
+
+**Nicht im Plan:**
 
 - **Benachrichtigungen und alles für Ratsmitglieder** (Regel 21).
 - **Ein „Warum" ohne Text.** Wo kein Abschnitt vorliegt — Magdeburg
-  vollständig, Darmstadt, Freiburg, alle SessionNet-Kandidaten außer Münster
-  — bleibt die Karte, wie sie ist. Kein Modell füllt die Lücke.
-- **Niedersachsen über die Oberfläche ernten.** Hannover, Göttingen,
-  Wolfsburg und die übrigen haben Ratsinformationssysteme, nur kein OParl.
-  Oldenburg selbst wird genau so gelesen — SessionNet-HTML, `council/`. Ob
-  dieser Scraper eine zweite SessionNet-Stadt in Niedersachsen lesen kann,
-  ist eine **Probe von einem Nachmittag** (Adresse finden, drei Sitzungen
-  holen, Trefferquote messen) und dann eine eigene Entscheidung: Es wäre der
-  fünfte Adapter, und einer ohne Schnittstellen-Vertrag. Der einzige Weg zu
-  echter Vergleichbarkeit über das Landesrecht — aber nicht dieser Plan.
+  vollständig, Peine, Darmstadt, Freiburg, alle SessionNet-Kandidaten außer
+  Münster — bleibt die Karte, wie sie ist. Kein Modell füllt die Lücke.
+- **Städte, die uns aussperren.** Göttingen antwortet mit HTTP 403
+  (Cloudflare), Salzgitter und Wilhelmshaven gar nicht. Kein Umweg über den
+  Heim-Proxy, kein getarnter User-Agent — siehe PR 36.
 - **Ein anderes Modell** — gemessen, abgelehnt (§2.4).
 - **Der verkettete Cluster 1** — gemessen, abgelehnt (PR #1262).
-- **Mehr Städte als Bonn und Darmstadt.** Leipzig und Freiburg sind
-  Registry-Einträge, die auf 35/36 warten; Köln und die übrigen SessionNet-
-  Städte bringen nichts, was diese Phase braucht.
+- **Emden, Aurich, Nienburg** (SessionNet, 50/42/32 k). Dasselbe Produkt wie
+  Oldenburg, also gut lesbar — aber klein, und ein sechster Adapter. Nach
+  PR 36 neu bewerten.
+
+**Was nur Tim tun kann — Anfragen, keine Zugänge.** Die Messung in §2.3 hat
+in Niedersachsen 39 Kommunen gefunden, bei denen der OParl-Dienst
+**vorhanden, aber abgeschaltet oder kaputt** ist; sieben davon sind groß
+genug für den Vergleich. Ein Zugang hilft nicht — keiner dieser Endpunkte
+fordert einen an (kein `WWW-Authenticate`, HTTP 400 bzw. 500, nie 401), und
+OParl kennt per Spezifikation keinen. Was hilft, ist eine E-Mail an die
+richtige Stelle — mit der ehrlichen Erwartung, dass bei SD.NET ein
+kostenpflichtiges Modul dahinterstehen kann. Für die Städte aus Regel 25
+kommt dazu: Göttingen und Salzgitter um Freigabe unserer Abrufe bitten,
+sollte die Probe aus einem anderen Netz ebenfalls scheitern.
+
+| Stadt | Einw. | Was zu sagen wäre |
+|---|---:|---|
+| **Wolfsburg** | **127 k** | „Ihr Ratsinformationssystem `ratsinfob.stadt.wolfsburg.de` ist defekt: Der Sitzungskalender führt auf eine Fehlerseite (HTTP 500), und jede OParl-Adresse antwortet mit HTTP 500 — gemessen am 10.09.2026." Das ist ein Fehlerbericht, keine Bestellung; er hilft der Stadt selbst. |
+| Lüneburg | 75 k | dasselbe für `/public/oparl/system` |
+| Laatzen | 43 k | dasselbe |
+| Lingen | 58 k | „Ihr SD.NET RIM meldet: *Webservice „OParl" ist nicht aktiviert*. Könnten Sie ihn freischalten?" |
+| Nordhorn | 54 k | dasselbe |
+| Cuxhaven | 48 k | dasselbe |
+| Verden | 28 k | dasselbe |
+
+Wolfsburg allein wäre die zweitgrößte niedersächsische Stadt im Vergleich.
+Käme auch nur die Hälfte, wäre das mehr, als PR 36 an Arbeit kostet — und
+ohne einen einzigen HTML-Parser. Der Hebel ist unverhältnismäßig groß, und
+er liegt nicht im Code.
 
 ## Anhang C — Messbefehle
 
@@ -512,3 +974,14 @@ Alle vom Repo-Root. **Nie, während ein Lauf schreibt.**
    ```bash
    python scripts/cities_backfill.py --pruefen
    ```
+6. **Eine Stadt ohne bekannten Endpunkt prüfen** — der Weg, an dem die erste
+   Messung gescheitert ist (§2.3). **Nicht** Adressmuster raten, sondern:
+   die Rathaus-Seite zum Stichwort „Ratsinformationssystem" holen, alle
+   Links mit `ratsinfo|sessionnet|buergerinfo|allris|sitzung|rim|ris.` daraus
+   ziehen, und auf **diesen** Hosts die OParl-Pfade probieren:
+   `/oparl/system`, `/public/oparl/system`, `/webservice/oparl/v1.1/system`,
+   `/bi/oparl/1.0/system.asp`. Drei Antworten sind je eine eigene Aussage:
+   JSON mit `oparlVersion` = läuft; `{"error":"Webservice \"OParl\" ist
+   nicht aktiviert!"}` = SD.NET, eine Anfrage entfernt; HTTP 500 auf einer
+   Route, die es gibt = ALLRIS 4 kaputt konfiguriert, ebenfalls eine Anfrage
+   entfernt. Nur 404 überall heißt wirklich „kein OParl".
