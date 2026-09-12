@@ -46,11 +46,15 @@ export type Wochenvorschau = {
 /** Die drei Dichtestufen aus Design 14d. */
 type Dichte = "mobil" | "ipad" | "desktop";
 
-const fmtTag = (iso: string) =>
-  new Date(iso + "T12:00:00")
-    .toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })
-    .toUpperCase()
-    .replace(",", "");
+function SitzungsDatum({ date, className }: { date: string; className?: string }) {
+  const datum = new Date(date + "T12:00:00");
+  return <time dateTime={date}
+    aria-label={datum.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+    className={cn("flex shrink-0 flex-col items-center gap-0.5 whitespace-nowrap font-mono leading-tight text-muted-foreground", className)}>
+    <span className="text-xs uppercase tracking-[0.04em]">{datum.toLocaleDateString("de-DE", { weekday: "short" })}</span>
+    <span className="text-meta font-medium tabular-nums">{datum.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}</span>
+  </time>;
+}
 
 /** „13.–20. AUGUST" (Desktop) bzw. „13.–20. AUG" (iPad). */
 function zeitraum(von: string, bis: string, kurz: boolean) {
@@ -240,13 +244,7 @@ function WochenInhalt({ vorschau, heuteIso }: { vorschau: Wochenvorschau; heuteI
           )}
         </div>
       ) : (
-        <div
-          className="grid flex-1"
-          style={{
-            gridTemplateColumns: `${dichte === "desktop" ? 5.75 : 4.625}rem minmax(0, 1fr)`,
-            columnGap: dichte === "desktop" ? 16 : 13,
-          }}
-        >
+        <div className="grid flex-1 grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3">
           {tage.map(({ date, sitzungen: tagesSitzungen }, ti) => (
             <RailTag
               key={date}
@@ -295,18 +293,16 @@ function RailTag({ date, heute, letzter, dichte, children }: {
 }) {
   return (
     <>
-      <div className="flex flex-col items-start pt-px">
+      <div className="flex flex-col items-center pt-px">
         {heute ? (
-          <span className="inline-flex items-center rounded-full bg-signal/[0.12] px-2 py-0.5 font-mono text-meta font-semibold uppercase tracking-[0.08em] text-signal">
+          <span className="inline-flex items-center rounded-full bg-signal/[0.12] px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-[0.04em] text-signal">
             Heute
           </span>
         ) : (
-          <span className="pl-0.5 font-mono text-meta font-medium tracking-[0.08em] text-muted-foreground">
-            {fmtTag(date)}
-          </span>
+          <SitzungsDatum date={date} />
         )}
         {/* Die Linie verbindet die Tage; am letzten endet die Rail. */}
-        {!letzter && <span className="mt-1.5 w-px flex-1 bg-border/70" style={{ marginLeft: dichte === "desktop" ? 12 : 11 }} />}
+        {!letzter && <span className="mt-1.5 w-px flex-1 bg-border/70" />}
       </div>
       <div className={cn("flex min-w-0 flex-col", letzter ? "" : dichte === "desktop" ? "pb-3.5" : "pb-3", "gap-2")}>
         {children}
@@ -567,9 +563,7 @@ function MobilSitzung({ sitzung, punkte, rest, weitere, badge, treffer, heute, m
             Heute {zeit}
           </span>
         ) : (
-          <span className="w-[5.25rem] shrink-0 whitespace-nowrap font-mono text-meta font-medium tracking-[0.06em] text-muted-foreground">
-            {fmtTag(sitzung.session_date)}
-          </span>
+          <SitzungsDatum date={sitzung.session_date} className="w-14" />
         )}
         <span className="min-w-0 flex-1 truncate text-hinweis font-semibold text-foreground">
           {shortCommittee(sitzung.committee)}
@@ -638,9 +632,7 @@ function MobilRuhig({ sitzung, heute, mitTrennlinie }: {
           Heute {zeit}
         </span>
       ) : (
-        <span className="w-[5.25rem] shrink-0 whitespace-nowrap font-mono text-meta font-medium tracking-[0.06em] text-muted-foreground">
-          {fmtTag(sitzung.session_date)}
-        </span>
+        <SitzungsDatum date={sitzung.session_date} className="w-14" />
       )}
       <span className="min-w-0 flex-1 truncate text-hinweis font-semibold text-foreground/90">
         {shortCommittee(sitzung.committee)}

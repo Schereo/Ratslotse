@@ -528,6 +528,8 @@ der große Schrift abschneidet.
 
 Größe verändert den Inhalt: Die Woche zeigt ein/zwei/drei Punkte je Sitzung
 und breit zusätzliche Erläuterungen; weitere Punkte bleiben aufklappbar.
+Wochentag und Datum stehen als kompakter Zweizeiler untereinander. Die
+Datumsspalte ist 3,5 rem breit, mit 0,75 rem Abstand zu den Sitzungsinhalten.
 Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen,
 der breite Viertel-Baustein ein vorhandenes Vorhaben zum Ortsnamen.
 Der Verlauf zeigt kompakt drei Einträge mit Nachladen, breit bis zu fünf
