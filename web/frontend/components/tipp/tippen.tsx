@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import {
+  mitRunde,
   restObText,
   restObTon,
   restSitze,
@@ -34,9 +35,10 @@ const OHNE_PFEILE =
   "[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
   + " [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none";
 
-export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
+export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   setup: TippSetup;
   meins: TippMeins;
+  runde: string | null;
   /** Wird NACH dem Bestätigungs-Takt gerufen — der Aufrufer wechselt dann
    *  auf „Mein Tipp" (1e). */
   onGespeichert: () => void;
@@ -80,7 +82,7 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
     setSendet(true);
     setFehler(null);
     try {
-      const res = await fetch(apiUrl("/tipp"), {
+      const res = await fetch(apiUrl(mitRunde("/tipp", runde)), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

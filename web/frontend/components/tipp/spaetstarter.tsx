@@ -7,15 +7,16 @@
 import Link from "next/link";
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
-import { uhrzeitKurz } from "@/lib/tipp";
+import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
 import type { TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
+export function Spaetstarter({ setup, runde, lottiAnimiert, onBeigetreten }: {
   setup: TippSetup;
+  runde: string | null;
   lottiAnimiert: boolean;
   onBeigetreten: () => void;
 }) {
@@ -35,7 +36,7 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
     setFehler(null);
     setSendet(true);
     try {
-      const res = await fetch(apiUrl("/tipp"), {
+      const res = await fetch(apiUrl(mitRunde("/tipp", runde)), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -107,7 +108,7 @@ export function Spaetstarter({ setup, lottiAnimiert, onBeigetreten }: {
       </form>
 
       <Button asChild variant="ghost" className="mt-2 h-11 w-full text-sm">
-        <Link href="/tipp/live">Rangliste ansehen</Link>
+        <Link href={mitRunde("/tipp/live", runde, "runde")}>Rangliste ansehen</Link>
       </Button>
     </div>
   );

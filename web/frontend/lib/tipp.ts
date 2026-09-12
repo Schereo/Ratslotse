@@ -28,6 +28,22 @@ export type TippReihe = TippTafel["rows"][number];
  *
  * Benutzt von der Handy-Seite UND vom Beamer (`components/tipp/live.tsx`).
  */
+/** Die Runde aus der Adresse: `?runde=vally`. `null` ist die Hauptrunde —
+ *  sie hat keinen Parameter, damit jede Adresse von vorher gültig bleibt.
+ *  Nur Kleinbuchstaben, Ziffern, Bindestrich; alles andere fällt auf die
+ *  Hauptrunde zurück (der Server kennt es ohnehin nicht → 404). */
+export function rundeAus(params: { get(name: string): string | null } | null): string | null {
+  const r = (params?.get("runde") ?? "").trim().toLowerCase();
+  return /^[a-z0-9-]{1,30}$/.test(r) ? r : null;
+}
+
+/** Ein Pfad mit Runde — für die API `round=`, für Seiten `runde=`. Ohne
+ *  Runde bleibt der Pfad, wie er ist. */
+export function mitRunde(basis: string, runde: string | null, param: "round" | "runde" = "round"): string {
+  if (!runde) return basis;
+  return `${basis}${basis.includes("?") ? "&" : "?"}${param}=${encodeURIComponent(runde)}`;
+}
+
 export function probePfad(basis: string, probe: string | null, counted: string | null): string {
   const q = new URLSearchParams();
   if (probe) q.set("probe", probe);

@@ -6,14 +6,16 @@
 
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
+import { mitRunde } from "@/lib/tipp";
 import type { TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
+export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
   setup: TippSetup;
+  runde: string | null;
   lottiAnimiert: boolean;
   onBeigetreten: () => void;
 }) {
@@ -26,7 +28,7 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
     setFehler(null);
     setSendet(true);
     try {
-      const res = await fetch(apiUrl("/tipp"), {
+      const res = await fetch(apiUrl(mitRunde("/tipp", runde)), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -58,7 +60,9 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
       </div>
 
       <p className="mt-3 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-        Ratswahl Oldenburg · 13.09.2026
+        {/* Eine eigene Runde trägt ihren Namen im Kicker — wer über Vallys
+            Link kommt, soll sehen, dass er in Vallys Kreis tippt. */}
+        {setup.listed ? "Ratswahl Oldenburg · 13.09.2026" : `${setup.title} · Ratswahl Oldenburg · 13.09.2026`}
       </p>
       <h1 className="mt-2 text-balance font-display text-[28px] font-bold leading-[1.1] tracking-tight">
         Wie geht die Ratswahl aus?

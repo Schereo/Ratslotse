@@ -19,7 +19,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "@/lib/api";
 import { useAppConfig, useFeature } from "@/lib/features";
-import { probePfad } from "@/lib/tipp";
+import { mitRunde, probePfad, rundeAus } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
@@ -28,8 +28,8 @@ import { Spaetstarter } from "./spaetstarter";
 import { Tippen } from "./tippen";
 import { MeinTipp } from "./mein-tipp";
 
-async function holeSetup(): Promise<TippSetup> {
-  const res = await fetch(apiUrl("/tipp/setup"), { credentials: "include" });
+async function holeSetup(pfad: string): Promise<TippSetup> {
+  const res = await fetch(apiUrl(pfad), { credentials: "include" });
   if (!res.ok) throw new Error("setup");
   return res.json();
 }
@@ -100,9 +100,13 @@ export function TippView() {
   // lässt sich der eigene Tipp (1e) gegen die Zahlen von 2021 durchspielen,
   // bevor es echte gibt.
   const params = useSearchParams();
-  const meinPfad = probePfad("/tipp/me", params.get("probe"), params.get("counted"));
+  // `?runde=vally`: ein eigener Kreis mit eigenen Tipps und eigenem Cookie
+  // (prediction/rounds.py). Die Hauptrunde hat keinen Parameter.
+  const runde = rundeAus(params);
+  const setupPfad = mitRunde("/tipp/setup", runde);
+  const meinPfad = mitRunde(probePfad("/tipp/me", params.get("probe"), params.get("counted")), runde);
 
-  const setupQuery = useQuery({ queryKey: ["tipp", "setup"], queryFn: holeSetup, enabled: !!tippspielAn });
+  const setupQuery = useQuery({ queryKey: ["tipp", "setup", runde], queryFn: () => holeSetup(setupPfad), enabled: !!tippspielAn });
   const meinsQuery = useQuery({
     queryKey: ["tipp", "me", meinPfad], queryFn: () => holeMeins(meinPfad), enabled: !!tippspielAn,
     // Erst nach dem Tipp-Schluss lohnt sich das Nachfragen — vorher ändert
@@ -123,8 +127,8 @@ export function TippView() {
 
   if (!meins) {
     return setup.locked
-      ? <Spaetstarter setup={setup} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />
-      : <Einstieg setup={setup} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />;
+      ? <Spaetstarter setup={setup} runde={runde} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />
+      : <Einstieg setup={setup} runde={runde} lottiAnimiert={lottiAnimiert} onBeigetreten={aufFrisch} />;
   }
   // Nach Tipp-Schluss darf noch tippen, wer NACH dem Schluss beigetreten ist
   // und noch keinen Tipp hat (der Server lässt genau das zu, als „nachgetippt").
@@ -138,11 +142,11 @@ export function TippView() {
   if (darfTippen && (!meins.has_tip || bearbeiten)) {
     return (
       <Tippen
-        setup={setup} meins={meins}
+        setup={setup} meins={meins} runde={runde}
         onGespeichert={() => { setBearbeiten(false); aufFrisch(); }}
         onZurueck={meins.has_tip ? () => setBearbeiten(false) : undefined}
       />
     );
   }
-  return <MeinTipp setup={setup} meins={meins} onAendern={darfTippen ? () => setBearbeiten(true) : undefined} />;
+  return <MeinTipp setup={setup} meins={meins} runde={runde} onAendern={darfTippen ? () => setBearbeiten(true) : undefined} />;
 }

@@ -3814,6 +3814,12 @@ class PredictionMayorCandidate(TypedDict):
 
 
 class PredictionGame(TypedDict):
+    #: Die Runde (``prediction/rounds.py``): "ratswahl" ist die Hauptrunde
+    #: ohne Parameter, jede andere hängt an ``?runde=<slug>``.
+    round: str
+    #: Steht die Runde auf der Website? Die Hauptrunde ja, ein privater
+    #: Kreis nicht — dann zeigt der Beamer den Link mit Parameter.
+    listed: bool
     title: str
     #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
     phase: str
@@ -3972,7 +3978,19 @@ class PredictionAdminPlayer(TypedDict):
     has_mayor_tip: bool
 
 
+class PredictionRoundInfo(TypedDict):
+    """Eine Runde im Runden-Umschalter des Admins (1h)."""
+    slug: str
+    title: str
+    listed: bool
+    phase: str
+    player_count: int
+
+
 class PredictionAdminStand(TypedDict):
+    #: Alle Runden — der Admin verwaltet jede, auch die, die nicht auf der
+    #: Website steht (ihr Kreis hat keine eigene Adminperson).
+    rounds: list[PredictionRoundInfo]
     game: PredictionGame
     results: list[PredictionResultRow]
     players: list[PredictionAdminPlayer]

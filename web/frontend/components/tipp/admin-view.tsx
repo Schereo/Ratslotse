@@ -24,7 +24,7 @@ import { useAuth } from "@/lib/auth";
 import { darfAdmin } from "@/lib/rechte";
 import { api } from "@/lib/api";
 import type { ApiAntwort } from "@/lib/vertrag";
-import { uhrzeitKurz } from "@/lib/tipp";
+import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand";
 import { Button, Segmented, Spinner } from "@/components/ui";
@@ -33,8 +33,8 @@ type AdminStand = ApiAntwort<"/tipp/admin/stand">;
 type Ergebnis = AdminStand["results"][number];
 type Beamer = "auto" | "vergleich" | "rangliste";
 
-async function holeAdminStand(): Promise<AdminStand> {
-  return api.get<AdminStand>("/tipp/admin/stand");
+async function holeAdminStand(runde: string | null): Promise<AdminStand> {
+  return api.get<AdminStand>(mitRunde("/tipp/admin/stand", runde));
 }
 
 function dezimal(n: number): string {
@@ -124,7 +124,12 @@ export function TippAdminView() {
   const qc = useQueryClient();
   const erlaubt = darfAdmin(user);
 
-  const standQuery = useQuery({ queryKey: ["tipp", "admin-stand"], queryFn: holeAdminStand, enabled: erlaubt, refetchInterval: 30_000 });
+  // Welche Runde gerade verwaltet wird — `null` ist die Hauptrunde. Alle
+  // Runden gehen über DIESE Seite: Ein privater Kreis hat keine eigene
+  // Adminperson, Tim trägt dort notfalls die Ergebnisse von Hand nach.
+  const [runde, setRunde] = useState<string | null>(null);
+  const standQuery = useQuery({ queryKey: ["tipp", "admin-stand", runde], queryFn: () => holeAdminStand(runde), enabled: erlaubt, refetchInterval: 30_000 });
+  const pfad = (basis: string) => mitRunde(basis, runde);
 
   const [beamer, setBeamer] = useState<Beamer>("auto");
   const [endstandBestaetigen, setEndstandBestaetigen] = useState(false);
@@ -177,7 +182,7 @@ export function TippAdminView() {
   const schluss = uhrzeitKurz(setup.locked_at);
 
   function speichern(slug: string, feld: "seats" | "pct", neu: number) {
-    void aktion(`feld:${slug}`, () => api.put("/tipp/admin/ergebnis", [{ slug, [feld]: neu }]), "Im Entwurf gespeichert.");
+    void aktion(`feld:${slug}`, () => api.put(pfad("/tipp/admin/ergebnis"), [{ slug, [feld]: neu }]), "Im Entwurf gespeichert.");
   }
 
   return (
@@ -193,6 +198,15 @@ export function TippAdminView() {
             <span className="text-[13px] text-muted-foreground">
               <span className="font-medium text-primary">Tippspiel</span> / Verwaltung
             </span>
+            {stand.rounds.length > 1 && (
+              <div className="ml-2">
+                <Segmented
+                  value={runde ?? stand.rounds[0].slug}
+                  onChange={(slug) => setRunde(slug === stand.rounds[0].slug ? null : slug)}
+                  options={stand.rounds.map((r) => ({ value: r.slug, label: `${r.title} · ${r.player_count}` }))}
+                />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2.5 text-[12.5px]">
             {meldung && (
@@ -221,7 +235,7 @@ export function TippAdminView() {
               </div>
               <Button
                 variant="secondary" size="sm" disabled={laeuft === "abfragen"}
-                onClick={() => void aktion("abfragen", () => api.post("/tipp/admin/abfragen"), "Aktuelle Zahlen von votemanager im Entwurf gespeichert.")}
+                onClick={() => void aktion("abfragen", () => api.post(pfad("/tipp/admin/abfragen")), "Aktuelle Zahlen von votemanager im Entwurf gespeichert.")}
               >
                 {laeuft === "abfragen" ? "Fragt ab …" : "Jetzt abfragen"}
               </Button>
@@ -258,11 +272,11 @@ export function TippAdminView() {
               </span>
               <div className="flex gap-2">
                 <Button variant="secondary" size="sm" disabled={laeuft === "verwerfen" || entwurfIstLive}
-                        onClick={() => void aktion("verwerfen", () => api.post("/tipp/admin/verwerfen"), "Entwurf verworfen.")}>
+                        onClick={() => void aktion("verwerfen", () => api.post(pfad("/tipp/admin/verwerfen")), "Entwurf verworfen.")}>
                   {laeuft === "verwerfen" ? "Verwirft …" : "Entwurf verwerfen"}
                 </Button>
                 <Button variant="primary" size="sm" disabled={laeuft === "veroeffentlichen" || entwurfIstLive}
-                        onClick={() => void aktion("veroeffentlichen", () => api.post("/tipp/admin/veroeffentlichen"), "Veröffentlicht — der Beamer zeigt den Stand.")}>
+                        onClick={() => void aktion("veroeffentlichen", () => api.post(pfad("/tipp/admin/veroeffentlichen")), "Veröffentlicht — der Beamer zeigt den Stand.")}>
                   {laeuft === "veroeffentlichen" ? "Veröffentlicht …" : "Veröffentlichen"}
                 </Button>
               </div>
@@ -302,7 +316,7 @@ export function TippAdminView() {
               <PhaseZeile zustand={phase === "open" ? "aktiv" : "erledigt"} titel="Tippen möglich"
                 rechts={phase === "open"
                   ? <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" disabled={laeuft === "schliessen"}
-                            onClick={() => void aktion("schliessen", () => api.put("/tipp/admin/phase", { phase: "locked" }), "Tippfrist beendet.")}>
+                            onClick={() => void aktion("schliessen", () => api.put(pfad("/tipp/admin/phase"), { phase: "locked" }), "Tippfrist beendet.")}>
                       {laeuft === "schliessen" ? "Schließt …" : "Tippen beenden"}
                     </Button>
                   : <span className="font-mono text-[11px] text-muted-foreground">{schluss ? `bis ${schluss}` : ""}</span>} />
@@ -315,7 +329,7 @@ export function TippAdminView() {
                   endstandBestaetigen ? (
                     <span className="flex items-center gap-1.5">
                       <Button size="sm" variant="signal" className="h-7 px-2.5 text-xs" disabled={laeuft === "final"}
-                              onClick={() => { void aktion("final", () => api.put("/tipp/admin/phase", { phase: "final" }), "Endstand gesetzt."); setEndstandBestaetigen(false); }}>
+                              onClick={() => { void aktion("final", () => api.put(pfad("/tipp/admin/phase"), { phase: "final" }), "Endstand gesetzt."); setEndstandBestaetigen(false); }}>
                         Ja, bestätigen
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setEndstandBestaetigen(false)}>Abbrechen</Button>
@@ -342,7 +356,7 @@ export function TippAdminView() {
             </div>
             <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">Im automatischen Wechsel zeigt der Beamer nach einer neuen Hochrechnung eine Minute lang die Rangliste.</p>
             <Button asChild variant="secondary" size="sm" className="mt-3 w-full">
-              <a href={beamer === "auto" ? "/tipp/live" : `/tipp/live?ansicht=${beamer}`} target="_blank" rel="noreferrer">
+              <a href={mitRunde(beamer === "auto" ? "/tipp/live" : `/tipp/live?ansicht=${beamer}`, runde, "runde")} target="_blank" rel="noreferrer">
                 Beamer öffnen <ExternalLink />
               </a>
             </Button>
@@ -367,12 +381,12 @@ export function TippAdminView() {
                     <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px]"
                       onClick={() => {
                         const neuerName = window.prompt("Neuer Name", p.name);
-                        if (neuerName && neuerName.trim()) void aktion(`name:${p.id}`, () => api.put(`/tipp/admin/spieler/${p.id}`, { name: neuerName.trim() }), "Umbenannt.");
+                        if (neuerName && neuerName.trim()) void aktion(`name:${p.id}`, () => api.put(pfad(`/tipp/admin/spieler/${p.id}`), { name: neuerName.trim() }), "Umbenannt.");
                       }}>
                       Umbenennen
                     </Button>
                     <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px]" disabled={laeuft === `hide:${p.id}`}
-                      onClick={() => void aktion(`hide:${p.id}`, () => api.put(`/tipp/admin/spieler/${p.id}`, { hidden: !p.hidden }), p.hidden ? "Wieder sichtbar." : "Ausgeblendet.")}>
+                      onClick={() => void aktion(`hide:${p.id}`, () => api.put(pfad(`/tipp/admin/spieler/${p.id}`), { hidden: !p.hidden }), p.hidden ? "Wieder sichtbar." : "Ausgeblendet.")}>
                       {p.hidden ? "Einblenden" : "Ausblenden"}
                     </Button>
                   </div>

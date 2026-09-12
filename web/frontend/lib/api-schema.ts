@@ -9905,6 +9905,8 @@ export interface components {
             players: components["schemas"]["PredictionAdminPlayer"][];
             /** Results */
             results: components["schemas"]["PredictionResultRow"][];
+            /** Rounds */
+            rounds: components["schemas"]["PredictionRoundInfo"][];
         };
         /** PredictionCompareLine */
         PredictionCompareLine: {
@@ -9929,6 +9931,8 @@ export interface components {
             deadline_hint: string;
             /** Late Scored */
             late_scored: boolean;
+            /** Listed */
+            listed: boolean;
             /** Locked */
             locked: boolean;
             /** Locked At */
@@ -9941,6 +9945,8 @@ export interface components {
             phase: string;
             /** Player Count */
             player_count: number;
+            /** Round */
+            round: string;
             /** Seats Total */
             seats_total: number;
             /** Title */
@@ -10119,6 +10125,22 @@ export interface components {
             slug: string;
             /** Source */
             source: string;
+        };
+        /**
+         * PredictionRoundInfo
+         * @description Eine Runde im Runden-Umschalter des Admins (1h).
+         */
+        PredictionRoundInfo: {
+            /** Listed */
+            listed: boolean;
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
         };
         /** PredictionRow */
         PredictionRow: {
@@ -17421,7 +17443,9 @@ export interface operations {
     };
     beitreten_oder_tippen_api_tipp_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17454,7 +17478,9 @@ export interface operations {
     };
     jetzt_abfragen_api_tipp_admin_abfragen_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17470,11 +17496,22 @@ export interface operations {
                     "application/json": components["schemas"]["PredictionAdminStand"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     ergebnis_eintragen_api_tipp_admin_ergebnis_put: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17507,7 +17544,9 @@ export interface operations {
     };
     phase_setzen_api_tipp_admin_phase_put: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17540,7 +17579,9 @@ export interface operations {
     };
     spieler_bearbeiten_api_tipp_admin_spieler__player_id__put: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path: {
                 player_id: number;
@@ -17575,7 +17616,9 @@ export interface operations {
     };
     admin_stand_api_tipp_admin_stand_get: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17589,13 +17632,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
     veroeffentlichen_api_tipp_admin_veroeffentlichen_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17611,11 +17665,22 @@ export interface operations {
                     "application/json": components["schemas"]["PredictionAdminStand"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     verwerfen_api_tipp_admin_verwerfen_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17629,6 +17694,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -17638,6 +17712,7 @@ export interface operations {
             query?: {
                 probe?: string | null;
                 counted?: number | null;
+                round?: string | null;
             };
             header?: never;
             path?: never;
@@ -17667,7 +17742,9 @@ export interface operations {
     };
     austreten_api_tipp_me_delete: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17683,11 +17760,22 @@ export interface operations {
                     "application/json": components["schemas"]["Ok"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     qr_code_api_tipp_qr_png_get: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17703,11 +17791,22 @@ export interface operations {
                     "image/png": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     setup_api_tipp_setup_get: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17723,6 +17822,15 @@ export interface operations {
                     "application/json": components["schemas"]["PredictionGame"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     stand_api_tipp_stand_get: {
@@ -17730,6 +17838,7 @@ export interface operations {
             query?: {
                 probe?: string | null;
                 counted?: number | null;
+                round?: string | null;
             };
             header?: never;
             path?: never;
@@ -18225,4 +18334,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2c5e809521e82d42803c316534162957791fbd6b21659f16f2b4acbf6f3e5b5e
+// vertrag-sha256: 9dc33fe7d396be4b13df28b46ccd378edf380364d6346a9e68bde8aa3f998dc2
