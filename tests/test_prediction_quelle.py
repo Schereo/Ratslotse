@@ -111,8 +111,8 @@ def test_generalprobe_zeigt_raenge_ohne_eine_veroeffentlichte_zeile(client, stor
     assert d["rows"][0]["rank"] == 1 and d["rows"][0]["score"]["total"] > d["rows"][1]["score"]["total"]
     assert all(c["actual"] is not None for c in d["compare"])
     # Die Generalprobe schreibt NICHTS: kein Auto-Lock, keine Ränge.
-    assert store.prediction_game()["phase"] == "open"
-    assert store.prediction_standings_previous("9999") == {}
+    assert store.prediction_game(1)["phase"] == "open"
+    assert store.prediction_standings_previous(1, "9999") == {}
 
 
 def test_live_wahlabend_treibt_die_tafel_ohne_admin_klick(client, store, monkeypatch):
@@ -126,7 +126,7 @@ def test_live_wahlabend_treibt_die_tafel_ohne_admin_klick(client, store, monkeyp
     assert d["source_label"] == "votemanager"
     assert d["phase"] == "locked", "die erste Hochrechnung setzt den Tipp-Schluss"
     # Der Live-Pfad legt die Ränge mit echten Punkten ab.
-    vorher = store.prediction_standings_previous("9999")
+    vorher = store.prediction_standings_previous(1, "9999")
     assert list(vorher.values()) == [1]
     punkte = store._conn.execute("SELECT points FROM prediction_standings").fetchone()[0]  # noqa: SLF001
     assert punkte == d["rows"][0]["score"]["total"]
@@ -246,7 +246,7 @@ def test_generalprobe_kennt_den_vorherigen_rang_ohne_datenbank(client, store, mo
     assert [r["name"] for r in stand_133["rows"]] == ["Anna", "Bert"]
     anna = next(r for r in stand_133["rows"] if r["name"] == "Anna")
     assert (anna["rank"], anna["rank_before"]) == (1, 2)
-    assert store.prediction_standings_previous("9999") == {}, "die Generalprobe schreibt keine Ränge"
+    assert store.prediction_standings_previous(1, "9999") == {}, "die Generalprobe schreibt keine Ränge"
 
 
 def test_uhrzeiten_stehen_in_berliner_zeit():

@@ -224,3 +224,35 @@ test.describe("Abgeben ist ein Moment", () => {
     await expect(page.getByRole("button", { name: "Zurück" })).toBeVisible();
   });
 });
+
+test.describe("Eigene Runde (?runde=vally)", () => {
+  test("Einstieg nennt die Runde, und jeder Abruf trägt sie", async ({ page }) => {
+    // Eine zweite Runde (prediction/rounds.py) ist ein eigener Kreis mit
+    // eigenem Link. Die Hauptrunde hat KEINEN Parameter — deshalb greifen
+    // die Mocks oben für `?round=vally` nicht, und genau das ist der Punkt:
+    // Ohne Parameter hätte diese Runde die Hauptrunde getroffen.
+    await appConfig(page, ["tippspiel"]);
+    const abrufe: string[] = [];
+    await page.route(/\/api\/tipp\/setup\?round=vally$/, (route) => {
+      abrufe.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify(setup({ round: "vally", listed: false, title: "Vallys Tippspiel" })) });
+    });
+    await page.route(/\/api\/tipp\/me\?round=vally$/, (route) => {
+      abrufe.push(route.request().url());
+      return route.fulfill({ status: 401, contentType: "application/json", body: "{}" });
+    });
+    await page.route(/\/api\/tipp\?round=vally$/, (route) => {
+      abrufe.push(`${route.request().method()} ${route.request().url()}`);
+      return route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify(meins({ name: "Nele", has_tip: false })) });
+    });
+
+    await page.goto("/tipp?runde=vally");
+    await expect(page.getByText(/Vallys Tippspiel/)).toBeVisible();
+    await page.getByLabel(/Dein Name/).fill("Nele");
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
+    await expect.poll(() => abrufe.some((u) => u.startsWith("POST") && u.endsWith("/api/tipp?round=vally"))).toBe(true);
+    expect(abrufe.every((u) => u.includes("round=vally"))).toBe(true);
+  });
+});

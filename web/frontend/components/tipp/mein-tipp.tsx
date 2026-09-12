@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
+import { mitRunde, rangDeltaText, rangPfeil, uhrzeitKurz } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
 import { Lotti } from "@/components/lotti";
 import { Aufklapp } from "@/components/aufklapp";
@@ -22,8 +22,8 @@ function punktTon(punkte: number, hoechst: number): string {
   return "bg-muted text-muted-foreground";
 }
 
-export function MeinTipp({ setup, meins, onAendern }: {
-  setup: TippSetup; meins: TippMeins;
+export function MeinTipp({ setup, meins, runde, onAendern }: {
+  setup: TippSetup; meins: TippMeins; runde: string | null;
   /** Solange getippt werden darf: zurück ins Formular (1d). */
   onAendern?: () => void;
 }) {
@@ -198,7 +198,7 @@ export function MeinTipp({ setup, meins, onAendern }: {
 
       <div className="mt-2.5 flex gap-2.5 px-4">
         <Button asChild variant="secondary" className="h-11 flex-1 text-sm">
-          <Link href="/tipp/live">Rangliste</Link>
+          <Link href={mitRunde("/tipp/live", runde, "runde")}>Rangliste</Link>
         </Button>
         {meins.has_mayor_tip && (
           <Button type="button" variant="secondary" className="h-11 flex-1 text-sm" aria-expanded={obOffen} onClick={() => setObOffen((o) => !o)}>

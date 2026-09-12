@@ -87,11 +87,12 @@ class _Bundle:
 
 
 _lock = threading.Lock()
-_cache: tuple[float, _Bundle] | None = None
-#: Stand-Zeitstempel je Pfad (``"live"`` bzw. ``"probe"``): (Hash des Ist, stand_at).
+#: Je Runde (``game_id``) eine fertige Tafel: (monotonic, Bündel).
+_cache: dict[int, tuple[float, _Bundle]] = {}
+#: Stand-Zeitstempel je Pfad UND Runde (``"live:1"``, ``"probe:2"``): (Hash des Ist, stand_at).
 _marker: dict[str, tuple[str, str]] = {}
-#: Generalprobe: (Ränge des aktuellen Standes, Ränge des Standes davor).
-_probe_ranks: tuple[dict[int, int], dict[int, int]] = ({}, {})
+#: Generalprobe je Runde: (Ränge des aktuellen Standes, Ränge des Standes davor).
+_probe_ranks: dict[int, tuple[dict[int, int], dict[int, int]]] = {}
 
 
 # ------------------------------------------------------------------ Bausteine
@@ -144,12 +145,12 @@ def _read_mayor(probe: str | None, counted: int | None) -> mayor.MayorResult | N
         return None
 
 
-def _check_auto_lock(store: Store, night: ElectionNight | None = None) -> None:
+def _check_auto_lock(store: Store, game_id: int, night: ElectionNight | None = None) -> None:
     """Setzt den Tipp-Schluss, sobald die erste Hochrechnung der ECHTEN
     Ratswahl da ist — NIE aus der Generalprobe (``_build`` ruft das nur im
     Live-Pfad auf; der Router bei jedem ``POST /api/tipp``, ohne ``night``,
     dann liest die Funktion selbst)."""
-    game = store.prediction_game()
+    game = store.prediction_game(game_id)
     if game["phase"] != "open":
         return
     if night is None:
@@ -157,8 +158,8 @@ def _check_auto_lock(store: Store, night: ElectionNight | None = None) -> None:
     if night is None or not _has_any_result(night):
         return
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    store.prediction_game_set(phase="locked", locked_at=now, locked_reason="projection")
-    store.prediction_log_add(f"Erste Hochrechnung erkannt · Tipp-Schluss automatisch gesetzt ({_uhrzeit(now)} Uhr)")
+    store.prediction_game_set(game_id, phase="locked", locked_at=now, locked_reason="projection")
+    store.prediction_log_add(game_id, f"Erste Hochrechnung erkannt · Tipp-Schluss automatisch gesetzt ({_uhrzeit(now)} Uhr)")
 
 
 def _deadline_hint(game: dict) -> str:
@@ -297,8 +298,11 @@ def _area_label(night: ElectionNight) -> str:
 
 # ------------------------------------------------------------------ Öffentliche Formen
 
-def setup(store: Store) -> PredictionGame:
-    game = store.prediction_game()
+def setup(store: Store, game_id: int) -> PredictionGame:
+    from . import rounds  # hier statt oben: rounds ist rein, service nicht — kein Kreis, nur Ordnung
+
+    game = store.prediction_game(game_id)
+    runde = rounds.get(game["slug"])
     reg = _reg()
     parties = [PredictionParty(slug=p.slug, short=p.short, name=p.official, color=p.color,
                                color_dark=p.color_dark, seats_2021=None) for p in reg.parties]
@@ -310,26 +314,26 @@ def setup(store: Store) -> PredictionGame:
         _log.exception("Tippspiel: 2021er Sitze für die Startverteilung nicht zu lesen.")
     mayors = [PredictionMayorCandidate(slug=c.slug, name=c.name, party=c.party) for c in mayor.candidates()]
     return PredictionGame(
+        round=game["slug"], listed=runde.listed if runde else False,
         title=game["title"], phase=game["phase"], seats_total=reg.seats,
         locked=game["phase"] != "open", locked_at=game["locked_at"],
-        late_scored=bool(game["late_scored"]), player_count=len(store.prediction_players()),
+        late_scored=bool(game["late_scored"]), player_count=store.prediction_player_count(game_id),
         deadline_hint=_deadline_hint(game), parties=parties, mayor_candidates=mayors,
     )
 
 
-def _build(store: Store, *, probe: str | None, counted: int | None) -> _Bundle:
-    global _probe_ranks
+def _build(store: Store, game_id: int, *, probe: str | None, counted: int | None) -> _Bundle:
     night = _read_night(probe, counted)
     ob = _read_mayor(probe, counted)
     if probe is None:
-        _check_auto_lock(store, night)
-    game = store.prediction_game()
+        _check_auto_lock(store, game_id, night)
+    game = store.prediction_game(game_id)
     reg = _reg()
-    results = {r["slug"]: r for r in store.prediction_result()}
+    results = {r["slug"]: r for r in store.prediction_result(game_id)}
     actual_seats, actual_mayor, source_label = _actuals(results, night, ob)
     vergleichbar = bool(actual_seats or actual_mayor)
 
-    tips = _parsed(store.prediction_players(include_hidden=False))
+    tips = _parsed(store.prediction_players(game_id, include_hidden=False))
     sichtbare_mit_tipp = [t for t in tips if t["seats"] is not None]
     ohne_tipp = [t for t in tips if t["seats"] is None]
 
@@ -368,18 +372,20 @@ def _build(store: Store, *, probe: str | None, counted: int | None) -> _Bundle:
         ]
         geordnet = scoring.order(standings)
         rang = {s.id: i for i, s in enumerate(geordnet, start=1)}
-        pfad = "probe" if probe is not None else "live"
+        pfad = f"{'probe' if probe is not None else 'live'}:{game_id}"
         computed_at, neu = _stand_at(pfad, _digest(actual_seats, actual_mayor, bool(game["late_scored"])))
         if probe is not None:
             # Kein Datenbank-Schreiben in der Generalprobe — der vorige Rang
             # lebt im Prozess und wechselt mit jedem neuen Ist.
+            bisher = _probe_ranks.get(game_id, ({}, {}))
             if neu:
-                _probe_ranks = (rang, _probe_ranks[0])
-            vorher = _probe_ranks[1]
+                bisher = (rang, bisher[0])
+                _probe_ranks[game_id] = bisher
+            vorher = bisher[1]
         else:
-            vorher = store.prediction_standings_previous(computed_at)
+            vorher = store.prediction_standings_previous(game_id, computed_at)
             store.prediction_standings_record(
-                computed_at, [(s.id, rang[s.id], s.score.total) for s in geordnet])
+                game_id, computed_at, [(s.id, rang[s.id], s.score.total) for s in geordnet])
         by_id = {t["id"]: t for t in sichtbare_mit_tipp}
         for s in geordnet:
             t = by_id[s.id]
@@ -411,37 +417,37 @@ def _build(store: Store, *, probe: str | None, counted: int | None) -> _Bundle:
     return _Bundle(stand=tafel, actual_seats=actual_seats, actual_mayor=actual_mayor)
 
 
-def _bundle(store: Store, *, probe: str | None, counted: int | None) -> _Bundle:
-    """Tafel samt Ist — gecacht, damit ein voller Raum den Abend nicht bei
-    jedem Aufruf neu rechnet. Die Generalprobe (``probe``) wird NICHT
-    gecacht: Sie ist selten und soll ``counted`` sofort zeigen."""
+def _bundle(store: Store, game_id: int, *, probe: str | None, counted: int | None) -> _Bundle:
+    """Tafel samt Ist — je Runde gecacht, damit ein voller Raum den Abend
+    nicht bei jedem Aufruf neu rechnet. Die Generalprobe (``probe``) wird
+    NICHT gecacht: Sie ist selten und soll ``counted`` sofort zeigen."""
     if probe is not None:
-        return _build(store, probe=probe, counted=counted)
-    global _cache
+        return _build(store, game_id, probe=probe, counted=counted)
     with _lock:
-        cached = _cache
+        cached = _cache.get(game_id)
         if cached and time.monotonic() - cached[0] < STAND_TTL:
             return cached[1]
-    result = _build(store, probe=None, counted=None)
+    result = _build(store, game_id, probe=None, counted=None)
     with _lock:
-        _cache = (time.monotonic(), result)
+        _cache[game_id] = (time.monotonic(), result)
     return result
 
 
-def stand(store: Store, *, probe: str | None = None, counted: int | None = None) -> PredictionStand:
-    """Die öffentliche Tafel (1g/1i)."""
-    return _bundle(store, probe=probe, counted=counted).stand
+def stand(store: Store, game_id: int, *, probe: str | None = None, counted: int | None = None) -> PredictionStand:
+    """Die öffentliche Tafel (1g/1i) einer Runde."""
+    return _bundle(store, game_id, probe=probe, counted=counted).stand
 
 
-def mine(store: Store, token_hash: str, *, probe: str | None = None, counted: int | None = None) -> PredictionMine | None:
-    """„Mein Tipp" (1e/1f) — ``None``, wenn der Token zu niemandem gehört
-    (der Router macht daraus 401: die Person ist einfach nicht angemeldet)."""
-    player = store.prediction_player_by_token(token_hash)
+def mine(store: Store, game_id: int, token_hash: str, *, probe: str | None = None,
+         counted: int | None = None) -> PredictionMine | None:
+    """„Mein Tipp" (1e/1f) — ``None``, wenn der Token in dieser Runde zu
+    niemandem gehört (der Router macht daraus 401: nicht angemeldet)."""
+    player = store.prediction_player_by_token(token_hash, game_id)
     if player is None:
         return None
-    game = store.prediction_game()
+    game = store.prediction_game(game_id)
     reg = _reg()
-    b = _bundle(store, probe=probe, counted=counted)
+    b = _bundle(store, game_id, probe=probe, counted=counted)
     tafel = b.stand
 
     seats_tip = json.loads(player["seats_json"]) if player.get("seats_json") else None
@@ -488,15 +494,13 @@ def reset() -> None:
     """Den Tafel-Cache verwerfen (nach jedem Admin-Schreiben und für Tests).
     Die Stand-Marker bleiben: Ein neues Ist bekommt seinen Zeitstempel beim
     nächsten Aufbau von selbst, ein unverändertes behält seinen."""
-    global _cache
     with _lock:
-        _cache = None
+        _cache.clear()
 
 
 def reset_all() -> None:
     """Auch Stand-Marker und Generalproben-Ränge vergessen (für Tests)."""
-    global _cache, _probe_ranks
     with _lock:
-        _cache = None
+        _cache.clear()
         _marker.clear()
-        _probe_ranks = ({}, {})
+        _probe_ranks.clear()

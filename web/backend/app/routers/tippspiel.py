@@ -6,6 +6,12 @@ Verwaltung unter ``/api/tipp/admin/…`` (docs/plan-tippspiel-ratswahl.md).
 keine ``web_users``-Zeile dazu. ``POST /api/tipp`` ist damit ZUGLEICH Beitritt
 (ohne gültigen Cookie, ``name`` Pflicht) und Tipp-Update (mit gültigem Cookie).
 
+**Seit 12.09.2026 mehrere Runden** (``prediction/rounds.py``): ``?round=``
+wählt sie, ohne Parameter ist es die Hauptrunde. Jede Runde hat ihren
+eigenen Cookie (``tipp_token`` bzw. ``tipp_token_<slug>``), damit eine
+Person in zwei Runden zwei Personen sein kann — und ein Cookie der einen
+Runde in der anderen nie eine Person ergibt.
+
 **Hinter dem Feature-Schalter ``tippspiel`` stehen nur die ÖFFENTLICHEN
 Routen** — wie beim Wahlabend antworten sie ohne ihn mit 404. Die
 Admin-Routen bleiben davon unberührt: Tim soll das Spiel vorbereiten können,
@@ -40,12 +46,14 @@ from ..antworten import (
     PredictionGame,
     PredictionMine,
     PredictionResultRow,
+    PredictionRoundInfo,
     PredictionStand,
 )
 from ..config import get_settings
 from ..deps import get_store, require_admin
 from ..election import mayor, register
-from ..prediction import service
+from ..prediction import rounds, service
+from ..prediction.rounds import Round
 from ..ratelimit import prediction_join_limiter, prediction_tip_limiter
 from ..schemas import PredictionJoinIn, PredictionPhaseIn, PredictionPlayerIn, PredictionResultLineIn
 
@@ -60,26 +68,42 @@ def _frei() -> None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Das Tippspiel ist noch nicht freigeschaltet.")
 
 
+def _runde(slug: str | None) -> Round:
+    runde = rounds.get(slug)
+    if runde is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Tipprunde gibt es nicht.")
+    return runde
+
+
+def _game_id(store: Store, runde: Round) -> int:
+    """Die Spielzeile der Runde — legt sie beim ersten Zugriff an."""
+    return store.prediction_game_by_slug(runde.slug, runde.title)["id"]
+
+
+def _cookie_name(runde: Round) -> str:
+    return COOKIE_NAME if runde.is_default else f"{COOKIE_NAME}_{runde.slug}"
+
+
 # ------------------------------------------------------------------ Identität
 
 def _hash(klartext: str) -> str:
     return hashlib.sha256(klartext.encode("utf-8")).hexdigest()
 
 
-def _token_hash(request: Request) -> str | None:
-    klartext = request.cookies.get(COOKIE_NAME)
+def _token_hash(request: Request, runde: Round) -> str | None:
+    klartext = request.cookies.get(_cookie_name(runde))
     return _hash(klartext) if klartext else None
 
 
-def _set_cookie(response: Response, klartext: str) -> None:
+def _set_cookie(response: Response, runde: Round, klartext: str) -> None:
     settings = get_settings()
-    response.set_cookie(key=COOKIE_NAME, value=klartext, httponly=True, secure=settings.cookie_secure,
+    response.set_cookie(key=_cookie_name(runde), value=klartext, httponly=True, secure=settings.cookie_secure,
                         samesite="lax", max_age=COOKIE_MAX_AGE, path="/")
 
 
-def _clear_cookie(response: Response) -> None:
+def _clear_cookie(response: Response, runde: Round) -> None:
     settings = get_settings()
-    response.delete_cookie(COOKIE_NAME, path="/", httponly=True, secure=settings.cookie_secure, samesite="lax")
+    response.delete_cookie(_cookie_name(runde), path="/", httponly=True, secure=settings.cookie_secure, samesite="lax")
 
 
 # ------------------------------------------------------------------ Validierung — deutsche Sätze statt Pydantic-Meldungen
@@ -136,43 +160,47 @@ def _validate_mayor(tip: dict[str, float] | None) -> None:
 # ------------------------------------------------------------------ Öffentlich
 
 @router.get("/api/tipp/setup")
-def setup(store: Store = Depends(get_store)) -> PredictionGame:
+def setup(runde: str | None = Query(default=None, alias="round"), store: Store = Depends(get_store)) -> PredictionGame:
     _frei()
-    return service.setup(store)
+    r = _runde(runde)
+    return service.setup(store, _game_id(store, r))
 
 
 @router.post("/api/tipp", status_code=status.HTTP_200_OK)
 def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response: Response,
+                          runde: str | None = Query(default=None, alias="round"),
                           store: Store = Depends(get_store)) -> PredictionMine:
     """Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem
     Cookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —
     umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``)."""
     _frei()
+    r = _runde(runde)
+    game_id = _game_id(store, r)
     prediction_join_limiter.check(request)
-    service._check_auto_lock(store)  # noqa: SLF001 — bewusste Wiederverwendung, s. Moduldoc
+    service._check_auto_lock(store, game_id)  # noqa: SLF001 — bewusste Wiederverwendung, s. Moduldoc
     reg = register.load()
-    token_hash = _token_hash(request)
-    player = store.prediction_player_by_token(token_hash) if token_hash else None
+    token_hash = _token_hash(request, r)
+    player = store.prediction_player_by_token(token_hash, game_id) if token_hash else None
 
     if player is None:
         if not payload.name:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Bitte gib deinen Namen ein.")
         name = _clean_name(payload.name)
-        game = store.prediction_game()
+        game = store.prediction_game(game_id)
         jetzt = datetime.now(timezone.utc).isoformat(timespec="seconds")
         late_at = jetzt if game["phase"] != "open" else None
         klartext = secrets.token_hex(16)
         try:
-            player = store.prediction_player_add(name, _hash(klartext), late_at)
+            player = store.prediction_player_add(game_id, name, _hash(klartext), late_at)
         except sqlite3.IntegrityError as exc:
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 f"„{name}“ ist schon vergeben — versuch es z. B. mit „{name} 2“.") from exc
-        _set_cookie(response, klartext)
+        _set_cookie(response, r, klartext)
         if late_at:
-            store.prediction_log_add(f"{player['name']} ist nach Tipp-Schluss beigetreten (nachgetippt).")
+            store.prediction_log_add(game_id, f"{player['name']} ist nach Tipp-Schluss beigetreten (nachgetippt).")
 
     if payload.seats is not None:
-        game = store.prediction_game()
+        game = store.prediction_game(game_id)
         if player["late_at"] is None and game["phase"] != "open":
             raise HTTPException(status.HTTP_409_CONFLICT,
                                 "Die Tippfrist ist vorbei. Du kannst deinen Tipp nicht mehr ändern.")
@@ -186,7 +214,7 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
     # Bei einem NEUEN Beitritt trägt das eingehende Request-Objekt den gerade
     # gesetzten Cookie noch nicht (der wirkt erst beim nächsten Aufruf des
     # Browsers) — deshalb ``player["token_hash"]`` statt ``_token_hash(request)``.
-    ergebnis = service.mine(store, player["token_hash"])
+    ergebnis = service.mine(store, game_id, player["token_hash"])
     assert ergebnis is not None  # der Spieler wurde in dieser Funktion selbst angelegt oder gefunden
     return ergebnis
 
@@ -194,27 +222,31 @@ def beitreten_oder_tippen(payload: PredictionJoinIn, request: Request, response:
 @router.get("/api/tipp/me")
 def meins(request: Request, probe: str | None = Query(default=None),
          counted: int | None = Query(default=None, ge=0, le=133),
+         runde: str | None = Query(default=None, alias="round"),
          store: Store = Depends(get_store)) -> PredictionMine:
     _frei()
-    token_hash = _token_hash(request)
+    r = _runde(runde)
+    token_hash = _token_hash(request, r)
     if token_hash is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Gib zuerst deinen Namen ein, um mitzumachen.")
-    ergebnis = service.mine(store, token_hash, probe=probe, counted=counted)
+    ergebnis = service.mine(store, _game_id(store, r), token_hash, probe=probe, counted=counted)
     if ergebnis is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Deine Teilnahme wurde nicht gefunden. Gib deinen Namen bitte noch einmal ein.")
     return ergebnis
 
 
 @router.delete("/api/tipp/me")
-def austreten(request: Request, response: Response, store: Store = Depends(get_store)) -> Ok:
+def austreten(request: Request, response: Response, runde: str | None = Query(default=None, alias="round"),
+              store: Store = Depends(get_store)) -> Ok:
     _frei()
-    token_hash = _token_hash(request)
+    r = _runde(runde)
+    token_hash = _token_hash(request, r)
     if token_hash:
-        player = store.prediction_player_by_token(token_hash)
+        player = store.prediction_player_by_token(token_hash, _game_id(store, r))
         if player:
             store.prediction_player_delete_own(player["id"])
             service.reset()
-    _clear_cookie(response)
+    _clear_cookie(response, r)
     return Ok(ok=True)
 
 
@@ -228,9 +260,11 @@ def austreten(request: Request, response: Response, store: Store = Depends(get_s
 @router.get("/api/tipp/stand")
 def stand(request: Request, response: Response, probe: str | None = Query(default=None),
          counted: int | None = Query(default=None, ge=0, le=133),
+         runde: str | None = Query(default=None, alias="round"),
          store: Store = Depends(get_store)) -> PredictionStand:
     _frei()
-    ergebnis = service.stand(store, probe=probe, counted=counted)
+    r = _runde(runde)
+    ergebnis = service.stand(store, _game_id(store, r), probe=probe, counted=counted)
     etag = f'"{hashlib.sha1(ergebnis["computed_at"].encode()).hexdigest()[:16]}"'  # noqa: S324 — kein Sicherheitszweck, nur Cache-Schlüssel
     if request.headers.get("if-none-match") == etag:
         return Response(  # pyright: ignore[reportReturnType] — siehe oben
@@ -260,11 +294,11 @@ def ob_wahl(probe: str | None = Query(default=None), counted: int | None = Query
 # ------------------------------------------------------------------ QR-Code
 
 @router.get("/api/tipp/qr.png", response_class=Response, responses={200: {"content": {"image/png": {}}}})
-def qr_code(store: Store = Depends(get_store)) -> Response:
+def qr_code(runde: str | None = Query(default=None, alias="round"), store: Store = Depends(get_store)) -> Response:
     _frei()
     import segno
 
-    link = f"{get_settings().app_base_url}/tipp"
+    link = f"{get_settings().app_base_url}{rounds.public_path(_runde(runde))}"
     qr = segno.make(link, error="m")
     puffer = __import__("io").BytesIO()
     qr.save(puffer, kind="png", scale=12, border=2)
@@ -274,10 +308,11 @@ def qr_code(store: Store = Depends(get_store)) -> Response:
 
 # ------------------------------------------------------------------ Admin (1h) — kein Schalter, s. Moduldoc
 
-def _admin_stand(store: Store) -> PredictionAdminStand:
+def _admin_stand(store: Store, runde: Round) -> PredictionAdminStand:
     reg = register.load()
-    results = {r["slug"]: r for r in store.prediction_result()}
-    tips = service._parsed(store.prediction_players(include_hidden=True))  # noqa: SLF001
+    game_id = _game_id(store, runde)
+    results = {r["slug"]: r for r in store.prediction_result(game_id)}
+    tips = service._parsed(store.prediction_players(game_id, include_hidden=True))  # noqa: SLF001
     # Ø-Tipp und „exakt" zählen wie auf der öffentlichen Tafel: ohne
     # ausgeblendete Personen. Die Teilnehmerliste unten zeigt sie dagegen
     # ausdrücklich — der Admin will sie wiederfinden.
@@ -311,25 +346,40 @@ def _admin_stand(store: Store) -> PredictionAdminStand:
     # Uhrzeit in Berliner Zeit statt des rohen UTC-Zeitstempels aus dem Store
     # („2026-09-11T12:06:18" las sich am Nachmittag wie ein Fehler).
     log = [f"{service._uhrzeit(eintrag['at'])} · {eintrag['text']}"  # noqa: SLF001
-           for eintrag in store.prediction_log(limit=30)]
-    return PredictionAdminStand(game=service.setup(store), results=rows, players=spieler, log=log)
+           for eintrag in store.prediction_log(game_id, limit=30)]
+    # Alle Runden für den Umschalter — jede wird beim ersten Blick angelegt,
+    # damit auch eine noch leere Runde schon verwaltet werden kann.
+    alle: list[PredictionRoundInfo] = []
+    for rd in rounds.ROUNDS.values():
+        zeile = store.prediction_game_by_slug(rd.slug, rd.title)
+        alle.append(PredictionRoundInfo(slug=rd.slug, title=zeile["title"], listed=rd.listed, phase=zeile["phase"],
+                                        player_count=store.prediction_player_count(zeile["id"])))
+    return PredictionAdminStand(rounds=alle, game=service.setup(store, game_id), results=rows, players=spieler, log=log)
+
+
+#: Der Runden-Parameter der Admin-Endpunkte — dieselbe Schreibweise wie öffentlich.
+def _admin_runde(runde: str | None = Query(default=None, alias="round")) -> Round:
+    return _runde(runde)
 
 
 @router.get("/api/tipp/admin/stand")
-def admin_stand(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> PredictionAdminStand:
-    return _admin_stand(store)
+def admin_stand(_admin: dict = Depends(require_admin), runde: Round = Depends(_admin_runde),
+                store: Store = Depends(get_store)) -> PredictionAdminStand:
+    return _admin_stand(store, runde)
 
 
 @router.put("/api/tipp/admin/ergebnis")
 def ergebnis_eintragen(zeilen: list[PredictionResultLineIn], _admin: dict = Depends(require_admin),
-                       store: Store = Depends(get_store)) -> PredictionAdminStand:
-    store.prediction_result_set([{"slug": z.slug, "seats": z.seats, "pct": z.pct} for z in zeilen], source="manuell")
+                       runde: Round = Depends(_admin_runde), store: Store = Depends(get_store)) -> PredictionAdminStand:
+    store.prediction_result_set(_game_id(store, runde),
+                                [{"slug": z.slug, "seats": z.seats, "pct": z.pct} for z in zeilen], source="manuell")
     service.reset()
-    return _admin_stand(store)
+    return _admin_stand(store, runde)
 
 
 @router.post("/api/tipp/admin/abfragen")
-def jetzt_abfragen(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> PredictionAdminStand:
+def jetzt_abfragen(_admin: dict = Depends(require_admin), runde: Round = Depends(_admin_runde),
+                   store: Store = Depends(get_store)) -> PredictionAdminStand:
     """„Jetzt abfragen": die Live-Zahlen der Ratswahl UND der OB-Wahl in den
     Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt."""
     from ..election import service as election_service
@@ -344,53 +394,59 @@ def jetzt_abfragen(_admin: dict = Depends(require_admin), store: Store = Depends
     for c in ob.candidates:
         if c.share_pct is not None:
             zeilen.append({"slug": f"ob:{c.slug}", "pct": c.share_pct})
+    game_id = _game_id(store, runde)
     if zeilen:
-        store.prediction_result_set(zeilen, source="votemanager")
+        store.prediction_result_set(game_id, zeilen, source="votemanager")
         listen = sum(1 for z in zeilen if "seats" in z)
-        store.prediction_log_add(f"Votemanager abgefragt · {listen} Listen, {len(zeilen) - listen} "
+        store.prediction_log_add(game_id, f"Votemanager abgefragt · {listen} Listen, {len(zeilen) - listen} "
                                  f"Personen bei der OB-Wahl in den Entwurf übernommen.")
         service.reset()
-    return _admin_stand(store)
+    return _admin_stand(store, runde)
 
 
 @router.post("/api/tipp/admin/veroeffentlichen")
-def veroeffentlichen(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> PredictionAdminStand:
-    n = store.prediction_result_publish()
-    store.prediction_log_add(f"Entwurf veröffentlicht · {n} Ergebnisse sind jetzt sichtbar.")
+def veroeffentlichen(_admin: dict = Depends(require_admin), runde: Round = Depends(_admin_runde),
+                     store: Store = Depends(get_store)) -> PredictionAdminStand:
+    game_id = _game_id(store, runde)
+    n = store.prediction_result_publish(game_id)
+    store.prediction_log_add(game_id, f"Entwurf veröffentlicht · {n} Ergebnisse sind jetzt sichtbar.")
     service.reset()
-    return _admin_stand(store)
+    return _admin_stand(store, runde)
 
 
 @router.post("/api/tipp/admin/verwerfen")
-def verwerfen(_admin: dict = Depends(require_admin), store: Store = Depends(get_store)) -> PredictionAdminStand:
-    store.prediction_result_discard()
-    store.prediction_log_add("Entwurf verworfen · der Stand vor der letzten Eingabe ist wiederhergestellt.")
+def verwerfen(_admin: dict = Depends(require_admin), runde: Round = Depends(_admin_runde),
+              store: Store = Depends(get_store)) -> PredictionAdminStand:
+    game_id = _game_id(store, runde)
+    store.prediction_result_discard(game_id)
+    store.prediction_log_add(game_id, "Entwurf verworfen · der Stand vor der letzten Eingabe ist wiederhergestellt.")
     service.reset()
-    return _admin_stand(store)
+    return _admin_stand(store, runde)
 
 
 @router.put("/api/tipp/admin/phase")
 def phase_setzen(payload: PredictionPhaseIn, _admin: dict = Depends(require_admin),
-                 store: Store = Depends(get_store)) -> PredictionAdminStand:
+                 runde: Round = Depends(_admin_runde), store: Store = Depends(get_store)) -> PredictionAdminStand:
+    game_id = _game_id(store, runde)
     felder: dict[str, object] = {"phase": payload.phase}
     if payload.phase == "locked":
-        game = store.prediction_game()
+        game = store.prediction_game(game_id)
         if game["phase"] == "open":
             felder["locked_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
             felder["locked_reason"] = "admin"
     if payload.late_scored is not None:
         felder["late_scored"] = 1 if payload.late_scored else 0
-    store.prediction_game_set(**felder)
+    store.prediction_game_set(game_id, **felder)
     text = {"open": "Spiel wieder geöffnet", "locked": "Tippfrist manuell beendet", "final": "Endstand gesetzt"}[payload.phase]
-    store.prediction_log_add(text)
+    store.prediction_log_add(game_id, text)
     service.reset()
-    return _admin_stand(store)
+    return _admin_stand(store, runde)
 
 
 @router.put("/api/tipp/admin/spieler/{player_id}")
 def spieler_bearbeiten(player_id: int, payload: PredictionPlayerIn, _admin: dict = Depends(require_admin),
-                       store: Store = Depends(get_store)) -> PredictionAdminStand:
+                       runde: Round = Depends(_admin_runde), store: Store = Depends(get_store)) -> PredictionAdminStand:
     name = _clean_name(payload.name) if payload.name is not None else None
     store.prediction_player_update(player_id, name=name, hidden=payload.hidden)
     service.reset()
-    return _admin_stand(store)
+    return _admin_stand(store, runde)
