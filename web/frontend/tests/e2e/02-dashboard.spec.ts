@@ -83,3 +83,37 @@ test.describe("Dashboard", () => {
     await page.screenshot({ path: "test-results/screenshots/02-mobile-nav.png", fullPage: true });
   });
 });
+
+test.describe("Heute: Wahlabend und Tippspiel nebeneinander", () => {
+  test.use({ storageState: zustandsDatei("admin") });
+
+  test("mit beiden Schaltern zeigt die Karte zwei Wege, ohne Tippspiel nur einen", async ({ page }) => {
+    // Die Schalter kommen über /api/app-config — in der CI sind sie aus,
+    // deshalb gemockt (dasselbe Muster wie 16-tippspiel.spec.ts).
+    const schalter = (features: string[]) =>
+      page.route("**/api/app-config", (route) =>
+        route.fulfill({ status: 200, contentType: "application/json",
+          body: JSON.stringify({ min_build: 0, note: null, features }) }));
+    await page.route("**/api/tipp/setup", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json",
+        body: JSON.stringify({
+          title: "Tippspiel", phase: "open", seats_total: 52, locked: false, locked_at: null,
+          late_scored: false, player_count: 7, deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
+          parties: [], mayor_candidates: [],
+        }) }));
+
+    await schalter(["wahlabend", "tippspiel"]);
+    await page.goto("/dashboard");
+    const karte = page.getByText("Zwei Wege").locator("xpath=ancestor::*[contains(@class,'rounded')][1]");
+    await expect(karte).toBeVisible();
+    await expect(karte.getByRole("link", { name: /Zuschauen/ })).toHaveAttribute("href", "/wahlabend");
+    await expect(karte.getByRole("link", { name: /Mittippen/ })).toHaveAttribute("href", "/tipp");
+    await expect(karte.getByText("Schon 7 Leute dabei.")).toBeVisible();
+
+    // Ohne den Tippspiel-Schalter: der eine Weg zum Wahlabend, kein Tipp-Weg.
+    await schalter(["wahlabend"]);
+    await page.reload();
+    await expect(page.getByRole("link", { name: /Zur Wahlabend-Seite|Zum Wahlabend/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Mittippen/ })).toHaveCount(0);
+  });
+});
