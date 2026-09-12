@@ -533,8 +533,16 @@ Datumsspalte ist 3,5 rem breit, mit 0,75 rem Abstand zu den Sitzungsinhalten.
 Mobil bilden Datum und Gremium eine Kopfzeile, die Punkte nutzen darunter
 die volle Breite. Nur horizontale Sitzungstrenner, keine seitliche Linie
 oder dekorativen Aufzählungspunkte.
-Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen,
-der breite Viertel-Baustein ein vorhandenes Vorhaben zum Ortsnamen.
+Der breite Rückblick kann zwei Sitzungen als direkte Vorschau zeigen.
+„Mein Viertel“ zeigt pro gewähltem Viertel die jüngste belegte Entwicklung:
+Vorhaben, kurze Erklärung, Stand und ausdrücklich das Datum der letzten
+Ratsberatung. Eine Beratung in den nächsten 14 Tagen bekommt Vorrang und
+führt direkt zum Tagesordnungspunkt. Das Indexdatum ist kein Neuigkeitsdatum.
+Zahlen heißen immer „Vorhaben“. Kompakt zunächst zwei Viertel, sonst drei,
+weitere auf Knopfdruck; die jüngsten Ratsstände zuerst. Breit stehen die
+Viertel nebeneinander, schmal untereinander. Ortsnamen als leiser Kicker,
+Vorhabentitel als Hauptinformation, Stand als kleines beschriftetes Abzeichen.
+Details erst für sichtbare Viertel laden; sie teilen den Cache der Stadtkarte.
 Der Verlauf zeigt kompakt drei Einträge mit Nachladen, breit bis zu fünf
 mit längeren Titeln. Das Fundstück ergänzt breit die vollständige Erzählung
 und Quellenangaben. Nicht jede Kennzahl braucht künstlich mehr Information,
