@@ -1,0 +1,503 @@
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="de">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script type="text/javascript" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.resource.JQueryResourceReference/jquery/jquery-3.7.1-ver-962A4A135B116C30221466C5E4F0E7A1.js"></script>
+<script type="text/javascript" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/res/js/wicket-ajax-jquery-ver-C887AA843619090BF01E0673D9DBA2B9.js"></script>
+<script type="text/javascript">
+/*<![CDATA[*/
+Wicket.Event.add(window, "domready", function(event) { Wicket.trapFocus('cookieDialog', 'current-focus-trap');;});
+/*]]>*/
+</script>
+<meta name="description" content="ALLRIS net Version 4.1.7 (4170041) - 08.07.2026" /><script type="text/javascript" id="wicket-ajax-base-url">
+/*<![CDATA[*/
+Wicket.Ajax.baseUrl="vo020?VOLFDNR=1010527&amp;refresh=false";
+/*]]>*/
+</script>
+<link rel="stylesheet" type="text/css" href="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.extensions.markup.html.repeater.tree.theme.WindowsTheme/human/theme-ver-BF534FBE4B4DAA99AF58E6E019C7CA95.css" />
+<link rel="stylesheet" type="text/css" href="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/de.allris.net.page.BasePage/css/theme-ver-5D1C2FDCE4D04FBFD711B1DD86E43067.css" />
+<script type="text/javascript" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/de.allris.net.page.BasePage/javascript/jquery-accessibleMegaMenu-ver-A431D6589E9AEE162F34491F9F03368E.js"></script>
+<script type="text/javascript" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/de.allris.net.page.BasePage/javascript/trap-focus-ver-852C01829C22027761D847A339DAFDDD.js"></script>
+<link rel="stylesheet" type="text/css" href="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/de.allris.net.page.BasePage/css/styles-ver-E54D4A30BC9EAE848E5162425E977086.css" />
+<script type="text/javascript" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/de.allris.net.page.BasePage/javascript/allrisnet-ver-22A295D93E8613F29672C17282770DA0.js"></script>
+<script type="text/javascript">
+/*<![CDATA[*/
+Wicket.Event.add(window, "domready", function(event) { 
+Wicket.Ajax.ajax({"u":"https://ratsinfob.stadt.wolfsburg.de/vo020?1196-1.0-beratungen-showHideLink&VOLFDNR=1010527&refresh=false","c":"showHideLink_id170b1","i":"showHideLink_id170b1--ajax-indicator","e":"click","pd":true});;
+Wicket.Ajax.ajax({"u":"https://ratsinfob.stadt.wolfsburg.de/vo020?1196-1.0-teildocuments-2-showHideLink&VOLFDNR=1010527&refresh=false","c":"showHideLink_id170b2","i":"showHideLink_id170b2--ajax-indicator","e":"click","pd":true});;
+Wicket.Event.add('searchform', 'keypress', function(event) { if (event.target.tagName.toLowerCase() !== 'input' || event.which != 13) return;var b = document.getElementById('submitSearchButton');if (window.getComputedStyle(b).visibility === 'hidden') return;event.stopPropagation();event.preventDefault();if (b != null && b.onclick != null && typeof (b.onclick) != 'undefined') {var r = Wicket.bind(b.onclick, b)();if (r != false) b.click();} else {b.click();}return false;;});;
+$('#searchform').find('input').on('keydown', function(e) { 
+if (e.key === 'Enter' || e.keyCode === 13) { 
+		e.preventDefault(); 
+		e.stopPropagation(); 
+} 
+}); 
+;
+	$(document).ready(function() { 
+		var elem = $('#id170b6').find('.searchfield'); 
+		$(elem).on('focusin', function() { 
+			$('<div id="searchMask"><\/div>').insertAfter($('#search')); 
+			$('#search').addClass('active'); 
+ 		}) 
+ 		.on('focusout', function(event) { 
+				$('#searchMask').remove(); 
+				$('#search').removeClass('active'); 
+ 		}) 
+ 		.on('keydown', function(event) { 
+			if (event.keyCode === 13){
+				$('#submitSearchButton').click(); 
+			} 
+		});
+		$('#submitSearchButton').on('focusout', function(event) {				$('#searchMask').remove(); 
+ 				$('#search').removeClass('active'); 
+		}) 
+		.on('focusin', function(event) { 
+				$('<div id="searchMask"><\/div>').insertAfter($('#search')); 
+				$('#search').addClass('active'); 
+ 		}) 
+ 		.on('click', function() { 
+			$('#searchMask').remove(); 
+			$('#search').removeClass('active'); 
+		}); 
+		$('body').on('keydown', function(event) { 
+			if (event.keyCode === 27){
+				$('#searchMask').remove(); 
+				$('#search').removeClass('active'); 
+			} 
+		}); 
+	});
+;
+Wicket.Ajax.ajax({"u":"https://ratsinfob.stadt.wolfsburg.de/vo020?1196-1.1-menu-linkGroup-1-linkGroupLink&VOLFDNR=1010527&refresh=false","c":"id170b7","e":"click","pd":true});;
+$('.menubar, .iconbar').accessibleMegaMenu({
+        /* prefix for generated unique id attributes, which are required 
+           to indicate aria-owns, aria-controls and aria-labelledby */
+        uuidPrefix: 'accessible-megamenu',
+
+        /* css class used to define the megamenu styling */
+        menuClass: 'nav-menu',
+
+        /* css class for a top-level navigation item in the megamenu */
+        topNavItemClass: 'nav-item',
+
+        /* css class for a megamenu panel */
+        panelClass: 'sub-nav',
+
+        /* css class for a group of items within a megamenu panel */
+        panelGroupClass: 'sub-nav-group',
+
+        /* css class for the hover state */
+        hoverClass: 'hover',
+
+        /* css class for the focus state */
+        focusClass: 'focus',
+
+        /* css class for the open state */
+        openClass: 'open'
+    }); ;
+	$(document).ready(function() { 
+		var elem = $('#cookieDialog'); 
+		var showCookieMsg = getCookie('allris-cookie-msg'); 
+		$(elem).hide();
+		if (showCookieMsg === false) { 
+			$('<div id="pasteMask"><\/div>').insertAfter($(elem)); 
+			$(elem).show();
+        	if (typeof  Wicket.trapFocus === 'function') {
+            	Wicket.trapFocus('cookieDialog', 'current-focus-trap');
+        	} 		} else $(elem).trigger('trapfocusremove'); 
+ 		$('#cookieMessageBtn').click(function() {
+			setCookie('allris-cookie-msg', 1, 365);
+			$(elem).trigger('trapfocusremove'); 
+			$(elem).remove(); 
+			$('#pasteMask').remove(); 
+		});
+	});
+;
+document.getElementById('allris').setAttribute('class', 'vo020 normal');
+ if(/MSIE \d|Trident.*rv:/.test(navigator.userAgent)) {
+    window.location = 'microsoft-edge:' + window.location;
+    setTimeout(function() {
+      window.location = 'https://go.microsoft.com/fwlink/?linkid=2135547';
+    }, 1);
+  };
+Wicket.Event.publish(Wicket.Event.Topic.AJAX_HANDLERS_BOUND);
+;});
+/*]]>*/
+</script>
+<script type="text/javascript">
+/*<![CDATA[*/
+Wicket.Event.add(window, "load", function(event) { 
+Wicket.Timer.set('id170b8.0', function(){Wicket.Ajax.ajax({"u":"https://ratsinfob.stadt.wolfsburg.de/vo020?1196-1.0-&VOLFDNR=1010527&refresh=false"});}, 1000);;
+;});
+/*]]>*/
+</script>
+<meta name="wicket.header.items"/>
+<title>ALLRIS - Vorlage</title>
+<link rel="icon" href="https://ratsinfob.stadt.wolfsburg.de/favicon.ico" type="image/x-icon"/>
+<link rel="shortcut icon" href="https://ratsinfob.stadt.wolfsburg.de/favicon.ico" type="image/x-icon"/>
+<!--[if IE]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+</head>
+<body>
+<div id="allris">
+<div id="cookieDialog" class="cookie-message" role="dialog">
+<h2 id="cookieConsent">Diese Seite verwendet nur Cookies, die für den technischen Betrieb notwendig sind.</h2>
+<div id="datenschutzURL"><a target="_blank" title="zur Datenschutzerklärung" href="https://www.wolfsburg.de/Custom-Pages/Datenschutz">Mehr dazu in unserer Datenschutzerkl&auml;rung.</a></div>
+<button type="button" id="cookieMessageBtn" title="Cookie Hinweis ausblenden">OK</button>
+</div>
+<ul id="skipLinks"></ul>
+
+
+<div id="id170b9" class="dialog-theme-default">
+
+</div>
+<div id="id170ba" class="dialog-theme-default">
+
+</div>
+<div id="id170b6">
+<div id="top">
+<a id="logo" target="_blank" title="zur Homepage" class="js-simple-tooltip" tabindex="-1" href="https://www.wolfsburg.de/"></a>
+
+<button type="button" id="menuZeigen" aria-label="Menü zeigen"></button>
+<button type="button" id="menuVerbergen" aria-label="Menü verbergen"></button>
+<div id="search">
+<form id="searchform" method="post" action="https://ratsinfob.stadt.wolfsburg.de/vo020?1196-1.-head-searchform&amp;VOLFDNR=1010527&amp;refresh=false" aria-label="Suchen"><input type="hidden" name="sectoken" value="b5908cc30cff11dc90bc5d2eb70324d7" /><div id="searchform_hf_0" hidden="" class="hidden-fields"></div>
+<input type="search" class="searchtext searchfield" value="" name="searchfield" id="searchfield" placeholder="Suchen" aria-labelledby="submitSearchButton"/>
+<button type="submit" class="searchsubmit" name="p::submit" id="submitSearchButton">Suchen</button>
+</form>
+</div>
+</div>
+</div>
+<div>
+<div id="navigation">
+<nav id="navMenu" class="menubar" tabindex="-1" aria-label="Menüleiste" data-jumplink="Zum Menü">
+<ul class="nav-menu" role="menubar">
+<li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Ratsinfo</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/na010" role="menuitem">Nachrichten</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/feeds" role="menuitem">Feeds</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/app" role="menuitem">App</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Organisation</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/gr010?menu=Rat" role="menuitem">Rat</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/gr010?menu=Aussch%25C3%25BCsse%2Bdes%2BRates" role="menuitem">Ausschüsse des Rates</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/gr010?menu=Beir%25C3%25A4te" role="menuitem">Beiräte</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/gr010?menu=Ortsr%25C3%25A4te" role="menuitem">Ortsräte</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/gr010?menu=Fraktionen%2Bund%2BGruppen" role="menuitem">Fraktionen und Gruppen</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/at010" role="menuitem">Organisationseinheiten</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Sitzungen</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/si010" role="menuitem">Kalender</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/si018" role="menuitem">Übersicht</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/do011" role="menuitem">Bekanntmachungen</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Vorlagen</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/vo040" role="menuitem">Übersicht</a></li>
+</ul>
+</div>
+</li><li class="nav-item" role="none">
+<a class="parent" href="#" role="menuitem">Recherche</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/kp040" role="menuitem">Person</a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/tr010" role="menuitem">Volltext</a></li>
+</ul>
+</div>
+</li>
+</ul>
+</nav>
+<nav id="navIcon" class="iconbar" tabindex="-1" aria-label="Symbolleiste" data-jumplink="Zum Symbolmenü">
+<ul class="nav-menu" role="menubar">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/vo020?1196-1.-menu-linkGroup-0-linkGroupLink&amp;VOLFDNR=1010527&amp;refresh=false" role="menuitem" aria-label="Neu laden"><img src="https://ratsinfob.stadt.wolfsburg.de/images/available_updatesWhite.svg" alt="Neu laden" role="presentation"/><span class="iconSubtitle">Neu laden</span></a></li><li role="none"><a href="#" role="menuitem" id="id170b7" class="termin" aria-label="Wiedervorlage"><img src="https://ratsinfob.stadt.wolfsburg.de/images/calendar_outlineWhite.svg" alt="Wiedervorlage" role="presentation"/><span class="iconSubtitle">Wiedervorlage</span></a></li><li role="none"><a href="mailto:?subject=Schriftliche%20Kenntnisgabe%20-%20K%202026%2F0725&amp;body=%0A%0A%0A%0A%0D%0ALink%20zum%20Ratsinformationsystem%20ALLRIS%20des%20ALLRIS-Sitzungsdiensts%3A%0D%0AALLRIS%20net%3A%20https%3A%2F%2Fratsinfob.stadt.wolfsburg.de%2Fvo020%3FVOLFDNR%3D1010527" role="menuitem" id="id170bb" aria-label="Seite versenden"><img src="https://ratsinfob.stadt.wolfsburg.de/images/message_outlineWhite.svg" alt="Seite versenden" role="presentation"/><span class="iconSubtitle">Seite versenden</span></a></li>
+
+<li id="more" class="nav-item" role="none">
+<a id="mehr" class="parent" href="#" role="menuitem">mehr</a>
+<div class="sub-nav">
+<ul class="sub-nav-group" role="menu">
+<li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/vo020?VOLFDNR=1010527&amp;refresh=false&amp;VOLFDNR=1010527&amp;selfaction=print" role="menuitem" target="_blank"><img src="https://ratsinfob.stadt.wolfsburg.de/images/printerWhite.svg" alt=""/><span>Drucken</span></a></li><li role="none"><a href="https://ratsinfob.stadt.wolfsburg.de/selcol" role="menuitem"><img src="https://ratsinfob.stadt.wolfsburg.de/images/monitor.svg" alt=""/><span>Anzeigeschema</span></a></li>
+</ul>
+</div>
+</li>
+
+
+</ul>
+</nav>
+</div>
+</div>
+<div>
+<div id="subnavi">
+<nav id="path" tabindex="-1" aria-label="Sie sind hier" data-jumplink="Zur Brotkrumennavigation">
+<ul>
+<li>Sie sind hier:<strong><span><span class="wicketExtensionsBreadCrumbBar"><span class="wicketExtensionsBreadCrumbBarCrumb"><span><span></span><a class="disable" aria-current="page">Vorlage</a></span></span></span></span></strong> </li>
+</ul>
+</nav>
+
+</div>
+</div>
+<main id="pageContent" tabindex="-1" aria-label="Seiteninhalt" data-jumplink="Zum Inhalt">
+<div id="readOut">
+<div id="id170bc">
+<div class="header">
+<h1 class="title">Schriftliche Kenntnisgabe - K 2026/0725</h1>
+
+</div>
+</div>
+
+
+
+<div id="head">
+
+<span id="id170bd" role="alert" aria-relevant="additions removals" aria-atomic="true">
+
+</span>
+<div id="headLeft">
+<div class="frameHeader">
+<h2>Grunddaten</h2>
+</div>
+<div class="headLeftInner roundedBorder">
+<div class="row">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vobetreff">Betreff:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text1" id="vobetreff"><p>Einrichtung von Trinkwasserbrunnen im Innenstadtbereich</p></span>
+</dd>
+</dl>
+</div>
+<div id="id170be" hidden="" data-wicket-placeholder=""></div>
+<div id="id170bf" hidden="" data-wicket-placeholder=""></div>
+<div class="row" id="id170c0">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vostatus">Status:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="vostatus">öffentlich</span> <span class="text4" id="vostat">
+<a> (Vorlage freigegeben)</a>
+</span>
+</dd>
+</dl>
+</div>
+<div id="id170c1" hidden="" data-wicket-placeholder=""></div>
+<div class="row" id="id170c2">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="voart">Vorlageart:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="voart">Schriftliche Kenntnisgabe</span>
+</dd>
+</dl>
+</div>
+<div id="id170c3" hidden="" data-wicket-placeholder=""></div>
+<div id="id170c4" hidden="" data-wicket-placeholder=""></div>
+<div class="row" id="id170c5">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vofamt">Federführende Organisationseinheit:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="vofamt">Geschäftsbereich Straßenbau und Projektkoordination</span>
+</dd>
+</dl>
+</div>
+<div id="id170c6" hidden="" data-wicket-placeholder=""></div>
+<div class="row" id="id170c7">
+<dl>
+<dt class="colTitle">
+<span class="label">
+<a aria-describedby="vobamt">Beteiligte Organisationseinheit:</a>
+</span>
+</dt>
+<dd class="colEntry3">
+<span class="text4" id="vobamt">Geschäftsbereich Rats- und Rechtsangelegenheiten; Dezernat I</span>
+</dd>
+</dl>
+</div>
+<div id="id170c8" hidden="" data-wicket-placeholder=""></div>
+<div id="id170c9" hidden="" data-wicket-placeholder=""></div>
+<div id="id170ca" hidden="" data-wicket-placeholder=""></div>
+<div id="id170cb" hidden="" data-wicket-placeholder=""></div>
+<div id="id170cc" hidden="" data-wicket-placeholder=""></div>
+
+<div id="id170cd" hidden="" data-wicket-placeholder=""></div>
+</div>
+</div>
+<div id="headRight">
+<aside tabindex="-1" id="dokumenteHeaderPanel" data-jumplink="Zu Dokumente">
+<div class="frameHeader">
+<span>Dokumente</span>
+</div>
+<ul class="headRightInner roundedBorder">
+<li>
+<a href="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.Application/doc3513223.pdf" target="_blank" data-simpletooltip-text="Öffnet PDF-Datei &#039;Vorlage&#039; in neuem Fenster" class="js-simple-tooltip doclink pdf">Vorlage</a>
+
+</li><li>
+<a href="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.Application/doc3513220.pdf" target="_blank" data-simpletooltip-text="Öffnet PDF-Datei &#039;Sammeldokument öffentlich&#039; in neuem Fenster" class="js-simple-tooltip doclink pdf">Sammeldokument</a>
+
+</li><li>
+<a href="#showHideLink_id170b2" class="doclink anchor">Begründung</a>
+</li>
+</ul>
+</aside>
+
+
+
+<aside id="mapHeaderPanel" hidden="" data-wicket-placeholder=""></aside>
+</div>
+</div>
+<div class="clear"></div>
+<div id="mainContent">
+<div id="id170b1">
+<div class="compFull roundedBorder">
+<div class="expcol rs_skip rs_preserve">
+<a href="#" id="showHideLink_id170b1" data-simpletooltip-text="Beratungsfolge ausblenden" class="js-simple-tooltip"><img id="id170ce" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.Application/images/collapse-ver-C41D4AFF790B892FD71DE1FBA71538E6.svg" alt="Reduzieren"/></a><span hidden="" class="wicket-ajax-indicator" id="showHideLink_id170b1--ajax-indicator"><img src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif" alt=""/></span>
+</div>
+<div id="id170cf" hidden="" data-wicket-placeholder=""></div>
+<div id="id170d0">
+<h2 class="expandedTitle">Beratungsfolge</h2>
+<div id="bfTable" class="tree-theme-human">
+<table id="id170d1" class="dataTable captionVisible stickyHeader bfTable nonStickyHeader">
+<caption class="rs_skip">Beratungsfolge</caption>
+<thead>
+
+<tr class="headers">
+
+<th class="colorCol" scope="col"><span>Status</span></th>
+
+<th scope="col"><span>Datum</span></th>
+
+<th scope="col"><span>Gremium</span></th>
+
+<th scope="col"><span>Beschluss</span></th>
+
+<th class="toLink" scope="col"><span>NA</span></th>
+
+</tr>
+
+</thead>
+<tbody>
+<tr id="id170d3" class="even">
+<td class="colorCol">
+<div>
+<span class="wfcolorDescIcon" data-iconcolor="#FFFFFF">●</span>
+<span class="wfcolorDesc">Erledigt</span>
+</div>
+</td><td>
+<div> </div>
+</td><td>
+<div>Planungs- und Bauausschuss</div>
+</td><td>
+<div>Kenntnisnahme</div>
+</td><td class="toLink">
+<div> </div>
+</td>
+</tr><tr id="id170d4" class="odd">
+<td class="colorCol">
+<div> </div>
+</td><td class="date">
+<div>Jan 29, 2026</div>
+</td><td>
+<div>
+<a href="https://ratsinfob.stadt.wolfsburg.de/to010?SILFDNR=1002876&amp;TOLFDNR=1089482">31. Sitzung des Planungs- und Bauausschusses</a>
+</div>
+</td><td>
+<div>
+<a href="https://ratsinfob.stadt.wolfsburg.de/to020?TOLFDNR=1089482">zur Kenntnis genommen</a>
+</div>
+</td><td class="toLink">
+<div>
+<a href="https://ratsinfob.stadt.wolfsburg.de/to020?TOLFDNR=1089482" class="objAnchor">NA</a>
+</div>
+</td>
+</tr>
+
+</tbody>
+
+</table>
+</div>
+
+</div>
+</div>
+</div>
+<div id="id170b2">
+<div class="compFull roundedBorder" >
+<div class="expcol rs_skip rs_preserve">
+<a href="#" id="showHideLink_id170b2" data-simpletooltip-text="Begründung ausblenden" class="js-simple-tooltip"><img role="presentation" id="id170d5" src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.Application/images/collapse-ver-C41D4AFF790B892FD71DE1FBA71538E6.svg" alt="Reduzieren"/></a><span hidden="" class="wicket-ajax-indicator" id="showHideLink_id170b2--ajax-indicator"><img src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif" alt=""/></span>
+</div>
+<div id="id170d6" hidden="" data-wicket-placeholder=""></div>
+<div id="id170d7">
+<h2 class="expandedTitle">Begründung</h2>
+<div id="htm3513224" style="font-family:&#039;Times New Roman&#039;; font-size:12pt;" class="docPart readOnly">
+		<div>
+			<p style="margin-top:0pt; margin-bottom:0pt; font-size:11pt">
+				<span style="font-family:Arial">Trinkwasserbrunnen im Stadtgebiet werden hinsichtlich der Wasserqualität regelmäßig überprüft und entsprechend der Anforderungen durch die LSW fachgerecht unterhalten. Neue Trinkwasserbrunnen werden im Rahmen von größeren Projekten, gerade im innerstädtischen Bereich, bei der Planung berücksichtigt.</span>
+			</p>
+		</div>
+	</div>
+</div>
+</div>
+</div>
+
+
+<div id="id170d8"><div><img alt="Loading..." src="https://ratsinfob.stadt.wolfsburg.de/wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/indicator-ver-03CE3DCC84AF110E9DA8699A841E5200.gif"/></div></div>
+
+<div id="id170d9" hidden="" data-wicket-placeholder=""></div>
+</div>
+
+</div>
+<aside tabindex="-1" aria-label="Legende" id="legende" data-jumplink="Zur Legende">
+<span id="legendeTitle" tabindex="0">Legende</span>
+<div id="legendeList">
+<dl id="id170da">
+
+<dt><span class="objAnchor">NA</span></dt>
+<dd>TOP</dd>
+
+<dt><img src="https://ratsinfob.stadt.wolfsburg.de/images/webclient/checked_checkbox_black.svg" alt="Dokument auswählen" class="icon"/></dt>
+<dd>Dokument auswählen</dd>
+
+</dl>
+</div>
+</aside>
+</main>
+<div>
+<div id="footer">
+
+<span><a target="_blank" title="zur Datenschutzerklärung" class="js-simple-tooltip" href="https://www.wolfsburg.de/Custom-Pages/Datenschutz">Datenschutz</a></span>
+
+<span class="paging_separator">|</span>
+
+<span><a target="_blank" title="zum Ortsrecht" class="js-simple-tooltip" href="https://www.wolfsburg.de/ortsrecht">Ortsrecht</a></span>
+
+<span class="paging_separator">|</span>
+
+<span><a target="_blank" title="zum Impressum" class="js-simple-tooltip" href="https://www.wolfsburg.de/Custom-Pages/Impressum">Impressum</a></span>
+
+<span class="paging_separator">|</span>
+
+<span><a target="_blank" title="zu Kontakt" class="js-simple-tooltip" href="http://www.cc-egov.de/kontakt">Kontakt</a></span>
+
+</div>
+</div>
+<span class="simpletooltip_container nachoben">
+<button type="button" id="backToTop" class="js-simple-tooltip" title="nach oben"></button>
+</span>
+</div>
+</body>
+</html>

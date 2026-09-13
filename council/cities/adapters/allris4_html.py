@@ -60,6 +60,15 @@ MAX_MONATE = 24
 MAX_INDEXSEITEN = 200
 
 _DATUM = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
+#: Wolfsburgs Beratungsfolge kommt englisch: „Sep 28, 2023". Nur die drei
+#: Buchstaben werden verlangt, der Rest des Monatsnamens ist freigestellt —
+#: ALLRIS schreibt mal „Sep", mal „Sept.", je nach Feld.
+_MONATE_EN = {m: i for i, m in enumerate(
+    ("jan", "feb", "mar", "apr", "may", "jun",
+     "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+_DATUM_EN = re.compile(
+    r"\b(" + "|".join(_MONATE_EN) + r")[a-z]*\.?\s+(\d{1,2}),\s*(\d{4})",
+    re.IGNORECASE)
 _UHRZEIT = re.compile(r"(\d{1,2}):(\d{2})")
 #: ``Ö 6.1``, ``N 17``, ``6.1`` — die Nummer eines Tagesordnungspunkts.
 _TOP_NR = re.compile(r"^([ÖN]\s*)?(\d+(?:\.\d+)*)\.?$")
@@ -110,8 +119,20 @@ def _grunddaten(suppe: BeautifulSoup) -> dict:
     # **„Vorlageart", nicht „Vorlagenart".** Gemessen an Laatzen; ein Buchstabe,
     # und die Art jeder Vorlage bleibt leer — ohne Fehler, ohne Auffälligkeit,
     # und der ganze Vergleich hält sie für „other".
+    #
+    # **Ein Feld, das man nicht will, muss trotzdem als GRENZE dastehen.**
+    # Wolfsburg schreibt „Federführende Organisationseinheit:", Laatzen
+    # „Federführend:" — und weil die lange Form fehlte, lief der Wert des
+    # Feldes DAVOR bis zum Seitenende weiter. Gemessen am 13.09.2026: 883 von
+    # 1.570 Wolfsburger Vorlagen trugen als Art einen 400-Zeichen-Block
+    # („Vorlage Federführende Organisationseinheit: … Beratungsfolge …") und
+    # galten damit als „other". Dieselbe Falle wie `Verfasser:` bei
+    # ALLRIS classic; gespeichert werden beide Felder nicht, sie stehen hier
+    # nur, damit der Wert davor rechtzeitig endet.
     felder = ("Betreff", "Gremium", "Datum", "Status", "Uhrzeit", "Anlass",
               "Raum", "Ort", "Vorlageart", "Vorlagenart", "Verfasser",
+              "Federführende Organisationseinheit",
+              "Beteiligte Organisationseinheit",
               "Federführend", "Bezugsdrucksache")
     muster = "|".join(felder)
     aus: dict[str, str] = {}
@@ -121,12 +142,28 @@ def _grunddaten(suppe: BeautifulSoup) -> dict:
 
 
 def _iso(datum: str | None, uhrzeit: str | None = None) -> str | None:
+    """``TT.MM.JJJJ`` — und die englische Form, die Wolfsburg ausliefert.
+
+    **Dieselbe ALLRIS-Fassung rendert je Instanz verschieden.** Wolfsburg
+    schreibt seine Beratungsfolge als „Sep 28, 2023", Laatzen und Lüneburg
+    als „28.09.2023". Gemessen am 13.09.2026: Ohne die englische Form trugen
+    **alle 1.570** Wolfsburger Vorlagen kein Datum — und weil
+    `_beratungsfolge` ihre Doppelzeilen ÜBER das Datum paart, gingen
+    zusätzlich Stationen verloren (40 statt 52 in einer Stichprobe von 40
+    Seiten, keine einzige davon datiert).
+
+    Die deutsche Form wird zuerst versucht; sie bleibt die Regel.
+    """
     if not datum:
         return None
     m = _DATUM.search(datum)
-    if not m:
-        return None
-    tag = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+    if m:
+        tag = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+    else:
+        e = _DATUM_EN.search(datum)
+        if not e:
+            return None
+        tag = f"{e.group(3)}-{_MONATE_EN[e.group(1).lower()]:02d}-{int(e.group(2)):02d}"
     u = _UHRZEIT.search(uhrzeit or "")
     return f"{tag}T{int(u.group(1)):02d}:{u.group(2)}:00" if u else tag
 
@@ -480,6 +517,16 @@ class Allris4HtmlAdapter:
             if datum and offen is not None:
                 offen["datum"] = datum
                 offen["sitzung"] = gremium or offen["sitzung"]
+                # **Die datierte Zeile trägt das ERGEBNIS, die undatierte die
+                # ROLLE.** „Vorberatung" und „Entscheidung" sagen, wozu ein
+                # Gremium die Sache bekommt; „vertagt" und „ungeändert
+                # beschlossen" sagen, was daraus wurde. Die Station behielt
+                # bisher die Rolle und warf das Ergebnis weg — gemessen am
+                # 13.09.2026 in beiden Fixtures: Laatzen verlor „vertagt",
+                # Wolfsburg „zur Kenntnis genommen". Leer bleibt die Zeile,
+                # solange die Sitzung noch aussteht; dann gilt weiter die Rolle.
+                if beschluss:
+                    offen["beschluss"] = beschluss
                 raus.append(offen)
                 offen = None
             elif gremium:
