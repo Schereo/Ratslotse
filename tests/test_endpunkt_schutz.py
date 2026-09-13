@@ -126,6 +126,7 @@ OEFFENTLICH = {
     ("post", "/api/tipp"),
     ("get", "/api/tipp/me"),
     ("delete", "/api/tipp/me"),
+    ("post", "/api/tipp/abmelden"),  # geteiltes Gerät: nur der eigene Cookie geht, kein Datenzugriff
     ("get", "/api/tipp/stand"),
     ("get", "/api/tipp/qr.png"),
 
