@@ -32,6 +32,19 @@ class BodySpec:
     #: Nur aktive Städte holt der Cron. Die übrigen sind gemessen erreichbar
     #: und warten darauf, dass jemand sie einschaltet.
     active: bool = True
+    #: Ab wann eine Vorlage in den VERGLEICH geht — ``since`` regelt nur die
+    #: Ernte. Ohne eigenes Fenster verglich Hannover acht Jahre gegen die drei
+    #: der OParl-Städte, und der Bestandslauf kostete das Doppelte
+    #: (24.654 statt 9.277 Kandidaten, gemessen 13.09.2026). Leer heißt
+    #: unbegrenzt — so steht Oldenburg da, die Bezugsstadt: Ob es eine Sache
+    #: schon hat, beantwortet ein Beschluss von 2019 genauso gut.
+    compare_since: str | None = "2023-01-01"
+    #: Welche Vorlagenarten dieser Stadt am Vergleich teilnehmen. Leer heißt
+    #: alle, die ``model.IDEA_KINDS`` ohnehin zulässt. Hannover nimmt seine
+    #: Anfragen heraus: 6.483 Stück, davon **1 %** mit Ergebnis, weil Anfragen
+    #: dort beantwortet und nicht beschlossen werden (Tims Entscheidung
+    #: 13.09.2026).
+    compare_kinds: tuple[str, ...] = ()
     #: Holt der Lauf die PDF-Bytes? Aus für Quellen, deren Text schon
     #: vorliegt — Oldenburgs Vorlagentexte stehen längst in der
     #: Rats-Datenbank, sie ein zweites Mal herunterzuladen belastet nur
@@ -47,7 +60,7 @@ BODIES: dict[str, BodySpec] = {
     #     nicht haben?" sind dieselbe Rechnung mit vertauschten Rollen).
     "oldenburg": BodySpec(
         "oldenburg", "Oldenburg (Oldb)", "NI", "oldenburg", None,
-        since="2018-01-01", fetch_files=False,
+        since="2018-01-01", compare_since=None, fetch_files=False,
         notes="Kein OParl (SessionNet ohne Modul). Der Adapter liest council.sqlite."),
 
     # --- Ring 1: gleiches Kommunalverfassungsrecht (NKomVG)
@@ -171,6 +184,10 @@ BODIES: dict[str, BodySpec] = {
         "hannover", "Hannover", "NI", "hannover_sim",
         "https://e-government.hannover-stadt.de/lhhsimwebre.nsf",
         since="2018-01-01", active=False, fetch_files=False,
+        # Anfragen bleiben draußen: 6.483 Stück, 1 % mit Ergebnis. In Hannover
+        # werden sie beantwortet, nicht beschlossen — der Vergleich fände dort
+        # nichts zu vergleichen, die Einordnung kostete rund $7.
+        compare_kinds=("motion", "proposal", "amendment"),
         notes="Kein Lizenzhinweis. Historie ab 2003, ungeblättert. Der "
               "Verwaltungsausschuss veröffentlicht keine Sitzungsseiten — "
               "seine Beratungen stehen nur als unverlinkter Text in "

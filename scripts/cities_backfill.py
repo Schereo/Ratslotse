@@ -146,6 +146,37 @@ def unterbau_pruefen(main: CitiesStore) -> list[str]:
     return befunde
 
 
+#: Was ein Aufruf je 1.000 Vorlagen kostet, gemessen am 13.09.2026 über
+#: `llm_usage` in `data/ratslotse.sqlite`. `fit` fragt DREI Stimmen je
+#: Vorlage, deshalb der Faktor.
+KOSTEN_JE_1000 = {"classify": 1.15, "effort": 0.82, "terms": 0.03, "fit": 0.58 * 3}
+
+
+def vorschau(main_store, specs) -> None:
+    """Vor dem bezahlten Lauf: Wie viele Vorlagen, in welchem Fenster, für wie viel.
+
+    **Die Zahl gehört VOR den Lauf, nicht in den Bericht danach.** Am
+    11.09.2026 lief `fit` über den ganzen Bestand, während der Index nur
+    Oldenburg kannte — $15,40 für zwei tote Beleg-Arme. Und ohne Fenster
+    hätte Hannover allein rund $75 statt $35 gekostet, bei einem Vergleich
+    von acht Jahren gegen drei.
+    """
+    from council.cities import auswahl as auswahl_modul
+
+    print("\n  Fenster und Kandidaten (Schätzung aus gemessenen Preisen):")
+    summe = 0.0
+    for spec in specs:
+        f = auswahl_modul.fenster(spec.id)
+        papiere = auswahl_modul.papiere(main_store, spec.id)
+        kosten = len(papiere) / 1000 * sum(KOSTEN_JE_1000.values())
+        summe += kosten
+        arten = ", ".join(f.kinds) if f.kinds else "alle"
+        print(f"    {spec.name[:22]:22} ab {f.since or 'immer':10} "
+              f"Arten: {arten:34} {len(papiere):6} Vorlagen  ~${kosten:,.0f}")
+    print(f"    {'':22}    {'':10} {'':34} {'':6}            ~${summe:,.0f}\n",
+          flush=True)
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -239,6 +270,8 @@ def main() -> int:
         # ganzen Bestand neu bezahlen. Ohne `--body` läuft beides über alles,
         # denn der Index rechnet Nachbarschaften ÜBER Stadtgrenzen.
         auswahl = [s.id for s in specs] if a.body else [None]
+        if {"annotate", "fit"} & set(stages):
+            vorschau(main_store, specs)
         if "annotate" in stages:
             for stadt in auswahl:
                 for schluessel, zahlen in pipeline.annotate(
