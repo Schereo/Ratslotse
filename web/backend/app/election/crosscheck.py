@@ -190,20 +190,41 @@ def check_columns(names: Sequence[str], reg: Register | None = None) -> list[str
 
     Leere Eingabe heißt „nichts erkannt" (Tabelle fehlt, oder der Wortlaut hat
     sich 2026 geändert) — dann wird geschwiegen statt geraten.
+
+    Verglichen wird **nach Namen**, nicht nach Position: Am Wahlabend 2026
+    führte die Tabelle den Einzelwahlvorschlag (D11) gar nicht — 15 Zeilen
+    statt 16 —, und ein Abgleich Position gegen Position meldete ab D11 jede
+    Spalte als verrutscht, obwohl die CSV (die eigentliche Grundlage) stimmte.
+    Ein Wahlvorschlag, der in der Tabelle fehlt, ist deshalb kein Befund;
+    ein Befund ist ein Name, den das Register nicht kennt, eine fehlende
+    **Liste**, oder eine Reihenfolge, die von der des Registers abweicht.
     """
     if not names:
         return []
     reg = reg or load_register()
     parties = sorted(reg.parties, key=lambda p: p.index)
     out: list[str] = []
-    if len(names) != len(parties):
-        out.append(f"Der Votemanager listet {len(names)} Wahlvorschläge, das Register {len(parties)} "
-                   f"— Zuordnung prüfen!")
-    for party, name in zip(parties, names):
-        if party.slug in slugs_for(name):
+    by_index = {p.index: p for p in parties}
+    matched: list[tuple[int, str]] = []  # (Register-Index, Tabellenname) in Tabellenreihenfolge
+    for name in names:
+        hits = [p for p in parties if p.slug in slugs_for(name)]
+        if len(hits) != 1:
+            out.append(f"Der Votemanager nennt ‚{name}‘, das Register kennt dazu "
+                       f"{'keinen' if not hits else 'mehrere'} Wahlvorschlag — Zuordnung prüfen!")
             continue
-        out.append(f"Spalte D{party.index} heißt beim Votemanager ‚{name}‘, im Register ‚{party.short}‘ "
-                   f"— Zuordnung prüfen!")
+        matched.append((hits[0].index, name))
+    seen = {i for i, _ in matched}
+    for p in parties:
+        if p.index not in seen and p.kind != "einzelbewerber":
+            out.append(f"Die Liste ‚{p.short}‘ (D{p.index}) fehlt in der Tabelle des Votemanagers "
+                       f"— Zuordnung prüfen!")
+    # Reihenfolge: Wo die Tabelle von der Registerfolge abweicht, steht an der
+    # Stelle ein anderer Name, als das Register dort erwartet.
+    expected = sorted(i for i, _ in matched)
+    for want, (got, name) in zip(expected, matched):
+        if want != got:
+            out.append(f"Spalte D{want} heißt beim Votemanager ‚{name}‘, im Register ‚{by_index[want].short}‘ "
+                       f"— Zuordnung prüfen!")
     return out
 
 
