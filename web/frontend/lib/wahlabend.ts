@@ -100,11 +100,11 @@ export function kandidatenStatus(
   if (!personen || k.votes === null) return { ton: "unknown", text: "Personenstimmen fehlen noch" };
   if (k.elected) {
     if (phase === "counting" && k.projected_elected === null) {
-      return { ton: "shaky", text: `drin · ${art(k.elected)} · Hochrechnung: raus` };
+      return { ton: "shaky", text: `nach Auszählung drin (${art(k.elected)}) · laut Hochrechnung raus` };
     }
     return { ton: "seated", text: `drin · ${art(k.elected)}` };
   }
-  if (k.projected_elected) return { ton: "projected", text: `Hochrechnung: drin · ${art(k.projected_elected)}` };
+  if (k.projected_elected) return { ton: "projected", text: `laut Hochrechnung drin (${art(k.projected_elected)})` };
   if (k.votes_to_seat !== null && k.votes_to_seat > 0) {
     const text = `${zahl(k.votes_to_seat)} Stimmen bis zum Sitz`;
     return { ton: k.votes_to_seat <= KNAPP_BIS ? "close" : "open", text };
