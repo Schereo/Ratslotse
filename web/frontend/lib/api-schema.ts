@@ -5004,6 +5004,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/karte.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Karte
+         * @description Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich
+         *     oder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.
+         *     ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``
+         *     braucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.
+         */
+        get: operations["wahlabend_karte_api_wahlabend_karte_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/ob": {
         parameters: {
             query?: never;
@@ -18423,6 +18446,57 @@ export interface operations {
             };
         };
     };
+    wahlabend_karte_api_wahlabend_karte_png_get: {
+        parameters: {
+            query: {
+                /** @description Slug der Liste, z. B. „gruene“ */
+                list: string;
+                /** @description Wahlbereich (1–6): die Liste dort */
+                area?: number | null;
+                /** @description Listenplatz im Wahlbereich: die Person */
+                position?: number | null;
+                /** @description „beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630 */
+                format?: string;
+                /** @description false = ohne den Abstand zu 2021 (Listenkarte) */
+                compare?: boolean;
+                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ob_wahl_api_wahlabend_ob_get: {
         parameters: {
             query?: {
@@ -18457,4 +18531,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0d4cdf173ad987f7517d50397a86012d5d35893e73f0bd2f25d8194db7f08364
+// vertrag-sha256: e494427b5216438af76ef4bce930b3817968c9147ead9444979d2adfa8a50260
