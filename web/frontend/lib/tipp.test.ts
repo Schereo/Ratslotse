@@ -10,7 +10,6 @@ import {
   restSitze,
   restSitzeText,
   restSitzeTon,
-  startverteilung,
   summeOb,
   summeSitze,
   tippSegmente,
@@ -21,31 +20,6 @@ import type { TippPartei } from "./tipp";
 function partei(slug: string, seats_2021: number | null, color = "#123456"): TippPartei {
   return { slug, short: slug, name: slug, color, color_dark: color, seats_2021 } as TippPartei;
 }
-
-describe("startverteilung", () => {
-  it("summiert exakt auf die Sitzzahl, proportional zu 2021", () => {
-    const parteien = [partei("spd", 12), partei("cdu", 12), partei("gruene", 12), partei("linke", 8), partei("volt", 1)];
-    const v = startverteilung(parteien, 52);
-    expect(summeSitze(v)).toBe(52);
-    // Größenordnung bleibt erhalten: die größte 2021er Liste bleibt vorn.
-    expect(v.spd).toBeGreaterThanOrEqual(v.linke);
-    expect(v.linke).toBeGreaterThanOrEqual(v.volt);
-  });
-
-  it("Listen ohne 2021er Sitz starten bei 0", () => {
-    const parteien = [partei("spd", 20), partei("neu", null)];
-    const v = startverteilung(parteien, 52);
-    expect(v.neu).toBe(0);
-    expect(summeSitze(v)).toBe(52);
-  });
-
-  it("ohne jedes Gewicht bekommt die erste Liste alles — keine Division durch 0", () => {
-    const parteien = [partei("a", 0), partei("b", 0)];
-    const v = startverteilung(parteien, 52);
-    expect(summeSitze(v)).toBe(52);
-    expect(v.a).toBe(52);
-  });
-});
 
 describe("Rest der Sitzverteilung", () => {
   it("Text und Ton an den drei Fällen", () => {

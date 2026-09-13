@@ -52,30 +52,6 @@ export function probePfad(basis: string, probe: string | null, counted: string |
   return s ? `${basis}?${s}` : basis;
 }
 
-/**
- * Sitze auf 52 verteilen, proportional zu den 2021er Ergebnissen — der
- * Ausgangspunkt, den das Formular zeigt, bevor jemand etwas ändert.
- * Listen ohne 2021er Sitz starten bei 0. Hare/Niemeyer: erst abrunden,
- * dann die größten Reste auffüllen, bis die Summe stimmt.
- */
-export function startverteilung(parteien: readonly TippPartei[], gesamt: number): Record<string, number> {
-  const gewichte = parteien.map((p) => Math.max(0, p.seats_2021 ?? 0));
-  const summeGewichte = gewichte.reduce((s, g) => s + g, 0);
-  const out: Record<string, number> = {};
-  if (summeGewichte <= 0) {
-    parteien.forEach((p) => { out[p.slug] = 0; });
-    if (parteien[0]) out[parteien[0].slug] = gesamt;
-    return out;
-  }
-  const roh = gewichte.map((g) => (g / summeGewichte) * gesamt);
-  const basis = roh.map(Math.floor);
-  let rest = gesamt - basis.reduce((s, b) => s + b, 0);
-  const reste = roh.map((r, i) => ({ i, frac: r - basis[i] })).sort((a, b) => b.frac - a.frac);
-  for (let k = 0; k < reste.length && rest > 0; k++, rest--) basis[reste[k].i] += 1;
-  parteien.forEach((p, i) => { out[p.slug] = basis[i]; });
-  return out;
-}
-
 /** Summe eines Sitz-Tipps. */
 export function summeSitze(tipp: Record<string, number>): number {
   return Object.values(tipp).reduce((s, n) => s + (Number.isFinite(n) ? n : 0), 0);

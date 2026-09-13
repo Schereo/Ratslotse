@@ -15,7 +15,6 @@ import {
   restSitzeText,
   restSitzeTon,
   restOb,
-  startverteilung,
   tippSegmente,
 } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
@@ -45,10 +44,16 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   /** Nur beim Ändern eines vorhandenen Tipps: zurück ohne zu speichern. */
   onZurueck?: () => void;
 }) {
+  // Ein neuer Tipp fängt bei NULL an — alle Sitze werden selbst verteilt.
+  // Bis 13.09.2026 stand hier die Verteilung von 2021 als Vorschlag; wer
+  // nur „Tipp abgeben" drückte, tippte damit unbemerkt das letzte Ergebnis
+  // nach (Tims Befund). Ein Tipp soll eine Entscheidung sein, kein
+  // Bestätigen. Die 2021er Zahl steht weiter unter jeder Liste — als
+  // Anhaltspunkt, nicht als Vorgabe.
   const [seats, setSeats] = useState<Record<string, number>>(() =>
     meins.has_tip
       ? Object.fromEntries(meins.seats.map((s) => [s.slug, s.tip]))
-      : startverteilung(setup.parties, setup.seats_total),
+      : Object.fromEntries(setup.parties.map((p) => [p.slug, 0])),
   );
   const [obOffen, setObOffen] = useState(meins.has_mayor_tip);
   const [ob, setOb] = useState<Record<string, number>>(() =>
