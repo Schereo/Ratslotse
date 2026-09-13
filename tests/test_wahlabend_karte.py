@@ -69,11 +69,18 @@ def test_auswahl_kennt_kein_erfinden(stand):
 
 # ------------------------------------------------------------------ Bild
 
-def test_jede_kartenart_liefert_ein_png_in_teilgroesse(stand):
+GROESSEN = {"beitrag": (1080, 1350), "story": (1080, 1920), "quer": (1200, 630)}
+
+
+def test_jede_kartenart_liefert_jedes_format_in_seiner_groesse(stand):
+    assert set(GROESSEN) == set(share.LAYOUTS) == set(share.FORMATS)
     for args in (("gruene", None, None), ("gruene", 1, None), ("gruene", 1, 2), ("spd", 3, 1)):
         auswahl = share.select(stand, *args)
         assert auswahl, args
-        assert _groesse(share.render(stand, auswahl)) == (1200, 630), args
+        for fmt, groesse in GROESSEN.items():
+            assert _groesse(share.render(stand, auswahl, fmt)) == groesse, (args, fmt)
+    # Ohne Format: der Beitrag — das ist, was auf Instagram gepostet wird.
+    assert _groesse(share.render(stand, share.select(stand, "gruene", None, None))) == (1080, 1350)  # type: ignore[arg-type]
 
 
 def test_karten_vor_und_nach_der_auszaehlung(stand):
@@ -83,7 +90,7 @@ def test_karten_vor_und_nach_der_auszaehlung(stand):
     for args in (("gruene", None, None), ("gruene", 1, 2)):
         auswahl = share.select(vorher, *args)
         assert auswahl
-        assert _groesse(share.render(vorher, auswahl)) == (1200, 630)
+        assert _groesse(share.render(vorher, auswahl, "story")) == (1080, 1920)
     fertig = service.probe(None)
     assert fertig["phase"] == "complete"
     person = share.select(fertig, "gruene", 1, 1)
@@ -101,7 +108,7 @@ def test_karte_ohne_lotti_und_ohne_schriften_kommt_trotzdem(monkeypatch, tmp_pat
     monkeypatch.setattr(image, "_font_cache", {})
     auswahl = share.select(stand, "gruene", 1, 2)
     assert auswahl
-    assert _groesse(share.render(stand, auswahl)) == (1200, 630)
+    assert _groesse(share.render(stand, auswahl, "quer")) == (1200, 630)
 
 
 def test_lotti_kommt_aus_den_sprites_der_app():
@@ -141,7 +148,29 @@ def test_karten_endpunkt_ist_hinter_dem_schalter(client, monkeypatch):
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "image/png"
     assert "max-age=60" in r.headers["cache-control"]
-    assert _groesse(r.content) == (1200, 630)
+    assert _groesse(r.content) == (1080, 1350)
+
+
+def test_karten_endpunkt_kennt_die_drei_formate(client, monkeypatch):
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    q = "liste=gruene&bereich=1&platz=2&probe=2021&counted=60"
+    for fmt, groesse in GROESSEN.items():
+        r = client.get(f"/api/wahlabend/karte.png?{q}&format={fmt}")
+        assert r.status_code == 200, fmt
+        assert _groesse(r.content) == groesse, fmt
+    assert client.get(f"/api/wahlabend/karte.png?{q}&format=quadrat").status_code == 422
+
+
+def test_listenkarte_ohne_vergleich_zu_2021(client, monkeypatch):
+    """Wer teilt, muss den Verlust nicht mitteilen: ``vergleich=false`` lässt
+    den Abstand zu 2021 weg — und die Karte sieht dann anders aus."""
+    monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
+    q = "liste=gruene&probe=2021&counted=60&format=beitrag"
+    mit = client.get(f"/api/wahlabend/karte.png?{q}")
+    ohne = client.get(f"/api/wahlabend/karte.png?{q}&vergleich=false")
+    assert mit.status_code == ohne.status_code == 200
+    assert mit.content != ohne.content
+    assert _groesse(ohne.content) == (1080, 1350)
 
 
 def test_karten_endpunkt_unterscheidet_die_drei_arten_und_kennt_404(client, monkeypatch):

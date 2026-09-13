@@ -3632,11 +3632,13 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
 WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
     200: {
         "description": (
-            "Die Karte zum Teilen (PNG, 1200×630): wie eine Liste (`?liste=`), "
-            "eine Liste im Wahlbereich (`&bereich=`) oder eine Person "
-            "(`&platz=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand "
-            "zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank "
-            "an die Wählenden. Eine Minute cachebar."
+            "Die Karte zum Teilen (PNG): wie eine Liste (`?liste=`), eine "
+            "Liste im Wahlbereich (`&bereich=`) oder eine Person (`&platz=`) "
+            "abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. "
+            "Personenstimmen und Status, dazu Lotti mit dem Dank an die "
+            "Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` "
+            "(1080×1920) oder `quer` (1200×630); `&vergleich=false` lässt den "
+            "Abstand zu 2021 weg. Eine Minute cachebar."
         ),
         "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
     },

@@ -15,13 +15,20 @@ Wählenden dankt. Drei Karten, dieselbe Bühne:
   Liste, über einen anderen Wahlbereich, nicht gewählt) und dieselben Balken
   mit der eigenen Zeile hervorgehoben.
 
+Drei Formate: **beitrag** (1080×1350, 4:5 — der Instagram-Beitrag), **story**
+(1080×1920, 9:16 — Story und Status; oben und unten bleibt Platz für die
+Bedienelemente der Apps) und **quer** (1200×630 — Messenger und
+Link-Vorschauen). Alle zeichnen dieselben Bausteine; nur die Maße stehen in
+einem ``Layout`` — ein weiteres Format ist ein weiterer Satz Maße, kein
+kopierter Zeichencode.
+
 Was hier NICHT passiert: rechnen. Gezeichnet wird, was ``service.live()``
 bzw. ``service.probe()`` liefern — die Sitze stammen aus derselben Zuteilung
 wie die Seite, sonst zeigte die Karte etwas anderes als der Bildschirm.
 
 Lotti kommt aus den Sprite-Sheets der iOS-App (``LottiSprite*.png``, 384 px
 je Kachel, zeilenweise, Rest der letzten Zeile leer): Das Repo hat sie
-ohnehin, und sie sind groß genug für 300 px im fertigen Bild. Fehlt eine
+ohnehin, und sie sind groß genug für 300–450 px im fertigen Bild. Fehlt eine
 Datei, gibt es die Karte ohne Lotti — nie einen Fehler; dasselbe gilt für
 die Schriften (``image._font``).
 
@@ -33,6 +40,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from PIL import Image
 
@@ -48,14 +56,11 @@ from .image import (
     BORDER,
     BRICOLAGE,
     EMPTY,
-    HEIGHT,
     INTER,
-    MARGIN,
     MONO,
     MUTED,
     SCALE,
     TEXT,
-    WIDTH,
     AnyFont,
     _clock,
     _color,
@@ -75,10 +80,7 @@ CARD = "#FFFFFF"
 #: Erfolg-Tint (gewählt) und neutraler Tint (nicht gewählt).
 OK_BG, OK_INK = "#DCFCE7", "#15803D"
 NEUTRAL_BG, NEUTRAL_INK = "#E8EFF6", "#58697A"
-
-#: Die rechte Spalte gehört Lotti: ab hier steht kein Text mehr.
-COLUMN = 760
-LOTTI_BOX = 320
+TRACK, BAR_OFF = "#E1E9F1", "#9AA9B8"
 
 SPRITE_DIR = Path(__file__).resolve().parents[4] / "ios" / "Resources" / "Assets.xcassets"
 TILE = 384
@@ -93,6 +95,123 @@ POSES: dict[str, tuple[str, int]] = {
 }
 
 Kind = str  # "party" | "area" | "candidate"
+Format = Literal["quer", "beitrag", "story"]
+FORMATS: tuple[str, ...] = ("beitrag", "story", "quer")
+
+
+# ------------------------------------------------------------------ Maße
+
+@dataclass(frozen=True)
+class Layout:
+    """Alle Maße eines Formats, in Endpunkten. Die Zeichenfunktionen kennen
+    nur diese Werte — kein Format hat eigenen Zeichencode."""
+    name: str
+    width: int
+    height: int
+    margin: float
+    #: Rechte Kante der Textspalte (quer: links von Lotti; hoch: Bildbreite).
+    column: float
+    kicker_y: float
+    kicker_size: float
+    kicker_lines: int
+    title_y: float
+    title_size: float
+    sub_y: float
+    sub_size: float
+    sub_lines: int
+    rule_y: float
+    stats_y: float
+    stat_value: float
+    stat_label: float
+    stat_note: float
+    stat_gap: float
+    rank_y: float
+    rank_size: float
+    chip_y: float
+    chip_size: float
+    #: Halbkreis der Listenkarte: Mittelpunkt, Radius, Beschriftung rechts davon.
+    arc_cx: float
+    arc_cy: float
+    arc_r: float
+    arc_text_x: float
+    arc_text_y: float
+    #: Beschriftung unter dem Halbkreis statt rechts daneben (Story).
+    arc_text_below: bool
+    #: Balken der Wahlbereichs- und Personenkarte.
+    list_head_y: float
+    list_head_size: float
+    area_bars_y: float
+    cand_bars_y: float
+    bar_row: float
+    bar_limit: int
+    bar_name_w: float
+    bar_count_w: float
+    bar_size: float
+    #: Lotti: linke obere Ecke und Kantenlänge.
+    lotti_x: float
+    lotti_y: float
+    lotti_size: float
+    #: Sprechblase: Kasten, Schwanz zeigt nach unten (quer) oder rechts (hoch).
+    bubble_x1: float
+    bubble_y1: float
+    bubble_x2: float
+    bubble_tail: str
+    bubble_size: float
+    bubble_lead: float
+    footer_y: float
+    footer_size: float
+    footer_lead: float
+
+    @property
+    def text_w(self) -> float:
+        return self.column - self.margin
+
+
+QUER = Layout(
+    name="quer", width=1200, height=630, margin=64, column=760,
+    kicker_y=42, kicker_size=13, kicker_lines=1, title_y=66, title_size=54, sub_y=134, sub_size=18, sub_lines=1,
+    rule_y=178, stats_y=200, stat_value=58, stat_label=12, stat_note=15, stat_gap=44,
+    rank_y=328, rank_size=19, chip_y=312, chip_size=15,
+    arc_cx=229, arc_cy=556, arc_r=165, arc_text_x=430, arc_text_y=462, arc_text_below=False,
+    list_head_y=318, list_head_size=15, area_bars_y=366, cand_bars_y=376,
+    bar_row=20, bar_limit=9, bar_name_w=200, bar_count_w=64, bar_size=13,
+    lotti_x=836, lotti_y=270, lotti_size=320,
+    bubble_x1=800, bubble_y1=196, bubble_x2=1146, bubble_tail="down", bubble_size=18, bubble_lead=26,
+    footer_y=590, footer_size=13, footer_lead=18,
+)
+
+#: Beitrag und Story werden auf dem Handy auf rund 390 px Breite gestaucht —
+#: was hier 30 px hat, ist dort 11 px. Deshalb ist alles gut doppelt so groß
+#: wie im Querformat, und die Balken zeigen sechs statt neun Zeilen.
+BEITRAG = Layout(
+    name="beitrag", width=1080, height=1350, margin=72, column=1008,
+    kicker_y=56, kicker_size=20, kicker_lines=2, title_y=128, title_size=92, sub_y=232, sub_size=30, sub_lines=2,
+    rule_y=338, stats_y=360, stat_value=92, stat_label=24, stat_note=28, stat_gap=48,
+    rank_y=572, rank_size=34, chip_y=566, chip_size=28,
+    arc_cx=282, arc_cy=990, arc_r=210, arc_text_x=530, arc_text_y=850, arc_text_below=False,
+    list_head_y=650, list_head_size=30, area_bars_y=732, cand_bars_y=700,
+    bar_row=50, bar_limit=6, bar_name_w=370, bar_count_w=120, bar_size=30,
+    lotti_x=728, lotti_y=1046, lotti_size=300,
+    bubble_x1=72, bubble_y1=1082, bubble_x2=700, bubble_tail="right", bubble_size=32, bubble_lead=42,
+    footer_y=1304, footer_size=19, footer_lead=23,
+)
+
+#: Story: Instagram legt oben (Name, Fortschritt) und unten (Antwortfeld)
+#: je rund 250 px Bedienung über das Bild — dort steht nichts Wichtiges.
+STORY = Layout(
+    name="story", width=1080, height=1920, margin=72, column=1008,
+    kicker_y=230, kicker_size=24, kicker_lines=2, title_y=316, title_size=104, sub_y=432, sub_size=34, sub_lines=2,
+    rule_y=552, stats_y=578, stat_value=96, stat_label=26, stat_note=30, stat_gap=48,
+    rank_y=826, rank_size=38, chip_y=820, chip_size=32,
+    arc_cx=322, arc_cy=1200, arc_r=250, arc_text_x=72, arc_text_y=1240, arc_text_below=True,
+    list_head_y=900, list_head_size=34, area_bars_y=1000, cand_bars_y=960,
+    bar_row=58, bar_limit=6, bar_name_w=400, bar_count_w=130, bar_size=34,
+    lotti_x=700, lotti_y=1400, lotti_size=320,
+    bubble_x1=72, bubble_y1=1400, bubble_x2=680, bubble_tail="right", bubble_size=32, bubble_lead=44,
+    footer_y=1712, footer_size=22, footer_lead=28,
+)
+
+LAYOUTS: dict[str, Layout] = {"quer": QUER, "beitrag": BEITRAG, "story": STORY}
 
 
 # ------------------------------------------------------------------ Auswahl
@@ -316,6 +435,19 @@ def _ellipsis(sheet: _Sheet, text: str, font: AnyFont, width: float) -> str:
     return text + "…"
 
 
+def _lines(sheet: _Sheet, x: float, y: float, text: str, font: AnyFont, fill: str,
+           width: float, lead: float, max_lines: int) -> float:
+    """Umbrochener Text; was über die letzte erlaubte Zeile hinausgeht, wird
+    dort gekürzt. Gibt die Unterkante zurück."""
+    lines = _wrap(sheet, text, font, width)
+    if len(lines) > max_lines:
+        rest = " ".join(lines[max_lines - 1:])
+        lines = lines[: max_lines - 1] + [_ellipsis(sheet, rest, font, width)]
+    for i, line in enumerate(lines):
+        sheet.text(x, y + i * lead, line, font, fill)
+    return y + len(lines) * lead
+
+
 def _rounded(sheet: _Sheet, x1: float, y1: float, x2: float, y2: float, radius: float,
              fill: str, outline: str | None = None) -> None:
     s = sheet._s
@@ -323,23 +455,30 @@ def _rounded(sheet: _Sheet, x1: float, y1: float, x2: float, y2: float, radius: 
                                  outline=outline, width=max(int(s(1)), 1) if outline else 0)
 
 
-def _chip(sheet: _Sheet, x: float, y: float, text: str, bg: str, ink: str) -> float:
-    font = sheet.font(INTER, 15, 600)
-    width = sheet.width_of(text, font) + 24
-    _rounded(sheet, x, y, x + width, y + 30, 15, bg)
-    sheet.text(x + 12, y + 7, text, font, ink)
+def _chip(sheet: _Sheet, x: float, y: float, text: str, bg: str, ink: str, size: float) -> float:
+    font = sheet.font(INTER, size, 600)
+    pad, height = size * 0.8, size * 2
+    width = sheet.width_of(text, font) + 2 * pad
+    _rounded(sheet, x, y, x + width, y + height, height / 2, bg)
+    sheet.text(x + pad, y + (height - size) / 2 - size * 0.05, text, font, ink)
     return width
 
 
-def _bubble(sheet: _Sheet, text: str, x1: float, y1: float, x2: float, tail_x: float) -> float:
-    """Lottis Sprechblase, Schwanz nach unten. Gibt die untere Kante zurück."""
-    font = sheet.font(INTER, 18, 500)
-    pad, lead = 20.0, 26.0
+def _bubble(sheet: _Sheet, L: Layout, text: str, tail_at: float) -> float:
+    """Lottis Sprechblase. ``tail_at``: x des Schwanzes (nach unten) bzw. y
+    (nach rechts). Gibt die untere Kante zurück."""
+    font = sheet.font(INTER, L.bubble_size, 500)
+    pad, lead = L.bubble_size * 1.1, L.bubble_lead
+    x1, y1, x2 = L.bubble_x1, L.bubble_y1, L.bubble_x2
     lines = _wrap(sheet, text, font, x2 - x1 - 2 * pad)
-    y2 = y1 + 2 * pad + lead * len(lines) - 4
+    y2 = y1 + 2 * pad + lead * len(lines) - lead * 0.15
     _rounded(sheet, x1, y1, x2, y2, 18, CARD, BORDER)
     s = sheet._s
-    tail = [(s(tail_x - 14), s(y2 - 1)), (s(tail_x + 14), s(y2 - 1)), (s(tail_x), s(y2 + 16))]
+    if L.bubble_tail == "down":
+        tail = [(s(tail_at - 14), s(y2 - 1)), (s(tail_at + 14), s(y2 - 1)), (s(tail_at), s(y2 + 16))]
+    else:
+        ty = min(max(tail_at, y1 + 30), y2 - 30)
+        tail = [(s(x2 - 1), s(ty - 14)), (s(x2 - 1), s(ty + 14)), (s(x2 + 18), s(ty))]
     sheet.draw.polygon(tail, fill=CARD, outline=BORDER)
     sheet.draw.line([tail[0], tail[1]], fill=CARD, width=max(int(s(2)), 1))
     for i, line in enumerate(lines):
@@ -347,28 +486,40 @@ def _bubble(sheet: _Sheet, text: str, x1: float, y1: float, x2: float, tail_x: f
     return y2
 
 
-def _stat(sheet: _Sheet, x: float, y: float, label: str, value: str, note: str,
-          note_ink: str = MUTED, value_size: float = 58) -> float:
+def _stat(sheet: _Sheet, L: Layout, x: float, label: str, value: str, note: str,
+          note_ink: str = MUTED) -> float:
     """Kicker, große Zahl, Zeile darunter. Gibt die gebrauchte Breite zurück."""
-    kicker = sheet.font(MONO, 12)
-    big = sheet.font(BRICOLAGE, value_size, 800)
-    small = sheet.font(INTER, 15, 500)
+    y = L.stats_y
+    kicker = sheet.font(MONO, L.stat_label)
+    big = sheet.font(BRICOLAGE, L.stat_value, 800)
+    small = sheet.font(INTER, L.stat_note, 500)
     sheet.text(x, y, label, kicker, MUTED, tracking=1.2)
-    sheet.text(x, y + 22, value, big, TEXT)
+    sheet.text(x, y + L.stat_label * 1.8, value, big, TEXT)
+    note_w = 0.0
     if note:
-        sheet.text(x, y + 22 + value_size + 10, note, small, note_ink)
-    return max(sheet.width_of(label, kicker, 1.2), sheet.width_of(value, big),
-               sheet.width_of(note, small) if note else 0)
+        note_y = y + L.stat_label * 1.8 + L.stat_value + L.stat_note * 0.6
+        room = L.column - x
+        if sheet.width_of(note, small) > room and " · " in note:
+            # „Liste 3.466 · Personen 5.730" passt in den Hochformaten nicht
+            # in die letzte Spalte — dann zwei Zeilen statt über den Rand.
+            for i, part in enumerate(note.split(" · ")):
+                sheet.text(x, note_y + i * L.stat_note * 1.35, part, small, note_ink)
+                note_w = max(note_w, sheet.width_of(part, small))
+        else:
+            sheet.text(x, note_y, note, small, note_ink)
+            note_w = sheet.width_of(note, small)
+    return max(sheet.width_of(label, kicker, 1.2), sheet.width_of(value, big), note_w)
 
 
-def _bars(sheet: _Sheet, candidates: list[ElectionCandidate], x: float, y: float, width: float,
-          highlight: int | None, row: float = 24.0, limit: int = 10) -> int:
+def _bars(sheet: _Sheet, L: Layout, candidates: list[ElectionCandidate], y: float,
+          highlight: int | None) -> int:
     """Personenstimmen als Balken, Listenreihenfolge. Blau = zieht ein; die
     hervorgehobene Person fett und in Blau, auch wenn sie nicht drin ist.
 
-    Mehr als ``limit`` Zeilen passen nicht; dann fallen die hinteren weg —
+    Mehr als ``bar_limit`` Zeilen passen nicht; dann fallen die hinteren weg —
     nur die hervorgehobene Person nie: Sie rückt als letzte Zeile nach.
     Gibt zurück, wie viele Bewerber*innen nicht zu sehen sind."""
+    limit = L.bar_limit
     rows = list(candidates[:limit])
     if highlight is not None and not any(c["position"] == highlight for c in rows):
         mine = next((c for c in candidates if c["position"] == highlight), None)
@@ -376,99 +527,123 @@ def _bars(sheet: _Sheet, candidates: list[ElectionCandidate], x: float, y: float
             rows = rows[: max(limit - 1, 0)] + [mine]
     hidden = len(candidates) - len(rows)
     max_votes = max((c["votes"] or 0 for c in candidates), default=0)
-    name_w, count_w, gap = 200.0, 64.0, 12.0
+    x, width, row = L.margin, L.text_w, L.bar_row
+    name_w, count_w, gap = L.bar_name_w, L.bar_count_w, 12.0
     bar_x, bar_w = x + name_w + gap, width - name_w - count_w - 2 * gap
+    pos_font = sheet.font(MONO, L.bar_size - 2)
+    pos_w = L.bar_size * 1.7
+    thick = L.bar_size * 0.62
     for i, c in enumerate(rows):
         yy = y + i * row
         mine = highlight is not None and c["position"] == highlight
         drin = c["elected"] is not None
-        name_font = sheet.font(INTER, 13, 700 if (mine or drin) else 500)
-        pos_font = sheet.font(MONO, 11)
+        strong = mine or drin
+        name_font = sheet.font(INTER, L.bar_size, 700 if strong else 500)
         sheet.text(x, yy + 3, str(c["position"]), pos_font, MUTED)
-        sheet.text(x + 22, yy + 2, _ellipsis(sheet, _person_name(c["name"]), name_font, name_w - 22),
-                   name_font, TEXT if (mine or drin) else MUTED)
+        sheet.text(x + pos_w, yy + 2, _ellipsis(sheet, _person_name(c["name"]), name_font, name_w - pos_w),
+                   name_font, TEXT if strong else MUTED)
         votes = c["votes"]
-        track_y1, track_y2 = yy + 6, yy + 14
-        _rounded(sheet, bar_x, track_y1, bar_x + bar_w, track_y2, 4, "#E1E9F1")
+        y1, y2 = yy + 6, yy + 6 + thick
+        _rounded(sheet, bar_x, y1, bar_x + bar_w, y2, thick / 2, TRACK)
         if votes is not None and max_votes > 0 and votes > 0:
-            w = max(bar_w * votes / max_votes, 6)
-            _rounded(sheet, bar_x, track_y1, bar_x + w, track_y2, 4,
-                     PRIMARY if (drin or mine) else "#9AA9B8")
+            w = max(bar_w * votes / max_votes, thick)
+            _rounded(sheet, bar_x, y1, bar_x + w, y2, thick / 2, PRIMARY if strong else BAR_OFF)
         count = _number(votes) if votes is not None else "–"
-        count_font = sheet.font(INTER, 13, 700 if mine else 500)
+        count_font = sheet.font(INTER, L.bar_size, 700 if mine else 500)
         sheet.text(x + width - sheet.width_of(count, count_font), yy + 2, count, count_font,
-                   TEXT if (mine or drin) else MUTED)
+                   TEXT if strong else MUTED)
     if hidden > 0:
         note = f"… und {hidden} weitere auf der Liste" if hidden > 1 else "… und eine weitere Person auf der Liste"
-        sheet.text(x, y + len(rows) * row + 2, note, sheet.font(INTER, 12, 400), MUTED)
+        sheet.text(x, y + len(rows) * row + 2, note, sheet.font(INTER, L.bar_size - 1, 400), MUTED)
     return hidden
 
 
 # ------------------------------------------------------------------ Bild
 
-def render(data: ElectionNight, sel: Selection) -> bytes:
-    """Die Karte als PNG (1200×630)."""
-    sheet = _Sheet(WIDTH, HEIGHT, SCALE, BG)
-    _header(sheet, data, sel)
+def render(data: ElectionNight, sel: Selection, fmt: str = "beitrag", compare: bool = True) -> bytes:
+    """Die Karte als PNG — beitrag (1080×1350), story (1080×1920) oder quer (1200×630).
+
+    ``compare=False`` lässt den Abstand zu 2021 weg (Listenkarte): Wer die
+    Karte teilt, muss den Verlust nicht mitteilen — die Zahlen stehen ohnehin
+    auf der Seite."""
+    L = LAYOUTS.get(fmt, BEITRAG)
+    sheet = _Sheet(L.width, L.height, SCALE, BG)
+    _header(sheet, L, data, sel)
     if sel.kind == "party":
-        _party(sheet, data, sel)
+        _party(sheet, L, data, sel, compare)
     elif sel.kind == "area":
-        _area(sheet, data, sel)
+        _area(sheet, L, data, sel)
     else:
-        _candidate(sheet, data, sel)
-    _lotti_column(sheet, data, sel)
-    _footer(sheet, data)
-    return sheet.png(WIDTH, HEIGHT)
+        _candidate(sheet, L, data, sel)
+    _lotti_and_bubble(sheet, L, data, sel)
+    _footer(sheet, L, data)
+    return sheet.png(L.width, L.height)
 
 
-def _header(sheet: _Sheet, data: ElectionNight, sel: Selection) -> None:
-    sheet.text(MARGIN, 42, _kicker(data, sel), sheet.font(MONO, 13), MUTED, tracking=1.3)
+def _header(sheet: _Sheet, L: Layout, data: ElectionNight, sel: Selection) -> None:
+    kicker_font = sheet.font(MONO, L.kicker_size)
+    kicker = _kicker(data, sel)
+    width = L.width - 2 * L.margin
+    lines: list[str] = []
+    for part in kicker.split(" · "):
+        probe = f"{lines[-1]} · {part}" if lines else part
+        if lines and len(lines) < L.kicker_lines and sheet.width_of(probe, kicker_font, 1.3) > width:
+            lines.append(part)
+        elif lines:
+            lines[-1] = probe
+        else:
+            lines.append(part)
+    for i, line in enumerate(lines[: L.kicker_lines]):
+        sheet.text(L.margin, L.kicker_y + i * L.kicker_size * 1.5,
+                   _ellipsis(sheet, line, kicker_font, width), kicker_font, MUTED, tracking=1.3)
     party = sel.party
     if sel.candidate is not None:
         c = sel.candidate
         title = _person_name(c["name"])
-        font = _fit(sheet, title, BRICOLAGE, 54, 800, COLUMN - MARGIN)
-        sheet.text(MARGIN, 66, title, font, TEXT)
+        font = _fit(sheet, title, BRICOLAGE, L.title_size, 800, L.text_w)
+        sheet.text(L.margin, L.title_y, title, font, TEXT)
         bits = [c["occupation"], f"Jahrgang {c['born']}" if c["born"] else None]
         sub = " · ".join(b for b in bits if b)
         area = sel.area
         where = f"Liste {party['short']} · Wahlbereich {area['roman']} ({area['name']})" if area else ""
         sub = f"{sub} · {where}" if sub and where else (sub or where)
     else:
-        font = _fit(sheet, party["short"], BRICOLAGE, 54, 800, COLUMN - MARGIN - 30)
-        sheet.circle(MARGIN + 11, 98, 11, _color(party["color"], MUTED))
-        sheet.text(MARGIN + 34, 66, party["short"], font, TEXT)
+        dot = L.title_size * 0.2
+        font = _fit(sheet, party["short"], BRICOLAGE, L.title_size, 800, L.text_w - 3 * dot)
+        sheet.circle(L.margin + dot, L.title_y + L.title_size * 0.6, dot, _color(party["color"], MUTED))
+        sheet.text(L.margin + 3 * dot + 2, L.title_y, party["short"], font, TEXT)
         if sel.area is not None:
             a = sel.area
             counted = f"{a['districts_counted']} von {a['districts_total']} Bezirken ausgezählt"
             sub = f"Wahlbereich {a['roman']} · {a['name']} · {counted}"
         else:
             sub = party["name"]
-    sub_font = sheet.font(INTER, 18, 400)
-    sheet.text(MARGIN, 134, _ellipsis(sheet, sub, sub_font, COLUMN - MARGIN), sub_font, MUTED)
-    sheet.line(MARGIN, 178, COLUMN, 178, BORDER, 1)
+    sub_font = sheet.font(INTER, L.sub_size, 400)
+    _lines(sheet, L.margin, L.sub_y, sub, sub_font, MUTED, L.text_w, L.sub_size * 1.4, L.sub_lines)
+    sheet.line(L.margin, L.rule_y, L.column, L.rule_y, BORDER, 1)
 
 
-def _party(sheet: _Sheet, data: ElectionNight, sel: Selection) -> None:
+def _party(sheet: _Sheet, L: Layout, data: ElectionNight, sel: Selection, compare: bool = True) -> None:
     p = sel.party
     seats = p["seats"] or 0
     total = int(data["election"]["seats"])
-    y = 200.0
-    x = float(MARGIN)
-    x += _stat(sheet, x, y, "STIMMENANTEIL", _pct(p["share_pct"]), _share_delta(p), SIGNAL_INK) + 44
+    x = L.margin
+    share_note = _share_delta(p) if compare else ""
+    seat_note = _seat_delta(p, seats) if compare else ""
+    x += _stat(sheet, L, x, "STIMMENANTEIL", _pct(p["share_pct"]), share_note, SIGNAL_INK) + L.stat_gap
     word = "SITZ IM RAT" if seats == 1 else "SITZE IM RAT"
-    x += _stat(sheet, x, y, word, str(seats), _seat_delta(p, seats), SIGNAL_INK) + 44
+    x += _stat(sheet, L, x, word, str(seats), seat_note, SIGNAL_INK) + L.stat_gap
     valid = data["totals"]["valid_votes"]
     note = f"von {_number(valid)} gültigen" if valid else ""
-    _stat(sheet, x, y, "STIMMEN", _number(p["votes"] or 0), note)
+    _stat(sheet, L, x, "STIMMEN", _number(p["votes"] or 0), note)
 
     rank = _rank(data, p)
     if rank:
-        sheet.text(MARGIN, 328, rank, sheet.font(INTER, 19, 600), TEXT)
+        sheet.text(L.margin, L.rank_y, rank, sheet.font(INTER, L.rank_size, 600), TEXT)
 
     # Halbkreis: nur die eigenen Sitze tragen Farbe — links wie im Web, damit
     # die Position im Rat dieselbe ist wie auf der Seite.
-    cx, cy, radius = MARGIN + 165.0, 556.0, 165.0
+    cx, cy, radius = L.arc_cx, L.arc_cy, L.arc_r
     parties = sorted(data["parties"], key=lambda q: q["index"])
     seated: list[str | None] = []
     for q in parties:
@@ -478,69 +653,91 @@ def _party(sheet: _Sheet, data: ElectionNight, sel: Selection) -> None:
         mine = seated[i] == p["slug"]
         fill = _color(p["color"], PRIMARY) if mine else EMPTY
         sheet.circle(cx + (seat.x - 1) * radius, cy - (1 - seat.y) * radius, seat.r * radius, fill)
-    tx = cx + radius + 36
-    sheet.text(tx, 462, f"{seats} von {total} Sitzen", sheet.font(BRICOLAGE, 28, 700), TEXT)
-    majority = total // 2 + 1
-    sheet.text(tx, 502, f"Mehrheit ab {majority}", sheet.font(MONO, 13), SIGNAL_INK, tracking=1.1)
+    tx, ty = L.arc_text_x, L.arc_text_y
+    big = L.rank_size * 1.5
     stand = "Hochrechnung" if data["phase"] == "counting" else "ausgezählter Stand"
-    sheet.text(tx, 528, f"Sitze: {stand}, nach NKWG gerechnet", sheet.font(INTER, 14, 400), MUTED)
+    majority = total // 2 + 1
+    if L.arc_text_below:
+        # Story: die Zeile unter dem Halbkreis, alles hintereinander.
+        sheet.text(tx, ty, f"{seats} von {total} Sitzen", sheet.font(BRICOLAGE, big, 700), TEXT)
+        mono = sheet.font(MONO, L.stat_label)
+        sheet.text(tx, ty + big * 1.35, f"Mehrheit ab {majority}", mono, SIGNAL_INK, tracking=1.1)
+        rest = f"  ·  Sitze: {stand}, nach NKWG gerechnet"
+        sheet.text(tx + sheet.width_of(f"Mehrheit ab {majority}", mono, 1.1), ty + big * 1.35 - 1, rest,
+                   sheet.font(INTER, L.stat_note - 2, 400), MUTED)
+        return
+    sheet.text(tx, ty, f"{seats} von {total} Sitzen", sheet.font(BRICOLAGE, big, 700), TEXT)
+    sheet.text(tx, ty + big * 1.45, f"Mehrheit ab {majority}", sheet.font(MONO, L.stat_label + 1), SIGNAL_INK,
+               tracking=1.1)
+    note_font = sheet.font(INTER, L.stat_note - 1, 400)
+    _lines(sheet, tx, ty + big * 2.35, f"Sitze: {stand}, nach NKWG gerechnet", note_font, MUTED,
+           L.column - tx, (L.stat_note - 1) * 1.4, 2)
 
 
-def _area(sheet: _Sheet, data: ElectionNight, sel: Selection) -> None:
+def _area(sheet: _Sheet, L: Layout, data: ElectionNight, sel: Selection) -> None:
     ap = sel.area_party
     assert ap is not None
-    y = 200.0
-    x = float(MARGIN)
-    x += _stat(sheet, x, y, "STIMMENANTEIL HIER", _pct(ap["share_pct"]), "") + 44
+    x = L.margin
+    x += _stat(sheet, L, x, "STIMMENANTEIL HIER", _pct(ap["share_pct"]), "") + L.stat_gap
     seats = ap["seats"] or 0
     word = "SITZ VON HIER" if seats == 1 else "SITZE VON HIER"
-    x += _stat(sheet, x, y, word, str(seats), "") + 44
+    x += _stat(sheet, L, x, word, str(seats), "") + L.stat_gap
     lv, cv = ap["list_votes"], ap["candidate_votes"]
     note = f"Liste {_number(lv)} · Personen {_number(cv)}" if lv is not None and cv is not None else ""
-    _stat(sheet, x, y, "STIMMEN", _number(ap["votes"] or 0), note)
+    _stat(sheet, L, x, "STIMMEN", _number(ap["votes"] or 0), note)
 
-    sheet.text(MARGIN, 318, "Die Bewerber*innen nach Personenstimmen", sheet.font(INTER, 15, 600), TEXT)
-    sheet.text(MARGIN, 341, "Blau: zieht in den Rat ein", sheet.font(INTER, 13, 400), MUTED)
-    _bars(sheet, ap["candidates"], MARGIN, 366, COLUMN - MARGIN, None, row=22.0, limit=9)
+    sheet.text(L.margin, L.list_head_y, "Die Bewerber*innen nach Personenstimmen",
+               sheet.font(INTER, L.list_head_size, 600), TEXT)
+    sheet.text(L.margin, L.list_head_y + L.list_head_size * 1.55, "Blau: zieht in den Rat ein",
+               sheet.font(INTER, L.list_head_size - 2, 400), MUTED)
+    _bars(sheet, L, ap["candidates"], L.area_bars_y, None)
 
 
-def _candidate(sheet: _Sheet, data: ElectionNight, sel: Selection) -> None:
+def _candidate(sheet: _Sheet, L: Layout, data: ElectionNight, sel: Selection) -> None:
     c, ap = sel.candidate, sel.area_party
     assert c is not None and ap is not None
-    y = 200.0
-    x = float(MARGIN)
+    x = L.margin
     votes = c["votes"]
-    x += _stat(sheet, x, y, "PERSONENSTIMMEN", _number(votes) if votes is not None else "–", "") + 44
+    x += _stat(sheet, L, x, "PERSONENSTIMMEN", _number(votes) if votes is not None else "–", "") + L.stat_gap
     ranked = sorted((k for k in ap["candidates"] if k["votes"] is not None),
                     key=lambda k: (-(k["votes"] or 0), k["position"]))
     if votes is not None and c in ranked:
         rank_text = f"{ranked.index(c) + 1} von {len(ranked)}"
     else:
         rank_text = "–"
-    _stat(sheet, x, y, "PLATZ NACH STIMMEN", rank_text, f"Listenplatz {c['position']}")
+    _stat(sheet, L, x, "PLATZ NACH STIMMEN", rank_text, f"Listenplatz {c['position']}")
 
     text, bg, ink = _status(c, data["phase"], data["person_votes_available"])
-    _chip(sheet, MARGIN, 312, text, bg, ink)
+    _chip(sheet, L.margin, L.chip_y, text, bg, ink, L.chip_size)
 
-    sheet.text(MARGIN, 356, "Die Liste nach Personenstimmen", sheet.font(INTER, 15, 600), TEXT)
-    _bars(sheet, ap["candidates"], MARGIN, 380, COLUMN - MARGIN, c["position"], row=20.0, limit=9)
-
-
-def _lotti_column(sheet: _Sheet, data: ElectionNight, sel: Selection) -> None:
-    x1, x2 = COLUMN + 40.0, WIDTH - MARGIN + 10.0
-    lotti_x = x2 - LOTTI_BOX + 10
-    lotti_y = HEIGHT - 40 - LOTTI_BOX
-    tail_x = lotti_x + LOTTI_BOX * 0.5
-    bottom = _bubble(sheet, _thanks(data, sel), x1, 196, x2, tail_x)
-    # Lotti rückt hoch, wenn die Blase kurz ist — nie über sie hinweg.
-    top = max(bottom + 14, lotti_y - 60)
-    _lotti(sheet, _pose(sel, data), lotti_x, min(top, lotti_y), LOTTI_BOX)
+    # Die Überschrift der Balken steht unter dem Chip: quer dicht darunter,
+    # in den Hochformaten trägt der Kasten schon Luft.
+    head_y = L.cand_bars_y - L.list_head_size * 1.6
+    sheet.text(L.margin, head_y, "Die Liste nach Personenstimmen", sheet.font(INTER, L.list_head_size, 600), TEXT)
+    _bars(sheet, L, ap["candidates"], L.cand_bars_y, c["position"])
 
 
-def _footer(sheet: _Sheet, data: ElectionNight) -> None:
-    font = sheet.font(INTER, 13, 400)
+def _lotti_and_bubble(sheet: _Sheet, L: Layout, data: ElectionNight, sel: Selection) -> None:
+    text = _thanks(data, sel)
+    if L.bubble_tail == "down":
+        bottom = _bubble(sheet, L, text, L.lotti_x + L.lotti_size * 0.5)
+        # Lotti rückt hoch, wenn die Blase kurz ist — nie über sie hinweg.
+        top = max(bottom + 14, L.lotti_y - 60)
+        _lotti(sheet, _pose(sel, data), L.lotti_x, min(top, L.lotti_y), L.lotti_size)
+    else:
+        _bubble(sheet, L, text, L.lotti_y + L.lotti_size * 0.3)
+        _lotti(sheet, _pose(sel, data), L.lotti_x, L.lotti_y, L.lotti_size)
+
+
+def _footer(sheet: _Sheet, L: Layout, data: ElectionNight) -> None:
+    font = sheet.font(INTER, L.footer_size, 400)
     clock = _clock(data["source"])
     stand = f" · Stand {clock} Uhr" if clock and data["dataset"] != "probe" else ""
-    text = ("ratslotse.de/wahlabend · Quelle: Open Data des Votemanagers der Stadt Oldenburg"
-            f"{stand} · Sitze von uns nach NKWG gerechnet — maßgeblich ist die amtliche Präsentation")
-    sheet.text(MARGIN, 590, text, font, MUTED)
+    first = f"ratslotse.de/wahlabend · Quelle: Open Data des Votemanagers Oldenburg{stand}"
+    second = "Sitze von uns nach NKWG gerechnet — maßgeblich ist die amtliche Präsentation"
+    width = L.width - 2 * L.margin
+    if sheet.width_of(f"{first} · {second}", font) <= width:
+        sheet.text(L.margin, L.footer_y, f"{first} · {second}", font, MUTED)
+    else:
+        sheet.text(L.margin, L.footer_y, _ellipsis(sheet, first, font, width), font, MUTED)
+        sheet.text(L.margin, L.footer_y + L.footer_lead, _ellipsis(sheet, second, font, width), font, MUTED)

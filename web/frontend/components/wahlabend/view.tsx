@@ -29,6 +29,7 @@ import {
   abfragePfad,
   bildPfad,
   kartePfad,
+  type KartenFormat,
   delta,
   fortschritt,
   kandidatenStatus,
@@ -104,6 +105,87 @@ function Fuss({ daten }: { daten: Wahlabend | undefined }) {
         selben Wahlbereich. Kein amtliches Ergebnis — das stellt der Wahlausschuss fest.
       </p>
     </footer>
+  );
+}
+
+/* ── Karten zum Teilen ──────────────────────────────────────────────────── */
+
+/** Die Auswahl „Beitrag · Story“ (und quer, wo Platz ist) für eine Karte. */
+function KartenLinks({
+  liste,
+  bereich,
+  platz,
+  probe,
+  counted,
+  stadtweit = false,
+  name,
+}: {
+  liste: string;
+  bereich: number | null;
+  platz: number | null;
+  probe: string | null;
+  counted: string | null;
+  /** Die Listenkarte: dazu das Querformat und der Schalter für den Vergleich zu 2021. */
+  stadtweit?: boolean;
+  name: string;
+}) {
+  const [vergleich, setVergleich] = useState(true);
+  const formate: { format: KartenFormat; label: string }[] = [
+    { format: "beitrag", label: "Beitrag" },
+    { format: "story", label: "Story" },
+    ...(stadtweit ? [{ format: "quer" as const, label: "quer" }] : []),
+  ];
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5">
+      <span>Bild zum Teilen:</span>
+      {formate.map((f, i) => (
+        <span key={f.format}>
+          {i > 0 ? <span className="mr-1.5 text-muted-foreground">·</span> : null}
+          <a
+            href={apiUrl(kartePfad(liste, bereich, platz, f.format, probe, counted, vergleich))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary"
+            aria-label={`${name}: Bild zum Teilen als ${f.label} ↗`}
+          >
+            {f.label} ↗
+          </a>
+        </span>
+      ))}
+      {stadtweit ? (
+        <label className="ml-2 inline-flex cursor-pointer items-center gap-1.5 text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={vergleich}
+            onChange={(e) => setVergleich(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          mit Vergleich zu 2021
+        </label>
+      ) : null}
+    </span>
+  );
+}
+
+/** Der Hinweis, dass es die Karten neu gibt — mit festem Platz unter der
+ *  Anzeigetafel, nicht wegklickbar, nicht aufdringlich: Wer die Seite am
+ *  Wahlabend schon kannte, soll sehen, was dazugekommen ist. */
+function NeuKarten({ liste }: { liste: string | null }) {
+  return (
+    <section className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-primary/16 bg-primary/5 px-4 py-2.5 text-[13px]">
+      <span className="rounded-md bg-primary px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary-foreground">
+        Neu
+      </span>
+      <span>
+        <strong className="font-semibold">Ein Bild zum Teilen für jede Liste, jeden Wahlbereich und jede Person</strong> — als
+        Beitrag (4:5) oder Story (9:16), mit Lotti und einem Danke an die Wählenden.{" "}
+        {liste ? (
+          <span className="text-muted-foreground">Die Links stehen unten neben der Liste, an jedem Wahlbereich und an jeder Person.</span>
+        ) : (
+          <span className="text-muted-foreground">Wähle unten eine Liste, dann stehen die Links neben der Liste, an jedem Wahlbereich und an jeder Person.</span>
+        )}
+      </span>
+    </section>
   );
 }
 
@@ -452,7 +534,7 @@ function KandidatZeile({
   rang: number;
   status: { ton: StatusTon; text: string };
   hochrechnung: boolean;
-  bild: string | null;
+  bild: { liste: string; bereich: number; probe: string | null; counted: string | null } | null;
 }) {
   const stimmen = useTween(k.votes);
   const breite = stimmen === null || max <= 0 ? 0 : Math.max(1.5, (100 * stimmen) / max);
@@ -478,15 +560,9 @@ function KandidatZeile({
         ) : null}
         <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold", TON[status.ton])}>{status.text}</span>
         {bild ? (
-          <a
-            href={bild}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-2 inline-block text-[10.5px] font-medium text-primary"
-            aria-label={`Bild zum Teilen: ${k.name}`}
-          >
-            Bild ↗
-          </a>
+          <span className="mt-1 block text-[10.5px] text-muted-foreground">
+            <KartenLinks liste={bild.liste} bereich={bild.bereich} platz={k.position} probe={bild.probe} counted={bild.counted} name={k.name} />
+          </span>
         ) : null}
       </span>
       <span className="flex-none text-right">
@@ -534,19 +610,6 @@ function BereichKarte({
         </div>
         <span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
           {bereich.districts_counted}/{bereich.districts_total} Bezirke
-          {teilbar ? (
-            <>
-              {" · "}
-              <a
-                href={apiUrl(kartePfad(slug, bereich.number, null, probe, counted))}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-primary"
-              >
-                Bild ↗
-              </a>
-            </>
-          ) : null}
         </span>
       </div>
       {eintrag ? (
@@ -578,7 +641,7 @@ function BereichKarte({
                 rang={i}
                 status={kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0)}
                 hochrechnung={daten.phase === "counting"}
-                bild={teilbar && k.votes !== null ? apiUrl(kartePfad(slug, bereich.number, k.position, probe, counted)) : null}
+                bild={teilbar && k.votes !== null ? { liste: slug, bereich: bereich.number, probe, counted } : null}
               />
             ))}
           </ol>
@@ -586,6 +649,11 @@ function BereichKarte({
             <p className="mt-2 text-[11px] text-muted-foreground">
               Liste {zahl(eintrag.list_votes)} · Personen {zahl(eintrag.candidate_votes)}
               {grenze !== null ? <> · Marke: Sitzgrenze bei {zahl(grenze)}</> : null}
+            </p>
+          ) : null}
+          {teilbar ? (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              <KartenLinks liste={slug} bereich={bereich.number} platz={null} probe={probe} counted={counted} name={`Wahlbereich ${bereich.roman}`} />
             </p>
           ) : null}
         </>
@@ -600,7 +668,7 @@ function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: s
   if (!liste) return null;
   const partei = daten.parties.find((p) => p.slug === liste);
   if (!partei) return null;
-  const karte = daten.phase !== "before" ? apiUrl(kartePfad(liste, null, null, probe, counted)) : null;
+  const karte = daten.phase !== "before";
   return (
     <section className="mt-5 @container">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -613,16 +681,15 @@ function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: s
             stadtweit {prozent(partei.share_pct)} · {partei.seats ?? "–"} {partei.seats === 1 ? "Sitz" : "Sitze"}
             {partei.votes_to_next_seat !== null ? <> · {zahl(partei.votes_to_next_seat)} Stimmen bis zum nächsten Sitz</> : null}
             {partei.votes_to_lose_seat !== null ? <> · {zahl(partei.votes_to_lose_seat)} Stimmen Puffer auf dem letzten Sitz</> : null}
-            {karte ? (
-              <>
-                {" · "}
-                <a href={karte} target="_blank" rel="noopener noreferrer" className="font-medium text-primary">
-                  Bild zum Teilen ↗
-                </a>
-              </>
-            ) : null}
           </p>
         ) : null}
+      </div>
+      {karte ? (
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
+          <KartenLinks liste={liste} bereich={null} platz={null} probe={probe} counted={counted} stadtweit name={partei.short} />
+        </p>
+      ) : null}
+      <div>
       </div>
       <div className="mt-3 grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
         {daten.areas.map((b) => (
@@ -762,6 +829,7 @@ export function WahlabendView() {
           </p>
         ) : null}
         <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
+        {daten.phase !== "before" ? <NeuKarten liste={liste} /> : null}
         <Vorbehalt daten={daten} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">

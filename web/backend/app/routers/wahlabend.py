@@ -94,7 +94,7 @@ def wahlabend_bild(
 #: Karten gibt es viele (16 Listen × 6 Wahlbereiche × bis zu 10 Plätze); der
 #: Zwischenspeicher hält die zuletzt geteilten, nicht alle.
 KARTEN_MAX = 64
-_karten: dict[tuple[str, int | None, str, int | None, int | None, str], tuple[float, bytes]] = {}
+_karten: dict[tuple[str, int | None, str, int | None, int | None, str, bool, str], tuple[float, bytes]] = {}
 
 
 @router.get("/api/wahlabend/karte.png", response_class=Response, responses=WAHLABEND_KARTE_PNG)
@@ -102,13 +102,16 @@ def wahlabend_karte(
     liste: str = Query(pattern="^[a-z0-9-]{1,40}$", description="Slug der Liste, z. B. „gruene“"),
     bereich: int | None = Query(default=None, ge=1, le=20, description="Wahlbereich (1–6): die Liste dort"),
     platz: int | None = Query(default=None, ge=1, le=99, description="Listenplatz im Wahlbereich: die Person"),
+    format: str = Query(default="beitrag", pattern="^(beitrag|story|quer)$",
+                        description="„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630"),
+    vergleich: bool = Query(default=True, description="false = ohne den Abstand zu 2021 (Listenkarte)"),
     probe: str | None = Query(default=None, description="„2021“ = Generalprobe mit den Zahlen von 2021"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
 ) -> Response:
-    """Die Karte zum Teilen (PNG, 1200×630): wie eine Liste, eine Liste im
-    Wahlbereich oder eine Person abgeschnitten hat — mit Lotti, die den
-    Wählenden dankt. ``platz`` braucht ``bereich``; eine Kombination, die es
-    nicht gibt, antwortet 404.
+    """Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich
+    oder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.
+    ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``platz`` braucht
+    ``bereich``; eine Kombination, die es nicht gibt, antwortet 404.
     """
     _frei()
     daten = _stand(probe, counted)
@@ -116,13 +119,13 @@ def wahlabend_karte(
     if auswahl is None:
         raise HTTPException(status_code=404, detail="Diese Liste, diesen Wahlbereich oder diesen Listenplatz gibt es nicht.")
 
-    schluessel = (daten["dataset"], counted, liste, bereich, platz, daten["computed_at"])
+    schluessel = (daten["dataset"], counted, liste, bereich, platz, format, vergleich, daten["computed_at"])
     jetzt = time.monotonic()
     with _bild_lock:
         treffer = _karten.get(schluessel)
         png = treffer[1] if treffer and jetzt - treffer[0] < BILD_TTL else None
     if png is None:
-        png = share.render(daten, auswahl)
+        png = share.render(daten, auswahl, format, vergleich)
         with _bild_lock:
             while len(_karten) >= KARTEN_MAX:
                 del _karten[min(_karten, key=lambda k: _karten[k][0])]
