@@ -235,6 +235,30 @@ function Haltungen({ idee }: { idee: Idee }) {
   );
 }
 
+/** Woher die Karte ihr Wissen über diese Stadt hat — und woher nicht.
+ *
+ * **Drei Zustände, nicht zwei.** „Kein Warum" heißt bei Magdeburg, dass die
+ * Protokolle nicht abrufbar sind; bei Hannover, dass die Stadt ihre
+ * Beratungsergebnisse ausdrücklich zurückhält. Wer beides gleich darstellt,
+ * lässt eine Entscheidung der Stadt wie eine Lücke in unseren Daten aussehen.
+ */
+const NIEDERSCHRIFTEN: Record<string, string> = {
+  available: "mit Niederschriften",
+  none: "ohne Niederschriften",
+  withheld: "Niederschriften nicht öffentlich",
+};
+
+function Herkunft({ idee }: { idee: Idee }) {
+  const teile = [
+    idee.window_since ? `Beschlüsse ab ${idee.window_since.slice(0, 4)}` : null,
+    NIEDERSCHRIFTEN[idee.protocol_source] ?? null,
+  ].filter(Boolean);
+  if (teile.length === 0) return null;
+  return (
+    <p className="mt-0.5 text-[11px] text-muted-foreground/80">{teile.join(" · ")}</p>
+  );
+}
+
 function IdeenKarte({ idee }: { idee: Idee }) {
   const status = STATUS[idee.status];
   const kopf = [ART[idee.kind] ?? null, datum(idee.date)].filter(Boolean).join(" · ");
@@ -270,6 +294,7 @@ function IdeenKarte({ idee }: { idee: Idee }) {
           </span>
         )}
       </div>
+      <Herkunft idee={idee} />
 
       <h3 className="mt-1.5 text-sm font-semibold text-foreground">{idee.name}</h3>
       {/* Die eigene Haltung, aber nur wenn sie GEGEN die Sache geht. „Dafür"

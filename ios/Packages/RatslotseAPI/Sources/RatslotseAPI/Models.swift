@@ -615,6 +615,15 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
     public let peerStances: [String: Int]
     /// Das „Warum" aus der Niederschrift — `nil`, wenn keines dasteht.
     public let protocolNote: IdeaProtocol?
+    /// Warum an dieser Karte kein „Warum" steht: "available", "none" oder
+    /// "withheld". **Drei Zustände, nicht zwei** — Magdeburgs Protokolle sind
+    /// nicht abrufbar, Hannover hält seine Beratungsergebnisse ausdrücklich
+    /// zurück. Beides gleich zu zeigen machte aus der Entscheidung einer Stadt
+    /// eine Lücke bei uns.
+    public let protocolSource: String
+    /// Ab wann Beschlüsse dieser Stadt in den Vergleich gehen. `nil` bei
+    /// Oldenburg, der Bezugsstadt. Die Städte tragen verschieden weit zurück.
+    public let windowSince: String?
 
     enum CodingKeys: String, CodingKey {
         case name, date, kind, web, outcome, field, instrument, summary
@@ -623,6 +632,8 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         case stance
         case peerStances = "peer_stances"
         case protocolNote = "protocol"
+        case protocolSource = "protocol_source"
+        case windowSince = "window_since"
         case paperID = "paper_id"
         case bodyID = "body_id"
         case bodyName = "body_name"
@@ -659,6 +670,11 @@ public struct Idea: Codable, Sendable, Hashable, Identifiable {
         stance = try v.decodeIfPresent(String.self, forKey: .stance) ?? ""
         peerStances = try v.decodeIfPresent([String: Int].self, forKey: .peerStances) ?? [:]
         protocolNote = try v.decodeIfPresent(IdeaProtocol.self, forKey: .protocolNote)
+        // Eine ältere App kennt das Feld nicht; ein älterer Server schickt es
+        // nicht. „none" ist in beiden Fällen die ehrliche Vorgabe — sie
+        // behauptet weder eine Niederschrift noch eine Zurückhaltung.
+        protocolSource = try v.decodeIfPresent(String.self, forKey: .protocolSource) ?? "none"
+        windowSince = try v.decodeIfPresent(String.self, forKey: .windowSince)
     }
 }
 

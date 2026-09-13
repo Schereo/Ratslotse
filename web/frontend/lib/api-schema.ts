@@ -8861,6 +8861,8 @@ export interface components {
                 /** Why */
                 why: string;
             } | null;
+            /** Protocol Source */
+            protocol_source: string;
             /** Reason */
             reason: string;
             /** Siblings */
@@ -8877,6 +8879,8 @@ export interface components {
             votes: string;
             /** Web */
             web: string | null;
+            /** Window Since */
+            window_since: string | null;
         };
         /**
          * IdeaEvidence
@@ -18437,4 +18441,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d1e723f74e33aa37fdbc181845b8c7db722de2a7d59988fc300022f1bf8760e2
+// vertrag-sha256: 3007da2e6ef7a46d464b2229147e8cab52604c529e5b39c24f9ddab53752c45b

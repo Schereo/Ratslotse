@@ -1427,6 +1427,18 @@ class IdeaEvidence(TypedDict):
     outcome: str | None
 
 
+#: Was die Karte über die Niederschriften einer Stadt sagen kann.
+#:
+#: **Drei Zustände, nicht zwei.** „Kein Warum" heißt bei Magdeburg etwas
+#: anderes als bei Hannover: Dort sind die Protokolle schlicht nicht
+#: abrufbar, hier hält die Stadt die Beratungsergebnisse ausdrücklich
+#: zurück („vertraulich und daher nicht zur Veröffentlichung im Internet
+#: freigegeben", auf 22 von 25 geprüften Punktseiten). Wer beides gleich
+#: darstellt, lässt eine bewusste Entscheidung der Stadt wie eine Lücke in
+#: unseren Daten aussehen.
+PROTOKOLL_QUELLEN = ("available", "none", "withheld")
+
+
 class IdeaProtocol(TypedDict):
     """Was die Niederschrift der Sitzung zu dieser Vorlage sagt.
 
@@ -1503,6 +1515,15 @@ class Idea(TypedDict):
     #: ``None``, solange keine Niederschrift vorliegt oder ihr Abschnitt keine
     #: Begründung trägt. Das ist der Regelfall und kein Fehler.
     protocol: IdeaProtocol | None
+    #: Warum an DIESER Karte kein „Warum" steht — einer der drei Werte aus
+    #: ``PROTOKOLL_QUELLEN``. Ohne ihn sieht Hannovers bewusste
+    #: Zurückhaltung aus wie eine Lücke in unseren Daten.
+    protocol_source: str
+    #: Ab wann Beschlüsse dieser Stadt in den Vergleich gehen
+    #: (``BodySpec.compare_since``). ``None`` bei Oldenburg, der Bezugsstadt.
+    #: Die Städte tragen verschieden weit zurück — ohne die Angabe liest man
+    #: „nur eine Idee" als Aussage über die Stadt statt über das Fenster.
+    window_since: str | None
     #: Was die Idee den Rat kosten würde (`council/cities/annotators.py`,
     #: Annotator `effort`): inquiry < review < resolution < decision < budget.
     #: Leer, solange der Wochen-Cron sie noch nicht vergeben hat.

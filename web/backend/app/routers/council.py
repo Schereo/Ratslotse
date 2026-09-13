@@ -1902,8 +1902,9 @@ def cities_search(
                                  limit=max(1, min(limit, 100)))
     peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
     eigenes = _eigene_rueckmeldungen(cities, user)
+    abschnitte = cities.section_counts()
     return {"query": q, "total": len(zeilen),
-            "items": [_idee_aus_zeile(store, cities, r, peers, eigenes)
+            "items": [_idee_aus_zeile(store, cities, r, peers, eigenes, abschnitte)
                       for r in zeilen]}
 
 
@@ -1943,14 +1944,32 @@ def cities_ideas(
 
     peers = cities.peers_by_paper(EMBED_MODEL_FUER_SUCHE)
     eigenes = _eigene_rueckmeldungen(cities, user)
-    items = [_idee_aus_zeile(store, cities, r, peers, eigenes) for r in zeilen]
+    abschnitte = cities.section_counts()
+    items = [_idee_aus_zeile(store, cities, r, peers, eigenes, abschnitte)
+             for r in zeilen]
     return {"field": field, "total": gesamt, "page": page, "per_page": per_page,
             "counts": {k: int(v) for k, v in zaehler.items()}, "items": items}
 
 
+def _protokoll_quelle(body_id: str, abschnitte: dict[str, int] | None) -> str:
+    """Warum an dieser Karte kein „Warum" steht — drei Zustände, nicht zwei.
+
+    Hannover hält die Beratungsergebnisse ausdrücklich zurück; Magdeburgs
+    Protokolle sind schlicht nicht abrufbar. Beides als „kein Warum" zu
+    zeigen, machte aus einer Entscheidung der Stadt eine Lücke bei uns.
+    """
+    from council.cities.registry import BODIES
+
+    spec = BODIES.get(body_id)
+    if spec is not None and not spec.protocols_public:
+        return "withheld"
+    return "available" if (abschnitte or {}).get(body_id) else "none"
+
+
 def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
                     peers: dict[str, int] | None = None,
-                    feedback: dict[str, str] | None = None) -> Idea:
+                    feedback: dict[str, str] | None = None,
+                    abschnitte: dict[str, int] | None = None) -> Idea:
     """Eine Zeile des Städte-Speichers als Idee für die Oberfläche.
 
     Beide Endpunkte — Liste und Suche — bauen dieselbe Form; sie zweimal zu
@@ -1985,6 +2004,9 @@ def _idee_aus_zeile(store: CouncilStore, cities: CitiesStore, r: dict,
         "effort": aufwand.get("effort") or "",
         "addressee": aufwand.get("addressee"),
         "protocol": _protokoll(cities, r["id"]),
+        "protocol_source": _protokoll_quelle(r["body_id"], abschnitte),
+        "window_since": (BODIES[r["body_id"]].compare_since
+                         if r["body_id"] in BODIES else None),
         "siblings": _geschwister(r.get("siblings_json")),
         "stance": r.get("stance") or "",
         "peer_stances": {k[5:]: int(r[k]) for k in ("peer_for", "peer_against", "peer_review")

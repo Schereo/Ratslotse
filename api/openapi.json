@@ -9319,6 +9319,10 @@
               "null"
             ]
           },
+          "protocol_source": {
+            "title": "Protocol Source",
+            "type": "string"
+          },
           "reason": {
             "title": "Reason",
             "type": "string"
@@ -9359,6 +9363,13 @@
               "string",
               "null"
             ]
+          },
+          "window_since": {
+            "title": "Window Since",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -9382,6 +9393,8 @@
           "confidence",
           "evidence",
           "protocol",
+          "protocol_source",
+          "window_since",
           "effort",
           "siblings",
           "stance",

@@ -45,6 +45,13 @@ class BodySpec:
     #: dort beantwortet und nicht beschlossen werden (Tims Entscheidung
     #: 13.09.2026).
     compare_kinds: tuple[str, ...] = ()
+    #: Veröffentlicht die Stadt ihre Niederschriften so, dass wir sie lesen
+    #: dürfen? Aus bei Hannover: Die Ergebnisse stehen dort auf den
+    #: Tagesordnungspunkt-Seiten, und **22 von 25** geprüften tragen den Satz,
+    #: ihre Dokumente seien „vertraulich und daher nicht zur Veröffentlichung
+    #: im Internet freigegeben". Die Karte soll das sagen können — sonst
+    #: sieht eine bewusste Zurückhaltung aus wie eine Lücke in unseren Daten.
+    protocols_public: bool = True
     #: Holt der Lauf die PDF-Bytes? Aus für Quellen, deren Text schon
     #: vorliegt — Oldenburgs Vorlagentexte stehen längst in der
     #: Rats-Datenbank, sie ein zweites Mal herunterzuladen belastet nur
@@ -188,6 +195,7 @@ BODIES: dict[str, BodySpec] = {
         # werden sie beantwortet, nicht beschlossen — der Vergleich fände dort
         # nichts zu vergleichen, die Einordnung kostete rund $7.
         compare_kinds=("motion", "proposal", "amendment"),
+        protocols_public=False,
         notes="Kein Lizenzhinweis. Historie ab 2003, ungeblättert. Der "
               "Verwaltungsausschuss veröffentlicht keine Sitzungsseiten — "
               "seine Beratungen stehen nur als unverlinkter Text in "

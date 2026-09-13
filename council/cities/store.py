@@ -545,6 +545,17 @@ class CitiesStore:
                 "  text=excluded.text",
                 [(*z, splitter) for z in zeilen])
 
+    def section_counts(self) -> dict[str, int]:
+        """Je Stadt die Zahl der Protokoll-Abschnitte.
+
+        Einmal je Anfrage statt einmal je Karte: Die Liste zeigt bis zu 100
+        Ideen, und eine Abfrage je Karte wäre hundert Abfragen für eine
+        Zahl, die sich zwischen ihnen nicht ändert.
+        """
+        return {r["body_id"]: r["n"] for r in self._conn.execute(
+            "SELECT m.body_id AS body_id, COUNT(*) AS n FROM protocol_sections ps "
+            "JOIN meetings m ON m.id=ps.meeting_id GROUP BY m.body_id")}
+
     def protocol_section(self, agenda_item_id: str, splitter: str) -> dict | None:
         row = self._conn.execute(
             "SELECT * FROM protocol_sections WHERE agenda_item_id=? AND splitter=?",
