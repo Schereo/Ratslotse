@@ -55,7 +55,7 @@ from ..election import mayor, register
 from ..prediction import rounds, service
 from ..prediction.rounds import Round
 from ..ratelimit import prediction_join_limiter, prediction_tip_limiter
-from ..schemas import PredictionJoinIn, PredictionPhaseIn, PredictionPlayerIn, PredictionResultLineIn
+from ..schemas import PredictionJoinIn, PredictionPhaseIn, PredictionSettingsIn, PredictionPlayerIn, PredictionResultLineIn
 
 router = APIRouter(tags=["tippspiel"])
 
@@ -250,6 +250,25 @@ def austreten(request: Request, response: Response, runde: str | None = Query(de
     return Ok(ok=True)
 
 
+@router.post("/api/tipp/abmelden")
+def abmelden(request: Request, response: Response, runde: str | None = Query(default=None, alias="round"),
+             store: Store = Depends(get_store)) -> Ok:
+    """Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz
+    zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
+    mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
+    Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden."""
+    _frei()
+    r = _runde(runde)
+    token_hash = _token_hash(request, r)
+    if token_hash:
+        game_id = _game_id(store, r)
+        player = store.prediction_player_by_token(token_hash, game_id)
+        if player:
+            store.prediction_log_add(game_id, f"{player['name']} hat das Gerät weitergegeben.")
+    _clear_cookie(response, r)
+    return Ok(ok=True)
+
+
 # Der 304-Zweig unten gibt eine `Response` zurück, nicht die deklarierte
 # Form: FastAPI lässt eine `Response` bewusst unverändert durch (dieselbe
 # Eigenheit wie bei `GET /api/health` in `main.py`), die Annotation bleibt
@@ -439,6 +458,23 @@ def phase_setzen(payload: PredictionPhaseIn, _admin: dict = Depends(require_admi
     store.prediction_game_set(game_id, **felder)
     text = {"open": "Spiel wieder geöffnet", "locked": "Tippfrist manuell beendet", "final": "Endstand gesetzt"}[payload.phase]
     store.prediction_log_add(game_id, text)
+    service.reset()
+    return _admin_stand(store, runde)
+
+
+@router.put("/api/tipp/admin/einstellungen")
+def einstellungen_setzen(payload: PredictionSettingsIn, _admin: dict = Depends(require_admin),
+                         runde: Round = Depends(_admin_runde), store: Store = Depends(get_store)) -> PredictionAdminStand:
+    """Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
+    Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy."""
+    game_id = _game_id(store, runde)
+    felder: dict[str, object] = {}
+    if payload.shared_device is not None:
+        felder["shared_device"] = 1 if payload.shared_device else 0
+        store.prediction_log_add(game_id, "Geteiltes Gerät " + ("eingeschaltet" if payload.shared_device else "ausgeschaltet"))
+    if payload.late_scored is not None:
+        felder["late_scored"] = 1 if payload.late_scored else 0
+    store.prediction_game_set(game_id, **felder)
     service.reset()
     return _admin_stand(store, runde)
 

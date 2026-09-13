@@ -572,6 +572,7 @@ CREATE TABLE IF NOT EXISTS prediction_game (
     locked_at     TEXT,               -- Tipp-Schluss (1. Hochrechnung oder Admin)
     locked_reason TEXT,               -- 'admin' | 'projection'
     late_scored   INTEGER NOT NULL DEFAULT 0,  -- Spätstarter mitgewertet? (0/1)
+    shared_device INTEGER NOT NULL DEFAULT 0,  -- ein Gerät, mehrere Personen: nach dem Speichern „nächste Person" (0/1)
     created_at    TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS prediction_players (
@@ -1581,6 +1582,7 @@ class Store:
         )
         self._conn.commit()
         self._migrate_tippspiel_runden()
+        self._migrate_tippspiel_geteiltes_geraet()
         self._migrate_owner_id()
         self._treffer_datum_reparieren()
 
@@ -1647,6 +1649,18 @@ class Store:
                     "published_source, published_at FROM prediction_result")
                 self._conn.execute("DROP TABLE prediction_result")
                 self._conn.execute("ALTER TABLE prediction_result_neu RENAME TO prediction_result")
+
+    def _migrate_tippspiel_geteiltes_geraet(self) -> None:
+        """Tippspiel: ``prediction_game.shared_device`` (13.09.2026, Wahltag).
+
+        Vallys Kreis wollte von EINEM Gerät aus tippen — mehrere Personen,
+        ein Handy. Der Schalter je Runde steht in der Spielzeile; eine
+        Datenbank von vorher bekommt die Spalte hier nachgezogen (Vorgabe
+        aus, wie in der Hauptrunde)."""
+        vorhanden = {r[1] for r in self._conn.execute("PRAGMA table_info(prediction_game)")}
+        if "shared_device" not in vorhanden:
+            with self._conn:
+                self._conn.execute("ALTER TABLE prediction_game ADD COLUMN shared_device INTEGER NOT NULL DEFAULT 0")
 
     def _treffer_datum_reparieren(self) -> None:
         """Einmalige Reparatur: ``council_topic_matches.matched_at`` im Bestand.
@@ -4788,7 +4802,7 @@ class Store:
 
     #: Spalten, die ``prediction_game_set`` schreiben darf — eine Positivliste,
     #: damit ein Tippfehler im Feldnamen nicht zu beliebigem SQL wird.
-    _PREDICTION_GAME_FELDER = ("title", "phase", "locked_at", "locked_reason", "late_scored")
+    _PREDICTION_GAME_FELDER = ("title", "phase", "locked_at", "locked_reason", "late_scored", "shared_device")
 
     def prediction_game_set(self, game_id: int, **felder: object) -> None:
         """Einzelne Spalten der Spielzeile setzen."""

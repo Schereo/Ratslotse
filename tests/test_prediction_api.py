@@ -405,3 +405,52 @@ def test_admin_durchschnitt_zaehlt_ausgeblendete_nicht(client):
     zeile = next(r for r in stand["results"] if r["slug"] == slug)
     assert zeile["avg_tip"] == reg.seats, "nur der sichtbare Tipp zählt in den Schnitt"
     assert [p["name"] for p in stand["players"] if p["hidden"]] == ["Versteckt"]
+
+
+# ------------------------------------------------------------------ Geteiltes Gerät (13.09.2026)
+
+def test_abmelden_gibt_das_geraet_weiter_und_behaelt_den_tipp(client):
+    """Vallys Kreis tippt von EINEM Handy: „Fertig — nächste Person" löscht
+    den Cookie, der Tipp bleibt — anders als DELETE /me, das die Teilnahme
+    löscht. Danach ist das Gerät wieder „nicht beigetreten"."""
+    reg = register.load()
+    seats = {p.slug: 0 for p in reg.parties}
+    seats[reg.parties[0].slug] = reg.seats
+    d = beitreten(client, "Erste Person", seats=seats)
+    assert client.get("/api/tipp/me").status_code == 200
+
+    r = client.post("/api/tipp/abmelden")
+    assert r.status_code == 200 and r.json() == {"ok": True}
+    assert client.get("/api/tipp/me").status_code == 401, "das Gerät kennt niemanden mehr"
+
+    stand = client.get("/api/tipp/stand").json()
+    zeile = next(z for z in stand["rows"] if z["player_id"] == d["player_id"])
+    assert zeile["has_tip"] is True, "der Tipp der ersten Person steht weiter auf der Tafel"
+
+    # Die nächste Person tritt vom selben Gerät aus bei — eine ZWEITE Zeile.
+    zweite = beitreten(client, "Zweite Person", seats=seats)
+    assert zweite["player_id"] != d["player_id"]
+    assert client.get("/api/tipp/setup").json()["player_count"] == 2
+
+
+def test_abmelden_ohne_cookie_ist_kein_fehler(client):
+    assert client.post("/api/tipp/abmelden").status_code == 200
+
+
+def test_geteiltes_geraet_ist_ein_schalter_je_runde(client):
+    assert client.get("/api/tipp/setup").json()["shared_device"] is False, "Vorgabe aus — die Hauptrunde bleibt, wie sie ist"
+    app.dependency_overrides[require_active] = lambda: ADMIN
+    try:
+        r = client.put("/api/tipp/admin/einstellungen", json={"shared_device": True})
+        assert r.status_code == 200
+        assert r.json()["game"]["shared_device"] is True
+        assert any("Geteiltes Gerät eingeschaltet" in z for z in r.json()["log"])
+        # Nur die eigene Runde: Vallys Schalter lässt die Hauptrunde in Ruhe.
+        assert client.put("/api/tipp/admin/einstellungen?round=vally", json={"shared_device": True}).status_code == 200
+        r = client.put("/api/tipp/admin/einstellungen", json={"shared_device": False})
+        assert r.json()["game"]["shared_device"] is False
+        assert client.get("/api/tipp/admin/stand?round=vally").json()["game"]["shared_device"] is True
+    finally:
+        app.dependency_overrides.pop(require_active, None)
+    assert client.get("/api/tipp/setup?round=vally").json()["shared_device"] is True
+    assert client.put("/api/tipp/admin/einstellungen", json={"shared_device": True}).status_code in (401, 403), "ohne Admin nicht"

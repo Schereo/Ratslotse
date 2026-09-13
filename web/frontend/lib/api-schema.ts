@@ -4434,6 +4434,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tipp/abmelden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abmelden
+         * @description Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz
+         *     zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
+         *     mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
+         *     Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.
+         */
+        post: operations["abmelden_api_tipp_abmelden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tipp/admin/abfragen": {
         parameters: {
             query?: never;
@@ -4449,6 +4472,27 @@ export interface paths {
          *     Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.
          */
         post: operations["jetzt_abfragen_api_tipp_admin_abfragen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/einstellungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Einstellungen Setzen
+         * @description Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
+         *     Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.
+         */
+        put: operations["einstellungen_setzen_api_tipp_admin_einstellungen_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9949,6 +9993,8 @@ export interface components {
             round: string;
             /** Seats Total */
             seats_total: number;
+            /** Shared Device */
+            shared_device: boolean;
             /** Title */
             title: string;
         };
@@ -10199,6 +10245,17 @@ export interface components {
             slug: string;
             /** Tip */
             tip: number;
+        };
+        /**
+         * PredictionSettingsIn
+         * @description ``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was
+         *     gesetzt ist, wird geändert.
+         */
+        PredictionSettingsIn: {
+            /** Late Scored */
+            late_scored?: boolean | null;
+            /** Shared Device */
+            shared_device?: boolean | null;
         };
         /** PredictionStand */
         PredictionStand: {
@@ -17476,6 +17533,37 @@ export interface operations {
             };
         };
     };
+    abmelden_api_tipp_abmelden_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     jetzt_abfragen_api_tipp_admin_abfragen_post: {
         parameters: {
             query?: {
@@ -17486,6 +17574,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellungen_setzen_api_tipp_admin_einstellungen_put: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionSettingsIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -18334,4 +18457,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 9dc33fe7d396be4b13df28b46ccd378edf380364d6346a9e68bde8aa3f998dc2
+// vertrag-sha256: 0d4cdf173ad987f7517d50397a86012d5d35893e73f0bd2f25d8194db7f08364

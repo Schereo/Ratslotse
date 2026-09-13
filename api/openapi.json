@@ -12085,6 +12085,10 @@
             "title": "Seats Total",
             "type": "integer"
           },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": "boolean"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -12099,6 +12103,7 @@
           "locked",
           "locked_at",
           "late_scored",
+          "shared_device",
           "player_count",
           "deadline_hint",
           "parties",
@@ -12785,6 +12790,27 @@
           "exact"
         ],
         "title": "PredictionSeatLine",
+        "type": "object"
+      },
+      "PredictionSettingsIn": {
+        "description": "``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was\ngesetzt ist, wird geändert.",
+        "properties": {
+          "late_scored": {
+            "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionSettingsIn",
         "type": "object"
       },
       "PredictionStand": {
@@ -24889,6 +24915,52 @@
         ]
       }
     },
+    "/api/tipp/abmelden": {
+      "post": {
+        "description": "Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz\nzu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden\nmit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom\nSchalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.",
+        "operationId": "abmelden_api_tipp_abmelden_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abmelden",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
     "/api/tipp/admin/abfragen": {
       "post": {
         "description": "„Jetzt abfragen\": die Live-Zahlen der Ratswahl UND der OB-Wahl in den\nEntwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.",
@@ -24930,6 +25002,62 @@
           }
         },
         "summary": "Jetzt Abfragen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
+    "/api/tipp/admin/einstellungen": {
+      "put": {
+        "description": "Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —\nVallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.",
+        "operationId": "einstellungen_setzen_api_tipp_admin_einstellungen_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Einstellungen Setzen",
         "tags": [
           "tippspiel"
         ]
