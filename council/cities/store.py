@@ -314,13 +314,23 @@ class CitiesStore:
 
     def papers(self, body_id: str | None = None, kind: str | None = None,
                since: str | None = None, until: str | None = None,
-               limit: int | None = None) -> list[dict]:
+               limit: int | None = None,
+               kinds: Sequence[str] = ()) -> list[dict]:
+        """Vorlagen, gefiltert. ``kinds`` ist die Mehrzahl von ``kind``.
+
+        Beide Filter nebeneinander wären widersprüchlich; wer beides angibt,
+        bekommt den Durchschnitt, weil die Bedingungen sich addieren.
+        ``kinds`` benutzt der Vergleich (``auswahl.papiere``), ``kind`` die
+        Auswertungen, die genau eine Art wollen.
+        """
         sql = "SELECT * FROM papers WHERE 1=1"
         args: list[Any] = []
         if body_id:
             sql += " AND body_id=?"; args.append(body_id)
         if kind:
             sql += " AND kind=?"; args.append(kind)
+        if kinds:
+            sql += f" AND kind IN ({','.join('?' * len(kinds))})"; args += list(kinds)
         if since:
             sql += " AND date >= ?"; args.append(since)
         if until:
@@ -329,6 +339,17 @@ class CitiesStore:
         if limit:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
+
+    def paper_body_ids(self) -> list[str]:
+        """Die Städte, von denen Vorlagen im Speicher liegen.
+
+        **Nicht ``bodies()``.** Die Tabelle dort ist ein Stammsatz, den das
+        Normalisieren pflegt; wer nach den Städten des BESTANDES fragt, will
+        die Vorlagen gezählt haben. Ein Stammsatz, der fehlt, machte sonst
+        eine ganze Stadt für jede Auswertung unsichtbar.
+        """
+        return [r["body_id"] for r in self._conn.execute(
+            "SELECT DISTINCT body_id FROM papers ORDER BY body_id")]
 
     def paper_count(self, body_id: str | None = None) -> int:
         if body_id:
@@ -1192,7 +1213,9 @@ class CitiesStore:
 
     def annotations_missing(self, object_kind: str, annotator: str, version: str,
                             body_id: str | None = None, limit: int | None = None,
-                            source_hashes: dict[str, str] | None = None) -> list[dict]:
+                            source_hashes: dict[str, str] | None = None,
+                            since: str | None = None,
+                            kinds: Sequence[str] = ()) -> list[dict]:
         """Objekte ohne Annotation dieses Annotators.
 
         Mit ``source_hashes`` (id → Hash der Eingabe) kommen zusätzlich die
@@ -1207,6 +1230,12 @@ class CitiesStore:
         args: list[Any] = [annotator, version]
         if body_id:
             sql += " AND p.body_id=?"; args.append(body_id)
+        # Dasselbe Fenster wie in `auswahl.papiere` — sonst holte diese
+        # Abfrage zurück, was die Kandidatenwahl gerade ausgeschlossen hat.
+        if since:
+            sql += " AND p.date >= ?"; args.append(since)
+        if kinds:
+            sql += f" AND p.kind IN ({','.join('?' * len(kinds))})"; args += list(kinds)
         sql += " ORDER BY p.date DESC, p.id"
         if limit:
             sql += " LIMIT ?"; args.append(limit)

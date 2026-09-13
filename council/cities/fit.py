@@ -109,8 +109,9 @@ def candidates_for(main: CitiesStore, body_id: str | None = None) -> list[dict]:
     Bebauungsplan ist „fehlt Oldenburg das?" keine sinnvolle Frage — er fehlt
     Oldenburg, und das ist richtig so.
     """
+    from council.cities import auswahl
     einordnung = main.annotations_for("classify", "2")
-    return [p for p in main.papers(body_id=body_id)
+    return [p for p in auswahl.papiere(main, body_id)
             if p["body_id"] != "oldenburg"
             and (einordnung.get(p["id"]) or {}).get("transfer") in USABLE]
 
