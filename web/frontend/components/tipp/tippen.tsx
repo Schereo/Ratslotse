@@ -8,13 +8,14 @@ import { useMemo, useState } from "react";
 import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import {
+  fehltText,
+  mitRunde,
   restObText,
   restObTon,
   restSitze,
   restSitzeText,
   restSitzeTon,
   restOb,
-  startverteilung,
   tippSegmente,
 } from "@/lib/tipp";
 import type { TippMeins, TippSetup } from "@/lib/tipp";
@@ -34,19 +35,26 @@ const OHNE_PFEILE =
   "[appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
   + " [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none";
 
-export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
+export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
   setup: TippSetup;
   meins: TippMeins;
+  runde: string | null;
   /** Wird NACH dem Bestätigungs-Takt gerufen — der Aufrufer wechselt dann
    *  auf „Mein Tipp" (1e). */
   onGespeichert: () => void;
   /** Nur beim Ändern eines vorhandenen Tipps: zurück ohne zu speichern. */
   onZurueck?: () => void;
 }) {
+  // Ein neuer Tipp fängt bei NULL an — alle Sitze werden selbst verteilt.
+  // Bis 13.09.2026 stand hier die Verteilung von 2021 als Vorschlag; wer
+  // nur „Tipp abgeben" drückte, tippte damit unbemerkt das letzte Ergebnis
+  // nach (Tims Befund). Ein Tipp soll eine Entscheidung sein, kein
+  // Bestätigen. Die 2021er Zahl steht weiter unter jeder Liste — als
+  // Anhaltspunkt, nicht als Vorgabe.
   const [seats, setSeats] = useState<Record<string, number>>(() =>
     meins.has_tip
       ? Object.fromEntries(meins.seats.map((s) => [s.slug, s.tip]))
-      : startverteilung(setup.parties, setup.seats_total),
+      : Object.fromEntries(setup.parties.map((p) => [p.slug, 0])),
   );
   const [obOffen, setObOffen] = useState(meins.has_mayor_tip);
   const [ob, setOb] = useState<Record<string, number>>(() =>
@@ -63,7 +71,11 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
 
   const obRest = restOb(ob);
   const obTon = restObTon(obRest);
-  const kannAbgeben = rest === 0 && (!obOffen || obTon === "ok") && !sendet && !gespeichert;
+  // `fehlt` ist der Grund, warum nicht abgegeben werden kann — und zugleich
+  // die Beschriftung des Knopfes. Eine Wahrheit statt zwei, die
+  // auseinanderlaufen können.
+  const fehlt = fehltText(rest, obOffen, obRest);
+  const kannAbgeben = fehlt === null && !sendet && !gespeichert;
 
   function setzeSitz(slug: string, wert: number) {
     const geklemmt = Math.max(0, Math.min(setup.seats_total, Math.round(Number.isFinite(wert) ? wert : 0)));
@@ -80,7 +92,7 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
     setSendet(true);
     setFehler(null);
     try {
-      const res = await fetch(apiUrl("/tipp"), {
+      const res = await fetch(apiUrl(mitRunde("/tipp", runde)), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -110,12 +122,13 @@ export function Tippen({ setup, meins, onGespeichert, onZurueck }: {
     }
   }
 
-  //: Der Knopf hat drei Zustände — und jeder sagt, was gerade gilt.
+  //: Der Knopf sagt immer, was gerade gilt: was noch fehlt, dass gerade
+  //: gespeichert wird, dass es geklappt hat — oder was ein Druck täte.
   const knopfText = gespeichert
     ? "Gespeichert"
     : sendet
       ? "Speichert …"
-      : meins.has_tip ? "Tipp aktualisieren" : "Tipp abgeben";
+      : fehlt ?? (meins.has_tip ? "Tipp aktualisieren" : "Tipp abgeben");
 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md pb-8">

@@ -4434,6 +4434,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tipp/abmelden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abmelden
+         * @description Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz
+         *     zu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden
+         *     mit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom
+         *     Schalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.
+         */
+        post: operations["abmelden_api_tipp_abmelden_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tipp/admin/abfragen": {
         parameters: {
             query?: never;
@@ -4449,6 +4472,27 @@ export interface paths {
          *     Entwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.
          */
         post: operations["jetzt_abfragen_api_tipp_admin_abfragen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tipp/admin/einstellungen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Einstellungen Setzen
+         * @description Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
+         *     Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.
+         */
+        put: operations["einstellungen_setzen_api_tipp_admin_einstellungen_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9962,6 +10006,8 @@ export interface components {
             players: components["schemas"]["PredictionAdminPlayer"][];
             /** Results */
             results: components["schemas"]["PredictionResultRow"][];
+            /** Rounds */
+            rounds: components["schemas"]["PredictionRoundInfo"][];
         };
         /** PredictionCompareLine */
         PredictionCompareLine: {
@@ -9986,6 +10032,8 @@ export interface components {
             deadline_hint: string;
             /** Late Scored */
             late_scored: boolean;
+            /** Listed */
+            listed: boolean;
             /** Locked */
             locked: boolean;
             /** Locked At */
@@ -9998,8 +10046,12 @@ export interface components {
             phase: string;
             /** Player Count */
             player_count: number;
+            /** Round */
+            round: string;
             /** Seats Total */
             seats_total: number;
+            /** Shared Device */
+            shared_device: boolean;
             /** Title */
             title: string;
         };
@@ -10177,6 +10229,22 @@ export interface components {
             /** Source */
             source: string;
         };
+        /**
+         * PredictionRoundInfo
+         * @description Eine Runde im Runden-Umschalter des Admins (1h).
+         */
+        PredictionRoundInfo: {
+            /** Listed */
+            listed: boolean;
+            /** Phase */
+            phase: string;
+            /** Player Count */
+            player_count: number;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+        };
         /** PredictionRow */
         PredictionRow: {
             /** Has Tip */
@@ -10234,6 +10302,17 @@ export interface components {
             slug: string;
             /** Tip */
             tip: number;
+        };
+        /**
+         * PredictionSettingsIn
+         * @description ``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was
+         *     gesetzt ist, wird geändert.
+         */
+        PredictionSettingsIn: {
+            /** Late Scored */
+            late_scored?: boolean | null;
+            /** Shared Device */
+            shared_device?: boolean | null;
         };
         /** PredictionStand */
         PredictionStand: {
@@ -17545,7 +17624,9 @@ export interface operations {
     };
     beitreten_oder_tippen_api_tipp_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17576,9 +17657,42 @@ export interface operations {
             };
         };
     };
+    abmelden_api_tipp_abmelden_post: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     jetzt_abfragen_api_tipp_admin_abfragen_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17594,11 +17708,57 @@ export interface operations {
                     "application/json": components["schemas"]["PredictionAdminStand"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    einstellungen_setzen_api_tipp_admin_einstellungen_put: {
+        parameters: {
+            query?: {
+                round?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PredictionSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     ergebnis_eintragen_api_tipp_admin_ergebnis_put: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17631,7 +17791,9 @@ export interface operations {
     };
     phase_setzen_api_tipp_admin_phase_put: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17664,7 +17826,9 @@ export interface operations {
     };
     spieler_bearbeiten_api_tipp_admin_spieler__player_id__put: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path: {
                 player_id: number;
@@ -17699,7 +17863,9 @@ export interface operations {
     };
     admin_stand_api_tipp_admin_stand_get: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17713,13 +17879,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
     veroeffentlichen_api_tipp_admin_veroeffentlichen_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17735,11 +17912,22 @@ export interface operations {
                     "application/json": components["schemas"]["PredictionAdminStand"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     verwerfen_api_tipp_admin_verwerfen_post: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17753,6 +17941,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PredictionAdminStand"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -17762,6 +17959,7 @@ export interface operations {
             query?: {
                 probe?: string | null;
                 counted?: number | null;
+                round?: string | null;
             };
             header?: never;
             path?: never;
@@ -17791,7 +17989,9 @@ export interface operations {
     };
     austreten_api_tipp_me_delete: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17807,11 +18007,22 @@ export interface operations {
                     "application/json": components["schemas"]["Ok"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     qr_code_api_tipp_qr_png_get: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17827,11 +18038,22 @@ export interface operations {
                     "image/png": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     setup_api_tipp_setup_get: {
         parameters: {
-            query?: never;
+            query?: {
+                round?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -17847,6 +18069,15 @@ export interface operations {
                     "application/json": components["schemas"]["PredictionGame"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     stand_api_tipp_stand_get: {
@@ -17854,6 +18085,7 @@ export interface operations {
             query?: {
                 probe?: string | null;
                 counted?: number | null;
+                round?: string | null;
             };
             header?: never;
             path?: never;
@@ -18437,4 +18669,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: d1e723f74e33aa37fdbc181845b8c7db722de2a7d59988fc300022f1bf8760e2
+// vertrag-sha256: 1017dde39d26ec05a7c1f715fe8098e067cb9ff1ec778dbf79ab258dea2e874a

@@ -11962,9 +11962,17 @@
             },
             "title": "Results",
             "type": "array"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/PredictionRoundInfo"
+            },
+            "title": "Rounds",
+            "type": "array"
           }
         },
         "required": [
+          "rounds",
           "game",
           "results",
           "players",
@@ -12032,6 +12040,10 @@
             "title": "Late Scored",
             "type": "boolean"
           },
+          "listed": {
+            "title": "Listed",
+            "type": "boolean"
+          },
           "locked": {
             "title": "Locked",
             "type": "boolean"
@@ -12065,9 +12077,17 @@
             "title": "Player Count",
             "type": "integer"
           },
+          "round": {
+            "title": "Round",
+            "type": "string"
+          },
           "seats_total": {
             "title": "Seats Total",
             "type": "integer"
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": "boolean"
           },
           "title": {
             "title": "Title",
@@ -12075,12 +12095,15 @@
           }
         },
         "required": [
+          "round",
+          "listed",
           "title",
           "phase",
           "seats_total",
           "locked",
           "locked_at",
           "late_scored",
+          "shared_device",
           "player_count",
           "deadline_hint",
           "parties",
@@ -12563,6 +12586,40 @@
         "title": "PredictionResultRow",
         "type": "object"
       },
+      "PredictionRoundInfo": {
+        "description": "Eine Runde im Runden-Umschalter des Admins (1h).",
+        "properties": {
+          "listed": {
+            "title": "Listed",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "player_count": {
+            "title": "Player Count",
+            "type": "integer"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "listed",
+          "phase",
+          "player_count"
+        ],
+        "title": "PredictionRoundInfo",
+        "type": "object"
+      },
       "PredictionRow": {
         "properties": {
           "has_tip": {
@@ -12733,6 +12790,27 @@
           "exact"
         ],
         "title": "PredictionSeatLine",
+        "type": "object"
+      },
+      "PredictionSettingsIn": {
+        "description": "``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was\ngesetzt ist, wird geändert.",
+        "properties": {
+          "late_scored": {
+            "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "shared_device": {
+            "title": "Shared Device",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "title": "PredictionSettingsIn",
         "type": "object"
       },
       "PredictionStand": {
@@ -24955,6 +25033,20 @@
       "post": {
         "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).",
         "operationId": "beitreten_oder_tippen_api_tipp_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -24993,10 +25085,70 @@
         ]
       }
     },
+    "/api/tipp/abmelden": {
+      "post": {
+        "description": "Das Gerät weitergeben: Der Cookie geht, der Tipp BLEIBT — im Gegensatz\nzu ``DELETE /api/tipp/me``, das die Teilnahme löscht. Gedacht für Runden\nmit ``shared_device`` (ein Handy, mehrere Personen), aber unabhängig vom\nSchalter erlaubt: Ein Gerät ohne Cookie ist nie ein Schaden.",
+        "operationId": "abmelden_api_tipp_abmelden_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abmelden",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
     "/api/tipp/admin/abfragen": {
       "post": {
         "description": "„Jetzt abfragen\": die Live-Zahlen der Ratswahl UND der OB-Wahl in den\nEntwurf übernehmen — NICHT veröffentlicht, das bleibt ein eigener Schritt.",
         "operationId": "jetzt_abfragen_api_tipp_admin_abfragen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25007,6 +25159,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Jetzt Abfragen",
@@ -25015,9 +25177,79 @@
         ]
       }
     },
+    "/api/tipp/admin/einstellungen": {
+      "put": {
+        "description": "Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —\nVallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.",
+        "operationId": "einstellungen_setzen_api_tipp_admin_einstellungen_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictionSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictionAdminStand"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Einstellungen Setzen",
+        "tags": [
+          "tippspiel"
+        ]
+      }
+    },
     "/api/tipp/admin/ergebnis": {
       "put": {
         "operationId": "ergebnis_eintragen_api_tipp_admin_ergebnis_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25063,6 +25295,20 @@
     "/api/tipp/admin/phase": {
       "put": {
         "operationId": "phase_setzen_api_tipp_admin_phase_put",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25113,6 +25359,18 @@
               "title": "Player Id",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         ],
         "requestBody": {
@@ -25156,6 +25414,20 @@
     "/api/tipp/admin/stand": {
       "get": {
         "operationId": "admin_stand_api_tipp_admin_stand_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25166,6 +25438,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Admin Stand",
@@ -25177,6 +25459,20 @@
     "/api/tipp/admin/veroeffentlichen": {
       "post": {
         "operationId": "veroeffentlichen_api_tipp_admin_veroeffentlichen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25187,6 +25483,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Veroeffentlichen",
@@ -25198,6 +25504,20 @@
     "/api/tipp/admin/verwerfen": {
       "post": {
         "operationId": "verwerfen_api_tipp_admin_verwerfen_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25208,6 +25528,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Verwerfen",
@@ -25219,6 +25549,20 @@
     "/api/tipp/me": {
       "delete": {
         "operationId": "austreten_api_tipp_me_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25229,6 +25573,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Austreten",
@@ -25261,6 +25615,18 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -25297,12 +25663,36 @@
     "/api/tipp/qr.png": {
       "get": {
         "operationId": "qr_code_api_tipp_qr_png_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "image/png": {}
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Qr Code",
@@ -25314,6 +25704,20 @@
     "/api/tipp/setup": {
       "get": {
         "operationId": "setup_api_tipp_setup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -25324,6 +25728,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Setup",
@@ -25358,6 +25772,18 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "schema": {
+              "title": "Round",
+              "type": [
+                "string",
                 "null"
               ]
             }

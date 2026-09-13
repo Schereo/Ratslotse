@@ -18,7 +18,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
 import { applyTheme, getTheme } from "@/lib/theme";
-import { probePfad } from "@/lib/tipp";
+import { mitRunde, probePfad, rundeAus } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import type { ApiAntwort } from "@/lib/vertrag";
 import { Lotti } from "@/components/lotti";
@@ -44,8 +44,8 @@ const ANSICHTEN = [
 async function holeStand(pfad: string): Promise<PredictionStand> {
   return api.get<PredictionStand>(pfad);
 }
-async function holeSetup(): Promise<PredictionGame> {
-  return api.get<PredictionGame>("/tipp/setup");
+async function holeSetup(pfad: string): Promise<PredictionGame> {
+  return api.get<PredictionGame>(pfad);
 }
 
 export function TippLive() {
@@ -55,7 +55,10 @@ export function TippLive() {
   const erzwungen = params.get("ansicht") as Ansicht | null;
   const probe = params.get("probe");
   const counted = params.get("counted");
-  const standPfad = probePfad("/tipp/stand", probe, counted);
+  // `?runde=vally` — der Beamer eines eigenen Kreises (prediction/rounds.py).
+  const runde = rundeAus(params);
+  const standPfad = mitRunde(probePfad("/tipp/stand", probe, counted), runde);
+  const setupPfad = mitRunde("/tipp/setup", runde);
 
   // Erstbesuch: dunkles Theme (Regel 3). Merkt sich danach die Wahl des
   // Geräts wie überall sonst — kein zweites, seiteneigenes Theme-System,
@@ -74,7 +77,7 @@ export function TippLive() {
       return hat ? 30_000 : 60_000;
     },
   });
-  const setupQuery = useQuery({ queryKey: ["tipp", "setup-live"], queryFn: holeSetup, enabled: schalterAn });
+  const setupQuery = useQuery({ queryKey: ["tipp", "setup-live", runde], queryFn: () => holeSetup(setupPfad), enabled: schalterAn });
 
   const stand = standQuery.data;
   const hatErgebnis = stand?.compare.some((c) => c.actual !== null) ?? false;
@@ -211,9 +214,9 @@ export function TippLive() {
         // Wechsel BLENDET nur (Designsprache: nichts schiebt sich).
         <div key={ansicht} className="animate-fade-up">
           <Buehne>
-            {ansicht === "qr" && <BeamerMitmachen game={setupQuery.data} tipCount={stand.tip_count} />}
+            {ansicht === "qr" && <BeamerMitmachen game={setupQuery.data} tipCount={stand.tip_count} runde={runde} />}
             {ansicht === "vergleich" && <BeamerVergleich stand={stand} />}
-            {ansicht === "rangliste" && <Scoreboard stand={stand} />}
+            {ansicht === "rangliste" && <Scoreboard stand={stand} runde={runde} />}
           </Buehne>
         </div>
       )}

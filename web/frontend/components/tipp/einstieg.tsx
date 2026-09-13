@@ -4,16 +4,19 @@
 // „Los geht's". Kein Konto, keine E-Mail — der Name ist alles, was diese
 // Seite über die Person weiß.
 
+import Link from "next/link";
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
+import { mitRunde } from "@/lib/tipp";
 import type { TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
+export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
   setup: TippSetup;
+  runde: string | null;
   lottiAnimiert: boolean;
   onBeigetreten: () => void;
 }) {
@@ -26,7 +29,7 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
     setFehler(null);
     setSendet(true);
     try {
-      const res = await fetch(apiUrl("/tipp"), {
+      const res = await fetch(apiUrl(mitRunde("/tipp", runde)), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -58,7 +61,9 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
       </div>
 
       <p className="mt-3 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
-        Ratswahl Oldenburg · 13.09.2026
+        {/* Eine eigene Runde trägt ihren Namen im Kicker — wer über Vallys
+            Link kommt, soll sehen, dass er in Vallys Kreis tippt. */}
+        {setup.listed ? "Ratswahl Oldenburg · 13.09.2026" : `${setup.title} · Ratswahl Oldenburg · 13.09.2026`}
       </p>
       <h1 className="mt-2 text-balance font-display text-[28px] font-bold leading-[1.1] tracking-tight">
         Wie geht die Ratswahl aus?
@@ -97,6 +102,16 @@ export function Einstieg({ setup, lottiAnimiert, onBeigetreten }: {
           {sendet ? "Einen Moment …" : "Jetzt mitmachen"}
         </Button>
       </form>
+
+      {setup.shared_device && (
+        // Geteiltes Gerät: Wer schon getippt hat, kommt hier wieder an —
+        // ohne Cookie. Die Seite sagt, dass das so gehört, und zeigt den Weg
+        // zur Rangliste, statt zu einem zweiten Beitritt zu verleiten.
+        <p className="mt-3 w-full rounded-[10px] border border-dashed border-primary/30 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
+          Hier tippen mehrere Personen an einem Gerät. Schon getippt? Dein Tipp ist gespeichert —{" "}
+          <Link href={mitRunde("/tipp/live", runde, "runde")} className="font-semibold text-primary underline-offset-2 hover:underline">zur Rangliste</Link>.
+        </p>
+      )}
 
       <div className="mt-4 grid w-full grid-cols-3 gap-2 text-left text-[11.5px] text-muted-foreground">
         <div className="rounded-[10px] bg-primary/5 p-2.5">

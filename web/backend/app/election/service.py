@@ -326,8 +326,14 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
     alloc = allocate(lists, reg.seats) if phase != "before" and has_votes else None
     if alloc:
         notes += alloc.ties
-        if alloc.vacant:
+        if alloc.vacant and phase == "complete":
             notes.append(f"{alloc.vacant} Sitz(e) bleiben unbesetzt (§ 36 Abs. 7 NKWG).")
+        elif alloc.vacant:
+            # Im Zwischenstand tragen oft nur einzelne Wahlbereiche Stimmen; alle
+            # Sitze einer Partei landen dann dort, und die Liste hat nicht so
+            # viele Bewerber*innen. Das ist kein Befund, sondern der Stand.
+            notes.append(f"{alloc.vacant} Sitz(e) bleiben unbesetzt (§ 36 Abs. 7 NKWG) — "
+                         f"Zwischenstand, solange nicht alle Wahlbereiche Stimmen tragen.")
         if phase == "complete":
             notes += _official_check(reg, alloc, getattr(snap, "official_seats", None))
     if phase != "before" and not has_votes:

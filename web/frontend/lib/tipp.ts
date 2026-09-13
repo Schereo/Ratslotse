@@ -28,36 +28,28 @@ export type TippReihe = TippTafel["rows"][number];
  *
  * Benutzt von der Handy-Seite UND vom Beamer (`components/tipp/live.tsx`).
  */
+/** Die Runde aus der Adresse: `?runde=vally`. `null` ist die Hauptrunde —
+ *  sie hat keinen Parameter, damit jede Adresse von vorher gültig bleibt.
+ *  Nur Kleinbuchstaben, Ziffern, Bindestrich; alles andere fällt auf die
+ *  Hauptrunde zurück (der Server kennt es ohnehin nicht → 404). */
+export function rundeAus(params: { get(name: string): string | null } | null): string | null {
+  const r = (params?.get("runde") ?? "").trim().toLowerCase();
+  return /^[a-z0-9-]{1,30}$/.test(r) ? r : null;
+}
+
+/** Ein Pfad mit Runde — für die API `round=`, für Seiten `runde=`. Ohne
+ *  Runde bleibt der Pfad, wie er ist. */
+export function mitRunde(basis: string, runde: string | null, param: "round" | "runde" = "round"): string {
+  if (!runde) return basis;
+  return `${basis}${basis.includes("?") ? "&" : "?"}${param}=${encodeURIComponent(runde)}`;
+}
+
 export function probePfad(basis: string, probe: string | null, counted: string | null): string {
   const q = new URLSearchParams();
   if (probe) q.set("probe", probe);
   if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
   const s = q.toString();
   return s ? `${basis}?${s}` : basis;
-}
-
-/**
- * Sitze auf 52 verteilen, proportional zu den 2021er Ergebnissen — der
- * Ausgangspunkt, den das Formular zeigt, bevor jemand etwas ändert.
- * Listen ohne 2021er Sitz starten bei 0. Hare/Niemeyer: erst abrunden,
- * dann die größten Reste auffüllen, bis die Summe stimmt.
- */
-export function startverteilung(parteien: readonly TippPartei[], gesamt: number): Record<string, number> {
-  const gewichte = parteien.map((p) => Math.max(0, p.seats_2021 ?? 0));
-  const summeGewichte = gewichte.reduce((s, g) => s + g, 0);
-  const out: Record<string, number> = {};
-  if (summeGewichte <= 0) {
-    parteien.forEach((p) => { out[p.slug] = 0; });
-    if (parteien[0]) out[parteien[0].slug] = gesamt;
-    return out;
-  }
-  const roh = gewichte.map((g) => (g / summeGewichte) * gesamt);
-  const basis = roh.map(Math.floor);
-  let rest = gesamt - basis.reduce((s, b) => s + b, 0);
-  const reste = roh.map((r, i) => ({ i, frac: r - basis[i] })).sort((a, b) => b.frac - a.frac);
-  for (let k = 0; k < reste.length && rest > 0; k++, rest--) basis[reste[k].i] += 1;
-  parteien.forEach((p, i) => { out[p.slug] = basis[i]; });
-  return out;
 }
 
 /** Summe eines Sitz-Tipps. */
@@ -102,6 +94,21 @@ export function tippSegmente(
     out.push({ slug: p.slug, farbe: p.color, breite: `${(100 * anteil) / gesamt}%` });
   }
   return out;
+}
+
+/**
+ * Was auf dem Abgabe-Knopf steht, SOLANGE etwas fehlt — sonst `null`.
+ *
+ * Der Knopf ist in genau diesen Fällen gesperrt. Vorher stand dort
+ * unverändert „Tipp abgeben", und ein Druck darauf tat nichts, ohne zu
+ * sagen warum (Tims Befund 13.09.). Die Reihenfolge ist die des Lesens:
+ * erst die Sitze, dann die OB-Prozente.
+ */
+export function fehltText(rest: number, obOffen: boolean, obRest: number): string | null {
+  if (rest > 0) return `Noch ${rest} ${rest === 1 ? "Sitz" : "Sitze"} verteilen`;
+  if (rest < 0) return `${-rest} ${-rest === 1 ? "Sitz" : "Sitze"} zu viel`;
+  if (obOffen && restObTon(obRest) === "warn") return "OB-Prozente über 100 %";
+  return null;
 }
 
 /** Summe eines OB-Tipps (Prozente). */

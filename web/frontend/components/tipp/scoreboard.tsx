@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Podium, RangChip } from "./podium";
 import { useTween, useFrisch } from "./beamer-hooks";
 import { BeamerKopf, LivePunkt } from "./buehne";
-import { uhrzeitKurz } from "@/lib/tipp";
+import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
 
 type PredictionStand = ApiAntwort<"/tipp/stand">;
 type Zeile = PredictionStand["rows"][number];
@@ -88,7 +88,7 @@ function Ranglistenzeile({ z, index, proSpalte, spalten, hoehe, gewertet }: {
   );
 }
 
-export function Scoreboard({ stand }: { stand: PredictionStand }) {
+export function Scoreboard({ stand, runde }: { stand: PredictionStand; runde: string | null }) {
   // Vor dem ersten Ergebnis hat niemand einen Rang: Dann ist diese Seite die
   // Liste der Mitspielenden — kein Podium, keine Punkte, keine Striche, wo
   // Zahlen stehen sollten.
@@ -131,7 +131,7 @@ export function Scoreboard({ stand }: { stand: PredictionStand }) {
             ? "Je Liste: 5 Punkte für die richtige Sitzzahl, 3 bei 1 Sitz daneben, 1 bei 2 Sitzen daneben. OB-Bonus: bis zu 6 pro Person."
             : "Mit der ersten Hochrechnung siehst du hier, wer vorne liegt."}
         </span>
-        <span className="font-mono">ratslotse.de/tipp</span>
+        <span className="font-mono">ratslotse.de{mitRunde("/tipp", runde, "runde")}</span>
       </div>
     </div>
   );

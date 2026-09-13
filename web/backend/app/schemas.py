@@ -573,6 +573,13 @@ class PredictionPhaseIn(BaseModel):
     late_scored: bool | None = None
 
 
+class PredictionSettingsIn(BaseModel):
+    """``PUT /api/tipp/admin/einstellungen`` — Schalter je Runde. Nur was
+    gesetzt ist, wird geändert."""
+    shared_device: bool | None = None
+    late_scored: bool | None = None
+
+
 class PredictionPlayerIn(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=30)
     hidden: bool | None = None

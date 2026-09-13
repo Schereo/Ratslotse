@@ -86,6 +86,61 @@ wird nicht ausgelost, sondern nach Eingabereihenfolge entschieden;
 `prediction_standings_previous` hält je Stand fest, wer wo
 stand, damit die ▲▼-Chips auf dem Beamer den **vorherigen** Rang kennen.
 
+## Mehrere Runden
+
+Seit dem 12.09.2026 kann das Tippspiel **mehrere Runden** haben — ein Kreis,
+der unter sich tippen will, bekommt seine eigene. Die Runden stehen als
+Registry in `web/backend/app/prediction/rounds.py` (Slug, Titel, gelistet
+ja/nein); eine neue Runde ist ein Fünf-Zeilen-PR. Die **Hauptrunde**
+(`ratswahl`) hat keinen Parameter: `/tipp`, `/tipp/live` und `/api/tipp/…`
+bleiben, wie sie sind. Jede andere Runde hängt an `?runde=<slug>` (Seiten)
+bzw. `?round=<slug>` (API); ein unbekannter Slug ist 404.
+
+| getrennt je Runde | geteilt |
+|---|---|
+| Spieler*innen, Tipps, Doppelnamen-Zähler | der Wahlabend (Hochrechnung, Auto-Lock aus derselben Quelle) |
+| Ergebnisse (Entwurf und veröffentlicht), Ränge, Protokoll | Listen, OB-Kandidaturen, Punkteregeln |
+| Phase (offen/Tippfrist/Endstand) | der Feature-Schalter `tippspiel` |
+| der Cookie: `tipp_token` bzw. `tipp_token_<slug>` | die Admin-Seite |
+
+Eine Runde mit `listed = False` erscheint **nirgends** — nicht auf „Heute",
+nicht in der Beamer-Fußzeile der Hauptrunde, in keiner Sitemap. Ihr Link ist
+ihr Zugang; der QR-Code ihres Beamers (`/api/tipp/qr.png?round=<slug>`)
+zeigt auf `/tipp?runde=<slug>`. Der **Admin** unter `/tipp/admin` verwaltet
+alle Runden über einen Umschalter im Kopf — auch eine Runde ohne eigene
+Adminperson bekommt so ihre Ergebnisse, notfalls von Hand.
+
+In der Datenbank trägt jede Runde eine Zeile in `prediction_game` (`slug`),
+die übrigen Tabellen ihr `game_id`. Der Bestand von vorher (ein Spiel mit
+`CHECK (id = 1)`) wird beim Start zur Hauptrunde migriert
+(`Store._migrate_tippspiel_runden`, geprüft in
+`tests/test_prediction_runden.py`).
+
+## Ein Gerät, mehrere Personen
+
+Die Identität ist der Cookie — und ein Cookie gehört einem Gerät. Wer kein
+eigenes Handy dabei hat, konnte deshalb nicht mittippen (Vallys Kreis,
+13.09.2026). Seitdem trägt jede Runde den Schalter **„Mehrere Personen an
+einem Gerät“** (`prediction_game.shared_device`, Admin-Seite unter
+*Spielstatus*, Vorgabe aus):
+
+- Ist er an, zeigt „Mein Tipp“ nach dem Speichern als Hauptknopf **„Fertig —
+  nächste Person“**. Er ruft `POST /api/tipp/abmelden`: Der Cookie wird
+  gelöscht, die Teilnahme und der Tipp **bleiben** (anders als
+  `DELETE /api/tipp/me`, das die Teilnahme löscht). Danach antwortet
+  `/api/tipp/me` wieder 401, und die Seite zeigt den Einstieg — mit dem
+  Hinweis, dass hier mehrere Personen tippen, und einem Link zur Rangliste.
+- Solange das Gerät nicht weitergegeben ist, geht „Tipp ändern“ wie sonst.
+  **Danach ist der Tipp fest:** Kein Gerät trägt mehr seinen Cookie, und
+  einen Wiedereinstieg über den Namen gibt es bewusst nicht — sonst könnte
+  am geteilten Handy jede*r jeden Tipp ändern.
+- Der Schalter ändert nichts an Punkten, Rängen oder dem Beamer; er ist
+  reine Bedienung. Das Protokoll der Runde vermerkt jedes Weitergeben.
+
+`POST /api/tipp/abmelden` ist unabhängig vom Schalter erlaubt (ein Gerät
+ohne Cookie ist nie ein Schaden); der Schalter steuert nur, ob die Seite
+den Knopf zeigt.
+
 ## Woher der Vergleich kommt
 
 **Grundlage ist der Wahlabend.** `GET /api/tipp/stand` liest denselben
