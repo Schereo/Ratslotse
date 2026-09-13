@@ -439,6 +439,18 @@ class Annotator:
     #: sich an einem Bebauungsplan gar nicht stellen. Spart hier drei Viertel
     #: der Kosten: 1.511 übertragbare von 24.591 Papieren.
     only_usable: bool = False
+    #: Wer diesen Annotator fährt, wenn nicht die übliche Schleife
+    #: (``annotate.run``). ``stance`` braucht das LABEL SEINER GRUPPE als
+    #: Bezugspunkt; das kennt nur ``clusters.stance_all``, und der generische
+    #: Weg rendert den Prompt deshalb gar nicht erst zu Ende.
+    #:
+    #: **Ohne diese Angabe lief er zweimal**, einmal richtig und einmal ins
+    #: Leere: Am 13.09.2026 meldete der Bestandslauf 9.289 „Fehler" ohne einen
+    #: einzigen Modellaufruf — jede Vorlage ein `KeyError: 'gruppe'`. Es kostete
+    #: nichts und tat nichts, aber eine Fehlerzahl, die nichts bedeutet, ist
+    #: schlimmer als keine: Der Wochen-Cron zählt sie in `job_runs`, und die
+    #: nächste Person sucht einen Fehler, den es nicht gibt.
+    own_stage: str = ""
     #: Woran man erkennt, dass die Fassung reif ist — wie ``fertig_wenn`` bei
     #: den Feature-Schaltern.
     gut_wenn: str = ""
@@ -534,7 +546,7 @@ ANNOTATORS: dict[str, Annotator] = {
         batch_size=1, input_chars=1200, max_tokens=4000,
         # Nur Vorlagen in einer Gruppe: Ohne gemeinsame Sache gibt es keine
         # Richtung, auf die sich das Urteil beziehen könnte.
-        only_usable=True, needs_index=True,
+        only_usable=True, needs_index=True, own_stage="cluster",
         gut_wenn="eval/run_cities_stance.py gegen 40 Handfälle aus Gruppen mit "
                  "drei oder mehr Städten. Schranke 85 % — höher als bei "
                  "`transfer`, weil die Kanten schärfer sind: Eine Vorlage will "
@@ -614,9 +626,16 @@ ANNOTATORS: dict[str, Annotator] = {
 }
 
 
-def active_annotators(object_kind: str | None = None) -> list[Annotator]:
+def active_annotators(object_kind: str | None = None,
+                      own_stage: str = "") -> list[Annotator]:
+    """Die aktiven Annotatoren — ohne die, die eine eigene Stufe fährt.
+
+    ``own_stage=""`` (die Vorgabe) liefert genau die, die die übliche
+    Schleife fahren darf. Wer die Annotatoren EINER Stufe will, nennt sie.
+    """
     return [a for a in ANNOTATORS.values()
-            if a.active and (object_kind is None or object_kind in a.applies_to)]
+            if a.active and a.own_stage == own_stage
+            and (object_kind is None or object_kind in a.applies_to)]
 
 
 def get(key: str) -> Annotator:
