@@ -177,6 +177,41 @@ def test_der_text_haengt_an_einer_datei_die_die_vorlage_kennt(batch):
     assert datei.role.value == "main"
 
 
+@pytest.mark.parametrize("ueberschrift", [
+    # Die drei Formen, die in Hildesheims 1.078 Vorlagen wirklich vorkommen
+    # (gemessen 13.09.2026): 1.076-mal die strikte, je einmal die beiden
+    # anderen. Die Zeichenketten stehen so in den echten Seiten.
+    "Sachverhalt:",
+    "Sachverhalt :",
+    "Sachverhalt",
+])
+def test_der_sachverhalt_wird_auch_ohne_doppelpunkt_gefunden(ueberschrift):
+    """Zwei Vorlagen trugen ihren Text und galten trotzdem als textlos."""
+    suppe = BeautifulSoup(
+        f"<div><p>Vorlage-Art: Mitteilungsvorlage</p>"
+        f"<p>{ueberschrift} Die Prüfung des Jahresabschlusses wurde "
+        f"im Einvernehmen mit dem Rechnungsprüfungsamt vorgenommen.</p>"
+        f"<p>Finanzielle Auswirkungen: keine</p></div>", "html.parser")
+    text = AllrisClassicAdapter._sachverhalt(suppe)
+    assert text.startswith("Die Prüfung des Jahresabschlusses")
+    assert "Finanzielle Auswirkungen" not in text
+
+
+def test_die_strikte_ueberschrift_gewinnt_gegen_das_wort_im_satz():
+    """Der Preis der lockeren Regel, und warum er nicht anfällt.
+
+    „Sachverhalt" kommt auch im Fließtext vor. Deshalb greift die lockere
+    Form erst, wenn die strikte auf der ganzen Seite fehlt — sonst begänne
+    der Text mitten im Satz.
+    """
+    suppe = BeautifulSoup(
+        "<div><p>Der Ausschuss wurde zum Sachverhalt befragt.</p>"
+        "<p>Sachverhalt: Der eigentliche Text beginnt hier.</p></div>",
+        "html.parser")
+    assert AllrisClassicAdapter._sachverhalt(suppe) == (
+        "Der eigentliche Text beginnt hier.")
+
+
 def test_der_kalender_wird_monat_fuer_monat_rueckwaerts_gelesen():
     """Neueste zuerst — ein abgebrochener Lauf hat dann die Gegenwart schon."""
     monate = _monate("2026-06")

@@ -127,6 +127,16 @@ def _text(knoten) -> str:
 
 
 
+#: Die Überschrift des Sachverhalts, wenn sie NICHT als „Sachverhalt:"
+#: dasteht. Zwei Formen sind gemessen (Hildesheim, 13.09.2026, je einmal in
+#: 1.078 Vorlagen): „Sachverhalt : Im Dezember…" und „Sachverhalt Die
+#: Prüfung…". Die zweite verlangt einen Großbuchstaben dahinter — ohne
+#: Doppelpunkt ist das das einzige Merkmal, das eine Überschrift von dem Wort
+#: im Fließtext trennt („zum Sachverhalt befragt"). Sicher ist die Regel
+#: trotzdem nur, WEIL sie erst greift, wenn die strikte Form auf der ganzen
+#: Seite fehlt.
+_SACHVERHALT_LOCKER = re.compile(r"Sachverhalt\s*:\s|Sachverhalt\s+(?=[A-ZÄÖÜ])")
+
 #: Die Bereiche der städtischen Seite, die um ALLRIS herumgebaut sind. Sie
 #: machen 105 der 280 kB jeder Seite aus — und sie tragen eigene Verweise auf
 #: ``au020.asp``, mit generischen Beschriftungen („Der Ortsrat" unter dem
@@ -678,12 +688,26 @@ class AllrisClassicAdapter:
 
     @staticmethod
     def _sachverhalt(suppe: BeautifulSoup) -> str:
-        """Alles ab „Sachverhalt:" bis zum Ende des inhaltlichen Teils."""
+        """Alles ab „Sachverhalt:" bis zum Ende des inhaltlichen Teils.
+
+        **Die strikte Form zuerst, dann erst die lockere.** Die Überschrift
+        steht fast immer als „Sachverhalt:" da (gemessen an Hildesheim:
+        1.076 von 1.078), ein paar Vorlagen schreiben sie ohne Doppelpunkt
+        oder mit Leerzeichen davor. Die lockere Regel allein wäre gefährlich:
+        Das Wort kommt auch im Fließtext vor („zum Sachverhalt befragt"), und
+        dann begänne der Text mitten im Satz. Sie greift deshalb nur, wenn
+        die strikte gar nichts findet — und nur am Anfang einer Zeile, wo
+        eine Überschrift steht.
+        """
         text = _text(suppe)
         i = text.find("Sachverhalt:")
+        laenge = len("Sachverhalt:")
         if i < 0:
-            return ""
-        rumpf = text[i + len("Sachverhalt:"):].strip()
+            locker = _SACHVERHALT_LOCKER.search(text)
+            if locker is None:
+                return ""
+            i, laenge = locker.start(), len(locker.group(0))
+        rumpf = text[i + laenge:].strip()
         # Der Formularblock am Ende gehört nicht zum Sachverhalt.
         for ende in ("Finanzielle Auswirkungen:", "Personelle Auswirkungen:",
                      "Demografische Auswirkungen:", "Nachverfolgung"):
