@@ -28,6 +28,7 @@ import {
   LISTE_SPEICHER,
   abfragePfad,
   bildPfad,
+  kartePfad,
   delta,
   fortschritt,
   kandidatenStatus,
@@ -443,6 +444,7 @@ function KandidatZeile({
   rang,
   status,
   hochrechnung,
+  bild,
 }: {
   k: WahlabendKandidat;
   max: number;
@@ -450,6 +452,7 @@ function KandidatZeile({
   rang: number;
   status: { ton: StatusTon; text: string };
   hochrechnung: boolean;
+  bild: string | null;
 }) {
   const stimmen = useTween(k.votes);
   const breite = stimmen === null || max <= 0 ? 0 : Math.max(1.5, (100 * stimmen) / max);
@@ -474,6 +477,17 @@ function KandidatZeile({
           </span>
         ) : null}
         <span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold", TON[status.ton])}>{status.text}</span>
+        {bild ? (
+          <a
+            href={bild}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 inline-block text-[10.5px] font-medium text-primary"
+            aria-label={`Bild zum Teilen: ${k.name}`}
+          >
+            Bild ↗
+          </a>
+        ) : null}
       </span>
       <span className="flex-none text-right">
         <span className="block text-[13px] font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</span>
@@ -485,7 +499,19 @@ function KandidatZeile({
   );
 }
 
-function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slug: string; daten: Wahlabend }) {
+function BereichKarte({
+  bereich,
+  slug,
+  daten,
+  probe,
+  counted,
+}: {
+  bereich: WahlabendBereich;
+  slug: string;
+  daten: Wahlabend;
+  probe: string | null;
+  counted: string | null;
+}) {
   const eintrag = bereich.parties.find((p) => p.slug === slug);
   const zaehlt = daten.phase !== "before" && bereich.districts_counted > 0;
   const frisch = useFrisch(bereich.districts_counted);
@@ -493,6 +519,7 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
   const stimmen = useTween(eintrag?.votes);
   const max = Math.max(0, ...(eintrag?.candidates ?? []).map((k) => k.votes ?? 0));
   const grenze = eintrag ? sitzgrenze(eintrag.candidates) : null;
+  const teilbar = zaehlt && !!eintrag;
   return (
     <article
       className={cn(
@@ -507,6 +534,19 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
         </div>
         <span className="font-mono text-[10.5px] text-muted-foreground tabular-nums">
           {bereich.districts_counted}/{bereich.districts_total} Bezirke
+          {teilbar ? (
+            <>
+              {" · "}
+              <a
+                href={apiUrl(kartePfad(slug, bereich.number, null, probe, counted))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary"
+              >
+                Bild ↗
+              </a>
+            </>
+          ) : null}
         </span>
       </div>
       {eintrag ? (
@@ -538,6 +578,7 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
                 rang={i}
                 status={kandidatenStatus(k, daten.phase, daten.person_votes_available, bereich.districts_counted > 0)}
                 hochrechnung={daten.phase === "counting"}
+                bild={teilbar && k.votes !== null ? apiUrl(kartePfad(slug, bereich.number, k.position, probe, counted)) : null}
               />
             ))}
           </ol>
@@ -555,10 +596,11 @@ function BereichKarte({ bereich, slug, daten }: { bereich: WahlabendBereich; slu
   );
 }
 
-function Bereiche({ daten, liste }: { daten: Wahlabend; liste: string | null }) {
+function Bereiche({ daten, liste, probe, counted }: { daten: Wahlabend; liste: string | null; probe: string | null; counted: string | null }) {
   if (!liste) return null;
   const partei = daten.parties.find((p) => p.slug === liste);
   if (!partei) return null;
+  const karte = daten.phase !== "before" ? apiUrl(kartePfad(liste, null, null, probe, counted)) : null;
   return (
     <section className="mt-5 @container">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -571,12 +613,20 @@ function Bereiche({ daten, liste }: { daten: Wahlabend; liste: string | null }) 
             stadtweit {prozent(partei.share_pct)} · {partei.seats ?? "–"} {partei.seats === 1 ? "Sitz" : "Sitze"}
             {partei.votes_to_next_seat !== null ? <> · {zahl(partei.votes_to_next_seat)} Stimmen bis zum nächsten Sitz</> : null}
             {partei.votes_to_lose_seat !== null ? <> · {zahl(partei.votes_to_lose_seat)} Stimmen Puffer auf dem letzten Sitz</> : null}
+            {karte ? (
+              <>
+                {" · "}
+                <a href={karte} target="_blank" rel="noopener noreferrer" className="font-medium text-primary">
+                  Bild zum Teilen ↗
+                </a>
+              </>
+            ) : null}
           </p>
         ) : null}
       </div>
       <div className="mt-3 grid gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
         {daten.areas.map((b) => (
-          <BereichKarte key={b.number} bereich={b} slug={liste} daten={daten} />
+          <BereichKarte key={b.number} bereich={b} slug={liste} daten={daten} probe={probe} counted={counted} />
         ))}
       </div>
     </section>
@@ -725,7 +775,7 @@ export function WahlabendView() {
         <MehrheitenBlock daten={daten} />
         <Verlauf daten={daten} liste={liste} />
         <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
-        <Bereiche daten={daten} liste={liste} />
+        <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} />
         <Mandate daten={daten} />
       </>
     );

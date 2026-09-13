@@ -26330,6 +26330,118 @@
         ]
       }
     },
+    "/api/wahlabend/karte.png": {
+      "get": {
+        "description": "Die Karte zum Teilen (PNG, 1200×630): wie eine Liste, eine Liste im\nWahlbereich oder eine Person abgeschnitten hat — mit Lotti, die den\nWählenden dankt. ``platz`` braucht ``bereich``; eine Kombination, die es\nnicht gibt, antwortet 404.",
+        "operationId": "wahlabend_karte_api_wahlabend_karte_png_get",
+        "parameters": [
+          {
+            "description": "Slug der Liste, z. B. „gruene“",
+            "in": "query",
+            "name": "liste",
+            "required": true,
+            "schema": {
+              "description": "Slug der Liste, z. B. „gruene“",
+              "pattern": "^[a-z0-9-]{1,40}$",
+              "title": "Liste",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wahlbereich (1–6): die Liste dort",
+            "in": "query",
+            "name": "bereich",
+            "required": false,
+            "schema": {
+              "description": "Wahlbereich (1–6): die Liste dort",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Bereich",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Listenplatz im Wahlbereich: die Person",
+            "in": "query",
+            "name": "platz",
+            "required": false,
+            "schema": {
+              "description": "Listenplatz im Wahlbereich: die Person",
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Platz",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Die Karte zum Teilen (PNG, 1200×630): wie eine Liste (`?liste=`), eine Liste im Wahlbereich (`&bereich=`) oder eine Person (`&platz=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. Eine Minute cachebar."
+          },
+          "404": {
+            "description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Karte",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
     "/api/wahlabend/ob": {
       "get": {
         "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.",

@@ -219,6 +219,22 @@ export function bildPfad(feld: "seats" | "projected_seats", probe: string | null
   return `/wahlabend/bild.png?${q.toString()}`;
 }
 
+/** Die Karte zum Teilen: eine Liste, eine Liste im Wahlbereich oder eine Person. */
+export function kartePfad(
+  liste: string,
+  bereich: number | null,
+  platz: number | null,
+  probe: string | null,
+  counted: string | null,
+): string {
+  const q = new URLSearchParams({ liste });
+  if (bereich !== null) q.set("bereich", String(bereich));
+  if (bereich !== null && platz !== null) q.set("platz", String(platz));
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  return `/wahlabend/karte.png?${q.toString()}`;
+}
+
 /* ── Wann ist Wahlabend? ────────────────────────────────────────────────── */
 
 /** 13.09.2026, 18:00 Uhr in Oldenburg (MESZ = UTC+2): Die Wahllokale schließen,

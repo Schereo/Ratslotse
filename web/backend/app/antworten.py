@@ -3629,6 +3629,20 @@ WAHLABEND_PNG: dict[int | str, dict[str, Any]] = {
     404: {"description": "Der Wahlabend ist noch nicht freigeschaltet (Feature-Schalter `wahlabend`)."},
 }
 
+WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
+    200: {
+        "description": (
+            "Die Karte zum Teilen (PNG, 1200×630): wie eine Liste (`?liste=`), "
+            "eine Liste im Wahlbereich (`&bereich=`) oder eine Person "
+            "(`&platz=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand "
+            "zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank "
+            "an die Wählenden. Eine Minute cachebar."
+        ),
+        "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}},
+    },
+    404: {"description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."},
+}
+
 
 # --------------------------------------------------------------------------
 # Wahlabend (Ratswahl 13.09.2026) — GET /api/wahlabend

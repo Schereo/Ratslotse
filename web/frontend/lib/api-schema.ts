@@ -5004,6 +5004,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/karte.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Karte
+         * @description Die Karte zum Teilen (PNG, 1200×630): wie eine Liste, eine Liste im
+         *     Wahlbereich oder eine Person abgeschnitten hat — mit Lotti, die den
+         *     Wählenden dankt. ``platz`` braucht ``bereich``; eine Kombination, die es
+         *     nicht gibt, antwortet 404.
+         */
+        get: operations["wahlabend_karte_api_wahlabend_karte_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/ob": {
         parameters: {
             query?: never;
@@ -18423,6 +18446,53 @@ export interface operations {
             };
         };
     };
+    wahlabend_karte_api_wahlabend_karte_png_get: {
+        parameters: {
+            query: {
+                /** @description Slug der Liste, z. B. „gruene“ */
+                liste: string;
+                /** @description Wahlbereich (1–6): die Liste dort */
+                bereich?: number | null;
+                /** @description Listenplatz im Wahlbereich: die Person */
+                platz?: number | null;
+                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Die Karte zum Teilen (PNG, 1200×630): wie eine Liste (`?liste=`), eine Liste im Wahlbereich (`&bereich=`) oder eine Person (`&platz=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. Eine Minute cachebar. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            /** @description Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ob_wahl_api_wahlabend_ob_get: {
         parameters: {
             query?: {
@@ -18457,4 +18527,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 0d4cdf173ad987f7517d50397a86012d5d35893e73f0bd2f25d8194db7f08364
+// vertrag-sha256: b2347b48427743023b10c1a8fc291c4e6a73bb879da23b96ca2fe4f1f10389d6
