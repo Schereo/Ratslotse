@@ -26686,6 +26686,143 @@
         ]
       }
     },
+    "/api/wahlabend/karte.png": {
+      "get": {
+        "description": "Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich\noder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.\n``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``\nbraucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.",
+        "operationId": "wahlabend_karte_api_wahlabend_karte_png_get",
+        "parameters": [
+          {
+            "description": "Slug der Liste, z. B. „gruene“",
+            "in": "query",
+            "name": "list",
+            "required": true,
+            "schema": {
+              "description": "Slug der Liste, z. B. „gruene“",
+              "pattern": "^[a-z0-9-]{1,40}$",
+              "title": "List",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Wahlbereich (1–6): die Liste dort",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "Wahlbereich (1–6): die Liste dort",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Listenplatz im Wahlbereich: die Person",
+            "in": "query",
+            "name": "position",
+            "required": false,
+            "schema": {
+              "description": "Listenplatz im Wahlbereich: die Person",
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Position",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "beitrag",
+              "description": "„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630",
+              "pattern": "^(beitrag|story|quer)$",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
+            "in": "query",
+            "name": "compare",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
+              "title": "Compare",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "„2021“ = Generalprobe mit den Zahlen von 2021",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar."
+          },
+          "404": {
+            "description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Karte",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
     "/api/wahlabend/ob": {
       "get": {
         "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.",

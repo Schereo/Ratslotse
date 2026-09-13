@@ -115,6 +115,7 @@ OEFFENTLICH = {
     # Seite zeigt, und wird gerade von denen abgeholt, die kein Konto haben:
     # WhatsApp und die sozialen Netze, wenn sie einen Link auspacken.
     ("get", "/api/wahlabend/bild.png"),
+    ("get", "/api/wahlabend/karte.png"),
     # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
     ("get", "/api/wahlabend/ob"),
 
