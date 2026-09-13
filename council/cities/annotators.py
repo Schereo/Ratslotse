@@ -574,7 +574,16 @@ ANNOTATORS: dict[str, Annotator] = {
         # Was fehlt: 40 Abschnitte, ganz gelesen, `has_reason` und `vote` von
         # Hand gesetzt. `eval/build_cities_reason_cases.py` zieht die
         # Stichprobe; das Urteil muss ein Mensch fällen.
-        active=False,
+        # AN seit 13.09.2026. Der Prüfstand hält über drei Läufe alle drei
+        # Schranken: 0 erfundene Begründungen, 93 % Abstimmungsergebnis
+        # (Schwelle 90), 0 Personennamen. Zwei Irrtümer steckten vorher im
+        # MASSSTAB, nicht im Modell: Jede Ausnahme zählte als Erfindung, und
+        # `vote` wurde als Zeichenkette verglichen („mit 6 Ja-, 34
+        # Neinstimmen" gegen „6 Ja, 34 Nein" galt als Fehler). Dazu die
+        # Streuung: dieselbe Einstellung lieferte in Einzelläufen 80/87/79 %,
+        # bei 15 Abstimmungen sind das je sieben Punkte — deshalb mittelt der
+        # Prüfstand jetzt über drei Läufe.
+        active=True,
         gut_wenn="eval/run_cities_reason.py gegen Handfälle aus echten "
                  "Niederschriften. Drei Schranken, und die erste ist eine "
                  "harte Zusage bei NULL: `grounded=true`, wo im Abschnitt gar "

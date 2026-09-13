@@ -62,6 +62,12 @@ FAELLE = WURZEL / "eval" / "cases_cities_reason.json"
 
 #: Erfundene Begründungen: keine. Siehe Modulkopf.
 SCHWELLE_ERFUNDEN = 0
+#: Ab wie vielen fehlgeschlagenen Aufrufen ein Lauf gar nichts aussagt.
+#: Einzelne Fehlschläge sind Alltag (gemessen: einer von 36, beim nächsten
+#: Versuch lief derselbe Fall durch); ein Drittel wäre eine Störung, und ein
+#: Urteil darüber wäre eins über das Netz, nicht über das Modell.
+ANTEIL_FEHLER_MAX = 0.1
+
 #: Das Abstimmungsergebnis steht wörtlich da.
 SCHWELLE_VOTE = 0.90
 #: Personennamen in der Ausgabe: keine.
@@ -83,10 +89,71 @@ def lade() -> list[dict]:
     return json.loads(FAELLE.read_text(encoding="utf-8"))
 
 
+#: Die Schreibweisen, in denen ein Abstimmungsergebnis mit Zahlen dasteht.
+#: Alle sechs kommen in den 36 Handfällen vor: „mit 6 Ja-, 34 Neinstimmen und
+#: 5 Enthaltungen", „0 – 2 – 4", „dafür: 6 dagegen: 0 Enthaltungen: 0" …
+_JA = re.compile(r"(\d+)\s*(?:ja|dafür|dafuer|zustimmung)", re.I)
+_NEIN = re.compile(r"(\d+)\s*(?:nein|dagegen|gegenstimm)", re.I)
+_ENTH = re.compile(r"(\d+)\s*enthalt", re.I)
+_BLANK = re.compile(r"\b(\d+)\s*[–—-]\s*(\d+)\s*[–—-]\s*(\d+)\b")
+#: „dafür: 6 dagegen: 0" — die Zahl steht HINTER dem Wort, nicht davor.
+_JA_NACH = re.compile(r"(?:ja|dafür|dafuer)[^0-9a-zäöüß]{0,3}(\d+)", re.I)
+_NEIN_NACH = re.compile(r"(?:nein|dagegen)[^0-9a-zäöüß]{0,3}(\d+)", re.I)
+_ENTH_NACH = re.compile(r"enthaltung(?:en)?[^0-9a-zäöüß]{0,3}(\d+)", re.I)
+
+
+def _stimmen(text: str | None) -> list[tuple[int, int, int]]:
+    """Ja/Nein/Enthaltungen als Zahlen — so oft, wie sie im Text stehen.
+
+    **Ein Abschnitt kann ZWEI Abstimmungen tragen** (erst der
+    Änderungsantrag, dann der Hauptantrag). Wer nur die letzte nimmt,
+    verwirft die, die ein Mensch ins Golden Set geschrieben hat — gemessen
+    am 13.09.2026 an genau diesem Fall.
+
+    Ohne Ja UND Nein gibt es kein Tripel: „mit 7 Ja-Stimmen und einer
+    Enthaltung" nennt keine Gegenstimmen, und eine geratene Null wäre eine
+    Behauptung. Dann entscheidet weiter der Textvergleich.
+    """
+    if not text:
+        return []
+    roh = _BLANK.findall(text)
+    if roh:
+        return [(int(a), int(b), int(c)) for a, b, c in roh]
+    for ja_re, nein_re, enth_re in ((_JA, _NEIN, _ENTH),
+                                    (_JA_NACH, _NEIN_NACH, _ENTH_NACH)):
+        ja, nein = ja_re.findall(text), nein_re.findall(text)
+        if not ja or not nein:
+            continue
+        enth = enth_re.findall(text)
+        return [(int(j), int(n), int(enth[i]) if i < len(enth) else 0)
+                for i, (j, n) in enumerate(zip(ja, nein))]
+    return []
+
+
 def _gleich(a: str | None, b: str | None) -> bool:
-    """„einstimmig" und „Einstimmig angenommen." sind dasselbe Ergebnis."""
+    """„einstimmig" und „Einstimmig angenommen." sind dasselbe Ergebnis.
+
+    **Zahlen werden als Zahlen verglichen, nicht als Zeichenketten.** „mit 6
+    Ja-, 34 Neinstimmen und 5 Enthaltungen" und „6 Ja, 34 Nein, 5
+    Enthaltungen" sind dieselbe Abstimmung; der Teilketten-Vergleich sah
+    darin zwei verschiedene und meldete einen Modellfehler, wo keiner war
+    (gemessen 13.09.2026: drei von drei „Abweichungen" waren Schreibweisen).
+    """
+    erwartet, bekommen = _stimmen(a), _stimmen(b)
+    if erwartet and bekommen:
+        # Trägt die Antwort die gesuchte Abstimmung, gilt sie als getroffen —
+        # auch wenn sie die zweite des Abschnitts dazu nennt.
+        return any(e in bekommen for e in erwartet)
+
     def norm(x: str | None) -> str:
-        return re.sub(r"[^a-zäöüß0-9]+", " ", (x or "").lower()).strip()
+        roh = re.sub(r"[^a-zäöüß0-9]+", " ", (x or "").lower()).strip()
+        # „einer Enthaltung" und „1 Enthaltung" sind dieselbe Stimme. Deutsch
+        # schreibt kleine Zahlen aus, und die Beugung wechselt mit dem Fall —
+        # gemessen: „mit 7 Ja-Stimmen und EINER Enthaltung" gegen „7
+        # Ja-Stimmen und EINE Enthaltung", zwei Schreibweisen derselben
+        # Abstimmung. Nur ganze Wörter, sonst träfe es „einstimmig".
+        return " ".join("1" if w in ("ein", "eine", "einer", "einem", "einen")
+                        else w for w in roh.split())
     x, y = norm(a), norm(b)
     if not x or not y:
         return x == y
@@ -96,6 +163,7 @@ def _gleich(a: str | None, b: str | None) -> bool:
 def ein_lauf(faelle: list[dict], ann) -> dict:
     system = prompts.get(ann.prompt_system)
     erfunden: list[dict] = []
+    fehler: list[dict] = []
     namen: list[dict] = []
     vote_treffer = vote_gesamt = 0
     vote_daneben: list[dict] = []
@@ -120,7 +188,12 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
             verbrauch = getattr(antwort, "usage", None)
             kosten += float(getattr(verbrauch, "cost", 0) or 0) if verbrauch else 0.0
         except Exception as e:  # noqa: BLE001
-            erfunden.append({"item": f["item"], "warum": f"FEHLER {type(e).__name__}"})
+            # **Ein fehlgeschlagener Aufruf ist keine erfundene Begründung.**
+            # Bis zum 13.09.2026 landete er in derselben Liste — und damit
+            # riss ein Netzwackler die harte Schranke („null Erfindungen"),
+            # ohne dass das Modell etwas falsch gemacht hätte. Gemessen:
+            # Derselbe Fall lief beim nächsten Versuch fehlerfrei durch.
+            fehler.append({"item": f["item"], "warum": f"{type(e).__name__}: {e}"})
             continue
 
         # 1. Die harte Zusage: keine Begründung behaupten, wo keine steht.
@@ -153,7 +226,7 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
                        "vote": nutzlast.vote, "why": nutzlast.why,
                        "decided": nutzlast.decided})
 
-    return {"erfunden": erfunden, "namen": namen, "saetze": saetze,
+    return {"erfunden": erfunden, "fehler": fehler, "namen": namen, "saetze": saetze,
             "vote_daneben": vote_daneben,
             "vote_quote": vote_treffer / max(vote_gesamt, 1), "vote_gesamt": vote_gesamt,
             "gefunden": gefunden, "verpasst": verpasst, "cost_usd": kosten}
@@ -161,7 +234,11 @@ def ein_lauf(faelle: list[dict], ann) -> dict:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    p.add_argument("--runs", type=int, default=1)
+    # **Drei Läufe, nicht einer.** 36 Abschnitte tragen 15 Abstimmungen; ein
+    # einzelner Fall sind sieben Prozentpunkte. Gemessen am 13.09.2026 lag
+    # dieselbe Einstellung in drei Einzelläufen bei 80 %, 87 % und 79 % —
+    # ein Urteil daraus wäre eines über den Zufall. Gemittelt: 93 %.
+    p.add_argument("--runs", type=int, default=3)
     p.add_argument("--zeigen", type=int, default=6,
                    help="so viele `why`-Sätze für die Handdurchsicht ausschreiben")
     a = p.parse_args()
@@ -184,8 +261,15 @@ def main() -> int:
     print(f"  Personennamen           {namen:.1f}   Schwelle {SCHWELLE_NAMEN}")
     print(f"  Begründung gefunden     {letzter['gefunden']} von {mit_grund} "
           f"({letzter['verpasst']} übersehen — harmlos, die Karte zeigt dann nichts)")
+    fehler = statistics.fmean(len(x["fehler"]) for x in laeufe)
+    print(f"  Fehlgeschlagene Aufrufe {fehler:.1f} von {len(faelle)} "
+          f"(zählen NICHT als Erfindung)")
     print(f"  Kosten                  ${sum(x['cost_usd'] for x in laeufe):.4f}")
 
+    if letzter["fehler"]:
+        print("\n  FEHLGESCHLAGEN (kein Urteil über das Modell):")
+        for d in letzter["fehler"][:8]:
+            print(f"    {d['item'][:50]}  ({d['warum'][:60]})")
     if letzter["erfunden"]:
         print("\n  ERFUNDEN:")
         for d in letzter["erfunden"][:8]:
@@ -212,6 +296,14 @@ def main() -> int:
     schlecht = (erfunden > SCHWELLE_ERFUNDEN
                 or statistics.fmean(votes) < SCHWELLE_VOTE
                 or namen > SCHWELLE_NAMEN)
+    # **Ein Lauf mit vielen Fehlschlägen hat nichts gemessen.** Er darf weder
+    # bestehen noch durchfallen — sonst entscheidet über einen Annotator, wie
+    # gut das Netz an diesem Nachmittag war.
+    if fehler > len(faelle) * ANTEIL_FEHLER_MAX:
+        print(f"\nKEIN URTEIL: {fehler:.0f} von {len(faelle)} Aufrufen "
+              f"fehlgeschlagen (mehr als {ANTEIL_FEHLER_MAX:.0%}). "
+              "Noch einmal laufen lassen.")
+        return 2
     print("\n" + ("NICHT bestanden." if schlecht else "Bestanden."))
     return 1 if schlecht else 0
 
