@@ -117,8 +117,9 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     // Ergebnis nach. Jetzt fängt jede Liste bei 0 an — abgeben kann nur,
     // wer wirklich verteilt hat.
     await expect(page.getByLabel("Sitze für Grüne")).toHaveValue("0");
-    await expect(page.getByText(/Noch 40 Sitze/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Tipp abgeben/ })).toBeDisabled();
+    // Der Knopf sagt selbst, was fehlt — ein gesperrter Knopf ohne Grund
+    // lässt Leute drücken und nichts passieren (Tims Befund 13.09.).
+    await expect(page.getByRole("button", { name: "Noch 40 Sitze verteilen" })).toBeDisabled();
 
     // Alle 40 auf eine Liste — dann passt es, und der Knopf geht auf.
     await page.getByLabel("Sitze für Grüne").fill("40");
@@ -139,8 +140,7 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     await page.getByLabel("Sitze für Grüne").fill("40");
     await expect(page.getByText(/40 von 40 — passt/)).toBeVisible();
     await page.getByRole("button", { name: "SPD: einen Sitz mehr" }).click();
-    await expect(page.getByText(/1 Sitz zu viel/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Tipp abgeben|Tipp aktualisieren/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "1 Sitz zu viel" })).toBeDisabled();
   });
 
   test("die OB-Wahl bleibt zu, bis sie eingeschaltet wird", async ({ page }) => {
@@ -184,7 +184,7 @@ test.describe("Spätstarter", () => {
       locked: true, phase: "locked", has_tip: false, late_at: "2026-09-13T18:41:00+00:00", scored: false,
     }), { setupOverrides: { locked: true, phase: "locked", locked_at: "2026-09-13T18:41:00+00:00" }, bereitsBeigetreten: true });
     await page.goto("/tipp");
-    await expect(page.getByRole("button", { name: "Tipp abgeben" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Noch 40 Sitze verteilen" })).toBeVisible();
     await expect(page.getByText("später abgegeben")).toBeVisible();
   });
 

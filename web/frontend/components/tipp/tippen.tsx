@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import {
+  fehltText,
   mitRunde,
   restObText,
   restObTon,
@@ -70,7 +71,11 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
 
   const obRest = restOb(ob);
   const obTon = restObTon(obRest);
-  const kannAbgeben = rest === 0 && (!obOffen || obTon === "ok") && !sendet && !gespeichert;
+  // `fehlt` ist der Grund, warum nicht abgegeben werden kann — und zugleich
+  // die Beschriftung des Knopfes. Eine Wahrheit statt zwei, die
+  // auseinanderlaufen können.
+  const fehlt = fehltText(rest, obOffen, obRest);
+  const kannAbgeben = fehlt === null && !sendet && !gespeichert;
 
   function setzeSitz(slug: string, wert: number) {
     const geklemmt = Math.max(0, Math.min(setup.seats_total, Math.round(Number.isFinite(wert) ? wert : 0)));
@@ -117,12 +122,13 @@ export function Tippen({ setup, meins, runde, onGespeichert, onZurueck }: {
     }
   }
 
-  //: Der Knopf hat drei Zustände — und jeder sagt, was gerade gilt.
+  //: Der Knopf sagt immer, was gerade gilt: was noch fehlt, dass gerade
+  //: gespeichert wird, dass es geklappt hat — oder was ein Druck täte.
   const knopfText = gespeichert
     ? "Gespeichert"
     : sendet
       ? "Speichert …"
-      : meins.has_tip ? "Tipp aktualisieren" : "Tipp abgeben";
+      : fehlt ?? (meins.has_tip ? "Tipp aktualisieren" : "Tipp abgeben");
 
   return (
     <div className="mx-auto min-h-[100dvh] max-w-md pb-8">

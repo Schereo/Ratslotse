@@ -96,6 +96,21 @@ export function tippSegmente(
   return out;
 }
 
+/**
+ * Was auf dem Abgabe-Knopf steht, SOLANGE etwas fehlt — sonst `null`.
+ *
+ * Der Knopf ist in genau diesen Fällen gesperrt. Vorher stand dort
+ * unverändert „Tipp abgeben", und ein Druck darauf tat nichts, ohne zu
+ * sagen warum (Tims Befund 13.09.). Die Reihenfolge ist die des Lesens:
+ * erst die Sitze, dann die OB-Prozente.
+ */
+export function fehltText(rest: number, obOffen: boolean, obRest: number): string | null {
+  if (rest > 0) return `Noch ${rest} ${rest === 1 ? "Sitz" : "Sitze"} verteilen`;
+  if (rest < 0) return `${-rest} ${-rest === 1 ? "Sitz" : "Sitze"} zu viel`;
+  if (obOffen && restObTon(obRest) === "warn") return "OB-Prozente über 100 %";
+  return null;
+}
+
 /** Summe eines OB-Tipps (Prozente). */
 export function summeOb(tipp: Record<string, number>): number {
   return Object.values(tipp).reduce((s, n) => s + (Number.isFinite(n) ? n : 0), 0);

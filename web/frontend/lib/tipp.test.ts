@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  fehltText,
   probePfad,
   punkteText,
   rangDeltaText,
@@ -20,6 +21,33 @@ import type { TippPartei } from "./tipp";
 function partei(slug: string, seats_2021: number | null, color = "#123456"): TippPartei {
   return { slug, short: slug, name: slug, color, color_dark: color, seats_2021 } as TippPartei;
 }
+
+describe("fehltText", () => {
+  it("nennt die fehlenden Sitze im Singular und Plural", () => {
+    expect(fehltText(12, false, 100)).toBe("Noch 12 Sitze verteilen");
+    expect(fehltText(1, false, 100)).toBe("Noch 1 Sitz verteilen");
+  });
+
+  it("nennt auch die Überzahl", () => {
+    expect(fehltText(-3, false, 100)).toBe("3 Sitze zu viel");
+    expect(fehltText(-1, false, 100)).toBe("1 Sitz zu viel");
+  });
+
+  it("meldet die OB-Prozente erst, wenn die Sitze stimmen", () => {
+    // Rest 5 UND OB über 100: Die Sitze stehen oben, also kommen sie zuerst.
+    expect(fehltText(5, true, -2)).toBe("Noch 5 Sitze verteilen");
+    expect(fehltText(0, true, -2)).toBe("OB-Prozente über 100 %");
+    // Rundungstoleranz wie im Backend (bis 100,5 %) und ein zugeklappter
+    // OB-Block blockieren nicht.
+    expect(fehltText(0, true, -0.4)).toBeNull();
+    expect(fehltText(0, false, -50)).toBeNull();
+  });
+
+  it("gibt null zurück, wenn alles passt — dann darf abgegeben werden", () => {
+    expect(fehltText(0, true, 12)).toBeNull();
+    expect(fehltText(0, false, 100)).toBeNull();
+  });
+});
 
 describe("Rest der Sitzverteilung", () => {
   it("Text und Ton an den drei Fällen", () => {
