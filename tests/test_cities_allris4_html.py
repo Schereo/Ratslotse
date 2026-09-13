@@ -101,9 +101,97 @@ def test_die_beratung_haengt_an_ihrem_punkt_und_ihrer_vorlage(batch):
         assert c.agenda_item_id in punkte
         assert c.meeting_id == SITZUNG
         assert "VOLFDNR=" in c.paper_id
-    # Die „Zuständigkeit" der Tagesordnung ist die Rolle der Station.
-    assert {c.role_raw for c in batch.consultations} == {"Vorberatung",
+    # Die „Zuständigkeit" der Tagesordnung ist die Rolle der Station — bis
+    # die Beratungsfolge ein ECHTES Ergebnis meldet: Der Schulausschuss hat
+    # am 29.06.2026 vertagt, und das steht dort in der datierten Zeile. Bis
+    # zum 13.09.2026 gewann hier die Rolle, und „vertagt" ging verloren.
+    assert {c.role_raw for c in batch.consultations} == {"vertagt",
                                                          "Kenntnisnahme"}
+
+
+# --------------------------------------------------------------- Wolfsburg
+#
+# Dieselbe Anwendung, dieselbe Fassung — und trotzdem eine andere Seite.
+# `wolfsburg_vo020.html` ist eine unveränderte Antwort von
+# `ratsinfob.stadt.wolfsburg.de` (geholt 11.09.2026). Der Adapter wurde an
+# Laatzen gebaut und an Wolfsburg betrieben; was dabei stumm schiefging,
+# halten die drei Tests hier fest.
+
+WOLFSBURG = "https://ratsinfob.stadt.wolfsburg.de/vo020?VOLFDNR=1010527"
+
+
+@pytest.fixture()
+def wolfsburg(tmp_path):
+    store = CitiesStore(tmp_path / "raw.sqlite")
+    store.put_raw_object("wolfsburg", "paper", WOLFSBURG, {
+        "id": WOLFSBURG,
+        "html": (FIXTURES / "wolfsburg_vo020.html").read_text(encoding="utf-8")})
+    yield get_adapter("allris4_html").normalize("wolfsburg", store)
+    store.close()
+
+
+def test_die_art_endet_an_der_naechsten_ueberschrift(wolfsburg):
+    """Ein Feld, das man nicht speichert, muss trotzdem als Grenze dastehen.
+
+    Wolfsburg schreibt „Federführende Organisationseinheit:", Laatzen
+    „Federführend:". Ohne die lange Form lief der Wert von `Vorlageart` bis
+    zum Seitenende weiter — gemessen 883 von 1.570 Vorlagen mit einem
+    400-Zeichen-Block als Art, allesamt als „other" eingeordnet.
+    """
+    (vorlage,) = wolfsburg.papers
+    assert vorlage.paper_type_raw == "Schriftliche Kenntnisgabe"
+    assert "Organisationseinheit" not in (vorlage.paper_type_raw or "")
+    # „Kenntnisgabe" ist Wolfsburgs Wort für die Informationsvorlage.
+    assert vorlage.kind == PaperKind.REPORT
+
+
+def test_die_beratungsfolge_versteht_englische_daten(wolfsburg):
+    """„Sep 28, 2023" statt „28.09.2023" — dieselbe ALLRIS-Fassung.
+
+    Das Datum trägt doppelt: Es datiert die Vorlage, UND es paart die
+    Doppelzeilen der Beratungsfolge. Ohne es standen alle 1.570 Wolfsburger
+    Vorlagen undatiert da, und aus 40 Seiten wurden 40 statt 52 Stationen.
+    """
+    (vorlage,) = wolfsburg.papers
+    assert vorlage.date == "2026-01-29", "aus der Beratungsfolge: Jan 29, 2026"
+
+    # Und die Station selbst: Ohne geparstes Datum bleibt die zweite Zeile
+    # ungepaart liegen, der Beschluss geht mit ihr verloren.
+    suppe = BeautifulSoup(
+        (FIXTURES / "wolfsburg_vo020.html").read_text(encoding="utf-8"), "html.parser")
+    (station,) = Allris4HtmlAdapter._beratungsfolge(suppe)
+    assert station["datum"] == "2026-01-29"
+    # Die datierte Zeile trägt das Ergebnis, die undatierte nur die Rolle
+    # („Kenntnisnahme") — das Ergebnis gewinnt.
+    assert station["beschluss"] == "zur Kenntnis genommen"
+
+
+def test_das_ergebnis_gewinnt_gegen_die_rolle():
+    """Laatzen verlor dasselbe: ein „vertagt" hinter einer „Vorberatung".
+
+    Beide Städte setzen die Rolle in die undatierte Zeile und das Ergebnis in
+    die datierte. Wer die erste behält, schreibt am Ende „Vorberatung" dorthin,
+    wo „vertagt" stehen müsste — und `model.outcome` liest daraus kein
+    Ergebnis, sondern nichts.
+    """
+    suppe = BeautifulSoup(
+        (FIXTURES / "laatzen_vo020.html").read_text(encoding="utf-8"), "html.parser")
+    stationen = Allris4HtmlAdapter._beratungsfolge(suppe)
+    vertagt = [s for s in stationen if s["beschluss"] == "vertagt"]
+    assert vertagt, f"kein vertagt übernommen: {[s['beschluss'] for s in stationen]}"
+    assert vertagt[0]["datum"] == "2026-06-29"
+
+
+def test_die_deutsche_schreibweise_bleibt_die_regel(batch):
+    """Laatzen als Gegenprobe: Die neue Grenze verschluckt nichts Bestehendes.
+
+    Derselbe Adapter, dieselben Felder — hier in der Form, für die er gebaut
+    wurde. Fiele dieser Test, wäre die englische Form nicht ergänzt, sondern
+    an die Stelle der deutschen getreten.
+    """
+    (vorlage,) = batch.papers
+    assert vorlage.date == "2026-06-29", "TT.MM.JJJJ, wie Laatzen es schreibt"
+    assert vorlage.paper_type_raw == "Antrag"
 
 
 def test_die_beratungsfolge_liest_zwei_zeilen_je_station():

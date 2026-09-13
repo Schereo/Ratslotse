@@ -237,8 +237,11 @@ _PAPER_KIND_RULES: tuple[tuple[tuple[str, ...], PaperKind], ...] = (
     # „informationsdrucksache" enthält „drucksache" nicht als Teilwort des
     # generischen Exakt-Eintrags unten (der greift nur bei GENAU „drucksache")
     # — Hannovers eigenes Wort für eine reine Kenntnisgabe ohne Beschluss.
-    (("informationsvorlage", "berichtsvorlage", "kenntnisnahme", "bericht",
-      "informationsdrucksache"), PaperKind.REPORT),
+    # „kenntnisgabe" neben „kenntnisnahme": Wolfsburg nennt seine
+    # Informationsvorlage „Schriftliche Kenntnisgabe" — dieselbe Sache, ein
+    # anderes Wort. Gemessen 13.09.2026: 14 von 120 Seiten einer Stichprobe.
+    (("informationsvorlage", "berichtsvorlage", "kenntnisnahme", "kenntnisgabe",
+      "bericht", "informationsdrucksache"), PaperKind.REPORT),
     (("beschlussvorlage", "entscheidungsvorlage", "beschlußvorlage"), PaperKind.PROPOSAL),
     (("mitteilung",), PaperKind.NOTICE),
 )
