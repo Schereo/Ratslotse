@@ -215,5 +215,9 @@ def test_der_bestand_eines_einzelnen_spiels_wird_zur_hauptrunde(tmp_path):
         st._migrate_tippspiel_runden()  # noqa: SLF001
         assert st.prediction_game_by_slug("vally", "Vallys Tippspiel")["id"] == 2
         assert st.prediction_players(2) == []
+        # Die Spalte vom 13.09. (geteiltes Gerät) kommt beim Bestand nach — aus.
+        spalten = {r[1] for r in st._conn.execute("PRAGMA table_info(prediction_game)")}  # noqa: SLF001
+        assert "shared_device" in spalten
+        assert st.prediction_game(1)["shared_device"] == 0
     finally:
         st.close()

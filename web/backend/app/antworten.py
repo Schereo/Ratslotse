@@ -3827,6 +3827,10 @@ class PredictionGame(TypedDict):
     locked: bool
     locked_at: str | None
     late_scored: bool
+    #: Ein Gerät, mehrere Personen (Schalter je Runde, Admin): Nach dem
+    #: Speichern bietet „Mein Tipp" „Fertig — nächste Person" an, das den
+    #: Cookie löscht und den Tipp behält. Aus in der Hauptrunde.
+    shared_device: bool
     player_count: int
     #: Menschentext für den Zeitpunkt des Tipp-Schlusses, z. B. „bis zur
     #: ersten Hochrechnung (ca. 20 Uhr)" — der Server nennt keine feste Uhrzeit,

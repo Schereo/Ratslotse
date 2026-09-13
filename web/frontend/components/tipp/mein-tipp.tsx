@@ -22,11 +22,20 @@ function punktTon(punkte: number, hoechst: number): string {
   return "bg-muted text-muted-foreground";
 }
 
-export function MeinTipp({ setup, meins, runde, onAendern }: {
+export function MeinTipp({ setup, meins, runde, onAendern, onWeitergeben }: {
   setup: TippSetup; meins: TippMeins; runde: string | null;
   /** Solange getippt werden darf: zurück ins Formular (1d). */
   onAendern?: () => void;
+  /** Geteiltes Gerät (Schalter je Runde): Cookie weg, Tipp bleibt, zurück
+   *  zum Einstieg — damit die nächste Person am selben Handy tippen kann. */
+  onWeitergeben?: () => Promise<void> | void;
 }) {
+  const [gibtWeiter, setGibtWeiter] = useState(false);
+  async function weitergeben() {
+    if (!onWeitergeben || gibtWeiter) return;
+    setGibtWeiter(true);
+    try { await onWeitergeben(); } finally { setGibtWeiter(false); }
+  }
   const parteiVon: Record<string, TippSetup["parties"][number]> = Object.fromEntries(
     setup.parties.map((p) => [p.slug, p]),
   );
@@ -82,9 +91,11 @@ export function MeinTipp({ setup, meins, runde, onAendern }: {
             <p className="font-mono text-[10px] uppercase tracking-[0.11em] opacity-75">{meins.name}</p>
             <p className="mt-0.5 font-display text-lg font-bold">Dein Tipp ist gespeichert.</p>
             <p className="mt-1 text-[12.5px] leading-relaxed opacity-90">
-              {meins.locked
-                ? "Sobald Ergebnisse vorliegen, siehst du hier, wie gut dein Tipp passt."
-                : `Du kannst deinen Tipp ${setup.deadline_hint} ändern.`}
+              {onWeitergeben
+                ? "Gib das Gerät jetzt weiter — dann kann die nächste Person tippen."
+                : meins.locked
+                  ? "Sobald Ergebnisse vorliegen, siehst du hier, wie gut dein Tipp passt."
+                  : `Du kannst deinen Tipp ${setup.deadline_hint} ändern.`}
             </p>
           </div>
         </div>
@@ -188,7 +199,26 @@ export function MeinTipp({ setup, meins, runde, onAendern }: {
         </div>
       )}
 
-      {onAendern && (
+      {onWeitergeben ? (
+        // Geteiltes Gerät: Der Hauptknopf gibt das Gerät weiter — „Tipp
+        // ändern" bleibt daneben, solange das Gerät noch nicht weitergegeben
+        // ist. Danach ist der Tipp fest: Ohne Cookie findet ihn kein Gerät
+        // mehr, und das ist hier gewollt (die nächste Person soll ihn nicht
+        // aus Versehen überschreiben).
+        <div className="mt-3.5 flex flex-col gap-2 px-4">
+          <Button type="button" variant="primary" className="h-11 w-full text-sm" disabled={gibtWeiter} onClick={() => void weitergeben()}>
+            {gibtWeiter ? "Einen Moment …" : "Fertig — nächste Person"}
+          </Button>
+          {onAendern && (
+            <Button type="button" variant="secondary" className="h-11 w-full text-sm" onClick={onAendern}>
+              Tipp ändern
+            </Button>
+          )}
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+            Danach lässt sich dein Tipp auf diesem Gerät nicht mehr ändern — er bleibt gespeichert und zählt.
+          </p>
+        </div>
+      ) : onAendern && (
         <div className="mt-3.5 px-4">
           <Button type="button" variant="primary" className="h-11 w-full text-sm" onClick={onAendern}>
             Tipp ändern

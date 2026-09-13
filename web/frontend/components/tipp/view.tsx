@@ -118,6 +118,19 @@ export function TippView() {
     queryClient.invalidateQueries({ queryKey: ["tipp"] });
   }
 
+  // Geteiltes Gerät (Schalter je Runde, Admin): „Fertig — nächste Person"
+  // löscht nur den Cookie, der Tipp bleibt. Danach antwortet `/tipp/me`
+  // wieder 401, und die Zustandsmaschine landet von selbst beim Einstieg.
+  async function weitergeben() {
+    try {
+      await fetch(apiUrl(mitRunde("/tipp/abmelden", runde)), { method: "POST", credentials: "include" });
+    } catch {
+      // Ohne Verbindung bleibt der Cookie — beim nächsten Versuch klappt es.
+    }
+    setBearbeiten(false);
+    aufFrisch();
+  }
+
   if (configLaedt) return null; // wie useFeature überall: lieber später als falsch
   if (!tippspielAn) return <NichtFreigeschaltet />;
   if (setupQuery.isLoading || meinsQuery.isLoading || !setupQuery.data) return <LadeSchirm />;
@@ -148,5 +161,11 @@ export function TippView() {
       />
     );
   }
-  return <MeinTipp setup={setup} meins={meins} runde={runde} onAendern={darfTippen ? () => setBearbeiten(true) : undefined} />;
+  return (
+    <MeinTipp
+      setup={setup} meins={meins} runde={runde}
+      onAendern={darfTippen ? () => setBearbeiten(true) : undefined}
+      onWeitergeben={setup.shared_device ? weitergeben : undefined}
+    />
+  );
 }

@@ -27,7 +27,7 @@ import type { ApiAntwort } from "@/lib/vertrag";
 import { mitRunde, uhrzeitKurz } from "@/lib/tipp";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand";
-import { Button, Segmented, Spinner } from "@/components/ui";
+import { Button, Segmented, Spinner, Switch } from "@/components/ui";
 
 type AdminStand = ApiAntwort<"/tipp/admin/stand">;
 type Ergebnis = AdminStand["results"][number];
@@ -342,6 +342,22 @@ export function TippAdminView() {
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
               Die Tippfrist endet automatisch mit der ersten Hochrechnung der Ratswahl. Mit „Endstand setzen“ kennzeichnest du den aktuellen Stand als Endergebnis.
             </p>
+            {/* Geteiltes Gerät — je Runde. Vallys Kreis (13.09.) hat nicht
+                für jede Person ein Handy; die Hauptrunde braucht das nicht. */}
+            <div className="mt-3.5 flex items-center gap-3 rounded-[10px] border border-border px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold">Mehrere Personen an einem Gerät</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  Nach dem Speichern gibt es „Fertig — nächste Person“: Das Gerät vergisst den Tipp, der Tipp bleibt gespeichert und lässt sich danach nicht mehr ändern.
+                </p>
+              </div>
+              <Switch
+                aria-label="Mehrere Personen an einem Gerät"
+                checked={setup.shared_device}
+                disabled={laeuft === "geraet"}
+                onCheckedChange={(an) => void aktion("geraet", () => api.put(pfad("/tipp/admin/einstellungen"), { shared_device: an }), an ? "Geteiltes Gerät eingeschaltet." : "Geteiltes Gerät ausgeschaltet.")}
+              />
+            </div>
           </Karte>
 
           {/* ── Beamer ───────────────────────────────────────────────── */}

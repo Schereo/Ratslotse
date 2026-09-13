@@ -317,7 +317,8 @@ def setup(store: Store, game_id: int) -> PredictionGame:
         round=game["slug"], listed=runde.listed if runde else False,
         title=game["title"], phase=game["phase"], seats_total=reg.seats,
         locked=game["phase"] != "open", locked_at=game["locked_at"],
-        late_scored=bool(game["late_scored"]), player_count=store.prediction_player_count(game_id),
+        late_scored=bool(game["late_scored"]), shared_device=bool(game["shared_device"]),
+        player_count=store.prediction_player_count(game_id),
         deadline_hint=_deadline_hint(game), parties=parties, mayor_candidates=mayors,
     )
 

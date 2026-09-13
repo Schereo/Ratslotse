@@ -28,8 +28,8 @@ const OB_KANDIDATUREN = [
 
 function setup(overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    title: "Tippspiel zur Ratswahl", phase: "open", seats_total: 40,
-    locked: false, locked_at: null, late_scored: false, player_count: 3,
+    round: "ratswahl", listed: true, title: "Tippspiel zur Ratswahl", phase: "open", seats_total: 40,
+    locked: false, locked_at: null, late_scored: false, shared_device: false, player_count: 3,
     deadline_hint: "bis zur ersten Hochrechnung (ca. 20 Uhr)",
     parties: PARTEIEN, mayor_candidates: OB_KANDIDATUREN,
     ...overrides,
@@ -268,5 +268,45 @@ test.describe("Eigene Runde (?runde=vally)", () => {
     await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
     await expect.poll(() => abrufe.some((u) => u.startsWith("POST") && u.endsWith("/api/tipp?round=vally"))).toBe(true);
     expect(abrufe.every((u) => u.includes("round=vally"))).toBe(true);
+  });
+});
+
+test.describe("Geteiltes Gerät (Schalter je Runde)", () => {
+  test("nach dem Speichern gibt „Fertig — nächste Person“ das Gerät weiter, der Tipp bleibt", async ({ page }) => {
+    // Vallys Kreis (13.09.2026) tippt von EINEM Handy. Der Knopf löscht nur
+    // den Cookie (POST /api/tipp/abmelden) — danach steht der Einstieg
+    // wieder da, und die Seite sagt, dass hier mehrere Personen tippen.
+    await appConfig(page, ["tippspiel"]);
+    const zustand = tippMocks(page, meins(), { setupOverrides: { shared_device: true } });
+    let abgemeldet = 0;
+    await page.route("**/api/tipp/abmelden", (route) => {
+      abgemeldet += 1;
+      zustand.beigetreten = false;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+    });
+    await page.goto("/tipp");
+    await expect(page.getByText(/mehrere Personen an einem Gerät/)).toBeVisible();
+    await page.getByLabel(/Dein Name/).fill("Erste Person");
+    await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
+    await page.getByLabel("Sitze für Grüne").fill("40");
+    await page.getByRole("button", { name: "Tipp abgeben" }).click();
+
+    await expect(page.getByText("Dein Tipp ist gespeichert.")).toBeVisible();
+    await expect(page.getByText(/Gib das Gerät jetzt weiter/)).toBeVisible();
+    // Solange das Gerät nicht weitergegeben ist, geht „Tipp ändern" weiter.
+    await expect(page.getByRole("button", { name: "Tipp ändern" })).toBeVisible();
+    await page.getByRole("button", { name: /Fertig — nächste Person/ }).click();
+
+    await expect(page.getByLabel(/Dein Name/)).toBeVisible();
+    expect(abgemeldet).toBe(1);
+    await expect(page.getByLabel(/Dein Name/)).toHaveValue("");
+  });
+
+  test("in der Hauptrunde gibt es den Knopf nicht", async ({ page }) => {
+    await appConfig(page, ["tippspiel"]);
+    tippMocks(page, meins(), { bereitsBeigetreten: true });
+    await page.goto("/tipp");
+    await expect(page.getByText("Dein Tipp ist gespeichert.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /nächste Person/ })).toHaveCount(0);
   });
 });

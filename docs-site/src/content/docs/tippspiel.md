@@ -116,6 +116,31 @@ die übrigen Tabellen ihr `game_id`. Der Bestand von vorher (ein Spiel mit
 (`Store._migrate_tippspiel_runden`, geprüft in
 `tests/test_prediction_runden.py`).
 
+## Ein Gerät, mehrere Personen
+
+Die Identität ist der Cookie — und ein Cookie gehört einem Gerät. Wer kein
+eigenes Handy dabei hat, konnte deshalb nicht mittippen (Vallys Kreis,
+13.09.2026). Seitdem trägt jede Runde den Schalter **„Mehrere Personen an
+einem Gerät“** (`prediction_game.shared_device`, Admin-Seite unter
+*Spielstatus*, Vorgabe aus):
+
+- Ist er an, zeigt „Mein Tipp“ nach dem Speichern als Hauptknopf **„Fertig —
+  nächste Person“**. Er ruft `POST /api/tipp/abmelden`: Der Cookie wird
+  gelöscht, die Teilnahme und der Tipp **bleiben** (anders als
+  `DELETE /api/tipp/me`, das die Teilnahme löscht). Danach antwortet
+  `/api/tipp/me` wieder 401, und die Seite zeigt den Einstieg — mit dem
+  Hinweis, dass hier mehrere Personen tippen, und einem Link zur Rangliste.
+- Solange das Gerät nicht weitergegeben ist, geht „Tipp ändern“ wie sonst.
+  **Danach ist der Tipp fest:** Kein Gerät trägt mehr seinen Cookie, und
+  einen Wiedereinstieg über den Namen gibt es bewusst nicht — sonst könnte
+  am geteilten Handy jede*r jeden Tipp ändern.
+- Der Schalter ändert nichts an Punkten, Rängen oder dem Beamer; er ist
+  reine Bedienung. Das Protokoll der Runde vermerkt jedes Weitergeben.
+
+`POST /api/tipp/abmelden` ist unabhängig vom Schalter erlaubt (ein Gerät
+ohne Cookie ist nie ein Schaden); der Schalter steuert nur, ob die Seite
+den Knopf zeigt.
+
 ## Woher der Vergleich kommt
 
 **Grundlage ist der Wahlabend.** `GET /api/tipp/stand` liest denselben

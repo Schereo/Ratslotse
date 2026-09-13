@@ -4,6 +4,7 @@
 // „Los geht's". Kein Konto, keine E-Mail — der Name ist alles, was diese
 // Seite über die Person weiß.
 
+import Link from "next/link";
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
 import { mitRunde } from "@/lib/tipp";
@@ -101,6 +102,16 @@ export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
           {sendet ? "Einen Moment …" : "Jetzt mitmachen"}
         </Button>
       </form>
+
+      {setup.shared_device && (
+        // Geteiltes Gerät: Wer schon getippt hat, kommt hier wieder an —
+        // ohne Cookie. Die Seite sagt, dass das so gehört, und zeigt den Weg
+        // zur Rangliste, statt zu einem zweiten Beitritt zu verleiten.
+        <p className="mt-3 w-full rounded-[10px] border border-dashed border-primary/30 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
+          Hier tippen mehrere Personen an einem Gerät. Schon getippt? Dein Tipp ist gespeichert —{" "}
+          <Link href={mitRunde("/tipp/live", runde, "runde")} className="font-semibold text-primary underline-offset-2 hover:underline">zur Rangliste</Link>.
+        </p>
+      )}
 
       <div className="mt-4 grid w-full grid-cols-3 gap-2 text-left text-[11.5px] text-muted-foreground">
         <div className="rounded-[10px] bg-primary/5 p-2.5">
