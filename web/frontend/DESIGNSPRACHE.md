@@ -395,6 +395,24 @@ iOS-Schrift.
 
 ## 6. Interaktions-Grammatik
 
+### Kopf einer einzelnen Sitzung
+
+Der Sitzungskopf bildet eine gemeinsame Karte: leiser Kicker „Sitzung“ und
+Anzahl der Tagesordnungspunkte, darunter der Kurzname als einzige Hauptüberschrift.
+Der amtliche Name steht bei Abweichung separat in Inter 13, ohne Abschneiden
+und ohne die fette Titelschrift zu erben. Eine abgesetzte Informationszeile
+ordnet „Termin“ und „Ort“ mit kleinen Icons; das Datum erscheint einmal vollständig,
+die Uhrzeit darunter. Adressen bleiben vollständig lesbar. Fehlende Angaben
+werden benannt. Breite und Schriftgröße bestimmen, ob die zwei Angaben neben-
+oder untereinander stehen.
+
+Kalender, Merken und Teilen stehen gleichwertig in einer abgetrennten
+Aktionsleiste; der externe Ratsinfo-Link folgt am Ende. Alle Aktionen haben
+mindestens 44 px Bedienhöhe. Mobil passen zwei in eine Zeile, bei großer Schrift
+eine. Die Rücknavigation liegt oberhalb der Karte.
+
+### Allgemeine Aktionen
+
 - Primäraktion = gefüllter primary-Button (Radius 10–11, h 32–38); Sekundär =
   weißer Ghost mit Rahmen; destruktiv = #b91c1c gefüllt nur im Bestätigungsdialog.
 - Vorschlags-Chips (antippbare Fragen): primary-Rahmen /30 + bg /4 (auf Tonfläche
