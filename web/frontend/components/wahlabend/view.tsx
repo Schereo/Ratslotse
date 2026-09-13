@@ -478,7 +478,7 @@ function KandidatZeile({
       <span className="flex-none text-right">
         <span className="block text-[13px] font-semibold tabular-nums">{zahl(stimmen === null ? null : Math.round(stimmen))}</span>
         {hochrechnung && k.projected_votes !== null ? (
-          <span className="block text-[10.5px] text-muted-foreground tabular-nums">→ {zahl(k.projected_votes)}</span>
+          <span className="block text-[10.5px] text-muted-foreground tabular-nums" title="Hochrechnung: Personenstimmen am Ende der Auszählung">Hochr. → {zahl(k.projected_votes)}</span>
         ) : null}
       </span>
     </li>
