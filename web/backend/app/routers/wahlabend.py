@@ -8,7 +8,7 @@ Seite bis zum Wahlabend dunkel bleiben kann und danach ohne Deploy wieder.
 2026), ``&counted=N`` davon nur die ersten N Wahlbezirke ausgezählt.
 
 Dazu ``GET /api/wahlabend/bild.png``: derselbe Stand als teilbares Bild —
-und ``GET /api/wahlabend/karte.png?liste=…[&bereich=…[&platz=…]]``: die
+und ``GET /api/wahlabend/karte.png?list=…[&area=…[&position=…]]``: die
 Karte einer Liste, einer Liste im Wahlbereich oder einer Person.
 """
 from __future__ import annotations
@@ -99,33 +99,33 @@ _karten: dict[tuple[str, int | None, str, int | None, int | None, str, bool, str
 
 @router.get("/api/wahlabend/karte.png", response_class=Response, responses=WAHLABEND_KARTE_PNG)
 def wahlabend_karte(
-    liste: str = Query(pattern="^[a-z0-9-]{1,40}$", description="Slug der Liste, z. B. „gruene“"),
-    bereich: int | None = Query(default=None, ge=1, le=20, description="Wahlbereich (1–6): die Liste dort"),
-    platz: int | None = Query(default=None, ge=1, le=99, description="Listenplatz im Wahlbereich: die Person"),
+    list: str = Query(pattern="^[a-z0-9-]{1,40}$", description="Slug der Liste, z. B. „gruene“"),
+    area: int | None = Query(default=None, ge=1, le=20, description="Wahlbereich (1–6): die Liste dort"),
+    position: int | None = Query(default=None, ge=1, le=99, description="Listenplatz im Wahlbereich: die Person"),
     format: str = Query(default="beitrag", pattern="^(beitrag|story|quer)$",
                         description="„beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630"),
-    vergleich: bool = Query(default=True, description="false = ohne den Abstand zu 2021 (Listenkarte)"),
+    compare: bool = Query(default=True, description="false = ohne den Abstand zu 2021 (Listenkarte)"),
     probe: str | None = Query(default=None, description="„2021“ = Generalprobe mit den Zahlen von 2021"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
 ) -> Response:
     """Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich
     oder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.
-    ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``platz`` braucht
-    ``bereich``; eine Kombination, die es nicht gibt, antwortet 404.
+    ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``
+    braucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.
     """
     _frei()
     daten = _stand(probe, counted)
-    auswahl = share.select(daten, liste, bereich, platz)
+    auswahl = share.select(daten, list, area, position)
     if auswahl is None:
         raise HTTPException(status_code=404, detail="Diese Liste, diesen Wahlbereich oder diesen Listenplatz gibt es nicht.")
 
-    schluessel = (daten["dataset"], counted, liste, bereich, platz, format, vergleich, daten["computed_at"])
+    schluessel = (daten["dataset"], counted, list, area, position, format, compare, daten["computed_at"])
     jetzt = time.monotonic()
     with _bild_lock:
         treffer = _karten.get(schluessel)
         png = treffer[1] if treffer and jetzt - treffer[0] < BILD_TTL else None
     if png is None:
-        png = share.render(daten, auswahl, format, vergleich)
+        png = share.render(daten, auswahl, format, compare)
         with _bild_lock:
             while len(_karten) >= KARTEN_MAX:
                 del _karten[min(_karten, key=lambda k: _karten[k][0])]

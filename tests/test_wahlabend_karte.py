@@ -141,10 +141,10 @@ def test_abstaende_zu_2021_in_worten():
 
 def test_karten_endpunkt_ist_hinter_dem_schalter(client, monkeypatch):
     monkeypatch.delenv("FEATURE_FLAGS", raising=False)
-    assert client.get("/api/wahlabend/karte.png?liste=gruene&probe=2021&counted=60").status_code == 404
+    assert client.get("/api/wahlabend/karte.png?list=gruene&probe=2021&counted=60").status_code == 404
 
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
-    r = client.get("/api/wahlabend/karte.png?liste=gruene&probe=2021&counted=60")
+    r = client.get("/api/wahlabend/karte.png?list=gruene&probe=2021&counted=60")
     assert r.status_code == 200, r.text
     assert r.headers["content-type"] == "image/png"
     assert "max-age=60" in r.headers["cache-control"]
@@ -153,7 +153,7 @@ def test_karten_endpunkt_ist_hinter_dem_schalter(client, monkeypatch):
 
 def test_karten_endpunkt_kennt_die_drei_formate(client, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
-    q = "liste=gruene&bereich=1&platz=2&probe=2021&counted=60"
+    q = "list=gruene&area=1&position=2&probe=2021&counted=60"
     for fmt, groesse in GROESSEN.items():
         r = client.get(f"/api/wahlabend/karte.png?{q}&format={fmt}")
         assert r.status_code == 200, fmt
@@ -162,12 +162,12 @@ def test_karten_endpunkt_kennt_die_drei_formate(client, monkeypatch):
 
 
 def test_listenkarte_ohne_vergleich_zu_2021(client, monkeypatch):
-    """Wer teilt, muss den Verlust nicht mitteilen: ``vergleich=false`` lässt
+    """Wer teilt, muss den Verlust nicht mitteilen: ``compare=false`` lässt
     den Abstand zu 2021 weg — und die Karte sieht dann anders aus."""
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
-    q = "liste=gruene&probe=2021&counted=60&format=beitrag"
+    q = "list=gruene&probe=2021&counted=60&format=beitrag"
     mit = client.get(f"/api/wahlabend/karte.png?{q}")
-    ohne = client.get(f"/api/wahlabend/karte.png?{q}&vergleich=false")
+    ohne = client.get(f"/api/wahlabend/karte.png?{q}&compare=false")
     assert mit.status_code == ohne.status_code == 200
     assert mit.content != ohne.content
     assert _groesse(ohne.content) == (1080, 1350)
@@ -176,17 +176,17 @@ def test_listenkarte_ohne_vergleich_zu_2021(client, monkeypatch):
 def test_karten_endpunkt_unterscheidet_die_drei_arten_und_kennt_404(client, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
     q = "probe=2021&counted=60"
-    liste = client.get(f"/api/wahlabend/karte.png?liste=gruene&{q}")
-    bereich = client.get(f"/api/wahlabend/karte.png?liste=gruene&bereich=1&{q}")
-    person = client.get(f"/api/wahlabend/karte.png?liste=gruene&bereich=1&platz=2&{q}")
+    liste = client.get(f"/api/wahlabend/karte.png?list=gruene&{q}")
+    bereich = client.get(f"/api/wahlabend/karte.png?list=gruene&area=1&{q}")
+    person = client.get(f"/api/wahlabend/karte.png?list=gruene&area=1&position=2&{q}")
     assert liste.status_code == bereich.status_code == person.status_code == 200
     assert len({liste.content, bereich.content, person.content}) == 3, "zwei Karten sehen gleich aus"
     # Zweimal dieselbe Karte kommt aus dem Zwischenspeicher.
-    assert client.get(f"/api/wahlabend/karte.png?liste=gruene&bereich=1&platz=2&{q}").content == person.content
+    assert client.get(f"/api/wahlabend/karte.png?list=gruene&area=1&position=2&{q}").content == person.content
 
-    assert client.get(f"/api/wahlabend/karte.png?liste=gibt-es-nicht&{q}").status_code == 404
-    assert client.get(f"/api/wahlabend/karte.png?liste=gruene&bereich=9&{q}").status_code == 404
-    assert client.get(f"/api/wahlabend/karte.png?liste=gruene&bereich=1&platz=99&{q}").status_code == 404
-    assert client.get(f"/api/wahlabend/karte.png?liste=gruene&platz=2&{q}").status_code == 404
+    assert client.get(f"/api/wahlabend/karte.png?list=gibt-es-nicht&{q}").status_code == 404
+    assert client.get(f"/api/wahlabend/karte.png?list=gruene&area=9&{q}").status_code == 404
+    assert client.get(f"/api/wahlabend/karte.png?list=gruene&area=1&position=99&{q}").status_code == 404
+    assert client.get(f"/api/wahlabend/karte.png?list=gruene&position=2&{q}").status_code == 404
     assert client.get(f"/api/wahlabend/karte.png?{q}").status_code == 422
-    assert client.get(f"/api/wahlabend/karte.png?liste=Grüne&{q}").status_code == 422
+    assert client.get(f"/api/wahlabend/karte.png?list=Grüne&{q}").status_code == 422

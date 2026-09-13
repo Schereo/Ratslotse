@@ -232,11 +232,11 @@ export function kartePfad(
   counted: string | null,
   vergleich = true,
 ): string {
-  const q = new URLSearchParams({ liste });
-  if (bereich !== null) q.set("bereich", String(bereich));
-  if (bereich !== null && platz !== null) q.set("platz", String(platz));
+  const q = new URLSearchParams({ list: liste });
+  if (bereich !== null) q.set("area", String(bereich));
+  if (bereich !== null && platz !== null) q.set("position", String(platz));
   q.set("format", format);
-  if (!vergleich) q.set("vergleich", "false");
+  if (!vergleich) q.set("compare", "false");
   if (probe) q.set("probe", probe);
   if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
   return `/wahlabend/karte.png?${q.toString()}`;

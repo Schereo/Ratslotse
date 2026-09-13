@@ -1,5 +1,5 @@
 """Sharepics je Liste, je Liste im Wahlbereich und je Person — das PNG hinter
-``GET /api/wahlabend/karte.png``.
+``GET /api/wahlabend/karte.png?list=…[&area=…[&position=…]]``.
 
 Das Bild in ``image.py`` zeigt den ganzen Rat. Hier geht es um EINE Liste
 oder EINE Person: wie sie abgeschnitten hat, anschaulich genug, dass man es

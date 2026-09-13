@@ -26332,31 +26332,31 @@
     },
     "/api/wahlabend/karte.png": {
       "get": {
-        "description": "Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich\noder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.\n``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``platz`` braucht\n``bereich``; eine Kombination, die es nicht gibt, antwortet 404.",
+        "description": "Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich\noder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.\n``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``\nbraucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.",
         "operationId": "wahlabend_karte_api_wahlabend_karte_png_get",
         "parameters": [
           {
             "description": "Slug der Liste, z. B. „gruene“",
             "in": "query",
-            "name": "liste",
+            "name": "list",
             "required": true,
             "schema": {
               "description": "Slug der Liste, z. B. „gruene“",
               "pattern": "^[a-z0-9-]{1,40}$",
-              "title": "Liste",
+              "title": "List",
               "type": "string"
             }
           },
           {
             "description": "Wahlbereich (1–6): die Liste dort",
             "in": "query",
-            "name": "bereich",
+            "name": "area",
             "required": false,
             "schema": {
               "description": "Wahlbereich (1–6): die Liste dort",
               "maximum": 20,
               "minimum": 1,
-              "title": "Bereich",
+              "title": "Area",
               "type": [
                 "integer",
                 "null"
@@ -26366,13 +26366,13 @@
           {
             "description": "Listenplatz im Wahlbereich: die Person",
             "in": "query",
-            "name": "platz",
+            "name": "position",
             "required": false,
             "schema": {
               "description": "Listenplatz im Wahlbereich: die Person",
               "maximum": 99,
               "minimum": 1,
-              "title": "Platz",
+              "title": "Position",
               "type": [
                 "integer",
                 "null"
@@ -26395,12 +26395,12 @@
           {
             "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
             "in": "query",
-            "name": "vergleich",
+            "name": "compare",
             "required": false,
             "schema": {
               "default": true,
               "description": "false = ohne den Abstand zu 2021 (Listenkarte)",
-              "title": "Vergleich",
+              "title": "Compare",
               "type": "boolean"
             }
           },
@@ -26445,7 +26445,7 @@
                 }
               }
             },
-            "description": "Die Karte zum Teilen (PNG): wie eine Liste (`?liste=`), eine Liste im Wahlbereich (`&bereich=`) oder eine Person (`&platz=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&vergleich=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar."
+            "description": "Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar."
           },
           "404": {
             "description": "Wahlabend nicht freigeschaltet, oder Liste/Wahlbereich/Listenplatz gibt es nicht."

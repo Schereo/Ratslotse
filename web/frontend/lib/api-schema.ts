@@ -5015,8 +5015,8 @@ export interface paths {
          * Wahlabend Karte
          * @description Die Karte zum Teilen (PNG): wie eine Liste, eine Liste im Wahlbereich
          *     oder eine Person abgeschnitten hat — mit Lotti, die den Wählenden dankt.
-         *     ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``platz`` braucht
-         *     ``bereich``; eine Kombination, die es nicht gibt, antwortet 404.
+         *     ``format`` wählt Beitrag (4:5), Story (9:16) oder quer; ``position``
+         *     braucht ``area``; eine Kombination, die es nicht gibt, antwortet 404.
          */
         get: operations["wahlabend_karte_api_wahlabend_karte_png_get"];
         put?: never;
@@ -18450,15 +18450,15 @@ export interface operations {
         parameters: {
             query: {
                 /** @description Slug der Liste, z. B. „gruene“ */
-                liste: string;
+                list: string;
                 /** @description Wahlbereich (1–6): die Liste dort */
-                bereich?: number | null;
+                area?: number | null;
                 /** @description Listenplatz im Wahlbereich: die Person */
-                platz?: number | null;
+                position?: number | null;
                 /** @description „beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630 */
                 format?: string;
                 /** @description false = ohne den Abstand zu 2021 (Listenkarte) */
-                vergleich?: boolean;
+                compare?: boolean;
                 /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
@@ -18470,7 +18470,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Die Karte zum Teilen (PNG): wie eine Liste (`?liste=`), eine Liste im Wahlbereich (`&bereich=`) oder eine Person (`&platz=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&vergleich=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar. */
+            /** @description Die Karte zum Teilen (PNG): wie eine Liste (`?list=`), eine Liste im Wahlbereich (`&area=`) oder eine Person (`&position=`) abgeschnitten hat — Anteil, Sitze, Stimmen, Abstand zu 2021 bzw. Personenstimmen und Status, dazu Lotti mit dem Dank an die Wählenden. `&format=beitrag` (1080×1350, Vorgabe), `story` (1080×1920) oder `quer` (1200×630); `&compare=false` lässt den Abstand zu 2021 weg. Eine Minute cachebar. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -18531,4 +18531,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: a47c2fb93f3b95a601d6c4b10b26b757ea0b56dc7c14389dd501ad61f7e64cf2
+// vertrag-sha256: e494427b5216438af76ef4bce930b3817968c9147ead9444979d2adfa8a50260
