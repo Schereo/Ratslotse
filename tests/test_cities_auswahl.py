@@ -78,3 +78,33 @@ def test_die_bezahlten_stufen_gehen_ueber_auswahl():
         assert "main.papers(body_id" not in quelle, (
             f"{funktion.__qualname__} fragt den Speicher direkt und umgeht "
             "das Vergleichsfenster.")
+
+
+def test_die_kostenvorschau_rechnet_mit_den_buendeln():
+    """Der Preis steht je 1.000 AUFRUFE da, die Vorschau zählt VORLAGEN.
+
+    `classify` bündelt zu sechst, `effort` zu acht — wer das übergeht,
+    schätzt das Achtfache. Gemessen am Lauf vom 13.09.2026: 4.921 Urteile
+    für $0,725, also $0,147 je 1.000 Vorlagen; die erste Fassung der
+    Vorschau sagte $1,15. Eine Schätzung, der man nicht glauben kann, hält
+    einen richtigen Lauf auf.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    from council.cities.annotators import get as get_annotator
+
+    pfad = Path(__file__).resolve().parents[1] / "scripts" / "cities_backfill.py"
+    spec = importlib.util.spec_from_file_location("cities_backfill", pfad)
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+
+    je_1000 = modul.kosten_je_1000_vorlagen()
+    roh = sum(modul.KOSTEN_JE_1000_AUFRUFE.values()) + modul.KOSTEN_TERMS_JE_1000
+    assert je_1000 < roh, (
+        "Die Vorschau rechnet wieder je Aufruf statt je Vorlage — "
+        "sie muss durch `Annotator.batch_size` teilen.")
+    # `classify` allein: der Preis je 1.000 Aufrufe, geteilt durch das Bündel.
+    erwartet = modul.KOSTEN_JE_1000_AUFRUFE["classify"] / get_annotator("classify").batch_size
+    assert erwartet < 0.25, f"classify je 1.000 Vorlagen: ${erwartet:.3f}"

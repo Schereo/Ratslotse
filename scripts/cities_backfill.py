@@ -146,10 +146,37 @@ def unterbau_pruefen(main: CitiesStore) -> list[str]:
     return befunde
 
 
-#: Was ein Aufruf je 1.000 Vorlagen kostet, gemessen am 13.09.2026 über
-#: `llm_usage` in `data/ratslotse.sqlite`. `fit` fragt DREI Stimmen je
-#: Vorlage, deshalb der Faktor.
-KOSTEN_JE_1000 = {"classify": 1.15, "effort": 0.82, "terms": 0.03, "fit": 0.58 * 3}
+#: Was 1.000 **Aufrufe** kosten, gemessen am 13.09.2026 über `llm_usage` in
+#: `data/ratslotse.sqlite`. Nicht je Vorlage — die meisten Annotatoren
+#: bündeln, und wie stark, steht in ihrer eigenen Konfiguration.
+KOSTEN_JE_1000_AUFRUFE = {"classify": 1.15, "effort": 0.82, "fit": 0.58}
+
+#: Wie oft `fit` je Vorlage fragt: drei Stimmen, Mehrheit entscheidet.
+FIT_STIMMEN = 3
+
+#: `search_terms` läuft je Vorlage (kein Bündel) mit einem kleinen Modell.
+KOSTEN_TERMS_JE_1000 = 0.03
+
+
+def kosten_je_1000_vorlagen() -> float:
+    """Was 1.000 Vorlagen durch alle bezahlten Stufen kosten.
+
+    **Die Bündelgröße kommt aus dem Annotator, nicht aus einer Zahl hier.**
+    Der erste Entwurf multiplizierte den Preis je 1.000 AUFRUFE mit der Zahl
+    der Vorlagen — und `classify` bündelt zu sechst, `effort` zu acht. Die
+    Vorschau stand damit 7,8-fach zu hoch: $1,15 statt der gemessenen $0,147
+    je 1.000 Vorlagen (nachgerechnet am Lauf vom 13.09.2026 über 4.921
+    Hannoveraner Urteile). Eine Schätzung, der man nicht glauben kann, ist
+    schlimmer als keine — sie hält einen richtigen Lauf auf.
+    """
+    from council.cities.annotators import get as get_annotator
+
+    summe = KOSTEN_TERMS_JE_1000
+    for name, preis in KOSTEN_JE_1000_AUFRUFE.items():
+        ann = get_annotator(name)
+        stimmen = FIT_STIMMEN if name == "fit" else 1
+        summe += preis / max(ann.batch_size, 1) * stimmen
+    return summe
 
 
 def vorschau(main_store, specs) -> None:
@@ -168,7 +195,7 @@ def vorschau(main_store, specs) -> None:
     for spec in specs:
         f = auswahl_modul.fenster(spec.id)
         papiere = auswahl_modul.papiere(main_store, spec.id)
-        kosten = len(papiere) / 1000 * sum(KOSTEN_JE_1000.values())
+        kosten = len(papiere) / 1000 * kosten_je_1000_vorlagen()
         summe += kosten
         arten = ", ".join(f.kinds) if f.kinds else "alle"
         print(f"    {spec.name[:22]:22} ab {f.since or 'immer':10} "
