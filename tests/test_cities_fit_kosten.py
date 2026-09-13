@@ -43,3 +43,37 @@ def test_der_korb_sammelt_nur_die_eigenen_aufrufe():
     # `eine_stimme` legt ihren Betrag in den Korb, den der Aufrufer mitgibt.
     assert "korb.append(kosten)" in quelle
     assert "eine_stimme(p, belege, klasse, korb)" in quelle
+
+
+def test_stance_laeuft_nicht_in_der_ueblichen_schleife():
+    """Er braucht das Label SEINER Gruppe — das kennt nur `stance_all`.
+
+    Am 13.09.2026 meldete der Bestandslauf **9.289 „Fehler"** ohne einen
+    einzigen Modellaufruf: `annotate.run` rendert den stance-Prompt ohne
+    `{gruppe}` und läuft je Vorlage in ein `KeyError`. Es kostete nichts und
+    tat nichts — aber eine Fehlerzahl, die nichts bedeutet, ist schlimmer
+    als keine: Der Wochen-Cron zählt sie in `job_runs`, und die nächste
+    Person sucht einen Fehler, den es nicht gibt.
+    """
+    from council.cities.annotators import active_annotators, get
+
+    assert get("stance").own_stage == "cluster"
+    ueblich = [a.key for a in active_annotators("paper")]
+    assert "stance" not in ueblich, (
+        "`stance` läuft wieder in der üblichen Schleife und scheitert dort "
+        "an jedem einzelnen Objekt.")
+    assert "stance" in [a.key for a in active_annotators("paper", own_stage="cluster")]
+
+
+def test_der_stance_prompt_verlangt_seine_gruppe():
+    """Der Grund, warum er eine eigene Stufe hat — nicht bloß eine Konvention."""
+    import re
+
+    from kern import prompts
+
+    from council.cities.annotators import get
+
+    platzhalter = set(re.findall(r"\{(\w+)\}", prompts.get(get("stance").prompt_user)))
+    assert "gruppe" in platzhalter, (
+        "Braucht der Prompt seine Gruppe nicht mehr, kann `stance` zurück in "
+        "die übliche Schleife — dann gehört `own_stage` weg.")
