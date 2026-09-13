@@ -14,6 +14,7 @@ einen Schreiber. ``fetch`` füllt also ``data/cities-raw/<slug>.sqlite``,
 from __future__ import annotations
 
 import logging
+import statistics
 from datetime import date
 from pathlib import Path
 
@@ -97,6 +98,45 @@ def _hole(client, raw: CitiesStore, body_id: str, offen: list[dict], zahlen: dic
 
 # ------------------------------------------------------------------- fetch
 
+#: Ab welchem Median der letzten 50 Abrufe eine Ernte abbricht. Gesund
+#: antwortet Hildesheims ALLRIS in rund einer Sekunde; der Apache davor gibt
+#: nach 30 Sekunden auf. 15 Sekunden liegen dazwischen — ein Server, der so
+#: lange braucht, ist überlastet, und weiter auf ihn einzuschlagen hilft
+#: niemandem.
+MEDIAN_MAX = 15.0
+
+#: Wie oft nachgesehen wird. Bei 200 Objekten je Prüfung kostet die Wache
+#: nichts und merkt einen Einbruch trotzdem innerhalb von Minuten.
+WACHE_TAKT = 200
+
+
+def _mit_wache(objekte, client, zahlen: dict, was: str, body_id: str):
+    """Einen Ernte-Abschnitt begleiten und abbrechen, wenn der Server einknickt.
+
+    **Langsam ist auch kaputt.** Die Hildesheim-Ernte lief am 11.09.2026 elf
+    Stunden und fiel dabei von 343 auf 8 Vorlagen je Stunde; gemeldet hat das
+    nichts. Erst als der Server ganz ausfiel, sah es nach einem Problem aus —
+    bis dahin sah es nach Arbeit aus.
+
+    Der Abbruch ist eine **ordentliche Rückkehr**, keine Ausnahme: Die
+    Rohablage bleibt vollständig, und der nächste Lauf setzt darauf auf.
+    """
+    for n, objekt in enumerate(objekte, 1):
+        yield objekt
+        if n % WACHE_TAKT:
+            continue
+        mittel = client.langsam(MEDIAN_MAX)
+        if mittel is not None:
+            zahlen["abgebrochen"] = (
+                f"{was}: Antwortzeit im Median {mittel:.0f}s (Grenze "
+                f"{MEDIAN_MAX:.0f}s) nach {n} Objekten")
+            logger.warning("%s: Ernte abgebrochen — %s", body_id,
+                           zahlen["abgebrochen"])
+            return
+        logger.info("%s: %s %s, Antwortzeit im Median %.1fs", body_id, n, was,
+                    statistics.median(client.dauern) if client.dauern else 0.0)
+
+
 def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
           since: str | None = None, with_files: bool = True,
           max_files: int | None = None) -> dict:
@@ -114,17 +154,34 @@ def fetch(spec: BodySpec, raw_dir: str | Path, files_dir: str | Path,
         raw.upsert_body(Body(spec.id, gefunden.get("name") or spec.name, spec.state,
                              spec.dialect, spec.system_url, gefunden.get("license")))
 
-        for _ in adapter.iter_organizations(client, body):
+        for _ in _mit_wache(adapter.iter_organizations(client, body),
+                            client, zahlen, "Gremien", spec.id):
             zahlen["organizations"] += 1
         logger.info("%s: %s Gremien", spec.id, zahlen["organizations"])
 
-        for _ in adapter.iter_meetings(client, body, seit):
+        # Nach einem Abbruch nicht weiter auf denselben Server einschlagen.
+        # Was schon in der Rohablage liegt, bleibt; der nächste Lauf setzt auf.
+        if zahlen.get("abgebrochen"):
+            zahlen["requests"] = client.requests_made
+            return zahlen
+
+        for _ in _mit_wache(adapter.iter_meetings(client, body, seit),
+                            client, zahlen, "Sitzungen", spec.id):
             zahlen["meetings"] += 1
         logger.info("%s: %s Sitzungen", spec.id, zahlen["meetings"])
 
-        for _ in adapter.iter_papers(client, body, seit):
+        if zahlen.get("abgebrochen"):
+            zahlen["requests"] = client.requests_made
+            return zahlen
+
+        for _ in _mit_wache(adapter.iter_papers(client, body, seit),
+                            client, zahlen, "Vorlagen", spec.id):
             zahlen["papers"] += 1
         logger.info("%s: %s Vorlagen", spec.id, zahlen["papers"])
+
+        if zahlen.get("abgebrochen"):
+            zahlen["requests"] = client.requests_made
+            return zahlen
 
         if with_files and spec.fetch_files:
             # Die Dateiliste steht erst nach dem Normalisieren fest; für die

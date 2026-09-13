@@ -18,8 +18,10 @@ import hashlib
 import logging
 import os
 import re
+import statistics
 import threading
 import time
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +77,25 @@ class OParlClient:
         self.session = session or requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self.requests_made = 0
+        #: Die Dauer der letzten Abrufe. **Der Zustand eines fremden Servers
+        #: ist an seiner Antwortzeit ablesbar, sonst an nichts.** Hildesheims
+        #: Ernte lief am 11.09.2026 elf Stunden und wurde dabei von 343 auf 8
+        #: Vorlagen je Stunde langsamer — kein Fehler, kein Abbruch, keine
+        #: Kennzahl. 50 Werte, weil ein einzelner Ausreißer nichts heißt und
+        #: ein Median über 50 einem Trend nicht mehr ausweicht.
+        self.dauern: deque[float] = deque(maxlen=50)
+
+    def langsam(self, schwelle: float) -> float | None:
+        """Der Median der letzten Abrufe, wenn er über der Schwelle liegt.
+
+        ``None``, solange zu wenige Messwerte vorliegen — ein Urteil über
+        fünf Abrufe wäre keins. Der Rückgabewert ist die Zahl selbst, damit
+        die Meldung sie nennen kann statt nur „zu langsam".
+        """
+        if len(self.dauern) < (self.dauern.maxlen or 0):
+            return None
+        mittel = statistics.median(self.dauern)
+        return mittel if mittel > schwelle else None
 
     # ------------------------------------------------------------------ JSON
 
@@ -90,7 +111,9 @@ class OParlClient:
         for versuch in range(tries):
             throttle(url)
             try:
+                t0 = time.monotonic()
                 r = self.session.get(url, params=params, headers=HEADERS, timeout=TIMEOUT_JSON)
+                self.dauern.append(time.monotonic() - t0)
                 self.requests_made += 1
                 if 400 <= r.status_code < 500:
                     r.raise_for_status()
@@ -132,7 +155,9 @@ class OParlClient:
         for versuch in range(tries):
             throttle(url)
             try:
+                t0 = time.monotonic()
                 r = self.session.get(url, headers=kopf, timeout=TIMEOUT_JSON)
+                self.dauern.append(time.monotonic() - t0)
                 self.requests_made += 1
                 r.raise_for_status()
                 if not r.encoding or r.encoding.lower() in ("iso-8859-1", "latin-1"):
