@@ -105,15 +105,24 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     await expect(page.getByText("5 · 3 · 1")).toBeVisible();
   });
 
-  test("nach dem Beitritt erscheint das Tippformular mit gültiger Startverteilung", async ({ page }) => {
+  test("nach dem Beitritt steht das Formular auf null — alle Sitze selbst verteilen", async ({ page }) => {
     tippMocks(page, meins());
     await page.goto("/tipp");
     await page.getByLabel(/Dein Name/).fill("Testperson");
     await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
 
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
-    // Die Startverteilung nach 2021 summiert schon auf die Sitzzahl —
-    // der Knopf ist von Anfang an aktiv, ohne dass jemand etwas ändert.
+    // Bis 13.09.2026 stand hier die Verteilung von 2021 als Vorschlag, und
+    // der Knopf war sofort aktiv: Ein Klick tippte unbemerkt das letzte
+    // Ergebnis nach. Jetzt fängt jede Liste bei 0 an — abgeben kann nur,
+    // wer wirklich verteilt hat.
+    await expect(page.getByLabel("Sitze für Grüne")).toHaveValue("0");
+    // Der Knopf sagt selbst, was fehlt — ein gesperrter Knopf ohne Grund
+    // lässt Leute drücken und nichts passieren (Tims Befund 13.09.).
+    await expect(page.getByRole("button", { name: "Noch 40 Sitze verteilen" })).toBeDisabled();
+
+    // Alle 40 auf eine Liste — dann passt es, und der Knopf geht auf.
+    await page.getByLabel("Sitze für Grüne").fill("40");
     await expect(page.getByText(/40 von 40 — passt/)).toBeVisible();
     await expect(page.getByRole("button", { name: /Tipp abgeben/ })).toBeEnabled();
   });
@@ -125,9 +134,13 @@ test.describe("Schalter an: Beitritt und Tippen", () => {
     await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
 
-    await page.getByRole("button", { name: "Grüne: einen Sitz mehr" }).click();
-    await expect(page.getByText(/1 Sitz zu viel/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Tipp abgeben|Tipp aktualisieren/ })).toBeDisabled();
+    // Erst die 40 voll verteilen, dann einen Sitz zu viel setzen — über eine
+    // ZWEITE Liste, denn eine einzelne Liste ist auf die Sitzzahl geklemmt
+    // (`setzeSitz`): Auf Grüne stehen schon alle 40, „+" bewirkt dort nichts.
+    await page.getByLabel("Sitze für Grüne").fill("40");
+    await expect(page.getByText(/40 von 40 — passt/)).toBeVisible();
+    await page.getByRole("button", { name: "SPD: einen Sitz mehr" }).click();
+    await expect(page.getByRole("button", { name: "1 Sitz zu viel" })).toBeDisabled();
   });
 
   test("die OB-Wahl bleibt zu, bis sie eingeschaltet wird", async ({ page }) => {
@@ -171,7 +184,7 @@ test.describe("Spätstarter", () => {
       locked: true, phase: "locked", has_tip: false, late_at: "2026-09-13T18:41:00+00:00", scored: false,
     }), { setupOverrides: { locked: true, phase: "locked", locked_at: "2026-09-13T18:41:00+00:00" }, bereitsBeigetreten: true });
     await page.goto("/tipp");
-    await expect(page.getByRole("button", { name: "Tipp abgeben" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Noch 40 Sitze verteilen" })).toBeVisible();
     await expect(page.getByText("später abgegeben")).toBeVisible();
   });
 
@@ -213,6 +226,7 @@ test.describe("Abgeben ist ein Moment", () => {
     await page.getByLabel(/Dein Name/).fill("Testperson");
     await page.getByRole("button", { name: /Jetzt mitmachen/ }).click();
     await expect(page.getByText("Sitze im Rat")).toBeVisible();
+    await page.getByLabel("Sitze für Grüne").fill("40");  // Formular startet bei 0
 
     await page.getByRole("button", { name: "Tipp abgeben" }).click();
     await expect(page.getByRole("button", { name: "Gespeichert" })).toBeVisible();
