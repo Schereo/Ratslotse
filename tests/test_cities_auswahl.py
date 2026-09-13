@@ -108,3 +108,30 @@ def test_die_kostenvorschau_rechnet_mit_den_buendeln():
     # `classify` allein: der Preis je 1.000 Aufrufe, geteilt durch das Bündel.
     erwartet = modul.KOSTEN_JE_1000_AUFRUFE["classify"] / get_annotator("classify").batch_size
     assert erwartet < 0.25, f"classify je 1.000 Vorlagen: ${erwartet:.3f}"
+
+
+def test_ohne_instrument_haelt_der_waechter_fit_nicht_auf(tmp_path):
+    """Ein Wächter, der zu etwas rät, das nicht hilft, wird umgangen.
+
+    `clusters.idea_text` verlangt ein Instrument („kein Instrument, keine
+    Idee") und überspringt den Rest absichtlich. Zählte `substrate_gaps`
+    solche Vorlagen mit, riete es ewig „Erst: --stage cluster" — und ein
+    weiterer Lauf änderte nichts. Am 13.09.2026 hat genau das einen
+    `fit`-Lauf aufgehalten: 19 Vorlagen, alle mit `instrument = null`.
+    """
+    from council.cities.index import EMBED_MODEL
+    from council.cities.model import Batch, Paper
+
+    with CitiesStore(tmp_path / "c.sqlite") as s:
+        s.upsert_batch(Batch(papers=[
+            Paper("p/ohne", "muenster", "Sachstandsmitteilung", date="2024-01-01", kind="notice"),
+            Paper("p/mit", "muenster", "Antrag auf Jugendrat", date="2024-01-01", kind="motion"),
+        ]))
+        for pid, instrument in (("p/ohne", None), ("p/mit", "Jugendrat einrichten")):
+            s.put_annotation("paper", pid, "classify", "2",
+                             {"transfer": "adaptable", "instrument": instrument,
+                              "summary": "…"}, "h", "modell", 0.0)
+        luecken = s.substrate_gaps(EMBED_MODEL)
+        assert luecken["ideas_unembedded"] == 1, (
+            "Nur die Vorlage MIT Instrument fehlt dem Cluster-Lauf; die ohne "
+            "kann er gar nicht einbetten.")

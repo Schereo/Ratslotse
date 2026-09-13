@@ -1330,6 +1330,15 @@ class CitiesStore:
           war beim letzten ``cluster``-Lauf noch nicht eingeordnet. Sie kann
           in keiner Gruppe liegen, also fehlt ihr der Cluster-Arm.
 
+          **Ohne Instrument zählt sie nicht mit.** ``clusters.idea_text``
+          verlangt eines („kein Instrument, keine Idee") und überspringt den
+          Rest absichtlich — ein Lauf von ``cluster`` ändert daran nichts.
+          Solche Vorlagen mitzuzählen machte den Wächter unerfüllbar: Am
+          13.09.2026 hielt er einen `fit`-Lauf mit dem Rat „Erst: --stage
+          cluster" auf, und genau 19 Vorlagen hatten `instrument = null`.
+          Ein Wächter, der zu etwas rät, das nicht hilft, wird umgangen —
+          und dann fängt er auch den echten Fall nicht mehr.
+
         Beide zählen nur, was ``fit`` überhaupt betrifft: fremde Vorlagen für
         die Papier-Vektoren (Oldenburgs eigene sind die Gegenseite und werden
         getrennt geprüft), übertragbare für die Ideen.
@@ -1346,6 +1355,7 @@ class CitiesStore:
             "     JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
             "       AND a.annotator='classify' AND a.version='2' "
             "   WHERE json_extract(a.payload,'$.transfer') IN ('adaptable','universal') "
+            "     AND COALESCE(json_extract(a.payload,'$.instrument'),'') != '' "
             "     AND NOT EXISTS (SELECT 1 FROM object_embeddings o "
             "                     WHERE o.object_kind='idea' AND o.object_id=p.id "
             "                       AND o.model=?)) AS ideas_unembedded",
