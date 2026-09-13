@@ -93,6 +93,13 @@ def main() -> dict:
                                                 + ernte.get("protocols_fetched", 0))
                 zaehler["texts_new"] += text.get("ok", 0) + text.get("thin", 0)
                 zaehler["sections"] = zaehler.get("sections", 0) + schnitt["sections"]
+                # Eine abgebrochene Ernte ist kein Absturz — sie bekommt
+                # trotzdem eine Zahl, sonst fällt sie nur dem auf, der das Log
+                # liest. Die Ampel im Panel liest `job_runs`.
+                if ernte.get("abgebrochen"):
+                    zaehler["harvest_stopped"] = zaehler.get("harvest_stopped", 0) + 1
+                    gruende[f"stopped_{spec.id}"] = str(ernte["abgebrochen"])
+                    logger.warning("%s: %s", spec.id, ernte["abgebrochen"])
             except Exception as e:  # noqa: BLE001 — eine Stadt kippt nicht den Lauf
                 zaehler["errors"] += 1
                 gruende[f"error_{spec.id}"] = f"{type(e).__name__}: {e}"
