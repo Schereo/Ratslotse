@@ -2,15 +2,15 @@
 
 import { Suspense } from "react";
 import { notFound, useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, CalendarDays, ExternalLink, MapPin } from "lucide-react";
 import type { SessionDetail } from "@/lib/types";
-import { Badge, Card, DetailSkeleton, formatDate } from "@/components/ui";
-import { CommitteeName } from "@/components/committee-name";
+import { Card, DetailSkeleton, formatDate } from "@/components/ui";
+import { shortCommittee } from "@/lib/committees";
 import { VideoResultsNotice } from "@/components/video-result";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import {
-  AenderungenSection, AgendaRow, AttendanceSection, CalendarButton, DateTile, DringlichkeitsBlock, LiveChip,
+  AenderungenSection, AgendaRow, AttendanceSection, CalendarButton, DringlichkeitsBlock, LiveChip,
   ergebnisseJeTop, hasAgendaChildren, sessionUrl, topDomId, topKey, useTopSprung, useTopsAusLink, videoKey,
 } from "@/components/tagesordnung";
 import { sitzungHref, sessionHref } from "@/lib/routes";
@@ -18,7 +18,8 @@ import { isLiveNow } from "@/lib/live";
 import { useFetch } from "@/lib/use-fetch";
 import { useHeute } from "@/lib/use-heute";
 import { useZurueck } from "@/lib/zurueck";
-import { relativerTag, wochentagKurz } from "@/lib/utils";
+
+const KOPF_AKTION = "min-h-11 h-auto min-w-0 justify-start gap-2 whitespace-normal rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fluss hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0";
 
 /** Eine Sitzung für sich — die Seite hinter jedem geteilten Ausschuss-Link.
  *
@@ -64,8 +65,10 @@ function SitzungInner() {
     ? `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`
     : null;
   const kuenftig = heuteTag != null && data.session_date >= heuteTag;
-  const naehe = relativerTag(data.session_date, heute);
-  const wochentag = wochentagKurz(data.session_date);
+  const kurzname = shortCommittee(data.committee);
+  const datum = new Date(data.session_date + "T12:00:00").toLocaleDateString("de-DE", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -73,40 +76,58 @@ function SitzungInner() {
           der Seite heraus oder an die Anmeldewand (s. lib/zurueck.ts). */}
       {zeigeZurueck && (
         <button onClick={() => zurueck(sessionHref(ksinr))}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
           <ArrowLeft className="h-4 w-4 shrink-0" /> Zurück zu den Sitzungen
         </button>
       )}
 
-      <div className="mt-3 flex items-start gap-3">
-        <DateTile iso={data.session_date} />
-        <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.11em] text-muted-foreground">
-            {naehe ? `${naehe[0].toUpperCase()}${naehe.slice(1)}` : wochentag}
-            {" · "}{formatDate(data.session_date)}
-            {data.session_time && ` · ${data.session_time} Uhr`}
-          </p>
-          <h1 className="mt-0.5 font-display text-2xl font-bold tracking-tight text-foreground sm:text-[30px] sm:leading-9">
-            <CommitteeName name={data.committee} />
+      <header aria-labelledby="sitzung-titel" className="mt-3 overflow-hidden rounded-xl border border-border bg-card shadow-sm [overflow-wrap:anywhere]">
+        <div className="p-4 sm:p-5">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p className="font-mono text-meta uppercase tracking-[0.06em] text-muted-foreground">Sitzung</p>
+            <div className="flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
+              {isLiveNow(data) && <LiveChip />}
+              <span>{items.length ? `${items.length} ${items.length === 1 ? "Tagesordnungspunkt" : "Tagesordnungspunkte"}` : "Tagesordnung folgt"}</span>
+            </div>
+          </div>
+          <h1 id="sitzung-titel" className="font-display text-2xl font-bold leading-tight tracking-tight text-foreground [overflow-wrap:anywhere] sm:text-3xl">
+            {kurzname}
           </h1>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {isLiveNow(data) && <LiveChip />}
-            <Badge color="blue">{items.length} {items.length === 1 ? "TOP" : "TOPs"}</Badge>
-            {data.location && <span className="min-w-0 truncate">{data.location}</span>}
-          </p>
-        </div>
-      </div>
+          {kurzname !== data.committee.trim() && <p className="mt-1 text-meta text-muted-foreground [overflow-wrap:anywhere]">{data.committee}</p>}
 
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        <ShareButton path={sitzungHref(ksinr)} label="Sitzung teilen"
-          title={`${data.committee} am ${formatDate(data.session_date)}`} />
-        <CalendarButton session={data} agenda={items.map((it) => `${it.item_number} ${it.title}`)} />
-        <BookmarkButton target={{ kind: "session", ksinr }} />
-        <a href={sessionUrl(ksinr)} target="_blank" rel="noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
-          Ratsinfo <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      </div>
+          <dl className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4 border-t border-border/60 pt-4 sm:gap-6">
+            <div className="min-w-0">
+              <dt className="mb-1 flex items-center gap-2 text-meta text-muted-foreground">
+                <CalendarDays className="h-4 w-4 shrink-0" aria-hidden /> Termin
+              </dt>
+              <dd className="text-quelle font-medium text-foreground">
+                <time dateTime={data.session_date}>{datum}</time>
+                <span className="mt-0.5 block text-hinweis font-normal text-muted-foreground">
+                  {data.session_time ? `${data.session_time.slice(0, 5)} Uhr` : "Uhrzeit noch nicht angegeben"}
+                </span>
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="mb-1 flex items-center gap-2 text-meta text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" aria-hidden /> Ort
+              </dt>
+              <dd className="text-quelle text-foreground [overflow-wrap:anywhere]">
+                {data.location || <span className="text-hinweis text-muted-foreground">Ort noch nicht angegeben</span>}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div role="group" aria-label="Aktionen zur Sitzung" className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-1 border-t border-border/60 bg-muted/20 p-2 sm:flex sm:flex-wrap">
+          <CalendarButton session={data} agenda={items.map((it) => `${it.item_number} ${it.title}`)} className={`${KOPF_AKTION} text-foreground`} />
+          <BookmarkButton target={{ kind: "session", ksinr }} className={KOPF_AKTION} />
+          <ShareButton path={sitzungHref(ksinr)} label="Sitzung teilen" still className={`${KOPF_AKTION} text-foreground`}
+            title={`${data.committee} am ${formatDate(data.session_date)}`} />
+          <a href={sessionUrl(ksinr)} target="_blank" rel="noreferrer"
+            className={`inline-flex items-center ${KOPF_AKTION} text-muted-foreground sm:ml-auto`}>
+            Ratsinfo <ExternalLink aria-hidden />
+          </a>
+        </div>
+      </header>
 
       <Card className="mt-5 p-4">
         {/* Nur bei anstehenden Sitzungen: Nach der Sitzung ist die
