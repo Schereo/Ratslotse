@@ -5251,6 +5251,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/stichwahl/bezirke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl Bezirke
+         * @description Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk
+         *     dieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.
+         *
+         *     Öffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der
+         *     Eingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).
+         */
+        get: operations["stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/wahlbezirke": {
         parameters: {
             query?: never;
@@ -10035,6 +10059,55 @@ export interface components {
             slug: string;
             /** Votes */
             votes: number | null;
+        };
+        /**
+         * MayorDistrictEntry
+         * @description Ein Wahlbezirk einer OB-Wahl mit seinem Stand.
+         */
+        MayorDistrictEntry: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Eligible */
+            eligible: number | null;
+            /** First Round */
+            first_round: {
+                [key: string]: number | null;
+            };
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Postal */
+            postal: boolean;
+            /** Valid Votes */
+            valid_votes: number | null;
+            /** Voters */
+            voters: number | null;
+            /** Votes */
+            votes: {
+                [key: string]: number | null;
+            };
+        };
+        /**
+         * MayorDistrictList
+         * @description ``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der
+         *     Stichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und
+         *     Hochrechnung braucht und ``MayorNight`` schlank bleiben soll.
+         */
+        MayorDistrictList: {
+            /** Counted */
+            counted: number;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["MayorDistrictEntry"][];
+            election: components["schemas"]["MayorElectionInfo"];
+            /** Phase */
+            phase: string;
+            /** Total */
+            total: number;
         };
         /**
          * MayorElectionInfo
@@ -19638,6 +19711,40 @@ export interface operations {
             };
         };
     };
+    stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke gemeldet */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorDistrictList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get: {
         parameters: {
             query?: {
@@ -19696,4 +19803,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 277d2e3b2cf10e01468a11291e87695dbc2af33d818c4044fd8954e9bf0d6793
+// vertrag-sha256: 2fa5855bb775cac873888d8f1d35e742c0a674ade894424caa10aa7ab6801824

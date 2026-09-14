@@ -35,6 +35,8 @@ from ..antworten import (
     ElectionWatchEntry,
     ElectionWatchList,
     MayorCandidate,
+    MayorDistrictEntry,
+    MayorDistrictList,
     MayorElectionInfo,
     MayorNight,
 )
@@ -411,6 +413,39 @@ def wahlabend_nicht_mehr_beobachten(
         raise HTTPException(status_code=404, detail="Nicht gefunden.")
     store.delete_bookmark(user["id"], merker_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/api/wahlabend/stichwahl/bezirke")
+def stichwahl_bezirke(probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs"),
+                      counted: int | None = Query(default=None, ge=0, le=133,
+                                                  description="Generalprobe: nur die ersten N Wahlbezirke gemeldet")) -> MayorDistrictList:
+    """Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk
+    dieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.
+
+    Öffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der
+    Eingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).
+    """
+    _frei()
+    w = elections.runoff()
+    if w is None:
+        raise HTTPException(status_code=404, detail="Es steht keine Stichwahl an.")
+    stand = mayor.probe(counted, w) if probe else mayor.fetch(w=w)
+    known = mayor.candidates(w)
+    vorher = {d.number: d.votes for d in mayor.probe_districts(None, known, w)}
+    zeilen = [MayorDistrictEntry(
+        number=d.number, name=d.name, area=d.area, postal=d.postal, counted=d.counted,
+        eligible=d.eligible, voters=d.voters, valid_votes=d.valid_votes,
+        votes=dict(d.votes), first_round=dict(vorher.get(d.number, {})),
+    ) for d in stand.districts]
+    return MayorDistrictList(
+        dataset="probe" if probe else "live", phase=stand.phase,
+        election=MayorElectionInfo(
+            slug=w.slug, title=w.title, short_title=w.short_title, date=w.date,
+            polls_close=w.polls_close.isoformat(), is_runoff=bool(w.first_round),
+            presentation_url=mayor.base_url(w) + votemanager.PRESENTATION_PATH,
+        ),
+        total=len(zeilen), counted=sum(1 for z in zeilen if z["counted"]), districts=zeilen,
+    )
 
 
 @router.get("/api/wahlabend/bild.png", response_class=Response, responses=WAHLABEND_PNG)
