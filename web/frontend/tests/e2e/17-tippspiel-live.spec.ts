@@ -203,7 +203,7 @@ test.describe("Generalprobe", () => {
     });
 
     await page.goto("/tipp/live?probe=2021&counted=40");
-    await expect(page.getByText("Generalprobe · Zahlen von 2021")).toBeVisible();
+    await expect(page.getByText("Generalprobe · Zahlen der Vorwahl")).toBeVisible();
     expect(gesehen[0]).toBe("?probe=2021&counted=40");
   });
 
@@ -217,7 +217,7 @@ test.describe("Generalprobe", () => {
     });
 
     await page.goto("/tipp/live");
-    await expect(page.getByText("Generalprobe · Zahlen von 2021")).toBeHidden();
+    await expect(page.getByText("Generalprobe · Zahlen der Vorwahl")).toBeHidden();
     expect(gesehen[0]).toBe("");
   });
 });

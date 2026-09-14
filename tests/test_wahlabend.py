@@ -203,7 +203,7 @@ def test_hochrechnung_trifft_das_endergebnis_wenn_die_referenz_die_wahrheit_ist(
     assert voll["mandates"] == voll["projected_mandates"] and len(voll["mandates"]) == 52
     assert all(m["name"] for m in voll["mandates"])
     volt = next(p for p in voll["parties"] if p["slug"] == "volt")
-    assert volt["seats"] == 1 and volt["seats_2021"] == 1 and volt["share_2021_pct"] == 2.63
+    assert volt["seats"] == 1 and volt["seats_previous"] == 1 and volt["share_previous_pct"] == 2.63
 
 
 def test_hochrechnung_ohne_ausgezaehlte_bezirke_ist_keine():

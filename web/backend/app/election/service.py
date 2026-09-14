@@ -232,12 +232,14 @@ def _election_of(reg: Register | None) -> ElectionInfo:
     Rates …" von Hand in der Antwort — eine dritte Fassung derselben Angaben,
     die bei der nächsten Wahl still falsch geworden wäre.
     """
+    wahl = elections.active()
     if reg is not None:
         return ElectionInfo(date=reg.date, seats=reg.seats, title=reg.title,
-                            presentation_url=votemanager.presentation_url())
-    wahl = elections.active()
+                            presentation_url=votemanager.presentation_url(),
+                            previous_label=wahl.previous_label)
     return ElectionInfo(date=wahl.date, seats=wahl.seats, title=wahl.title,
-                        presentation_url=votemanager.presentation_url())
+                        presentation_url=votemanager.presentation_url(),
+                        previous_label=wahl.previous_label)
 
 
 def _mandates(alloc: Allocation | None, reg: Register) -> list[ElectionMandate]:
@@ -369,7 +371,9 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             if any(dl.total > 0 for dl in scaled):
                 proj_lists, proj_alloc = scaled, allocate(scaled, reg.seats)
             if proj.unmatched:
-                notes.append(f"{len(proj.unmatched)} ausgezählte Wahlbezirke haben kein Gegenstück von 2021.")
+                vorwahl = elections.active().previous_label or "der Vorwahl"
+                notes.append(f"{len(proj.unmatched)} ausgezählte Wahlbezirke haben kein Gegenstück "
+                             f"von {vorwahl}.")
     elif phase == "complete":
         proj_alloc = alloc
     proj_by_list = {(dl.party, dl.district): dl for dl in proj_lists}
@@ -386,8 +390,8 @@ def compose(reg: Register, ref: Reference, snap: Snapshot, dataset: str, *,
             votes=votes, share_pct=_pct(votes, valid_city),
             seats=alloc.seats_by_party.get(p.slug, 0) if alloc else None,
             projected_seats=proj_alloc.seats_by_party.get(p.slug, 0) if proj_alloc else None,
-            seats_2021=ref.seats_by_slug.get(p.slug),
-            share_2021_pct=ref.share_by_slug.get(p.slug),
+            seats_previous=ref.seats_by_slug.get(p.slug),
+            share_previous_pct=ref.share_by_slug.get(p.slug),
             votes_to_next_seat=gain, votes_to_lose_seat=loss,
         ))
 

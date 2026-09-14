@@ -8254,6 +8254,8 @@ export interface components {
             date: string;
             /** Presentation Url */
             presentation_url: string;
+            /** Previous Label */
+            previous_label: string;
             /** Seats */
             seats: number;
             /** Title */
@@ -8319,12 +8321,12 @@ export interface components {
             projected_seats: number | null;
             /** Seats */
             seats: number | null;
-            /** Seats 2021 */
-            seats_2021: number | null;
-            /** Share 2021 Pct */
-            share_2021_pct: number | null;
+            /** Seats Previous */
+            seats_previous: number | null;
             /** Share Pct */
             share_pct: number | null;
+            /** Share Previous Pct */
+            share_previous_pct: number | null;
             /** Short */
             short: string;
             /** Slug */
@@ -10135,6 +10137,8 @@ export interface components {
             phase: string;
             /** Player Count */
             player_count: number;
+            /** Previous Label */
+            previous_label: string;
             /** Round */
             round: string;
             /** Seats Total */
@@ -10259,8 +10263,8 @@ export interface components {
             color_dark: string;
             /** Name */
             name: string;
-            /** Seats 2021 */
-            seats_2021: number | null;
+            /** Seats Previous */
+            seats_previous: number | null;
             /** Short */
             short: string;
             /** Slug */
@@ -18650,7 +18654,7 @@ export interface operations {
     wahlabend_api_wahlabend_get: {
         parameters: {
             query?: {
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -18686,7 +18690,7 @@ export interface operations {
             query?: {
                 /** @description „seats“ = ausgezählter Stand, „projected_seats“ = Hochrechnung; Vorgabe je Phase */
                 feld?: string | null;
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -18735,9 +18739,9 @@ export interface operations {
                 position?: number | null;
                 /** @description „beitrag“ = 1080×1350 (4:5), „story“ = 1080×1920 (9:16), „quer“ = 1200×630 */
                 format?: string;
-                /** @description false = ohne den Abstand zu 2021 (Listenkarte) */
+                /** @description false = ohne den Abstand zur Vorwahl (Listenkarte) */
                 compare?: boolean;
-                /** @description „2021“ = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -18778,7 +18782,7 @@ export interface operations {
     ob_wahl_api_wahlabend_ob_get: {
         parameters: {
             query?: {
-                /** @description gesetzt = Generalprobe mit den Zahlen von 2021 */
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
@@ -18845,4 +18849,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8ea5ca5b3e3e208d2e4e61f70a0be48786233d5956a0c42052d2e4b0dea99607
+// vertrag-sha256: cfb347774f3bbb89c8194113fb63f89500da8f418a8685c56de0ceee7e093df2

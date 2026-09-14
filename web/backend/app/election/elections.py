@@ -103,6 +103,10 @@ class Election:
     #: Nur ``council``: Kandidatenregister und Referenzordner der Vorwahl.
     register_path: Path | None
     reference_folder: Path | None
+    #: Wie die Vorwahl in der Anzeige heißt — „2021". Stand bis 09/2026 als
+    #: Literal an rund dreißig Stellen im Frontend und in den Teilen-Bildern;
+    #: bei der nächsten Kommunalwahl wären das dreißig stille Lügen.
+    previous_label: str
     #: Nur ``council``: die OB-Wahl, die auf derselben Seite erscheint.
     mayor: str | None
     #: Nur ``mayor``: (Datei, Schlüssel, Slugs) der Kandidaturen. Die Slugs
@@ -137,6 +141,7 @@ def _aus(datei: Path) -> Election:
         ),
         register_path=_pfad(roh.get("register")),
         reference_folder=_pfad(roh.get("reference")),
+        previous_label=str(roh.get("previous_label") or ""),
         mayor=roh.get("mayor"),
         candidates=(ROOT / kandidaten["file"], kandidaten["key"],
                     tuple(kandidaten.get("only") or ())) if kandidaten else None,

@@ -127,14 +127,18 @@ def test_personenname_wird_umgedreht():
     assert share._person_name("Listenplatz 4 (nicht im Register)") == "Listenplatz 4 (nicht im Register)"
 
 
-def test_abstaende_zu_2021_in_worten():
-    partei = {"share_pct": 25.2, "share_2021_pct": 31.2, "seats_2021": 16}
-    assert share._share_delta(partei) == "−6,0 Punkte zu 2021"  # type: ignore[arg-type]
-    assert share._seat_delta(partei, 13) == "−3 Sitze zu 2021"  # type: ignore[arg-type]
-    assert share._seat_delta(partei, 17) == "+1 Sitz zu 2021"  # type: ignore[arg-type]
-    assert share._seat_delta(partei, 16) == "wie 2021"  # type: ignore[arg-type]
-    neu = {"share_pct": 3.0, "share_2021_pct": None, "seats_2021": None}
-    assert share._share_delta(neu) == "neu angetreten"  # type: ignore[arg-type]
+def test_abstaende_zur_vorwahl_in_worten():
+    """Wie die Vorwahl heißt, kommt seit 09/2026 aus der Antwort — der Name
+    steht nicht mehr in vier Zeichenketten im Bildcode."""
+    partei = {"share_pct": 25.2, "share_previous_pct": 31.2, "seats_previous": 16}
+    assert share._share_delta(partei, "2021") == "−6,0 Punkte zu 2021"  # type: ignore[arg-type]
+    assert share._seat_delta(partei, 13, "2021") == "−3 Sitze zu 2021"  # type: ignore[arg-type]
+    assert share._seat_delta(partei, 17, "2021") == "+1 Sitz zu 2021"  # type: ignore[arg-type]
+    assert share._seat_delta(partei, 16, "2021") == "wie 2021"  # type: ignore[arg-type]
+    # Dieselbe Partei, andere Vorwahl: Nur das Etikett wechselt.
+    assert share._seat_delta(partei, 16, "2026") == "wie 2026"  # type: ignore[arg-type]
+    neu = {"share_pct": 3.0, "share_previous_pct": None, "seats_previous": None}
+    assert share._share_delta(neu, "2021") == "neu angetreten"  # type: ignore[arg-type]
 
 
 # ------------------------------------------------------------------ Endpunkt

@@ -17,9 +17,9 @@ async function appConfig(page: Page, features: string[]) {
 }
 
 const PARTEIEN = [
-  { slug: "gruene", short: "Grüne", name: "BÜNDNIS 90/DIE GRÜNEN", color: "#46962B", color_dark: "#6FCB4C", seats_2021: 16 },
-  { slug: "spd", short: "SPD", name: "SPD", color: "#E3000F", color_dark: "#FF4D57", seats_2021: 15 },
-  { slug: "cdu", short: "CDU", name: "CDU", color: "#121212", color_dark: "#C9CDD3", seats_2021: 9 },
+  { slug: "gruene", short: "Grüne", name: "BÜNDNIS 90/DIE GRÜNEN", color: "#46962B", color_dark: "#6FCB4C", seats_previous: 16 },
+  { slug: "spd", short: "SPD", name: "SPD", color: "#E3000F", color_dark: "#FF4D57", seats_previous: 15 },
+  { slug: "cdu", short: "CDU", name: "CDU", color: "#121212", color_dark: "#C9CDD3", seats_previous: 9 },
 ];
 const OB_KANDIDATUREN = [
   { slug: "rohr", name: "Jascha Rohr", party: "GRÜNE" },
