@@ -412,6 +412,18 @@ class CitiesStore:
                 "SELECT * FROM meetings WHERE body_id=? ORDER BY start DESC", (body_id,))
         return [dict(r) for r in rows]
 
+    def meeting_dates(self, body_id: str) -> dict[str, str]:
+        """Kennung → Sitzungstag, für alle Sitzungen dieser Stadt.
+
+        Für die Frage „ist diese Sitzung durch?" — einmal je Lauf statt
+        einmal je Sitzung. Sitzungen ohne Datum bleiben draußen: Über die
+        weiß der Bestand nichts, und was man nicht weiß, holt man.
+        """
+        return {r["id"]: r["start"] for r in self._conn.execute(
+            "SELECT id, start FROM meetings "
+            "WHERE body_id=? AND start IS NOT NULL AND start != ''",
+            (body_id,)).fetchall()}
+
     def agenda_items(self, meeting_id: str) -> list[dict]:
         return [dict(r) for r in self._conn.execute(
             "SELECT * FROM agenda_items WHERE meeting_id=? ORDER BY position, number", (meeting_id,))]

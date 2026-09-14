@@ -39,7 +39,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from council.cities.adapters._common import (VERSCHLOSSEN, attr,
+from council.cities.adapters._common import (VERSCHLOSSEN,
+                                             abgeschlossene_sitzungen, attr,
                                              eindeutige_beratungen,
                                              muss_geholt_werden, normalize_title,
                                              zwillinge_zusammenfuehren)
@@ -278,9 +279,15 @@ class Allris4HtmlAdapter:
                       since: str) -> Iterator[dict]:
         """Kalender → Sitzungsseiten. Der Index kommt aus ``kalender_ids``."""
         wurzel = body["id"]
-        verschlossen = 0
+        verschlossen = uebersprungen = 0
+        # Eine Sitzung von 2019 ändert sich nicht mehr. Ohne diese Regel
+        # kostete allein der Sitzungsteil des Wochenlaufs 652 Abrufe.
+        fertig = abgeschlossene_sitzungen(client.sitzungstage)
         for nr in sorted(self.kalender_ids(client, wurzel), reverse=True):
             kennung = f"{wurzel}/to010?SILFDNR={nr}"
+            if kennung in fertig:
+                uebersprungen += 1
+                continue
             try:
                 html = client.get_text(f"{kennung}&refresh=false")
             except Exception as e:  # noqa: BLE001 — eine Sitzung, nicht der Lauf
@@ -302,6 +309,9 @@ class Allris4HtmlAdapter:
         if verschlossen:
             logger.info("%s: %s Sitzungen sind nicht öffentlich", client.body_id,
                         verschlossen)
+        if uebersprungen:
+            logger.info("%s: %s abgeschlossene Sitzungen nicht erneut geholt",
+                        client.body_id, uebersprungen)
 
     def kalender_ids(self, client: OParlClient, wurzel: str) -> set[str]:
         """Welche Sitzungen gibt es?

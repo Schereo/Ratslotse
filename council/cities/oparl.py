@@ -4,9 +4,14 @@ Jede Antwort landet unverändert in ``raw_objects``, bevor irgendjemand sie
 interpretiert. Das ist der Grund, warum eine bessere Auswertung später keinen
 erneuten Abruf bei fünf Städten braucht.
 
-**Eine Anfrage je Sekunde und Host**, mit Kennung und Kontaktadresse im
+**Eine Anfrage je Sekunde und Host**, mit Kennung und Rückadresse im
 User-Agent. Die Systeme gehören Städten, nicht uns; ein Lauf, der nachts eine
 Stunde braucht, ist billiger als ein gesperrter Zugang.
+
+Der Satz stand hier schon, bevor er stimmte: Die Untergrenze ließ 0,2 s zu,
+und ein Bestandslauf hat das genutzt. Seit 14.09.2026 kann
+``CITIES_RATE_SECONDS`` den Abstand nur noch vergrößern — siehe
+:data:`RATE_SECONDS`.
 
 **Single-threaded je Prozess.** Parallel läuft nur die Ernte über Städte
 hinweg — je Stadt ein Prozess und eine eigene Rohdatei. Fünf Threads auf einer
@@ -31,16 +36,30 @@ from council.cities.store import CitiesStore, now
 
 logger = logging.getLogger("council.cities.oparl")
 
-USER_AGENT = ("Ratslotse/1.0 (+https://ratslotse.de; Kontakt siehe Impressum) "
+#: Wer da klopft — mit Zweck und einer Rückadresse, die man aus der Logzeile
+#: heraus anklicken kann. Vorher stand dort „Kontakt siehe Impressum": ein
+#: Verweis, dem jemand erst folgen muss. Wer um 23 Uhr in seinem Zugriffslog
+#: sitzt und entscheidet, ob er etwas sperrt, folgt ihm nicht.
+USER_AGENT = ("Ratslotse/1.0 (+https://ratslotse.de; "
+              "Kontakt https://ratslotse.de/impressum) "
               "Staedtevergleich kommunaler Ratsbeschluesse")
 HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
-#: Mindestabstand zwischen zwei Anfragen an denselben Host. Eine Sekunde ist
-#: die Vorgabe und bleibt es für den Cron. Ein Bestandslauf über Tausende
-#: Seiten darf enger fahren — ``CITIES_RATE_SECONDS`` setzt das für einen
-#: Lauf, nach unten begrenzt auf 0,2 s, damit ein Tippfehler in der Umgebung
-#: kein fremdes Ratsinformationssystem umwirft.
-RATE_SECONDS = max(0.2, float(os.environ.get("CITIES_RATE_SECONDS") or 1.0))
+#: Mindestabstand zwischen zwei Anfragen an denselben Host — eine Sekunde,
+#: und ``CITIES_RATE_SECONDS`` kann sie nur noch VERGRÖSSERN.
+#:
+#: **Die Untergrenze lag bis 14.09.2026 bei 0,2 s, und das war zu wenig.**
+#: Gemessen an den Zeitstempeln der Rohablage lief die Hildesheim-Ernte am
+#: 11.09. in der Spitze mit **123 Abrufen je Minute** — gut zwei je Sekunde,
+#: fünfmal schneller als die Vorgabe, 5.369 Abrufe an einem Tag. Zwei Tage
+#: später stand vor demselben System eine Sperre gegen automatisierte
+#: Zugriffe. Ob wir der Anlass waren, wissen wir nicht; dass wir schneller
+#: unterwegs waren, als unsere eigene Zusage lautet, wissen wir.
+#:
+#: Ein Bestandslauf dauert dadurch länger. Das ist der Preis, und er ist
+#: kleiner als ein verlorener Zugang: Hildesheims Daten wachsen nicht mehr
+#: nach, und dagegen hilft keine Geschwindigkeit.
+RATE_SECONDS = max(1.0, float(os.environ.get("CITIES_RATE_SECONDS") or 1.0))
 TIMEOUT_JSON = 60
 TIMEOUT_FILE = 120
 
@@ -82,6 +101,11 @@ class OParlClient:
         #: geändert hereinkamen; nur deren Vorlagen müssen noch einmal geholt
         #: werden.
         self.gestartet = now()
+        #: Sitzungskennung → Sitzungstag, aus dem NORMALISIERTEN Bestand.
+        #: Die Rohablage einer Stadt weiß das nicht: Sie hält Seiten, keine
+        #: Termine. Leer gelassen wird nichts übersprungen — die sichere
+        #: Richtung (s. ``abgeschlossene_sitzungen``).
+        self.sitzungstage: dict[str, str] = {}
         #: Die Dauer der letzten Abrufe. **Der Zustand eines fremden Servers
         #: ist an seiner Antwortzeit ablesbar, sonst an nichts.** Hildesheims
         #: Ernte lief am 11.09.2026 elf Stunden und wurde dabei von 343 auf 8
