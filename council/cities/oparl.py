@@ -27,7 +27,7 @@ from typing import Any
 
 import requests
 
-from council.cities.store import CitiesStore
+from council.cities.store import CitiesStore, now
 
 logger = logging.getLogger("council.cities.oparl")
 
@@ -77,6 +77,11 @@ class OParlClient:
         self.session = session or requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
         self.requests_made = 0
+        #: Wann dieser Lauf begann (ISO, UTC — wie ``store.now()``). Daran
+        #: erkennen die Adapter, welche Sitzungen in DIESEM Lauf neu oder
+        #: geändert hereinkamen; nur deren Vorlagen müssen noch einmal geholt
+        #: werden.
+        self.gestartet = now()
         #: Die Dauer der letzten Abrufe. **Der Zustand eines fremden Servers
         #: ist an seiner Antwortzeit ablesbar, sonst an nichts.** Hildesheims
         #: Ernte lief am 11.09.2026 elf Stunden und wurde dabei von 343 auf 8

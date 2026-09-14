@@ -210,6 +210,29 @@ class CitiesStore:
             if row is not None:
                 yield json.loads(row["body_json"])
 
+    def raw_ids(self, body_id: str, kind: str) -> set[str]:
+        """Die Kennungen, die von dieser Stadt und Art schon abgelegt sind.
+
+        Für die Frage „muss ich das noch holen?" — einmal je Lauf statt
+        einmal je Objekt. Bei Hannover sind das 25.729 Zeichenketten; eine
+        Abfrage je Vorlage wäre 25.729 Abfragen für dieselbe Auskunft.
+        """
+        return {r["oparl_id"] for r in self._conn.execute(
+            "SELECT DISTINCT oparl_id FROM raw_objects WHERE body_id=? AND kind=?",
+            (body_id, kind))}
+
+    def raw_ids_since(self, body_id: str, kind: str, seit: str) -> set[str]:
+        """Die Kennungen, die seit ``seit`` (ISO-Zeitstempel) hereinkamen.
+
+        ``put_raw_object`` legt nur an, was NEU ist (``UNIQUE(oparl_id,
+        content_hash)``) — was hier zurückkommt, hat sich also wirklich
+        geändert oder ist zum ersten Mal da.
+        """
+        return {r["oparl_id"] for r in self._conn.execute(
+            "SELECT DISTINCT oparl_id FROM raw_objects "
+            "WHERE body_id=? AND kind=? AND fetched_at >= ?",
+            (body_id, kind, seit))}
+
     def raw_count(self, body_id: str, kind: str) -> int:
         row = self._conn.execute(
             "SELECT COUNT(DISTINCT oparl_id) AS n FROM raw_objects WHERE body_id=? AND kind=?",

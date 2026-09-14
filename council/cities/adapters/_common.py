@@ -433,3 +433,32 @@ def link_by_title(batch: Batch) -> int:
                 role_raw="Titelabgleich", authoritative=None))
             ergaenzt += 1
     return ergaenzt
+
+
+def muss_geholt_werden(client, sitzung_id: str, vorlage_id: str,
+                       bekannt: set[str], frische_sitzungen: set[str]) -> bool:
+    """Braucht diese Vorlage einen Abruf — oder steht sie längst da?
+
+    **Die drei HTML-Dialekte holten bisher bei JEDEM Lauf jede Vorlage neu.**
+    Sie laufen über alle Sitzungen der Rohablage und rufen zu jedem
+    Drucksachen-Verweis ``get_text`` auf, ohne zu fragen, ob die Seite schon
+    abgelegt ist. Gemessen an Hannover am 13.09.2026 mit einem
+    Wochen-Fenster: **4.083 Vorlagen geholt, davon 4.083 schon bekannt und 0
+    neu** — der Lauf war nach 35 Minuten erst bei einem Sechstel. Ein
+    Wochen-Cron hätte so jeden Sonntag 25.729 Seiten von der Stadt gezogen,
+    um nichts zu erfahren.
+
+    Die Regel, die beides kann:
+
+    - **Unbekannt → holen.** Sonst käme eine abgebrochene Ernte nie zu Ende
+      (Hildesheim stand am 13.09. bei 1.078 Vorlagen zu 1.089 Sitzungen).
+    - **Bekannt, aber die Sitzung kam in DIESEM Lauf neu oder geändert
+      herein → holen.** Dort hängt das Neue: eine nachgetragene Station in
+      der Beratungsfolge, ein Ergebnis. Ändert sich die Sitzungsseite nicht,
+      ändert sich auch ihre Vorlagenliste nicht.
+    - **Bekannt und die Sitzung unverändert → stehen lassen.**
+    """
+    if vorlage_id not in bekannt:
+        return True
+    return sitzung_id in frische_sitzungen
+
