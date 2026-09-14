@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 
 from kern import roles as kern_roles
+from kern.disposable_email import DISPOSABLE_EMAIL_MESSAGE, is_disposable
 from kern.store import Store
 from kern.digest_email import knopf, render_html_email
 from kern.email import send_email
@@ -207,6 +208,11 @@ def register(
     display_name = (body.display_name or "").strip()
     if not display_name:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NAME_FEHLT)
+    # Wegwerf-Anbieter VOR der Dubletten-Prüfung: Die Bestätigungs-Mail hält
+    # sie nicht ab (das Postfach gibt es ja, nur eben für zehn Minuten), und
+    # die Reihenfolge verrät so auch nicht, ob die Adresse schon ein Konto hat.
+    if is_disposable(email):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, DISPOSABLE_EMAIL_MESSAGE)
     if store.get_web_user_by_email(email):
         raise HTTPException(status.HTTP_409_CONFLICT, "E-Mail ist bereits registriert.")
     # Registration hands out no role at all: everything it could decide on comes
