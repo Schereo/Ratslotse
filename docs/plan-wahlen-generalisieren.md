@@ -1,6 +1,9 @@
 # Wahlabend und Tippspiel für die nächste Wahl
 
-**Stand 14.09.2026.** Beides hat am 13.09. getragen: 539 Aufrufe / 117 Besuche
+**Stand 14.09.2026, abends.** PR 1–3 sind gemergt (#1328, #1329, #1331) — die
+Stichwahl am 27.09. läuft ohne weiteren Deploy. Offen: PR 4–7.
+
+Beides hat am 13.09. getragen: 539 Aufrufe / 117 Besuche
 auf `/wahlabend`, 178/69 auf `/tipp`, dazu 181 Aufrufe auf der Beamer-Bühne —
 zusammen rund das Neunfache eines normalen Tages, und fast alles davon anonym.
 Das ist der Grund, es nicht als Einwegware stehen zu lassen.
@@ -207,27 +210,107 @@ lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 - **Wächter:** `tests/test_prediction_runden.py` erweitern: eine Runde je Typ,
   Punktehöchstwerte gegen die Registry.
 
-### PR 7 — Lebenszyklus statt Ein/Aus-Schalter
+### PR 7 — `/wahlen`: eine Übersicht, und `/wahl` zeigt immer auf die richtige
 
-Heute regelt der Feature-Schalter nur „Seite da / 404". Nach dem Abend soll
-die Seite ein **Rückblick** sein, und beim nächsten Mal wieder ein Abend.
+*Tims Idee vom 14.09.2026, nach dem Merge der Stichwahl. Umfang entschieden:
+nur unsere eigenen Wahlen — was im Repo liegt, nicht was der Votemanager
+sonst noch hat.*
 
-- `status` in der Registry: `vorbereitung` (Countdown, Generalprobe),
-  `live` (Abruftakt 60 s), `rueckblick` (kein Abruf, eingefrorener Stand aus
-  dem Referenzordner, Verlauf als Abspann).
-- `/wahlabend/<slug>` als Archivadresse, `/wahlabend` = aktive bzw. letzte Wahl.
-  Dasselbe für `/tipp/<slug>` — die heutigen Adressen bleiben gültig (dieselbe
-  Regel wie bei der Hauptrunde ohne `?runde=`).
-- Feature-Schalter bleiben, bekommen aber ein ehrliches `fertig_wenn`: Sie
-  schalten künftig „gibt es Wahlseiten?", nicht „läuft dieser eine Abend?".
-- **Abnahme:** `/wahlabend/ratswahl-2026` zeigt den 13.09. auch dann, wenn der
-  Votemanager die Dateien längst ins Archiv geschoben hat.
+Heute regelt der Feature-Schalter nur „Seite da / 404", und `/wahlabend` ist
+der Name **eines Abends**. Für die 51 Wochen dazwischen stimmt er nicht, und
+für einen Rückblick auch nicht.
 
-### PR 8 — Zweites Ergebnissystem *(erst wenn eine Wahl es braucht)*
+**Drei Adressen, und keine davon bricht eine alte.**
 
-Landtags-, Bundestags- und Europawahl laufen **nicht** über den KDO-Votemanager
-der Stadt, sondern über die Landeswahlleitung — anderes Format, andere
-Gebietsschnitte (Wahlkreise statt Wahlbereiche), andere Stimmarten.
+| Adresse | Was |
+|---|---|
+| `/wahlen` | Die Übersicht: oben die nächste mit Countdown, darunter die vergangenen mit Ergebnis |
+| `/wahlen/<slug>` | Eine Wahl, dauerhaft — `/wahlen/ratswahl-2026` ist auch 2031 noch abrufbar |
+| `/wahl` | Kurz und sagbar („ratslotse.de/wahl"), zeigt immer die Wahl **im Fokus** |
+
+`/wahlabend` **bleibt und zeigt dasselbe wie `/wahl`.** Das ist keine Höflichkeit
+gegenüber alten Links: Die Adresse steht in der Fußzeile jedes Sharepics
+(`election/image.py`, `share.py`), auf den QR-Codes des Tippspiels und in den
+Verläufen der Leute, die am 13.09. dort waren. Sie darf nie 404 werden.
+
+**Die Fokus-Regel** kommt aus der Registry, nicht aus einem Handschalter:
+
+```
+von  polls_close − 2 Tage
+bis  polls_close + 3 Tage      → diese Wahl ist im Fokus
+```
+
+Danach fällt der Fokus auf die nächste anstehende Wahl; gibt es keine, zeigt
+`/wahl` die Übersicht. Zwei Tage vorher ist früh genug, dass ein geteilter
+Link am Wahlwochenende schon richtig führt, und spät genug, dass die Seite
+nicht wochenlang einen Countdown zeigt. Die Zahlen gehören als Konstanten
+neben `elections.active()`, nicht in eine Komponente — `tests/test_wahlkalender.py`
+hält sie fest, samt der Fälle „zwei Wahlen am selben Tag" (13.09.: Ratswahl
+und OB) und „keine kommt mehr".
+
+**Der Lebenszyklus dahinter** (das war der alte PR-7-Text, er bleibt gültig):
+
+- `status` in der Registry: `vorbereitung` (Countdown, Generalprobe), `live`
+  (Abruftakt 60 s), `rueckblick` (**kein Abruf**, der eingefrorene Stand aus
+  dem Referenzordner).
+- Damit braucht `/wahlen/ratswahl-2026` den Votemanager nicht mehr — die
+  Zahlen liegen seit PR 1 im Repo. Das ist der eigentliche Gewinn: Eine
+  Rückblick-Seite, die von einer fremden Adresse abhängt, ist keine.
+- Dasselbe Muster für `/tipp/<slug>`; die heutigen Adressen bleiben gültig
+  (wie die Hauptrunde ohne `?runde=`).
+- Die Feature-Schalter bekommen ein ehrliches `fertig_wenn`: Sie schalten
+  künftig „gibt es Wahlseiten?", nicht „läuft dieser eine Abend?".
+
+**Was auf der Übersicht steht** — vier Einträge, mehr haben wir nicht, und
+mehr braucht sie nicht:
+
+| Wahl | Woher die Zahlen |
+|---|---|
+| Stichwahl OB, 27.09.2026 | live bzw. Rückblick |
+| Ratswahl, 13.09.2026 | `kommunalwahl/referenz-2026/` |
+| OB-Wahl, 13.09.2026 | `kommunalwahl/referenz-2026/praesentation-ob.json` |
+| Ratswahl, 12.09.2021 | `kommunalwahl/referenz-2021/` |
+
+Je Zeile: Datum, Titel, das Ergebnis in einem Satz („Grüne 13 Sitze, SPD 12"
+bzw. „Ulf Prange 52,1 %"), und der Weg zur Seite. Die 2021er Zeile ist der
+Beweis, dass die Gattung trägt — sie kommt aus einem Ordner, den niemand
+mehr anfasst.
+
+**Abnahme.**
+
+- `/wahlen/ratswahl-2026` zeigt den 13.09. mit abgeschaltetem Netz.
+- `/wahl` führt am 25.09. auf die Stichwahl, am 20.09. auf die Übersicht und
+  am 28.09. wieder auf die Stichwahl (dritter Tag danach).
+- `/wahlabend` antwortet nie 404 — auch nicht, wenn gar keine Wahl ansteht.
+
+**Wächter.** `tests/test_wahlkalender.py` für die Fokus-Regel; ein Test, der
+jede Wahl der Registry auf `/wahlen/<slug>` erreichbar hält; und die
+bestehende Positivliste in `kern/seitenaufrufe.py` um die neuen Pfade ergänzt
+(sonst zählen sie als `/andere`).
+
+**Bewusst nicht in diesem PR:** die übrigen Wahlen aus dem Archiv der Stadt.
+Was dort maschinenlesbar ist, steht unter PR 8 — mit dem, was am 14.09.2026
+gemessen wurde.
+
+### PR 8 — Mehr Wahlen: das Archiv der Stadt *(erst wenn es jemand braucht)*
+
+**Gemessen am 14.09.2026** (`votemanager.kdo.de/03403000/api/termine.json` und
+je Termin `daten/api/termin.json`):
+
+| Termin | maschinenlesbar? | was dazukäme |
+|---|---|---|
+| Bürgerentscheid Baumschutz, 22.02.2026 | ✅ | **fast geschenkt**: flache Tabelle „Ja 60,58 % / Nein 39,42 %" — dieselbe Form, die `mayor.py` schon liest; dazu ein `quoren`-Block |
+| Bundestagswahl, 23.02.2025 | ✅ | der eine neue Begriff: **Stimmentyp**. Zwei Einträge mit derselben Wahl-Id (596), unterschieden nur durch Erst-/Zweitstimme |
+| Europawahl, 09.06.2024 | ✅ | reine Listenwahl ohne Wahlbereiche |
+| Landtagswahl 2022 und älter | ❌ | altes Votemanager-Format, kein `termin.json` |
+
+Der Bürgerentscheid ist der billigste nächste Schritt und zugleich der Beweis,
+dass „Mehrheitswahl" als Typ mehr trägt als OB-Wahlen: Ja und Nein sind zwei
+Kandidaturen, das Quorum ist eine Zeile mehr.
+
+Landtags- und Bundestagswahl brauchen darüber hinaus eine zweite Quelle, wenn
+mehr als das Stadtgebiet interessiert — sie laufen über die Landeswahlleitung,
+mit anderen Gebietsschnitten (Wahlkreise statt Wahlbereiche).
 
 - `election/sources/`: ein Protokoll `Quelle` (`fetch() -> Snapshot`), heutiger
   Code als `sources/votemanager.py`. Muster: `council/cities/` — ein Adapter je
@@ -240,16 +323,21 @@ Gebietsschnitte (Wahlkreise statt Wahlbereiche), andere Stimmarten.
 ## 5. Reihenfolge
 
 ```
-PR 1 (einfrieren)  ──┐
-                     ├─→ PR 3 (Stichwahl, 27.09.)  ──→ PR 4 ──→ PR 5 ──→ PR 6 ──→ PR 7
-PR 2 (Registry)    ──┘
+PR 1 (einfrieren) ✅ ──┐
+                       ├─→ PR 3 (Stichwahl) ✅ ──→ PR 4 ──→ PR 5 ──→ PR 6 ──→ PR 7
+PR 2 (Registry)   ✅ ──┘
 ```
+
+**PR 7 hängt an PR 5** (Texte aus der Wahl statt aus dem Quelltext): Eine
+Übersicht, die jeden Titel und jedes Datum noch einmal im Frontend
+buchstabiert, wäre die dritte Fassung derselben Angaben.
 
 - **Diese Woche:** PR 1 und PR 2. PR 1 ist eilig, weil die Quelle verschwindet.
 - **Bis 26.09.:** PR 3, plus eine Generalprobe am Vorabend wie am 12.09.
 - **Danach in Ruhe:** PR 4–7. Sie haben keinen Termin; der nächste echte ist
   die Landtagswahl Niedersachsen im Herbst 2027.
-- **PR 8** erst mit dieser Wahl.
+- **PR 8** erst, wenn jemand die anderen Wahlen vermisst. Der Bürgerentscheid
+  wäre der günstigste Einstieg.
 
 ## 6. Bewusst nicht
 
