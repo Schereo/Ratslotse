@@ -209,8 +209,10 @@ zeigt die Oberfläche einen Hinweis statt der Inhalte und pollt `/auth/me`
 sie nicht ab — ein Zehn-Minuten-Postfach empfängt den Link genauso. Deshalb
 prüfen Registrierung und Adresswechsel die Domain (samt Eltern-Domains) gegen
 `kern/disposable_email_domains.txt`, eine öffentlich gepflegte Liste mit rund
-8.800 Anbietern (CC0), und antworten mit 422 und einem deutschen Satz, den Web
-und App unverändert zeigen. `PROTECTED_DOMAINS` in `kern/disposable_email.py`
+8.800 Anbietern (CC0), und antworten mit 400 und einem Satz **ohne Grund**
+(„Die Registrierung konnte nicht abgeschlossen werden.“) — wer abgewiesen wird,
+soll nicht erfahren, welche Prüfung angeschlagen hat. Die Domain steht im
+Server-Log (`ratslotse.web.auth` bzw. `ratslotse.web.account`). `PROTECTED_DOMAINS` in `kern/disposable_email.py`
 nennt Anbieter, die nie gesperrt werden, darunter Apples
 `privaterelay.appleid.com`. Was Sign in with Apple selbst liefert, ist von Apple
 bestätigt und wird nicht geprüft. Nachziehen der Liste:
