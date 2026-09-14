@@ -479,6 +479,24 @@ CREATE TABLE IF NOT EXISTS page_views (
 );
 CREATE INDEX IF NOT EXISTS idx_page_views_day ON page_views(day);
 
+-- Wie oft eine Registrierung ABGEWIESEN wurde — das Gegenstück zu `web_users`.
+-- Bis 09/2026 war nur sichtbar, wer durchkam: Ein Skript, das an der Bremse
+-- oder am Wegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und
+-- „es hat niemand versucht" war von „es haben 500 versucht" nicht zu
+-- unterscheiden.
+--
+-- Wie bei `page_views`: keine Adresse, keine Domain, keine IP, kein Konto —
+-- nur Tag, Grund und Anzahl. Der Grund kommt aus einer Positivliste
+-- (`SIGNUP_REJECTION_REASONS`), die Tabelle kann also nur diese Zeilen
+-- enthalten. Wer die Domain im Einzelfall braucht, findet sie im Server-Log;
+-- hier geht es um die Menge, nicht um den Fall.
+CREATE TABLE IF NOT EXISTS signup_rejections (
+    day    TEXT NOT NULL,
+    reason TEXT NOT NULL,   -- siehe SIGNUP_REJECTION_REASONS
+    count  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, reason)
+);
+
 CREATE INDEX IF NOT EXISTS idx_user_activity_owner ON user_activity(owner_id);
 
 -- Ein Eintrag je Cron-Lauf, geschrieben von run_guarded (kern/alerts.py).
@@ -646,6 +664,20 @@ CREATE TABLE IF NOT EXISTS prediction_log (
 # BLEIBT, prüft `test_delete_web_user_covers_every_user_table` sie gegen das
 # Schema. Wer eine neue nutzerbezogene Tabelle anlegt, trägt sie hier ein —
 # sonst schlägt der Test fehl und nennt die fehlende Tabelle.
+#: Warum eine Registrierung abgewiesen wurde — die Positivliste zur Tabelle
+#: ``signup_rejections``. Was hier nicht steht, wird nicht gezählt.
+#:
+#: ``duplicate_email`` ist bewusst dabei, löst aber **keinen Alarm** aus: Wer
+#: sein Konto vergessen hat, landet genauso hier wie jemand, der Adressen
+#: durchprobiert. Als Zahl neben den anderen beiden ist der Unterschied
+#: sichtbar, als Alarm wäre er nur Lärm.
+SIGNUP_REJECTION_REASONS: frozenset[str] = frozenset({
+    "rate_limit",        # die Bremse hat gegriffen (5 je IP in 5 Minuten)
+    "disposable_email",  # Wegwerf-Anbieter (kern/disposable_email.py)
+    "duplicate_email",   # Adresse hat schon ein Konto
+})
+
+
 USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("topics", "owner_id"),
     ("committee_subscriptions", "owner_id"),
@@ -3850,6 +3882,85 @@ class Store:
                 )
         except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
             pass
+
+    def record_signup_rejection(self, reason: str) -> None:
+        """Eine abgewiesene Registrierung zählen (best-effort, nie load-bearing).
+
+        Ein unbekannter Grund wird **verworfen**, nicht gespeichert: Die
+        Tabelle soll nur Zeilen aus ``SIGNUP_REJECTION_REASONS`` enthalten
+        können, damit ein Tippfehler nicht als eigene Kategorie weiterlebt.
+        """
+        if reason not in SIGNUP_REJECTION_REASONS:
+            return
+        from datetime import date
+        try:
+            with self._conn:
+                self._conn.execute(
+                    "INSERT INTO signup_rejections (day, reason, count) VALUES (?, ?, 1) "
+                    "ON CONFLICT(day, reason) DO UPDATE SET count = count + 1",
+                    (date.today().isoformat(), reason),
+                )
+        except Exception:  # noqa: BLE001 — Zählung darf nie einen Request brechen
+            pass
+
+    def signup_rejections_since(self, day: str) -> dict[str, int]:
+        """Abgewiesene Registrierungen ab diesem Tag (einschließlich), je Grund."""
+        return {r["reason"]: r["n"] for r in self._conn.execute(
+            "SELECT reason, SUM(count) n FROM signup_rejections WHERE day >= ? "
+            "GROUP BY reason", (day,)).fetchall()}
+
+    def signup_recent(self, hours: int = 24) -> dict[str, int]:
+        """Neue Konten der letzten ``hours`` Stunden — angelegt und davon unbestätigt.
+
+        Für den Herzschlag. Bewusst über ``created_at`` und nicht über die
+        Tagesgrenze: Eine Welle um 23 Uhr soll am nächsten Morgen noch in
+        derselben Zahl stehen und nicht auf zwei Tage zerfallen.
+        """
+        seit = (datetime.utcnow() - timedelta(hours=max(1, hours))).isoformat(timespec="seconds")
+        row = self._conn.execute(
+            "SELECT COUNT(*) n, SUM(CASE WHEN email_verified = 0 THEN 1 ELSE 0 END) offen "
+            "FROM web_users WHERE created_at >= ?", (seit,)).fetchone()
+        return {"created": int(row["n"] or 0), "unverified": int(row["offen"] or 0)}
+
+    def signup_signals(self, tage: int = 30) -> dict:
+        """Was bei der Registrierung ankam und was abgewiesen wurde.
+
+        Ein Schnitt für das Admin-Panel: je Tag die angelegten Konten (davon
+        bestätigt) und die Abweisungen, dazu die Summen und die Aufteilung nach
+        Grund. Beide Seiten gehören in **ein** Bild — die Zahl der neuen Konten
+        allein sagt nicht, ob gerade jemand anklopft und abprallt.
+        """
+        from datetime import date
+        seit = (date.today() - timedelta(days=max(1, tage) - 1)).isoformat()
+        je_tag: dict[str, dict[str, int]] = {}
+        for r in self._conn.execute(
+                "SELECT substr(created_at, 1, 10) d, COUNT(*) n, "
+                "       SUM(CASE WHEN email_verified = 1 THEN 1 ELSE 0 END) v "
+                "FROM web_users WHERE created_at >= ? GROUP BY d", (seit,)).fetchall():
+            je_tag.setdefault(r["d"], {})["created"] = int(r["n"] or 0)
+            je_tag[r["d"]]["verified"] = int(r["v"] or 0)
+        for r in self._conn.execute(
+                "SELECT day d, SUM(count) n FROM signup_rejections WHERE day >= ? "
+                "GROUP BY d", (seit,)).fetchall():
+            je_tag.setdefault(r["d"], {})["rejected"] = int(r["n"] or 0)
+
+        heute = date.today()
+        tage_liste = [(heute - timedelta(days=i)).isoformat() for i in range(max(1, tage) - 1, -1, -1)]
+        series = [{"day": d,
+                   "created": je_tag.get(d, {}).get("created", 0),
+                   "verified": je_tag.get(d, {}).get("verified", 0),
+                   "rejected": je_tag.get(d, {}).get("rejected", 0)}
+                  for d in tage_liste]
+        gruende = self.signup_rejections_since(seit)
+        return {
+            "days": max(1, tage),
+            "created": sum(t["created"] for t in series),
+            "verified": sum(t["verified"] for t in series),
+            "rejected": sum(gruende.values()),
+            "series": series,
+            "reasons": [{"reason": g, "n": gruende[g]}
+                        for g in sorted(gruende, key=lambda k: -gruende[k])],
+        }
 
     def seitenaufrufe(self, tage: int = 30) -> dict:
         """Was in den letzten ``tage`` Tagen aufgerufen wurde.

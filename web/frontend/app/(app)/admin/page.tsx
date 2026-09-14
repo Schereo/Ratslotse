@@ -28,6 +28,7 @@ type AdminKohorten = ApiAntwort<"/admin/stats/cohorts">;
 type AdminSackgasse = ApiAntwort<"/admin/stats/dead-ends">[number];
 type AdminEreignisse = ApiAntwort<"/admin/stats/events">;
 type AdminSeitenaufrufe = ApiAntwort<"/admin/stats/page-views">;
+type AdminAnmeldungen = ApiAntwort<"/admin/stats/signups">;
 /** Ein Eintrag des Rollen-Katalogs — aus dem Vertrag, nicht abgetippt. */
 type RolleInfo = ApiAntwort<"/admin/roles">[number];
 import { Badge, Button, Card, CardListSkeleton, ChartSkeleton, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, EmptyState, ErrorState, Input, Label, PageHeader, Select, Spinner, TableSkeleton, Textarea, formatDate, formatDateTime, toast } from "@/components/ui";
@@ -635,6 +636,112 @@ function SeitenaufrufeSection() {
   );
 }
 
+/** Warum eine Registrierung abgewiesen wurde — nur für die Anzeige.
+ *  Die Werte selbst bleiben englisch (kern.store.SIGNUP_REJECTION_REASONS). */
+const ABWEISUNG_LABEL: Record<string, string> = {
+  rate_limit: "Bremse",
+  disposable_email: "Wegwerf-Adresse",
+  duplicate_email: "Adresse schon vergeben",
+};
+
+/** Neue Konten — und wer es versucht hat, ohne durchzukommen.
+ *
+ *  Warum beides in einem Bild: Die FYI-Mail an die Admins geht erst raus, wenn
+ *  jemand seine Adresse BESTÄTIGT hat. Ein Skript, das Konten anlegt und nie
+ *  einen Link klickt, löst keine einzige Mail aus — und wer an der Bremse oder
+ *  am Wegwerf-Riegel abprallt, hinterließ bis 09/2026 gar keine Spur. „Es hat
+ *  niemand versucht" war damit von „es haben 500 versucht" nicht zu
+ *  unterscheiden.
+ *
+ *  Die Abweisungen tragen weder Adresse noch Domain noch Netzadresse — nur
+ *  Tag, Grund und Anzahl. Wer einen Einzelfall braucht, findet die Domain im
+ *  Server-Log.
+ */
+function AnmeldungenSection() {
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "signups"],
+    queryFn: () => api.get<AdminAnmeldungen>("/admin/stats/signups?days=30"),
+  });
+
+  if (isPending) return <div className="pt-2"><ChartSkeleton /></div>;
+  if (isError || !data) {
+    return (
+      <div className="pt-2">
+        <ErrorState title="Die Registrierungen konnten nicht geladen werden" onRetry={() => void refetch()} busy={isFetching} />
+      </div>
+    );
+  }
+
+  const unbestaetigt = data.created - data.verified;
+  const abgewiesen = data.reasons.filter((r) => r.n > 0);
+
+  return (
+    <div className="space-y-3 pt-2">
+      <AbschnittKopf titel="Registrierungen" rechts={`${data.days} Tage`}>
+        Abgewiesene Versuche tragen nur Tag, Grund und Anzahl — keine Adresse, keine Domain, keine Netzadresse. Der tägliche Herzschlag meldet sich per E-Mail, sobald hier ungewöhnlich viel zusammenkommt.
+      </AbschnittKopf>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <StatKicker>Neue Konten</StatKicker>
+              <p className="mt-1.5 font-display text-[28px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+                {data.created.toLocaleString("de-DE")}
+              </p>
+            </div>
+            <div className="text-right">
+              <StatKicker>Adresse bestätigt</StatKicker>
+              <p className="mt-1.5 font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+                {data.verified.toLocaleString("de-DE")}
+                {unbestaetigt > 0 && (
+                  <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">
+                    · {unbestaetigt.toLocaleString("de-DE")} offen
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          <MiniBars values={data.series.length ? data.series.map((d) => d.created) : [0]} days={data.series.map((d) => d.day)} height={64} className="mt-4" />
+        </Card>
+
+        <Card className="flex flex-col gap-4 p-4">
+          <div>
+            <StatKicker>Abgewiesen</StatKicker>
+            <p className="mt-1.5 font-display text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+              {data.rejected.toLocaleString("de-DE")}
+            </p>
+          </div>
+          {abgewiesen.length > 0 ? (
+            <>
+              <div>
+                <StatKicker>Woran</StatKicker>
+                <div className="mt-2.5">
+                  <AnteilBalken teile={abgewiesen.map((r, i) => ({
+                    label: ABWEISUNG_LABEL[r.reason] ?? r.reason,
+                    n: r.n,
+                    ton: i === 0 ? "bg-signal/70" : i === 1 ? "bg-primary" : "bg-primary/30",
+                  }))} />
+                </div>
+              </div>
+              <p className="mt-auto text-[11.5px] leading-snug text-muted-foreground">
+                „Adresse schon vergeben“ ist meist harmlos — wer sein Konto vergessen hat,
+                landet dort genauso. Nur die beiden anderen lösen eine Mail aus.
+              </p>
+            </>
+          ) : (
+            <p className="text-[12px] leading-snug text-muted-foreground">
+              Niemand ist an der Bremse oder am Wegwerf-Riegel hängengeblieben. Gezählt
+              wird ab dem Deploy dieser Version; frühere Versuche lassen sich nicht
+              nachtragen.
+            </p>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 /** Welche Handlungen wie oft vorkommen — und die zwei Anteile dahinter.
  *
  *  Neben jeder Zahl steht, aus wie vielen KONTEN sie stammt, und wie sie sich
@@ -867,6 +974,8 @@ function StatsTab() {
       </div>
 
       <KohortenSection />
+
+      <AnmeldungenSection />
 
       <SeitenaufrufeSection />
 

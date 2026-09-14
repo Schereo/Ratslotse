@@ -812,6 +812,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats Signups
+         * @description Neue Konten und abgewiesene Registrierungen — beide Seiten in einem Bild.
+         *
+         *     Sichtbar war bis 09/2026 nur, wer durchkam. Wer an der Bremse oder am
+         *     Wegwerf-Riegel hängenblieb, hinterließ nirgends eine Spur, und „es hat
+         *     niemand versucht" war von „es haben 500 versucht" nicht zu unterscheiden.
+         *
+         *     Der tägliche Herzschlag (``scripts/check_herzschlag.py``) schlägt bei
+         *     denselben Zahlen Alarm; diese Ansicht ist der Blick dazwischen.
+         */
+        get: operations["stats_signups_api_admin_stats_signups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -5140,6 +5167,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminAbweisung */
+        AdminAbweisung: {
+            /** N */
+            n: number;
+            /** Reason */
+            reason: string;
+        };
         /** AdminAliasDeleted */
         AdminAliasDeleted: {
             /** Entities */
@@ -5151,6 +5185,42 @@ export interface components {
         AdminAliasList: {
             /** Aliases */
             aliases: components["schemas"]["AdminEntityAlias"][];
+        };
+        /** AdminAnmeldeTag */
+        AdminAnmeldeTag: {
+            /** Created */
+            created: number;
+            /** Day */
+            day: string;
+            /** Rejected */
+            rejected: number;
+            /** Verified */
+            verified: number;
+        };
+        /**
+         * AdminAnmeldungen
+         * @description Was bei der Registrierung ankam — und was abprallte.
+         *
+         *     Beide Seiten in einem Bild. Die Zahl der neuen Konten allein sagt nicht,
+         *     ob gerade jemand anklopft und an der Bremse oder am Wegwerf-Riegel
+         *     hängenbleibt; bis 09/2026 war genau das unsichtbar.
+         *
+         *     Nichts hier ist einer Person zuzuordnen: Die Abweisungen tragen weder
+         *     Adresse noch Domain noch Netzadresse, nur Tag, Grund und Anzahl.
+         */
+        AdminAnmeldungen: {
+            /** Created */
+            created: number;
+            /** Days */
+            days: number;
+            /** Reasons */
+            reasons: components["schemas"]["AdminAbweisung"][];
+            /** Rejected */
+            rejected: number;
+            /** Series */
+            series: components["schemas"]["AdminAnmeldeTag"][];
+            /** Verified */
+            verified: number;
         };
         /** AdminClientShare */
         AdminClientShare: {
@@ -13618,6 +13688,37 @@ export interface operations {
             };
         };
     };
+    stats_signups_api_admin_stats_signups_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAnmeldungen"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_users_api_admin_users_get: {
         parameters: {
             query?: never;
@@ -18922,4 +19023,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: b59e00551afa4aed7a9d772645655925ff5791bd3e665743bfecd622dd4a3b00
+// vertrag-sha256: 5cdeb2e9b98a2d06830ea5384e13a9e645ac0cfd820f03605de3a03076bf5816
