@@ -3687,9 +3687,26 @@ WAHLABEND_KARTE_PNG: dict[int | str, dict[str, Any]] = {
 
 
 class ElectionInfo(TypedDict):
+    """Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.
+
+    Bis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;
+    „Ratswahl Oldenburg", „13. September 2026" und der Wahlschluss standen
+    daneben als Literale im Frontend. Jetzt kommt beides von hier — eine
+    andere Wahl in der Registry ändert die Seite, ohne dass jemand eine
+    Überschrift nachzieht.
+    """
+    #: Kennung der Wahl, z. B. „ratswahl-2026".
+    slug: str
     date: str
     seats: int
+    #: Der amtliche Titel („Wahl des Rates der Stadt Oldenburg (Oldb)").
     title: str
+    #: Die kurze Form für Überschriften und Kicker („Ratswahl Oldenburg").
+    short_title: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage von Countdown und Abruftakt.
+    polls_close: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
     presentation_url: str
     #: Name der Vergleichswahl für ``seats_previous``/``share_previous_pct“ —
     #: „2021" bei der Ratswahl 2026. Leer, wenn es keine Vorwahl gibt; dann
@@ -3916,6 +3933,10 @@ class PredictionGame(TypedDict):
     #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
     phase: str
     seats_total: int
+    #: Kurzname und Datum der Wahl, auf die getippt wird — bis 09/2026 stand
+    #: „Ratswahl Oldenburg · 13.09.2026" als Literal im Frontend.
+    election_title: str
+    election_date: str
     #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
     #: („2021"); leer, wenn es keine gibt.
     previous_label: str

@@ -316,6 +316,7 @@ def setup(store: Store, game_id: int) -> PredictionGame:
     return PredictionGame(
         round=game["slug"], listed=runde.listed if runde else False,
         title=game["title"], phase=game["phase"], seats_total=reg.seats,
+        election_title=elections.active().short_title, election_date=reg.date,
         previous_label=elections.active().previous_label,
         locked=game["phase"] != "open", locked_at=game["locked_at"],
         late_scored=bool(game["late_scored"]), shared_device=bool(game["shared_device"]),

@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { apiUrl } from "@/lib/api";
-import { mitRunde } from "@/lib/tipp";
+import { kurzesDatum, mitRunde } from "@/lib/tipp";
 import type { TippSetup } from "@/lib/tipp";
 import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
@@ -63,10 +63,10 @@ export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
       <p className="mt-3 font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-primary">
         {/* Eine eigene Runde trägt ihren Namen im Kicker — wer über Vallys
             Link kommt, soll sehen, dass er in Vallys Kreis tippt. */}
-        {setup.listed ? "Ratswahl Oldenburg · 13.09.2026" : `${setup.title} · Ratswahl Oldenburg · 13.09.2026`}
+        {setup.listed ? `${setup.election_title} · ${kurzesDatum(setup.election_date)}` : `${setup.title} · ${setup.election_title} · ${kurzesDatum(setup.election_date)}`}
       </p>
       <h1 className="mt-2 text-balance font-display text-[28px] font-bold leading-[1.1] tracking-tight">
-        Wie geht die Ratswahl aus?
+        Wie geht die {setup.election_title} aus?
       </h1>
       <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
         Verteile {setup.seats_total} Sitze auf {setup.parties.length} Wahllisten. Wenn du magst, tippe auch, wer wie viel Prozent bei der Oberbürgermeisterwahl (OB-Wahl) bekommt.

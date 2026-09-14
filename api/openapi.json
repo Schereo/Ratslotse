@@ -2305,6 +2305,48 @@
       "AppConfigOut": {
         "description": "Compatibility contract consumed before a native app starts loading data.",
         "properties": {
+          "election": {
+            "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+            "properties": {
+              "date": {
+                "title": "Date",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "path": {
+                "title": "Path",
+                "type": "string"
+              },
+              "polls_close": {
+                "title": "Polls Close",
+                "type": "string"
+              },
+              "short_title": {
+                "title": "Short Title",
+                "type": "string"
+              },
+              "slug": {
+                "title": "Slug",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "short_title",
+              "date",
+              "polls_close",
+              "kind",
+              "path"
+            ],
+            "title": "AppElectionOut",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "features": {
             "default": [],
             "items": {
@@ -2329,6 +2371,45 @@
           "min_build"
         ],
         "title": "AppConfigOut",
+        "type": "object"
+      },
+      "AppElectionOut": {
+        "description": "Die Wahl, die gerade ansteht — klein genug für jede Seite.\n\nWarum hier und nicht nur in ``/api/wahlabend``: Startseite, Heute-Karte\nund Dashboard zeigen einen Countdown, ohne den ganzen Wahlabend zu laden.\nBis 09/2026 stand der Termin dafür als ``WAHLABEND_BEGINN_UTC`` im\nFrontend — eine Konstante, die ein Deploy braucht und die niemand mit der\nRegistry abgleicht.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "date",
+          "polls_close",
+          "kind",
+          "path"
+        ],
+        "title": "AppElectionOut",
         "type": "object"
       },
       "AppleLoginRequest": {
@@ -7569,9 +7650,14 @@
         "type": "object"
       },
       "ElectionInfo": {
+        "description": "Wer wählt was, wann — aus ``kommunalwahl/wahlen/``.\n\nBis 09/2026 trug diese Form nur Datum, Sitzzahl und den amtlichen Titel;\n„Ratswahl Oldenburg\", „13. September 2026\" und der Wahlschluss standen\ndaneben als Literale im Frontend. Jetzt kommt beides von hier — eine\nandere Wahl in der Registry ändert die Seite, ohne dass jemand eine\nÜberschrift nachzieht.",
         "properties": {
           "date": {
             "title": "Date",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
             "type": "string"
           },
           "presentation_url": {
@@ -7586,15 +7672,31 @@
             "title": "Seats",
             "type": "integer"
           },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
           }
         },
         "required": [
+          "slug",
           "date",
           "seats",
           "title",
+          "short_title",
+          "polls_close",
+          "status",
           "presentation_url",
           "previous_label"
         ],
@@ -12120,6 +12222,14 @@
             "title": "Deadline Hint",
             "type": "string"
           },
+          "election_date": {
+            "title": "Election Date",
+            "type": "string"
+          },
+          "election_title": {
+            "title": "Election Title",
+            "type": "string"
+          },
           "late_scored": {
             "title": "Late Scored",
             "type": "boolean"
@@ -12188,6 +12298,8 @@
           "title",
           "phase",
           "seats_total",
+          "election_title",
+          "election_date",
           "previous_label",
           "locked",
           "locked_at",

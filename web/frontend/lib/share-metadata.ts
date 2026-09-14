@@ -62,3 +62,39 @@ export async function vorschauMetadata(
     twitter: { card: "summary_large_image", title: v.title, description: v.description },
   };
 }
+
+/* ── Wahl-Seiten ────────────────────────────────────────────────────────── */
+
+type WahlKopf = { slug: string; short_title: string; date: string; kind: string };
+
+/** Die Wahl im Fokus, für `generateMetadata`.
+ *
+ *  Bis 09/2026 standen Titel und Datum der Wahlseiten als Literale in ihren
+ *  `layout.tsx` („Wahlabend — Ratswahl Oldenburg 2026"). Bei der nächsten Wahl
+ *  wäre das der Text, der in jeder geteilten Vorschau und in jedem Suchtreffer
+ *  falsch steht — und niemand sieht ihn beim Bauen.
+ *
+ *  Scheitert der Abruf, bleibt es bei den Vorgaben der Hülle: Eine Vorschau
+ *  ist nie einen kaputten Seitenaufruf wert.
+ */
+export async function holeWahl(): Promise<WahlKopf | null> {
+  try {
+    const res = await fetch(`${BACKEND}/api/app-config`, { next: { revalidate: 900 } });
+    if (!res.ok) return null;
+    const config = (await res.json()) as { election?: WahlKopf | null };
+    return config.election ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Tag, Monat und Jahr ausgeschrieben — „13. September 2026".
+ *
+ *  Eigene Fassung statt eines Imports aus `lib/wahlabend.ts`: Diese Datei
+ *  läuft im Server-Build der Metadaten, und sie soll dafür keine Seiten-Logik
+ *  mitziehen. Vier Zeilen Intl sind der billigere Preis. */
+export function datumLang(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(d);
+}
