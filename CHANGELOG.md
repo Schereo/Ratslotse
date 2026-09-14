@@ -7,6 +7,325 @@ die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [2.5.0] – 2026-09-14
+
+### Hinzugefügt
+- **Das Admin-Panel zeigt jetzt auch die Registrierungen, die nicht
+  durchkamen.** Unter *Statistik* steht neben den neuen Konten, wie oft ein
+  Registrierungsversuch abgewiesen wurde und woran er scheiterte. Der tägliche
+  Herzschlag meldet sich zusätzlich per E-Mail, wenn ungewöhnlich viele Konten
+  dazukommen, auffällig viele davon ihre Adresse nicht bestätigen oder die
+  Bremse häufig greift. Gezählt werden nur Tag, Grund und Anzahl — keine
+  Adresse, keine Domain, keine Netzadresse. (#1340)
+- **Die Stichwahl um das Oberbürgermeisteramt hat eine eigene Seite.** Am 13.
+  September hat niemand die absolute Mehrheit erreicht; am 27. September
+  entscheidet deshalb die Stichwahl zwischen Ulf Prange und Jascha Rohr.
+  `/wahlabend/stichwahl` zeigt ab 18 Uhr den Auszählungsstand beider, dazu den
+  Abstand in Stimmen und den Vergleich mit dem ersten Wahlgang. Der Wahlabend
+  der Ratswahl bleibt unter `/wahlabend`, wo er ist. (#1331)
+- **Tippspiel: mehrere Personen an einem Gerät.** Eine Tipprunde kann im Admin
+  den Schalter „Mehrere Personen an einem Gerät“ bekommen. Dann steht nach dem
+  Speichern „Fertig — nächste Person“: Das Gerät vergisst den Tipp, der Tipp
+  bleibt gespeichert, und die nächste Person tippt am selben Handy. Solange das
+  Gerät nicht weitergegeben ist, lässt sich der Tipp weiter ändern; danach ist
+  er fest. Die Hauptrunde bleibt, wie sie ist. (#1317)
+- **Der Beamer fürs Tippspiel zur Ratswahl.** Unter `/tipp/live` läuft am
+  Wahlabend das Herzstück: vor der ersten Hochrechnung der QR-Code zum
+  Mitmachen, danach automatisch abwechselnd der Vergleich (Halbkreis, Liste
+  gegen Ø-Tipp, OB-Prozente) und das Scoreboard mit Podium — bei einem
+  Führungswechsel einmal Konfetti, jede Zeile trägt ihren Rangwechsel als
+  ▲▼-Chip. Dunkel als Vorgabe fürs Wohnzimmer, aber wie überall sonst auf Hell
+  umstellbar. (#1287)
+- **Zu jeder Wahl gibt es ein Tippspiel — vorerst für Angemeldete.** Auf
+  `/wahlen` steht neben jeder anstehenden Wahl der Weg zum Mittippen. Neue
+  Runden laufen über das Konto: In der Rangliste steht dein Anzeigename, dein
+  Tipp ist auf jedem Gerät derselbe, und es bleibt bei einem Tipp je Konto. Im
+  Admin lässt sich eine Runde für alle freischalten — dann geht es wieder ohne
+  Konto, unter einem selbst gewählten Namen. Das Tippspiel zur Ratswahl bleibt
+  offen, wie es war. (#1347)
+- **Das Tippspiel kann mehrere Runden.** Ein Kreis, der unter sich tippen will,
+  bekommt einen eigenen Link (`/tipp?runde=…`) mit eigenen Tipps, eigener
+  Rangliste und eigenem Beamer — nichts davon steht auf der Website. Verwaltet
+  werden alle Runden über dieselbe Admin-Seite, auch die Handeingabe der
+  Ergebnisse. (#1305)
+- **Verwaltung fürs Tippspiel zur Ratswahl.** Unter `/tipp/admin` trägt die
+  Wahlleitung am Wahlabend die Hochrechnung ein — je Liste die Sitze, je
+  OB-Kandidatur die Prozente —, sieht auf einen Blick, wie viele Tipps im
+  Schnitt danebenliegen, und veröffentlicht den Stand erst bewusst per Knopf,
+  statt dass ein Tippfehler sofort auf dem Beamer landet. Dazu die
+  Phasensteuerung (Tippen offen → Tipp-Schluss → Live → Endergebnis) und die
+  Teilnehmerliste zum Umbenennen oder Ausblenden einzelner Tipps. Die Seite
+  steht bewusst außerhalb des Feature-Schalters `tippspiel`, damit sich das
+  Spiel vorbereiten lässt, bevor es öffentlich freigeschaltet wird. (#1285)
+- **Tippspiel zur Ratswahl am 13. September 2026.** Unter `/tipp` verteilt man
+  52 Sitze auf die 16 Listen und tippt optional, wie viel Prozent die neun
+  OB-Kandidaturen holen — ganz ohne Konto, ein Name genügt. Vor der ersten
+  Hochrechnung lässt sich der Tipp beliebig ändern; danach zeigt die Seite den
+  eigenen Rang, die Punkte (5 je exakt getroffener Liste, 3 bei ±1, 1 bei ±2
+  Sitzen, dazu ein Bonus für die OB-Prozente) und den eigenen Tipp Zeile für
+  Zeile gegen den Stand. Wer erst nach der ersten Hochrechnung dazustößt, darf
+  trotzdem mittippen — als „nachgetippt" gekennzeichnet. Die Seite hängt am
+  Feature-Schalter `tippspiel`. (#1284)
+- **Das Ergebnis der Ratswahl 2026 liegt jetzt im Repo.** Die Open-Data-Dateien
+  der Stadt stehen unter einer Adresse, die den Wahltag trägt, und verschwinden
+  dort irgendwann; die Zahlen der OB-Wahl gibt es ohnehin nur als JSON hinter
+  einer Wahl-Id. Beides ist gesichert — samt dem Minutenverlauf des Abends und
+  der nachgerechneten Sitzverteilung, die sich mit der des Votemanagers deckt.
+  Damit hat die nächste Kommunalwahl dieselbe Grundlage für Vergleich und
+  Hochrechnung, die 2026 die Zahlen von 2021 waren. (#1328)
+- **Wahlabend: einzelne Kandidaturen beobachten — quer über alle Listen.** Die
+  Rangliste führt 383 Kandidaturen; wer fünf Namen verfolgt, musste bisher
+  fünfmal filtern. Mit einem Konto setzt ein Stern an der Zeile die Kandidatur
+  auf die eigene Liste, und über der Rangliste stehen alle beobachteten
+  nebeneinander — in der Reihenfolge des stadtweiten Rangs, mit Stimmen, Anteil
+  und Stand. Gemerkt wird am Konto, nicht im Browser: Der Stern, den du am
+  Schreibtisch setzt, ist auf dem Telefon auch da. Ohne Konto steht an der
+  Stelle ein Satz, der sagt, wozu es eines braucht. (#1356)
+- **Wahlabend: alle Kandidat*innen als eine Rangliste — und die Seite hat jetzt
+  drei Reiter.** Unter *Kandidat\*innen* stehen alle 383 Kandidaturen der
+  Ratswahl nach Personenstimmen, sortierbar nach Liste, Wahlbereich oder Name
+  und filterbar auf eine Liste und einen Wahlbereich. Der Rang ist stadtweit und
+  bleibt es auch gefiltert. Dazu zwei Zahlen, die die Frage „wie kommt jemand
+  auf so viele Personenstimmen?" beantworten: je Person ihr Anteil an allen
+  Stimmen der eigenen Liste im Wahlbereich, je Liste der Anteil ihrer Stimmen,
+  der an Personen statt an die Liste ging (2026: SPD 50 %, AfD 36 %). Sortiert
+  und gefiltert wird auf dem Server (`GET /api/wahlabend/kandidaten`), damit Web
+  und App dieselbe Liste zeigen. Die bisherige Seite ist auf die Reiter
+  *Ergebnis* und *Wahlbereiche* verteilt; die Tafel mit dem Auszählungsstand
+  steht über allen dreien. (#1350)
+- **Wahlabend: Ein Bild zum Teilen für jede Liste, jeden Wahlbereich und jede
+  Person — als Beitrag oder Story.** Neben dem Gesamtbild gibt es jetzt je Liste
+  eine Karte mit Stimmenanteil, Sitzen und Stimmen samt Abstand zu 2021, dem
+  Rang unter den Listen und einem Halbkreis, in dem nur die eigenen Sitze Farbe
+  tragen; je Liste im Wahlbereich eine Karte mit den Personenstimmen der
+  Bewerber*innen als Balken, und je Person eine Karte mit Personenstimmen, Platz
+  nach Stimmen und Status. Auf jeder Karte dankt Lotti den Wählenden. Jede Karte
+  gibt es als Instagram-Beitrag (4:5), als Story (9:16) und quer für
+  Link-Vorschauen; die Links stehen in der Ansicht neben der Liste, an jeder
+  Wahlbereichs-Karte und an jeder Person, und ein Hinweis unter der Anzeigetafel
+  zeigt, dass das neu ist. (#1325)
+- **Alle Wahlen auf einer Seite — und `/wahl` führt immer zur richtigen.**
+  `ratslotse.de/wahlen` zeigt die nächste Wahl mit Countdown und darunter die
+  gelaufenen mit ihrem Ergebnis, bis zurück zur Ratswahl 2021. Die kurze Adresse
+  `ratslotse.de/wahl` leitet immer auf die Wahl, die gerade dran ist — ab zwei
+  Tagen vor dem Wahlsonntag auf diese, danach auf die nächste. Ein Ergebnis von
+  damals braucht dafür keinen Abruf mehr bei der Stadt: Die Zahlen liegen bei
+  uns. (#1343)
+- **Wahlabend: eine Karte für die Wahlbereiche — und eine Ebene tiefer für die
+  91 Wahlbezirke.** „Wo ist eigentlich Wahlbereich V?" stand bisher nirgends:
+  Die Seite kannte die sechs Wahlbereiche nur als römische Ziffern. Neben der
+  Rangfolge liegt jetzt eine Karte mit den **amtlichen Grenzen** der Stadt
+  (openGEOdata, Datenlizenz Deutschland – Zero); je kräftiger eine Fläche, desto
+  stärker die gewählte Liste dort, und ein Antippen springt zu ihrer Karte. Ein
+  Umschalter zeigt statt der sechs Wahlbereiche die 91 Wahlbezirke: Antippen
+  öffnet das Ergebnis dieses Wahllokals mit Stimmen, Anteilen und
+  Wahlbeteiligung. Die 42 Briefwahlbezirke haben keinen Ort und stehen deshalb
+  als eine Zeile darunter — sie zu verschweigen hieße, ein Drittel der Wählenden
+  verschwinden zu lassen. Gezeichnet wird ohne Kartendienst: Die Umrisse liegen
+  als kleines GeoJSON im Repo, die Karte folgt dem hellen und dunklen
+  Erscheinungsbild. (#1354)
+- **Eine neue Wahl im Kalender der Stadt fällt jetzt von selbst auf.** Bisher
+  erfuhr man von einem Wahltermin aus der Zeitung, und ob die Seite ihn
+  technisch findet, zeigte sich erst am Wahlabend. Ein täglicher Lauf vergleicht
+  den Terminkalender des Votemanagers mit dem, was Ratslotse kennt, und meldet
+  beides: eine unbekannte Wahl und eine Wahl, deren Zahlen kurz vor dem Wahltag
+  immer noch nicht bereitstehen. (#1344)
+- **Wolfsburg ist im Städtevergleich dabei.** 1.571 Vorlagen aus 453
+  öffentlichen Sitzungen stehen jetzt neben Oldenburg, Hannover, Osnabrück,
+  Braunschweig, Münster, Magdeburg und Potsdam — und wachsen wöchentlich nach.
+  (#1339)
+
+### Geändert
+- **Der Wochenlauf lässt vergangene Sitzungen liegen.** Bisher holte er die
+  Seite jeder Sitzung neu — auch die einer Ratssitzung von 2019, an der sich
+  nichts mehr ändert. Jetzt werden nur noch Sitzungen abgerufen, die neu sind,
+  kein Datum tragen oder weniger als drei Monate zurückliegen; in dieser Zeit
+  kommt die Niederschrift nach. Für Wolfsburg fallen damit 451 von 652 Abrufen
+  je Woche weg. Gleichzeitig ist der Mindestabstand zwischen zwei Anfragen an
+  dieselbe Stadt fest auf eine Sekunde gesetzt — er ließ sich vorher
+  heruntersetzen — und unsere Kennung nennt die Kontaktseite jetzt direkt statt
+  auf das Impressum zu verweisen. (#1336)
+- **Deine Neuigkeiten haben auf „Heute“ ein eigenes Widget.** Web und iOS zeigen
+  zuerst die drei jüngsten ungelesenen Beschlüsse mit einem sichtbaren Bezug zu
+  deinen Themen. Ein Beschluss zählt auch bei mehreren passenden Themen nur
+  einmal und lässt sich direkt als gelesen markieren. Wenn alles gelesen ist,
+  bleibt ein ruhiger Hinweis; Ladefehler lassen sich im Widget erneut versuchen.
+  Der Baustein lädt unabhängig vom übrigen Tagesüberblick und bereitet eine
+  spätere persönliche Auswahl der Heute-Widgets vor. (#1294)
+- **Heute zeigt, was seit deinem letzten Besuch hinzugekommen ist.** Der
+  allgemeine Rückblick ersetzt die Themen-Karte: neue und geänderte
+  Tagesordnungen sowie ergänzte Protokolle mit Ergebnissen erscheinen auch ohne
+  Themen-Abos. Web und iOS teilen sich den Besuchszeitraum. Auch nach Monaten
+  bleibt die Übersicht kompakt: Ergänzungen werden nach Art und Gremium
+  gebündelt, Sitzungen schrittweise nachgeladen. Tagesordnungen vergangener
+  Sitzungen fallen heraus, Protokolle bleiben zugänglich. Dezente Animationen
+  verdeutlichen das Aufklappen; beim ersten Besuch zeigt es ausdrücklich die
+  letzten sieben Tage. (#1296)
+- **Die Widgets auf Heute sprechen dieselbe Designsprache.** Rückblick,
+  Wochenübersicht, Zahl der Woche, Mein Viertel, zuletzt angesehene Beschlüsse
+  und Fundstück haben einen gemeinsamen Kopf mit Icon links, gleicher Schrift
+  und Trennlinie. Der Rückblick braucht weniger Platz. Das Layout unterstützt
+  ein- und zweispaltige Karten: Je nach tatsächlich verfügbarer Breite zeigen
+  sie unterschiedlich viele Einträge und Erläuterungen. Auf dem Handy und bei
+  großer Schrift bleibt die Darstellung kompakt; weitere Inhalte bleiben
+  erreichbar. (#1302)
+- **„Mein Viertel“ zeigt jetzt, was vor Ort passiert.** Statt bloßer Ortsnamen
+  und Zahlen stehen konkrete Vorhaben mit Erklärung, Planungsstand und dem Datum
+  der letzten Ratsberatung auf Heute. Eine anstehende Beratung in den nächsten
+  zwei Wochen bekommt Vorrang. Zahlen sind als Vorhaben beschriftet; Links
+  führen direkt zum Vorhaben oder zur Tagesordnung. Auf kleinen Karten
+  erscheinen zunächst zwei Viertel, weitere lassen sich einblenden. (#1306)
+- **Sitzungsdetails haben einen klar gegliederten Kopf.** Gremium, Termin und
+  Ort stehen gemeinsam in einer Karte; die Aktionen folgen in einer
+  einheitlichen Leiste. Das Datum erscheint einmal vollständig, lange
+  Ortsangaben bleiben lesbar. Auf kleinen Displays und bei großer Schrift ordnen
+  sich Angaben und Aktionen untereinander an. (#1312)
+- **Wahlabend und Tippspiel wissen selbst, um welche Wahl es geht.** Titel,
+  Datum, Wahlschluss und Sitzzahl standen an gut einem Dutzend Stellen als
+  fester Text — in Überschriften, im Countdown, im Seitentitel, den geteilte
+  Links und Suchmaschinen zeigen. Jetzt kommen sie aus der Wahl selbst. Für
+  Leser*innen ändert sich nichts; die nächste Wahl braucht dafür keine
+  Codeänderung mehr. (#1338)
+- **Ein neuer Tipp fängt bei null an, und der Knopf sagt, was noch fehlt.** Das
+  Tippformular schlug bisher die Sitzverteilung von 2021 vor — wer nur abgab,
+  tippte damit unbemerkt das letzte Ergebnis nach. Jetzt stehen alle Listen auf
+  0, und statt „Tipp abgeben" steht auf dem gesperrten Knopf, wie viele Sitze
+  noch zu verteilen sind (oder wie viele zu viel sind). Die 2021er Zahl bleibt
+  als Anhaltspunkt unter jeder Liste stehen. (#1314)
+- **Das Tippspiel spricht verständlicher.** Klarere Texte beim Mitmachen, Tippen
+  und Vergleichen erklären die Punkte und später abgegebene Tipps. Auch
+  Rangliste, Beamer-Anzeige und Verwaltung verwenden einheitliche, alltägliche
+  Begriffe. (#1297)
+- **Eine Tipprunde gehört jetzt zu einer bestimmten Wahl.** Bisher verglich das
+  Tippspiel gegen „den Wahlabend" — wer immer das gerade war. Eine Runde von
+  heute hätte bei der nächsten Kommunalwahl gegen die neuen Zahlen gepunktet und
+  jede Platzierung rückwirkend verschoben. Auch die erreichbare Höchstpunktzahl
+  kommt jetzt aus der Wahl statt aus einer festen Zahl im Code. Für Mitspielende
+  ändert sich nichts. (#1341)
+- **Der Vergleich mit der letzten Wahl nennt seinen Namen selbst.** Wo bisher
+  „2021" fest im Code stand — im Feldnamen der Schnittstelle, in den Texten der
+  Seite und auf den Bildern zum Teilen —, sagt jetzt die Wahl, mit welcher sie
+  sich vergleicht. Für Leser*innen ändert sich nichts; bei der nächsten
+  Kommunalwahl steht dort von selbst die richtige Zahl statt einer falschen.
+  (#1333)
+- **Welche Wahl der Wahlabend zeigt, steht jetzt an einer Stelle.** Bisher war
+  „Ratswahl Oldenburg, 13. September 2026" über acht Stellen im Code verteilt —
+  Adressen, Wahl-Ids, der Zeitpunkt des Wahlschlusses, Register und
+  Vergleichsjahr. Eine Wahl ist jetzt eine Datei mit diesen Angaben; für
+  Leser*innen ändert sich nichts, aber die nächste Wahl braucht keinen Umbau
+  mehr, sondern einen Eintrag. (#1329)
+- **Wahlabend: Der Status einer Kandidatur sagt, welche Aussage von wem
+  stammt.** „drin · direkt · Hochrechnung: raus" las sich wie ein Widerspruch.
+  Jetzt heißt es „nach Auszählung drin (direkt) · laut Hochrechnung raus" und
+  „laut Hochrechnung drin (über die Liste)". (#1323)
+- **Wahlabend: Die hochgerechnete Stimmenzahl in der Kandidatenzeile ist
+  beschriftet.** Hinter dem Pfeil stand nur eine Zahl; jetzt steht „Hochr. →
+  652" davor, dazu ein Tooltip, was gemeint ist. (#1324)
+- **Wahlabend: je Wahlbereich drei Kandidaturen, der Rest auf Knopfdruck.** Die
+  Karten der Wahlbereiche führten alle Kandidaturen einer Liste — bei SPD und
+  Linke sind das bis zu zwölf je Wahlbereich, auf dem Telefon also rund siebzig
+  Zeilen für eine Liste. Jetzt stehen drei da und der Rest hinter „9 weitere
+  Kandidaturen“. Welche drei, entscheidet nicht der Listenplatz allein: Wer
+  gewählt ist, steht immer dabei — auch von Platz 9, denn Listensitze und
+  Übergänge treffen nicht die Stimmstärksten —, danach kommt, wer knapp am Sitz
+  ist. Gezeigt werden sie in der Reihenfolge des Stimmzettels, und die Balken
+  messen weiter gegen die ganze Liste. (#1353)
+- **Wahlabend: je Liste, wo sie ihre Stimmen holt — und woran ihr letzter Sitz
+  hing.** Unter *Wahlbereiche* stehen die sechs Wahlbereiche jetzt in der
+  Rangfolge der gewählten Liste, nach absoluten Stimmen statt nach Prozent:
+  Danach verteilt das Kommunalwahlgesetz die Sitze einer Liste auf die
+  Wahlbereiche (§ 37 Abs. 3), und die beiden Reihenfolgen fallen wirklich
+  auseinander — bei sieben der sechzehn Listen von 2026. Dazu zwei Etiketten,
+  die es vorher nirgends gab: Wo der letzte Sitz einer Liste gelandet ist und
+  wohin ihr nächster ginge. Beides hängt am größten Rest der Sitzverteilung, der
+  Stelle also, an der ein Ergebnis knapp sein kann, ohne dass man es den Stimmen
+  ansieht. Die Karten darunter führen die Stimmen jetzt als große Zahl, den
+  Anteil klein daneben. (#1352)
+- **Die Wahlen-Übersicht hat jetzt eine Bühne.** Die Wahl, auf die gerade alles
+  zeigt, steht groß oben — mit Lotti, deren Haltung zur Lage passt (sie winkt,
+  solange die Wahl noch kommt, staunt beim Auszählen und hebt danach den Pokal),
+  und mit den vorderen Listen als farbige Punkte statt eines Satzes. Wer nicht
+  angemeldet ist und ein Tippspiel verpasst, das nur mit Konto geht, bekommt das
+  gesagt — mit Namen der Wahl, nicht mit einem allgemeinen „Jetzt anmelden".
+  (#1348)
+- **Die Registrierung prüft E-Mail-Adressen strenger.** Adressen bestimmter
+  Anbieter werden bei der Registrierung und beim Adresswechsel nicht mehr
+  angenommen. Die großen Postfach-Anbieter und Apples „E-Mail verbergen“ sind
+  davon nicht betroffen. (#1335)
+- **Die Wählergemeinschaft Für Oldenburg heißt in Wahlabend, Tippspiel und
+  Wahlprogramm-Vergleich jetzt „WFO".** Der bisherige Kurzname „Für Oldenburg"
+  war derselbe wie der der Gruppe im Rat — die mit der Wahlliste nichts zu tun
+  hat. Die Ratsgruppe heißt weiter so, die Liste trägt ihr amtliches Kürzel.
+  (#1307)
+- **Die Wochenübersicht lässt den Sitzungsinhalten mehr Platz.** Wochentag und
+  Datum stehen untereinander. Die schmalere Datumsspalte schafft mehr Breite für
+  Gremien und Tagesordnungspunkte. Auf dem Handy bilden Datum und Ausschuss eine
+  Kopfzeile; die Punkte nutzen darunter die volle Breite. Horizontale
+  Trennlinien gliedern die Sitzungen. (#1304)
+
+### Behoben
+- **Das Admin-Panel zeigt Themen und Ausschuss-Abos vollständig.** In der
+  Nutzer*innen-Ansicht standen bisher nur die ersten vier Namen in einer Zeile,
+  die dann auch noch abgeschnitten wurde — bei einem Konto mit zehn Themen und
+  fünfzehn Abos waren zwei bzw. einer zu sehen, ohne Hinweis darauf, dass mehr
+  da sind. Jetzt steht jeder Name als eigene Pille darunter, die Ausschüsse
+  alphabetisch sortiert. Beide Listen lassen sich auf- und zuklappen; ab acht
+  Einträgen starten sie zugeklappt, damit Zustellung, Verlauf und Rollen
+  darunter im Blick bleiben. (#1276)
+- **„Der Wahlabend läuft" stand auch noch am Tag danach da.** Der Hinweis auf
+  der Startseite und in „Heute" kannte nur zwei Zustände: vor der Wahl und
+  während. Jetzt gibt es einen dritten — nach dem Wahltag verweist er auf das
+  Ergebnis statt auf einen Abend, der vorbei ist. (#1345)
+- **Wolfsburgs Wochenlauf: die restlichen drei Viertel.** Neben Element-IDs und
+  Sitzungs-Token ändert das dortige Ratsinformationssystem bei jedem Abruf auch
+  den Merkzettel des Tagesordnungsbaums und die Version in den
+  Anlagen-Verweisen. Beide werden für den Vergleich jetzt ebenfalls
+  herausgerechnet; von 150 nachgemessenen Vorlagenseiten gilt danach keine
+  einzige mehr grundlos als verändert. (#1334)
+- **Wolfsburgs Wochenlauf holte jedes Mal den ganzen Bestand neu.** Das dortige
+  Ratsinformationssystem liefert dieselbe Seite nie bitgleich aus: Element-IDs,
+  Sitzungs-Token und Seitenzähler ändern sich bei jedem Abruf. Für den Vergleich
+  werden sie jetzt herausgerechnet — abgelegt wird weiterhin die Antwort des
+  Servers, unverändert. Statt 2.261 Abrufen je Woche bleiben die übrig, hinter
+  denen wirklich etwas Neues steht. (#1330)
+- **„Zuletzt angesehen" auf der Heute-Seite der App nannte die Abstimmung auf
+  Englisch.** In der Fußzeile der Karte stand das rohe „unanimous" statt
+  „Einstimmig"; die Beschluss-Seite übersetzte den Wert längst, die Heute-Karte
+  hatte den Übersetzer nicht benutzt. (#1259)
+- **Beschlüsse und ihre Quellen sind im Web und in der iOS-App besser lesbar.**
+  Kurzfassungen, amtliche Texte und Antworten haben größere Schrift. Gremium,
+  Datum und KI-Hinweise sind deutlicher zu erkennen; lange Quellentitel werden
+  vollständig umbrochen. Auswahlknöpfe und Quellenzeilen bieten auch bei
+  vergrößerter Schrift ausreichend Platz, im hellen wie im dunklen Design. Auf
+  dem Handy stehen Themenfeld, Schlagwörter und verknüpfte Themen hinter einer
+  kompakten Zeile „Stichwörter“, die sich bei Bedarf aufklappen lässt. (#1292)
+- **Wer in der Stichwahl steht, waren zwei Parteien statt zweier Menschen.** Die
+  Ergebnisdarstellung der Stadt schreibt die Namen in zwei Formen — 2021
+  „Krogmann, Jürgen (SPD)", 2026 „Ulf Prange (SPD)". Die zweite hat der Auslesen
+  falsch zerlegt und die Partei als Kandidatur ausgegeben. Zu sehen war das
+  nirgends, geantwortet hat die Schnittstelle trotzdem falsch. (#1331)
+- **Die Suche behält beim Zurückgehen ihren Stand.** Nach dem Öffnen eines
+  Beschlusses bleiben Suchbegriff, Filter, Sortierung und Ergebnisseite
+  erhalten; der Rückweg führt wieder zum geöffneten Treffer. Suchlinks lassen
+  sich mit allen Einstellungen teilen und erneut öffnen. (#1291)
+- **Sitzungen mit einem abgesetzten Tagesordnungspunkt waren nicht mehr
+  erreichbar.** Die vorläufigen Abstimmungsergebnisse aus der Video­aufzeichnung
+  kennen ein Ergebnis, das es im Protokoll nicht gibt: „abgesetzt". Die
+  Schnittstellen­beschreibung führte es nicht, und deshalb scheiterte die
+  Ratssitzung vom 29.06.2026 mit ihren fünf abgesetzten Punkten beim Ausliefern
+  — die Sitzungsseite zeigte „nicht gefunden", die Beschluss-Seiten dieser
+  Sitzung verloren still ihre Nachbar-Punkte. Nebenbei geräuschloser: Ein Abruf,
+  dessen Ausbleiben eine Seite bewusst verkraftet, meldet sich nicht mehr mit
+  einem roten Hinweis. Auf einer Seite, die vollständig dasteht, war „Da ist
+  etwas schiefgegangen" eine Beunruhigung ohne Handlungsmöglichkeit. (#1293)
+- **Wahlabend: Die Spaltenprobe vergleicht nach Namen, nicht nach Position.**
+  Die Ergebnistabelle des Votemanagers führte den Einzelwahlvorschlag nicht, und
+  ab dieser Spalte galt jede Liste als verrutscht, obwohl die Zahlen stimmten.
+  Fehlt ein Einzelwahlvorschlag in der Tabelle, ist das kein Befund mehr;
+  gemeldet werden nur unbekannte Namen, fehlende Listen und eine geänderte
+  Reihenfolge. Der Hinweis auf unbesetzte Sitze ist im Zwischenstand als solcher
+  gekennzeichnet. (#1322)
+
 ## [2.4.0] – 2026-09-10
 
 ### Hinzugefügt
@@ -7834,7 +8153,8 @@ Open-Source-Go-Live von Ratslotse.
 *Dieser Changelog beginnt mit dem Open-Source-Release von Ratslotse. Die
 Entwicklungshistorie davor ist nicht Teil dieses Repositories.*
 
-[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.4.0...main
+[Unreleased]: https://github.com/Schereo/Ratslotse/compare/v2.5.0...main
+[2.5.0]: https://github.com/Schereo/Ratslotse/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Schereo/Ratslotse/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Schereo/Ratslotse/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Schereo/Ratslotse/compare/v2.1.0...v2.2.0
