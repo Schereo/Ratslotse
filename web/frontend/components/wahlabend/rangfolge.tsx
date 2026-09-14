@@ -26,9 +26,15 @@ import { prozent, zahl, type Wahlabend, type WahlabendPartei } from "@/lib/wahla
 type Zeile = WahlabendPartei["areas"][number];
 
 /** Die Kennung der zugehörigen Karte — gemeinsam mit `BereichKarte`, damit
- *  ein Klick in der Rangfolge dort landet. */
+ *  ein Klick in der Rangfolge oder auf der Gebietskarte dort landet. */
 export function bereichAnker(nummer: number): string {
   return `wb-${nummer}`;
+}
+
+/** Zur Karte eines Wahlbereichs scrollen. Beide Wege dorthin (Rangfolge und
+ *  Gebietskarte) sollen sich gleich anfühlen. */
+export function springeZuBereich(nummer: number): void {
+  document.getElementById(bereichAnker(nummer))?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function Balken({ zeile, max, aktiv }: { zeile: Zeile; max: number; aktiv: boolean }) {
@@ -121,18 +127,14 @@ function RangZeile({ zeile, max, partei, hochrechnung, waehle }: {
   );
 }
 
-export function Rangfolge({ partei, daten }: { partei: WahlabendPartei; daten: Wahlabend }) {
+export function Rangfolge({ partei, daten, className }: { partei: WahlabendPartei; daten: Wahlabend; className?: string }) {
   const zeilen = partei.areas;
   if (!zeilen.length) return null;
   const max = Math.max(0, ...zeilen.map((z) => z.votes ?? 0));
   const vorher = daten.phase === "before" || max === 0;
 
-  function springe(nummer: number) {
-    document.getElementById(bereichAnker(nummer))?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
-    <section className="mt-4 rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <section className={cn("rounded-2xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]", className)}>
       <p className={KICKER}>Wo {partei.short} stark ist</p>
       <h3 className="mt-0.5 font-display text-[15px] font-bold tracking-tight">
         {vorher ? "Die sechs Wahlbereiche" : "Die Wahlbereiche nach Stimmen"}
@@ -150,7 +152,7 @@ export function Rangfolge({ partei, daten }: { partei: WahlabendPartei; daten: W
             max={max}
             partei={partei}
             hochrechnung={daten.phase === "counting"}
-            waehle={() => springe(z.area)}
+            waehle={() => springeZuBereich(z.area)}
           />
         ))}
       </ol>

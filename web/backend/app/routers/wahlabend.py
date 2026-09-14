@@ -26,6 +26,7 @@ from ..antworten import (
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
     ElectionCandidateRanking,
+    ElectionDistrictList,
     ElectionList,
     ElectionListItem,
     ElectionNight,
@@ -90,6 +91,31 @@ def _night(probe: str | None, counted: int | None, wahl: str | None) -> Election
                                 detail="Von dieser Wahl liegt kein vollständiger Stand vor.")
         return bild
     return _stand(probe, counted)
+
+
+@router.get("/api/wahlabend/wahlbezirke")
+def wahlabend_wahlbezirke(
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
+    counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+    wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
+) -> ElectionDistrictList:
+    """Derselbe Stand je Wahlbezirk — die Ebene unter den Wahlbereichen.
+
+    Öffentlich wie der Wahlabend selbst, hinter demselben Schalter. Eigener
+    Endpunkt, weil die Seite die 133 Bezirke erst braucht, wenn jemand die
+    Karte aufmacht (s. ``ElectionDistrictList``).
+    """
+    _frei()
+    if wahl:
+        bild = archive.districts(wahl)
+        if bild is None:
+            raise HTTPException(status_code=404,
+                                detail="Von dieser Wahl liegt kein vollständiger Stand vor.")
+        return bild
+    reg = service.load_register()
+    if probe:
+        return service.districts(reg, service.probe_snapshot(reg, service.load_reference(), counted), "probe")
+    return service.districts(reg, votemanager.fetch(), "live")
 
 
 @router.get("/api/wahlabend/kandidaten")

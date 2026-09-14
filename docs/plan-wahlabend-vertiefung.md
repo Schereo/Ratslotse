@@ -15,6 +15,39 @@ bereits eine Regel, s. §2.2), `tests/CLAUDE.md`, und die Docstrings von
 `web/backend/app/election/service.py`, `seats.py`, `candidates.py` sowie
 `web/frontend/lib/wahl-flaechen.ts` und `components/stadt-karte.tsx`.
 
+> ## Stand 14.09.2026, abends — was daraus geworden ist
+>
+> Tim: „bitte implementiere den plan". Umgesetzt in derselben Nacht:
+>
+> | PR | Was | Stand |
+> |---|---|---|
+> | **A** | Rangfolge der Wahlbereiche je Liste, „Zugriff" auf den letzten Sitz | #1352 |
+> | **B+C** | Amtliche Wahlbereichs- **und** Wahlbezirks-Karte, Ergebnis je Bezirk | ein PR (s. u.) |
+> | **D** | Höchstens drei Kandidaturen je Karte | eigener PR |
+> | **E** | Beobachtungsliste | **offen** — s. Anhang D |
+>
+> **Drei Abweichungen vom Plan, alle bewusst:**
+>
+> 1. **Keine Leaflet-Karte, kein Kachel-Grund** (PR B sah Leaflet vor). Die
+>    Ortsbereichs-Karte des Einrichtungs-Assistenten beantwortet dieselbe Art
+>    Frage seit 09/2026 als **Inline-SVG** und begründet das ausführlich: Für
+>    „wo liegt das?" braucht es keine Straßen, keinen CARTO-Schlüssel und
+>    keine Netz-Runde zu einem fremden Server, und ein SVG folgt dem Theme.
+>    Die Rechnung dahinter stand in `stadtteil-karte.tsx` und liegt jetzt als
+>    `lib/gebiete.ts` unter beiden Karten — eine zweite Abschrift wäre die
+>    Fassung gewesen, die als Erste veraltet.
+> 2. **B und C sind EIN Pull Request.** Die Wahlbezirke sind eine zweite Ebene
+>    derselben Karte (Umschalter, dieselben Flächen-Bausteine); als zwei PRs
+>    hätte man dieselbe Komponente zweimal gebaut.
+> 3. **Die Stadtkarte behält ihre Ortsbereiche.** Der Plan wollte die Ebene
+>    „Wahlergebnis" der Stadtkarte auf die amtlichen Polygone umstellen. Die
+>    Stadtkarte ist aber durchgehend auf Ortsbereiche gebaut (Vorhaben,
+>    Themen-Orte, Baustellen); eine einzelne Ebene mit anderer Geometrie
+>    hieße zwei Rasterungen in einer Karte. Der Wahlabend hat seine eigene
+>    Karte, und dort sind die Grenzen amtlich. Wenn die Näherung auf der
+>    Stadtkarte jemanden stört, ist das ein eigener PR mit eigener
+>    Entscheidung.
+
 ## 0. Was Tim gesagt hat (14.09.2026, abends)
 
 > 1) ggf. Pro Partei die Rangfolge der Wahlbereiche hervorheben und zwar bei
@@ -316,6 +349,14 @@ Konto), `test_wahlkandidaten.py` um `beobachtet`. Browsertest in
 
 **Fertig, wenn:** Tim fünf Namen aus drei Listen merkt und sie oben in einer
 Karte sieht — Bild gegengelesen.
+
+## Anhang D — Was PR E noch braucht (offen)
+
+Die Beobachtungsliste ist als Einzige nicht gebaut. Sie ist die aufwendigste
+der fünf (Konto-Tabelle, zweiter Endpunkt, Stern an jeder Zeile, Auftritt auf
+`/merkliste`) und die einzige, die niemandem fehlt, solange keine Wahl läuft:
+Für die Ratswahl 2026 ist der Abend vorbei. Der Bauplan steht unverändert
+unter „PR E"; §2.4 nennt die Tabelle, die dafür schon da ist.
 
 ## Anhang A — Was NICHT gebaut wird, und warum
 

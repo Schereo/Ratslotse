@@ -3986,6 +3986,47 @@ class ElectionAreaRef(TypedDict):
     name: str
 
 
+class ElectionDistrictParty(TypedDict):
+    slug: str
+    votes: int | None
+    share_pct: float | None
+
+
+class ElectionDistrict(TypedDict):
+    """Ein Wahlbezirk — die kleinste Einheit, die die Stadt veröffentlicht.
+    2026: 91 an der Urne, 42 für die Briefwahl."""
+    number: int
+    name: str
+    #: Der Wahlbereich, zu dem er zählt (1…6).
+    area: int
+    #: Briefwahlbezirk (Nummer ab 900)? Er zählt zum Wahlbereich, hat aber
+    #: keine Fläche auf der Karte — die Stimmen kommen von überall her.
+    postal: bool
+    counted: bool
+    reports_expected: int
+    reports_received: int
+    totals: ElectionTotals
+    parties: list[ElectionDistrictParty]
+
+
+class ElectionDistrictList(TypedDict):
+    """``GET /api/wahlabend/wahlbezirke`` — derselbe Stand, eine Ebene tiefer.
+
+    Bewusst ein eigener Endpunkt und nicht Teil von ``ElectionNight``:
+    133 Bezirke mal 16 Listen sind über 2.000 Zahlen, und die Seite braucht
+    sie erst, wenn jemand die Karte aufmacht. Personenstimmen je Bezirk
+    stehen NICHT darin — die CSV kennt sie, aber 133 × 383 Zahlen
+    beantworten keine Frage, die jemand hat.
+    """
+    dataset: str
+    phase: str
+    election: ElectionInfo
+    #: Wie viele Bezirke es gibt und wie viele davon gezählt sind.
+    total: int
+    counted: int
+    districts: list[ElectionDistrict]
+
+
 class ElectionCandidateParty(TypedDict):
     """Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
     Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:

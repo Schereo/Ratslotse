@@ -5203,6 +5203,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/wahlbezirke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Wahlbezirke
+         * @description Derselbe Stand je Wahlbezirk — die Ebene unter den Wahlbereichen.
+         *
+         *     Öffentlich wie der Wahlabend selbst, hinter demselben Schalter. Eigener
+         *     Endpunkt, weil die Seite die 133 Bezirke erst braucht, wenn jemand die
+         *     Karte aufmacht (s. ``ElectionDistrictList``).
+         */
+        get: operations["wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlen": {
         parameters: {
             query?: never;
@@ -8517,6 +8541,62 @@ export interface components {
             votes: number | null;
             /** Votes To Seat */
             votes_to_seat: number | null;
+        };
+        /**
+         * ElectionDistrict
+         * @description Ein Wahlbezirk — die kleinste Einheit, die die Stadt veröffentlicht.
+         *     2026: 91 an der Urne, 42 für die Briefwahl.
+         */
+        ElectionDistrict: {
+            /** Area */
+            area: number;
+            /** Counted */
+            counted: boolean;
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Parties */
+            parties: components["schemas"]["ElectionDistrictParty"][];
+            /** Postal */
+            postal: boolean;
+            /** Reports Expected */
+            reports_expected: number;
+            /** Reports Received */
+            reports_received: number;
+            totals: components["schemas"]["ElectionTotals"];
+        };
+        /**
+         * ElectionDistrictList
+         * @description ``GET /api/wahlabend/wahlbezirke`` — derselbe Stand, eine Ebene tiefer.
+         *
+         *     Bewusst ein eigener Endpunkt und nicht Teil von ``ElectionNight``:
+         *     133 Bezirke mal 16 Listen sind über 2.000 Zahlen, und die Seite braucht
+         *     sie erst, wenn jemand die Karte aufmacht. Personenstimmen je Bezirk
+         *     stehen NICHT darin — die CSV kennt sie, aber 133 × 383 Zahlen
+         *     beantworten keine Frage, die jemand hat.
+         */
+        ElectionDistrictList: {
+            /** Counted */
+            counted: number;
+            /** Dataset */
+            dataset: string;
+            /** Districts */
+            districts: components["schemas"]["ElectionDistrict"][];
+            election: components["schemas"]["ElectionInfo"];
+            /** Phase */
+            phase: string;
+            /** Total */
+            total: number;
+        };
+        /** ElectionDistrictParty */
+        ElectionDistrictParty: {
+            /** Share Pct */
+            share_pct: number | null;
+            /** Slug */
+            slug: string;
+            /** Votes */
+            votes: number | null;
         };
         /**
          * ElectionHistoryPoint
@@ -19331,6 +19411,42 @@ export interface operations {
             };
         };
     };
+    wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionDistrictList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlen_api_wahlen_get: {
         parameters: {
             query?: never;
@@ -19353,4 +19469,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e7626c5ce445e316ea6b7af97e8b2f5d501bbad2d075eabbd4299769c20e4dc7
+// vertrag-sha256: 6d513e663990dd4cb7c2ac934fa597722de8c90260ec5f031e00c8f2d9f5bb3d

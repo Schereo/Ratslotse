@@ -29,6 +29,10 @@ const PROBE = JSON.parse(
 const KANDIDATEN = JSON.parse(
   readFileSync(path.join(__dirname, "fixtures", "wahlabend-kandidaten-probe.json"), "utf8"),
 );
+/** Und als Wahlbezirke (`service.districts(reg, probe_snapshot(…, 60), "probe")`). */
+const BEZIRKE = JSON.parse(
+  readFileSync(path.join(__dirname, "fixtures", "wahlbezirke-probe.json"), "utf8"),
+);
 
 /** `/api/app-config` mit genau den Schaltern, die dieser Test sehen will.
  *  `min_build` und `note` gehören dazu — es ist derselbe Endpunkt, den die
@@ -56,8 +60,16 @@ function wahlabendMock(page: Page) {
       body: JSON.stringify(PROBE),
     });
   });
-  // Später registriert = zuerst gefragt: Die Rangliste bekommt ihre eigene
+  // Später registriert = zuerst gefragt: Die Unterpfade bekommen ihre eigene
   // Antwort, alles andere unter /api/wahlabend die Tafel.
+  page.route("**/api/wahlabend/wahlbezirke*", (route) => {
+    zaehler.rufe += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(BEZIRKE),
+    });
+  });
   page.route("**/api/wahlabend/kandidaten*", (route) => {
     zaehler.rufe += 1;
     return route.fulfill({
@@ -142,6 +154,27 @@ test.describe("Schalter an: die Generalprobe", () => {
     // weiterreichen, und nur so überlebt sie ein Neuladen.
     await expect(page).toHaveURL(/[?&]liste=volt/);
     await expect(page).toHaveURL(/[?&]ansicht=bereiche/);
+  });
+
+  test("die Karte zeigt die sechs Wahlbereiche — und auf Zuruf die Wahlbezirke", async ({ page }) => {
+    await page.goto("/wahlabend?ansicht=bereiche&liste=volt");
+    const karte = page.getByRole("img", { name: "Karte von Oldenburg" });
+    await expect(karte).toBeVisible();
+    // Sechs Flächen, sechs römische Ziffern.
+    await expect(karte.locator("path")).toHaveCount(6);
+    // Jede Ziffer steht zweimal im SVG: einmal als Halo, einmal als Schrift.
+    await expect(karte.getByText("IV", { exact: true }).first()).toBeVisible();
+
+    // Eine Ebene tiefer: die Wahlbezirke kommen erst auf Zuruf — vorher holt
+    // die Seite weder die 42 KB Geometrie noch die zweite Antwort.
+    await page.getByRole("button", { name: "Wahlbezirke" }).click();
+    await expect(karte.locator("path")).toHaveCount(91);
+    // Antippen zeigt das Ergebnis dieses Wahlbezirks. `force`, weil sich die
+    // Rechtecke um zwei Polygone überschneiden, auch wenn die Flächen selbst
+    // es nicht tun — Playwright prüft die Bounding-Box, der Zeiger trifft in
+    // Wirklichkeit die Fläche.
+    await karte.locator("path").first().click({ force: true });
+    await expect(page.getByText(/Wahlbezirk 10\d/).first()).toBeVisible();
   });
 
   test("die Kandidaten-Rangliste kommt vom Server, mit stadtweitem Rang", async ({ page }) => {

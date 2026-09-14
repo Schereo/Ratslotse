@@ -18,6 +18,8 @@ export type Kandidatenliste = ApiAntwort<"/wahlabend/kandidaten">;
 export type KandidatenZeile = Kandidatenliste["rows"][number];
 export type KandidatenListe = Kandidatenliste["parties"][number];
 export type KandidatenSortierung = "votes" | "party" | "area" | "name";
+export type Wahlbezirke = ApiAntwort<"/wahlabend/wahlbezirke">;
+export type Wahlbezirk = Wahlbezirke["districts"][number];
 
 /** Schlüssel im localStorage: die zuletzt gewählte Liste. */
 export const LISTE_SPEICHER = "wahlabend.liste";
@@ -138,6 +140,14 @@ export function abfragePfad(probe: string | null, counted: string | null, wahl?:
   }
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
+}
+
+/** Dieselbe Herkunft für die Wahlbezirke — sie kennen weder Sortierung noch
+ *  Filter, die Karte zeigt immer alle. */
+export function bezirkePfad(probe: string | null, counted: string | null, wahl: string | null | undefined): string {
+  const basis = abfragePfad(probe, counted, wahl);
+  const q = basis.includes("?") ? basis.slice(basis.indexOf("?")) : "";
+  return `/wahlabend/wahlbezirke${q}`;
 }
 
 /** Dieselbe Herkunft (Probe/Stand/Rückblick) für die Kandidaten-Rangliste —

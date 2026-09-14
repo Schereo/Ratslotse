@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
+import { projiziere, toenung } from "@/lib/gebiete";
 
 /** Oldenburg als anklickbare Fläche — 31 Ortsbereiche, ein Inline-SVG.
  *
@@ -22,72 +23,18 @@ import { loadOrtsbereiche, type OrtsbereichFeature } from "@/lib/districts";
  *
  *  Mehrere Auswahlen sind erlaubt und werden alle hervorgehoben.
  *
- *  Die Projektion ist eine schlichte äquirektanguläre: Bei der Ausdehnung
- *  einer Stadt (≈ 15 km) ist der Fehler gegenüber Mercator nicht sichtbar.
- *  Der Breitengrad-Faktor `cos(φ)` muss aber sein — ohne ihn stünde Oldenburg
- *  um ein Drittel in die Breite gezogen da.
+ *  Die Projektion selbst steht in `lib/gebiete.ts` — sie rechnet auch die
+ *  Wahlbereichs-Karte des Wahlabends.
  */
-
-type Punkt = [number, number];
 
 /** Ein Ortsbereich, fertig als SVG-Pfad. */
 type Flaeche = { name: string; d: string; cx: number; cy: number };
 
 const HOEHE = 460;
 
-function ringeVon(feature: OrtsbereichFeature): Punkt[][] {
-  const g = feature.geometry;
-  const polys = g.type === "MultiPolygon" ? g.coordinates : [g.coordinates];
-  // Nur der Außenring: Die vereinfachten Grenzen haben keine Löcher, und ein
-  // Innenring würde als eigene Fläche gezeichnet.
-  return polys.map((poly) => poly[0] as Punkt[]).filter((r) => r && r.length > 2);
-}
-
-/** GeoJSON → SVG-Pfade, gemeinsam auf eine Box skaliert. */
 function projizieren(features: OrtsbereichFeature[], breite: number): { flaechen: Flaeche[]; hoehe: number } {
-  let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
-  for (const f of features) {
-    for (const ring of ringeVon(f)) {
-      for (const [lon, lat] of ring) {
-        if (lon < minLon) minLon = lon;
-        if (lon > maxLon) maxLon = lon;
-        if (lat < minLat) minLat = lat;
-        if (lat > maxLat) maxLat = lat;
-      }
-    }
-  }
-  if (!Number.isFinite(minLon)) return { flaechen: [], hoehe: HOEHE };
-
-  // Ohne cos(φ) wäre die Stadt in die Breite gezogen: Ein Längengrad ist auf
-  // 53° Nord nur noch gut 0,6 Breitengrade breit.
-  const kos = Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180));
-  const spanX = (maxLon - minLon) * kos;
-  const spanY = maxLat - minLat;
-  const rand = 6;
-  const skala = Math.min((breite - 2 * rand) / spanX, (HOEHE - 2 * rand) / spanY);
-  const hoehe = spanY * skala + 2 * rand;
-  const versatzX = (breite - spanX * skala) / 2;
-  const versatzY = rand;
-
-  const x = (lon: number) => versatzX + (lon - minLon) * kos * skala;
-  // y invertiert: Norden liegt oben, SVG zählt nach unten.
-  const y = (lat: number) => versatzY + (maxLat - lat) * skala;
-
-  const flaechen: Flaeche[] = [];
-  for (const f of features) {
-    const ringe = ringeVon(f);
-    if (!ringe.length) continue;
-    const d = ringe
-      .map((ring) => ring.map(([lo, la], i) =>
-        `${i ? "L" : "M"}${x(lo).toFixed(1)} ${y(la).toFixed(1)}`).join("") + "Z")
-      .join(" ");
-    // Schwerpunkt des größten Rings — trägt später den Namen bzw. den Punkt.
-    const groesster = ringe.reduce((a, b) => (b.length > a.length ? b : a));
-    const cx = groesster.reduce((s, p) => s + x(p[0]), 0) / groesster.length;
-    const cy = groesster.reduce((s, p) => s + y(p[1]), 0) / groesster.length;
-    flaechen.push({ name: f.properties.name, d, cx, cy });
-  }
-  return { flaechen, hoehe };
+  const { pfade, hoehe } = projiziere(features, breite, HOEHE);
+  return { flaechen: pfade.map((p) => ({ name: p.eigenschaften.name, d: p.d, cx: p.cx, cy: p.cy })), hoehe };
 }
 
 export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, gewichte, titel, className }: {
@@ -133,13 +80,8 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, gewichte, tit
   const { flaechen, hoehe } = useMemo(() => projizieren(features, breite), [features, breite]);
   const maxGewicht = useMemo(() => Math.max(0, ...(gewichte ? [...gewichte.values()] : [])), [gewichte]);
   // Deckkraft des Primärtons: 0,12 für „ein Vorhaben", 0,62 für den Spitzenwert.
-  const toenung = (name: string): string | undefined => {
-    if (!gewichte || !maxGewicht) return undefined;
-    const g = gewichte.get(name) ?? 0;
-    if (g <= 0) return undefined;
-    const a = 0.12 + 0.5 * Math.sqrt(g / maxGewicht);
-    return `hsl(var(--primary) / ${a.toFixed(2)})`;
-  };
+  const ton = (name: string): string | undefined =>
+    (gewichte ? toenung(gewichte.get(name), maxGewicht) : null) ?? undefined;
 
   return (
     <div ref={boxRef} className={cn("relative", className)}>
@@ -157,7 +99,7 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, gewichte, tit
             const aktiv = gewaehlt.has(f.name);
             const offen = auswaehlbar.has(f.name);
             const hell = schwebt === f.name && offen;
-            const ton = !aktiv && !hell ? toenung(f.name) : undefined;
+            const fuellung = !aktiv && !hell ? ton(f.name) : undefined;
             return (
               // Bewusst NICHT fokussierbar: Chrome legt den Fokus-Ring einer
               // SVG-Fläche um deren Bounding-Box, nicht um den Umriss — beim
@@ -177,7 +119,7 @@ export function StadtteilKarte({ gewaehlt, auswaehlbar, onWaehlen, gewichte, tit
                       // man sähe nicht, wo überhaupt etwas anklickbar ist.
                       : offen ? "fill-muted stroke-border" : "fill-muted/30 stroke-border/50",
                 )}
-                style={ton ? { fill: ton } : undefined}
+                style={fuellung ? { fill: fuellung } : undefined}
                 strokeWidth={aktiv ? 2 : 1}
                 onMouseEnter={() => setSchwebt(f.name)}
                 onMouseLeave={() => setSchwebt((n) => (n === f.name ? null : n))}

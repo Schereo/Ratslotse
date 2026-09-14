@@ -7992,6 +7992,132 @@
         "title": "ElectionCandidateRow",
         "type": "object"
       },
+      "ElectionDistrict": {
+        "description": "Ein Wahlbezirk — die kleinste Einheit, die die Stadt veröffentlicht.\n2026: 91 an der Urne, 42 für die Briefwahl.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrictParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "reports_expected": {
+            "title": "Reports Expected",
+            "type": "integer"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ElectionTotals"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal",
+          "counted",
+          "reports_expected",
+          "reports_received",
+          "totals",
+          "parties"
+        ],
+        "title": "ElectionDistrict",
+        "type": "object"
+      },
+      "ElectionDistrictList": {
+        "description": "``GET /api/wahlabend/wahlbezirke`` — derselbe Stand, eine Ebene tiefer.\n\nBewusst ein eigener Endpunkt und nicht Teil von ``ElectionNight``:\n133 Bezirke mal 16 Listen sind über 2.000 Zahlen, und die Seite braucht\nsie erst, wenn jemand die Karte aufmacht. Personenstimmen je Bezirk\nstehen NICHT darin — die CSV kennt sie, aber 133 × 383 Zahlen\nbeantworten keine Frage, die jemand hat.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionDistrict"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "total",
+          "counted",
+          "districts"
+        ],
+        "title": "ElectionDistrictList",
+        "type": "object"
+      },
+      "ElectionDistrictParty": {
+        "properties": {
+          "share_pct": {
+            "title": "Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slug",
+          "votes",
+          "share_pct"
+        ],
+        "title": "ElectionDistrictParty",
+        "type": "object"
+      },
       "ElectionHistoryPoint": {
         "description": "Ein Minutenstand des Abends — für den Verlauf (Auszählung, Anteile, Sitze).",
         "properties": {
@@ -27978,6 +28104,84 @@
           }
         },
         "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/wahlbezirke": {
+      "get": {
+        "description": "Derselbe Stand je Wahlbezirk — die Ebene unter den Wahlbereichen.\n\nÖffentlich wie der Wahlabend selbst, hinter demselben Schalter. Eigener\nEndpunkt, weil die Seite die 133 Bezirke erst braucht, wenn jemand die\nKarte aufmacht (s. ``ElectionDistrictList``).",
+        "operationId": "wahlabend_wahlbezirke_api_wahlabend_wahlbezirke_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionDistrictList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Wahlbezirke",
         "tags": [
           "wahlabend"
         ]

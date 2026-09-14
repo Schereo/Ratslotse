@@ -78,6 +78,17 @@ def test_die_kandidaten_abschrift_kennt_jedes_feld(probe):
     )
 
 
+def test_die_wahlbezirks_abschrift_kennt_jedes_feld():
+    reg = service.load_register()
+    frisch = service.districts(reg, service.probe_snapshot(reg, service.load_reference(), 60), "probe")
+    ist = json.loads((FIXTURES / "wahlbezirke-probe.json").read_text(encoding="utf-8"))
+    fehlt = _fehlt(frisch, ist, "wahlbezirke")
+    assert not fehlt, (
+        "Diese Felder fehlen in web/frontend/tests/e2e/fixtures/wahlbezirke-probe.json:\n  "
+        + "\n  ".join(fehlt)
+    )
+
+
 def test_die_abschriften_zeigen_denselben_stand(probe):
     """Beide stammen aus derselben Generalprobe — sonst zeigt die Rangliste
     im Browsertest andere Zahlen als die Tafel darüber."""
@@ -86,3 +97,5 @@ def test_die_abschriften_zeigen_denselben_stand(probe):
     assert rang["dataset"] == nacht["dataset"] and rang["phase"] == nacht["phase"]
     assert rang["total"] == sum(len(p["candidates"]) for a in nacht["areas"] for p in a["parties"])
     assert [p["slug"] for p in rang["parties"]] == [p["slug"] for p in nacht["parties"]]
+    bezirke = json.loads((FIXTURES / "wahlbezirke-probe.json").read_text(encoding="utf-8"))
+    assert bezirke["counted"] == 60 and bezirke["phase"] == nacht["phase"]
