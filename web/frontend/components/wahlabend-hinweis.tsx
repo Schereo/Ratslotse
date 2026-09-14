@@ -42,13 +42,55 @@ export function useWahlabendZeit(pollsClose?: string | null): WahlabendZeit {
 
 const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
 
+/** Was der Einstieg sagt — je nachdem, ob die Wahl noch kommt, gerade läuft
+ *  oder vorbei ist.
+ *
+ *  Die dritte Fassung fehlte bis 09/2026, und weil sie fehlte, stand am
+ *  Montagmorgen nach der Wahl „Der Wahlabend läuft" auf der Startseite. Alle
+ *  drei stehen hier zusammen: Sechs verstreute Ternaries in zwei Komponenten
+ *  laufen auseinander, sobald jemand einen Satz ändert. */
+function texte(zeit: WahlabendZeit, name: string): {
+  ueberschrift: string;
+  kurz: string;
+  text: string;
+  knopf: string;
+} {
+  if (zeit.phase === "laeuft") {
+    return {
+      ueberschrift: "Der Wahlabend, live nachgerechnet.",
+      kurz: "Der Wahlabend läuft",
+      text: "Auszählungsstand, Sitze je Liste und Wahlbereich, und wer nach dem Kommunalwahlgesetz gerade im Rat "
+        + "wäre — aus den Open-Data-Zahlen der Stadt, jede Minute neu. Öffentlich, ohne Konto. Eigene Rechnung, "
+        + "kein amtliches Ergebnis.",
+      knopf: "Zum Wahlabend",
+    };
+  }
+  if (zeit.phase === "danach") {
+    return {
+      ueberschrift: `${name}: das Ergebnis, nachgerechnet.`,
+      kurz: "Das Ergebnis steht",
+      text: "Sitze je Liste und Wahlbereich, wer nach dem Kommunalwahlgesetz in den Rat einzieht und wie knapp es "
+        + "war — aus den Open-Data-Zahlen der Stadt. Eigene Rechnung, kein amtliches Ergebnis.",
+      knopf: "Zum Ergebnis",
+    };
+  }
+  return {
+    ueberschrift: `${zeit.wann}: der Wahlabend, live nachgerechnet.`,
+    kurz: `${zeit.wann}: der Wahlabend`,
+    text: "Auszählungsstand, Sitze je Liste und Wahlbereich, und wer nach dem Kommunalwahlgesetz im Rat wäre — "
+      + `aus den Open-Data-Zahlen der Stadt, jede Minute neu. Öffentlich, ohne Konto. Die Seite steht schon, `
+      + `die Zahlen kommen ${zeit.wann.toLowerCase()}.`,
+    knopf: "Zur Wahlabend-Seite",
+  };
+}
+
 /** Landing: ein Streifen in der Anzeigetafel-Fläche, unter dem Hero. */
 export function WahlabendBanner() {
   const an = useFeature("wahlabend");
   const wahl = useFokusWahl();
   const zeit = useWahlabendZeit();
   if (!an) return null;
-  const laeuft = zeit.phase === "laeuft";
+  const t = texte(zeit, wahl?.short_title ?? "Die Wahl");
   return (
     <section aria-label={`Wahlabend: ${wahl?.short_title ?? "die nächste Wahl"}`} className="mx-auto max-w-5xl px-5 pb-2 pt-6">
       <Link
@@ -62,17 +104,14 @@ export function WahlabendBanner() {
             {wahl?.short_title ?? "Wahlabend"} · {datumLang(wahl?.date)} · <span suppressHydrationWarning>{zeit.kicker}</span>
           </p>
           <h2 className="mt-1.5 font-display text-[22px] font-bold leading-tight tracking-tight sm:text-[24px]" suppressHydrationWarning>
-            {laeuft ? "Der Wahlabend, live nachgerechnet." : `${zeit.wann}: der Wahlabend, live nachgerechnet.`}
+            {t.ueberschrift}
           </h2>
-          <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
-            Auszählungsstand, Sitze je Liste und Wahlbereich, und wer nach dem Kommunalwahlgesetz gerade im Rat
-            wäre — aus den Open-Data-Zahlen der Stadt, jede Minute neu. Öffentlich, ohne Konto.
-            {laeuft ? "" : ` Die Seite steht schon, die Zahlen kommen ${zeit.wann.toLowerCase()}.`} Eigene Rechnung, kein amtliches
-            Ergebnis.
+          <p className="mt-1.5 max-w-[62ch] text-sm leading-relaxed text-muted-foreground" suppressHydrationWarning>
+            {t.text}
           </p>
         </div>
         <span className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform duration-fluss ease-out-strong sm:ml-auto [@media(hover:hover)]:group-hover:-translate-y-0.5">
-          <span suppressHydrationWarning>{laeuft ? "Zum Wahlabend" : "Zur Wahlabend-Seite"}</span> <ArrowRight className="h-4 w-4" />
+          <span suppressHydrationWarning>{t.knopf}</span> <ArrowRight className="h-4 w-4" />
         </span>
       </Link>
     </section>
@@ -86,7 +125,7 @@ export function WahlabendHinweis() {
   const wahl = useFokusWahl();
   const zeit = useWahlabendZeit();
   if (!an) return null;
-  const laeuft = zeit.phase === "laeuft";
+  const t = texte(zeit, wahl?.short_title ?? "Die Wahl");
   return (
     <Card className="flex flex-col gap-4 border-primary/25 bg-primary/[0.04] p-4 sm:flex-row sm:items-center">
       <Mascot pose="point" decorative className="hidden h-14 w-14 flex-none sm:block" />
@@ -95,17 +134,15 @@ export function WahlabendHinweis() {
           {wahl?.short_title ?? "Wahlabend"} · {datumLang(wahl?.date)} · <span suppressHydrationWarning>{zeit.kicker}</span>
         </p>
         <h2 className="mt-0.5 font-display text-base font-bold text-foreground" suppressHydrationWarning>
-          {laeuft ? "Der Wahlabend läuft" : `${zeit.wann}: der Wahlabend`}
+          {t.kurz}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground" suppressHydrationWarning>
-          {laeuft
-            ? "Auszählungsstand, Sitze je Liste und Wahlbereich, wer gerade im Rat wäre — live nachgerechnet."
-            : "Auszählungsstand, Sitze je Liste und Wahlbereich, wer im Rat wäre — live nachgerechnet, sobald die Wahllokale schließen."}
+          {t.text}
         </p>
       </div>
       <Button asChild className="w-full shrink-0 sm:w-auto">
         <Link href={wahl?.path ?? "/wahlabend"}>
-          <span suppressHydrationWarning>{laeuft ? "Zum Wahlabend" : "Zur Wahlabend-Seite"}</span> <ArrowRight />
+          <span suppressHydrationWarning>{t.knopf}</span> <ArrowRight />
         </Link>
       </Button>
     </Card>

@@ -260,9 +260,11 @@ function Tafel({
               : abfrageFehler
               ? `Die letzte Abfrage ist fehlgeschlagen — gezeigt wird der Stand von ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr, nächster Versuch in einer Minute.`
               : daten.source.ok
-                ? zeit.phase === "laeuft"
-                  ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
-                  : "Ab Sonntag 18 Uhr fragt die Seite jede Minute nach."
+                ? daten.phase === "complete"
+                  ? "Alle Wahlbezirke sind ausgezählt — die Zahlen ändern sich nicht mehr."
+                  : zeit.phase !== "vorher"
+                    ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
+                    : `${zeit.wann} fragt die Seite jede Minute nach.`
                 : `Der Votemanager antwortet gerade nicht (${daten.source.error ?? "Fehler"}) — gezeigt wird der letzte Stand.`}
             {daten.phase !== "before" && daten.dataset !== "archive" ? (
               <>
@@ -774,7 +776,15 @@ export function WahlabendView() {
   const zeit = useWahlabendZeit();
   // Bis Sonntag 18 Uhr gibt es nichts nachzufragen — der Minutentakt beginnt
   // mit dem Wahlabend (Tims Wunsch: eine Woche Polling wäre Overkill).
-  const laeuft = zeit.phase === "laeuft";
+  //
+  // **Er endet aber nicht mit dem Wahltag.** Seit `wahlabendZeit` eine dritte
+  // Phase kennt („danach"), wäre `phase === "laeuft"` als Bedingung eine
+  // Falle: 2021 lag das vorläufige Ergebnis der Ratswahl erst am
+  // Montagmorgen vor — die Seite hätte um Mitternacht aufgehört zu fragen und
+  // einen Zwischenstand eingefroren. Gefragt wird deshalb, bis wirklich
+  // ausgezählt ist.
+  const gestartet = zeit.phase !== "vorher";
+  const holen = gestartet && !rueckblick;
 
   const abfrage = useQuery({
     queryKey: ["wahlabend", probe, counted, rueckblick],
@@ -782,9 +792,10 @@ export function WahlabendView() {
     enabled: schalterAn,
     // Ein Rückblick ändert sich nicht mehr — kein Minutentakt, kein
     // Nachfragen beim Zurückschalten ins Fenster.
-    refetchInterval: laeuft && !rueckblick ? 60_000 : false,
-    refetchOnWindowFocus: laeuft && !rueckblick,
-    staleTime: rueckblick ? Infinity : laeuft ? 30_000 : 15 * 60_000,
+    refetchInterval: (abfrage) =>
+      holen && abfrage.state.data?.phase !== "complete" ? 60_000 : false,
+    refetchOnWindowFocus: holen,
+    staleTime: rueckblick ? Infinity : gestartet ? 30_000 : 15 * 60_000,
   });
 
   const [liste, setListe] = useState<string | null>(null);

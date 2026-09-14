@@ -127,6 +127,12 @@ describe("Wann ist Wahlabend", () => {
     expect(wahlabendZeit(SCHLUSS, new Date("2026-09-12T22:30:00Z"))).toMatchObject({ phase: "vorher", tage: 0, kicker: "Heute ab 18 Uhr" });
     expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T15:59:00Z")).phase).toBe("vorher");
     expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T16:00:00Z"))).toMatchObject({ phase: "laeuft", kicker: "Live" });
-    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-20T12:00:00Z")).phase).toBe("laeuft");
+    // Der Abend endet mit dem Wahltag. Bis 09/2026 kannte die Funktion nur
+    // „vorher" und „laeuft" — und am Montagmorgen stand deshalb immer noch
+    // „Der Wahlabend läuft" auf der Startseite (Tims Befund, live auf Prod).
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T21:59:00Z")).phase).toBe("laeuft");
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-13T22:30:00Z"))).toMatchObject({ phase: "danach", kicker: "Ergebnis" });
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-14T07:00:00Z")).phase).toBe("danach");
+    expect(wahlabendZeit(SCHLUSS, new Date("2026-09-20T12:00:00Z")).phase).toBe("danach");
   });
 });

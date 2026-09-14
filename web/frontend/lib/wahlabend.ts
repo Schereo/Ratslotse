@@ -251,10 +251,12 @@ export function kartePfad(
 /* ── Wann ist Wahlabend? ────────────────────────────────────────────────── */
 
 export type WahlabendZeit = {
-  phase: "vorher" | "laeuft";
+  /** `vorher` = Countdown, `laeuft` = der Abend selbst, `danach` = Ergebnis. */
+  phase: "vorher" | "laeuft" | "danach";
   /** Kalendertage bis zum Wahltag in deutscher Zeit; 0 am Wahltag selbst. */
   tage: number;
-  /** Kurz, für den Mono-Kicker: „Noch 6 Tage", „Heute ab 18 Uhr", „Live". */
+  /** Kurz, für den Mono-Kicker: „Noch 6 Tage", „Heute ab 18 Uhr", „Live",
+   *  „Ergebnis". */
   kicker: string;
   /** Ein Satzanfang für Überschriften: „Am Sonntag ab 18 Uhr", „Heute ab 18 Uhr". */
   wann: string;
@@ -276,8 +278,17 @@ function berlinerTag(d: Date): number {
  *  als ein Countdown auf NaN. */
 export function wahlabendZeit(pollsClose: string | null | undefined, jetzt: Date = new Date()): WahlabendZeit {
   const schluss = pollsClose ? new Date(pollsClose).getTime() : NaN;
-  if (!Number.isFinite(schluss) || jetzt.getTime() >= schluss) {
-    return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
+  if (!Number.isFinite(schluss)) return { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
+  if (jetzt.getTime() >= schluss) {
+    // Der Wahlabend endet mit dem Wahltag. Bis 09/2026 kannte diese Funktion
+    // nur „vorher" und „laeuft" — und weil nichts danach kam, stand am
+    // Montagmorgen nach der Wahl immer noch „Der Wahlabend läuft" auf der
+    // Startseite (Tims Befund am 14.09.2026, live auf Prod). Ab Mitternacht
+    // ist es ein Ergebnis, kein Abend.
+    const danach = berlinerTag(jetzt) > berlinerTag(new Date(schluss));
+    return danach
+      ? { phase: "danach", tage: 0, kicker: "Ergebnis", wann: "Seit dem Wahlabend" }
+      : { phase: "laeuft", tage: 0, kicker: "Live", wann: "Jetzt" };
   }
   const tage = Math.max(0, Math.round((berlinerTag(new Date(schluss)) - berlinerTag(jetzt)) / 86_400_000));
   if (tage === 0) return { phase: "vorher", tage, kicker: "Heute ab 18 Uhr", wann: "Heute ab 18 Uhr" };
