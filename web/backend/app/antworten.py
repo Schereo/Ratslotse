@@ -3873,6 +3873,29 @@ class ElectionNight(TypedDict):
     history: list[ElectionHistoryPoint]
 
 
+class ElectionListItem(TypedDict):
+    """Eine Zeile der Übersicht unter ``/wahlen``."""
+    slug: str
+    short_title: str
+    title: str
+    date: str
+    polls_close: str
+    #: „council" (Sitze) oder „mayor" (Prozente, auch Stichwahl).
+    kind: str
+    #: „vorbereitung" | „live" | „rueckblick".
+    status: str
+    #: Wo diese Wahl zu sehen ist — leer, wenn es keine Seite dafür gibt.
+    path: str
+    #: Das Ergebnis in einem Satz; ``null``, solange es keines gibt.
+    summary: str | None
+    #: Ist das die Wahl, auf die gerade alles zeigt (``elections.focus``)?
+    focus: bool
+
+
+class ElectionList(TypedDict):
+    elections: list[ElectionListItem]
+
+
 # ------------------------------------------------------------------ OB-Wahl (election/mayor.py)
 
 class MayorCandidate(TypedDict):

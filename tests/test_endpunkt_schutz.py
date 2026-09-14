@@ -119,6 +119,7 @@ OEFFENTLICH = {
     # Die OB-Wahl gehört zum selben Feature-Schalter — Teil des Wahlabends.
     ("get", "/api/wahlabend/ob"),
     ("get", "/api/wahlabend/stichwahl"),
+    ("get", "/api/wahlen"),
 
     # Tippspiel (docs/plan-tippspiel-ratswahl.md): ohne Konto — die Identität
     # ist der Cookie-Token, nicht `web_users.id`. Hinter dem Schalter

@@ -23,12 +23,14 @@ from kern import features
 from ..antworten import (
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
+    ElectionList,
+    ElectionListItem,
     ElectionNight,
     MayorCandidate,
     MayorElectionInfo,
     MayorNight,
 )
-from ..election import elections, image, mayor, service, share
+from ..election import archive, elections, image, mayor, service, share
 from ..election import votemanager
 
 router = APIRouter(tags=["wahlabend"])
@@ -61,9 +63,60 @@ def _stand(probe: str | None, counted: int | None) -> ElectionNight:
 def wahlabend(
     probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
     counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+    wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
 ) -> ElectionNight:
+    """Der Wahlabend: live, als Generalprobe oder als Rückblick.
+
+    ``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus
+    dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
+    Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
+    Wahltag im Pfad und wandern irgendwann ins Archiv.
+    """
     _frei()
+    if wahl:
+        bild = archive.night(wahl)
+        if bild is None:
+            raise HTTPException(status_code=404,
+                                detail="Von dieser Wahl liegt kein vollständiger Stand vor.")
+        return bild
     return _stand(probe, counted)
+
+
+@router.get("/api/wahlen")
+def wahlen() -> ElectionList:
+    """Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.
+
+    Öffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das
+    Gegenstück zum Feature-Schalter für eine einzelne Wahl.
+    """
+    _frei()
+    fokus = elections.focus()
+    zeilen: list[ElectionListItem] = []
+    for w in sorted(elections.all().values(), key=lambda w: (w.date, w.slug), reverse=True):
+        if w.status == "entwurf":
+            continue
+        zeilen.append(ElectionListItem(
+            slug=w.slug, short_title=w.short_title, title=w.title, date=w.date,
+            polls_close=w.polls_close.isoformat(), kind=w.kind, status=w.status,
+            path=_pfad_zu(w), summary=archive.summary(w), focus=w.slug == fokus.slug,
+        ))
+    return ElectionList(elections=zeilen)
+
+
+def _pfad_zu(w: elections.Election) -> str:
+    """Wo diese Wahl zu sehen ist — leer, wenn es keine Seite gibt.
+
+    Die Ratswahl 2021 ist so ein Fall: Ihre Zahlen liegen im Repo, aber ihre
+    Kandidatenlisten nicht. Sie steht deshalb in der Übersicht mit ihrem
+    Ergebnis und ohne Link — ein Link auf eine Seite, die es nicht gibt, wäre
+    schlechter als keiner.
+    """
+    if w.status != "rueckblick" and (w.slug == elections.active().slug or w.first_round):
+        return elections.path_of(w)
+    # Eine gelaufene Wahl braucht keine eigene Seite: Es IST der Wahlabend,
+    # nur mit eingefrorenen Zahlen. `?wahl=` statt eines Pfadsegments, weil
+    # der App-Export keine dynamischen Segmente kann (web/frontend/CLAUDE.md).
+    return f"/wahlabend?wahl={w.slug}" if archive.verfuegbar(w) else ""
 
 
 # ------------------------------------------------------------------ OB-Wahl und Stichwahl

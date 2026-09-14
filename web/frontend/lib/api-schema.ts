@@ -5053,7 +5053,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Wahlabend */
+        /**
+         * Wahlabend
+         * @description Der Wahlabend: live, als Generalprobe oder als Rückblick.
+         *
+         *     ``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus
+         *     dem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine
+         *     Rückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den
+         *     Wahltag im Pfad und wandern irgendwann ins Archiv.
+         */
         get: operations["wahlabend_api_wahlabend_get"];
         put?: never;
         post?: never;
@@ -5155,6 +5163,29 @@ export interface paths {
          *     einem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.
          */
         get: operations["stichwahl_api_wahlabend_stichwahl_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlen
+         * @description Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.
+         *
+         *     Öffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das
+         *     Gegenstück zum Feature-Schalter für eine einzelne Wahl.
+         */
+        get: operations["wahlen_api_wahlen_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8393,6 +8424,37 @@ export interface components {
             slug: string;
             /** Status */
             status: string;
+            /** Title */
+            title: string;
+        };
+        /** ElectionList */
+        ElectionList: {
+            /** Elections */
+            elections: components["schemas"]["ElectionListItem"][];
+        };
+        /**
+         * ElectionListItem
+         * @description Eine Zeile der Übersicht unter ``/wahlen``.
+         */
+        ElectionListItem: {
+            /** Date */
+            date: string;
+            /** Focus */
+            focus: boolean;
+            /** Kind */
+            kind: string;
+            /** Path */
+            path: string;
+            /** Polls Close */
+            polls_close: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
             /** Title */
             title: string;
         };
@@ -18832,6 +18894,8 @@ export interface operations {
                 probe?: string | null;
                 /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
             };
             header?: never;
             path?: never;
@@ -19021,6 +19085,26 @@ export interface operations {
             };
         };
     };
+    wahlen_api_wahlen_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionList"];
+                };
+            };
+        };
+    };
 }
 
-// vertrag-sha256: 5cdeb2e9b98a2d06830ea5384e13a9e645ac0cfd820f03605de3a03076bf5816
+// vertrag-sha256: ef0db972991fd6ac8586af6977c245420871c14b49fde7524471c7688a1b804a

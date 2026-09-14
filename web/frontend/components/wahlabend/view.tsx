@@ -75,6 +75,11 @@ function Fuss({ daten }: { daten: Wahlabend | undefined }) {
           </>
         ) : null}
       </p>
+      <p className="mt-2">
+        <Link href="/wahlen" className="font-medium text-primary">
+          Alle Wahlen in Oldenburg →
+        </Link>
+      </p>
       <p className="mt-2 max-w-[76ch]">
         <strong className="font-semibold text-foreground">Unsere Rechnung:</strong> Die Sitze folgen dem Verfahren des
         Niedersächsischen Kommunalwahlgesetzes (§§ 36, 37 — dreimal Hare/Niemeyer: Listen, Wahlbereiche, dann Listen-
@@ -235,25 +240,31 @@ function Tafel({
         <div className="min-w-0 flex-1">
           <p className={KICKER}>
             {daten.election.short_title} · {datumLang(daten.election.date)} ·{" "}
-            <span suppressHydrationWarning>{daten.dataset === "probe" ? "Generalprobe" : zeit.kicker}</span>
+            <span suppressHydrationWarning>
+              {daten.dataset === "probe" ? "Generalprobe" : daten.dataset === "archive" ? "Rückblick" : zeit.kicker}
+            </span>
           </p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-none tracking-tight sm:text-[32px]">Wahlabend</h1>
           <p className="mt-3 text-[14px] text-foreground">
             <strong className="font-semibold">{phase}</strong>
-            {stand ? <span className="text-muted-foreground"> · Stand {stand}</span> : null}
+            {/* Bei einem Rückblick wäre „Stand 15:55 Uhr" die Uhrzeit, zu der
+                die Datei gelesen wurde — nicht die des Wahlabends. */}
+            {stand && daten.dataset !== "archive" ? <span className="text-muted-foreground"> · Stand {stand}</span> : null}
           </p>
           <div className="mt-2 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-foreground/10">
             <div className="h-full rounded-full bg-primary transition-[width] duration-weg" style={{ width: `${anteil}%` }} />
           </div>
           <p className="mt-2 text-[11.5px] text-muted-foreground">
-            {abfrageFehler
+            {daten.dataset === "archive"
+              ? "Eingefrorener Stand vom Ende des Wahlabends — er ändert sich nicht mehr."
+              : abfrageFehler
               ? `Die letzte Abfrage ist fehlgeschlagen — gezeigt wird der Stand von ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr, nächster Versuch in einer Minute.`
               : daten.source.ok
                 ? zeit.phase === "laeuft"
                   ? `Zuletzt abgefragt ${uhrzeit(new Date(aktualisiert).toISOString()) ?? "–"} Uhr · nächste Abfrage in einer Minute`
                   : "Ab Sonntag 18 Uhr fragt die Seite jede Minute nach."
                 : `Der Votemanager antwortet gerade nicht (${daten.source.error ?? "Fehler"}) — gezeigt wird der letzte Stand.`}
-            {daten.phase !== "before" ? (
+            {daten.phase !== "before" && daten.dataset !== "archive" ? (
               <>
                 {" · "}
                 <a href={bild} target="_blank" rel="noopener noreferrer" className="font-medium text-primary">
@@ -752,6 +763,9 @@ export function WahlabendView() {
   const router = useRouter();
   const probe = params.get("probe");
   const counted = params.get("counted");
+  // `?wahl=` zeigt eine gelaufene Wahl aus dem Repo — dieselbe Seite, nur mit
+  // eingefrorenen Zahlen und ohne Minutentakt.
+  const rueckblick = params.get("wahl");
   const schalterAn = useFeature("wahlabend");
   const config = useAppConfig();
   // Ohne Argument: der Termin aus `/api/app-config`. Hier ist die Antwort des
@@ -763,12 +777,14 @@ export function WahlabendView() {
   const laeuft = zeit.phase === "laeuft";
 
   const abfrage = useQuery({
-    queryKey: ["wahlabend", probe, counted],
-    queryFn: () => api.get<Wahlabend>(abfragePfad(probe, counted)),
+    queryKey: ["wahlabend", probe, counted, rueckblick],
+    queryFn: () => api.get<Wahlabend>(abfragePfad(probe, counted, rueckblick)),
     enabled: schalterAn,
-    refetchInterval: laeuft ? 60_000 : false,
-    refetchOnWindowFocus: laeuft,
-    staleTime: laeuft ? 30_000 : 15 * 60_000,
+    // Ein Rückblick ändert sich nicht mehr — kein Minutentakt, kein
+    // Nachfragen beim Zurückschalten ins Fenster.
+    refetchInterval: laeuft && !rueckblick ? 60_000 : false,
+    refetchOnWindowFocus: laeuft && !rueckblick,
+    staleTime: rueckblick ? Infinity : laeuft ? 30_000 : 15 * 60_000,
   });
 
   const [liste, setListe] = useState<string | null>(null);
@@ -841,8 +857,8 @@ export function WahlabendView() {
           </p>
         ) : null}
         <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
-        <StichwahlHinweis />
-        {daten.phase !== "before" ? <NeuKarten liste={liste} /> : null}
+        {daten.dataset === "archive" ? null : <StichwahlHinweis />}
+        {daten.phase !== "before" && daten.dataset !== "archive" ? <NeuKarten liste={liste} /> : null}
         <Vorbehalt daten={daten} />
         {daten.phase === "before" && daten.dataset === "live" ? (
           <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
