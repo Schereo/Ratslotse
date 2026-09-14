@@ -25,6 +25,7 @@ from kern.store import Store
 from ..antworten import (
     WAHLABEND_KARTE_PNG,
     WAHLABEND_PNG,
+    ElectionCandidateRanking,
     ElectionList,
     ElectionListItem,
     ElectionNight,
@@ -33,7 +34,7 @@ from ..antworten import (
     MayorNight,
 )
 from ..deps import get_store, optional_user
-from ..election import archive, elections, image, mayor, service, share
+from ..election import archive, candidates, elections, image, mayor, service, share
 from ..prediction import rounds
 from ..election import votemanager
 
@@ -77,6 +78,11 @@ def wahlabend(
     Wahltag im Pfad und wandern irgendwann ins Archiv.
     """
     _frei()
+    return _night(probe, counted, wahl)
+
+
+def _night(probe: str | None, counted: int | None, wahl: str | None) -> ElectionNight:
+    """Rückblick aus dem Repo, sonst Generalprobe oder Abruf."""
     if wahl:
         bild = archive.night(wahl)
         if bild is None:
@@ -84,6 +90,31 @@ def wahlabend(
                                 detail="Von dieser Wahl liegt kein vollständiger Stand vor.")
         return bild
     return _stand(probe, counted)
+
+
+@router.get("/api/wahlabend/kandidaten")
+def wahlabend_kandidaten(
+    probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)"),
+    counted: int | None = Query(default=None, ge=0, le=500, description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt"),
+    wahl: str | None = Query(default=None, description="Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf"),
+    sort: str = Query(default="votes", pattern="^(votes|party|area|name)$",
+                      description="votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name"),
+    party: str | None = Query(default=None, description="nur diese Liste (Slug)"),
+    area: int | None = Query(default=None, ge=1, le=20, description="nur dieser Wahlbereich (Nummer)"),
+) -> ElectionCandidateRanking:
+    """Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.
+
+    Öffentlich wie der Wahlabend selbst, hinter demselben Schalter. Der Rang
+    ist stadtweit und bleibt es auch gefiltert; was die beiden Anteile
+    bedeuten, steht in ``election/candidates.py``.
+    """
+    _frei()
+    night = _night(probe, counted, wahl)
+    if party is not None and party not in {p["slug"] for p in night["parties"]}:
+        raise HTTPException(status_code=404, detail="Diese Liste tritt bei dieser Wahl nicht an.")
+    if area is not None and area not in {a["number"] for a in night["areas"]}:
+        raise HTTPException(status_code=404, detail="Diesen Wahlbereich gibt es bei dieser Wahl nicht.")
+    return candidates.ranking(night, sort=sort, party=party, area=area)
 
 
 @router.get("/api/wahlen")

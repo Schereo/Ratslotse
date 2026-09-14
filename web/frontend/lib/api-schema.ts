@@ -5104,6 +5104,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wahlabend/kandidaten": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wahlabend Kandidaten
+         * @description Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.
+         *
+         *     Öffentlich wie der Wahlabend selbst, hinter demselben Schalter. Der Rang
+         *     ist stadtweit und bleibt es auch gefiltert; was die beiden Anteile
+         *     bedeuten, steht in ``election/candidates.py``.
+         */
+        get: operations["wahlabend_kandidaten_api_wahlabend_kandidaten_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/wahlabend/karte.png": {
         parameters: {
             query?: never;
@@ -8366,6 +8390,15 @@ export interface components {
             /** Votes */
             votes: number | null;
         };
+        /** ElectionAreaRef */
+        ElectionAreaRef: {
+            /** Name */
+            name: string;
+            /** Number */
+            number: number;
+            /** Roman */
+            roman: string;
+        };
         /** ElectionCandidate */
         ElectionCandidate: {
             /** Born */
@@ -8382,6 +8415,104 @@ export interface components {
             projected_elected: string | null;
             /** Projected Votes */
             projected_votes: number | null;
+            /** Votes */
+            votes: number | null;
+            /** Votes To Seat */
+            votes_to_seat: number | null;
+        };
+        /**
+         * ElectionCandidateParty
+         * @description Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
+         *     Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:
+         *     Wie viel von dem, was eine Liste bekommt, ging an Personen statt an die
+         *     Liste? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %.
+         */
+        ElectionCandidateParty: {
+            /** Candidate Votes */
+            candidate_votes: number | null;
+            /** Candidates Total */
+            candidates_total: number;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** List Votes */
+            list_votes: number | null;
+            /** Name */
+            name: string;
+            /** Personal Pct */
+            personal_pct: number | null;
+            /** Short */
+            short: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * ElectionCandidateRanking
+         * @description ``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
+         *     sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
+         *     zeigen (und keiner sie im Browser nachsortiert).
+         */
+        ElectionCandidateRanking: {
+            /** Area */
+            area: number | null;
+            /** Areas */
+            areas: components["schemas"]["ElectionAreaRef"][];
+            /** Dataset */
+            dataset: string;
+            election: components["schemas"]["ElectionInfo"];
+            /** Parties */
+            parties: components["schemas"]["ElectionCandidateParty"][];
+            /** Party */
+            party: string | null;
+            /** Person Votes Available */
+            person_votes_available: boolean;
+            /** Phase */
+            phase: string;
+            /** Rows */
+            rows: components["schemas"]["ElectionCandidateRow"][];
+            /** Shown */
+            shown: number;
+            /** Sort */
+            sort: string;
+            /** Total */
+            total: number;
+        };
+        /**
+         * ElectionCandidateRow
+         * @description Eine Kandidatur, stadtweit einsortiert.
+         */
+        ElectionCandidateRow: {
+            /** Area */
+            area: number;
+            /** Area Name */
+            area_name: string;
+            /** Area Roman */
+            area_roman: string;
+            /** Born */
+            born: number | null;
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** Elected */
+            elected: string | null;
+            /** Name */
+            name: string;
+            /** Occupation */
+            occupation: string | null;
+            /** Party */
+            party: string;
+            /** Party Share Pct */
+            party_share_pct: number | null;
+            /** Party Short */
+            party_short: string;
+            /** Position */
+            position: number;
+            /** Projected Elected */
+            projected_elected: string | null;
+            /** Rank */
+            rank: number | null;
             /** Votes */
             votes: number | null;
             /** Votes To Seat */
@@ -19003,6 +19134,48 @@ export interface operations {
             };
         };
     };
+    wahlabend_kandidaten_api_wahlabend_kandidaten_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert) */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+                /** @description Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf */
+                wahl?: string | null;
+                /** @description votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name */
+                sort?: string;
+                /** @description nur diese Liste (Slug) */
+                party?: string | null;
+                /** @description nur dieser Wahlbereich (Nummer) */
+                area?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElectionCandidateRanking"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     wahlabend_karte_api_wahlabend_karte_png_get: {
         parameters: {
             query: {
@@ -19144,4 +19317,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3c9bdc7a3ae0f55ac4307a98a405fa94e91e0be92b28b48a7ed3b9cf361c6e94
+// vertrag-sha256: e4dffdb95d5068ed9db13eae8bdf5449e3c8d77ccccca3126e26f653e343996e

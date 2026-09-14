@@ -3948,6 +3948,78 @@ class ElectionList(TypedDict):
     elections: list[ElectionListItem]
 
 
+class ElectionAreaRef(TypedDict):
+    number: int
+    roman: str
+    name: str
+
+
+class ElectionCandidateParty(TypedDict):
+    """Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die
+    Frage „wie kommt jemand auf so viele Personenstimmen?" beantwortet:
+    Wie viel von dem, was eine Liste bekommt, ging an Personen statt an die
+    Liste? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %."""
+    slug: str
+    short: str
+    name: str
+    color: str
+    color_dark: str
+    candidates_total: int
+    #: Stadtweit: Listenstimmen, Personenstimmen und der Personen-Anteil an
+    #: beiden — ``None``, solange nichts ausgezählt ist.
+    list_votes: int | None
+    candidate_votes: int | None
+    personal_pct: float | None
+
+
+class ElectionCandidateRow(TypedDict):
+    """Eine Kandidatur, stadtweit einsortiert."""
+    #: Rang nach Personenstimmen über ALLE Kandidaturen der Wahl — bleibt
+    #: auch gefiltert der stadtweite Rang (Platz 7 der Stadt ist Platz 7,
+    #: auch wenn nur die eigene Liste gezeigt wird). ``None`` ohne Stimmen.
+    rank: int | None
+    party: str
+    party_short: str
+    color: str
+    color_dark: str
+    area: int
+    area_roman: str
+    area_name: str
+    position: int
+    name: str
+    occupation: str | None
+    born: int | None
+    votes: int | None
+    #: Anteil dieser Person an ALLEN Stimmen ihrer Liste im Wahlbereich
+    #: (Liste + Personen). Das ist die Zahl hinter „hat die Liste getragen".
+    party_share_pct: float | None
+    #: "direct" | "list" | "transfer" — oder ``None``: kein Sitz.
+    elected: str | None
+    projected_elected: str | None
+    votes_to_seat: int | None
+
+
+class ElectionCandidateRanking(TypedDict):
+    """``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,
+    sortiert und gefiltert vom Server, damit Web und App dieselbe Liste
+    zeigen (und keiner sie im Browser nachsortiert)."""
+    dataset: str
+    phase: str
+    person_votes_available: bool
+    election: ElectionInfo
+    #: Wie sortiert wurde: "votes" | "party" | "area" | "name".
+    sort: str
+    #: Die angewandten Filter — ``None`` = kein Filter.
+    party: str | None
+    area: int | None
+    #: Kandidaturen insgesamt und davon gezeigt.
+    total: int
+    shown: int
+    parties: list[ElectionCandidateParty]
+    areas: list[ElectionAreaRef]
+    rows: list[ElectionCandidateRow]
+
+
 # ------------------------------------------------------------------ OB-Wahl (election/mayor.py)
 
 class MayorCandidate(TypedDict):

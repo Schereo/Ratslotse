@@ -1,6 +1,8 @@
 "use client";
 
-// Reiter-Gerüst der Bereichsseite.
+// Reiter-Gerüst — gebaut für die Haushalts-Bereichsseite, seit 09/2026 auch
+// unter dem Wahlabend (Ergebnis · Wahlbereiche · Kandidat*innen), deshalb
+// hier unter ui/ und mit eigener Beschriftung je Verwendung.
 //
 // Warum Reiter und nicht einfach untereinander: Die Seite beantwortet drei
 // verschiedene Fragen — was der Bereich ist und kostet, was am Jahresende
@@ -28,10 +30,12 @@ import { cn } from "@/lib/utils";
 
 export type Reiter<T extends string> = { id: T; label: string };
 
-export function BereichReiter<T extends string>({ reiter, aktiv, onChange, className }: {
+export function ReiterLeiste<T extends string>({ reiter, aktiv, onChange, label, className }: {
   reiter: Reiter<T>[];
   aktiv: T;
   onChange: (id: T) => void;
+  /** Was die Leiste umschaltet — für Screenreader (`aria-label`). */
+  label: string;
   className?: string;
 }) {
   const leiste = useRef<HTMLDivElement>(null);
@@ -58,7 +62,7 @@ export function BereichReiter<T extends string>({ reiter, aktiv, onChange, class
       <div
         ref={leiste}
         role="tablist"
-        aria-label="Ansichten dieses Bereichs"
+        aria-label={label}
         className="flex w-max min-w-full items-stretch gap-0.5 border-b border-border"
       >
         {reiter.map((r, i) => {
