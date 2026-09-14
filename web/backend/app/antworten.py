@@ -4156,6 +4156,37 @@ class MayorElectionInfo(TypedDict):
     presentation_url: str
 
 
+class MayorDistrictEntry(TypedDict):
+    """Ein Wahlbezirk einer OB-Wahl mit seinem Stand."""
+    number: int
+    name: str
+    area: int
+    #: Briefwahlbezirk (ab 900): zählt zum Wahlbereich, hat keinen Ort.
+    postal: bool
+    counted: bool
+    eligible: int | None
+    voters: int | None
+    valid_votes: int | None
+    #: Slug → Stimmen; ``None``, solange der Bezirk nicht gemeldet hat.
+    votes: dict[str, int | None]
+    #: Dieselben Slugs im ERSTEN Wahlgang — nur bei einer Stichwahl, sonst
+    #: leer. Das ist die Vergleichsgröße für Karte und Hochrechnung; die
+    #: Seite soll sie nicht ein zweites Mal holen müssen.
+    first_round: dict[str, int | None]
+
+
+class MayorDistrictList(TypedDict):
+    """``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der
+    Stichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und
+    Hochrechnung braucht und ``MayorNight`` schlank bleiben soll."""
+    dataset: str
+    phase: str
+    election: MayorElectionInfo
+    total: int
+    counted: int
+    districts: list[MayorDistrictEntry]
+
+
 class MayorNight(TypedDict):
     #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
     dataset: str

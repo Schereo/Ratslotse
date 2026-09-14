@@ -255,11 +255,18 @@ kein Netz):
    rechnerisch entschieden. Ausgegeben als ganze Zahl; unter 15 gezählten
    Bezirken `null`.
 7. **Rechnerisch entschieden** (kein Modell, eine Schranke): Der Vorsprung
-   in Stimmen übersteigt die **Obergrenze** der noch offenen Stimmen. Die
-   Obergrenze ist nicht die erste Wahlgang-Zahl (die kann übertroffen
-   werden), sondern die **Wahlberechtigten** der offenen Bezirke — die trägt
-   jede Zeile der Übersicht. Mehr Stimmen als Wahlberechtigte gibt es nicht.
-   Erst dann steht „Entschieden" ohne Modell-Vorbehalt.
+   in Stimmen übersteigt die **Obergrenze** der noch offenen Stimmen. Für
+   Urnenbezirke sind das die **Wahlberechtigten** der offenen Bezirke — die
+   trägt jede Zeile der Übersicht, und mehr Stimmen als Wahlberechtigte gibt
+   es nicht. **Gemessen in S1: Briefwahlbezirke führen keine
+   Wahlberechtigten** (`eligible = 0` — Briefwähler*innen zählen in ihrem
+   Urnenbezirk). Für einen offenen Briefwahlbezirk gilt deshalb als
+   Schranke das **1,6-Fache seiner gültigen Stimmen im ersten Wahlgang**
+   (2021 wuchsen die Zwei-Kandidaten-Stimmen um den Faktor 1,57, die
+   gültigen Stimmen um 1,11 — 1,6 liegt darüber). Das ist eine Schranke mit
+   Annahme; die Seite sagt „rechnerisch entschieden" nur, wenn der Vorsprung
+   auch sie übersteigt, und nennt in den `caveats`, welche Bezirke noch
+   offen sind.
 
 **Antwort** (`MayorNight`, neue optionale Felder — die App liest den Typ,
 Optionales bricht sie nicht):

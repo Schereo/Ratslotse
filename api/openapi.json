@@ -11619,6 +11619,127 @@
         "title": "MayorCandidate",
         "type": "object"
       },
+      "MayorDistrictEntry": {
+        "description": "Ein Wahlbezirk einer OB-Wahl mit seinem Stand.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_round": {
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "First Round",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "postal": {
+            "title": "Postal",
+            "type": "boolean"
+          },
+          "valid_votes": {
+            "title": "Valid Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voters": {
+            "title": "Voters",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes": {
+            "additionalProperties": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "title": "Votes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "number",
+          "name",
+          "area",
+          "postal",
+          "counted",
+          "eligible",
+          "voters",
+          "valid_votes",
+          "votes",
+          "first_round"
+        ],
+        "title": "MayorDistrictEntry",
+        "type": "object"
+      },
+      "MayorDistrictList": {
+        "description": "``GET /api/wahlabend/stichwahl/bezirke`` — die 133 Wahlbezirke der\nStichwahl. Eigener Endpunkt, weil die Seite sie erst für Karte und\nHochrechnung braucht und ``MayorNight`` schlank bleiben soll.",
+        "properties": {
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "districts": {
+            "items": {
+              "$ref": "#/components/schemas/MayorDistrictEntry"
+            },
+            "title": "Districts",
+            "type": "array"
+          },
+          "election": {
+            "$ref": "#/components/schemas/MayorElectionInfo"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "election",
+          "total",
+          "counted",
+          "districts"
+        ],
+        "title": "MayorDistrictList",
+        "type": "object"
+      },
       "MayorElectionInfo": {
         "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
         "properties": {
@@ -28471,6 +28592,70 @@
           }
         },
         "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl/bezirke": {
+      "get": {
+        "description": "Die 133 Wahlbezirke der Stichwahl mit ihrem Stand — und je Bezirk\ndieselben zwei Kandidaturen im ersten Wahlgang als Vergleich.\n\nÖffentlich wie die Stichwahl, hinter demselben Schalter. Das ist der\nEingang für Karte und Hochrechnung (docs/plan-stichwahl-spannung.md).",
+        "operationId": "stichwahl_bezirke_api_wahlabend_stichwahl_bezirke_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke gemeldet",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke gemeldet",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorDistrictList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl Bezirke",
         "tags": [
           "wahlabend"
         ]
