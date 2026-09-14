@@ -91,7 +91,7 @@ Es bekommt nur einen anderen Aufrufer.
 
 ## 4. Die PRs
 
-### PR 1 — Das Ergebnis 2026 einfrieren *(zuerst, unabhängig von allem)*
+### PR 1 — Das Ergebnis 2026 einfrieren ✅ *(#1328, auf `dev`)*
 
 **Warum zuerst:** Die Live-CSVs von `votemanager.kdo.de/20260913/…` antworten
 heute noch. Erfahrungsgemäß wandern sie ins Archiv, und der Referenzordner für
@@ -108,7 +108,14 @@ Beweis, dass wir das brauchen werden.
   Sitzverteilung, die `/api/wahlabend` heute zeigt.
 - **Wächter:** ein Test, der beide Referenzordner gegen dasselbe Schema hält.
 
-### PR 2 — Wahl-Registry (Identität und Quelle)
+### PR 2 — Wahl-Registry (Identität und Quelle) ✅ *(auf `dev`)*
+
+**Abweichung mit Grund:** `reference` nennt einen **Ordner**, nicht den Slug
+einer früheren Wahl. Eine Referenz ist ein Ordner mit CSVs; ihr einen
+Registry-Eintrag zu geben hieße, eine Wahl zu erfinden, die wir nie ausliefern.
+Ebenso trägt die Registry die **Sitzzahl** doppelt (sie steht auch im
+Register) — damit `service._bare` sie kennt, wenn genau das Register nicht
+lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 
 - `kommunalwahl/wahlen/<slug>.json`: `slug`, `title`, `short_title`, `date`,
   `polls_close` (löst `ELECTION_NIGHT_START` ab), `type`, `source` (Adapter +

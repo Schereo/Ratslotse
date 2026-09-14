@@ -58,7 +58,7 @@ import requests
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
 
-from app.election import mayor, presentation, register, service, votemanager  # noqa: E402
+from app.election import elections, mayor, presentation, register, service, votemanager  # noqa: E402
 from app.election import reference as referenz  # noqa: E402
 from app.election.votemanager import Snapshot  # noqa: E402
 
@@ -74,7 +74,7 @@ def _csvs(session: requests.Session, basis: str, ziel: Path, praefix: str) -> di
     sie welche sind: ``_header_of`` weist eine HTML-Wartungsseite ab, die mit
     Status 200 kommt und als leere Tabelle durchginge."""
     texte: dict[str, str] = {}
-    for schluessel, pfad in votemanager.FILES.items():
+    for schluessel, pfad in votemanager.files().items():
         roh = _hol(session, basis + pfad)
         text = roh.decode("utf-8-sig")
         votemanager._header_of(text)  # wirft bei HTML, leer oder ohne D<n>-Spalten
@@ -108,10 +108,10 @@ def _darstellung(session: requests.Session, basis: str, ziel: Path) -> Any | Non
     """
     _json_sichern(session, basis + mayor.TERMIN_PATH, ziel / "termin.json")
     stadt_id, _ = presentation.resolve_ids(session, basis)
-    ratswahl = _json_sichern(session, f"{basis}{presentation.API_PATH}/ergebnis_{stadt_id}_0.json",
+    ratswahl = _json_sichern(session, f"{basis}{elections.active().source.api_path}/ergebnis_{stadt_id}_0.json",
                              ziel / "praesentation-ratswahl.json")
     ob_id = mayor.resolve_ids(session, basis)
-    _json_sichern(session, f"{basis}{mayor.API_PATH}/ergebnis_{ob_id}_0.json",
+    _json_sichern(session, f"{basis}{mayor.wahl().source.api_path}/ergebnis_{ob_id}_0.json",
                   ziel / "praesentation-ob.json")
     return ratswahl
 

@@ -74,8 +74,19 @@ def meta_path(folder: Path) -> Path:
     return treffer[0]
 
 
+def load(folder: Path | None = None) -> Reference:
+    """Der Referenzordner der aktiven Wahl — oder ein genannter.
+
+    Welcher die Vorgabe ist, sagt die Wahl (``reference`` in
+    ``kommunalwahl/wahlen/``): 2026 ist es ``referenz-2021``, bei der nächsten
+    Kommunalwahl ``referenz-2026``.
+    """
+    from . import elections
+    return _load(folder or elections.active().reference_folder or REFERENZ)
+
+
 @lru_cache(maxsize=4)
-def load(folder: Path = REFERENZ) -> Reference:
+def _load(folder: Path) -> Reference:
     datei = meta_path(folder)
     praefix = datei.stem
     meta = json.loads(_read(datei))
@@ -102,3 +113,13 @@ def load(folder: Path = REFERENZ) -> Reference:
         areas=parse(_read(folder / f"{praefix}-wahlbereiche.csv")),
         districts=parse(_read(folder / f"{praefix}-wahlbezirke.csv")),
     )
+
+
+def reset() -> None:
+    """Zwischenspeicher leeren — dieselbe Rolle wie ``presentation.reset``.
+
+    Bis 09/2026 riefen Tests dafür ``load.cache_clear()``; seit ``load`` die
+    Vorgabe VOR dem Zwischenspeicher auflöst, hängt der am inneren ``_load``.
+    Ein eigener Name ist ohnehin der bessere Vertrag.
+    """
+    _load.cache_clear()

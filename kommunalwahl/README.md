@@ -91,6 +91,7 @@ dafür keine Datenbank und keinen Cron. Die Technik dahinter steht in der Doku u
 
 | Pfad | Inhalt |
 |---|---|
+| `wahlen/*.json` | **Die Wahl-Registry**: je Wahl eine Datei mit Titel, Termin, Wahlschluss, Sitzzahl, Quelle (Votemanager-Adresse, Dateinamen, Wahl-Ids) und den Verweisen auf Register und Referenzordner |
 | `kandidaten.py` | Liest `quellen/zulassung-wahlvorschlaege.pdf` und schreibt `kandidaten.json` |
 | `kandidaten.json` | 16 Wahlvorschläge, 6 Wahlbereiche, 383 Bewerber\*innen mit Listenplatz, Name, Beruf, Jahrgang, Wohnort; dazu Termin, Sitzzahl (52) und die Quellenangabe |
 | `referenz-2021/` | Die Ratswahl 2021: drei Open-Data-CSVs (altes Spaltenschema), amtliche Sitzverteilung (50 Sitze) und die Zuordnung 2021er Spalte → Liste 2026 |
@@ -120,6 +121,12 @@ python3 scripts/wahl_einfrieren.py --stand amtlich   # nach dem Wahlausschuss er
 Das Skript rechnet die Sitzverteilung mit demselben Code nach, der am Wahlabend läuft
 (NKWG §§ 36/37), und **bricht ab**, wenn sie von der abweicht, die der Votemanager selbst
 ausweist. Eine falsche Referenz fiele erst bei der nächsten Wahl auf — dann ist die Quelle weg.
+
+**Welche Wahl die Seite zeigt**, sagt `elections.active()`: die jüngste Ratswahl in `wahlen/`, die
+kein Entwurf mehr ist — oder die, die `WAHLABEND_ELECTION` in der `.env` nennt. Alles, was vorher
+als Konstante in acht Modulen stand (Basis-URL, Wahl-Ids, Wahlschluss, Register- und
+Referenzpfad), kommt jetzt von dort; `tests/test_wahlregistry.py` hält jede Angabe gegen die
+Wirklichkeit im Baum.
 
 **Die Reihenfolge der Wahlvorschläge ist die des Stimmzettels** und damit zugleich die der Spalten
 `D1 … D16` in den Open-Data-CSVs des Votemanagers. Der Index einer Liste in `kandidaten.json` ist

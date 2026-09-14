@@ -137,7 +137,7 @@ def votemanager_server(tmp_path, monkeypatch):
     monkeypatch.setenv("FEATURE_FLAGS", "wahlabend")
     monkeypatch.setenv("WAHLABEND_HISTORY_FILE", str(tmp_path / "verlauf.json"))
     monkeypatch.delenv("WAHLABEND_COLUMNS", raising=False)
-    register.load.cache_clear()
+    register.reset()
     votemanager.reset_memory()
     service.reset()
     yield lage
@@ -145,7 +145,7 @@ def votemanager_server(tmp_path, monkeypatch):
     server.server_close()
     votemanager.reset_memory()
     service.reset()
-    register.load.cache_clear()
+    register.reset()
 
 
 @pytest.fixture
@@ -740,7 +740,7 @@ def test_wahlabend_columns_dreht_die_spaltenzuordnung(votemanager_server, client
     assert vorgabe[6:8] == ["volt", "piraten"]
 
     monkeypatch.setenv("WAHLABEND_COLUMNS", ",".join(getauscht("volt", "piraten")))
-    register.load.cache_clear()
+    register.reset()
     service.reset()
     d = hol(client)
     assert [p["slug"] for p in d["parties"]][6:8] == ["piraten", "volt"]
@@ -750,7 +750,7 @@ def test_wahlabend_columns_dreht_die_spaltenzuordnung(votemanager_server, client
     assert volt["index"] == 8 and volt["candidates_total"] == 13
 
     monkeypatch.delenv("WAHLABEND_COLUMNS")
-    register.load.cache_clear()
+    register.reset()
     service.reset()
     assert [p["slug"] for p in hol(client)["parties"]][6:8] == ["volt", "piraten"]
 
@@ -767,6 +767,6 @@ def test_unbrauchbares_wahlabend_columns_laesst_die_vorgabe_stehen(votemanager_s
         "doppelt": ",".join(["spd" if s == "dava" else s for s in vorgabe]),
     }
     monkeypatch.setenv("WAHLABEND_COLUMNS", werte[fall])
-    register.load.cache_clear()
+    register.reset()
     assert [p.slug for p in register.load().parties] == vorgabe
     assert [p.index for p in register.load().parties] == list(range(1, len(vorgabe) + 1))
