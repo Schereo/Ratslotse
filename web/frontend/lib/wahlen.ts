@@ -8,6 +8,14 @@ import type { ApiAntwort } from "./vertrag";
 
 export type Wahlliste = ApiAntwort<"/wahlen">;
 export type Wahlzeile = Wahlliste["elections"][number];
+export type Wahlpunkt = Wahlzeile["top"][number];
+
+/** Die Wahl, für die sich ein Konto lohnen würde: Es gibt ein Tippspiel, aber
+ *  nicht für Anonyme. Das Backend sagt es (`tipp_locked`); die Seite sucht
+ *  nur die erste — eine Einladung reicht. */
+export function gesperrtesTippspiel(zeilen: readonly Wahlzeile[]): Wahlzeile | null {
+  return zeilen.find((z) => z.tipp_locked) ?? null;
+}
 
 /** Was oben steht und was darunter: die Wahl im Fokus zuerst, dann die
  *  übrigen in der Reihenfolge der Antwort (neueste zuerst).

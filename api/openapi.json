@@ -7852,6 +7852,10 @@
               "null"
             ]
           },
+          "tipp_locked": {
+            "title": "Tipp Locked",
+            "type": "boolean"
+          },
           "tipp_path": {
             "title": "Tipp Path",
             "type": "string"
@@ -7859,6 +7863,13 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionTopEntry"
+            },
+            "title": "Top",
+            "type": "array"
           }
         },
         "required": [
@@ -7872,7 +7883,9 @@
           "path",
           "summary",
           "focus",
-          "tipp_path"
+          "tipp_path",
+          "tipp_locked",
+          "top"
         ],
         "title": "ElectionListItem",
         "type": "object"
@@ -8182,6 +8195,45 @@
           "error"
         ],
         "title": "ElectionSource",
+        "type": "object"
+      },
+      "ElectionTopEntry": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pct": {
+            "title": "Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "seats": {
+            "title": "Seats",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "seats",
+          "pct",
+          "color",
+          "color_dark"
+        ],
+        "title": "ElectionTopEntry",
         "type": "object"
       },
       "ElectionTotals": {

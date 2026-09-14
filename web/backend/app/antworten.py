@@ -3902,6 +3902,16 @@ class ElectionNight(TypedDict):
     history: list[ElectionHistoryPoint]
 
 
+class ElectionTopEntry(TypedDict):
+    label: str
+    #: Sitze (Ratswahl) — ``null`` bei einer Mehrheitswahl.
+    seats: int | None
+    #: Anteil in Prozent (Mehrheitswahl) — ``null`` bei einer Ratswahl.
+    pct: float | None
+    color: str
+    color_dark: str
+
+
 class ElectionListItem(TypedDict):
     """Eine Zeile der Übersicht unter ``/wahlen``."""
     slug: str
@@ -3924,6 +3934,14 @@ class ElectionListItem(TypedDict):
     #: Ein Link, den man sieht und nicht benutzen kann, ist schlechter als
     #: keiner.
     tipp_path: str
+    #: Es GIBT ein Tippspiel, aber nur mit Konto — und hier fragt niemand mit
+    #: Konto. Das eine ehrliche Signal, aus dem die Seite einen Grund zum
+    #: Registrieren machen darf; ohne es müsste sie raten.
+    tipp_locked: bool
+    #: Die vorderen Listen bzw. Kandidaturen mit Sitzen/Anteil und Farbe —
+    #: für eine Zeile aus Punkten, wie die Designsprache sie erlaubt (8-px-Dots,
+    #: nie Flächen). Leer, solange es kein Ergebnis gibt.
+    top: list[ElectionTopEntry]
 
 
 class ElectionList(TypedDict):
