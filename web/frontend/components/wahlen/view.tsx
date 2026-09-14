@@ -136,7 +136,10 @@ function Anreiz({ z }: { z: Wahlzeile }) {
   return (
     <Reveal>
       <section className="mt-5 flex flex-col items-center gap-5 rounded-2xl border border-primary/20 bg-primary/[0.05] px-5 py-5 text-center sm:flex-row sm:text-left">
-        <Lotti regung="hat-idee" decorative className="h-20 w-20 flex-none" />
+        {/* Auf dem Handy stünde sie direkt unter der Lotti der Bühne — zwei
+            Figuren übereinander wirken wie ein Versehen (Tims Befund). Erst
+            nebeneinander, ab Tablet-Breite, ist die zweite eine eigene Szene. */}
+        <Lotti regung="hat-idee" decorative className="hidden h-20 w-20 flex-none sm:block" />
         <div className="min-w-0 flex-1">
           <p className={KICKER}>Tippspiel · {z.short_title}</p>
           <h3 className="mt-1 text-balance font-display text-[19px] font-bold leading-tight tracking-tight">
