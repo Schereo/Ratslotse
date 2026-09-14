@@ -310,4 +310,9 @@ def test_die_registry_nennt_die_wurzel_und_holt_keine_dateien():
     assert spec.dialect == "hannover_sim"
     assert spec.system_url and spec.system_url.endswith(".nsf")
     assert not spec.fetch_files
-    assert not spec.active, "erst nach einem Probelauf einschalten"
+    # AN seit 14.09.2026 — der Probelauf, den das Rezept verlangt, ist
+    # gelaufen: 251 Abrufe in 127 Sekunden für ein Wochen-Fenster (93
+    # geänderte Sitzungen, 109 aufgefrischte Vorlagen, davon 19 neu).
+    # Davor wären es 25.729 Abrufe je Sonntag gewesen; siehe
+    # `tests/test_cities_wochenlauf.py`.
+    assert spec.active, "Hannover gehört seit dem Probelauf in den Wochen-Cron"
