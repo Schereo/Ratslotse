@@ -10154,6 +10154,7 @@ export interface components {
             ok: boolean;
             /** Phase */
             phase: string;
+            projection?: components["schemas"]["RunoffProjection"];
             /** Reports Expected */
             reports_expected: number;
             /** Reports Received */
@@ -12001,6 +12002,46 @@ export interface components {
         RolesUpdate: {
             /** Roles */
             roles?: string[];
+        };
+        /**
+         * RunoffProjection
+         * @description Die Hochrechnung einer Stichwahl (``runoff_model``,
+         *     docs/plan-stichwahl-spannung.md S2). Modellrechnung, keine Umfrage — die
+         *     Seite nennt sie „Modell" und stellt die Bezirkszahl daneben.
+         */
+        RunoffProjection: {
+            /** Actual Lead Votes */
+            actual_lead_votes: number;
+            /** Actual Leader */
+            actual_leader: string;
+            /** Caveats */
+            caveats: string[];
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Counted Ballot */
+            counted_ballot: number;
+            /** Counted Postal */
+            counted_postal: number;
+            /** Decided */
+            decided: boolean;
+            /** Lead Votes */
+            lead_votes: number;
+            /** Leader */
+            leader: string;
+            /** Open Ballot */
+            open_ballot: number;
+            /** Open Postal */
+            open_postal: number;
+            /** Open Votes Max */
+            open_votes_max: number;
+            /** Projected Votes */
+            projected_votes: {
+                [key: string]: number;
+            };
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
         };
         /**
          * SessionDetail
@@ -19803,4 +19844,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 2fa5855bb775cac873888d8f1d35e742c0a674ade894424caa10aa7ab6801824
+// vertrag-sha256: 8a5ec8801f4d61295e20fd2a2bbbb535cdb795073eb16aa4b81b44a89a67dd1e

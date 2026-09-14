@@ -39,9 +39,10 @@ from ..antworten import (
     MayorDistrictList,
     MayorElectionInfo,
     MayorNight,
+    RunoffProjection,
 )
 from ..deps import get_store, optional_user, require_active
-from ..election import archive, candidates, elections, image, mayor, service, share
+from ..election import archive, candidates, elections, image, mayor, runoff_model, service, share
 from ..prediction import rounds
 from ..election import votemanager
 
@@ -236,10 +237,13 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
     """
     stand = mayor.probe(counted, w) if probe else mayor.fetch(w=w)
     vorher: dict[str, float | None] = {}
+    hochrechnung: RunoffProjection | None = None
     if w.first_round:
-        erster = mayor.parse(mayor.probe_payload(w)[0], mayor.candidates(w))
+        known = mayor.candidates(w)
+        erster = mayor.parse(mayor.probe_payload(w)[0], known)
         vorher = {c.slug: c.share_pct for c in erster.candidates} if erster else {}
-    return MayorNight(
+        hochrechnung = _runoff_projection(stand, known, w)
+    antwort = MayorNight(
         dataset="probe" if probe else "live",
         phase=stand.phase,
         election=MayorElectionInfo(
@@ -257,6 +261,28 @@ def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) 
         runoff=list(stand.runoff),
         elected=_gewaehlt(stand),
         fetched_at=stand.fetched_at, ok=stand.ok, error=stand.error, notes=list(stand.notes),
+    )
+    if hochrechnung is not None:
+        antwort["projection"] = hochrechnung
+    return antwort
+
+
+def _runoff_projection(stand: mayor.MayorResult, known: tuple[mayor.MayorCandidate, ...],
+                       w: elections.Election) -> RunoffProjection | None:
+    """Die Hochrechnung zum Stand — nur mit genau zwei Kandidaturen und
+    sobald ein Bezirk gemeldet hat (``runoff_model.project``)."""
+    if len(known) != 2 or not stand.districts:
+        return None
+    vorher = mayor.probe_districts(None, known, w)
+    p = runoff_model.project(stand.districts, vorher, (known[0].slug, known[1].slug))
+    if p is None:
+        return None
+    return RunoffProjection(
+        shares=p.shares, projected_votes=p.projected_votes, leader=p.leader, lead_votes=p.lead_votes,
+        chance_pct=p.chance_pct, counted_ballot=p.counted_ballot, counted_postal=p.counted_postal,
+        open_ballot=p.open_ballot, open_postal=p.open_postal, decided=p.decided,
+        actual_leader=p.actual_leader, actual_lead_votes=p.actual_lead_votes,
+        open_votes_max=p.open_votes_max, caveats=list(p.caveats),
     )
 
 
