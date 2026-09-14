@@ -3933,10 +3933,16 @@ class PredictionGame(TypedDict):
     #: "open" (Tippen offen) | "locked" (Tipp-Schluss erreicht) | "final" (Endstand).
     phase: str
     seats_total: int
-    #: Kurzname und Datum der Wahl, auf die getippt wird — bis 09/2026 stand
-    #: „Ratswahl Oldenburg · 13.09.2026" als Literal im Frontend.
+    #: Die Wahl, auf die getippt wird. ``election_slug`` schreibt sie fest —
+    #: eine Runde vergleicht sich für immer mit DIESER Wahl, auch wenn längst
+    #: eine spätere läuft.
+    election_slug: str
     election_title: str
     election_date: str
+    #: Was getippt wird: „seats" (ganze Sitze, Summe = ``seats_total``) oder
+    #: „pct" (Prozent je Kandidatur). Der Client liest das statt die Wahlart
+    #: zu deuten; bei „pct" ist ``parties`` leer und ``seats_total`` 0.
+    tip_kind: str
     #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
     #: („2021"); leer, wenn es keine gibt.
     previous_label: str

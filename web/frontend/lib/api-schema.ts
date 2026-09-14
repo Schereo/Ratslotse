@@ -10188,6 +10188,8 @@ export interface components {
             deadline_hint: string;
             /** Election Date */
             election_date: string;
+            /** Election Slug */
+            election_slug: string;
             /** Election Title */
             election_title: string;
             /** Late Scored */
@@ -10214,6 +10216,8 @@ export interface components {
             seats_total: number;
             /** Shared Device */
             shared_device: boolean;
+            /** Tip Kind */
+            tip_kind: string;
             /** Title */
             title: string;
         };
@@ -18918,4 +18922,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3367a9195f93b4bd80cbfe057b00056aaccc43b0faf506b8fc6c2cc63b48ed3a
+// vertrag-sha256: b59e00551afa4aed7a9d772645655925ff5791bd3e665743bfecd622dd4a3b00

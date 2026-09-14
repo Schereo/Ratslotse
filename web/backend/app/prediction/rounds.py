@@ -10,9 +10,14 @@ was am Wahlabend schiefgehen kann.
 **Was eine Runde trennt:** Spieler*innen, Tipps, Ergebnisse (Entwurf und
 veröffentlicht), Ränge, Protokoll, der Cookie — alles je Runde
 (``prediction_game.id`` als ``game_id``, s. ``kern/store.py``). **Was sie
-teilt:** den Wahlabend selbst (dieselbe Hochrechnung, derselbe Auto-Lock
-aus derselben Quelle), die Listen und OB-Kandidaturen, die Punkteregeln
-und den Feature-Schalter ``tippspiel``.
+teilt:** den Wahlabend ihrer Wahl (dieselbe Hochrechnung, derselbe Auto-Lock
+aus derselben Quelle), die Punkteregeln und den Feature-Schalter
+``tippspiel``.
+
+**Seit 14.09.2026 nennt eine Runde ihre WAHL** (``election``). Vorher gab es
+nur „den Wahlabend", und der ist beim nächsten Mal ein anderer: Eine Runde
+von 2026 hätte 2031 gegen die neuen Zahlen gepunktet und jeden Rang
+rückwirkend verschoben.
 
 **Die Hauptrunde hat keinen Parameter.** ``/tipp`` und ``/api/tipp/…`` ohne
 ``?runde=`` bzw. ``?round=`` sind die Ratswahl-Runde — so bleibt jede
@@ -34,6 +39,10 @@ class Round:
     title: str
     #: Steht die Runde auf der Website (Heute-Karte, Beamer-Fußzeile)?
     listed: bool
+    #: Auf WELCHE Wahl getippt wird (Slug aus ``kommunalwahl/wahlen/``).
+    #: ``None`` heißt „die aktive Ratswahl" — bis 14.09.2026 gab es keine
+    #: andere Möglichkeit, und beide bestehenden Runden meinen sie.
+    election: str | None = None
 
     @property
     def is_default(self) -> bool:

@@ -576,6 +576,12 @@ CREATE TABLE IF NOT EXISTS prediction_game (
     locked_reason TEXT,               -- 'admin' | 'projection'
     late_scored   INTEGER NOT NULL DEFAULT 0,  -- Spätstarter mitgewertet? (0/1)
     shared_device INTEGER NOT NULL DEFAULT 0,  -- ein Gerät, mehrere Personen: nach dem Speichern „nächste Person" (0/1)
+    -- Auf WELCHE Wahl getippt wird (Slug aus kommunalwahl/wahlen/). NULL heißt
+    -- „die Wahl, die die Runde in der Registry nennt" — so bleibt `kern/` frei
+    -- von Wahl-Wissen, und eine gewachsene Datenbank braucht keinen Literal-
+    -- Nachtrag. Ohne diese Spalte verglich das Spiel gegen „den Wahlabend",
+    -- und der ist beim nächsten Mal ein anderer.
+    election_slug TEXT,
     created_at    TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS prediction_players (
@@ -1589,6 +1595,7 @@ class Store:
         self._conn.commit()
         self._migrate_tippspiel_runden()
         self._migrate_tippspiel_geteiltes_geraet()
+        self._migrate_tippspiel_wahl()
         self._migrate_owner_id()
         self._treffer_datum_reparieren()
 
@@ -1655,6 +1662,19 @@ class Store:
                     "published_source, published_at FROM prediction_result")
                 self._conn.execute("DROP TABLE prediction_result")
                 self._conn.execute("ALTER TABLE prediction_result_neu RENAME TO prediction_result")
+
+    def _migrate_tippspiel_wahl(self) -> None:
+        """Tippspiel: ``prediction_game.election_slug`` (14.09.2026).
+
+        Bewusst NULLbar und ohne Vorgabewert: Welche Wahl gemeint ist, weiß
+        die Registry in ``web/backend``, nicht diese Schicht — und eine
+        Migration, die hier „ratswahl-2026" hinschreibt, wäre genau das
+        Wahl-Wissen an der falschen Stelle. Bestehende Runden bleiben NULL
+        und meinen damit weiter die Wahl ihrer Runde."""
+        vorhanden = {r[1] for r in self._conn.execute("PRAGMA table_info(prediction_game)")}
+        if "election_slug" not in vorhanden:
+            with self._conn:
+                self._conn.execute("ALTER TABLE prediction_game ADD COLUMN election_slug TEXT")
 
     def _migrate_tippspiel_geteiltes_geraet(self) -> None:
         """Tippspiel: ``prediction_game.shared_device`` (13.09.2026, Wahltag).
@@ -4838,18 +4858,19 @@ class Store:
     # die Speichermethoden. Was daraus ein Ergebnis macht, steht in
     # ``web/backend/app/prediction/service.py``.
 
-    def prediction_game_by_slug(self, slug: str, title: str) -> dict:
+    def prediction_game_by_slug(self, slug: str, title: str, election: str | None = None) -> dict:
         """Die Spielzeile einer Runde — wird beim ersten Zugriff angelegt
-        (Phase 'open'). ``title`` gilt nur beim Anlegen; danach zählt, was in
-        der Zeile steht (der Admin kann umbenennen)."""
+        (Phase 'open'). ``title`` und ``election`` gelten nur beim Anlegen;
+        danach zählt, was in der Zeile steht (der Admin kann umbenennen, und
+        die Wahl einer laufenden Runde zu wechseln wäre ohnehin falsch)."""
         row = self._conn.execute("SELECT * FROM prediction_game WHERE slug = ?", (slug,)).fetchone()
         if row is None:
             now = datetime.utcnow().isoformat(timespec="seconds")
             with self._conn:
                 self._conn.execute(
-                    "INSERT OR IGNORE INTO prediction_game (slug, title, phase, late_scored, created_at) "
-                    "VALUES (?, ?, 'open', 0, ?)",
-                    (slug, title, now),
+                    "INSERT OR IGNORE INTO prediction_game (slug, title, phase, late_scored, "
+                    "election_slug, created_at) VALUES (?, ?, 'open', 0, ?, ?)",
+                    (slug, title, election, now),
                 )
             row = self._conn.execute("SELECT * FROM prediction_game WHERE slug = ?", (slug,)).fetchone()
         return dict(row)
