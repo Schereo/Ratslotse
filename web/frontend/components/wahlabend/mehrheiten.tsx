@@ -7,6 +7,7 @@
 // der 53. Stimmberechtigte im Rat ist die Oberbürgermeisterin bzw. der
 // Oberbürgermeister — gewählt am selben Tag, Stichwahl am 27.09.
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { koalitionen, mehrheit, type WahlabendPartei } from "@/lib/wahlabend";
@@ -129,8 +130,12 @@ export function Mehrheiten({ parteien, gesamt, feld, hochrechnung }: { parteien:
         <p className="mt-4 text-[12.5px] text-muted-foreground">Noch keine Sitze vergeben.</p>
       )}
       <p className="mt-3 text-[11px] text-muted-foreground">
-        Gezählt werden die {gesamt} gewählten Sitze. Dazu kommt als 53. Stimme die Oberbürgermeisterin oder der
-        Oberbürgermeister; wer das wird, entscheidet sich am selben Tag oder in der Stichwahl am 27. September.
+        Gezählt werden die {gesamt} gewählten Sitze. Dazu kommt als {gesamt + 1}. Stimme die Oberbürgermeisterin oder der
+        Oberbürgermeister; wer das wird, entscheidet die{" "}
+        <Link href="/wahlabend/stichwahl" className="font-medium text-primary">
+          Stichwahl am 27. September
+        </Link>
+        .
       </p>
     </section>
   );

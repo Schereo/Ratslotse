@@ -3824,11 +3824,39 @@ class MayorCandidate(TypedDict):
     party: str
     votes: int | None
     share_pct: float | None
+    #: Nur in einer Stichwahl: der Anteil dieser Person im ERSTEN Wahlgang.
+    #: ``null`` sonst — der erste Wahlgang vergleicht sich mit nichts.
+    first_round_pct: float | None
+    #: Farbe der vorschlagenden Liste (hell/dunkel); leer bei einem
+    #: Einzelwahlvorschlag — dann zeichnet die Seite neutral.
+    color: str
+    color_dark: str
+
+
+class MayorElectionInfo(TypedDict):
+    """Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+
+    Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+    die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+    und die Überschrift darf nicht mehr im Frontend stehen."""
+    slug: str
+    title: str
+    short_title: str
+    date: str
+    #: Wahlschluss mit Zeitzone (ISO) — Grundlage des Countdowns.
+    polls_close: str
+    #: Ist das eine Stichwahl? Dann trägt ``first_round_pct`` je Kandidatur
+    #: das Ergebnis des ersten Wahlgangs.
+    is_runoff: bool
+    presentation_url: str
 
 
 class MayorNight(TypedDict):
+    #: "live" (Votemanager) oder "probe" (Generalprobe mit echten Zahlen).
+    dataset: str
     #: "before" (nichts ausgezählt) | "counting" | "complete".
     phase: str
+    election: MayorElectionInfo
     reports_expected: int
     reports_received: int
     turnout_pct: float | None
@@ -3837,6 +3865,9 @@ class MayorNight(TypedDict):
     candidates: list[MayorCandidate]
     #: Slugs der beiden Kandidaturen einer Stichwahl — leer ohne Stichwahl-Satz.
     runoff: list[str]
+    #: Slug der gewählten Person, sobald die Darstellung eine nennt und es
+    #: keine Stichwahl gibt — sonst ``null``.
+    elected: str | None
     fetched_at: str | None
     ok: bool
     error: str | None

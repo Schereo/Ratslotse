@@ -1,0 +1,20 @@
+{
+  "slug": "ob-stichwahl-2026",
+  "kind": "mayor",
+  "title": "Stichwahl des/der Oberbürgermeisters/in - Stadt Oldenburg",
+  "short_title": "OB-Stichwahl Oldenburg",
+  "date": "2026-09-27",
+  "polls_close": "2026-09-27T18:00:00+02:00",
+  "status": "live",
+  "first_round": "ob-2026",
+  "candidates": {
+    "file": "kommunalwahl/wahl-fakten.json",
+    "key": "ob_kandidaten",
+    "only": ["prange", "rohr"]
+  },
+  "source": {
+    "adapter": "votemanager",
+    "base": "https://votemanager.kdo.de/20260913/03403000",
+    "discover": { "title_contains": "Stichwahl" }
+  }
+}

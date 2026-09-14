@@ -10515,6 +10515,21 @@
       },
       "MayorCandidate": {
         "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "first_round_pct": {
+            "title": "First Round Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -10547,9 +10562,56 @@
           "name",
           "party",
           "votes",
-          "share_pct"
+          "share_pct",
+          "first_round_pct",
+          "color",
+          "color_dark"
         ],
         "title": "MayorCandidate",
+        "type": "object"
+      },
+      "MayorElectionInfo": {
+        "description": "Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.\n\nStand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und\ndie Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,\nund die Überschrift darf nicht mehr im Frontend stehen.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "is_runoff": {
+            "title": "Is Runoff",
+            "type": "boolean"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "presentation_url": {
+            "title": "Presentation Url",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "short_title",
+          "date",
+          "polls_close",
+          "is_runoff",
+          "presentation_url"
+        ],
+        "title": "MayorElectionInfo",
         "type": "object"
       },
       "MayorNight": {
@@ -10560,6 +10622,20 @@
             },
             "title": "Candidates",
             "type": "array"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "election": {
+            "$ref": "#/components/schemas/MayorElectionInfo"
           },
           "error": {
             "title": "Error",
@@ -10628,7 +10704,9 @@
           }
         },
         "required": [
+          "dataset",
           "phase",
+          "election",
           "reports_expected",
           "reports_received",
           "turnout_pct",
@@ -10636,6 +10714,7 @@
           "invalid_ballots",
           "candidates",
           "runoff",
+          "elected",
           "fetched_at",
           "ok",
           "error",
@@ -26825,14 +26904,16 @@
     },
     "/api/wahlabend/ob": {
       "get": {
-        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.",
+        "description": "Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht\n``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.\n\nImmer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran\nhängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht\nunter der Hand verschieben.",
         "operationId": "ob_wahl_api_wahlabend_ob_get",
         "parameters": [
           {
+            "description": "gesetzt = Generalprobe mit den Zahlen von 2021",
             "in": "query",
             "name": "probe",
             "required": false,
             "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen von 2021",
               "title": "Probe",
               "type": [
                 "string",
@@ -26841,10 +26922,12 @@
             }
           },
           {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
             "in": "query",
             "name": "counted",
             "required": false,
             "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
               "maximum": 133,
               "minimum": 0,
               "title": "Counted",
@@ -26879,7 +26962,71 @@
         },
         "summary": "Ob Wahl",
         "tags": [
-          "tippspiel"
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/stichwahl": {
+      "get": {
+        "description": "Die Stichwahl — 404, solange keine im Kalender steht.\n\nAm 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft\ndeshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).\nIhre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur\nLaufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin\nantwortet dieser Pfad mit ``phase: \"before\"`` und einem Vermerk, nicht mit\neinem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.",
+        "operationId": "stichwahl_api_wahlabend_stichwahl_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 133,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MayorNight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
         ]
       }
     }
