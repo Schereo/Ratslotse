@@ -171,3 +171,31 @@ export function fensterTitel(daten: Stichwahl): string {
 function prozentKurz(v: number | null): string {
   return v === null ? "–" : `${v.toFixed(1).replace(".", ",")}`;
 }
+
+/* ── Die Karte der Stichwahl (docs/plan-stichwahl-spannung.md S5) ───────── */
+
+export type StichwahlBezirke = ApiAntwort<"/wahlabend/stichwahl/bezirke">;
+export type StichwahlBezirk = StichwahlBezirke["districts"][number];
+
+export function stichwahlBezirkePfad(probe: string | null, counted: string | null): string {
+  const q = new URLSearchParams();
+  if (probe) q.set("probe", probe);
+  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  const s = q.toString();
+  return s ? `/wahlabend/stichwahl/bezirke?${s}` : "/wahlabend/stichwahl/bezirke";
+}
+
+/** Der Anteil einer Kandidatur an den Stimmen der beiden in einem Bezirk —
+ *  im ersten Wahlgang (`first_round`) oder in der Stichwahl (`votes`).
+ *  `null`, solange die Zahlen fehlen. */
+export function bezirkAnteil(d: StichwahlBezirk, slug: string, quelle: "votes" | "first_round"): number | null {
+  const stimmen = d[quelle];
+  const mein = stimmen[slug];
+  if (mein === null || mein === undefined) return null;
+  let summe = 0;
+  for (const v of Object.values(stimmen)) {
+    if (v === null || v === undefined) return null;
+    summe += v;
+  }
+  return summe > 0 ? Math.round((1000 * mein) / summe) / 10 : null;
+}

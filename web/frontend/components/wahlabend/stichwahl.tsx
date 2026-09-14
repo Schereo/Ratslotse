@@ -19,6 +19,7 @@ import { Info } from "lucide-react";
 import { Mascot } from "@/components/mascot";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Kopf } from "@/components/wahlabend/kopf";
+import { StichwahlKarte } from "@/components/wahlabend/stichwahl-karte";
 import { StichwahlVerlauf } from "@/components/wahlabend/stichwahl-verlauf";
 import { api } from "@/lib/api";
 import { useFeature } from "@/lib/features";
@@ -545,6 +546,7 @@ export function StichwahlView() {
         <Abstand daten={data} />
         {data.projection ? <Hochrechnung daten={data} p={data.projection} /> : null}
         {data.phase !== "before" ? <StichwahlVerlauf daten={data} /> : null}
+        <StichwahlKarte daten={data} probe={probe} counted={counted} />
 
         {data.notes.length > 0 ? (
           <ul className="mt-5 space-y-1.5 text-[12.5px] text-muted-foreground">
