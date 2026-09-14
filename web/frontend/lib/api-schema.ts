@@ -10133,6 +10133,43 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * MayorHistoryPoint
+         * @description Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst
+         *     schreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt.
+         */
+        MayorHistoryPoint: {
+            /** At */
+            at: string;
+            /** Chance Pct */
+            chance_pct: number | null;
+            /** Leader */
+            leader: string | null;
+            /** Projected Shares */
+            projected_shares: {
+                [key: string]: number;
+            };
+            /** Reports Received */
+            reports_received: number;
+            /** Shares */
+            shares: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * MayorLeadChange
+         * @description Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt.
+         */
+        MayorLeadChange: {
+            /** At */
+            at: string;
+            /** Leader */
+            leader: string;
+            /** Previous */
+            previous: string;
+            /** Reports Received */
+            reports_received: number;
+        };
         /** MayorNight */
         MayorNight: {
             /** Candidates */
@@ -10146,8 +10183,12 @@ export interface components {
             error: string | null;
             /** Fetched At */
             fetched_at: string | null;
+            /** History */
+            history: components["schemas"]["MayorHistoryPoint"][];
             /** Invalid Ballots */
             invalid_ballots: number | null;
+            /** Lead Changes */
+            lead_changes: components["schemas"]["MayorLeadChange"][];
             /** Notes */
             notes: string[];
             /** Ok */
@@ -19844,4 +19885,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8a5ec8801f4d61295e20fd2a2bbbb535cdb795073eb16aa4b81b44a89a67dd1e
+// vertrag-sha256: 8b9686bb5b156d57bdba4eccfcc1f37cceb99e21b6424937a804badb953fa253

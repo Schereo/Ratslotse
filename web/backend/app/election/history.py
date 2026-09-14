@@ -19,10 +19,11 @@ import json
 import logging
 import os
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ..antworten import ElectionHistoryPoint, ElectionNight
+from ..antworten import ElectionHistoryPoint, ElectionNight, MayorHistoryPoint, MayorLeadChange, MayorNight
 
 #: Repo-Wurzel: web/backend/app/election/ -> vier Ebenen hoch.
 ROOT = Path(__file__).resolve().parents[4]
@@ -36,6 +37,8 @@ _points: list[ElectionHistoryPoint] = []
 #: Der Pfad, aus dem ``_points`` stammt — ``None``: noch nichts geladen.
 _loaded: Path | None = None
 _write_warned = False
+#: Der Verlauf einer Mehrheitswahl (Stichwahl), je Wahl-Slug: Pfad und Punkte.
+_mayor: dict[str, tuple[Path, list[MayorHistoryPoint]]] = {}
 
 
 def path() -> Path:
@@ -115,14 +118,17 @@ def _load() -> None:
 
 
 def _save() -> None:
+    _write(path(), _points)
+
+
+def _write(file: Path, rows: list[Any]) -> None:
     """Erst daneben schreiben, dann umbenennen — ein Absturz mittendrin darf
     keine halbe Datei hinterlassen."""
     global _write_warned
-    file = path()
     tmp = file.with_name(f"{file.name}.{os.getpid()}.tmp")
     try:
         file.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(json.dumps(_points, ensure_ascii=False), encoding="utf-8")
+        tmp.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
         tmp.replace(file)
         _write_warned = False
     except OSError as e:
@@ -196,3 +202,134 @@ def reset() -> None:
     global _points, _loaded, _write_warned
     with _lock:
         _points, _loaded, _write_warned = [], None, False
+        _mayor.clear()
+
+
+# ------------------------------------------------------------------ Stichwahl (docs/plan-stichwahl-spannung.md S3)
+#
+# Dieselbe Datei-Logik, ein anderer Punkt: Eine Mehrheitswahl hat keine Sitze,
+# dafür eine Hochrechnung und eine Chance — und die Frage des Abends, wer
+# vorn liegt. Je Wahl-Slug eine Datei; die Stichwahl heißt anders als die
+# Ratswahl, also teilen sich die beiden Abende nichts.
+
+def mayor_path(slug: str) -> Path:
+    override = os.environ.get("WAHLABEND_HISTORY_FILE")
+    if override:
+        o = Path(override)
+        return o.with_name(f"{o.stem}-{slug}{o.suffix or '.json'}")
+    return ROOT / "data" / f"wahlabend-verlauf-{slug}.json"
+
+
+def _mayor_point_from(raw: Any) -> MayorHistoryPoint | None:
+    if not isinstance(raw, dict):
+        return None
+    at, n = raw.get("at"), raw.get("reports_received")
+    if not isinstance(at, str) or not isinstance(n, int) or isinstance(n, bool):
+        return None
+    shares, proj = raw.get("shares"), raw.get("projected_shares")
+    if not isinstance(shares, dict) or not isinstance(proj, dict):
+        return None
+    chance = raw.get("chance_pct")
+    leader = raw.get("leader")
+    return MayorHistoryPoint(
+        at=at, reports_received=n,
+        shares={str(k): float(v) for k, v in shares.items() if isinstance(v, (int, float))},
+        projected_shares={str(k): float(v) for k, v in proj.items() if isinstance(v, (int, float))},
+        chance_pct=int(chance) if isinstance(chance, int) and not isinstance(chance, bool) else None,
+        leader=leader if isinstance(leader, str) else None,
+    )
+
+
+def _mayor_store(slug: str) -> list[MayorHistoryPoint]:
+    """Die Punkte dieser Wahl — beim ersten Zugriff (und nach einem
+    Pfadwechsel) aus der Datei."""
+    file = mayor_path(slug)
+    gemerkt = _mayor.get(slug)
+    if gemerkt and gemerkt[0] == file:
+        return gemerkt[1]
+    rows: list[MayorHistoryPoint] = []
+    try:
+        raw = json.loads(file.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raw = []
+    except (OSError, ValueError) as e:
+        _log.warning("Stichwahl-Verlauf %s ist nicht lesbar (%s) — der Abend beginnt im Speicher.", file, e)
+        raw = []
+    if isinstance(raw, list):
+        rows = [p for p in (_mayor_point_from(r) for r in raw) if p is not None][-MAX_POINTS:]
+    _mayor[slug] = (file, rows)
+    return rows
+
+
+def mayor_points(slug: str) -> list[MayorHistoryPoint]:
+    with _lock:
+        return list(_mayor_store(slug))
+
+
+def mayor_leader(shares: dict[str, float], votes: dict[str, int | None]) -> str | None:
+    """Wer vorn liegt — nach Stimmen, ``None`` bei Gleichstand oder ohne."""
+    mit = [(v, slug) for slug, v in votes.items() if v is not None and v > 0]
+    if not mit:
+        return None
+    mit.sort(reverse=True)
+    if len(mit) > 1 and mit[0][0] == mit[1][0]:
+        return None
+    return mit[0][1]
+
+
+def from_mayor_night(night: MayorNight, at: str | None = None) -> MayorHistoryPoint:
+    """Der Auszug eines fertigen Standes: Ist, Hochrechnung, Chance, Führung."""
+    shares = {c["slug"]: c["share_pct"] for c in night["candidates"]
+              if c["votes"] and c["votes"] > 0 and c["share_pct"] is not None}
+    proj = night.get("projection")
+    return MayorHistoryPoint(
+        at=at or night["fetched_at"] or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        reports_received=night["reports_received"],
+        shares=shares,
+        projected_shares=dict(proj["shares"]) if proj else {},
+        chance_pct=proj["chance_pct"] if proj else None,
+        leader=mayor_leader(shares, {c["slug"]: c["votes"] for c in night["candidates"]}),
+    )
+
+
+def _mayor_same(a: MayorHistoryPoint, b: MayorHistoryPoint) -> bool:
+    """Gleich heißt: derselbe Stand — die Uhrzeit zählt nicht mit. Die
+    Hochrechnung zählt mit: Sie ändert sich nur, wenn sich ein Bezirk ändert."""
+    return (a["reports_received"] == b["reports_received"] and a["shares"] == b["shares"]
+            and a["projected_shares"] == b["projected_shares"])
+
+
+def add_mayor(slug: str, point: MayorHistoryPoint) -> list[MayorHistoryPoint]:
+    with _lock:
+        rows = _mayor_store(slug)
+        if rows and _mayor_same(rows[-1], point):
+            return list(rows)
+        rows.append(point)
+        del rows[:-MAX_POINTS]
+        _write(mayor_path(slug), rows)
+        return list(rows)
+
+
+def record_mayor(slug: str, night: MayorNight) -> list[MayorHistoryPoint]:
+    """Den Punkt eines Live-Standes anhängen und den Verlauf liefern; vor
+    der Auszählung nur lesen."""
+    if night["phase"] == "before" or night["reports_received"] <= 0:
+        return mayor_points(slug)
+    return add_mayor(slug, from_mayor_night(night))
+
+
+def lead_changes(points: list[MayorHistoryPoint]) -> list[MayorLeadChange]:
+    """Wo zwischen zwei Ständen wechselte, wer vorn liegt. Ein Gleichstand
+    dazwischen zählt nicht als Wechsel — erst der nächste Stand mit einer
+    Führung entscheidet, ob sie eine andere ist."""
+    out: list[MayorLeadChange] = []
+    vorher: str | None = None
+    for p in points:
+        leader = p["leader"]
+        if leader is None:
+            continue
+        if vorher is not None and leader != vorher:
+            out.append(MayorLeadChange(at=p["at"], reports_received=p["reports_received"],
+                                       leader=leader, previous=vorher))
+        vorher = leader
+    return out

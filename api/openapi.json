@@ -11784,6 +11784,86 @@
         "title": "MayorElectionInfo",
         "type": "object"
       },
+      "MayorHistoryPoint": {
+        "description": "Ein Stand des Stichwahl-Abends — für den Verlauf (S3). Der Dienst\nschreibt ihn sich selbst mit; der Votemanager kennt nur das Jetzt.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "chance_pct": {
+            "title": "Chance Pct",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "leader": {
+            "title": "Leader",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projected_shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Projected Shares",
+            "type": "object"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          },
+          "shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Shares",
+            "type": "object"
+          }
+        },
+        "required": [
+          "at",
+          "reports_received",
+          "shares",
+          "projected_shares",
+          "chance_pct",
+          "leader"
+        ],
+        "title": "MayorHistoryPoint",
+        "type": "object"
+      },
+      "MayorLeadChange": {
+        "description": "Ein Führungswechsel: zwischen zwei Ständen wechselte, wer vorn liegt.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": "string"
+          },
+          "previous": {
+            "title": "Previous",
+            "type": "string"
+          },
+          "reports_received": {
+            "title": "Reports Received",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at",
+          "reports_received",
+          "leader",
+          "previous"
+        ],
+        "title": "MayorLeadChange",
+        "type": "object"
+      },
       "MayorNight": {
         "properties": {
           "candidates": {
@@ -11821,12 +11901,26 @@
               "null"
             ]
           },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/MayorHistoryPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
           "invalid_ballots": {
             "title": "Invalid Ballots",
             "type": [
               "integer",
               "null"
             ]
+          },
+          "lead_changes": {
+            "items": {
+              "$ref": "#/components/schemas/MayorLeadChange"
+            },
+            "title": "Lead Changes",
+            "type": "array"
           },
           "notes": {
             "items": {
@@ -11891,7 +11985,9 @@
           "fetched_at",
           "ok",
           "error",
-          "notes"
+          "notes",
+          "history",
+          "lead_changes"
         ],
         "title": "MayorNight",
         "type": "object"
