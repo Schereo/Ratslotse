@@ -61,17 +61,27 @@ class Source:
     base: str
     #: Nur bei Wahlen mit Open Data: Schlüssel -> Pfad unterhalb von ``base``.
     files: dict[str, str]
-    #: Wahl-Id der Ergebnisdarstellung (``/daten/api/wahl_<id>/``).
+    #: Wahl-Id der Ergebnisdarstellung (``/daten/api/wahl_<id>/``) — ``None``,
+    #: solange es sie noch nicht gibt; dann greift ``discover``.
     presentation_id: int | None
+    #: Wie die Wahl-Id zur Laufzeit zu finden ist, wenn sie heute noch nicht
+    #: vergeben ist: ``{"title_contains": "Stichwahl"}`` sucht den Eintrag in
+    #: ``termin.json``. Gemessen an 2006 und 2021 (``api/termine.json`` der
+    #: Stadt): Eine Stichwahl bekommt KEINEN eigenen Termin, sie erscheint
+    #: unter dem der Hauptwahl — die Basis-URL steht also fest, die Id nicht.
+    discover: dict[str, str] | None
     #: Gebiets-Id der Stadt für diese Wahl — Vorgabe, falls ``wahl.json`` bzw.
     #: ``termin.json`` gerade nicht zu haben ist.
     city_id: str | None
     #: Ebene der Wahlbereiche (nur Ratswahl).
     areas_level: str | None
 
-    @property
-    def api_path(self) -> str:
-        return f"/daten/api/wahl_{self.presentation_id}"
+    def api_path(self, presentation_id: int | None = None) -> str:
+        """Der API-Pfad — mit der gefundenen Id, sonst mit der eingetragenen."""
+        gewaehlt = presentation_id if presentation_id is not None else self.presentation_id
+        if gewaehlt is None:
+            raise LookupError("Diese Wahl hat noch keine Wahl-Id; sie muss erst gefunden werden.")
+        return f"/daten/api/wahl_{gewaehlt}"
 
 
 @dataclass(frozen=True)
@@ -95,8 +105,11 @@ class Election:
     reference_folder: Path | None
     #: Nur ``council``: die OB-Wahl, die auf derselben Seite erscheint.
     mayor: str | None
-    #: Nur ``mayor``: (Datei, Schlüssel) der Kandidaturen.
-    candidates: tuple[Path, str] | None
+    #: Nur ``mayor``: (Datei, Schlüssel, Slugs) der Kandidaturen. Die Slugs
+    #: sind leer = alle; eine Stichwahl nennt genau die beiden, die antreten.
+    candidates: tuple[Path, str, tuple[str, ...]] | None
+    #: Nur Stichwahl: der erste Wahlgang — Vergleichswert und Generalprobe.
+    first_round: str | None
 
     @property
     def year(self) -> str:
@@ -120,11 +133,14 @@ def _aus(datei: Path) -> Election:
             adapter=quelle.get("adapter", "votemanager"), base=str(quelle.get("base", "")).rstrip("/"),
             files=dict(quelle.get("files") or {}), presentation_id=quelle.get("presentation_id"),
             city_id=quelle.get("city_id"), areas_level=quelle.get("areas_level"),
+            discover=dict(quelle["discover"]) if quelle.get("discover") else None,
         ),
         register_path=_pfad(roh.get("register")),
         reference_folder=_pfad(roh.get("reference")),
         mayor=roh.get("mayor"),
-        candidates=(ROOT / kandidaten["file"], kandidaten["key"]) if kandidaten else None,
+        candidates=(ROOT / kandidaten["file"], kandidaten["key"],
+                    tuple(kandidaten.get("only") or ())) if kandidaten else None,
+        first_round=roh.get("first_round"),
     )
 
 
@@ -170,6 +186,19 @@ def active() -> Election:
         _log.warning("WAHLABEND_ELECTION nennt „%s“ — das ist keine bekannte Ratswahl; "
                      "es bleibt bei der Vorgabe.", gewuenscht)
     return _vorgabe()
+
+
+def runoff() -> Election | None:
+    """Die Stichwahl, wenn es eine gibt — die jüngste Mehrheitswahl mit einem
+    ersten Wahlgang, die kein Entwurf mehr ist.
+
+    Sie ist bewusst NICHT ``active()``: Die Ratswahl bleibt die Wahl, die
+    ``/api/wahlabend`` zeigt, und der Tippspiel-Vergleich bleibt am ERSTEN
+    Wahlgang. Die Stichwahl hat ihre eigene Seite.
+    """
+    kandidaten = [w for w in all().values()
+                  if w.kind == "mayor" and w.first_round and w.status != "entwurf"]
+    return max(kandidaten, key=lambda w: (w.date, w.slug)) if kandidaten else None
 
 
 def mayor_of(wahl: Election | None = None) -> Election | None:

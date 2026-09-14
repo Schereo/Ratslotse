@@ -20,8 +20,16 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from kern import features
 
-from ..antworten import WAHLABEND_KARTE_PNG, WAHLABEND_PNG, ElectionNight
-from ..election import image, service, share
+from ..antworten import (
+    WAHLABEND_KARTE_PNG,
+    WAHLABEND_PNG,
+    ElectionNight,
+    MayorCandidate,
+    MayorElectionInfo,
+    MayorNight,
+)
+from ..election import elections, image, mayor, service, share
+from ..election import votemanager
 
 router = APIRouter(tags=["wahlabend"])
 
@@ -49,6 +57,90 @@ def wahlabend(
 ) -> ElectionNight:
     _frei()
     return _stand(probe, counted)
+
+
+# ------------------------------------------------------------------ OB-Wahl und Stichwahl
+
+def _mayor_night(w: elections.Election, probe: str | None, counted: int | None) -> MayorNight:
+    """Ein Stand einer Mehrheitswahl als Antwort.
+
+    ``probe`` nimmt echte Zahlen statt des Abrufs: für den ersten Wahlgang die
+    OB-Wahl 2021, für eine Stichwahl den ersten Wahlgang selbst (eingefroren
+    in ``kommunalwahl/referenz-2026/``). Der Parameter heißt aus Gewohnheit
+    ``2021``; jeder Wert außer ``None`` schaltet die Probe ein.
+    """
+    stand = mayor.probe(counted, w) if probe else mayor.fetch(w=w)
+    vorher: dict[str, float | None] = {}
+    if w.first_round:
+        erster = mayor.parse(mayor.probe_payload(w)[0], mayor.candidates(w))
+        vorher = {c.slug: c.share_pct for c in erster.candidates} if erster else {}
+    return MayorNight(
+        dataset="probe" if probe else "live",
+        phase=stand.phase,
+        election=MayorElectionInfo(
+            slug=w.slug, title=w.title, short_title=w.short_title, date=w.date,
+            polls_close=w.polls_close.isoformat(), is_runoff=bool(w.first_round),
+            presentation_url=mayor.base_url(w) + votemanager.PRESENTATION_PATH,
+        ),
+        reports_expected=stand.reports_expected, reports_received=stand.reports_received,
+        turnout_pct=stand.turnout_pct, valid_votes=stand.valid_votes,
+        invalid_ballots=stand.invalid_ballots,
+        candidates=[MayorCandidate(slug=c.slug, name=c.name, party=c.party, votes=c.votes,
+                                   share_pct=c.share_pct, first_round_pct=vorher.get(c.slug),
+                                   color=c.color, color_dark=c.color_dark)
+                    for c in stand.candidates],
+        runoff=list(stand.runoff),
+        elected=_gewaehlt(stand),
+        fetched_at=stand.fetched_at, ok=stand.ok, error=stand.error, notes=list(stand.notes),
+    )
+
+
+def _gewaehlt(stand: mayor.MayorResult) -> str | None:
+    """Wer gewählt ist — nur bei fertiger Auszählung und ohne Stichwahl.
+
+    Bei einer Stichwahl nennt ``gewaehlte_kandidaten`` die beiden, die weiter
+    sind (das steht in ``runoff``); daraus eine „gewählte Person" zu machen,
+    wäre schlicht falsch.
+    """
+    if stand.phase != "complete" or stand.runoff:
+        return None
+    beste = max(stand.candidates, key=lambda c: c.votes or 0, default=None)
+    return beste.slug if beste is not None and (beste.votes or 0) > 0 else None
+
+
+@router.get("/api/wahlabend/ob")
+def ob_wahl(probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen von 2021"),
+            counted: int | None = Query(default=None, ge=0, le=133,
+                                        description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt")) -> MayorNight:
+    """Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
+    ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.
+
+    Immer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran
+    hängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht
+    unter der Hand verschieben.
+    """
+    _frei()
+    return _mayor_night(mayor.wahl(), probe, counted)
+
+
+@router.get("/api/wahlabend/stichwahl")
+def stichwahl(probe: str | None = Query(default=None, description="gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs"),
+              counted: int | None = Query(default=None, ge=0, le=133,
+                                          description="Generalprobe: nur die ersten N Wahlbezirke ausgezählt")) -> MayorNight:
+    """Die Stichwahl — 404, solange keine im Kalender steht.
+
+    Am 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft
+    deshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).
+    Ihre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur
+    Laufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin
+    antwortet dieser Pfad mit ``phase: "before"`` und einem Vermerk, nicht mit
+    einem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.
+    """
+    _frei()
+    w = elections.runoff()
+    if w is None:
+        raise HTTPException(status_code=404, detail="Es steht keine Stichwahl an.")
+    return _mayor_night(w, probe, counted)
 
 
 @router.get("/api/wahlabend/bild.png", response_class=Response, responses=WAHLABEND_PNG)

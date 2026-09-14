@@ -5095,8 +5095,39 @@ export interface paths {
          * Ob Wahl
          * @description Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
          *     ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels.
+         *
+         *     Immer der ERSTE Wahlgang; die Stichwahl hat ihren eigenen Pfad. Daran
+         *     hängt der Vergleich des Tippspiels, und der darf sich am 27.09. nicht
+         *     unter der Hand verschieben.
          */
         get: operations["ob_wahl_api_wahlabend_ob_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/wahlabend/stichwahl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stichwahl
+         * @description Die Stichwahl — 404, solange keine im Kalender steht.
+         *
+         *     Am 13.09.2026 hat niemand die absolute Mehrheit erreicht; am 27.09. läuft
+         *     deshalb die Stichwahl zwischen Ulf Prange (SPD) und Jascha Rohr (GRÜNE).
+         *     Ihre Wahl-Id beim Votemanager gibt es heute noch nicht — sie wird zur
+         *     Laufzeit in ``termin.json`` gesucht (``mayor.resolve_ids``). Bis dahin
+         *     antwortet dieser Pfad mit ``phase: "before"`` und einem Vermerk, nicht mit
+         *     einem Fehler: Eine Seite, die auf den Abend wartet, ist keine kaputte.
+         */
+        get: operations["stichwahl_api_wahlabend_stichwahl_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9390,6 +9421,12 @@ export interface components {
         };
         /** MayorCandidate */
         MayorCandidate: {
+            /** Color */
+            color: string;
+            /** Color Dark */
+            color_dark: string;
+            /** First Round Pct */
+            first_round_pct: number | null;
             /** Name */
             name: string;
             /** Party */
@@ -9401,10 +9438,39 @@ export interface components {
             /** Votes */
             votes: number | null;
         };
+        /**
+         * MayorElectionInfo
+         * @description Welche Wahl das hier ist — aus ``kommunalwahl/wahlen/``.
+         *
+         *     Stand bis 09/2026 nicht in der Antwort: Es gab genau eine OB-Wahl, und
+         *     die Seite kannte sie auswendig. Mit der Stichwahl am 27.09. sind es zwei,
+         *     und die Überschrift darf nicht mehr im Frontend stehen.
+         */
+        MayorElectionInfo: {
+            /** Date */
+            date: string;
+            /** Is Runoff */
+            is_runoff: boolean;
+            /** Polls Close */
+            polls_close: string;
+            /** Presentation Url */
+            presentation_url: string;
+            /** Short Title */
+            short_title: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+        };
         /** MayorNight */
         MayorNight: {
             /** Candidates */
             candidates: components["schemas"]["MayorCandidate"][];
+            /** Dataset */
+            dataset: string;
+            /** Elected */
+            elected: string | null;
+            election: components["schemas"]["MayorElectionInfo"];
             /** Error */
             error: string | null;
             /** Fetched At */
@@ -18712,7 +18778,43 @@ export interface operations {
     ob_wahl_api_wahlabend_ob_get: {
         parameters: {
             query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen von 2021 */
                 probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
+                counted?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MayorNight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stichwahl_api_wahlabend_stichwahl_get: {
+        parameters: {
+            query?: {
+                /** @description gesetzt = Generalprobe mit den Zahlen des ersten Wahlgangs */
+                probe?: string | null;
+                /** @description Generalprobe: nur die ersten N Wahlbezirke ausgezählt */
                 counted?: number | null;
             };
             header?: never;
@@ -18743,4 +18845,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: e8fc026d5bd9befe6bedf7a9b05c78a159b225fb3be5ea49a1eeb50f0df9c927
+// vertrag-sha256: 8ea5ca5b3e3e208d2e4e61f70a0be48786233d5956a0c42052d2e4b0dea99607

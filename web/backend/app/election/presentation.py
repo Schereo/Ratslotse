@@ -328,7 +328,7 @@ def resolve_ids(session: requests.Session, base: str) -> tuple[str, str]:
     quelle = _quelle()
     vorgabe = (quelle.city_id or "", quelle.areas_level or "")
     try:
-        city, areas = ids_of(_get_json(session, base + quelle.api_path + "/wahl.json"))
+        city, areas = ids_of(_get_json(session, base + quelle.api_path() + "/wahl.json"))
     except (requests.RequestException, ValueError) as exc:
         _log.info("Wahlabend: wahl.json ohne Antwort (%s: %s) — Vorgabe-Ids", type(exc).__name__, exc)
         return vorgabe
@@ -344,7 +344,7 @@ def fetch(session: requests.Session, base: str) -> Fetched:
     city: PresentationArea | None = None
     city_payload: Any | None = None
     city_id, level = resolve_ids(session, base)
-    api = _quelle().api_path
+    api = _quelle().api_path()
     try:
         links = area_links(_get_json(session, f"{base}{api}/uebersicht_{level}_0.json"))
     except (requests.RequestException, ValueError) as exc:

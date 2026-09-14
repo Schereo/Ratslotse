@@ -108,10 +108,10 @@ def _darstellung(session: requests.Session, basis: str, ziel: Path) -> Any | Non
     """
     _json_sichern(session, basis + mayor.TERMIN_PATH, ziel / "termin.json")
     stadt_id, _ = presentation.resolve_ids(session, basis)
-    ratswahl = _json_sichern(session, f"{basis}{elections.active().source.api_path}/ergebnis_{stadt_id}_0.json",
+    ratswahl = _json_sichern(session, f"{basis}{elections.active().source.api_path()}/ergebnis_{stadt_id}_0.json",
                              ziel / "praesentation-ratswahl.json")
     ob_id = mayor.resolve_ids(session, basis)
-    _json_sichern(session, f"{basis}{mayor.wahl().source.api_path}/ergebnis_{ob_id}_0.json",
+    _json_sichern(session, f"{basis}{mayor.wahl().source.api_path()}/ergebnis_{ob_id}_0.json",
                   ziel / "praesentation-ob.json")
     return ratswahl
 

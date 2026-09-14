@@ -133,25 +133,37 @@ lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 - **Wächter:** `tests/test_wahlregistry.py` — jede Registry-Datei validiert,
   jeder `reference`-Verweis existiert, keine zwei Wahlen mit `status: live`.
 
-### PR 3 — Stichwahl 27.09.2026 *(der erste echte Kunde)*
+### PR 3 — Stichwahl 27.09.2026 ✅ *(der erste echte Kunde)*
 
 - `election/types/mehrheit.py`: `mayor.py`, gelöst von der Ratswahl — eine
   Wahl mit Kandidaturen, Prozenten, Auszählungsstand, Verlauf und
   Gewählten-Satz. Stichwahl ist derselbe Typ mit zwei Kandidaturen.
-- `ob-stichwahl-2026.json` mit eigener `wahl_id` (aus `daten/api/termin.json`
-  lesen, nicht raten) und `reference: ob-2026` — der Vergleich ist dann „erster
-  Wahlgang", nicht „2021".
-- Seite `/wahlabend` erkennt an der aktiven Wahl, welchen Typ sie zeigt:
-  Halbkreis und Wahlbereichs-Tafel entfallen, Balken + Verlauf + Teilen-Karte
-  bleiben. `wahl-flaechen.ts` bleibt unberührt (Ratswahl-Ebene der Stadtkarte).
+- `ob-stichwahl-2026.json` mit `first_round: ob-2026` — der Vergleich ist
+  „erster Wahlgang", nicht „2021".
+- **Abweichung, gemessen:** Die Wahl-Id steht NICHT in der Datei. Am
+  14.09.2026 kennt `termin.json` nur 913 und 2552; die Stichwahl-Id vergibt
+  die Stadt erst. Sie wird deshalb zur Laufzeit am Titel gesucht
+  (`source.discover`). Dass eine Stichwahl unter dem Termin der HAUPTWAHL
+  läuft, ist an den Terminlisten der Stadt gemessen (2006 und 2021).
+- **Zweite Abweichung:** eine **eigene Seite** `/wahlabend/stichwahl` statt
+  eines Typ-Schalters auf `/wahlabend`. `active()` liefert weiter die Ratswahl
+  (die Stichwahl ist `kind: mayor`), und genau so soll es sein: Am 27.09.
+  suchen Leute unter `/wahlabend` immer noch das Ergebnis der Ratswahl.
+  `wahl-flaechen.ts` bleibt unberührt.
+- **Kein Verlauf und keine Teilen-Karte** in diesem Schritt — eine Stichwahl
+  ist eine Zahl je Name, der Aufwand steht in keinem Verhältnis. Nachrüstbar.
 - **Abnahme:** Generalprobe `?probe=ob-2026` zeigt den 13.09.-Stand auf zwei
   Namen zusammengezogen; am 27.09. ab 18 Uhr läuft die Seite ohne Deploy.
 - **Wächter:** Fixture des Stichwahl-JSONs, Test auf „genau zwei Kandidaturen,
   Summe ≈ 100 %".
 
-> **Terminrisiko.** Bis zum 27.09. sind es dreizehn Tage. Geht PR 2 nicht
-> rechtzeitig durch, ist PR 3 auch allein lauffähig (zweite `wahl_id` als
-> Konstante) — dann aber bewusst als Schuld notieren, nicht als Lösung.
+> **Terminrisiko erledigt:** PR 2 und PR 3 sind rechtzeitig fertig geworden;
+> die Konstante als Notlösung wurde nicht gebraucht.
+>
+> **Offen bis zum 27.09.:** Sobald die Stadt die Stichwahl beim Votemanager
+> anlegt, einmal `curl` auf `termin.json` und prüfen, dass der Titel wirklich
+> „Stichwahl" enthält — findet die Suche ihn nicht, hilft ein Eintrag
+> `presentation_id` in `ob-stichwahl-2026.json` (ein Fünf-Zeilen-PR).
 
 ### PR 4 — Vertrag ohne Jahreszahl
 

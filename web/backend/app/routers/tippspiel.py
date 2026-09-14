@@ -39,7 +39,6 @@ from kern import features
 from kern.store import Store
 
 from ..antworten import (
-    MayorNight,
     Ok,
     PredictionAdminPlayer,
     PredictionAdminStand,
@@ -291,23 +290,6 @@ def stand(request: Request, response: Response, probe: str | None = Query(defaul
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "no-cache"
     return ergebnis
-
-
-@router.get("/api/wahlabend/ob")
-def ob_wahl(probe: str | None = Query(default=None), counted: int | None = Query(default=None, ge=0, le=133)) -> MayorNight:
-    """Die OB-Wahl für sich — hinter dem Schalter ``wahlabend`` (nicht
-    ``tippspiel``): Sie ist Teil des Wahlabends, nicht nur des Tippspiels."""
-    if not features.an("wahlabend"):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Der Wahlabend ist noch nicht freigeschaltet.")
-    ergebnis = mayor.probe(counted) if probe == "2021" else mayor.fetch()
-    return MayorNight(
-        phase=ergebnis.phase, reports_expected=ergebnis.reports_expected, reports_received=ergebnis.reports_received,
-        turnout_pct=ergebnis.turnout_pct, valid_votes=ergebnis.valid_votes, invalid_ballots=ergebnis.invalid_ballots,
-        candidates=[{"slug": c.slug, "name": c.name, "party": c.party, "votes": c.votes, "share_pct": c.share_pct}
-                   for c in ergebnis.candidates],
-        runoff=list(ergebnis.runoff), fetched_at=ergebnis.fetched_at, ok=ergebnis.ok, error=ergebnis.error,
-        notes=list(ergebnis.notes),
-    )
 
 
 # ------------------------------------------------------------------ QR-Code

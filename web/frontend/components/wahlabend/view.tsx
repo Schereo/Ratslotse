@@ -13,10 +13,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BrandMark } from "@/components/brand";
 import { Mascot } from "@/components/mascot";
-import { WebThemeSwitch } from "@/components/web-theme-switch";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
+import { Kopf } from "@/components/wahlabend/kopf";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { Verlauf } from "@/components/wahlabend/verlauf";
 import { useFrisch, useTween } from "@/lib/use-tween";
@@ -59,28 +58,6 @@ const TON: Record<StatusTon, string> = {
 };
 
 /* ── Kopf & Fuß ─────────────────────────────────────────────────────────── */
-
-function Kopf() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:px-6 lg:px-10">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <Link href="/" className="flex flex-none items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <BrandMark className="h-[30px] w-[30px]" />
-            <span className="font-display text-[17px] font-bold tracking-tight text-foreground">Ratslotse</span>
-          </Link>
-          <span className="truncate border-l border-border pl-2.5 text-[13px] text-muted-foreground">Wahlabend 2026</span>
-        </div>
-        <div className="flex flex-none items-center gap-3 sm:gap-4">
-          <WebThemeSwitch />
-          <Link href="/" className="hidden text-[13px] font-medium text-primary sm:inline">
-            ← Zurück zu Ratslotse
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function Fuss({ daten }: { daten: Wahlabend | undefined }) {
   return (
@@ -164,6 +141,24 @@ function KartenLinks({
         </label>
       ) : null}
     </span>
+  );
+}
+
+/** Die Stichwahl ist die Frage, die nach der Ratswahl offen blieb — auf DIESER
+ *  Seite steht sie nicht, also gehört hier ein Weg dorthin. Ohne Datum im
+ *  Code: Es kommt aus der Antwort der Stichwahl-Seite. */
+function StichwahlHinweis() {
+  return (
+    <section className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-muted/40 px-4 py-2.5 text-[13px]">
+      <span className={cn(KICKER, "text-foreground")}>Am 27. September</span>
+      <span>
+        Beim Oberbürgermeisteramt hat niemand die absolute Mehrheit erreicht — es gibt eine{" "}
+        <Link href="/wahlabend/stichwahl" className="font-medium text-primary">
+          Stichwahl
+        </Link>
+        .
+      </span>
+    </section>
   );
 }
 
@@ -829,6 +824,7 @@ export function WahlabendView() {
           </p>
         ) : null}
         <Tafel daten={daten} aktualisiert={abfrage.dataUpdatedAt} probe={probe} counted={counted} abfrageFehler={abfrage.isError} />
+        <StichwahlHinweis />
         {daten.phase !== "before" ? <NeuKarten liste={liste} /> : null}
         <Vorbehalt daten={daten} />
         {daten.phase === "before" && daten.dataset === "live" ? (
@@ -851,7 +847,7 @@ export function WahlabendView() {
 
   return (
     <>
-      <Kopf />
+      <Kopf label="Wahlabend 2026" />
       <main className="mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-10 @container">
         {inhalt}
         <Fuss daten={daten} />

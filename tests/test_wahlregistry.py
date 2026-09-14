@@ -21,7 +21,7 @@ import pytest
 WURZEL = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WURZEL / "web" / "backend"))
 
-from app.election import elections, reference, register  # noqa: E402
+from app.election import elections, mayor, reference, register  # noqa: E402
 
 DATEIEN = sorted((WURZEL / "kommunalwahl" / "wahlen").glob("*.json"))
 ALLE = sorted(elections.all().values(), key=lambda w: w.slug)
@@ -67,11 +67,17 @@ def test_ob_wahl_traegt_ihre_kandidaturen(wahl: elections.Election):
     if wahl.kind != "mayor":
         return
     assert wahl.candidates is not None, f"{wahl.slug}: „candidates“ fehlt"
-    datei, schluessel = wahl.candidates
+    datei, schluessel, nur = wahl.candidates
     assert datei.is_file(), f"{wahl.slug}: {datei} gibt es nicht"
     roh = json.loads(datei.read_text(encoding="utf-8"))
     assert roh.get(schluessel), f"{wahl.slug}: „{schluessel}“ fehlt in {datei.name} oder ist leer"
-    assert wahl.source.presentation_id, "Ohne Wahl-Id ist die OB-Wahl nicht abrufbar (sie hat keine CSV)."
+    assert wahl.source.presentation_id or wahl.source.discover, (
+        f"{wahl.slug}: weder eine Wahl-Id noch eine Regel, sie zu finden — so ist die Wahl nicht abrufbar "
+        "(eine Mehrheitswahl hat keine CSV).")
+    if nur:
+        bekannt = {mayor.slug_of(k["name"]) for k in roh[schluessel]}
+        fehlend = sorted(set(nur) - bekannt)
+        assert not fehlend, f"{wahl.slug}: „only“ nennt {fehlend}, die es in {datei.name} nicht gibt"
 
 
 def test_sitzzahl_steht_nicht_widersprüchlich_doppelt():
@@ -137,10 +143,10 @@ def test_registry_kennt_die_wahl_von_2026():
     assert wahl is not None
     assert wahl.seats == 52 and wahl.date == "2026-09-13"
     assert wahl.source.base == "https://votemanager.kdo.de/20260913/03403000"
-    assert wahl.source.api_path == "/daten/api/wahl_913"
+    assert wahl.source.api_path() == "/daten/api/wahl_913"
     assert wahl.source.files["city"].endswith("Stadtratswahl-Stadt.csv")
     ob = elections.mayor_of(wahl)
-    assert ob is not None and ob.source.api_path == "/daten/api/wahl_2552"
+    assert ob is not None and ob.source.api_path() == "/daten/api/wahl_2552"
     assert ob.source.city_id == "ebene_-6360_id_10357"
 
 
