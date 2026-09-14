@@ -10155,6 +10155,10 @@ export interface components {
             shares: {
                 [key: string]: number;
             };
+            /** Votes */
+            votes: {
+                [key: string]: number;
+            };
         };
         /**
          * MayorLeadChange
@@ -19885,4 +19889,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8b9686bb5b156d57bdba4eccfcc1f37cceb99e21b6424937a804badb953fa253
+// vertrag-sha256: 86a5323552dae9016887c07705242d3b5d8adc60248798372df037a0ac8622e7

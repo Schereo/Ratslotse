@@ -121,3 +121,53 @@ export function abfragePfad(probe: string | null, counted: string | null): strin
   const s = q.toString();
   return s ? `/wahlabend/stichwahl?${s}` : "/wahlabend/stichwahl";
 }
+
+/* ── Momente (docs/plan-stichwahl-spannung.md S4) ──────────────────────────
+ * Alles aus der Historie des Backends, nicht aus dem Browser-Zustand — ein
+ * frisch geladener Tab soll dasselbe sehen wie einer, der seit 18 Uhr offen ist. */
+
+export type Meldung = {
+  at: string;
+  /** Wie viele Bezirke seit dem vorigen Stand dazukamen. */
+  bezirke: number;
+  /** Slug → Stimmen, die seit dem vorigen Stand dazukamen. */
+  zuwachs: Record<string, number>;
+};
+
+/** Die jüngste Meldung: der letzte Stand gegen den davor. Beim allerersten
+ *  Stand ist alles Zuwachs. `null` ohne Verlauf. */
+export function letzteMeldung(daten: Stichwahl): Meldung | null {
+  const h = daten.history ?? [];
+  if (h.length === 0) return null;
+  const p = h[h.length - 1];
+  const q = [...h].reverse().find((x) => x.reports_received < p.reports_received) ?? null;
+  const zuwachs: Record<string, number> = {};
+  for (const [slug, v] of Object.entries(p.votes)) zuwachs[slug] = v - (q?.votes[slug] ?? 0);
+  return { at: p.at, bezirke: p.reports_received - (q?.reports_received ?? 0), zuwachs };
+}
+
+/** Der jüngste Führungswechsel — oder `null`. */
+export function letzterWechsel(daten: Stichwahl): Stichwahl["lead_changes"][number] | null {
+  const w = daten.lead_changes ?? [];
+  return w.length ? w[w.length - 1] : null;
+}
+
+/** Nachname — für den Fenstertitel und die Zeile der Meldung. */
+export function nachname(k: StichwahlKandidat): string {
+  const teile = k.name.trim().split(/\s+/);
+  return teile[teile.length - 1] ?? k.name;
+}
+
+/** Der Fenstertitel: die billigste Meldung, die es gibt — wer den Tab im
+ *  Hintergrund hat, sieht den Stand trotzdem. */
+export function fensterTitel(daten: Stichwahl): string {
+  if (daten.phase === "before") return "Stichwahl · Ratslotse";
+  const stand = nachStimmen(daten.candidates)
+    .map((k) => `${nachname(k)} ${prozentKurz(k.share_pct)}`)
+    .join(" · ");
+  return `${stand} — ${daten.reports_received}/${daten.reports_expected} · Stichwahl`;
+}
+
+function prozentKurz(v: number | null): string {
+  return v === null ? "–" : `${v.toFixed(1).replace(".", ",")}`;
+}

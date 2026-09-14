@@ -229,11 +229,14 @@ def _mayor_point_from(raw: Any) -> MayorHistoryPoint | None:
     shares, proj = raw.get("shares"), raw.get("projected_shares")
     if not isinstance(shares, dict) or not isinstance(proj, dict):
         return None
+    votes_raw = raw.get("votes")
+    votes: dict[Any, Any] = votes_raw if isinstance(votes_raw, dict) else {}
     chance = raw.get("chance_pct")
     leader = raw.get("leader")
     return MayorHistoryPoint(
         at=at, reports_received=n,
         shares={str(k): float(v) for k, v in shares.items() if isinstance(v, (int, float))},
+        votes={str(k): int(v) for k, v in votes.items() if isinstance(v, int) and not isinstance(v, bool)},
         projected_shares={str(k): float(v) for k, v in proj.items() if isinstance(v, (int, float))},
         chance_pct=int(chance) if isinstance(chance, int) and not isinstance(chance, bool) else None,
         leader=leader if isinstance(leader, str) else None,
@@ -286,6 +289,7 @@ def from_mayor_night(night: MayorNight, at: str | None = None) -> MayorHistoryPo
         at=at or night["fetched_at"] or datetime.now(timezone.utc).isoformat(timespec="seconds"),
         reports_received=night["reports_received"],
         shares=shares,
+        votes={c["slug"]: c["votes"] for c in night["candidates"] if c["votes"] is not None},
         projected_shares=dict(proj["shares"]) if proj else {},
         chance_pct=proj["chance_pct"] if proj else None,
         leader=mayor_leader(shares, {c["slug"]: c["votes"] for c in night["candidates"]}),
