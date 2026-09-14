@@ -161,9 +161,13 @@ def test_die_ausnahmen_werden_noch_gebraucht():
 
 
 def test_jede_ratswahl_sagt_wie_ihre_vorwahl_heisst():
-    """Ohne Etikett zeigte die Seite „Punkte gegenüber " und sonst nichts."""
+    """Ohne Etikett zeigte die Seite „Punkte gegenüber " und sonst nichts.
+
+    Ein reiner Rückblick ist ausgenommen: Die Ratswahl 2021 hat bei uns gar
+    keine Vorwahl (2016 liegt nicht im Repo), und ein erfundenes Etikett wäre
+    schlimmer als keines — die Seite lässt den Vergleich dann einfach weg."""
     for wahl in elections.all().values():
-        if wahl.kind != "council":
+        if wahl.kind != "council" or wahl.status == "rueckblick":
             continue
         assert wahl.previous_label, f"{wahl.slug}: „previous_label“ fehlt"
         assert wahl.reference_folder is not None

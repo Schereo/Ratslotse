@@ -6,6 +6,7 @@
   "date": "2026-09-13",
   "polls_close": "2026-09-13T18:00:00+02:00",
   "status": "live",
+  "archive": "kommunalwahl/referenz-2026",
   "candidates": {
     "file": "kommunalwahl/wahl-fakten.json",
     "key": "ob_kandidaten"

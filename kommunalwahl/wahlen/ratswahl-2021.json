@@ -1,0 +1,15 @@
+{
+  "slug": "ratswahl-2021",
+  "kind": "council",
+  "title": "Wahl des Rates der Stadt Oldenburg (Oldb)",
+  "short_title": "Ratswahl Oldenburg",
+  "date": "2021-09-12",
+  "polls_close": "2021-09-12T18:00:00+02:00",
+  "seats": 50,
+  "status": "rueckblick",
+  "archive": "kommunalwahl/referenz-2021",
+  "source": {
+    "adapter": "votemanager",
+    "base": "https://votemanager.kdo.de/20210912/03403000"
+  }
+}

@@ -103,6 +103,10 @@ class Election:
     #: Nur ``council``: Kandidatenregister und Referenzordner der Vorwahl.
     register_path: Path | None
     reference_folder: Path | None
+    #: Der EIGENE eingefrorene Stand dieser Wahl (``scripts/wahl_einfrieren.py``).
+    #: Damit läuft ein Rückblick ohne Netz — eine Seite, die für ein Ergebnis
+    #: von 2021 eine fremde Adresse anfragen muss, ist keine.
+    archive_folder: Path | None
     #: Wie die Vorwahl in der Anzeige heißt — „2021". Stand bis 09/2026 als
     #: Literal an rund dreißig Stellen im Frontend und in den Teilen-Bildern;
     #: bei der nächsten Kommunalwahl wären das dreißig stille Lügen.
@@ -141,6 +145,7 @@ def _aus(datei: Path) -> Election:
         ),
         register_path=_pfad(roh.get("register")),
         reference_folder=_pfad(roh.get("reference")),
+        archive_folder=_pfad(roh.get("archive")),
         previous_label=str(roh.get("previous_label") or ""),
         mayor=roh.get("mayor"),
         candidates=(ROOT / kandidaten["file"], kandidaten["key"],
@@ -175,7 +180,8 @@ def _vorgabe() -> Election:
     und die Generalprobe), und nach ihr bleibt sie es, bis eine spätere
     dazukommt.
     """
-    ratswahlen = [w for w in all().values() if w.kind == "council" and w.status != "entwurf"]
+    ratswahlen = [w for w in all().values()
+                  if w.kind == "council" and w.status not in ("entwurf", "rueckblick")]
     if not ratswahlen:
         raise FileNotFoundError("Keine Ratswahl in kommunalwahl/wahlen/ (alle sind Entwurf).")
     return max(ratswahlen, key=lambda w: (w.date, w.slug))
@@ -237,7 +243,7 @@ def focus(jetzt: datetime | None = None) -> Election:
     gewuenscht = os.environ.get("WAHLABEND_ELECTION", "").strip()
     if gewuenscht and gewuenscht in all():
         return all()[gewuenscht]
-    kandidaten = [w for w in all().values() if w.status != "entwurf"]
+    kandidaten = [w for w in all().values() if w.status not in ("entwurf", "rueckblick")]
     if not kandidaten:
         return active()
 

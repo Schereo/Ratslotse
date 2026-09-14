@@ -7794,6 +7794,84 @@
         "title": "ElectionInfo",
         "type": "object"
       },
+      "ElectionList": {
+        "properties": {
+          "elections": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionListItem"
+            },
+            "title": "Elections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "elections"
+        ],
+        "title": "ElectionList",
+        "type": "object"
+      },
+      "ElectionListItem": {
+        "description": "Eine Zeile der Übersicht unter ``/wahlen``.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "focus": {
+            "title": "Focus",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "polls_close": {
+            "title": "Polls Close",
+            "type": "string"
+          },
+          "short_title": {
+            "title": "Short Title",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short_title",
+          "title",
+          "date",
+          "polls_close",
+          "kind",
+          "status",
+          "path",
+          "summary",
+          "focus"
+        ],
+        "title": "ElectionListItem",
+        "type": "object"
+      },
       "ElectionMandate": {
         "properties": {
           "area": {
@@ -26909,6 +26987,7 @@
     },
     "/api/wahlabend": {
       "get": {
+        "description": "Der Wahlabend: live, als Generalprobe oder als Rückblick.\n\n``?wahl=<slug>`` liefert den eingefrorenen Stand einer gelaufenen Wahl aus\ndem Repo (``kommunalwahl/referenz-…``). Das ist der Punkt, an dem eine\nRückblick-Seite unabhängig vom Votemanager wird: Seine Adressen tragen den\nWahltag im Pfad und wandern irgendwann ins Archiv.",
         "operationId": "wahlabend_api_wahlabend_get",
         "parameters": [
           {
@@ -26937,6 +27016,20 @@
               "title": "Counted",
               "type": [
                 "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
                 "null"
               ]
             }
@@ -27313,6 +27406,28 @@
           }
         },
         "summary": "Stichwahl",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlen": {
+      "get": {
+        "description": "Alle Wahlen, die wir zeigen — die nächste zuerst, dann rückwärts.\n\nÖffentlich wie die Zahlen selbst. Entwürfe bleiben draußen; sie sind das\nGegenstück zum Feature-Schalter für eine einzelne Wahl.",
+        "operationId": "wahlen_api_wahlen_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Wahlen",
         "tags": [
           "wahlabend"
         ]

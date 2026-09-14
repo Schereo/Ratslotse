@@ -49,7 +49,14 @@ def test_pflichtangaben(wahl: elections.Election):
 
 @pytest.mark.parametrize("wahl", ALLE, ids=lambda w: w.slug)
 def test_ratswahl_traegt_register_referenz_und_dateien(wahl: elections.Election):
-    if wahl.kind != "council":
+    """Was eine Ratswahl braucht, die noch läuft oder noch kommt.
+
+    Ein reiner **Rückblick** (``status: rueckblick``) ist davon ausgenommen:
+    Von der Ratswahl 2021 liegen die Zahlen im Repo, aber weder ein
+    Kandidatenregister noch eine Vorwahl — sie erscheint in der Übersicht mit
+    ihrem Ergebnis und ohne eigene Seite. Das ist Absicht und wird unten
+    ausdrücklich geprüft."""
+    if wahl.kind != "council" or wahl.status == "rueckblick":
         return
     assert wahl.register_path and wahl.register_path.is_file(), f"{wahl.slug}: „register“ zeigt ins Leere"
     assert wahl.reference_folder and wahl.reference_folder.is_dir(), f"{wahl.slug}: „reference“ zeigt ins Leere"
@@ -60,6 +67,17 @@ def test_ratswahl_traegt_register_referenz_und_dateien(wahl: elections.Election)
     assert wahl.seats > 0
     assert elections.mayor_of(wahl) is not None, (
         f"{wahl.slug}: kein „mayor“ — dann steht auf der Seite keine OB-Zahl.")
+
+
+@pytest.mark.parametrize("wahl", ALLE, ids=lambda w: w.slug)
+def test_ein_rueckblick_traegt_seinen_eigenen_stand(wahl: elections.Election):
+    """Eine Wahl mit ``status: rueckblick`` lebt nur aus dem Repo."""
+    if wahl.status != "rueckblick":
+        return
+    assert wahl.archive_folder and wahl.archive_folder.is_dir(), (
+        f"{wahl.slug}: „archive“ fehlt — dann hat der Rückblick gar keine Zahlen.")
+    reference.meta_path(wahl.archive_folder)
+    assert wahl.seats > 0
 
 
 @pytest.mark.parametrize("wahl", ALLE, ids=lambda w: w.slug)
@@ -89,7 +107,8 @@ def test_sitzzahl_steht_nicht_widersprüchlich_doppelt():
     Reißleine eine falsche Zahl und merkte es nie.
     """
     for wahl in ALLE:
-        if wahl.kind != "council" or not wahl.register_path:
+        # Ein Rückblick ohne eigenes Register ist ausgenommen (siehe oben).
+        if wahl.kind != "council" or wahl.register_path is None:
             continue
         reg = register.load(wahl.register_path)
         assert wahl.seats == reg.seats, (
@@ -142,6 +161,7 @@ def test_registry_kennt_die_wahl_von_2026():
     wahl = elections.get("ratswahl-2026")
     assert wahl is not None
     assert wahl.seats == 52 and wahl.date == "2026-09-13"
+    assert wahl.archive_folder is not None and wahl.archive_folder.name == "referenz-2026"
     assert wahl.source.base == "https://votemanager.kdo.de/20260913/03403000"
     assert wahl.source.api_path() == "/daten/api/wahl_913"
     assert wahl.source.files["city"].endswith("Stadtratswahl-Stadt.csv")

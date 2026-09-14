@@ -9,6 +9,7 @@
   "status": "live",
   "register": "kommunalwahl/kandidaten.json",
   "reference": "kommunalwahl/referenz-2021",
+  "archive": "kommunalwahl/referenz-2026",
   "previous_label": "2021",
   "mayor": "ob-2026",
   "source": {

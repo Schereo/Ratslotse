@@ -1,7 +1,8 @@
 # Wahlabend und Tippspiel für die nächste Wahl
 
-**Stand 14.09.2026, abends.** PR 1–3 sind gemergt (#1328, #1329, #1331) — die
-Stichwahl am 27.09. läuft ohne weiteren Deploy. Offen: PR 4–7.
+**Stand 14.09.2026, nachts.** PR 1–7 sind gemergt (#1328, #1329, #1331, #1333,
+#1338, #1341 und dieser) — die Stichwahl am 27.09. läuft ohne weiteren
+Deploy. Offen ist nur noch PR 8, und der erst, wenn ihn jemand vermisst.
 
 Beides hat am 13.09. getragen: 539 Aufrufe / 117 Besuche
 auf `/wahlabend`, 178/69 auf `/tipp`, dazu 181 Aufrufe auf der Beamer-Bühne —
@@ -168,7 +169,7 @@ lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 > „Stichwahl" enthält — findet die Suche ihn nicht, hilft ein Eintrag
 > `presentation_id` in `ob-stichwahl-2026.json` (ein Fünf-Zeilen-PR).
 
-### PR 4 — Vertrag ohne Jahreszahl
+### PR 4 — Vertrag ohne Jahreszahl ✅ *(#1333)*
 
 - `seats_2021` → `seats_previous`, `share_2021_pct` → `share_previous_pct`,
   dazu `previous_label` („2021" bzw. „1. Wahlgang") aus der Registry.
@@ -180,7 +181,7 @@ lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 - **Wächter:** `pruefe.py --nur vertrag`; ein Test, der im Frontend keine
   literale Jahreszahl neben einem Wahlwert mehr findet.
 
-### PR 5 — Texte aus der Wahl statt aus dem Quelltext
+### PR 5 — Texte aus der Wahl statt aus dem Quelltext ✅ *(#1338)*
 
 - `/api/wahlabend` und `/api/tipp/setup` liefern `election`: `title`,
   `date_label`, `polls_close`, `kind`, `seats_total`, `status`.
@@ -192,7 +193,7 @@ lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 - **Abnahme:** Ein Wechsel der aktiven Wahl in der `.env` ändert Titel,
   Countdown, Sharebild-Fußzeile und Sitzzahl ohne Deploy.
 
-### PR 6 — Tippspiel an eine Wahl binden
+### PR 6 — Tippspiel an eine Wahl binden ✅ *(#1341)*
 
 - `prediction_game` bekommt `election_slug` (Migration wie bei `slug`/`game_id`
   am 12.09., s. `kern/store.py:1592`) — Bestand auf `ratswahl-2026`.
@@ -210,7 +211,7 @@ lesbar ist; ein Wächter hält beide Zahlen gegeneinander.
 - **Wächter:** `tests/test_prediction_runden.py` erweitern: eine Runde je Typ,
   Punktehöchstwerte gegen die Registry.
 
-### PR 7 — `/wahlen`: eine Übersicht, und `/wahl` zeigt immer auf die richtige
+### PR 7 — `/wahlen`: eine Übersicht, und `/wahl` zeigt immer auf die richtige ✅
 
 *Tims Idee vom 14.09.2026, nach dem Merge der Stichwahl. Umfang entschieden:
 nur unsere eigenen Wahlen — was im Repo liegt, nicht was der Votemanager
@@ -225,7 +226,7 @@ für einen Rückblick auch nicht.
 | Adresse | Was |
 |---|---|
 | `/wahlen` | Die Übersicht: oben die nächste mit Countdown, darunter die vergangenen mit Ergebnis |
-| `/wahlen/<slug>` | Eine Wahl, dauerhaft — `/wahlen/ratswahl-2026` ist auch 2031 noch abrufbar |
+| `/wahlabend?wahl=<slug>` | Eine gelaufene Wahl, dauerhaft — auch 2031 noch abrufbar |
 | `/wahl` | Kurz und sagbar („ratslotse.de/wahl"), zeigt immer die Wahl **im Fokus** |
 
 `/wahlabend` **bleibt und zeigt dasselbe wie `/wahl`.** Das ist keine Höflichkeit
@@ -276,9 +277,21 @@ bzw. „Ulf Prange 52,1 %"), und der Weg zur Seite. Die 2021er Zeile ist der
 Beweis, dass die Gattung trägt — sie kommt aus einem Ordner, den niemand
 mehr anfasst.
 
+**Umgesetzt, mit zwei Abweichungen und ihren Gründen:**
+
+1. **`/wahlabend?wahl=<slug>` statt `/wahlen/<slug>`.** Ein eigener Pfad je
+   Wahl bräuchte ein dynamisches Segment, und das kann der App-Export nicht
+   (`web/frontend/CLAUDE.md`: Query-Parameter statt Pfad-Segmenten). Es ist
+   ohnehin derselbe Wahlabend — nur mit eingefrorenen Zahlen.
+2. **Die Ratswahl 2021 bekommt KEINE eigene Seite.** Von ihr liegen die
+   Zahlen im Repo, aber nicht die Kandidatenlisten. Mit dem Register von
+   heute gerechnet kämen 52 Sitze auf 16 Listen heraus statt 50 auf elf:
+   richtige Zahlen unter falschen Namen. Sie steht in der Übersicht mit ihrem
+   Ergebnis und ohne Link.
+
 **Abnahme.**
 
-- `/wahlen/ratswahl-2026` zeigt den 13.09. mit abgeschaltetem Netz.
+- `/wahlabend?wahl=ratswahl-2026` zeigt den 13.09. mit abgeschaltetem Netz.
 - `/wahl` führt am 25.09. auf die Stichwahl, am 20.09. auf die Übersicht und
   am 28.09. wieder auf die Stichwahl (dritter Tag danach).
 - `/wahlabend` antwortet nie 404 — auch nicht, wenn gar keine Wahl ansteht.

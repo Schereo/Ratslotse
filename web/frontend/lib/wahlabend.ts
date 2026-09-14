@@ -123,13 +123,19 @@ export function sitzband(
 }
 
 /** Query-String für den Abruf: Generalprobe und Auszählungsstand durchreichen. */
-export function abfragePfad(probe: string | null, counted: string | null): string {
+export function abfragePfad(probe: string | null, counted: string | null, wahl?: string | null): string {
   const q = new URLSearchParams();
-  if (probe) q.set("probe", probe);
-  if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  // `wahl` und `probe` schließen sich aus: Der Rückblick IST die echte Zahl,
+  // eine Generalprobe darauf ergäbe nichts.
+  if (wahl) q.set("wahl", wahl);
+  else {
+    if (probe) q.set("probe", probe);
+    if (counted && /^\d+$/.test(counted)) q.set("counted", counted);
+  }
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
 }
+
 
 /* ── Sitze, Mehrheiten, Halbkreis ───────────────────────────────────────── */
 
