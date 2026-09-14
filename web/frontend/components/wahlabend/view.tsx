@@ -734,20 +734,19 @@ function Bereiche({ daten, liste, probe, counted, rueckblick }: { daten: Wahlabe
           <KartenLinks liste={liste} bereich={null} platz={null} probe={probe} counted={counted} stadtweit name={partei.short} vorwahl={daten.election.previous_label} />
         </p>
       ) : null}
-      {/* Rangfolge und Karte beantworten dieselbe Frage von zwei Seiten:
-          „wo ist die Liste stark?" und „wo ist das?". Nebeneinander, sobald
-          Platz ist; darunter stapeln sie. */}
-      <div className="mt-4 grid items-start gap-4 @3xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-        <Rangfolge partei={partei} daten={daten} />
-        <Wahlgebiete
-          daten={daten}
-          partei={partei}
-          probe={probe}
-          counted={counted}
-          rueckblick={rueckblick}
-          onBereich={springeZuBereich}
-        />
-      </div>
+      {/* Erst die Karte in voller Breite, dann die Rangfolge: „wo ist das?"
+          braucht Fläche, „wo ist die Liste stark?" braucht Zeilen. Als
+          Zweispalter (bis 14.09.2026) war die Karte ein Drittel so groß, und
+          die Wahlbezirke darin waren nicht zu treffen. */}
+      <Wahlgebiete
+        className="mt-4"
+        daten={daten}
+        partei={partei}
+        probe={probe}
+        counted={counted}
+        rueckblick={rueckblick}
+      />
+      <Rangfolge className="mt-4" partei={partei} daten={daten} />
       {/* Die Karten folgen derselben Rangfolge — eine Liste, die in IV am
           stärksten ist, soll IV zuerst zeigen. Wahlbereiche, in denen sie
           nicht antritt, hängt der Server nicht an `areas` an; sie stehen
@@ -986,7 +985,12 @@ export function WahlabendView() {
         <ReiterLeiste
           reiter={ANSICHTEN}
           aktiv={ansicht}
-          onChange={(id) => setzeQuery({ ansicht: id === "ergebnis" ? null : id })}
+          // IMMER ausdrücklich in die Adresse — auch „ergebnis". Bis 14.09.2026
+          // wurde der Reiter dann weggelassen, und `ansichtAus` machte aus
+          // einer Adresse mit `?liste=` wieder „bereiche": Sobald jemand eine
+          // Liste angetippt hatte, war der Ergebnis-Reiter nicht mehr
+          // erreichbar (Tims Befund: „der lädt gar nicht").
+          onChange={(id) => setzeQuery({ ansicht: id })}
           label="Ansichten des Wahlabends"
           className="mt-8"
         />

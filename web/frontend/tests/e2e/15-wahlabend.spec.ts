@@ -156,25 +156,37 @@ test.describe("Schalter an: die Generalprobe", () => {
     await expect(page).toHaveURL(/[?&]ansicht=bereiche/);
   });
 
-  test("die Karte zeigt die sechs Wahlbereiche — und auf Zuruf die Wahlbezirke", async ({ page }) => {
+  test("die Karte zeigt die sechs Wahlbereiche — und ein Wahlbereich öffnet seine Wahlbezirke", async ({ page }) => {
     await page.goto("/wahlabend?ansicht=bereiche&liste=volt");
     const karte = page.getByRole("img", { name: "Karte von Oldenburg" });
     await expect(karte).toBeVisible();
-    // Sechs Flächen, sechs römische Ziffern.
+    // Sechs Flächen, sechs römische Ziffern (jede zweimal im SVG: Halo + Schrift).
     await expect(karte.locator("path")).toHaveCount(6);
-    // Jede Ziffer steht zweimal im SVG: einmal als Halo, einmal als Schrift.
     await expect(karte.getByText("IV", { exact: true }).first()).toBeVisible();
 
-    // Eine Ebene tiefer: die Wahlbezirke kommen erst auf Zuruf — vorher holt
-    // die Seite weder die 42 KB Geometrie noch die zweite Antwort.
-    await page.getByRole("button", { name: "Wahlbezirke" }).click();
-    await expect(karte.locator("path")).toHaveCount(91);
-    // Antippen zeigt das Ergebnis dieses Wahlbezirks. `force`, weil sich die
-    // Rechtecke um zwei Polygone überschneiden, auch wenn die Flächen selbst
-    // es nicht tun — Playwright prüft die Bounding-Box, der Zeiger trifft in
-    // Wirklichkeit die Fläche.
+    // Einen Wahlbereich antippen: nur SEINE Wahlbezirke, groß — die
+    // Geometrie und die zweite Antwort kommen erst jetzt. `force`, weil sich
+    // die Rechtecke um zwei Polygone überschneiden, auch wenn die Flächen es
+    // nicht tun.
     await karte.locator("path").first().click({ force: true });
-    await expect(page.getByText(/Wahlbezirk 10\d/).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Wahlbereich [IVX]+ · / })).toBeVisible();
+    // Die Geometrie kommt nach dem Antippen — `count()` wartet nicht von
+    // selbst, `expect.poll` tut es.
+    await expect.poll(() => karte.locator("path").count()).toBeGreaterThan(6);
+    expect(await karte.locator("path").count()).toBeLessThan(91);
+
+    // „Ganze Stadt": alle 91 Urnenbezirke.
+    await page.getByRole("button", { name: "Ganze Stadt" }).click();
+    await expect(karte.locator("path")).toHaveCount(91);
+
+    // Ein Wahlbezirk antippen zeigt sein Ergebnis.
+    await karte.locator("path").first().click({ force: true });
+    // Die Tafel des Wahllokals steht da — mit seinen gültigen Stimmen.
+    await expect(page.getByText(/gültige Stimmen/)).toBeVisible();
+
+    // Und zurück zu den sechs.
+    await page.getByRole("button", { name: "Wahlbereiche" }).first().click();
+    await expect(karte.locator("path")).toHaveCount(6);
   });
 
   test("die Kandidaten-Rangliste kommt vom Server, mit stadtweitem Rang", async ({ page }) => {
