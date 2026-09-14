@@ -79,7 +79,11 @@ function RangZeile({ zeile, max, partei, hochrechnung, waehle }: {
         className="flex w-full items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="w-4 flex-none font-mono text-[11px] text-muted-foreground tabular-nums">{zeile.rank}</span>
-        <span className="w-[8.5rem] flex-none">
+        {/* Auf dem Handy gibt es keinen Balken; dann nimmt die Beschriftung
+            den Platz und die Zahl steht am rechten Rand (Tims Befund
+            14.09.2026: sie stand sonst mitten in der Zeile). Ab `sm` hat die
+            Spalte ihr festes Maß, damit die Balken auf einer Linie beginnen. */}
+        <span className="min-w-0 flex-1 sm:w-[8.5rem] sm:flex-none">
           <span className="flex items-center gap-1.5">
             <Punkt color={partei.color} dark={partei.color_dark} />
             <span className="text-[13px] font-semibold">{zeile.roman}</span>
