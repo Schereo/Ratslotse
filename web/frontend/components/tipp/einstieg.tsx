@@ -20,6 +20,10 @@ export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
   lottiAnimiert: boolean;
   onBeigetreten: () => void;
 }) {
+  // In einer Konto-Runde gibt es nichts einzutippen: Der Name steht im Profil,
+  // und der Tipp hängt am Konto statt am Browser. Ohne diese Unterscheidung
+  // stünde dort ein Feld, dessen Inhalt der Server verwirft.
+  const mitKonto = !setup.public;
   const [name, setName] = useState("");
   const [fehler, setFehler] = useState<string | null>(null);
   const [sendet, setSendet] = useState(false);
@@ -33,7 +37,7 @@ export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: mitKonto ? null : name }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -76,27 +80,36 @@ export function Einstieg({ setup, runde, lottiAnimiert, onBeigetreten }: {
         className="mt-5 w-full rounded-[14px] border border-border bg-card p-3.5 text-left"
         onSubmit={(e) => { e.preventDefault(); void beitreten(); }}
       >
-        <label htmlFor="tipp-name" className="block text-xs font-semibold text-muted-foreground">
-          Dein Name in der Rangliste
-        </label>
-        <Input
-          id="tipp-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="z. B. Anna K."
-          maxLength={30}
-          autoFocus
-          className="mt-2 h-[46px] text-base font-semibold"
-        />
-        <p className="mt-2 text-[11.5px] text-muted-foreground">
-          Dein Name ist für alle sichtbar. Du brauchst kein Konto und keine E-Mail-Adresse.
-        </p>
+        {mitKonto ? (
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            Diese Runde läuft über dein Konto: In der Rangliste stehst du unter deinem Anzeigenamen, und dein Tipp
+            ist auf jedem Gerät derselbe — ein Tipp je Konto.
+          </p>
+        ) : (
+          <>
+            <label htmlFor="tipp-name" className="block text-xs font-semibold text-muted-foreground">
+              Dein Name in der Rangliste
+            </label>
+            <Input
+              id="tipp-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="z. B. Anna K."
+              maxLength={30}
+              autoFocus
+              className="mt-2 h-[46px] text-base font-semibold"
+            />
+            <p className="mt-2 text-[11.5px] text-muted-foreground">
+              Dein Name ist für alle sichtbar. Du brauchst kein Konto und keine E-Mail-Adresse.
+            </p>
+          </>
+        )}
         {fehler && <p className="mt-2 text-[11.5px] font-medium text-destructive">{fehler}</p>}
 
         <Button
           type="submit"
           variant="primary"
-          disabled={name.trim().length < 2 || sendet}
+          disabled={(!mitKonto && name.trim().length < 2) || sendet}
           className="mt-3.5 h-[50px] w-full text-base"
         >
           {sendet ? "Einen Moment …" : "Jetzt mitmachen"}

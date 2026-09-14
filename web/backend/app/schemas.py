@@ -603,6 +603,11 @@ class PredictionSettingsIn(BaseModel):
     gesetzt ist, wird geändert."""
     shared_device: bool | None = None
     late_scored: bool | None = None
+    #: „Für alle freischalten": Eine Runde, die von selbst zu einer Wahl
+    #: entstanden ist, beginnt bei „nur für Angemeldete". Umgekehrt geht es
+    #: auch — aber dann verlieren Leute ohne Konto ihren Zugang, nicht ihren
+    #: Tipp (der hängt am Cookie und wartet).
+    public: bool | None = None
 
 
 class PredictionPlayerIn(BaseModel):

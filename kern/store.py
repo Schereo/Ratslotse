@@ -580,11 +580,13 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 
--- Tippspiel zur Ratswahl 13.09.2026 (docs/plan-tippspiel-ratswahl.md).
--- EIN Spiel — kein Code, keine mehreren Runden; die Zeile trägt den Zustand
--- des Abends. Kein `owner_id`: Mitspielen geht ohne Konto, die Identität ist
--- der Cookie-Token (Hash), nicht `web_users.id`. Deshalb auch NICHT in
--- `USER_OWNED_TABLES` — es gibt kein Konto, das etwas löschen könnte.
+-- Tippspiel (docs/plan-tippspiel-ratswahl.md). Eine Runde je Zeile.
+--
+-- **Zwei Arten mitzuspielen, seit 09/2026.** Die Runden zur Ratswahl sind
+-- bewusst KONTENLOS: Identität ist der Cookie-Token, damit ein QR-Code auf
+-- einer Leinwand reicht. Eine Runde mit `visibility = 'konto'` verlangt
+-- dagegen eine Anmeldung und hängt an `web_users.id` — ein Tipp je Konto,
+-- auf jedem Gerät derselbe. Welche Art gilt, steht in `visibility`.
 CREATE TABLE IF NOT EXISTS prediction_game (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     slug          TEXT NOT NULL UNIQUE,  -- die Runde: 'ratswahl' (Hauptrunde), 'vally', …
@@ -600,12 +602,23 @@ CREATE TABLE IF NOT EXISTS prediction_game (
     -- Nachtrag. Ohne diese Spalte verglich das Spiel gegen „den Wahlabend",
     -- und der ist beim nächsten Mal ein anderer.
     election_slug TEXT,
+    -- Wer mitspielen darf: 'oeffentlich' (jede*r mit dem Link, ohne Konto),
+    -- 'konto' (nur angemeldet, ein Tipp je Konto). Die Vorgabe hier gilt nur
+    -- für Zeilen aus der Zeit davor — sie waren alle für jede*n offen, und
+    -- eine Migration darf niemandem etwas wegnehmen. Neue Runden bekommen
+    -- ihren Wert beim Anlegen aus der Runden-Registry.
+    visibility    TEXT NOT NULL DEFAULT 'oeffentlich',
     created_at    TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS prediction_players (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id     INTEGER NOT NULL DEFAULT 1,  -- die Runde (prediction_game.id)
     name        TEXT NOT NULL,        -- Anzeigename; Doppelte werden „Merle (2)" — je Runde
+    -- Nur in einer Konto-Runde gesetzt (`prediction_game.visibility='konto'`):
+    -- DANN ist es die Identität, und der Token daneben wird nie gelesen. Er
+    -- bleibt trotzdem befüllt, weil die Spalte NOT NULL UNIQUE ist — eine
+    -- Tabelle umzubauen wäre teurer als ein Zufallswert, den niemand anfasst.
+    owner_id    INTEGER REFERENCES web_users(id),
     token_hash  TEXT NOT NULL UNIQUE, -- sha256 des Cookie-Geheimnisses
     created_at  TEXT NOT NULL,
     late_at     TEXT,                 -- gesetzt, wenn nach dem Tipp-Schluss (neu) getippt
@@ -691,6 +704,8 @@ USER_OWNED_TABLES: tuple[tuple[str, str], ...] = (
     ("council_agenda_matches", "owner_id"),
     ("council_agenda_classified", "owner_id"),
     ("push_tokens", "owner_id"),
+    # Nur Konto-Runden; Cookie-Zeilen tragen NULL und bleiben stehen.
+    ("prediction_players", "owner_id"),
     ("qa_conversations", "user_id"),
     ("qa_conversation_turns", "user_id"),
     ("qa_shares", "user_id"),
@@ -1628,6 +1643,7 @@ class Store:
         self._migrate_tippspiel_runden()
         self._migrate_tippspiel_geteiltes_geraet()
         self._migrate_tippspiel_wahl()
+        self._migrate_tippspiel_konto()
         self._migrate_owner_id()
         self._treffer_datum_reparieren()
 
@@ -1694,6 +1710,32 @@ class Store:
                     "published_source, published_at FROM prediction_result")
                 self._conn.execute("DROP TABLE prediction_result")
                 self._conn.execute("ALTER TABLE prediction_result_neu RENAME TO prediction_result")
+
+    def _migrate_tippspiel_konto(self) -> None:
+        """Tippspiel: ``visibility`` und ``prediction_players.owner_id`` (09/2026).
+
+        Bestehende Runden werden ``oeffentlich`` — sie WAREN es: jede*r mit dem
+        Link konnte ohne Konto mittippen. Eine Migration, die daraus stillen
+        Konto-Zwang macht, nähme Leuten ihren laufenden Tipp weg.
+        """
+        spiel = {r[1] for r in self._conn.execute("PRAGMA table_info(prediction_game)")}
+        if "visibility" not in spiel:
+            with self._conn:
+                self._conn.execute("ALTER TABLE prediction_game ADD COLUMN visibility TEXT "
+                                   "NOT NULL DEFAULT 'oeffentlich'")
+        spieler = {r[1] for r in self._conn.execute("PRAGMA table_info(prediction_players)")}
+        if "owner_id" not in spieler:
+            with self._conn:
+                self._conn.execute("ALTER TABLE prediction_players ADD COLUMN owner_id INTEGER "
+                                   "REFERENCES web_users(id)")
+        # Der Index steht HIER und nicht im Schema-Block: Der läuft auch gegen
+        # eine Datenbank von vor dem Runden-Umbau, in der `prediction_players`
+        # noch gar kein `game_id` hat — `CREATE TABLE IF NOT EXISTS` überspringt
+        # die Tabelle stillschweigend, `CREATE INDEX` scheitert laut.
+        with self._conn:
+            self._conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_prediction_player_owner "
+                "ON prediction_players(game_id, owner_id) WHERE owner_id IS NOT NULL")
 
     def _migrate_tippspiel_wahl(self) -> None:
         """Tippspiel: ``prediction_game.election_slug`` (14.09.2026).
@@ -3013,6 +3055,15 @@ class Store:
         wenn später eine nutzerbezogene Tabelle dazukommt.
         """
         with self._conn:
+            # Was am Spieler hängt, hängt nicht am Konto — und bliebe sonst als
+            # Waise stehen: Tipp und Rangzeilen zeigen auf `player_id`, nicht
+            # auf `owner_id`. Deshalb VOR der Liste, solange die Zeile noch da ist.
+            self._conn.execute(
+                "DELETE FROM prediction_tips WHERE player_id IN "
+                "(SELECT id FROM prediction_players WHERE owner_id = ?)", (user_id,))
+            self._conn.execute(
+                "DELETE FROM prediction_standings WHERE player_id IN "
+                "(SELECT id FROM prediction_players WHERE owner_id = ?)", (user_id,))
             for table, column in USER_OWNED_TABLES:
                 self._conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (user_id,))
             self._conn.execute("DELETE FROM web_users WHERE id = ?", (user_id,))
@@ -4969,22 +5020,31 @@ class Store:
     # die Speichermethoden. Was daraus ein Ergebnis macht, steht in
     # ``web/backend/app/prediction/service.py``.
 
-    def prediction_game_by_slug(self, slug: str, title: str, election: str | None = None) -> dict:
+    def prediction_game_by_slug(self, slug: str, title: str, election: str | None = None,
+                                visibility: str = "oeffentlich") -> dict:
         """Die Spielzeile einer Runde — wird beim ersten Zugriff angelegt
-        (Phase 'open'). ``title`` und ``election`` gelten nur beim Anlegen;
-        danach zählt, was in der Zeile steht (der Admin kann umbenennen, und
-        die Wahl einer laufenden Runde zu wechseln wäre ohnehin falsch)."""
+        (Phase 'open'). ``title``, ``election`` und ``visibility`` gelten nur
+        beim Anlegen; danach zählt, was in der Zeile steht (der Admin kann
+        umbenennen und freischalten, und die Wahl einer laufenden Runde zu
+        wechseln wäre ohnehin falsch)."""
         row = self._conn.execute("SELECT * FROM prediction_game WHERE slug = ?", (slug,)).fetchone()
         if row is None:
             now = datetime.utcnow().isoformat(timespec="seconds")
             with self._conn:
                 self._conn.execute(
                     "INSERT OR IGNORE INTO prediction_game (slug, title, phase, late_scored, "
-                    "election_slug, created_at) VALUES (?, ?, 'open', 0, ?, ?)",
-                    (slug, title, election, now),
+                    "election_slug, visibility, created_at) VALUES (?, ?, 'open', 0, ?, ?, ?)",
+                    (slug, title, election, visibility, now),
                 )
             row = self._conn.execute("SELECT * FROM prediction_game WHERE slug = ?", (slug,)).fetchone()
         return dict(row)
+
+    def prediction_spiel_zeile(self, slug: str) -> dict | None:
+        """Die Spielzeile einer Runde, falls es sie schon gibt — **ohne sie
+        anzulegen**. ``prediction_game_by_slug`` legt an; das ist für eine
+        Übersicht, die nur nachsieht, die falsche Nebenwirkung."""
+        row = self._conn.execute("SELECT * FROM prediction_game WHERE slug = ?", (slug,)).fetchone()
+        return dict(row) if row else None
 
     def prediction_game(self, game_id: int) -> dict:
         """Die Spielzeile zu einer Runde, die es schon gibt."""
@@ -4999,7 +5059,8 @@ class Store:
 
     #: Spalten, die ``prediction_game_set`` schreiben darf — eine Positivliste,
     #: damit ein Tippfehler im Feldnamen nicht zu beliebigem SQL wird.
-    _PREDICTION_GAME_FELDER = ("title", "phase", "locked_at", "locked_reason", "late_scored", "shared_device")
+    _PREDICTION_GAME_FELDER = ("title", "phase", "locked_at", "locked_reason", "late_scored",
+                               "shared_device", "visibility")
 
     def prediction_game_set(self, game_id: int, **felder: object) -> None:
         """Einzelne Spalten der Spielzeile setzen."""
@@ -5024,18 +5085,22 @@ class Store:
             n += 1
         return f"{name} ({n})"
 
-    def prediction_player_add(self, game_id: int, name: str, token_hash: str, late_at: str | None) -> dict:
+    def prediction_player_add(self, game_id: int, name: str, token_hash: str, late_at: str | None,
+                              owner_id: int | None = None) -> dict:
+        """Eine Person in einer Runde. ``owner_id`` nur in einer Konto-Runde;
+        ein zweiter Versuch desselben Kontos scheitert am Teil-Index."""
         endgueltig = self.prediction_name_frei(game_id, name)
         now = datetime.utcnow().isoformat(timespec="seconds")
         with self._conn:
             cur = self._conn.execute(
-                "INSERT INTO prediction_players (game_id, name, token_hash, created_at, late_at) VALUES (?,?,?,?,?)",
-                (game_id, endgueltig, token_hash, now, late_at),
+                "INSERT INTO prediction_players (game_id, name, token_hash, owner_id, created_at, late_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (game_id, endgueltig, token_hash, owner_id, now, late_at),
             )
         return {"id": cur.lastrowid, "game_id": game_id, "name": endgueltig, "token_hash": token_hash,
                 "created_at": now, "late_at": late_at, "hidden_at": None}
 
-    _PLAYER_SPALTEN = ("SELECT p.id, p.game_id, p.name, p.token_hash, p.created_at, p.late_at, p.hidden_at, "
+    _PLAYER_SPALTEN = ("SELECT p.id, p.game_id, p.name, p.token_hash, p.owner_id, p.created_at, p.late_at, p.hidden_at, "
                        "       t.seats_json, t.mayor_json, t.updated_at AS tip_updated_at "
                        "FROM prediction_players p LEFT JOIN prediction_tips t ON t.player_id = p.id ")
 
@@ -5047,6 +5112,14 @@ class Store:
         anderen nie eine Person ergibt."""
         row = self._conn.execute(
             self._PLAYER_SPALTEN + "WHERE p.token_hash = ? AND p.game_id = ?", (token_hash, game_id)).fetchone()
+        return dict(row) if row else None
+
+    def prediction_player_by_owner(self, owner_id: int, game_id: int) -> dict | None:
+        """Dieselbe Zeile über das KONTO statt über den Cookie — die Identität
+        einer Konto-Runde. Auf jedem Gerät dasselbe Ergebnis; genau dafür ist
+        sie da."""
+        row = self._conn.execute(
+            self._PLAYER_SPALTEN + "WHERE p.owner_id = ? AND p.game_id = ?", (owner_id, game_id)).fetchone()
         return dict(row) if row else None
 
     def prediction_player_update(self, player_id: int, *, name: str | None = None, hidden: bool | None = None) -> None:

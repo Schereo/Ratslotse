@@ -3919,6 +3919,11 @@ class ElectionListItem(TypedDict):
     summary: str | None
     #: Ist das die Wahl, auf die gerade alles zeigt (``elections.focus``)?
     focus: bool
+    #: Der Weg zum Tippspiel dieser Wahl — leer, wenn es keines gibt ODER die
+    #: fragende Person nicht hineindarf. Die Entscheidung trifft das Backend:
+    #: Ein Link, den man sieht und nicht benutzen kann, ist schlechter als
+    #: keiner.
+    tipp_path: str
 
 
 class ElectionList(TypedDict):
@@ -4029,6 +4034,11 @@ class PredictionGame(TypedDict):
     #: „pct" (Prozent je Kandidatur). Der Client liest das statt die Wahlart
     #: zu deuten; bei „pct" ist ``parties`` leer und ``seats_total`` 0.
     tip_kind: str
+    #: Steht die Runde allen offen, oder braucht sie ein Konto? Bei ``false``
+    #: kommt man ohne Anmeldung gar nicht bis hierher — das Feld sagt der
+    #: Oberfläche, dass sie den Namen NICHT abfragen muss (er kommt aus dem
+    #: Profil) und wer eingeladen ist.
+    public: bool
     #: Name der Vergleichswahl für ``PredictionParty.seats_previous``
     #: („2021"); leer, wenn es keine gibt.
     previous_label: str

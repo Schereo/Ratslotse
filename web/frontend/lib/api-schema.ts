@@ -4453,6 +4453,10 @@ export interface paths {
          * @description Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem
          *     Cookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —
          *     umbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).
+         *
+         *     **In einer Konto-Runde ist das Konto die Identität**, nicht der Cookie:
+         *     Der Name kommt aus dem Profil, und ein zweiter Tipp desselben Kontos ist
+         *     kein zweiter Tipp, sondern eine Änderung — auch auf einem anderen Gerät.
          */
         post: operations["beitreten_oder_tippen_api_tipp_post"];
         delete?: never;
@@ -4515,8 +4519,12 @@ export interface paths {
         get?: never;
         /**
          * Einstellungen Setzen
-         * @description Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —
-         *     Vallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.
+         * @description Schalter je Runde.
+         *
+         *     ``shared_device``: ein Gerät, mehrere Personen — Vallys Kreis (13.09.2026)
+         *     hat nicht für jede Person ein Handy. ``public``: für alle öffnen oder auf
+         *     Konten beschränken (Tims Wunsch 14.09.2026 — eine Runde, die von selbst zu
+         *     einer Wahl entsteht, soll nicht ungefragt offen stehen).
          */
         put: operations["einstellungen_setzen_api_tipp_admin_einstellungen_put"];
         post?: never;
@@ -8455,6 +8463,8 @@ export interface components {
             status: string;
             /** Summary */
             summary: string | null;
+            /** Tipp Path */
+            tipp_path: string;
             /** Title */
             title: string;
         };
@@ -10348,6 +10358,8 @@ export interface components {
             player_count: number;
             /** Previous Label */
             previous_label: string;
+            /** Public */
+            public: boolean;
             /** Round */
             round: string;
             /** Seats Total */
@@ -10615,6 +10627,8 @@ export interface components {
         PredictionSettingsIn: {
             /** Late Scored */
             late_scored?: boolean | null;
+            /** Public */
+            public?: boolean | null;
             /** Shared Device */
             shared_device?: boolean | null;
         };
@@ -19113,4 +19127,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 8e254458cd7c956b13af8148fdc7885bc7561414fc2fa8cb7f86df14fa9adfda
+// vertrag-sha256: ef58ed46e999fb2d30cd3cacf41008e31e83afa2c27074e14b20ef9c2c73c417

@@ -43,14 +43,24 @@ function Fokus({ z }: { z: Wahlzeile }) {
             </p>
           )}
         </div>
-        {z.path ? (
-          <Link
-            href={z.path}
-            className="inline-flex flex-none items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-          >
-            {kommt ? "Zur Seite" : "Zum Ergebnis"} <ArrowRight className="h-4 w-4" />
-          </Link>
-        ) : null}
+        <div className="flex flex-none flex-wrap items-center gap-2">
+          {z.tipp_path ? (
+            <Link
+              href={z.tipp_path}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-card px-4 py-2.5 text-sm font-semibold text-primary"
+            >
+              {kommt ? "Mittippen" : "Zum Tippspiel"}
+            </Link>
+          ) : null}
+          {z.path ? (
+            <Link
+              href={z.path}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+            >
+              {kommt ? "Zur Seite" : "Zum Ergebnis"} <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : null}
+        </div>
       </div>
     </section>
   );
@@ -67,6 +77,12 @@ function Zeile({ z }: { z: Wahlzeile }) {
           {z.summary ? <> · {z.summary}</> : null}
         </p>
       </div>
+      {z.tipp_path ? (
+        // Der Tippspiel-Link steht als eigener Text, nicht als zweiter
+        // Link-im-Link: Eine Zeile, die ganz klickbar ist, verträgt kein
+        // zweites Ziel darin.
+        <span className="flex-none text-[12px] font-medium text-primary">Tippspiel</span>
+      ) : null}
       {z.path ? <ArrowRight className="h-4 w-4 flex-none text-primary" aria-hidden /> : null}
     </>
   );

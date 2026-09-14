@@ -43,6 +43,12 @@ class Round:
     #: ``None`` heißt „die aktive Ratswahl" — bis 14.09.2026 gab es keine
     #: andere Möglichkeit, und beide bestehenden Runden meinen sie.
     election: str | None = None
+    #: Wer mitspielen darf: ``oeffentlich`` (jede*r mit dem Link, ohne Konto)
+    #: oder ``konto`` (nur angemeldet, ein Tipp je Konto). Die beiden Runden
+    #: zur Ratswahl sind öffentlich und bleiben es — ihr QR-Code hing an einer
+    #: Leinwand. Eine Runde, die von selbst zu einer Wahl entsteht, startet
+    #: dagegen bei ``konto``; der Admin kann sie freigeben.
+    visibility: str = "oeffentlich"
 
     @property
     def is_default(self) -> bool:
@@ -58,10 +64,48 @@ ROUNDS: dict[str, Round] = {
 }
 
 
+def fuer_wahl(slug: str) -> Round | None:
+    """Die Runde, die zu einer Wahl gehört — angelegt, sobald jemand sie öffnet.
+
+    Tims Wunsch vom 14.09.2026: „wollen wir auch immer direkt ein öffentliches
+    Tippspiel verlinken?" Ja — und dafür braucht es keinen Eintrag von Hand.
+    Steht eine Wahl in ``kommunalwahl/wahlen/``, gibt es ihre Runde unter
+    demselben Slug (``/tipp?runde=ob-stichwahl-2026``).
+
+    **Sie startet bei ``konto``**, also nur für Angemeldete. Ein Tippspiel, das
+    ohne Zutun entsteht und sofort öffentlich ist, wäre eine Einladung an
+    jeden Bot; der Admin schaltet es frei, wenn es so weit ist.
+
+    Einträge in ``ROUNDS`` gehen vor — sowohl unter ihrem eigenen Slug als
+    auch unter dem ihrer Wahl: ``ratswahl`` ist die Hauptrunde und bleibt
+    öffentlich, auch wenn die Wahl ``ratswahl-2026`` heißt.
+    """
+    from ..election import elections
+
+    wahl = elections.get(slug)
+    if wahl is None or wahl.status == "entwurf":
+        return None
+    # **Eine von Hand angelegte Runde geht vor.** Die Hauptrunde ``ratswahl``
+    # meint dieselbe Wahl wie ``ratswahl-2026`` — sie hat nur einen kürzeren
+    # Namen, weil ihre Adresse seit dem Wahlabend im Umlauf ist. Ohne diesen
+    # Vorrang zeigte die Übersicht auf eine LEERE zweite Runde, während die
+    # laufende mit ihren Mitspielenden daneben stünde.
+    aktiv = elections.active().slug
+    for eintrag in ROUNDS.values():
+        if eintrag.listed and (eintrag.election or aktiv) == wahl.slug:
+            return eintrag
+    return Round(slug=wahl.slug, title=f"Tippspiel zur {wahl.short_title}",
+                 listed=True, election=wahl.slug, visibility="konto")
+
+
 def get(slug: str | None) -> Round | None:
     """Die Runde zu einem Parameter — ``None`` heißt Hauptrunde, ein
-    unbekannter Wert ``None`` zurück (der Router macht daraus 404)."""
-    return ROUNDS.get(slug or DEFAULT)
+    unbekannter Wert ``None`` zurück (der Router macht daraus 404).
+
+    Gesucht wird erst in ``ROUNDS`` (von Hand angelegt), dann unter den
+    Wahlen: Jede Wahl bringt ihre eigene Runde mit."""
+    gewaehlt = slug or DEFAULT
+    return ROUNDS.get(gewaehlt) or fuer_wahl(gewaehlt)
 
 
 def public_path(runde: Round, basis: str = "/tipp") -> str:

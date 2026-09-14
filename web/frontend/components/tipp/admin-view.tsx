@@ -358,6 +358,26 @@ export function TippAdminView() {
                 onCheckedChange={(an) => void aktion("geraet", () => api.put(pfad("/tipp/admin/einstellungen"), { shared_device: an }), an ? "Geteiltes Gerät eingeschaltet." : "Geteiltes Gerät ausgeschaltet.")}
               />
             </div>
+            {/* Für alle freischalten — je Runde. Eine Runde, die von selbst zu
+                einer Wahl entstanden ist, startet bei „nur für Angemeldete";
+                hier geht sie auf. Zurückdrehen nimmt niemandem den Tipp, nur
+                den Zugang (Tims Wunsch 14.09.2026). */}
+            <div className="mt-2 flex items-center gap-3 rounded-[10px] border border-border px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold">Für alle freischalten</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  {setup.public
+                    ? "Jede*r mit dem Link kann mittippen — ohne Konto, unter einem selbst gewählten Namen."
+                    : "Nur angemeldete Konten können mittippen; in der Rangliste steht der Anzeigename, ein Tipp je Konto."}
+                </p>
+              </div>
+              <Switch
+                aria-label="Für alle freischalten"
+                checked={setup.public}
+                disabled={laeuft === "sichtbarkeit"}
+                onCheckedChange={(an) => void aktion("sichtbarkeit", () => api.put(pfad("/tipp/admin/einstellungen"), { public: an }), an ? "Für alle freigeschaltet." : "Auf Konten beschränkt.")}
+              />
+            </div>
           </Karte>
 
           {/* ── Beamer ───────────────────────────────────────────────── */}

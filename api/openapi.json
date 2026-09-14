@@ -7852,6 +7852,10 @@
               "null"
             ]
           },
+          "tipp_path": {
+            "title": "Tipp Path",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -7867,7 +7871,8 @@
           "status",
           "path",
           "summary",
-          "focus"
+          "focus",
+          "tipp_path"
         ],
         "title": "ElectionListItem",
         "type": "object"
@@ -12469,6 +12474,10 @@
             "title": "Previous Label",
             "type": "string"
           },
+          "public": {
+            "title": "Public",
+            "type": "boolean"
+          },
           "round": {
             "title": "Round",
             "type": "string"
@@ -12500,6 +12509,7 @@
           "election_title",
           "election_date",
           "tip_kind",
+          "public",
           "previous_label",
           "locked",
           "locked_at",
@@ -13198,6 +13208,13 @@
         "properties": {
           "late_scored": {
             "title": "Late Scored",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "public": {
+            "title": "Public",
             "type": [
               "boolean",
               "null"
@@ -25476,7 +25493,7 @@
     },
     "/api/tipp": {
       "post": {
-        "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).",
+        "description": "Ohne gültigen Cookie: Beitritt (``name`` Pflicht). Mit gültigem\nCookie: nur der Tipp wird aktualisiert, ``name`` bleibt unbeachtet —\numbenennen kann nur der Admin (``PUT …/admin/spieler/{id}``).\n\n**In einer Konto-Runde ist das Konto die Identität**, nicht der Cookie:\nDer Name kommt aus dem Profil, und ein zweiter Tipp desselben Kontos ist\nkein zweiter Tipp, sondern eine Änderung — auch auf einem anderen Gerät.",
         "operationId": "beitreten_oder_tippen_api_tipp_post",
         "parameters": [
           {
@@ -25624,7 +25641,7 @@
     },
     "/api/tipp/admin/einstellungen": {
       "put": {
-        "description": "Schalter je Runde. ``shared_device``: ein Gerät, mehrere Personen —\nVallys Kreis (13.09.2026) hat nicht für jede Person ein Handy.",
+        "description": "Schalter je Runde.\n\n``shared_device``: ein Gerät, mehrere Personen — Vallys Kreis (13.09.2026)\nhat nicht für jede Person ein Handy. ``public``: für alle öffnen oder auf\nKonten beschränken (Tims Wunsch 14.09.2026 — eine Runde, die von selbst zu\neiner Wahl entsteht, soll nicht ungefragt offen stehen).",
         "operationId": "einstellungen_setzen_api_tipp_admin_einstellungen_put",
         "parameters": [
           {
