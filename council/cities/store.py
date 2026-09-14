@@ -376,6 +376,19 @@ class CitiesStore:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def idea_body_ids(self) -> list[str]:
+        """Die Städte, aus denen beurteilte Ideen vorliegen.
+
+        Nicht alle mit Vorlagen: Eine Stadt, die geerntet, aber noch nicht
+        durch `fit` gelaufen ist, steht auf keiner Karte — und gehört dann
+        auch nicht in den Satz „Was Räte in … beschlossen haben".
+        """
+        return [r["body_id"] for r in self._conn.execute(
+            "SELECT DISTINCT p.body_id FROM papers p "
+            "JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
+            "  AND a.annotator='fit' "
+            "WHERE p.body_id != 'oldenburg' ORDER BY p.body_id")]
+
     def paper_body_ids(self) -> list[str]:
         """Die Städte, von denen Vorlagen im Speicher liegen.
 
@@ -592,6 +605,17 @@ class CitiesStore:
                 "  ord=excluded.ord, number=excluded.number, title=excluded.title, "
                 "  text=excluded.text",
                 [(*z, splitter) for z in zeilen])
+
+    def section_counts(self) -> dict[str, int]:
+        """Je Stadt die Zahl der Protokoll-Abschnitte.
+
+        Einmal je Anfrage statt einmal je Karte: Die Liste zeigt bis zu 100
+        Ideen, und eine Abfrage je Karte wäre hundert Abfragen für eine
+        Zahl, die sich zwischen ihnen nicht ändert.
+        """
+        return {r["body_id"]: r["n"] for r in self._conn.execute(
+            "SELECT m.body_id AS body_id, COUNT(*) AS n FROM protocol_sections ps "
+            "JOIN meetings m ON m.id=ps.meeting_id GROUP BY m.body_id")}
 
     def protocol_section(self, agenda_item_id: str, splitter: str) -> dict | None:
         row = self._conn.execute(

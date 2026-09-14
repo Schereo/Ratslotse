@@ -9096,6 +9096,8 @@ export interface components {
                 /** Why */
                 why: string;
             } | null;
+            /** Protocol Source */
+            protocol_source: string;
             /** Reason */
             reason: string;
             /** Siblings */
@@ -9112,6 +9114,8 @@ export interface components {
             votes: string;
             /** Web */
             web: string | null;
+            /** Window Since */
+            window_since: string | null;
         };
         /**
          * IdeaEvidence
@@ -9149,6 +9153,8 @@ export interface components {
         };
         /** IdeaFields */
         IdeaFields: {
+            /** Bodies */
+            bodies: string[];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
         };
@@ -19023,4 +19029,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 5cdeb2e9b98a2d06830ea5384e13a9e645ac0cfd820f03605de3a03076bf5816
+// vertrag-sha256: cb8c6b0c052256b8da636318756ea9c7eb6bc2d9a663ea1cf3b7d0563d7bdc4e
