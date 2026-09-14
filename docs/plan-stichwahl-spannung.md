@@ -89,6 +89,47 @@ Zwei Befunde, die den Rest des Plans bestimmen:
 - `Gebietskarte` (#1354): 91 Urnenbezirke als Flächen, tönbar je Wert.
 - Lotti-Regungen (`mascot.tsx`): u. a. `hebt-pokal`, `staunt`, `winkt`.
 
+### 1.4 Die Stichwahl 2021 — die Kalibrierung, die es gibt
+
+Tim: „2021 gab es eine Stichwahl." Stimmt — Krogmann (SPD) gegen Fuhrhop
+(GRÜNE) am 26.09.2021, und sie liegt beim Votemanager noch vollständig je
+Wahlbezirk vor (alte API: `/20210912/03403000/api/praesentation/`, erster
+Wahlgang `wahl_223`, Stichwahl `wahl_224`, 133 Bezirke wie 2026). Damit
+lässt sich das Modell aus §3 gegen einen echten Abend halten, Bezirk für
+Bezirk. Gemessen (Anhang C):
+
+| | erster Wahlgang → Stichwahl | Schwung | σ(Stichwahl − erwartet) je Bezirk |
+|---|---|---|---|
+| alle 133 | 58,2 % → 54,1 % | −4,1 | 3,6 Punkte |
+| Urne (91) | 59,0 % → 55,8 % | **−3,2** | 3,3 Punkte |
+| Brief (42) | 56,4 % → 49,9 % | **−6,5** | 3,0 Punkte |
+
+Drei Befunde:
+
+1. **Ein Bezirk stimmt in der Stichwahl fast genau so ab wie im ersten
+   Wahlgang, verschoben um EINEN Schwung.** Zwischen den Bezirken streut der
+   Anteil um 11 Punkte, der Rest nach dem Schwung nur um 3 — das ist die
+   Zusage, auf der die Hochrechnung steht.
+2. **Der Schwung ist in der Briefwahl ein anderer** (−6,5 gegen −3,2): 2021
+   drehte die Briefwahl in der Stichwahl auf 49,9 %, während die Urne bei
+   55,8 % blieb. Wer beide Töpfe zusammenwirft, liegt um gut drei Punkte
+   daneben — bei einer Wahl, die im ersten Wahlgang 52 : 48 stand, ist das
+   der Unterschied zwischen richtig und falsch.
+3. **Die Reihenfolge der Auszählung kann das naive Bild kippen.** 300
+   zufällige Reihenfolgen nachgespielt: Kommt die Briefwahl zuerst, sagte
+   „wer führt gerade" nach 10, 15 und 30 Bezirken in **54 % der Fälle den
+   Falschen** — Fuhrhop führte, Krogmann gewann. Die Hochrechnung mit zwei
+   Schwüngen lag nach 30 Bezirken in **100 %**, nach 15 in 96 % der Fälle
+   richtig; in zufälliger Reihenfolge oder Urne-zuerst ab 10 Bezirken immer.
+   Ihre Schwäche: Solange NUR die Briefwahl gezählt ist, leiht sie sich
+   deren Schwung für die Urne — und war damit nach zehn Bezirken in 9 % der
+   Fälle sicher und falsch. Deshalb der Topf-Term in §3 S2 Punkt 5.
+
+Was 2021 nicht prüfen kann: einen knappen Ausgang. 6.544 Stimmen Vorsprung
+sind 8 Punkte; das Modell war schnell sicher, weil es leicht war. Für 2026
+(erster Wahlgang 52 : 48 unter den beiden) ist die Unsicherheit ehrlich zu
+nennen — deshalb Sockel, Deckel und das Wort „Modell".
+
 ## 2. Die Reihenfolge — und warum
 
 | PR | Was | Hängt an | Aufwand |
@@ -132,7 +173,12 @@ auf Prod sein und am 27.09. ab 18 Uhr laufen — mit einer Generalprobe
   Die Kandidaten-Spalten kommen aus `tabelle.header[].labelKurz` („Rohr,
   GRÜNE") → Nachname → `slug_of`, Zuordnung wie `_row_candidate`. Eine
   Spalte, die zu keiner bekannten Kandidatur passt, wird ignoriert und
-  einmal geloggt — die Stichwahl hat genau zwei.
+  einmal geloggt — die Stichwahl hat genau zwei. **Falle, gemessen:**
+  `felder` ist um ZWEI kürzer als `header` — „Wahlbezirk" und „Stand"
+  stehen als `label`/`statusString` in der Zeile, nicht in `felder`. Spalte
+  `i` des Kopfes ist `felder[i − 2]`; wer `i − 1` nimmt, liest die
+  Wahlberechtigten als Wahlbeteiligung und bekommt lauter `None`. 2021 und
+  2026 gleich.
 - `MayorResult` bekommt `districts: tuple[MayorDistrict, ...]`; `fetch` holt
   sie im selben Lauf (ein Request mehr je Minute).
 - **Eingefrorener erster Wahlgang je Bezirk**: `scripts/wahl_einfrieren.py`
@@ -155,6 +201,10 @@ Zahl beim Bauen aus `praesentation-ob.json` nehmen), `counted` aus
 `statusString`. Und: Bezirke summieren sich je Wahlbereich zu den sechs
 Bereichs-Ergebnissen.
 
+- **2021 als zweites Fixture**: `tests/fixtures/wahlabend/stichwahl-2021/`
+  mit beiden `uebersicht`-Dateien (223 und 224). Sie sind die Kalibrierung
+  aus §1.4 und gehören ins Repo, bevor die alte API verschwindet.
+
 **Fertig, wenn:** `curl /api/wahlabend/stichwahl/bezirke?probe=1` 133 Zeilen
 liefert, der Wochenabruf im Log genau einen zusätzlichen Request je Minute
 zeigt, und der eingefrorene erste Wahlgang im Repo liegt.
@@ -176,23 +226,31 @@ kein Netz):
    gezählten Briefwahlbezirke `s_B`. Solange einer der beiden Töpfe leer ist,
    nimmt er den Schwung des anderen (mit dem Vermerk „Briefwahl noch ohne
    eigene Zahlen").
-3. **Offene Bezirke:** erwartete Prange-Stimmen = `(p_i + s) · gültig_i`,
-   mit `gültig_i` aus dem ersten Wahlgang, skaliert mit der bisher
-   beobachteten Wahlbeteiligung relativ zum ersten Wahlgang (Stichwahlen
-   haben meist weniger Beteiligung — 2021 in Oldenburg gab es keine, also
-   keine Zahl dafür; deshalb wird skaliert, nicht geraten).
+3. **Offene Bezirke:** erwartete Prange-Stimmen = `(p_i + s) · n_i · f`,
+   mit `n_i` = Stimmen für die beiden im ersten Wahlgang und `f` = das
+   Verhältnis der in den gezählten Bezirken beobachteten Zwei-Kandidaten-
+   Stimmen zu denen des ersten Wahlgangs. 2021 lag `f` bei **1,57**: Die
+   Stichwahl hatte 11 % mehr gültige Stimmen als der erste Wahlgang, und
+   die Stimmen der ausgeschiedenen Kandidaturen verteilten sich auf die
+   beiden. Das Modell misst `f`, es rät es nicht.
 4. **Hochrechnung:** gezählte Ist-Stimmen + erwartete Stimmen der offenen
    Bezirke → Endstand in Prozent. Das ist dieselbe Logik wie
    `projection.py` für die Ratswahl und darf auch so heißen.
-5. **Unsicherheit:** die Reste `r_i = ist_i − (p_i + s)·gültig_i` der
+5. **Unsicherheit:** die Reste `r_i = ist_i − (p_i + s)·n_i·f` der
    gezählten Bezirke haben eine Streuung `σ_r` (in Stimmen). Der
    hochgerechnete Vorsprung hat dann die Streuung
-   `σ = σ_r · √(Σ_offen gültig_i² / mittleres gültig²)` — vereinfacht: die
-   Unsicherheit wächst mit der Zahl und Größe der offenen Bezirke und
-   schrumpft, je besser das Modell die gezählten trifft. Dazu ein
-   **Sockel**: solange weniger als **15 Bezirke** gezählt sind, gibt es
-   keine Chance-Zahl, nur die Hochrechnung mit dem Vermerk „zu früh für eine
-   Wahrscheinlichkeit" — mit fünf Bezirken ist `σ_r` selbst Zufall.
+   `σ² = Σ_offen (2·σ_r·n_i / n̄)²` — die Unsicherheit wächst mit Zahl und
+   Größe der offenen Bezirke und schrumpft, je besser das Modell die
+   gezählten trifft. **Dazu der Topf-Term:** Solange ein Topf (Urne oder
+   Brief) noch ohne gezählten Bezirk ist, leiht er sich den Schwung des
+   anderen — und der lag 2021 um **3,3 Punkte** daneben (§1.4). Für die
+   offenen Stimmen dieses Topfes kommt deshalb `(2 · 0,04 · Σ n_i)²` zur
+   Varianz dazu. Ohne diesen Term war das Modell in der Kalibrierung bei
+   „Briefwahl zuerst" nach zehn Bezirken in 9 % der Fälle sicher — und
+   falsch. Dazu ein **Sockel**: solange weniger als **15 Bezirke** gezählt
+   sind, gibt es keine Chance-Zahl, nur die Hochrechnung mit dem Vermerk
+   „zu früh für eine Wahrscheinlichkeit" — mit fünf Bezirken ist `σ_r`
+   selbst Zufall.
 6. **Chance:** `Φ(Vorsprung ÷ σ)`, gedeckelt auf **99 %**, solange nicht
    rechnerisch entschieden. Ausgegeben als ganze Zahl; unter 15 gezählten
    Bezirken `null`.
@@ -263,6 +321,12 @@ eingefrorene Fixture aus S1):
 - 14 Bezirke → `chance_pct is None`; 15 → Zahl.
 - Der Vorsprung größer als `open_votes_max` → `decided`, sonst nicht — und
   `open_votes_max` = Summe der Wahlberechtigten der offenen Bezirke.
+- **Die Kalibrierung von 2021 als Test** (`tests/test_runoff_model.py::test_2021`):
+  aus den beiden Fixtures die 133 Bezirke; 200 feste Reihenfolgen (Seed),
+  je „zufällig", „Urne zuerst", „Brief zuerst"; nach 30 Bezirken nennt die
+  Hochrechnung in JEDER den Sieger, und die Chance des späteren Siegers
+  liegt nach 15 Bezirken in keiner Reihenfolge unter 50 %. Fällt das,
+  ist das Modell kaputt, nicht der Abend.
 - **Die Generalprobe** (`?probe=1&counted=N`) muss dieselben Zeilen liefern
   wie live — sie spielt den ersten Wahlgang bezirksweise nach; Prüfung: bei
   `counted=133` gleich dem Endstand.
@@ -345,9 +409,12 @@ den Bezirks-Endpunkt mitgeliefert — Letzteres, damit die App sie auch hat).
 - **Eine „Wahrscheinlichkeit" ohne Bezirksdaten.** Aus Stadtzeile plus
   Fortschrittsbalken ließe sich eine Zahl basteln; sie wäre bei σ = 8
   Punkten zwischen den Bezirken eine Erfindung.
-- **Kalibrierung gegen frühere Stichwahlen.** 2021 gab es in Oldenburg
-  keine; 2014 lief auf einem anderen System. Das Modell ist deshalb ein
-  Modell mit genannten Annahmen, keine geprüfte Prognose — und sagt das.
+- **Eine Prognose, die mehr behauptet als die Kalibrierung hergibt.** Es
+  gibt EINE geprüfte Stichwahl (2021, §1.4), und die war mit 54 : 46 nicht
+  knapp. Dass das Modell dort in jeder Reihenfolge nach 30 Bezirken richtig
+  lag, heißt nicht, dass es bei 50,5 : 49,5 richtig liegt. Die Seite sagt
+  deshalb „Modell" und nennt die Bezirkszahl daneben — und die Chance ist
+  bei 99 % gedeckelt, bis die Arithmetik entschieden hat.
 - **Push oder Browser-Benachrichtigungen.** S4 (6).
 - **Konfetti.** S4 (4).
 
@@ -385,4 +452,14 @@ for name,teil in (("Urne",[x for x in w if "Brief" not in x[0]]),("Brief",[x for
     print(name, len(teil), "%.1f" % (100*sum(p for _,p,_ in teil)/sum(p+r for _,p,r in teil)))
 EOF
 # → 133 Bezirke; σ 8,0; min 34,8; max 72,8; Urne 91 → 53,7 %; Brief 42 → 48,9 %
+
+# Die Stichwahl 2021 (alte API): Ids aus termin.json, Bezirke aus der Übersicht
+B21=https://votemanager.kdo.de/20210912/03403000/api/praesentation
+curl -s $B21/termin.json | python3 -c "import json,sys,re;print(re.findall(r'\"id\": ?(\d+)[^}]*?\"titel\": ?\"([^\"]{0,60})', json.dumps(json.load(sys.stdin),ensure_ascii=False)))"
+# → 223 „Wahl des/der Oberbürgermeisters/in", 224 „Stichwahl …", 222 Stadtratswahl
+curl -s $B21/wahl_224/uebersicht_ebene_6_0.json | python3 -c "
+import json,sys;t=json.load(sys.stdin)['tabelle'];print([h['labelKurz'] for h in t['header']]);z=[z for z in t['zeilen'] if z['label'][:1].isdigit()][0];print(len(z['felder']),'felder  ←  header hat',len(t['header']))"
+# → ['Wahlbezirk','Stand','Wahlberechtigte','Wahlbeteiligung','gültig','Krogmann, SPD','Fuhrhop, GRÜNE']; 5 felder ← header hat 7
+# Die Kalibrierung selbst (Schwünge, σ, 300 Reihenfolgen) steht als Skript im
+# Verlauf dieses Plans (14.09.2026) und wird in PR S2 zum Test.
 ```
