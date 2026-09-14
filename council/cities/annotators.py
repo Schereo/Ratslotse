@@ -282,6 +282,20 @@ class ClusterCheck(BaseModel):
     drop: list[str] = Field(default_factory=list)
     #: Ein Satz, warum sie herausfallen. Leer, wenn nichts herausfällt.
     reason: str = Field(default="", max_length=300)
+    #: Ob sich drei Stimmen über diese Gruppe EINIG waren.
+    #:
+    #: Das Modell schreibt das Feld nicht — ``check_clusters`` setzt es aus
+    #: dem Vergleich mehrerer Läufe. Gemessen am 14.09.2026 an zehn großen
+    #: Gruppen: Wo es eine echte gemeinsame Sache gibt, sind sich drei Läufe
+    #: einig (Spanne 0–33 % der Mitglieder). Beim Sammelbecken — 86 Vorlagen
+    #: von Sportförderung über Briefwahlbezirke bis Mähroboter — sprang das
+    #: Urteil zwischen 0 % und 83 %.
+    #:
+    #: `False` heißt nicht „die Gruppe ist falsch", sondern „wir können nicht
+    #: sagen, dass sie stimmt". Die Mitglieder bleiben in der Liste; was
+    #: wegfällt, ist die BEHAUPTUNG „auch in N anderen Städten" — und damit
+    #: auch der Vorrang in der Sortierung.
+    stable: bool = True
 
     @field_validator("label", "reason", mode="before")
     @classmethod

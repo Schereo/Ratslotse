@@ -1491,6 +1491,18 @@ class CitiesStore:
                 "                    WHERE ck.object_kind='cluster' AND ck.annotator='cluster_check' "
                 "                      AND ck.object_id = eig.version || ':' || eig.cluster_id "
                 "                      AND d.value = p2.id) "
+                # Eine Gruppe, über die sich drei Stimmen nicht einig waren,
+                # behauptet gar nichts mehr. Sie verschwindet nicht — ihre
+                # Mitglieder stehen weiter in der Liste —, aber „auch in 8
+                # anderen Städten" ist dann eine Aussage ohne Grundlage, und
+                # über `ORDER BY peers DESC` trug sie genau diese Gruppen auf
+                # Seite eins: 1,2 % des Bestands stellten 17 % der ersten
+                # dreißig Karten je Feld (gemessen 14.09.2026).
+                "    AND NOT EXISTS (SELECT 1 FROM annotations ck2 "
+                "                    WHERE ck2.object_kind='cluster' "
+                "                      AND ck2.annotator='cluster_check' "
+                "                      AND ck2.object_id = eig.version || ':' || eig.cluster_id "
+                "                      AND json_extract(ck2.payload,'$.stable') = 0) "
                 "  GROUP BY 1,2"
                 ") "
                 "INSERT INTO idea_group_status "

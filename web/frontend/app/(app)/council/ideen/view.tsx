@@ -299,7 +299,29 @@ function IdeenKarte({ idee }: { idee: Idee }) {
       </div>
       <Herkunft idee={idee} />
 
-      <h3 className="mt-1.5 text-sm font-semibold text-foreground">{idee.name}</h3>
+      {/* Die Überschrift ist die IDEE, nicht der Aktenname.
+ 
+          Hier stand bis 14.09.2026 `idee.name` — der Rohtitel aus dem
+          Ratsinformationssystem. Der ist für die Akte geschrieben, nicht
+          zum Überfliegen: „Erneute Änderung der Parkgebührenordnung -
+          kostenfreies Parken auf dem Wallring und an Samstagen, Einführung
+          einer ‚Brötchentaste'". Wer zwanzig solcher Zeilen untereinander
+          liest, sieht nicht, worum es geht.
+ 
+          `instrument` sagt dasselbe in drei Wörtern — „Parkgebührenordnung
+          ändern", „Feierabend-Parken pilotieren", „Barrierefreie
+          Bordabsenkungen umsetzen" — und steht schon im Vertrag; es wurde
+          nur nie gezeigt. Der Aktenname bleibt darunter stehen: Er ist das,
+          wonach man im fremden System sucht, und der Beleg dafür, dass die
+          kurze Zeile nicht erfunden ist. */}
+      <h3 className="mt-1.5 text-sm font-semibold text-foreground">
+        {idee.instrument || idee.name}
+      </h3>
+      {idee.instrument && idee.name && (
+        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground/70">
+          {idee.name}
+        </p>
+      )}
       {/* Die eigene Haltung, aber nur wenn sie GEGEN die Sache geht. „Dafür"
           ist der Normalfall und steht schon im Titel; „dagegen" dreht die
           Bedeutung der ganzen Karte um: Magdeburgs „Einwegverpackungsabgabe
