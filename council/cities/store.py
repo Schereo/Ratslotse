@@ -162,9 +162,22 @@ class CitiesStore:
     # -------------------------------------------------------------- Schicht 0
 
     def put_raw_object(self, body_id: str, kind: str, oparl_id: str,
-                       body_json: dict, fetched_at: str | None = None) -> bool:
-        """Rohantwort ablegen. ``True``, wenn sie neu war (sonst unverändert)."""
-        content = canonical_hash(body_json)
+                       body_json: dict, fetched_at: str | None = None,
+                       hash_basis: object = None) -> bool:
+        """Rohantwort ablegen. ``True``, wenn sie neu war (sonst unverändert).
+
+        ``hash_basis`` sagt, WORAUS der Inhaltsvergleich gebildet wird, wenn
+        die Antwort Flüchtiges enthält. Abgelegt wird immer die Antwort
+        selbst — die Rohschicht hält fest, was der Server gesagt hat.
+
+        **Sonst gilt jede Seite als geändert.** Wolfsburgs ALLRIS 4 vergibt
+        seine Wicket-Element-IDs je Anfrage neu (`id12cd2` → `id12ce6`); der
+        Inhalt ist bitgleich, der Hash nicht. Gemessen am 14.09.2026: 1.956
+        Zeilen für 652 Sitzungen — genau drei Ernten —, und weil `iter_papers`
+        daran erkennt, was aufzufrischen ist, wurden jedes Mal ALLE 1.571
+        Vorlagen neu geholt: 2.261 Abrufe statt 251 wie bei Hannover.
+        """
+        content = canonical_hash(body_json if hash_basis is None else hash_basis)
         with self._write() as conn:
             cur = conn.execute(
                 "INSERT OR IGNORE INTO raw_objects (body_id, kind, oparl_id, fetched_at, content_hash, body_json) "
