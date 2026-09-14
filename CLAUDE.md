@@ -531,7 +531,6 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   `scripts/update_disposable_domains.py --schreiben`; `PROTECTED_DOMAINS`
   schützt echte Anbieter (und Apples „E-Mail verbergen") vor einem
   Fehleintrag der Liste.
-<<<<<<< HEAD
 - **Abgewiesene Registrierungen werden gezählt** (seit 09/2026). `page_views`
   zählt, wer kam; `signup_rejections` zählt, wer nicht durchkam — je Tag und
   Grund, ohne Adresse, Domain oder Netzadresse. Sichtbar im Admin-Panel unter
@@ -539,8 +538,6 @@ RATSLOTSE_PROXY_HOSTS=gisportal4ol.oldenburg.de,youtube.com         # nur diese 
   Welle per Mail. Der Grund: Die FYI-Mail an die Admins hängt an der
   **Bestätigung** — tausend Konten, die nie einen Link klicken, lösen ohne den
   Herzschlag keine einzige Mail aus.
-=======
->>>>>>> origin/main
 - **Rollen und Rechte:** Ein Konto trägt seit 09/2026 **mehrere** Rollen
   (Tabelle `web_user_roles`); welche es gibt und was sie dürfen, steht an genau
   einer Stelle — [`kern/roles.py`](kern/roles.py). Geprüft wird immer gegen ein
