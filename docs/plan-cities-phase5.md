@@ -1,5 +1,36 @@
 # Umsetzungsplan Phase 5: das „Warum" aus den Protokollen — und welche Stadt als Nächstes
 
+> ## Stand 14.09.2026 — was daraus geworden ist
+>
+> Der niedersächsische Teil ist umgesetzt, der Rest nicht. Das Dokument
+> bleibt trotzdem stehen: Es ist die Begründung dafür, warum die Registry
+> aussieht, wie sie aussieht, und die Messung zu jeder Stadt ist die Arbeit,
+> die man sonst noch einmal machen müsste.
+>
+> | Schritt | Stand |
+> |---|---|
+> | PR 35 Langenhagen + Peine | geerntet, **aus** — die Dateien fehlen noch |
+> | PR 36 Hildesheim (`allris_classic`) | gebaut, geerntet (198 Sitzungen, 1.076 Vorlagentexte), **aus** — die Stadt steht seit ~13.09. hinter einer ALTCHA-Sperre, die wir nicht umgehen |
+> | PR 36c Wolfsburg (`allris4_html`) | gebaut, **AN seit 14.09.** — Wochenlauf 245 Abrufe (#1330, #1334, #1336, #1339) |
+> | PR 39 Hannover (`hannover_sim`) | gebaut, **AN seit 14.09.** — Wochenlauf 251 Abrufe (#1326, #1327) |
+> | PR 37 Bonn | **nicht angefangen** |
+> | PR 38 Darmstadt / `rubin.py` | **nicht angefangen** — `rubin.py` ist bis heute an keiner echten Stadt gelaufen |
+> | Leipzig, Freiburg, Köln, Dresden, … | Kandidaten, alle aus |
+>
+> **Zwei Annahmen des Plans haben sich als falsch erwiesen**, beide zugunsten
+> der Sache: ALLRIS 4 über die Oberfläche braucht **keinen Browser** (s. den
+> Nachtrag zu PR 36c), und Hildesheims ALLRIS classic war die einfachere
+> Welt, nicht die schwerere. Eine dritte hat sich gegen uns gedreht:
+> Hildesheim war offen und ist es nicht mehr.
+>
+> **Was der Plan nicht wusste und was ihn am meisten gekostet hätte:** Ein
+> Dialekt, der eine Oberfläche liest, holt ohne eigene Regel bei JEDEM
+> Wochenlauf den ganzen Bestand neu. Bei Wolfsburg waren das 2.261 Abrufe je
+> Woche, bei Hannover 25.729 — beides erst nach dem Anschließen gemessen.
+> Wer die nächste Stadt anschließt, misst den Wochenlauf, bevor er sie
+> einschaltet; `council/cities/CLAUDE.md` führt das als Schritt 6.
+
+
 Stand: 10.09.2026, abends. Dieser Plan folgt auf
 [`plan-cities-phase4.md`](plan-cities-phase4.md) (PR 23–30, alle gemergt)
 und ist wie seine Vorgänger geschrieben: **ohne das Gespräch dahinter
