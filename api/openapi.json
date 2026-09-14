@@ -7631,6 +7631,29 @@
         "title": "ElectionAreaParty",
         "type": "object"
       },
+      "ElectionAreaRef": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "roman": {
+            "title": "Roman",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "roman",
+          "name"
+        ],
+        "title": "ElectionAreaRef",
+        "type": "object"
+      },
       "ElectionCandidate": {
         "properties": {
           "born": {
@@ -7703,6 +7726,270 @@
           "votes_to_seat"
         ],
         "title": "ElectionCandidate",
+        "type": "object"
+      },
+      "ElectionCandidateParty": {
+        "description": "Eine Liste in der Kandidaten-Rangliste — mit dem Verhältnis, das die\nFrage „wie kommt jemand auf so viele Personenstimmen?\" beantwortet:\nWie viel von dem, was eine Liste bekommt, ging an Personen statt an die\nListe? Gemessen 2026: SPD 50 %, CDU 48 %, Grüne 35 %, AfD 36 %.",
+        "properties": {
+          "candidate_votes": {
+            "title": "Candidate Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "candidates_total": {
+            "title": "Candidates Total",
+            "type": "integer"
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "list_votes": {
+            "title": "List Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "personal_pct": {
+            "title": "Personal Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "short": {
+            "title": "Short",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "short",
+          "name",
+          "color",
+          "color_dark",
+          "candidates_total",
+          "list_votes",
+          "candidate_votes",
+          "personal_pct"
+        ],
+        "title": "ElectionCandidateParty",
+        "type": "object"
+      },
+      "ElectionCandidateRanking": {
+        "description": "``GET /api/wahlabend/kandidaten`` — alle Kandidaturen einer Ratswahl,\nsortiert und gefiltert vom Server, damit Web und App dieselbe Liste\nzeigen (und keiner sie im Browser nachsortiert).",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionAreaRef"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "election": {
+            "$ref": "#/components/schemas/ElectionInfo"
+          },
+          "parties": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionCandidateParty"
+            },
+            "title": "Parties",
+            "type": "array"
+          },
+          "party": {
+            "title": "Party",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "person_votes_available": {
+            "title": "Person Votes Available",
+            "type": "boolean"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ElectionCandidateRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "shown": {
+            "title": "Shown",
+            "type": "integer"
+          },
+          "sort": {
+            "title": "Sort",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset",
+          "phase",
+          "person_votes_available",
+          "election",
+          "sort",
+          "party",
+          "area",
+          "total",
+          "shown",
+          "parties",
+          "areas",
+          "rows"
+        ],
+        "title": "ElectionCandidateRanking",
+        "type": "object"
+      },
+      "ElectionCandidateRow": {
+        "description": "Eine Kandidatur, stadtweit einsortiert.",
+        "properties": {
+          "area": {
+            "title": "Area",
+            "type": "integer"
+          },
+          "area_name": {
+            "title": "Area Name",
+            "type": "string"
+          },
+          "area_roman": {
+            "title": "Area Roman",
+            "type": "string"
+          },
+          "born": {
+            "title": "Born",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "color_dark": {
+            "title": "Color Dark",
+            "type": "string"
+          },
+          "elected": {
+            "title": "Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "occupation": {
+            "title": "Occupation",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "party": {
+            "title": "Party",
+            "type": "string"
+          },
+          "party_share_pct": {
+            "title": "Party Share Pct",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "party_short": {
+            "title": "Party Short",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "projected_elected": {
+            "title": "Projected Elected",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rank": {
+            "title": "Rank",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes": {
+            "title": "Votes",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "votes_to_seat": {
+            "title": "Votes To Seat",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "rank",
+          "party",
+          "party_short",
+          "color",
+          "color_dark",
+          "area",
+          "area_roman",
+          "area_name",
+          "position",
+          "name",
+          "occupation",
+          "born",
+          "votes",
+          "party_share_pct",
+          "elected",
+          "projected_elected",
+          "votes_to_seat"
+        ],
+        "title": "ElectionCandidateRow",
         "type": "object"
       },
       "ElectionHistoryPoint": {
@@ -27210,6 +27497,127 @@
           }
         },
         "summary": "Wahlabend Bild",
+        "tags": [
+          "wahlabend"
+        ]
+      }
+    },
+    "/api/wahlabend/kandidaten": {
+      "get": {
+        "description": "Alle Kandidaturen als eine Rangliste — sortiert und gefiltert vom Server.\n\nÖffentlich wie der Wahlabend selbst, hinter demselben Schalter. Der Rang\nist stadtweit und bleibt es auch gefiltert; was die beiden Anteile\nbedeuten, steht in ``election/candidates.py``.",
+        "operationId": "wahlabend_kandidaten_api_wahlabend_kandidaten_get",
+        "parameters": [
+          {
+            "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+            "in": "query",
+            "name": "probe",
+            "required": false,
+            "schema": {
+              "description": "gesetzt = Generalprobe mit den Zahlen der Vorwahl (jeder Wert)",
+              "title": "Probe",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+            "in": "query",
+            "name": "counted",
+            "required": false,
+            "schema": {
+              "description": "Generalprobe: nur die ersten N Wahlbezirke ausgezählt",
+              "maximum": 500,
+              "minimum": 0,
+              "title": "Counted",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+            "in": "query",
+            "name": "wahl",
+            "required": false,
+            "schema": {
+              "description": "Slug einer gelaufenen Wahl — ihr eingefrorener Stand, ohne Abruf",
+              "title": "Wahl",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "votes",
+              "description": "votes = nach Personenstimmen, party = in Stimmzettel-Reihenfolge, area = je Wahlbereich, name",
+              "pattern": "^(votes|party|area|name)$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "nur diese Liste (Slug)",
+            "in": "query",
+            "name": "party",
+            "required": false,
+            "schema": {
+              "description": "nur diese Liste (Slug)",
+              "title": "Party",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "description": "nur dieser Wahlbereich (Nummer)",
+            "in": "query",
+            "name": "area",
+            "required": false,
+            "schema": {
+              "description": "nur dieser Wahlbereich (Nummer)",
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Area",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElectionCandidateRanking"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wahlabend Kandidaten",
         "tags": [
           "wahlabend"
         ]

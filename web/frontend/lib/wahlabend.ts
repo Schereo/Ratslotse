@@ -14,6 +14,10 @@ export type WahlabendBereich = Wahlabend["areas"][number];
 export type WahlabendBereichPartei = WahlabendBereich["parties"][number];
 export type WahlabendKandidat = WahlabendBereichPartei["candidates"][number];
 export type WahlabendMandat = Wahlabend["mandates"][number];
+export type Kandidatenliste = ApiAntwort<"/wahlabend/kandidaten">;
+export type KandidatenZeile = Kandidatenliste["rows"][number];
+export type KandidatenListe = Kandidatenliste["parties"][number];
+export type KandidatenSortierung = "votes" | "party" | "area" | "name";
 
 /** Schlüssel im localStorage: die zuletzt gewählte Liste. */
 export const LISTE_SPEICHER = "wahlabend.liste";
@@ -134,6 +138,25 @@ export function abfragePfad(probe: string | null, counted: string | null, wahl?:
   }
   const s = q.toString();
   return s ? `/wahlabend?${s}` : "/wahlabend";
+}
+
+/** Dieselbe Herkunft (Probe/Stand/Rückblick) für die Kandidaten-Rangliste —
+ *  plus Sortierung und Filter, die der SERVER anwendet. */
+export function kandidatenPfad(
+  probe: string | null,
+  counted: string | null,
+  wahl: string | null | undefined,
+  sortierung: KandidatenSortierung,
+  liste: string | null,
+  bereich: number | null,
+): string {
+  const basis = abfragePfad(probe, counted, wahl);
+  const q = new URLSearchParams(basis.includes("?") ? basis.slice(basis.indexOf("?") + 1) : "");
+  if (sortierung !== "votes") q.set("sort", sortierung);
+  if (liste) q.set("party", liste);
+  if (bereich !== null) q.set("area", String(bereich));
+  const s = q.toString();
+  return s ? `/wahlabend/kandidaten?${s}` : "/wahlabend/kandidaten";
 }
 
 

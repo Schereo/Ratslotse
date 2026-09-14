@@ -11,11 +11,14 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Mascot } from "@/components/mascot";
+import { KICKER, Punkt, TON } from "@/components/wahlabend/bausteine";
 import { Halbkreis } from "@/components/wahlabend/halbkreis";
+import { Kandidaten, type KandidatenFilter } from "@/components/wahlabend/kandidaten";
 import { Kopf } from "@/components/wahlabend/kopf";
+import { ReiterLeiste, ReiterTafel, type Reiter } from "@/components/ui/reiter";
 import { Mehrheiten } from "@/components/wahlabend/mehrheiten";
 import { Verlauf } from "@/components/wahlabend/verlauf";
 import { useFrisch, useTween } from "@/lib/use-tween";
@@ -39,24 +42,13 @@ import {
   standText,
   uhrzeit,
   zahl,
+  type KandidatenSortierung,
   type StatusTon,
   type Wahlabend,
   type WahlabendBereich,
   type WahlabendKandidat,
   type WahlabendPartei,
 } from "@/lib/wahlabend";
-
-const KICKER = "font-mono text-[10px] font-medium uppercase tracking-[0.11em] text-muted-foreground";
-
-const TON: Record<StatusTon, string> = {
-  seated: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-  shaky: "bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
-  projected: "bg-primary/10 text-primary",
-  close: "bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
-  open: "bg-muted text-muted-foreground",
-  out: "bg-muted text-muted-foreground",
-  unknown: "border border-dashed border-border text-muted-foreground",
-};
 
 /* ── Kopf & Fuß ─────────────────────────────────────────────────────────── */
 
@@ -320,16 +312,6 @@ function Vorbehalt({ daten }: { daten: Wahlabend }) {
 }
 
 /* ── Listen stadtweit ───────────────────────────────────────────────────── */
-
-function Punkt({ color, dark, className }: { color: string; dark: string; className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("inline-block h-2 w-2 flex-none rounded-full bg-[var(--dot)] ring-1 ring-inset ring-black/10 dark:bg-[var(--dot-dark)]", className)}
-      style={{ "--dot": color, "--dot-dark": dark } as React.CSSProperties}
-    />
-  );
-}
 
 function ListenZeile({
   p,
@@ -760,6 +742,27 @@ function Mandate({ daten }: { daten: Wahlabend }) {
 
 /* ── Die Seite ──────────────────────────────────────────────────────────── */
 
+/** Die drei Ansichten unter der Tafel. Warum Reiter: Als eine Rolle war die
+ *  Seite am Wahlabend sehr lang — Sitzbild, Mehrheiten, Verlauf, dann sechs
+ *  Wahlbereichs-Karten, dann alle Sitze; die Kandidaten-Rangliste hätte sie
+ *  noch einmal um 383 Zeilen verlängert. Die Tafel (Auszählungsstand,
+ *  Listen) steht ÜBER den Reitern: Sie ist die Antwort auf die erste Frage
+ *  und gehört zu jeder Ansicht. Die Ansicht steht in der URL (`?ansicht=`),
+ *  damit ein Link auf die Rangliste ein Link auf die Rangliste ist. */
+type Ansicht = "ergebnis" | "bereiche" | "kandidaten";
+const ANSICHTEN: Reiter<Ansicht>[] = [
+  { id: "ergebnis", label: "Ergebnis" },
+  { id: "bereiche", label: "Wahlbereiche" },
+  { id: "kandidaten", label: "Kandidat*innen" },
+];
+function ansichtAus(wert: string | null, liste: string | null): Ansicht {
+  if (wert === "bereiche" || wert === "kandidaten" || wert === "ergebnis") return wert;
+  // Ein geteilter Link mit `?liste=` (Sharepic, Neu-Karten) zeigt auf die
+  // Wahlbereiche dieser Liste — dort soll er auch landen.
+  return liste ? "bereiche" : "ergebnis";
+}
+const SORTIERUNGEN: readonly KandidatenSortierung[] = ["votes", "party", "area", "name"];
+
 export function WahlabendView() {
   const params = useSearchParams();
   const router = useRouter();
@@ -812,6 +815,38 @@ export function WahlabendView() {
     }
   }, [params]);
 
+  // Die Ansicht und die Filter der Rangliste leben in der URL — `replace`
+  // ohne Scrollsprung, wie schon `?liste=`.
+  const setzeQuery = useCallback(
+    (aenderungen: Record<string, string | null>) => {
+      const q = new URLSearchParams(params.toString());
+      for (const [k, v] of Object.entries(aenderungen)) {
+        if (v === null) q.delete(k);
+        else q.set(k, v);
+      }
+      const s = q.toString();
+      router.replace(s ? `?${s}` : "?", { scroll: false });
+    },
+    [params, router],
+  );
+  const ansicht = ansichtAus(params.get("ansicht"), params.get("liste"));
+  const sortParam = params.get("sort");
+  const bereichParam = params.get("bereich");
+  const kandidatenFilter: KandidatenFilter = {
+    sortierung: SORTIERUNGEN.find((s) => s === sortParam) ?? "votes",
+    liste: params.get("kliste"),
+    bereich: bereichParam && /^\d+$/.test(bereichParam) ? Number(bereichParam) : null,
+  };
+  const setKandidatenFilter = useCallback(
+    (f: KandidatenFilter) =>
+      setzeQuery({
+        sort: f.sortierung === "votes" ? null : f.sortierung,
+        kliste: f.liste,
+        bereich: f.bereich === null ? null : String(f.bereich),
+      }),
+    [setzeQuery],
+  );
+
   const waehle = useMemo(
     () => (slug: string) => {
       setListe(slug);
@@ -820,11 +855,10 @@ export function WahlabendView() {
       } catch {
         /* s. o. */
       }
-      const q = new URLSearchParams(params.toString());
-      q.set("liste", slug);
-      router.replace(`?${q.toString()}`, { scroll: false });
+      // Eine Liste wählen heißt: ihre Wahlbereiche sehen wollen.
+      setzeQuery({ liste: slug, ansicht: "bereiche" });
     },
-    [params, router],
+    [setzeQuery],
   );
 
   const daten = abfrage.data;
@@ -879,12 +913,34 @@ export function WahlabendView() {
           </p>
         ) : null}
         <ListenTafel daten={daten} liste={liste} waehle={waehle} />
-        <Sitzbild daten={daten} />
-        <MehrheitenBlock daten={daten} />
-        <Verlauf daten={daten} liste={liste} />
-        <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
-        <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} />
-        <Mandate daten={daten} />
+        <ReiterLeiste
+          reiter={ANSICHTEN}
+          aktiv={ansicht}
+          onChange={(id) => setzeQuery({ ansicht: id === "ergebnis" ? null : id })}
+          label="Ansichten des Wahlabends"
+          className="mt-8"
+        />
+        <ReiterTafel id="ergebnis" aktiv={ansicht}>
+          <Sitzbild daten={daten} />
+          <MehrheitenBlock daten={daten} />
+          <Verlauf daten={daten} liste={liste} />
+          <Mandate daten={daten} />
+        </ReiterTafel>
+        <ReiterTafel id="bereiche" aktiv={ansicht}>
+          <ListenWahl parteien={daten.parties} liste={liste} waehle={waehle} />
+          <Bereiche daten={daten} liste={liste} probe={probe} counted={counted} />
+        </ReiterTafel>
+        <ReiterTafel id="kandidaten" aktiv={ansicht}>
+          <Kandidaten
+            daten={daten}
+            probe={probe}
+            counted={counted}
+            rueckblick={rueckblick}
+            filter={kandidatenFilter}
+            setFilter={setKandidatenFilter}
+            live={holen}
+          />
+        </ReiterTafel>
       </>
     );
   }

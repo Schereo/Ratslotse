@@ -111,6 +111,9 @@ OEFFENTLICH = {
     # Wahlabend: Open Data der Stadt, nachgerechnet — nichts Persönliches
     # daran. Hinter dem Feature-Schalter `wahlabend` (404, solange er aus ist).
     ("get", "/api/wahlabend"),
+    # Dieselben Zahlen, nur als Kandidaten-Rangliste sortiert und gefiltert —
+    # Namen, Beruf und Jahrgang stehen so auf dem amtlichen Stimmzettel.
+    ("get", "/api/wahlabend/kandidaten"),
     # Dasselbe als Bild zum Teilen. Es zeigt exakt das, was die öffentliche
     # Seite zeigt, und wird gerade von denen abgeholt, die kein Konto haben:
     # WhatsApp und die sozialen Netze, wenn sie einen Link auspacken.
