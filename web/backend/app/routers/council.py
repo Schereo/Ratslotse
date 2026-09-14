@@ -1877,7 +1877,10 @@ def cities_idea_fields(cities: CitiesStore = Depends(get_cities_store)) -> IdeaF
          "present": int(r["present"] or 0),
          "multi_city": int(r["multi_city"] or 0)}
         for r in cities.idea_fields()]
-    return {"fields": felder}
+    from council.cities.registry import BODIES
+    namen = sorted({(BODIES[b].name if b in BODIES else b)
+                    for b in cities.idea_body_ids()})
+    return {"fields": felder, "bodies": namen}
 
 
 @router.get("/cities/search")

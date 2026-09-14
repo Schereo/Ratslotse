@@ -9493,6 +9493,13 @@
       },
       "IdeaFields": {
         "properties": {
+          "bodies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bodies",
+            "type": "array"
+          },
           "fields": {
             "items": {
               "$ref": "#/components/schemas/IdeaFieldSummary"
@@ -9502,7 +9509,8 @@
           }
         },
         "required": [
-          "fields"
+          "fields",
+          "bodies"
         ],
         "title": "IdeaFields",
         "type": "object"

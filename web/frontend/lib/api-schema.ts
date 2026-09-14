@@ -8918,6 +8918,8 @@ export interface components {
         };
         /** IdeaFields */
         IdeaFields: {
+            /** Bodies */
+            bodies: string[];
             /** Fields */
             fields: components["schemas"]["IdeaFieldSummary"][];
         };
@@ -18441,4 +18443,4 @@ export interface operations {
     };
 }
 
-// vertrag-sha256: 3007da2e6ef7a46d464b2229147e8cab52604c529e5b39c24f9ddab53752c45b
+// vertrag-sha256: c90c071e14ea5ef1c385079428de1c91413bac17bae3c74e101f61d7cb44acf7

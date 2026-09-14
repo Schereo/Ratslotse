@@ -340,6 +340,19 @@ class CitiesStore:
             sql += " LIMIT ?"; args.append(limit)
         return [dict(r) for r in self._conn.execute(sql, args)]
 
+    def idea_body_ids(self) -> list[str]:
+        """Die Städte, aus denen beurteilte Ideen vorliegen.
+
+        Nicht alle mit Vorlagen: Eine Stadt, die geerntet, aber noch nicht
+        durch `fit` gelaufen ist, steht auf keiner Karte — und gehört dann
+        auch nicht in den Satz „Was Räte in … beschlossen haben".
+        """
+        return [r["body_id"] for r in self._conn.execute(
+            "SELECT DISTINCT p.body_id FROM papers p "
+            "JOIN annotations a ON a.object_kind='paper' AND a.object_id=p.id "
+            "  AND a.annotator='fit' "
+            "WHERE p.body_id != 'oldenburg' ORDER BY p.body_id")]
+
     def paper_body_ids(self) -> list[str]:
         """Die Städte, von denen Vorlagen im Speicher liegen.
 

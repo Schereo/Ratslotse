@@ -282,7 +282,9 @@ private struct IdeaCard: View {
     private var herkunft: String {
         var teile: [String] = []
         if let seit = idee.windowSince, seit.count >= 4 {
-            teile.append("Beschlüsse ab \(seit.prefix(4))")
+            // „Vergleich ab", nicht „Beschlüsse ab" — das Fenster gehört der
+            // STADT, nicht dieser Vorlage; die Suche findet auch ältere.
+            teile.append("Vergleich ab \(seit.prefix(4))")
         }
         switch idee.protocolSource {
         case "available": teile.append("mit Niederschriften")

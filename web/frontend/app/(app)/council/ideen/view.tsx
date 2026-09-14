@@ -250,7 +250,10 @@ const NIEDERSCHRIFTEN: Record<string, string> = {
 
 function Herkunft({ idee }: { idee: Idee }) {
   const teile = [
-    idee.window_since ? `Beschlüsse ab ${idee.window_since.slice(0, 4)}` : null,
+    // „Vergleich ab", nicht „Beschlüsse ab": Das Fenster gehört der STADT,
+    // nicht dieser Vorlage. Die Suche findet auch ältere — eine Hannoveraner
+    // von 2021 unter der Zeile „Beschlüsse ab 2023" widerspricht sich selbst.
+    idee.window_since ? `Vergleich ab ${idee.window_since.slice(0, 4)}` : null,
     NIEDERSCHRIFTEN[idee.protocol_source] ?? null,
   ].filter(Boolean);
   if (teile.length === 0) return null;
@@ -554,6 +557,18 @@ export default function View() {
   const params = useSearchParams();
   const feld = useMemo(() => params?.get("feld") ?? null, [params]);
   const [frage, setFrage] = useState("");
+  const { data: felder } = useQuery({
+    queryKey: ["ideen-felder"],
+    queryFn: () => api.get<Felder>("/council/cities/ideas/fields"),
+    staleTime: 60 * 60 * 1000,
+  });
+  // „A, B und C" — die letzte mit „und", wie man es schreibt.
+  const staedte = useMemo(() => {
+    const namen = felder?.bodies ?? [];
+    if (namen.length === 0) return "anderen Städten";
+    if (namen.length === 1) return namen[0];
+    return `${namen.slice(0, -1).join(", ")} und ${namen[namen.length - 1]}`;
+  }, [felder]);
 
   if (!an) return null;
 
@@ -562,11 +577,15 @@ export default function View() {
       <div>
         <h1 className="text-xl font-semibold text-foreground">Ideen aus anderen Städten</h1>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          Was Räte in Osnabrück, Braunschweig, Münster, Potsdam und Magdeburg
-          beschlossen haben — und ob Oldenburg dasselbe schon hat. Das prüft
-          ein Sprachmodell an Oldenburger Beschlüssen; sie stehen unter jeder
-          Idee. Ob sich ein Antrag lohnt, sagt hier bewusst niemand: Das hängt
-          an Mehrheiten und Haushaltslage.
+          {/* Die Städte kommen aus den DATEN, nicht aus diesem Satz. Fest
+              aufgezählt stand hier bis zum 13.09.2026 „Osnabrück,
+              Braunschweig, Münster, Potsdam und Magdeburg" — und das war
+              falsch, sobald Hannover, Wolfsburg und Hildesheim dazukamen.
+              Eine Aufzählung als Prosa veraltet beim nächsten Adapter. */}
+          Was Räte in {staedte} beschlossen haben — und ob Oldenburg dasselbe
+          schon hat. Das prüft ein Sprachmodell an Oldenburger Beschlüssen;
+          sie stehen unter jeder Idee. Ob sich ein Antrag lohnt, sagt hier
+          bewusst niemand: Das hängt an Mehrheiten und Haushaltslage.
         </p>
       </div>
       <Suchzeile onTreffer={setFrage} />

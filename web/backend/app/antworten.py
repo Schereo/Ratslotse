@@ -1593,6 +1593,14 @@ class FeedbackAck(TypedDict):
 
 class IdeaFields(TypedDict):
     fields: list[IdeaFieldSummary]
+    #: Die Städte, aus denen Ideen vorliegen, nach Namen sortiert.
+    #:
+    #: **Sie gehören in die Antwort, nicht in den Einleitungstext.** Der zählte
+    #: sie fest auf („Osnabrück, Braunschweig, Münster, Potsdam und
+    #: Magdeburg") — und war am 13.09.2026 falsch, sobald Hannover,
+    #: Wolfsburg und Hildesheim dazukamen. Eine Aufzählung, die eine Zeile
+    #: Prosa ist, veraltet beim nächsten Adapter wieder.
+    bodies: list[str]
 
 
 class ElsewhereResponse(TypedDict):
